@@ -994,8 +994,9 @@ owner decides. Nothing upgrades on a schedule, and nothing gates on it.**
 
 This is a multi-year project, so every version constraint in `pyproject.toml`
 will be wrong eventually. `requires-python` admits two CPython minor versions,
-3.14 and 3.15, and CPython ships a new one each year. Flet is pre-1.0, and an
-upper bound excludes its 1.0. The dev tools have only lower bounds, so their
+3.14 and 3.15, and CPython ships a new one each year. The interface's
+toolkits, PySide6-Essentials and pyqtgraph, each carry an upper bound, below
+PySide6 7.0 and pyqtgraph 0.15. The dev tools have only lower bounds, so their
 behaviour changes underneath the gate. The failure being guarded against
 is not a stale pin. It is returning after a gap to a tree that no longer
 builds. By then the upgrade that would fix it is several versions wide, and
@@ -1027,7 +1028,7 @@ question that runs weekly:
 The workflow also prints what exists *beyond* the declared bounds, without
 failing on it. It does not fail, because crossing a major bound is a
 deliberate migration, and CI should not attempt one. That step is how anyone
-learns at all that a Flet 1.0 or a pydantic 3 is available.
+learns at all that a PySide6 7.0 or a pydantic 3 is available.
 
 **What does not happen.** There are no automated dependency pull requests and
 no version-bump campaign. The current pins are correct today. The point is to

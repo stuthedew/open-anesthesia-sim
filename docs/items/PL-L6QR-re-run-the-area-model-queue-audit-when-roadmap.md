@@ -66,6 +66,8 @@ because the milestone adds two Views and decides nothing about which of today's
 surfaces become Views. The trigger is unchanged, item 36 being scoped, and
 v0.8.0 is the next release `ROADMAP.md` § "The timeline" names.
 
+**2026-11-09 (`PL-5XG1`).** § "The timeline"'s v0.8.0 row no longer holds multi-substance, which came off the timeline. The row now names the next milestone with nothing chosen for it, and the trigger is still item 36 being scoped.
+
 **Moved from `ROADMAP.md` on 2026-11-07 (`PL-YNFS`).** `ROADMAP.md`'s v0.7.0 section, § "Explicitly out of scope for v0.7.0", carried this sentence in its entry on the View catalogue, planned-milestone item 36, until then. This item's `blocked-by: v0.8.0` holds the current fact.
 
 > So `PL-L6QR`, which waits on item 36, now waits on v0.8.0 instead.

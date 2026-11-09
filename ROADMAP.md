@@ -419,8 +419,8 @@ to clear the ground that the feature releases are built on:
 | 8 | **Gate 3** | **Frozen 2026-10-25**, the day v0.7.0 was scoped, five days after v0.6.0 shipped, and recorded in that milestone's own section below. Its work ships in `v0.6.x` patches as it clears, before v0.7.0's implementation begins. | — |
 | 9 | **v0.7.0 — the schematic** | Planned-milestone items 27 and 28: a compartment schematic whose containers fill to tension, as Gas Man's Picture does, labelled with their amounts and with a bar showing where the agent *is*, and the agent cost View. **Scoped 2026-10-25** by `PL-LF0P` (project owner, 2026-10-25, ratified, over containers drawn to scale, over Gas Man's Picture as it is, and over leaving item 28 unscheduled), and it has its own section below. (Written `v0.6.0` until 2026-09-16, when item 34 took that number and this moved down two, and `v0.8.0` from then until 2026-09-26, when break-out came off the timeline and this moved up one.) | — |
 | 10 | **Gate 4** | Frozen when v0.7.0 ships; its work ships in `v0.7.x` patches as it clears, before v0.8.0's implementation begins. | — |
-| 11 | **v0.8.0 — multi-substance and nitrous oxide** | Planned-milestone items 6 and 7, and the substance generalization Phase 1 describes. (Written `v0.7.0` until 2026-09-16 and `v0.9.0` from then until 2026-09-26, for the same reasons as row 9.) | — |
-| 12+ | **Beyond** | The machine and its interlocks (items 1-5), save/load and replay (9, 10), then intravenous agents (13-15), in "Development pathway" order. **Item 40 is no longer among them** - the machine-profile framework was split out of item 1 on 2026-09-20 (project owner) and is patch-track work that may be cut whenever its items finish, taking no version of its own and freezing no gate. What stays here is the interlock baseline and the machine behaviors that need solver work item 40 defers. | — |
+| 11 | **v0.8.0 — not yet chosen** | The next milestone after v0.7.0. No item is placed on it, and what it holds is the project owner's pick. It was multi-substance and nitrous oxide until 2026-09-26, when those came off the timeline (Beyond row). | — |
+| 12+ | **Beyond** | The substance generalization with nitrous oxide and its effects (items 6 and 7), the machine and its interlocks (items 1-5), save/load and replay (9, 10), then intravenous agents (13-15), in "Development pathway" order. **The substance generalization and items 6 and 7 came off the timeline on 2026-09-26** (project owner, 2026-09-26: "Add it back once we have a really fleshed out single agent set up with workspaces all working"). They had been v0.8.0. Whether that condition is met is the owner's judgment, so a session placing the next row after v0.7.0 asks the owner rather than placing the generalization by pathway order (`PL-5XG1`). **Item 40 is no longer among them** - the machine-profile framework was split out of item 1 on 2026-09-20 (project owner) and is patch-track work that may be cut whenever its items finish, taking no version of its own and freezing no gate. What stays here is the interlock baseline and the machine behaviors that need solver work item 40 defers. | — |
 
 **Rows 1 and 2 are the only releases whose whole content is a frozen list, and
 they are not the same kind of thing.** Row 2 is Gate 0's release. Row 1 is not
@@ -430,9 +430,9 @@ milestone's findings. § "How gate work is released" says how their work ships,
 which is why rows 4, 6, 8 and 10 carry no version.
 
 Rows 5, 7 and 9 are scoped and have their own sections below. So does the
-`v0.4.26` row above them. Row 11 is the intended order. A row becomes real only
-when it gets its own goal, required scope, definition of done and out-of-scope
-list in this document, as the development rules require.
+`v0.4.26` row above them. Row 11 holds no milestone yet. A row becomes real
+only when it gets its own goal, required scope, definition of done and
+out-of-scope list in this document, as the development rules require.
 
 **Row 7 is the first milestone scoped out of turn, and the reason is recorded
 because the cadence assumes otherwise.** Every earlier milestone was scoped
@@ -481,6 +481,11 @@ milestone to be scoped.
   `tools/doc_check.py` fails when an id is named under both headings of one
   milestone. It also gives an advisory where a scope bullet contains exclusion
   language.
+- **A shipped release's Required scope line that turns out wrong about what
+  shipped is annotated, never rewritten.** The line records what the release
+  was scoped to do. Add a dated note beside it that states what shipped, as
+  v0.1.0's partition-data line carries (`PL-N32Y`, on `PL-4FBP`'s ratified
+  convention that a dated record is corrected by a dated note).
 
 ## The debt gate
 
@@ -1290,9 +1295,10 @@ deferred, because their problems began after the freeze: `PL-8G3F`, `PL-K4MQ`,
    `SimulationSnapshot` carries the six compartments' amounts beside their
    tensions. Each amount is read from that compartment's `agent_amount_l` in
    `core/`. The amounts travel as one record per compartment rather than as six
-   more flat floats. That way v0.8.0 can key the same record by substance
-   instead of adding fields. `stored_agent_l` stays `core/`'s one sum of the
-   amounts, and a test holds the record's amounts equal to it to the last bit.
+   more flat floats. That way the substance generalization can key the same
+   record by substance instead of adding fields. `stored_agent_l` stays
+   `core/`'s one sum of the amounts, and a test holds the record's amounts
+   equal to it to the last bit.
    Summing the record again in `app/` would have been a second sum of the same
    fact, so the build kept the one sum (`PL-KFTM`, 2026-11-01). No equation
    changes. `core/` already computes every amount, and this item
@@ -1469,8 +1475,9 @@ deferred, because their problems began after the freeze: `PL-8G3F`, `PL-K4MQ`,
   View. A filled area therefore cannot show the amount here. The share bar
   shows the amount instead.
 - **More than one agent on one schematic.** Gas Man keeps one Picture for each
-  agent. This model holds one substance at a time until v0.8.0. That release
-  will key the per-compartment record by substance.
+  agent. This model holds one substance at a time until the substance
+  generalization, which is on no release yet (§ "The timeline", Beyond row).
+  That work will key the per-compartment record by substance.
 - **Showing a past instant.** The schematic shows the current instant of the
   run, as the readouts do. Drawing it at an instant picked on the chart first
   needs a way to scrub through a run, and no release schedules one.
@@ -1522,10 +1529,11 @@ and it would have to be revisited afterwards. The rework that the 2026-08-25
 reordering accepts is bounded and known. The view consumes an immutable
 `SimulationSnapshot`, so the time base, playback, event marks and axis
 handling are substance-agnostic. The piece that changes is the MAC readout,
-which becomes a MAC sum when a second substance lands. Whether this argument
-still binds the milestones that the timeline places before the generalization
-is the project owner's question. `PL-5XG1` records that question, with its
-count.
+which becomes a MAC sum when a second substance lands. The project owner
+accepted the risk for every release the timeline names, and took the
+generalization off the timeline until a single agent works well with its
+workspaces (project owner, 2026-09-26). § "The timeline"'s Beyond row carries
+that condition.
 
 ### Phase 0 — foundation
 
@@ -1539,10 +1547,10 @@ Generalize the patient's state from one agent to N substances that are
 present at the same time. Then come items 6 and 7 (nitrous oxide,
 concentration and second-gas effects), then item 1 (machine abstraction with
 interlocks), then item 2 (agent switching with residual washout).
-§ "The timeline" has placed the generalization with items 6 and 7. So items 1
-and 2 are the part of this phase whose order this section sets. Item 40, the
-machine-profile framework, is **not** part of this phase. Nothing in a config
-file needs the substance generalization.
+§ "The timeline" places none of this phase. Its Beyond row says when the
+generalization returns to the timeline. Item 40, the machine-profile
+framework, is **not** part of this phase. Nothing in a config file needs the
+substance generalization.
 
 The generalization comes first because three separate items need the same
 thing: holding more than one substance at once, with kinetics for each
@@ -1888,10 +1896,14 @@ Add packaging, signing, and distribution work for shipping the app.
 Add a user-facing preferences/settings panel (theme, chart window, slider
 ranges, and similar display settings).
 
-*Prerequisite: a settings store that can be written and saved.* `PL-2CS8`
-consolidated the UI and display constants that this item named as its
-prerequisite in `v0.4.11`. The prerequisite said to fold the UI and display
-constants into one module, rather than adding a fourth scattered location. `app/theme.py` is now the one location.
+*Prerequisite: a settings store that can be written and saved.* This item
+first named a different prerequisite: fold the display constants, then spread
+over `app/theme.py`, `app/simulation_view.py` and defaults duplicated between
+`core/` and `app/controller.py`, into one module. `PL-2CS8` did that in
+`v0.4.11`, and `app/theme.py` is now the one location. No core and controller
+duplication remains: `app/controller.py` holds no default values, and every
+setting the user has not chosen comes from `core/`, built from the data files
+(checked 2026-11-09, `PL-HQ03`).
 
 What genuinely remains is not a fourth location to fold in. `app/theme.py`
 is a module of constants bound at import time. A panel that *writes* a
@@ -2529,7 +2541,8 @@ needs done soon."). Break-out remains this item's second half and is still
 wanted, but it has no row on § "The timeline". Its row,
 "the second screen", came off the timeline. As a consequence, the
 schematic (item 27) moved back to v0.7.0, and multi-substance (items 6
-and 7) moved to v0.8.0 (`PL-V1Y7`). Break-out is placed when the owner
+and 7) moved to v0.8.0 (`PL-V1Y7`), then off the timeline the same day
+(`PL-5XG1`). Break-out is placed when the owner
 asks for it, as any catalogue entry is. **What keeps it possible stays in
 v0.6.0, unchanged:** the saved layout root's set of windows (Required scope
 entry 1) and the per-window shape of the unconditional region (entry 7).
@@ -2899,7 +2912,11 @@ preserving deterministic behavior and explicit units.
 - Keep the v0.0.2 circuit model and its analytic regression tests.
 - Add an explicit alveolar gas compartment driven by alveolar ventilation.
 - Add sevoflurane blood:gas and tissue:blood partition data with source
-  provenance and validation.
+  provenance and validation. *Note added 2026-11-09 (`PL-N32Y`): what shipped
+  stores tissue:gas, not tissue:blood. The agent data files hold
+  `tissue_gas_partition_coefficients`, and `core/numerical_envelope.py`'s
+  `tissue_blood_partition_coefficient` derives the tissue:blood form by
+  dividing by blood:gas.*
 - Add cardiac output and perfusion-limited vessel-rich, muscle, and fat tissue
   groups.
 - Compute mixed-venous return from tissue outflow and couple it back to the
@@ -3337,7 +3354,11 @@ the approved list deliberately. `PL-68XK` records why it was dropped.
 - The two entries that change repository configuration rather than the tree
   are PL-J786 (a green `checks` run required before merge) and PL-S4M2
   (squash-merge). Both are confirmed in effect on a real pull request, not
-  merely described as done.
+  merely described as done. *Note added 2026-11-09 (`PL-C25K`): only PL-S4M2
+  shipped. PL-J786 was dropped on 2026-08-31 (project owner), because the
+  repository was then private on GitHub Free, where a ruleset is created but
+  not enforced, so no rule could require the check before a merge. The item
+  records the reason.*
 - No equation, parameter, numerical method, unit or displayed value has
   changed, and the v0.0.2 circuit and v0.1.0 sevoflurane reference tests pass
   unaltered. Three entries are permitted to reach into `src/` and `tests/`, and each

@@ -3,12 +3,14 @@ id: PL-5XG1
 title: ROADMAP.md's Development pathway still says Phase 1 follows v0.4.0 unchanged, while the timeline places Phase 1's substance generalization at v0.9.0 behind four releases, which its own known-risk paragraph argues against
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
-touches: ROADMAP.md
+touches: ROADMAP.md, src/anesthesia_sim/core/concentration.py, docs/items/PL-L6QR-re-run-the-area-model-queue-audit-when-roadmap.md
 blocked-by: PL-V1Y7
 deferred-from: v0.6.0 - filed after the gate froze, and a question of release order that no v0.6.0 entry waits on
 added: 2026-09-26
+closed: 2026-11-09
+pr: 2071
 payoff: A session reading the roadmap meets one answer for multi-substance - off the timeline until single-agent works, and the owner's condition for its return - instead of a pathway and a timeline that disagree.
 verify: ! grep -qE 'v0\.[0-9]+\.0 — multi-substance' ROADMAP.md && ! grep -q 'held with its count by' ROADMAP.md && grep -q 'workspaces all working' ROADMAP.md
 recurrences: 2026-11-07 PL-K6DG withdrawn 2026-11-07 PL-K6DG
@@ -161,3 +163,5 @@ row instead of at this item.
 > *As this phase was first written*, nitrous oxide sat before any interface work for two reasons. First, the second-gas effect is the phenomenon that this class of simulator is most used to teach. Without it, there is no credible inhalational simulator to build an interface on. Second, nitrous oxide changes the core equations, so an interface built on a single-gas core would be reworked when it lands. The reordering below set that placement aside. The known risk at the end of this section is the general form of the second reason.
 
 > **Reordering (project owner, 2026-08-25): the teachable case is taken ahead of Phase 1.** As written below, Phase 1's substance generalization and nitrous oxide come before all interface work. The reasoning was that an interface built on a single-gas core would be reworked. That ordering was reconsidered once the interface was measured against what a learner can actually do with it. The run advances at 1x real time and the chart spans five minutes. So neither the muscle curve nor the fat curve can be observed, and no lesson in uptake and distribution currently gets through to anyone. Building coupled-gas equations first would produce a more capable engine that still teaches nobody. It would also do so without the feedback from real teaching use that should shape what the multi-gas display looks like. The rework this accepts is bounded and known. The view consumes an immutable `SimulationSnapshot`, so the time base, playback, event marks and axis handling are substance-agnostic. The piece that changes is the MAC readout, which becomes a MAC sum when a second substance lands. v0.4.0 is that work, and Phase 1 follows it unchanged. *That was the order on 2026-08-25 and is no longer:* since then, the timeline has placed further releases ahead of the generalization, each moved by a decision dated on its own row.
+
+**Done 2026-11-09.** The timeline's row 11 no longer holds multi-substance. It names v0.8.0 as the next milestone with nothing chosen for it, which keeps Gate 4's wording and `PL-L6QR`'s `blocked-by: v0.8.0` valid. The Beyond row carries the substance generalization with items 6 and 7, the owner's dated words and the condition for their return. The known-risk paragraph now ends on that row instead of on this item. Phase 1 says the timeline places none of the phase. The v0.7.0 section's two "until v0.8.0" sentences, the break-out paragraph in item 34 and `core/concentration.py`'s docstring now say the generalization is on no release.

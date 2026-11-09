@@ -3,11 +3,13 @@ id: PL-N32Y
 title: ROADMAP.md's v0.1.0 Required scope says the release added tissue:blood partition data, where the agent data files store tissue:gas
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: release-roadmap-seam
 touches: ROADMAP.md
 added: 2026-09-13
+closed: 2026-11-09
+pr: 2071
 verify: grep -qF 'tissue_gas_partition_coefficients' ROADMAP.md && python3 tools/doc_check.py check
 ---
 
@@ -69,3 +71,5 @@ is green, `ROADMAP.md` names the stored form nowhere).
 > `PL-N32Y` is a correction to this document's account of a *past* release. v0.1.0's Required scope says that the release added tissue:blood partition data, but the agent files store tissue:gas. The scientific half is already fixed where a reader of the model meets it. `PL-212V` corrected `docs/MODEL.md`'s specification, and `PL-H46J` gave the Symbols table the Code column that maps each symbol onto `core/`. Both landed in v0.4.17. So what is left is the history, and it cannot affect a reader of the simulator. `PL-N32Y` is also `needs-decision`, on a question that only the project owner can answer. The question is whether a frozen `Required scope` line is corrected or annotated when it turns out to be wrong. Holding v0.5.0 open would not produce that answer.
 
 > - PL-N32Y (S) ROADMAP.md's v0.1.0 Required scope says the release added tissue:blood partition data, where the agent data files store tissue:gas
+
+**Done 2026-11-09.** v0.1.0's Required scope line keeps its wording and carries a dated note naming `tissue_gas_partition_coefficients` and the function that derives tissue:blood (`core/numerical_envelope.py`, `tissue_blood_partition_coefficient`; `TissueGroup` no longer holds it). § "Writing a milestone entry" now states the rule: a shipped release's Required scope line found wrong is annotated with a dated note, never rewritten.

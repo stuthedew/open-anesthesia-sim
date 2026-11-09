@@ -211,7 +211,8 @@ class Percent(float, CheckedQuantity):
     is an instance, not a rule. Nitrous oxide's MAC was measured at 1.04 atm
     (Hornbein TF et al., Anesth Analg 1982;61(7):553-556; retrieved from
     PubMed, PMID 7201254, and verified against the abstract 2026-10-05), and
-    `ROADMAP.md` plans that agent for v0.8.0. `core/parameters.py`'s
+    `ROADMAP.md` plans that agent with the substance generalization, which no
+    release holds yet. `core/parameters.py`'s
     `PositivePercent` already rejects its MAC at load. `app/chart_frame.py`'s
     `assemble_chart_frame` builds the top of the chart's axis, three MACs, as a
     `Percent`, so it rejects any agent whose MAC is above 33.3%. A dial's real

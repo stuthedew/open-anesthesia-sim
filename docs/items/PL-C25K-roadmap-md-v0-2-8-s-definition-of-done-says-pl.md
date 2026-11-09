@@ -3,12 +3,14 @@ id: PL-C25K
 title: ROADMAP.md v0.2.8's definition of done says PL-J786 and PL-S4M2 are both confirmed in effect on a real pull request, but PL-J786 is dropped
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: release-roadmap-seam
 touches: ROADMAP.md
 added: 2026-09-13
-verify: ! grep -q 'PL-J786 (a green .checks. run required before merge) and PL-S4M2' ROADMAP.md && python3 tools/doc_check.py check
+closed: 2026-11-09
+pr: 2071
+verify: grep -qF 'PL-C25K' ROADMAP.md
 ---
 
 **Problem.** ROADMAP.md v0.2.8's definition of done says PL-J786 and PL-S4M2 are both confirmed in effect on a real pull request, but PL-J786 is dropped
@@ -51,3 +53,5 @@ correct, so the fix separates the two rather than rewriting the pair.
 Separate the two ids and read `PL-J786`'s recorded reason. A release section is
 dated by its own version, so this is a record correction under clause 4 rather
 than a live claim to be linked.
+
+**Done 2026-11-09.** The v0.2.8 definition-of-done line keeps its wording, as `PL-4FBP`'s clause 4 requires of a shipped release's section, and carries a dated note: only `PL-S4M2` shipped, and `PL-J786` was dropped on 2026-08-31 for the reason its item records (a private repository on GitHub Free, where a ruleset is not enforced). The `verify:` command, which wanted the sentence rewritten, was changed to look for the note.

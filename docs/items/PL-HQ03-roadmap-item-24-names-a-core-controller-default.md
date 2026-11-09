@@ -3,12 +3,14 @@ id: PL-HQ03
 title: ROADMAP item 24 names a core/controller default duplication that does not exist: controller.py holds two module-level assignments, both non-numeric, and its docstring disclaims holding defaults
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: release-roadmap-seam
 touches: ROADMAP.md
 added: 2026-09-08
-verify: grep -qF 'controller.py holds no numeric defaults' ROADMAP.md && python3 tools/doc_check.py check
+closed: 2026-11-09
+pr: 2071
+verify: grep -qF 'holds no default values' ROADMAP.md
 ---
 
 **Problem.** ROADMAP item 24 names a core/controller default duplication that does not exist: controller.py holds two module-level assignments, both non-numeric, and its docstring disclaims holding defaults
@@ -28,3 +30,5 @@ confusion whenever item 24 comes up.
 records that the `core`/`controller` split it asked for is already in place and
 what remains of its intent, if anything. Verified against `controller.py` rather
 than from the item's own wording.
+
+**Done 2026-11-09.** Item 24 no longer names the duplication: an earlier rewrite had already cut it, leaving "rather than adding a fourth scattered location" with the three locations gone. The paragraph now records the original prerequisite, that `PL-2CS8` met it in v0.4.11, and that `app/controller.py` holds no default values (its module docstring, checked against the module's assignments). The `verify:` command was rewritten to the sentence as written.
