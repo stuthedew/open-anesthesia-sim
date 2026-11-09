@@ -179,6 +179,11 @@ RULE = ROOT / ".claude" / "rules" / "plain-writing.md"
 #: against the paragraphs the owner rejected or named gold standards (`PL-FYGJ`,
 #: `PL-556C`, `PL-22T5`).
 PROMPT = ROOT / ".claude" / "agents" / "copy-editor.md"
+#: The meaning check's instructions. `tools/copy_edit.py` runs the check after
+#: the copy editor, and `tools/rejected_prose.py` keys each run of the test set
+#: on this prompt as well as the copy editor's, because the check can turn a
+#: rewrite into a keep (`PL-F0Q2`).
+CHECK_PROMPT = ROOT / ".claude" / "agents" / "meaning-check.md"
 #: The line between the writing rule and the prose in every request. The copy
 #: editor's instructions name it, and `tools/copy_edit.py` finds the passages
 #: below it.

@@ -167,3 +167,7 @@ a hard failure now that the count is zero; it should not, yet. Nothing warns a
 session that the file it is about to rename is named by another item's
 `touches`, so a hard error would compel exactly the rename that breaks a
 declaration. `PL-Y5JX` builds that warning; the promotion is filed behind it.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this under § "Declined to Gate 2 on the refilling-queue ground", Gate 1's record of how it disposed of debt it did not hold. In it, "this gate", "the gate" and "the list" are Gate 1, v0.5.0's frozen list; "this milestone" is v0.5.0; "the freeze" is Gate 1's freeze on 2026-09-06; "this section" and "this subsection" are that heading's section; "the first twenty-nine" are the 2026-09-08 group that opened the section, and "the first thirty" are those with `PL-HX5C`; "today" is the day the paragraph was written; and "above" and "below" point within `ROADMAP.md` as it then stood. The section now lists this item under "The refilling-queue ground". The paragraph that disposed of it counts it among its entries without naming it, and is quoted in `PL-316G`'s brief.
+
+> - PL-YTDN (S) Rename the nine item files whose slug no longer matches their title, now that docket check names them — closed in v0.4.29

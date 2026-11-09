@@ -111,3 +111,7 @@ is* until `PL-27H0` renamed it) still specified the per-step sample store and a 
 selects among recorded samples, both of which `PL-2FM6` deleted. Outside this
 item's `touches`, and an edit to the authoritative model specification wants
 its own doc sweep.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this at the end of `PL-RD3B`'s Required-scope entry, which keeps its first two sentences. "This entry" is that entry, and "the store" is `RunHistory`.
+
+> **Re-briefed 2026-09-14** (`PL-5328`): until `PL-2FM6` deleted the store, this entry read "The controller's storage ... without a second copy of the storage". So what is left to separate is not a store. It is the vocabulary that addresses a trace, and the window that a frame draws. The scope is unchanged. Only the noun was stale.

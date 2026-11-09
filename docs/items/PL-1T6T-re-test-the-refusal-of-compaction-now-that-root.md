@@ -125,3 +125,5 @@ floor, roughly 92k tokens on 2026-10-01 against compaction's
 not about compaction losing anything. It stops holding if a session could move
 to a new branch, claim and title in place; on this harness a session cannot
 rename the branch it was started on.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-BNYF`.

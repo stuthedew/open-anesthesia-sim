@@ -54,8 +54,7 @@ transcribe its entries into the one group with the rest (`PL-JV5Q`, `PL-8QMD`).
 list**: the milestone's own `Required scope`, a place on the list beside the
 entry, or a deferral of the entry on beat 3's terms, written `bin/docket set
 <id> --deferred-from "vX.Y.Z - <why>"` with the hazard's state for a `safety`
-or `science` entry (`ROADMAP.md` § "The gate is a snapshot, not a moving
-target"). A class-computed list is not closed under its own prerequisites, and
+or `science` entry (`ROADMAP.md` § "Deferring to the next gate"). A class-computed list is not closed under its own prerequisites, and
 `bin/docket check` refuses an entry waiting on work none of the three holds
 (`PL-D388`).
 
@@ -88,7 +87,7 @@ and unreliable, not while it is still being built; that case is classed
 The command computes and decides nothing. Whether an item is *really* debt,
 whether the gate should open, and what goes into `ROADMAP.md` are yours —
 transcribe the lists into the milestone's own section with the date they were
-frozen, per `ROADMAP.md` § "Recording it". The list is frozen at that
+frozen, per `ROADMAP.md` § "The cadence" beat 2. The list is frozen at that
 moment; a finding made afterwards goes to the next gate unless the problem it
 describes predates the freeze, or is `P0`, `safety` or `science`.
 
@@ -210,6 +209,13 @@ been asked for yet. On a cut it can also ask for pointer lines in the previous
 release's notes, for a closing pull request inside that release's tag span
 that its notes never name. The error prints each line and the heading it goes
 under (`PL-JLYG`).
+
+**A version-table row is one sentence** (project owner, 2026-11-07, ratified, over
+keeping the long rows, `PL-LVN8`). It says what the release changed for a
+learner, with its item count. The rest of the release's record goes in its
+cut item, where the decisions behind it already live. The count goes in the
+row's Items cell, written as `N items` or `1 item`, and the cut item's id goes in its
+Details cell (`PL-DWGC`).
 
 **Prove "nothing computational moved" with a command, not by reading the
 diff.** A baseline section that says so rests first on the tree objects:

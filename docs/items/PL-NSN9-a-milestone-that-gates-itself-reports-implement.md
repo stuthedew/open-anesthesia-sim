@@ -185,3 +185,7 @@ the lifecycle: gate open -> `clear the gate`; gate clear -> `release v0.2.8 -
 the workflow works - its gate is clear`; v0.2.8 released -> `clear the gate -
 20 entries of 20 still open` with the step back on v0.3.0; Gate 0 clear ->
 `release v0.3.0 - the foundation`.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.2.8 - the workflow works" carried this under § "Debt gate: the frozen list". "This release" is v0.2.8, "this list" and "this gate" are its frozen list, "here" means that section, "the rule above" is the completion rule ("What the freeze closes, and what it does not"), and "above" and "below" point within `ROADMAP.md` as it then stood. The section keeps that the list is a frozen scope and not a gate.
+
+> The list is recorded under a heading named "Debt gate" because `bin/docket wave` reads that subsection. A release records a gate to say that it comes ahead of a gate that is already open. The beat then follows the release rather than contradicting it (queue item `PL-NSN9`, a self-gating milestone reporting the wrong beat).

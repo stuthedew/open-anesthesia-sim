@@ -90,3 +90,5 @@ the check reads - and the two are worth doing in one pass.
 pass: a run that finds no identity control at all says so and does not print the
 affirmative sentence, and `tests/unit/test_agent_identity_check.py` has a test
 that fails if an empty set is ever reported as a pass.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-6FJ5`.

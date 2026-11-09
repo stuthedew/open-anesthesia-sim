@@ -77,3 +77,7 @@ covers the shallow case explicitly, the full-clone path is unchanged, and this
 item's own `verify:` command passes (65 tests). The gap that let a finished item
 sit open is PL-3CBS (docket has no way to notice that an open item's work
 already landed on main).
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.2.8 - the workflow works" carried this under § "Debt gate: the frozen list". "This release" is v0.2.8, "this list" and "this gate" are its frozen list, "here" means that section, "the rule above" is the completion rule ("What the freeze closes, and what it does not"), and "above" and "below" point within `ROADMAP.md` as it then stood. The entry keeps the problem.
+
+> PL-XCYB is paired with PL-ZQ9C rather than queued behind it. It was found while PL-ZQ9C was being handed to a session, during a check of whether that item's proposed migration was feasible. PL-XCYB makes the difference between a provenance check that is right and one that fails loudly against correct data. The failure would happen in the environment where most sessions run. Shipping PL-ZQ9C without PL-XCYB would close an entry that was known to be half-fixed. The rule above exists to prevent that outcome. So the two are worked together and closed together.

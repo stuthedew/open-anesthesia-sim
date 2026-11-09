@@ -116,3 +116,7 @@ recent 100 completed `pull_request` runs of `quality.yml` - 2026-09-21
 11 red - **6 of the 11 failures were the `--verify` replay**, more than any
 other step. That is the largest single source of red CI on this project in
 that window, and it is the one gate `make check` cannot run.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this under § "Declined to Gate 2 on the refilling-queue ground", Gate 1's record of how it disposed of debt it did not hold. In it, "this gate", "the gate" and "the list" are Gate 1, v0.5.0's frozen list; "this milestone" is v0.5.0; "the freeze" is Gate 1's freeze on 2026-09-06; "this section" and "this subsection" are that heading's section; "the first twenty-nine" are the 2026-09-08 group that opened the section, and "the first thirty" are those with `PL-HX5C`; "today" is the day the paragraph was written; and "above" and "below" point within `ROADMAP.md` as it then stood. The section now lists this item under "The refilling-queue ground". The paragraph that disposed of it counts it among its entries without naming it, and is quoted in `PL-G21K`'s brief.
+
+> - PL-J3WK (S) `make check` runs `bin/docket check` without `--verify` while CI runs it with, so a `verify:` command that proves nothing passes every local gate and fails CI - and both halves of what fired are decidable from the store alone

@@ -242,3 +242,7 @@ and it is `PL-RC0M`: `already_passing` replays only `ready` and
 nothing runs it until whichever pull request unblocks it goes red. Recorded
 here because this item is its worked instance, and a session picking this up
 should know the command was rewritten under it rather than written for it.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Planned milestones" carried this paragraph under item 32, "Repository presentable to a first-time visitor". In it, "this item" means item 32, "here" means that entry, "this file" means `ROADMAP.md`, and "above" and "below" point within `ROADMAP.md` as it then stood.
+
+> **The repository went public before this pass, not after** (project owner, 2026-09-05: "public today. Will do human facing pass in the nearish future."). So this is no longer a gate, and it blocks nothing. `PL-XYRN` is closed against that decision. `PL-N092` (rewrite README as a human-readable introduction) then ran on its own on 2026-09-06, rather than waiting for the pass. The reason for deferring it was that these documents cohere when written together. The reason not to wait was that a stranger could already arrive at a repository with no `README.md` at all. So the root `README.md` exists again, written for the two audiences that `PL-RM83` settled. The check that enforced its absence retired itself in the same commit.

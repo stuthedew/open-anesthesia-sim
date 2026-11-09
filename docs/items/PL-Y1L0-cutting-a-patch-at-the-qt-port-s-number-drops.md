@@ -70,3 +70,5 @@ and `PL-2T03` records why the version table was not made the position's
 record. So this is the report, not a prevention. Pinned by
 `test_a_cut_reaching_a_milestone_section_is_named` and
 `test_a_milestone_row_the_version_has_passed_without_a_release_is_reported`.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the briefs of `PL-2T03` and `PL-BNYF`.

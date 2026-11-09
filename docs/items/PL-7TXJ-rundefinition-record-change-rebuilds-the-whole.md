@@ -145,3 +145,5 @@ unbroken dragging, and no keyframe is duplicated today. The owner agreed the
 measurement settled it and said it should have been decided rather than put
 to him as a question. If a bulk-recording path arrives, "What would reopen
 it" above says when the question comes back.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Introduced by work done while clearing this gate or implementing this milestone". The paragraphs that name it are quoted in the brief of `PL-6FJ5`.

@@ -186,3 +186,9 @@ commits after v0.2.7, which is the expected boundary rather than a gap.
 - `ROADMAP.md`'s versioning section records which versions are tagged, which
   two await the commands above, and why the other two are an open decision —
   the corrected reason, not the superseded one.
+
+**Moved from `ROADMAP.md` on 2026-11-07 (`PL-DWGC`).** `ROADMAP.md` § "Release tags and release notes" carried these sentences until then. The restructure keeps the outcome there, that the gap closed on 2026-08-30, and moves the history of the measurement here. In the quotes, "that span of resolving commits" means the commits that `git describe --contains` resolves to a release tag, and "they" means v0.1.0 and v0.2.0. "Kept here" meant that section of `ROADMAP.md` until 2026-11-07. This item keeps the reasoning now, for the same reason.
+
+> That span of resolving commits is the provenance guarantee that PL-J3ZK was opened to restore.
+
+> For a time they were recorded as untaggable, because `main` appeared to have three unrelated roots and `git merge-base 796bf4f 97cc66a` returned nothing. That was measured in a shallow checkout, where boundary commits report as having no parents. The full history has one root. `97cc66a` (v0.1.0) is an ancestor of `796bf4f` (v0.2.0), which is an ancestor of `bc5f823`. So the tags were placed where the release commits actually are. The superseded reasoning is kept here because a shallow checkout will produce it again for anyone who repeats the measurement.

@@ -225,3 +225,5 @@ vaporizer had delivered 0.0004 L, and the accounting check passed.
 It passed because the same failure had reached every term of the identity,
 which is the pattern from `PL-3PRZ` again. The cap refuses this case, and
 `tests/unit/test_agent_simulation_validation.py` contains the regression test.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-6FJ5`.

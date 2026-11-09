@@ -111,3 +111,5 @@ exits **1** - "error: Could not access" - which `_run_git` reads as git answerin
 no, so `test_verify_base_narrows_the_replay_to_what_the_branch_changed` still
 drives the narrowing rather than the decline. `git tag --list` outside a
 repository exits 128, which is what the release-refusal test is built on.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-2P9L`.

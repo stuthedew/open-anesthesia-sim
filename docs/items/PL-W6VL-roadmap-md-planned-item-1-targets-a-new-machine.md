@@ -7,7 +7,6 @@ status: untriaged
 classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md
-deferred-from: v0.7.0 - filed after the gate froze; the roadmap's arrangement and wording, with no displayed value depending on it
 added: 2026-11-07
 ---
 
@@ -22,3 +21,5 @@ added: 2026-11-07
 **Why it matters.** Item 1's cost target is what a contributor adding an anesthesia machine aims at. One passage promises no change to `core/`, and the other says the target cannot be reached as written. The rest of the finding, where the machine fact belongs, is slice 7 (`PL-M3MV`).
 
 **Done when.** The roadmap gives one answer, taken from the tree where the tree holds it and from the project owner where it does not, and every passage that stated the other answer is corrected.
+
+**Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. Item 1's one-data-file target and the later sentence saying it is not reachable were both in `ROADMAP.md` at `817a4d88`.

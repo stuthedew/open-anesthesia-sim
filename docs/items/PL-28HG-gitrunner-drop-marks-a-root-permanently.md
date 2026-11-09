@@ -85,3 +85,5 @@ one without new instrumentation: its "the blob batch folded N" line falls short
 of the `show` row's reads, and `show` starts spawning processes. One such
 observation not traceable to a deterministic header shape is the evidence for
 retry-once on the first drop, the cheaper of the two retry candidates.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-2P9L`.

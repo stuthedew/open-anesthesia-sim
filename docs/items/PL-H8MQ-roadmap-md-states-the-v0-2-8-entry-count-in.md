@@ -96,3 +96,9 @@ entries `not-delegable`, three reaching into `src/` — state a property of the
 entries rather than the list's size and are still hand-maintained. The
 `not-delegable` one is decidable from the item files; the other two are not,
 and the item asks for that decision before any code.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.2.8 - the workflow works" carried this under § "Debt gate: the frozen list". "This release" is v0.2.8, "this list" and "this gate" are its frozen list, "here" means that section, "the rule above" is the completion rule ("What the freeze closes, and what it does not"), and "above" and "below" point within `ROADMAP.md` as it then stood. The section keeps that the size is stated in the group headings and the two table rows, and its Definition of done keeps that `bin/docket wave` reports the closed split.
+
+> The number of closed entries is **not recorded here**, for the reason § "Recording it" gives.
+
+> Nor is the list's *size* restated in prose here, for the same reason. The size is stated in the group headings below and in the two table rows that name this release. `tools/doc_check.py` enforces that those three statements match the entries.

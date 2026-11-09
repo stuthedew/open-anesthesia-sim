@@ -154,3 +154,5 @@ record honest, its "list the undecidable ones" clause is discharged by the rule
 itself, and the one form it now needs, `(project owner, DATE, specified)` for a
 pre-rule decision the sweep confirms, is recorded there rather than in the
 resident set.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Waiting on an answer that holding v0.5.0 open would not produce". The paragraphs that name it are quoted in the brief of `PL-554Q`.

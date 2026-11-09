@@ -95,3 +95,5 @@ newest case instant rather than a length, `assemble_chart_frame` passes the
 same value under that name, and `tests/unit/test_chart_frame.py` holds a branch
 whose opening instant exceeds its own length drawn whole in the narrowest
 fitted rung, failing if the caller is changed to pass lengths.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Introduced by work done while clearing this gate or implementing this milestone". The paragraphs that name it are quoted in the brief of `PL-6FJ5`.

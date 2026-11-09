@@ -151,3 +151,5 @@ other way round. The clause now runs
 `test_a_cut_backfill_writes_the_number_onto_the_item_as_well`, which asserts
 exactly what the old name described: after a cut, the item records the number
 the base named.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Its problem did not exist at the 2026-09-06 freeze, so the snapshot rule defers it on its own terms". The paragraphs that name it are quoted in the brief of `PL-554Q`.

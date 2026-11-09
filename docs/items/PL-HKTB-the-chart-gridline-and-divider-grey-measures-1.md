@@ -208,3 +208,7 @@ either-channel case, a different-surface non-collision, citation resolution
 and the shipped tree's four uses. No colour moved. The WCAG passages were
 re-read at source the same day (w3c/wcag `understanding/21/non-text-contrast.html`
 via raw.githubusercontent.com) and agree with the design round's quotations.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this under § "Declined to Gate 2 on the refilling-queue ground", Gate 1's record of how it disposed of debt it did not hold. In it, "this gate", "the gate" and "the list" are Gate 1, v0.5.0's frozen list; "this milestone" is v0.5.0; "the freeze" is Gate 1's freeze on 2026-09-06; "this section" and "this subsection" are that heading's section; "the first twenty-nine" are the 2026-09-08 group that opened the section, and "the first thirty" are those with `PL-HX5C`; "today" is the day the paragraph was written; and "above" and "below" point within `ROADMAP.md` as it then stood. The section now lists this item under "A decision that the Qt port or its interface pass makes once". This item is also named in paragraphs quoted in the briefs of `PL-3JP0`, `PL-5B1N` and `PL-KRZW`.
+
+> - PL-HKTB (S) The chart gridline and divider grey measures 1.31:1 on the panel and carries no contrast requirement; decide whether it should be darkened or recorded as exempt furniture

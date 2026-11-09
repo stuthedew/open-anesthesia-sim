@@ -3,14 +3,16 @@ id: PL-P0C5
 title: Restructure ROADMAP.md, slice 2: state each debt-gate and development rule once in its own section, with the milestone sections pointing there
 priority: P2
 effort: L
-status: ready
+status: done
 classes: defect, docs
 feature: roadmap-structure
-touches: ROADMAP.md
+touches: ROADMAP.md, .claude/skills/docket/modes/release.md, .claude/skills/docket/modes/start.md, docs/items/PL-83LS-the-debt-gate-has-no-disposition-for-an.md, docs/items/PL-D8KW-roadmap-md-cadence-beat-3-the-v0-6-0-gate.md, docs/items/PL-DXQC-the-v0-4-0-goal-section-states-two-problems-in.md, docs/items/PL-KKRP-re-examine-the-debt-gate-s-freeze-trigger.md, docs/items/PL-LKGL-a-verify-command-cannot-detect-a-stale-item-it.md, docs/items/PL-LPH9-roadmap-md-s-cadence-says-no-interim-release-is.md, docs/items/PL-NBCS-docket-next-reads-an-exclusion-written-inside-a.md, docs/items/PL-RKWB-decide-whether-the-qt-port-ships-ahead-of-v0-5.md, docs/items/PL-SWFM-roadmap-md-s-version-table-lists-v0-2-3-twice.md, docs/items/PL-Y949-v0-5-0-s-definition-of-done-admits-only-done-or.md, docs/items/PL-YRY3-line-edit-roadmap-md-section-by-section-with.md, docs/items/PL-4BCF-restructure-roadmap-md-slice-9-head-v0-5-0-s.md
 deferred-from: v0.7.0 - filed after the gate froze; the roadmap's arrangement and wording, with no displayed value depending on it
 added: 2026-11-07
+closed: 2026-11-07
+pr: 2059
 payoff: a reader finds each debt-gate and development rule stated once, in its own section, and each milestone section points there instead of restating it
-verify: grep -q '^### How gate work is released$' ROADMAP.md && grep -q '^### Writing a milestone entry$' ROADMAP.md
+verify: grep -q '^#### How gate work is released$' ROADMAP.md && grep -q '^### Writing a milestone entry$' ROADMAP.md && grep -q '^### Deferring to the next gate$' ROADMAP.md
 ---
 
 **Problem.** Restructure ROADMAP.md, slice 2: state each debt-gate and development rule once in its own section, with the milestone sections pointing there
@@ -155,3 +157,141 @@ verify: grep -q '^### How gate work is released$' ROADMAP.md && grep -q '^### Wr
 3. Whether the findings that move decision history into an item are applied is decided by the project owner's answer in `PL-LVN8`, which was put to him on a card on 2026-11-07. If that question is still open, apply the rest and record here which findings it leaves unapplied.
 4. Before marking the pull request ready: compare the output of `bin/docket wave --no-fetch`, `bin/docket gate --no-fetch`, `bin/docket check` and `tools/doc_check.py check` before and after the change. Check every § citation that sits beside "above" or "below" against where its heading now is, because a move can turn a pointer around (slice 1 found 15). Then give two reviewers the old and new file: one checks every word whose meaning depends on position, and the other checks every changed line and every new heading. Slice 1's two reviewers found 11 changes of meaning between them, with little overlap.
 5. `ROADMAP.md` is not on the owner's read list, so `bin/docket arm` answers "arm" and the pull request merges on green.
+
+**Outcome, 2026-11-07.** The project owner's answer in `PL-LVN8` (move both,
+2026-11-07 20:10 UTC) applies, so every decision-history move below that names
+an item was made. Each moved passage is quoted whole at the end of the receiving
+item's brief, under a line naming this slice.
+
+Applied as the findings asked:
+
+- § "The debt gate" now runs: opening; § "Phase 0, which the debt gate
+  replaced"; § "What counts" (with the `anticipated` block moved in); § "Debt
+  inside the milestone's own scope"; § "The cadence"; § "The gate is a snapshot,
+  not a moving target" (with § "Which findings re-enter the gate" first, then
+  § "What a frozen entry may take in"); § "Deferring to the next gate"; and
+  § "Recording it".
+- Each of these is stated once: the freeze day (beat 2), the empty gate heading
+  (beat 1), where the list is written (beat 2), how an entry ends (beat 3),
+  where a new finding goes (the snapshot section, with beat 4 pointing there by
+  the heading's full name), the check on entries waiting on other work, the
+  `deferred-from:` field, the next freeze taking deferred entries, the entry
+  staying listed, and the written grounds (all four in the deferral section).
+- The rule against writing a closed count, the lane rule and the rule against
+  writing a deferred item's state are stated once, in § "Recording it". The
+  milestone sections' copies are cut or replaced by a pointer.
+- The definition of debt is cut from the v0.4.0, v0.5.0, v0.6.0 and v0.7.0
+  frozen-list openings, which each already said the list holds what counts as
+  debt under § "The debt gate".
+- The staleness sweep is its own subsection, and v0.6.0 keeps only that the pass
+  runs before its implementation begins.
+- The frozen-Goal rule and the exclusion rule sit under a new heading,
+  § "Writing a milestone entry". v0.4.0's Goal keeps its date and a pointer.
+- The misquote of the process-work rule is cut. "Nothing in this rule is open to
+  renegotiation" is cut as a repeat.
+- Decision history moved to `PL-DXQC`, `PL-NBCS`, `PL-83LS` (the 2026-09-16
+  decision the chapter read could not name), `PL-LKGL`, `PL-D8KW`, `PL-Y949`,
+  `PL-KKRP`, `PL-LPH9`, `PL-SWFM` and `PL-RKWB`. The out-of-date "Gate 2
+  freezes the day v0.5.0 ships" left with its paragraph, to `PL-Y949`.
+
+Applied differently, with the reason:
+
+- § "How gate work is released" and § "Sweep the frozen list for staleness" are
+  `####` subsections of § "The cadence", not sections of their own. Completed
+  milestone sections cite § "The cadence" for both rules, and as subsections
+  those citations stay true without editing a completed section. The `verify:`
+  command names the heading at the level built.
+- § "Phase 0, which the debt gate replaced" stays second, where slice 1
+  (`PL-W0TS`) put it, because it explains the opening's reason.
+- v0.4.26's open question about its own number is cut to a pointer naming
+  `PL-RKWB` and § "How gate work is released", because that rule now answers
+  it.
+
+Not applied, with the reason:
+
+- Items captured after the cut (finding 5): the gate sections' rule and the
+  snapshot section's presence test disagree, so stating one of them as the rule
+  would choose between them. Filed as `PL-GW0P`.
+- The safety and science query: filed as `PL-8C8W`.
+- The `anticipated` carve-out's copies at rows 2749-2759 and 2945-2953 are
+  dispositions of particular items and stay. The copies in v0.5.0's completed
+  record (rows 4442-4491 and 4548-4582) and the splitter example's date slip
+  belong to slice 9 (`PL-4BCF`), which moves v0.5.0's gate dispositions under
+  the same answer. Only v0.5.0's unworked carve-out sentence became a pointer
+  here.
+- "Until `PL-WD5Z`, a deferral was an id named in a `###` subsection" stays in
+  § "Deferring to the next gate". It is the one sentence that says what the
+  completed sections' `Declined`, `Deferred` and `Sequenced` subsections are,
+  and slice 9 changes those subsections.
+- The account of the first pass in § "What counts" stays. No item holds it; it
+  arrived in commit `0c84556e`.
+- The `infra` example fold, the second "The gate tests when a problem was
+  present" sentence, "while Gate 2 does", "steps" against "beats", the five
+  names of the snapshot rule, the "is why this rule is written down" sentences,
+  the undefined terms and the undated figures each need a sentence reworded or
+  a term chosen, so they go to the line edit, `PL-YRY3`.
+- The passages written for whoever maintains the tools (rows 7441-7446,
+  7451-7453, 7675-7679, 7693-7696, 7706-7708, 7895-7896 and 7908-7909) go to
+  slice 4, `PL-G6DP`.
+- The decision tags dated 2026-08-30 and 2026-09-17 stay. Each records a rule
+  that is still in force, not history.
+
+Queries answered from the tree (repeated in the pull request):
+
+- Phase 0 and Gate 0 are different things. Phase 0 was the debt-clearing phase
+  before the gate existed. Gate 0 is the first frozen list, which closed with
+  v0.3.0.
+- "The exemption lapses when that wait ends" is refined by the next paragraph:
+  the wait ends when the item is promoted, not when its blocker closes.
+- The three homes of what a frozen entry waits on split the cases by whether a
+  release schedules the work before the milestone begins (`PL-D388`). They are
+  not alternatives for one case.
+- "Leaving it open and starting anyway" is the state with none of the three
+  dispositions. A deferral leaves the entry open but records it on the item and
+  sends it to the next freeze. Beat 3 now states both in one place.
+- "A heading that says so" is a group heading in the gate section, such as
+  "Cleared by v0.7.0 itself".
+- A gate's number maps to its milestone's version by the timeline in § "The
+  plan" (rows 2 to 10).
+- "The sections below" in the out-of-scope rule means § "Planned milestones".
+- The wording that draws the exclusion warning is listed in
+  `tools/doc_check.py`. The example belongs to the line edit, `PL-YRY3`.
+
+**What the two reviewers found, 2026-11-07.** One reviewer read every word whose
+meaning depends on position; the other read every changed line, new heading and
+moved passage. Between them they found 17 changes of meaning, with about half
+found by both. Each is corrected on the branch:
+
+1. The definition of `anticipated` had been cut from both places as a repeat of
+   the other. It is back before its example, and "The same test" again names
+   the live-mechanism test it applies.
+2. "The gate section may also set out the decision behind the deferral at any
+   length" is restored. It was a permission, not a repeat, and v0.6.0 and
+   v0.7.0 use it.
+3. Beat 3 now gives the clearing rule before the deferral, so the deferral
+   reads as the exception. Beat 1's "A milestone without one" now says "that
+   heading".
+4. The deferral section again says that a frozen entry deferred on its terms
+   carries the same field (`PL-8QMD`). "Not here" became "not in this
+   document", "this section used to carry" became "the gate sections used to
+   carry", and the third disposition names beat 3.
+5. "The rule above applies this" now names § "Which findings re-enter the
+   gate". v0.5.0's citation of the `anticipated` rule now names § "What counts".
+   v0.7.0's Gate 4 deferral now cites § "Deferring to the next gate".
+6. v0.4.26 keeps its bold sentence word for word, and the pointer says what
+   `PL-RKWB` records without claiming an answer. The `PL-KKRP` pointer now
+   names beat 2 as the place that states the condition.
+7. Ids that left with their passages are back as pointers: `PL-LKGL`,
+   `PL-D8KW`, `PL-83LS`, `PL-SWFM` and `PL-8QMD`.
+8. The timeline's row 6 sentence no longer says beat 2 "requires" a freeze that
+   predates the rule. § "Versioning decision" says "the gated milestone's own
+   number".
+9. The lane rule is dated from 2026-10-24, when `PL-Z64T` collapsed v0.6.0's
+   lane groups, so completed sections that name lanes do not read as breaches.
+10. Eight item notes named the section a passage was moved from by its new
+    heading. Each now names the heading on `main` at `7081a909`.
+
+Kept as they are: the dated-count sentence in § "Recording it" (the decision
+above); the two pronoun repairs "`wave` counts a deferred entry" and "The pass
+runs against", which replace an "it" whose sentence was cut; and the stale tool
+text, which is `PL-C8N8`.

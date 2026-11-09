@@ -143,3 +143,5 @@ keeps the one thing readable from nowhere else in the tree - that its job
 entered the required set on 2026-09-17 and why it had been outside it. The two
 comments had already drifted: each described the direction its own regression
 had taken, and neither described the other.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-3BYK`.

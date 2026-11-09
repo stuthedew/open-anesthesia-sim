@@ -255,3 +255,11 @@ Where the pieces went:
 
 **Not built here, and not in scope:** forking *at* a halt is `PL-B8MK`, which
 this unblocks.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Planned milestones" carried these paragraphs under item 26, "Run bookmarks". In them, "this item" means item 26, "here" means that entry, "this file" means `ROADMAP.md`, and "above" and "below" point within `ROADMAP.md` as it then stood. § "Completed: v0.5.0 - the case you can branch" holds the shipped crossing detection and its outcomes.
+
+> *Required properties.* Crossings are tested on every simulation step, not once per rendered frame. A test per frame overshoots by a whole frame's worth of simulated time. The faster the playback multiplier, the worse the overshoot. The same bookmark would then halt at a different concentration depending on how fast the user was running. The displayed halt value would not be the value that was asked for. That is a presentation-correctness failure of the kind that `CLAUDE.md` treats as safety-critical. It would also break the reproducibility of any branch taken from that bookmark.
+
+> One question remained open: does a target halt on every crossing, or does it fire once until it is re-armed? That question is **answered: every crossing** (project owner, 2026-09-20), against the session's recommendation to re-arm. A re-arm flag is a hidden mode. Two targets that look identical in the list would behave differently because one has fired. Resuming a paused run, by contrast, is one control that the learner is already looking at.
+
+> A threshold above a compartment's asymptote can never be reached. So a bookmark needs a distinct "not reached, run-time cap hit" outcome, shown differently from "reached", rather than stopping silently. `PL-CTD7` shipped the outcomes as a set of four values. The fourth value covers a time bookmark that falls before a branch's own fork instant, which no amount of running can reach. Bookmarks are part of the saved scenario rather than local to one session, so item 12 can branch from them.

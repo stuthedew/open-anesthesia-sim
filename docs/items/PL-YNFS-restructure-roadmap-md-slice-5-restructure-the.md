@@ -3,13 +3,16 @@ id: PL-YNFS
 title: Restructure ROADMAP.md, slice 5: restructure the v0.7.0 section, gather its captures after the cut in one section, and put the owner's test drive in its definition of done
 priority: P2
 effort: M
-status: blocked
+status: done
 classes: defect, docs
 feature: roadmap-structure
-touches: ROADMAP.md
+touches: ROADMAP.md, docs/items/PL-11Z9-the-agent-cost-view-does-not-say-on-its-face.md, docs/items/PL-5B1N-simulated-traces-should-be-solid-and-a-dotted.md, docs/items/PL-71H3-answer-the-questions-the-structure-read-of.md, docs/items/PL-HDRN-bin-docket-arm-does-not-hold-a-simulator-pull.md, docs/items/PL-HGZS-the-copy-editor-passes-over-explained-text-and.md, docs/items/PL-J5GC-the-run-screen-s-widgets-each-have-one-writer.md, docs/items/PL-L6QR-re-run-the-area-model-queue-audit-when-roadmap.md, docs/items/PL-LF0P-scope-v0-7-0-the-schematic-in-roadmap-md-and.md, docs/items/PL-YRLM-decide-which-release-builds-planned-milestone.md, docs/items/PL-YRY3-line-edit-roadmap-md-section-by-section-with.md, docs/items/PL-B6V1-restructure-roadmap-md-slice-6-give-each-v0-6-0.md
 blocked-by: PL-G6DP
-deferred-from: v0.7.0 - filed after the gate froze; the roadmap's arrangement and wording, with no displayed value depending on it
 added: 2026-11-07
+closed: 2026-11-08
+pr: 2065
+payoff: a reader of v0.7.0's section finds what the release holds and every capture admitted after the cut in one place, and its definition of done says v0.7.0 is cut only after the owner has test-driven main
+verify: grep -qF '### Captures after the cut' ROADMAP.md
 ---
 
 **Problem.** Restructure ROADMAP.md, slice 5: restructure the v0.7.0 section, gather its captures after the cut in one section, and put the owner's test drive in its definition of done
@@ -228,3 +231,69 @@ added: 2026-11-07
 **Done when.** Each finding below is applied, or recorded here with the reason it was not. No statement is lost: every sentence that leaves its place is kept at its one home, or replaced by a pointer that names that home. `bin/docket wave`, `bin/docket gate` and `bin/docket check` give the same answers before and after the slice, and `make check` passes.
 
 **Generator check.** The repeats came from accretion. Each change that touched a topic stated its own record in the section it was working in, instead of pointing to the section that already held it. The structure read found the same shape in every document it read (`PL-BSMF`, `PL-SVGH`, `PL-T8RL`, `PL-39ZK`, `PL-3MTS`), so these are one sweep's findings. No check can decide whether two sentences state one fact. The structure read, which the project owner put ahead of every line edit on 2026-11-07, is the procedure that catches the shape. Not recorded as a generator.
+
+**Where the quoted row text is now (2026-11-07).** `PL-DWGC` keeps one sentence in each version-table row and moves the rest of the row, word for word, to the release's cut item, which the table's Details column names. The v0.6.15 and v0.6.16 rows' "test-driven" sentence is now in `PL-8B6Z`'s and `PL-80PZ`'s briefs, and the baseline still states it.
+
+**Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present in part when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. About two-thirds of the findings concern text that was in `817a4d88`, where the v0.7.0 section was written. The rest concern text added after it: each admission after the cut, the staleness-sweep paragraph and the test-drive condition.
+
+**What this slice did (2026-11-07).** Each finding, by what happened to it. A sentence that left `ROADMAP.md` either duplicated one that stays, is held by the file named beside it, or is quoted word for word, under a line naming this slice, in the item named beside it.
+
+*Applied.*
+
+- Outline finding 7, v0.7.0's half. § "Deferred from this gate" is now § "Captures after the cut". It opens with the rule for a capture, which now also states once that the open part of a frozen entry stays on the list. Every admission after the freeze follows in date order: `PL-QX2G` and `PL-YT3T`, `PL-J5GC`, `PL-P319`, `PL-4LS8`, the six captures of 2026-10-31, `PL-SP6H`, `PL-0P3F` and the 36 captures of 2026-11-07. The two citations of § "Deferred from this gate" inside them now read "the rule at the head of this section".
+- Outline finding 53. The definition of done ends with "v0.7.0 is cut only after the project owner has test-driven `main`", word for word from § "Current baseline", which keeps the status.
+- Chapter read 35, the opener. It says what the milestone holds, then lists the two choices put to the owner as a numbered list with their tags whole. The two reason paragraphs sit under the first choice, each opening with its point as a bold lead. The paragraph after the list keeps which choices were made without the owner, and why. `PL-LF0P` now quotes "Item 27 now says so" and the sentence naming `AgentUptakeSystem.for_agent`. The figures keep their date in a sentence of their own, and a bold lead now says the six containers are this model's.
+- Chapter read 36, the Goal. The end state comes first. The table's paragraph and the lead-in to the gaps are two paragraphs. Gap 4 no longer repeats gap 1's sentence that the only amounts are the accounting View's totals in litres of vapour.
+- Chapter read 37, the frozen list. It opens with the two groups, then the freeze and the staleness sweep, then the two Gate 4 deferrals and `PL-5B1N`. The paragraph on the four item-28 entries sits straight above the first list, which holds them. The three `PL-5B1N` passages are one paragraph, and its stale "So the item is `ready` again" is quoted in `PL-5B1N`. The freeze-date derivation is quoted in `PL-LF0P`, the `PL-HDRN` history in `PL-HDRN`, and the `PL-YRLM` sentence in `PL-YRLM`. "Each item's `deferred-from: v0.7.0` says so" went, because § "Deferring to the next gate" records that each deferral is on its item. The sweep's reason sentence went, because `PL-F2NX`'s brief holds it. The second list's heading now reads "Cleared before v0.7.0's implementation begins, unless deferred", as the opening paragraph does.
+- Chapter read 38. The `PL-J5GC` history of its first `deferred-from:` is quoted in `PL-J5GC`.
+- Chapter read 39, Required scope. Three subheadings: the compartment schematic (entries 1 to 5), agent cost in liquid and in money (6 to 11), and the copy editor (12). Entry 1's six points are a sub-list. Four entry titles say what the entry holds: "passed to the display", "places the schematic", "A displayed precision for each quantity and unit", and "What a stored price records, and what a cost readout shows beside the cost". Entry 12's title is "Fix the copy editor, then make the five `docs/MODEL.md` rewrites that wait on it". The owner's quoted message and the stale "so `PL-HGZS` records it as a live generator" are quoted in `PL-HGZS`, because the generator is spent; the entry keeps "(project owner, 2026-11-04)". Entry 10's `app/preferences.py` sentence went, because `PL-93B3`'s brief holds it.
+- Chapter read 40, the definition of done. Four bold group lines: the compartment schematic, the agent cost View, the copy editor and the whole release. What the schematic shows comes before the checks on its numbers. The fill bullet and the share-bar bullet are two, and the cost View's end-to-end test is its own bullet. The v0.6.0 regression bullet closes the list with `make check` and the test drive.
+- Chapter read 41, out of scope. The two entries for the whole milestone come first, then a subheading for the schematic View's seven entries, with the visual pass after "Showing a past instant", then one for the agent cost View's four. The controls entry no longer repeats "and inject liquid". The `PL-L6QR` sentence is quoted in `PL-L6QR`, whose `blocked-by: v0.8.0` holds the current fact.
+
+*Not applied, with the reason.*
+
+- Rewording findings: `PL-YRY3`, the line edit, now lists 13 of them, among them the heading rename, "measured" for a model run, the code names in the Goal and in Required scope entries 1 to 3, and the internal check names in the definition of done.
+- The Goal's gap on amounts not passed on stays in its dated list of four. Moved out of the list it read as true today, and `PL-KFTM` has since passed the amounts on.
+- The opener keeps its "because each remaining choice ..." clause. Without it, the sentence after it read as making the whole section a placeholder.
+- Required scope entry 2 keeps its second-sum sentence. `PL-KFTM`'s brief points at it, and it says why `stored_agent_l` stays `core/`'s sum although the list entry's title says it is derived from the records.
+- "The measurement above" in the out-of-scope list stays, because the figures are still above it.
+- The Goal's end-state paragraph stays one paragraph. Its last sentence's "it" and "the View" can mean the schematic or the agent cost View, and a split would settle the reading. `PL-71H3` and `PL-11Z9` hold the question.
+- The paragraphs that repeat their list entries (`PL-P319`, `PL-SP6H`, `PL-0P3F`) keep the detail, because it is the evidence that each hazard was live, the ground for admitting it. Cutting it needs each paragraph reworded (`PL-YRY3`).
+- The owner's one action on the gate, adding the Katoh 1993 paper (`PL-P319`), did not move to the opening paragraph. `PL-P319` is closed, so the gate no longer waits on it. `PL-YRY3` holds the stale clause.
+- The list's two count-carrying group lines stay bold lines. `tools/doc_check.py` counts only a bold group line, and `bin/docket` reads "Cleared by v0.7.0 itself" from it. The 118 entries are not regrouped by subject: that is a new classification, and `bin/docket gate` prints them by feature.
+- The frozen list keeps its place before Required scope. Every milestone section that records a gate has that order, and § "The debt gate" now comes before this section.
+- The Gate 4 paragraph keeps its three sentences on Gate 2. They already give the owner's earlier decision with its tag whole and say the question was not put again; condensing them is the line edit's.
+- In § "Captures after the cut", the generator-head history of `PL-58D7` and `PL-J5GC` stays. The sentences after them name the deferred members and the three entries the guard covers, so a move needs a rewording.
+- Required scope entry 1 keeps what the specification asserts, although entries 3, 4 and 8 build the same things. Each entry is a different item's scope (`PL-2881` against `PL-RNYV`, `PL-S79P` and `PL-B396`). `PL-YRY3` holds the choice of one home. Entries 9 to 11 keep their order, because the out-of-scope list cites entries 10 and 11 by number. Entry 12's point stays last, because it is the second of two sentences in sequence.
+- Entry 1's `AGENT_AMOUNT_DISPLAY_PRECISION`, entry 3's file paths and entry 10's "as `PL-MQHN` decided" stay. The first two need a rewording, and the third is the decision's pointer.
+- The gauges entry stays beside the controls entry. Merging them needs a sentence saying the gauges wait on the same design round.
+- The opener's "A setting turns these into money" stays, because its "these" names the two totals before it. The Mapleson citation stays whole, as the finding allowed.
+
+*Queries the tree answers.*
+
+- `PL-5B1N`: it closed with its build, which the merged paragraph now says.
+- The 0.1 L step's band, a quarter or a seventh of an SD: `PL-SP6H` and `PL-KG6S`, both on the frozen list, hold that disagreement in `docs/MODEL.md` § "Displayed precision".
+- Planned-milestone item 28 is agent cost, as the section's first sentence says. "As item 28 records" in Required scope entry 8 is that item.
+- The list entries do not have to repeat their items' titles. The walker reads only each entry's leading ids.
+- What the gate deferred: `bin/docket wave` prints each deferral with its state, as § "Recording it" says. `PL-9Z74` and `PL-93LV` are among them.
+- A `safety` entry may be deferred with a capture it waits on since `PL-8C8W`, on the terms of § "Deferring to the next gate".
+- The cut was the freeze on 2026-10-25, `origin/main` at `0947408`, as the frozen list says.
+- The Workspace that places the schematic was chosen by `PL-PR1W`'s build, which is done.
+- "At one hour fat holds a fifth of the stored agent" is sevoflurane at a 1 MAC dial, the Goal table's 60-minute row.
+- The three tissue groups are the vessel-rich group, muscle and fat (Required scope entry 3). The five rewrites are `PL-HRPK`, `PL-PS5H`, `PL-XBJ3`, `PL-XT53` and `PL-YVL0` (entry 12). The two constants per agent are the molar mass and the liquid density (entry 6).
+
+*Queries filed.* `PL-71H3` (feature `roadmap-structure`) holds the ten that need the author, among them whether the View choice was ratified, the Gas Man Workbook's edition, the Goal table's date and denominator, the sweep's count of 24, and the terms the section never defines. `PL-11Z9` is a finding the queries led to: the agent cost View does not say on its face that its figures are modelled, and the definition of done asks that only of the schematic. It changes interface wording on the safety-critical path, so it is filed for triage rather than fixed here.
+
+*Review.* Two reviewers compared the old and new text, one for words that depend on position and one sentence by sentence. The second accounted for the 317 sentences outside the two entry lists, which are byte for byte the same: 193 unchanged, 16 with a changed word, 81 moved, 3 duplicates, 4 held elsewhere, 19 quoted in briefs, and 1 lost. Their findings, applied:
+
+- The lost sentence, the six captures' citation of the rule that admitted them, is restored as "The rule at the head of this section admitted such a capture rather than deferring it". `PL-SP6H`'s "the rule above" pointed at the nearer `PL-P319` deferral test, so it names the head of the section too.
+- The gap on amounts not passed on, the opener's "because" clause, and entry 2's second-sum sentence are restored, as listed above.
+- The figures' date had attached to the isoflurane and desflurane sentence alone. It is now a sentence of its own after them, and "the six containers" is "this model's six containers", because the paragraph before it lists Gas Man's seven.
+- The freeze paragraph now comes before the Gate 4 paragraph, which uses `0947408` before the freeze paragraph explained it.
+- Entry 9's title ended "beside it", whose nearest noun was the price. It ends "beside the cost".
+- Entry 12 keeps the owner's decision marker, "(project owner, 2026-11-04)".
+- `PL-LF0P`'s lead-in glosses "Item 27" and "so", and `PL-5B1N`'s glosses "this section" as the whole v0.7.0 section.
+
+Not applied: the definition of done's test-drive bullet is an addition rather than a move. It is the one addition this item's title asks for, and the pull request says so. "The section" in the `PL-0P3F` and `PL-TDX0` sentences was ambiguous before the move, and `PL-71H3` holds that question.
+
+*Checked.* `bin/docket wave`, `bin/docket gate` and `bin/docket check` give the same answers as before, apart from this item's claim and the two items filed. `tools/doc_check.py check` reports 0 errors and the same two advisories.
