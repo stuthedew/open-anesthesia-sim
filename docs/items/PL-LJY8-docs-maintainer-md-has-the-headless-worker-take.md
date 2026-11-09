@@ -15,7 +15,7 @@ verify: ! grep -qF "the form used for \`PL-6FX6\`'s trial" docs/maintainer.md
 
 **Problem.** docs/maintainer.md has the headless worker take its model from the [models] table, but gives a fixed Sonnet model through --model for PL-6FX6's trial; record whether that override is an agreed exception to the table (copy editor structure read, 2026-11-07)
 
-**Checked 2026-11-09:** `docs/maintainer.md` § "Spend the monthly API credit on delegable items" still says the runner "asks the `[models]` table for its model and effort", and later that "`--no-push --model claude-sonnet-5-5` is the form used for `PL-6FX6`'s trial". `PL-6FX6` is still `ready`. Its brief runs the same five items on Haiku 5.5 and on Sonnet 5.5 so as to compare the two, so the trial chooses its model by design.
+**Checked 2026-11-09:** `docs/maintainer.md` § "Spend the monthly API credit on delegable items" still says the runner "asks the `[models]` table for its model and effort", and later gives a `--no-push --model` command naming a Sonnet model as "the form used for `PL-6FX6`'s trial". `PL-6FX6` is still `ready`. Its brief runs the same five items on Haiku 5.5 and on Sonnet 5.5 so as to compare the two, so the trial chooses its model by design.
 
 **Why it matters.** A reader cannot tell whether `--model` is a sanctioned way to override the table or a leftover. Taken as the usual form, it would put worker runs on a model that no table entry chose. The section also names only Sonnet, while the trial runs two models.
 
@@ -23,4 +23,4 @@ verify: ! grep -qF "the form used for \`PL-6FX6\`'s trial" docs/maintainer.md
 
 **Generator check.** One-off: a finding from the `docs/maintainer.md` structure-read sweep. The fact is which model a headless worker runs, which the `[models]` table records; no head states it.
 
-**Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** Not present. At 817a4d88, `docs/maintainer.md` said that each run "works one item on Opus 5.5", and gave `--no-push --model claude-sonnet-5-5` as `PL-6FX6`'s trial form. The statement that the runner takes its model from the `[models]` table arrived in 65c3a41f (`PL-KDG0`, #2047, 2026-11-07), so this is a new problem and is deferred.
+**Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** Not present. At 817a4d88, `docs/maintainer.md` said that each run "works one item on Opus 5.5", and gave a `--no-push --model` command naming a Sonnet model as `PL-6FX6`'s trial form. The statement that the runner takes its model from the `[models]` table arrived in 65c3a41f (`PL-KDG0`, #2047, 2026-11-07), so this is a new problem and is deferred.

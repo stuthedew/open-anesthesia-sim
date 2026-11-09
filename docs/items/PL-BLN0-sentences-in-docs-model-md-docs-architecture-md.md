@@ -5,7 +5,7 @@ priority: P1
 effort: L
 status: ready
 classes: defect, docs
-touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/MODEL.md, docs/ARCHITECTURE.md, docs/interface-provenance.md
+touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/MODEL.md, docs/ARCHITECTURE.md, docs/interface-provenance.md, docs/items/PL-LJY8-docs-maintainer-md-has-the-headless-worker-take.md
 added: 2026-11-09
 payoff: A sentence in docs/MODEL.md, docs/ARCHITECTURE.md or docs/interface-provenance.md that describes the code names what it describes, so the change that alters that code lists the sentence for review instead of leaving it to be found stale one item at a time
 verify: grep -qF 'docs/interface-provenance.md' tools/doc_check.py
