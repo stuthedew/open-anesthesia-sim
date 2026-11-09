@@ -43,4 +43,4 @@ request also corrects the two claims:
   constant is proportional to its tissue:gas coefficient when the blood:gas
   value is unchanged.
 
-**Generator check.** One-off: the opening's wording came from release history, and the two claims were each a single misstatement.
+**Generator check.** One-off: the opening's wording came from release history (v0.1.0 modelled sevoflurane only), and the two claims were each a single misstatement.

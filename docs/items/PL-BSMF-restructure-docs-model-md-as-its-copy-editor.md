@@ -6,7 +6,7 @@ effort: L
 status: done
 classes: docs
 feature: model-md-structure
-touches: docs/MODEL.md
+touches: docs/MODEL.md, docs/items/PL-7R8S-docs-model-md-displayed-precision-judges-the.md
 added: 2026-11-05
 closed: 2026-11-07
 pr: 2054
