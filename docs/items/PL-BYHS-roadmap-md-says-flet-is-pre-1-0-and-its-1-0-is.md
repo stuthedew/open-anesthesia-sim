@@ -3,10 +3,12 @@ id: PL-BYHS
 title: ROADMAP.md says Flet is pre-1.0 and its 1.0 is excluded by an upper bound, but Flet is no longer a dependency
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 touches: docs/maintainer.md
 added: 2026-10-19
+closed: 2026-11-09
+pr: 2071
 payoff: the roadmap's reason the version bounds will go stale names a dependency the project actually has
 verify: ! grep -qF 'Flet is pre-1.0' docs/maintainer.md
 ---
@@ -20,3 +22,5 @@ verify: ! grep -qF 'Flet is pre-1.0' docs/maintainer.md
 **Checked 2026-10-24.** `ROADMAP.md` still says "Flet is pre-1.0 and its 1.0 is excluded by an upper bound", in the paragraph that begins "This is a multi-year project".
 
 **Moved 2026-11-07 (`PL-G6DP`).** The paragraph moved word for word from `ROADMAP.md` to `docs/maintainer.md` § "Keeping the toolchain current", and it still names Flet there. This item now touches that file instead.
+
+**Done 2026-11-09.** `docs/maintainer.md` § "Keeping the toolchain current" now names PySide6-Essentials and pyqtgraph and their upper bounds (below 7.0 and 0.15, as `pyproject.toml` declares them), and its example of a major release beyond a bound is PySide6 7.0, not Flet 1.0.
