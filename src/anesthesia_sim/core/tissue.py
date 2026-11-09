@@ -293,23 +293,23 @@ class TissueGroup:
         """Return the partial-pressure fraction of the blood leaving this tissue.
 
         The value is `partial_pressure_fraction`, unchanged. It is kept as a
-        separate name, rather than folded into its one caller, because the
+        separate name, instead of being folded into its one caller, because the
         equality of the two is an assumption rather than an identity.
         `docs/MODEL.md` § "Assumptions" states it as "tissue venous blood
         equilibrates with its tissue group", which holds because each group is
-        perfusion limited. A diffusion-limited group would need a real
+        perfusion-limited. A diffusion-limited group would need a real
         calculation here. So the place that relies on the assumption is the
         place that should name it.
 
-        It is a *second* quantity on this class rather than an alias. That is
-        why its name has a prefix and the tissue's own fraction does not. The
-        two agree only in partial pressure. The concentrations on either side
-        of the tissue-blood boundary differ by the factor that
-        `tissue_blood_partition_coefficient_for` returns. That difference is
-        the whole reason this model states every compartment in
-        partial-pressure-equivalent fractions, and this property is where
-        that choice pays for itself. Written in concentrations, the same
-        physiology would need the coefficient applied here.
+        This property is a *second* quantity on this class rather than an
+        alias. That is why its name has a prefix and the tissue's own fraction
+        does not. The two agree only in partial pressure. The concentrations on
+        either side of the tissue-blood boundary differ by the tissue-blood
+        partition coefficient (`tissue_blood_partition_coefficient_for`). That
+        difference is the whole reason this model states every compartment in
+        partial-pressure-equivalent fractions, and this property is where that
+        choice pays for itself. Written in concentrations, the same physiology
+        would need the coefficient applied here.
 
         The one caller is
         `PatientCompartments.tissue_return_partial_pressure_fraction`, which

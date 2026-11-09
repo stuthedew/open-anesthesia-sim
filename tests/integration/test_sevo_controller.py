@@ -5,6 +5,7 @@ from math import isfinite
 import pytest
 
 from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.dashboard_frame import SIMULATION_STEP_S
 from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES
 from anesthesia_sim.app.run_series import RecordedQuantity, RecordedSeries
 from anesthesia_sim.core.concentration import Percent
@@ -18,12 +19,6 @@ from anesthesia_sim.core.supported_ranges import (
     CardiacOutput,
     FreshGasFlow,
 )
-
-#: The step at which this suite drives the controller, matching the shipped
-#: `app/simulation_view.SIMULATION_STEP_S`. It is restated rather than imported,
-#: because that module needs Flet. `tests/unit/test_simulation_view.py` is the
-#: test that checks the interface uses a step the core supports.
-SIMULATION_STEP_S = SimulationStep(0.1)
 
 
 def _advance_for(

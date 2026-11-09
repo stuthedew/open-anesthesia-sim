@@ -1,47 +1,45 @@
 r"""The $`F_A/F_I`$ ratio that the uptake literature plots, and the range where it is valid.
 
-This module is pure arithmetic over two modelled fractions. It is independent
-of Flet and of the scientific core. Nothing here reads simulation state, builds
-a control, or formats a string.
+This module is pure arithmetic over two modelled fractions. It imports no
+interface toolkit. Nothing here reads simulation state, builds a control, or
+formats a string.
 
 The ratio has its own module so that it can be read, cited and tested without
 loading the dashboard that draws it. `CLAUDE.md`'s safety-critical standard
 requires this, because the ratio is a clinically meaningful displayed value
 derived from two other values. `docs/MODEL.md` § "F_A/F_I as a displayed ratio"
-specifies the quantity, and this module implements that specification, in the
-same way that `app/formatting.py` implements § "Displayed precision".
-`tests/unit/test_wash_in.py` holds the tests that pin down its behaviour.
+specifies the quantity, and this module implements that specification, as
+`app/formatting.py` implements § "Displayed precision". Its
+tests are in `tests/unit/test_wash_in.py`.
 
-**What the numerator and the denominator are.** $`F_A`$ is the modelled
-alveolar fraction. $`F_I`$ is the modelled *inspired* fraction. In this model
-it is the breathing-circuit fraction, $`F_C`$, so the identity $`F_C \equiv
-F_I`$ holds. It holds because the model contains one ideal, perfectly mixed
-circuit. That circuit has no dead space and no separate inspiratory and
-expiratory limbs (`docs/MODEL.md` § "Model boundary"). $`F_I`$ is not the
-vaporizer dial setting. The circuit fraction only approaches the dial setting,
-over the circuit's own time constant. A breathing system with several limbs
-would break the identity, and would make this ratio wrong too.
+$`F_A`$ is the modelled alveolar fraction, and $`F_I`$ is the modelled
+*inspired* fraction. In this model $`F_I`$ is identical to the
+breathing-circuit fraction, $`F_C \equiv F_I`$. That holds because the model
+contains one ideal, perfectly mixed circuit with no dead space and no separate
+inspiratory and expiratory limbs (`docs/MODEL.md` § "Model boundary"). A
+breathing system with several limbs would break that identity, and would make
+this ratio wrong too. $`F_I`$ is not the vaporizer dial setting. The circuit
+fraction only approaches the dial setting, over the circuit's own time constant.
 
 **Two rules decide when the quotient is a number that this application will
-show.** Both rules exist because a plausible-looking number is worse here than
-no number at all.
+show: a minimum denominator and a maximum of one.** Both rules exist because a
+plausible-looking number is worse here than no number at all.
 
 1. *The denominator must be at least one displayed unit.* $`F_I`$ is zero
    before any agent reaches the circuit. It is exactly zero at the start of
    every run, and for the whole of a run in which the vaporizer is never
-   opened. So the quotient there is $`0/0`$. The rule does not treat that one
-   point as a special case. Instead, the minimum denominator is the smallest
-   inspired concentration that the interface itself reports as non-zero. So
-   the ratio is never formed from a denominator that the display shows as
-   `0.00%`.
+   opened, so the quotient there is $`0/0`$. Rather than treat $`0/0`$ as a
+   special case, the rule sets the minimum denominator at the smallest inspired
+   concentration that the interface itself reports as non-zero. So the ratio
+   is never formed from a denominator that the display shows as `0.00%`.
 2. *The quotient must not exceed one.* The condition $`F_A \le F_I`$ is
    exactly the uptake regime. Alveolar gas gives agent up to the blood, so the
    alveolar fraction stays below the inspired fraction and reaches it only at
    equilibrium. Above one, the tissues are returning agent faster than it is
    being delivered. That is elimination, not wash-in, and the number is no
-   longer a wash-in fraction, whatever its arithmetic. The curve claims to be
-   the textbook wash-in graph. Drawing such a number on it would teach a
-   wash-in that went past completion.
+   longer a wash-in fraction. The curve claims to be the textbook wash-in
+   graph, so drawing such a number on it would teach a wash-in that went past
+   completion.
    The rule allows `WASH_IN_ROUNDING_ALLOWANCE` above one for rounding, and
    nothing more, because rounding alone can put an equilibrium's quotient a hair
    above one (`PL-N559`).
@@ -52,12 +50,12 @@ That is why the chart draws it as a labelled reference line and ends the trace
 on it, rather than at the top of a frame.
 
 Neither rule invents a value, substitutes a default, or clamps a value into
-range. Where the ratio is outside its domain, `read_wash_in` returns no number
-to draw and says which rule excluded it. The interface can then state the
-reason instead of drawing a number it cannot stand behind. For the same reason,
-one call returns both the number and whether it is inside its domain. A caption
-saying "no agent in the circuit yet" beside a trace that is still drawing would
-be two displays disagreeing about the same instant.
+range. Where the ratio is outside its domain, this module returns no number to
+draw and says which rule excluded it (`read_wash_in`). The interface can then
+state the cause instead of drawing a number it cannot stand behind. For the
+same reason, one call returns both the number and whether it is inside its
+domain. A caption saying "no agent in the circuit yet" beside a trace that is
+still drawing would be two displays disagreeing about the same instant.
 """
 
 from dataclasses import dataclass
