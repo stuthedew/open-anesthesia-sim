@@ -74,20 +74,22 @@ TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN = FreshGasFlow(4.0)
 
 This value is a teaching default. It is not a clinical recommendation, and it is
 not a property of any machine. No surveyed workstation publishes a startup
-fresh gas flow (`docs/machine-survey.md` § "(a2) Default fresh gas flow"). So
-`default_fresh_gas_flow_l_min` is optional in a `data/machines/` profile.
-`docs/machine-abstraction.md` § "Which values belong to the machine, the run
-and the model" decides that the opening flow is a condition of the run rather
-than of the machine (`PL-QW19`). `AgentUptakeSystem.for_agent()` opens a run at this
-flow when the profile is silent.
+fresh gas flow (`docs/machine-survey.md` § "(a2) Default fresh gas flow"). So a
+profile in `data/machines/` need not give a default flow
+(`default_fresh_gas_flow_l_min`). The opening flow is a condition of the run
+rather than of the machine, as `docs/machine-abstraction.md` § "Which values
+belong to the machine, the run and the model" decides (`PL-QW19`). The method
+that opens a run for an agent (`AgentUptakeSystem.for_agent()`) uses this flow
+when the profile gives none.
 
-No source is this value's authority. Its authority is the rationale that
-`data/machines/reference_circle_system.json` records in its `provenance_gap`
-for storing the same value: the value was chosen so that a learner sees the
-machine lag as a distinct phase of the early rise. `docs/MODEL.md` carries the
-provenance row for this value. `test_the_flow_default_matches_the_shipped_machine_file`
-in `tests/unit/test_circuit.py` fails if this value and the file's value ever
-differ.
+No source is this value's authority. Its authority is a recorded reason: the
+value was chosen so that a learner sees the machine lag as a distinct phase of
+the early rise. The shipped machine file,
+`data/machines/reference_circle_system.json`, stores the same value and records
+that reason in its `provenance_gap`. This value's provenance row is in
+`docs/MODEL.md`. A unit test fails if this value and the file's value ever
+differ (`test_the_flow_default_matches_the_shipped_machine_file` in
+`tests/unit/test_circuit.py`).
 """
 
 

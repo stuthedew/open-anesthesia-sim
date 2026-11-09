@@ -14,11 +14,12 @@ verify: grep -qE '^\| \(b11\).*uptake' docs/machine-abstraction.md
 
 **Problem.** docs/machine-abstraction.md's (b11) row calls delivery unchanged under a shut surplus gas valve, where the fresh gas flow stops being a free input and becomes an output
 
- — found while closing `PL-WJNS`, which argued the same boundary in
-`docs/MODEL.md`.
+The problem was found while closing another item (`PL-WJNS`), which argued the
+same boundary in `docs/MODEL.md`.
 
-`docs/machine-abstraction.md` § "A machine changes only two rates and one volume" tabulates
-what each surveyed machine behavior does to the two rates a machine supplies:
+`docs/machine-abstraction.md` § "A machine changes only two rates and one volume"
+tabulates what each surveyed machine behavior does to the two rates a machine
+supplies:
 
 | Survey entry | Delivery | Removal |
 | --- | --- | --- |

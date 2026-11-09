@@ -79,11 +79,11 @@ Structure:
 **Done when.** Each finding above is applied or recorded as declined with its reason, and each query is answered or filed.
 
 
-**Generator check.** Work the owner asked for: the copy edit of every human-facing document (2026-11-05), with each document's structure applied before any more line editing (2026-11-07). The edits to `PL-37N4`, `PL-D42Z` and `src/anesthesia_sim/core/circuit.py` update citations of headings this restructure renamed.
+**Generator check.** The owner asked for this work: the copy edit of every human-facing document (2026-11-05), with each document's structure applied before any more line editing (2026-11-07). The edits to `PL-37N4`, `PL-D42Z` and `src/anesthesia_sim/core/circuit.py` update citations of headings this restructure renamed.
 
 ## What the restructure did (2026-11-07)
 
-The restructure moved and de-duplicated text and renamed headings. It did not line edit, because the copy editor was paused until `PL-F0Q2` merged (project owner, 2026-11-07). The line edit of the passages that the restructure changed ran on 2026-11-09, after `PL-F0Q2` merged, and pull request `#2055` gives its counts. Two reviewers then compared each section's old and new text for statements lost or added, and two blind reviews read the change. **What the comparison found**, below, lists their findings and what was done about each.
+The restructure moved and de-duplicated text and renamed headings. It did no line editing then, because the copy editor was paused until `PL-F0Q2` merged (project owner, 2026-11-07). The line edit of the passages that the restructure changed ran on 2026-11-09, after `PL-F0Q2` merged, and pull request `#2055` gives its counts. Two reviewers then compared each section's old and new text for statements lost or added, and the change had two blind reviews.
 
 **Outline findings, in the order above.**
 
@@ -94,20 +94,20 @@ The restructure moved and de-duplicated text and renamed headings. It did not li
 5. Heading at row 492: applied, "Fresh gas inlet position is not modelled". Question 5, the Fukuda source entry and `PL-8ZD7`'s citations point to it.
 6. Heading at row 462: applied, "Question 6: every difference between machines traces to a named field".
 7. Heading at row 228: applied. The subheading "Three homes, and why the shipped constants move" is now the section "Which values belong to the machine, the run and the model", after Question 2. The docstring of `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN` in `src/anesthesia_sim/core/circuit.py` cites the new heading. Closed items that cite the old heading are history and keep it.
-8. "Machine module" against "machine profile": filed in `PL-37N4`. Which one a module is needs the design's answer, which the text does not give.
+8. "Machine module" against "machine profile": filed in `PL-37N4`. Choosing one name needs the design to say what a module is, and the document does not.
 9. A machine's whole effect stated four times: applied. The finding states it. Question 1 and Question 6 keep the clause their argument needs, with a pointer to the finding. Question 7's "only through the two rates" is unchanged, because `PL-37N4` (passage 16) already asks whether it leaves out the volume.
 10. The machine's volume: declined. A first draft rewrote the finding to say that the machine's volume is the apparatus part of $`V_C`$. The comparison found that this changed what the finding says, so the finding and Question 6 keep their original sentences. `PL-37N4` (passage 2) and `PL-8ZD7` (passage 42) already hold the query. Question 2's `PL-HGB6` paragraph keeps the decision and its reasons, and moved into the new section beside the patient-circuit bullet.
 11. The two refused proposals: no change needed. Since the line edit, Question 6 already says "Question 1 explains both", and Question 4 keeps the load-time refusal.
 12. The steps for adding a field: applied in part. Question 7, case 3, now ends "only then is the machine added. Never the other way." Question 2 keeps its own statement of the route, because it covers a new strategy as well as a new field, and Question 7 gives the order only for a field. The query is filed in `PL-37N4`.
-13. A machine with an `unknown` field: applied. Question 4's refusal 2 holds the rule. Question 2 keeps that an unknown apparatus volume is never given a plausible one, with a pointer. The opening-flow bullet now says "under Question 4's refusal 2" in place of "under the rule directly above", which pointed at the wrong paragraph. The open-matters entry points to refusal 2. The query on optional against required fields is filed in `PL-37N4`.
+13. A machine with an `unknown` field: applied. Question 4's refusal 2 now states the rule. Question 2 keeps a pointer and its statement that an unknown apparatus volume is never given a plausible one. The opening-flow bullet now says "under Question 4's refusal 2" in place of "under the rule directly above", which pointed at the wrong paragraph. The open-matters entry points to refusal 2. The query on optional against required fields is filed in `PL-37N4`.
 14. Opening fresh gas flow: applied. The open-matters entry keeps `PL-NM7X`, the owner's decision, and a pointer. The query on `default_fresh_gas_flow_l_min` staying on the machine profile is filed in `PL-37N4`.
 15. Ambient pressure: applied. "`PL-439V`'s discriminating test passes on paper only" moved into Question 1 beside `PL-439V`'s request. The open-matters entry keeps `PL-5K5C` and a pointer.
 16. Flow-dependent vaporizer output: applied, as a pointer to Question 1.
 17. Automated end-tidal control: applied. The open-matters entry points to the finding, and "that reason is now recorded rather than assumed" is cut, because it describes the document.
-18. What a profile does not model: declined. Question 5's list reports what Shin et al. attributed the residual difference to, and a pointer to Question 4 would lose what the paper says. Its two queries are filed in `PL-37N4`.
-19. The comparison table: applied in part. Its first mention, in Question 2, now says it is the machine's own panel that Question 5 describes. Declined: stating once what it prevents. The inlet section and Question 6 describe two different failures, a fitted volume shown as if measured and a difference from an unnamed default shown under a trade name, and merging them is a rewrite for the line edit.
-20. Two admissibility conditions or three: filed. `PL-37N4` (passage 5) already holds it, so the heading stays until it is answered.
-21. Survey labels: declined for this pass, because saying each finding in words is new wording for the line edit. The query is answered: (a1), (a2) and (b1) to (b11) are the headings of `docs/machine-survey.md` § "The variables", and (b5) and (b6) are § "(b5) Fresh gas decoupling" and § "(b6) Ventilator drive". The wording is filed in `PL-37N4`.
+18. What a profile does not model: declined. Question 5's list reports what Shin et al. attributed the residual difference to, and a pointer to Question 4 would lose what the paper says. The outline finding's two queries are filed in `PL-37N4`.
+19. The comparison table: applied in part. Its first mention, in Question 2, now says it is the machine's own panel that Question 5 describes. Declined: stating once what it prevents. The inlet section and Question 6 describe two different failures: a fitted volume shown as if measured, and a difference from an unnamed default shown under a trade name. Merging them is a rewrite for the line edit.
+20. Two admissibility conditions or three: filed. `PL-37N4` (passage 5) already holds it, so the subheading at row 88 stays until the query is answered.
+21. Survey labels: declined for this pass, because describing each finding before its label is new wording for the line edit. That wording change is filed in `PL-37N4`. The query is answered: (a1), (a2) and (b1) to (b11) are the headings of `docs/machine-survey.md` § "The variables", and (b5) and (b6) are § "(b5) Fresh gas decoupling" and § "(b6) Ventilator drive".
 22. Who measured: filed in `PL-37N4`.
 23. Which parts are built: filed in `PL-37N4`.
 24. Whether every survey finding fits the three quantities: `PL-37N4` (passage 2) already holds it.
@@ -115,28 +115,37 @@ The restructure moved and de-duplicated text and renamed headings. It did not li
 26. Inlet position missing from the open matters: declined. § "Fresh gas inlet position is not modelled" records a decision, and listing inlet position among the matters this design does not decide would contradict it. Representing it is planned-milestone item 39, which that section names.
 27. Sources: applied. Each entry names the section that uses it. The query on which devices Hendrickx et al. measured is filed in `PL-37N4`.
 
-**Per-chapter findings.** Applied: the closed-set rules ("A strategy is a pure function" and the two refusals) moved ahead of the slot tables, which became the subheadings "Delivery", "Removal" and "Dial mapping"; Question 2's paragraphs reordered as admission rule, two consumers, what the rule is wrong about, testable form, the check, unknown values; the desflurane maximum moved beside `agent_limits`; the subheadings "What is built so far" and "The reference breathing system"; the reference profile's three grounds made a numbered list, with the second ground's two halves joined; Question 4's tier paragraph moved after the list, and "Item 4" renamed "Refusal 4", because "item" means a work item elsewhere; the inlet section reordered as decision, when it stops applying, evidence, then alternatives, with "Taking the remaining choice on the record" cut; and Question 5's "What this binds" moved after the decision.
+**Per-chapter findings.** The restructure applied these:
 
-Declined, with the reason:
+- The closed-set rules ("A strategy is a pure function" and the two refusals) moved ahead of the slot tables, which became the subheadings "Delivery", "Removal" and "Dial mapping".
+- Question 2's paragraphs were reordered as admission rule, two consumers, what the rule is wrong about, testable form, the check, unknown values.
+- The desflurane maximum moved beside `agent_limits`.
+- The document now has the subheadings "What is built so far" and "The reference breathing system".
+- The reference profile's three grounds became a numbered list, and the second ground's two halves were joined.
+- Question 4's tier paragraph moved after the list, and "Item 4" was renamed "Refusal 4", because "item" means a work item elsewhere.
+- The inlet section was reordered as decision, when it stops applying, evidence, then alternatives, and "Taking the remaining choice on the record" was cut.
+- Question 5's "What this binds" moved after the decision.
+
+The restructure declined these, each for the reason given:
 
 - Cuts of a sentence stated only once, and moves of decision history out of the document. Deciding what each reader needs is the line edit's work, and `CLAUDE.md` keeps a decision's tag with the decision.
 - Repetitions inside one paragraph, renamed terms ("behaviors" to "strategies", the Question 7 heading), and a definition at the first use of a term. These are wording changes for the line edit.
 - Stating "optional, defaulting to `None`" once. Each of the two paragraphs gives its own field's meaning.
 - The three mentions of `PL-TBMX`. Each names a different edit.
-- The inlet section's restatement of `docs/MODEL.md` § "Model boundary". It stays until that document's own restructure (`PL-BSMF`) settles what it keeps.
+- The inlet section's restatement of `docs/MODEL.md` § "Model boundary". The restatement stays until the restructure of `docs/MODEL.md` (`PL-BSMF`) settles what that document keeps.
 - Replacing the list of what a machine owns with a pointer to Question 2's schema table. The table lists two fields that were never built, so the pointer would change what a machine owns. The query is filed in `PL-37N4`.
 - Replacing "the option the survey's measurement argues directly against" in Question 5 with "(fact 1 above)". The pointer kept only part of the claim.
 - The § "Sources" introduction's repeat. `PL-37N4` (passage 17) queries whether the claim holds for Targ et al., so it stays until that is answered.
 
 The chapter reads' queries that this restructure did not answer are filed in `PL-37N4`.
 
-**What the comparison found.** The old-against-new comparison reported six changes:
+**What the comparison of old and new text found.** It reported six changes:
 
-1. `PL-FG9D` named where the old text said "the item": rejected. The reviewer saw only the two versions of the document. `PL-FG9D`'s brief asks the seven questions and names the "too permissive" and "one field per line" failures, so it is the item the text meant.
+1. `PL-FG9D` named where the old text said "the item": kept, because `PL-FG9D`'s brief shows that it is the item the text meant (outline finding 3). The reviewer saw only the two versions of the document.
 2. The finding's new account of the machine's volume: restored to the original sentence (outline finding 10).
 3. Question 2's route for a new strategy, cut to a pointer to Question 7: restored (outline finding 12).
 4. Inlet position listed as undecided: removed (outline finding 26).
 5. "Why declining is not merely the cheap option" placed before the options it refers to: moved back after them.
 6. Question 5's "argues directly against" cut to a pointer: restored.
 
-The first blind review reported nothing. The second reported that the pointer from "the machine owns" to the schema table took in two fields that were never built: the list is restored and the query is filed in `PL-37N4`.
+The first blind review reported nothing. The second reported that the pointer from "the machine owns" to the schema table took in two fields that were never built, so the list was restored.
