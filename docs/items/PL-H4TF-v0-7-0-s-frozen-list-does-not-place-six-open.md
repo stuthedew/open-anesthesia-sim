@@ -3,11 +3,13 @@ id: PL-H4TF
 title: v0.7.0's frozen list does not place six open science items from model-claims-held-by-tests (PL-19W8, PL-JP7P, PL-MCQ5, PL-5C1H, PL-H94Q, PL-TDX0): their deferred-from: answers the disposition error but not the gate's re-entry advisory, so the v0.7.0 cut must add them to the frozen list with the date and reason, or place them in Required scope
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: model-claims-held-by-tests
 touches: ROADMAP.md, docs/items
 added: 2026-11-02
+closed: 2026-11-07
+pr: 2063
 payoff: the v0.7.0 cut either clears the five science passes or records why it ships without them, and make check stops repeating the gate advisory
 verify: grep -q 'PL-19W8' ROADMAP.md
 ---
@@ -40,3 +42,10 @@ from one filing of five items. `bin/docket check` accepts `deferred-from:` on
 a science item, and the gate re-entry advisory does not, and the advisory
 says so in its own text. If a later filing meets the same disagreement, that
 disagreement is the mechanism to record.
+
+**Done 2026-11-07, by `PL-GW0P`'s re-check.** All six items joined v0.7.0's
+frozen list on 2026-11-07, with the date and the reason, in the paragraph that
+opens "38 captures joined this list". `PL-TDX0` joined undeferred. The other
+five stay deferred, each with a `deferred-from:` that records the check that
+no learner can see a wrong value now, which `PL-8C8W` made the rule. The gate
+re-entry advisory no longer names any of them.

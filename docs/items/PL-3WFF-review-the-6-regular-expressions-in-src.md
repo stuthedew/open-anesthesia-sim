@@ -7,7 +7,6 @@ status: ready
 classes: defect, docs
 feature: regex-review
 touches: src/anesthesia_sim/app/agent_cost.py, src/anesthesia_sim/app/currency_code.py, src/anesthesia_sim/app/preferences.py, src/anesthesia_sim/app/view_registry.py, src/anesthesia_sim/layout/run_identity.py, src/anesthesia_sim/layout/tree.py, tests/unit/test_view_registry.py, tools/regex_baseline.py
-deferred-from: v0.7.0 - captured after the freeze; comment tags and one wrong comment in code the schematic does not depend on
 added: 2026-11-03
 payoff: every regular expression in the simulator says why it is the right tool, and no comment claims the session token is a UUID version the check does not enforce
 verify: ! grep -qF '"src/anesthesia_sim/' tools/regex_baseline.py && ! grep -qF 'version 4 UUID' src/anesthesia_sim/layout/run_identity.py
@@ -71,3 +70,5 @@ So the work is small:
 **Reproduced 2026-11-03.** `tools/regex_baseline.py` still lists all six files under `src/`. None of the six comments starts with `regex:`. `uuid.UUID(hex="0" * 32).version` returns `None` on Python 3.13, and `_SESSION_TOKEN` matches 32 zeros, so the "version 4 UUID" comment in `run_identity.py` is still wrong.
 
 **Generator check.** One-off; follows from PL-7JYV's baseline, which names what is left.
+
+**Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present in part when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. Three of the six patterns were in the tree at `817a4d88`, with the wrong "version 4 UUID" comment already beside one. The other three came with modules created after it.

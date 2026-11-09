@@ -200,3 +200,7 @@ deferral groups are gone. The three prose places state the rule: `ROADMAP.md`
 `.claude/skills/docket/modes/release.md`. `verify:` named
 `check_gate_prerequisites` in `tools/doc_check.py`, which the decided form does
 not build, so it now names the check's test.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-B6V1`).** `ROADMAP.md`'s § "Completed: v0.6.0 - the layout is the reader's" -> "Captures after the cut" recorded `PL-YVV4`'s admission beside `PL-VV6N` with this history, after "`PL-YVV4` was in the store at the cut, but the class filter left it off the list." "This gate" is v0.6.0's debt gate, Gate 2.
+
+> As a result, `bin/docket wave` treated `PL-VV6N` as blocked outside the gate. It left `PL-VV6N` out of what this gate is asked to clear. That was a deferral that nobody had decided.

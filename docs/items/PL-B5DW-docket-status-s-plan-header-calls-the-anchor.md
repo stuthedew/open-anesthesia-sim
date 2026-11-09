@@ -49,3 +49,5 @@ the code is the model.` on the implementing beat, and the same `; the project
 stands on ...` clause appended on the clearing beat. Where the two are one row
 the header reads as before. Pinned by
 `test_the_plan_header_names_the_step_apart_from_the_anchor`.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the briefs of `PL-2T03` and `PL-9TNJ`.

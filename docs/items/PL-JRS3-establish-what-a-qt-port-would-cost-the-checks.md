@@ -111,3 +111,9 @@ tool's own module docstring.
 are plausible ports rather than the port: they were generated mechanically from
 the shipped tree, so they establish how each check behaves under a given
 structural change, not which change `v0.5.1` will actually make.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.4.26 - the interface moves to Qt" carried this in Required-scope item 4, the two checks that read the theme. "Them" and "both rules" are the two checks. The item keeps the outcome: each check reads every module under `app/`, names none by path, and treats an empty measurement set as an error. "Below" points within v0.4.26's section. The second quotation is about `PL-NGF7`, which closed `done` in v0.4.26 (#621), not `dropped`.
+
+> Until 2026-09-14, `tools/contrast_check.py` and `tools/agent_identity_check.py` both read `theme.py` and `simulation_view.py` by path. `PL-JRS3` measured what a port does to them (2026-09-14) instead of reasoning about it. `contrast_check` read values, and it failed loudly when a module it named moved or a colour it knew disappeared. But nothing measured a colour declared in any *other* module (`PL-BXB2`). `agent_identity_check` keyed on one method name in one file, so a class that moved out of that file was outside both rules. It also printed "none of them rendered disabled" from an empty set of measurements (`PL-V53R`, `PL-0PJG`). The Qt view is built decomposed from the start. So both re-pointings landed before the first port commit rather than with it, and they were done on 2026-09-14.
+
+> `PL-NGF7` is the other item about these checks. The port *dissolves* it rather than fixing it. See § "Items this port moots or transforms" below, and Gate 1's own disposition of it.

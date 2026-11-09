@@ -65,3 +65,5 @@ main...HEAD` exits 128, `_run_git` gives the empty string, and the commission
 audit reports no paths outside the item's `touches` - a clean scope established
 from a read that never happened. Whatever shape this item's answer takes, that
 line is the one that has to consume it.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the briefs of `PL-MM7F` and `PL-3BYK`.

@@ -133,3 +133,5 @@ whole-identifier rule stays, and this item closes `dropped` with the count in
 § "Design round 2026-09-27: the count, and the recommendation" as its
 `reason`. That is one `bin/docket set PL-JW9J --status dropped --reason ...`
 write by the thread that takes it, and no code changes.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-6FJ5`.

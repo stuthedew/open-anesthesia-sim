@@ -40,3 +40,7 @@ being pushed.
 on work outside the gate, how many distinct open prerequisites they have and
 their ids, so the beat carries the real remaining cost. The walk is over
 `blocked-by` on open items only.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this under § "Declined to Gate 2 on the refilling-queue ground", Gate 1's record of how it disposed of debt it did not hold. In it, "this gate", "the gate" and "the list" are Gate 1, v0.5.0's frozen list; "this milestone" is v0.5.0; "the freeze" is Gate 1's freeze on 2026-09-06; "this section" and "this subsection" are that heading's section; "the first twenty-nine" are the 2026-09-08 group that opened the section, and "the first thirty" are those with `PL-HX5C`; "today" is the day the paragraph was written; and "above" and "below" point within `ROADMAP.md` as it then stood. The section now lists this item under "The refilling-queue ground". This item is also named in paragraphs quoted in the brief of `PL-Z34C`.
+
+> - PL-FCM3 (S) `bin/docket wave` reports how many gate entries wait on work outside the gate and never names or counts those items, so the beat understates what clearing the gate costs - measured 2026-09-20 as 1 startable entry plus 13 off-gate prerequisites — closed in v0.4.34

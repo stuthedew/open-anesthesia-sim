@@ -38,3 +38,5 @@ version is free to cut it at - rather than describing it as the release offer.
 **Worked.** The summary line said the same thing as the paragraph ("read only
 where a release is being offered"), so it was rewritten with it; nothing else
 the brief did not specify.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-6FJ5`.

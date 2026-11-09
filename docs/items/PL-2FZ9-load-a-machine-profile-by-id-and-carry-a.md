@@ -15,7 +15,7 @@ verify: grep -q 'def test_rejects_unknown_machine_id' tests/unit/test_parameters
 **Problem.** Load a machine profile by id and carry a machine id through AgentUptakeSystem.for_agent, so a second profile in data/machines is reachable at all
 
 **Why it matters.** This is the keystone of the `machine-profile-framework`
-group: planned-milestone item 40 (`ROADMAP.md:6947`) states the deliverable as
+group: planned-milestone item 40 (`ROADMAP.md` § "Items added later (items 30-43)") states the deliverable as
 "a second profile dropped into `src/anesthesia_sim/data/machines/` should be
 loadable, selectable in code, and refused where it is not admissible". Today
 none of the three holds, and the failure is silent in the one direction that

@@ -74,3 +74,5 @@ item reduces to making the digest say which number it is reporting. `PL-T8PT`
 mechanism and only shares the word "advisory". Whichever of the three is
 started first should re-read the other two rather than assume this note is
 still current.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-CSV0`.

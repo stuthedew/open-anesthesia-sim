@@ -81,3 +81,5 @@ stored field order is non-canonical.
 files carry a key order `render_item` would not write, so `record` reorders
 any of those it reaches. `docket set` writes canonical order at triage, which
 shrinks that population from here on and leaves the existing 96 as they are.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Its problem did not exist at the 2026-09-06 freeze, so the snapshot rule defers it on its own terms". The paragraphs that name it are quoted in the brief of `PL-0C6W`.

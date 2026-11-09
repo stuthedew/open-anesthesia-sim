@@ -95,3 +95,5 @@ the docstring sentence that repeated it. One test,
 `_branched_repo` with `--no-fetch`: checked out on `abandoned` the store holds
 `PL-K7QX` and `main` does not (read from `git ls-tree`, not assumed), and
 checked out on `main` the item is reported under the two-part heading.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-3BYK`.

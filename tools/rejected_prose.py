@@ -1,7 +1,7 @@
 """Show, record and check the prose review's test set: rejected and gold-standard paragraphs.
 
 At close-out step 8 in `.claude/skills/docket/modes/close-out.md`, the copy
-editor reads each long passage that a branch changed and judges it for its
+editor reads each passage that a branch changed and judges it for its
 named reader. The copy editor's prompt is `.claude/agents/copy-editor.md`.
 
 The owner is the only clinician who reads this project's prose. When the owner
@@ -28,7 +28,11 @@ fields. `kind` is one of `FAILURE_KINDS`. `file` is the document the paragraph
 came from, which decides its readers through the table in
 `.claude/rules/plain-writing.md`. `rejected` is the date of the owner's
 rejection. The entry's body has three sections and may have a fourth, as
-`REQUIRED_SECTIONS` and `OPTIONAL_SECTIONS` name them.
+`REQUIRED_SECTIONS` and `OPTIONAL_SECTIONS` name them. The front matter may
+also give `fault`: the words the owner objected to, copied from the paragraph.
+A rewrite that still holds those words counts as keeping the entry, because
+changing the words around them leaves the fault that the owner rejected. The
+comparison ignores case, white space and emphasis marks (`PL-F0Q2`).
 
 **A gold-standard entry** is named `gold-DATE-SLUG.md`. Its front matter gives
 `file` and `named`, the date the owner named the paragraph a gold standard. Its
@@ -65,20 +69,20 @@ The tool has three commands.
 - `record REPLY` reads the copy editor's whole reply from the file REPLY and
   finds its "[N] keep" or "[N] rewrite" verdict for each entry. It writes one
   record to `docs/prose-review/runs/`, holding the reply, the entries in the
-  order `show` numbered them, and a SHA-256 hash of the prompt and of the reader
-  table's rows for each entry's file. It refuses a reply that gives an entry no
-  verdict, or two different ones, so a reply cut short is never recorded. Only
-  this tool writes those records.
+  order `show` numbered them, a SHA-256 hash of the copy editor's prompt and the
+  meaning check's, and a hash of the reader table's rows for each entry's file.
+  It refuses a reply that gives an entry no verdict, or two different ones, so a
+  reply cut short is never recorded. Only this tool writes those records.
 - `check` runs in `make check` and in CI. It exits 1 when an entry does not
   parse, names a kind that `FAILURE_KINDS` does not hold, or names a file that
   no row of the reader table names. It also exits 1 when a kind holds more than
   `CAP_PER_KIND` entries, or when a gold-standard entry repeats a rejected
   paragraph or an accepted rewrite. It exits 1 when the current prompt and
   readers have no run, or none that read a gold-standard entry. It exits 1 as
-  well when any one of their runs kept a rejected entry, flagged a gold-standard
-  one, or wrote a rewrite that does not parse as its file. Running the same
-  prompt again until a run passes therefore does not clear the failure: the
-  prompt has to change.
+  well when any one of their runs kept a rejected entry, rewrote one but kept
+  its `fault`, flagged a gold-standard one, or wrote a rewrite that does not
+  parse as its file. Running the same prompt again until a run passes
+  therefore does not clear the failure: the prompt has to change.
 
 **Which changes need a new run.** The prompt and the readers' rows tell the copy
 editor what to look for, so a change to either needs a new run. A new rejected
@@ -131,6 +135,10 @@ FAILURE_KINDS: Mapping[str, str] = {
     "unsourced-reason": (
         "a reason for a chosen value, or a claim that none was recorded, that no record supports"
     ),
+    "unclear": (
+        "a sentence that the reader cannot follow on first reading, because it does not say "
+        "what a noun refers to or what a distinction it names is"
+    ),
 }
 #: The kind of every entry in `GOLD_DIR`. It is never one of `FAILURE_KINDS`,
 #: so the start of an entry's name says which folder it belongs to.
@@ -143,8 +151,10 @@ REJECTED_DIR = ROOT / "docs" / "prose-review" / "rejected"
 GOLD_DIR = ROOT / "docs" / "prose-review" / "gold"
 RUNS_DIR = ROOT / "docs" / "prose-review" / "runs"
 
-#: The front-matter keys an entry must have, and no others.
+#: The front-matter keys a rejected entry must have.
 ENTRY_KEYS = ("kind", "file", "rejected")
+#: The front-matter key a rejected entry may add: the words the owner objected to.
+FAULT_KEY = "fault"
 #: The front-matter keys a gold-standard entry must have, and no others.
 GOLD_KEYS = ("file", "named")
 #: The sections an entry's body must have, in this order.
@@ -160,6 +170,9 @@ VERDICT_RE = re.compile(r"\[(\d+)\]\s*(keep|rewrite)\b", re.IGNORECASE)
 # regex: a passage number in brackets inside free prose, with the emphasis and
 # code marks that `verdicts` strips from a line before it matches `VERDICT_RE`.
 MARK_RE = re.compile(r"\[[*_`]*(\d+)[*_`]*\]")
+#: Deletes emphasis and code marks from an entry's `fault` and a rewrite before they
+#: are compared, and from a verdict line in `tools/prose_judge.py`.
+EMPHASIS = str.maketrans("", "", "*_`")
 
 
 def expected_verdict(name: str) -> str:
@@ -186,6 +199,8 @@ class Entry:
     unit: Unit
     #: The rewrite the owner accepted, where a rejected entry records one.
     accepted_lines: tuple[str, ...] | None = None
+    #: The words the owner objected to, where a rejected entry records them.
+    fault: str | None = None
 
 
 @dataclass(frozen=True)
@@ -284,8 +299,10 @@ def parse_entry(name: str, text: str, table: Sequence[Reader], *, gold: bool = F
     if declined:
         raise ValueError(f"its front matter has {declined}")
     keys = GOLD_KEYS if gold else ENTRY_KEYS
-    if tuple(sorted(fields)) != tuple(sorted(keys)):
-        raise ValueError(f"its front matter must have exactly {', '.join(keys)}")
+    given = set(fields) - (set() if gold else {FAULT_KEY})
+    if given != set(keys):
+        optional = "" if gold else f", and may add {FAULT_KEY}"
+        raise ValueError(f"its front matter must have {', '.join(keys)}{optional}, and no others")
     kind = GOLD_KIND if gold else fields["kind"]
     date_key = "named" if gold else "rejected"
     path = fields["file"]
@@ -324,7 +341,10 @@ def parse_entry(name: str, text: str, table: Sequence[Reader], *, gold: bool = F
             _units(path, rewrite)
         except ValueError as error:
             raise ValueError(f"the accepted rewrite {error}") from None
-    return Entry(name, kind, path, judged, lines, _unit(path, lines), rewrite)
+    fault = fields.get(FAULT_KEY)
+    if fault is not None and (not _plain(fault) or _plain(fault) not in _plain(" ".join(lines))):
+        raise ValueError(f"its {FAULT_KEY} {fault!r} is not words of its paragraph")
+    return Entry(name, kind, path, judged, lines, _unit(path, lines), rewrite, fault)
 
 
 def read_entries(
@@ -357,6 +377,15 @@ def read_set(root: Path, table: Sequence[Reader]) -> tuple[list[Entry], list[str
 def _text(lines: Sequence[str]) -> str:
     """`lines` as one string with each run of white space made one space."""
     return " ".join(" ".join(lines).split())
+
+
+def _plain(text: str) -> str:
+    """`text` in lower case, with emphasis and code marks removed and white space made single.
+
+    An entry's `fault` is compared in this form, so a rewrite that only changes
+    the case, the line breaks or the bold type of the words still holds them.
+    """
+    return " ".join(text.translate(EMPHASIS).casefold().split())
 
 
 def repeats(entries: Sequence[Entry]) -> list[str]:
@@ -486,6 +515,12 @@ def run_problems(name: str, reply: str, read: Sequence[str], entries: Sequence[E
             _units(entry.file, blocks[number])
         except ValueError as error:
             problems.append(f"runs/{name}'s rewrite of {entry_name} {error}")
+        if entry.fault is not None and _plain(entry.fault) in _plain(" ".join(blocks[number])):
+            problems.append(
+                f"runs/{name} rewrote {entry_name} but kept the words the owner objected to, "
+                f"{entry.fault!r}: change the prompt so the review fixes them, then run the "
+                "set again"
+            )
     return problems
 
 
@@ -574,6 +609,18 @@ def check(root: Path, prompt: str, table: Sequence[Reader]) -> list[str]:
     return problems
 
 
+def prompts() -> str:
+    """The copy editor's prompt followed by the meaning check's, which a run of the set uses.
+
+    A run keys on both, because the meaning check refuses a rewrite that loses a
+    statement, and the refusal turns that entry's verdict into a keep
+    (`PL-F0Q2`).
+    """
+    return "".join(
+        path.read_text(encoding="utf-8") for path in (new_prose.PROMPT, new_prose.CHECK_PROMPT)
+    )
+
+
 def main(argv: Sequence[str] | None = None, *, root: Path = ROOT) -> int:
     parser = argparse.ArgumentParser(description=__doc__.partition("\n")[0])
     commands = parser.add_subparsers(dest="command", required=True)
@@ -585,7 +632,7 @@ def main(argv: Sequence[str] | None = None, *, root: Path = ROOT) -> int:
     )
     args = parser.parse_args(argv)
     table = new_prose.rule_table()
-    prompt = new_prose.PROMPT.read_text(encoding="utf-8")
+    prompt = prompts()
     if args.command == "check":
         problems = check(root, prompt, table)
         for problem in problems:

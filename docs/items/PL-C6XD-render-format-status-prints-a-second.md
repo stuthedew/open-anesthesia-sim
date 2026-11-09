@@ -52,3 +52,5 @@ in the same pass and is the smaller half.
 **Sequence it with `PL-SYG4`**: this is the refactor that makes that item's
 answer land in one place rather than two, and doing it first makes that item
 smaller.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-BNYF`.

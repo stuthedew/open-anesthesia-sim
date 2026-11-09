@@ -49,3 +49,5 @@ degrades to a silent skip when it cannot reach GitHub, the way
 `tools/pr_title_check.py` already does, so a bare or offline checkout still
 answers; and a test in `subprojects/docket/tests/test_vcs.py` pins the
 closed-items-with-no-pull-request case.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-4V6B`.

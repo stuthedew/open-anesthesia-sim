@@ -424,3 +424,7 @@ the per-rung mid-chord departure at 1 000 px, the extremum gap, and the
 citation; `docs/ARCHITECTURE.md` names the rule. The Flet dashboard is
 unchanged at 150 columns. Nothing yet calls `assemble_chart_frame` in the
 shipped interface - `PL-25KS` ports the dashboard and will hand the width in.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this under § "Sequenced past v0.5.0, so not clearable before it begins", Gate 1's record of how it disposed of debt it did not hold. In it, "this gate", "the gate" and "the list" are Gate 1, v0.5.0's frozen list; "this milestone" is v0.5.0; "the freeze" is Gate 1's freeze on 2026-09-06; "this section" and "this subsection" are that heading's section; "today" is the day the paragraph was written; and "above" and "below" point within `ROADMAP.md` as it then stood. This item is also named in paragraphs quoted in the briefs of `PL-YVHK`, `PL-CNCF` and `PL-PGZF`.
+
+> **Sequenced behind the port — 2.** `PL-GS3R` is `P1` and `safety`-classed. It is already designed. What it waits for is the port *landing*, because the chord-width column rule costs frame time that the port makes free. § "Completed: v0.4.26" → "Required scope" item 1 is where that was decided.

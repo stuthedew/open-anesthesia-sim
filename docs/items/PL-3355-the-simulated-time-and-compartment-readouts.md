@@ -70,3 +70,7 @@ seven of those reservations stop fitting rather than squeezing a panel.
 the value's advance and reads the label back on one line. The measurement
 is against the widest *value*, as the brief asked, rather than against a
 frame somebody rendered.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this under § "Sequenced past v0.5.0, so not clearable before it begins", Gate 1's record of how it disposed of debt it did not hold. In it, "this gate", "the gate" and "the list" are Gate 1, v0.5.0's frozen list; "this milestone" is v0.5.0; "the freeze" is Gate 1's freeze on 2026-09-06; "this section" and "this subsection" are that heading's section; "today" is the day the paragraph was written; and "above" and "below" point within `ROADMAP.md` as it then stood.
+
+> **Carried by the Qt port — 5.** `PL-3355`, `PL-Q4VH`, `PL-THXF`, `PL-TG60` and `PL-W8DQ` follow the rule in § "Completed: v0.4.26 — the interface moves to Qt" → "Fixes this port carries, and why that is not scope creep". Each defect lives in code that milestone rewrites from scratch. Fixing it on Flet would mean writing the same lines twice. Each entry now carries a `blocked-by:` field naming the port item that does the work. That is what `PL-D143` intended and what its own `verify:` command tested for. The field shipped naming the port item alone.

@@ -201,3 +201,5 @@ request); `PL-7B3G` is still `blocked` on this item; `PL-KS01` is still open.
 No open item carries `generator: live` - `PL-MT3R`, the last head, closed on
 2026-09-26 - so `CLAUDE.md`'s pause is not in force, and the fix is a defect in
 what exists in any case.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-4V6B`.

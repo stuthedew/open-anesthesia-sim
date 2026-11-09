@@ -131,3 +131,5 @@ items filed alongside are what keep the count from drifting silently - `PL-RWJD`
 (the answer-under-the-question convention is written down nowhere a triaging
 session reads) and `PL-X4RX` (a brief's prose contradicting its own status field
 goes unchecked), grouped as `feature: answered-decision-record`.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-4V6B`.

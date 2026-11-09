@@ -64,3 +64,7 @@ recommended because the agent selector carries agent identity and may not
 render disabled (`.claude/rules/ui-color.md`), so locking it would mean hiding
 it; answered "Agree" in the project thread at 11:09Z, recorded here and in
 `docs/MODEL.md`'s misled-reader row.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-B6V1`).** `ROADMAP.md`'s § "Completed: v0.6.0 - the layout is the reader's" -> "Captures after the cut" recorded `PL-544D` and `PL-V2HC` together, and followed them with this sentence. "Both" are those two items.
+
+> Both were found during `PL-7DJK`.

@@ -217,3 +217,11 @@ survive the measurement - 3.3 GB is not a bound a teaching machine can honour -
 and the rate that makes this reachable by accident is **1.38 GB per wall-clock
 hour at the 300x maximum playback rate**, not the 30-day run nobody sits
 through. 48 h costs 221 MB, 24 h costs 110 MB, 7 days costs 774 MB.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.4.0 - the teachable case" carried this in this item's Required-scope entry, under the note "Not landed, and not deferred either: dropped 2026-09-05, the day of the cut." "Here" is that Required-scope list, "the entry" and "this entry" are this item, "this store" is `RunHistory`, and "the cut" is the v0.4.0 release cut. The entry keeps that it shipped without this item, that `PL-2FM6` deletes `RunHistory`, why no eviction rule was decided, the growth figures at each playback rate, and that the growth is unbounded until `PL-T691` and `PL-2FM6` land.
+
+> It is recorded here rather than removed, because nobody can audit a scope list afterwards if its unmet entries are simply deleted.
+
+> The entry left the release at `needs-decision`, was carried nominally to v0.4.1, and was closed the same day. The design round that followed the cut settled it in the one direction that nobody had costed. The score architecture **removes** this store rather than bounding it. Once state is a closed-form function of the run's control-input timeline (`PL-T691`), the controller keeps a score plus one keyframe per control event. That is about 140 KiB for a 30-day ICU case, against the 3.16 GB that this entry existed to bound.
+
+> That is the cost of dropping the entry rather than deferring it, and it is recorded here so that it is visible.

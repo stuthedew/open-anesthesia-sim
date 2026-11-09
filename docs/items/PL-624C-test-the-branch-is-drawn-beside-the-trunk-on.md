@@ -48,3 +48,7 @@ precondition of the assertions it already makes.
 **Done when.** Taking a fork is shown to redraw the chart without the test
 prompting it, and the existing test no longer calls `view.present` between the
 fork and the frame it reads - so a fork that fails to redraw fails a test.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this under § "Declined to Gate 2, because this milestone's own work created them", Gate 1's record of how it disposed of debt it did not hold. In it, "this gate", "the gate" and "the list" are Gate 1, v0.5.0's frozen list; "this milestone" is v0.5.0; "the freeze" is Gate 1's freeze on 2026-09-06; "this section" and "this subsection" are that heading's section; "today" is the day the paragraph was written; and "above" and "below" point within `ROADMAP.md` as it then stood. The paragraph that disposed of it counts it among its entries without naming it, and is quoted in `PL-WG73`'s brief.
+
+> - PL-624C (S) — **deferred 2026-09-21.** `test_the_branch_is_drawn_beside_the_trunk_on_one_time_axis` calls `view.present(False)` itself between the fork and the frame it reads, so the frame it inspects is the one it asked for and a fork that failed to redraw would still pass it. `defect`, `test`. A check passing while its guarantee is void is the shape this project treats as compounding friction, but the arithmetic that rule asks for does not carry here: it makes no other gate entry cheaper, and the capability it fails to cover is this milestone's own.

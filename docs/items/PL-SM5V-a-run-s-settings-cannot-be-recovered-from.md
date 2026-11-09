@@ -116,3 +116,5 @@ tissue flows differ at six of them, and only the vessel-rich flow at 7.7.
 holds; the docstring there that said a segment carries L/s is corrected.
 `test_a_recorded_setting_round_trips_to_what_was_set` checks every 0.1 L/min
 setting of all three flow controls across its supported range.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Introduced by work done while clearing this gate or implementing this milestone". The paragraphs that name it are quoted in the brief of `PL-6FJ5`.

@@ -48,3 +48,5 @@ standing. Pinned by
 `test_a_gate_only_milestone_reached_from_another_row_is_a_release`,
 `test_implement_is_never_a_fall_through` and
 `test_a_finished_gate_only_milestone_is_offered_as_the_release_it_is`.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the briefs of `PL-2T03`, `PL-6FJ5` and `PL-2M4X`.

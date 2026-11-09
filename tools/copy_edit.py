@@ -16,18 +16,31 @@ repository, even `claude -p --agent copy-editor` loads the resident
 instructions. The process's system prompt is the agent file's body, its one
 tool is Read, and it loads no settings file.
 
-The copy editor reads each request at least twice, as experienced technical
-editors do (project owner, 2026-11-04, ratified, `PL-HGZS`). When the first
-read rewrites a passage, a fresh run audits the edit. That run gets the same
-request, with each rewritten passage replaced by its edit. A line before the
-passages marks the request as a second read (`SECOND_READ`). The audit fixes
-what the earlier reads missed or introduced. Audits go on until one changes
+When the first read rewrites a passage, a fresh run audits the edit, because
+experienced technical editors make at least two passes (project owner,
+2026-11-04, ratified, `PL-HGZS`). That run gets the same request, with each
+rewritten passage replaced by its edit. A line before the passages marks the
+request as a second read (`SECOND_READ`). The audit fixes what the earlier
+reads missed or introduced. Audits go on until one changes
 nothing, up to `MAX_READS` reads in all (project owner, 2026-11-05, ratified,
 over exactly two reads). When the first read rewrites nothing, there is no
 audit. The printed reply gives each passage once, in the text of the last read
 that rewrote it, else `[N] keep`. Every read's notes follow.
 
-Before the reply is printed, a check compares each rewrite with the rows it
+**A separate meaning check then compares each edit with its original**
+(`PL-F0Q2`). The copy editor's own audits passed about 120 statements that its
+line edit of `docs/MODEL.md` had lost or weakened: a requirement restated as a
+description, a limiting word such as "only" cut, a list item or a scope clause
+dropped, a stated reason cut. So `CHECK_PANEL` fresh runs of the check each
+read every original sentence against the edit. Their instructions are those in
+`.claude/agents/meaning-check.md`, followed by the list that the copy editor's
+own instructions give under `NEVER_LOSES`. Each statement that any of them
+finds lost goes back to the copy editor in a restore read, and the checks run
+again, up to `MAX_CHECK_ROUNDS` rounds. A passage that still loses a statement
+after the last round is printed as `[N] keep`, with what it lost under "Meaning
+check:", so no rewrite in which a check still finds a loss reaches a file.
+
+Before the reply is printed, a code check compares each rewrite with the rows it
 replaces (`check_code`). It refuses a rewrite that changes code, a fenced
 block, a heading or an HTML comment, that writes an HTML comment or a code
 name the passage does not hold, or that cuts a decision's tag without keeping
@@ -40,17 +53,18 @@ name a rewrite dropped and each comment it cut whole (project owner,
 `PL-HGZS`). With `--structure FILE`, the tool runs the structure read, which
 rewrites nothing. A short document gets one read. A long one gets one read per
 chapter, then one read of all the chapters' outlines. With `--sections FILE`,
-the tool then line-edits each section alone, each with its two reads. All of
-those requests come from `tools/new_prose.py`.
+the tool then line-edits each section alone, with the audits and meaning
+checks that every run has. All of those requests come from
+`tools/new_prose.py`.
 
-The `[models]` table in `docket.toml` chooses the model and effort for the role
-`copy-editor`. The runs are billed to the account that `claude` signs in with,
-as an Agent call would be.
+The `[models]` table in `docket.toml` chooses the model and effort for the
+roles `copy-editor` and `meaning-check`. The runs are billed to the account
+that `claude` signs in with, as an Agent call would be.
 
 Prints the reply on standard output and one line of counts on standard
 error. Exits 0 when the copy editor replied, and 1 with the reason when
-`claude` is missing, fails, times out or returns an error, or when a read's
-reply does not give each passage one verdict.
+`claude` is missing, fails, times out or returns an error, or when the first
+read's reply does not give each passage one verdict.
 """
 
 from __future__ import annotations
@@ -82,6 +96,7 @@ from docket.release import code_spans  # noqa: E402
 from docket.store import CITED_ID_RE  # noqa: E402
 
 from new_prose import (  # noqa: E402
+    CHECK_PROMPT,
     PROMPT,
     RULE_END,
     Part,
@@ -140,6 +155,46 @@ MAX_READS = 4
 #: The name of each read in order, used in its files and its notes.
 READ_NAMES = ("first", "second", "third", "fourth")
 
+#: The meaning check's role in the `[models]` table of `docket.toml`.
+CHECK_ROLE = "meaning-check"
+#: The heading of the section in the copy editor's instructions that lists what
+#: an edit never loses. The meaning check is given the same section, so the
+#: copy editor and the check hold an edit to one list.
+NEVER_LOSES = "## What an edit never loses"
+#: The line that opens the prose of a meaning check's request.
+MEANING_CHECK = (
+    "Meaning check. The rows marked > are the text after the copy edit. The text before "
+    f'the first edit follows the passages, under "{BEFORE}".'
+)
+#: The heading under which a restore read's request lists what the check found lost.
+LOST = "Lost in the edit"
+#: The line that opens the prose of a restore read's request.
+RESTORE_READ = (
+    "Restore read. The rows marked > are the text after the copy edit. The text before "
+    f'the first edit follows the passages, under "{BEFORE}", and what a separate check '
+    f'found the edit lost follows that, under "{LOST}".'
+)
+#: How many separate meaning checks read each version of the edit. Runs of
+#: one check on one edit find different statements lost: on
+#: `docs/MODEL.md` § "Supported run length", four runs on the same edit found
+#: one or two each of the four statements that it had lost, and no run found
+#: all four (`PL-F0Q2`). So each version goes to two checks, a statement that
+#: either finds lost goes back to the copy editor, and an edit passes only
+#: when both find nothing. A third check would cost one more read each round.
+CHECK_PANEL = 2
+#: The most rounds of meaning checks one request gets: one round after the
+#: copy editor's reads, and one after each restore read. The rounds stop early
+#: when no check finds anything lost. A later round can find a statement that
+#: an earlier round missed, or one that a restore read lost. Five rounds allow
+#: four restore reads, which is how many the edit above needed with one check
+#: a round. A round of two checks and a restore read together cost about as
+#: much as the copy editor's first read on the same section. A lower limit
+#: keeps more passages unedited, and a higher one spends more reads on a
+#: passage whose restores keep failing.
+MAX_CHECK_ROUNDS = 5
+# regex: a meaning check's verdict line, such as "[3] lost"
+CHECK_VERDICT_RE = re.compile(r"^[\s*_`]*\[(\d+)\][*_`]*\s*(same|lost)\b", re.IGNORECASE)
+
 
 class Refused(Exception):
     """The copy editor could not be run, or did not reply, with the reason."""
@@ -151,6 +206,22 @@ def instructions(prompt: str) -> str:
     if match is None:
         raise Refused(f"{PROMPT} has no front matter, so its instructions cannot be found")
     return match.group(2).lstrip("\n")
+
+
+def never_loses(prompt: str) -> str:
+    """The section of the copy editor's instructions `prompt` headed `NEVER_LOSES`.
+
+    Raises `Refused` where the instructions hold no such section, because the
+    meaning check cannot then be told what to check.
+    """
+    lines = split_lines(prompt)
+    if NEVER_LOSES not in lines:
+        raise Refused(f"{PROMPT} has no section {NEVER_LOSES!r} for the meaning check")
+    start = lines.index(NEVER_LOSES)
+    end = next(
+        (row for row in range(start + 1, len(lines)) if lines[row].startswith("## ")), len(lines)
+    )
+    return "\n".join(lines[start:end]).strip("\n")
 
 
 def claude_argv(
@@ -239,15 +310,22 @@ def marked_rows(lines: Sequence[str]) -> dict[int, list[str]]:
 
 
 def second_request(request: str, blocks: Mapping[int, Sequence[str]]) -> str:
-    """`request` with each passage in `blocks` edited, for the second read.
+    """`request` with each passage in `blocks` edited, for the second read (`edited_request`)."""
+    return edited_request(request, blocks, SECOND_READ)
 
-    `blocks` maps a passage's number to the rows the first read gave it. Those
+
+def edited_request(
+    request: str, blocks: Mapping[int, Sequence[str]], opening: str, after: Sequence[str] = ()
+) -> str:
+    """`request` with each passage in `blocks` edited, its prose opening with `opening`.
+
+    `blocks` maps a passage's number to the rows an earlier read gave it. Those
     rows replace the passage's rows marked `>`, and are numbered from where the
     old rows began. Each row, header and section title after them in the same
-    listing is renumbered to follow. The prose opens with `SECOND_READ`. After
-    the last passage, under the heading `BEFORE`, each edited passage's rows
-    appear as the first read was given them. Raises `Refused` where a passage in
-    `blocks` has no rows marked `>`.
+    listing is renumbered to follow. After the last passage, under the heading
+    `BEFORE`, each edited passage's rows appear as the first read was given
+    them, and the lines `after` follow those. Raises `Refused` where a passage
+    in `blocks` has no rows marked `>`.
     """
     head, lines = prose_of(request)
     marked = marked_rows(lines)
@@ -290,7 +368,52 @@ def second_request(request: str, blocks: Mapping[int, Sequence[str]]) -> str:
     for number in sorted(before):
         out += ["", f"Passage {number}, the rows marked > as the first read was given them:"]
         out += fenced(before[number])
-    return f"{head}\n\n{SECOND_READ}" + "\n".join(fitted_titles(out))
+    out += list(after)
+    return f"{head}\n\n{opening}" + "\n".join(fitted_titles(out))
+
+
+def restore_request(
+    request: str, blocks: Mapping[int, Sequence[str]], lost: Mapping[int, str]
+) -> str:
+    """`request` with the edits in `blocks`, and under `LOST` what the meaning check found lost.
+
+    `lost` maps a passage's number to the meaning check's findings for it.
+    """
+    after = ["", f"{LOST}:"]
+    for number in sorted(lost):
+        after += ["", f"Passage {number}:", "", unmarked(lost[number])]
+    return edited_request(request, blocks, RESTORE_READ, after)
+
+
+def meaning_findings(reply: str, count: int) -> dict[int, str]:
+    """What the meaning check's `reply` found lost, by passage number, for `count` passages.
+
+    A passage marked "[N] same" lost nothing and is left out. The findings of a
+    passage marked "[N] lost" are the lines after its verdict, up to the next
+    verdict. Raises `ValueError` where a passage has no verdict or two, or a
+    verdict numbers a passage that was not shown.
+    """
+    lines = split_lines(reply)
+    marks = [
+        (row, int(match.group(1)), match.group(2).lower())
+        for row, line in enumerate(lines)
+        if (match := CHECK_VERDICT_RE.match(line))
+    ]
+    numbers = [number for _, number, _ in marks]
+    problems = [f"[{n}] was not shown" for n in sorted(set(numbers)) if not 1 <= n <= count]
+    problems += [
+        f"[{n}] has {numbers.count(n) or 'no'} verdicts"
+        for n in range(1, count + 1)
+        if numbers.count(n) != 1
+    ]
+    if problems:
+        raise ValueError("; ".join(problems))
+    found: dict[int, str] = {}
+    for position, (row, number, verdict) in enumerate(marks):
+        end = marks[position + 1][0] if position + 1 < len(marks) else len(lines)
+        if verdict == "lost":
+            found[number] = "\n".join(lines[row + 1 : end]).strip("\n") or "(no finding given)"
+    return found
 
 
 def fitted_titles(lines: Sequence[str]) -> list[str]:
@@ -511,19 +634,30 @@ def merge(
     replies: Sequence[str],
     count: int,
     check: Callable[[int, Sequence[str]], CodeCheck] | None = None,
+    names: Sequence[str] | None = None,
+    lost: Mapping[int, str] | None = None,
+    checks: Sequence[tuple[str, str]] = (),
 ) -> str:
     """One reply from every read's reply in `replies`, in order, for `count` passages.
 
-    Each passage gets one verdict: the text of the last read that rewrote it,
-    else `[N] keep`. Where `check` is given, it refuses a rewrite that changed
-    code, and the passage then becomes `[N] keep` with the reason under
-    "Code check:". The check also lists each code name a rewrite dropped. The
-    notes of every read follow, so that every cut, move and query any read made
-    is kept. Raises `Refused` where a reply does not give each passage one
-    verdict, or a rewrite has no text.
+    `names` names each read in `replies`, in the same order, and by default
+    they are the first names in `READ_NAMES`. Each passage gets one verdict:
+    the text of the last read that rewrote it, else `[N] keep`.
+    Where `check` is given, it refuses a rewrite that changed code, and the
+    passage then becomes `[N] keep` with the reason under "Code check:". The
+    check also lists each code name a rewrite dropped. A passage in `lost`
+    becomes `[N] keep` too, with what the meaning check found it lost under
+    "Meaning check:". The notes of every read follow, then those of each
+    meaning check in `checks`, under its label, so that every cut, move, query
+    and finding is kept. Raises `Refused` where a reply does not give each
+    passage one verdict, or a rewrite has no text.
     """
+    lost = {} if lost is None else lost
+    names = READ_NAMES[: len(replies)] if names is None else names
+    if len(names) != len(replies):
+        raise Refused(f"{len(replies)} replies were given {len(names)} names")
     found: list[dict[int, tuple[str, ...]]] = []
-    for name, reply in zip(READ_NAMES, replies, strict=False):
+    for name, reply in zip(names, replies, strict=True):
         try:
             verdicts(reply, count)
             found.append(rewrites(reply))
@@ -531,8 +665,19 @@ def merge(
             raise Refused(f"the {name} read's reply cannot be read: {error}") from error
     out: list[str] = []
     checked: list[str] = []
+    meant: list[str] = []
     for number in range(1, count + 1):
         rows = next((made[number] for made in reversed(found) if number in made), None)
+        if rows is not None and number in lost:
+            meant += [
+                f"- Passage {number}: the rewrite was refused, because it still loses what the "
+                "original says:",
+                "",
+                unmarked(lost[number]),
+                "",
+            ]
+            out += [f"[{number}] keep", ""]
+            continue
         result = CodeCheck() if rows is None or check is None else check(number, rows)
         for reason in result.refused:
             checked.append(f"- Passage {number}: the rewrite was refused, because {reason}.")
@@ -552,8 +697,12 @@ def merge(
             out += [f"[{number}] rewrite", "", *fenced(rows), ""]
     if checked:
         out += ["Code check:", "", *checked, ""]
-    for name, reply in zip(READ_NAMES, replies, strict=False):
+    if meant:
+        out += ["Meaning check:", "", *meant]
+    for name, reply in zip(names, replies, strict=True):
         out += [f"Notes from the {name} read:", "", notes(reply), ""]
+    for label, reply in checks:
+        out += [f"Notes from {label}:", "", notes(reply), ""]
     merged = "\n".join(out).rstrip("\n")
     try:
         verdicts(merged, count)
@@ -635,16 +784,39 @@ def editor(root: Path = ROOT, env: Mapping[str, str] | None = None) -> Editor:
     return Editor(claude, prompt, choice.model, choice.effort, os.environ if env is None else env)
 
 
-def edit(text: str, editor: Editor, reads: Path | None = None) -> tuple[str, str]:
-    """Run the copy editor on the request `text` until an audit changes nothing.
+def checker(root: Path = ROOT, env: Mapping[str, str] | None = None) -> Editor:
+    """The meaning check that `docket.toml` and the two agent files set up.
+
+    Its instructions are `CHECK_PROMPT`'s body followed by the copy editor's
+    section `NEVER_LOSES`, so the check and the copy editor hold an edit to one
+    list. Raises `Refused` where `claude` is missing, no model is chosen, or
+    the copy editor's instructions hold no such section.
+    """
+    claude = shutil.which("claude")
+    if claude is None:
+        raise Refused("no `claude` on PATH")
+    table = load_config(root).models
+    if table is None:
+        raise Refused(f"{root / 'docket.toml'} has no [models] table, so no model is chosen")
+    choice = table.choose({"role": CHECK_ROLE})
+    own = instructions(CHECK_PROMPT.read_text(encoding="utf-8"))
+    listed = never_loses(instructions(PROMPT.read_text(encoding="utf-8")))
+    prompt = f"{own.rstrip()}\n\n{listed}\n"
+    return Editor(claude, prompt, choice.model, choice.effort, os.environ if env is None else env)
+
+
+def edit(text: str, editor: Editor, checker: Editor, reads: Path | None = None) -> tuple[str, str]:
+    """Run the copy editor on the request `text` until an audit changes nothing, then check it.
 
     Returns its merged reply and the counts. The first read edits. Each later
     read audits the text as the earlier reads left it, and runs only while the
     last read changed a passage, up to `MAX_READS` reads. An audit whose reply
     cannot be read ends the audits, and the counts say so: the reads before it
-    are kept, because each of them gave every passage a verdict. Where `reads`
-    names a directory, each read's request and reply are also written there,
-    so that what each audit changed can be judged alone.
+    are kept, because each of them gave every passage a verdict. Then
+    `checker`, the meaning check, compares each edit with its original
+    (`meaning_check`). Where `reads` names a directory, each read's request and
+    reply are also written there, so that what each read changed can be judged
+    alone.
     """
     first, first_counts = editor.read(text, READ_NAMES[0], reads)
     try:
@@ -655,6 +827,7 @@ def edit(text: str, editor: Editor, reads: Path | None = None) -> tuple[str, str
         return first, first_counts
     count = passage_count(text)
     replies = [first]
+    names = [READ_NAMES[0]]
     counts = [first_counts]
     for name in READ_NAMES[1:MAX_READS]:
         reply, reply_counts = editor.read(second_request(text, current), name, reads)
@@ -668,11 +841,78 @@ def edit(text: str, editor: Editor, reads: Path | None = None) -> tuple[str, str
             counts.append(f"{name} read: reply unreadable, so it was left out ({error})")
             break
         replies.append(reply)
+        names.append(name)
         changed = {number: rows for number, rows in made.items() if current.get(number) != rows}
         if not changed:
             break
         current.update(changed)
-    return merge(replies, count, code_report(text)), "; ".join(counts)
+    lost, checks = meaning_check(text, current, editor, checker, reads, replies, names, counts)
+    merged = merge(replies, count, code_report(text), names, lost, checks)
+    return merged, "; ".join(counts)
+
+
+def meaning_check(
+    text: str,
+    current: dict[int, tuple[str, ...]],
+    editor: Editor,
+    checker: Editor,
+    reads: Path | None,
+    replies: list[str],
+    names: list[str],
+    counts: list[str],
+) -> tuple[dict[int, str], list[tuple[str, str]]]:
+    """Check each edit in `current` against its original, and have the copy editor restore losses.
+
+    In each round, `CHECK_PANEL` separate runs of `checker` read the request
+    `text` with the edits in `current`, and each lists what each edit lost.
+    Where any of them lists anything, `editor` gets a restore read
+    (`restore_request`) with every finding, and its rewrites update `current`
+    and join `replies` under a name in `names`. The checks then run again, up
+    to `MAX_CHECK_ROUNDS` rounds. Each run's counts join `counts`. Returns what
+    the last round found still lost, by passage, and every check's label and reply. A
+    check whose reply cannot be read counts as finding every edited passage
+    lost, because nothing then shows that the edit kept the original's
+    meaning. A restore read whose reply cannot be read changes nothing.
+    """
+    count = passage_count(text)
+    checks: list[tuple[str, str]] = []
+    lost: dict[int, str] = {}
+    for index in range(1, MAX_CHECK_ROUNDS + 1):
+        asked = edited_request(text, current, MEANING_CHECK)
+        found: dict[int, list[str]] = {}
+        for reader in range(1, CHECK_PANEL + 1):
+            label = f"meaning check {index}" + (f", reader {reader}" if reader > 1 else "")
+            name = f"meaning-{index}" + (f"-{reader}" if reader > 1 else "")
+            reply, reply_counts = checker.read(asked, name, reads)
+            counts.append(f"{label}: {reply_counts.removeprefix('copy_edit: ')}")
+            try:
+                findings = meaning_findings(reply, count)
+            except ValueError as error:
+                counts.append(f"{label}: reply unreadable ({error})")
+                reason = f"The reply of {label} could not be read ({error})."
+                return {number: reason for number in current}, checks
+            checks.append((label, reply))
+            for number in sorted(findings):
+                if number in current:
+                    found.setdefault(number, []).append(findings[number])
+        lost = {number: "\n\n".join(found[number]) for number in sorted(found)}
+        if not lost or index == MAX_CHECK_ROUNDS:
+            break
+        name = f"restore {index}"
+        restore, restore_counts = editor.read(
+            restore_request(text, current, lost), f"restore-{index}", reads
+        )
+        counts.append(f"{name} read: {restore_counts.removeprefix('copy_edit: ')}")
+        try:
+            verdicts(restore, count)
+            made = rewrites(restore)
+        except ValueError as error:
+            counts.append(f"{name} read: reply unreadable, so it was left out ({error})")
+            break
+        replies.append(restore)
+        names.append(name)
+        current.update(made)
+    return lost, checks
 
 
 def run(
@@ -682,7 +922,7 @@ def run(
     reads: Path | None = None,
 ) -> tuple[str, str]:
     """Run the copy editor on the file at `request`, and return its reply and the counts."""
-    return edit(request.read_text(encoding="utf-8"), editor(root, env), reads)
+    return edit(request.read_text(encoding="utf-8"), editor(root, env), checker(root, env), reads)
 
 
 def where(path: str, part: Part) -> str:
@@ -746,11 +986,12 @@ def sections(
     except ValueError as error:
         raise Refused(str(error)) from error
     reader = editor(root, env)
+    check = checker(root, env)
     out: list[str] = []
     counts: list[str] = []
     for index, (part, request) in enumerate(parts, start=1):
         kept = None if reads is None else reads / f"section-{index:03}"
-        reply, count = edit(with_rule(request), reader, kept)
+        reply, count = edit(with_rule(request), reader, check, kept)
         out += [f"Section {index} of {len(parts)}: {where(path, part)}", "", reply, ""]
         counts.append(count.removeprefix("copy_edit: "))
     return "\n".join(out).rstrip("\n"), "copy_edit: " + "; ".join(counts)
