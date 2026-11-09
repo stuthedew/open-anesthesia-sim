@@ -98,3 +98,71 @@ v0.7.0's frozen list, so it joins that list.
 **Found by** the 2026-11-09 triage pass, from `bin/docket inflow --lane
 product` and the `reenters:` fields.
 
+## Step 1: what made each sentence wrong (checked 2026-11-09)
+
+A subagent traced each sentence to the commit that wrote it and the commit
+that made it false. For each stale sentence it ran that commit's own
+`python3 tools/doc_check.py candidates --base <sha>^` in a worktree. PL-HLTR
+was reasoned instead, because its commit predates `tools/`. For PL-PTDZ it ran
+the fix's test against the tree of 2026-10-26.
+
+| Item | Document | Class | Writing commit | Commit that made it false | `candidates` listed the sentence? | Names its code? |
+| --- | --- | --- | --- | --- | --- | --- |
+| PL-D1LR | MODEL | stale (second sentence wrong when written, `104e2543a`) | `9c6ebd298` | `ae8fc7bc2` (`PL-TG60`) | no | no |
+| PL-KSLX | MODEL | stale | `4f6d6390b`, `fd0d9aaba` | `0fd277138` (`PL-NJPB`) | first sentence yes, second no | first yes, second no |
+| PL-PTDZ | MODEL | wrong when written (7.31 min; the model gave 7.304) | `5a8dc0368` | none | n/a | no |
+| PL-4CZW | ARCHITECTURE | stale | `ffe30d4c1` | `2713d097b` (`PL-VHQX`) | no; line 384 of the same paragraph yes | yes, `SimulationController.advance()` |
+| PL-6G7N | ARCHITECTURE | stale | `96d308863` | `1f0e8b1ec` (`PL-M85T`) | no; line 49 of the same paragraph yes | yes, `core/`, `for_agent()` |
+| PL-G1J9 | ARCHITECTURE | wrong when written | `434b67c89` | none | n/a | only `app/` and `core/` |
+| PL-GPTN | interface-provenance | stale (a recommendation that shipped) | `c8f806854` | `4081f8766` (`PL-TH35`) | no | only the item id |
+| PL-GSPR | ARCHITECTURE | misleading when written | `b9b3c8120` | none | n/a | in a code-fenced tree |
+| PL-HLTR | ARCHITECTURE | stale | `434b67c89` | `4148a9ce6` | no (the same diagram's `controller` line would have matched) | in a code-fenced diagram |
+| PL-HR4T | MODEL | wrong when written (decimation deleted five days earlier, `cf6f71f83`) | `a0c34f0b6` | none | n/a | no |
+| PL-LKX7 | MODEL | stale (a dated measurement of the whole layout) | `0fcd1dddb` | `960c3b656` (`PL-NWTM`) | no | names `src/anesthesia_sim/app/main.py`, not the split |
+| PL-N3SK | MODEL | stale (a claim that nothing reads `src/anesthesia_sim/core/liquid_agent.py`) | `c95177a6e` | `26eb4e39e` (`PL-B396`) | no | yes, but the change added a reader elsewhere |
+| PL-Y9F0 | interface-provenance | stale (an implied recommendation the code went against) | `c8f806854` | `7b9efe01a` (`PL-50PZ`) | no | no |
+| PL-97S1 | `src/anesthesia_sim/core/liquid_agent.py`, ROADMAP | a citation without its section mark | `d18c626dc`, `c95177a6e` | none | n/a | n/a |
+| PL-LNFG | `src/anesthesia_sim/data/agents/desflurane.json` | stale (a renamed test file) | `2a4c76ab3` | `bc21c3208` | no; the review reads Markdown only | a bare path in JSON |
+
+**Totals.** 10 stale, 3 wrong when written (PL-PTDZ, PL-G1J9, PL-HR4T, and
+PL-D1LR's second sentence), 2 other (PL-GSPR, PL-97S1). Of the 10 stale
+sentences, `candidates` listed the sentence itself once (PL-KSLX's first),
+and that sentence stayed stale. In 7 of the 10, the commit that made the
+sentence false also edited the same document and fixed a neighbouring
+sentence. In 6, a later rewrite restated the sentence after it had gone
+stale, so `git log -S` finds the rewrite first.
+
+**How long the review list is.** Over the eight most recent merges that
+touched `src/anesthesia_sim/`, `candidates` printed 17, 23, 27, 50, 160, 182,
+211 and 389 lines. Most lines are a file name mentioned in `ROADMAP.md`, a
+rule or an item, one line each.
+
+**What the brief's mechanism would have caught.** Step 2 binds only
+`docs/ARCHITECTURE.md` and `docs/interface-provenance.md`, where five of the
+stale sentences sit:
+
+- PL-GPTN: caught. Its paragraph names only `PL-TH35`, so it would carry the
+  fixed form against `PL-TH35`, and the check fails on the branch that closes
+  `PL-TH35`.
+- PL-Y9F0: caught if read. Its paragraph would have to name the Area header's
+  module, and `PL-50PZ` changed that module.
+- PL-4CZW and PL-6G7N: caught if `candidates` lists the paragraph rather
+  than the line, as step 2 says. Each already named code, and the list already
+  showed a line three to seven lines from the stale sentence.
+- PL-HLTR: not caught. The stale line is in a fenced diagram, which is not a
+  paragraph. The diagram's `app/controller.SimulationController` line would
+  have matched the change, and the stale line is seven lines above it.
+
+So the design holds as written, and two parts carry it: the fixed form,
+resolved against the queue, and listing the whole paragraph. Requiring a
+paragraph to name code adds little in `docs/ARCHITECTURE.md`, where the stale
+paragraphs already did. Its value is in forcing the fixed form onto a
+recommendation or a "not yet" claim that names nothing.
+
+**What it leaves.** The wrong-when-written sentences need a reader at the
+time of writing, and the copy editor's structure read is what found all
+three. The four `docs/MODEL.md` free-prose members (PL-D1LR, PL-KSLX,
+PL-LKX7, PL-N3SK) are outside step 2, because the ratified scope of
+`PL-4FBP` leaves `docs/MODEL.md`'s free prose to the close-out review, and
+this audit is evidence that the review did not hold for them.
+
