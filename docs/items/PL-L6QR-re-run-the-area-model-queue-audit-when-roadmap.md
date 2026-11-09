@@ -60,13 +60,15 @@ so. The trigger is unchanged: item 36 being scoped.
 **Disposition: `missing-prereq`.** This item is the audit's own conclusion
 rather than one of its findings.
 
-**Re-pointed at v0.8.0, 2026-10-25.** `PL-LF0P` scoped v0.7.0 without item
-36: its § "Explicitly out of scope for v0.7.0" leaves the View catalogue out,
-because the milestone adds two Views and decides nothing about which of today's
-surfaces become Views. The trigger is unchanged, item 36 being scoped, and
-v0.8.0 is the next release `ROADMAP.md` § "The timeline" names.
+**Re-pointed at v0.8.0, 2026-10-25.** v0.7.0 was scoped without item 36
+(`PL-LF0P`): its § "Explicitly out of scope for v0.7.0" leaves the View
+catalogue out, because the milestone adds two Views and decides nothing about
+which of today's surfaces become Views. The trigger is unchanged, item 36 being
+scoped, and v0.8.0 is the next release `ROADMAP.md` § "The timeline" names.
 
-**Moved from `ROADMAP.md` on 2026-11-07 (`PL-YNFS`).** `ROADMAP.md`'s v0.7.0 section, § "Explicitly out of scope for v0.7.0", carried this sentence in its entry on the View catalogue, planned-milestone item 36, until then. This item's `blocked-by: v0.8.0` holds the current fact.
+**This item's `blocked-by: v0.8.0` still applies, 2026-11-09 (`PL-5XG1`).** § "The timeline"'s v0.8.0 row no longer holds multi-substance, which came off the timeline. The row now names the next milestone with nothing chosen for it, and the trigger is still item 36 being scoped.
+
+**Moved from `ROADMAP.md` on 2026-11-07 (`PL-YNFS`).** `ROADMAP.md`'s v0.7.0 section, § "Explicitly out of scope for v0.7.0", carried this sentence in its entry on the View catalogue, planned-milestone item 36, until then. This item's `blocked-by: v0.8.0` records the current fact.
 
 > So `PL-L6QR`, which waits on item 36, now waits on v0.8.0 instead.
 
