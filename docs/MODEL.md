@@ -3611,9 +3611,9 @@ cell gives the stored value, then the paper's mean ± SD, then the difference in
 <!-- provenance: data/agents/desflurane.json tissue_gas_partition_coefficients.muscle = 0.97 -->
 <!-- provenance: data/agents/desflurane.json tissue_gas_partition_coefficients.fat = 13 -->
 
-All nine stored values lie within 0.71 SD of the measured mean. Two match it exactly. Two more are
-the mean rounded to the stored precision: isoflurane vessel-rich and sevoflurane muscle. The other
-five differ by more than rounding, and the largest gap is isoflurane fat, 9.0% above the mean.
+All nine stored values lie within 0.71 SD of the measured mean. Two match it exactly. Two more lie
+within 1% of it: isoflurane vessel-rich (+0.5%) and sevoflurane muscle (+0.8%). The other five
+differ from it by 2.3% to 9.0%, and the largest gap is isoflurane fat, 9.0% above the mean.
 Values from another source could not match this closely by chance, so the comparison confirms the
 Workbook's attribution. For sevoflurane, it also settles the Workbook's contradiction: the three
 stored values match this paper, not a package insert.
@@ -3622,12 +3622,16 @@ Two further points matter for the model:
 
 - **The vessel-rich coefficient is Yasuda's *brain* value.** Table 1 gives
   brain, heart, liver and kidney separately (sevoflurane 1.15, 1.21, 1.25,
-  0.78). Their equal-weight mean, 1.0975, also rounds to the stored 1.1, so
-  sevoflurane's figure alone does not show which value was stored. Isoflurane's
-  and desflurane's stored values equal Yasuda's brain values to the stored
-  precision (the table above). So the vessel-rich compartment uses the brain
-  values, and a learner reading its trace is reading a brain trace.
+  0.78). Isoflurane's stored 2.1 is 0.5% above its brain value, 2.09, and
+  desflurane's stored 0.54 equals its brain value (the table above).
+  Sevoflurane's stored 1.1 is 4.3% below its brain value and 0.2% above the
+  equal-weight mean of its four organ values, 1.0975, so sevoflurane alone does
+  not show which of the two Gas Man used. The isoflurane and desflurane
+  matches indicate that the vessel-rich compartment uses the brain values, and a
+  learner reading its trace is reading a brain trace.
   <!-- provenance: data/agents/sevoflurane.json tissue_gas_partition_coefficients.vessel_rich = 1.1 -->
+  <!-- provenance: data/agents/isoflurane.json tissue_gas_partition_coefficients.vessel_rich = 2.1 -->
+  <!-- provenance: data/agents/desflurane.json tissue_gas_partition_coefficients.vessel_rich = 0.54 -->
 - **Yasuda's paper is not a source for the stored blood:gas values.** It
   measured none. Its Table 2 tissue:blood figures are calculated "by dividing
   the tissue/gas partition coefficient by the published values for the

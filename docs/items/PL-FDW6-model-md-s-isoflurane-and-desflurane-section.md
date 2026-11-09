@@ -29,12 +29,19 @@ the owner's 20:09 UTC question). The opening now uses the recommended wording
 above, and the later sentence reads "Because the equations are shared". The pull
 request also corrects the two claims:
 
-- The vessel-rich bullet now says the equal-weight mean, 1.0975, also rounds to
-  sevoflurane's stored 1.1, so sevoflurane's figure alone does not show which
-  value was stored. It adds that isoflurane's and desflurane's stored values
-  equal Yasuda's brain values to the stored precision, as the table shows. This
-  repository has no heart, liver or kidney values for those two agents, so the
-  old claim about every weighting was not restated.
+- The vessel-rich bullet now gives each stored value's distance from Yasuda's
+  figures as a percentage. Sevoflurane's stored 1.1 is 4.3% below its brain
+  value and 0.2% above the equal-weight mean of its four organ values, 1.0975,
+  so sevoflurane alone does not show which Gas Man used. Isoflurane's stored
+  2.1 is 0.5% above its brain value, 2.09, and desflurane's 0.54 equals its
+  brain value. This repository has no heart, liver or kidney values for those
+  two agents, so the old claim about every weighting was not restated. The
+  project owner said on 2026-11-09 (11:38 UTC) "I wouldn't round coefficients",
+  answering the first wording, which said the mean "also rounds to" 1.1. So no
+  sentence in the section now treats a stored coefficient as a rounded
+  measurement, and the paragraph under the comparison table gives the two
+  closest matches as +0.5% and +0.8% instead of "the mean rounded to the stored
+  precision".
 - The *Declined* paragraph now says storing Yasuda's figures would change seven
   of the nine values, and the time constant of each compartment they belong to.
   Three changes are large (the same +4.5%, −8.3% and −7.7%), and the other four
