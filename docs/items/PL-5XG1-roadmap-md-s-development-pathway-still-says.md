@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: docs
-touches: ROADMAP.md, src/anesthesia_sim/core/concentration.py, docs/items/PL-L6QR-re-run-the-area-model-queue-audit-when-roadmap.md
+touches: ROADMAP.md, src/anesthesia_sim/core/concentration.py, docs/items/PL-L6QR-re-run-the-area-model-queue-audit-when-roadmap.md, docs/WORKING_NOTES.md
 blocked-by: PL-V1Y7
 deferred-from: v0.6.0 - filed after the gate froze, and a question of release order that no v0.6.0 entry waits on
 added: 2026-09-26

@@ -1382,6 +1382,8 @@ window). The schematic moved to v0.8.0 and multi-substance to v0.9.0.
 wanted eventually, not soon; `PL-V1Y7`). Item 34's tiled half is still v0.6.0
 as scoped, and break-out is its unscheduled second half: the schematic moved
 back to v0.7.0, multi-substance to v0.8.0 and the interface pass to `v0.6.x`.
+The same day multi-substance came off the timeline altogether, until a single
+agent works well with its workspaces (project owner, 2026-09-26, `PL-5XG1`).
 v0.6.0 keeps both reservations break-out needs - the window set in the saved
 layout root and the region's per-window shape - and `PL-Y04W`, the break-out
 build item, was dropped.
