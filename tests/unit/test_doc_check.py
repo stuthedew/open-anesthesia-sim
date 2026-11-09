@@ -69,6 +69,8 @@ from docket.verify import (
 
 ARCHITECTURE = """# Architecture overview
 
+The map lists each module under `src/anesthesia_sim/`.
+
 ## Package map
 
 ```text
@@ -78,6 +80,15 @@ src/anesthesia_sim/
 └── data/
     └── agents/demo.json
 ```
+"""
+
+#: The interface study's last chapter, which is a bound family since `PL-BLN0`.
+#: Absent, the family is declined, and a clean fixture must report nothing.
+INTERFACE_PROVENANCE = """# Interface provenance
+
+## What this project adopts, diverges from, and refuses
+
+Each Area holds one View, built by `core/thing.py`.
 """
 
 #: The apparatus's map, a document of its own since `PL-KRGY`.
@@ -276,6 +287,7 @@ def _repo(
 
     (root / "docs" / "ARCHITECTURE.md").write_text(architecture, encoding="utf-8")
     (root / "docs" / "apparatus.md").write_text(apparatus, encoding="utf-8")
+    (root / "docs" / "interface-provenance.md").write_text(INTERFACE_PROVENANCE, encoding="utf-8")
     (root / "docs" / "MODEL.md").write_text(model, encoding="utf-8")
     (root / "README.md").write_text(readme, encoding="utf-8")
     (root / "ROADMAP.md").write_text(roadmap, encoding="utf-8")
@@ -8133,6 +8145,146 @@ def test_this_repository_holds_every_bound_family_to_its_members() -> None:
 
     assert report.errors == []
     assert report.declined == []
+
+
+# --- paragraphs that describe the code (`PL-BLN0`) ---------------------------
+#
+# The fifth shape reads every paragraph of a section, and each must name the
+# code it describes in a code span. An item id names work, not code, so a
+# paragraph citing only an item id names nothing: that is how `PL-GPTN`'s
+# paragraph read as open work after its code shipped.
+
+PARAGRAPH_FAMILY_DOCUMENT = "\n".join(
+    [
+        "# Overview",
+        "",
+        "The run steps in `AgentUptakeSystem.advance()`.",  # line 3
+        "",
+        "- a list entry that names nothing",  # line 5
+        "- a second entry, wrapped onto",  # line 6
+        "  `core/thing.py`.",
+        "",
+        "```text",
+        "a fenced diagram, which is not a paragraph",
+        "```",
+        "",
+        "### A deeper heading",
+        "",
+        "A paragraph under it, citing only `PL-8888`.",  # line 15
+        "",
+        "# The next chapter",
+        "",
+        "Outside the family.",
+        "",
+    ]
+)
+
+
+def _paragraph_family() -> doc_check.BoundFamily:
+    """A paragraph-shaped family over § "Overview", built here rather than read
+    from `BOUND_FAMILIES`.
+
+    Its document is `docs/MODEL.md`'s path only so that `_check_numeric_family`
+    can write it. The shape does not depend on which document holds it.
+    """
+    return doc_check.BoundFamily(
+        document=doc_check.MODEL,
+        heading="Overview",
+        level=1,
+        kind=doc_check.CODE_ENTITY,
+        members=doc_check._paragraph_members,
+        promise="every paragraph names the code it describes",
+    )
+
+
+def test_a_paragraph_family_reads_every_paragraph_down_to_the_next_chapter() -> None:
+    """A list entry is a paragraph, a fence is not, and a deeper heading's are the family's."""
+    members = list(doc_check._paragraph_members(PARAGRAPH_FAMILY_DOCUMENT, _paragraph_family()))
+
+    assert [line for line, _ in members] == [3, 5, 6, 15]
+    assert members[2][1] == "- a second entry, wrapped onto\n  `core/thing.py`."
+
+
+@pytest.mark.parametrize(
+    ("paragraph", "names"),
+    [
+        ("Built by `AgentUptakeSystem.for_agent()`.", True),
+        ("Written by `core/thing.py`, after `PL-8888`.", True),
+        ("Recorded in `PL-8888`.", False),
+        ("Recorded in `PL-8888` and `PL-TH35`.", False),
+        ("Planned, no code yet (`PL-8888`).", False),
+        ("No code span at all.", False),
+    ],
+)
+def test_a_paragraph_names_code_only_with_a_span_that_is_not_an_item_id(
+    paragraph: str, names: bool
+) -> None:
+    assert doc_check._names_code(paragraph) is names
+
+
+def test_a_paragraph_naming_no_code_is_an_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The entry that names nothing fails, and so does the one citing only an item."""
+    monkeypatch.setattr(doc_check, "BOUND_FAMILIES", (_paragraph_family(),))
+    report = _check_numeric_family(tmp_path, PARAGRAPH_FAMILY_DOCUMENT, "ready")
+
+    assert [error.split(": §")[0] for error in report.errors] == [
+        "docs/MODEL.md:5",
+        "docs/MODEL.md:15",
+    ]
+    assert all("names no code" in error for error in report.errors)
+
+
+def test_a_paragraph_declaring_no_code_yet_is_resolved_against_the_queue(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The declared-none form passes on an open item and fails once it closes."""
+    monkeypatch.setattr(doc_check, "BOUND_FAMILIES", (_paragraph_family(),))
+    document = "# Overview\n\nThe chooser is planned, no code yet (`PL-8888`).\n"
+    for status, expected in (("ready", 0), ("done", 1)):
+        report = _check_numeric_family(tmp_path / status, document, status)
+
+        assert len(report.errors) == expected, report.errors
+
+
+def test_the_review_list_gives_a_bound_paragraph_s_range_only_where_it_helps(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A wrapped paragraph gets its range; a one-line one and a line outside the family do not."""
+    monkeypatch.setattr(doc_check, "BOUND_FAMILIES", (_paragraph_family(),))
+    paragraphs = doc_check._bound_paragraphs({doc_check.MODEL: PARAGRAPH_FAMILY_DOCUMENT})
+
+    assert doc_check._candidate_line(doc_check.MODEL, 7, "thing", paragraphs) == (
+        "    docs/MODEL.md:7  (thing); review the whole paragraph, lines 6-7"
+    )
+    assert doc_check._candidate_line(doc_check.MODEL, 3, "advance", paragraphs) == (
+        "    docs/MODEL.md:3  (advance)"
+    )
+    assert doc_check._candidate_line(doc_check.MODEL, 19, "x", paragraphs) == (
+        "    docs/MODEL.md:19  (x)"
+    )
+
+
+def test_candidates_gives_the_range_of_a_bound_paragraph_that_names_a_change(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The stale sentence is often a line away from the name that changed."""
+    architecture = ARCHITECTURE.replace(
+        "The map lists each module under `src/anesthesia_sim/`.\n",
+        "The map lists each module under `src/anesthesia_sim/`. A run steps\n"
+        "through `advance_thing`, which\nholds the clock.\n",
+    )
+    root = _repo(tmp_path, architecture=architecture)
+    _git_init(root)
+    module = root / "src" / "anesthesia_sim" / "core" / "thing.py"
+    module.write_text("def advance_thing() -> None:\n    return None\n", encoding="utf-8")
+
+    assert doc_check.main(["candidates", "--root", str(root), "--base", "HEAD"]) == 0
+    assert (
+        "docs/ARCHITECTURE.md:4  (advance_thing); review the whole paragraph, lines 3-5"
+        in capsys.readouterr().out
+    )
 
 
 # --- the `not-delegable` subset count ----------------------------------------

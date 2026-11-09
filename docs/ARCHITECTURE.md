@@ -1,8 +1,9 @@
 # Architecture overview
 
-This document describes how the code is organized and how data flows through
-it. It is a map for contributors, not a scientific specification. To find where
-a change belongs, start at § "Where new code belongs", the last chapter.
+This document describes how the code under `src/anesthesia_sim/` is organized
+and how data flows through it. It is a map for contributors, not a scientific
+specification. To find where a change belongs, start at § "Where new code
+belongs", the last chapter.
 § "Layering" says what an Area, a View and a Workspace are.
 
 For the equations, units, parameter provenance, and numerical method, see
@@ -170,15 +171,16 @@ citations. Every scientific constant that a shipped run uses comes from one of
 these files. § "Where new code belongs" says how to add an agent, patient or
 machine profile.
 
-Each value belongs in exactly one of three directories, by what it describes:
+Each value belongs in exactly one of three directories of `data/`, by what it
+describes:
 
 - `data/agents/` for what the drug does.
 - `data/patients/` for who is being anesthetized.
 - `data/machines/` for the apparatus that delivers the drug, namely the
   breathing system's volume and the default fresh gas flow.
 
-Filing a machine parameter in a patient file would misstate where it comes from
-(`PL-4YY1`).
+Filing a machine parameter in a file under `data/patients/` would misstate where
+it comes from (`PL-4YY1`).
 
 When the code builds the compartments for an agent from the data files
 (`AgentUptakeSystem.for_agent()`), it passes each value explicitly. A
@@ -207,7 +209,8 @@ says so.
 
 The code that reads the files (`core/parameters.py`) rejects a file that:
 
-- lacks a required field, or uses an unsupported schema version.
+- lacks a required field, or uses an unsupported schema version
+  (`_validate_schema_version`).
 - gives a `tier` outside the three tiers, or an `adopted` that is not a JSON
   boolean.
 - gives an `authority_for` that is empty when `adopted` is true, or not empty
@@ -215,14 +218,16 @@ The code that reads the files (`core/parameters.py`) rejects a file that:
 - names in `authority_for` something that is not one of the file's stored
   values, or names a stored value twice.
 - holds a value outside its validated range, such as a non-positive volume, or
-  tissue perfusion fractions that do not sum to 1.
+  tissue perfusion fractions that do not sum to 1
+  (`require_perfusion_fractions_sum_to_one`).
 - gives a formula where a number is expected, which the typed payloads in
   `core/parameters.py` reject.
 - carries a key that the schema does not declare, such as a field whose name
   gives another unit, including a key inside a nested object such as
   `tissue_gas_partition_coefficients` or a `sources` entry.
 
-The schemas are strict at every nesting level, so an undeclared key fails the
+Every payload model inherits `_StrictPayload`, which forbids an undeclared key,
+so the schemas are strict at every nesting level. An undeclared key fails the
 load rather than being silently discarded. As a result, a data file cannot
 document one model while the app runs another.
 
@@ -239,7 +244,7 @@ Workspaces" describes the shipped set.
 
 ## Data flow
 
-**Startup / parameter loading:**
+**Startup / parameter loading**, in `SimulationController._build_state()`:
 
 ```text
 data/agents/<agent_id>.json                 ──┐
@@ -277,8 +282,8 @@ integrator:
    exact propagator, because every setting is held constant across a step.
    The result is cached against the settings it was built for, and it is
    rebuilt when one of those settings changes.
-3. One matrix-vector product advances the agent fraction in each of the six
-   compartments. The same solution also advances the cumulative delivered and
+3. One matrix-vector product, `matrix_exponential.propagate()`, advances the
+   agent fraction in each of the six compartments. The same solution also advances the cumulative delivered and
    exhausted amounts.
 4. The agent-accounting validator (`AgentSimulationValidator`) records those
    amounts and checks mass balance. It raises
@@ -287,8 +292,9 @@ integrator:
    accounting no longer holds the rejected step's totals (`PL-HF4B`).
 
 Steps 1 and 2 carry the split of concerns that the package is arranged
-around. The equations file contains the physiology and no arithmetic. The
-exponential file contains the arithmetic and no physiology.
+around. The equations file, `core/governing_equations.py`, contains the
+physiology and no arithmetic. The exponential file,
+`core/matrix_exponential.py`, contains the arithmetic and no physiology.
 
 **UI direction:** `app/controller.py`'s `SimulationController` owns a
 `SimulationState`. It exposes `start()` / `pause()` / `reset()` /
@@ -449,16 +455,16 @@ that divisor. The chart's MAC-awake band is one of these values multiplied by
 the other, so pairing two different agents' values would place a correct
 number at the wrong height.
 
-Stepping and drawing run on separate timers at separate intervals, so
-simulation time stays a function of the steps taken rather than of how long a
-frame took. § "Failures and halts" says what the timers do on a halt.
+Stepping and drawing run on separate timers at separate intervals,
+`SIMULATION_TICK_INTERVAL_S` and `RENDER_INTERVAL_S`, so simulation time stays
+a function of the steps taken rather than of how long a frame took. § "Failures and halts" says what the timers do on a halt.
 
 ## What a branch is, and what it shares with its parent
 
 A **branch** is a second live run of the same case, opened at a state the first
 run passed through. The run it was taken from is the **trunk**, and the instant
-at which it was taken is its **fork**. The whole structure is one trunk with N
-branches. Sub-forks of forks are excluded, not merely unimplemented (project
+at which it was taken is its **fork**. The whole structure, `BranchedCase`, is
+one trunk with N branches. Sub-forks of forks are excluded, not merely unimplemented (project
 owner, 2026-08-25). They multiply without bound and offer little over branching
 from the trunk again.
 
@@ -596,7 +602,8 @@ evaluation rule" measures what that is worth.
 
 **Where a branch may be taken.** There are three places: at a keyframe, where
 the paused trunk stands, and at a time bookmark the trunk has passed. Each is
-reached by its own method rather than through one list.
+reached by its own method of `BranchedCase` rather than through one list:
+`fork_at`, `fork_here` and `fork_at_mark`.
 
 The first is at any keyframe the trunk holds. These are listed by
 `BranchedCase.fork_points_s` and taken with `fork_at`. The keyframes are the
@@ -984,8 +991,8 @@ ratified) and question Q4 of `PL-WV9K` (project owner, 2026-09-27, specified).
   headless or portable run, the environment variable `ANESTHESIA_SIM_USER_DIR`
   overrides the directory. It is the only override, and it is applied in
   `store.user_data_directory`.
-- **When.** The store writes only when the reader chooses "Save as default" in
-  the Layout menu or a tab's menu, like Blender's startup file, never when
+- **When.** The store writes, in `WorkspaceStore.save`, only when the reader
+  chooses "Save as default" in the Layout menu or a tab's menu, like Blender's startup file, never when
   something changes. A first run leaves no trace. "Save as default" first asks a
   question that names the file it will write. The two entries next to it write
   nothing: "Restore shipped Workspaces" and "Reset all layouts" (`PL-DWHG`).
@@ -1013,23 +1020,27 @@ ratified) and question Q4 of `PL-WV9K` (project owner, 2026-09-27, specified).
   the set (`open_workspaces` in `app/main.py`). The store returns the whole
   outcome in `store.Loaded`, so that the interface can show it on the line
   under the Workspace tabs. There are five cases.
-  - *none*: the launch shows the shipped set and says nothing.
+  - *none*: the launch shows the shipped set and says nothing, unless
+    `workspaces.json.previous` can be used. Then it shows that file's set and
+    says so (`_without_current_file`).
   - *older*: the launch migrates the file in memory with
     `layout/migrations.py`, one step per version. The reader is told only
     where a step lost information. At the next save, the file as it was
     before migration is kept once as `workspaces.v<N>.json`.
-  - *newer*: the launch refuses the file and leaves it untouched. It shows
-    the shipped set and turns saving off for the session. A notice names the
-    file and both versions.
-  - *unreadable*: the launch handles the file as it handles a newer one.
+  - *newer*: the launch refuses the file (`UnsupportedSchemaVersion`) and
+    leaves it untouched. It shows the shipped set and turns saving off for the
+    session. A notice names the file and both versions.
+  - *unreadable*: the launch handles a file it cannot read (`OSError`) as it
+    handles a newer one. It sets aside a file that is not UTF-8 text
+    (`UnicodeDecodeError`), as it does an invalid one.
   - *invalid at a version this build reads*: the launch sets the file aside
     unchanged as `workspaces.invalid-<UTC time>.json`. It loads
     `workspaces.json.previous` if that file validates, and the shipped set
     otherwise. A notice says which one it loaded, and saving stays on.
 
   A saved View of a kind that this build has not registered is not a file
-  error. The file loads, and the Area that holds the View shows a failure
-  state (`PL-R1WQ`).
+  error. The file loads, and `app/area_layout.py` draws a notice in the Area
+  that holds the View (`PL-R1WQ`).
 
   The one-version rule in `core/parameters.py` is right for files that ship
   with the code but wrong for a file that the reader wrote, so the store does

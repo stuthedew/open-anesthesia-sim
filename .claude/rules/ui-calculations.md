@@ -20,11 +20,11 @@ clinical value to be traceable to the model, the inputs, the units and the
 transformations that produced it, and a callback records none of those.
 
 **Where the line sits.** `docs/ARCHITECTURE.md` § "Layering" draws it: `app/`
-never performs a physiological or unit calculation itself. A presentation
-transformation is allowed, and it lives in a module of its own that loads no
-toolkit, so that it is tested: `app/formatting.py` turns a fraction into the
-percent and the multiple of 1 MAC a reader sees, at the precision
-`docs/MODEL.md` § "Displayed precision" derives.
+computes no model quantity, and converts a value only for display. A
+presentation transformation is allowed, and it lives in a module of its own
+that loads no toolkit, so that it is tested: `app/formatting.py` turns a
+fraction into the percent and the multiple of 1 MAC a reader sees, at the
+precision `docs/MODEL.md` § "Displayed precision" derives.
 
 **What is checked, and what this rule carries.** `tools/import_boundary_check.py`
 keeps the toolkit out of `core/` and keeps `core/` from importing `app/`, so

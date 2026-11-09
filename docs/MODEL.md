@@ -12525,7 +12525,15 @@ of date.
 
 **For developers.** These rules apply in part to the project's other documents.
 The frozen lists in `ROADMAP.md` and the package map in `docs/ARCHITECTURE.md`
-also promise an entry for each member, and each has checks of its own. The check
+also promise an entry for each member, and each has checks of its own. The rule
+that a claim names what it describes also binds two documents that describe the
+code: every paragraph of `docs/ARCHITECTURE.md`, and every paragraph of
+`docs/interface-provenance.md` § "What this project adopts, diverges from, and
+refuses". Each such paragraph names in fixed-width type the module, symbol or
+test it describes, or uses the fixed form ``no code yet (`PL-XXXX`)``. An item
+id alone names no code. `check_bound_families` holds these two families, and
+`tools/doc_check.py candidates` prints a paragraph's first and last line when
+something it names changes (`PL-BLN0`). The check
 of a frozen list reads only the lines that open with an item id. The prose of
 `ROADMAP.md` is treated as dated. Every thread in `docs/WORKING_NOTES.md` is
 dated, so only the rule for dated statements applies to it. The rules do not

@@ -288,7 +288,7 @@ try:
     # script's comments, which the host-claim check reads (`PL-W9VC`).
     from docket.shell import Reading, Word, script_lines, shell_words, simple_commands
     from docket.shell import comments as shell_comments
-    from docket.store import ID_PATTERN, read_items
+    from docket.store import ID_PATTERN, ID_RE, read_items
 
     # Reading `git tag` is a second borrowing, for the same reason as the first.
     # `vcs` collapses every way git can fail to answer - not installed, not a
@@ -4291,6 +4291,75 @@ def _holds_itself(member: str, kind: EntityKind) -> bool:
     return kind.names(member) or any(_statement_matches(kind.declares_none, member, PROSE))
 
 
+def _paragraph_spans(text: str, heading: str, level: int) -> list[tuple[int, int]]:
+    """The first and last line of each paragraph under a heading, counted from 1.
+
+    A paragraph is one that `markdown` reads. So a paragraph inside a list item
+    or a block quote is one of its own, and a fence, a table or a heading is
+    not a paragraph. The section runs from its heading to the next heading at
+    its own depth or shallower, as for `_numeric_paragraph_members`, so a
+    deeper heading's paragraphs are part of it. A heading that `markdown` does
+    not read, such as a `#` line inside a fence, opens no section, and the list
+    is then empty.
+    """
+    lines = split_lines(text)
+    found = read_headings(lines)
+    opening = next((h for h in found if h.level == level and h.title == heading), None)
+    if opening is None:
+        return []
+    end = next((h.line for h in found if h.line > opening.line and h.level <= level), len(lines))
+    return [
+        (block.start + 1, block.end)
+        for block in read_blocks(lines).blocks
+        if block.kind == PARAGRAPH and opening.end <= block.start < end
+    ]
+
+
+def _paragraph_members(text: str, family: BoundFamily) -> Iterator[tuple[int, str]]:
+    """Each paragraph under the family's heading, as `_paragraph_spans` finds them.
+
+    The fifth member shape (`PL-BLN0`). It reads every paragraph of a section
+    that describes the code, because a sentence there restates what some
+    module does, and goes stale when that module changes. A paragraph's lines
+    lose the indentation they share, as in `_numeric_paragraph_members`, so a
+    second paragraph inside a list item is not read as an indented code block.
+    """
+    lines = split_lines(text)
+    for first, last in _paragraph_spans(text, family.heading, family.level):
+        yield first, textwrap.dedent("\n".join(lines[first - 1 : last]))
+
+
+def _names_code(member: str) -> bool:
+    """Whether a paragraph holds a code span that is not an item id alone.
+
+    A code span is how these documents name a module, a symbol, a path or a
+    test, and naming one is what lets `format_candidates` list the paragraph
+    on a branch that changes it. An item id in a code span names work and not
+    code. PL-GPTN's paragraph cited only `PL-TH35`, and it read as open work
+    for weeks after that item's code shipped. The declared-none form's own span
+    is an item id, so it never counts as a name. `docket.store` owns what an
+    item id looks like.
+
+    Whether the code named is the code the paragraph describes stays a
+    reviewer's question, as it does for a named test.
+    """
+    for span in _code_spans(member):
+        content = SPAN_BREAK_RE.sub("", span["content"]).strip()
+        if content and not ID_RE.match(content):
+            return True
+    return False
+
+
+#: What a paragraph that describes the code must name. Its declared-none form
+#: is "no code yet (`PL-XXXX`)", for a paragraph that describes code an open
+#: item still owes.
+CODE_ENTITY = _entity_kind("code", _names_code)
+
+#: The study of Blender's window system, whose last chapter says what this
+#: project's interface takes from it.
+INTERFACE_PROVENANCE = Path("docs/interface-provenance.md")
+
+
 # Every family bound today by the rule that each listed entry names what backs
 # it. **An entry arrives with the annotation pass that makes its family conform,
 # never in anticipation of one**, so the check never holds `make check` red for
@@ -4303,6 +4372,14 @@ def _holds_itself(member: str, kind: EntityKind) -> bool:
 # precision", whose numbers a learner reads directly. The other sections join
 # with the passes the `model-claims-held-by-tests` feature files, first
 # `PL-19W8`, which decides whether the rest run.
+#
+# `PL-BLN0` added the two families whose paragraphs describe the code: the
+# whole of `docs/ARCHITECTURE.md`, bound at its title so that a chapter added
+# later is bound too, and the last chapter of `docs/interface-provenance.md`,
+# which says what this project built. Of 15 sentences in those documents and
+# `docs/MODEL.md` found stale on 2026-11-05, 10 went stale when the code they
+# restated changed. `docs/MODEL.md`'s free prose stays outside, for the
+# reason that item gives.
 #
 # Every entry names `TEST_ENTITY`, and for the displayed outputs that was a
 # decision rather than an inheritance (`PL-036`, project owner, 2026-09-22,
@@ -4353,6 +4430,22 @@ BOUND_FAMILIES = (
             "with a unit"
         ),
     ),
+    BoundFamily(
+        document=ARCHITECTURE,
+        heading="Architecture overview",
+        level=1,
+        kind=CODE_ENTITY,
+        members=_paragraph_members,
+        promise="every paragraph names in a code span the module, symbol or test it describes",
+    ),
+    BoundFamily(
+        document=INTERFACE_PROVENANCE,
+        heading="What this project adopts, diverges from, and refuses",
+        level=2,
+        kind=CODE_ENTITY,
+        members=_paragraph_members,
+        promise="every paragraph names in a code span the module, symbol or test it describes",
+    ),
 )
 
 
@@ -4374,9 +4467,11 @@ def check_bound_families(root: Path, report: Report) -> None:
     claim outside a family to the close-out sweep, so that a rule with an
     escape nobody declares does not become a rule nobody follows. `PL-B6YV`
     reopened that for computed claims on 2026-11-02, and
-    `_numeric_paragraph_members` reads them one section at a time. A family is
-    added to `BOUND_FAMILIES` by the annotation pass that makes it conform,
-    never in anticipation of one.
+    `_numeric_paragraph_members` reads them one section at a time. `PL-BLN0`
+    reopened it for the two documents that describe the code, where
+    `_paragraph_members` reads every paragraph. A family is added to
+    `BOUND_FAMILIES` by the annotation pass that makes it conform, never in
+    anticipation of one.
 
     **A family with no members is an error, not a pass.** A renamed heading or
     a deleted table would otherwise retire the family silently while the entry
@@ -10588,16 +10683,48 @@ def _diff_from(root: Path, base: str) -> tuple[str, str]:
     return fork, f"{base} from its merge base with HEAD, {fork[:8]}"
 
 
+def _bound_paragraphs(documents: Mapping[Path, str]) -> dict[Path, list[tuple[int, int]]]:
+    """The first and last line of each paragraph a bound family holds, by document.
+
+    Only the families whose members are paragraphs (`_paragraph_members`)
+    contribute. A stale sentence there is often not the line that names the
+    changed code. On 2026-11-05, PL-6G7N's stale sentence sat a line below the
+    one naming `AgentUptakeSystem.for_agent()`, and PL-4CZW's a line below the
+    one naming `SimulationController.advance()`. So the review list gives the
+    whole paragraph's range.
+    """
+    found: dict[Path, list[tuple[int, int]]] = {}
+    for family in BOUND_FAMILIES:
+        text = documents.get(family.document)
+        if family.members is _paragraph_members and text is not None:
+            spans = _paragraph_spans(text, family.heading, family.level)
+            found.setdefault(family.document, []).extend(spans)
+    return found
+
+
+def _candidate_line(
+    doc: Path, number: int, token: str, paragraphs: Mapping[Path, list[tuple[int, int]]]
+) -> str:
+    """One line of the review list, with the paragraph's range where it holds more than one line."""
+    line = f"    {doc}:{number}  ({token})"
+    for first, last in paragraphs.get(doc, ()):
+        if first <= number <= last and first < last:
+            return f"{line}; review the whole paragraph, lines {first}-{last}"
+    return line
+
+
 def format_candidates(root: Path, base: str) -> str:
     """Print the documentation lines a close-out sweep would grep for.
 
     The diff runs from where HEAD forked from `base` to the working tree, as
     `_diff_from` decides. Raises `GitUnanswered` where the diff cannot be
     read, which `main` reports as a sweep that did not happen rather than one
-    that found nothing.
+    that found nothing. A line inside a paragraph that a bound family holds
+    carries that paragraph's range (`_bound_paragraphs`).
     """
     fork, against = _diff_from(root, base)
     documents = read_docs(root)
+    paragraphs = _bound_paragraphs(documents)
     unread: list[str] = []
     tokens = changed_tokens(root, fork, documents, unread)
     if not tokens:
@@ -10641,7 +10768,8 @@ def format_candidates(root: Path, base: str) -> str:
         total += len(hits)
         lines.append(f"  {relative}")
         lines.extend(
-            f"    {doc}:{number}  ({token})" for (doc, number), token in sorted(hits.items())
+            _candidate_line(doc, number, token, paragraphs)
+            for (doc, number), token in sorted(hits.items())
         )
         lines.extend(crowded)
         lines.append("")

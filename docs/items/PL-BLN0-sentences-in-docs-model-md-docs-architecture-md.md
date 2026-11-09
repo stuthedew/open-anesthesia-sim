@@ -3,14 +3,16 @@ id: PL-BLN0
 title: Sentences in docs/MODEL.md, docs/ARCHITECTURE.md and docs/interface-provenance.md that restate how the code or the interface behaves go stale when the code changes, because nothing ties a free-prose sentence to the code it describes
 priority: P1
 effort: L
-status: ready
+status: done
 classes: defect, docs
-touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/MODEL.md, docs/ARCHITECTURE.md, docs/interface-provenance.md, docs/items/PL-LJY8-docs-maintainer-md-has-the-headless-worker-take.md
+touches: tools/doc_check.py, tests/unit/test_doc_check.py, .claude/rules/ui-calculations.md, docs/MODEL.md, docs/ARCHITECTURE.md, docs/interface-provenance.md, docs/items/PL-LJY8-docs-maintainer-md-has-the-headless-worker-take.md, docs/items/PL-HR4T-docs-model-md-intended-use-lists-extreme.md, docs/items/PL-N3SK-docs-model-md-known-limitations-says-nothing-on.md, docs/items/PL-LKX7-docs-model-md-displayed-precision-says-a.md, docs/items/PL-97S1-two-citations-name-docs-model-md-s-known.md, docs/items/PL-LNFG-tools-doc-check-py-checks-no-citation-inside-a.md
 added: 2026-11-09
+closed: 2026-11-09
+pr: 2072
 payoff: A sentence in docs/MODEL.md, docs/ARCHITECTURE.md or docs/interface-provenance.md that describes the code names what it describes, so the change that alters that code lists the sentence for review instead of leaving it to be found stale one item at a time
 verify: grep -qF 'docs/interface-provenance.md' tools/doc_check.py
 root-cause-of: PL-LNFG, PL-D1LR, PL-PTDZ, PL-KSLX, PL-LKX7, PL-4CZW, PL-6G7N, PL-G1J9, PL-GSPR, PL-HLTR, PL-HR4T, PL-N3SK, PL-Y9F0, PL-GPTN, PL-97S1
-generator: live - fifteen filings re-entered PL-4FBP after it closed on 2026-09-19, twelve of them since PL-FM15 found no successor owed on 2026-10-31, and each structure read of a document still finds more
+generator: spent - since this item, every paragraph of docs/ARCHITECTURE.md and of docs/interface-provenance.md's last chapter names the code it describes or declares no code yet against an open item, so make check fails a paragraph that names nothing, and the review list prints the whole paragraph when code it names changes; docs/MODEL.md's free prose stays outside by this brief's decision, HR4T, N3SK, LKX7, 97S1 and LNFG stay ordinary items, and a member later found in a bound document reopens the head
 misread: The link between a document sentence and the tree fact it restates
 reenters: PL-4FBP
 ---
@@ -238,3 +240,14 @@ PL-KSLX already named its code, was listed, and still went stale. PL-LKX7 is
 a measurement. Annotating every behaviour paragraph of a 12,500-line document
 would not repay that, so this head keeps `PL-4FBP`'s ratified scope rather
 than putting it back to the owner.
+
+**Built 2026-11-09.** Steps 2 to 6 above are done as written. The check binds
+`docs/ARCHITECTURE.md` at its title, so a chapter added later is bound too,
+rather than listing its thirteen chapters. The annotation pass named code in 17
+paragraphs of that document and 12 of the interface-provenance chapter. Naming
+the code exposed two more stale sentences in § "User state: the saved
+Workspaces", which were repaired in the same pass: a launch with no saved file
+first tries `workspaces.json.previous`, and a file that is not UTF-8 text is set
+aside like an invalid one rather than refused like a newer one. The repair of
+§ "Layering" for PL-G1J9 also left `.claude/rules/ui-calculations.md`
+paraphrasing the old sentence, so that rule now says the same as the document.

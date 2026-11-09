@@ -853,7 +853,9 @@ exception. The exception changes no decision for this simulator, because
 pinning a run to a workspace has a reason of its own (`PL-7Z84`).
 
 **The area owns the geometry, and the view owns none.** A view is given its
-rectangle and never stores, computes or asks for one. This boundary between
+rectangle and never stores, computes or asks for one. `layout/sizing.py` sizes
+each Area in pixels, and `app/area_layout.py` places the View in it. This
+boundary between
 area and view is the strongest and cleanest part of Blender's design, and the
 most transferable.
 
@@ -883,15 +885,19 @@ which run, which patient or which model the numbers concern. This placement
 serves the project's requirement that a user can never mistake which context a
 displayed value belongs to. It also follows Blender's argument for its
 information hierarchy (§ "Header, sidebar, toolbar and footer are keyed to
-scope of effect").
+scope of effect"). In this window, the unconditional region with each run's
+notices and readouts stays at the top, above the Workspace tabs and the Areas
+(`SimulationView._build_page`).
 
 **The layout operations are split, join, swap and border-drag, and the layout is
-stored as a tree of nested splitters.** The count of Blender's shipped layouts
-backs this decision (`PL-3J2P`,
+stored as a tree of nested splitters.** They are `LayoutModel`'s `split`,
+`join`, `swap` and `resize`, over the `Split` and `Area` nodes of
+`layout/tree.py`. The count of Blender's shipped layouts backs this decision (`PL-3J2P`,
 § "The measurement: what Blender's own shipped layouts actually contain").
 
 **From version 1 of the format, a saved file's root holds one or more windows,
-each with a tree of its own.** This was decided on 2026-09-16, when the area
+each with a tree of its own.** `layout/serialization.py` writes them as the
+`windows` list. This was decided on 2026-09-16, when the area
 model (roadmap item 34) was planned across two releases, with break-out into
 further windows in the second. The reason is that adding windows to the root
 later would mean migrating files in which learners have already saved their
@@ -936,7 +942,7 @@ divergence (the comparison is in `PL-GPYV`). Eclipse, the closest precedent,
 separates editors, which follow an open-save-close document lifecycle, from views,
 which do not. Its Perspective is Blender's Workspace. But in Eclipse, having several
 instances is a property of editors, and this project needs several Views of one kind
-in a single Workspace.
+in a single Workspace: two Areas may hold the same `ViewKind`.
 
 **A missing or unknown View kind must fail loudly.** When a saved Workspace gives
 an Area a View kind that this build does not have, the interface must say so
@@ -999,7 +1005,9 @@ area system exists.
 
 **A View's container sits behind a layout model of this project's own.** As with
 a View, the container's isolation has to be built (`PL-C842` has the
-recommendation and the evidence).
+recommendation and the evidence). The container, `AreaLayout` in
+`app/area_layout.py`, draws the Areas from `LayoutModel` in `layout/model.py`,
+which loads no toolkit.
 
 **Prune the contract of a View instead of letting it grow.** Blender's contract
 for an editor (`SpaceType`) is a struct of metadata and function pointers. It
@@ -1082,9 +1090,10 @@ collapsed below its minimum size (`PL-K285`). Each Area's menu also lists the
 Area's borders under Resize, and choosing one gives that border the focus
 (`PL-M352`).
 
-**The Layout menu opens from the tab strip, not from a menu bar.** It lists every
-Workspace, steps to the previous or next one, and holds the current Workspace's
-rename, duplicate, reset and delete (`PL-M352`). Blender's top bar puts its menus
+**The Layout menu opens from the tab strip, not from a menu bar.** The strip is
+`WorkspaceTabs` in `app/workspace_tabs.py`. The menu lists every Workspace,
+steps to the previous or next one, and holds the current Workspace's rename,
+duplicate, reset and delete (`PL-M352`). Blender's top bar puts its menus
 and its Workspace tabs in one row. A separate menu bar would cost this window a
 row of height on Windows and Linux, where the charts already needed 70 to 80 px
 more height on the 1366 by 700 laptop reference (`PL-QLZ5`). At first the Layout
@@ -1094,7 +1103,8 @@ menu opened from a button at the strip's right end, after "+" (built in
 **The menus open on a right-click, as in Blender, and no header carries a menu
 button** (project owner, 2026-10-19, ratified, over keeping a button in each
 Area header and at the tab strip's end, and over removing the menus
-altogether). On his own screen the owner found the "Area" and "Layout" buttons
+altogether). Neither `AreaFrame`'s header nor `WorkspaceTabs` carries a menu
+button. On his own screen the owner found the "Area" and "Layout" buttons
 "overlapping and intrusive", and Blender's headers carry no such button. In
 Blender, a right-click on a header opens its context menu, which holds the
 splits, Maximize Area and Close Area. A right-click on a border opens "Area
@@ -1103,8 +1113,9 @@ Workspace tab opens that tab's menu (Blender Manual: "Regions", section
 "Header"; "Areas", section "Area Options"; "Workspaces", section "Controls";
 read 2026-10-19).
 
-Here, a right-click anywhere on an Area's header opens the Area menu, and a
-right-click on the tab strip outside a tab opens the Layout menu. Each tab's own
+Here, a right-click anywhere on an Area's header opens the Area menu
+(`AreaFrame._open_menu`), and a right-click on the tab strip outside a tab
+opens the Layout menu (`WorkspaceTabs.contextMenuEvent`). Each tab's own
 menu also holds Previous and Next Workspace, Save as default, Restore shipped
 Workspaces and Reset all layouts. The keyboard still reaches every entry: the
 Menu key or Shift+F10 opens the Area menu from the View chooser, and a tab's
@@ -1116,12 +1127,14 @@ in the header, as Blender keeps its Editor Type selector first in every header.
 while pressing an Area's corner, then releases over any other Area in the
 window, and the two need not be side by side (Blender Manual: "Areas", section
 "Swapping Contents", read 2026-10-19). A preview outlines both Areas while the
-user drags (`PL-R5G4`, which added the gesture). The Area menu's "Swap with"
-makes the same swap.
+user drags (`PL-R5G4`, which added the gesture). `_CornerZone` in
+`app/area_layout.py` starts the swap. The Area menu's "Swap with" makes the
+same swap.
 
 ### Refused
 
-**The layout is not represented as a shared-vertex graph.** The graph is
+**The layout is not represented as a shared-vertex graph.** It is the tree of
+`Split` and `Area` nodes in `layout/tree.py`. The graph is
 strictly more expressive, but a measurement of thirty-two shipped workspaces
 found none that needs what the graph adds. Adopting it would leave one person
 maintaining the code for a planar subdivision forever. An item records the
@@ -1130,7 +1143,9 @@ condition under which the project would adopt the graph (`PL-3J2P`).
 **This project's occlusion rule does not rest on Blender's reason for a tiled
 interface**, as § "Blender's reason for non-overlapping is not this project's
 reason" sets out. Blender does prove that a tiled interface can be workable and
-pleasant at the scale of a professional tool.
+pleasant at the scale of a professional tool. The rule here is that the values
+which must always show sit in the unconditional region, which
+`SimulationView._build_page` keeps outside the Areas.
 
 ## Attribution
 

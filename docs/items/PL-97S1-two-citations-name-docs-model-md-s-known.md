@@ -26,3 +26,11 @@ reenters: PL-93LV
 **Generator check.** `PL-4FBP`'s fact: the link between a document sentence and the tree fact it restates, here a pointer the doc check cannot read because it lacks the section mark. `PL-93LV` fixed the same shape for the third citation of this lead and closed on 2026-11-02, within 30 days, and its fix did not reach these two. Recorded as `reenters: PL-93LV`.
 
 **Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** Present in part. At 817a4d88, `ROADMAP.md` already named the note "One reference condition, where the model physically has two" without the section mark. The docstring of `src/anesthesia_sim/core/liquid_agent.py` came later, with `c95177a6` (#1866, `PL-KZ99`). The problem belongs on v0.7.0's frozen list, and the deferral is removed.
+
+**Disposition under PL-BLN0 (2026-11-09).** PL-BLN0 is the head over the
+sentences that went stale when the code they restated changed. It binds every
+paragraph of `docs/ARCHITECTURE.md` and of the last chapter of
+`docs/interface-provenance.md` to the code it describes, and leaves the free
+prose of `docs/MODEL.md` outside that binding, for the reason its brief gives.
+This item is about a citation's form, a section mark the doc check needs, which
+the paragraph binding does not read. It stays its own item.
