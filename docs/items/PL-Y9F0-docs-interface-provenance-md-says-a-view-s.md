@@ -3,11 +3,13 @@ id: PL-Y9F0
 title: docs/interface-provenance.md says a View's chrome is the View's business and the Area only allocates the rectangle, but each Area has a header with the Area menu and the View chooser: does the View or the Area own the header? (copy editor structure read, 2026-11-05)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: interface-provenance-structure
 touches: docs/interface-provenance.md
 added: 2026-11-05
+closed: 2026-11-09
+pr: 2072
 payoff: a contributor building a View knows the Area draws the header, and does not give one View a second header
 verify: ! grep -qF "should likewise leave a View's chrome to the View" docs/interface-provenance.md
 reenters: PL-4FBP

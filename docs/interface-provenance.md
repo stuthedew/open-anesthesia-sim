@@ -436,8 +436,8 @@ to `keymapflag` in the tree is to the field of the same name on `ARegionType`.
 **An editor draws its own header.** Beside its main region type, it declares a
 header region type with its own draw callback, as the script editor does. The
 container supplies no title bar, and the area that holds the editor only
-allocates the rectangle that the container computes. This project's contract
-should likewise leave a View's chrome to the View.
+allocates the rectangle that the container computes. This project departs from
+it, and § "Diverged, and each divergence has a specific cause" says how.
 
 ## The measurement: what Blender's own shipped layouts actually contain
 
@@ -1010,6 +1010,13 @@ This project's contract for a View is the `View` protocol in
 `test_every_member_of_the_contract_has_a_call_site_in_the_adapter` fails on any
 member that `app/area_layout.py` never calls, so the contract cannot keep a hook
 that nothing uses.
+
+**The container draws each Area's header, not the View** (`PL-TH35`). In
+Blender an editor declares and draws its own header region (§ "What an editor
+must implement"). Here `app/area_layout.py` draws the header, so every View gets
+the same one. The header holds the View chooser, and a right-click on it opens
+the Area menu. `app/view_contract.py` lists the header among what is not the
+View's, so a View that drew one would give its Area a second header.
 
 **A drag moves every border on the dragged line, as in Blender.** Blender's
 default drag moves the whole chain of borders (§ "How a layout is built, and how
