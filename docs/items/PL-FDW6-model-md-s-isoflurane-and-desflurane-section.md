@@ -26,21 +26,21 @@ The paragraph's later sentence "With the same equations, lower solubility only m
 
 **Fixed 2026-11-07 in pull request 2054** (at the coordinator's request, relaying
 the owner's 20:09 UTC question). The opening now uses the recommended wording
-above, and the later sentence reads "Because the equations are shared". The two
-corrections:
+above, and the later sentence reads "Because the equations are shared". The pull
+request also corrects the two claims:
 
 - The vessel-rich bullet now says the equal-weight mean, 1.0975, also rounds to
   sevoflurane's stored 1.1, so sevoflurane's figure alone does not show which
-  value was stored, and that isoflurane's and desflurane's stored values equal
-  Yasuda's brain values to the stored precision, as the table shows. No
-  heart, liver or kidney values for those two agents are in this repository,
-  so the old claim about every weighting was not restated.
-- *Declined* now says storing Yasuda's figures would change seven of the nine
-  values, and the time constant of each compartment they belong to; three
-  changes are large (the same +4.5%, −8.3% and −7.7%) and the other four move
-  by 3.1% or less (isoflurane muscle 4.40/4.5, desflurane muscle 0.94/0.97,
+  value was stored. It adds that isoflurane's and desflurane's stored values
+  equal Yasuda's brain values to the stored precision, as the table shows. This
+  repository has no heart, liver or kidney values for those two agents, so the
+  old claim about every weighting was not restated.
+- The *Declined* paragraph now says storing Yasuda's figures would change seven
+  of the nine values, and the time constant of each compartment they belong to.
+  Three changes are large (the same +4.5%, −8.3% and −7.7%), and the other four
+  move by 3.1% or less (isoflurane muscle 4.40/4.5, desflurane muscle 0.94/0.97,
   sevoflurane muscle 2.38/2.4, isoflurane vessel-rich 2.09/2.1). A tissue time
   constant is proportional to its tissue:gas coefficient when the blood:gas
   value is unchanged.
 
-**Generator check.** One-off: the opening's wording came from release history (v0.1.0 modelled sevoflurane only), and the two claims were each a single misstatement.
+**Generator check.** One-off: the opening's wording came from release history, and the two claims were each a single misstatement.
