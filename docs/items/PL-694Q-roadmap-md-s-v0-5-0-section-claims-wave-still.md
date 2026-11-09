@@ -3,12 +3,14 @@ id: PL-694Q
 title: ROADMAP.md's v0.5.0 section claims wave 'still prints all thirteen as waiting on work outside it', which it no longer does
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 touches: ROADMAP.md
 added: 2026-09-20
+closed: 2026-11-09
+pr: 2071
 payoff: stops the v0.5.0 section telling a session to expect output the command does not produce
-verify: grep -q 'PL-694Q' ROADMAP.md && ! grep -qF 'still prints all thirteen as' ROADMAP.md
+verify: ! grep -qF 'still prints all thirteen as' ROADMAP.md
 ---
 
 **Problem.** ROADMAP.md's v0.5.0 section claims wave 'still prints all thirteen as waiting on work outside it', which it no longer does
@@ -46,7 +48,9 @@ that can answer it live.
 
 **Done when.** The paragraph quotes what `bin/docket wave` prints for those
 entries with the date its reading was taken, cites this item, and drops the
-quoted string the command no longer produces - so a session checking the claim
-can check it against the command rather than against prose. Do not replace it
-with a fresh count stated as standing fact; that is the same defect one merge
+quoted string the command no longer produces. A session can then check the
+claim against the command rather than against prose. Do not replace it with a
+fresh count stated as standing fact, because that is the same defect one merge
 later.
+
+**Done 2026-11-09, by `PL-G6DP`.** On 2026-11-07 that item's restructure of `ROADMAP.md` moved the paragraph into `PL-SL70`'s brief, which quotes it as the text the roadmap carried until then. `ROADMAP.md` no longer tells a session to expect that output. The `verify:` command was rewritten to test only that the string is gone, because the paragraph it required to be dated no longer exists.

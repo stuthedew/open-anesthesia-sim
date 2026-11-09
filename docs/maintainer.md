@@ -994,18 +994,19 @@ owner decides. Nothing upgrades on a schedule, and nothing gates on it.**
 
 This is a multi-year project, so every version constraint in `pyproject.toml`
 will be wrong eventually. `requires-python` admits two CPython minor versions,
-3.14 and 3.15, and CPython ships a new one each year. Flet is pre-1.0, and an
-upper bound excludes its 1.0. The dev tools have only lower bounds, so their
-behaviour changes underneath the gate. The failure being guarded against
-is not a stale pin. It is returning after a gap to a tree that no longer
-builds. By then the upgrade that would fix it is several versions wide, and
-the cost of coming back exceeds what a hobby project will pay.
+3.14 and 3.15, and CPython ships a new one each year. The interface's two
+toolkits each carry an upper bound: PySide6-Essentials below 7.0 and pyqtgraph
+below 0.15. The dev tools have only lower bounds, so their behaviour changes
+underneath the gate. The failure being guarded against is not a stale pin. It
+is returning after a gap to a tree that no longer builds. By then the upgrade
+that would fix it is several versions wide, and the cost of coming back exceeds
+what a hobby project will pay.
 
-The risk is not hypothetical here. `pyproject.toml` records the instance. In
-pydantic 2.12.4, the library began passing `prefer_fwd_module=` to
-`typing._eval_type`. CPython added that keyword between 3.14.0rc2 and 3.14.0
-final. Parameter loading in the scientific core stopped working. It took
-one dependency, one patch version and one interpreter build.
+The risk is real here, and `pyproject.toml` records the instance. In pydantic
+2.12.4, the library began passing `prefer_fwd_module=` to `typing._eval_type`.
+CPython added that keyword between 3.14.0rc2 and 3.14.0 final. Parameter
+loading in the scientific core stopped working. It took one dependency, one
+patch version and one interpreter build.
 
 **What notices.** `.github/workflows/drift.yml` runs monthly and on demand. It
 asks two questions that `quality.yml` is right not to ask, and a third
@@ -1024,16 +1025,16 @@ question that runs weekly:
   passes only when another test runs before it. The run's output names the
   seed that reproduces the failure (`PL-75D9`).
 
-The workflow also prints what exists *beyond* the declared bounds, without
-failing on it. It does not fail, because crossing a major bound is a
-deliberate migration, and CI should not attempt one. That step is how anyone
-learns at all that a Flet 1.0 or a pydantic 3 is available.
+The workflow also prints what exists *beyond* the declared bounds, and does not
+fail on it, because crossing a major bound is a deliberate migration that CI
+should not attempt. That step is how anyone learns at all that a PySide6 7.0 or
+a pydantic 3 is available.
 
-**What does not happen.** There are no automated dependency pull requests and
-no version-bump campaign. The current pins are correct today. The point is to
-know when one stops being correct, not to raise numbers on a schedule.
-Automated bumps were considered and rejected, on the evidence this project
-already cites about narrow versus broad automation. Broad automation
+**What does not happen: automated upgrades.** There are no automated dependency
+pull requests and no version-bump campaign. The current pins are correct today.
+The point is to know when one stops being correct, not to raise numbers on a
+schedule. Automated bumps were considered and rejected, on the evidence this
+project already cites about narrow versus broad automation. Broad automation
 accumulates noise until people route around it, which is the failure
 `PL-ZBJ0` records.
 
