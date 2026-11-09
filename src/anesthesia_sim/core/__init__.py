@@ -78,7 +78,8 @@ returns, bit for bit, at every flow that the test suite walks through (checked
   is `inf * 0.0` where the time constant overflows (`PL-B26Y`). Nothing in the
   closed form contains a time constant now.
 - **The patient compartments' earlier form, applied to the fraction, needed a
-  guard at zero flow.** Until `PL-XWFP`, each kept a guard, applied its form to
+  guard at zero flow.** Those compartments are `TissueGroup` and
+  `VenousBloodCompartment`. Until `PL-XWFP`, each kept a guard, applied its form to
   the fraction, and wrote the amount back as `capacity_l * next_fraction`. That
   round trip returns some amounts one unit in the last place away from where
   they started. For example, 0.40250137443750783 L comes back as

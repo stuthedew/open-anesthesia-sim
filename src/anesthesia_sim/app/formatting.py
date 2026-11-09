@@ -24,7 +24,8 @@ upstream carries full binary64 precision: the compartment states, every
 integration step, and every state of the `DrawnWindow` that the chart is drawn
 from. The rounding happens exactly once, here.
 
-Two of the decimal counts in this module do more than set the display.
+Two of the decimal counts in this module do more than set the display, and
+their comments say so.
 `CONCENTRATION_DISPLAY_DECIMALS` and `FLOW_DISPLAY_DECIMALS` set the slider
 steps, so they decide which settings can reach the model. The concentration
 resolution also sets the smallest inspired fraction from which an F_A/F_I ratio
@@ -44,9 +45,9 @@ the only one that means the same thing when the agent changes. It is the percent
 divided by a per-agent constant, so `MAC_DISPLAY_DECIMALS` is *derived* from
 `CONCENTRATION_DISPLAY_RESOLUTION_PERCENT` rather than chosen separately. A
 re-derived percent resolution therefore carries through to the MAC readout
-without a second derivation. A MAC multiple is a statement about a partial
-pressure, never about a depth of anesthesia
-(`docs/MODEL.md` § "MAC multiples as a display unit"). The divisor is a tier-3
+without a second derivation. `docs/MODEL.md` § "MAC multiples as a display
+unit" states what that division does and does not assert. A MAC multiple is a
+statement about a partial pressure, never about a depth of anesthesia. The divisor is a tier-3
 parameter, and the interface displays its provenance.
 """
 

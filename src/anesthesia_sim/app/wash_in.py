@@ -8,7 +8,8 @@ The ratio has its own module so that it can be read, cited and tested without
 loading the dashboard that draws it. `CLAUDE.md`'s safety-critical standard
 requires this, because the ratio is a clinically meaningful displayed value
 derived from two other values. `docs/MODEL.md` § "F_A/F_I as a displayed ratio"
-specifies the quantity, and this module implements that specification. Its
+specifies the quantity, and this module implements that specification, as
+`app/formatting.py` implements § "Displayed precision". Its
 tests are in `tests/unit/test_wash_in.py`.
 
 $`F_A`$ is the modelled alveolar fraction, and $`F_I`$ is the modelled
