@@ -3,12 +3,14 @@ id: PL-GQWP
 title: The new README publishes the playback-rate ladder, the chart time-base range and the agent list, and nothing holds any of the three to the code
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs, test
 feature: project-introduction
-touches: README.md, tests/unit/test_playback.py, src/anesthesia_sim/app/playback.py, src/anesthesia_sim/app/chart_time_base.py, tools/doc_check.py
+touches: README.md, tests/unit/test_readme_claims.py
 added: 2026-09-06
-verify: grep -q 'README.md' tests/unit/test_playback.py && uv run pytest tests/unit/test_playback.py
+closed: 2026-11-09
+pr: 2075
+verify: grep -q 'README.md' tests/unit/test_readme_claims.py && uv run pytest tests/unit/test_readme_claims.py
 ---
 
 **Problem.** `README.md` § "What it simulates" states three capability facts
@@ -74,3 +76,14 @@ Unchanged, and the convention names which of its two options conforms: option 1 
 a test holding the `README.md` sentence to the Python constant - is clause 1
 satisfied by test, and option 2 is clause 1 satisfied by a
 `<!-- provenance: -->` marker. Either is acceptable; pick on cost.
+
+**Done 2026-11-09.** Option 1, extended to all three facts, in one new test
+file, `tests/unit/test_readme_claims.py`. The rate test builds the README's list
+from `SUPPORTED_PLAYBACK_RATES` and the interface's own label function. The
+time-base test checks that the selectable range is still 900 s to 43,200 s and
+that the README still says "from fifteen minutes to twelve hours". The agent
+test compares the agents named in the README's first sentence of § "The model"
+with the display names of the built-in agent files. Option 2, a marker
+vocabulary for the README, was not built: three tests cover the three facts,
+and a marker would add upkeep for no further reach. The `verify:` command now
+names the new file instead of `tests/unit/test_playback.py`.

@@ -183,6 +183,15 @@ the same line of research as the volunteer data. A pass shows that the model
 reproduces what its parameter set is meant to give, not that the parameter set
 is independently right.
 
+The same test also compares the first five minutes of elimination, as
+$`F_A/F_{A0}`$: the alveolar fraction divided by its value when the agent was
+turned off. That comparison does not agree. The model keeps more agent in the
+alveoli than every published cohort did. Most of the difference comes from the
+breathing circuit: the model always rebreathes, and the volunteers breathed
+through a fresh non-rebreathing circuit. The model's documentation gives the
+numbers and the reasons (`docs/MODEL.md` § "Published wash-in and elimination
+validation test").
+
 The model's documentation (`docs/MODEL.md`) therefore grades the cited source of
 every value as a primary measurement, a secondary synthesis, or the parameter set
 of another simulator used as a reference. Moving the remaining values onto primary
