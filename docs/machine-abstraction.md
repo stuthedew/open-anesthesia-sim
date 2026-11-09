@@ -178,10 +178,12 @@ mapping. A named strategy from a registry in `core/` fills each slot. A machine
 profile names one strategy for each slot, and cannot supply its own.
 
 **A strategy is a pure function** of the profile fields it declares, the run's
-current controls, and $`F_I`$. Question 6's answer rests on that declaration:
-every difference between machines traces to a named field.
+current controls, and $`F_I`$, and it declares which fields it reads. Question
+6's answer rests on that declaration: every difference between machines traces
+to a named field.
 
-**Two rules apply to every strategy.** A strategy may not read a field it did
+**Two refusals apply to every strategy, recorded so that they are not proposed
+again.** A strategy may not read a field it did
 not declare. It may not be added to the registry without an entry in the tables
 below, because the registry *is* the closed set. A registry member that this
 document does not list is the "too permissive" failure that the design brief
@@ -234,7 +236,9 @@ vaporizer principle described here delivers a fixed volume percentage, making it
 different from conventional vaporizers, which deliver fixed partial pressures."*
 The two mappings differ by a factor of
 $`P_{\mathrm{ambient}}/P_{\mathrm{reference}}`$. **This model has no ambient
-pressure, so in its present domain the two agree everywhere.** The item for
+pressure, so in its present domain the two agree everywhere.** The slot is real
+and its second member is named, but today the two mappings are a declared
+coincidence, not a distinction. The item for
 recording the model's sea-level assumption (`PL-5K5C`) is what separates them.
 Until that item is done, a profile that names `fixed_volume_percent` gets the
 same numbers as one that names `variable_bypass`, and the test meant to tell the
@@ -347,8 +351,9 @@ strategy names.
 dial position, and the patient circuit volume. None of these is a machine
 specification, and the reason differs for each:
 
-- **Opening fresh gas flow.** An earlier item reasoned that a fresh gas flow is
-  a machine setting rather than a patient or agent property (`PL-8DJ7`). That
+- **Opening fresh gas flow.** An earlier item deferred this field's home to
+  this design, reasoning that a fresh gas flow is a machine setting rather than
+  a patient or agent property (`PL-8DJ7`). That
   rightly rules out the patient and the agent, but does not settle where the
   field lives. The survey supplies the fact that does: **no reachable source
   states a startup fresh gas flow for any surveyed machine.** A per-machine
@@ -435,7 +440,8 @@ subsumes the fallback without undoing it.
 ### The reference breathing system
 
 **The reference profile is a breathing system, not a machine, and stays one.**
-In its file, `reference_circle_system.json`, the circuit volume
+Its file, `reference_circle_system.json`, is named for what it is. There the
+circuit volume
 (`circuit_volume_l`) of 6.0 L is the assembled total of apparatus and patient
 circuit, for three reasons:
 
@@ -456,8 +462,8 @@ circuit, for three reasons:
 
 **No source divides the 6.0 L between apparatus and patient circuit**, so
 splitting it would invent two numbers where one is recorded. The profile
-therefore keeps the stored figure. Its list of provenance gaps
-(`provenance_gap`) declares that the figure is the sum (`PL-TBMX`). Real
+therefore keeps the stored figure. Its provenance note (`provenance_gap`)
+declares that the figure is the sum (`PL-TBMX`). Real
 machines are added beside the reference profile, not made by retrofitting it
 into a machine it never claimed to be. Once the machine and the patient
 circuit get separate volumes, a profile built from Shin et al.'s figures will
@@ -694,8 +700,9 @@ that nobody works it out again from scratch.
   floors, agent lists and sample flows as unknown for the GE and Getinge
   machines, and for three of the five Dräger ones. Its last section names the
   manuals and the route. **These unknowns are a condition on each profile, not
-  on this abstraction.** The loader refuses a profile with `unknown` in a field
-  the model reads, so such a machine stays out until its fields are known. That
+  on this abstraction.** Question 4's refusal 2 rejects a profile with
+  `unknown` in a field the model reads, so such a machine stays out until its
+  fields are known. That
   machine's manual is sought when its profile is built, not in advance (project
   owner, 2026-09-20). The design is complete without any of these values:
   meanwhile it runs on the reference profile by construction, not for want of

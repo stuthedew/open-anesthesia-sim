@@ -88,14 +88,13 @@ reach a manufacturer's technical data.
 **This session could not take machine behavior from manufacturers' manuals.**
 The brief for this survey asked that machine behavior be taken from the
 manufacturer's operator or technical manual, cited by document and revision.
-On 2026-09-19, a test showed which sites could be reached from the network
-used for this survey. The test followed the method in the project's rule on
-citing sources (`.claude/rules/citing-sources.md`).
-On 2026-09-19 the network refused `www.draeger.com`, `www.gehealthcare.com`, `www.iso.org`,
+A test on 2026-09-19 followed the method in the project's rule on citing
+sources (`.claude/rules/citing-sources.md`). On 2026-09-19 the session's egress
+gateway refused `www.draeger.com`, `www.gehealthcare.com`, `www.iso.org`,
 `webstore.ansi.org`, `standards.iteh.ai` and every manual-hosting mirror tried.
 It reached `www.ncbi.nlm.nih.gov`, `link.springer.com`, `doi.org` and
 `search.worldcat.org`, though `search.worldcat.org` rate-limited the one query
-put to it. On 2026-10-06 the network still refused `draeger.com`,
+put to it. On 2026-10-06 the gateway still refused `draeger.com`,
 `www.draeger.com`, `www.iso.org`, `webstore.ansi.org` and `standards.iteh.ai`.
 Three routes remain: the PubMed MCP server, the project owner's private
 reference corpus, and direct identifier checks. So values get into this
@@ -617,10 +616,10 @@ alternatives, and each machine uses one.
 compartment, which has no place for these two differences.
 
 - **Fresh gas inlet position and internal topology** (b7) measurably change
-  $`F_I/F_D`$. How the model treats them is visible in the comparison table
-  (`PL-WZVZ`). When the parameter that produced a difference is not in the model
-  at all, a curve that shows the difference and attributes it to a trade name is
-  a presentation-safety failure under the clinical-output standard in
+  $`F_I/F_D`$. The comparison table (`PL-WZVZ`) makes this decision visible.
+  When the parameter that produced a difference is not in the model at all, a
+  curve that shows the difference and attributes it to a trade name is
+  therefore a presentation-safety failure under the clinical-output standard in
   `CLAUDE.md`. Choose option 1 or 2, and record the choice in the work item
   (`PL-FG9D`):
   1. Represent them with a multi-compartment circuit. The closest existing plan
@@ -776,7 +775,8 @@ description).**
   quoted above is from printed pages 453–468, and the page each sits on is
   recoverable from the dump's page markers. The chapter is from a textbook and
   so is tier 2, but for what a device does it is the manufacturer's own
-  technical account (rule 3 under § "How a value gets into this document").
+  technical account. Rule 3 under § "How a value gets into this document" says
+  what it may be cited for.
 
 **Evidence that a machine was in service and studied, used only to select the
 machines surveyed.**
@@ -793,7 +793,8 @@ machines surveyed.**
   against the PubMed record 2026-09-20 (`PL-NM7X`). No PubMed Central full text,
   and a check of the private reference corpus the same day did not find it. It
   is an *in vitro* study using a 2 L test lung. § "(a2)" says why it is **not**
-  evidence about clinical practice.
+  evidence about clinical practice, and records that it was once cited as such
+  here.
 - Jakobsson P, Lindgren M, Jakobsson JG. Wash-in and wash-out of sevoflurane in
   a test-lung model: a comparison between Aisys and FLOW-i. *F1000Res.*
   2017;6:389.

@@ -1,10 +1,13 @@
 ---
 id: PL-3MTS
 title: Restructure docs/machine-survey.md as the copy editor's structure read proposes
-status: untriaged
+status: done
 feature: machine-docs-structure
 touches: docs/machine-survey.md, docs/items/PL-8ZD7-docs-machine-survey-md-answer-the-close-out.md
 added: 2026-11-07
+closed: 2026-11-09
+pr: 2055
+verify: grep -qxF '## What `PL-FG9D` needs: data, behavior, and what is neither' docs/machine-survey.md && ! grep -qF 'needs: data against behavior' docs/machine-survey.md
 ---
 
 **Problem.** Restructure docs/machine-survey.md as the copy editor's structure read proposes
@@ -97,3 +100,8 @@ The chapter reads' queries that this restructure did not answer are filed in `PL
 A check by hand found one more: rule 4 had dropped that a web search is not a source, which the sentence after it depends on. It is restored.
 
 The first blind review reported nothing. The second reported, as optional, that Biro 1997 sits under the tier-1 measurements although it measured minute volume, which the model does not compute. Biro was in that group before the restructure, which only reordered the group, so the query is filed in `PL-8ZD7`.
+
+## The line edit (2026-11-09)
+
+The line edit of this document ran with `PL-39ZK`'s, on the same branch. `PL-39ZK` § "The line edit (2026-11-09)" lists what its comparison of old and new text found in this document and what was restored.
+

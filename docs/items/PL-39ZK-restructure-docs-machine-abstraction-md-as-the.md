@@ -1,10 +1,13 @@
 ---
 id: PL-39ZK
 title: Restructure docs/machine-abstraction.md as the copy editor's structure read proposes: answer the seven questions in order, state a machine's whole effect on the model once, and use one name for a machine module
-status: untriaged
+status: done
 feature: machine-docs-structure
 touches: docs/machine-abstraction.md, src/anesthesia_sim/core/circuit.py, docs/items/PL-37N4-docs-machine-abstraction-md-answer-the-close.md, docs/items/PL-D42Z-docs-machine-abstraction-md-s-b11-row-calls.md
 added: 2026-11-07
+closed: 2026-11-09
+pr: 2055
+verify: grep -qx '## A machine changes only two rates and one volume' docs/machine-abstraction.md && grep -qx '## Which values belong to the machine, the run and the model' docs/machine-abstraction.md && grep -qF 'The line edit (2026-11-09)' docs/items/PL-39ZK-restructure-docs-machine-abstraction-md-as-the.md
 ---
 
 **Problem.** Restructure docs/machine-abstraction.md as the copy editor's structure read proposes: answer the seven questions in order, state a machine's whole effect on the model once, and use one name for a machine module
@@ -148,4 +151,13 @@ The chapter reads' queries that this restructure did not answer are filed in `PL
 5. "Why declining is not merely the cheap option" placed before the options it refers to: moved back after them.
 6. Question 5's "argues directly against" cut to a pointer: restored.
 
-The first blind review reported nothing. The second reported that the pointer from "the machine owns" to the schema table took in two fields that were never built, so the list was restored.
+The first blind review reported nothing. The second reported that the pointer from "the machine owns" to the schema table took in two fields that were never built, so the list was restored and the query is filed in `PL-37N4`.
+
+## The line edit (2026-11-09)
+
+The copy editor read the 48 passages that the branch changed in both documents, the docstring of `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN` and the item records that cite them, and rewrote 44. Three reviewers then compared each edited paragraph's old and new text. They found 13 statements that the edit had lost or changed, and each is restored:
+
+- In this document: that a strategy declares which fields it reads; that the two rules for strategies are refusals recorded so that they are not proposed again; that the two dial mappings are a declared coincidence today; that `PL-8DJ7` deferred the opening flow's home to this design; that `reference_circle_system.json` is named for what it is; that `provenance_gap` is a note, where the edit had called it a list; and the pointer to Question 4's refusal 2.
+- In `docs/machine-survey.md`: that the comparison table makes the inlet-position decision visible, which is why a trade-name attribution would be a safety failure; that the session's egress gateway refused the sites, where the edit said "the network"; that rule 3 limits what *Modern Anesthetics* may be cited for; and that the Hoffmann entry was once cited as clinical evidence.
+- In the item records: that the blind review's query is filed in `PL-37N4`, and the quote that locates `PL-8ZD7`'s query about the accuracy table.
+
