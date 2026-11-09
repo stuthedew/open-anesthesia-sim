@@ -10,7 +10,7 @@ touches: docs/MODEL.md, tests/unit/test_formatting.py
 deferred-from: v0.7.0 - a new problem: the cost display and its three-significant-figures paragraph came with 7baae320 (2026-11-02), after the freeze
 added: 2026-11-04
 payoff: every agent amount and the cost beside it are judged against one limit, so the section gives no reason its own rule contradicts
-verify: ! grep -qF 'At four it would be 0.010 %, finer than one SD' docs/MODEL.md
+verify: ! grep -qF 'At four it would be 0.010 %' docs/MODEL.md
 ---
 
 **Problem.** `docs/MODEL.md` § "Displayed precision" judges the cost's significant figures against one SD of the density. It judges every other agent amount, the liquid volume beside the cost included, against a seventh of an SD. So the section applies two limits to figures with the same relative uncertainty.

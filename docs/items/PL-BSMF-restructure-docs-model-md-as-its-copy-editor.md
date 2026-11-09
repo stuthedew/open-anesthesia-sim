@@ -1,9 +1,17 @@
 ---
 id: PL-BSMF
 title: Restructure docs/MODEL.md as its copy editor structure read of 2026-11-05 proposes: new chapter order, about 60 facts given in two to six chapters each cut to one home with pointers, misplaced passages moved; the findings are in /mnt/project-files/v0.7.0/repo-copy-edit/runs/docs-MODEL-md/structure/outline-read.txt and its chapter reads
-status: untriaged
+priority: P2
+effort: L
+status: done
+classes: docs
 feature: model-md-structure
+touches: docs/MODEL.md, docs/items/PL-7R8S-docs-model-md-displayed-precision-judges-the.md
 added: 2026-11-05
+closed: 2026-11-07
+pr: 2054
+payoff: a reader of MODEL.md meets each chapter after the ones it relies on, and finds each fact in one place, with pointers from the others
+verify: grep -qF '## Discarding a run, and the questions that guard it' docs/MODEL.md && grep -qF '### What a named test, a missing test and a date tell the reader' docs/MODEL.md && ! grep -qF 'The milestone must demonstrate' docs/MODEL.md
 ---
 
 **Problem.** Restructure docs/MODEL.md as its copy editor structure read of 2026-11-05 proposes: new chapter order, about 60 facts given in two to six chapters each cut to one home with pointers, misplaced passages moved; the findings are in /mnt/project-files/v0.7.0/repo-copy-edit/runs/docs-MODEL-md/structure/outline-read.txt and its chapter reads
@@ -108,3 +116,5 @@ Structure:
 - Repeated: the one-SD shift of a displayed compartment is given in four places: Why two decimals 10211-10222, One resolution 10428-10434, Interface boundary 8152-8160 and Supported simulation step 2173-2180. It belongs in § "Why the readouts show two decimals". The others keep a pointer. Also, "the display's decimal count never feeds the model" is in 2160-2165, 8152-8160 and 10310-10314. Keep it in 10310-10314.
 - Repeated: how long the slow compartments stay below the last digit is in Why two decimals 10249-10258 and 10296-10306, and in the hover 11260-11265 ("fat… thirteen minutes and muscle… two"). Keep it in Why two decimals. The hover keeps a pointer.
 - Repeated: Delivery-limit 4226-4227 (no release while a scientific `TBD` remains) duplicates Release gate 12891. Cut it from Delivery-limit.
+
+**Line edit, 2026-11-09.** The copy editor read the 106 MODEL.md passages that the restructure changed, one section at a time, and the 9 changed passages of the branch's new item briefs. It rewrote 99. Three sections overflowed one reply and came back unedited (`PL-DM95`), so they were rerun in smaller pieces. Eight reviewers then compared each rewritten passage with its text before the edit and found about 30 lost or weakened statements and nine bold leads that other files cite by name. All were restored. The two blind review passes found four problems, and each was fixed by reverting to main's wording.
