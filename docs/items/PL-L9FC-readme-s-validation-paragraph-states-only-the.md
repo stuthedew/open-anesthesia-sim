@@ -79,5 +79,7 @@ facts about the elimination half of the same test: the five-minute
 $`F_A/F_{A0}`$ comparison does not agree, because the model keeps more agent in
 the alveoli than every cohort, and most of that difference comes from the
 breathing circuit, since the model always rebreathes and the volunteers did
-not. The numbers stay in `docs/MODEL.md` § "Published wash-in and elimination
+not. A third sentence, added on the blind review's finding, says that with the
+circuit's effect removed desflurane then washes out faster than the volunteers.
+The numbers stay in `docs/MODEL.md` § "Published wash-in and elimination
 validation test", which the paragraph names.

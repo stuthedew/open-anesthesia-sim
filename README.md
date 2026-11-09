@@ -188,7 +188,10 @@ $`F_A/F_{A0}`$: the alveolar fraction divided by its value when the agent was
 turned off. That comparison does not agree. The model keeps more agent in the
 alveoli than every published cohort did. Most of the difference comes from the
 breathing circuit: the model always rebreathes, and the volunteers breathed
-through a fresh non-rebreathing circuit. The model's documentation gives the
+through a fresh non-rebreathing circuit. With the circuit's effect removed in a
+test, three of the four cohorts agree, but desflurane then washes out faster
+than the volunteers did, a disagreement about how agent returns from the
+tissues. The model's documentation gives the
 numbers and the reasons (`docs/MODEL.md` § "Published wash-in and elimination
 validation test").
 

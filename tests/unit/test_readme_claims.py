@@ -32,7 +32,9 @@ def test_the_readme_lists_every_offered_playback_rate_in_order() -> None:
         format_playback_rate(rate.multiplier).removesuffix(" real time")
         for rate in SUPPORTED_PLAYBACK_RATES
     ]
-    sentence = f"{', '.join(multipliers[:-1])} or {multipliers[-1]} real time"
+    # Anchored at "played at **" and closed by the bold, so the README cannot
+    # list a rate before or after the ones the interface offers and still pass.
+    sentence = f"played at **{', '.join(multipliers[:-1])} or {multipliers[-1]} real time**"
 
     assert sentence in README_TEXT, (
         f"README.md § 'Playback speed and time base' must list the offered rates as '{sentence}'"
