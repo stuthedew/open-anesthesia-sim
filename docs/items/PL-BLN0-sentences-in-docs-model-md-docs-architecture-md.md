@@ -166,3 +166,75 @@ PL-LKX7, PL-N3SK) are outside step 2, because the ratified scope of
 `PL-4FBP` leaves `docs/MODEL.md`'s free prose to the close-out review, and
 this audit is evidence that the review did not hold for them.
 
+
+## Next steps (written 2026-11-09, at `edf349ade`)
+
+The session that recorded step 1 stopped at its spend budget before the build.
+The build follows the brief as written, because step 1 found no better route.
+
+1. **The paragraph shape and the entity.** In `tools/doc_check.py`, add a
+   member shape that yields each paragraph under the family's heading, as
+   `read_blocks` reads them, up to the next heading at the family's depth or
+   shallower. `_numeric_paragraph_members` is the model to follow. Add a
+   `CODE_ENTITY` built with `_entity_kind("code", ...)`. A member names code
+   when it holds a code span other than a bare item id, read with
+   `_code_spans`, because an item id alone is what let PL-GPTN's paragraph go
+   stale. Its fixed form is then "no code yet (`PL-XXXX`)", which
+   `check_bound_families` already resolves against the queue.
+2. **The families.** Bind every level-2 section of `docs/ARCHITECTURE.md`
+   and `docs/interface-provenance.md` § "What this project adopts, diverges
+   from, and refuses". On 2026-11-09, 16 of the 150 paragraphs in
+   `docs/ARCHITECTURE.md` named no code. They were in § "Data files", § "Data
+   flow", § "What a branch is" and § "User state: the saved Workspaces". In
+   the interface-provenance section, 12 of 31 named no code. The new check
+   lists them by line once it is built.
+3. **The annotation pass, in the same commit as the families.** Make each
+   listed paragraph name the module, symbol or test it describes, or carry
+   the fixed form against the open item that owes the code. PL-GPTN's Prune
+   entry and PL-Y9F0's paragraph on a view's chrome are among them, so claim
+   both alongside and repair their sentences in this pass.
+4. **The review list.** Where `candidates` finds a hit inside a member of a
+   bound family, print the member's first and last line, so the reviewer
+   reads the whole paragraph. The hit lines are built where `candidates`
+   formats `f"    {doc}:{number}  ({token})"`.
+5. **Tests** in `tests/unit/test_doc_check.py`: a paragraph that names no
+   code fails, and so does one whose only code span is an item id. The fixed
+   form against a closed item fails. `candidates` prints a member's range.
+6. **Step 3**: `docs/MODEL.md` § "How this document is held to the tree"
+   says that the convention binds `docs/MODEL.md`'s families,
+   `docs/ARCHITECTURE.md` and the interface-provenance section, and its note
+   for developers names the two new families.
+
+**Each open member's disposition**, decided by this head:
+
+- **Repaired on this head's branch, each claimed alongside with its own
+  commit:**
+  - PL-4CZW: the branch chapter is current (a fork onto the supported run
+    length is refused), and § "Data flow" is stale.
+  - PL-6G7N: § "Where new code belongs" is current, and § "Layering"'s
+    "defaults are still written in `core/`" is stale.
+  - PL-G1J9: § "Layering"'s claim that `app/` performs no unit calculation
+    was wrong when written. Read `chart_frame.py`, `formatting.py` and
+    `agent_cost.py` first, then say what `app/` converts or computes.
+  - PL-GSPR: say in the package map that `AgentUptakeSystem.advance`
+    advances the coupled system.
+  - PL-HLTR: the startup diagram shows
+    `AgentUptakeSystem.for_agent(agent_id)`.
+  - PL-GPTN and PL-Y9F0: repaired by the annotation pass.
+- **Left as their own items, outside this head's mechanism:**
+  - PL-HR4T and PL-N3SK are `docs/MODEL.md` free prose.
+  - PL-LKX7 also needs a new measurement in the running app.
+  - PL-97S1 is a citation's form.
+  - PL-LNFG needs a check of a data file's sources note, which is a
+    citation check, not paragraph binding.
+
+**`docs/MODEL.md`'s free prose stays outside the binding.** Of its four stale
+members, the brief's mechanism would have caught at most two:
+
+- PL-D1LR, if its paragraph had named the litre format function.
+- PL-N3SK, had its writer cited an item rather than a planned milestone.
+
+PL-KSLX already named its code, was listed, and still went stale. PL-LKX7 is
+a measurement. Annotating every behaviour paragraph of a 12,500-line document
+would not repay that, so this head keeps `PL-4FBP`'s ratified scope rather
+than putting it back to the owner.
