@@ -1,9 +1,12 @@
 """The mixed-venous blood compartment, which pools the outflow of every tissue group.
 
 The pool combines the flow-weighted outflow from every tissue group (see
-`patient.py`). That blood then returns to the alveoli. The lung's exchange
-with blood is perfusion-limited, so blood leaves the lung at the alveolar
-partial pressure and the model needs no separate arterial compartment.
+`patient.py`). That blood then returns to the alveoli. The model has no
+arterial compartment. It has no shunt and one alveolar compartment, and the
+lung's exchange with blood is perfusion-limited, so it defines arterial blood
+as leaving the lung at the alveolar partial pressure. That identity is a
+deliberate simplification: in patients the arterial partial pressure runs
+below the end-tidal one (`docs/MODEL.md` § "Model boundary").
 """
 
 from dataclasses import dataclass
