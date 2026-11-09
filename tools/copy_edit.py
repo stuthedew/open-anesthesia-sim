@@ -21,18 +21,11 @@ experienced technical editors make at least two passes (project owner,
 2026-11-04, ratified, `PL-HGZS`). That run gets the same request, with each
 rewritten passage replaced by its edit. A line before the passages marks the
 request as a second read (`SECOND_READ`). The audit fixes what the earlier
-reads missed or introduced. Audits go on until one changes
-nothing, up to `MAX_READS` reads in all (project owner, 2026-11-05, ratified,
-over exactly two reads). When the first read rewrites nothing, there is no
-audit. The printed reply gives each passage once, in the text of the last read
-that rewrote it, else `[N] keep`. Every read's notes follow.
-
-A passage written only for a later session or for the project owner, such as
-an item brief, a workflow file, a commit message, a pull request body or a
-reply, gets at most `LIMITED_READS` reads and `LIMITED_CHECK_ROUNDS` rounds of
-meaning checks (project owner, 2026-11-09). Its header's "For:" line names its
-readers, and `LIMITED_READERS` lists the ones that qualify. A passage that any
-other reader reads keeps the full limits.
+reads missed or introduced. Audits go on until one changes nothing, up to
+`MAX_READS` reads in all (project owner, 2026-11-05, ratified, over exactly
+two reads). When the first read rewrites nothing, there is no audit. The
+printed reply gives each passage once, in the text of the last read that
+rewrote it, else `[N] keep`. Every read's notes follow.
 
 **A separate meaning check then compares each edit with its original**
 (`PL-F0Q2`). The copy editor's own audits passed about 120 statements that its
@@ -46,6 +39,13 @@ finds lost goes back to the copy editor in a restore read, and the checks run
 again, up to `MAX_CHECK_ROUNDS` rounds. A passage that still loses a statement
 after the last round is printed as `[N] keep`, with what it lost under "Meaning
 check:", so no rewrite in which a check still finds a loss reaches a file.
+
+A passage gets at most `LIMITED_READS` reads and `LIMITED_CHECK_ROUNDS` rounds
+of meaning checks where it is written only for a later session or for the
+project owner, such as an item brief, a workflow file, a commit message, a pull
+request body or a reply (project owner, 2026-11-09). Its header's "For:" line
+names its readers, and `LIMITED_READERS` lists the ones that qualify. A passage
+with any other reader keeps the full limits.
 
 Before the reply is printed, a code check compares each rewrite with the rows it
 replaces (`check_code`). It refuses a rewrite that changes code, a fenced
@@ -172,9 +172,9 @@ LIMITED_READERS = (
 )
 #: The most copy-editor reads a passage for `LIMITED_READERS` gets: the edit
 #: and one audit (project owner, 2026-11-09: "Copy edit non-core human
-#: documents like PL items etc at most twice"). A later read that rewrites such
-#: a passage is not taken. Raising it spends up to `MAX_READS` reads on text
-#: that no clinician reads.
+#: documents like PL items etc at most twice"). A later read's rewrite of such
+#: a passage is not taken. Raising the limit spends up to `MAX_READS` reads on
+#: text that no clinician reads.
 LIMITED_READS = 2
 #: The name of each read in order, used in its files and its notes.
 READ_NAMES = ("first", "second", "third", "fourth")
@@ -216,8 +216,8 @@ CHECK_PANEL = 2
 #: keeps more passages unedited, and a higher one spends more reads on a
 #: passage whose restores keep failing.
 MAX_CHECK_ROUNDS = 5
-#: The most rounds of meaning checks a passage for `LIMITED_READERS` gets, so
-#: it gets at most one restore read (project owner, 2026-11-09, with
+#: The most rounds of meaning checks a passage for `LIMITED_READERS` gets,
+#: which allows it at most one restore read (project owner, 2026-11-09, with
 #: `LIMITED_READS`). A loss that the last of these rounds still finds keeps the
 #: passage as it was.
 LIMITED_CHECK_ROUNDS = 2
@@ -320,8 +320,8 @@ def passage_count(request: str) -> int:
 def limited_passages(request: str) -> frozenset[int]:
     """The passages of `request` whose header names only `LIMITED_READERS` as their readers.
 
-    A header that names no reader, or any other reader, leaves its passage
-    unlimited, so a passage is never given fewer reads by mistake.
+    A passage whose header names no reader, or any other reader, keeps the full
+    limits, so no passage is ever given fewer reads by mistake.
     """
     found = set()
     for line in prose_of(request)[1]:
@@ -690,16 +690,16 @@ def merge(
 ) -> str:
     """One reply from every read's reply in `replies`, in order, for `count` passages.
 
-    `names` names each read in `replies`, in the same order, and by default
-    they are the first names in `READ_NAMES`. Each passage gets one verdict:
-    the text of the last read that rewrote it, else `[N] keep`.
-    Where `check` is given, it refuses a rewrite that changed code, and the
-    passage then becomes `[N] keep` with the reason under "Code check:". The
-    check also lists each code name a rewrite dropped. A passage in `lost`
-    becomes `[N] keep` too, with what the meaning check found it lost under
-    "Meaning check:". `skipped` gives, for each reply in order, the passages
-    whose rewrite in that reply is not taken, because the passage had already
-    had all the reads it is allowed (`LIMITED_READS`). The notes of every read
+    `names` has one name for each read in `replies`, in the same order, and
+    defaults to the first names in `READ_NAMES`. Each passage gets one verdict:
+    the text of the last read that rewrote it, else `[N] keep`. `skipped`
+    gives, for each reply in order, the passages whose rewrite in that reply
+    is not taken, because the passage had already had all the reads it is
+    allowed (`LIMITED_READS`). Where `check` is given, it refuses a rewrite
+    that changed code, and the passage then becomes `[N] keep` with the reason
+    under "Code check:". The check also lists each code name a rewrite
+    dropped. A passage in `lost` becomes `[N] keep` too, with what the meaning
+    check found it lost under "Meaning check:". The notes of every read
     follow, then those of each meaning check in `checks`, under its label, so
     that every cut, move, query and finding is kept. Raises `Refused` where a
     reply does not give each passage one verdict, or a rewrite has no text.
@@ -939,15 +939,15 @@ def meaning_check(
     Where any of them lists anything, `editor` gets a restore read
     (`restore_request`) with every finding, and its rewrites update `current`
     and join `replies` under a name in `names`. The checks then run again, up
-    to `MAX_CHECK_ROUNDS` rounds. Each run's counts join `counts`. Returns what
-    the last round found still lost, by passage, and every check's label and reply. A
-    check whose reply cannot be read counts as finding every edited passage
-    lost, because nothing then shows that the edit kept the original's
-    meaning. A restore read whose reply cannot be read changes nothing. A
-    passage in `limited` gets at most `LIMITED_CHECK_ROUNDS` rounds: what the
-    last of them finds lost stays lost, and later rounds and restore reads
-    leave it alone. Each restore read's passages that it may not rewrite join
-    `skipped`.
+    to `MAX_CHECK_ROUNDS` rounds. A passage in `limited` gets at most
+    `LIMITED_CHECK_ROUNDS` rounds: what the last of them finds lost stays
+    lost, and later rounds and restore reads leave it alone. For each restore
+    read, the passages that it may not rewrite join `skipped`. Each run's
+    counts join `counts`. Returns what the last round found still lost, by
+    passage, and every check's label and reply. A check whose reply cannot be
+    read counts as finding every edited passage lost, because nothing then
+    shows that the edit kept the original's meaning. A restore read whose
+    reply cannot be read changes nothing.
     """
     count = passage_count(text)
     checks: list[tuple[str, str]] = []

@@ -121,9 +121,9 @@ def request_of(*prose: str) -> str:
 def draft_request(tmp_path: Path, *lines: str, kind: str = "Replies") -> str:
     """The request that `tools/new_prose.py --draft` writes for a draft made of `lines`.
 
-    `kind` picks the reader rows, as `--kind` does. A reply's readers get
-    `copy_edit.LIMITED_READS` reads, and the `README.md` rows' readers get the
-    full `copy_edit.MAX_READS`.
+    `kind` chooses the kind of text whose readers the request names, as
+    `--kind` does. A reply to the owner gets `copy_edit.LIMITED_READS` reads,
+    and `README.md` text gets the full `copy_edit.MAX_READS`.
     """
     draft = tmp_path / "draft.md"
     draft.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -788,7 +788,7 @@ def test_the_instructions_name_the_meaning_check_s_and_the_restore_read_s_layout
 
 
 def test_each_limited_reader_is_a_reader_the_plain_writing_rule_names() -> None:
-    """A renamed reader row would otherwise give its texts the full reads, silently."""
+    """A renamed reader row would otherwise silently give its texts the full number of reads."""
     named = {reader.who for reader in new_prose.rule_table()}
 
     assert set(copy_edit.LIMITED_READERS) <= named
@@ -864,7 +864,10 @@ def test_a_later_read_rewrites_only_the_passage_that_still_has_reads(
 def test_a_reply_that_still_loses_a_statement_after_the_limited_rounds_is_kept_as_it_was(
     two_reads: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A reply gets one restore read, and a loss the second round still finds keeps the original."""
+    """A reply gets one restore read.
+
+    Where the second round of meaning checks still finds a loss, the original is kept.
+    """
     request = tmp_path / "passages.txt"
     request.write_text(draft_request(tmp_path, "Old one must hold."), encoding="utf-8")
     first = "[1] rewrite\n\n```\nFirst edit of one.\n```\n"

@@ -7,9 +7,7 @@ readers that `.claude/rules/plain-writing.md` names. The copy editor's prompt is
 first read rewrites a passage, the tool starts a fresh run of the copy editor
 to audit that edit, because experienced technical editors make at least two
 passes (`PL-HGZS`). It audits again while the last audit changed something,
-up to four reads. A passage written only for a later session or the project
-owner, such as an item brief or a reply, gets at most two reads and two rounds
-of meaning checks. Its `--reads DIR` option keeps each read's request and
+up to four reads. The tool's `--reads DIR` option keeps each read's request and
 reply, so that what each audit changed can be judged on its own.
 
 A separate meaning check then compares each edited passage with its text
@@ -18,7 +16,9 @@ the edit lost back to the copy editor to restore. Each round of checks runs
 the check `CHECK_PANEL` times, set in `tools/copy_edit.py`, because separate
 runs on one edit find different losses. The tool keeps a passage as it was
 where a statement is still lost after the last of `MAX_CHECK_ROUNDS` rounds
-(`PL-F0Q2`). The tool merges the replies.
+(`PL-F0Q2`). The tool merges the replies. A passage gets at most two reads and
+two rounds of meaning checks where it is written only for a later session or
+the project owner, such as an item brief or a reply.
 
 This folder holds the paragraphs the copy editor must never pass again
 (`PL-FYGJ`, from `PL-H76S`) and the gold-standard paragraphs it must keep
