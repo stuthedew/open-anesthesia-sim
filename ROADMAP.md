@@ -419,7 +419,7 @@ to clear the ground that the feature releases are built on:
 | 8 | **Gate 3** | **Frozen 2026-10-25**, the day v0.7.0 was scoped, five days after v0.6.0 shipped, and recorded in that milestone's own section below. Its work ships in `v0.6.x` patches as it clears, before v0.7.0's implementation begins. | — |
 | 9 | **v0.7.0 — the schematic** | Planned-milestone items 27 and 28: a compartment schematic whose containers fill to tension, as Gas Man's Picture does, labelled with their amounts and with a bar showing where the agent *is*, and the agent cost View. **Scoped 2026-10-25** by `PL-LF0P` (project owner, 2026-10-25, ratified, over containers drawn to scale, over Gas Man's Picture as it is, and over leaving item 28 unscheduled), and it has its own section below. (Written `v0.6.0` until 2026-09-16, when item 34 took that number and this moved down two, and `v0.8.0` from then until 2026-09-26, when break-out came off the timeline and this moved up one.) | — |
 | 10 | **Gate 4** | Frozen when v0.7.0 ships; its work ships in `v0.7.x` patches as it clears, before v0.8.0's implementation begins. | — |
-| 11 | **v0.8.0 — not yet chosen** | The next milestone after v0.7.0. No item is placed on it, and what it holds is the project owner's pick. It was multi-substance and nitrous oxide until 2026-09-26, when those came off the timeline (Beyond row). | — |
+| 11 | **v0.8.0 — the next milestone** | What it holds is the project owner's pick, made when it is scoped. It was multi-substance and nitrous oxide until 2026-09-26, when those came off the timeline (Beyond row). | — |
 | 12+ | **Beyond** | The substance generalization with nitrous oxide and its effects (items 6 and 7), the machine and its interlocks (items 1-5), save/load and replay (9, 10), then intravenous agents (13-15), in "Development pathway" order. **The substance generalization and items 6 and 7 came off the timeline on 2026-09-26** (project owner, 2026-09-26: "Add it back once we have a really fleshed out single agent set up with workspaces all working"). They had been v0.8.0. Whether that condition is met is the owner's judgment, so a session placing the next row after v0.7.0 asks the owner rather than placing the generalization by pathway order (`PL-5XG1`). **Item 40 is no longer among them** - the machine-profile framework was split out of item 1 on 2026-09-20 (project owner) and is patch-track work that may be cut whenever its items finish, taking no version of its own and freezing no gate. What stays here is the interlock baseline and the machine behaviors that need solver work item 40 defers. | — |
 
 **Rows 1 and 2 are the only releases whose whole content is a frozen list, and
@@ -430,7 +430,7 @@ milestone's findings. § "How gate work is released" says how their work ships,
 which is why rows 4, 6, 8 and 10 carry no version.
 
 Rows 5, 7 and 9 are scoped and have their own sections below. So does the
-`v0.4.26` row above them. Row 11 holds no milestone yet. A row becomes real
+`v0.4.26` row above them. Row 11 is chosen when it is scoped. A row becomes real
 only when it gets its own goal, required scope, definition of done and
 out-of-scope list in this document, as the development rules require.
 
