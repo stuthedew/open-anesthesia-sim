@@ -3,11 +3,13 @@ id: PL-FV7G
 title: ROADMAP.md's v0.4.14 row still says nothing on the documented close-out path names verify --self, which PL-7XTS made false
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: release-roadmap-seam
 touches: ROADMAP.md
 added: 2026-09-15
+closed: 2026-11-07
+pr: 2061
 verify: ! grep -qF 'names that mode yet' ROADMAP.md && python3 tools/doc_check.py check
 ---
 
@@ -62,3 +64,10 @@ the range actually did. `python3 tools/doc_check.py check` passes afterwards.
 Past-tense the clause. A release row's "nothing ... yet" is a record under
 clause 4 - it asserts what was true when the row was written - so the repair is
 a tense, not a link, and the later fact goes in its own dated sentence.
+
+**Outcome, 2026-11-07.** Closed by `PL-DWGC` (slice 3 of the roadmap
+restructure), which keeps one sentence in each version-table row and moves the
+rest of the row to the release's cut item. The `v0.4.14` row now keeps only its
+first sentence, so `ROADMAP.md` no longer carries the clause. The clause is
+quoted word for word in `PL-3Z9X`'s brief, under a line that dates it as the
+row's text until 2026-11-07, which reads as history.

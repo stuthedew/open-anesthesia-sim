@@ -1,0 +1,6 @@
+time	session	guard	rule
+2026-11-07T18:48:28.982065+00:00	0469e1de-fb4b-57a2-925d-2480e187e357	gate-status-guard	status-swallowed:pytest
+2026-11-07T19:04:31.364818+00:00	0469e1de-fb4b-57a2-925d-2480e187e357	gate-status-guard	status-swallowed:bin/docket check
+2026-11-07T19:04:57.374492+00:00	0469e1de-fb4b-57a2-925d-2480e187e357	gate-status-guard	status-swallowed:bin/docket check
+2026-11-07T19:07:55.100887+00:00	0469e1de-fb4b-57a2-925d-2480e187e357	gate-status-guard	arm-piped
+2026-11-07T19:26:28.117035+00:00	0469e1de-fb4b-57a2-925d-2480e187e357	gate-status-guard	status-swallowed:bin/docket check

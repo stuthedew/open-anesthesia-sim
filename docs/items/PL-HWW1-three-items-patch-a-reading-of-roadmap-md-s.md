@@ -257,3 +257,15 @@ them.
 not: one of its three ids (`PL-GVXP`) left `Required scope` with the narrowing
 and is reconciled, and the other two are unchanged and still want the prose
 judgment that item reserves. Re-briefed rather than closed.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.4.26 - the interface moves to Qt" carried this in Required-scope item 4, the two checks that read the theme. "The slot" is that item's list of ids, and "this entry" is item 4.
+
+> These items moved into the slot on 2026-09-19, when `PL-HWW1` made a declaration the record of membership. The three items are the re-pointings this entry describes, and they are the three that the release stamped `v0.4.26`.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** From Required-scope item 8, the queued fixes, after "The queued fixes named below (queue items `PL-3355`, `PL-Q4VH`, `PL-THXF`, `PL-W8DQ`, `PL-TG60` and `PL-005`), under the rule stated there." "This sentence" is that one, "that heading" is § "Fixes this port carries, and why that is not scope creep", and "this milestone" is v0.4.26.
+
+> On 2026-09-19 the six moved from this sentence into the declaration slot, which is where `PL-HWW1` put membership. They are still named here, and not only under that heading, because `MilestoneStates.ships_with` reads `Required scope` and nothing else. That read is what separates two meanings of the same field, `blocked-by: <this milestone's version>`. One meaning is *ships with this milestone*, and the other is *waits for it to be scoped*. Telling them apart this way is the relation that `PL-L09X` costed. The roadmap already carries that relation, so it is not a field anyone writes twice.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this under § "Declined to Gate 2 on the refilling-queue ground", Gate 1's record of how it disposed of debt it did not hold. In it, "this gate", "the gate" and "the list" are Gate 1, v0.5.0's frozen list; "this milestone" is v0.5.0; "the freeze" is Gate 1's freeze on 2026-09-06; "this section" and "this subsection" are that heading's section; "the first twenty-nine" are the 2026-09-08 group that opened the section, and "the first thirty" are those with `PL-HX5C`; "today" is the day the paragraph was written; and "above" and "below" point within `ROADMAP.md` as it then stood. The section now lists this item under "Not wholly apparatus, but unable to change what a reader of the simulator sees". This item is also named in paragraphs quoted in the briefs of `PL-VX5H`, `PL-2T03` and `PL-2BZY`.
+
+> - PL-HWW1 (M) Three items patch a reading of ROADMAP.md's Required scope because membership is cited rather than declared: make the declaration the record — closed in v0.4.28

@@ -35,3 +35,11 @@ release.
 this is the same problem PL-Z4GF's original scope named before that gate
 froze, continuing under a new id rather than a new finding, per "The gate is
 a snapshot, not a moving target" in ROADMAP.md.
+
+**Moved from `ROADMAP.md` on 2026-11-07 (`PL-P0C5`).** `ROADMAP.md` § "The gate
+is a snapshot, not a moving target" carried this record of the decision until
+then. The project owner's answer in `PL-LVN8` sends decision history to the
+item that holds it.
+
+> `PL-SWFM`, which continues `PL-Z4GF`'s already-frozen scope, is the case
+> that motivated writing this down.

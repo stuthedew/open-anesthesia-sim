@@ -48,3 +48,7 @@ configured. Tests in `subprojects/docket/tests/test_arming.py` pin each case.
 close-out review step, which only prose stated. `PL-W04Z` is the first
 instance, for step 8, and no head's `misread:` states it; two items are not a
 generator, so this is follow-up work on the owner's `PL-TDV9` decision.
+
+**Moved from `ROADMAP.md` on 2026-11-07 (`PL-YNFS`).** `ROADMAP.md`'s v0.7.0 section carried this passage in its frozen list's first paragraph until then. "The cut" is Gate 3's freeze, `origin/main` at `0947408` on 2026-10-25, and "this list" is v0.7.0's frozen list.
+
+> One item was untriaged at the cut. That item was `PL-HDRN`, filed on 2026-10-24 with `PL-TDV9`'s pull request. It asks `bin/docket arm` to hold a simulator pull request whose blind review passes never ran. An untriaged item carries no class, so the class filter cannot read it. `PL-HDRN` was then classed `infra`, which is not debt, and #1767 closed it the same day. So it is not on this list.

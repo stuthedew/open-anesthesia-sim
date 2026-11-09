@@ -201,3 +201,7 @@ As decided, with no departure from "What one reader carries":
 or none to drift from, as the front matter says. The falsifier stated above
 still stands: another item filed about reading deferrals reopens the choice of
 records over one reader, on ordinary evidence, since the decision was ratified.
+
+**Moved from `ROADMAP.md` on 2026-11-07 (`PL-G6DP`).** `ROADMAP.md`'s v0.6.0 section, § "Debt gate: the frozen list", carried these sentences until then, in the paragraph that opens "Two kinds of group, and only the second is a precondition". In the quote, "this list" is v0.6.0's frozen list, and "the first group" is its group of debt that v0.6.0's own Required scope names.
+
+> `PL-CNCF` and `PL-PGZF` sat in the product-lane and neither-lane groups until 2026-09-23. That was because `#862` declared them in Required scope after `#850` had grouped this list. They moved into the first group when `tools/doc_check.py` began checking that group against Required scope (`PL-J6HP`), and the three group counts moved with them.

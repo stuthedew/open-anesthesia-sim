@@ -93,3 +93,5 @@ starting this. Re-confirmed against the tree that day: the brief holds.
   counter-example (line 57), so widen `touches` to it; docstrings.
 - **Then the pull request** - `/mnt/project-files/v0.6.0/gate-batch.md` has
   the steps left for `#1448` as a whole.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Waiting on planned-milestone item 34's area system, which v0.6.0 then scoped". The paragraphs that name it are quoted in the briefs of `PL-TH35` and `PL-NMTF`.

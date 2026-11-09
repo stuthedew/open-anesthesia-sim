@@ -67,3 +67,5 @@ drives `PL-C4RS`'s shape specifically: the addition in a commit the id's selecti
 excludes, the removal in one it includes, asserting the removal is not charged.
 What the audit *reports* stays per id; only what the cancellation can see widens
 to the branch.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-2P9L`.

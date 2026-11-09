@@ -133,3 +133,7 @@ run had its own row.
 chart has about 201 px on the 1366 by 700 reference with two runs, against 392
 px with one. That shortfall and the options are `PL-JG82`, a decision for the
 project owner, filed at `needs-decision` with a recommendation.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-B6V1`).** `ROADMAP.md`'s § "Completed: v0.6.0 - the layout is the reader's" -> "Required scope" entry 20 gave this superseded measurement in its pixel budget, between "Compare mode falls below that minimum on that screen" and the owner's decision to accept the shorter chart. The minimum is the concentration chart's 360 px on a 1366 by 768 display. The entry keeps the result after `PL-QLZ5` folded the rows: 366 px to 303 px, the chart about 264 px, 96 px short.
+
+> On 2026-10-18, `PL-F2YS` paired the two runs' readouts in one block and measured the space left. The chart had about 200 px, which is 159 px short.

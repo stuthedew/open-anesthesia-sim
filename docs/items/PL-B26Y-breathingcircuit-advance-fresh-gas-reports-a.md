@@ -124,3 +124,7 @@ flows from 1e-15 to 1e-6 L/min, `1 - exp(-dt/tau)` loses its digits and the
 exhaust comes out as much as 3.3e-16 L below zero, in the old form and the new
 alike. `docket new` recorded it as a recurrence of this item; it is a different
 mechanism, cancellation rather than overflow.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-B6V1`).** `ROADMAP.md`'s § "Completed: v0.6.0 - the layout is the reader's" -> "Captures after the cut" recorded this item, the circuit's closed form reporting a `nan` exhaust below about 2e-306 L/min, with this sentence.
+
+> It was found in `PL-51B7`'s session.

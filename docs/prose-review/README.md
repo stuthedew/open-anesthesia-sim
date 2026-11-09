@@ -5,11 +5,18 @@ editor edit each passage that a branch changed, whatever its length, for the
 readers that `.claude/rules/plain-writing.md` names. The copy editor's prompt is
 `.claude/agents/copy-editor.md`, and `tools/copy_edit.py` runs it. Where the
 first read rewrites a passage, the tool starts a fresh run of the copy editor
-to audit that edit. It audits again while the last audit changed something,
-up to four reads. Experienced technical editors make at least two passes
-(`PL-HGZS`). The tool merges the replies. Its `--reads DIR` option keeps each
-read's request and reply, so that what each audit changed can be judged on its
-own.
+to audit that edit, because experienced technical editors make at least two
+passes (`PL-HGZS`). It audits again while the last audit changed something,
+up to four reads. Its `--reads DIR` option keeps each read's request and
+reply, so that what each audit changed can be judged on its own.
+
+A separate meaning check then compares each edited passage with its text
+before the edit (`.claude/agents/meaning-check.md`). It sends each statement
+the edit lost back to the copy editor to restore. Each round of checks runs
+the check `CHECK_PANEL` times, set in `tools/copy_edit.py`, because separate
+runs on one edit find different losses. The tool keeps a passage as it was
+where a statement is still lost after the last of `MAX_CHECK_ROUNDS` rounds
+(`PL-F0Q2`). The tool merges the replies.
 
 This folder holds the paragraphs the copy editor must never pass again
 (`PL-FYGJ`, from `PL-H76S`) and the gold-standard paragraphs it must keep
@@ -70,7 +77,18 @@ Optional: the version the owner accepted, once there is one.
 
 The `file` field decides which readers the copy editor judges the paragraph
 for, so it must be a file that a row of the reader table names. The paragraph
-must be one unit that `tools/new_prose.py` would review in that file.
+must be one unit that `tools/new_prose.py` would print from that file.
+
+Where the owner objected to particular words, add a `fault` field after
+`rejected`, holding those words exactly as the paragraph has them:
+
+```text
+fault: The three maxima come from two classes of vaporizer.
+```
+
+A run that rewrites the paragraph but keeps those words counts as a miss,
+because a rewrite that changes only the words around them leaves the fault the
+owner rejected. Case, line breaks and bold type do not count as a change.
 
 ## Adding a gold-standard paragraph
 
@@ -119,8 +137,9 @@ rejected entry needs none, because it is a known miss of the current prompt.
 
 ## Running the set
 
-Run it whenever `.claude/agents/copy-editor.md` changes, a reader-table row
-changes for a file that the set holds, or a gold-standard paragraph is added:
+Run it whenever `.claude/agents/copy-editor.md` or
+`.claude/agents/meaning-check.md` changes, a reader-table row changes for a
+file that the set holds, or a gold-standard paragraph is added:
 
 1. Run `python3 tools/rejected_prose.py show > show.txt`.
 2. Run `python3 tools/copy_edit.py show.txt`, as close-out step 8 does, and
@@ -151,6 +170,14 @@ structure. Two part review"):
    last read takes all the outlines together.
 2. Apply the findings you accept to the document, before any line edit,
    because a sentence that is about to move would be edited for nothing.
+   Never line edit a document ahead of its restructure, even when applying
+   the findings by hand would take hours (project owner, 2026-11-07,
+   ratified, over filing the restructure as items and line editing first).
+   `docs/MODEL.md` was line edited first in `#2049`, and that edit dropped
+   about 120 statements that had to be restored. It also edited paragraphs
+   that the restructure will cut as repeats. A document that was line edited
+   before its restructure gets the restructure next. Step 3 then runs only on
+   the sections that the restructure changed.
 3. Run `python3 tools/copy_edit.py --sections FILE` and save its reply. It
    line-edits each section alone, from its heading to the next heading of any
    level, with the audits that every run has.

@@ -64,3 +64,7 @@ their deferral nowhere a reader would look carry `blocked-by: v0.5.1`, and
 v0.5.1's `Required scope` names the fixes it carries so `MilestoneStates.
 ships_with` reads them - which is what stops `docket check` advising, on every
 run, that an item waiting for the port to land is ready to promote.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this under § "Sequenced past v0.5.0, so not clearable before it begins", Gate 1's record of how it disposed of debt it did not hold. In it, "this gate", "the gate" and "the list" are Gate 1, v0.5.0's frozen list; "this milestone" is v0.5.0; "the freeze" is Gate 1's freeze on 2026-09-06; "this section" and "this subsection" are that heading's section; "today" is the day the paragraph was written; and "above" and "below" point within `ROADMAP.md` as it then stood. This item is also named in paragraphs quoted in the brief of `PL-WZVZ`.
+
+> **This is recorded because the rule requires it. Until 2026-09-13 it was not recorded.** § "The gate is a snapshot, not a moving target" allows a deferral only where this section "says so and says why". Nine open entries are sequenced past the milestone this list gates, and only the `PL-NGF7` block above was written down. The other eight said so in a `blocked-by:` field and nowhere else. That is renegotiation by frontmatter (`PL-9S30`).

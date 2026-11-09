@@ -7,7 +7,6 @@ status: ready
 classes: docs, science
 feature: model-claims-held-by-tests
 touches: docs/MODEL.md, tests/reference, docs/items
-deferred-from: v0.7.0 - filed 2026-11-02 from PL-TCD3's blind review; a correction to a precision rationale that the schematic does not wait on
 added: 2026-11-02
 payoff: the uncertainty Displayed precision states for each compartment's parameters is the uncertainty its own source measured, so the precision argument a learner reads rests on the right SD
 verify: ! grep -q '3.9% of the mean for desflurane' docs/MODEL.md
@@ -63,3 +62,5 @@ that declare ``no test yet (`PL-TDX0`)`` name the test that now holds them.
 
 **Generator check.** Not a generator on what is known. It is one misread of
 which coefficient a published SD belongs to, found once.
+
+**Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. It is classed `science` and is not deferred: nobody has yet measured whether the muscle and fat SDs make a displayed second decimal finer than its uncertainty, so the check the deferral rule asks for cannot be recorded. The 3.9%, 5.3% and 6.4% SDs and "known to about 5%" have been in `docs/MODEL.md` since `7a60a2f5` (2026-09-06), and the agent files at `817a4d88` already held the fat and muscle SDs.

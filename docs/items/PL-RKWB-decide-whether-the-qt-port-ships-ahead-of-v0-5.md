@@ -156,3 +156,45 @@ written up. The hazard it inherits is the one the original section named:
 `bin/docket release` offers the next free number to whatever is finished, so a
 patch cut before the port lands takes the number and the section's heading
 moves to the next free one. That is a rename, not a re-scope.
+
+**Moved from `ROADMAP.md` on 2026-11-07 (`PL-P0C5`).** `ROADMAP.md` §
+"Completed: v0.4.26 - the interface moves to Qt" carried this record of the
+decision until then. The project owner's answer in `PL-LVN8` sends decision
+history to the item that holds it.
+
+> **The one question the reorder leaves open is this number, and it is
+> recorded rather than settled.** § "The cadence" says that a gate does not
+> get a version, and that no interim release is cut partway through clearing
+> one. Five of the fixes this port carries are Gate 1 entries. [2026-09-27,
+> `PL-LPH9`: § "The cadence" no longer says the second half. Gate work ships
+> in patch releases as it clears, and what a gate lacks is a version *of its
+> own*. So the question would not arise today, but the reading below still
+> applies.] The reading taken here is that this port is a milestone that
+> *carries* gate fixes, rather than a piece of gate work. § "Debt inside the
+> milestone's own scope" makes the test whether the item appears in the
+> milestone's `Required scope`, and all five appear at item 8. The
+> alternative is that the port ships inside v0.5.0 with no version of its
+> own. `PL-RKWB` records that alternative, and it would change this heading
+> and nothing else.
+
+**Moved from `ROADMAP.md` on 2026-11-07 (`PL-DWGC`).** The row for v0.4.26 — the interface moves to Qt in `ROADMAP.md` § "The timeline" carried these sentences until then. The restructure keeps each timeline row to what the step holds, its status and dates, its decisions and a pointer, and moves the argument to the item the row names. In the quote, "this row", "this track", "this step", "this port" and "here" mean that row and its step, "row N" means row N of that table, and "this file" means `ROADMAP.md`.
+
+> The question put was whether v0.5.0's work would be redone after the port, and **the count says mostly not**: of v0.5.0's eight open Required-scope ids, one is wholly inside the rewritten surface (`PL-8PSW`, the two-branch overlay), two have a slice there, and five never touch it - because `tools/import_boundary_check.py` confines Flet to three modules and the milestone's landed work (`PL-T691`, `PL-J2TD`, `PL-TFX5`, `PL-B9PY`) all sits on the surviving side. **Three other grounds carried it, and they are the reasons of record.** `PL-8PSW` is the most presentation-safety-loaded item in the milestone and on Flet it is built where no session can look at it (`PL-2QMK`), while the spike already screenshots offscreen in that same container and `PL-YCWZ` adds headless rendering tests over the real interface. `PL-GS3R` and `PL-YVHK` are both `P1` and `safety`-classed and both sat blocked behind this port for the whole of a milestone. And this port's definition of done is parity against a **closed** enumeration, which is cheapest to check before compare mode - the largest new visual surface in the project - joins the list. **The operative form of the decision is narrower than the move**: nothing new is built in `app/simulation_view.py` or the Flet chart-series module before the port, and v0.5.0's port-neutral spine (`PL-CTD7`, `PL-B8MK`, `PL-Z3W6`, `PL-W7H9`, `PL-49R8`) is untouched by it.
+
+> **Gate 2's freeze is unchanged**: still when v0.5.0 ships, because that gate holds v0.5.0's findings and this port takes no gate of its own.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.4.26 - the interface moves to Qt" carried this paragraph. "The reorder" is the port's move ahead of v0.5.0, and "this number" is v0.4.26.
+
+> **The one question the reorder leaves open is this number, and it is recorded rather than settled.** `PL-RKWB` records the question, the reading taken and the alternative, and why the question would not arise under § "How gate work is released".
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" opened with this, after the paragraph on the Qt port's move ahead of v0.5.0. "It" is that move, "the MVP" is v0.5.0, which completes the minimum viable product, "Gate 1" is v0.5.0's frozen list, and "the milestone it gates" is v0.5.0. § "Completed: v0.4.26 - the interface moves to Qt" gives the first two benefits as the move's grounds 1 and 2, and § "Sequenced past v0.5.0, so not clearable before it begins" records the Gate 1 effect. The decision's tag, "(project owner, 2026-09-14, on `PL-RKWB`)", stays on § "Completed: v0.4.26"'s "Moved ahead of v0.5.0 on 2026-09-14".
+
+> **What this costs and what it buys, recorded so it is not re-litigated.** It costs the MVP its place in the queue for the length of the port. It buys `PL-8PSW` a toolkit that a session can actually look at (`PL-2QMK`). It unblocks two `P1` `safety`-classed items that were waiting on the toolkit (`PL-GS3R`, `PL-YVHK`). And it makes it possible for Gate 1 to reach zero before the milestone it gates begins. § "Sequenced past v0.5.0" records that as the structural debt `PL-D143` named and could not pay.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this under § "Sequenced past v0.5.0, so not clearable before it begins", Gate 1's record of how it disposed of debt it did not hold. In it, "this gate", "the gate" and "the list" are Gate 1, v0.5.0's frozen list; "this milestone" is v0.5.0; "the freeze" is Gate 1's freeze on 2026-09-06; "this section" and "this subsection" are that heading's section; "today" is the day the paragraph was written; and "above" and "below" point within `ROADMAP.md` as it then stood. "These eleven" are the entries in the first five rows of the table that § "Sequenced past v0.5.0, so not clearable before it begins" still carries, and the closing colon introduced that table.
+
+> **Nine of these eleven became clearable on 2026-09-14, when the Qt port moved ahead of v0.5.0** (project owner, 2026-09-14, on `PL-RKWB`). § "Completed: v0.4.26 - the interface moves to Qt" carries the decision and the count behind it. The heading and every entry below stay as the freeze wrote them, per § "The gate is a snapshot, not a moving target". This section records their disposition and does not delete them. `PL-NGF7` already had the same treatment.
+
+> **What changed is the port's position, not any entry's judgment.** Each of the nine was sequenced behind a port that shipped *after* the milestone this list gates. That is what made each one unclearable before v0.5.0 began. The port now lands before v0.5.0, so each entry clears in the ordinary way:
+
+> **Nothing moves, and no decision is taken here.** Every entry below stays where the freeze wrote it, exactly as `PL-NGF7` does. This section records their disposition and does not delete them. Five still sit under headings reading "Cleared before v0.5.0 begins". Those headings record what the list said on 2026-09-06, not a claim about today. Each sequencing decision was the project owner's, taken on 2026-09-10 when the port was scoped. Each is argued where it was taken. This section is the index, not the argument.

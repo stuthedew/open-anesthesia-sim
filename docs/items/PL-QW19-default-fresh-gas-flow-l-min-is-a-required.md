@@ -153,3 +153,5 @@ that the tree now agrees with it; `reference_circle_system.json` is unchanged;
 and `make check` is green. The `verify:` command looks for a test whose name
 starts `test_a_profile_omitting_the_default_fresh_gas_flow_falls_back` in
 `tests/unit/test_circuit.py`, so name it that way.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Its problem did not exist at the 2026-09-06 freeze, so the snapshot rule defers it on its own terms". The paragraphs that name it are quoted in the brief of `PL-77G2`.

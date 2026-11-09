@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - filed after the gate froze, and a question of release or
 added: 2026-09-26
 payoff: A session reading the roadmap meets one answer for multi-substance - off the timeline until single-agent works, and the owner's condition for its return - instead of a pathway and a timeline that disagree.
 verify: ! grep -qE 'v0\.[0-9]+\.0 — multi-substance' ROADMAP.md && ! grep -q 'held with its count by' ROADMAP.md && grep -q 'workspaces all working' ROADMAP.md
+recurrences: 2026-11-07 PL-K6DG withdrawn 2026-11-07 PL-K6DG
 ---
 
 **Problem.** ROADMAP.md's Development pathway still says Phase 1 follows v0.4.0 unchanged, while the timeline places Phase 1's substance generalization at v0.9.0 behind four releases, which its own known-risk paragraph argues against
@@ -150,3 +151,13 @@ release. `docs/MODEL.md`, `src/` and `tests/` name neither version.
 carries the generalization with items 6 and 7, this decision dated, and the
 condition for its return; and the known risk's last sentence points at that
 row instead of at this item.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Development pathway" carried these two sentences in its opening paragraph, as rules for whoever maintains the section. "A phase" is one of the section's phases, and "that half" is a phase's first half that § "The timeline" has taken. The section keeps that the timeline's order governs where the two disagree.
+
+> Each phase keeps its name and its intent, because other documents cite a phase by name. [...] Where the timeline has taken a phase's first half, the phase says so without naming the release. How that half came to be taken is dated as history rather than restated (`PL-5XG1`).
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Development pathway" carried these two paragraphs inside Phase 1, scientific maturity. "This phase" is Phase 1. "The reordering below" is the second paragraph, and "the known risk at the end of this section" is the section's paragraph on the known risk, which now follows its opening and keeps that the rework is bounded and known. "As written below" pointed at the Phase 1 paragraphs, which stood above the reordering. The section keeps the reordering's bold lead and its date; v0.4.0's Goal states the 1x real time and the five-minute chart.
+
+> *As this phase was first written*, nitrous oxide sat before any interface work for two reasons. First, the second-gas effect is the phenomenon that this class of simulator is most used to teach. Without it, there is no credible inhalational simulator to build an interface on. Second, nitrous oxide changes the core equations, so an interface built on a single-gas core would be reworked when it lands. The reordering below set that placement aside. The known risk at the end of this section is the general form of the second reason.
+
+> **Reordering (project owner, 2026-08-25): the teachable case is taken ahead of Phase 1.** As written below, Phase 1's substance generalization and nitrous oxide come before all interface work. The reasoning was that an interface built on a single-gas core would be reworked. That ordering was reconsidered once the interface was measured against what a learner can actually do with it. The run advances at 1x real time and the chart spans five minutes. So neither the muscle curve nor the fat curve can be observed, and no lesson in uptake and distribution currently gets through to anyone. Building coupled-gas equations first would produce a more capable engine that still teaches nobody. It would also do so without the feedback from real teaching use that should shape what the multi-gas display looks like. The rework this accepts is bounded and known. The view consumes an immutable `SimulationSnapshot`, so the time base, playback, event marks and axis handling are substance-agnostic. The piece that changes is the MAC readout, which becomes a MAC sum when a second substance lands. v0.4.0 is that work, and Phase 1 follows it unchanged. *That was the order on 2026-08-25 and is no longer:* since then, the timeline has placed further releases ahead of the generalization, each moved by a decision dated on its own row.

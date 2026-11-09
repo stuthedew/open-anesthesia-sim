@@ -77,3 +77,5 @@ other item whose `touches` declares the file it is proposing to rename. Both are
 decidable from the store, so both are checks rather than prose. A test drives
 `PL-3V6C`'s shape: an item declaring two item files by full path, one of which the
 advisory wants renamed.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the briefs of `PL-YFXG` and `PL-2P9L`.

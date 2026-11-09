@@ -258,3 +258,7 @@ fails all five cases.
 **`touches` was widened** from `docs/MODEL.md` alone to include
 `tests/reference/test_published_wash_in_and_elimination.py`, which the item's
 own `verify:` command had always implied.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this under § "Debt gate: the frozen list" (Gate 1), in the group "Added 2026-09-12 under the unconditional safety/science exception — 7 entries", after "`PL-RFLN` is admitted rather than deferred on the same evidence as `PL-LT51` above." "The last week" is the week before 2026-09-12. The paragraph keeps that the item closed on 2026-09-13, what was excluded, and that only the published value is left.
+
+> It needs the methods sections of two 1991 papers that neither PubMed Central nor `docs/references/` holds. That looks like a reason to defer it. The last week disproves that reason: the project owner has turned around three interlibrary loans for exactly this kind of chain. What the item asks of a session is bounded. The session either names the cause against the methods, or records that the question cannot be answered from what this project can reach. In the second case, it says so in place of the two open candidates. **Closed 2026-09-13 the second way**, and it went one candidate further than that.

@@ -186,3 +186,7 @@ correct. `PL-X9KD`'s "Where" has been extended to name them, which is the item
 that owns the re-derivation. The lesson for the next extraction is worth keeping
 though: move a *citation* of `docs/MODEL.md`, not a restatement of what it says,
 so the module survives a re-derivation unchanged.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.4.0 - the teachable case" carried this under § "Debt gate: the frozen list", in the note "That deferral stands and is not reopened here", which says where the rest of this item went after the project owner's decision of 2026-09-02. "Its brief" is this item's brief. The note keeps the outcome: stages 1 and 2 in v0.4.0's Required scope, and stage 3 as PL-B9PY at Gate 1.
+
+> Its brief stated three placements that could not all be true at once. The first was stage 1 before PL-DHV7, which ships in v0.4.0. The second was the whole item at Gate 1, which ships inside v0.5.0. The third was "a `v0.3.x` patch step". PL-4C41 was filed against that contradiction. The resolution is to split the item rather than to pick one of the three, because one item cannot sit in two milestones.

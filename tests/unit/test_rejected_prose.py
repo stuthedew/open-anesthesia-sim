@@ -55,6 +55,10 @@ MIN_WORDS = 30
 PARAGRAPH = " ".join(["word"] * MIN_WORDS)
 #: A paragraph the owner named a gold standard, which differs from every rejected one.
 KEPT = " ".join(["plain"] * MIN_WORDS)
+#: The words of `FAULTY` that the owner objected to, as an entry's `fault` gives them.
+FAULT = "The parts come from two kinds of thing."
+#: A rejected paragraph whose bold lead is `FAULT`.
+FAULTY = f"**{FAULT}** " + " ".join(["word"] * MIN_WORDS)
 
 
 def _words(count: int) -> str:
@@ -78,14 +82,16 @@ def _entry(
     rejected: str = "2026-11-02",
     paragraph: str = PARAGRAPH,
     sections: str = "",
+    fault: str | None = None,
 ) -> str:
     """An entry's text, with every required section unless `sections` replaces the last two."""
     tail = sections or (
         '## The owner\'s words\n\n"Unintelligible" (2026-11-02).\n\n'
         "## Where it came from\n\nA test.\n"
     )
+    objection = "" if fault is None else f"fault: {fault}\n"
     return (
-        f"---\nkind: {kind}\nfile: {path}\nrejected: {rejected}\n---\n\n"
+        f"---\nkind: {kind}\nfile: {path}\nrejected: {rejected}\n{objection}---\n\n"
         f"## Paragraph\n\n```text\n{paragraph}\n```\n\n{tail}"
     )
 
@@ -149,6 +155,15 @@ def test_an_entry_may_add_the_accepted_rewrite_last() -> None:
     assert parse_entry("jargon-2026-11-02-a.md", _entry(), TABLE).accepted_lines is None
 
 
+def test_an_entry_may_name_the_words_the_owner_objected_to() -> None:
+    entry = parse_entry(
+        "jargon-2026-11-02-a.md", _entry(paragraph=FAULTY, fault=FAULT.upper()), TABLE
+    )
+
+    assert entry.fault == FAULT.upper()
+    assert parse_entry("jargon-2026-11-02-a.md", _entry(), TABLE).fault is None
+
+
 @pytest.mark.parametrize(
     ("name", "text", "reason"),
     [
@@ -160,7 +175,17 @@ def test_an_entry_may_add_the_accepted_rewrite_last() -> None:
         (
             "jargon-2026-11-02-a.md",
             _entry().replace("rejected: 2026-11-02\n", "rejected: 2026-11-02\nwho: me\n"),
-            "exactly kind, file, rejected",
+            "must have kind, file, rejected, and may add fault, and no others",
+        ),
+        (
+            "jargon-2026-11-02-a.md",
+            _entry(paragraph=FAULTY, fault="Two kinds of thing come from the parts."),
+            "its fault 'Two kinds of thing come from the parts.' is not words of its paragraph",
+        ),
+        (
+            "jargon-2026-11-02-a.md",
+            _entry(paragraph=FAULTY, fault="**"),
+            "its fault '**' is not words of its paragraph",
         ),
         (
             "jargon-2026-11-02-a.md",
@@ -278,6 +303,29 @@ def test_check_passes_once_a_run_of_the_current_prompt_flags_every_entry(tmp_pat
     assert check(root, PROMPT, TABLE) == []
 
 
+def test_a_rewrite_that_keeps_the_words_the_owner_objected_to_fails(tmp_path: Path) -> None:
+    """Changing the case, line breaks or bold type of the words leaves them in the rewrite."""
+    entry = _entry(kind="unclear", rejected="2026-11-07", paragraph=FAULTY, fault=FAULT)
+    root = _root(tmp_path, {"unclear-2026-11-07-a.md": entry})
+    kept = "the parts COME from two\nkinds of _thing._ " + _words(MIN_WORDS)
+    _run(root, "one.json", f"[1] rewrite\n```\n{kept}\n```\n")
+
+    assert check(root, PROMPT, TABLE) == [
+        "runs/one.json rewrote unclear-2026-11-07-a.md but kept the words the owner objected "
+        "to, 'The parts come from two kinds of thing.': change the prompt so the review fixes "
+        "them, then run the set again"
+    ]
+
+
+def test_a_rewrite_without_the_words_the_owner_objected_to_passes(tmp_path: Path) -> None:
+    entry = _entry(kind="unclear", rejected="2026-11-07", paragraph=FAULTY, fault=FAULT)
+    root = _root(tmp_path, {"unclear-2026-11-07-a.md": entry})
+    fixed = "**The parts are bolts and nuts.** " + _words(MIN_WORDS)
+    _run(root, "one.json", f"[1] rewrite\n```\n{fixed}\n```\n")
+
+    assert check(root, PROMPT, TABLE) == []
+
+
 def test_a_run_that_kept_an_entry_fails_even_beside_one_that_flagged_it(tmp_path: Path) -> None:
     """A miss stays on record, so running the same prompt again until it passes clears nothing."""
     root = _root(tmp_path, {"jargon-2026-11-02-a.md": _entry()})
@@ -355,10 +403,13 @@ def test_record_writes_the_reply_and_refuses_one_cut_short(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     rule, prompt = tmp_path / "rule.md", tmp_path / "prompt.md"
+    check_prompt = tmp_path / "check.md"
     rule.write_text(READERS, encoding="utf-8")
     prompt.write_text(PROMPT, encoding="utf-8")
+    check_prompt.write_text("Check the edit for meaning.\n", encoding="utf-8")
     monkeypatch.setattr(new_prose, "RULE", rule)
     monkeypatch.setattr(new_prose, "PROMPT", prompt)
+    monkeypatch.setattr(new_prose, "CHECK_PROMPT", check_prompt)
     root = _root(
         tmp_path / "tree", {"jargon-2026-11-02-a.md": _entry(), "jargon-2026-11-02-b.md": _entry()}
     )
@@ -386,6 +437,29 @@ def test_record_writes_the_reply_and_refuses_one_cut_short(
 
     assert main(["show"], root=root) == 0
     assert capsys.readouterr().out.startswith(READERS.rstrip("\n"))
+
+
+def test_a_run_keys_on_the_meaning_check_prompt_too(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The meaning check can turn a rewrite into a keep, so changing its prompt needs a new run."""
+    rule, prompt, check_prompt = (tmp_path / name for name in ("rule.md", "prompt.md", "check.md"))
+    rule.write_text(READERS, encoding="utf-8")
+    prompt.write_text(PROMPT, encoding="utf-8")
+    check_prompt.write_text("Check the edit for meaning.\n", encoding="utf-8")
+    monkeypatch.setattr(new_prose, "RULE", rule)
+    monkeypatch.setattr(new_prose, "PROMPT", prompt)
+    monkeypatch.setattr(new_prose, "CHECK_PROMPT", check_prompt)
+    root = _root(tmp_path / "tree", {"jargon-2026-11-02-a.md": _entry()})
+    reply = tmp_path / "reply.md"
+    reply.write_text(_reply("rewrite", words=MIN_WORDS + 1), encoding="utf-8")
+    assert main(["record", str(reply)], root=root) == 0
+    assert main(["check"], root=root) == 0
+    capsys.readouterr()
+
+    check_prompt.write_text("Check the edit for meaning, word by word.\n", encoding="utf-8")
+    assert main(["check"], root=root) == 1
+    assert "no run of the set used the current prompt" in capsys.readouterr().err
 
 
 def test_rewrites_takes_the_first_block_after_each_rewrite_verdict() -> None:
@@ -441,7 +515,12 @@ def test_a_gold_standard_entry_records_its_file_date_and_paragraph() -> None:
 @pytest.mark.parametrize(
     ("name", "text", "reason"),
     [
-        ("gold-2026-11-05-a.md", _entry(), "exactly file, named"),
+        ("gold-2026-11-05-a.md", _entry(), "must have file, named, and no others"),
+        (
+            "gold-2026-11-05-a.md",
+            _gold().replace("named: 2026-11-05\n", f"named: 2026-11-05\nfault: {KEPT}\n"),
+            "must have file, named, and no others",
+        ),
         ("jargon-2026-11-05-a.md", _gold(), "its name must be gold-2026-11-05-SLUG.md"),
         ("gold-2026-11-05-a.md", _gold(named="soon"), "named 'soon' is not a date"),
         (

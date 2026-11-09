@@ -90,3 +90,5 @@ measured at zero. `.github/workflows/quality.yml`,
 `docs/ARCHITECTURE.md` each described the old silence and were corrected in the same commit, which is why
 they are in `touches`. Built in `#1259` after the thread that closed
 `PL-7K2C`, `PL-CR36` and `PL-NWSK` there stopped for length.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-BNYF`.

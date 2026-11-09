@@ -79,3 +79,7 @@ validate and separate in one annotation, and would delete the boundary
 the public type, so nothing would distinguish a value that has been through
 `parse_*` from one that has not. That is recorded in the docstring, so the next
 reader meets the rejected option beside the rule.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this under § "Declined to Gate 2 on the refilling-queue ground", Gate 1's record of how it disposed of debt it did not hold. In it, "this gate", "the gate" and "the list" are Gate 1, v0.5.0's frozen list; "this milestone" is v0.5.0; "the freeze" is Gate 1's freeze on 2026-09-06; "this section" and "this subsection" are that heading's section; "the first twenty-nine" are the 2026-09-08 group that opened the section, and "the first thirty" are those with `PL-HX5C`; "today" is the day the paragraph was written; and "above" and "below" point within `ROADMAP.md` as it then stood. The section now lists this item under "A naming or placement decision that gives no wrong value either way". This item is also named in paragraphs quoted in the briefs of `PL-BQ46`, `PL-6KNM` and `PL-JQY1`.
+
+> - PL-KL2Q (S) core/parameters.py now holds two overlapping percent/fraction vocabularies - Pydantic's PositivePercent which validates but does not type-check, and concentration.py's Percent which type-checks but does not validate - and nothing says which a new field takes — closed in v0.4.24
