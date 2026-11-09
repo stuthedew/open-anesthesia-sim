@@ -27,6 +27,13 @@ over exactly two reads). When the first read rewrites nothing, there is no
 audit. The printed reply gives each passage once, in the text of the last read
 that rewrote it, else `[N] keep`. Every read's notes follow.
 
+A passage written only for a later session or for the project owner, such as
+an item brief, a workflow file, a commit message, a pull request body or a
+reply, gets at most `LIMITED_READS` reads and `LIMITED_CHECK_ROUNDS` rounds of
+meaning checks (project owner, 2026-11-09). Its header's "For:" line names its
+readers, and `LIMITED_READERS` lists the ones that qualify. A passage that any
+other reader reads keeps the full limits.
+
 **A separate meaning check then compares each edit with its original**
 (`PL-F0Q2`). The copy editor's own audits passed about 120 statements that its
 line edit of `docs/MODEL.md` had lost or weakened: a requirement restated as a
@@ -152,6 +159,23 @@ SECOND_READ = (
 #: never settles, at about $1 and 10 minutes for each read of a 1,200-word
 #: section. Raising the limit lets such a passage run longer.
 MAX_READS = 4
+#: The readers of the texts whose passages get fewer reads: the item briefs,
+#: workflow files, commit messages and pull request bodies that a later
+#: session reads, and the replies sent to the project owner. Each name is a
+#: reader of a row in the plain-writing rule's table, as the passage header's
+#: "For:" gives it. A passage gets `LIMITED_READS` reads and
+#: `LIMITED_CHECK_ROUNDS` rounds of meaning checks only where every reader its
+#: header names is one of these, so a simulator document never gets fewer.
+LIMITED_READERS = (
+    "A later session, or the owner reading the history",
+    "The project owner, an anesthesiologist and intensive-care physician",
+)
+#: The most copy-editor reads a passage for `LIMITED_READERS` gets: the edit
+#: and one audit (project owner, 2026-11-09: "Copy edit non-core human
+#: documents like PL items etc at most twice"). A later read that rewrites such
+#: a passage is not taken. Raising it spends up to `MAX_READS` reads on text
+#: that no clinician reads.
+LIMITED_READS = 2
 #: The name of each read in order, used in its files and its notes.
 READ_NAMES = ("first", "second", "third", "fourth")
 
@@ -192,6 +216,13 @@ CHECK_PANEL = 2
 #: keeps more passages unedited, and a higher one spends more reads on a
 #: passage whose restores keep failing.
 MAX_CHECK_ROUNDS = 5
+#: The most rounds of meaning checks a passage for `LIMITED_READERS` gets, so
+#: it gets at most one restore read (project owner, 2026-11-09, with
+#: `LIMITED_READS`). A loss that the last of these rounds still finds keeps the
+#: passage as it was.
+LIMITED_CHECK_ROUNDS = 2
+# regex: the readers a passage header names, after its "For:"
+FOR_RE = re.compile(r"\bFor: (.+)$")
 # regex: a meaning check's verdict line, such as "[3] lost"
 CHECK_VERDICT_RE = re.compile(r"^[\s*_`]*\[(\d+)\][*_`]*\s*(same|lost)\b", re.IGNORECASE)
 
@@ -284,6 +315,24 @@ def passage_count(request: str) -> int:
     if numbers != list(range(1, len(numbers) + 1)):
         raise Refused(f"the request numbers its passages {numbers}, not from 1 in order")
     return len(numbers)
+
+
+def limited_passages(request: str) -> frozenset[int]:
+    """The passages of `request` whose header names only `LIMITED_READERS` as their readers.
+
+    A header that names no reader, or any other reader, leaves its passage
+    unlimited, so a passage is never given fewer reads by mistake.
+    """
+    found = set()
+    for line in prose_of(request)[1]:
+        number = passage_number(line)
+        match = FOR_RE.search(line) if number is not None else None
+        if number is None or match is None:
+            continue
+        named = [who.strip() for who in match[1].split(";")]
+        if named and all(who in LIMITED_READERS for who in named):
+            found.add(number)
+    return frozenset(found)
 
 
 def marked_rows(lines: Sequence[str]) -> dict[int, list[str]]:
@@ -637,6 +686,7 @@ def merge(
     names: Sequence[str] | None = None,
     lost: Mapping[int, str] | None = None,
     checks: Sequence[tuple[str, str]] = (),
+    skipped: Sequence[frozenset[int]] = (),
 ) -> str:
     """One reply from every read's reply in `replies`, in order, for `count` passages.
 
@@ -647,20 +697,23 @@ def merge(
     passage then becomes `[N] keep` with the reason under "Code check:". The
     check also lists each code name a rewrite dropped. A passage in `lost`
     becomes `[N] keep` too, with what the meaning check found it lost under
-    "Meaning check:". The notes of every read follow, then those of each
-    meaning check in `checks`, under its label, so that every cut, move, query
-    and finding is kept. Raises `Refused` where a reply does not give each
-    passage one verdict, or a rewrite has no text.
+    "Meaning check:". `skipped` gives, for each reply in order, the passages
+    whose rewrite in that reply is not taken, because the passage had already
+    had all the reads it is allowed (`LIMITED_READS`). The notes of every read
+    follow, then those of each meaning check in `checks`, under its label, so
+    that every cut, move, query and finding is kept. Raises `Refused` where a
+    reply does not give each passage one verdict, or a rewrite has no text.
     """
     lost = {} if lost is None else lost
     names = READ_NAMES[: len(replies)] if names is None else names
     if len(names) != len(replies):
         raise Refused(f"{len(replies)} replies were given {len(names)} names")
     found: list[dict[int, tuple[str, ...]]] = []
-    for name, reply in zip(names, replies, strict=True):
+    for index, (name, reply) in enumerate(zip(names, replies, strict=True)):
+        late = skipped[index] if index < len(skipped) else frozenset()
         try:
             verdicts(reply, count)
-            found.append(rewrites(reply))
+            found.append({n: rows for n, rows in rewrites(reply).items() if n not in late})
         except ValueError as error:
             raise Refused(f"the {name} read's reply cannot be read: {error}") from error
     out: list[str] = []
@@ -810,7 +863,9 @@ def edit(text: str, editor: Editor, checker: Editor, reads: Path | None = None) 
 
     Returns its merged reply and the counts. The first read edits. Each later
     read audits the text as the earlier reads left it, and runs only while the
-    last read changed a passage, up to `MAX_READS` reads. An audit whose reply
+    last read changed a passage, up to `MAX_READS` reads. A passage written
+    only for `LIMITED_READERS` takes no rewrite after its `LIMITED_READS` reads,
+    and the audits stop once only such passages are still changing. An audit whose reply
     cannot be read ends the audits, and the counts say so: the reads before it
     are kept, because each of them gave every passage a verdict. Then
     `checker`, the meaning check, compares each edit with its original
@@ -826,10 +881,16 @@ def edit(text: str, editor: Editor, checker: Editor, reads: Path | None = None) 
     if not current:
         return first, first_counts
     count = passage_count(text)
+    limited = limited_passages(text)
     replies = [first]
     names = [READ_NAMES[0]]
     counts = [first_counts]
-    for name in READ_NAMES[1:MAX_READS]:
+    skipped: list[frozenset[int]] = [frozenset()]
+    changing = set(current)
+    for index, name in enumerate(READ_NAMES[1:MAX_READS], start=1):
+        late = limited if index >= LIMITED_READS else frozenset()
+        if changing <= late:
+            break
         reply, reply_counts = editor.read(second_request(text, current), name, reads)
         counts.append(f"{name} read: {reply_counts.removeprefix('copy_edit: ')}")
         try:
@@ -842,12 +903,20 @@ def edit(text: str, editor: Editor, checker: Editor, reads: Path | None = None) 
             break
         replies.append(reply)
         names.append(name)
-        changed = {number: rows for number, rows in made.items() if current.get(number) != rows}
+        skipped.append(late)
+        changed = {
+            number: rows
+            for number, rows in made.items()
+            if number not in late and current.get(number) != rows
+        }
         if not changed:
             break
+        changing = set(changed)
         current.update(changed)
-    lost, checks = meaning_check(text, current, editor, checker, reads, replies, names, counts)
-    merged = merge(replies, count, code_report(text), names, lost, checks)
+    lost, checks = meaning_check(
+        text, current, editor, checker, reads, replies, names, counts, limited, skipped
+    )
+    merged = merge(replies, count, code_report(text), names, lost, checks, skipped)
     return merged, "; ".join(counts)
 
 
@@ -860,6 +929,8 @@ def meaning_check(
     replies: list[str],
     names: list[str],
     counts: list[str],
+    limited: frozenset[int] = frozenset(),
+    skipped: list[frozenset[int]] | None = None,
 ) -> tuple[dict[int, str], list[tuple[str, str]]]:
     """Check each edit in `current` against its original, and have the copy editor restore losses.
 
@@ -872,12 +943,19 @@ def meaning_check(
     the last round found still lost, by passage, and every check's label and reply. A
     check whose reply cannot be read counts as finding every edited passage
     lost, because nothing then shows that the edit kept the original's
-    meaning. A restore read whose reply cannot be read changes nothing.
+    meaning. A restore read whose reply cannot be read changes nothing. A
+    passage in `limited` gets at most `LIMITED_CHECK_ROUNDS` rounds: what the
+    last of them finds lost stays lost, and later rounds and restore reads
+    leave it alone. Each restore read's passages that it may not rewrite join
+    `skipped`.
     """
     count = passage_count(text)
     checks: list[tuple[str, str]] = []
     lost: dict[int, str] = {}
+    settled: dict[int, str] = {}
+    done = limited if MAX_CHECK_ROUNDS > LIMITED_CHECK_ROUNDS else frozenset()
     for index in range(1, MAX_CHECK_ROUNDS + 1):
+        closed = limited if index > LIMITED_CHECK_ROUNDS else frozenset()
         asked = edited_request(text, current, MEANING_CHECK)
         found: dict[int, list[str]] = {}
         for reader in range(1, CHECK_PANEL + 1):
@@ -893,9 +971,12 @@ def meaning_check(
                 return {number: reason for number in current}, checks
             checks.append((label, reply))
             for number in sorted(findings):
-                if number in current:
+                if number in current and number not in closed:
                     found.setdefault(number, []).append(findings[number])
         lost = {number: "\n\n".join(found[number]) for number in sorted(found)}
+        if index == LIMITED_CHECK_ROUNDS:
+            settled = {number: why for number, why in lost.items() if number in done}
+            lost = {number: why for number, why in lost.items() if number not in done}
         if not lost or index == MAX_CHECK_ROUNDS:
             break
         name = f"restore {index}"
@@ -909,10 +990,13 @@ def meaning_check(
         except ValueError as error:
             counts.append(f"{name} read: reply unreadable, so it was left out ({error})")
             break
+        late = limited if index >= LIMITED_CHECK_ROUNDS else frozenset()
         replies.append(restore)
         names.append(name)
-        current.update(made)
-    return lost, checks
+        if skipped is not None:
+            skipped.append(late)
+        current.update({number: rows for number, rows in made.items() if number not in late})
+    return dict(sorted({**lost, **settled}.items())), checks
 
 
 def run(

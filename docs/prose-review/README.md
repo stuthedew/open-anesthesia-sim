@@ -7,7 +7,9 @@ readers that `.claude/rules/plain-writing.md` names. The copy editor's prompt is
 first read rewrites a passage, the tool starts a fresh run of the copy editor
 to audit that edit, because experienced technical editors make at least two
 passes (`PL-HGZS`). It audits again while the last audit changed something,
-up to four reads. Its `--reads DIR` option keeps each read's request and
+up to four reads. A passage written only for a later session or the project
+owner, such as an item brief or a reply, gets at most two reads and two rounds
+of meaning checks. Its `--reads DIR` option keeps each read's request and
 reply, so that what each audit changed can be judged on its own.
 
 A separate meaning check then compares each edited passage with its text

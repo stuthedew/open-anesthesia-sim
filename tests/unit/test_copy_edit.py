@@ -118,11 +118,16 @@ def request_of(*prose: str) -> str:
     return "\n".join(["Write plainly.", "", copy_edit.RULE_END, "", *prose])
 
 
-def draft_request(tmp_path: Path, *lines: str) -> str:
-    """The request that `tools/new_prose.py --draft` writes for a reply made of `lines`."""
+def draft_request(tmp_path: Path, *lines: str, kind: str = "Replies") -> str:
+    """The request that `tools/new_prose.py --draft` writes for a draft made of `lines`.
+
+    `kind` picks the reader rows, as `--kind` does. A reply's readers get
+    `copy_edit.LIMITED_READS` reads, and the `README.md` rows' readers get the
+    full `copy_edit.MAX_READS`.
+    """
     draft = tmp_path / "draft.md"
     draft.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    text = new_prose.draft_report(draft, "Replies", new_prose.rule_table())
+    text = new_prose.draft_report(draft, kind, new_prose.rule_table())
     assert text is not None
     return request_of(text)
 
@@ -316,7 +321,9 @@ def test_audits_run_until_one_changes_nothing_and_the_replies_merge(
 ) -> None:
     """The second read changes the edit, so a third read audits it. The third changes nothing."""
     request = tmp_path / "passages.txt"
-    request.write_text(draft_request(tmp_path, "Old one.", "Old two."), encoding="utf-8")
+    request.write_text(
+        draft_request(tmp_path, "Old one.", "Old two.", kind="README"), encoding="utf-8"
+    )
     second = "[1] rewrite\n\n```\nSecond edit.\n```\n\nCut a repeat.\n"
     third = "[1] keep\n\nNo fault found.\n"
     monkeypatch.setenv(
@@ -361,7 +368,7 @@ def test_a_passage_that_never_settles_stops_at_max_reads(
     two_reads: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     request = tmp_path / "passages.txt"
-    request.write_text(draft_request(tmp_path, "Old one."), encoding="utf-8")
+    request.write_text(draft_request(tmp_path, "Old one.", kind="README"), encoding="utf-8")
     edits = [f"[1] rewrite\n\n```\nEdit {n}.\n```\n" for n in range(1, 7)]
     monkeypatch.setenv("FAKE_REPLIES", json.dumps(edits[: copy_edit.MAX_READS] + PANEL_SAME))
 
@@ -378,7 +385,7 @@ def test_an_audit_whose_reply_cannot_be_read_is_left_out_and_the_earlier_reads_k
 ) -> None:
     """A reply cut off before its verdicts ends the audits without losing the reads before it."""
     request = tmp_path / "passages.txt"
-    request.write_text(draft_request(tmp_path, "Old one."), encoding="utf-8")
+    request.write_text(draft_request(tmp_path, "Old one.", kind="README"), encoding="utf-8")
     second = "[1] rewrite\n\n```\nSecond edit.\n```\n"
     cut_off = "the end of a reply whose verdicts were lost\n"
     monkeypatch.setenv(
@@ -689,7 +696,9 @@ def test_a_passage_that_still_loses_a_statement_after_the_last_round_is_kept_as_
     two_reads: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     request = tmp_path / "passages.txt"
-    request.write_text(draft_request(tmp_path, "Old one must hold."), encoding="utf-8")
+    request.write_text(
+        draft_request(tmp_path, "Old one must hold.", kind="README"), encoding="utf-8"
+    )
     first = "[1] rewrite\n\n```\nFirst edit of one.\n```\n"
     replies = [first, "[1] keep\n"]
     for _ in range(copy_edit.MAX_CHECK_ROUNDS - 1):
@@ -776,3 +785,98 @@ def test_the_instructions_name_the_meaning_check_s_and_the_restore_read_s_layout
     assert f'"{copy_edit.RESTORE_READ.partition(".")[0]}."' in editor_text
     assert f'"{copy_edit.LOST}"' in editor_text
     assert f'"{copy_edit.BEFORE}"' in check_text
+
+
+def test_each_limited_reader_is_a_reader_the_plain_writing_rule_names() -> None:
+    """A renamed reader row would otherwise give its texts the full reads, silently."""
+    named = {reader.who for reader in new_prose.rule_table()}
+
+    assert set(copy_edit.LIMITED_READERS) <= named
+
+
+def test_a_passage_with_a_reader_outside_the_limited_set_is_not_limited() -> None:
+    later, owner = copy_edit.LIMITED_READERS
+    request = request_of(
+        f"[1] a.md, rows 1-1. Draft: 2 words. For: {later}",
+        new_prose.row_line(1, ">", "One."),
+        f"[2] b.md, rows 1-1. Draft: 2 words. For: {owner}; A clinician or educator",
+        new_prose.row_line(1, ">", "Two."),
+        "[3] c.md, rows 1-1. Draft: 2 words.",
+        new_prose.row_line(1, ">", "Three."),
+    )
+
+    assert copy_edit.limited_passages(request) == {1}
+
+
+def test_a_reply_that_never_settles_stops_after_the_limited_reads(
+    two_reads: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A reply to the owner gets the edit and one audit (project owner, 2026-11-09)."""
+    request = tmp_path / "passages.txt"
+    request.write_text(draft_request(tmp_path, "Old one."), encoding="utf-8")
+    edits = [f"[1] rewrite\n\n```\nEdit {n}.\n```\n" for n in range(1, 7)]
+    monkeypatch.setenv("FAKE_REPLIES", json.dumps([*edits[: copy_edit.LIMITED_READS], *PANEL_SAME]))
+
+    reply, _ = copy_edit.run(request)
+
+    assert len(json.loads(two_reads.read_text(encoding="utf-8"))) == (
+        copy_edit.LIMITED_READS + copy_edit.CHECK_PANEL
+    )
+    assert rejected_prose.rewrites(reply) == {1: (f"Edit {copy_edit.LIMITED_READS}.",)}
+
+
+#: A meaning check's reply that finds nothing lost in either of two passages.
+SAME_TWO = "[1] same\n\n[2] same\n"
+
+
+def test_a_later_read_rewrites_only_the_passage_that_still_has_reads(
+    two_reads: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """In one request, an item brief stops at two reads while a document passage goes on."""
+    later = copy_edit.LIMITED_READERS[0]
+    request = tmp_path / "passages.txt"
+    request.write_text(
+        request_of(
+            "[1] doc.md, rows 1-1. Draft: 2 words. For: A clinician or educator",
+            new_prose.row_line(1, ">", "Old one."),
+            f"[2] item.md, rows 1-1. Draft: 2 words. For: {later}",
+            new_prose.row_line(1, ">", "Old two."),
+        ),
+        encoding="utf-8",
+    )
+    reads = [
+        f"[1] rewrite\n\n```\nOne {n}.\n```\n\n[2] rewrite\n\n```\nTwo {n}.\n```\n"
+        for n in range(1, 4)
+    ]
+    keep = "[1] keep\n\n[2] keep\n"
+    monkeypatch.setenv(
+        "FAKE_REPLIES", json.dumps([*reads, keep, *[SAME_TWO] * copy_edit.CHECK_PANEL, "unused"])
+    )
+
+    reply, _ = copy_edit.run(request)
+
+    asked = json.loads(two_reads.read_text(encoding="utf-8"))
+    assert len(asked) == 4 + copy_edit.CHECK_PANEL
+    assert "    1 > Two 2." in asked[3]
+    assert rejected_prose.rewrites(reply) == {1: ("One 3.",), 2: ("Two 2.",)}
+
+
+def test_a_reply_that_still_loses_a_statement_after_the_limited_rounds_is_kept_as_it_was(
+    two_reads: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A reply gets one restore read, and a loss the second round still finds keeps the original."""
+    request = tmp_path / "passages.txt"
+    request.write_text(draft_request(tmp_path, "Old one must hold."), encoding="utf-8")
+    first = "[1] rewrite\n\n```\nFirst edit of one.\n```\n"
+    replies = [first, "[1] keep\n"]
+    for _ in range(copy_edit.LIMITED_CHECK_ROUNDS - 1):
+        replies += [LOST_ONE] * copy_edit.CHECK_PANEL + [first]
+    replies += [LOST_ONE] * copy_edit.CHECK_PANEL
+    monkeypatch.setenv("FAKE_REPLIES", json.dumps([*replies, "unused"]))
+
+    reply, _ = copy_edit.run(request)
+
+    assert len(json.loads(two_reads.read_text(encoding="utf-8"))) == len(replies)
+    assert reply.startswith("[1] keep\n")
+    refused = reply.partition("Meaning check:")[2].partition("Notes from")[0]
+    assert "The requirement became a description." in refused

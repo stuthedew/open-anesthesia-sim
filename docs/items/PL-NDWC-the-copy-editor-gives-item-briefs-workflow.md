@@ -3,11 +3,13 @@ id: PL-NDWC
 title: The copy editor gives item briefs, workflow files, commit messages, pull request bodies and replies up to four reads and five rounds of meaning checks; the owner asked for at most two (2026-11-09)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: workflow
 feature: copy-editor
 touches: tools/copy_edit.py, tests/unit/test_copy_edit.py, .claude/skills/docket/modes/close-out.md, docs/prose-review/README.md, docs/apparatus.md
 added: 2026-11-09
+closed: 2026-11-09
+pr: 2073
 payoff: an item brief or a reply costs at most two copy-editor reads and two rounds of meaning checks, while the simulator documents keep their four reads and five rounds
 verify: grep -qF 'LIMITED_READS = 2' tools/copy_edit.py && grep -qF 'LIMITED_CHECK_ROUNDS = 2' tools/copy_edit.py
 ---
