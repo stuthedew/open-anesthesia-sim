@@ -1,9 +1,13 @@
 ---
 id: PL-SVGH
 title: Restructure docs/ARCHITECTURE.md as its copy editor's structure read proposes: state each repeated fact once, move failures and halts out of Data flow, define Area, View and Workspace where they first appear (copy editor structure read, 2026-11-05)
-status: untriaged
+status: done
 feature: architecture-md-structure
+touches: docs/ARCHITECTURE.md
 added: 2026-11-05
+closed: 2026-11-07
+pr: 2056
+verify: grep -q '^## Failures and halts' docs/ARCHITECTURE.md && grep -q 'A series outside the table must meet a labelling requirement' docs/ARCHITECTURE.md
 ---
 
 **Problem.** Restructure docs/ARCHITECTURE.md as its copy editor's structure read proposes: state each repeated fact once, move failures and halts out of Data flow, define Area, View and Workspace where they first appear (copy editor structure read, 2026-11-05)
@@ -129,3 +133,20 @@ added: 2026-11-05
   - the reader needs to know which list holds "item 34" and what its first half is. The text does not say.
   - the per-run examples list "settings", but the same entry says "The setting controls are a View", and every View sits in an Area. Only the author knows whether "settings" means something other than the setting controls or should be cut. I left it as it stands.
   - the reader needs to know what "the drawn-point rule" is, and the text does not say.
+
+**Generator check.** No new generator. The repeated facts accumulated as chapters were written one at a time, which the structure review exists to catch. The changes of meaning that the restructure itself introduced came from moving text, and the two audits below caught them. The order of work that put this restructure after a line edit is the project owner's decision of 2026-11-07, "structure first from now on", which already applies to the other documents.
+
+**What was done** (2026-11-07). The findings were applied to the text that `PL-T9S5` restored, by moving and cutting repeated text only. Nothing was line edited, because copy edits wait on the copy editor fix, `PL-F0Q2`. The chapters now run: § "Layering", § "Package map", § "Data files (`data/`)", § "Data flow", the three branch chapters, § "Failures and halts" (new), the two User state chapters, § "Dependencies", § "Development scripts and hooks", § "Tests (`tests/`)" and § "Where new code belongs". Where the result differs from a finding:
+
+- § "Layering" keeps that `app/view_registry.py` is the one list of the View kinds a layout may name (`PL-R1WQ`). The finding kept only that `layout/` holds no such list, but no other place says the registry is the only list.
+- § "Layering" keeps the `app/` bullet's "never performs a physiological or unit calculation itself", and rule 2 stays the callback rule. `.claude/rules/ui-calculations.md` cites the bullet as that rule's home, so merging the two made each document name the other as the source.
+- The atomic-write steps in the saved-Workspaces chapter say that the directory `fsync` is a best effort, and that each store calls `os.replace` itself, as `src/anesthesia_sim/user_files.py` and the two stores show. `PL-PKP4` is filed for that module's docstring, which says all the steps live there.
+- The Data flow loader paragraph said the loader validates units. The rejection list in § "Data files" now carries that as "a field whose name gives another unit", because a unit is part of a key's name and an unknown key fails the load (`core/parameters.py`, `StrictPayload`).
+- The data-file history of `PL-4YY1` is cut, but one sentence keeps that the machine file and the first default pins came from it. The Package map keeps "since PL-25KS" on `app/`, and the anchoring rule keeps `PL-Q197` and `PL-2FM6` as the items that set it and carried it over.
+- "One person, three names" is not done, because choosing one name is a wording change. `PL-MKCD` holds it, with `docs/MODEL.md`'s two headings that say "the reader's".
+- The heading "The workflow apparatus" is now "Development scripts and hooks". No file outside `docs/items/` cites the old heading.
+- The queries from the section line edits stay with their items (`PL-G1J9`, `PL-6G7N`, `PL-HLTR`, `PL-4CZW`, `PL-GSPR`, `PL-SMKL`). § "Layering" now says what an Area, a View and a Workspace are, which answers the queries about those terms.
+
+**How it was checked.** Two audits compared the text before the restructure with the result. In the first, four reviewers read the old text part by part and looked for each statement in the new document. They found no lost rule or value. They did find twelve lost qualifiers, attributions and details, among them "independent" layers, "clinical" reference, "wanted but not scheduled", the menu position of the three save and restore entries, and `PL-B396` on the preferences store's startup. In the second, two reviewers read the new text against the old for changed meaning, as the machine-document restructure's audit did. They found fifteen passages, among them the shipped Workspaces read as parameter files, "that full record" pointing at the run definition, and a claim that `user_files.py` performs the replace. Each finding is fixed, apart from "the first under `src/`", which the restructure cut on purpose because `app/preferences.py` also writes outside the tree.
+
+**Prose review** (2026-11-09). Close-out step 8 ran on the 16 passages this branch changed, on `main` after `PL-F0Q2`. The run read four times, but the fourth read's reply held only its last message (`PL-DM95`), and the second meaning check gave passage 7 two verdicts after correcting itself, so the tool returned every passage unedited (`PL-WZC0`). A one-off driver replayed the four saved reads and the first round of checks, with the second checker's retracted verdict removed, and ran rounds 2 to 5 live. Round 5 found nothing lost. The copy editor rewrote 13 of the 16 passages. Three reviewers then compared the text before and after the rewrite, old to new and new to old. They found eleven changes, and nine are reverted to the earlier wording: the run file's name, which the edit added; that `run_segments` warned about the old offset; the bold definition of the crossing rule; the `add_run` lead, which said "can reach" where the text said "is how"; the name `halt_gate`; the observed defect before `PL-006`, which the edit made hypothetical; the pointer to `docs/MODEL.md` § "Closed-form agreement test"; "holds" for `app/chart_frame.py`'s column rule; and "This section is the object map". Two reworded bold leads are kept, because each now names what "that boundary" and "it" pointed at, and no file outside a closed item cites either.
