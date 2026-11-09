@@ -76,3 +76,5 @@ and one set by whatever is next.
 The stale repair paragraph above is left as written rather than edited, per the
 same reading that `PL-6TP8`'s brief records: what was prescribed when the item
 was filed is part of why it says what it says.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-3BYK`.

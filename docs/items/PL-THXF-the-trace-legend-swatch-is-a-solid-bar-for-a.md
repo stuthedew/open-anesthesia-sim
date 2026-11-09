@@ -94,3 +94,5 @@ still has the defect and is still the shipped chart, so this stays open until
 pattern included, held by `test_the_legend_swatch_carries_the_trace_s_own_dash_pattern`.
 It waited only for the Flet legend carrying the defect to leave, which the
 dashboard port did; the `verify:` above names the test that holds it.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Sequenced past v0.5.0, so not clearable before it begins", as one of the five entries the Qt port carries. That section's table keeps its row. The paragraphs that named it are quoted in the brief of `PL-3355`.

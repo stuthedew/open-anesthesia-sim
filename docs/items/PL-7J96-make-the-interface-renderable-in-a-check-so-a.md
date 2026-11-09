@@ -136,3 +136,7 @@ changes about when it can be worked.
 **`ROADMAP.md`'s Gate 1 list keeps its line for this item**, per § "The gate is
 a snapshot, not a moving target": nothing moves, and a disposition is not a
 deletion.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.4.26 - the interface moves to Qt" carried this in its `PL-7J96` bullet under § "Items this port moots or transforms". "Gate 1" is v0.5.0's frozen list, where this item's entry stays.
+
+> `PL-7J96`'s Gate 1 line stays written where the freeze put it, per § "The gate is a snapshot, not a moving target".

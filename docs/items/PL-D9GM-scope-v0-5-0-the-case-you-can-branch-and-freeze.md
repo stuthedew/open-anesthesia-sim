@@ -40,3 +40,7 @@ day, plus eight the same day's triage pass admitted under the presence rule.
 project owner made during the round are recorded in place: the gate freezes
 whole, item 8's replay half is the internal resimulation driver only, and two
 branches overlay on one time axis rather than sitting in stacked panels.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "The plan" carried this paragraph under § "The timeline", after the paragraph on row 7. "Row 5" is the timeline's row for v0.5.0, and "here" is the timeline. § "Development pathway" -> "Phase 3 — reproducibility and comparison" keeps the paragraph's lasting fact: what v0.5.0 took, what it left out, and that it departs from Phase 3's sequence of items 9, 10, 11 and 12.
+
+> Row 5's internal ordering put forking and comparison ahead of save/load and replay. That ordering was first recorded here as a proposal, not a decision. The reason given was that branching within one session is what does the teaching, while persistence is a convenience. Scoping row 5 decided the question, and the decision matched the proposal. v0.5.0 takes items 26, 12 and 11, with only the *replay driver* half of item 8. It puts save/load (item 9) and a user-facing replay control (item 10) out of scope. That is a deliberate departure from the Phase 3 sequence in "Development pathway". That sequence no longer applies to these four items.

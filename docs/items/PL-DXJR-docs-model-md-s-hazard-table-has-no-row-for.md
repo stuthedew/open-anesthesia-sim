@@ -91,3 +91,7 @@ learner sets the cardiac output or ventilation dial to a real patient's value
 His words: "rely on disclaimer. I don't want to make it too busy with excess
 text". He also said that changing cardiac output and ventilation is a core
 feature, so the dials stay as they are.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Planned milestones" carried this paragraph under item 30, "Patient factors". In it, "this item" means item 30, "here" means that entry, "this file" means `ROADMAP.md`, and "above" and "below" point within `ROADMAP.md` as it then stood. Item 30 keeps that this item rewrites that section and its hazard row.
+
+> *It removes a safeguard that `docs/MODEL.md` names (`PL-DXJR`).* The fixed reference adult is one of the two safeguards in `docs/MODEL.md` § "What keeps a real patient's data out of a run". Once age, sex and weight are inputs, a run can be built from a real patient's data. So this item rewrites that section and its hazard row. `test_every_run_simulates_the_shipped_reference_adult` pins the one shipped patient file and the absence of any patient argument or control, so it fails when the inputs land, which makes the rewrite hard to miss.

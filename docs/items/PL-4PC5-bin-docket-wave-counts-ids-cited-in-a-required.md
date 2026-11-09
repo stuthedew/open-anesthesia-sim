@@ -112,3 +112,5 @@ whatever the parser says. The count had also moved from 19 to 20 as the section
 grew. The replacement pins the test that states this item's own defect - a
 prose citation is not a member - and `touches` now names the file that test
 lives in, so the discriminating clause reads a path this item declares.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-6FJ5`.

@@ -81,3 +81,5 @@ Decided here, since the brief did not:
   session-start hooks send `bin/docket`'s stderr to `/dev/null`, which is why
   a session still sees nothing; `bin/docket new` recorded that filing here as
   `recurrences: 2026-09-26 PL-QHCP`.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-9TNJ`.

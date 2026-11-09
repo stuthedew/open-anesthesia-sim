@@ -108,3 +108,9 @@ Run 24 (`s05-macawake-t3r1`), section 5 (§ "MAC-awake as a chart reference"), o
 4. Then take the sections in the debug record's order, one at a time, each approved before the next. A fix to the instructions restarts from section 1. Include whole documents, each run as a structure read and then section by section.
 5. Done: after five approved in a row, run the blind judge as `docs/prose-review/README.md` § "Judging edits blind" says, on sections not tuned on: § "Color contrast, and the standard this interface is held to", § "The six compartment traces: what separates them", § "Reset behavior", § "Agent-change behavior", § "What a branch comparison asserts, and what it does not" and § "Interface boundary", with one good section. Record the result here in a paragraph that opens "**Blind judge result.**", which this item's verify needs.
 6. Done: run and record the rejected set on the final instructions, as `docs/prose-review/README.md` § "Running the set" says, and run the full suite. The branch was pushed at 2026-11-05 00:0xZ with a prompt that has no run of the set, so the pull request's check on the set is red until then; that is expected. Close the item, and update #2038's title and body.
+
+**Moved from `ROADMAP.md` on 2026-11-07 (`PL-YNFS`).** `ROADMAP.md`'s v0.7.0 Required scope entry 12 carried these two sentences until then. "This" is the entry's work: the copy editor fixed, then the five `docs/MODEL.md` rewrites that wait on it. "It" in the second sentence is the copy editor. This item's `generator:` field now records the generator as spent.
+
+> The project owner added this to v0.7.0 (project owner, 2026-11-04 20:12Z: "At the copy editor stuff to .7").
+
+> It keeps text that its reader does not need, and lengthens some of it, so `PL-HGZS` records it as a live generator.

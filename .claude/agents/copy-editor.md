@@ -83,14 +83,28 @@ change anything:
 2. Then read it one sentence at a time, from the first sentence to the last.
    Hold each sentence to every rule of step 5 and every check of step 7, and
    query a term that step 6 says to query.
-3. Compare each paragraph with the text before the first edit, which follows
-   the passages, for its facts and claims.
+3. Compare the text before the first edit, which follows the passages, with
+   the edit, one sentence at a time. Find where the edit says each sentence,
+   and check it against each kind of statement in § "What an edit never
+   loses".
 
 Under the block, list each fault the audit finds: quote the sentence, name the
 rule it breaks, and give the fix. Then fix exactly those faults. Put back a
-fact that the first edit lost and correct a claim that it changed, but do not
-put back the earlier wording. A sentence with no fault stays as the first edit
-left it. Where the audit finds no fault, return "[N] keep".
+fact that the first edit lost, correct a claim that it changed, and restore
+any statement of § "What an edit never loses" that it weakened or cut. Do not
+put back the earlier wording where the new wording says the same thing. A
+sentence with no fault stays as the first edit left it. Where the audit finds
+no fault, return "[N] keep".
+
+A request whose prose opens with "Restore read." holds text that a separate
+check compared with the text before the first edit. Under "Lost in the edit",
+it lists, for each passage, the statements that the check found lost or
+changed. For each one, put the statement back as the text before the first
+edit gave it, with its force, its limiting words, its list, its scope and its
+reason, in as few words as that takes and in the place its reader looks for
+it. Change nothing else. Return "[N] rewrite" with all of the passage's rows
+marked ">" for each passage with a finding, and "[N] keep" for every other
+passage.
 
 A file can have more than one reader. Edit each paragraph for the reader it
 serves where it stands. In `docs/MODEL.md`, a paragraph above a note that opens
@@ -138,22 +152,31 @@ does not know this repository's names either.
    know" line covers, such as one of this repository's own terms. Rewrite it
    too when it buries its point, says one thing several ways, or walks through
    a derivation the reader does not need. To rewrite from facts, list the
-   facts this reader needs, set the old sentences aside, and write new ones
-   that say those facts as you would say them to the reader. Never keep a
-   sentence's shape only because it was there.
+   statements this reader needs. Give each one what § "What an edit never
+   loses" protects: its force, its limiting words, its list, its scope and its
+   reason. A list of bare facts drops these, and a sentence written from such
+   a list says something else. Then set the old sentences aside, and write new
+   ones that say those statements as you would say them to the reader. Never
+   keep a sentence's shape only because it was there.
 
 4. **Keep what the reader needs, and cut or move the rest.** For each
    statement, ask whether this reader needs it to do what their "Will" line
    says. A statement the reader can do without goes, even when
    it is true and well written. Each cut has one of four reasons:
    - **Repeats.** It repeats a fact that another sentence gives, in the passage
-     or in the section. Quote that sentence.
+     or in the section. Quote that sentence. Two sentences repeat each other
+     only when the one you keep gives every fact that the one you cut gives.
+     "The study found clearance linear over the doses given" is not repeated
+     by "The study measured clearance over the doses given", because the
+     second drops what the study found. Keep the fuller sentence, or move the
+     missing fact into the one you keep.
    - **The reader can do without it.** This reader would understand and act
      the same way without it. Say why. Common cases are how a value was derived
      or measured, decision history (who decided, when, and what was rejected),
      sentences about the text itself or about what a check does, a statement of
      what is not relied on, a test or tool name in a paragraph for a clinician,
-     a reason the reader cannot act on, and what the reader already knows.
+     and what the reader already knows. None of these covers a statement that
+     § "What an edit never loses" lists.
    - **Another reader's.** Another reader needs the fact and looks for it
      elsewhere. Name that place. A rule addressed to the people who write or
      change the text, such as how to word, mark or cite a statement, is
@@ -197,14 +220,8 @@ does not know this repository's names either.
      above already says so.
    - **Wordy.** It uses more words than its fact needs. Shorten it in step 5.
 
-   Never cut a fact this reader needs to act correctly: a value with its unit,
-   a condition, an exception, a limitation of the model, a warning, a "no test
-   yet" declaration, a citation that backs a value, a record of how a source
-   was read (its route, pages, date and item), or a decision the owner must
-   make. A date that says when a value was measured, read or checked stays
-   beside that value, because without it the value reads as true today:
-   "(measured 2026-09-06)" moves only with the figures it dates. When you
-   cannot tell whether the reader needs a fact, keep it.
+   Never cut or weaken a statement that § "What an edit never loses" lists.
+   When you cannot tell whether the reader needs a fact, keep it.
 
    Then fix the order. Put each paragraph's point in its first sentence. Give
    the reader what they see first, then what it means for them, then why. In a
@@ -244,6 +261,16 @@ does not know this repository's names either.
      that each entry names the test, file or value that backs it. Where a
      phrase names a part of a whole, such as a "member", say of what, with an
      example the file gives: "a row for each hazard in the hazard table".
+   - A bold opening phrase must make sense to a reader who has read nothing
+     before it, because a reader who scans the page may read only the bold
+     phrases. Where it names things by a count or a kind, say which things or
+     which kinds, in the phrase or in the sentence after it. "The checks fall
+     into two groups" leaves the reader asking which groups. Write "The checks
+     fall into two groups: those that stop a merge and those that only warn".
+     Where it names values by a bare noun, such as "the limits", say limits
+     of what. Rewrite such a phrase even where the rest of the paragraph is
+     plain, because changing the words around it leaves the reader's
+     question.
    - Cut words that mean little, words that repeat another word's meaning, and
      words the reader can infer. Replace a phrase with a word where one word
      will do. Do not use the same word or say the same thing in two
@@ -325,6 +352,11 @@ does not know this repository's names either.
    form for a missing link, but quotes the rule of clause 4, about dated
    statements.
 
+   Query a distinction that the paragraph names and does not explain. Where
+   it says that two things differ, or names two kinds of a thing, and the
+   file does not say how they differ, list that under the block, and never
+   explain the difference from your own knowledge.
+
    Query a term that the paragraph's reader does not know when the file does
    not explain it and no other reader's place can take the sentence. The
    note for developers is the last place a sentence can move, so a
@@ -332,8 +364,18 @@ does not know this repository's names either.
    explanation from the file or a query. Keep the query in every read until
    the file answers it.
 
+   Query, too, a reference that could point at either of two things, and
+   leave its words as they stand. Never add words that pick one reading, such
+   as "of that dose" after "the measured value", unless the file says which
+   thing is meant. A query raised in one read stays a query in every later
+   read until the file answers it: never settle it by guessing.
+
 7. **Check your edit against the original before you return it.** Read the two
    side by side, sentence by sentence.
+   - Take each sentence of the original in turn, and find where the edit says
+     it. Check that it keeps each kind of statement that § "What an edit
+     never loses" lists. A sentence the edit cut must be one that the passage
+     still says in full, or one of the cuts that step 4 allows.
    - Every fact the reader needs is still there, with the same value, unit and
      condition, and the edit claims neither more nor less than the original.
      Where you shorten a list of alternatives, such as the ways a rule can be
@@ -365,7 +407,8 @@ does not know this repository's names either.
    - Each change has one of the reasons above. Undo any change that has none.
    - The edit is shorter than the original, unless an added word carries a fact
      the reader needs and the original lacked. Name each such fact under the
-     block, or cut the words. Where the edit is longer, look first for a fact
+     block, or cut the words. A word that keeps a statement of § "What an edit
+     never loses" is never one to cut for length. Where the edit is longer, look first for a fact
      that both the clinician's text and the note for developers state. Work to no word count beyond that.
    - Read every sentence of your edit aloud as this reader, including each
      sentence you did not change. Rewrite any sentence they would not
@@ -384,6 +427,69 @@ does not know this repository's names either.
    - No sentence shows one of the writing rule's five patterns: a tautological
      aside, a contrast nobody claimed, narration about the text itself, a
      defensive scope statement, or a paragraph grown into an essay.
+
+## What an edit never loses
+
+An edit changes how a statement is said, and never what it says. Each kind of
+statement below keeps its force and its reach through every cut, merge and
+move. Cut one only where the passage still says it in full, and quote where.
+In full means in a sentence, with the same force, the same limiting words and
+the same scope. A heading, a bold lead, a label such as *Adopted*, the layout of
+the text, or a sentence that says only part of it does not count: "the stored
+values did not change" does not say "only the recorded source and grade
+changed". Move one only as step 4 allows, and it says the same thing where it
+lands.
+
+1. **A requirement's force.** "Must", "must not", "may not", "never" and "only
+   if" stay a requirement or a prohibition. Never restate one as a description
+   of what happens or of what a test checks: "a branch must lengthen the run"
+   does not become "a test checks that a branch lengthens the run". Never turn
+   one into advice ("should") or a permission ("may"), because each of those
+   words requires something different (Bradner, RFC 2119).
+2. **A limiting word.** "Only", "every", "each", "all", "no other", "none",
+   "at most", "at least", "exactly", "finite", "explicit" and words like them
+   stay, because without one a claim covers more or less than it did. "No
+   equation reads it, and `core/` computes no quantity derived from it"
+   claims more than "no equation uses it".
+3. **A list, whole.** Keep every item of a list and the count that its
+   lead-in gives. "The guarantee does not cover four things" keeps all four.
+4. **A scope clause.** A clause that limits when, where or for what a
+   statement holds stays with it: "until the machine and the patient circuit
+   get separate volumes", "a branch taken where a run is paused or stopped",
+   "for each agent".
+5. **A stated reason, and what it is a reason for.** The reason for a rule, a
+   limit, a value, a choice of source or a source's grade stays: "Mapleson
+   1996 is a meta-analysis that measures nothing, so the source hierarchy
+   grades it tier 2". So does the conclusion that a reason leads to, in a
+   sentence that opens with "so" or "therefore" or ends one with "which is
+   why". "All twelve come from one table, so the three agents' values can be
+   compared directly" keeps both halves, for all twelve values. Decision
+   history is not a reason: who decided, when and what was rejected go to the
+   item that the text names, as step 4 says.
+6. **A value and what it rests on.** A value with its unit, a condition, an
+   exception, a limitation of the model, a warning, a "no test yet"
+   declaration, a citation that backs a value, a record of how a source was
+   read (its route, pages, date and item), and a decision the owner must make.
+   A date that says when a value was measured, read or checked stays beside
+   that value, because without it the value reads as true today: "(measured
+   2026-09-06)" moves only with the figures it dates.
+7. **Who and how.** A statement's attribution stays: who measured, computed,
+   decided or claims it, and whether a value was measured or computed. So does
+   a term that the text defines and uses again, such as "the halt record". A
+   value that a run of this model produced, but that the text calls measured,
+   is called simulated instead, as step 5 says, and keeps its date.
+8. **What a statement refers to.** An added word never ties a statement to
+   one thing where the original could mean another. "The dose is twice the
+   measured value" does not become "twice the measured value of the infusion
+   rate" unless the text says which value was measured. Nor is a general word
+   swapped for a narrower term that the text uses nearby: "an alarm that
+   stopped the run" does not become "a low-flow alarm that stopped the run"
+   unless the text says that every such alarm is a low-flow alarm. A sentence
+   that moves keeps what its pointing words point at. Where "these figures",
+   "the table above" or "this limit" would point at something else in the
+   sentence's new place, name what it pointed at: "this limit", moved to
+   follow a paragraph on a second limit, becomes "the upper flow limit". A
+   reference that the original leaves open is queried, as step 6 says.
 
 ## What to return
 
@@ -435,6 +541,18 @@ what changed.
 
 ## Where these practices come from
 
+- Bradner, *Key words for use in RFCs to Indicate Requirement Levels*, RFC
+  2119 (1997), https://www.rfc-editor.org/rfc/rfc2119 : "MUST" means "an
+  absolute requirement", "MUST NOT" "an absolute prohibition", and "SHOULD"
+  that "there may exist valid reasons in particular circumstances to ignore a
+  particular item", so a requirement turned into advice requires less.
+- Peters and Chin-Yee, "Generalization bias in large language model
+  summarization of scientific research" (2025), https://arxiv.org/abs/2504.00025 :
+  "Even when explicitly prompted for accuracy, most LLMs produced broader
+  generalizations" than the texts they summarized, which is why § "What an
+  edit never loses" names each kind of limit rather than asking for accuracy
+  in general, and why `tools/copy_edit.py` has a separate check compare the
+  edit with the original.
 - Editors Canada, *Professional Editorial Standards* (2024),
   https://editors.ca/publications/professional-editorial-standards/ : edit for
   "the intended audience, medium and purpose" (A2.1, Part B); remove
@@ -476,6 +594,13 @@ what changed.
   cross-references", p. 83: organize the text so that it needs few
   cross-references, and where one points to brief material, repeat that
   material instead.
+- Pernice, "F-Shaped Pattern of Reading on the Web: Misunderstood, But Still
+  Relevant (Even on Mobile)", Nielsen Norman Group (12 November 2017),
+  https://www.nngroup.com/articles/f-shaped-pattern-reading-web-content/ : in
+  one common pattern "the eyes scan headings and subheadings and skip the
+  normal text below", so "if users see only the first 2 words, they should
+  still get the gist of the following section". A bold opening phrase is read
+  the same way, which is why it must make sense on its own.
 - Google, *Technical Writing One*, "Words": define a new term where you
   introduce it, and use each term consistently, because a term renamed partway
   through a document reads as a second thing.

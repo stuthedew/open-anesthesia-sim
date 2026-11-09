@@ -139,3 +139,7 @@ and `python3 tools/doc_check.py check`, commit under the eight ids, then
 `bin/docket yield PL-M3X6` with the two `--trailer` lines, push as it prints,
 and `bin/docket arm` (`behind N`: merge `origin/main` once and ask again; `arm`:
 undraft and squash auto-merge).
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-B6V1`).** `ROADMAP.md`'s § "Completed: v0.6.0 - the layout is the reader's" -> "Required scope" entry 20, the look and the edge states of every surface the milestone creates, closed its list of queue items with this sentence, after naming `PL-F2YS`, `PL-JG82` and `PL-QLZ5` and the day they joined. "The entry itself" is entry 20, whose queue item was this one.
+
+> The entry itself was `PL-M3X6`.

@@ -199,3 +199,11 @@ record a frozen deferral on the item. `PL-D388`, `PL-JV5Q` and `PL-QWF8` close
 with it. No open head is left `live`, so the generator pause ends, and the five
 items it held moved to `ready`; `PL-Z64T` moved to `needs-decision` on whether
 the lane groups keep restating `Item.lane`.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-B6V1`).** `ROADMAP.md`'s § "Completed: v0.6.0 - the layout is the reader's" -> "Debt gate: the frozen list" carried these sentences in its paragraphs on the deferrals to Gate 3. The first closed the paragraph that opens the deferrals; "the seven entries" are `PL-Y04W`, the five deferred on 2026-09-27 and `PL-5B1N`. The second is from the paragraph on the five, the third from the paragraph on `PL-5B1N`.
+
+> Until 2026-10-12, three groups headed "Deferred to Gate 3" held the seven entries.
+>
+> From 2026-09-27 to 2026-10-12 they sat in a group of their own, as `PL-Y04W` did (`PL-8QMD`).
+>
+> From 2026-10-03 to 2026-10-12 it sat in a group of its own, as the five did (`PL-8QMD`).

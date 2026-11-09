@@ -305,3 +305,5 @@ it now says the reserved number is not one to raise and the patch cut is raised
 as an offer is, with the number named for the owner to confirm, so
 `.claude/skills/docket/modes/release.md` joins `touches`. `format_wave`'s
 comment on the `Reserved` line no longer calls this item an open question.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the briefs of `PL-2M4X` and `PL-Q0J1`.

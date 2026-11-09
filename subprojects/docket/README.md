@@ -2261,8 +2261,10 @@ version is named again** (`PL-2TDX`). That is the absorb route
 `checks._check_cut_window` advises once the base has taken work since the cut,
 and `cmd_release` finds the state through the same `vcs.cut_window` read, so
 the two cannot disagree about where re-cutting absorbs; before, the run read the
-version as shipped and refused it as untagged. Only a run naming the version
-re-cuts, because absorbing work the session did not do is a judgment; any other
+version as shipped and refused it as untagged. `checks._check_cut_window`'s
+advisory names what the base has taken in since the cut, and both
+dispositions: absorb it by re-running the cut, or let it go to the next
+release. Only a run naming the version re-cuts, because absorbing work the session did not do is a judgment; any other
 run on that branch is refused as unmerged.
 
 **A notes file stops claiming partway down, since `PL-P669`.** Below the
@@ -3457,7 +3459,7 @@ neither brief, and nothing mechanical reaches it.
 ### `deferred-from:` records which gate excused an item, and why
 
 ```yaml
-deferred-from: v0.6.0 - captured after the freeze, and not safety or science
+deferred-from: v0.7.0 - a new problem, which the schematic's own work introduced after the freeze
 ```
 
 A frozen debt gate is a snapshot, so a debt item captured after the freeze is

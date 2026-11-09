@@ -49,3 +49,5 @@ check reports.
 its cost - and if it is, an added `.py` line whose suppression token sits
 inside a string literal, a docstring or a comment that is not a file-level
 directive is not reported, while a real directive still is.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-G21K`.

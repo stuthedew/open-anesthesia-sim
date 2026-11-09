@@ -77,3 +77,5 @@ rule can be broken anywhere else without the check noticing.
 under `src/anesthesia_sim/app/`, and `check_colors_live_in_the_theme` fails on a
 literal colour in any `app/` module rather than only in the view.
 `tests/unit/test_contrast_check.py` covers a colour declared in a third module.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the briefs of `PL-6FJ5` and `PL-4L49`.

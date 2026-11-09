@@ -56,3 +56,7 @@ design departs from non-overlap. And Pin Scene is an opt-in exception to the
 2.8 workshop's rule that the scene belongs to the window. The section's main
 finding held: Blender's reason for non-overlap is visibility and efficiency,
 not information integrity.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-B6V1`).** `ROADMAP.md`'s v0.6.0 section, § "Explicitly out of scope for v0.6.0", carried these sentences in its entry on re-reading the Blender design rationale against the primary pages. "That document" is the design rationale this item re-read; "this milestone" is v0.6.0. The entry keeps that the pages were re-read on 2026-10-25 and the re-reading corrected three claims.
+
+> That document rests on search summaries, because the session egress proxy refused `blender.org` when the document was written, on 2026-09-15. That is no longer true. Every `blender.org` host responded to a probe on 2026-09-26 (`PL-M701`), so the pages can be read now. This work is independent of this milestone.

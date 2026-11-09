@@ -987,6 +987,66 @@ is recorded. Then delete the tag from `origin` with
 described above. To undo the deletion, push the old commit back as the tag
 with `git push origin COMMIT:refs/tags/VERSION`.
 
+## Keeping the toolchain current
+
+**When a dependency or the interpreter moves, a scheduled run notices and the
+owner decides. Nothing upgrades on a schedule, and nothing gates on it.**
+
+This is a multi-year project, so every version constraint in `pyproject.toml`
+will be wrong eventually. `requires-python` admits two CPython minor versions,
+3.14 and 3.15, and CPython ships a new one each year. Flet is pre-1.0, and an
+upper bound excludes its 1.0. The dev tools have only lower bounds, so their
+behaviour changes underneath the gate. The failure being guarded against
+is not a stale pin. It is returning after a gap to a tree that no longer
+builds. By then the upgrade that would fix it is several versions wide, and
+the cost of coming back exceeds what a hobby project will pay.
+
+The risk is not hypothetical here. `pyproject.toml` records the instance. In
+pydantic 2.12.4, the library began passing `prefer_fwd_module=` to
+`typing._eval_type`. CPython added that keyword between 3.14.0rc2 and 3.14.0
+final. Parameter loading in the scientific core stopped working. It took
+one dependency, one patch version and one interpreter build.
+
+**What notices.** `.github/workflows/drift.yml` runs monthly and on demand. It
+asks two questions that `quality.yml` is right not to ask, and a third
+question that runs weekly:
+
+- *`dependencies`* checks the newest release that each bound in
+  `pyproject.toml` already allows. It resolves them with `uv sync --upgrade`.
+  A failure means that a dependency broke the project inside a range that this
+  project has already said it accepts.
+- *`interpreter`* checks the newest stable CPython. It relaxes the upper bound
+  on `requires-python` in the runner only. A failure means that the next
+  interpreter is not ready for this tree, or that this tree is not ready for
+  it.
+- *`order`* runs the whole suite in a shuffled order every Monday. It uses
+  pytest-randomly, with the date as the seed. A failure means that a test
+  passes only when another test runs before it. The run's output names the
+  seed that reproduces the failure (`PL-75D9`).
+
+The workflow also prints what exists *beyond* the declared bounds, without
+failing on it. It does not fail, because crossing a major bound is a
+deliberate migration, and CI should not attempt one. That step is how anyone
+learns at all that a Flet 1.0 or a pydantic 3 is available.
+
+**What does not happen.** There are no automated dependency pull requests and
+no version-bump campaign. The current pins are correct today. The point is to
+know when one stops being correct, not to raise numbers on a schedule.
+Automated bumps were considered and rejected, on the evidence this project
+already cites about narrow versus broad automation. Broad automation
+accumulates noise until people route around it, which is the failure
+`PL-ZBJ0` records.
+
+**Why it reports rather than gates.** Nobody here controls the versions that
+the workflow resolves. So gating on them would let an unrelated upstream
+release block this project's own work. A red run is news to act on when
+convenient, not a signal to stop.
+
+**And it is retired if it stops being news.** `CLAUDE.md`'s retirement test
+applies: a check that fires every run without changing a decision is a defect
+in the check. If the workflow's failures become routine background that
+nobody acts on, delete the workflow rather than working around it.
+
 ## Retire the stop hook patch once Anthropic fixes it
 
 The cloud container's `Stop` hook, `~/.claude/stop-hook-git-check.sh`, belongs

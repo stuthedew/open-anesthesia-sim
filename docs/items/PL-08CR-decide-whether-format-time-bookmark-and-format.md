@@ -68,3 +68,5 @@ For the build thread: each of the eight tests names one guarantee; keep every te
 ## Answers 2026-10-03
 
 Delete both wrappers and repoint the eight tests at `bookmark_panel` (project owner, 2026-10-03, ratified, over keeping them as a single-row renderer for a future caller). Status moved to `ready` with this answer, as `docket check` requires of an answered question.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Introduced by work done while clearing this gate or implementing this milestone". The paragraphs that name it are quoted in the brief of `PL-FPY2`.

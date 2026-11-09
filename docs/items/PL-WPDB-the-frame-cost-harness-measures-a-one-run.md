@@ -96,3 +96,5 @@ asserts `runs == 1`; `test_the_report_names_how_many_runs_were_drawn`; and
 `MAX_DISPLAYED_RUNS + 1`. Each fails under a matching break of the harness,
 checked by mutation: the branch never added to the dashboard, only the first
 run advanced each frame, the run-count check removed, and the scroll removed.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Not wholly apparatus, but unable to change what a reader of the simulator sees". The paragraphs that name it are quoted in the brief of `PL-HCTF`.

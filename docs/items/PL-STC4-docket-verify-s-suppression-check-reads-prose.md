@@ -228,3 +228,5 @@ its line.
 `PL-4FD2`, the probable duplicate named above, was dropped against `#783`. The
 open question this item left - whether the comment half was decidable at all -
 is answered by the coupling rather than by a better matcher.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the briefs of `PL-CSV0` and `PL-G21K`.

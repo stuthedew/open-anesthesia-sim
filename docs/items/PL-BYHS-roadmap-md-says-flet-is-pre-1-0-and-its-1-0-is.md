@@ -5,10 +5,10 @@ priority: P3
 effort: S
 status: ready
 classes: docs
-touches: ROADMAP.md
+touches: docs/maintainer.md
 added: 2026-10-19
 payoff: the roadmap's reason the version bounds will go stale names a dependency the project actually has
-verify: ! grep -qF 'Flet is pre-1.0' ROADMAP.md
+verify: ! grep -qF 'Flet is pre-1.0' docs/maintainer.md
 ---
 
 **Problem.** ROADMAP.md says Flet is pre-1.0 and its 1.0 is excluded by an upper bound, but Flet is no longer a dependency
@@ -18,3 +18,5 @@ verify: ! grep -qF 'Flet is pre-1.0' ROADMAP.md
 **Done when.** The sentence names the interface dependency `pyproject.toml` declares today and how it is bounded, or drops the Flet clause.
 
 **Checked 2026-10-24.** `ROADMAP.md` still says "Flet is pre-1.0 and its 1.0 is excluded by an upper bound", in the paragraph that begins "This is a multi-year project".
+
+**Moved 2026-11-07 (`PL-G6DP`).** The paragraph moved word for word from `ROADMAP.md` to `docs/maintainer.md` § "Keeping the toolchain current", and it still names Flet there. This item now touches that file instead.

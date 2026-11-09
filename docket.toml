@@ -935,3 +935,9 @@ model = "opus"
 [[models.rule]]
 match = { role = "copy-editor" }
 effort = "xhigh"
+
+# The meaning check runs at the copy editor's effort, because it reads the same
+# passages for statements that the copy editor's own reads missed (`PL-F0Q2`).
+[[models.rule]]
+match = { role = "meaning-check" }
+effort = "xhigh"

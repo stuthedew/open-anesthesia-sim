@@ -7,7 +7,6 @@ status: ready
 classes: defect
 feature: replay-findings
 touches: src/anesthesia_sim/core, tests/unit/test_record_restores.py
-deferred-from: v0.7.0 - filed after the gate froze; nothing in src/ loads a pickle yet, so no run reaches the unchecked restore
 added: 2026-10-27
 payoff: a record restored by a pickle or a copy is checked as the constructor checks it, and the next checked record cannot skip that
 verify: grep -q 'def test_every_checked_record_restores_through_its_checks' tests/unit/test_record_restores.py
@@ -71,3 +70,5 @@ sibling records its fix left out. `PL-5D1Z` met it first, for the flow values.
 The fact misread is whether a record rebuilt by a pickle or a copy ran its
 constructor's checks. It is an instance of `PL-ZGYX`'s family fact, which
 other re-entries already name.
+
+**Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. `Keyframe`, `RunDefinition`, `SampledWindow`, `BreathingCircuitState` and `DeliverableFreshGasFlowRange` were frozen, checked records at `817a4d88`, and `CheckedQuantity.__reduce__` was the only restore guard. `LiquidDensity` came later (`c95177a6`).

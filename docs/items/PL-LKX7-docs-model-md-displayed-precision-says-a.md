@@ -7,7 +7,6 @@ status: ready
 classes: defect
 feature: interface-areas
 touches: docs/MODEL.md, tests/integration/test_simulation_view.py, src/anesthesia_sim/app/simulation_view.py
-deferred-from: v0.7.0 - captured after the freeze; on a 1280 px screen all seven values stay on screen, on two lines, and the schematic does not wait on it
 added: 2026-11-04
 payoff: a reader on a 1280 px laptop sees all seven readouts in one row, or the model specification says plainly that the row opens on four there
 verify: grep -q 'def test_a_maximized_1280_px_screen' tests/integration/test_simulation_view.py
@@ -43,3 +42,5 @@ owner's rule of 2026-10-18 this placement is the working session's call.
 document sentence and the tree fact it restates, filed after the head closed.
 The 1280 px sentence restated a measurement, and the change of layout in
 `PL-F2YS` updated the 1366 px paragraph beside it but not this one.
+
+**Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. `docs/MODEL.md` at `817a4d88` already said a 1280 px screen gives about 1234 px, beside the 0.82 share that `simulation_view.py` already used.

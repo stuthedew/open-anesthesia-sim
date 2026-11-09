@@ -63,3 +63,7 @@ offline checkout still misreports.
 unmodified `main`; the release-train check names its refusal when the tag set
 is incomplete rather than reporting findings; and a test covers the shallow
 case the way `test_a_shallow_clone_declines_and_says_why` covers `PL-XCYB`'s.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-V8SJ`).** `ROADMAP.md`'s § "Completed: v0.2.8 - the workflow works" carried this under § "Debt gate: the frozen list". "This release" is v0.2.8, "this list" and "this gate" are its frozen list, "here" means that section, "the rule above" is the completion rule ("What the freeze closes, and what it does not"), and "above" and "below" point within `ROADMAP.md` as it then stood. Each of the four entries says that it was added after the freeze because it completes another.
+
+> **Four entries were added under the completion rule: PL-J295, PL-KWC1, PL-XCYB and PL-WFJ9, all listed above.** The rest were added under the scope test rather than this rule. Each of them is marked as such in the list, with the date and the reasoning. The scope test is described below this rule.

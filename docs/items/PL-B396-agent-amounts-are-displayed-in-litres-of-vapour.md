@@ -380,3 +380,5 @@ Man's printed constants to within 0.5 %. `tests/integration/test_agent_cost_view
 runs patient inputs through a real dashboard to the drawn text, checks that a
 unit picked in one View reaches a second View, is saved and survives a
 restart, and checks the withheld, compared and agent-change cases.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "The refilling-queue ground". The paragraphs that name it are quoted in the brief of `PL-Y4D6`.

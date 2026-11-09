@@ -195,3 +195,7 @@ the consumers read them; the skill's table prescribes the `grep` alone;
 `PL-0M32` and `PL-6TN8` closed, `PL-D0K3`, `PL-T7VS` and `PL-6YL1` dropped,
 the other seven re-pointed. The command recorded above was run before the
 skill's table was rewritten (exit 1) and after (exit 0).
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this under § "Declined to Gate 2 on the refilling-queue ground", Gate 1's record of how it disposed of debt it did not hold. In it, "this gate", "the gate" and "the list" are Gate 1, v0.5.0's frozen list; "this milestone" is v0.5.0; "the freeze" is Gate 1's freeze on 2026-09-06; "this section" and "this subsection" are that heading's section; "the first twenty-nine" are the 2026-09-08 group that opened the section, and "the first thirty" are those with `PL-HX5C`; "today" is the day the paragraph was written; and "above" and "below" point within `ROADMAP.md` as it then stood. The section now lists this item under "The refilling-queue ground". This item is also named in paragraphs quoted in the briefs of `PL-VX5H`, `PL-09G9` and `PL-2BZY`.
+
+> - PL-6TP8 (M) Twelve items re-decide what a verify: exit status proves, because the field was specified as a command string and nothing else: one contract rather than twelve patches — closed in v0.4.28

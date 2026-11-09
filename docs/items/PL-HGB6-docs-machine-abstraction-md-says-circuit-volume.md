@@ -128,3 +128,5 @@ or recorded with its condition.
 adding a run-level patient-circuit input, or writing anything into
 `docs/MODEL.md` asserting an assembled total - the last is what `PL-TBMX` would
 have done and is a false statement about the tree.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" disposed of this item under § "Declined to Gate 2 on the refilling-queue ground", on the ground it now lists the item under: "Its problem did not exist at the 2026-09-06 freeze, so the snapshot rule defers it on its own terms". The paragraphs that name it are quoted in the briefs of `PL-77G2` and `PL-TBMX`.

@@ -8,7 +8,7 @@ classes: defect
 feature: copy-editor
 touches: .claude/rules/plain-writing.md, .claude/rules/instruction-writing.md, .claude/agents/copy-editor.md, docs/prose-review/gold, tools/new_prose.py, .claude/skills/docket/modes/close-out.md, docs/dead-ends.md, docs/items/PL-9331-make-docs-model-md-assumptions-known.md, docs/items/PL-BSYT-apply-the-prose-review-s-rewrites-of-four-docs.md, docs/items/PL-J37P-make-docs-model-md-displayed-precision-readable.md, docs/items/PL-PS5H-make-docs-model-md-minimum-displayed-outputs-up.md, docs/items/PL-XBJ3-make-docs-model-md-the-chart-s-hover-readout.md, docs/items/PL-XT53-make-docs-model-md-the-control-input-timeline.md, docs/items/PL-YVL0-make-docs-model-md-reset-behavior-through.md
 blocked-by: PL-TG6P, PL-DH17, PL-HNNH, PL-TTBF
-deferred-from: v0.7.0 - captured after the freeze; it changes how prose is written, not a displayed value
+deferred-from: v0.7.0 - waits on PL-TG6P, PL-DH17, PL-HNNH and PL-TTBF, four untriaged copy-editor findings that no release schedules, so it is deferred on the terms of § "Deferring to the next gate"; not safety or science
 added: 2026-11-03
 payoff: every reader, from a clinician in docs/MODEL.md to the owner reading a reply, gets the point in a few sentences, and changes stop growing text that then needs its own rewrite
 verify: grep -qE '^[*][*]Measured again, 20' docs/items/PL-J1ZM-*.md
@@ -79,3 +79,5 @@ misread: what a reader can do without, which no rule states for any kind of text
 5. **A reply.** The `PL-BSYT` and `PL-W6JM` sessions sent four replies over 150 words, one of them a decision request, and none went through the copy editor. The `PL-J37P` and `PL-9331` threads ran it on one reply and two, and each still sent a long reply or a decision request without it.
 
 **What the failures share.** Both of the owner's objections landed on text that no review saw, written after the copy editor had run, to answer a question it raised (`PL-TG6P`). The other failures are steps of the procedure that no check reaches: the copy edit of a reply (`PL-DH17`) and naming the facts a grown passage adds (`PL-HNNH`). Those four items block this one. When they close, measure again over the three branches after the last of them merges, in a paragraph that opens "**Measured again, ". `PL-BS6N` holds the owner's other point, which is the owner's decision: when a model limitation earns a sentence.
+
+**Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. It stays deferred to the next gate on the terms of § "Deferring to the next gate", because it waits on four untriaged findings that no release schedules. Seven of its fifteen root-cause items were filed before the freeze, and `.claude/rules/plain-writing.md` existed (`8f9d20f3`, 2026-10-17). One rule it cites came later (`dde5efbf`, 2026-11-02).

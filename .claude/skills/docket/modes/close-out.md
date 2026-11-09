@@ -107,9 +107,9 @@ page and decides which file a session reads.
    frozen entries are done, how many remain, and what the remaining ones are,
    glossed and grouped so the shape is visible (what is blocked on the
    strongest model, what is cheap). Say the same for entries the milestone
-   clears itself. When the gate does not contain the item — anything captured
-   after the freeze, or any other work the frozen list does not name — end
-   without a gate report. Listing the remaining entries then is work arriving
+   clears itself. When the gate does not contain the item — any work the
+   frozen list does not name, such as a capture whose problem began after the
+   freeze — end without a gate report. Listing the remaining entries then is work arriving
    in a discussion that was not about it.
 5. **Audit the branch: `bin/docket verify --self <id>`**, naming every id the
    closing commit leads with, since the diff is selected per id from the
@@ -289,7 +289,7 @@ page and decides which file a session reads.
    the row names. It prints a passage whatever its length, because short
    passages were awkward in 25% of `PL-Y55Q`'s blind verdicts and many of the
    messages a learner reads are short (project owner, 2026-11-04, ratified,
-   over `PL-PRCS`'s floor of 30 words). It leaves out a string literal of one
+   over `PL-PRCS`'s minimum of 30 words). It leaves out a string literal of one
    word, such as a dictionary key, because that is code. A Markdown passage
    comes inside its whole section, and a docstring or comment comes with the
    code around it. The copy editor may rewrite the rows marked `>`: the
@@ -302,10 +302,15 @@ page and decides which file a session reads.
    which loads none of the resident instructions and opens no other file. It
    works the same way in a Projects thread (`PL-TQ4J`). Where the first read
    rewrites a passage, fresh audits fix what it missed until one changes
-   nothing or four reads have run, so a run can take up to four times as long
-   (`PL-HGZS`). For each passage the copy editor returns `[N] keep`, or
-   `[N] rewrite` with the new text and each cut with its reason, as its
-   instructions in `.claude/agents/copy-editor.md` say.
+   nothing or four reads have run, so the reads can take up to four times as
+   long as one (`PL-HGZS`). A separate meaning check then sends each statement
+   that the edit lost back to the copy editor to restore, and each round of
+   checks takes about as long as the first read. Where a statement is still
+   lost after the last round of checks, the tool keeps the passage as it was
+   and lists what the edit lost under "Meaning check:" (`PL-F0Q2`). For each
+   passage the copy editor returns `[N] keep`, or `[N] rewrite` with the new
+   text and each cut with its reason, as its instructions in
+   `.claude/agents/copy-editor.md` say.
 
    **Apply each rewrite as it stands.** Revert one edit only where it lost or
    changed a value, a unit, a condition, an identifier or a citation, and

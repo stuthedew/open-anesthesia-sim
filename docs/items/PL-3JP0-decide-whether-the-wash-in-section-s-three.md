@@ -55,3 +55,9 @@ already knows - and that is a real outcome rather than a failure to decide. What
 is not in question is the axis caption, whose left half duplicates the axis
 title and the axis's own 0-to-1 labels; that half goes regardless of how the
 paragraphs are answered.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this under § "Declined to Gate 2 on the refilling-queue ground", Gate 1's record of how it disposed of debt it did not hold. In it, "this gate", "the gate" and "the list" are Gate 1, v0.5.0's frozen list; "this milestone" is v0.5.0; "the freeze" is Gate 1's freeze on 2026-09-06; "this section" and "this subsection" are that heading's section; "the first twenty-nine" are the 2026-09-08 group that opened the section, and "the first thirty" are those with `PL-HX5C`; "today" is the day the paragraph was written; and "above" and "below" point within `ROADMAP.md` as it then stood. The section now lists this item under "A decision that the Qt port or its interface pass makes once". This item is also named in paragraphs quoted in the briefs of `PL-5B1N` and `PL-KRZW`.
+
+> **Two are decisions this gate should not force.** `PL-3JP0` and `PL-HKTB` both ask whether a piece of the interface should change or be recorded as deliberate. `PL-L9RD` is the port's pass that makes the interface's visual decisions once, and it is where both questions are cheapest to answer. Pulling them into Gate 1 would mean deciding them twice. That is the duplication that `PL-L9RD` exists to prevent.
+
+> - PL-3JP0 (S) Decide whether the wash-in section's three paragraphs survive the same test PL-6580 applied to the chart panel above it

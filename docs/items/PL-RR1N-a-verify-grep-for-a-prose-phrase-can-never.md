@@ -163,3 +163,7 @@ exits 1 against a file holding the phrase across a soft break.
   proves, and to whom" carries the reading and each consumer's clause of it,
   and `.claude/skills/docket/modes/triage.md` tells a command's author what is
   caught and to grep for a few words rather than a sentence.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-4BCF`).** `ROADMAP.md`'s § "Completed: v0.5.0 - the case you can branch" carried this under § "Declined to Gate 2 on the refilling-queue ground", Gate 1's record of how it disposed of debt it did not hold. In it, "this gate", "the gate" and "the list" are Gate 1, v0.5.0's frozen list; "this milestone" is v0.5.0; "the freeze" is Gate 1's freeze on 2026-09-06; "this section" and "this subsection" are that heading's section; "the first twenty-nine" are the 2026-09-08 group that opened the section, and "the first thirty" are those with `PL-HX5C`; "today" is the day the paragraph was written; and "above" and "below" point within `ROADMAP.md` as it then stood. The section now lists this item under "The refilling-queue ground". This item is also named in paragraphs quoted in the brief of `PL-WQF1`.
+
+> - PL-RR1N (M) A `verify:` grep for a prose phrase can never match once the document's own line-wrapping splits it, and exit 1 reads as work-not-done

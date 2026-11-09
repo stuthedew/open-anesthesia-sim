@@ -121,3 +121,7 @@ unscoped, so nothing will surface it on its own — the next thing that raises i
 is a session offering to scope milestone 32, or the owner asking. That is the
 accepted cost of the decision rather than a defect to route around, and it is
 written here so the next reader does not rediscover it as a surprise.
+
+**Moved from `ROADMAP.md` on 2026-11-08 (`PL-M3MV`).** `ROADMAP.md`'s § "Planned milestones" carried this paragraph under item 32, "Repository presentable to a first-time visitor". In it, "this item" means item 32, "here" means that entry, "this file" means `ROADMAP.md`, and "above" and "below" point within `ROADMAP.md` as it then stood. Item 32 keeps what is left and the 2026-09-05 decision to go public first.
+
+> Make the repository presentable to a first-time visitor, in one pass. On 2026-09-05 the project owner deferred the README rewrite to this pass, rather than running it as soon as its scope was settled. The owner expects a number of similar human-facing pieces to collect at the same point. Written for one reader over one week, they cohere in a way that the same documents written one at a time over months do not.
