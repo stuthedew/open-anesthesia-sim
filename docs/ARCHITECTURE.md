@@ -1,21 +1,22 @@
 # Architecture overview
 
 This document describes how the code is organized and how data flows through
-it. It is a map for contributors, not a scientific specification. For the
-equations, units, parameter provenance, and numerical method, see
+it. It is a map for contributors, not a scientific specification. To find where
+a change belongs, start at § "Where new code belongs", the last chapter.
+§ "Layering" says what an Area, a View and a Workspace are.
+
+For the equations, units, parameter provenance, and numerical method, see
 [`docs/MODEL.md`](MODEL.md). For version history and milestones, see
 [`ROADMAP.md`](../ROADMAP.md). For the origin of the interface's area and
 workspace model, see [`docs/interface-provenance.md`](interface-provenance.md).
 That document says which parts of Blender were studied, under which licence
-rules, and what this project deliberately does differently. § "Layering" says
-what an Area, a View and a Workspace are. To find where a change belongs,
-start at § "Where new code belongs", the last chapter.
+rules, and what this project deliberately does differently.
 
 ## Layering
 
 The codebase is split into four independent layers. The direction of imports
-enforces the split, and `tools/import_boundary_check.py` checks it at every
-`make check`. Never edit code to get around that check.
+enforces the split, and the import check (`tools/import_boundary_check.py`)
+verifies it at every `make check`. Never edit code to get around that check.
 
 ```text
 data/  --loaded by-->  core/  --read by-->  app/
@@ -34,42 +35,41 @@ data/  --loaded by-->  core/  --read by-->  app/
 - **`layout/`** is the area layout as a value. A window is divided into
   **Areas**, and each Area holds one **View**: a widget such as a chart or the
   setting controls. Any View can occupy any Area. A **Workspace** is a named
-  layout, holding each View's saved state and the run it is pinned to, and the
-  tabs above the Areas switch between Workspaces. `layout/` records which View
-  occupies which part of each window, and it provides the operations a reader
-  performs on the layout (`PL-C842`, `PL-1FT6`). It imports no toolkit, which
-  `tools/import_boundary_check.py` enforces, so every operation is tested
-  without a `QApplication`. The only part of `core/` that it reads is
-  `core/checked_number.py`, for the way that module names a refused value.
-  Its `store.py` is the one module in the package that writes outside the
-  tree. It writes the reader's saved Workspaces, as described under § "User
-  state: the saved Workspaces" below. `app/view_registry.py` is the one list of
-  the View kinds that a layout may name (`PL-R1WQ`), because the `layout/`
-  package holds no such list.
+  layout, holding each View's saved state and the run it is pinned to. A
+  pinned Workspace's Views draw that run alone, and the tabs above the Areas
+  switch between Workspaces. `layout/` records which View occupies which part
+  of each window, and it provides the operations a reader performs on the
+  layout (`PL-C842`, `PL-1FT6`).
+
+  `layout/` imports no toolkit, so every operation is tested without a
+  `QApplication`. The only part of `core/` that it reads is
+  `core/checked_number.py`, for the way that module names a refused value. In
+  `layout/`, only the store (`store.py`) writes outside the tree. It writes the
+  reader's saved Workspaces, as § "User state: the saved Workspaces" describes.
+  The one list of the View kinds that a layout may name is
+  `app/view_registry.py` (`PL-R1WQ`), because the `layout/` package holds no
+  such list.
 - **`data/`** holds the cited parameter files that `core/` reads, and the
   shipped Workspaces, which `layout/` reads. § "Data files (`data/`)" describes
   both.
 
-Three rules rest on this layering, and this section is where the first one is
-stated. The first rule is that simulation code stays independent of the UI
-toolkit. `tools/import_boundary_check.py` rejects a toolkit import under
-`core/` and a `core/` import of `app/`. The rule was a `CLAUDE.md` bullet until
-`PL-ZYHX` retired the bullet in favour of that check on 2026-10-17. The second
-rule is that no simulation calculation belongs in a UI callback.
-`.claude/rules/ui-calculations.md` states that rule, and it loads with every
-file under `app/`. The third rule is that model parameters live in validated,
-versioned data files and never as executable code. `CLAUDE.md` § "Architecture
-and development discipline" keeps that rule, and the parameter loader rejects a
-formula where a number is expected (§ "Data files (`data/`)").
+Three rules rest on this layering. The first is that simulation code stays
+independent of the UI toolkit. This section states that rule, and the import
+check enforces it (`PL-ZYHX`). The second is that no simulation calculation
+belongs in a UI callback. `.claude/rules/ui-calculations.md` states that rule,
+and it loads with every file under `app/`. The third is that model parameters
+live in validated, versioned data files and never as executable code.
+`CLAUDE.md` § "Architecture and development discipline" states that rule, and
+the parameter loader rejects a formula where a number is expected
+(§ "Data files (`data/`)").
 
 **What the import check rejects.** Under `core/`, it rejects `PySide6`,
 `pyqtgraph`, `numpy` and any import of `app/`. Under `layout/`, it rejects
 `PySide6`, `pyqtgraph` and any import of `app/`. Anywhere under `src/`, it
 rejects the former dependencies `flet` and `flet-charts`. § "Dependencies" says
-why each declared package is present. The check holds further boundaries,
-such as the wall clock kept out of `core/`. The list of boundaries
-(`BOUNDARIES`) in `tools/import_boundary_check.py` is the full list, each with
-its reason.
+why each declared package is present. The check also enforces other
+boundaries, such as keeping the wall clock out of `core/`. The full list, each
+boundary with its reason, is `BOUNDARIES` in `tools/import_boundary_check.py`.
 
 ## Package map
 
@@ -161,10 +161,9 @@ src/anesthesia_sim/
 ## Data files (`data/`)
 
 `data/` holds versioned, schema-validated parameter files (JSON) with
-citations. The files come in three kinds: the agent, the patient, and the
-machine in front of them. Every scientific constant that a shipped run uses
-comes from one of these files. § "Where new code belongs" says how to add a
-profile.
+citations. Every scientific constant that a shipped run uses comes from one of
+these files. § "Where new code belongs" says how to add an agent, patient or
+machine profile.
 
 Each value belongs in exactly one of three directories, by what it describes:
 
@@ -176,13 +175,14 @@ Each value belongs in exactly one of three directories, by what it describes:
 Filing a machine parameter in a patient file would misstate where it comes from
 (`PL-4YY1`).
 
-`AgentUptakeSystem.for_agent()` passes each value explicitly, so no shipped
-path uses a compartment's field default. The defaults are still written in
-`core/`, so that a unit can be constructed bare. A test pins each default to
+When the code builds the compartments for an agent from the data files
+(`AgentUptakeSystem.for_agent()`), it passes each value explicitly, so no
+shipped path uses a compartment's field default. The defaults are still written
+in `core/`, so that a unit can be constructed bare. A test pins each default to
 the data file that is its authority. The machine file and the first of those
 pins came from `PL-4YY1`. A value written only in `core/` would be invisible to
-`tools/doc_check.py`'s provenance walk, which can only see a constant that has
-entered a data file.
+the check of where each value comes from (`tools/doc_check.py`), which sees
+only constants in data files.
 
 Each file holds a `schema_version`, an `id`, the parameter values, and a
 `sources` array of citations. Each entry in `sources` has the fields `citation`,
@@ -288,36 +288,38 @@ exponential file contains the arithmetic and no physiology.
 per-parameter setters, and it produces an immutable `SimulationSnapshot` on
 request. It has no default values and no bounds of its own. Every unspecified
 setting comes from what `AgentUptakeSystem.for_agent()` built from the data
-files. Suppose the core rejects a setting, such as a delivered concentration
-above the agent's vaporizer maximum. Then the error is raised out of the
-core, and the controller does not clamp the setting or replace it with a
-default at this boundary.
+files. When the core rejects a setting, such as a delivered concentration
+above the agent's vaporizer maximum, the error is raised out of the core. At
+this boundary, the controller neither clamps the setting nor replaces it with a
+default.
 
-Conservation of agent belongs to the core on the same terms. Until PL-006,
-the controller read the circuit's stored agent out and put it back around
-`set_circuit_volume`. That left `core/` exposing a public primitive that did
-not conserve agent. The invariant was kept only by the one caller that knew
-to compensate. Now the core setter conserves agent. The controller calls it
-once, from `_build_state()`, to apply the volume the session was built with.
-No live setter exists above it. PL-GYH2 established the circuit volume as a
-fixed model parameter rather than a control. So the per-parameter setters
-named above are the four that the interface offers, and no fifth one exists.
-`docs/MODEL.md` § "What is not bounded this way" gives the argument.
+Conservation of agent also belongs to the core. The core's circuit-volume
+setter (`set_circuit_volume`) conserves agent itself (`PL-006`). Before
+`PL-006`, the controller read the circuit's stored agent out and put it back
+around `set_circuit_volume`. That left `core/` exposing a public primitive
+that did not conserve agent, and only the one caller that knew to compensate
+kept the invariant. The controller calls the setter once, from `_build_state()`,
+to apply the volume the session was built with, and no live setter exists
+above it. The circuit volume is a fixed model parameter rather than a control
+(`PL-GYH2`). So the per-parameter setters named above are the four that the
+interface offers, and no fifth one exists. `docs/MODEL.md` § "What is not
+bounded this way" gives the argument.
 
 The snapshot is the run's state at one instant. It holds a fixed number of
-values, however long the run has been going. The run as a whole is returned
-separately, by `drawn_window(start_s, stop_s, columns)`. That method
-evaluates the states at the instants that a chart is about to plot, across
-the axis the caller names, and returns them as a `DrawnWindow`. The snapshot
-and the run were one field until PL-0VM7. Before then, the snapshot carried
-every sample that the run had recorded so far. A frame's cost therefore grew
-with the length of the run, while the chart discarded all but the few hundred
-samples inside its axis. PL-2FM6 later removed the record itself. The
-snapshot does carry the run's `ControlChange` timeline. The timeline has one
-entry per setting that the model was actually stepped under. Re-applying the
-timeline therefore reproduces the run rather than approximating it. The
-length of a timeline is bounded by how often a user touches a control, not by
-how long they watch.
+values, however long the run has been going. Values across the run are
+returned separately, by `drawn_window(start_s, stop_s, columns)`. That method
+evaluates the states at the instants that a chart is about to plot, across the
+axis the caller names, and returns them as a `DrawnWindow`. So the amount of
+data that passes from the controller to the view is limited by the display, not
+by the length of the run. The snapshot once carried every sample that the run
+had recorded. A frame's cost therefore grew with the length of the run, while
+the chart discarded all but the few hundred samples inside its axis (`PL-0VM7`).
+
+The snapshot does carry the run's control-change timeline (`ControlChange`),
+with one entry per setting that the model was actually stepped under.
+Re-applying the timeline therefore reproduces the run rather than approximating
+it. A timeline's length is bounded by how often a user touches a control, not
+by how long they watch.
 
 The snapshot carries each compartment's agent amount as one record,
 `CompartmentAgentAmounts`, keyed by the compartment's `RecordedQuantity`
@@ -326,88 +328,81 @@ compartment schematic from it (`PL-RNYV`), and the schematic's share bar is
 drawn from it (`PL-S79P`). `snapshot()` reads each amount from that
 compartment's `agent_amount_l` in `core/`, so the interface computes no amount
 of its own. The record is keyed rather than ordered, so a container looks its
-amount up by the compartment it draws and cannot be handed a neighbour's. Which
-`core/` object each key is read from is paired by hand in `snapshot()`, beside
-`run_series.COMPARTMENT_STATE_INDEX`'s pairing for the traces, because amounts
-are not in the state vector. The reference test against the coupled oracle is
-what catches a wrong pair. A later model that holds several substances keys the
-same record by substance too, rather than adding fields. The record holds the
-parts and not their total. The snapshot's `stored_agent_l` is still the
-accounting check's reading, `core/`'s one sum of the six amounts
-(`AgentUptakeSystem.total_stored_agent_l`). Summing the record again in `app/`
-would be a second sum of the same fact. Instead, a unit test holds the six
-amounts, added in `core/`'s order, equal to `stored_agent_l` to the last bit,
-and a reference test compares each amount with oracles that do not read `core/`.
+amount up by the compartment it draws and cannot be handed a neighbour's.
+Because amounts are not in the state vector, `snapshot()` pairs each key with
+its `core/` object by hand, beside the traces' pairing in
+`run_series.COMPARTMENT_STATE_INDEX`. The reference test against the coupled
+oracle is what catches a wrong pair. A later model that holds several
+substances keys the same record by substance too, rather than adding fields.
+
+The record holds the parts and not their total. The snapshot's
+`stored_agent_l` is still the accounting check's reading, `core/`'s one sum of
+the six amounts (`AgentUptakeSystem.total_stored_agent_l`), because summing the
+record again in `app/` would be a second sum of the same fact. Instead, a unit
+test checks that the six amounts, added in `core/`'s order, equal
+`stored_agent_l` to the last bit, and a reference test compares each amount
+with oracles that do not read `core/`.
 
 **A run is its inputs, and its states are derived from them** (PL-T691).
-The controller holds the run as a `core/run_definition.py`
-`RunDefinition`. The definition holds the settings in force at each moment,
-plus one keyframe per change, and nothing else of the run. A keyframe is the
-state at the instant of its change. (The chart's evaluation keeps the
-propagators that its last window used, so that the next frame can reuse
-them. Each propagator is a function of settings that the definition already
-holds, so no drawn value depends on whether it was kept:
-`RunDefinition.evaluate_anchored`, PL-CNCF.) The equations are linear and
-time-invariant while the settings stay the same. So the propagator is exact
-over any horizon, not only over a step. Every state that the run passed
-through is therefore one propagation from the latest keyframe at or before it,
-and
-none of those states has to have been recorded.
-`RunDefinition.evaluate(start_s, stop_s, columns)` and
+The controller holds the run as a `RunDefinition` (`core/run_definition.py`).
+The definition holds the settings in force at each moment, plus one keyframe
+per change, and nothing else of the run. A keyframe is the state at the instant
+of its change. The equations are linear and time-invariant while the settings
+stay the same, so the propagator is exact over any horizon, not only over a
+step. Every state that the run passed through is therefore one propagation from
+the latest keyframe at or before it, and none of those states has to have been
+recorded. `RunDefinition.evaluate(start_s, stop_s, columns)` and
 `evaluate_anchored(start_s, stop_s, spacing_s)` perform that evaluation. The
-second is the one the chart uses, reached through
-`SimulationController.drawn_window`. `run_segments` hands out the record
-itself as frozen segments, which can be read but not advanced. So nothing
-above the controller can move the run definition's reach past where the run
-actually got to, and then have a prediction drawn back on the run's own axis.
-`docs/MODEL.md` § "The run is that record, and every state is derived from it"
-gives the measurements. § "The canonical evaluation rule" states which of the
-two evaluation paths a stored, exported, replayed or branched value may be
-taken from.
+chart uses the second, through `SimulationController.drawn_window`. The
+chart's evaluation keeps the propagators that its last window used, so that the
+next frame can reuse them. Each propagator is a function of settings that the
+definition already holds, so no drawn value depends on whether it was kept
+(`RunDefinition.evaluate_anchored`, PL-CNCF).
 
-**That boundary is a type rather than a convention.** `evaluate` and
-`evaluate_anchored` return `DisplayState` values, which are not state
-vectors. So a drawn column cannot become a keyframe, an exported figure or a
-branch's opening state just because it holds the same nine numbers in the
-same order. `RunDefinition` rejects such a value as an opening state by name.
-A layer above the controller therefore cannot cross that boundary by
-forgetting that it is there. Forgetting is the only way that a boundary
-stated in prose is ever crossed.
+`run_segments` hands out the record itself as frozen segments, which can be
+read but not advanced. So nothing above the controller can move the run
+definition's reach past where the run actually got to, and then have a
+prediction drawn back on the run's own axis. `docs/MODEL.md` § "The run is that
+record, and every state is derived from it" gives the measurements, and
+`docs/MODEL.md` § "The canonical evaluation rule" states which of the two
+evaluation paths a stored, exported, replayed or branched value may be taken
+from.
 
-There is one record. Until PL-2FM6 landed in v0.4.12, the controller kept a
-per-step sample history beside the definition, and the chart drew from that
-history. `docs/MODEL.md` § "Closed-form agreement test" held the two in
-agreement with each other. That change deleted the history, because the run
-definition is the run and the samples were a second copy of it. What the
-chart draws now is what `drawn_window` evaluates. Nothing exists behind those
-states that could disagree with them.
+**The boundary between drawn values and the run's states is a type rather than
+a convention.** `evaluate` and `evaluate_anchored` return `DisplayState`
+values, which are not state vectors. So a drawn column cannot become a
+keyframe, an exported figure or a branch's opening state just because it holds
+the same nine numbers in the same order. `RunDefinition` rejects such a value
+as an opening state by name. A layer above the controller therefore cannot
+cross that boundary by forgetting that it is there.
+Forgetting is the only way that a boundary stated in prose is ever crossed.
 
-Drawing that full sample history on every frame is what made the render payload
-grow with the run's length. The run no longer keeps a sample history to draw.
-`core/run_definition.py` returns the state at any instant in closed form. So
-the view asks the controller for the states at the instants it is about to plot
-(`SimulationController.drawn_window`), and there is nothing to subset. The
-amount of data that passes from the controller to the view is therefore limited
-by the display, not by the length of the run. Which instants those are is a
-presentation-correctness concern. A chart that stepped over a control change
-would show a curve the simulation never produced. So the rules that place the
-instants are stated in `docs/MODEL.md` § "What the chart draws" and are tested
-on their own. The evaluated instants are anchored to an absolute grid measured
-from the case's zero, rather than to their position within the window. So a
-window that follows the run keeps every column it had and gains at most one
+**The run definition is the only record of the run.** What the chart draws is
+what `drawn_window` evaluates, so nothing exists behind those states that could
+disagree with them. `PL-2FM6` deleted the per-step sample history that the
+controller once kept beside the definition, because the samples were a second
+copy of the run. Until then, `docs/MODEL.md` § "Closed-form agreement test"
+held the two in agreement with each other.
+
+Which instants `drawn_window` evaluates is a presentation-correctness concern,
+because a chart that stepped over a control change would show a curve the
+simulation never produced. So the rules that place the instants are stated in
+`docs/MODEL.md` § "What the chart draws" and are tested on their own. The
+evaluated instants are anchored to an absolute grid measured from the case's
+zero, rather than to their position within the window. So a window that
+follows the run keeps every column it had and gains at most one
 (`RunDefinition.evaluate_anchored`). `PL-Q197` set this rule for recorded
 samples, and `PL-2FM6` carried it over to evaluated columns.
 
-`app/chart_frame.py` is the layer above that anchored evaluation. It holds the
-rule of one column per pixel and that rule's minimum column count
-(`chart_columns`). It reads the window once per run for every trace, and
-converts each drawn value into the unit of its own axis. It is a separate layer
-for the same reason that the rules placing the instants are tested on their
-own: which quantity a line carries is a correctness claim. That claim is
-declared once, in `chart_frame.COMPARTMENT_TRACES`, beside the traces
-themselves. The unit conversion belongs to the layer that knows the axis. The
-six compartment traces are drawn in percent, and the wash-in ratio in its own
-dimensionless unit.
+The chart-frame module (`app/chart_frame.py`) is the layer above that anchored
+evaluation. It holds the rule of one column per pixel, with that rule's
+minimum column count (`chart_columns`). It reads the window once per run for
+every trace, and converts each drawn value into the unit of its own axis. It is
+a layer of its own because which quantity a line carries is a correctness
+claim, as the placing of the instants is. That claim is declared once, beside
+the traces themselves, in `chart_frame.COMPARTMENT_TRACES`. The unit conversion
+belongs to the layer that knows the axis. The six compartment traces are drawn
+in percent, and the wash-in ratio in its own dimensionless unit.
 
 `app/run_view.py` and `app/simulation_view.py` read only the snapshot and
 `drawn_window`. A `RunView` builds one run's controls, and it wires the slider
@@ -416,28 +411,27 @@ and button callbacks through `_apply_setting` to the controller's setters. The
 that they apply is a module of its own: `app/formatting.py`,
 `app/chart_frame.py` with `app/qt_chart.py`, `app/dashboard_frame.py` with
 `app/qt_widgets.py`, `app/control_timeline.py`, `app/playback.py` and
-`app/wash_in.py`. § "Package map" gives each one's role. Each is a module of
-its own because each one is a question of presentation *correctness* rather
-than of layout, and each must be readable and testable with no toolkit loaded.
+`app/wash_in.py`. Each is separate because it decides presentation
+*correctness* rather than layout, and must be readable and testable with no
+toolkit loaded. § "Package map" gives each one's role. `app/formatting.py`
+uses the resolutions that `docs/MODEL.md` § "Displayed precision" derives.
 
-`app/formatting.py` uses the resolutions that `docs/MODEL.md` § "Displayed
-precision" derives.
+`app/control_timeline.py` reads a control record that is faithful to the run,
+in which a drag of one slider appears as several settings. So collapsing that
+drag into one displayed act is a claim about what the user did, not a tidier
+rendering of what the model saw.
 
-Three of the transformation modules answer correctness questions, for reasons
-worth stating. `app/control_timeline.py` reads a control record that is
-faithful to the run, in which a drag of one slider appears as several settings.
-So collapsing that drag into one displayed act is a claim about what the user
-did. It is not a tidier rendering of what the model saw. In `app/wash_in.py`,
-the wash-in quotient has a domain. It is undefined before any agent reaches the
-circuit, and above 1 it stops being a wash-in fraction. So the module returns
-the value and the reason together, and the chart draws the trace in segments
-that break where the domain does. `docs/MODEL.md` § "F_A/F_I as a displayed
-ratio" is the specification. In `app/playback.py`, a playback rate is realised
-only as a step *count*, never as a larger step. So the module derives the count
-from the rate, and it rejects a rate that does not land on a whole number of
-steps. The alternative is a run that advances at a rate other than the one it
-displays. That would be a presentation failure that looks like a working
-feature.
+In `app/wash_in.py`, the wash-in quotient has a domain. It is undefined before
+any agent reaches the circuit, and above 1 it stops being a wash-in fraction.
+So the module returns the value and the reason together, and the chart draws
+the trace in segments that break where the domain does. `docs/MODEL.md`
+§ "F_A/F_I as a displayed ratio" is the specification.
+
+In `app/playback.py`, a playback rate is realised only as a step *count*, never
+as a larger step. So the module derives the count from the rate, and it rejects
+a rate that does not land on a whole number of steps. Otherwise the run would
+advance at a rate other than the one it displays, a presentation failure that
+looks like a working feature.
 
 The MAC divisor is passed to the formatter as an argument, from
 `SimulationSnapshot.agent_mac_percent`, rather than being looked up. The
@@ -448,7 +442,7 @@ that divisor. The chart's MAC-awake band is one of these values multiplied by
 the other, so pairing two different agents' values would place a correct
 number at the wrong height.
 
-Stepping and drawing run on separate timers at separate intervals. So
+Stepping and drawing run on separate timers at separate intervals, so
 simulation time stays a function of the steps taken rather than of how long a
 frame took. § "Failures and halts" says what the timers do on a halt.
 
@@ -456,115 +450,123 @@ frame took. § "Failures and halts" says what the timers do on a halt.
 
 A **branch** is a second live run of the same case, opened at a state the first
 run passed through. The run it was taken from is the **trunk**, and the instant
-at which it was taken is its **fork**. The whole
-structure is one trunk with N branches. Sub-forks of forks are excluded, not
-merely unimplemented (project owner, 2026-08-25). They multiply without bound
-and offer little over branching from the trunk again.
+at which it was taken is its **fork**. The whole structure is one trunk with N
+branches. Sub-forks of forks are excluded, not merely unimplemented (project
+owner, 2026-08-25). They multiply without bound and offer little over branching
+from the trunk again.
 
 This section is the object map. What a branch *guarantees* is stated and
-measured in one place only: `docs/MODEL.md` § "The canonical evaluation rule".
-That section says that a branch's run definition opens at a keyframe of the
-case, and why. It says that the definition opens at that keyframe's own case
-instant, so no clock is re-based and no conversion is performed. It also says
-what both of these are worth in floating point. The same section's
-"What this requires of a branch" says which keyframe is used, and how it
-relates to the instant at which the branch itself began.
+measured in one place only:
+`docs/MODEL.md` § "The canonical evaluation rule". That section says that a
+branch's run definition opens at a keyframe of the case, and why. It says that
+the definition opens at that keyframe's own case instant, so no clock is
+re-based and no conversion is performed. It also says what both of these are
+worth in floating point. The same section's "What this requires of a branch"
+says which keyframe is used, and how it relates to the instant at which the
+branch itself began.
 
 Five things in `app/controller.py` implement a branch:
 
 - `SimulationController.resumed_at(instant_s)` makes a branch at one of the
   trunk's keyframes. It builds a second controller through the ordinary
   constructor, with the settings of the trunk's stretch that opens at
-  `instant_s`. So the branch runs under the change recorded there. It then
+  `instant_s`, so the branch runs under the change recorded there. It then
   seeds the new controller's system with the trunk's canonical state at
-  `instant_s`, and returns the controller paused. The canonical state is the
-  trunk's run definition evaluated at that instant. The trunk is read and never
-  written. So the two runs share no compartment, no accounting and no clock,
-  and that is what lets both be advanced.
+  `instant_s`, which is the trunk's run definition evaluated at that instant,
+  and returns the controller paused. The trunk is read and never written. So
+  the two runs share no compartment, no accounting and no clock, and that is
+  what lets both be advanced.
 - `SimulationController.resumed_here()` makes a branch where the paused trunk
-  stands, whether or not it stopped on a bookmark halt (`PL-Y2SL`). It makes
-  the branch that the bullet above describes, because the two methods share
-  `_branch_from`. Only the place where the fork may be taken differs. So a
+  stands, whether or not it stopped on a bookmark halt (`PL-Y2SL`). The two
+  methods share `_branch_from`, so this method makes the branch that the bullet
+  above describes, and only the place where the fork may be taken differs. So a
   setting that the learner changed on the trunk while it stood there is on the
   branch (`PL-HSP8`, `PL-ZR49`). The method deliberately takes no instant,
-  because the fork is the clock. So a caller has no float with which to name an
-  instant the run has not reached. Nor can anyone confuse the instant a learner
-  *marked* with the step instant the run actually stopped on. The method
-  refuses a running trunk, a failed one, and one standing at its opening
-  (§ "Failures and halts" says what a failed run and a halt are). It also
-  refuses one at the supported run length, where a branch would have no step to
-  take. `here_fork_point` returns its result from the same check, so an offer
-  built from it cannot disagree with `resumed_here`. The crossing that the
-  branch opens on is the crossing of the step it stands on. That crossing is
-  computed again from the marks as they are at each read, in the same way for
-  every branch. So a mark added inside the halting step counts as passed on the
-  branch, just as it does on the trunk (`PL-2N43`, `PL-XV0D`).
+  because the fork is wherever the clock stands. So a caller has no float with
+  which to name an instant the run has not reached. Nor can anyone confuse the
+  instant a learner *marked* with the step instant the run actually stopped on.
+  The method refuses a running trunk, a failed one, and one standing at its
+  opening (§ "Failures and halts" says what a failed run and a halt are). It
+  also refuses one at the supported run length, where a branch would have no
+  step to take. `here_fork_point` returns its result from the same check, so an
+  offer built from it cannot disagree with `resumed_here`. By the **crossing
+  rule**, a step crosses a mark when the mark lies between the readings on
+  either side of it. The branch opens on the crossing of the step it stands on,
+  meaning the marks that step crossed. That crossing is computed again from the
+  marks as they are at each read, in the same way for every branch. So a mark
+  added inside the halting step counts as passed on the branch, just as it does
+  on the trunk (`PL-2N43`, `PL-XV0D`).
 - `SimulationController.resumed_at_mark(bookmark)` makes a branch at a time
   bookmark that the trunk has passed. The run may have halted there, or the
   learner may have marked the instant after the clock went past it (`PL-W4XQ`).
-  It is the halt fork, taken late. The fork is the end of the step that reached
-  the mark, and `TimeBookmark.steps_to_reach` finds that step from the crossing
-  rule itself. The branch opens from the trunk's canonical state there, exactly
-  as a halt fork does. The method takes the mark rather than an instant, for
-  the same reason that `resumed_here` takes nothing. `mark_fork_points` lists
-  the marks it accepts, each with the instant at which its branch would open.
-  A mark on the supported run length is not listed, and `_resume_point`
-  rejects a fork there for every method, because the branch would have no step
-  to take and its Reset would return it to the same stop (`PL-VHQX`).
+  It gives the branch that a halt on that mark would have given, taken late.
+  The fork is the end of the step that reached the mark, and
+  `TimeBookmark.steps_to_reach` finds that step from the crossing rule itself.
+  The branch opens from the trunk's canonical state there, exactly as a fork
+  after a halt does. The method takes the mark rather than an instant, for the
+  same reason that `resumed_here` takes nothing. `mark_fork_points` lists the
+  marks it accepts, each with the instant at which its branch would open. A
+  mark on the supported run length is not listed, and `_resume_point` rejects a
+  fork there for every method, because the branch would have no step to take
+  and its Reset would return it to the same stop (`PL-VHQX`).
 - `ResumePoint` records where the branch came from. It holds the trunk stretch
-  that the step reaching the fork ran under. It holds the fork, which is the
-  instant at which the fork was taken and the canonical state there. It holds
-  the case's step count at the fork, the step that ends at the fork, and the
-  agent that the branch's accounting period started from. It holds no
-  crossing. A crossing stored with the marks it named would go on naming a mark
-  that was removed and added back (`PL-XV0D`). So at each read, the branch asks
-  again what the step ending at its fork crossed. `opened_from` is `None` on a
-  trunk and a `ResumePoint` on a branch, so every run knows which kind it is.
-  The stretch's opening and the fork are two instants for every fork except one
-  at the case's opening (`PL-B8MK`, `PL-ZR49`). `reset()` goes back through the
-  same `_open_at`, with the settings the branch runs under. So a reset opens
-  the branch on the same provenance and keeps the entries it opened with.
-  After them, it records each setting that differs from the one the branch
-  opened under (`PL-K5BS`, `PL-ZR49`).
+  that the step reaching the fork ran under, the fork's instant and the
+  canonical state there, the case's step count at the fork, the step that ends
+  at the fork, and the agent that the branch's accounting period started from.
+  It holds no crossing, because a crossing stored with the marks it named would
+  go on naming a mark that was removed and added back (`PL-XV0D`). So at each
+  read, the branch asks again what the step ending at its fork crossed.
+  `opened_from` is `None` on a trunk and a `ResumePoint` on a branch, so every
+  run knows which kind it is. The stretch's opening and the fork are two
+  instants for every fork except one at the case's opening (`PL-B8MK`,
+  `PL-ZR49`). `reset()` goes back through the same `_open_at`, with the
+  settings the branch runs under. So a reset opens the branch on the same
+  provenance and keeps the entries it opened with. After them, it records each
+  setting that differs from the one the branch opened under (`PL-K5BS`,
+  `PL-ZR49`).
 - `BranchedCase` holds a trunk and the branches taken from it. It is what makes
-  two controllers one case rather than two unrelated sessions. It is also where
-  the flat shape stops depending on a refusal. The trunk is the only run that
-  `BranchedCase` will fork, so a sub-fork is not an operation it can express.
-  `resumed_at` keeps its own refusal for a caller that holds a branch directly.
+  two controllers one case rather than two unrelated sessions. It also makes the
+  one-trunk shape a matter of structure rather than of a refusal: the trunk is
+  the only run that `BranchedCase` will fork, so a sub-fork is not an operation
+  it can express. `resumed_at` keeps its own refusal for a caller that holds a
+  branch directly.
 
 **What a branch inherits, and why each is not re-chosen.** A branch inherits the
 agent and the patient, because changing either would make it a second case
 rather than a second management of this one. `set_agent` already starts a new
 run for that reason, and it refuses outright on a branch. A branch inherits the
-circuit volume, applied before any state is. This is because
+circuit volume, applied before any state is, because
 `BreathingCircuit.set_circuit_volume` conserves agent by rewriting the inspired
-fraction, so a volume set afterwards would move the branch off the state it
-opened at. A branch inherits the four live controls, read from the settings of
-the trunk's stretch, which hold each value as it was set. The rebuilt branch is
-then checked against those settings rather than trusted. The check covers every
+fraction. A volume set afterwards would move the branch off the state it opened
+at.
+
+A branch inherits the four live controls, read from the settings of the trunk's
+stretch, which hold each value as it was set. The rebuilt branch is then
+checked against those settings rather than trusted. The check covers every
 setting the stretch carries, and the agent's displayed references, since the
 agent and patient are read again from their data files. A refusal names each
 value that differs, with both of its values (`PL-NC62`). One rule, the same for
-every way of branching, decides which stretch. The branch names as its
+every way of branching, decides which stretch: the branch names as its
 provenance the stretch that the step reaching the fork ran under. After the
 case's opening, no later change on the trunk can replace that stretch. The
 branch runs under the stretch still open at the fork, which is what the dial
 says there. Its timeline opens with copies of the changes the trunk made there
-(`docs/MODEL.md` § "The canonical evaluation rule", `PL-ZR49`). And a branch
-inherits the bookmarks. That is the opposite case to the timeline below, and it
-is settled by the same test. A mark is a question about what is still to come,
-and a comparison is two managements answering one question. If a learner had to
-re-enter the marks, two branches could be compared at two different heights with
-nothing saying so. What a branch does not inherit is the trunk's control
-timeline. The branch's record is of what the learner does to *it*. The only
-entries that the branch's timeline opens with are copies of the trunk's changes
-at the instant the branch was taken (`RunRecord.opened_with`). A reset keeps
-them, and records after them each setting that the learner changed and the reset
-kept. `opened_from` is what records where the fork was taken, and `began_at_s`
-is the one number to read for the fork instant. It is zero on a trunk and the
-fork instant on a branch. The definition's own first segment used to start at
-the same instant, and it no longer always does. That is why the property exists,
-rather than leaving readers to infer the instant (`PL-B8MK`).
+(`docs/MODEL.md` § "The canonical evaluation rule", `PL-ZR49`).
+
+A branch inherits the bookmarks but not the trunk's control timeline, and one
+test settles both. A mark is a question about what is still to come, and a
+comparison is two managements answering one question. If a learner had to
+re-enter the marks, two branches could be compared at two different heights
+with nothing saying so. The timeline is not inherited, because the branch's
+record is of what the learner does to *it*. The only entries that the branch's
+timeline opens with are copies of the trunk's changes at the instant the
+branch was taken (`RunRecord.opened_with`). A reset keeps them, and records
+after them each setting that the learner changed and the reset kept.
+`opened_from` records where the fork was taken. Read the fork instant only
+from `began_at_s`, which is zero on a trunk and the fork instant on a branch.
+The property exists because the definition's own first segment no longer
+always starts at the fork, so the instant cannot be inferred from it
+(`PL-B8MK`).
 
 **One time frame, and every reader is in it.** A branch continues the case's
 step count. So `snapshot().elapsed_s`, every control-change stamp,
@@ -576,18 +578,18 @@ holds. *Which* keyframe depends on the fork. For a branch taken at a control
 event, it is the fork itself. For a branch taken at a bookmark, it is the
 keyframe at or before the fork.
 
-Until 2026-09-14 there were two time frames, and
-`SimulationController.origin_s` held the difference between them. `advance` and
-`drawn_window` subtracted it, and `run_segments` warned about it. `PL-ZMRT`
-(project owner, 2026-09-14) removed the second frame, so `origin_s` and both
-subtractions are gone. `PL-2R2C` was the problem of a branch's drawn columns
-being anchored to its own zero, so that they landed at case instants the trunk
-never draws. Removing the second frame dissolved that problem rather than
-fixing it separately. `docs/MODEL.md` § "The canonical evaluation rule"
-measures what that is worth.
+A branch once had a second time frame, offset from the case's by
+`SimulationController.origin_s`, which `advance` and `drawn_window` subtracted,
+and about which `run_segments` warned.
+The branch's drawn columns were anchored to its own zero, so they landed at case
+instants the trunk never draws (`PL-2R2C`). `PL-ZMRT` removed that frame, so
+`origin_s` and both subtractions are gone. Removing the frame dissolved the
+problem rather than fixing it separately. `docs/MODEL.md` § "The canonical
+evaluation rule" measures what that is worth.
 
-**Where a branch may be taken.** There are three places, each reached by its
-own method rather than through one list.
+**Where a branch may be taken.** There are three places: at a keyframe, where
+the paused trunk stands, and at a time bookmark the trunk has passed. Each is
+reached by its own method rather than through one list.
 
 The first is at any keyframe the trunk holds. These are listed by
 `BranchedCase.fork_points_s` and taken with `fork_at`. The keyframes are the
@@ -595,22 +597,23 @@ trunk's opening at induction and every setting change the model was actually
 stepped under. Any *other* instant that a caller names to `fork_at` is refused
 as belonging to another method, not as an instant a branch could not reproduce
 (`PL-54V0`). The two methods below both fork between keyframes and reproduce
-the trunk exactly. What no method does is *restart* a branch's definition at
-its fork, and `docs/MODEL.md` measures what a restart does.
+the trunk exactly. No method *restarts* a branch's definition at its fork.
+`docs/MODEL.md` measures what a restart does, and
 `tests/unit/test_run_definition.py` checks that a restart really does stop
 reproducing the run it claims to continue. So the construction every method
 uses is never relaxed into a restart on the grounds that the difference is
 small.
 
-And a branch may be taken **where the paused trunk stands**, with `fork_here`
-(`PL-Y2SL`). A learner who pauses to think tries something else from that
-instant in one action, without marking it first (project owner, 2026-10-12). A
-bookmark halt is one such pause. `app/bookmarks.py` defines what a learner may
-mark (`PL-LPLD`). `SimulationController.advance` is what halts a run on the
-step that crosses a mark (`PL-CTD7`). It reads every compartment on either side
-of each step, and pauses the run where a mark lies between the two readings.
-That is the **crossing rule**: a step crosses a mark when the mark lies between
-the readings on either side of it.
+The second is **where the paused trunk stands**, with `fork_here` (`PL-Y2SL`).
+A learner who pauses to think tries something else from that instant in one
+action, without marking it first (project owner, 2026-10-12). A bookmark halt is
+one such pause. `app/bookmarks.py` defines what a learner may mark (`PL-LPLD`).
+`SimulationController.advance` halts a run on the step that crosses a mark
+(`PL-CTD7`). It reads every compartment on either side of each step, and pauses
+the run where a mark lies between the two readings. That is the **crossing
+rule**: a step crosses a mark when the mark lies between the readings on either
+side of it.
+
 Where a run stands is not, in general, a setting change. On a 120 s run with
 two control changes, 3 of the 1 201 instants it can stand at are keyframes. So
 the trunk holds no keyframe there, and nothing records one. The branch's
@@ -618,7 +621,7 @@ the trunk holds no keyframe there, and nothing records one. The branch's
 its live system stand at the fork. This costs the trunk nothing and reproduces
 it element-wise. The obvious route was measured and refused. Recording a
 keyframe where the run halts makes the branch exact against the trunk it forked
-from. But it also moves that trunk's own later results away from what the case
+from, but it also moves that trunk's own later results away from what the case
 would have given unmarked, so marking a run would change it. `PL-B8MK` carries
 both measurements. `docs/MODEL.md` § "What this requires of a branch" records
 which of that section's two conditions the chosen route relaxes, and what the
@@ -627,27 +630,27 @@ relaxation costs.
 The paused point is a permission rather than a standing offer. It ends when the
 trunk starts again, because the point where a running trunk stands moves with
 every step. A failed trunk offers no paused point either, because a failure is
-not a pause. Nor does a trunk at the supported run length. That is a stop
-rather than a pause, and it leaves a branch no step to take. Nor does a trunk
-standing at its opening, where `fork_at` already opens a branch. This is why
-the paused point is not part of a widened `fork_points_s`. Such a list would
+not a pause. Nor does a trunk at the supported run length, which is a stop
+rather than a pause and leaves a branch no step to take. Nor does a trunk
+standing at its opening, where `fork_at` already opens a branch. The paused
+point is not part of a widened `fork_points_s`, because such a list would
 change its members as the run moved. A caller holding an instant from it could
 then ask for a fork at an instant the run no longer stands on.
 
-And a branch may be taken at any **time bookmark the trunk has passed**. These
-are listed by `BranchedCase.mark_fork_points` and taken with `fork_at_mark`
-(`PL-W4XQ`). This is what a learner paused at three hours does after marking
-the one-hour point. The instant is behind the clock. The trunk holds no
-keyframe there and is not standing on it, and nothing in the bookmark fork's
-construction needed either. The branch opens on the step on which the mark is
-reached, which is the instant a halt would have stopped the run on. The
-branch's state is the trunk's definition evaluated there, so the branch is the
-one the halt would have given. Unlike the paused point, this list does not end
-at the next step. A mark joins the list when the clock reaches it, or when a
-mark is set behind the clock. It leaves the list only when the learner unmarks
-it or the trunk starts over. That is the same lifetime that the keyframes have.
-A MAC target is not on the list, because it has no instant. A fork at a height
-is taken through `fork_here`, where the height's halt stops the run.
+The third is at any **time bookmark the trunk has passed**. These are listed by
+`BranchedCase.mark_fork_points` and taken with `fork_at_mark` (`PL-W4XQ`). This
+is what a learner paused at three hours does after marking the one-hour point.
+The instant is behind the clock. The trunk holds no keyframe there and is not
+standing on it, and nothing in the bookmark fork's construction needed either.
+The branch opens on the step on which the mark is reached, which is the instant
+a halt would have stopped the run on. The branch's state is the trunk's
+definition evaluated there, so the branch is the one the halt would have given.
+Unlike the paused point, this list does not end at the next step. A mark joins
+the list when the clock reaches it, or when a mark is set behind the clock. It
+leaves the list only when the learner unmarks it or the trunk starts over,
+which is the same lifetime that the keyframes have. A MAC target is not on the
+list, because it has no instant. A fork at a height is taken through
+`fork_here`, where the height's halt stops the run.
 
 ### How a learner takes one, and how a comparison ends
 
@@ -659,13 +662,13 @@ is a property of the display, not of the model:
 - **The branch control belongs to the case**, so it sits beside the bookmark
   panel in `SimulationView` rather than in either `RunView`. It offers
   `BranchedCase.fork_points_s`, `BranchedCase.mark_fork_points` and
-  `BranchedCase.here_fork_point`. It takes the branch through `fork_at`,
+  `BranchedCase.here_fork_point`, and it takes the branch through `fork_at`,
   `fork_at_mark` or `fork_here`. `dashboard_frame.fork_offer` decides what the
   control shows, and `qt_widgets.ForkPanel` draws it. A learner pauses at the
-  decision point, or marks it and is stopped there. The learner then forks at
-  that point, which is the order in which the two panels are read. Returning
-  to a mark forks the run rather than truncating it. The trunk is kept, and
-  the change is made on a branch drawn beside it. A learner who wants to try
+  decision point, or marks it and is stopped there, and then forks at that
+  point, which is the order in which the two panels are read. Returning to a
+  mark forks the run rather than truncating it. The trunk is kept, and the
+  change is made on a branch drawn beside it. A learner who wants to try
   something else from the same point uses the branch's own Reset (project
   owner, 2026-10-12, ratified, over truncating the run at the mark after a
   confirm as Gas Man does, `PL-ZW0J`).
@@ -676,87 +679,89 @@ is a property of the display, not of the model:
   every time bookmark that the trunk has passed, from
   `BranchedCase.mark_fork_points` and taken through `fork_at_mark`
   (`PL-W4XQ`). A mark's row is labelled with the instant at which its branch
-  opens and with "on your mark", in the halt label's wording. So the row never
+  opens and with "on your mark", in the halt label's wording, so the row never
   states where the mark itself lies. Below the selector, a second button takes
   the branch at the point where the paused trunk is, through `fork_here`. The
   button is on the panel whenever `BranchedCase.here_fork_point` offers that
   point and no comparison is shown. It is labelled "Branch here: 1h23m", with
   the instant at which the branch will open. When a mark stopped the trunk
   there, the label is "..., stopped on your mark". Every entry and the button
-  open under what the dial says at their instant. So two controls labelled
-  with one instant open under the same settings (`PL-ZR49`). Pausing records
-  no keyframe, so the paused point adds nothing to `fork_points_s`. The
-  selector therefore never loses a row as the run moves. It gains a row as the
-  clock passes a mark. It loses a row only when the learner unmarks that mark
-  or the trunk starts over. The project owner chose this shape (2026-09-21,
-  ratified, over one list that grows a row while the run is halted; and
-  2026-10-12, ratified, over a row at the top of the selector selected by
-  default). The reasons are these. A row that vanishes from a list can be
-  noticed only by comparing the list with a remembered one, which is the
-  stale-state case that `.claude/rules/expert-review.md` names. A control
-  that vanishes, by contrast, can be noticed on sight. And a default
-  selection that jumped to the paused point would move a choice the reader
-  had made. The button passes no instant to `fork_here`, which takes none.
-  That method exists to prevent one hazard: a fork asked for at the instant a
-  learner *marked*, rather than at the step on which the run stopped.
-  Because the button names no instant, that hazard cannot be expressed
-  through the interface either. `fork_offer` takes the paused point from the
-  **trunk**, not from the displayed runs, because `fork_here` forks the trunk
-  and refuses a branch. A panel drawn from a branch's paused point would
-  offer a fork that the case cannot take.
+  open under what the dial says at their instant, so two controls labelled
+  with one instant open under the same settings (`PL-ZR49`).
+
+  Pausing records no keyframe, so the paused point adds nothing to
+  `fork_points_s`. The selector therefore never loses a row as the run moves.
+  It gains a row as the clock passes a mark, and it loses a row only when the
+  learner unmarks that mark or the trunk starts over. The project owner chose
+  this shape (2026-09-21, ratified, over one list that grows a row while the
+  run is halted; and 2026-10-12, ratified, over a row at the top of the
+  selector selected by default). The reasons are these. A row that vanishes
+  from a list can be noticed only by comparing the list with a remembered one,
+  which is the stale-state case that `.claude/rules/expert-review.md` names. A
+  control that vanishes, by contrast, can be noticed on sight. And a default
+  selection that jumped to the paused point would move a choice the reader had
+  made.
+
+  The button passes no instant to `fork_here`, which takes none. That method
+  exists to prevent one hazard: a fork asked for at the instant a learner
+  *marked*, rather than at the step on which the run stopped. Because the
+  button names no instant, that hazard cannot be expressed through the
+  interface either. `fork_offer` takes the paused point from the **trunk**,
+  not from the displayed runs, because `fork_here` forks the trunk and refuses
+  a branch. A panel drawn from a branch's paused point would offer a fork that
+  the case cannot take.
 - **`SimulationView.add_run` is how a run reaches the dashboard after
-  construction.** Until `PL-VKJW`, the dashboard's run set was fixed at
-  construction ("the count cannot change while a dashboard is alive"). So a
-  branch taken during a session had nowhere to be drawn. Now both legends'
-  run counts, the names the runs carry, the setting sections and the agent
-  locks are rewritten from the run set whenever it changes. The cap is still
-  `MAX_DISPLAYED_RUNS`, which is two.
+  construction** (`PL-VKJW`), so a branch taken during a session has
+  somewhere to be drawn. Both legends' run counts, the names the runs carry,
+  the setting sections and the agent locks are rewritten from the run set
+  whenever it changes. The cap is `MAX_DISPLAYED_RUNS`, which is two.
 - **One comparison at a time, and Reset is the way out.** There is no run
   selector, because `ROADMAP.md` § "Explicitly out of scope for v0.5.0" defers
   it. So a second branch could only replace the displayed one, while the first
-  went on living inside `BranchedCase`. The control is refused while two runs
-  are shown. The refusal is visible, and its reason can be read. Resetting the
-  *trunk* takes every branch off the dashboard and rebuilds the case on the
-  restarted run. This is because a trunk that has started over never passed
-  through the instant at which a branch was taken. Where a branch has run past
-  its fork, or holds a control change made since it opened, the trunk's Reset
-  asks first (`PL-W5WX`, `SimulationSnapshot.has_recorded_run`). The question
-  comes from `SimulationView._trunk_reset_question`, which
-  `RunView.ask_before_reset` hands to the trunk's view. Resetting a *branch*
-  returns it to its own fork and leaves the comparison in place. **The lock says
-  which of those two Resets it means, in the words shown on the screen**
-  (`PL-WG73`). `comparing_fork_lock_text` fills its sentence from the run's
-  label and the Reset button's label, `run_label` and `RESET_LABEL`, so an
-  instruction cannot name a control that is not there. The sentence it replaced
-  sent a learner to "Reset the case". But the Reset a learner reaches for is the
-  branch's, on the run they are trying to end. That press returns the branch to
-  its fork, while the lock stays exactly where it was.
+  went on living inside `BranchedCase`. The branch control is refused while two
+  runs are shown. The refusal is visible, and its reason can be read. Resetting
+  the *trunk* takes every branch off the dashboard and rebuilds the case on the
+  restarted run, because a trunk that has started over never passed through
+  the instant at which a branch was taken. Where a branch has run past its
+  fork, or holds a control change made since it opened, the trunk's Reset asks
+  first (`PL-W5WX`, `SimulationSnapshot.has_recorded_run`). The question comes
+  from `SimulationView._trunk_reset_question`, which `RunView.ask_before_reset`
+  hands to the trunk's view. Resetting a *branch* returns it to its own fork
+  and leaves the comparison in place. **The lock says which of those two
+  Resets it means, in the words shown on the screen** (`PL-WG73`).
+  `comparing_fork_lock_text` fills its sentence from the run's label and the
+  Reset button's label, `run_label` and `RESET_LABEL`, so an instruction cannot
+  name a control that is not there. An earlier lock that said "Reset the case"
+  failed because the Reset a learner reaches for is the branch's, on the run
+  they are trying to end. That press returns the branch to its fork, while the
+  lock stays exactly where it was.
 
 **No agent may be chosen while two runs are shown** (`PL-QRD1`). A branch's
 `set_agent` refuses outright, so its `RunView` shows the agent chip in place of
 the selector. The trunk's `set_agent` *succeeds*, which is the worse case. The
 switch restarted the trunk, but `BranchedCase` went on listing a branch of a
 run that no longer existed. `assemble_chart_frame` then refused the frame over
-the shared MAC axis. So `SimulationView._halt_every_run`, which halts every run
-(§ "Failures and halts"), failed both runs because of an input to one of them.
-The trunk's selector is therefore locked while a comparison is shown too
-(project owner, 2026-09-20, ratified, over keeping the selector live and
-growing `RunView._confirm_new_case`'s dialog a clause about the branches it
-would orphan). This follows the preference in `.claude/rules/expert-review.md`
-for an interface that prevents the error over one that reports it afterwards.
-The decision was ratified rather than specified, because the case put to the
-owner was a session's own recommendation. So ordinary evidence is enough to put
-it back to them: a learner who wants to change agent mid-comparison, a
-measurement, or a cost the case did not carry. `dashboard_frame.transport`
-carries all three locks and names the longest-lasting one that applies. So the
-chip never sends a reader to Pause for a lock that Pause cannot lift.
+the shared MAC axis. So the method that halts every run
+(`SimulationView._halt_every_run`, § "Failures and halts") failed both runs
+because of an input to one of them. The trunk's selector is therefore locked
+while a comparison is shown too (project owner, 2026-09-20, ratified, over
+keeping the selector live and growing `RunView._confirm_new_case`'s dialog a
+clause about the branches it would orphan). This follows the preference in
+`.claude/rules/expert-review.md` for an interface that prevents the error over
+one that reports it afterwards. The decision was ratified rather than
+specified, because the case put to the owner was a session's own
+recommendation. So ordinary evidence is enough to put it back to them: a
+learner who wants to change agent mid-comparison, a measurement, or a cost the
+case did not carry. `dashboard_frame.transport` carries all three locks and
+names the longest-lasting one that applies, so the chip never sends a reader
+to Pause for a lock that Pause cannot lift.
 
 ### What a branch comparison asserts, and which part of it is structural
 
 **The full statement is in `docs/MODEL.md` § "What a branch comparison asserts,
 and what it does not".** It is stated there because it is a claim about the
-model, not about the object map. This section covers only the part that the
-structure above decides, and that part is three things.
+model, not about how the code is arranged. This section covers only the part of
+that claim that the structure above decides, which is three things.
 
 **The comparison is a trunk and one branch of it, and the structure enforces
 this.** `BranchedCase` forks only its trunk, so it cannot express a branch of
@@ -773,8 +778,8 @@ the bookmarks. It then keeps them fixed: `set_agent` refuses on a branch and
 is locked on the trunk while two runs are shown. The control timeline is the
 one thing not carried across. It opens with only the trunk's changes at the
 fork, if any. So the difference between two runs after the fork is the
-difference between two control timelines. The inheritance list
-above is the audit of that claim, not a convenience.
+difference between two control timelines. The inheritance list above is the
+audit of that claim, not a convenience.
 
 **The shared history is the same object, not a reproduction of one.** A branch's
 definition carries the trunk's own keyframe, and both runs sit in the case's
@@ -835,11 +840,12 @@ different treatment:
   an omission local to that compartment. `docs/MODEL.md`, "Step atomicity",
   is the contract.
 
-Both timer slots pass the halt gate, as every other slot does (`PL-HJKN`).
-`RunView.step_tick` steps the run and `SimulationView.render_tick` presents
-it, and both halt on any exception: the first halts its run, and the second
-halts every run. They do so because a `TypeError` from a refactor is exactly
-as silent inside a Qt slot as a modelling failure is.
+Both timer slots pass the halt gate (`halt_gate`, in `app/halt_gate.py`), as every other slot
+does (`PL-HJKN`). The gate turns any exception raised inside a slot into a
+halt. `RunView.step_tick` steps the run and `SimulationView.render_tick`
+presents it. On any exception, the first halts its run and the second halts
+every run. They do so because a `TypeError` from a refactor is exactly as
+silent inside a Qt slot as a modelling failure is.
 `dashboard_frame.halt_disposition` decides which halt applies, and
 `RunView.halt` routes by its decision. A failure goes through
 `SimulationController.fail()`. A `SimulationDomainLimitError` raised on a path
@@ -878,15 +884,14 @@ repair the refusal, and that closing and reopening the application starts a new
 run (`PL-01GY`).
 
 A control used on a run whose snapshot refuses meets the same halt, rather than
-an exception that the toolkit prints. Every slot of `RunView` and
-`SimulationView` passes `app/halt_gate.py`'s `halt_gate`, which turns any
-exception raised inside the slot into a halt (`PL-HJKN`). A `RunView` slot halts
-its own run through `_halt_run`, and a `SimulationView` slot halts every run,
-because it acts on the case. `_halt_run` restates the halt from `record()`. So
-on a run whose snapshot refused, the agent selector goes back to the agent that
-the record names. The snapshot cannot name it, because the snapshot is what
-refused (`PL-V2HC`). Before `PL-HJKN`, each slot was put behind a `try` by
-hand, and six were found outside it, one review at a time.
+an exception that the toolkit prints, because every slot of `RunView` and
+`SimulationView` passes the halt gate. A `RunView` slot halts its own run
+through `_halt_run`, and a `SimulationView` slot halts every run, because it
+acts on the case. `_halt_run` restates the halt from `record()`. So on a run
+whose snapshot refused, the agent selector goes back to the agent that the
+record names. The snapshot cannot name it, because the snapshot is what
+refused (`PL-V2HC`). When each slot was given its own `try` by hand, six slots
+were left without one, each found by a separate review (`PL-HJKN`). So
 `test_every_slot_that_touches_a_run_passes_the_halt_gate` now fails on a
 connected slot that does not pass the gate.
 
@@ -956,8 +961,7 @@ pin names a run only by its identity, so in a later session the pinned run
 is absent (`PL-7Z84`). The design follows `PL-SSQW` (project owner, 2026-09-27,
 ratified) and question Q4 of `PL-WV9K` (project owner, 2026-09-27, specified).
 
-- **Where.** The file is saved in the directory that Qt reports for
-  `QStandardPaths.AppDataLocation`. On macOS the directory is
+- **Where.** The file is saved in the directory that Qt reports for `QStandardPaths.AppDataLocation`. On macOS the directory is
   `~/Library/Application Support/<App>`. On Windows it is
   `%APPDATA%\<Org>\<App>`, in the Roaming folder, because the file holds no
   window geometry and its sizes are fractions. On Linux it is
@@ -982,11 +986,11 @@ ratified) and question Q4 of `PL-WV9K` (project owner, 2026-09-27, specified).
   The save writes a temporary file beside the target and `fsync`s it. It then
   copies the current file to `workspaces.json.previous`, so that one prior
   generation survives. Finally it `os.replace`s the target, and makes a best
-  effort to `fsync` the directory. Both stores take the temporary file's write
-  and `fsync`, and the directory's `fsync`, from the module that writes a
-  user's file (`user_files.py`). Each store calls `os.replace` itself, and only
-  the Workspaces store makes the copy. As a result, only a crash in the middle
-  of the replace can leave the current file torn. A failed save raises
+  effort to `fsync` the directory. As a result, only a crash in the middle of
+  the replace can leave the current file torn. Both stores take the temporary
+  file's write and `fsync`, and the directory's `fsync`, from the module that
+  writes a user's file (`user_files.py`). Each store calls `os.replace` itself,
+  and only the Workspaces store makes the copy. A failed save raises
   `WorkspaceFileError`, which names the path and the reason. The error is
   reported where the action was invoked, on the line under the Workspace tabs,
   where `app/workspace_tabs.py` shows what the store reported.
@@ -1103,9 +1107,8 @@ Only `libegl1` is normally missing, because an ordinary desktop already has the
 other four. `README.md` § "Running it" therefore names only that package. The
 CI workflow (`.github/workflows/quality.yml`) also installs only `libegl1`,
 because its own comment records that the `ubuntu-latest` image has the other
-four (`PL-VHLZ`). A minimal
-container is neither an ordinary desktop nor that image, so check it for all
-five packages. macOS and Windows need nothing extra.
+four (`PL-VHLZ`). A minimal container is neither an ordinary desktop nor that
+image, so check it for all five packages. macOS and Windows need nothing extra.
 
 **A bundled build will bring licence obligations, and nothing is violated today
 (`PL-3SQT`).** `pyside6_essentials` 6.11.2 and `shiboken6` 6.11.2 both declare
@@ -1119,9 +1122,8 @@ way to run it (`README.md` § "Running it") and `uv` installs each wheel from
 PyPI for each user. A bundled build is part of the packaging work in
 `ROADMAP.md`.
 
-pyqtgraph is MIT, and numpy is
-`BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0`. Both wheels ship their
-licence text.
+pyqtgraph is MIT, and numpy is `BSD-3-Clause AND 0BSD AND MIT AND Zlib AND
+CC0-1.0`. Both wheels ship their licence text.
 
 ## Development scripts and hooks
 
@@ -1206,8 +1208,8 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
   its name. A scientific value lives in a cited data file under `data/`. A
   factor between units lives in `core/units.py`. Any other number is a
   module-level constant in the module that owns the quantity. Other modules
-  import that constant and never declare it a second time.
-  `tools/literal_home_check.py` rejects the two shapes that a copy takes. The
+  import that constant and never declare it a second time. The literal check
+  (`tools/literal_home_check.py`) rejects the two forms that a copy takes. The
   first is a bare numeric literal other than 0, 1 and 2, anywhere under
   `src/anesthesia_sim/`. The second is a numeric constant defined in more than
   one module. The check's baseline lists the literals that existed before the
@@ -1235,48 +1237,50 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
   in `app/dashboard_frame.py`, as a plain value with a test in
   `tests/unit/test_dashboard_frame.py`. The widget that draws it goes in
   `app/qt_widgets.py`, and that widget decides nothing. The code that places
-  it goes in `app/run_view.py` or `app/simulation_view.py`. To choose between
-  those two, first ask *whose* panel it is. A panel that states a particular
-  run's numbers belongs to `RunView`. Such panels include readouts, settings,
-  transport, and the record of what was changed during the run. `RunView` is
-  instantiated once per run, and the dashboard places the panel by looping
-  over its runs. A panel about the chart that both runs are drawn on belongs
-  to `SimulationView` or to the chart View that draws it. Such panels include
-  an axis, a legend, a reference, and the compartment selection. A chart's
-  time window belongs to that chart View alone (`PL-L59K`). A control that
-  asks one question of the whole case, rather than of either run, also
-  belongs to `SimulationView`. The bookmark editor is the worked example
-  (`PL-LPLD`). It writes each mark to every displayed run, so that the copies
-  the controllers hold stay equal. The branch control is the second example
-  (`PL-VKJW`). The instants it offers are the trunk's keyframes. A copy of it
-  in each run would give a branch a control that could only refuse. Getting
-  this the wrong way round is not a matter of tidiness. A run's panel put on
-  the dashboard would state one branch's numbers over both runs. A shared
-  control duplicated into each run would let a reader interpret a comparison
-  under two different settings. In either place, read only what
-  `SimulationSnapshot` already carries and what a `DrawnWindow` already
-  returns. A window holds its states per substance. A trace addresses one
-  value in those states as a `RecordedSeries`, not as a named field. A
-  `RecordedSeries` is a pair of a substance and a `RecordedQuantity`. If the
-  UI needs a value that does not exist yet, add it in `app/controller.py`.
-  Compute that value in `core/`, never in the view. A panel that needs the
-  run, rather than the instant, asks
+  it goes in `app/run_view.py` or `app/simulation_view.py`.
+
+  To choose between those two, first ask *whose* panel it is. A panel that
+  states a particular run's numbers belongs to `RunView`. Such panels include
+  readouts, settings, transport, and the record of what was changed during the
+  run. `RunView` is instantiated once per run, and the dashboard places the
+  panel by looping over its runs. A panel about the chart that both runs are
+  drawn on belongs to `SimulationView` or to the chart View that draws it. Such
+  panels include an axis, a legend, a reference, and the compartment
+  selection. A chart's time window belongs to that chart View alone
+  (`PL-L59K`). A control that asks one question of the whole case, rather than
+  of either run, also belongs to `SimulationView`. The bookmark editor is the
+  worked example (`PL-LPLD`). It writes each mark to every displayed run, so
+  that the copies the controllers hold stay equal. The branch control is the
+  second example (`PL-VKJW`). The instants it offers are the trunk's
+  keyframes. A copy of it in each run would give a branch a control that could
+  only refuse. Getting this the wrong way round is not a matter of tidiness. A
+  run's panel put on the dashboard would state one branch's numbers over both
+  runs. A shared control duplicated into each run would let a reader interpret
+  a comparison under two different settings.
+
+  In either place, read only what `SimulationSnapshot` already carries and
+  what a `DrawnWindow` already returns. A window holds its states per
+  substance. A trace addresses one value in those states as a
+  `RecordedSeries`, not as a named field. A `RecordedSeries` is a pair of a
+  substance and a `RecordedQuantity`. If the UI needs a value that does not
+  exist yet, add it in `app/controller.py`, and compute it in `core/`, never
+  in the view. A panel that needs the run, rather than the instant, asks
   `SimulationController.drawn_window(start_s, stop_s, columns)` for the span
   it draws. It never asks for the whole run. § "Data flow" says why.
 
-  **The *whose is it* question describes the fixed layout. The View contract
-  supersedes it for anything an Area holds.** The question routes a surface
+  **For anything an Area holds, the View contract replaces the *whose is it*
+  question, which describes the fixed layout.** The question routes a surface
   by which of two containers holds it. An Area holds one View, and any View
   can occupy any Area, so inside an Area the question has no answer. For a
-  View, the route is the bullet above (`PL-TH35`). This bullet still decides
-  **where the code goes** for what stays outside the Areas. That means the
-  unconditional region and the case section below the Areas. The setting
-  controls were a third such surface until `PL-2KXB` made them a View.
-  `.claude/rules/ui-areas.md` decides **what shape a View is in**. A View is a
+  View, follow the new-View entry above (`PL-TH35`). This entry still decides
+  **where the code goes** for what stays outside the Areas: the unconditional
+  region and the case section below the Areas. The setting controls were a
+  third such surface until `PL-2KXB` made them a View.
+  `.claude/rules/ui-areas.md` decides **what shape a View is in**, and it loads
+  with any file under `app/`, `layout/` or `data/workspaces/`. A View is a
   widget that is given what it draws. It does not assume its size, its
-  neighbours, or that it is alone. That rule loads with any file under
-  `app/`, `layout/` or `data/workspaces/`. What outlives the fixed layout is
-  this bullet's *reason*, not its routing. A run's panel must not state one
+  neighbours, or that it is alone. What outlives the fixed layout is this
+  entry's *reason*, not its routing. A run's panel must not state one
   branch's numbers over both runs. A control shared between runs must not be
   duplicated into each run. Both are properties of the value rather than of
   the container. They apply to a View exactly as they apply to a panel today.
@@ -1285,7 +1289,7 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
   scheduled. `ROADMAP.md` § "Explicitly out of scope for v0.6.0" says where it
   stands. Once it is built, the routing question gains a second half: *which
   window* a surface is instantiated in. `docs/MODEL.md` § "Minimum displayed
-  outputs" answers that half, not this bullet.
+  outputs" answers that half, not this entry.
 - A new way of *rendering* a value that a reader interprets →
   `app/formatting.py`. Examples are a unit, a decimal count, or a marker for
   what the display cannot resolve. Write it as a pure function with its own
@@ -1303,7 +1307,7 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
 - A new chart series, or a change to how one is drawn → two modules. What the
   series *claims* goes in `app/chart_frame.py`. How pyqtgraph paints it goes in
   `app/qt_chart.py`. A new *compartment* trace is declared in
-  `chart_frame.COMPARTMENT_TRACES`. That table writes four things as one
+  `chart_frame.COMPARTMENT_TRACES`. Its entry there gives four things as one
   record: the quantity the trace draws, how it is drawn, the legend words that
   name it, and the gloss its hover text carries. The table belongs to the
   chart, not to any one run. `assemble_chart_frame` reads it once per run, for
@@ -1317,15 +1321,18 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
   of a curve comes from `chart_frame.run_trace_style`, not from the table.
   While two runs are drawn, that width is the run's own channel. The table
   records what a compartment looks like, so a new trace declares no width for a
-  run. A series that draws no state of the run stays out of that table by
+  run.
+
+  A series that draws no state of the run stays out of that table by
   construction. Examples are a clinical reference and a control mark. A
   reference is placed by `app/chart_frame.py` and drawn by `app/qt_chart.py`,
   and it reads no state of the run. A control mark is a third kind of series,
   for a stronger version of the same reason: it draws no value at all, only a
-  simulated time. A series outside the table must meet a labelling requirement
-  instead. `docs/MODEL.md` § "Interface boundary" sets that requirement in
-  place of the drawn-point rule. A trace of a *derived* quantity with a domain,
-  such as the wash-in ratio, also stays out of the table. The table binds a
-  line to one `RecordedSeries`. A value that is sometimes absent has no such
-  series to bind to. Such a trace must state its domain instead, in
-  `docs/MODEL.md` and at the point of display.
+  simulated time.
+  A series outside the table must meet a labelling requirement instead.
+  `docs/MODEL.md` § "Interface boundary" sets that requirement in place of the
+  drawn-point rule. A trace of a *derived* quantity with a domain, such as the
+  wash-in ratio, also stays out of the table. The table binds a line to one
+  `RecordedSeries`, and a value that is sometimes absent has no such series to
+  bind to. Such a trace must state its domain instead, in `docs/MODEL.md` and
+  at the point of display.
