@@ -1,13 +1,15 @@
 ---
 id: PL-K6DG
 title: ROADMAP.md's Beyond row orders items 1-5, 9-10 and 13-15 by § "Development pathway", which also orders items 24 and 20 and item 8's scenario events, and item 30 places itself in Phase 1 but is on no row
-priority: P3
+priority: P2
 effort: S
-status: untriaged
+status: ready
 classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md
 added: 2026-11-07
+payoff: A reader looking past v0.8.0 reads one order for the planned items, with item 30 placed where the owner put it.
+verify: grep -qE '^\| (11|12\+) \|.*[^0-9.]30[^0-9]' ROADMAP.md
 ---
 
 **Problem.** ROADMAP.md's Beyond row orders items 1-5, 9-10 and 13-15 by § "Development pathway", which also orders items 24 and 20 and item 8's scenario events, and item 30 places itself in Phase 1 but is on no row
@@ -20,6 +22,10 @@ added: 2026-11-07
 
 **Why it matters.** Where the timeline names no release for an item, the pathway's order is the only guide to what comes next. Two orders, and an item on neither, leave the reader to guess. Item 30's half turns on where the substance generalization falls, which `PL-5XG1` already asks; this item is the rest of the order, not a second report of that question.
 
-**Done when.** The roadmap gives one answer, taken from the tree where the tree holds it and from the project owner where it does not, and every passage that stated the other answer is corrected.
+**Done when.** The Beyond row names every planned item it covers, items 20 and 24 included, in one order that matches § "Development pathway". Item 30 appears on the timeline row that the owner's placement of 2026-09-02 implies (Phase 1, ahead of the substance generalization), or the row says why it does not. Where the substance generalization itself falls stays with `PL-5XG1`.
 
 **Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. The Beyond row, the Phase 2 order and item 30's placement were all in `ROADMAP.md` at `817a4d88`.
+
+**Checked 2026-11-09:** the Beyond row still orders items 1-5, 9-10 and 13-15 "in 'Development pathway' order". Phase 2 still orders item 24, then items 5, 3 and 4, then item 8's scenario events and item 20. Item 30 still says "Phase 1, ahead of the substance generalization" (project owner, 2026-09-02) and is on no timeline row. The record already holds each order, so placing the items to match it is a session's work.
+
+**Generator check.** One-off: a finding from the `ROADMAP.md` structure-read sweep. The fact misread is whether one `ROADMAP.md` passage still agrees with a later record of the same thing. No head's `misread:` states that fact for `ROADMAP.md`, and the cluster came from one deliberate read rather than from a mechanism that keeps producing it.

@@ -1,10 +1,14 @@
 ---
 id: PL-71H3
 title: Answer the questions the structure read of ROADMAP.md's v0.7.0 section left for its author: which choices the owner made, what the Goal table's figures date from, and the terms the section never defines
-status: untriaged
-touches: ROADMAP.md
+priority: P2
+effort: M
+status: needs-decision
+classes: docs
 feature: roadmap-structure
+touches: ROADMAP.md
 added: 2026-11-07
+payoff: The v0.7.0 section a session builds and cuts from records the kind of each owner choice, dates its figures and defines its terms.
 recurrences: 2026-11-08 PL-NTHF
 ---
 
@@ -25,4 +29,29 @@ recurrences: 2026-11-08 PL-NTHF
 9. Two frozen-list entries call different records "the one holder" and "a holder" of a case instant `PL-CN5S` left untyped (the control record, `PL-RCYZ`, and the chart time base). Which is right?
 10. Terms the section uses and never defines, for the line edit (`PL-YRY3`) to define once where each first appears or to point at a definition: View, Area, Workspace, View chooser, compare mode, readouts, Picture, snapshot, capture (as a noun), debt item, generator head and its members, the size marks (L), (M) and (S), and what a date such as "(`safety`, 2026-10-25)" records. `PL-H6T7` already holds apparatus, lane and generator.
 
+**Why it matters.** v0.7.0 is the next release, and its section is what a session reads to build and cut it. A choice whose kind is unrecorded cannot be reopened on the right bar, and a figure with no date cannot be checked against the model as it now stands.
+
 **Done when.** Each question is answered in this brief, and the answer that belongs in `ROADMAP.md` is written there by the line edit (`PL-YRY3`) or by its own commit.
+
+**Sorted 2026-11-09: whose each question is.** Most are a session's, because the tree or a record answers them:
+
+- Question 2: `docs/references/README.md` § "Philip — *Workbook for Gas Man*" records the edition.
+- Questions 3 and 4: `PL-H5DV`'s and `PL-LF0P`'s records, or a rerun of the model at the shipped defaults, dated.
+- Question 5: the record of the staleness sweep, `PL-F2NX`.
+- Question 6: the timeline pairs them. Gate 2 gated v0.6.0, Gate 3 gates v0.7.0, and Gate 4 gates v0.8.0.
+- Question 7: the briefs of `PL-0S0V` and `PL-2881`.
+- Question 8, first two parts: on 2026-11-09 no item tracks carbon dioxide equivalent or the circuit flush, and planned item 4 covers injection only. Each out-of-scope entry should say so.
+- Question 9: the code that holds the case instant.
+- Question 10: wording. It goes in `PL-H6T7`'s terms section or the line edit (`PL-YRY3`).
+
+Question 1 and the third part of question 8 are the owner's. The first is a fact about his own act that no record holds. The second is the order in which features come in.
+
+**Decision needed.**
+
+1. Question 1: did you ratify or specify, in the v0.7.0 scoping round on 2026-10-25, that the schematic and the agent cost readout are each a View of their own? **Recommended:** record it as ratified, like the two tagged choices beside it, since the scoping session put all three to you as recommendations. Nothing a learner sees changes; it sets the bar for reopening the choice later.
+
+2. Question 8: does the visual pass (planned item 33: palette, type scale, spacing) come before or after v0.7.0? The timeline names its row `v0.6.x`, which puts it before, but v0.7.0's Required scope is all closed and the cut waits only on your test drive. **Recommended:** after v0.7.0, renamed `v0.7.x`. The pass then styles the schematic and agent cost Views once, which is the same reason it already runs after item 34. A learner sees the current look through v0.7.0.
+
+**Generator check.** One-off: questions from the `ROADMAP.md` structure-read sweep, which a move-only slice left for the author. No mechanism keeps producing them.
+
+**Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** The passages these questions are about were present when Gate 3 froze at `817a4d88`, in their earlier wording: for example "as the project owner confirmed in the same" scoping round, and the Workbook citations. At `needs-decision` the item counts as debt, so it joins v0.7.0's frozen list.

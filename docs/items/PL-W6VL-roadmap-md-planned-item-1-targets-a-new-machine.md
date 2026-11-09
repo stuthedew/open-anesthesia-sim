@@ -1,13 +1,15 @@
 ---
 id: PL-W6VL
 title: ROADMAP.md planned item 1 targets a new machine as one data file with no change to core/, while item 40 says that target cannot be reached, because a machine is one data file plus one provenance row per number
-priority: P3
+priority: P2
 effort: S
-status: untriaged
+status: ready
 classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md
 added: 2026-11-07
+payoff: A contributor adding an anesthesia machine reads one cost target that says it includes a provenance row for each number.
+verify: ! grep -qF 'but the target should' ROADMAP.md
 ---
 
 **Problem.** ROADMAP.md planned item 1 targets a new machine as one data file with no change to core/, while item 40 says that target cannot be reached, because a machine is one data file plus one provenance row per number
@@ -20,6 +22,10 @@ added: 2026-11-07
 
 **Why it matters.** Item 1's cost target is what a contributor adding an anesthesia machine aims at. One passage promises no change to `core/`, and the other says the target cannot be reached as written. The rest of the finding, where the machine fact belongs, is slice 7 (`PL-M3MV`).
 
-**Done when.** The roadmap gives one answer, taken from the tree where the tree holds it and from the project owner where it does not, and every passage that stated the other answer is corrected.
+**Done when.** Item 1's cost target says that a machine already in the closed set is one data file plus one provenance row in `docs/MODEL.md` for each number in it, with no change to `core/`. Item 40 no longer says the target is wrong.
 
 **Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. Item 1's one-data-file target and the later sentence saying it is not reachable were both in `ROADMAP.md` at `817a4d88`.
+
+**Checked 2026-11-09:** item 1 still ends its scope test with "one data file under `src/anesthesia_sim/data/machines/`. It needs no change to `core/` and no new test of the physics". Item 40 still says that target "cannot be reached under this project's checks", because each number in a data file needs a provenance row in `docs/MODEL.md`, "but the target should say so".
+
+**Generator check.** One-off: a finding from the `ROADMAP.md` structure-read sweep. The fact misread is whether one `ROADMAP.md` passage still agrees with a later record of the same thing. No head's `misread:` states that fact for `ROADMAP.md`, and the cluster came from one deliberate read rather than from a mechanism that keeps producing it.
