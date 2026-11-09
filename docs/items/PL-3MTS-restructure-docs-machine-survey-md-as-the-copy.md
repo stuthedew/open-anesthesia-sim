@@ -97,3 +97,7 @@ The chapter reads' queries that this restructure did not answer are filed in `PL
 A check by hand found one more: rule 4 had dropped that a web search is not a source, which the sentence after it depends on. It is restored.
 
 The first blind review reported nothing. The second reported, as optional, that Biro 1997 sits under the tier-1 measurements although it measured minute volume, which the model does not compute. Biro was in that group before the restructure, which only reordered the group, so the query is filed in `PL-8ZD7`.
+
+## Next steps for the thread that carries this branch (2026-11-09)
+
+This item shares its branch and pull request `#2055` with `PL-39ZK`. The steps that remain for both are in `PL-39ZK` § "Next steps for the thread that carries this branch (2026-11-09)".

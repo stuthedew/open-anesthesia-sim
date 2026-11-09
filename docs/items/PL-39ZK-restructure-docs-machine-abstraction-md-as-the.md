@@ -140,3 +140,25 @@ The chapter reads' queries that this restructure did not answer are filed in `PL
 6. Question 5's "argues directly against" cut to a pointer: restored.
 
 The first blind review reported nothing. The second reported that the pointer from "the machine owns" to the schema table took in two fields that were never built: the list is restored and the query is filed in `PL-37N4`.
+
+## Next steps for the thread that carries this branch (2026-11-09)
+
+This item and `PL-3MTS` share the branch `claude/project-thread-y63cou` and pull request `#2055`, which is a draft. The session that built them passed its spend budget on 2026-11-09 and reset here. `PL-F0Q2` (the copy editor fix) merged on 2026-11-09 at 02:47Z, and `origin/main` was merged into the branch after it, in 99168120.
+
+Done on the branch:
+
+- Both restructures (ab2bc378 for this item, 6d98fdb3 for `PL-3MTS`). The documents before the restructure are `git show 3c8ea4f1:docs/machine-abstraction.md` and `git show 3c8ea4f1:docs/machine-survey.md`.
+- An old-against-new meaning comparison of each document, one agent per document. Its findings and the fixes are in § "What the comparison found" of each item, and in 1d400167 and 9bd20328.
+- The two blind review passes that a change to `core/` owes. 9bd20328 carries the `Blind-review:` record.
+- `make check` was green before the merge of main, and CI was green on 9bd20328.
+- The pull request's title and body are written but not yet copy edited.
+
+What remains, in order:
+
+1. Line edit the sections that the restructure changed in both documents, with `python3 tools/copy_edit.py --sections FILE`, as `docs/prose-review/README.md` § "Reviewing a whole document" step 3 says. This is also close-out step 8's prose review, which `bin/docket arm` holds the pull request for. Include the `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN` docstring in `src/anesthesia_sim/core/circuit.py`, which this branch changed.
+2. Compare each line-edited section's old and new text for lost or changed statements, as on the restructure. Restore what was lost.
+3. Record `Prose-review: read N, rewrote M, rejected K` in the last paragraph of a commit, beside `Co-authored-by`, with an `Owner-read:` record in the form `bin/docket arm` prints. The restructure changed no value, unit, equation or citation.
+4. Update § "What the restructure did" in both items to say the line edit ran, close both items with `pr: 2055`, and run `bin/docket verify --self PL-39ZK PL-3MTS` and the documentation sweep.
+5. Copy edit the pull request's title and body as the `pull-request` skill says, publish them, read them back, mark the pull request ready, ask `bin/docket arm`, and arm it or merge it on green.
+
+Two things to know: never pipe `bin/docket arm`, and requesting a review from stuthedew fails because stuthedew is the pull request's author.
