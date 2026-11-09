@@ -54,19 +54,19 @@ because `www.draeger.com` is refused; and § "(a1) Apparatus gas volume" names
 the circuit as the Hudson RCI and says that the with-circuit column, and the
 time constants built on it, leave the set-up's 3 L reservoir bag out.
 
-**A lead, not verified.** Read from the same full text by the triage pass,
-2026-10-04: Table 1's caption cites refs 12, 13 and 15, and ref 15 is Meyer et
-al. 2008, the Dräger-authored *Modern Anesthetics* chapter, which may be an
-openable source for the same volumes where the manuals are not. Check it
-before citing it.
+**A lead, not verified.** The triage pass read the same full text on 2026-10-04
+and found that Table 1's caption cites refs 12, 13 and 15, and that ref 15 is
+Meyer et al. 2008, the Dräger-authored *Modern Anesthetics* chapter. That chapter
+may be an openable source for the same volumes where the manuals are not. Check
+it before citing it.
 
-**Done 2026-11-09.** The reference list was read through NCBI efetch on
-2026-11-09: refs 12 to 14 are Dräger Medical's instructions for use for the
-Primus IE (2014), the Perseus A500 (2013) and the Zeus IE (2015). The full text
-confirms the Hudson RCI circuit (Teleflex) of 1.2 L, the 3 L reservoir bag, and
-a sum that leaves the bag out. `www.draeger.com` was still refused at CONNECT on
-2026-11-09, so the manuals stay unread. The survey's second point under § "How
-a value gets into this document", the (a1) table header and paragraph, and the
-Shin et al. entry under § "Sources" now say so. The lead about Meyer et al.
-(ref 15) as an openable source for the volumes was not checked, and nothing
-cites it.
+**Done 2026-11-09.** On 2026-11-09 the reference list was read through NCBI
+efetch, and it names refs 12 to 14 as Dräger Medical's instructions for use for
+the Primus IE (2014), the Perseus A500 (2013) and the Zeus IE (2015). The full
+text confirms the 1.2 L Hudson RCI circuit, the 3 L reservoir bag and the sum
+that leaves the bag out. `www.draeger.com` was still refused at CONNECT on
+2026-11-09, so the manuals stay unread. The survey now gives these facts in its
+second point under § "How a value gets into this document", in the (a1) table
+header and paragraph, and in the Shin et al. entry under § "Sources". The lead
+about Meyer et al. (ref 15) as an openable source for the volumes was not
+checked, and nothing cites it.

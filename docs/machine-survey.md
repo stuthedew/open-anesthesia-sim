@@ -107,10 +107,10 @@ document by these rules:
    follows the source hierarchy of `docs/MODEL.md` unchanged: a primary
    measurement outranks a specification sheet, and a specification sheet is not
    a measurement.
-2. **A figure a paper carries but did not measure is marked as such.** Shin et
-   al. print the three Dräger apparatus volumes and cite Dräger's instructions
-   for use for each machine (their refs 12 to 14). Those manuals are still
-   unread, because the network this project's sessions run on refuses
+2. **A figure that a paper reports but did not measure is marked as such.** Shin
+   et al. print the apparatus volumes of three Dräger machines and cite Dräger's
+   instructions for use for each (their refs 12 to 14). Those manuals are still
+   unread, because the network that this project's sessions run on refuses
    `www.draeger.com` (checked 2026-11-09). The volumes are recorded here as
    tier 2, a secondary synthesis, and not as measurements.
 3. **A manufacturer's own technical account is used where one is held, and
@@ -156,8 +156,8 @@ single most-taught point about a circle system and the model already carries it.
 8.0 L recorded there (`PL-4YY1`).
 
 **What the survey found.** The apparatus volume of a workstation is roughly half
-this figure on the two most recent Dräger designs and roughly equal to it on the
-older one, once a disposable patient circuit is added:
+the stored 6.0 L on the two most recent Dräger designs and roughly equal to it
+on the older one, once a disposable patient circuit is added:
 
 | Machine | Apparatus incl. absorber, excl. patient circuit | With a 1.2 L Hudson RCI circuit, without the 3 L reservoir bag | $`\tau_C`$ at 4 L/min |
 | --- | --- | --- | --- |
@@ -168,21 +168,23 @@ older one, once a disposable patient circuit is added:
 | Getinge FLOW-i | unknown | unknown | — |
 | Dräger Apollo, Fabius | unknown | unknown | — |
 
-The apparatus figures are Shin et al.'s, taken from Dräger's manuals and tier 2
-as explained above. The 1.2 L is the internal volume of the Hudson RCI
-breathing circuit (Teleflex) in Shin et al.'s set-up. Their with-circuit sum is
-"the internal volume of AM + the volume of breathing circuit 1.2 L", which
-leaves out the set-up's 3 L reservoir bag, and so do the with-circuit column and
-the time constants built on it. The right-hand column is arithmetic on them at
-this simulator's own default flow. **So machine choice moves the circuit time
-constant by a factor of about 1.8 at any given flow** — which is a visible
-difference in the first two minutes of every run.
+**On the table's figures, machine choice moves the circuit time constant by a
+factor of about 1.8 at any given flow**, a difference visible in the first two
+minutes of every run.
 
-**One coincidence worth naming, so a later reader does not mistake it for a
-justification.** The stored 6.0 L sits within 2% of the Primus-with-circuit
-figure of 5.9 L. The 6.0 L was not chosen to represent a Primus — it predates
-this survey and was kept on a ruling that the value is not critical — and
-nothing here should be read as having sourced it retrospectively.
+The apparatus figures are Shin et al.'s, taken from Dräger's manuals. Those
+manuals are unread, so the figures are tier 2 here and not measurements.
+The 1.2 L is the internal volume of the Hudson RCI breathing circuit (Teleflex)
+in Shin et al.'s set-up. Their with-circuit sum is "the internal volume of AM +
+the volume of breathing circuit 1.2 L", which leaves out the set-up's 3 L
+reservoir bag. The with-circuit column omits the bag too, and so do the time
+constants, which are computed here from that column at this simulator's default
+flow.
+
+**The stored 6.0 L was not chosen to represent a Primus.** It sits within 2% of
+the Primus-with-circuit figure of 5.9 L by coincidence. It predates this survey
+and was kept on a ruling that the value is not critical. This survey is not its
+source.
 
 **A design consequence for `PL-FG9D`.** The model has one well-mixed circuit
 compartment, so its $`V_C`$ is apparatus *plus* patient circuit. The patient
@@ -720,11 +722,11 @@ corpus and says so.
   concentration. *BMC Anesthesiol.* 2017;17(1):10.
   PMID 28103806; [DOI 10.1186/s12871-016-0294-y](https://doi.org/10.1186/s12871-016-0294-y).
   **Full text read** (PMC5248460; reference list read through NCBI efetch,
-  2026-11-09). Carries the three Dräger apparatus volumes, cited to Dräger's
-  instructions for use for the Primus IE (2014), the Perseus A500 (2013) and the
-  Zeus IE (2015), its refs 12 to 14. Those manuals are unread because
-  `www.draeger.com` was refused on 2026-11-09, so the volumes are tier 2 here. Its times to
-  target are its own measurement.
+  2026-11-09). It prints the three Dräger apparatus volumes and cites them to
+  Dräger's instructions for use for the Primus IE (2014), the Perseus A500
+  (2013) and the Zeus IE (2015), its refs 12 to 14. Those manuals are unread,
+  because `www.draeger.com` was refused on 2026-11-09, so the volumes are tier 2
+  here. Its times to target are its own measurement.
 
 **Model-relevant behavior and machine description (tier 2, or device
 description).**

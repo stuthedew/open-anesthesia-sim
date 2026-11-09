@@ -49,12 +49,12 @@ on", the four-row behavior table; § "The closed set of behaviors", the
 
 **Done when.** The table's (b11) row says what a shut valve does to the flow
 that feeds delivery, rather than only to the removal rate, and the
-`closed_circuit` row names the second thing an implementation of it owes.
+`closed_circuit` row names the second thing an implementation of it must do.
 
 **Done 2026-11-09.** The (b11) row of `docs/machine-abstraction.md` now says
 the delivery formula is unchanged but $`\dot V_F`$ becomes an output, the
-patient's total uptake. A paragraph after the removal table says what an
-implementation of `closed_circuit` owes besides the removal rate: computing the
-fresh gas flow from total uptake, which needs a patient who consumes oxygen and
-a variable alveolar volume. It points at `docs/MODEL.md` § "Breathing circuit"
-for the arithmetic.
+patient's total uptake. A paragraph after the removal table says that an
+implementation of `closed_circuit` must set the removal rate and also compute
+the fresh gas flow from total uptake, which needs a patient who consumes oxygen
+and a variable alveolar volume. It points at `docs/MODEL.md` § "Breathing
+circuit" for the arithmetic.

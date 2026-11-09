@@ -40,7 +40,7 @@ entry.
 
 **Done when.** The entry records that Meyer et al.'s chapter has been read at
 full text, with the date and the route, and the blanket sentence is narrowed to
-the chapters that genuinely have not been read.
+the chapters that have not been read.
 
 **Done 2026-11-09.** `docs/references/README.md` § "Schüttler & Schwilden
 2008" now says Meyer et al.'s chapter is the one chapter read at full text, on
