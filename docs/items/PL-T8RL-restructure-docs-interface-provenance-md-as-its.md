@@ -1,9 +1,18 @@
 ---
 id: PL-T8RL
 title: Restructure docs/interface-provenance.md as its copy editor's structure read proposes: state each repeated record and judgement once, move Blender's split and join mechanics to the chapter named for them, and put the reading list and the start-here list where readers look (copy editor structure read, 2026-11-05)
-status: untriaged
+priority: P2
+effort: M
+status: done
+classes: defect, docs
 feature: interface-provenance-structure
+touches: docs/interface-provenance.md
+deferred-from: v0.7.0 - a contributor document's structure, with no displayed value or schematic behaviour depending on it
 added: 2026-11-05
+closed: 2026-11-07
+pr: 2053
+payoff: a contributor reads each record and judgement about Blender once, in the chapter named for it, and finds the start-here list first
+verify: grep -q '^## Pages read on 2026-10-25' docs/interface-provenance.md && grep -q '^## What a later design thread owes this study' docs/interface-provenance.md
 ---
 
 **Problem.** Restructure docs/interface-provenance.md as its copy editor's structure read proposes: state each repeated record and judgement once, move Blender's split and join mechanics to the chapter named for them, and put the reading list and the start-here list where readers look (copy editor structure read, 2026-11-05)
@@ -35,4 +44,35 @@ added: 2026-11-05
 - **Blender's reason for non-overlapping areas is covered twice.** Rows 638-642 say "Blender is good evidence that tiling is workable and pleasant at scale … The project's safety argument stands on its own reasoning". Rows 1121-1127 say "item 34's safety argument rests on its own reasoning. Blender supplies the proof that a tiled interface is workable and pleasant at the scale of a professional tool". Rows 596-642 keep the evidence and the conclusion. Rows 1121-1127 keep the refusal in one sentence, with a pointer to § "Blender's reason for non-overlapping is not this project's reason".
 - **The "Start here" list stands too late.** Rows 148-182, § "What a later design thread owes this study", open with "Start here" and send the reader to § "What this project adopts, diverges from, and refuses". They stand at the end of § "The study protocol", after the licence analysis and the method. A contributor looking for where a change belongs needs them first, so move them to directly after the introduction. The sentence in rows 826-838, "A later session considering a tablet build should treat item 34's model as out of scope there", is a rule for those later design threads and belongs in that list.
 - **The list of pages read sits inside one chapter but serves two.** § "Pages read on 2026-10-25" (rows 840-880) sits inside § "What the code cannot answer". Rows 76-82 and 134-146 also cite it, and it holds the two licence pages that § "The study protocol" relies on (rows 879-880). Make it a section of its own at the end of the document, with its heading unchanged.
-- **The introduction points ahead without naming its targets.** Rows 10-15 ("the rules are narrow enough to write down once") and rows 3-8 ("where this project deliberately does something else") refer to later chapters without naming them. Name § "The study protocol" and § "What this project adopts, diverges from, and refuses".
+- **The introduction points ahead without naming its targets.** Rows 10-15 say "the rules are narrow enough to write down once", and rows 3-8 say "where this project deliberately does something else". Both refer to later chapters without naming them. Name § "The study protocol" and § "What this project adopts, diverges from, and refuses".
+
+**Why it matters.** A contributor reads this document to learn what the project took from Blender and why, before designing a Workspace, Area or View. A record or judgement stated in two chapters can drift into two different claims, as the border-chain count already has ("once" against two workspaces). A list that the reader needs first comes last, as "Start here" does.
+
+**Done when.** Each finding below is applied to the line-edited text, or recorded here with the reason it was not. No statement of the line-edited text is lost: every sentence that leaves its place is either kept at its one home or replaced by a pointer that names that home. § "What a later design thread owes this study" stands directly after the introduction, and § "Pages read on 2026-10-25" is a section of its own at the end of the document.
+
+**Generator check.** The repeats came from accretion. Each change that touched a topic stated its own record or judgement in the section it was working in, instead of pointing to the section that already held it. The structure read found the same shape in five documents in one pass (`PL-BSMF`, `PL-SVGH`, `PL-T8RL`, `PL-39ZK`, `PL-3MTS`), so these are one sweep's findings, not five arrivals. No check can decide whether two sentences state one fact, so no check is proposed. The procedure that catches the shape is the structure read, which the project owner put ahead of every line edit on 2026-11-07. Not recorded as a generator.
+
+**What was done.** Every finding above was applied to the line-edited text. The start-here list now follows the introduction as § "What a later design thread owes this study", and § "Pages read on 2026-10-25" is a section of its own at the end. The introduction defines area, workspace and View, and says the document keeps Blender's words for Blender. The record of how the source was read heads § "What Blender's window system is", and the record of how the documentation was read heads § "What the code cannot answer: Blender's stated reasoning". Blender's split and join mechanics moved to § "How a layout is built, and how far the operations reach". Each judgement about what the project adopts, diverges from or refuses sits in that chapter, and the descriptive chapters keep a pointer. The Diverged list gains an entry for this project's minimum Area size.
+
+Two statements that the line edit (`PL-ZMBN`, #2045) had dropped came back, because this brief cites them. One is the warning Blender logs for an unknown region type, now described beside the silent substitution and checked on 2026-11-07 against `regions_remove_invalid` in `source/blender/blenkernel/intern/screen.cc` at commit `931bb2e7`. The other is the conclusion that the substitution looks like an oversight. The old text placed the warning "ten lines away" from the substitution, but the warning is in another file, so that phrase did not come back. The line edit's other losses are left to the audit of that edit (`PL-S6WZ`).
+
+**How nothing was lost.** A script split the document before and after into sentences and listed each sentence of the earlier text that no longer appears word for word: 82 of them, plus the two headings that changed level. Each was traced by hand to the place that now holds its content, or to the pointer that replaced a restatement. The copy editor was not run, because copy edits are paused until `PL-F0Q2` is fixed (project owner, 2026-11-07). The new sentences are the pointers and joins that the moves needed.
+
+**A second check, of meaning.** That trace shows where each sentence went, not whether it still means the same there. So two reviewers then compared the old and new text passage by passage, at the coordinator's request after the machine documents' restructure found eleven such changes. They found ten, and each was checked against both texts and fixed on this branch:
+
+1. The advice that a tablet build should treat item 34's model as out of scope had moved into the list of the owner's 2026-10-03 rules, where it read as a binding rule. It is back in § "Where Blender says the model does not apply".
+2. Merging two Diverged entries turned "This project should adopt this shape (`PL-TH35`)" into "This project adopts". The recommendation is back, with "and plan to prune such members".
+3. A merged entry said that `CLAUDE.md` *requires* an obvious failure state. It *prefers* one, as the other copy said.
+4. The unknown-region-type warning was called "the one warning Blender does emit", beside a section that describes the newer-version warnings. It is now the one warning that names what Blender dropped.
+5. The editor-stack entry said that this project copies only the outcome, and then that it copies the bound on an area's list. It now says what is not copied (the swapping of region lists) and what is.
+6. The vocabulary entry kept one of its two reasons. Both are back: the code and roadmap should not drift apart, or into a private vocabulary.
+7. The Refused entry on the occlusion rule lost "Blender does prove that a tiled interface can be workable and pleasant at the scale of a professional tool" to a pointer whose target says less. The sentence is back.
+8. "It is Blender built as a Python module" had "the Manual" between it and the `bpy` package it means. It now says "That package".
+9. The drag entry's pointer to § "The result" replaced "the two differ exactly once" across thirty-two workspaces. § "The result" counts the Shading workspace and one template workspace that inherits its block, so the entry now names that one junction and where it occurs.
+10. A restoration made in the audit of the line edit (`PL-S6WZ`) widened "Blender's guidelines answer the hazard" to "Blender answers". It is reverted, as that item records.
+
+Three other reported changes were kept:
+
+1. The Diverged entry "An Area has a minimum size, and says so when it cannot be given it" is new, as this brief's finding on the minimum area size asked. A reviewer noted that its two claims are not in the old text, so both were checked. The first is stated in the title of the item for stopping an Area collapsing below its minimum size (`PL-K285`). The second is what a layout function does: it ends a border's range where a child beside it reaches its bound (`border_range` in `src/anesthesia_sim/layout/sizing.py`). The entry now cites that function.
+2. "Shipped" for the thirty-two workspaces is the word from before the line edit. The audit of that edit (`PL-S6WZ`) restored it, because only eleven are defaults.
+3. The warning paragraph in § "Persistence, and what happens when an editor is missing" is the restoration this item's brief asked for, and a reviewer checked it against `screen.cc` at commit `931bb2e7`.
