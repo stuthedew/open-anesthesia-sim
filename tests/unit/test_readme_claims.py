@@ -1,11 +1,11 @@
-"""Hold the capability facts that `README.md` states to the code that decides them.
+"""Check the capability facts that `README.md` states against the code that decides them.
 
 `README.md` § "What it simulates" tells a reader three things the interface
 offers: the playback rates, the range of chart time bases, and the agents. Each
-is decided by a constant in the package, and nothing else compares the front
-page with those constants. Without these tests, adding a playback rate, moving
-the time-base floor or ceiling, or shipping a fourth agent would leave the
-README stating the old value with every other check passing (`PL-GQWP`).
+is decided by a constant in the package, and nothing else compares the README
+with those constants. Without these tests, adding a playback rate, moving the
+narrowest or widest time base, or shipping a fourth agent would leave the README
+stating the old value with every other check passing (`PL-GQWP`).
 
 Each test fails with a message that names the sentence to update.
 """
@@ -17,8 +17,8 @@ from anesthesia_sim.app.formatting import format_playback_rate
 from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
 
-#: The README, read as one string with its line breaks folded into spaces, so a
-#: sentence matches whatever the line wrapping.
+#: The README is read as one string, with its line breaks folded into spaces, so
+#: a sentence matches however the lines wrap.
 README_TEXT = " ".join(
     (Path(__file__).parents[2] / "README.md").read_text(encoding="utf-8").split()
 )
@@ -31,8 +31,8 @@ def test_the_readme_lists_every_offered_playback_rate_in_order() -> None:
         format_playback_rate(rate.multiplier).removesuffix(" real time")
         for rate in SUPPORTED_PLAYBACK_RATES
     ]
-    # Anchored at "played at **" and closed by the bold, so the README cannot
-    # list a rate before or after the ones the interface offers and still pass.
+    # The expected text starts at "played at **" and ends at the closing "**", so
+    # the test fails if the README lists a rate before or after the offered ones.
     sentence = f"played at **{', '.join(multipliers[:-1])} or {multipliers[-1]} real time**"
 
     assert sentence in README_TEXT, (
