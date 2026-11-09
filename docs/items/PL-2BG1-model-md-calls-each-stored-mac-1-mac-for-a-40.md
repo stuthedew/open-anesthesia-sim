@@ -1,9 +1,14 @@
 ---
 id: PL-2BG1
 title: MODEL.md calls each stored MAC '1 MAC for a 40-year-old adult' (Delivery-limit and MAC parameters, and three provenance table rows), but its adopted source, De Wolf et al. 2012, gives a flat adult MAC with no age, and the same section's table shows the stored values 2.6% to 11.1% off Mapleson's age-40 figures
+priority: P1
+effort: S
 status: untriaged
+feature: model-md-structure
 touches: docs/MODEL.md
 added: 2026-11-07
+payoff: a clinician reading what the MAC divisor is learns it is a flat adult value, so each displayed MAC multiple is not taken as relative to an age-40 MAC it differs from by up to 10%
+verify: ! grep -qF '40-year-old adult' docs/MODEL.md
 ---
 
 **Problem.** MODEL.md calls each stored MAC '1 MAC for a 40-year-old adult' (Delivery-limit and MAC parameters, and three provenance table rows), but its adopted source, De Wolf et al. 2012, gives a flat adult MAC with no age, and the same section's table shows the stored values 2.6% to 11.1% off Mapleson's age-40 figures
@@ -15,3 +20,42 @@ added: 2026-11-07
 - "None remain as of this revision" gives no date or version, though § "Status" says a statement that gives a version has been true since that version.
 
 **Fix.** Call the stored value "a single adult MAC with no age stated by its source" in the section and in the three table rows, unless a source that places it at age 40 is found and recorded. The fix touches no stored value.
+
+**Checked 2026-11-09:** `grep -n '40-year-old adult' docs/MODEL.md` finds the
+label in the three rows of the provenance table ("1 MAC, 40-year-old adult",
+lines 3250 to 3252) and in § "Delivery-limit and MAC parameters" ("The stored
+MAC (`mac_percent`) is 1 MAC for a 40-year-old adult", line 3712). Forty lines
+further on, the same section says the stored MACs are "single adult values
+with no adjustment for age". Each agent file's adopted De Wolf entry calls the
+value "the flat adult MAC it states it used", with no age. The two other
+queries are still there too: "The 22% is larger than either source's own
+confidence limits" (line 3756), and "none remain as of this revision" in
+§ "Release gate" (line 12469). The section's table now gives the error as the
+displayed reading (sevoflurane 10% low, isoflurane 2.5% low, desflurane 10%
+high) rather than as the stored value's offset.
+
+**Why it matters.** Every displayed MAC multiple is divided by this value. A
+clinician who reads "1 MAC for a 40-year-old adult" will take each multiple as
+relative to an age-40 MAC. Against Mapleson's age-40 values, the displayed
+multiples read 10% low for sevoflurane and 10% high for desflurane, so that
+reader misjudges what a displayed multiple means by the amount the section
+itself reports.
+
+**Done when.** The section and the three table rows call the stored value a
+single adult MAC with no age stated by its source, unless a source that places
+it at age 40 is found and recorded in the agent files. No stored value
+changes. The 22% sentence compares only with the confidence limits the section
+gives, which are Mapleson's. The `TBD` bullet in § "Release gate" carries a
+date or a version, or drops its parenthesis. The sentence in § "MAC multiples
+as a display unit" that defines MAC "in a nominal 40-year-old" describes MAC in
+general, not the stored value, and may stay.
+
+**Generator check.** One-off: a label that never matched its adopted source,
+found when the copy editor was tested on this section (`PL-F0Q2`). The fact
+misread is what the stored MAC's source says it is. The agent files hold it,
+and no head states it.
+
+**Present at the Gate 3 freeze (checked 2026-11-09).** The passage this item
+fixes was already in its file at `817a4d88`, the commit that froze Gate 3, so
+under ROADMAP.md § "The gate is a snapshot, not a moving target" the item
+joins v0.7.0's frozen list rather than being deferred by its capture date.

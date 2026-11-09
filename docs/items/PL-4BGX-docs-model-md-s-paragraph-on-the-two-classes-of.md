@@ -1,9 +1,14 @@
 ---
 id: PL-4BGX
 title: docs/MODEL.md's paragraph on the two classes of vaporizer is unclear and uses its own terms: it never says the maxima are dial maxima or how the classes differ, and states the altitude difference more firmly than a source the project can cite
+priority: P2
+effort: S
 status: untriaged
+feature: model-md-structure
 touches: docs/MODEL.md
 added: 2026-11-07
+payoff: a clinician reads which vaporizer design sets each agent's dial limit, and the altitude behaviour no more firmly than its sources state it
+verify: ! grep -qF 'three maxima come from two classes of vaporizer' docs/MODEL.md
 ---
 
 **Problem.** docs/MODEL.md's paragraph on the two classes of vaporizer is unclear and uses its own terms: it never says the maxima are dial maxima or how the classes differ, and states the altitude difference more firmly than a source the project can cite
@@ -21,3 +26,39 @@ In `PL-F0Q2`'s rerun of this section on 2026-11-08 (`fix8-p043`), the fixed
 copy editor kept the rejected opening, "The three maxima come from two classes
 of vaporizer", word for word. Three other runs that day rewrote it. A copy
 edit of the paragraph as it stands on `main` may keep that opening again.
+
+**Checked 2026-11-09:** The restructure split the paragraph, and the opening
+the owner rejected is still there. § "Delivery-limit and MAC parameters" says
+the model need not know each maximum's class "because the three maxima come
+from two classes of vaporizer that it would need to tell apart only away from
+sea level" (lines 3708 to 3710). The paragraph before it now says that each
+maximum is "the calibrated dial maximum" of named vaporizers, which settles the
+first gap. The two classes and their response to altitude moved to § "Known
+limitations" (from line 12250). There they are named "variable-bypass
+vaporizers" and "gas–vapour blenders", with quotations from Datex-Ohmeda's
+Tec 6 Plus sheet and from Andrews and Johnston. That section also says "The
+direction of each class's response is not in doubt", where Dosch and Tharp
+call the effect of altitude "controversial".
+
+**Why it matters.** The owner could not tell what the sentence meant, and the
+copy editor kept it word for word on a rerun. A clinician working at altitude
+could act on how firmly the document states the real vaporizers' behaviour,
+so that statement should be no firmer than its sources.
+
+**Done when.** The sentence in § "Delivery-limit and MAC parameters" names the
+two designs in the source's terms (variable-bypass vaporizers for sevoflurane
+and isoflurane, and the Tec 6's heated gas–vapour blender for desflurane). It
+also says why the model need not tell them apart: ambient pressure is fixed at
+760 mmHg. § "Known limitations" states the altitude difference no more firmly
+than its cited sources do, and cites Dosch and Tharp where they disagree.
+Dorsch and Dorsch's chapter 6 is checked for its terms where a copy can be
+reached. This is a content change to the safety-critical specification, so its
+pull request waits on the owner's review.
+
+**Generator check.** One-off: a paragraph the owner could not follow, found
+when the copy editor was tested on this section (`PL-F0Q2`).
+
+**Present at the Gate 3 freeze (checked 2026-11-09).** The passage this item
+fixes was already in its file at `817a4d88`, the commit that froze Gate 3, so
+under ROADMAP.md § "The gate is a snapshot, not a moving target" the item
+joins v0.7.0's frozen list rather than being deferred by its capture date.

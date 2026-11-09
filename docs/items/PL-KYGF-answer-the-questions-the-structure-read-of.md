@@ -1,10 +1,14 @@
 ---
 id: PL-KYGF
 title: Answer the questions the structure read of ROADMAP.md's v0.6.0 section left for its author: what 'the gate decision' was, which entry decides an Area refused a size, and the definition of done's baseline
+priority: P3
+effort: M
 status: untriaged
-touches: ROADMAP.md
+classes: docs
 feature: roadmap-structure
+touches: ROADMAP.md
 added: 2026-11-08
+payoff: The v0.6.0 record that a session reads to change the layout system answers its own open questions.
 ---
 
 **Problem.** Answer the questions the structure read of ROADMAP.md's v0.6.0 section left for its author: what 'the gate decision' was, which entry decides an Area refused a size, and the definition of done's baseline
@@ -24,4 +28,16 @@ added: 2026-11-08
 9. Is remembering which screen a window was on planned for later, or ruled out? The out-of-scope list now puts it with the windows planned for later.
 10. The floating-Areas entry said "So the exclusion is stated with its condition", a sentence about the text that slice 6 cut; planned-milestone item 34 keeps the history before it. Which condition did it mean, beyond "wanted later" and `docs/MODEL.md`'s occlusion rule?
 
+**Why it matters.** v0.6.0's section is the record a session reads to change the layout system. A question it leaves open is answered again by guesswork in every session that needs it.
+
 **Done when.** Each question is answered in this brief, and the answer that belongs in `ROADMAP.md` is written there by the line edit (`PL-YRY3`) or by its own commit.
+
+**Sorted 2026-11-09: whose each question is.** Questions 1 to 8 and 10 are a session's, because a record or the tree answers them. Question 1 is in `PL-NMTF`'s record of the scoping round. Questions 2, 3 and 5 are answered by the code and `docs/interface-provenance.md`. Question 4 is answered by v0.6.0's cut item, `PL-9CS6`, which records what the release was checked against. Questions 6, 7 and 10 are answered by a search of the store and of `PL-B6V1`'s and planned item 34's history. Question 8 is answered by the section itself. Question 9 is the owner's, because it decides whether a feature stays on the roadmap.
+
+**Decision needed.**
+
+Question 9: when break-out into separate windows is built, should the simulator remember which screen each window was on, or is that ruled out? v0.6.0's out-of-scope list gives the danger: a position restored onto a changed set of monitors can put a window where the learner cannot see it. **Recommended:** planned for later with break-out, on one condition. A saved position is restored only onto a screen that is still connected; otherwise the window opens on the main screen. The danger is then a condition on the feature rather than a reason to rule it out, as with floating Areas. Nothing changes for a learner until break-out is scheduled.
+
+**Generator check.** One-off: questions from the `ROADMAP.md` structure-read sweep, which a move-only slice left for the author. No mechanism keeps producing them.
+
+**Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** The passages these questions are about were present when Gate 3 froze at `817a4d88`: for example "the placement, the split and the gate decision were" all ratified, and "Remembering which screen" in the out-of-scope list. At `needs-decision` the item counts as debt, so it joins v0.7.0's frozen list.

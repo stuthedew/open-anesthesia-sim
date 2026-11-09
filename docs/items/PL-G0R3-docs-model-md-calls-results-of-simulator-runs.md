@@ -1,9 +1,24 @@
 ---
 id: PL-G0R3
 title: docs/MODEL.md calls results of simulator runs 'measured' in at least twelve chapters, which a clinician can read as patient or instrument data; say 'simulated' or 'from a run' and keep 'measured' for real measurements (copy editor structure read, 2026-11-05)
-status: untriaged
+priority: P1
+effort: M
+status: ready
+classes: defect, safety, docs
 feature: model-md-structure
+touches: docs/MODEL.md
+deferred-from: v0.7.0 - captured after the freeze; not live: checked 2026-11-09, the word is in docs/MODEL.md prose only, and the interface labels every readout and hover value as modelled, not measured, so no learner can see a wrong value now
 added: 2026-11-05
+payoff: a clinician checking the model against published patient data can tell every model result from a real measurement, as the interface already requires
+verify: ! grep -qF 'the measured value at five minutes was 0.30 to 0.32' docs/MODEL.md && ! grep -qF 'These values were measured on 2026-09-07' docs/MODEL.md
 ---
 
 **Problem.** docs/MODEL.md calls results of simulator runs 'measured' in at least twelve chapters, which a clinician can read as patient or instrument data; say 'simulated' or 'from a run' and keep 'measured' for real measurements (copy editor structure read, 2026-11-05)
+
+**Checked 2026-11-09:** On cfd4a4b6, `grep -c -i -w measured docs/MODEL.md` counts 172 uses, and many still describe a run of this simulator. Two examples are in § "Published wash-in and elimination validation test", beside published patient data. "These values were measured on 2026-09-07" heads the table of the model's own ratios. "The measured value at five minutes was 0.30 to 0.32" gives the model's inspired-to-alveolar ratio. Others are in § "Mass-balance identity" ("That run was measured four ways on 2026-10-25") and § "Halting on a marked crossing" ("measured over 20 000 samples of a live run").
+
+**Why it matters.** The document's own safety rule is that a modeled value must never read as a measurement. In the validation section, a model value called "measured" sits in the same paragraph as the published values measured in patients. A clinician checking the model against the literature can take the model's figure for the patients' figure, or the reverse. The interface already says that its readouts are model outputs and not measurements, and the specification should keep the same line.
+
+**Done when.** Every use of "measured" in `docs/MODEL.md` that describes a result of running this simulator says "computed", "simulated" or "from a run" instead. "Measured" stays only for quantities measured in patients, in tissue or on equipment, and for timings and sizes measured on the software or the screen, such as a frame's cost or a window's width in pixels. The two validation-section sentences quoted above are reworded.
+
+**Generator check.** One-off: a finding from the `docs/MODEL.md` structure-read sweep. The fact is which values in the document were measured in the world and which were computed by the model. No head's `misread:` states it, and no check reads it.
