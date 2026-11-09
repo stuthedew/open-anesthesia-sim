@@ -3,11 +3,13 @@ id: PL-G1J9
 title: docs/ARCHITECTURE.md § 'Layering' says app/ never performs a unit calculation, but § 'Data flow' and the package map say chart_frame.py, formatting.py and agent_cost.py convert units; one statement is wrong (copy editor structure read, 2026-11-05)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: architecture-md-structure
 touches: docs/ARCHITECTURE.md
 added: 2026-11-05
+closed: 2026-11-09
+pr: 2072
 payoff: a reviewer tracing a displayed value from the model to the screen is told which app/ modules convert units, and finds every step of the path
 verify: ! grep -qF 'or unit calculation itself' docs/ARCHITECTURE.md
 reenters: PL-4FBP

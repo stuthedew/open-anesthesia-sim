@@ -28,10 +28,15 @@ data/  --loaded by-->  core/  --read by-->  app/
   toolkit, no wall-clock time, and no I/O beyond reading the packaged JSON
   files in `data/`. Every quantity it produces is deterministic for identical
   inputs.
-- **`app/`** is the PySide6 user interface. It never performs a physiological
-  or unit calculation itself. It only reads immutable snapshots from `core/`,
-  through a thin controller, and renders them. It forwards user input back as
-  setter calls.
+- **`app/`** is the PySide6 user interface. It computes no model quantity. It
+  reads immutable snapshots from `core/` through the controller
+  (`app/controller.py`), and the chart also reads
+  `SimulationController.drawn_window`. It converts a value only for display:
+  a fraction to a percent or a MAC multiple, a drawn value to its axis unit,
+  and the liquid agent used to a cost at the reader's price. Each conversion
+  sits in a module that loads no toolkit and has its own tests:
+  `app/formatting.py`, `app/chart_frame.py` and `app/agent_cost.py`. It
+  forwards user input back as setter calls.
 - **`layout/`** is the area layout as a value. A window is divided into
   **Areas**, and each Area holds one **View**: a widget such as a chart or the
   setting controls. Any View can occupy any Area. A **Workspace** is a named
