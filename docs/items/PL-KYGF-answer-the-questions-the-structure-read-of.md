@@ -3,12 +3,13 @@ id: PL-KYGF
 title: Answer the questions the structure read of ROADMAP.md's v0.6.0 section left for its author: what 'the gate decision' was, which entry decides an Area refused a size, and the definition of done's baseline
 priority: P3
 effort: M
-status: needs-decision
+status: ready
 classes: docs
 feature: roadmap-structure
 touches: ROADMAP.md
 added: 2026-11-08
 payoff: The v0.6.0 record that a session reads to change the layout system answers its own open questions.
+verify: grep -qF 'restoreGeometry' ROADMAP.md
 ---
 
 **Problem.** Answer the questions the structure read of ROADMAP.md's v0.6.0 section left for its author: what 'the gate decision' was, which entry decides an Area refused a size, and the definition of done's baseline
@@ -37,6 +38,14 @@ payoff: The v0.6.0 record that a session reads to change the layout system answe
 **Decision needed.**
 
 Question 9: when break-out into separate windows is built, should the simulator remember which screen each window was on, or is that ruled out? v0.6.0's out-of-scope list gives the danger: a position restored onto a changed set of monitors can put a window where the learner cannot see it. **Recommended:** planned for later with break-out, on one condition. A saved position is restored only onto a screen that is still connected; otherwise the window opens on the main screen. The danger is then a condition on the feature rather than a reason to rule it out, as with floating Areas. Nothing changes for a learner until break-out is scheduled.
+
+**Answered 2026-11-09:** "Do whatever blender does" (project owner, 2026-11-09). So remembering each window's screen is planned with break-out, and it follows Blender. Blender's source (`blender/blender` `main`, read on 2026-11-09) does the following:
+
+1. It saves every window's position and size in the file (`posx`, `posy`, `sizex` and `sizey` on `wmWindow`). It restores them for every window in the window list (`wm_window_ghostwindows_ensure` in `source/blender/windowmanager/intern/wm_window.cc`).
+2. It does not check that the monitor a window was on still exists. Its comment says "in practice the window manager will likely move to the correct monitor". On Windows, its platform layer moves and shrinks a new window so that it fits the work area of the nearest monitor (`adjustWindowRectForClosestMonitor` in `intern/ghost/intern/GHOST_WindowWin32.cc`). The macOS and Linux platform layers were not read.
+3. A detached single-editor window keeps its size and position in a separate store of recent settings, not in the file (`WM_window_open_temp`). It is placed at that saved position only where the platform supports placement across several monitors. Otherwise it opens centred on the pointer.
+
+The Qt equivalent of point 2 is `QWidget::restoreGeometry`: "If the restored geometry is off-screen, it will be modified to be inside the available screen geometry" (Qt 6 documentation, read on 2026-11-09). This answer replaces the recommendation above, whose check that the screen is still connected Blender does not make. The work for this question is to move "Remembering which screen a window was on" in ROADMAP.md from v0.6.0's out-of-scope list to break-out's plan, record Blender's behaviour above as the design, and note the hazard as the toolkit's correction rather than a check of the project's own.
 
 **Generator check.** One-off: questions from the `ROADMAP.md` structure-read sweep, which a move-only slice left for the author. No mechanism keeps producing them.
 
