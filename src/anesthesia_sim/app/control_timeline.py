@@ -299,8 +299,10 @@ def format_adjustment(adjustment: ControlAdjustment) -> str:
         when = f"{when}–{format_elapsed(adjustment.ended_at_s)}"
 
     label = CONTROL_INPUT_LABELS[adjustment.control]
-    # ASCII rather than U+2192. The Flutter client this interface renders in
-    # has no glyph for the arrow and draws a replacement box in its place.
+    # ASCII rather than U+2192. The Flutter client that drew the interface
+    # before the Qt port had no glyph for the arrow and drew a replacement box
+    # in its place. Whether every platform font that Qt uses carries the glyph
+    # has not been checked, so the arrow stays ASCII.
     # The arrow shows the direction of the change, which is the one thing
     # this line exists to state, so the reader would see that direction as a
     # missing character. This was found by rendering the running app. No

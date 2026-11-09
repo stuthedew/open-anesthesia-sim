@@ -3,12 +3,14 @@ id: PL-21KP
 title: Present-tense Flet claims survive the Qt port in module docstrings - app/__init__.py calls the package a Flet application layer, app/formatting.py and app/wash_in.py say they are independent of Flet, and a formatting.py comment justifies FLOW_DISPLAY_DECIMALS by Flet's slider default - and five test modules cite tests/unit/test_simulation_view.py, which moved to tests/integration/
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
-touches: src/anesthesia_sim/app/__init__.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/wash_in.py, src/anesthesia_sim/app/controller.py, tests/unit/test_formatting.py, tests/unit/test_wash_in.py, tests/unit/test_chart_time_base.py, tests/unit/test_dashboard_frame.py, tests/integration/test_sevo_controller.py
+touches: src/anesthesia_sim/app/__init__.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/wash_in.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/control_timeline.py, src/anesthesia_sim/core/__init__.py, tests/unit/test_formatting.py, tests/unit/test_wash_in.py, tests/unit/test_chart_time_base.py, tests/unit/test_dashboard_frame.py, tests/integration/test_sevo_controller.py
 added: 2026-10-11
+closed: 2026-11-09
+pr: 2076
 payoff: a contributor reading the interface package's docstrings learns the toolkit it actually uses and that it depends on the core, and every test citation resolves
-verify: ! grep -qF 'Flet application layer' src/anesthesia_sim/app/__init__.py && ! grep -rqF --exclude=test_ignore_check.py 'tests/unit/test_simulation_view.py' tests/
+verify: ! grep -qF 'Flet application layer' src/anesthesia_sim/app/__init__.py && ! grep -rqF --exclude=test_type_ignore_check.py 'tests/unit/test_simulation_view.py' tests/
 ---
 
 **Problem.** Present-tense Flet claims survive the Qt port in module docstrings - app/__init__.py calls the package a Flet application layer, app/formatting.py and app/wash_in.py say they are independent of Flet, and a formatting.py comment justifies FLOW_DISPLAY_DECIMALS by Flet's slider default - and five test modules cite tests/unit/test_simulation_view.py, which moved to tests/integration/
@@ -67,3 +69,5 @@ line 4 says its subject is checkable "without constructing a Flet interface".
 `app/simulation_view.SIMULATION_STEP_S`, which that module no longer defines,
 and say the value is restated "because that module needs Flet". Both files are
 already in this item's `touches`.
+
+**Done 2026-11-09.** The present-tense claims still in the tree were corrected: `core/__init__.py` and `BranchedCase` now say they do not depend on Qt, `app/formatting.py` and `app/wash_in.py` say they import no interface toolkit (both import from the core, so "independent of the scientific core" went too), and the `control_timeline.py` comment dates the missing arrow glyph to the Flutter client before the port. `app/__init__.py`, the `FLOW_DISPLAY_DECIMALS` comment and `format_case_discard_warning` had already been corrected by other work. The five test modules cite `tests/integration/test_simulation_view.py`, and the three "Flet interface" phrases name the Qt interface. `tests/integration/test_sevo_controller.py` now imports `SIMULATION_STEP_S` from `app/dashboard_frame.py`, which needs no display, so its restated copy and the comment naming `app/simulation_view` went. The `verify:` excluded `test_ignore_check.py`, a file that does not exist; the fixture string the brief keeps is in `test_type_ignore_check.py`, so the command now excludes that file.

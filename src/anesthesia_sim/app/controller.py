@@ -3690,7 +3690,7 @@ class BranchedCase:
     **It computes nothing and advances nothing.** Running, pausing, settings
     and stepping stay on the controllers, one per run. This class holds which
     runs there are and how they are related, so a view can loop over them and
-    a reader can attribute a curve to one of them. It does not depend on Flet,
+    a reader can attribute a curve to one of them. It does not depend on Qt,
     for the same reason that the rest of `app/` outside the view does not.
     """
 

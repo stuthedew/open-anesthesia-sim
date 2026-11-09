@@ -1,8 +1,8 @@
 """Unit tests for `app/chart_time_base.py`, the chart's window width.
 
 These tests check the ladder of widths, the two window rules and the tick
-placement without constructing a Flet interface. What the *interface* does with
-them is tested in `tests/unit/test_simulation_view.py`: which control selects a
+placement without constructing the Qt interface. What the *interface* does with
+them is tested in `tests/integration/test_simulation_view.py`: which control selects a
 width, what the axis labels show, and what the caption claims.
 
 `PL-012` decided this design and `PL-SSBP` built it. Three of its

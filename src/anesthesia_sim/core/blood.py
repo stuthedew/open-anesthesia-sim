@@ -1,8 +1,9 @@
 """The mixed-venous blood compartment, which pools the outflow of every tissue group.
 
 The pool combines the flow-weighted outflow from every tissue group (see
-`patient.py`). Under this model's flow-limited arterial simplification, that
-blood then returns to the alveoli as the arterial input.
+`patient.py`). That blood then returns to the alveoli. The lung's exchange
+with blood is perfusion-limited, so blood leaves the lung at the alveolar
+partial pressure and the model needs no separate arterial compartment.
 """
 
 from dataclasses import dataclass

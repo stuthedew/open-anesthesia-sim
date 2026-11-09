@@ -3,10 +3,12 @@ id: PL-R7C4
 title: src/anesthesia_sim/app/qt_widgets.py and tools/contrast_check.py say SC 1.4.11's inactive-component exception was never read at the source, but PL-JX0Z records the project owner supplying W3C's Understanding document for SC 1.4.11 on 2026-09-07; check whether that text carries the exception and correct both if it does
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 touches: src/anesthesia_sim/app/stylesheets.py, tools/contrast_check.py
 added: 2026-10-06
+closed: 2026-11-09
+pr: 2076
 payoff: the reason given for the transport button's disabled-state edge rests on what WCAG actually says, read at W3C's source, rather than on its never having been read
 verify: ! grep -qF 'inactive-component wording has never' src/anesthesia_sim/app/stylesheets.py && ! grep -qF 'was **not** read at the source' tools/contrast_check.py && ! grep -qF 'check_disabled_states_are_the_style_s' src/anesthesia_sim/app/stylesheets.py
 ---
@@ -59,3 +61,5 @@ this docstring verbatim, from `app/qt_widgets.py` into `app/stylesheets.py`,
 so `touches:` and `verify:` now name that file; read at the old path, the
 command would have passed with none of this work done. Both sentences and the
 stale check name are as the brief describes, one file over.
+
+**Done 2026-11-09.** The W3C's source states the exemption. SC 1.4.11's normative text (`guidelines/sc/21/non-text-contrast.html` in https://github.com/w3c/wcag at commit `c9ea04d4`) reads "except for inactive components", and its Understanding document (`understanding/21/non-text-contrast.html`, same commit) says that controls "not available for user interaction (e.g., a disabled control in HTML) are not required to meet contrast requirements". `www.w3.org` was refused at the CONNECT on 2026-11-09, and GitHub served both files. Both sentences now quote the exemption and give the reason that survives it: the label and the edge meet the minimums outright because an exemption from a contrast minimum does not make an invisible control acceptable, and the edge is what shows the control's boundary. The stale check name in `transport_button_stylesheet`'s docstring is now `check_authored_disabled_colours_are_measured`.

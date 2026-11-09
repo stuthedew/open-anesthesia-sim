@@ -297,7 +297,7 @@ class TissueGroup:
         equality of the two is an assumption rather than an identity.
         `docs/MODEL.md` § "Assumptions" states it as "tissue venous blood
         equilibrates with its tissue group", which holds because each group is
-        perfusion limited. A diffusion-limited group would need a real
+        perfusion-limited. A diffusion-limited group would need a real
         calculation here. So the place that relies on the assumption is the
         place that should name it.
 

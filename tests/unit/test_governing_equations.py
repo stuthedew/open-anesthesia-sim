@@ -547,8 +547,9 @@ def test_each_tissue_row_is_that_group_s_balance() -> None:
         assert row[ALVEOLAR_FRACTION] == pytest.approx(washin_rate_s)
         assert row[state] == pytest.approx(-washin_rate_s)
 
-        # Arterial blood is flow-limited, so a tissue is driven by the
-        # alveolar fraction and by nothing else. It is not driven by the
+        # The lung's exchange with blood is perfusion-limited, so arterial
+        # blood carries the alveolar fraction, and a tissue is driven by that
+        # fraction and by nothing else. It is not driven by the
         # circuit, by mixed venous blood or by another tissue group.
         assert row[INSPIRED_FRACTION] == 0.0
         assert row[VENOUS_FRACTION] == 0.0

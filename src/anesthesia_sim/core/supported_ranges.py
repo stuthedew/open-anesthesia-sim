@@ -115,7 +115,9 @@ opens, moves, marks or branches a run, or that stores one of its keyframes,
 takes a `CaseInstant`. That covers `RunDefinition`'s opening, reach and
 keyframes, the marks in `app/bookmarks.py`, and the instant at which a branch
 is taken. `SimulationState.elapsed_s` returns one. The control record's
-instants are still annotated `float` (`PL-RCYZ`). The instants at which a run
+instants are `CaseInstant` too: the instant of each change
+(`app/control_record.py`) and the start and end of each adjustment
+(`app/control_timeline.py`, `PL-RCYZ`). The instants at which a run
 is only *read* stay a `float`: `RunDefinition`'s `state_at` and a drawn
 window's bounds. The run's own opening and reach, which are both checked
 instants, bound these instants and refuse what falls outside. That check is a

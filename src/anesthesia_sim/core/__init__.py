@@ -1,6 +1,6 @@
 """This package holds the PK/PD compartments and the validated agent and patient parameters.
 
-It is pure scientific and simulation code. It does not depend on Flet
+It is pure scientific and simulation code. It does not depend on Qt
 or on any other UI framework, and nothing in it renders a user interface or
 reads from one.
 

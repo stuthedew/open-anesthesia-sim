@@ -743,8 +743,9 @@ def build_system_matrix(settings: UptakeEquationSettings) -> Matrix:
     # Tissue uptake and return, for each group i:
     #     dF_i/dt = Q_i / (V_i lambda_ib) * (F_A - F_i)
     #
-    # Arterial blood is flow-limited, so F_a is F_A and the driving fraction is
-    # read from the alveolar state directly.
+    # The lung's exchange with blood is perfusion-limited, so arterial blood
+    # leaves the lung at the alveolar fraction: F_a is F_A, and the driving
+    # fraction is read from the alveolar state directly.
     for offset, tissue in enumerate(settings.tissues):
         state = FIRST_TISSUE_FRACTION + offset
         washin_rate_s = tissue.washin_rate_s

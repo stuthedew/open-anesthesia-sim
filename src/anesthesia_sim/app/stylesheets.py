@@ -250,10 +250,16 @@ def transport_button_stylesheet() -> str:
 
     So the disabled label is `MUTED`, which is **5.00:1 on PANEL**. That
     fully meets the 4.5:1 that SC 1.4.3 requires for normal text, so no
-    exemption is claimed for it. This matters, because the wording of SC
-    1.4.11 on inactive components has never been read at its source from
-    this container (`PL-JX0Z`; `w3.org` was still refused at the CONNECT on
-    2026-10-06). So nothing in this interface may depend on that wording.
+    exemption is claimed for it. SC 1.4.11 does exempt inactive components:
+    its text reads "except for inactive components", and its Understanding
+    document says that controls "not available for user interaction (e.g., a
+    disabled control in HTML) are not required to meet contrast
+    requirements". Both were read on 2026-11-09 in the W3C's own repository,
+    https://github.com/w3c/wcag at commit `c9ea04d4`
+    (`guidelines/sc/21/non-text-contrast.html` and
+    `understanding/21/non-text-contrast.html`). The exemption permits low
+    contrast. It does not make an unavailable button invisible acceptable, so
+    the label meets the minimum outright.
 
     **The two states are not told apart by colour alone.** Judgment 2 in
     `.claude/rules/ui-color.md` asks for a second channel, and the row
@@ -271,7 +277,7 @@ def transport_button_stylesheet() -> str:
     visual channel but lost the boundary.
 
     `tools/contrast_check.py` measures all three pairs, and
-    `check_disabled_states_are_the_style_s` enforces that. It accepts a
+    `check_authored_disabled_colours_are_measured` enforces that. It accepts a
     `:disabled` rule only from a function that a requirement cites.
     """
 

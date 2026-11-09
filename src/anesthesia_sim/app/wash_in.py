@@ -1,8 +1,8 @@
 r"""The $`F_A/F_I`$ ratio that the uptake literature plots, and the range where it is valid.
 
-This module is pure arithmetic over two modelled fractions. It is independent
-of Flet and of the scientific core. Nothing here reads simulation state, builds
-a control, or formats a string.
+This module is pure arithmetic over two modelled fractions. It imports no
+interface toolkit. Nothing here reads simulation state, builds a control, or
+formats a string.
 
 The ratio has its own module so that it can be read, cited and tested without
 loading the dashboard that draws it. `CLAUDE.md`'s safety-critical standard

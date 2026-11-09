@@ -4,9 +4,9 @@ The functions in that module are the last step between a modeled number and
 what a reader sees. They are therefore tested here directly, not only
 through the dashboard. `docs/MODEL.md` § "Displayed precision" reasons about
 that module, and each claim it makes should be checkable against the
-function it describes without constructing a Flet interface.
+function it describes without constructing the Qt interface.
 
-The end-to-end path stays in `tests/unit/test_simulation_view.py`. That path
+The end-to-end path stays in `tests/integration/test_simulation_view.py`. That path
 runs the real controller, a real step and the real formatter, and checks the
 string on the panel. That file is where a displayed value can be read off
 the control that shows it.

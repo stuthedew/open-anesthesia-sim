@@ -1,9 +1,9 @@
 """Render modeled values as the strings the interface displays.
 
-This module is pure formatting, independent of the Qt toolkit and of the
-scientific core. Every function here takes a number that the model produced and
-returns the text that a reader sees. Nothing in this module builds a control,
-reads simulation state, or performs a physiological calculation.
+This module is pure formatting and imports no interface toolkit. Every function
+here takes a number that the model produced and returns the text that a reader
+sees. Nothing in this module builds a control, reads simulation state, or
+performs a physiological calculation.
 
 This is a module of its own for the following reason. `docs/MODEL.md`
 § "Displayed precision" derives how many digits of a concentration are worth

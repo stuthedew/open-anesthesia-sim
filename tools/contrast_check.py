@@ -207,13 +207,15 @@ way PL-NGF7 said - by `tools/agent_identity_check.py` for anything carrying
 agent identity, and by SC 1.4.3's exemption for the splitter handle, which has
 no label at all.
 
-*What is deliberately not claimed.* SC 1.4.11's own exception wording for
-inactive components was **not** read at the source: `w3.org` returned
-`EGRESS_BLOCKED` from this container on 2026-09-07, as PL-JX0Z recorded across
-five routes, and was still refused at the CONNECT on 2026-10-06. So
-nothing here rests on it - which is why the transport button's *edge* keeps
-`MUTED` in both states and meets 1.4.11's 3:1 outright, rather than being
-softened for the disabled state on an exception nobody here has read.
+*What is deliberately not claimed.* SC 1.4.11 exempts inactive components: its
+text reads "except for inactive components", and its Understanding document
+says that disabled controls "are not required to meet contrast requirements".
+Both were read in the W3C's own repository, https://github.com/w3c/wcag at
+commit `c9ea04d4` (`guidelines/sc/21/non-text-contrast.html` and
+`understanding/21/non-text-contrast.html`), because `www.w3.org` was refused at
+the CONNECT from this container on 2026-11-09. Nothing here uses the exemption. The
+transport button's *edge* keeps `MUTED` in both states and meets 1.4.11's 3:1
+outright, because the edge is what shows the control's boundary.
 
 *And the scope note cannot rot silently*, which is the half a docstring alone
 would not buy. `check_authored_disabled_colours_are_measured` fails the build on

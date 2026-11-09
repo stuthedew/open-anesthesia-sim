@@ -5,10 +5,11 @@ claims. They say which word states the run's state, which banner takes
 priority over which, what each readout and setting says, and what the
 captions and the new-case question say. Every test here runs with no display
 and no widget, which is the reason that module exists. The tests are the
-Flet suite's tests (`tests/unit/test_simulation_view.py`) rewritten against
-the frame functions. Where a claim survived the port, its test keeps the same
-name. The verify lines and `docs/MODEL.md` citations that name those tests
-therefore still point at a test that checks the same thing (`PL-25KS`).
+Flet suite's tests rewritten against the frame functions. That suite's Qt port
+is now `tests/integration/test_simulation_view.py`. Where a claim survived the
+port, its test keeps the same name. The verify lines and `docs/MODEL.md`
+citations that name those tests therefore still point at a test that checks
+the same thing (`PL-25KS`).
 
 Snapshots come from one of two places. One is a real `SimulationController`
 stepped at the shipped step. The other is `_snapshot`, a fixture that takes
