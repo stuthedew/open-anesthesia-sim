@@ -8181,11 +8181,12 @@ PARAGRAPH_FAMILY_DOCUMENT = "\n".join(
 
 
 def _paragraph_family() -> doc_check.BoundFamily:
-    """A paragraph-shaped family over § "Overview", built here rather than read
-    from `BOUND_FAMILIES`.
+    """Return a paragraph-shaped family over § "Overview", built here rather
+    than read from `BOUND_FAMILIES`.
 
-    Its document is `docs/MODEL.md`'s path only so that `_check_numeric_family`
-    can write it. The shape does not depend on which document holds it.
+    It names `docs/MODEL.md` as its document only so that
+    `_check_numeric_family` can write that file. The shape does not depend on
+    which document holds it.
     """
     return doc_check.BoundFamily(
         document=doc_check.MODEL,
@@ -8198,7 +8199,7 @@ def _paragraph_family() -> doc_check.BoundFamily:
 
 
 def test_a_paragraph_family_reads_every_paragraph_down_to_the_next_chapter() -> None:
-    """A list entry is a paragraph, a fence is not, and a deeper heading's are the family's."""
+    """List entries and a deeper heading's paragraphs are members, and a fence is not."""
     members = list(doc_check._paragraph_members(PARAGRAPH_FAMILY_DOCUMENT, _paragraph_family()))
 
     assert [line for line, _ in members] == [3, 5, 6, 15]
@@ -8266,7 +8267,7 @@ def test_a_declaration_is_resolved_even_where_the_paragraph_names_code(
 def test_a_paragraph_naming_no_code_is_an_error(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The entry that names nothing fails, and so does the one citing only an item."""
+    """The list entry that names nothing fails, and so does the paragraph citing only an item."""
     monkeypatch.setattr(doc_check, "BOUND_FAMILIES", (_paragraph_family(),))
     report = _check_numeric_family(tmp_path, PARAGRAPH_FAMILY_DOCUMENT, "ready")
 
@@ -8280,7 +8281,7 @@ def test_a_paragraph_naming_no_code_is_an_error(
 def test_a_paragraph_declaring_no_code_yet_is_resolved_against_the_queue(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The declared-none form passes on an open item and fails once it closes."""
+    """A "no code yet" declaration passes on an open item and fails once the item closes."""
     monkeypatch.setattr(doc_check, "BOUND_FAMILIES", (_paragraph_family(),))
     document = "# Overview\n\nThe chooser is planned, no code yet (`PL-8888`).\n"
     for status, expected in (("ready", 0), ("done", 1)):
@@ -8292,7 +8293,10 @@ def test_a_paragraph_declaring_no_code_yet_is_resolved_against_the_queue(
 def test_the_review_list_gives_a_bound_paragraph_s_range_only_where_it_helps(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A wrapped paragraph gets its range; a one-line one and a line outside the family do not."""
+    """A wrapped paragraph gets its line range.
+
+    A one-line paragraph and a line outside the family get none.
+    """
     monkeypatch.setattr(doc_check, "BOUND_FAMILIES", (_paragraph_family(),))
     paragraphs = doc_check._bound_paragraphs({doc_check.MODEL: PARAGRAPH_FAMILY_DOCUMENT})
 
@@ -8310,7 +8314,7 @@ def test_the_review_list_gives_a_bound_paragraph_s_range_only_where_it_helps(
 def test_candidates_gives_the_range_of_a_bound_paragraph_that_names_a_change(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """The stale sentence is often a line away from the name that changed."""
+    """A stale sentence is often a line away from the name that changed."""
     architecture = ARCHITECTURE.replace(
         "The map lists each module under `src/anesthesia_sim/`.\n",
         "The map lists each module under `src/anesthesia_sim/`. A run steps\n"

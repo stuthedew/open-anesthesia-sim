@@ -12523,23 +12523,26 @@ from a tool that prints it. For example, a check compares the count in a heading
 with the entries under it. Nothing checks a copied count later, so it can go out
 of date.
 
-**For developers.** These rules apply in part to the project's other documents.
-The frozen lists in `ROADMAP.md` and the package map in `docs/ARCHITECTURE.md`
-also promise an entry for each member, and each has checks of its own. The rule
-that a claim names what it describes also binds two documents that describe the
-code: every paragraph of `docs/ARCHITECTURE.md`, and every paragraph of
-`docs/interface-provenance.md` § "What this project adopts, diverges from, and
-refuses". Each such paragraph names in fixed-width type the module, symbol or
-test it describes, or uses the fixed form ``no code yet (`PL-XXXX`)``. An item
-id alone names no code. `check_bound_families` holds these two families, and
-`tools/doc_check.py candidates` prints a paragraph's first and last line when
-something it names changes (`PL-BLN0`). The check
-of a frozen list reads only the lines that open with an item id. The prose of
-`ROADMAP.md` is treated as dated. Every thread in `docs/WORKING_NOTES.md` is
-dated, so only the rule for dated statements applies to it. The rules do not
-apply to prose about the project's workflow tooling, in `.claude/`,
-`CONTRIBUTING.md` and `docs/resident-instructions.md`, where the rule on counts
-is only advice.
+**For developers.** These rules apply in part to the project's other
+documents. The frozen lists in `ROADMAP.md` and the package map in
+`docs/ARCHITECTURE.md` promise an entry for each member of a set, and each has
+checks of its own. The check of a frozen list reads only the lines that open
+with an item id. The prose of `ROADMAP.md` is treated as dated. Every thread in
+`docs/WORKING_NOTES.md` is dated, so only the rule for dated statements applies
+to it. The rules do not apply to prose about the project's workflow tooling, in
+`.claude/`, `CONTRIBUTING.md` and `docs/resident-instructions.md`, where the
+rule on counts is only advice.
+
+The rule that a claim names what it describes also applies to two documents that
+describe the code: to every paragraph of `docs/ARCHITECTURE.md`, and to every
+paragraph of `docs/interface-provenance.md` § "What this project adopts, diverges
+from, and refuses". Each such paragraph names in fixed-width type the module,
+symbol or test it describes, or uses the fixed form ``no code yet (`PL-XXXX`)``.
+An item id alone names no code. The documentation check reads both paragraph by
+paragraph (`check_bound_families`). When something that a paragraph names
+changes, the command for the documentation review
+(`tools/doc_check.py candidates`) prints the paragraph's first and last line
+(`PL-BLN0`).
 
 A statement is about the code or its data when it says, for example, that a test
 enforces a rule, that a field exists, that a value is *N*, or that a job runs
