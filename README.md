@@ -15,6 +15,14 @@ for teaching.
 > displays should be used to guide the care of a real patient. Every value on
 > screen is a model output, never a measurement.
 
+![The simulator's window after ten simulated minutes of sevoflurane delivered at 2.00% (1.00 times MAC) with a fresh gas flow of 4.0 L/min, played at 1× real time. A row of readouts gives the modelled concentration in the circuit, alveoli, mixed venous blood and three tissue groups, each as a percentage and as a multiple of MAC. Below them, a chart traces each compartment over time against a dashed line at 1 MAC and a shaded MAC-awake band, beside the four setting controls.](assets/screenshots/dashboard.png)
+<!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
+<!-- provenance: data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4 -->
+
+*The default case after ten simulated minutes, in version 0.6.16+gc49f7dce.
+Every value shown is a model output. `tools/readme_screenshot.py` retakes the
+image.*
+
 ## What it is for
 
 Uptake and distribution is taught from curves, and the curves are hard to
