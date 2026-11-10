@@ -1,8 +1,15 @@
 ---
 id: PL-VZ57
 title: Reproduce and file the leads of the 2026-11-10 root-cause audit that its session did not confirm
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: housekeeping
+touches: docs/items
 added: 2026-11-10
+payoff: each lead the audit's reviewers reported is either a filed item or struck with its reason, so none is lost with the session's reply
+verify: grep -qE '^[*][*]Leads reproduced,' docs/items/PL-VZ57-*.md
+sweep: the leads of the 2026-11-10 root-cause audit that its session did not confirm
 ---
 
 **Problem.** Reproduce and file the leads of the 2026-11-10 root-cause audit that its session did not confirm
@@ -73,3 +80,5 @@ added: 2026-11-10
 - 222 of 1,340 `grep`-only `verify:` commands on closed items fail today. `.claude/skills/docket/modes/triage.md` says a closed item's command is a record and is not repaired, so this is not a finding.
 
 **Done when.** Each lead above is reproduced against the tree and then filed, linked to the open item that holds it, or struck here with the reason. A paragraph that opens "**Leads reproduced,**" with its date says which was which.
+
+**Generator check.** Work the owner asked for: the audit of 2026-11-10 looked for root causes that are unrecorded or whose fix did not hold. The leads above are its unconfirmed findings, and each owes its own check when it is filed.

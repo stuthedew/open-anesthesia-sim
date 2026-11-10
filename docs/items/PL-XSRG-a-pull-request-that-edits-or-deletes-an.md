@@ -1,8 +1,16 @@
 ---
 id: PL-XSRG
 title: A pull request that edits or deletes an existing line of a published-data test under tests/reference/ merges on green when its session records that no owner's read is needed: bin/docket arm does not hold it
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect
+touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_arming.py, .claude/skills/pull-request/SKILL.md
+deferred-from: v0.7.0 - found by the 2026-11-10 audit after the freeze; apparatus, and it changes no displayed value, so the release does not wait on it
 added: 2026-11-10
+payoff: a widened tolerance or a changed expected value in a published-data test reaches the owner before it merges
+verify: grep -q 'def test_an_edited_reference_test_holds_for_the_owner' subprojects/docket/tests/test_arming.py
+reenters: PL-4W2L
 ---
 
 **Problem.** A pull request that edits or deletes an existing line of a published-data test under tests/reference/ merges on green when its session records that no owner's read is needed: bin/docket arm does not hold it

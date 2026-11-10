@@ -1,9 +1,17 @@
 ---
 id: PL-YSV3
 title: bin/docket inflow counts a re-entry against the closed item it names and never against the fact that item's head misread, so the repeated-predicate fact, on its fifth root-cause item, reads as five answered lines
-status: untriaged
+priority: P1
+effort: M
+status: ready
+classes: defect
 feature: generator-measurement
+touches: subprojects/docket/src/docket/inflow.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_inflow.py
+deferred-from: v0.7.0 - found by the 2026-11-10 audit after the freeze; apparatus, and it changes no displayed value, so the release does not wait on it
 added: 2026-11-10
+payoff: the inflow report says when a fact is on its third or fifth fix, so a root cause that keeps returning is seen as one
+verify: grep -q 'def test_reentries_of_one_fact_across_its_heads_are_counted_together' subprojects/docket/tests/test_inflow.py
+impairs-generators: inflow's re-entry count (the reentering map in docket/inflow.py) is keyed on the closed item a filing names, so re-entries spread over one fact's successive heads never reach the three-filings line that marks a fix as not having held
 ---
 
 **Problem.** bin/docket inflow counts a re-entry against the closed item it names and never against the fact that item's head misread, so the repeated-predicate fact, on its fifth root-cause item, reads as five answered lines

@@ -1,8 +1,16 @@
 ---
 id: PL-GKG4
 title: Blood flow is a bare float checked by hand at three places in core (blood.py, tissue.py, governing_equations.py) and is not a checked type as cardiac output is, so the next function that takes one can skip the check
-status: untriaged
+priority: P1
+effort: M
+status: ready
+classes: defect, safety
+touches: src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/governing_equations.py, tests/unit, docs/MODEL.md
+deferred-from: v0.7.0 - present at the freeze and not on the frozen list; found by the 2026-11-10 audit; not live: checked 2026-11-10, all three places that take a blood flow refuse a negative or non-finite one, so no wrong value is computed now
 added: 2026-11-10
+payoff: a blood flow is checked once where it is built, so a new function that takes one cannot skip the check
+verify: grep -rq 'class BloodFlow' src/anesthesia_sim/core
+reenters: PL-ZGYX
 ---
 
 **Problem.** Blood flow is a bare float checked by hand at three places in core (blood.py, tissue.py, governing_equations.py) and is not a checked type as cardiac output is, so the next function that takes one can skip the check

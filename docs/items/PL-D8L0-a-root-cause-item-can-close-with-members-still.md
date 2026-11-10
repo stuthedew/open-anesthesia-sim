@@ -1,9 +1,16 @@
 ---
 id: PL-D8L0
 title: A root-cause item can close with members still open and with a 'spent' verdict that names no check: 37 of 90 heads closed the day they were added, 11 of them with members open
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect
 feature: generator-measurement
+touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests, .claude/skills/docket/modes/triage.md
+deferred-from: v0.7.0 - found by the 2026-11-10 audit after the freeze; apparatus, and it changes no displayed value, so the release does not wait on it
 added: 2026-11-10
+payoff: a root cause closed on a sweep, on silence or before its members are fixed reads differently from one closed by a check
+verify: grep -rq 'def test_a_closed_head_whose_members_are_open_is_marked' subprojects/docket/tests
 ---
 
 **Problem.** A root-cause item can close with members still open and with a 'spent' verdict that names no check: 37 of 90 heads closed the day they were added, 11 of them with members open

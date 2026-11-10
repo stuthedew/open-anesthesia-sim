@@ -1,9 +1,17 @@
 ---
 id: PL-0G2P
 title: The run-state tests read only the text of labels, buttons, combo boxes and sliders, so a value that a View paints, as the compartment schematic paints its amounts, is in no restatement test
-status: untriaged
+priority: P1
+effort: M
+status: ready
+classes: defect, safety
 feature: every-view-in-run-state-tests
+touches: tests/integration/test_simulation_view.py, src/anesthesia_sim/app/qt_schematic.py
+deferred-from: v0.7.0 - a new problem, not present at the freeze (817a4d88, 2026-10-25): the compartment schematic, the first View that paints its values, merged on 2026-11-01; not live: checked 2026-11-10, the audit's read of the schematic found no painted amount left from an earlier run, and the gap is in the tests
 added: 2026-11-10
+payoff: an amount the schematic paints is read by the same tests as a label's text, so a painted amount left from an earlier run fails a test
+verify: grep -q 'def test_painted_text_is_restated_when_the_run_changes' tests/integration/test_simulation_view.py
+reenters: PL-J5GC
 ---
 
 **Problem.** The run-state tests read only the text of labels, buttons, combo boxes and sliders, so a value that a View paints, as the compartment schematic paints its amounts, is in no restatement test

@@ -1,8 +1,15 @@
 ---
 id: PL-RLRG
 title: docs/MODEL.md's paragraphs for a clinician carry item ids and decision records such as '(project owner, 2026-09-04, ratified', and nothing refuses them: tools/model_rewrite.py ids lists them and no check or close-out step runs it
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect, docs
+touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/MODEL.md, .claude/skills/docket/modes/close-out.md
+deferred-from: v0.7.0 - present at the freeze and not on the frozen list; found by the 2026-11-10 audit; it changes how the specification reads and no value in it
 added: 2026-11-10
+payoff: a clinician reading docs/MODEL.md meets no record of who decided what and when, and a session that adds one fails the build
+verify: grep -q 'def test_a_decision_record_in_a_paragraph_for_a_clinician_is_refused' tests/unit/test_doc_check.py
 ---
 
 **Problem.** docs/MODEL.md's paragraphs for a clinician carry item ids and decision records such as '(project owner, 2026-09-04, ratified', and nothing refuses them: tools/model_rewrite.py ids lists them and no check or close-out step runs it

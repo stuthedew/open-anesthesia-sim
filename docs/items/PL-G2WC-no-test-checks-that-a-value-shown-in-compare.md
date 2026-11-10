@@ -1,9 +1,17 @@
 ---
 id: PL-G2WC
 title: No test checks that a value shown in compare mode sits under its own run: the readout test checks the 'Run 1' and 'Run 2' labels and never a value against the run it names
-status: untriaged
+priority: P1
+effort: M
+status: ready
+classes: defect, safety
 feature: every-view-in-run-state-tests
+touches: tests/integration
+deferred-from: v0.7.0 - found by the 2026-11-10 audit after the freeze; not live: checked 2026-11-10, the audit found no value shown under the wrong run, and the gap is that no test would catch one
 added: 2026-11-10
+payoff: in compare mode a value shown under the wrong run's name fails a test, for every View that shows two runs
+verify: grep -rq 'def test_each_compared_value_is_shown_under_its_own_run' tests/integration
+reenters: PL-GTH6
 ---
 
 **Problem.** No test checks that a value shown in compare mode sits under its own run: the readout test checks the 'Run 1' and 'Run 2' labels and never a value against the run it names
