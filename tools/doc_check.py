@@ -4343,6 +4343,9 @@ class DefinedCode:
 
     names: frozenset[str]
     unread: tuple[str, ...]
+    #: Every identifier in the files this Python could not parse, so a name
+    #: that only such a file may define is declined rather than failed.
+    unread_names: frozenset[str]
 
 
 def _defined_code(root: Path) -> DefinedCode:
@@ -4355,14 +4358,19 @@ def _defined_code(root: Path) -> DefinedCode:
     """
     names: set[str] = set()
     unread: list[str] = []
+    unread_names: set[str] = set()
     for relative in CODE_ROOTS:
         if not (root / relative).is_dir():
             continue
         for path in tracked_under(root, relative, ".py"):
+            text = ""
             try:
-                tree = ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
+                text = path.read_text(encoding="utf-8-sig")
+                tree = ast.parse(text, filename=str(path))
             except (SyntaxError, ValueError, *UNREADABLE):
                 unread.append(path.relative_to(root).as_posix())
+                # regex: any Python identifier, a superset of what the file defines.
+                unread_names.update(re.findall(r"[A-Za-z_]\w*", text))
                 continue
             bodies = [tree.body]
             for node in ast.walk(tree):
@@ -4381,7 +4389,7 @@ def _defined_code(root: Path) -> DefinedCode:
                     else []
                 )
                 names.update(target.id for target in targets if isinstance(target, ast.Name))
-    return DefinedCode(frozenset(names), tuple(unread))
+    return DefinedCode(frozenset(names), tuple(unread), frozenset(unread_names))
 
 
 def _names_code(member: str, defined: Collection[str]) -> bool:
@@ -4415,12 +4423,12 @@ def _names_code(member: str, defined: Collection[str]) -> bool:
 
 #: The names `_defined_code` found for the root that `check_bound_families` is
 #: checking, set only while it runs, so `CODE_ENTITY` can ask about one member.
-_DEFINED_CODE: ContextVar[frozenset[str]] = ContextVar("doc_check_defined_code")
+_DEFINED_CODE: ContextVar[DefinedCode] = ContextVar("doc_check_defined_code")
 
 
 def _names_defined_code(member: str) -> bool:
     """`_names_code` against the names of the tree being checked."""
-    return _names_code(member, _DEFINED_CODE.get())
+    return _names_code(member, _DEFINED_CODE.get().names)
 
 
 #: What a paragraph that describes the code must name. Its declared-none form
@@ -4562,7 +4570,7 @@ def check_bound_families(root: Path, report: Report) -> None:
             f"{', '.join(defined.unread)}: the parser refuses it, so a paragraph of a bound "
             "family that names only code defined there is reported as naming no code"
         )
-    token = _DEFINED_CODE.set(defined.names)
+    token = _DEFINED_CODE.set(defined)
     try:
         _check_each_bound_family(root, report)
     finally:
@@ -4607,6 +4615,14 @@ def _check_each_bound_family(root: Path, report: Report) -> None:
             declared = next(_statement_matches(family.kind.declares_none, member, PROSE), None)
             if declared is None:
                 if family.kind.names(member):
+                    continue
+                if family.kind is CODE_ENTITY and _names_code(
+                    member, _DEFINED_CODE.get().unread_names
+                ):
+                    report.declined.append(
+                        f"{where}: names code only a file this Python cannot parse may "
+                        "define, so the paragraph was neither passed nor failed"
+                    )
                     continue
                 report.errors.append(
                     f"{where} promises that {family.promise}; this member names no "
