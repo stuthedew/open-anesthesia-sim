@@ -14,16 +14,22 @@ keep three things in one frame: the agent's name, the 1 MAC value that each
 at 1440 by 1300 pixels, which holds the page from the title bar to the
 disclaimer, so no number is cut off from its units or its label.
 
-**When to retake it.** Run this script again, and commit the new image with
-the README caption updated to the version it prints, whenever a change alters
-what the default Workspace shows: a readout, a label, a legend, a control, the
-layout, or a value the default case produces. A stale image shows a display
-that no longer exists, which is worse than no image.
+**When to retake it.** Run this script again whenever a change alters what
+the default Workspace shows: a readout, a label, a legend, a control, the
+layout, or a value the default case produces. Commit the new image with the
+README's alt text and caption updated: the alt text lists the six readouts the
+image shows, and the caption gives the release the code follows and the date.
+A stale image shows a display that no longer exists, which is worse than no
+image. A change to the model that moves a readout fails
+`tests/unit/test_readme_claims.py` until the image is retaken. A change to the
+layout or the chart alone fails no test, so the session making it retakes the
+image.
 
 **What the image cannot show exactly.** The container draws with the fonts it
 has installed, so the type in the image can differ from what the project
-owner's machine draws. The version string in the image is the build that
-rendered it, including the commit when that build is between releases.
+owner's machine draws. Between releases the version in the image names the
+commit that rendered it. That is usually a branch commit, which a squash merge
+leaves off `main`, so the caption names the release and the date instead.
 
 Run it from the repository root with `uv run python tools/readme_screenshot.py`.
 It prints the path it wrote and the version shown in the image.

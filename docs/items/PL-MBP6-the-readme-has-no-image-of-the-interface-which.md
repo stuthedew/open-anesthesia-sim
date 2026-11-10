@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: docs, ux
 feature: project-introduction
-touches: README.md, assets/screenshots/, tools/readme_screenshot.py
+touches: README.md, assets/screenshots/, tools/readme_screenshot.py, docs/apparatus.md, tests/unit/test_readme_claims.py, docket.toml
 blocked-by: PL-YCWZ
 added: 2026-09-06
 closed: 2026-11-09
@@ -137,8 +137,14 @@ name, the 1 MAC divisor and the playback rate, as paragraph 2 above requires.
 **How it is produced and when it is retaken.** `tools/readme_screenshot.py`
 renders the real Qt window offscreen at 1440 by 1300 pixels with the headless
 rendering that `PL-YCWZ` built, so no second screenshot mechanism exists. Its
-docstring states the rule: retake the image, and update the caption's version,
-whenever a change alters what the default window shows.
+docstring states the rule: retake the image, and update its alt text and
+caption, whenever a change alters what the default window shows. The alt text
+lists the six readouts the image shows, and
+`tests/unit/test_readme_claims.py` runs the default case for the image's ten
+minutes and compares them. A change to the model that moves a readout then
+fails until the image is retaken. A change to the layout alone fails no test.
+The caption names the release and the date, because the version drawn in the
+image names a branch commit that the squash merge leaves off `main`.
 
 **Found while doing it.** The chart's highest tick label on each axis is cut in
 half at the plot's top edge, and the image shows it. Filed as `PL-571L`.
