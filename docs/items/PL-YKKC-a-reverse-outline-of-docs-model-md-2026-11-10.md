@@ -23,6 +23,12 @@ same ground. `PL-BSMF` applied its outline read, and `PL-1VXY` holds its
 within-section findings. Check each point below against `PL-1VXY` before acting
 on it.
 
+A second reverse outline was made the same day in another session, on branch
+`claude/elegant-babbage-m7igyw` (pull request #2088). Its items are in the
+`model-by-reader` feature, including `PL-P3GZ`, which asks whether to split
+`docs/MODEL.md` by reader, and `PL-9RLM`, which commits that outline. Point 5
+below overlaps `PL-P3GZ`, so decide that question first.
+
 **Findings, by consequence.**
 
 1. **Proportion** (verified by counting lines per `##` section). Model
