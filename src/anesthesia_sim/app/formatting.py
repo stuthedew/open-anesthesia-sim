@@ -1,24 +1,23 @@
 """Render modeled values as the strings the interface displays.
 
-This module is pure formatting, independent of the Qt toolkit and of the
-scientific core. Every function here takes a number that the model produced and
-returns the text that a reader sees. Nothing in this module builds a control,
-reads simulation state, or performs a physiological calculation.
+This module is pure formatting and imports no interface toolkit. Every function
+here takes a number that the model produced and returns the text that a reader
+sees. Nothing in this module builds a control, reads simulation state, or
+performs a physiological calculation.
 
-This is a module of its own for the following reason. `docs/MODEL.md`
-§ "Displayed precision" derives how many digits of a concentration are worth
-showing, starting from what the model's parameters can support. This module
-applies the result of that derivation. `CLAUDE.md` treats presentation
-correctness as part of the safety standard. It also requires a displayed value
-to be traceable to the transformations that produced it. Rounding for display
-is the last of those transformations. So it has to be readable, citable and
-testable on its own, not reachable only by loading the whole dashboard.
+Rounding for display has to be readable, citable and testable without loading
+the whole dashboard, so it has a module of its own. That need follows from
+`CLAUDE.md`, which treats presentation correctness as part of the safety
+standard and requires a displayed value to be traceable to the transformations
+that produced it. This rounding is the last of those transformations.
 `tests/unit/test_formatting.py` tests it.
 
-This module deliberately does not restate that derivation's figures. They were
-once restated at four places in this package, and all four went stale together
-when the solver changed (`PL-X9KD`). The section is cited instead, so the next
-re-derivation has only one place to update.
+`docs/MODEL.md` § "Displayed precision" derives how many digits of a
+concentration are worth showing, starting from what the model's parameters can
+support. This module applies the result and deliberately does not restate the
+derivation's figures. They were once restated at four places in this package,
+and all four went stale together when the solver changed (`PL-X9KD`). Citing
+the section leaves the next re-derivation only one place to update.
 
 The displayed resolution is a property of the display alone. Everything
 upstream carries full binary64 precision: the compartment states, every
@@ -26,11 +25,12 @@ integration step, and every state of the `DrawnWindow` that the chart is drawn
 from. The rounding happens exactly once, here.
 
 Two of the decimal counts in this module do more than set the display, and
-their comments say so. `CONCENTRATION_DISPLAY_DECIMALS` and
-`FLOW_DISPLAY_DECIMALS` set the slider steps, so they decide which settings can
-reach the model. The concentration resolution also sets the smallest inspired
-fraction from which an F_A/F_I ratio is formed. So a finer count is a change to
-the model's inputs, not only to its text.
+their comments say so.
+`CONCENTRATION_DISPLAY_DECIMALS` and `FLOW_DISPLAY_DECIMALS` set the slider
+steps, so they decide which settings can reach the model. The concentration
+resolution also sets the smallest inspired fraction from which an F_A/F_I ratio
+is formed. So a finer count changes the model's inputs, not only the displayed
+text.
 
 The precision of an agent amount depends on its unit as well as on the amount
 (`PL-0S0V`). The same amount shown in litres of vapour and in millilitres of
@@ -41,15 +41,14 @@ unit, and formatting an amount in a unit with no entry is refused.
 The module has two display units and one resolution. A compartment's partial
 pressure is shown as a percent of one atmosphere and as a multiple of 1 MAC of
 the agent in use. The MAC multiple is the unit that clinicians reason in, and
-the only one that means the same thing when the agent changes. The MAC multiple
-is the percent divided by a per-agent constant. So `MAC_DISPLAY_DECIMALS` is
-*derived* from `CONCENTRATION_DISPLAY_RESOLUTION_PERCENT` rather than chosen
-separately. One stated resolution governs both units. A re-derived percent
-resolution therefore carries through to the MAC readout without a second
-derivation. `docs/MODEL.md` § "MAC multiples as a display unit" states what that
-division does and does not assert. A MAC multiple is a statement about a partial
-pressure, never about a depth of anesthesia. The divisor is a tier-3 parameter,
-and the interface displays its provenance.
+the only one that means the same thing when the agent changes. It is the percent
+divided by a per-agent constant, so `MAC_DISPLAY_DECIMALS` is *derived* from
+`CONCENTRATION_DISPLAY_RESOLUTION_PERCENT` rather than chosen separately. A
+re-derived percent resolution therefore carries through to the MAC readout
+without a second derivation. `docs/MODEL.md` § "MAC multiples as a display
+unit" states what that division does and does not assert. A MAC multiple is a
+statement about a partial pressure, never about a depth of anesthesia. The divisor is a tier-3
+parameter, and the interface displays its provenance.
 """
 
 from collections.abc import Mapping

@@ -3,12 +3,14 @@ id: PL-Z6FR
 title: Three comments and docstrings in src/ and tests/ still call arterial blood flow-limited, and core/tissue.py writes "perfusion limited" unhyphenated, where docs/MODEL.md now says "perfusion-limited" for the lung's and each tissue's exchange with blood
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: prose-quality
 touches: src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/tissue.py, tests/unit/test_governing_equations.py
-added: 2026-11-04
 deferred-from: v0.7.0 - a new problem: at the freeze docs/MODEL.md also called arterial blood flow-limited, so the comments matched it; they first disagreed when a8d87c68 (PL-T9VT, 2026-11-04) changed the term, after the freeze
+added: 2026-11-04
+closed: 2026-11-09
+pr: 2076
 payoff: a developer reading the gas-exchange code meets the same term, with the same meaning, as the model specification
 verify: ! grep -r -q -i -E 'flow[- ]limited|perfusion limited' src/anesthesia_sim/core tests/unit
 ---
@@ -45,3 +47,5 @@ is not allowed in `core/`, and it filed this item for the code. No head states
 the term's definition as its fact.
 
 **Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem began after Gate 3 froze at `817a4d88`, so the item stays deferred to the next gate. At `817a4d88`, `docs/MODEL.md` itself said "Arterial blood is flow-limited" (§ "Model boundary" and the governing-equations sections), so the three comments then in the tree (`blood.py`, `governing_equations.py` and `test_governing_equations.py`) agreed with the specification. They first disagreed with it when `a8d87c68` (`PL-T9VT`, 2026-11-04) changed the term. The `tissue.py` docstring came later still (`c59abe2d`). A first reading on 2026-11-07 put the item on the list because those three comments were present at the freeze. A review the same day corrected it: the problem the item describes is the disagreement, and that was not present.
+
+**Done 2026-11-09.** The three comments now say that the lung's exchange with blood is perfusion-limited, so arterial blood leaves the lung at the alveolar fraction, which is the sense `docs/MODEL.md` § "Model boundary" defines. Both blind review passes found that the first rewrite gave perfusion limitation as the whole reason for $`F_a \equiv F_A`$. The comments now also name the other two conditions, no shunt and one alveolar compartment, and call the identity a deliberate simplification, as that section does. `core/tissue.py` writes "perfusion-limited" with the hyphen. The search finds only the Weber et al. quotation in `reference_adult.json`, as the brief expects.

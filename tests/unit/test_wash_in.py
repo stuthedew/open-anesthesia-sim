@@ -2,14 +2,14 @@
 
 `docs/MODEL.md` § "F_A/F_I as a displayed ratio" makes claims about this
 module. These tests check each claim against the function that implements
-it, without building a Flet interface. The end-to-end path is tested in
-`tests/unit/test_simulation_view.py`: a real controller, real steps, the
-trace, and the sentence beside the trace.
+it, without building the Qt interface. The end-to-end path is tested in
+`tests/integration/test_simulation_view.py`: a real controller, real steps,
+the trace, and the sentence beside the trace.
 
-The published values that these tests compare against are the ones that
-`docs/MODEL.md` § "Published wash-in and elimination validation test" already cites.
-This file does not restate the citation. It only shows that the displayed
-ratio is the same quantity that the published test validates.
+These tests compare against the published values that
+`docs/MODEL.md` § "Published wash-in and elimination validation test" cites.
+They show only that the displayed ratio is the same quantity that the
+published test validates.
 """
 
 import math

@@ -1,24 +1,28 @@
 """Tests of what the dashboard shows, run without a GUI toolkit.
 
-`app/dashboard_frame.py` holds the dashboard's presentation-correctness
-claims. They say which word states the run's state, which banner takes
-priority over which, what each readout and setting says, and what the
-captions and the new-case question say. Every test here runs with no display
-and no widget, which is the reason that module exists. The tests are the
-Flet suite's tests (`tests/unit/test_simulation_view.py`) rewritten against
-the frame functions. Where a claim survived the port, its test keeps the same
-name. The verify lines and `docs/MODEL.md` citations that name those tests
-therefore still point at a test that checks the same thing (`PL-25KS`).
+`app/dashboard_frame.py` holds the dashboard's presentation-correctness claims:
+which word names the run's state, which banner takes priority over which, what
+each readout and setting says, and what the captions and the new-case question
+say. Every test here runs with no display and no widget, which is the reason
+that module exists.
+
+These tests are the Flet suite's tests rewritten against the functions in
+`app/dashboard_frame.py`. That suite's Qt port is now
+`tests/integration/test_simulation_view.py`. Where a claim survived the port,
+its test keeps the same name. The verify lines and `docs/MODEL.md` citations
+that name those tests therefore still point at a test that checks the same
+thing (`PL-25KS`).
 
 Snapshots come from one of two places. One is a real `SimulationController`
-stepped at the shipped step. The other is `_snapshot`, a fixture that takes
-MAC and MAC-awake from the named agent's data file. A test therefore cannot
-pair one agent's concentrations with another agent's divisor. Some claims
-need the frame that the chart drew: the off-scale notice, the count of
-undrawn marks, and the time-axis caption. For those, `_FakeController`
-returns exactly the samples the fixture wrote when asked for its
-`drawn_window`. The test then checks how the frame treats those samples, not
-where the sampler placed its columns.
+advanced at the shipped step size. The other is `_snapshot`, a fixture that
+takes MAC and MAC-awake from the named agent's data file. A test therefore
+cannot pair one agent's concentrations with another agent's divisor.
+
+Claims about the off-scale notice, the count of undrawn marks and the time-axis
+caption need the frame that the chart drew. For those, a fake controller
+(`_FakeController`) is asked for its `drawn_window` and returns exactly the
+samples that the fixture wrote. The test then checks how the frame treats those
+samples, not where the sampler placed its columns.
 """
 
 import json
