@@ -3,13 +3,15 @@ id: PL-HXJJ
 title: ROADMAP.md's baseline and version rows test each patch against both halves, or one half, of § "Versioning decision"'s test, which names no halves
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md
 added: 2026-11-07
+closed: 2026-11-10
+pr: 2083
 payoff: A reader checking why a release took a patch number finds the two-part test the baseline and the cut items apply.
-verify: grep -qiE 'test has two (halves|parts)' ROADMAP.md
+verify: grep -qF 'The two halves of the patch test' ROADMAP.md
 recurrences: 2026-11-07 PL-V82M
 ---
 
@@ -32,3 +34,5 @@ recurrences: 2026-11-07 PL-V82M
 **Checked 2026-11-09:** § "Current baseline" still calls v0.6.16 "a patch on both halves of § 'Versioning decision''s test", and § "Versioning decision" names no halves. The moved v0.4.34 and v0.4.35 rows in `PL-Y3XK`'s and `PL-F1SZ`'s briefs show what the halves are: no capability boundary is crossed, and every higher number is already given to a milestone section. Those are the section's capability-boundary rule and its paragraph "Which numbers a patch cut may take". The tree answers the question, so the fix is a session's.
 
 **Generator check.** One-off: a finding from the `ROADMAP.md` structure-read sweep. The fact misread is whether one `ROADMAP.md` passage still agrees with a later record of the same thing. No head's `misread:` states that fact for `ROADMAP.md`, and the cluster came from one deliberate read rather than from a mechanism that keeps producing it.
+
+**Done 2026-11-10.** § "Versioning decision" now has a paragraph, "The two halves of the patch test", that names them: the release crosses no capability boundary, and the next minor number is already given to a milestone section. It says what a patch on one half only means. The baseline's "both halves" now names both. The other uses of "one half" were in version rows that moved to closed cut briefs, which are records and are left as they are.

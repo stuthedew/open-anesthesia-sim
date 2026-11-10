@@ -3,11 +3,13 @@ id: PL-W6VL
 title: ROADMAP.md planned item 1 targets a new machine as one data file with no change to core/, while item 40 says that target cannot be reached, because a machine is one data file plus one provenance row per number
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md
 added: 2026-11-07
+closed: 2026-11-10
+pr: 2083
 payoff: A contributor adding an anesthesia machine reads one cost target that says it includes a provenance row for each number.
 verify: ! grep -qF 'but the target should' ROADMAP.md
 ---
@@ -29,3 +31,5 @@ verify: ! grep -qF 'but the target should' ROADMAP.md
 **Checked 2026-11-09:** item 1 still ends its scope test with "one data file under `src/anesthesia_sim/data/machines/`. It needs no change to `core/` and no new test of the physics". Item 40 still says that target "cannot be reached under this project's checks", because each number in a data file needs a provenance row in `docs/MODEL.md`, "but the target should say so".
 
 **Generator check.** One-off: a finding from the `ROADMAP.md` structure-read sweep. The fact misread is whether one `ROADMAP.md` passage still agrees with a later record of the same thing. No head's `misread:` states that fact for `ROADMAP.md`, and the cluster came from one deliberate read rather than from a mechanism that keeps producing it.
+
+**Done 2026-11-10.** Item 1's cost target now says a machine already in the closed set is one data file plus one provenance row in `docs/MODEL.md` for each number in that file, with no change to `core/`. Item 40 no longer says the target cannot be reached. It says the documentation check requires those rows and that item 1's target counts them. `docs/machine-abstraction.md`'s own wording of the target was not part of this item.
