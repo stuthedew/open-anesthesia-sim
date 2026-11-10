@@ -3,11 +3,13 @@ id: PL-NTHF
 title: Answer the questions the structure read of ROADMAP.md's Development pathway and Planned milestones left for their author: Phase 0's decision record, contradictions between catalogue entries, and figures with no date or unit
 priority: P3
 effort: L
-status: ready
+status: done
 classes: docs
 feature: roadmap-structure
 touches: ROADMAP.md
 added: 2026-11-08
+closed: 2026-11-10
+pr: 2086
 payoff: The pathway and the planned-milestone catalogue stop contradicting each other, and each figure in them carries its date and unit.
 verify: grep -qE '^\*\*Answers' docs/items/PL-NTHF-*.md
 ---
@@ -55,3 +57,28 @@ verify: grep -qE '^\*\*Answers' docs/items/PL-NTHF-*.md
 - Questions 11 and 12 concern how item 30 will work. They are recorded as open for item 30's own scoping round, and they are not a question of the roadmap's wording now.
 
 **Generator check.** One-off: questions from the `ROADMAP.md` structure-read sweep, which a move-only slice left for the author. No mechanism keeps producing them.
+
+**Answers 2026-11-10.** Each question is answered in `ROADMAP.md` unless the answer says otherwise.
+
+1. The session that scoped v0.3.0 under `PL-003` retired Phase 0 on 2026-08-25, in commit `53cbecaa`, whose message gives the reasons. `PL-003`'s brief does not mention Phase 0, and no record says whether the owner asked for it. § "Phase 0, which the debt gate replaced" now says so. No new item is filed: the commit is the record, and a decision taken 76 days ago with nothing open behind it needs no item to rank.
+2. The count of 48 is from 2026-08-25, the day of that commit, whose message gives "24 open items to 48". The section now dates it.
+3. Yes. "The queue holds almost no defects" was in Phase 0's own text (`9c2c68ee`, 2026-08-25). The section now says it describes the queue when Phase 0 was written.
+4. The display constants were consolidated in v0.4.11 (`PL-2CS8`), after v0.4.0. Phase 2 now gives the release instead of saying the phase opened with it.
+5. The rule applies to work that the timeline has placed and not yet shipped. A shipped release is history, and naming it is the dated history that the same rule asks for. No change to `ROADMAP.md`, because the rule now lives in `PL-5XG1`'s brief.
+6. § "The known risk" already says the owner accepted the risk for every release the timeline names. The count the question asked about is no longer in `ROADMAP.md`. It is in `PL-5XG1`'s brief, part 2. No change.
+7. The entries are right and the rule was worded too widely. § "Planned milestones" now says an item has no goal, required scope or definition of done until it is promoted, and that an entry may still record its intent and the properties it must have.
+8. A row's version number is provisional until its milestone is scoped. The catalogue now says that in place of "after v0.2.3".
+9. 1.48 is a contrast ratio: the most that the closest of six traces can differ when each is capped at luminance 0.30 by the 3:1 minimum (`app/theme.py`, and `docs/MODEL.md`, which derives it from 21^(1/5)). Item 24 now says "a contrast ratio of more than 1.48:1".
+10. The naming decision binds every surface that names a machine, whichever item builds it. `docs/machine-abstraction.md` § "Question 5" states it for the running interface and the machine's own panel, and item 40's machine-selection surface (`PL-4TWW`) names a machine as much as item 1's interlocks do. Item 1 now says that. The survey, design and naming notes stay in item 1.
+11. Open for item 30's scoping. Item 30 now lists it under "Two open questions".
+12. Open for item 30's scoping, listed beside question 11.
+13. `PL-B9PY` decomposed the run view so two runs could be drawn at once, in v0.4.25, and item 11 shipped comparison on it in v0.5.0. Item 30's paragraph now says both have shipped, so its teaching payoff arrives as soon as it ships.
+14. Settled by `PL-1BVB` (#2083). Item 33 says both prerequisites are met, and its figure-export sentence no longer names Flet.
+15. View is the project's own term. Blender calls that thing an Editor. Item 34 now names Area and Workspace as Blender's and points at § "The third word is deliberately not Blender's".
+16. Item 31 has no phase or release, because it is unscheduled intent. Placing it would be a new decision, and nobody has asked for one. No change.
+17. No list of the remaining pieces was ever written: the original text said only that the owner "expects a number of similar human-facing pieces". Item 32 now says the list is made when the item is scoped.
+18. Blender 5.3's source at commit `931bb2e7`, read for `PL-FTP5` and recorded on 2026-09-15 (`docs/interface-provenance.md`, "10 of 21 iterate over every area on the screen"). Item 34 now gives the version and date.
+19. The scope is temperature, pressure and water content, as item 39's own fix paragraph says. Its opening sentence now names all three.
+20. The number is right. `docs/machine-abstraction.md` assigns representing the inlet's position to item 39, because a multi-limb circuit changes the model boundary, and it names item 39 as one of two conditions that reverse the decline. Item 39 now says so.
+21. It did not hold. Items 37 and 43 each span the core and the interface or tooling. The catalogue now says so.
+22. The `v0.6.x — one source of truth` row is a patch track, so it takes no scope of its own. Item 43 now says the inventory sized the work for that row.

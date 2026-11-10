@@ -537,6 +537,9 @@ Deferred debt is not kept. It is either paid for twice or silently dropped.
 ### Phase 0, which the debt gate replaced
 
 **Phase 0 — foundation. Superseded by the standing debt gate, 2026-08-25.**
+The session that scoped v0.3.0 under `PL-003` retired it, in commit
+`53cbecaa`, and that commit's message gives the reasons this section
+keeps. No record says whether the project owner asked for it.
 
 Its unmet conditions are not carried forward
 as a backlog. The items behind them are in the current frozen gate, where they
@@ -546,8 +549,8 @@ milestone. Only that milestone's own gate does.
 Its original text was: no new feature work until the existing queue is closed
 out. This was not because features are unwelcome. It was because the last
 stretch of work felt like whack-a-mole, and it is worth being precise about
-why. The queue holds almost no defects. What it holds is decisions that nobody
-has made. When that was written, nine of twenty-four open items sat at
+why. When Phase 0 was written, the queue held almost no defects. What it held
+was decisions that nobody had made. Then, nine of twenty-four open items sat at
 `needs-decision`. Over a third of the queue could not be picked up by anyone,
 so the queue never visibly shrank, however much work got done.
 "All bugs squashed" is not a closing condition, since the absence of defects
@@ -562,7 +565,8 @@ cannot be demonstrated. The closing conditions were these:
 
 **Why superseded rather than pursued.** The first two conditions ask the queue
 to reach zero in categories that every working session refills. The queue held
-24 open items when Phase 0 was written, and it holds 48 now. It doubled during
+24 open items when Phase 0 was written, and 48 on 2026-08-25, when Phase 0
+was retired. It doubled during
 the period when Phase 0 was meant to be draining it. That is not a failure of
 effort. It is the capture rule working as designed. A gate that requires a
 refilling queue to empty never opens. Such a rule has only two honest
@@ -1676,8 +1680,9 @@ First comes item 24 (the preferences panel), then items 5, 3 and 4
 (end-tidal control, override mode, direct injection), then item 8's scenario
 events and item 20 (accessibility).
 
-The rest of this phase has shipped. The phase opened by consolidating the
-display constants that item 24 names as its prerequisite. Item 25 (playback
+The rest of this phase has shipped. The display
+constants that item 24 names as its prerequisite were consolidated in
+v0.4.11 (`PL-2CS8`). Item 25 (playback
 speed) shipped in v0.4.0, and item 26 (run bookmarks) shipped in v0.5.0. Item
 8's control-input timeline shipped in halves: recording in v0.4.0, and the
 replay driver in v0.5.0.
@@ -1716,15 +1721,17 @@ toward one.
 
 This section is the catalogue of intent. § "The timeline" gives the order of
 the releases that it names, and § "Development pathway" above gives the order
-intended after them. Each item is deliberately left unspecified until it is
-actually promoted into a scoped milestone, and § "The planning model: a
+intended after them. Each item is left without a goal, required scope or
+definition of done until it is promoted into a scoped milestone, though an
+entry may record its intent and the properties it must have. § "The planning model: a
 rolling wave" says what a scoped milestone carries. Each item is also kept to
 one improvement, so that scoping one item does not implicitly drag others
-along with it. Exact version numbers after v0.2.3 remain provisional, and
-each must be assigned when its milestone is fully specified.
+along with it. A row's version number is provisional until its
+milestone is scoped, and it is assigned then.
 
-None of items 1-43 mix scientific-core and UI/tooling concerns within a
-single milestone. Where one item depends on another
+Items 37 and 43 each span the scientific core and
+the interface or tooling, because the one improvement each delivers needs
+both. The other items keep the two apart. Where one item depends on another
 (e.g. 2-5 on 1, 7 on 6, 10 on 9, 13 on 12), the dependency is noted inline
 rather than bundled into one item.
 
@@ -1807,8 +1814,9 @@ and strategy falls. Four of its results bear on scoping this milestone:
    interface). An archetype label appears wherever a machine is running or
    chosen. The trade name is confined to the panel that holds that
    machine's parameter set, its sources and its list of what is not
-   modelled (`not_modelled`). That is a scope constraint on this milestone
-   and on the comparison surface (`PL-WZVZ`), not a preference. The trade
+   modelled (`not_modelled`). That is a scope constraint on every
+   surface that names a machine, whichever item builds it, including the
+   comparison surface (`PL-WZVZ`), not a preference. The trade
    name is admissible only where what the model does *not* claim about
    that machine is on screen beside it.
 
@@ -2048,8 +2056,8 @@ display the *right* one. A panel that let a reader recolour the agent
 colours would let one agent be shown in another agent's identification
 colour. That is exactly `CLAUDE.md`'s "the correct number with the wrong
 units, label". Colour cannot separate six traces at all. The 3:1 contrast
-minimum caps every trace's luminance, so six traces cannot be more than
-1.48 apart, and `app/theme.py` records the search. So the dash patterns are
+minimum caps every trace's luminance, so no two of six traces can differ
+by a contrast ratio of more than 1.48:1, and `app/theme.py` records the search. So the dash patterns are
 the channel that separates the traces. They are also the single entry here
 that no check would defend if a panel flattened them.
 
@@ -2272,12 +2280,11 @@ substances, changing how compartment volumes and flows are *derived*
 touches N times as much surface. The same argument already places item
 29 ahead of that work.
 
-*The teaching payoff needs item 11.* A single trace cannot show an
-effect, because the contrast is the lesson. So what this milestone is
-*for* arrives in full only with side-by-side comparison (item 11) and
-the two-run rendering that `PL-B9PY` covers. That is a reason to scope
-item 11 knowing that this is one of its uses. It is not a reason to keep
-this item waiting behind item 11.
+*The teaching payoff needs item 11, which has shipped.* A single trace
+cannot show an effect, because the contrast is the lesson. Side-by-side
+comparison (item 11) shipped in v0.5.0, on the two-run rendering that
+`PL-B9PY`'s decomposition of the run view made possible in v0.4.25. So
+this item's payoff is available as soon as it ships.
 
 *It removes a safeguard that `docs/MODEL.md` names (`PL-DXJR`).* The fixed
 reference adult is one of the two safeguards in `docs/MODEL.md` § "What
@@ -2365,7 +2372,17 @@ release note, not a new input field. It lands after `PL-DHV7` (MAC
 multiples as a display unit). An age-adjusted MAC with no MAC unit to
 show it in changes nothing a learner sees.
 
-*Left for scoping: a suggestion, and cutoffs not yet researched.*
+*Left for scoping: two open questions, a suggestion, and cutoffs not yet
+researched.*
+
+*Two open questions.* First, the scaling decision has weight act on the
+compartments directly, while the body-composition paragraph has an edited
+composition move fat uptake. Scoping decides how body composition acts on
+the model, and whether height is an input, since height appears only in
+the declined route. Second, the body-composition paragraph applies the
+supported-range refusal to an out-of-range edit, while the covariate
+paragraph below leaves the response (blocking, logging or both) open.
+Scoping decides which holds.
 
 *A suggestion for scoping rather than a decision: prefer measured
 weight-banded normal ranges to an allometric formula for the default
@@ -2422,8 +2439,9 @@ project owner chose this route on 2026-09-03.
 
 Make the repository presentable to a first-time visitor, in one pass.
 
-**What is left here is the rest of what a first-time visitor meets**: this
-item's original scope, minus the README. Nothing brings it to anyone's
+**What is left here is every human-facing piece that a first-time visitor
+meets, other than the README.** No list of them was written, and the list
+is made when this item is scoped. Nothing brings it to anyone's
 attention. Nothing is blocked on it, and no check reports it. So it waits
 for a session that offers to scope this milestone, or for the owner to
 ask.
@@ -2553,8 +2571,9 @@ workspace/area concept ... is what I want to implement"). The terms were
 read at the source. The manual's "Areas" and "Workspaces" pages were
 supplied directly, because the session egress proxy refused
 `docs.blender.org` when this was written, though the host answered a probe
-on 2026-09-26 (`PL-M701`). This project uses three terms, and two of them
-are adopted from Blender rather than invented:
+on 2026-09-26 (`PL-M701`). This project uses three terms. Area and Workspace
+are Blender's, and View replaces Blender's Editor (§ "The third word is
+deliberately not Blender's"):
 
 - An **Area** is a rectangle that reserves screen space. It holds one
   thing and nothing else, and areas never overlap.
@@ -2751,7 +2770,9 @@ built into a model of our own rather than inherited. The first is a
 (Blender silently substitutes a 3D viewport). The second is a guarantee
 that a **required value is never hidden to make room** (Blender collapses
 a region that will not fit). The third is **isolation with teeth**
-(Blender's views can access the screen, and ten of twenty-one do). A
+(every Blender editor can reach the whole screen, and in Blender 5.3's
+source, read on 2026-09-15, ten of its twenty-one editors read the other
+areas on it; `docs/interface-provenance.md` gives the count). A
 layout is serialized to versioned JSON. § "Completed: v0.6.0 - the layout
 is the reader's" → "Required scope" entries 1 and 2 hold the layout model
 and its adapter as built.
@@ -2872,7 +2893,8 @@ intent lives until someone scopes it.
 #### 39. Gas-phase conditions for each compartment
 
 Carry explicit gas-phase conditions for each compartment, so that
-temperature and water content are represented rather than assumed away.
+temperature, pressure and water content are represented rather than
+assumed away.
 This was raised on 2026-09-19 from `PL-MPWP` (project owner, 2026-09-19,
 ratified, over filing it as a queue item to be worked). It is intent,
 and scoping it is a later decision.
@@ -2902,6 +2924,12 @@ Correcting the water half alone is what that note explicitly warns
 against. Applying 713/760 to the inspired term, while the partition
 coefficients keep an unrecorded gas-phase basis, moves all four
 validated wash-in ratios outside their published spread.
+
+*It is also where the circuit's internal topology would go.*
+`docs/machine-abstraction.md` assigns representing the fresh gas inlet's
+position to this item, because a multi-limb circuit changes the model
+boundary. It names this item, or any multi-limb circuit entering the model,
+as the condition that reverses item 1's decline to represent topology.
 
 #### 40. An anesthesia machine as a config file
 
@@ -3004,8 +3032,9 @@ The four shapes are a value copied (`PL-JS6P`), state with two writers
 restated (`PL-SH0W`). `PL-2LB5` has the design. The items carry the
 feature `one-source-of-truth`.
 
-`PL-K88Z`'s inventory, taken on 2026-10-19, sizes the work before the row
-is scoped, and its brief holds the counts. The result is 13 items filed
+`PL-K88Z`'s inventory, taken on 2026-10-19, sized the work for the
+`v0.6.x — one source of truth` row, which as a patch track takes no scope
+of its own, and its brief holds the counts. The result is 13 items filed
 under the feature, plus the baselines of the four check items. The numbers that `docs/MODEL.md` and
 `README.md` restate were not counted, so `PL-JS6P` sizes that part when
 it builds its baseline.
