@@ -10,13 +10,31 @@ optimizations and small features. A piece of work is a milestone rather than a
 queue item when it needs its own goal, required scope, definition of done and
 explicit out-of-scope list.
 
+## Terms this file uses
+
+- **Apparatus.** The tools and instructions that the project's development
+  runs on: the queue of items in `docs/items/`, the command that reads and
+  writes it, the checks, and the instructions that agent sessions follow. The
+  simulator is the code in `src/` and `tests/`, with `docs/MODEL.md` and
+  `README.md`.
+- **Lane.** The side of the project that an item's files are on. Product-lane
+  items change the simulator, and workflow-lane items change the apparatus.
+  Items in different lanes share no files, so two sessions can work them at
+  the same time.
+- **Generator.** One cause that keeps producing defects, recorded once it has
+  produced three or more items.
+- **Generator head.** The item that records a generator's cause. The items
+  the cause produced point back to it. A head is live while the cause still
+  produces items, and spent once it no longer does.
+
 ## Current baseline: v0.6.16
 
 v0.6.16 is the release in which the copy editor is fixed and back in use, and
 the five `docs/MODEL.md` rewrites that it blocked are finished. The fix and the
 five rewrites are entry 12's six items, and all six close here. Every id in
 v0.7.0's Required scope is now closed. The release has 11 items and is a patch
-on both halves of the test in § "Versioning decision". It also finishes two
+on both halves of the patch test in § "Versioning decision": it crosses no
+capability boundary, and v0.7.0 is given to a milestone section. It also finishes two
 features, `reader-first-prose` and `repo-copy-edit`, and closes one generator
 head, `PL-HGZS`, as spent.
 
@@ -98,6 +116,13 @@ the capability-boundary rule above applies.
 **Which numbers a patch cut may take.** A number that this file has given to a
 milestone section ahead of the current one is not free (project owner,
 2026-09-16, ratified, on `PL-KQHN`).
+
+**The two halves of the patch test.** A release record says whether a patch
+meets this test on both halves or on one. The first half is the
+capability-boundary rule: the release crosses no capability boundary. The
+second half is the rule on free numbers: the next minor number is already
+given to a milestone section. A patch on one half only crossed a boundary, and
+took a patch number because the next minor number was not free.
 
 ### Version table
 
@@ -1728,8 +1753,10 @@ machine is added as a data file, and item 40 is the item that delivers it.
 `docs/machine-abstraction.md` places the default (4.0 L/min) among a run's
 opening conditions rather than among a machine's specifications. The reason
 is that no surveyed machine publishes a startup flow, so a per-machine field
-would force every profile to invent one. The default's *value* is still an
-open question, and it belongs to `PL-NM7X`.
+would force every profile to invent one. The default's value is decided. The
+project owner ruled on 2026-09-20 (ratified, over lowering it to match
+low-flow practice) that 4.0 L/min stays, and `PL-NM7X` corrected the wording
+that justified it, in v0.4.33.
 
 **The survey is done and is `docs/machine-survey.md`.** `PL-4DCG` surveyed
 the machines in current clinical use for the variables that change a
@@ -1772,20 +1799,20 @@ that machine is on screen beside it.
 Scoping this milestone therefore starts from a design rather than from a
 blank page. The scope statement's own test is the design's stated cost
 target. A machine whose delivery and removal are already in the closed set
-is one data file under `src/anesthesia_sim/data/machines/`. It needs no
+is one data file under `src/anesthesia_sim/data/machines/`, plus one
+provenance row in `docs/MODEL.md` for each number in that file. It needs no
 change to `core/` and no new test of the physics.
 
 **Two queue items scoped this one. They were sequential, and both are
 done.** The design depended on the survey, because the extension points
 are the axes of real variation that affect a number. Designing them first
-would have been guessing. Three items wait behind those two items rather
-than behind this prose. `PL-8PS6` (fresh gas flow range is a machine
-property) and `PL-WZVZ` (make an inter-machine difference attributable) are
-carved out of Gate 1 for that reason. `PL-WZVZ` is the surface that keeps a
-machine's effect on a curve attributable to a named parameter. `PL-439V`
-(make the Tec 6 the concrete second device class) is answered by the
-design's dial-mapping slot. All three now wait on this milestone being
-implemented, rather than on a design that does not exist.
+would have been guessing. Three items waited behind those two. `PL-8PS6`
+(fresh gas flow range is a machine property) and `PL-439V` (make the Tec 6
+the concrete second device class, answered by the design's dial-mapping
+slot) closed in v0.4.34. `PL-WZVZ` (make an inter-machine difference
+attributable) is the surface that keeps a machine's effect on a curve
+attributable to a named parameter. It is still open, and it waits on
+`PL-TH35`, `PL-R1WQ`, `PL-TBMK` and `PL-4TWW`.
 
 #### 2. Agent switching with residual washout
 
@@ -1944,9 +1971,10 @@ support, color-vision-safe encodings).
 
 Improve performance, working from the open entries in
 `docs/items/`. The render payload and the coupling between the
-simulation cadence and the render cadence are both resolved. What
-remains in this area is the controller's concentration history, which is
-still unbounded, and further headroom in how chart points are built.
+simulation cadence and the render cadence are both resolved. v0.4.12
+deleted the controller's concentration history, which had been unbounded:
+the chart now computes each point it plots from the run. What remains in this
+area is further headroom in how chart points are built.
 
 #### 22. Documentation
 
@@ -2406,8 +2434,11 @@ pass can decide once.
 
 *Out of scope, and deliberately.* Dark mode is a separate decision. It
 doubles the declared contrast matrix, and the ISO colours were chosen for
-a light context. It belongs to scoping this milestone rather than to this
-line. So does the publication-quality figure export that
+a light context. Part of it is settled: the interface declares its own light
+palette, so a dark host no longer darkens the window (project owner,
+2026-09-20, ratified, over a second palette for dark support, `PL-KRZW`).
+Whether to offer a dark mode belongs to scoping this milestone rather than to
+this line. So does the publication-quality figure export that
 `docs/WORKING_NOTES.md` § "Long-term vision" describes. That export
 implies its own rendering path, separate from the Flet live chart, and it
 is a capability rather than a restyle.
@@ -2434,16 +2465,19 @@ Styling anything else it adds is that build's own work. The cost accepted
 is that the interface keeps its current visual language until after item
 34.
 
-*Two hard prerequisites, and they are the reason this cannot simply be
-started.* Nothing in this repository draws the interface. `PL-7J96`
-records two defects that shipped while every tree-level test passed. A
+*Two prerequisites, both now met.* When this was written, nothing in this
+repository drew the interface. `PL-7J96`
+recorded two defects that shipped while every tree-level test passed. A
 required label wrapped mid-phrase, and four of seven readouts dropped to
 a second baseline at some widths. Both were found only by
 screenshotting, and neither could be detected from the control tree that
-the suite reads. `PL-2QMK` records that no session in the web container
-can render Flet at all, because the egress proxy refuses the CanvasKit
-fetch. A visual pass is the one class of change that the suite
-structurally cannot see, so both prerequisites land first.
+the suite reads. `PL-2QMK` recorded that no session in the web container
+could render the Flet interface at all, because the egress proxy refused
+the CanvasKit fetch. A visual pass is the one class of change that a suite
+without rendering cannot see, so both prerequisites had to land first. Both
+are met. The interface moved to Qt in v0.4.26, which closed `PL-2QMK` with
+headless rendering tests over the real interface (`PL-YCWZ`), and `PL-7J96`
+was dropped as superseded by those tests.
 
 *Three constraints on any palette.* `tools/contrast_check.py` parses every
 module under `app/` with `ast` (`PL-BXB2`). It requires every declared pair
@@ -2902,11 +2936,9 @@ circuit topology. Internal circuit topology was declined, and item 39
 reverses that.
 
 *Each machine also needs a provenance row for each number.* The
-design document's target "One data file and nothing else" cannot be
-reached under this project's checks. `tools/doc_check.py` requires a
-provenance row in `docs/MODEL.md` for every leaf number in every data
-file. That is the discipline working, not a defect, but the target should
-say so.
+documentation check requires a provenance row in `docs/MODEL.md` for every
+leaf number in every data file. Item 1's cost target counts those rows
+with the data file.
 
 Six queue items carry this work, grouped as `machine-profile-framework`.
 Two of them matter for the *first* real profile rather than the second.

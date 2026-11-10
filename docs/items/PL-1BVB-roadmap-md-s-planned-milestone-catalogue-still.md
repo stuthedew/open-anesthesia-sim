@@ -3,11 +3,13 @@ id: PL-1BVB
 title: ROADMAP.md's planned-milestone catalogue still states six things other chapters contradict: item 8's unrecorded control changes, item 21's concentration history, item 1's open default flow and the three items waiting on it, and item 33's prerequisites and dark mode
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md
 added: 2026-11-07
+closed: 2026-11-10
+pr: 2083
 payoff: A reader choosing the next feature from the planned-milestone catalogue stops reading finished or decided work as still open.
 verify: ! grep -qF 'belongs to `PL-NM7X`' ROADMAP.md && ! grep -qF 'All three now wait on this milestone' ROADMAP.md && ! grep -qF 'Two hard prerequisites, and they are the reason' ROADMAP.md && ! grep -qF 'still unbounded' ROADMAP.md
 ---
@@ -37,3 +39,5 @@ verify: ! grep -qF 'belongs to `PL-NM7X`' ROADMAP.md && ! grep -qF 'All three no
 **Checked 2026-11-09:** `grep -n` of each quoted passage in `ROADMAP.md` at `cfd4a4b6`, after all nine restructure slices. Item 8's statement is gone: item 8 now says the timeline shipped in halves, recording in v0.4.0 and replay in v0.5.0. The other five remain. Item 21 says the controller's concentration history "is still unbounded". Item 1 says the default flow's value "is still an open question" that belongs to `PL-NM7X`, and that "All three now wait on this milestone being implemented". Item 33 keeps "Two hard prerequisites", naming `PL-7J96` (dropped), `PL-2QMK` (closed) and Flet's CanvasKit fetch, although the interface moved to Qt in v0.4.26. Item 33 still calls dark mode "a separate decision". One more statement of the same kind turned up: the last paragraph of item 40 calls the startup-flow field "required", while the v0.5.17 version row says a machine profile stopped having to invent a startup fresh gas flow. Correct it with item 1's default-flow passage, because both state the same fact.
 
 **Generator check.** One-off: a finding from the `ROADMAP.md` structure-read sweep. The fact misread is whether one `ROADMAP.md` passage still agrees with a later record of the same thing. No head's `misread:` states that fact for `ROADMAP.md`, and the cluster came from one deliberate read rather than from a mechanism that keeps producing it.
+
+**Done 2026-11-10.** The five statements left after item 8's was fixed now agree with the records. Item 1 says the default flow's value is decided: the owner's ruling of 2026-09-20 that 4.0 L/min stays, with `PL-NM7X` (done, v0.4.33) correcting the wording. Item 1's three waiting items now say that `PL-8PS6` and `PL-439V` closed in v0.4.34 and that `PL-WZVZ` is open and waits on `PL-TH35`, `PL-R1WQ`, `PL-TBMK` and `PL-4TWW` (from each item's front matter). Item 21 says v0.4.12 deleted the unbounded concentration history (`PL-R3Y3`'s brief). Item 33 says its two prerequisites are met: `PL-2QMK` closed with v0.4.26's headless rendering tests (`PL-YCWZ`), and `PL-7J96` was dropped as superseded by them. It also says the light palette of 2026-09-20 (`PL-KRZW`, ratified over a second palette for dark support) settled part of the dark-mode question, and leaves whether to offer dark mode to scoping that milestone.
