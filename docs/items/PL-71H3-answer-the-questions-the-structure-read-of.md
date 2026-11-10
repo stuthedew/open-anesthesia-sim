@@ -3,12 +3,13 @@ id: PL-71H3
 title: Answer the questions the structure read of ROADMAP.md's v0.7.0 section left for its author: which choices the owner made, what the Goal table's figures date from, and the terms the section never defines
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: docs
 feature: roadmap-structure
 touches: ROADMAP.md
 added: 2026-11-07
 payoff: The v0.7.0 section a session builds and cuts from records the kind of each owner choice, dates its figures and defines its terms.
+verify: grep -qF 'v0.7.x — the interface pass' ROADMAP.md
 recurrences: 2026-11-08 PL-NTHF
 ---
 
@@ -51,6 +52,11 @@ Question 1 and the third part of question 8 are the owner's. The first is a fact
 1. Question 1: did you ratify or specify, in the v0.7.0 scoping round on 2026-10-25, that the schematic and the agent cost readout are each a View of their own? **Recommended:** record it as ratified, like the two tagged choices beside it, since the scoping session put all three to you as recommendations. Nothing a learner sees changes; it sets the bar for reopening the choice later.
 
 2. Question 8: does the visual pass (planned item 33: palette, type scale, spacing) come before or after v0.7.0? The timeline names its row `v0.6.x`, which puts it before, but v0.7.0's Required scope is all closed and the cut waits only on your test drive. **Recommended:** after v0.7.0, renamed `v0.7.x`. The pass then styles the schematic and agent cost Views once, which is the same reason it already runs after item 34. A learner sees the current look through v0.7.0.
+
+**Answered 2026-11-10:** "agree with recs" (project owner, 2026-11-10, ratified). Both answers are the recommendations above.
+
+1. Question 1: the choice that the schematic and the agent cost readout are each a View of their own was ratified on 2026-10-25, over specified. `ROADMAP.md` should tag it `(project owner, 2026-10-25, ratified)` and name what it was chosen over, as it does for the two choices beside it.
+2. Question 8, third part: the visual pass comes after v0.7.0, over keeping it before. Its timeline row is renamed `v0.7.x — the interface pass` and moves below v0.7.0. The reason is the one that already put it after item 34: the pass styles each surface once, after the surface exists, and v0.7.0 adds the schematic and the agent cost View. The statement in question 8 that the cut "waits only on your test drive" no longer holds: on 2026-11-10 v0.7.0's debt gate still had 56 entries open.
 
 **Generator check.** One-off: questions from the `ROADMAP.md` structure-read sweep, which a move-only slice left for the author. No mechanism keeps producing them.
 
