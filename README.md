@@ -21,7 +21,7 @@ for teaching.
 
 *The default case after ten simulated minutes, rendered on 2026-11-09 from the
 code after release 0.6.16. Every value shown is a model output.
-`tools/readme_screenshot.py` retakes the image.*
+`tests/benchmarks/readme_screenshot.py` retakes the image.*
 
 ## What it is for
 

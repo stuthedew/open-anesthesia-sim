@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: docs, ux
 feature: project-introduction
-touches: README.md, assets/screenshots/, tools/readme_screenshot.py, docs/apparatus.md, tests/unit/test_readme_claims.py, docket.toml
+touches: README.md, assets/screenshots/, tests/benchmarks/readme_screenshot.py, tests/unit/test_readme_claims.py, docket.toml
 blocked-by: PL-YCWZ
 added: 2026-09-06
 closed: 2026-11-09
@@ -134,9 +134,13 @@ at 2.00% (1.00 MAC), fresh gas flow 4.0 L/min, alveolar ventilation 4.0 L/min,
 cardiac output 5.0 L/min, played at 1× real time. One frame carries the agent
 name, the 1 MAC divisor and the playback rate, as paragraph 2 above requires.
 
-**How it is produced and when it is retaken.** `tools/readme_screenshot.py`
-renders the real Qt window offscreen at 1440 by 1300 pixels with the headless
-rendering that `PL-YCWZ` built, so no second screenshot mechanism exists. Its
+**How it is produced and when it is retaken.**
+`tests/benchmarks/readme_screenshot.py` renders the real Qt window offscreen at
+1440 by 1300 pixels with the headless rendering that `PL-YCWZ` built, so no
+second screenshot mechanism exists. It lives beside `frame_cost.py` because it
+imports PySide6, and `docs/ARCHITECTURE.md` § "Tests (`tests/`)" routes a
+script that needs the project virtualenv there: everything under `tools/` must
+run with a bare `python3`. Its
 docstring states the rule: retake the image, and update its alt text and
 caption, whenever a change alters what the default window shows. The alt text
 lists the six readouts the image shows, and

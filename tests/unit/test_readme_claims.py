@@ -25,8 +25,8 @@ from anesthesia_sim.app.formatting import format_percent, format_playback_rate
 from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
 
-# `tools/` is not a package, so the screenshot script is imported by its path.
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
+# `tests/benchmarks/` is not a package, so the screenshot script is imported by its path.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "benchmarks"))
 import readme_screenshot
 
 #: The README is read as one string, with its line breaks folded into spaces, so
@@ -88,7 +88,7 @@ def test_the_readme_names_exactly_the_shipped_agents() -> None:
 def test_the_readme_image_shows_the_readouts_the_default_case_reaches() -> None:
     """The alt text's six readouts are what the default case shows after the image's run length.
 
-    The run is the one `tools/readme_screenshot.py` renders: a new controller's
+    The run is the one `tests/benchmarks/readme_screenshot.py` renders: a new controller's
     default settings, started and stepped at the interface's own step for
     `readme_screenshot.SIMULATED_S`.
     """
@@ -111,6 +111,6 @@ def test_the_readme_image_shows_the_readouts_the_default_case_reaches() -> None:
         expected = f"{name} {format_percent(fraction)}"
         assert expected in README_TEXT, (
             f"the default case now shows '{expected}' after {readme_screenshot.SIMULATED_S:g} s: "
-            "retake the README image with tools/readme_screenshot.py and update its alt text "
-            "and caption"
+            "retake the README image with tests/benchmarks/readme_screenshot.py and update "
+            "its alt text and caption"
         )

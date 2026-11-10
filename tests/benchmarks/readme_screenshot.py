@@ -31,7 +31,7 @@ owner's machine draws. Between releases the version in the image names the
 commit that rendered it. That is usually a branch commit, which a squash merge
 leaves off `main`, so the caption names the release and the date instead.
 
-Run it from the repository root with `uv run python tools/readme_screenshot.py`.
+Run it from the repository root with `uv run python tests/benchmarks/readme_screenshot.py`.
 It prints the path it wrote and the version shown in the image.
 """
 
