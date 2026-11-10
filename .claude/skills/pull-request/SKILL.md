@@ -43,11 +43,18 @@ carry the number (`PL-86DN`). For that work, opening the pull request means
 rewriting its placeholder title and body and marking it ready. Where `claim`
 said it opened none, open it as a draft yourself before any work.
 
-**The title and body do not go through the copy editor** (project owner,
-2026-11-10). They follow `.claude/rules/plain-writing.md` as written. The owner
-had them copy edited from 2026-11-04 (`PL-J1ZM`), limited that to two reads on
-2026-11-09, and then kept the copy editor for the documents that a clinician, a
-learner or a contributor reads.
+**The title and body go through the copy editor before the pull request is
+marked ready** (project owner, 2026-11-10 at 02:14 UTC, `PL-N2VQ`), because the
+squash merge makes them the commit message on `main`. The owner first asked
+for this on 2026-11-04 (`PL-J1ZM`), took it out an hour earlier on 2026-11-10
+(`PL-JYWB`), and then put it back. Write them to a file in the scratchpad, the
+title on the first line, and leave out the `🤖 Generated with` lines. Run
+`python3 tools/new_prose.py --draft FILE --kind "pull request"`, where FILE is
+that file, and save its output to a second file. Run `python3
+tools/copy_edit.py` on the second file. Revert an edit only where it lost or
+changed a value, a unit, a condition, an identifier or a citation. Then
+publish the copy editor's rewrite with the `🤖 Generated with` lines added
+back.
 
 ## Run the blind review passes before a simulator pull request is ready
 

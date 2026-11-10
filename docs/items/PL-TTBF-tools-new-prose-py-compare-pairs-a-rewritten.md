@@ -3,14 +3,16 @@ id: PL-TTBF
 title: tools/new_prose.py --compare pairs a rewritten section by diff hunk, so a rewrite that adds subheadings shows growth the text did not have: PL-J37P's 'Why the readouts show two decimals' read 854 to 1,050 words while the next subsection read 2,093 to 1,561
 priority: P1
 effort: S
-status: ready
+status: done
 classes: defect
 feature: copy-editor
-touches: tools/new_prose.py, tests/unit/test_new_prose.py
+touches: tools/new_prose.py, tests/unit/test_new_prose.py, docs/items/PL-HNNH-sessions-skip-naming-in-the-pull-request-body.md
 deferred-from: v0.7.0 - a new problem, not present at the freeze: --compare arrived in 5df31d49 (PL-JP8X); deferred with PL-J1ZM, which waits on it
 added: 2026-11-04
+closed: 2026-11-10
+pr: 2081
 payoff: a session's growth figures for a restructured section are true, so the facts it names for grown passages, and PL-J1ZM's next measurement, rest on real growth
-verify: grep -q 'def test_a_passage_under_a_heading_the_base_lacks' tests/unit/test_new_prose.py
+verify: grep -q 'def test_a_section_split_under_new_subheadings_is_compared_whole' tests/unit/test_new_prose.py
 ---
 
 **Problem.** tools/new_prose.py --compare pairs a rewritten section by diff hunk, so a rewrite that adds subheadings shows growth the text did not have: PL-J37P's 'Why the readouts show two decimals' read 854 to 1,050 words while the next subsection read 2,093 to 1,561.
@@ -28,3 +30,5 @@ verify: grep -q 'def test_a_passage_under_a_heading_the_base_lacks' tests/unit/t
 **Generator check.** Part of the fix for the live head `PL-J1ZM` (sessions over-explain), which is blocked on it; not a member of its `root-cause-of`. The fact misread here is which text on the base a rewritten passage replaced. No head states it, so it is a one-off, and the pause on new workflow mechanisms does not hold it, because it fixes that generator.
 
 **Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** Not present. At 817a4d88, `tools/new_prose.py` had no `--compare` and no `changed_passages`. Both arrived in 5df31d49 (`PL-JP8X`, #2014, 2026-11-03), so this is a new problem. It is deferred with `PL-J1ZM`, which waits on it.
+
+**Done 2026-11-10.** `--compare` now moves a passage whose heading stands on one side only up to the nearest enclosing heading that stands on both sides, and merges every passage moved there into one passage. Where no enclosing heading stands on both sides, two or more such passages become one passage for the whole file, and a single one keeps its own heading. `changed_passages` is unchanged, so the copy editor's passages are the same as before. Run in a worktree at 53cd01239, the tool now prints one line for the section: "docs/MODEL.md § "Displayed precision", rows 10152-10808: 7807 words on 53cd01239^, 6401 now, 1406 fewer". That matches the whole section's 8,142 to 6,732 words, a cut of 1,410, and it no longer reports a subheading as grown. The two new tests fail on the code before the fix: `.venv/bin/python -m pytest -q tests/unit/test_new_prose.py -k 'split_under or new_all_the_way'` with the old `tools/new_prose.py` reports "2 passages of the reviewed files changed their prose" where each test asserts 1, and the first names "Readouts" as grown and "Chart" as 2 words shorter.

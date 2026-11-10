@@ -608,6 +608,65 @@ def test_a_removed_paragraph_is_named_with_its_words_on_the_base(
     assert "gone  0.01" in out
 
 
+def test_a_section_split_under_new_subheadings_is_compared_whole(
+    precise: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Text moved between new subheadings is counted against its whole section.
+
+    When a rewrite added subheadings (`PL-J37P`), the first appeared to grow
+    from 854 words to 1,050, and the next to shrink from 2,093 to 1,561
+    (`PL-TTBF`). Here the first paragraph takes words from the third. An
+    unchanged paragraph between them would otherwise split them into two
+    passages, one under each new subheading.
+    """
+    split = PRECISION.replace(
+        "The MAC readout steps by 0.01 for every agent.\n",
+        "### Readouts\n\n"
+        "The MAC readout steps by 0.01 for every agent, and the chart keeps its own scale.\n",
+    ).replace("The chart keeps its own scale.\n", "### Chart\n\nThe chart is plain.\n")
+    (precise / "docs/MODEL.md").write_text(split, encoding="utf-8")
+
+    out = _compare(precise, capsys)
+
+    assert "1 passages of the reviewed files changed their prose" in out
+    assert (
+        'docs/MODEL.md § "Displayed precision", rows 7-13: 15 words on main, 20 now, 5 more' in out
+    )
+    assert '§ "Readouts"' not in out
+    assert '§ "Chart"' not in out
+
+
+def test_passages_under_headings_new_all_the_way_up_are_compared_as_one_file(
+    precise: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """When no heading appears on both sides, the file is their shared section.
+
+    A single such passage keeps its own heading, because no text can have moved
+    between it and another passage.
+    """
+    model = precise / "docs/MODEL.md"
+    renamed = PRECISION.replace("# Model\n", "# The model\n").replace(
+        "## Displayed precision", "## Precision on screen"
+    )
+    model.write_text(renamed.replace("its own scale.", "a scale of its own."), encoding="utf-8")
+
+    assert '§ "Precision on screen", rows 9-9: 6 words on main, 8 now, 2 more' in _compare(
+        precise, capsys
+    )
+
+    model.write_text(
+        renamed.replace("for every agent.", "for each agent.").replace(
+            "its own scale.", "a scale of its own."
+        ),
+        encoding="utf-8",
+    )
+
+    out = _compare(precise, capsys)
+
+    assert "1 passages of the reviewed files changed their prose" in out
+    assert "docs/MODEL.md, rows 5-9: 15 words on main, 17 now, 2 more" in out
+
+
 def test_a_python_file_is_compared_by_its_prose_alone(
     repo: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -628,10 +687,29 @@ def test_a_python_file_is_compared_by_its_prose_alone(
     assert "gone  7" not in out
 
 
-@pytest.mark.parametrize("kind", ["replies", "pull request titles and bodies"])
-def test_a_reply_or_a_pull_request_body_has_no_row_to_draft_for(kind: str) -> None:
-    """The copy editor edits neither, so the tool refuses drafts of both (`--draft --kind`)."""
-    assert not any(kind in reader.kind.casefold() for reader in new_prose.rule_table())
+def test_a_reply_has_no_row_to_draft_for() -> None:
+    """The copy editor does not edit a reply, so the tool refuses a draft of one."""
+    assert not any("replies" in reader.kind.casefold() for reader in new_prose.rule_table())
+
+
+def test_a_pull_request_body_has_a_row_to_draft_for(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The copy editor edits pull request titles and bodies (`PL-N2VQ`).
+
+    The pull-request skill runs `--draft FILE --kind "pull request"` on the
+    title and body. With the repository's actual writing rule, the tool prints
+    the draft for the pull request row's reader, and only for readers whose
+    text the copy editor edits.
+    """
+    draft = tmp_path / "body.md"
+    draft.write_text("Fix the chart.\n\nThe chart now keeps its scale.\n", encoding="utf-8")
+
+    assert main(["--draft", str(draft), "--kind", "pull request"]) == 0
+    shown = capsys.readouterr().out.partition("The writing rule ends here")[2]
+    assert "The project owner deciding whether a change can merge" in shown
+    assert not any(reader in shown for reader in new_prose.UNEDITED_READERS)
+    assert "[1] body.md, rows 1-3. Draft: 9 words." in shown
 
 
 #: A document whose first section holds four long paragraphs.
