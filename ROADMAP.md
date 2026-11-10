@@ -2947,14 +2947,17 @@ and ventilator drive, and internal circuit topology. Internal circuit
 topology was declined, and item 39 reverses that.
 
 *Each machine also needs a provenance row for each number.* The
-documentation check requires a provenance row in `docs/MODEL.md` for every
-leaf number in every data file. Item 1's cost target counts those rows
-with the data file.
+documentation check requires one in `docs/MODEL.md` for every leaf number
+in every data file. Item 1's cost target counts those rows with the data
+file.
 
-Six queue items carry this work, grouped as `machine-profile-framework`.
-Two of them matter for the *first* real profile rather than the second:
-what the circuit volume field, `circuit_volume_l`, means, and a required
-startup-flow field that no manufacturer publishes.
+The queue items for this work are grouped as `machine-profile-framework`.
+The two that mattered for the *first* real profile, rather than the second,
+are done. v0.5.17 made the startup fresh gas flow optional, so a profile no
+longer has to invent a figure that no manufacturer publishes (`PL-QW19`).
+v0.5.23 stated that the circuit volume field (`circuit_volume_l`) covers
+the apparatus and the patient circuit together, so a profile author adds the
+patient circuit to a manufacturer's apparatus-only figure (`PL-TBMX`).
 
 #### 41. Opt-in chart time windows kept in step
 
