@@ -258,7 +258,7 @@ def reply_of(output: str) -> tuple[str, str]:
     carries no assistant message.
     """
     events = []
-    for line in output.splitlines():
+    for line in split_lines(output):
         if line.lstrip().startswith("{"):
             try:
                 events.append(json.loads(line))
