@@ -3,11 +3,13 @@ id: PL-TW3Q
 title: ROADMAP.md's timeline gives v0.2.8 thirty-eight entries at Size 2 M, 35 S, which adds to 37, while its frozen list holds 2 M and 36 S
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md
 added: 2026-11-07
+closed: 2026-11-10
+pr: 2082
 payoff: v0.2.8's timeline row adds up, so its count can be trusted beside the others.
 verify: ! grep -qF '| 2 M, 35 S |' ROADMAP.md
 recurrences: 2026-11-07 PL-33FM withdrawn 2026-11-07 PL-33FM
@@ -30,3 +32,5 @@ recurrences: 2026-11-07 PL-33FM withdrawn 2026-11-07 PL-33FM
 **Checked 2026-11-09:** timeline row 1 still reads "thirty-eight entries" with a Size of "2 M, 35 S". Counting the size marks in v0.2.8's frozen list gives 38 entries, 2 marked (M) and 36 marked (S).
 
 **Generator check.** One-off: a finding from the `ROADMAP.md` structure-read sweep. The fact misread is whether one `ROADMAP.md` passage still agrees with a later record of the same thing. No head's `misread:` states that fact for `ROADMAP.md`, and the cluster came from one deliberate read rather than from a mechanism that keeps producing it.
+
+**Done 2026-11-10.** Timeline row 1 now gives v0.2.8's size as 2 M, 36 S. A count of the size marks in v0.2.8's frozen list gives 2 marked (M) and 36 marked (S), 38 entries.

@@ -12,20 +12,21 @@ explicit out-of-scope list.
 
 ## Current baseline: v0.6.16
 
-v0.6.16 is the release where the copy editor is fixed and back in use, and
-where the `docs/MODEL.md` rewrites it held are finished. It has 11 items and is
-a patch on both halves of § "Versioning decision"'s test. Every id in v0.7.0's
-Required scope is now closed. Entry 12's six items, the copy editor's fix and
-the five `docs/MODEL.md` rewrites it blocked, close here. The release finishes
-two features, `reader-first-prose` and `repo-copy-edit`, and closes one
-generator head, `PL-HGZS`, spent.
+v0.6.16 is the release in which the copy editor is fixed and back in use, and
+the five `docs/MODEL.md` rewrites that it blocked are finished. The fix and the
+five rewrites are entry 12's six items, and all six close here. Every id in
+v0.7.0's Required scope is now closed. The release has 11 items and is a patch
+on both halves of the test in § "Versioning decision". It also finishes two
+features, `reader-first-prose` and `repo-copy-edit`, and closes one generator
+head, `PL-HGZS`, as spent.
 
-None of the 11 is on Gate 3's frozen list. The gate stands at 87 of 90 cleared,
-as at the v0.6.15 tag. The three entries still open are `PL-SP6H`, which this
-gate can clear, and `PL-B4P7` and `PL-WZVZ`, which were deferred from it.
-v0.7.0 is still not cut, for two reasons: Gate 3 has `PL-SP6H` open, and v0.7.0
-is cut only after the project owner has test-driven `main`. v0.7.0 and v0.8.0
-are given to milestone sections.
+None of the 11 items is on Gate 3's frozen list. When v0.6.16 was cut, 87 of
+the gate's 90 entries had cleared. The list is longer now: on 2026-11-07 it
+gained every finding whose problem was present when the gate froze (`PL-GW0P`).
+The counts in the list's two headings under § "v0.7.0 - the schematic" give
+its size. v0.7.0 is cut only after that list has cleared and the project owner
+has test-driven `main`. v0.7.0 has its own milestone section, so no patch
+release may take that number.
 
 **No code, equation, model parameter or stored value changed, and no run can
 differ:**
@@ -75,25 +76,24 @@ merges on `main` after a release is cut and before its pull request lands.
 
 The project uses milestone-based semantic versioning during early development.
 The next release number is chosen for the capability boundary that the release
-crosses. It is not chosen by mechanically incrementing the patch number.
+crosses, not by incrementing the patch number mechanically.
 
 **One deliberate exception, v0.3.0 (project owner, 2026-08-26).** Under that
 rule, clearing Gate 0 would be a patch, because it crosses no capability
-boundary. Gate 0 held two safety fixes, four refactors, two tooling defects
-and a performance fix. After them, the simulator does nothing it could not do
-before. Clearing Gate 0 is still released as the minor version v0.3.0. The
-reason is that clearing the inherited pre-MVP backlog is the boundary this
+boundary. Gate 0's frozen list is recorded under v0.4.0, and v0.3.0 released 21
+of its entries: seven safety and science fixes, four refactors, eight workflow
+and tooling fixes, a performance fix and the choice of a licence. After them,
+the simulator does nothing it could not do before. v0.3.0 is still a minor
+version, because clearing the inherited pre-MVP backlog is the boundary this
 project most needs to be able to point at, and a patch number would bury it.
 
-**This is an exception and not a precedent.** It applies to Gate 0 alone,
-because Gate 0 is unlike every gate that follows it. Gate 0 is the backlog that
-accumulated before the debt gate existed, and it was twenty items deep. Gate 1
-and every later gate contain the findings of a single milestone.
-
-Later gates take no version of their own. The gated milestone's own number
-marks the boundary that its scope crosses. See § "How gate work is released"
-under § "The debt gate". Unless a further deliberate exception is recorded
-here, the capability-boundary rule above applies.
+**The v0.3.0 exception is not a precedent.** It applies to Gate 0 alone,
+because Gate 0 is the backlog that accumulated before the debt gate existed.
+Gate 1 and every later gate contain the findings of a single milestone. None of
+them takes a version of its own. The gated milestone's own number marks the
+boundary that its scope crosses (§ "How gate work is released", under
+§ "The debt gate"). Unless a further deliberate exception is recorded here,
+the capability-boundary rule above applies.
 
 **Which numbers a patch cut may take.** A number that this file has given to a
 milestone section ahead of the current one is not free (project owner,
@@ -404,7 +404,7 @@ to clear the ground that the feature releases are built on:
 
 | # | Step | What it is | Size |
 | --- | --- | --- | --- |
-| 1 | **v0.2.8 — the workflow works** | Scoped below. Its own frozen list of thirty-eight entries: the development machinery the project already runs on, fixed before two long milestones are run through it. No simulator change. The second of the two groups in the list is new workflow capability, not debt. | 2 M, 35 S |
+| 1 | **v0.2.8 — the workflow works** | Scoped below. Its scope is its own frozen list of thirty-eight entries, which fix the development machinery the project already runs on before two long milestones are run through it. Nothing in the simulator changes. The second of the two groups in the list is new workflow capability, not debt. | 2 M, 36 S |
 | 2 | **v0.3.0 — the foundation** | Gate 0's frozen debt list, recorded under v0.4.0 below: the entries outside that milestone's own scope, released as a minor by deliberate exception. See the versioning exception under § "Versioning decision". | 4 M, 17 S |
 | 3 | **v0.4.0 — the teachable case** | **Shipped 2026-09-05.** Scoped below. 13 items, of which 6 are gate-0 debt the milestone cleared itself. Twelve landed and the thirteenth, `PL-011`'s retention rule, was dropped as superseded; its Required-scope entry records why. | 7 M, 6 S |
 | — | **v0.4.x — the code is the model** | Planned-milestone item 29, shipping as a patch in the `v0.4.x` track. "No behavior changes" held until the 2026-09-03 re-scope and no longer does: the exact step moves the displayed value in its last digit. Moved from ahead of v0.4.0 to behind it (project owner, 2026-09-02): the placement's real constraint is that it precede item 6's substance generalization, and v0.4.0 changes no equation, so gating the teachable case on an unscoped pass over `core/` bought nothing. Scoped and then re-scoped 2026-09-03: the owner's bar is that a reviewer follow `core/` without a lookup table, which naming alone cannot reach, so the operator split is replaced by the exact matrix exponential (`PL-GS5X`). Still a patch — it crosses no capability boundary; see item 29 for why, and for why no exception is recorded. (Written `v0.4.1` until 2026-09-06, which contradicted this row's own rule that the track promises no particular patch number; v0.4.1 and v0.4.2 both shipped without the exact step, as that rule predicted.) **It freezes no gate and takes no section of its own (project owner, 2026-09-05).** **Eight items**, `PL-P0BB` having shipped in v0.3.2: `PL-GS5X` and `PL-X9KD` under `numerical-domain`, and `PL-H46J`, `PL-212V`, `PL-3TLK`, `PL-9SH6`, `PL-VZL0`, `PL-FZ6T` under `core-domain-language` — plus `PL-X2XX`, which `PL-VZL0` requires and which neither list named until `PL-GGCN` taught the checker to read the second half of a compound prerequisite. `PL-3TLK` leads; the rest of the naming work follows the exact step. **This track promises no particular patch number,** which is what `v0.4.x` means: patches are cut as work accumulates and the exact step takes whichever number it lands on. | 1 L, 6 M, 2 S |
@@ -5424,11 +5424,13 @@ unchanged too.
   every frame** (queue item PL-1PSX). In this milestone the timeline is read on
   every branch operation, not only drawn.
 - **`SimulationView` is decomposed so two runs can be rendered at once** (queue
-  item PL-B9PY). v0.4.0 held this item at this gate, on the grounds that only
-  this milestone needs it (project owner, 2026-09-02). This is that milestone.
-- **The 30-day scenario cap becomes an explicit halt** (queue item PL-Y5WR).
-  The item is classed as safety. The only item that required it was dropped
-  with `PL-011`, so it is carried here rather than lost.
+  item PL-B9PY). v0.4.0 left this item for this gate, because only this
+  milestone needs it (project owner, 2026-09-02).
+- **A run stops with a stated reason at the supported run length** (queue
+  item PL-Y5WR). The item shipped early, in v0.4.7: the supported run length
+  became 24 hours, a step past it is refused, and the interface says the run
+  stopped at that limit. The item is classed as safety. It was carried here
+  because the only item that required it was dropped with `PL-011`.
 
 #### Taking and comparing a branch
 
@@ -5759,32 +5761,32 @@ debt gate" above, as the store recorded it on the day of the cut.
 **Thirteen entries were untriaged when this list was frozen and are on it all
 the same.** They were open in the store on the day of the cut, and the
 paragraph above says that is what this list contains. They had not been
-*classed*, though. An untriaged capture carries no class, so `bin/docket gate`
-could not treat one as debt, however old its problem was. Triage on the same
-day gave eleven of them `defect`, some with `infra` or `test` beside it. It
-gave one `refactor` and one `perf`. `tools/doc_check.py` then asked this
-section for a disposition that the section had had no way to write. Each of
-these entries describes code that predates the freeze. So they re-enter by the
-presumption in "The gate is a snapshot, not a moving target", not by the
+*classed*, though. An untriaged capture carries no class, so the tool that
+prints a gate's list (`bin/docket gate`) could not treat one as debt, however
+old its problem was. Triage on the same day gave eleven of them `defect`, some
+with `infra` or `test` beside it. It gave one `refactor` and one `perf`. Each
+of these entries describes code that predates the freeze, so they re-enter by
+the presumption in "The gate is a snapshot, not a moving target", not by the
 exception that admits a `safety` finding regardless. The thirteen are
 `PL-3QM9`, `PL-5DPF`, `PL-B78T`, `PL-CR36`, `PL-CZR6`, `PL-HVLJ`, `PL-JS0X`,
 `PL-KZR1`, `PL-M6FY`, `PL-N0MH`, `PL-N67T`, `PL-NPWP` and `PL-YSMV`.
 
-**What this list is not swept for yet.** Beat 3 of the cadence requires a
-staleness pass before any entry on this list is worked, and
-§ "Sweep the frozen list for staleness" says why and how. The pass runs against
-this list before the implementation of this milestone begins.
+**The list was swept for staleness on the day it froze.** Beat 3 of the
+cadence requires a staleness pass before any entry on this list is worked, and
+§ "Sweep the frozen list for staleness" says why and how. The pass ran on all
+168 clearable entries on 2026-09-21 and shipped in v0.5.1 (`PL-C4W8`).
 
-**Two kinds of group, and only the second is a precondition.** The first kind
-is debt inside this milestone's own Required scope. The milestone clears that
-debt itself, as § "Debt inside the milestone's own scope" says. The test is
-whether `Required scope` below names the id, not whether the item carries the
-`interface-areas` feature. The two tests differ in both directions. On
-2026-09-23 `PL-NDKC` and `PL-Y04W` carried the feature without being named.
-`PL-CNCF` and `PL-PGZF` were named without carrying it, as they have been since
-`PL-YVP7`. The second kind is the rest. It clears before implementation of this
-milestone begins, unless this gate defers it, and it is recorded in one group,
-for the reason § "Recording it" gives for not naming lanes.
+**The list has two kinds of entry, and only the second is a precondition for
+this milestone.** The first kind is debt inside this milestone's own Required
+scope, which the milestone clears itself, as
+§ "Debt inside the milestone's own scope" says. The second kind is the rest. It
+clears before implementation of this milestone begins, unless this gate defers
+it. It is recorded in one group, for the reason § "Recording it" gives for not
+naming lanes. The test for the first kind is whether `Required scope` below
+names the id, not whether the item carries the `interface-areas` feature. The
+two tests differ in both directions. On 2026-09-23 `PL-NDKC` and `PL-Y04W`
+carried the feature without being named. `PL-CNCF` and `PL-PGZF` were named
+without carrying it, as they have been since `PL-YVP7`.
 
 **One disagreement is `PL-NDKC`**, a `defect`/`infra` item about a PySide6
 `QDataStream` segfault. The Qt code built around the layout model could meet

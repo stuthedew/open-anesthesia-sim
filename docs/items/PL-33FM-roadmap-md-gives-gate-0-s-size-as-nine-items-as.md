@@ -3,11 +3,13 @@ id: PL-33FM
 title: ROADMAP.md gives Gate 0's size as nine items, as twenty items deep and as 21 frozen entries
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md
 added: 2026-11-07
+closed: 2026-11-10
+pr: 2082
 payoff: The case for the one versioning exception rests on Gate 0's whole content, stated once and matching its frozen list.
 verify: ! grep -qF 'Gate 0 held two safety fixes, four refactors, two tooling defects' ROADMAP.md
 recurrences: 2026-11-07 PL-PNH2 withdrawn 2026-11-07 PL-PNH2
@@ -41,3 +43,5 @@ different list in a different release; that match is withdrawn.
 **Checked 2026-11-09:** § "Versioning decision" still lists "two safety fixes, four refactors, two tooling defects and a performance fix" and says Gate 0 "was twenty items deep". v0.4.0's Gate 0 list says twenty debt items at the freeze (six inside v0.4.0's scope and fourteen outside), and 21 entries cleared before v0.4.0 began, which matches the timeline's 4 M and 17 S. Counting that list by class answers the question, so the fix is a session's and does not need the author.
 
 **Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** The problem was present when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. `ROADMAP.md` there already said Gate 0 held "two safety fixes, four refactors, two tooling defects and a perf fix" and "was twenty items deep", beside the timeline's 4 M and 17 S.
+
+**Done 2026-11-10.** § "Versioning decision" now gives Gate 0's size once, as the 21 entries that v0.3.0 released, matching the frozen list under v0.4.0 and timeline row 2 (4 M, 17 S). Its list of kinds now covers all 21 by count, from the entries' titles: seven safety and science fixes (`PL-026`, `PL-042`, `PL-VP7N`, `PL-SLHS`, `PL-9Y42`, `PL-0MLQ`, `PL-NV9W`), four refactors (`PL-006`, `PL-004`, `PL-007`, `PL-019`), eight workflow and tooling fixes (`PL-G049`, `PL-674D`, `PL-0RFH`, `PL-R0SR`, `PL-4F6P`, `PL-N2N1`, `PL-K79K`, the `PL-Z4GF`/`PL-SWFM` entry), a performance fix (`PL-010`) and the choice of a licence (`PL-Y2GG`). The next paragraph's "twenty items deep" is gone. Twenty was the count at the freeze, 14 to clear first and 6 inside v0.4.0's scope, and it is a different number from the gate that v0.3.0 released.
