@@ -611,13 +611,13 @@ def test_a_removed_paragraph_is_named_with_its_words_on_the_base(
 def test_a_section_split_under_new_subheadings_is_compared_whole(
     precise: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Text moved between subheadings that the base lacks is counted against its whole section.
+    """Text moved between new subheadings is counted against its whole section.
 
-    On `PL-J37P` a rewrite added subheadings, and the first read as 854 words
-    grown to 1,050 while the next read as 2,093 cut to 1,561 (`PL-TTBF`). Here
-    the first paragraph takes words from the third, and an unchanged paragraph
-    between them would otherwise make them two passages, one under each new
-    subheading.
+    When a rewrite added subheadings (`PL-J37P`), the first appeared to grow
+    from 854 words to 1,050, and the next to shrink from 2,093 to 1,561
+    (`PL-TTBF`). Here the first paragraph takes words from the third. An
+    unchanged paragraph between them would otherwise split them into two
+    passages, one under each new subheading.
     """
     split = PRECISION.replace(
         "The MAC readout steps by 0.01 for every agent.\n",
@@ -639,9 +639,9 @@ def test_a_section_split_under_new_subheadings_is_compared_whole(
 def test_passages_under_headings_new_all_the_way_up_are_compared_as_one_file(
     precise: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """With no heading on both sides, the file is the section the two sides share.
+    """When no heading appears on both sides, the file is their shared section.
 
-    One such passage keeps its own heading, because no text can have moved
+    A single such passage keeps its own heading, because no text can have moved
     between it and another passage.
     """
     model = precise / "docs/MODEL.md"
@@ -695,11 +695,12 @@ def test_a_reply_has_no_row_to_draft_for() -> None:
 def test_a_pull_request_body_has_a_row_to_draft_for(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """The owner put pull request titles and bodies back in the review on 2026-11-10 (`PL-N2VQ`).
+    """The copy editor edits pull request titles and bodies (`PL-N2VQ`).
 
     The pull-request skill runs `--draft FILE --kind "pull request"` on the
-    title and body. Read against the real rule, the draft is printed for the
-    pull request row's reader, and for no reader the copy editor does not edit.
+    title and body. With the repository's actual writing rule, the tool prints
+    the draft for the pull request row's reader, and only for readers whose
+    text the copy editor edits.
     """
     draft = tmp_path / "body.md"
     draft.write_text("Fix the chart.\n\nThe chart now keeps its scale.\n", encoding="utf-8")
