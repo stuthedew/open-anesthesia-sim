@@ -3,12 +3,14 @@ id: PL-MBP6
 title: The README has no image of the interface, which is the largest remaining gap for both of its audiences
 priority: P2
 effort: M
-status: ready
+status: done
 classes: docs, ux
 feature: project-introduction
-touches: README.md, assets/screenshots/
+touches: README.md, assets/screenshots/, tests/benchmarks/readme_screenshot.py, tests/unit/test_readme_claims.py, docket.toml
 blocked-by: PL-YCWZ
 added: 2026-09-06
+closed: 2026-11-09
+pr: 2078
 payoff: gives a clinician deciding whether to put this in front of a resident a picture of the interface, which is the whole of what they can see while there is no packaged build
 verify: grep -qF '](assets/' README.md
 ---
@@ -121,3 +123,32 @@ as a path the tree had lost; no commit has held the new one, so `PL-8JY7`'s
 advisory reads it as the work's to create, which it is. The name is a
 prediction the `verify:` above does not depend on: the session that works this
 item picks the real one and puts it in `touches`.
+
+## Done 2026-11-09
+
+**What changed.** `README.md` now shows `assets/screenshots/dashboard.png`
+directly after the opening warning. Its alt text says what the window shows,
+and its caption names the case, the version and that every value is a model
+output. The image is the default case after ten simulated minutes: sevoflurane
+at 2.00% (1.00 MAC), fresh gas flow 4.0 L/min, alveolar ventilation 4.0 L/min,
+cardiac output 5.0 L/min, played at 1× real time. One frame carries the agent
+name, the 1 MAC divisor and the playback rate, as paragraph 2 above requires.
+
+**How it is produced and when it is retaken.**
+`tests/benchmarks/readme_screenshot.py` renders the real Qt window offscreen at
+1440 by 1300 pixels with the headless rendering that `PL-YCWZ` built, so no
+second screenshot mechanism exists. It lives beside `frame_cost.py` because it
+imports PySide6, and `docs/ARCHITECTURE.md` § "Tests (`tests/`)" routes a
+script that needs the project virtualenv there: everything under `tools/` must
+run with a bare `python3`. Its
+docstring states the rule: retake the image, and update its alt text and
+caption, whenever a change alters what the default window shows. The alt text
+lists the six readouts the image shows, and
+`tests/unit/test_readme_claims.py` runs the default case for the image's ten
+minutes and compares them. A change to the model that moves a readout then
+fails until the image is retaken. A change to the layout alone fails no test.
+The caption names the release and the date, because the version drawn in the
+image names a branch commit that the squash merge leaves off `main`.
+
+**Found while doing it.** The chart's highest tick label on each axis is cut in
+half at the plot's top edge, and the image shows it. Filed as `PL-571L`.

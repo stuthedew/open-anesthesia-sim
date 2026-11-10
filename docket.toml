@@ -609,11 +609,14 @@ workflow_paths = [
 #   paths against 3 only with apparatus, and `uv.lock` 6 against 0. The cost is
 #   that a tool's configuration inside `pyproject.toml` reads product, and an
 #   apparatus change that needs a dependency reads `crossing`, which is honest.
+# - `assets` holds the image of the window that `README.md` shows, so it is for
+#   the README's readers (`PL-MBP6`).
 product_paths = [
   ".python-version",
   "CITATION.cff",
   "LICENSE",
   "README.md",
+  "assets",
   "ROADMAP.md",
   "docs/ARCHITECTURE.md",
   "docs/MODEL.md",
