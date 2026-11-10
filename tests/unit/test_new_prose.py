@@ -608,6 +608,65 @@ def test_a_removed_paragraph_is_named_with_its_words_on_the_base(
     assert "gone  0.01" in out
 
 
+def test_a_section_split_under_new_subheadings_is_compared_whole(
+    precise: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Text moved between subheadings that the base lacks is counted against its whole section.
+
+    On `PL-J37P` a rewrite added subheadings, and the first read as 854 words
+    grown to 1,050 while the next read as 2,093 cut to 1,561 (`PL-TTBF`). Here
+    the first paragraph takes words from the third, and an unchanged paragraph
+    between them would otherwise make them two passages, one under each new
+    subheading.
+    """
+    split = PRECISION.replace(
+        "The MAC readout steps by 0.01 for every agent.\n",
+        "### Readouts\n\n"
+        "The MAC readout steps by 0.01 for every agent, and the chart keeps its own scale.\n",
+    ).replace("The chart keeps its own scale.\n", "### Chart\n\nThe chart is plain.\n")
+    (precise / "docs/MODEL.md").write_text(split, encoding="utf-8")
+
+    out = _compare(precise, capsys)
+
+    assert "1 passages of the reviewed files changed their prose" in out
+    assert (
+        'docs/MODEL.md § "Displayed precision", rows 7-13: 15 words on main, 20 now, 5 more' in out
+    )
+    assert '§ "Readouts"' not in out
+    assert '§ "Chart"' not in out
+
+
+def test_passages_under_headings_new_all_the_way_up_are_compared_as_one_file(
+    precise: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """With no heading on both sides, the file is the section the two sides share.
+
+    One such passage keeps its own heading, because no text can have moved
+    between it and another passage.
+    """
+    model = precise / "docs/MODEL.md"
+    renamed = PRECISION.replace("# Model\n", "# The model\n").replace(
+        "## Displayed precision", "## Precision on screen"
+    )
+    model.write_text(renamed.replace("its own scale.", "a scale of its own."), encoding="utf-8")
+
+    assert '§ "Precision on screen", rows 9-9: 6 words on main, 8 now, 2 more' in _compare(
+        precise, capsys
+    )
+
+    model.write_text(
+        renamed.replace("for every agent.", "for each agent.").replace(
+            "its own scale.", "a scale of its own."
+        ),
+        encoding="utf-8",
+    )
+
+    out = _compare(precise, capsys)
+
+    assert "1 passages of the reviewed files changed their prose" in out
+    assert "docs/MODEL.md, rows 5-9: 15 words on main, 17 now, 2 more" in out
+
+
 def test_a_python_file_is_compared_by_its_prose_alone(
     repo: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

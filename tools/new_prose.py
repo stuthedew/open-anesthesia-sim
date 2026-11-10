@@ -654,6 +654,68 @@ def changed_passages(path: str, before: str | None, after: str | None, patch: st
     return found
 
 
+def enclosing_titles(marks: Sequence[Heading], row: int) -> list[str]:
+    """The titles of the headings in `marks` that enclose the 1-based `row`, innermost first."""
+    chain: list[str] = []
+    level = None
+    for mark in reversed([mark for mark in marks if mark.line < row]):
+        if level is None or mark.level < level:
+            chain.append(mark.title)
+            level = mark.level
+    return chain
+
+
+def paired_sections(path: str, before: str, after: str, passages: list[Passage]) -> list[Passage]:
+    """`passages` from one Markdown file, merged where a section heading is new on one side.
+
+    `changed_passages` names a passage after the nearest heading on its own
+    side. Where a rewrite adds subheadings that the base lacks, text moved
+    between them reads as growth under one and a cut under the next, as
+    `PL-J37P`'s rewrite of "Displayed precision" did (`PL-TTBF`). So a passage
+    whose heading stands on one side only is moved up to the nearest heading
+    that encloses it and stands on both sides, and every passage moved to that
+    heading, with any passage already under it, becomes one passage. Where no
+    enclosing heading stands on both sides, the whole file is the section that
+    both sides share, so two or more such passages become one passage for the
+    file. A single such passage keeps its own heading, because nothing was
+    moved between it and another passage.
+    """
+    sides = (headings(markdown_lines(before)), headings(markdown_lines(after)))
+    titles = ({mark.title for mark in sides[0]}, {mark.title for mark in sides[1]})
+    placed: list[tuple[Passage, str | None]] = []
+    for passage in passages:
+        new_side = bool(passage.after)
+        units = passage.after if new_side else passage.before
+        chain = enclosing_titles(sides[new_side], units[0].first)
+        other = titles[not new_side]
+        if not chain or chain[0] in other:
+            placed.append((passage, None))
+        else:
+            placed.append((passage, next((title for title in chain if title in other), "")))
+    lifted = [section for _, section in placed if section is not None]
+    if lifted.count("") == 1:
+        placed = [(passage, None if section == "" else section) for passage, section in placed]
+    targets = {section for _, section in placed if section is not None}
+    found: list[Passage] = []
+    merged: dict[str, int] = {}
+    for passage, section in placed:
+        key = passage.section if section is None else section
+        if key not in targets:
+            found.append(passage)
+            continue
+        if key not in merged:
+            merged[key] = len(found)
+            found.append(Passage(path, key, (), ()))
+        held = found[merged[key]]
+        found[merged[key]] = Passage(
+            path,
+            key,
+            tuple(sorted(held.before + passage.before, key=lambda unit: unit.first)),
+            tuple(sorted(held.after + passage.after, key=lambda unit: unit.first)),
+        )
+    return found
+
+
 def fact_text(path: str, source: str | None, *, strings: bool = False) -> str:
     """Return the text whose facts are counted, a whole document or a Python file's prose.
 
@@ -704,10 +766,11 @@ def compare(root: Path, base: str, table: Sequence[Reader] | None = None) -> Com
         after = (root / path).read_text(encoding="utf-8") if (root / path).is_file() else None
         try:
             patch = read_git(["diff", "-U0", fork, "--", path], root)
+            passages = changed_passages(path, before, after, patch)
+            if is_document(path) and before is not None and after is not None:
+                passages = paired_sections(path, before, after, passages)
             found.passages += [
-                passage
-                for passage in changed_passages(path, before, after, patch)
-                if read_by(table, passage.before + passage.after)
+                passage for passage in passages if read_by(table, passage.before + passage.after)
             ]
             strings = bool(readers_of(table, path, STRING_KIND))
             old_facts = fact_text(path, before, strings=strings)
