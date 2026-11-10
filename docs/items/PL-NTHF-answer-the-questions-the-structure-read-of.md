@@ -6,7 +6,7 @@ effort: L
 status: done
 classes: docs
 feature: roadmap-structure
-touches: ROADMAP.md
+touches: ROADMAP.md docs/items/PL-YRY3-line-edit-roadmap-md-section-by-section-with.md
 added: 2026-11-08
 closed: 2026-11-10
 pr: 2086

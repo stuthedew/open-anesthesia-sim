@@ -182,4 +182,14 @@ the sentence now quoted in `PL-J3ZK`.
 
 **Checked 2026-11-09:** `bin/docket feature roadmap-structure` shows all nine restructure slices (`PL-W0TS` to `PL-4BCF`) done, and `PL-F0Q2`, the copy editor's fix, is done. Nothing this item waits on is open. The feature's small contradiction items (`PL-1BVB`, `PL-9857`, `PL-T5R7` and the rest) each change a few sentences. They can land in any order with this edit, but landing them first spares the edit a sentence that is about to change.
 
+**Left for this line edit by `PL-NTHF`, 2026-11-10.** The copy editor queried these passages in text that `PL-NTHF` did not write, and the documents do not answer them. Find each by its words.
+
+1. Item 24's "`app/theme.py` records the search" names no search: say what was searched for.
+2. Item 30's "The same argument already places item 29 ahead of that work" follows two arguments (the risk of stalling behind the generalization, and the surface built N times); say which.
+3. Item 34's "gives the count, the method, the construction" does not say what was counted.
+4. Item 34's "isolation with teeth" does not say what is kept apart (each view from the others, or each view from the rest of the screen) or what enforces it.
+5. Item 39's "the condition that the unit names" and "where an amount leaves the unit" name no unit.
+6. Item 39's "Correcting the water half alone is what that note explicitly warns against" follows "Both notes"; name the note.
+7. Item 43's "the baselines of the four check items" does not say which four items or what a baseline is.
+
 **Generator check.** One-off: the line edit the owner asked to follow each restructure. No mechanism produces it.
