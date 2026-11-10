@@ -407,7 +407,7 @@ def test_each_unit_names_its_reader(
 def test_a_file_named_only_for_an_unedited_reader_is_passed_over_without_a_note(
     repo: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """An item brief is not a file that nobody has named a reader for, so it is not listed."""
+    """An item brief has a reader the rule names, so it is not listed."""
     rule = repo / ".git" / "rule.md"
     rule.write_text(READERS.replace("A developer", new_prose.UNEDITED_READERS[0]), encoding="utf-8")
     monkeypatch.setattr(new_prose, "RULE", rule)
@@ -463,10 +463,9 @@ def test_the_rule_names_a_reader_for_every_kind_of_file_the_review_reads(path: s
     ],
 )
 def test_the_review_leaves_out_the_workflow_files_and_item_briefs(path: str) -> None:
-    """The project owner took these out of the copy editor's review on 2026-11-10.
+    """The project owner took these files out of the copy editor's review on 2026-11-10.
 
-    The rule still names a reader for each, so the writing rule applies to them
-    while the copy editor does not.
+    The writing rule still names a reader for each, so it applies to them.
     """
     assert readers_of(new_prose.whole_rule_table(), path)
     assert not readers_of(new_prose.rule_table(), path)
@@ -631,7 +630,7 @@ def test_a_python_file_is_compared_by_its_prose_alone(
 
 @pytest.mark.parametrize("kind", ["replies", "pull request titles and bodies"])
 def test_a_reply_or_a_pull_request_body_has_no_row_to_draft_for(kind: str) -> None:
-    """The copy editor does not edit either, so `--draft --kind` refuses both."""
+    """The copy editor edits neither, so the tool refuses drafts of both (`--draft --kind`)."""
     assert not any(kind in reader.kind.casefold() for reader in new_prose.rule_table())
 
 

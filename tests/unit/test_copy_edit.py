@@ -119,7 +119,7 @@ def request_of(*prose: str) -> str:
 
 
 def draft_request(tmp_path: Path, *lines: str) -> str:
-    """The request that `tools/new_prose.py --draft` writes for a README draft made of `lines`."""
+    """Return the request that `tools/new_prose.py --draft` writes for a README draft of `lines`."""
     draft = tmp_path / "draft.md"
     draft.write_text("\n".join(lines) + "\n", encoding="utf-8")
     text = new_prose.draft_report(draft, "README", new_prose.rule_table())
