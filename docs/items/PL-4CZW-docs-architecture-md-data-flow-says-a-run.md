@@ -3,12 +3,14 @@ id: PL-4CZW
 title: docs/ARCHITECTURE.md § 'Data flow' says a run forked onto the supported run length is treated as stopped there, but the branch chapter says a fork there is refused; one is stale (copy editor structure read, 2026-11-05)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: architecture-md-structure
 touches: docs/ARCHITECTURE.md
 deferred-from: v0.7.0 - a new problem: at the freeze (817a4d88) a branch could still open on the supported run length, so the sentence was true; 2713d097 (PL-VHQX, 2026-10-31) made the controller refuse that fork and left the sentence stale
 added: 2026-11-05
+closed: 2026-11-09
+pr: 2072
 payoff: a contributor reads one answer to whether a branch can open on the supported run length, and it is the one the controller enforces
 verify: ! grep -qF 'forked or reset onto that step' docs/ARCHITECTURE.md
 reenters: PL-4FBP

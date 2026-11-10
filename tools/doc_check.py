@@ -4291,6 +4291,156 @@ def _holds_itself(member: str, kind: EntityKind) -> bool:
     return kind.names(member) or any(_statement_matches(kind.declares_none, member, PROSE))
 
 
+def _paragraph_spans(text: str, heading: str, level: int) -> list[tuple[int, int]]:
+    """The first and last line of each paragraph under a heading, counted from 1.
+
+    A paragraph is one that `markdown` reads. So a paragraph inside a list item
+    or a block quote is one of its own, and a fence, a table or a heading is
+    not a paragraph. The section runs from its heading to the next heading at
+    its own depth or shallower, as for `_numeric_paragraph_members`, so a
+    deeper heading's paragraphs are part of it. A heading that `markdown` does
+    not read, such as a `#` line inside a fence, opens no section, and the list
+    is then empty.
+    """
+    lines = split_lines(text)
+    found = read_headings(lines)
+    opening = next((h for h in found if h.level == level and h.title == heading), None)
+    if opening is None:
+        return []
+    end = next((h.line for h in found if h.line > opening.line and h.level <= level), len(lines))
+    return [
+        (block.start + 1, block.end)
+        for block in read_blocks(lines).blocks
+        if block.kind == PARAGRAPH and opening.end <= block.start < end
+    ]
+
+
+def _paragraph_members(text: str, family: BoundFamily) -> Iterator[tuple[int, str]]:
+    """Each paragraph under the family's heading, as `_paragraph_spans` finds them.
+
+    The fifth member shape (`PL-BLN0`). It reads every paragraph of a section
+    that describes the code, because a sentence there restates what some
+    module does, and goes stale when that module changes. A paragraph's lines
+    lose the indentation they share, as in `_numeric_paragraph_members`, so a
+    second paragraph inside a list item is not read as an indented code block.
+    """
+    lines = split_lines(text)
+    for first, last in _paragraph_spans(text, family.heading, family.level):
+        yield first, textwrap.dedent("\n".join(lines[first - 1 : last]))
+
+
+#: The suffixes of a cited file that is the simulator's code or a data file it
+#: reads. A Markdown path names a document about the code, not the code.
+CODE_PATH_SUFFIXES = frozenset({".py", ".json", ".toml", ".yml", ".yaml"})
+
+#: Where the code that the two bound documents describe is defined.
+CODE_ROOTS = (Path(PACKAGE_ROOT), Path("tests"))
+
+
+@dataclass(frozen=True)
+class DefinedCode:
+    """The names the simulator's tracked Python defines, and the files that could not be read."""
+
+    names: frozenset[str]
+    unread: tuple[str, ...]
+    #: Every identifier in the files this Python could not parse, so a name
+    #: that only such a file may define is declined rather than failed.
+    unread_names: frozenset[str]
+
+
+def _defined_code(root: Path) -> DefinedCode:
+    """Every class, function, field and constant name defined under `CODE_ROOTS`.
+
+    A name counts when a `class` or `def` defines it at any depth, when a module
+    or a class body assigns it, or when an attribute such as `self.windows` is
+    assigned. A function's local variables do not count, because a name as
+    common as `area` would then match a sentence about Blender.
+    """
+    names: set[str] = set()
+    unread: list[str] = []
+    unread_names: set[str] = set()
+    for relative in CODE_ROOTS:
+        if not (root / relative).is_dir():
+            continue
+        for path in tracked_under(root, relative, ".py"):
+            text = ""
+            try:
+                text = path.read_text(encoding="utf-8-sig")
+                tree = ast.parse(text, filename=str(path))
+            except (SyntaxError, ValueError, *UNREADABLE):
+                unread.append(path.relative_to(root).as_posix())
+                # regex: any Python identifier, a superset of what the file defines.
+                unread_names.update(re.findall(r"[A-Za-z_]\w*", text))
+                continue
+            bodies = [tree.body]
+            for node in ast.walk(tree):
+                if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+                    names.add(node.name)
+                    if isinstance(node, ast.ClassDef):
+                        bodies.append(node.body)
+                elif isinstance(node, ast.Attribute) and isinstance(node.ctx, ast.Store):
+                    names.add(node.attr)
+            for statement in (each for body in bodies for each in body):
+                targets = (
+                    statement.targets
+                    if isinstance(statement, ast.Assign)
+                    else [statement.target]
+                    if isinstance(statement, ast.AnnAssign)
+                    else []
+                )
+                names.update(target.id for target in targets if isinstance(target, ast.Name))
+    return DefinedCode(frozenset(names), tuple(unread), frozenset(unread_names))
+
+
+def _names_code(member: str, defined: Collection[str]) -> bool:
+    """Whether a paragraph names, in a code span, a file or a name the simulator's code holds.
+
+    Naming one is what lets `format_candidates` list the paragraph on a branch
+    that changes that code. A span counts when it is a path to a Python or JSON
+    file, or to a directory outside `docs/`, or when its last dotted part,
+    before any call parentheses, is a name in `defined`. So `docs/MODEL.md`, an
+    item id and a name from Blender's source do not count. PL-GPTN's paragraph
+    named only Blender's `SpaceType` and `PL-TH35`, and it read as open work
+    for weeks after that item's code shipped. Whether a cited path exists stays
+    `check_citations`' question.
+
+    Whether the code named is the code the paragraph describes stays a
+    reviewer's question, as it does for a named test.
+    """
+    for span in _code_spans(member):
+        content = SPAN_BREAK_RE.sub("", span["content"]).strip()
+        if _is_path_citation(content):
+            if PurePosixPath(content).suffix in CODE_PATH_SUFFIXES or (
+                content.endswith("/") and not content.startswith("docs/")
+            ):
+                return True
+            continue
+        parts = content.split("(", 1)[0].split(".")
+        if all(part.isidentifier() for part in parts) and parts[-1] in defined:
+            return True
+    return False
+
+
+#: The names `_defined_code` found for the root that `check_bound_families` is
+#: checking, set only while it runs, so `CODE_ENTITY` can ask about one member.
+_DEFINED_CODE: ContextVar[DefinedCode] = ContextVar("doc_check_defined_code")
+
+
+def _names_defined_code(member: str) -> bool:
+    """`_names_code` against the names of the tree being checked."""
+    return _names_code(member, _DEFINED_CODE.get().names)
+
+
+#: What a paragraph that describes the code must name. Its declared-none form
+#: is "no code yet (`PL-XXXX`)", for a paragraph that describes code an open
+#: item still owes.
+CODE_ENTITY = _entity_kind("code", _names_defined_code)
+
+#: The study of Blender's window system, whose last chapter says what this
+#: project's interface takes from it.
+INTERFACE_PROVENANCE = Path("docs/interface-provenance.md")
+
+
 # Every family bound today by the rule that each listed entry names what backs
 # it. **An entry arrives with the annotation pass that makes its family conform,
 # never in anticipation of one**, so the check never holds `make check` red for
@@ -4303,6 +4453,14 @@ def _holds_itself(member: str, kind: EntityKind) -> bool:
 # precision", whose numbers a learner reads directly. The other sections join
 # with the passes the `model-claims-held-by-tests` feature files, first
 # `PL-19W8`, which decides whether the rest run.
+#
+# `PL-BLN0` added the two families whose paragraphs describe the code: the
+# whole of `docs/ARCHITECTURE.md`, bound at its title so that a chapter added
+# later is bound too, and the last chapter of `docs/interface-provenance.md`,
+# which says what this project built. Of 15 sentences in those documents and
+# `docs/MODEL.md` found stale on 2026-11-05, 10 went stale when the code they
+# restated changed. `docs/MODEL.md`'s free prose stays outside, for the
+# reason that item gives.
 #
 # Every entry names `TEST_ENTITY`, and for the displayed outputs that was a
 # decision rather than an inheritance (`PL-036`, project owner, 2026-09-22,
@@ -4353,6 +4511,22 @@ BOUND_FAMILIES = (
             "with a unit"
         ),
     ),
+    BoundFamily(
+        document=ARCHITECTURE,
+        heading="Architecture overview",
+        level=1,
+        kind=CODE_ENTITY,
+        members=_paragraph_members,
+        promise="every paragraph names in a code span the module, symbol or test it describes",
+    ),
+    BoundFamily(
+        document=INTERFACE_PROVENANCE,
+        heading="What this project adopts, diverges from, and refuses",
+        level=2,
+        kind=CODE_ENTITY,
+        members=_paragraph_members,
+        promise="every paragraph names in a code span the module, symbol or test it describes",
+    ),
 )
 
 
@@ -4374,9 +4548,11 @@ def check_bound_families(root: Path, report: Report) -> None:
     claim outside a family to the close-out sweep, so that a rule with an
     escape nobody declares does not become a rule nobody follows. `PL-B6YV`
     reopened that for computed claims on 2026-11-02, and
-    `_numeric_paragraph_members` reads them one section at a time. A family is
-    added to `BOUND_FAMILIES` by the annotation pass that makes it conform,
-    never in anticipation of one.
+    `_numeric_paragraph_members` reads them one section at a time. `PL-BLN0`
+    reopened it for the two documents that describe the code, where
+    `_paragraph_members` reads every paragraph. A family is added to
+    `BOUND_FAMILIES` by the annotation pass that makes it conform, never in
+    anticipation of one.
 
     **A family with no members is an error, not a pass.** A renamed heading or
     a deleted table would otherwise retire the family silently while the entry
@@ -4388,6 +4564,21 @@ def check_bound_families(root: Path, report: Report) -> None:
     sentence it sits under - stays a reviewer's question, exactly as it does
     for `check_provenance` and `check_named_tests`.
     """
+    defined = _defined_code(root)
+    if defined.unread:
+        report.declined.append(
+            f"{', '.join(defined.unread)}: the parser refuses it, so a paragraph of a bound "
+            "family that names only code defined there is reported as naming no code"
+        )
+    token = _DEFINED_CODE.set(defined)
+    try:
+        _check_each_bound_family(root, report)
+    finally:
+        _DEFINED_CODE.reset(token)
+
+
+def _check_each_bound_family(root: Path, report: Report) -> None:
+    """`check_bound_families`' reading of each family, while the tree's code names are set."""
     items: Mapping[str, Item] | None = None
     store_read = False
     for family in BOUND_FAMILIES:
@@ -4417,10 +4608,22 @@ def check_bound_families(root: Path, report: Report) -> None:
             # document holds several and a line number alone does not say which
             # promise was broken.
             where = f'{family.document}:{line}: § "{family.heading}"'
-            if family.kind.names(member):
-                continue
+            # A declared-none form is resolved wherever it stands, even in a
+            # member that also names its entity, because a paragraph that says
+            # "no code yet" against a closed item reads as open work whatever
+            # else it names (`PL-BLN0`).
             declared = next(_statement_matches(family.kind.declares_none, member, PROSE), None)
             if declared is None:
+                if family.kind.names(member):
+                    continue
+                if family.kind is CODE_ENTITY and _names_code(
+                    member, _DEFINED_CODE.get().unread_names
+                ):
+                    report.declined.append(
+                        f"{where}: names code only a file this Python cannot parse may "
+                        "define, so the paragraph was neither passed nor failed"
+                    )
+                    continue
                 report.errors.append(
                     f"{where} promises that {family.promise}; this member names no "
                     f"{family.kind.noun} and does not declare that it has none "
@@ -10588,16 +10791,48 @@ def _diff_from(root: Path, base: str) -> tuple[str, str]:
     return fork, f"{base} from its merge base with HEAD, {fork[:8]}"
 
 
+def _bound_paragraphs(documents: Mapping[Path, str]) -> dict[Path, list[tuple[int, int]]]:
+    """The first and last line of each paragraph a bound family holds, by document.
+
+    Only the families whose members are paragraphs (`_paragraph_members`)
+    contribute. A stale sentence there is often not the line that names the
+    changed code. On 2026-11-05, PL-6G7N's stale sentence sat a line below the
+    one naming `AgentUptakeSystem.for_agent()`, and PL-4CZW's a line below the
+    one naming `SimulationController.advance()`. So the review list gives the
+    whole paragraph's range.
+    """
+    found: dict[Path, list[tuple[int, int]]] = {}
+    for family in BOUND_FAMILIES:
+        text = documents.get(family.document)
+        if family.members is _paragraph_members and text is not None:
+            spans = _paragraph_spans(text, family.heading, family.level)
+            found.setdefault(family.document, []).extend(spans)
+    return found
+
+
+def _candidate_line(
+    doc: Path, number: int, token: str, paragraphs: Mapping[Path, list[tuple[int, int]]]
+) -> str:
+    """One line of the review list, with the paragraph's range where it holds more than one line."""
+    line = f"    {doc}:{number}  ({token})"
+    for first, last in paragraphs.get(doc, ()):
+        if first <= number <= last and first < last:
+            return f"{line}; review the whole paragraph, lines {first}-{last}"
+    return line
+
+
 def format_candidates(root: Path, base: str) -> str:
     """Print the documentation lines a close-out sweep would grep for.
 
     The diff runs from where HEAD forked from `base` to the working tree, as
     `_diff_from` decides. Raises `GitUnanswered` where the diff cannot be
     read, which `main` reports as a sweep that did not happen rather than one
-    that found nothing.
+    that found nothing. A line inside a paragraph that a bound family holds
+    carries that paragraph's range (`_bound_paragraphs`).
     """
     fork, against = _diff_from(root, base)
     documents = read_docs(root)
+    paragraphs = _bound_paragraphs(documents)
     unread: list[str] = []
     tokens = changed_tokens(root, fork, documents, unread)
     if not tokens:
@@ -10641,7 +10876,8 @@ def format_candidates(root: Path, base: str) -> str:
         total += len(hits)
         lines.append(f"  {relative}")
         lines.extend(
-            f"    {doc}:{number}  ({token})" for (doc, number), token in sorted(hits.items())
+            _candidate_line(doc, number, token, paragraphs)
+            for (doc, number), token in sorted(hits.items())
         )
         lines.extend(crowded)
         lines.append("")
