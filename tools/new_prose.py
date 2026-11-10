@@ -54,7 +54,7 @@ the docstring beside it are judged for different readers (`PL-Q98K`). The
 report lists the readers of every file it prints a passage from, and names
 under each passage the readers to judge it for (`PL-R7Q6`). A row for a
 reader in `UNEDITED_READERS` is ignored, so an item brief, a workflow file, a
-commit message, a pull request body and a reply are never printed.
+commit message and a reply are never printed.
 
 The tool exits 0 when it read the diff, whether or not it printed a passage,
 and exits 1 when the diff could not be read or the default branch is unknown. A
@@ -64,8 +64,9 @@ result is never given as a whole one.
 **`--draft FILE --kind WORDS` prepares a draft for review before it is written
 into the file it is for.** It prints the rule, the reader rows whose first cell
 contains WORDS, and the whole file as passage 1 (`PL-J1ZM` part 3). It exits 1
-when no row's first cell contains WORDS. Replies and pull request bodies have
-no row here, because the copy editor does not edit them (`UNEDITED_READERS`).
+when no row's first cell contains WORDS. The pull-request skill runs it with
+`--kind "pull request"` on a pull request's title and body. A reply has no row
+here, because the copy editor does not edit one (`UNEDITED_READERS`).
 
 **`--section FILE --heading TEXT` prints one Markdown section as passage 1,
 with every row open to rewrite.** A changed passage may be rewritten only with
@@ -321,10 +322,10 @@ def read_by(table: Sequence[Reader], units: Iterable[Unit]) -> list[Unit]:
 
 #: The readers whose texts the copy editor does not edit (project owner,
 #: 2026-11-10). They are the readers of item briefs, the workflow's files, commit
-#: messages, pull request titles and bodies, and replies. The owner limited
-#: these texts to two copy-editor reads on 2026-11-09 and then took them out of
-#: the review altogether: the copy editor edits only the documents and code
-#: that a clinician, a learner or a contributor reads. The strings are the
+#: messages and replies. The owner limited these texts to two copy-editor reads
+#: on 2026-11-09 and then took them out of the review altogether. An hour later
+#: the owner put pull request titles and bodies back, so they have a row of
+#: their own, with a reader not named here (`PL-N2VQ`). The strings are the
 #: "Reader" cells of the rule's table, so a reworded cell fails
 #: `tests/unit/test_new_prose.py` instead of bringing those texts back in.
 UNEDITED_READERS = (
@@ -654,6 +655,68 @@ def changed_passages(path: str, before: str | None, after: str | None, patch: st
     return found
 
 
+def enclosing_titles(marks: Sequence[Heading], row: int) -> list[str]:
+    """The titles of the headings in `marks` that enclose the 1-based `row`, innermost first."""
+    chain: list[str] = []
+    level = None
+    for mark in reversed([mark for mark in marks if mark.line < row]):
+        if level is None or mark.level < level:
+            chain.append(mark.title)
+            level = mark.level
+    return chain
+
+
+def paired_sections(path: str, before: str, after: str, passages: list[Passage]) -> list[Passage]:
+    """`passages` from one Markdown file, merged where a section heading is new on one side.
+
+    `changed_passages` names a passage after the nearest heading on its own
+    side. Where a rewrite adds subheadings that the base lacks, text moved
+    between them reads as growth under one and a cut under the next, as
+    `PL-J37P`'s rewrite of "Displayed precision" did (`PL-TTBF`). So a passage
+    whose heading stands on one side only is moved up to the nearest heading
+    that encloses it and stands on both sides, and every passage moved to that
+    heading, with any passage already under it, becomes one passage. Where no
+    enclosing heading stands on both sides, the whole file is the section that
+    both sides share, so two or more such passages become one passage for the
+    file. A single such passage keeps its own heading, because nothing was
+    moved between it and another passage.
+    """
+    sides = (headings(markdown_lines(before)), headings(markdown_lines(after)))
+    titles = ({mark.title for mark in sides[0]}, {mark.title for mark in sides[1]})
+    placed: list[tuple[Passage, str | None]] = []
+    for passage in passages:
+        new_side = bool(passage.after)
+        units = passage.after if new_side else passage.before
+        chain = enclosing_titles(sides[new_side], units[0].first)
+        other = titles[not new_side]
+        if not chain or chain[0] in other:
+            placed.append((passage, None))
+        else:
+            placed.append((passage, next((title for title in chain if title in other), "")))
+    lifted = [section for _, section in placed if section is not None]
+    if lifted.count("") == 1:
+        placed = [(passage, None if section == "" else section) for passage, section in placed]
+    targets = {section for _, section in placed if section is not None}
+    found: list[Passage] = []
+    merged: dict[str, int] = {}
+    for passage, section in placed:
+        key = passage.section if section is None else section
+        if key not in targets:
+            found.append(passage)
+            continue
+        if key not in merged:
+            merged[key] = len(found)
+            found.append(Passage(path, key, (), ()))
+        held = found[merged[key]]
+        found[merged[key]] = Passage(
+            path,
+            key,
+            tuple(sorted(held.before + passage.before, key=lambda unit: unit.first)),
+            tuple(sorted(held.after + passage.after, key=lambda unit: unit.first)),
+        )
+    return found
+
+
 def fact_text(path: str, source: str | None, *, strings: bool = False) -> str:
     """Return the text whose facts are counted, a whole document or a Python file's prose.
 
@@ -704,10 +767,11 @@ def compare(root: Path, base: str, table: Sequence[Reader] | None = None) -> Com
         after = (root / path).read_text(encoding="utf-8") if (root / path).is_file() else None
         try:
             patch = read_git(["diff", "-U0", fork, "--", path], root)
+            passages = changed_passages(path, before, after, patch)
+            if is_document(path) and before is not None and after is not None:
+                passages = paired_sections(path, before, after, passages)
             found.passages += [
-                passage
-                for passage in changed_passages(path, before, after, patch)
-                if read_by(table, passage.before + passage.after)
+                passage for passage in passages if read_by(table, passage.before + passage.after)
             ]
             strings = bool(readers_of(table, path, STRING_KIND))
             old_facts = fact_text(path, before, strings=strings)
@@ -1497,7 +1561,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--kind",
         help="with --draft, words from the first cell of the reader rows the draft is for, "
-        "such as 'README'",
+        "such as 'README' or 'pull request'",
     )
     modes.add_argument(
         "--section",

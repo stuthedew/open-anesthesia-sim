@@ -10,22 +10,42 @@ optimizations and small features. A piece of work is a milestone rather than a
 queue item when it needs its own goal, required scope, definition of done and
 explicit out-of-scope list.
 
+## Terms this file uses
+
+- **Apparatus.** The tools and instructions that the project's development
+  runs on: the queue of items in `docs/items/`, the command that reads and
+  writes it, the checks, and the instructions that agent sessions follow. The
+  simulator is the code in `src/` and `tests/`, with `docs/MODEL.md` and
+  `README.md`.
+- **Lane.** The side of the project that an item's files are on. Product-lane
+  items change the simulator, and workflow-lane items change the apparatus.
+  Items in different lanes share no files, so two sessions can work them at
+  the same time.
+- **Generator.** One cause that keeps producing defects, recorded once it has
+  produced three or more items.
+- **Generator head.** The item that records a generator's cause. The items
+  the cause produced point back to it. A head is live while the cause still
+  produces items, and spent once it no longer does.
+
 ## Current baseline: v0.6.16
 
-v0.6.16 is the release where the copy editor is fixed and back in use, and
-where the `docs/MODEL.md` rewrites it held are finished. It has 11 items and is
-a patch on both halves of § "Versioning decision"'s test. Every id in v0.7.0's
-Required scope is now closed. Entry 12's six items, the copy editor's fix and
-the five `docs/MODEL.md` rewrites it blocked, close here. The release finishes
-two features, `reader-first-prose` and `repo-copy-edit`, and closes one
-generator head, `PL-HGZS`, spent.
+v0.6.16 is the release in which the copy editor is fixed and back in use, and
+the five `docs/MODEL.md` rewrites that it blocked are finished. The fix and the
+five rewrites are the six items of entry 12 in v0.7.0's Required scope, and
+all six close here. Every id in v0.7.0's Required scope is now closed. The
+release has 11 items. It is a patch on both halves of the patch test in
+§ "Versioning decision": it crosses no
+capability boundary, and v0.7.0 is given to a milestone section, so no patch
+release may take that number. v0.6.16 also finishes two features,
+`reader-first-prose` and `repo-copy-edit`, and closes one generator head,
+`PL-HGZS`, as spent.
 
-None of the 11 is on Gate 3's frozen list. The gate stands at 87 of 90 cleared,
-as at the v0.6.15 tag. The three entries still open are `PL-SP6H`, which this
-gate can clear, and `PL-B4P7` and `PL-WZVZ`, which were deferred from it.
-v0.7.0 is still not cut, for two reasons: Gate 3 has `PL-SP6H` open, and v0.7.0
-is cut only after the project owner has test-driven `main`. v0.7.0 and v0.8.0
-are given to milestone sections.
+v0.7.0 is cut only after Gate 3's frozen list has cleared and the project owner
+has test-driven `main`. None of the 11 items is on that list. When v0.6.16 was
+cut, 87 of the gate's 90 entries had cleared. The list is longer now: on
+2026-11-07 it gained every finding whose problem was present when the gate froze
+(`PL-GW0P`). The counts in the list's two headings under
+§ "v0.7.0 - the schematic" give its size.
 
 **No code, equation, model parameter or stored value changed, and no run can
 differ:**
@@ -75,29 +95,35 @@ merges on `main` after a release is cut and before its pull request lands.
 
 The project uses milestone-based semantic versioning during early development.
 The next release number is chosen for the capability boundary that the release
-crosses. It is not chosen by mechanically incrementing the patch number.
+crosses, not by incrementing the patch number mechanically.
 
 **One deliberate exception, v0.3.0 (project owner, 2026-08-26).** Under that
 rule, clearing Gate 0 would be a patch, because it crosses no capability
-boundary. Gate 0 held two safety fixes, four refactors, two tooling defects
-and a performance fix. After them, the simulator does nothing it could not do
-before. Clearing Gate 0 is still released as the minor version v0.3.0. The
-reason is that clearing the inherited pre-MVP backlog is the boundary this
+boundary. Gate 0's frozen list is recorded under v0.4.0, and v0.3.0 released 21
+of its entries: seven safety and science fixes, four refactors, eight workflow
+and tooling fixes, a performance fix and the choice of a licence. After them,
+the simulator does nothing it could not do before. v0.3.0 is still a minor
+version, because clearing the inherited pre-MVP backlog is the boundary this
 project most needs to be able to point at, and a patch number would bury it.
 
-**This is an exception and not a precedent.** It applies to Gate 0 alone,
-because Gate 0 is unlike every gate that follows it. Gate 0 is the backlog that
-accumulated before the debt gate existed, and it was twenty items deep. Gate 1
-and every later gate contain the findings of a single milestone.
+**The v0.3.0 exception is not a precedent.** It applies to Gate 0 alone,
+because Gate 0 is the backlog that accumulated before the debt gate existed.
+Gate 1 and every later gate contain the findings of a single milestone. None of
+them takes a version of its own. The gated milestone's own number marks the
+boundary that its scope crosses (§ "How gate work is released", under
+§ "The debt gate"). Unless a further deliberate exception is recorded here,
+the capability-boundary rule above applies.
 
-Later gates take no version of their own. The gated milestone's own number
-marks the boundary that its scope crosses. See § "How gate work is released"
-under § "The debt gate". Unless a further deliberate exception is recorded
-here, the capability-boundary rule above applies.
-
-**Which numbers a patch cut may take.** A number that this file has given to a
-milestone section ahead of the current one is not free (project owner,
+**A patch cut may take only a free number.** A number that this file has given
+to a milestone section ahead of the current one is not free (project owner,
 2026-09-16, ratified, on `PL-KQHN`).
+
+**The two halves of the patch test.** The first half is the capability-boundary
+rule: the release crosses no capability boundary. The second half is the rule on
+free numbers: the next minor number is already given to a milestone section. A
+release record says whether a patch meets the test on both halves or on one. A
+patch that meets only the second half crossed a boundary, and took a patch
+number because the next minor number was not free.
 
 ### Version table
 
@@ -404,7 +430,7 @@ to clear the ground that the feature releases are built on:
 
 | # | Step | What it is | Size |
 | --- | --- | --- | --- |
-| 1 | **v0.2.8 — the workflow works** | Scoped below. Its own frozen list of thirty-eight entries: the development machinery the project already runs on, fixed before two long milestones are run through it. No simulator change. The second of the two groups in the list is new workflow capability, not debt. | 2 M, 35 S |
+| 1 | **v0.2.8 — the workflow works** | Scoped below. Its scope is its own frozen list of thirty-eight entries, which fix the development machinery the project already runs on before two long milestones are run through it. Nothing in the simulator changes. The second of the two groups in the list is new workflow capability, not debt. | 2 M, 36 S |
 | 2 | **v0.3.0 — the foundation** | Gate 0's frozen debt list, recorded under v0.4.0 below: the entries outside that milestone's own scope, released as a minor by deliberate exception. See the versioning exception under § "Versioning decision". | 4 M, 17 S |
 | 3 | **v0.4.0 — the teachable case** | **Shipped 2026-09-05.** Scoped below. 13 items, of which 6 are gate-0 debt the milestone cleared itself. Twelve landed and the thirteenth, `PL-011`'s retention rule, was dropped as superseded; its Required-scope entry records why. | 7 M, 6 S |
 | — | **v0.4.x — the code is the model** | Planned-milestone item 29, shipping as a patch in the `v0.4.x` track. "No behavior changes" held until the 2026-09-03 re-scope and no longer does: the exact step moves the displayed value in its last digit. Moved from ahead of v0.4.0 to behind it (project owner, 2026-09-02): the placement's real constraint is that it precede item 6's substance generalization, and v0.4.0 changes no equation, so gating the teachable case on an unscoped pass over `core/` bought nothing. Scoped and then re-scoped 2026-09-03: the owner's bar is that a reviewer follow `core/` without a lookup table, which naming alone cannot reach, so the operator split is replaced by the exact matrix exponential (`PL-GS5X`). Still a patch — it crosses no capability boundary; see item 29 for why, and for why no exception is recorded. (Written `v0.4.1` until 2026-09-06, which contradicted this row's own rule that the track promises no particular patch number; v0.4.1 and v0.4.2 both shipped without the exact step, as that rule predicted.) **It freezes no gate and takes no section of its own (project owner, 2026-09-05).** **Eight items**, `PL-P0BB` having shipped in v0.3.2: `PL-GS5X` and `PL-X9KD` under `numerical-domain`, and `PL-H46J`, `PL-212V`, `PL-3TLK`, `PL-9SH6`, `PL-VZL0`, `PL-FZ6T` under `core-domain-language` — plus `PL-X2XX`, which `PL-VZL0` requires and which neither list named until `PL-GGCN` taught the checker to read the second half of a compound prerequisite. `PL-3TLK` leads; the rest of the naming work follows the exact step. **This track promises no particular patch number,** which is what `v0.4.x` means: patches are cut as work accumulates and the exact step takes whichever number it lands on. | 1 L, 6 M, 2 S |
@@ -1717,75 +1743,83 @@ that item 40 explicitly defers.
 
 **Split 2026-09-20 (project owner).**
 *The framework half is item 40, and it is not gated behind Phase 1.*
-Interlock behavior needs to know which agents are mounted and what a
-machine forbids, so it needs the machine profile. But the interlocks are
-what put this item in Phase 1. A single-halogenated-agent interlock is a
-statement about holding more than one agent, so it comes after item 6.
-Item 40 holds the goal this item was written with, that a real commercial
-machine is added as a data file, and item 40 is the item that delivers it.
+This item was written with the goal that a real commercial machine is
+added as a data file. That goal moved to item 40, which delivers it. The
+interlocks are what put this item in Phase 1. Interlock behavior needs to
+know which agents are mounted and what a machine forbids, so it needs the
+machine profile. A single-halogenated-agent interlock is a statement about
+holding more than one agent, so it comes after item 6.
 
 **The default fresh gas flow is no longer this item's to place.**
 `docs/machine-abstraction.md` places the default (4.0 L/min) among a run's
 opening conditions rather than among a machine's specifications. The reason
 is that no surveyed machine publishes a startup flow, so a per-machine field
-would force every profile to invent one. The default's *value* is still an
-open question, and it belongs to `PL-NM7X`.
+would force every profile to invent one. The default's value is decided:
+the project owner ruled on 2026-09-20 that 4.0 L/min stays (ratified, over
+lowering it to match low-flow practice). The wording that justified it was
+corrected in v0.4.33 (`PL-NM7X`).
 
-**The survey is done and is `docs/machine-survey.md`.** `PL-4DCG` surveyed
-the machines in current clinical use for the variables that change a
-simulated result. The survey records which variables affect a number, which
-of them are per-machine data and which are genuinely different behavior,
-and what remains unknown. Two of its findings bear on how this milestone is
-scoped rather than on how it is built. First, apparatus volume alone does
-not account for the measured differences between machines. So a profile
-that is a volume and a set of bounds is already falsified. Second, the
-position of the fresh gas inlet changes the inspired/delivered ratio at a
-fixed volume. A single well-mixed circuit compartment cannot represent that
-effect. So this milestone has to choose, on the record, among three options.
-It can represent internal topology. It can state that machines differing
-only in topology are indistinguishable here. Or it can route the question
-into the per-compartment gas-phase model at item 39.
+**The survey is done and is `docs/machine-survey.md`.** It examined the
+machines in current clinical use for the variables that change a
+simulated result (`PL-4DCG`). It records which variables affect a number,
+which of them are per-machine data and which are genuinely different
+behavior, and what remains unknown. Two of its findings bear on how this
+milestone is scoped rather than on how it is built:
 
-**The design is done and is `docs/machine-abstraction.md`.** `PL-FG9D`
-designed the base abstraction: what a module is, what the base type owns and
-what each machine supplies, and where the line between parameter and
-strategy falls. Four of its results bear on scoping this milestone. **The
-seam already exists in the tree**, and item 40 states it. The reference
-machine's strategies reproduce today's matrix entry for entry, so the
-abstraction lands with no change to any computed value. **The set of machine
-behaviors is closed by two properties of the existing solver**, rather than
-by taste. A strategy must be constant across a step, and it must keep the
-matrix Metzler. That is why item 5 (automated end-tidal control) is a
-milestone and not a slot. **The inlet-position question above is
-answered**. The decision is to decline to represent internal topology, and
-to say so where a machine is chosen. Folding topology into an effective
-volume is refused outright, and item 39 is named as the condition that
-reverses the decline. **What a machine may be called is decided** (project
-owner, 2026-09-20, ratified, over naming the machine by its trade name in
-the running interface). An archetype label appears wherever a machine is
-running or chosen. The trade name is confined to the panel that holds that
-machine's parameter set, its sources and its `not_modelled` list. That is a
-scope constraint on this milestone and on `PL-WZVZ`, not a preference. The
-trade name is admissible only where what the model does *not* claim about
-that machine is on screen beside it.
+1. Apparatus volume alone does not account for the measured differences
+   between machines, so a profile that is a volume and a set of bounds is
+   already falsified.
+2. The position of the fresh gas inlet changes the inspired/delivered
+   ratio at a fixed volume. A single well-mixed circuit compartment cannot
+   represent that effect, so this milestone has to choose, on the record,
+   among three options. It can represent internal topology, state that
+   machines differing only in topology are indistinguishable here, or
+   route the question into the per-compartment gas-phase model at item 39.
 
-Scoping this milestone therefore starts from a design rather than from a
-blank page. The scope statement's own test is the design's stated cost
-target. A machine whose delivery and removal are already in the closed set
-is one data file under `src/anesthesia_sim/data/machines/`. It needs no
-change to `core/` and no new test of the physics.
+**The design is done and is `docs/machine-abstraction.md`.** It sets out
+the base abstraction (`PL-FG9D`): what a module is, what the base type
+owns and what each machine supplies, and where the line between parameter
+and strategy falls. Four of its results bear on scoping this milestone:
 
-**Two queue items scoped this one. They were sequential, and both are
-done.** The design depended on the survey, because the extension points
-are the axes of real variation that affect a number. Designing them first
-would have been guessing. Three items wait behind those two items rather
-than behind this prose. `PL-8PS6` (fresh gas flow range is a machine
-property) and `PL-WZVZ` (make an inter-machine difference attributable) are
-carved out of Gate 1 for that reason. `PL-WZVZ` is the surface that keeps a
-machine's effect on a curve attributable to a named parameter. `PL-439V`
-(make the Tec 6 the concrete second device class) is answered by the
-design's dial-mapping slot. All three now wait on this milestone being
-implemented, rather than on a design that does not exist.
+1. **The seam already exists in the tree**, and item 40 states it. The
+   reference machine's strategies reproduce today's matrix entry for
+   entry, so the abstraction lands with no change to any computed value.
+2. **The set of machine behaviors is closed by two properties of the
+   existing solver**, rather than by taste. A strategy must be constant
+   across a step, and it must keep the matrix Metzler. That is why item 5
+   (automated end-tidal control) is a milestone and not a slot.
+3. **The inlet-position question above is answered.** The design declines
+   to represent internal topology, and requires that this be said where a
+   machine is chosen. It refuses outright to fold topology into an
+   effective volume, and names item 39 as the condition that reverses the
+   decline.
+4. **What a machine may be called is decided** (project owner, 2026-09-20,
+   ratified, over naming the machine by its trade name in the running
+   interface). An archetype label appears wherever a machine is running or
+   chosen. The trade name is confined to the panel that holds that
+   machine's parameter set, its sources and its list of what is not
+   modelled (`not_modelled`). That is a scope constraint on this milestone
+   and on the comparison surface (`PL-WZVZ`), not a preference. The trade
+   name is admissible only where what the model does *not* claim about
+   that machine is on screen beside it.
+
+Scoping this milestone therefore starts from the design. The test of the
+scope statement is the design's stated cost target. A machine whose
+delivery and removal are already in the closed set is one data file under
+`src/anesthesia_sim/data/machines/`, plus one provenance row in
+`docs/MODEL.md` for each number in that file. It needs no change to
+`core/` and no new test of the physics.
+
+**The survey and then the design scoped this item.**
+The design depended on the survey, because the extension points are the
+axes of real variation that affect a number. Designing them first would
+have been guessing. Three items waited behind those two. Two closed in
+v0.4.34: making the fresh gas flow range a machine property (`PL-8PS6`),
+and making the Tec 6 the concrete second device class, which the design's
+dial-mapping slot answered (`PL-439V`). The third, `PL-WZVZ`, is the
+surface that keeps a machine's effect on a curve attributable to a named
+parameter. It is still open, and it waits on four other items: `PL-TH35`,
+`PL-R1WQ`, `PL-TBMK` and `PL-4TWW`.
 
 #### 2. Agent switching with residual washout
 
@@ -1944,9 +1978,10 @@ support, color-vision-safe encodings).
 
 Improve performance, working from the open entries in
 `docs/items/`. The render payload and the coupling between the
-simulation cadence and the render cadence are both resolved. What
-remains in this area is the controller's concentration history, which is
-still unbounded, and further headroom in how chart points are built.
+simulation cadence and the render cadence are both resolved. v0.4.12
+deleted the controller's concentration history, which had been unbounded:
+the chart now computes each point it plots from the run. What remains in this
+area is further headroom in how chart points are built.
 
 #### 22. Documentation
 
@@ -2404,59 +2439,69 @@ against one fixed screen. They are not separable any more. Under item 34
 the arrangement belongs to the *reader*, so it is not something a design
 pass can decide once.
 
-*Out of scope, and deliberately.* Dark mode is a separate decision. It
-doubles the declared contrast matrix, and the ISO colours were chosen for
-a light context. It belongs to scoping this milestone rather than to this
-line. So does the publication-quality figure export that
-`docs/WORKING_NOTES.md` § "Long-term vision" describes. That export
-implies its own rendering path, separate from the Flet live chart, and it
-is a capability rather than a restyle.
+*Dark mode and figure export are deliberately out of scope.* Dark mode is a
+separate decision. It doubles the declared contrast matrix, and the ISO
+colours were chosen for a light context. Part of it is settled: the
+interface declares its own light palette, so a dark host no longer darkens
+the window (project owner, 2026-09-20, ratified, over a second palette for
+dark support, `PL-KRZW`). Whether to offer a dark mode belongs to scoping
+this milestone rather than to this line. So does the publication-quality
+figure export that `docs/WORKING_NOTES.md` § "Long-term vision" describes.
+That export implies its own rendering path, separate from the live
+chart, and it is a capability rather than a restyle.
 
 *Placement (project owner, 2026-09-08; moved 2026-09-16; renumbered
-2026-09-26).* After v0.6.0, as the `v0.6.x — the interface pass` row of
-"The timeline". It is a patch track rather than a numbered milestone, for
-the reason that row gives. The project owner requested it on 2026-09-08.
-The owner framed it as "a decent size overhaul (theme, style, overall
-polish)" and as not urgent, wanted after the simulator works rather than
-before. It runs after item 34 rather than before it (project owner,
-2026-09-16, ratified on `PL-PHKP` - chosen over leaving it between MVP and
-Gate 2, where 2026-09-08 had placed it). **The reason is that the pass has
-more to style after item 34 than before it, and would otherwise be partly
-redone.** The live splitter handle, the drag affordance and the Workspace
-tab strip are v0.6.0's Required scope entry 14. The area header comes with
-the View contract and with each Area's own chooser, entries 5 and 16. The
-header belongs to the *View*, not to the container.
-`docs/interface-provenance.md` § "What an editor must implement"
-establishes that from the source. A pass run first would decide palette,
-type scale and spacing for one set of surfaces, and then meet four more.
-Whenever break-out is built, it adds windows that carry that same chrome.
-Styling anything else it adds is that build's own work. The cost accepted
-is that the interface keeps its current visual language until after item
-34.
+2026-09-26).* The pass comes after v0.6.0, as the
+`v0.6.x — the interface pass` row of "The timeline". It is a patch track
+rather than a numbered milestone, for the reason that row gives. The
+project owner requested it on 2026-09-08 as "a decent size overhaul
+(theme, style, overall polish)". The owner called it not urgent, and
+wanted it after the simulator works.
 
-*Two hard prerequisites, and they are the reason this cannot simply be
-started.* Nothing in this repository draws the interface. `PL-7J96`
-records two defects that shipped while every tree-level test passed. A
-required label wrapped mid-phrase, and four of seven readouts dropped to
-a second baseline at some widths. Both were found only by
-screenshotting, and neither could be detected from the control tree that
-the suite reads. `PL-2QMK` records that no session in the web container
-can render Flet at all, because the egress proxy refuses the CanvasKit
-fetch. A visual pass is the one class of change that the suite
-structurally cannot see, so both prerequisites land first.
+**The pass runs after item 34, because by then it has more to style, and a
+pass run first would be partly redone** (project owner, 2026-09-16,
+ratified on `PL-PHKP` - chosen over leaving it between MVP and Gate 2,
+where 2026-09-08 had placed it). The live splitter handle, the drag
+affordance and the Workspace tab strip are v0.6.0's Required scope
+entry 14. The area header comes with the View contract and with each
+Area's own chooser, entries 5 and 16. The header belongs to the *View*,
+not to the container, as `docs/interface-provenance.md`
+§ "What an editor must implement" establishes from the source. A pass
+run first would decide palette, type scale and spacing for one set of
+surfaces, and then meet four more. Whenever break-out is built, it adds
+windows that carry that same chrome. Styling anything else it adds is
+that build's own work. The cost accepted is that the interface keeps
+its current visual language until after item 34.
 
-*Three constraints on any palette.* `tools/contrast_check.py` parses every
-module under `app/` with `ast` (`PL-BXB2`). It requires every declared pair
-to meet WCAG 2.2 AA under four vision models. It fails the build on a
-renamed or undeclared colour constant. So a restyle is also a
-`REQUIREMENTS` rewrite, in the same change, per `.claude/rules/ui-color.md`
-judgment 1. The three ISO 5360:2016 Table 2 agent colours are fixed and not
-available to move (judgment 4). A palette has to live with them, and keep
-them legible on whatever surface it puts behind them. Trace separation is
-carried by dash pattern, not by colour. `PL-GVXP` measured the ceiling that
-item 24 gives. So re-picking the chart palette cannot buy what it appears
-to. A session that attempts it is solving a problem that has no solution in
-that channel.
+*Two prerequisites, both now met.* A visual pass is the one class of
+change that a suite without rendering cannot see, so both prerequisites
+had to land first. When this item was written, nothing in this repository
+drew the interface. One item recorded two defects that shipped while
+every tree-level test passed (`PL-7J96`). A required label wrapped
+mid-phrase, and four of seven readouts dropped to a second baseline at
+some widths. Both were found only by screenshotting, and neither could be
+detected from the control tree that the suite reads. Another item
+recorded that no session in the web container could render the Flet
+interface at all, because the egress proxy refused the CanvasKit fetch
+(`PL-2QMK`). Both prerequisites are met: the interface moved to Qt in
+v0.4.26, which closed the item on the web container with headless
+rendering tests over the real interface (`PL-YCWZ`). The item on the two
+defects was dropped as superseded by those tests.
+
+*Three constraints on any palette.*
+
+1. Every declared colour pair must meet WCAG 2.2 AA under four vision
+   models. A check that reads every module under `app/` enforces this,
+   and fails the build on a renamed or undeclared colour constant
+   (`PL-BXB2`). So a restyle also rewrites the check's list of declared colour pairs
+   (`REQUIREMENTS`) in the same change, per `.claude/rules/ui-color.md` judgment 1.
+2. The three agent colours of ISO 5360:2016 Table 2 are fixed
+   (judgment 4). A palette has to live with them, and keep them legible
+   on whatever surface it puts behind them.
+3. Trace separation is carried by dash pattern, not by colour. The
+   ceiling that item 24 gives was measured (`PL-GVXP`). So re-picking the
+   chart palette cannot improve trace separation, which has no solution
+   in colour.
 
 *Returned from the Qt port, which changed nothing visual* (project owner,
 2026-09-16, ratified, on `PL-L9RD`). Measured after it landed, the port changed no palette entry,
@@ -2892,26 +2937,27 @@ ships one profile and no machine chooser. A comparison surface belongs to
 profile plus a selection surface is what would make `PL-WZVZ`'s
 misattribution hazard live. Nothing displayed changes.
 
-*Explicitly deferred, with no rework cost.* Extracting the delivery and
-removal rates from `core/governing_equations.py` and `core/circuit.py`
-costs the same whether it is done with one profile or ten. So it waits
-for a machine that needs it. Several other parts wait in the same way.
-They are the second member of each strategy slot, automated end-tidal
-control (item 5), fresh gas decoupling and ventilator drive, and internal
-circuit topology. Internal circuit topology was declined, and item 39
-reverses that.
+*Rate extraction and several other parts are explicitly deferred, with no
+rework cost.* Extracting the delivery and removal rates from
+`core/governing_equations.py` and `core/circuit.py` costs the same whether
+it is done with one profile or ten, so it waits for a machine that needs
+it. Several other parts wait in the same way: the second member of each
+strategy slot, automated end-tidal control (item 5), fresh gas decoupling
+and ventilator drive, and internal circuit topology. Internal circuit
+topology was declined, and item 39 reverses that.
 
 *Each machine also needs a provenance row for each number.* The
-design document's target "One data file and nothing else" cannot be
-reached under this project's checks. `tools/doc_check.py` requires a
-provenance row in `docs/MODEL.md` for every leaf number in every data
-file. That is the discipline working, not a defect, but the target should
-say so.
+documentation check requires one in `docs/MODEL.md` for every leaf number
+in every data file. Item 1's cost target counts those rows with the data
+file.
 
-Six queue items carry this work, grouped as `machine-profile-framework`.
-Two of them matter for the *first* real profile rather than the second.
-One is what `circuit_volume_l` means. The other is a required
-startup-flow field that no manufacturer publishes.
+The queue items for this work are grouped as `machine-profile-framework`.
+The two that mattered for the *first* real profile, rather than the second,
+are done. v0.5.17 made the startup fresh gas flow optional, so a profile no
+longer has to invent a figure that no manufacturer publishes (`PL-QW19`).
+v0.5.23 stated that the circuit volume field (`circuit_volume_l`) covers
+the apparatus and the patient circuit together, so a profile author adds the
+patient circuit to a manufacturer's apparatus-only figure (`PL-TBMX`).
 
 #### 41. Opt-in chart time windows kept in step
 
@@ -5424,11 +5470,13 @@ unchanged too.
   every frame** (queue item PL-1PSX). In this milestone the timeline is read on
   every branch operation, not only drawn.
 - **`SimulationView` is decomposed so two runs can be rendered at once** (queue
-  item PL-B9PY). v0.4.0 held this item at this gate, on the grounds that only
-  this milestone needs it (project owner, 2026-09-02). This is that milestone.
-- **The 30-day scenario cap becomes an explicit halt** (queue item PL-Y5WR).
-  The item is classed as safety. The only item that required it was dropped
-  with `PL-011`, so it is carried here rather than lost.
+  item PL-B9PY). v0.4.0 left this item for this gate, because only this
+  milestone needs it (project owner, 2026-09-02).
+- **A run stops with a stated reason at the supported run length** (queue
+  item PL-Y5WR). The item shipped early, in v0.4.7: the supported run length
+  became 24 hours, a step past it is refused, and the interface says the run
+  stopped at that limit. The item is classed as safety. It was carried here
+  because the only item that required it was dropped with `PL-011`.
 
 #### Taking and comparing a branch
 
@@ -5759,32 +5807,32 @@ debt gate" above, as the store recorded it on the day of the cut.
 **Thirteen entries were untriaged when this list was frozen and are on it all
 the same.** They were open in the store on the day of the cut, and the
 paragraph above says that is what this list contains. They had not been
-*classed*, though. An untriaged capture carries no class, so `bin/docket gate`
-could not treat one as debt, however old its problem was. Triage on the same
-day gave eleven of them `defect`, some with `infra` or `test` beside it. It
-gave one `refactor` and one `perf`. `tools/doc_check.py` then asked this
-section for a disposition that the section had had no way to write. Each of
-these entries describes code that predates the freeze. So they re-enter by the
-presumption in "The gate is a snapshot, not a moving target", not by the
+*classed*, though. An untriaged capture carries no class, so the tool that
+prints a gate's list (`bin/docket gate`) could not treat one as debt, however
+old its problem was. Triage on the same day gave eleven of them `defect`, some
+with `infra` or `test` beside it. It gave one `refactor` and one `perf`. Each
+of these entries describes code that predates the freeze, so they re-enter by
+the presumption in "The gate is a snapshot, not a moving target", not by the
 exception that admits a `safety` finding regardless. The thirteen are
 `PL-3QM9`, `PL-5DPF`, `PL-B78T`, `PL-CR36`, `PL-CZR6`, `PL-HVLJ`, `PL-JS0X`,
 `PL-KZR1`, `PL-M6FY`, `PL-N0MH`, `PL-N67T`, `PL-NPWP` and `PL-YSMV`.
 
-**What this list is not swept for yet.** Beat 3 of the cadence requires a
-staleness pass before any entry on this list is worked, and
-§ "Sweep the frozen list for staleness" says why and how. The pass runs against
-this list before the implementation of this milestone begins.
+**The list was swept for staleness on the day it froze.** Beat 3 of the
+cadence requires a staleness pass before any entry on this list is worked, and
+§ "Sweep the frozen list for staleness" says why and how. The pass ran on all
+168 clearable entries on 2026-09-21 and shipped in v0.5.1 (`PL-C4W8`).
 
-**Two kinds of group, and only the second is a precondition.** The first kind
-is debt inside this milestone's own Required scope. The milestone clears that
-debt itself, as § "Debt inside the milestone's own scope" says. The test is
-whether `Required scope` below names the id, not whether the item carries the
-`interface-areas` feature. The two tests differ in both directions. On
-2026-09-23 `PL-NDKC` and `PL-Y04W` carried the feature without being named.
-`PL-CNCF` and `PL-PGZF` were named without carrying it, as they have been since
-`PL-YVP7`. The second kind is the rest. It clears before implementation of this
-milestone begins, unless this gate defers it, and it is recorded in one group,
-for the reason § "Recording it" gives for not naming lanes.
+**The list has two kinds of entry, and only the second is a precondition for
+this milestone.** The first kind is debt inside this milestone's own Required
+scope, which the milestone clears itself, as
+§ "Debt inside the milestone's own scope" says. The second kind is the rest. It
+clears before implementation of this milestone begins, unless this gate defers
+it. It is recorded in one group, for the reason § "Recording it" gives for not
+naming lanes. The test for the first kind is whether `Required scope` below
+names the id, not whether the item carries the `interface-areas` feature. The
+two tests differ in both directions. On 2026-09-23 `PL-NDKC` and `PL-Y04W`
+carried the feature without being named. `PL-CNCF` and `PL-PGZF` were named
+without carrying it, as they have been since `PL-YVP7`.
 
 **One disagreement is `PL-NDKC`**, a `defect`/`infra` item about a PySide6
 `QDataStream` segfault. The Qt code built around the layout model could meet

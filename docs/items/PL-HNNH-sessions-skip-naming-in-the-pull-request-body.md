@@ -3,14 +3,15 @@ id: PL-HNNH
 title: Sessions skip naming, in the pull request body, the facts a grown passage adds: PL-W6JM's two docstrings grew by 44 and 46 words and PL-J37P's subsections grew, and neither body says what the added words carry, though tools/new_prose.py --compare printed the growth
 priority: P1
 effort: M
-status: blocked
+status: ready
 classes: defect
 feature: copy-editor
-touches: subprojects/docket/src/docket/arming.py, tools/new_prose.py, .claude/skills/docket/modes/close-out.md
+touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_arming.py, tools/new_prose.py, .claude/skills/docket/modes/close-out.md
 blocked-by: PL-TTBF
 deferred-from: v0.7.0 - a new problem, not present at the freeze: the request to name a grown passage's facts arrived in efc1dc3f (PL-22T5); deferred with PL-J1ZM, which waits on it
 added: 2026-11-04
 payoff: every grown passage on a branch has its added facts named before merge, so growth with no new fact, the mark of over-explaining, is caught on the branch that adds it
+verify: grep -q 'def test_a_grown_passage_the_body_does_not_name_holds_the_arm' subprojects/docket/tests/test_arming.py
 ---
 
 **Problem.** Sessions skip naming, in the pull request body, the facts a grown passage adds: PL-W6JM's two docstrings grew by 44 and 46 words and PL-J37P's subsections grew, and neither body says what the added words carry, though tools/new_prose.py --compare printed the growth.
@@ -25,7 +26,7 @@ payoff: every grown passage on a branch has its added facts named before merge, 
 
 **Done when.** A pull request that changes a passage which `tools/new_prose.py --compare` shows growing cannot be armed until its body names, for each such passage, the facts its added words carry, or says that nothing grew. A test covers both cases.
 
-**Blocked on `PL-TTBF`.** Until the growth figures are right on restructured sections, a check keyed on them would ask for facts on growth that did not happen.
+[superseded 2026-11-10] **Was blocked on `PL-TTBF`.** A check keyed on the growth figures would have asked for facts on growth that did not happen on a restructured section. Since `PL-TTBF`, `--compare` counts such a section against the heading that both sides share, so the figures this check would read are true. Checked 2026-11-10: close-out step 8 in `.claude/skills/docket/modes/close-out.md` still asks for the facts each grown passage adds, and `subprojects/docket/src/docket/arming.py` still has no check for them, so nothing else holds this item.
 
 **Generator check.** Part of the fix for the live head `PL-J1ZM`, which is blocked on it; one of the three failures its 2026-11-04 measurement found, and not a member of its `root-cause-of`. The pause on new workflow mechanisms does not hold it, because it fixes that generator.
 

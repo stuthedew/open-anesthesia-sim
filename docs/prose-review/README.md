@@ -18,7 +18,8 @@ runs on one edit find different losses. The tool keeps a passage as it was
 where a statement is still lost after the last of `MAX_CHECK_ROUNDS` rounds
 (`PL-F0Q2`). The tool merges the replies. The copy editor does not edit text
 written only for a later session or the project owner, such as an item brief
-or a reply, so `tools/new_prose.py` prints none (project owner, 2026-11-10).
+or a reply, so `tools/new_prose.py` prints none. It does edit a pull request's
+title and body (project owner, 2026-11-10).
 
 This folder holds the paragraphs the copy editor must never pass again
 (`PL-FYGJ`, from `PL-H76S`) and the gold-standard paragraphs it must keep
