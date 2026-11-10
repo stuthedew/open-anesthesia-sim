@@ -34,6 +34,11 @@ This folder holds the paragraphs the copy editor must never pass again
 - `examples/` holds one file for each before-and-after pair that the owner
   approved. The copy editor is shown none of them until there are three
   pairs of different kinds (project owner, 2026-11-04, ratified, `PL-J1ZM`).
+- `model-reverse-outline.tsv` is a reverse outline of `docs/MODEL.md` as it
+  stood at commit `50af1a2e` on 2026-11-10. It has one row for each
+  paragraph, list, table, code block and heading, with the reader who needs
+  it, what kind of text it is and where it would best live. `PL-9RLM` says
+  how it was made, and nothing reads it but a session.
 
 ## Adding an entry
 
