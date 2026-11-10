@@ -3,11 +3,13 @@ id: PL-T5R7
 title: ROADMAP.md's v0.5.0 Required scope says PL-Y5WR makes the 30-day scenario cap an explicit halt, while the v0.4.7 version row says the cap became 24 h, enforced by the step count, before v0.5.0 shipped
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md
 added: 2026-11-07
+closed: 2026-11-10
+pr: 2082
 payoff: The roadmap states the run limit the simulator enforces, 24 hours, instead of a 30-day cap that never shipped.
 verify: ! grep -qF 'The 30-day scenario cap becomes an explicit halt' ROADMAP.md
 ---
@@ -31,3 +33,5 @@ verify: ! grep -qF 'The 30-day scenario cap becomes an explicit halt' ROADMAP.md
 **Checked 2026-11-09:** v0.5.0's Required scope still has "The 30-day scenario cap becomes an explicit halt (queue item PL-Y5WR)". `PL-Y5WR` closed in v0.4.7, and the limit the model enforces is the 24-hour supported run length, as the v0.7.0 frozen-list entries `PL-KHXB` and `PL-VHQX` say. The v0.4.7 row's account moved to `PL-H1GH`'s brief, so `ROADMAP.md` now states only the 30-day cap.
 
 **Generator check.** One-off: a finding from the `ROADMAP.md` structure-read sweep. The fact misread is whether one `ROADMAP.md` passage still agrees with a later record of the same thing. No head's `misread:` states that fact for `ROADMAP.md`, and the cluster came from one deliberate read rather than from a mechanism that keeps producing it.
+
+**Done 2026-11-10.** v0.5.0's Required-scope entry for `PL-Y5WR` now says what shipped: it was carried into v0.5.0 but shipped early, in v0.4.7, where the supported run length became 24 hours, a step past it is refused, and the interface says the run stopped at that limit (from `PL-Y5WR`'s brief and its `milestone: v0.4.7`).

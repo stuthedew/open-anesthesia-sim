@@ -3,11 +3,13 @@ id: PL-9857
 title: ROADMAP.md's v0.6.0 section says Gate 2's frozen list has not yet been checked for stale entries, while the v0.5.1 version row says Gate 2's 168 clearable entries were swept
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md
 added: 2026-11-07
+closed: 2026-11-10
+pr: 2082
 payoff: A reader of v0.6.0's completed record learns that Gate 2's list was swept for stale entries, instead of reading that it never was.
 verify: ! grep -qF 'What this list is not swept for yet' ROADMAP.md
 ---
@@ -31,3 +33,5 @@ verify: ! grep -qF 'What this list is not swept for yet' ROADMAP.md
 **Checked 2026-11-09:** v0.6.0's section still says "What this list is not swept for yet" and that the pass "runs against this list before the implementation of this milestone begins". v0.6.0 shipped on 2026-10-20, and `PL-C4W8` (done, in v0.5.1) swept Gate 2's 168 clearable entries. The v0.5.1 row's sentence saying so moved to `PL-V065`'s closed brief, so `ROADMAP.md` now holds only the stale side.
 
 **Generator check.** One-off: a finding from the `ROADMAP.md` structure-read sweep. The fact misread is whether one `ROADMAP.md` passage still agrees with a later record of the same thing. No head's `misread:` states that fact for `ROADMAP.md`, and the cluster came from one deliberate read rather than from a mechanism that keeps producing it.
+
+**Done 2026-11-10.** v0.6.0's paragraph headed "What this list is not swept for yet" now says the list was swept for staleness on the day it froze: `PL-C4W8` ran the pass on all 168 clearable entries on 2026-09-21, and it shipped in v0.5.1 (from `PL-C4W8`'s front matter and brief).

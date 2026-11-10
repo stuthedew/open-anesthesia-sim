@@ -20,12 +20,13 @@ the five `docs/MODEL.md` rewrites it blocked, close here. The release finishes
 two features, `reader-first-prose` and `repo-copy-edit`, and closes one
 generator head, `PL-HGZS`, spent.
 
-None of the 11 is on Gate 3's frozen list. The gate stands at 87 of 90 cleared,
-as at the v0.6.15 tag. The three entries still open are `PL-SP6H`, which this
-gate can clear, and `PL-B4P7` and `PL-WZVZ`, which were deferred from it.
-v0.7.0 is still not cut, for two reasons: Gate 3 has `PL-SP6H` open, and v0.7.0
-is cut only after the project owner has test-driven `main`. v0.7.0 and v0.8.0
-are given to milestone sections.
+None of the 11 is on Gate 3's frozen list. When v0.6.16 was cut, 87 of the
+gate's 90 entries had cleared. On 2026-11-07 `PL-GW0P` added to the list every
+finding whose problem was present when the gate froze, so the list is now
+longer, and its two headings under § "v0.7.0 - the schematic" give its size.
+v0.7.0 is cut only after that list has cleared and the project owner has
+test-driven `main`. v0.7.0 has its own milestone section, so no patch release
+may take that number.
 
 **No code, equation, model parameter or stored value changed, and no run can
 differ:**
@@ -79,16 +80,17 @@ crosses. It is not chosen by mechanically incrementing the patch number.
 
 **One deliberate exception, v0.3.0 (project owner, 2026-08-26).** Under that
 rule, clearing Gate 0 would be a patch, because it crosses no capability
-boundary. Gate 0 held two safety fixes, four refactors, two tooling defects
-and a performance fix. After them, the simulator does nothing it could not do
-before. Clearing Gate 0 is still released as the minor version v0.3.0. The
+boundary. Gate 0's frozen list, recorded under v0.4.0, released 21 entries in
+v0.3.0: seven safety and science fixes, four refactors, eight workflow and
+tooling fixes, a performance fix and the choice of a licence. After them, the
+simulator does nothing it could not do before. Clearing Gate 0 is still released as the minor version v0.3.0. The
 reason is that clearing the inherited pre-MVP backlog is the boundary this
 project most needs to be able to point at, and a patch number would bury it.
 
 **This is an exception and not a precedent.** It applies to Gate 0 alone,
 because Gate 0 is unlike every gate that follows it. Gate 0 is the backlog that
-accumulated before the debt gate existed, and it was twenty items deep. Gate 1
-and every later gate contain the findings of a single milestone.
+accumulated before the debt gate existed. Gate 1 and every later gate contain
+the findings of a single milestone.
 
 Later gates take no version of their own. The gated milestone's own number
 marks the boundary that its scope crosses. See § "How gate work is released"
@@ -404,7 +406,7 @@ to clear the ground that the feature releases are built on:
 
 | # | Step | What it is | Size |
 | --- | --- | --- | --- |
-| 1 | **v0.2.8 — the workflow works** | Scoped below. Its own frozen list of thirty-eight entries: the development machinery the project already runs on, fixed before two long milestones are run through it. No simulator change. The second of the two groups in the list is new workflow capability, not debt. | 2 M, 35 S |
+| 1 | **v0.2.8 — the workflow works** | Scoped below. Its own frozen list of thirty-eight entries: the development machinery the project already runs on, fixed before two long milestones are run through it. No simulator change. The second of the two groups in the list is new workflow capability, not debt. | 2 M, 36 S |
 | 2 | **v0.3.0 — the foundation** | Gate 0's frozen debt list, recorded under v0.4.0 below: the entries outside that milestone's own scope, released as a minor by deliberate exception. See the versioning exception under § "Versioning decision". | 4 M, 17 S |
 | 3 | **v0.4.0 — the teachable case** | **Shipped 2026-09-05.** Scoped below. 13 items, of which 6 are gate-0 debt the milestone cleared itself. Twelve landed and the thirteenth, `PL-011`'s retention rule, was dropped as superseded; its Required-scope entry records why. | 7 M, 6 S |
 | — | **v0.4.x — the code is the model** | Planned-milestone item 29, shipping as a patch in the `v0.4.x` track. "No behavior changes" held until the 2026-09-03 re-scope and no longer does: the exact step moves the displayed value in its last digit. Moved from ahead of v0.4.0 to behind it (project owner, 2026-09-02): the placement's real constraint is that it precede item 6's substance generalization, and v0.4.0 changes no equation, so gating the teachable case on an unscoped pass over `core/` bought nothing. Scoped and then re-scoped 2026-09-03: the owner's bar is that a reviewer follow `core/` without a lookup table, which naming alone cannot reach, so the operator split is replaced by the exact matrix exponential (`PL-GS5X`). Still a patch — it crosses no capability boundary; see item 29 for why, and for why no exception is recorded. (Written `v0.4.1` until 2026-09-06, which contradicted this row's own rule that the track promises no particular patch number; v0.4.1 and v0.4.2 both shipped without the exact step, as that rule predicted.) **It freezes no gate and takes no section of its own (project owner, 2026-09-05).** **Eight items**, `PL-P0BB` having shipped in v0.3.2: `PL-GS5X` and `PL-X9KD` under `numerical-domain`, and `PL-H46J`, `PL-212V`, `PL-3TLK`, `PL-9SH6`, `PL-VZL0`, `PL-FZ6T` under `core-domain-language` — plus `PL-X2XX`, which `PL-VZL0` requires and which neither list named until `PL-GGCN` taught the checker to read the second half of a compound prerequisite. `PL-3TLK` leads; the rest of the naming work follows the exact step. **This track promises no particular patch number,** which is what `v0.4.x` means: patches are cut as work accumulates and the exact step takes whichever number it lands on. | 1 L, 6 M, 2 S |
@@ -5426,9 +5428,11 @@ unchanged too.
 - **`SimulationView` is decomposed so two runs can be rendered at once** (queue
   item PL-B9PY). v0.4.0 held this item at this gate, on the grounds that only
   this milestone needs it (project owner, 2026-09-02). This is that milestone.
-- **The 30-day scenario cap becomes an explicit halt** (queue item PL-Y5WR).
-  The item is classed as safety. The only item that required it was dropped
-  with `PL-011`, so it is carried here rather than lost.
+- **A run stops with a stated reason at the supported run length** (queue
+  item PL-Y5WR). The item is classed as safety. The only item that required it
+  was dropped with `PL-011`, so it was carried here. It shipped early, in
+  v0.4.7: the supported run length became 24 hours, a step past it is refused,
+  and the interface says the run stopped at that limit.
 
 #### Taking and comparing a branch
 
@@ -5770,10 +5774,10 @@ exception that admits a `safety` finding regardless. The thirteen are
 `PL-3QM9`, `PL-5DPF`, `PL-B78T`, `PL-CR36`, `PL-CZR6`, `PL-HVLJ`, `PL-JS0X`,
 `PL-KZR1`, `PL-M6FY`, `PL-N0MH`, `PL-N67T`, `PL-NPWP` and `PL-YSMV`.
 
-**What this list is not swept for yet.** Beat 3 of the cadence requires a
-staleness pass before any entry on this list is worked, and
-§ "Sweep the frozen list for staleness" says why and how. The pass runs against
-this list before the implementation of this milestone begins.
+**The list was swept for staleness on the day it froze.** Beat 3 of the
+cadence requires a staleness pass before any entry on this list is worked, and
+§ "Sweep the frozen list for staleness" says why and how. `PL-C4W8` ran that
+pass on all 168 clearable entries on 2026-09-21, and it shipped in v0.5.1.
 
 **Two kinds of group, and only the second is a precondition.** The first kind
 is debt inside this milestone's own Required scope. The milestone clears that

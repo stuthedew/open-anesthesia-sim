@@ -3,12 +3,14 @@ id: PL-8G3F
 title: ROADMAP.md's v0.7.0 frozen-list headings count 9 + 82 = 91 entries, while the baseline and the v0.6.16 version row put Gate 3 at 87 of 90 cleared
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md
 deferred-from: v0.7.0 - a new problem: the list's headings and the baseline's count first disagreed when aff76df1 (2026-11-05) added PL-0P3F, after the freeze
 added: 2026-11-07
+closed: 2026-11-10
+pr: 2082
 payoff: A reader judging how close v0.7.0 is to its cut reads one Gate 3 count, not 87 of 90 beside a list of 127.
 verify: ! grep -qF 'The gate stands at 87 of 90 cleared' ROADMAP.md
 ---
@@ -32,3 +34,5 @@ verify: ! grep -qF 'The gate stands at 87 of 90 cleared' ROADMAP.md
 **Checked 2026-11-09:** § "Current baseline" still says "The gate stands at 87 of 90 cleared, as at the v0.6.15 tag", and names `PL-SP6H` as the only entry this gate can still clear. v0.7.0's list headings now read 9 and 118 entries, 127 in all, after `PL-GW0P` re-admitted the findings present at the freeze. The v0.6.16 cut (`720d23be`) wrote the count 38 minutes before `aff76df1` added an entry. § "Recording it" allows a count dated to a release, but this one is written in the present tense and its account of what is still open is no longer true.
 
 **Generator check.** One-off. The fact is how many entries a gate's frozen list holds and how many have cleared, which is near `PL-J6HP`'s (gate facts held in `ROADMAP.md` prose). This is a count dated to a release that § "Recording it" permits, gone stale in its tense, so it is not a re-entry of that head.
+
+**Done 2026-11-10.** § "Current baseline" now dates its count: when v0.6.16 was cut, 87 of the gate's 90 entries had cleared, which `ROADMAP.md` at the v0.6.16 tag confirms (headings of 9 and 81 entries). It says that `PL-GW0P` lengthened the list on 2026-11-07, and it points at the two headings under v0.7.0 for the size instead of restating it. The sentences naming `PL-SP6H` as still open went with it. No other passage in `ROADMAP.md` gives 87 of 90.
