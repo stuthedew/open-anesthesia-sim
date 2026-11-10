@@ -2,7 +2,7 @@
 id: PL-YKKC
 title: A reverse outline of docs/MODEL.md (2026-11-10) found structural problems to weigh in the next structure pass: the model's own sections are about 11% of the document, several headings do not name what they hold, terms are used before they are defined, and developer notes sit mid-section or fill half of one
 status: untriaged
-feature: model-md-structure
+feature: model-by-reader
 added: 2026-11-10
 ---
 
@@ -28,6 +28,12 @@ A second reverse outline was made the same day in another session, on branch
 `model-by-reader` feature, including `PL-P3GZ`, which asks whether to split
 `docs/MODEL.md` by reader, and `PL-9RLM`, which commits that outline. Point 5
 below overlaps `PL-P3GZ`, so decide that question first.
+
+**That outline takes precedence** (project owner, 2026-11-10: the other session
+runs a more capable model, so defer to it where appropriate). Treat each point
+below as a second reading to check against that outline. Where the two
+disagree, the `model-by-reader` outline wins. Where it already covers a point,
+drop the point here. This item is therefore filed in `model-by-reader`.
 
 **Findings, by consequence.**
 
