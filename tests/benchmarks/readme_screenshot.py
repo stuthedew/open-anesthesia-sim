@@ -1,0 +1,90 @@
+"""Render the screenshot of the interface that `README.md` shows.
+
+The image is the real Qt dashboard, built and painted with no display under
+Qt's `offscreen` platform, as `.claude/skills/run-the-app/SKILL.md` describes.
+It shows the default Workspace after ten simulated minutes of the shipped
+default case: sevoflurane delivered at 2.00% (1.00 ×MAC), a fresh gas flow of
+4.0 L/min, an alveolar ventilation of 4.0 L/min and a cardiac output of
+5.0 L/min, played at 1× real time. Those are the settings a new case opens
+with, so the image shows what a reader sees when they press Start and wait.
+
+The README shows a frozen copy of displayed clinical values, so the image must
+keep three things in one frame: the agent's name, the 1 MAC value that each
+×MAC figure is divided by, and the playback rate. The script grabs the whole
+window at 1440 by 1300 pixels. That size holds the page from the title bar to
+the disclaimer, so no number is cut off from its units or its label.
+
+**When to retake the image.** Run this script again whenever a change alters
+what the default Workspace shows: a readout, a label, a legend, a control, the
+layout, or a value the default case produces. Commit the new image with the
+README's alt text and caption updated: the alt text lists the six readouts the
+image shows, and the caption gives the date and the release that the code comes
+after. A stale image shows a display that no longer exists, which is worse than
+no image. A change to the model that moves a readout fails
+`tests/unit/test_readme_claims.py` until the image is retaken. A change to the
+layout or the chart alone fails no test, so the session making it retakes the
+image.
+
+**What the image cannot show exactly.** The image is rendered in a container
+and uses the fonts installed there, so its type can differ from what the project
+owner's machine draws. Between releases, the version in the image names the
+commit it was rendered from. That is usually a branch commit, which a squash
+merge leaves off `main`, so the caption names the release and the date instead.
+
+Run this script from the repository root with
+`uv run python tests/benchmarks/readme_screenshot.py`. It prints the path it
+wrote and the version shown in the image.
+"""
+
+import os
+from pathlib import Path
+
+#: The path to the image that `README.md` shows.
+SCREENSHOT_PATH = Path("assets/screenshots/dashboard.png")
+
+#: At ten minutes the circuit is near its plateau while the alveolar and
+#: vessel-rich traces are still rising, so the image shows uptake in progress.
+SIMULATED_S = 600.0
+
+#: Wide enough for the readout row and the settings panel to sit side by side,
+#: and tall enough for the whole page to fit without the scroll area cutting it.
+WIDTH_PX, HEIGHT_PX = 1440, 1300
+
+
+def main() -> None:
+    """Render the dashboard in the default case and save it to `SCREENSHOT_PATH`."""
+
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+    from PySide6.QtWidgets import QApplication, QPushButton
+
+    from anesthesia_sim.app.controller import BranchedCase, SimulationController
+    from anesthesia_sim.app.dashboard_frame import SIMULATION_STEP_S
+    from anesthesia_sim.app.qt_widgets import declare_application_colours
+    from anesthesia_sim.app.simulation_view import SimulationView
+    from anesthesia_sim.app_metadata import APP_BUILD_VERSION
+
+    app = QApplication([])
+    declare_application_colours(app)
+    case = BranchedCase(SimulationController())
+    view = SimulationView((case.trunk,), case=case)
+    view.resize(WIDTH_PX, HEIGHT_PX)
+    view.show()
+    app.processEvents()
+    view.present(False)
+
+    next(b for b in view.findChildren(QPushButton) if b.text() == "Start").click()
+    for _ in range(round(SIMULATED_S / SIMULATION_STEP_S)):
+        case.trunk.advance(SIMULATION_STEP_S)
+
+    view.present(False)
+    app.processEvents()
+
+    SCREENSHOT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if not view.grab().save(str(SCREENSHOT_PATH)):
+        raise SystemExit(f"could not write {SCREENSHOT_PATH}")
+    print(f"wrote {SCREENSHOT_PATH}, showing version {APP_BUILD_VERSION}")
+
+
+if __name__ == "__main__":
+    main()
