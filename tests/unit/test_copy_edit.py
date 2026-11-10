@@ -87,6 +87,50 @@ def test_an_error_result_is_refused_rather_than_printed_as_a_reply() -> None:
         copy_edit.reply_of(output)
 
 
+def test_a_reply_spread_over_several_messages_is_read_whole() -> None:
+    """The reply joins every assistant text block, and the result event gives only the counts.
+
+    On 2026-11-10 a 43-passage read wrote its reply as two messages, the first
+    cut off mid-passage at its output limit. The result event held the second
+    alone, so passages 1 to 15 had no verdict and the whole run was lost.
+    """
+    first = (
+        "[1] keep\n[2] rewrite\n```\nThe comparison is one branch, which\nthe structure enforces."
+    )
+    second = "** It is never a survey.\n```\n[3] keep\n"
+    events = [
+        {"type": "system", "subtype": "init"},
+        {"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Read"}]}},
+        {"type": "user", "message": {"content": [{"type": "tool_result", "content": "[1] ..."}]}},
+        {"type": "assistant", "message": {"content": [{"type": "text", "text": first}]}},
+        {"type": "assistant", "message": {"content": [{"type": "text", "text": second}]}},
+        {
+            "type": "result",
+            "is_error": False,
+            "result": second,
+            "num_turns": 3,
+            "total_cost_usd": 4.25,
+            "usage": {"input_tokens": 10, "cache_read_input_tokens": 90, "output_tokens": 40},
+        },
+    ]
+    output = "\n".join(json.dumps(event) for event in events) + "\n"
+
+    reply, counts = copy_edit.reply_of(output)
+
+    assert reply == first + second
+    assert rejected_prose.verdicts(reply, 3) == ["keep", "rewrite", "keep"]
+    assert counts == "copy_edit: read 100 tokens, wrote 40, 3 turns, $4.25"
+
+
+def test_a_stream_with_no_result_event_is_refused() -> None:
+    output = json.dumps(
+        {"type": "assistant", "message": {"content": [{"type": "text", "text": "[1] keep"}]}}
+    )
+
+    with pytest.raises(copy_edit.Refused, match="no result"):
+        copy_edit.reply_of(output)
+
+
 def test_main_exits_1_with_the_reason_when_claude_is_missing(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

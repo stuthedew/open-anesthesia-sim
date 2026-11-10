@@ -79,3 +79,11 @@ test in `tests/unit/test_doc_check.py` holds a note naming a missing test file
 and one naming a missing section to an error each, and today's notes pass.
 
 **Unblocked 2026-10-11, when `PL-R417` closed in `#1392`.** `PL-R417` was the last head `bin/docket generators` marked still generating, and with it closed the command marks none, so the pause this waited on ends when `#1392` merges. Read against the tree, nothing else holds it: no `note` string under `src/anesthesia_sim/data/` is read for citations yet.
+
+**Disposition under PL-BLN0 (2026-11-09).** PL-BLN0 is the head over the
+sentences that went stale when the code they restated changed. It binds every
+paragraph of `docs/ARCHITECTURE.md` and of the last chapter of
+`docs/interface-provenance.md` to the code it describes, and leaves the free
+prose of `docs/MODEL.md` outside that binding, for the reason its brief gives.
+This item needs a check of the citations inside a data file's sources note,
+which the paragraph binding does not read. It stays its own item.

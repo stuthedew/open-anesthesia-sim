@@ -44,3 +44,11 @@ The 1280 px sentence restated a measurement, and the change of layout in
 `PL-F2YS` updated the 1366 px paragraph beside it but not this one.
 
 **Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. `docs/MODEL.md` at `817a4d88` already said a 1280 px screen gives about 1234 px, beside the 0.82 share that `simulation_view.py` already used.
+
+**Disposition under PL-BLN0 (2026-11-09).** PL-BLN0 is the head over the
+sentences that went stale when the code they restated changed. It binds every
+paragraph of `docs/ARCHITECTURE.md` and of the last chapter of
+`docs/interface-provenance.md` to the code it describes, and leaves the free
+prose of `docs/MODEL.md` outside that binding, for the reason its brief gives.
+This item's sentence is in that free prose, and correcting it also needs a new
+measurement in the running app, so it stays its own item.

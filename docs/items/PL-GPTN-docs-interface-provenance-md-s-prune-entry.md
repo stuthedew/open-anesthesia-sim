@@ -3,11 +3,13 @@ id: PL-GPTN
 title: docs/interface-provenance.md's Prune entry still says this project's View contract 'should take the shape of Blender's' SpaceType (PL-TH35) and that the project 'should plan to prune such hooks and fields', but PL-TH35 is done: app/view_contract.py defines the View protocol and test_view_contract deletes any member with no call site, so the recommendation reads as open work that has shipped
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: interface-provenance-structure
 touches: docs/interface-provenance.md
 added: 2026-11-07
+closed: 2026-11-09
+pr: 2072
 payoff: a contributor reads the View contract and its pruning as built, and does not start work that has already shipped
 verify: ! grep -qF 'should plan to prune' docs/interface-provenance.md
 reenters: PL-4FBP

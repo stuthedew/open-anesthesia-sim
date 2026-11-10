@@ -1,10 +1,10 @@
 # Architecture overview
 
-This document describes how the code is organized and how data flows through
-it. It is a map for contributors, not a scientific specification. To find where
-a change belongs, start at § "Where new code belongs", the last chapter.
+This document describes how the code under `src/anesthesia_sim/` is organized
+and how data flows through it. It is a map for contributors, not a scientific
+specification. To find where a change belongs, start at § "Where new code
+belongs", the last chapter.
 § "Layering" says what an Area, a View and a Workspace are.
-
 For the equations, units, parameter provenance, and numerical method, see
 [`docs/MODEL.md`](MODEL.md). For version history and milestones, see
 [`ROADMAP.md`](../ROADMAP.md). For the origin of the interface's area and
@@ -28,10 +28,18 @@ data/  --loaded by-->  core/  --read by-->  app/
   toolkit, no wall-clock time, and no I/O beyond reading the packaged JSON
   files in `data/`. Every quantity it produces is deterministic for identical
   inputs.
-- **`app/`** is the PySide6 user interface. It never performs a physiological
-  or unit calculation itself. It only reads immutable snapshots from `core/`,
-  through a thin controller, and renders them. It forwards user input back as
-  setter calls.
+- **`app/`** is the PySide6 user interface. It advances no part of the model.
+  It reads immutable snapshots from `core/` through the controller
+  (`app/controller.py`), and the chart also reads the states it plots through
+  `SimulationController.drawn_window`. It derives a value only for display: a
+  fraction as a percent or a MAC multiple, a drawn value in its axis unit, the
+  F_A/F_I ratio, and the liquid agent used as a cost at the reader's price.
+  Each of these sits in a module that loads no toolkit and has its own tests:
+  `app/formatting.py`, `app/chart_frame.py`, `app/wash_in.py` and
+  `app/agent_cost.py`. `app/compartment_schematic.py` computes each
+  container's fill and each compartment's share of the agent held, and
+  `tests/unit/test_compartment_schematic.py` tests it. `app/` forwards user
+  input back as setter calls.
 - **`layout/`** is the area layout as a value. A window is divided into
   **Areas**, and each Area holds one **View**: a widget such as a chart or the
   setting controls. Any View can occupy any Area. A **Workspace** is a named
@@ -96,11 +104,11 @@ src/anesthesia_sim/
 │   ├── alveolar.py                # alveolar gas compartment
 │   ├── blood.py                   # venous blood compartment
 │   ├── tissue.py                  # one perfusion-limited tissue group
-│   ├── exponential_approach.py    # the first-order approach to a held input that blood.py and tissue.py advance their amount by, and circuit.py its fraction, which is what the circuit stores: formed from the value held for a step closing up to half the gap and from the equilibrium beyond, exact at zero flow and at a full approach
+│   ├── exponential_approach.py    # the first-order approach to a held input, each compartment's own closed-form step in the advance methods of blood.py, tissue.py and circuit.py; not how a run advances, which is AgentUptakeSystem.advance alone: formed from the value held for a step closing up to half the gap and from the equilibrium beyond, exact at zero flow and at a full approach
 │   ├── patient.py                 # PatientCompartments: VRG + muscle + fat + venous blood
 │   ├── governing_equations.py     # MODEL.md's balance equations as one system matrix
 │   ├── matrix_exponential.py      # exp(A dt) for a compartment system; no physiology in it
-│   ├── uptake_system.py      # couples circuit + alveoli + patient; advances one step
+│   ├── uptake_system.py      # couples circuit + alveoli + patient; AgentUptakeSystem.advance is a run's step, one exact propagation of the whole system
 │   ├── run_definition.py               # a run as its settings over time; any state in closed form
 │   ├── agent_simulation_validation.py  # mass-balance / agent-accounting tracker
 │   └── simulation.py              # SimulationState: explicit elapsed time (bounded) + AgentUptakeSystem
@@ -165,24 +173,27 @@ citations. Every scientific constant that a shipped run uses comes from one of
 these files. § "Where new code belongs" says how to add an agent, patient or
 machine profile.
 
-Each value belongs in exactly one of three directories, by what it describes:
+Each value belongs in exactly one of three directories of `data/`, by what it
+describes:
 
 - `data/agents/` for what the drug does.
 - `data/patients/` for who is being anesthetized.
 - `data/machines/` for the apparatus that delivers the drug, namely the
   breathing system's volume and the default fresh gas flow.
 
-Filing a machine parameter in a patient file would misstate where it comes from
-(`PL-4YY1`).
+Filing a machine parameter in a file under `data/patients/` would misstate where
+it comes from (`PL-4YY1`).
 
 When the code builds the compartments for an agent from the data files
-(`AgentUptakeSystem.for_agent()`), it passes each value explicitly, so no
-shipped path uses a compartment's field default. The defaults are still written
-in `core/`, so that a unit can be constructed bare. A test pins each default to
-the data file that is its authority. The machine file and the first of those
-pins came from `PL-4YY1`. A value written only in `core/` would be invisible to
-the check of where each value comes from (`tools/doc_check.py`), which sees
-only constants in data files.
+(`AgentUptakeSystem.for_agent()`), it passes each value explicitly. Each value
+that a data file states is a required argument of its compartment, with no
+default, so `core/` holds no second copy of it (`PL-M85T`). One default is left.
+When a machine file states no fresh gas flow, a run opens at the flow that
+`core/circuit.py` defines (`TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN`). A test keeps
+that default equal to the flow in the shipped machine file
+(`test_the_flow_default_matches_the_shipped_machine_file`). A value written only
+in `core/` would be invisible to the check of where each value comes from
+(`tools/doc_check.py`), which sees only constants in data files.
 
 Each file holds a `schema_version`, an `id`, the parameter values, and a
 `sources` array of citations. Each entry in `sources` has the fields `citation`,
@@ -200,7 +211,8 @@ says so.
 
 The code that reads the files (`core/parameters.py`) rejects a file that:
 
-- lacks a required field, or uses an unsupported schema version.
+- lacks a required field, or uses an unsupported schema version
+  (`_validate_schema_version`).
 - gives a `tier` outside the three tiers, or an `adopted` that is not a JSON
   boolean.
 - gives an `authority_for` that is empty when `adopted` is true, or not empty
@@ -208,16 +220,18 @@ The code that reads the files (`core/parameters.py`) rejects a file that:
 - names in `authority_for` something that is not one of the file's stored
   values, or names a stored value twice.
 - holds a value outside its validated range, such as a non-positive volume, or
-  tissue perfusion fractions that do not sum to 1.
+  tissue perfusion fractions that do not sum to 1
+  (`require_perfusion_fractions_sum_to_one`).
 - gives a formula where a number is expected, which the typed payloads in
   `core/parameters.py` reject.
 - carries a key that the schema does not declare, such as a field whose name
-  gives another unit, including a key inside a nested object such as
+  gives another unit. This includes a key inside a nested object, such as
   `tissue_gas_partition_coefficients` or a `sources` entry.
 
-The schemas are strict at every nesting level, so an undeclared key fails the
-load rather than being silently discarded. As a result, a data file cannot
-document one model while the app runs another.
+Every payload model inherits `_StrictPayload`, which forbids an undeclared key
+rather than silently discarding it, so the schemas are strict at every nesting
+level. As a result, a data file cannot document one model while the app runs
+another.
 
 A script reads every `authority_for` and prints the source and tier behind each
 stored value, file by file and in total (`python3 tools/source_tier_counts.py`).
@@ -232,16 +246,16 @@ Workspaces" describes the shipped set.
 
 ## Data flow
 
-**Startup / parameter loading:**
+**Startup / parameter loading**, in `SimulationController._build_state()`:
 
 ```text
-data/agents/sevoflurane.json                ──┐
+data/agents/<agent_id>.json                 ──┐
 data/patients/reference_adult.json          ──┤
 data/machines/reference_circle_system.json  ──┴─> core/parameters.py
                                         (parse + validate schema, units, ranges)
                                         │
                                         ▼
-                          AgentUptakeSystem.default()
+                      AgentUptakeSystem.for_agent(agent_id)
                           (circuit + alveoli + patient compartments)
                                         │
                                         ▼
@@ -270,28 +284,29 @@ integrator:
    exact propagator, because every setting is held constant across a step.
    The result is cached against the settings it was built for, and it is
    rebuilt when one of those settings changes.
-3. One matrix-vector product advances the agent fraction in each of the six
-   compartments. The same solution also advances the cumulative delivered and
-   exhausted amounts.
+3. One matrix-vector product, `matrix_exponential.propagate()`, advances the
+   agent fraction in each of the six compartments. The same solution also
+   advances the cumulative delivered and exhausted amounts.
 4. The agent-accounting validator (`AgentSimulationValidator`) records those
    amounts and checks mass balance. It raises
    `AgentSimulationValidationError` if the check fails. The error carries the
    failing check, because the step is then rolled back and the run's own
    accounting no longer holds the rejected step's totals (`PL-HF4B`).
 
-Steps 1 and 2 carry the split of concerns that the package is arranged
-around. The equations file contains the physiology and no arithmetic. The
-exponential file contains the arithmetic and no physiology.
+The package is arranged around the split of concerns between steps 1 and 2. The
+equations file, `core/governing_equations.py`, contains the physiology and no
+arithmetic. The exponential file, `core/matrix_exponential.py`, contains the
+arithmetic and no physiology.
 
-**UI direction:** `app/controller.py`'s `SimulationController` owns a
-`SimulationState`. It exposes `start()` / `pause()` / `reset()` /
-per-parameter setters, and it produces an immutable `SimulationSnapshot` on
-request. It has no default values and no bounds of its own. Every unspecified
-setting comes from what `AgentUptakeSystem.for_agent()` built from the data
-files. When the core rejects a setting, such as a delivered concentration
-above the agent's vaporizer maximum, the error is raised out of the core. At
-this boundary, the controller neither clamps the setting nor replaces it with a
-default.
+**The controller (`SimulationController`, in `app/controller.py`) stands
+between the interface and the core.** It owns a `SimulationState`. It exposes
+`start()` / `pause()` / `reset()` / per-parameter setters, and it produces an
+immutable `SimulationSnapshot` on request. It has no default values and no
+bounds of its own. Every unspecified setting comes from what
+`AgentUptakeSystem.for_agent()` built from the data files. When the core
+rejects a setting, such as a delivered concentration above the agent's
+vaporizer maximum, the error is raised out of the core. At this boundary, the
+controller neither clamps the setting nor replaces it with a default.
 
 Conservation of agent also belongs to the core. The core's circuit-volume
 setter (`set_circuit_volume`) conserves agent itself (`PL-006`). Before
@@ -442,20 +457,22 @@ that divisor. The chart's MAC-awake band is one of these values multiplied by
 the other, so pairing two different agents' values would place a correct
 number at the wrong height.
 
-Stepping and drawing run on separate timers at separate intervals, so
-simulation time stays a function of the steps taken rather than of how long a
-frame took. § "Failures and halts" says what the timers do on a halt.
+Stepping and drawing run on separate timers with separate intervals
+(`SIMULATION_TICK_INTERVAL_S` and `RENDER_INTERVAL_S`), so simulation time stays
+a function of the steps taken rather than of how long a frame took.
+§ "Failures and halts" says what the timers do on a halt.
 
 ## What a branch is, and what it shares with its parent
 
 A **branch** is a second live run of the same case, opened at a state the first
 run passed through. The run it was taken from is the **trunk**, and the instant
-at which it was taken is its **fork**. The whole structure is one trunk with N
-branches. Sub-forks of forks are excluded, not merely unimplemented (project
-owner, 2026-08-25). They multiply without bound and offer little over branching
-from the trunk again.
+at which it was taken is its **fork**. The whole structure, `BranchedCase`, is
+one trunk with N branches. Sub-forks, meaning branches of a branch, are
+excluded, not merely unimplemented (project owner, 2026-08-25). They multiply
+without bound and offer little over branching from the trunk again.
 
-This section is the object map. What a branch *guarantees* is stated and
+This section is the object map of `BranchedCase`, its runs and the
+`RunDefinition` each run carries. What a branch *guarantees* is stated and
 measured in one place only:
 `docs/MODEL.md` § "The canonical evaluation rule". That section says that a
 branch's run definition opens at a keyframe of the case, and why. It says that
@@ -540,17 +557,17 @@ circuit volume, applied before any state is, because
 fraction. A volume set afterwards would move the branch off the state it opened
 at.
 
-A branch inherits the four live controls, read from the settings of the trunk's
-stretch, which hold each value as it was set. The rebuilt branch is then
-checked against those settings rather than trusted. The check covers every
-setting the stretch carries, and the agent's displayed references, since the
-agent and patient are read again from their data files. A refusal names each
-value that differs, with both of its values (`PL-NC62`). One rule, the same for
-every way of branching, decides which stretch: the branch names as its
-provenance the stretch that the step reaching the fork ran under. After the
-case's opening, no later change on the trunk can replace that stretch. The
-branch runs under the stretch still open at the fork, which is what the dial
-says there. Its timeline opens with copies of the changes the trunk made there
+When `SimulationController.resumed_at` opens a branch, the branch inherits the
+four live controls, read from the settings of the trunk's stretch, which hold
+each value as it was set. The rebuilt branch is then checked against those
+settings rather than trusted. The check covers every setting the stretch carries,
+and the agent's displayed references, since the agent and patient are read again
+from their data files. A refusal names each setting or displayed reference that
+differs, with both of its values (`PL-NC62`). For every way of branching, one
+rule decides which stretch the branch names as its provenance: the stretch that
+the step reaching the fork ran under. After the case's opening, no later change
+on the trunk can replace that stretch. The branch runs under the stretch still
+open at the fork, which is what the dial says there
 (`docs/MODEL.md` § "The canonical evaluation rule", `PL-ZR49`).
 
 A branch inherits the bookmarks but not the trunk's control timeline, and one
@@ -562,6 +579,7 @@ record is of what the learner does to *it*. The only entries that the branch's
 timeline opens with are copies of the trunk's changes at the instant the
 branch was taken (`RunRecord.opened_with`). A reset keeps them, and records
 after them each setting that the learner changed and the reset kept.
+
 `opened_from` records where the fork was taken. Read the fork instant only
 from `began_at_s`, which is zero on a trunk and the fork instant on a branch.
 The property exists because the definition's own first segment no longer
@@ -579,17 +597,18 @@ event, it is the fork itself. For a branch taken at a bookmark, it is the
 keyframe at or before the fork.
 
 A branch once had a second time frame, offset from the case's by
-`SimulationController.origin_s`, which `advance` and `drawn_window` subtracted,
-and about which `run_segments` warned.
-The branch's drawn columns were anchored to its own zero, so they landed at case
-instants the trunk never draws (`PL-2R2C`). `PL-ZMRT` removed that frame, so
-`origin_s` and both subtractions are gone. Removing the frame dissolved the
-problem rather than fixing it separately. `docs/MODEL.md` § "The canonical
-evaluation rule" measures what that is worth.
+`SimulationController.origin_s`. `advance` and `drawn_window` subtracted that
+offset, and `run_segments` warned about it. The branch's drawn columns were
+anchored to its own zero, so they landed at case instants the trunk never draws
+(`PL-2R2C`). The frame was removed, with `origin_s` and both subtractions
+(`PL-ZMRT`), and that solved the problem without a separate fix.
+`docs/MODEL.md` § "The canonical evaluation rule" measures what the removal is
+worth.
 
 **Where a branch may be taken.** There are three places: at a keyframe, where
 the paused trunk stands, and at a time bookmark the trunk has passed. Each is
-reached by its own method rather than through one list.
+reached by its own method of `BranchedCase` rather than through one list:
+`fork_at`, `fork_here` and `fork_at_mark`.
 
 The first is at any keyframe the trunk holds. These are listed by
 `BranchedCase.fork_points_s` and taken with `fork_at`. The keyframes are the
@@ -610,20 +629,19 @@ action, without marking it first (project owner, 2026-10-12). A bookmark halt is
 one such pause. `app/bookmarks.py` defines what a learner may mark (`PL-LPLD`).
 `SimulationController.advance` halts a run on the step that crosses a mark
 (`PL-CTD7`). It reads every compartment on either side of each step, and pauses
-the run where a mark lies between the two readings. That is the **crossing
-rule**: a step crosses a mark when the mark lies between the readings on either
-side of it.
+the run where a mark lies between the two readings.
 
 Where a run stands is not, in general, a setting change. On a 120 s run with
 two control changes, 3 of the 1 201 instants it can stand at are keyframes. So
 the trunk holds no keyframe there, and nothing records one. The branch's
-*definition* opens at the keyframe at or before the fork, while its clock and
+*definition* opens at the keyframe at or before the fork
+(`SimulationController._keyframe_before`), while its clock and
 its live system stand at the fork. This costs the trunk nothing and reproduces
 it element-wise. The obvious route was measured and refused. Recording a
 keyframe where the run halts makes the branch exact against the trunk it forked
 from, but it also moves that trunk's own later results away from what the case
-would have given unmarked, so marking a run would change it. `PL-B8MK` carries
-both measurements. `docs/MODEL.md` § "What this requires of a branch" records
+would have given unmarked, so marking a run would change it. Both measurements
+are in `PL-B8MK`. `docs/MODEL.md` § "What this requires of a branch" records
 which of that section's two conditions the chosen route relaxes, and what the
 relaxation costs.
 
@@ -761,15 +779,15 @@ to Pause for a lock that Pause cannot lift.
 **The full statement is in `docs/MODEL.md` § "What a branch comparison asserts,
 and what it does not".** It is stated there because it is a claim about the
 model, not about how the code is arranged. This section covers only the part of
-that claim that the structure above decides, which is three things.
+that claim that the structure of `BranchedCase` decides, which is three things.
 
 **The comparison is a trunk and one branch of it, and the structure enforces
 this.** `BranchedCase` forks only its trunk, so it cannot express a branch of
-a branch. `MAX_DISPLAYED_RUNS` is two, and there is no run selector. So what
-is on screen is always one case managed two ways. It is never a survey of N
-managements, and never one branch compared with another. A reader who
-generalises the drawing into a wider facility is generalising past what the
-structure can build.
+a branch. The display shows at most two runs (`MAX_DISPLAYED_RUNS`), and there
+is no run selector. So what is on screen is always one case managed two ways.
+It is never a survey of N managements, and never one branch compared with
+another. A reader who generalises the drawing into a wider facility goes past
+what the structure can build.
 
 **What may be attributed to the settings that differ is exactly the
 complement of what a branch inherits.** A branch carries across the agent,
@@ -782,7 +800,7 @@ difference between two control timelines. The inheritance list above is the
 audit of that claim, not a convenience.
 
 **The shared history is the same object, not a reproduction of one.** A branch's
-definition carries the trunk's own keyframe, and both runs sit in the case's
+`RunDefinition` carries the trunk's own `Keyframe`, and both runs sit in the case's
 single time frame. So the runs agree before the fork by construction, not
 because they meet a tolerance. `docs/MODEL.md` § "What this requires of a
 branch" is where that is stated and measured, and the residual it leaves is
@@ -825,14 +843,14 @@ different treatment:
   (`PL-3800`). A concentration that the display builds is not a setting. If one
   is refused there, the run halts. No supported setting causes such a refusal
   (`PL-7DJK`).
-- `SimulationExecutionError`, with its `SimulationNumericalError` /
-  `AgentSimulationValidationError` subclasses, means that a step began and
-  could not be completed, so the run must stop.
-  `AgentUptakeSystem.advance()` is what makes this distinction. It checks its
-  own arguments first. Then it restates any guard failure raised during the
-  step as a `SimulationNumericalError`, and it keeps the original as
-  `__cause__`. It is also what makes the step atomic. It captures every
-  dynamic value before the step and restores them all on any failure. So
+- `SimulationExecutionError` means that a step began and could not be
+  completed, so the run must stop. The same holds for its subclasses,
+  `SimulationNumericalError` and `AgentSimulationValidationError`.
+  `AgentUptakeSystem.advance()` is what makes the distinction between the two
+  kinds. It checks its own arguments first. Then it restates any guard failure
+  raised during the step as a `SimulationNumericalError`, and it keeps the
+  original as `__cause__`. It is also what makes the step atomic. It captures
+  every dynamic value before the step and restores them all on any failure. So
   what is left behind is the last completed step, rather than a state vector
   written into some compartments and not others.
   Each compartment captures its own state (`capture_state()` /
@@ -840,34 +858,36 @@ different treatment:
   an omission local to that compartment. `docs/MODEL.md`, "Step atomicity",
   is the contract.
 
-Both timer slots pass the halt gate (`halt_gate`, in `app/halt_gate.py`), as every other slot
-does (`PL-HJKN`). The gate turns any exception raised inside a slot into a
-halt. `RunView.step_tick` steps the run and `SimulationView.render_tick`
-presents it. On any exception, the first halts its run and the second halts
-every run. They do so because a `TypeError` from a refactor is exactly as
-silent inside a Qt slot as a modelling failure is.
+Both timer slots pass the halt gate, as every other slot does (`halt_gate`, in
+`app/halt_gate.py`, `PL-HJKN`). The gate turns any exception raised inside a
+slot into a halt. `RunView.step_tick` steps the run and
+`SimulationView.render_tick` presents it. On any exception, the first halts its
+run and the second halts every run. They do so because a `TypeError` from a
+refactor is exactly as silent inside a Qt slot as a modelling failure is.
+
 `dashboard_frame.halt_disposition` decides which halt applies, and
 `RunView.halt` routes by its decision. A failure goes through
-`SimulationController.fail()`. A `SimulationDomainLimitError` raised on a path
-that the controller does not step itself, such as a setting, goes through
-`halt_at_supported_limit()`. A run that steps onto the supported run length
-meets no exception. `SimulationController.advance()` halts it on the step that
-arrives there, and the snapshot reads the limit from the run's own state. So a
-run that is forked or reset onto that step is also treated as stopped there
-(`PL-5291`).
+`SimulationController.fail()`. When a `SimulationDomainLimitError` is raised on
+a path that the controller does not step itself, such as a setting, it goes
+through `halt_at_supported_limit()`. A run that steps onto the supported run
+length meets no exception. `SimulationController.advance()` halts it on the
+step that arrives there, and the snapshot reads the limit from the run's own
+state (`PL-5291`). No branch or Reset lands on the limit, because
+`_resume_point` rejects a fork there, as § "What a branch is, and what it
+shares with its parent" says (`PL-VHQX`).
 
 `fail()` sets a third run state. The snapshot carries it as `failure_reason`,
 and the dashboard renders it as "Stopped — simulation error" with a banner over
 the values. A halted run must never look like a pause, because a pause is a run
 that continues when asked and a halt is a run that cannot continue. `RunStatus`
 carries both halts, and the snapshot extends `RunStatus`.
-`RunView.present_halt` states a halt from `SimulationController.record()`,
-which returns a `RunRecord`, and `RunRecord` extends `RunStatus` in turn.
-`present_halt` does this without building any compartment value, because the
-snapshot's own `Fraction`s are among the values that can cause a halt. The
-banner it writes, `dashboard_frame.halt_notice`, says that no frame of the
-stopped run has been drawn. `refresh` replaces that banner on the first frame
-that draws (`PL-7DJK`).
+`RunView.present_halt` states a halt from the `RunRecord` that
+`SimulationController.record()` returns, and `RunRecord` also extends
+`RunStatus`. `present_halt` does this without building any compartment value,
+because the snapshot's own `Fraction`s are among the values that can cause a
+halt. The banner it writes (`dashboard_frame.halt_notice`) says that no frame of
+the stopped run has been drawn. `refresh` replaces that banner on the first
+frame that draws (`PL-7DJK`).
 
 The supported-limit halt is a fourth run state, distinct from the failure. The
 snapshot carries it as `supported_limit_reason`, and the status reads
@@ -976,12 +996,12 @@ ratified) and question Q4 of `PL-WV9K` (project owner, 2026-09-27, specified).
   headless or portable run, the environment variable `ANESTHESIA_SIM_USER_DIR`
   overrides the directory. It is the only override, and it is applied in
   `store.user_data_directory`.
-- **When.** The store writes only when the reader chooses "Save as default" in
-  the Layout menu or a tab's menu, like Blender's startup file, never when
-  something changes. A first run leaves no trace. "Save as default" first asks a
-  question that names the file it will write. The two entries next to it write
-  nothing: "Restore shipped Workspaces" and "Reset all layouts" (`PL-DWHG`).
-  These three entries come last in both menus.
+- **When.** As with Blender's startup file, the store writes only when the
+  reader chooses "Save as default" in the Layout menu or a tab's menu, never
+  when something changes (`WorkspaceStore.save`). A first run leaves no trace.
+  "Save as default" first asks a question that names the file it will write.
+  The two entries next to it write nothing: "Restore shipped Workspaces" and
+  "Reset all layouts" (`PL-DWHG`). These three entries come last in both menus.
 
   The save writes a temporary file beside the target and `fsync`s it. It then
   copies the current file to `workspaces.json.previous`, so that one prior
@@ -991,9 +1011,9 @@ ratified) and question Q4 of `PL-WV9K` (project owner, 2026-09-27, specified).
   file's write and `fsync`, and the directory's `fsync`, from the module that
   writes a user's file (`user_files.py`). Each store calls `os.replace` itself,
   and only the Workspaces store makes the copy. A failed save raises
-  `WorkspaceFileError`, which names the path and the reason. The error is
-  reported where the action was invoked, on the line under the Workspace tabs,
-  where `app/workspace_tabs.py` shows what the store reported.
+  `WorkspaceFileError`, which names the path and the reason. The error is shown
+  where the action was invoked, on the line under the Workspace tabs that shows
+  what the store reported (`app/workspace_tabs.py`).
 - **The shipped set** that the store falls back to is three Workspaces in
   `data/workspaces/`, one JSON file each, in the saved file's format
   (`PL-KXTL`). In `layout/shipped.py`, they are read by the same code that
@@ -1005,27 +1025,33 @@ ratified) and question Q4 of `PL-WV9K` (project owner, 2026-09-27, specified).
   the set (`open_workspaces` in `app/main.py`). The store returns the whole
   outcome in `store.Loaded`, so that the interface can show it on the line
   under the Workspace tabs. There are five cases.
-  - *none*: the launch shows the shipped set and says nothing.
+  - *none*: the launch shows the shipped set and says nothing, unless
+    `workspaces.json.previous` exists (`_without_current_file`). If that file
+    validates, the launch shows its set and says so. If it cannot be used, the
+    launch shows the shipped set and says why. If a newer build wrote it, the
+    launch also turns saving off for the session and says so.
   - *older*: the launch migrates the file in memory with
     `layout/migrations.py`, one step per version. The reader is told only
     where a step lost information. At the next save, the file as it was
     before migration is kept once as `workspaces.v<N>.json`.
-  - *newer*: the launch refuses the file and leaves it untouched. It shows
-    the shipped set and turns saving off for the session. A notice names the
-    file and both versions.
-  - *unreadable*: the launch handles the file as it handles a newer one.
+  - *newer*: the launch refuses the file (`UnsupportedSchemaVersion`) and
+    leaves it untouched. It shows the shipped set and turns saving off for the
+    session. A notice names the file and both versions.
+  - *unreadable*: the launch handles a file it cannot read (`OSError`) as it
+    handles a newer one (`WorkspaceStore._load`). It sets aside a file that is
+    not UTF-8 text (`UnicodeDecodeError`), as it does an invalid one.
   - *invalid at a version this build reads*: the launch sets the file aside
-    unchanged as `workspaces.invalid-<UTC time>.json`. It loads
+    unchanged as `workspaces.invalid-<UTC time>.json` (`_set_aside`). It loads
     `workspaces.json.previous` if that file validates, and the shipped set
     otherwise. A notice says which one it loaded, and saving stays on.
 
   A saved View of a kind that this build has not registered is not a file
-  error. The file loads, and the Area that holds the View shows a failure
-  state (`PL-R1WQ`).
+  error. The file loads, and `app/area_layout.py` draws a notice in the Area
+  that holds the View (`PL-R1WQ`).
 
-  The one-version rule in `core/parameters.py` is right for files that ship
-  with the code but wrong for a file that the reader wrote, so the store does
-  not use it.
+  The parameter loader (`core/parameters.py`) accepts a file at one schema
+  version only. That rule is right for files that ship with the code but wrong
+  for a file that the reader wrote, so the store does not use it.
 
 ## User state: the reader's preferences
 
@@ -1093,7 +1119,7 @@ open-circuit system with `numpy.linalg.eig`
 **On Linux, the Qt wheels need shared objects from five OS packages.** Running
 `ldd` on 2026-09-16 showed that the wheels' `Qt/lib/libQt6Gui.so.6` and
 `Qt/plugins/platforms/libqoffscreen.so` link to the shared objects below, which
-resolve outside the wheels.
+resolve outside the wheels that `pyproject.toml` installs.
 
 | shared object | Debian/Ubuntu package |
 | --- | --- |
@@ -1123,7 +1149,8 @@ PyPI for each user. A bundled build is part of the packaging work in
 `ROADMAP.md`.
 
 pyqtgraph is MIT, and numpy is `BSD-3-Clause AND 0BSD AND MIT AND Zlib AND
-CC0-1.0`. Both wheels ship their licence text.
+CC0-1.0`. Both are dependencies in `pyproject.toml`, and both wheels ship their licence
+text.
 
 ## Development scripts and hooks
 
@@ -1268,28 +1295,30 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
   `SimulationController.drawn_window(start_s, stop_s, columns)` for the span
   it draws. It never asks for the whole run. § "Data flow" says why.
 
-  **For anything an Area holds, the View contract replaces the *whose is it*
-  question, which describes the fixed layout.** The question routes a surface
-  by which of two containers holds it. An Area holds one View, and any View
-  can occupy any Area, so inside an Area the question has no answer. For a
-  View, follow the new-View entry above (`PL-TH35`). This entry still decides
-  **where the code goes** for what stays outside the Areas: the unconditional
-  region and the case section below the Areas. The setting controls were a
-  third such surface until `PL-2KXB` made them a View.
-  `.claude/rules/ui-areas.md` decides **what shape a View is in**, and it loads
-  with any file under `app/`, `layout/` or `data/workspaces/`. A View is a
-  widget that is given what it draws. It does not assume its size, its
-  neighbours, or that it is alone. What outlives the fixed layout is this
-  entry's *reason*, not its routing. A run's panel must not state one
-  branch's numbers over both runs. A control shared between runs must not be
-  duplicated into each run. Both are properties of the value rather than of
-  the container. They apply to a View exactly as they apply to a panel today.
+  **For anything an Area holds, the View contract replaces the routing question
+  of *whose* panel it is.** That question belongs to the fixed layout, where it
+  routes a surface by which of two containers holds it. An Area holds one View,
+  and any View can occupy any Area, so inside an Area the question has no
+  answer. For a View, follow the new-View entry above (`PL-TH35`). This entry
+  still decides **where the code goes** for what stays outside the Areas: the
+  unconditional region and the case section below the Areas. The setting
+  controls were a third such surface until `PL-2KXB` made them a View. Inside an
+  Area, this entry's *reason* still applies, though its routing does not. A
+  run's panel must not state one branch's numbers over both runs. A control
+  shared between runs must not be duplicated into each run. Both are properties
+  of the value rather than of the container, so they apply to a View exactly as
+  they apply to a panel today. The project's rule file for interface areas
+  (`.claude/rules/ui-areas.md`) decides **what shape a View is in**, and it
+  loads with any file under `app/`, `layout/` or `data/workspaces/`. A View is
+  a widget that is given what it draws. It does not assume its size, its
+  neighbours, or that it is alone.
 
   Breaking a surface out into a second top-level window is wanted but not
   scheduled. `ROADMAP.md` § "Explicitly out of scope for v0.6.0" says where it
   stands. Once it is built, the routing question gains a second half: *which
-  window* a surface is instantiated in. `docs/MODEL.md` § "Minimum displayed
-  outputs" answers that half, not this entry.
+  window* a surface is instantiated in. Until then, `app/area_layout.py` builds
+  every Area in the main window. `docs/MODEL.md` § "Minimum displayed
+  outputs" answers the *which window* half, not this entry.
 - A new way of *rendering* a value that a reader interprets →
   `app/formatting.py`. Examples are a unit, a decimal count, or a marker for
   what the display cannot resolve. Write it as a pure function with its own

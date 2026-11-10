@@ -427,17 +427,19 @@ the members that identify it and exactly those seven callbacks. It declares two
 region types, for its main window region and its header, each with `init` and
 `draw`.
 
-**Part of the declared interface is dead.** The window manager's draw path calls
-`SpaceType::draw_pre` and `draw_post` with a null guard, and nothing in the tree
-implements either. Blender reads `SpaceType::keymapflag` in
-`source/blender/editors/screen/area.cc`, and no editor sets it. Every assignment
-to `keymapflag` in the tree is to the field of the same name on `ARegionType`.
+**Part of the editor interface that Blender declares is dead.** The window
+manager's draw path calls `SpaceType::draw_pre` and `draw_post` with a null
+guard, and nothing in the tree implements either. Blender reads
+`SpaceType::keymapflag` in `source/blender/editors/screen/area.cc`, and no
+editor sets it. Every assignment to `keymapflag` in the tree is to the field of
+the same name on `ARegionType`.
 
 **An editor draws its own header.** Beside its main region type, it declares a
 header region type with its own draw callback, as the script editor does. The
 container supplies no title bar, and the area that holds the editor only
-allocates the rectangle that the container computes. This project's contract
-should likewise leave a View's chrome to the View.
+allocates the rectangle that the container computes. This project departs from
+Blender here, and § "Diverged, and each divergence has a specific cause" says
+how.
 
 ## The measurement: what Blender's own shipped layouts actually contain
 
@@ -837,31 +839,35 @@ regular editor, under the usual rules.
 that its code and roadmap do not drift apart, or into a private vocabulary.** It
 calls a pane an *Area* and a named set of panes a *Workspace*. What occupies an
 area is a *View*, which Blender calls an *editor*, as the introduction defines.
-A project rule requires these words (`.claude/rules/ui-areas.md`).
+A project rule requires these words (`.claude/rules/ui-areas.md`), and the code
+uses them: `Area` in `layout/tree.py`, `Workspace` in `layout/workspace.py` and
+the `View` protocol in `app/view_contract.py`.
 
 **A workspace and a layout are separate levels.** A workspace is a task-level
-object, and a layout is the geometry of the areas in one window. Blender split
-workspace from layout in version 2.8, and that split is what makes the behaviour
-that `ROADMAP.md` item 34 wants possible at all. The roadmap calls for a
-workspace to pin which **run** it shows (`ROADMAP.md` item 34), much as a
-Blender workspace can pin a scene. If a workspace were only a layout, it would
-have nowhere to keep that run. Blender's Pin Scene is an opt-in exception to its
-own rule that interface and data stay separate
-(§ "Workspace and Screen are two concepts because one was doing two jobs"). A
-design that cites Pin Scene as precedent should say that Pin Scene is an opt-in
-exception. The exception changes no decision for this simulator, because
-pinning a run to a workspace has a reason of its own (`PL-7Z84`).
+object, and a layout is the geometry of the areas in one window. The roadmap
+calls for a workspace to pin which **run** it shows (`ROADMAP.md` item 34), much
+as a Blender workspace can pin a scene. Blender split workspace from layout in
+version 2.8, and that split is what makes the behaviour that `ROADMAP.md`
+item 34 wants possible at all. If a workspace were only a layout, it would have
+nowhere to keep that run. Here a `Workspace` holds its `layout` and, beside it,
+the `pinned_run` that its Views show. Blender's Pin Scene is an opt-in exception
+to its own rule that interface and data stay separate (§ "Workspace and Screen
+are two concepts because one was doing two jobs"). A design that cites Pin Scene
+as precedent should say that it cites an opt-in exception. The exception changes
+no decision for this simulator, because pinning a run to a workspace has a
+reason of its own (`PL-7Z84`).
 
 **The area owns the geometry, and the view owns none.** A view is given its
-rectangle and never stores, computes or asks for one. This boundary between
-area and view is the strongest and cleanest part of Blender's design, and the
-most transferable.
+rectangle and never stores, computes or asks for one. `layout/sizing.py` sizes
+each Area in pixels, and `app/area_layout.py` places the View in it. This
+boundary between area and view is the strongest and cleanest part of Blender's
+design, and the most transferable.
 
-**Each view serializes itself.** The layout layer therefore saves a workspace
-without knowing what any area holds, such as an F_A/F_I chart. In Blender, each
-editor also saves and loads its own data (`SpaceType.blend_write` and
-`blend_read_data`). That delegation is the right way to save a workspace without
-the layout code knowing what an area holds.
+**Each view serializes itself**, through `View.save_state`. The layout layer
+therefore saves a workspace without knowing what any area holds, such as an
+F_A/F_I chart. In Blender, each editor also saves and loads its own data
+(`SpaceType.blend_write` and `blend_read_data`). That delegation is the right
+way to save a workspace without the layout code knowing what an area holds.
 
 **Each area keeps a stack of the views previously open in it.** Switching the
 area to another view and back restores the first view's state. The roadmap's
@@ -870,7 +876,7 @@ area to another view and back restores the first view's state. The roadmap's
 which hold each editor's state
 (§ "What survives a resize, a split, a join, and a swap"). This project copies
 the outcome, not the swapping. The part of Blender's design to copy is how it
-bounds an area's list without a cap.
+bounds an area's list without a cap. This project has no code yet (`PL-PKLR`).
 
 **A view kind is a tag looked up in a registry, never a subclass.** Nothing in
 the layout layer knows that any concrete view class exists. Each tag is written
@@ -883,20 +889,25 @@ which run, which patient or which model the numbers concern. This placement
 serves the project's requirement that a user can never mistake which context a
 displayed value belongs to. It also follows Blender's argument for its
 information hierarchy (§ "Header, sidebar, toolbar and footer are keyed to
-scope of effect").
+scope of effect"). In this window, the unconditional region with each run's
+notices and readouts stays at the top, above the Workspace tabs and the Areas
+(`SimulationView._build_page`).
 
 **The layout operations are split, join, swap and border-drag, and the layout is
-stored as a tree of nested splitters.** The count of Blender's shipped layouts
-backs this decision (`PL-3J2P`,
-§ "The measurement: what Blender's own shipped layouts actually contain").
+stored as a tree of nested splitters.** They are `LayoutModel`'s `split`,
+`join`, `swap` and `resize`, over the `Split` and `Area` nodes of
+`layout/tree.py`. A count of what Blender's shipped layouts contain backs this
+decision (`PL-3J2P`, § "The measurement: what Blender's own shipped layouts
+actually contain").
 
 **From version 1 of the format, a saved file's root holds one or more windows,
-each with a tree of its own.** This was decided on 2026-09-16, when the area
-model (roadmap item 34) was planned across two releases, with break-out into
-further windows in the second. The reason is that adding windows to the root
-later would mean migrating files in which learners have already saved their
-workspaces. Break-out has not been planned for any release since 2026-09-26, but
-it is still wanted, only not soon, so the reason still applies.
+each with a tree of its own.** `layout/serialization.py` writes them as the
+`windows` list. This was decided on 2026-09-16, when the area model (roadmap
+item 34) was planned across two releases, with break-out into further windows in
+the second. The reason is that adding windows to the root later would mean
+migrating files in which learners have already saved their workspaces. Break-out
+has not been planned for any release since 2026-09-26, but it is still wanted,
+only not soon, so the reason still applies.
 
 **This project's one window opens maximized, so every area gets the most room
 the screen has** (`PL-Z4K6`; project owner, 2026-09-27, ratified, over raising
@@ -929,14 +940,16 @@ modelled values. Calling the displays editors would tell the user they can
 change values that they cannot, and the clinical-output standard in `CLAUDE.md`
 treats that as a presentation defect rather than a naming preference. `Widget`
 was unavailable because `QWidget` is the base class of every View, and
-`Component` was rejected as vaguer, though not wrong.
+`Component` was rejected as vaguer, though not wrong. The contract every View
+implements is the `View` protocol in `app/view_contract.py`.
 
-Neither Blender's term nor Eclipse's carries over whole, which is the cause of this
-divergence (the comparison is in `PL-GPYV`). Eclipse, the closest precedent,
-separates editors, which follow an open-save-close document lifecycle, from views,
-which do not. Its Perspective is Blender's Workspace. But in Eclipse, having several
-instances is a property of editors, and this project needs several Views of one kind
-in a single Workspace.
+Neither Blender's term nor Eclipse's carries over whole, which is the cause of
+this divergence (the comparison is in `PL-GPYV`). Eclipse is the closest
+precedent. It separates editors, which follow an open-save-close document
+lifecycle, from views, which do not. Its Perspective is Blender's Workspace. But
+in Eclipse, having several instances is a property of editors, and this project
+needs several Views of one kind in a single Workspace: two Areas may hold the
+same `ViewKind`.
 
 **A missing or unknown View kind must fail loudly.** When a saved Workspace gives
 an Area a View kind that this build does not have, the interface must say so
@@ -956,7 +969,8 @@ A saved Qt splitter state (`QSplitter.saveState()`) goes wrong in the same way
 as Blender's substitution. Restoring a three-child state into a two-child
 splitter returns `True` and produces a plausible-looking wrong layout instead of
 failing. This project already ruled out the saved splitter state as a source of
-truth, partly for that reason (`PL-C842`).
+truth, partly for that reason (`PL-C842`). It saves its own layout value
+instead (`layout/serialization.py`).
 
 **A required value is never hidden to make room.** When a region will not fit,
 Blender makes it disappear (§ "An editor cannot refuse a size, and there is no
@@ -966,17 +980,19 @@ directly unsafe. A set of displayed values is unconditional: no Workspace may
 remove them, and nothing may cover them (`docs/MODEL.md` § "Minimum displayed
 outputs"). Silently collapsing one of those values is exactly the failure that
 the unconditional set exists to prevent. Where any other display cannot fit, the
-interface must say so rather than quietly shrink it away.
+interface must say so rather than quietly shrink it away. `layout/sizing.py`
+decides whether a View fits, and `app/area_layout.py` says when one does not.
 
-The unconditional set sits outside the area system. Each top-level window keeps
-its own unconditional region outside its own area system, holding the invariant
-tier and the run that window shows (restated on 2026-09-16, when the project
-settled what a broken-out window must display). The per-substance tier appears
-once, in a main window that cannot be closed while another window is open.
-`docs/MODEL.md` gives the rule that nothing may cover the unconditional values,
-and its one limit. They are cited here rather than restated, so that the safety
-rule is stated in one place. The limit is that an application can observe its own
-windows, but not what another application has drawn over them.
+The unconditional set (`app/unconditional_set.py`) sits outside the area system.
+Each top-level window keeps its own unconditional region outside its own area
+system, holding the invariant tier and the run that window shows (restated on
+2026-09-16, when the project settled what a broken-out window must display). The
+per-substance tier appears once, in a main window that cannot be closed while
+another window is open. `docs/MODEL.md` gives the rule that nothing may cover the
+unconditional values, and its one limit. They are cited here rather than
+restated, so that the safety rule is stated in one place. The limit is that an
+application can observe its own windows, but not what another application has
+drawn over them.
 
 **An Area has a minimum size, and says so when it cannot be given it.** Blender
 honours no minimum size that an editor states
@@ -990,25 +1006,35 @@ reaches its minimum size (`PL-K285`; `border_range` in
 hands each editor a context through which it can reach the window, the screen
 and every other Area, and § "An editor is isolated by convention, not by
 construction" counts the editors that do. Here, each View should be handed what
-it draws and given no route to its container at all, so that Views stay
-interchangeable by construction. That is a deliberate narrowing of Blender's
-contract, not a copy of it. Isolation is cheap to build now and expensive to add
-later, which is why the project's rule file for interface areas
+it draws, through `ViewContext` and `ViewTick`, and given no route to its
+container at all, so that Views stay interchangeable by construction. This
+narrows Blender's contract on purpose. Isolation is cheap to build now and
+expensive to add later, which is why the project's rule file for interface areas
 (`.claude/rules/ui-areas.md`) already asks for it in Views written before the
 area system exists.
 
 **A View's container sits behind a layout model of this project's own.** As with
 a View, the container's isolation has to be built (`PL-C842` has the
-recommendation and the evidence).
+recommendation and the evidence). The container, `AreaLayout` in
+`app/area_layout.py`, draws the Areas from `LayoutModel` in `layout/model.py`,
+which loads no toolkit.
 
 **Prune the contract of a View instead of letting it grow.** Blender's contract
 for an editor (`SpaceType`) is a struct of metadata and function pointers. It
 has hooks that nothing implements and a field that nothing assigns, and the
 design gives no sign that they are unused (§ "What an editor must implement").
-This project's contract for a View should take the shape of Blender's (`PL-TH35`),
-and the project should plan to prune such hooks and fields. A contract of this
-project's own should be small. Recheck the contract for a View against the Views
-that implement it, rather than only adding to it.
+This project's contract for a View is the `View` protocol in
+`app/view_contract.py` (`PL-TH35`). A test fails on any member of the contract
+that `app/area_layout.py` never calls, so the contract cannot keep a hook that
+nothing uses
+(`test_every_member_of_the_contract_has_a_call_site_in_the_adapter`).
+
+**The container draws each Area's header, not the View** (`PL-TH35`). In
+Blender an editor declares and draws its own header region (§ "What an editor
+must implement"). Here `app/area_layout.py` draws the header, so every View gets
+the same one. The header holds the View chooser, and a right-click on it opens
+the Area menu. `app/view_contract.py` lists the header among what is not the
+View's, so a View that drew one would give its Area a second header.
 
 **A drag moves every border on the dragged line, as in Blender.** Blender's
 default drag moves the whole chain of borders (§ "How a layout is built, and how
@@ -1074,29 +1100,30 @@ collapsed below its minimum size (`PL-K285`). Each Area's menu also lists the
 Area's borders under Resize, and choosing one gives that border the focus
 (`PL-M352`).
 
-**The Layout menu opens from the tab strip, not from a menu bar.** It lists every
-Workspace, steps to the previous or next one, and holds the current Workspace's
-rename, duplicate, reset and delete (`PL-M352`). Blender's top bar puts its menus
+**The Layout menu opens from the tab strip, not from a menu bar.** The strip is
+`WorkspaceTabs` in `app/workspace_tabs.py`. The menu lists every Workspace,
+steps to the previous or next one, and holds the current Workspace's rename,
+duplicate, reset and delete (`PL-M352`). Blender's top bar puts its menus
 and its Workspace tabs in one row. A separate menu bar would cost this window a
 row of height on Windows and Linux, where the charts already needed 70 to 80 px
-more height on the 1366 by 700 laptop reference (`PL-QLZ5`). At first the Layout
-menu opened from a button at the strip's right end, after "+" (built in
-`PL-M352`, removed in `PL-R5G4`).
+more height on the 1366 by 700 laptop reference (`PL-QLZ5`).
 
 **The menus open on a right-click, as in Blender, and no header carries a menu
 button** (project owner, 2026-10-19, ratified, over keeping a button in each
 Area header and at the tab strip's end, and over removing the menus
-altogether). On his own screen the owner found the "Area" and "Layout" buttons
-"overlapping and intrusive", and Blender's headers carry no such button. In
-Blender, a right-click on a header opens its context menu, which holds the
-splits, Maximize Area and Close Area. A right-click on a border opens "Area
-Options", with the splits, the joins and Swap Areas. A right-click on a
+altogether). Neither an Area's header (`AreaFrame`) nor the tab strip
+(`WorkspaceTabs`) carries one. On his own screen the owner found the "Area" and
+"Layout" buttons "overlapping and intrusive", and Blender's headers carry no
+such button. In Blender, a right-click on a header opens its context menu, which
+holds the splits, Maximize Area and Close Area. A right-click on a border opens
+"Area Options", with the splits, the joins and Swap Areas. A right-click on a
 Workspace tab opens that tab's menu (Blender Manual: "Regions", section
 "Header"; "Areas", section "Area Options"; "Workspaces", section "Controls";
 read 2026-10-19).
 
-Here, a right-click anywhere on an Area's header opens the Area menu, and a
-right-click on the tab strip outside a tab opens the Layout menu. Each tab's own
+Here, a right-click anywhere on an Area's header opens the Area menu
+(`AreaFrame._open_menu`), and a right-click on the tab strip outside a tab
+opens the Layout menu (`WorkspaceTabs.contextMenuEvent`). Each tab's own
 menu also holds Previous and Next Workspace, Save as default, Restore shipped
 Workspaces and Reset all layouts. The keyboard still reaches every entry: the
 Menu key or Shift+F10 opens the Area menu from the View chooser, and a tab's
@@ -1108,21 +1135,25 @@ in the header, as Blender keeps its Editor Type selector first in every header.
 while pressing an Area's corner, then releases over any other Area in the
 window, and the two need not be side by side (Blender Manual: "Areas", section
 "Swapping Contents", read 2026-10-19). A preview outlines both Areas while the
-user drags (`PL-R5G4`, which added the gesture). The Area menu's "Swap with"
-makes the same swap.
+user drags (`PL-R5G4`, which added the gesture). `_CornerZone` in
+`app/area_layout.py` starts the swap. The Area menu's "Swap with" makes the
+same swap.
 
 ### Refused
 
-**The layout is not represented as a shared-vertex graph.** The graph is
-strictly more expressive, but a measurement of thirty-two shipped workspaces
+**The layout is not represented as a shared-vertex graph.** It is the tree of
+`Split` and `Area` nodes in `layout/tree.py`. The graph is strictly more
+expressive, but a measurement of thirty-two of Blender's shipped workspaces
 found none that needs what the graph adds. Adopting it would leave one person
 maintaining the code for a planar subdivision forever. An item records the
 condition under which the project would adopt the graph (`PL-3J2P`).
 
 **This project's occlusion rule does not rest on Blender's reason for a tiled
 interface**, as § "Blender's reason for non-overlapping is not this project's
-reason" sets out. Blender does prove that a tiled interface can be workable and
-pleasant at the scale of a professional tool.
+reason" sets out. The rule here is that the values which must always show sit in
+the unconditional region, which `SimulationView._build_page` keeps outside the
+Areas. Blender does prove that a tiled interface can be workable and pleasant at
+the scale of a professional tool.
 
 ## Attribution
 

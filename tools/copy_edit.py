@@ -242,18 +242,41 @@ def claude_argv(
         "--setting-sources",
         "",
         "--output-format",
-        "json",
+        "stream-json",
+        "--verbose",
     ]
 
 
 def reply_of(output: str) -> tuple[str, str]:
-    """The reply in `claude -p`'s JSON `output`, and one line of what the run read and cost."""
-    try:
-        data = json.loads(output[output.index("{") :])
-    except ValueError as error:
-        raise Refused(f"claude printed no JSON result: {error}") from error
+    """The reply in `claude -p`'s event stream `output`, and one line of what the run read and cost.
+
+    The reply is every text block of every assistant message, joined in order.
+    The final result event's `result` holds the last message alone, so a reply
+    that `claude -p` continued into a second message past one message's output
+    limit lost all of its first part (`PL-DM95`). That event still supplies the
+    error flag and the counts, and its `result` is the reply where the stream
+    carries no assistant message.
+    """
+    events = []
+    for line in split_lines(output):
+        if line.lstrip().startswith("{"):
+            try:
+                events.append(json.loads(line))
+            except ValueError as error:
+                raise Refused(f"claude printed a line that is not JSON: {error}") from error
+    results = [event for event in events if event.get("type", "result") == "result"]
+    if not results:
+        raise Refused("claude printed no result")
+    data = results[-1]
     if data.get("is_error") or not isinstance(data.get("result"), str):
         raise Refused(f"claude returned an error: {data.get('result')!r}")
+    written = [
+        block["text"]
+        for event in events
+        if event.get("type") == "assistant"
+        for block in event.get("message", {}).get("content", [])
+        if block.get("type") == "text" and isinstance(block.get("text"), str)
+    ]
     usage = data.get("usage", {})
     read = sum(
         usage.get(key, 0)
@@ -263,7 +286,7 @@ def reply_of(output: str) -> tuple[str, str]:
         f"copy_edit: read {read} tokens, wrote {usage.get('output_tokens', 0)}, "
         f"{data.get('num_turns', '?')} turns, ${data.get('total_cost_usd', 0):.2f}"
     )
-    return data["result"], counts
+    return ("".join(written) if written else data["result"]), counts
 
 
 def prose_of(request: str) -> tuple[str, list[str]]:

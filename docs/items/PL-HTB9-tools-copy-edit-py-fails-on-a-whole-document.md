@@ -24,3 +24,11 @@ verify: grep -q -r --include=test_*.py 'def test_a_close_out_request_over_the_li
 **Generator check.** One-off. Its first fault misreads the same fact as `PL-DM95`: what the `result` field of `claude -p`'s JSON output holds. Its second is a size limit that two of the tool's three request kinds apply and the close-out kind does not. No head states either fact.
 
 **Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** Not present. `tools/copy_edit.py` did not exist at 817a4d88. The reply handling that fails arrived in 7fca61f8 (`PL-TQ4J`, #2026, 2026-11-04), so this is a new problem and is deferred.
+
+**Checked 2026-11-10:** `PL-DM95` is fixed, so the first fault is gone.
+`reply_of` now joins every assistant message. PL-BLN0's close-out sent a
+43-passage, 142 KB request in one run. Its first read returned a whole 77 KB
+reply in about 15 minutes, and each later read took about 17. The batching
+this item asks for is still not built. It is now needed only where one read
+would exceed `COPY_EDIT_TIMEOUT_S` (40 minutes) or the model's context, which
+this run did not show.

@@ -24,3 +24,11 @@ reenters: PL-4FBP
 **Generator check.** `PL-4FBP`'s fact: the link between a document sentence and the tree fact it restates, here a sentence about the interface that `PL-GS3R` changed without updating it. `PL-4FBP` closed on 2026-09-19, so this is an instance filed after its head closed, recorded as `reenters: PL-4FBP`.
 
 **Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** Present. At 817a4d88, `docs/MODEL.md` § "Software safety classification: Class C, for the whole application" already listed "the extreme-preserving decimation" among the interface's safety features, though `PL-GS3R` had replaced decimation on 2026-09-14. The problem belongs on v0.7.0's frozen list, and the deferral is removed.
+
+**Disposition under PL-BLN0 (2026-11-09).** PL-BLN0 is the head over the
+sentences that went stale when the code they restated changed. It binds every
+paragraph of `docs/ARCHITECTURE.md` and of the last chapter of
+`docs/interface-provenance.md` to the code it describes, and leaves the free
+prose of `docs/MODEL.md` outside that binding, for the reason its brief gives.
+This item's sentence is in that free prose, so it stays its own documentation
+fix.
