@@ -789,7 +789,13 @@ in the scope line. It retires only if the zone replies are read in changes.
 Moving the conversion into the tools would spare the command and not the
 rule, since git and GitHub print UTC as well.
 
-## Rule 16, copy-edit a decision request or a long reply, added 2026-11-04
+## Rule 16, copy-edit a decision request or a long reply, added 2026-11-04, retired 2026-11-10
+
+**Retired.** The owner took replies out of the copy editor's review on
+2026-11-10: it edits only the documents and code that a clinician, a learner
+or a contributor reads, and `tools/new_prose.py` prints no passage for a reply.
+Removing the rule took about 620 characters out of the resident set. What
+follows is the record of why it was added.
 
 On 2026-11-04 a session's closing block twice asked the owner to "approve,
 change or reject the four-part design in my last reply", and the owner had to

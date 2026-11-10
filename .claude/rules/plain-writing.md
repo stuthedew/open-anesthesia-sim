@@ -38,7 +38,10 @@ note from item titles, and an edit there would make a note disagree with its
 item. `tools/new_prose.py` reads this table. It prints a changed file's passages
 for the copy editor only when a row names that file, and it gives each passage
 that row's readers. A new row therefore brings the files it names into the
-review with no other change.
+review with no other change. The copy editor does not edit text whose only
+reader is a later session or the project owner: item briefs, the workflow's
+files, commit messages, pull request bodies and replies (project owner,
+2026-11-10). Those still follow this rule.
 
 **Write what the reader needs to act on, and stop.** Find the reader and what
 they will do with the text in the table above. Put what they see first, then

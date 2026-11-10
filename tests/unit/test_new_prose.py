@@ -404,6 +404,21 @@ def test_each_unit_names_its_reader(
     )
 
 
+def test_a_file_named_only_for_an_unedited_reader_is_passed_over_without_a_note(
+    repo: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An item brief is not a file that nobody has named a reader for, so it is not listed."""
+    rule = repo / ".git" / "rule.md"
+    rule.write_text(READERS.replace("A developer", new_prose.UNEDITED_READERS[0]), encoding="utf-8")
+    monkeypatch.setattr(new_prose, "RULE", rule)
+    _write(repo, "src/pkg/fresh.py", SOURCE)
+
+    assert main(["--root", str(repo), "--base", "main"]) == 0
+    out = capsys.readouterr().out
+    assert out.startswith("No passage changed")
+    assert "src/pkg/fresh.py" not in out
+
+
 def test_a_passage_in_a_file_no_row_names_is_listed_as_not_reviewed(
     repo: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -429,6 +444,16 @@ def test_a_passage_in_a_file_no_row_names_is_listed_as_not_reviewed(
         "tests/unit/test_patient.py",
         "docs/MODEL.md",
         "README.md",
+    ],
+)
+def test_the_rule_names_a_reader_for_every_kind_of_file_the_review_reads(path: str) -> None:
+    """A rule edit that drops a row would stop every review of that kind of file."""
+    assert readers_of(new_prose.rule_table(), path)
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
         "docs/items/PL-22T5-close-out-s-prose-review-reads-only-the.md",
         ".claude/rules/plain-writing.md",
         ".claude/agents/copy-editor.md",
@@ -437,9 +462,20 @@ def test_a_passage_in_a_file_no_row_names_is_listed_as_not_reviewed(
         "CLAUDE.md",
     ],
 )
-def test_the_rule_names_a_reader_for_every_kind_of_file_the_review_reads(path: str) -> None:
-    """A rule edit that drops a row would stop every review of that kind of file."""
-    assert readers_of(reader_table(RULE.read_text(encoding="utf-8")), path)
+def test_the_review_leaves_out_the_workflow_files_and_item_briefs(path: str) -> None:
+    """The project owner took these out of the copy editor's review on 2026-11-10.
+
+    The rule still names a reader for each, so the writing rule applies to them
+    while the copy editor does not.
+    """
+    assert readers_of(new_prose.whole_rule_table(), path)
+    assert not readers_of(new_prose.rule_table(), path)
+
+
+def test_each_unedited_reader_is_a_reader_the_rule_names() -> None:
+    """A reworded "Reader" cell would otherwise bring its texts back into the review."""
+    named = {reader.who for reader in new_prose.whole_rule_table()}
+    assert set(new_prose.UNEDITED_READERS) <= named
 
 
 #: The product document that the reader table leaves out on purpose. The rule's
@@ -594,9 +630,9 @@ def test_a_python_file_is_compared_by_its_prose_alone(
 
 
 @pytest.mark.parametrize("kind", ["replies", "pull request titles and bodies"])
-def test_the_rule_names_a_reader_for_each_kind_of_draft(kind: str) -> None:
-    """Close-out and the reply rule pass these words to `--kind`."""
-    assert any(kind in reader.kind.casefold() for reader in new_prose.rule_table())
+def test_a_reply_or_a_pull_request_body_has_no_row_to_draft_for(kind: str) -> None:
+    """The copy editor does not edit either, so `--draft --kind` refuses both."""
+    assert not any(kind in reader.kind.casefold() for reader in new_prose.rule_table())
 
 
 #: A document whose first section holds four long paragraphs.
@@ -692,7 +728,7 @@ def test_draft_prints_the_rule_the_readers_of_its_kind_and_the_file_as_one_passa
     assert "    1 > Line one.\n    2 > \n    3 > Line two." in shown
 
     assert main(["--draft", str(draft), "--kind", "sonnets"]) == 1
-    assert "no row of the reader table in rule.md has 'sonnets'" in capsys.readouterr().err
+    assert "in rule.md for a text the copy editor edits has 'sonnets'" in capsys.readouterr().err
 
 
 #: A model document whose section holds a subsection.
