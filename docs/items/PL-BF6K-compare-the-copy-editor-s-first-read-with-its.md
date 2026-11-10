@@ -35,6 +35,15 @@ The owner ratified audits until clean with a limit of four on 2026-11-05,
 over exactly two reads (`PL-HGZS`). A ratified decision reopens on ordinary
 evidence, and this measurement would be that evidence.
 
+**One run on record with the meaning check, 2026-11-10.** The copy editor
+edited the 381-word title and body of pull request `#2088`, which filed this
+item. It took 12 model runs, 15 minutes and $2.75: four reads, six meaning
+checks and two restore reads. The first read made every change that the
+published text kept but two. The second read reworded the title. The third
+read changed "review" to "pass", to repair an ambiguity that the first read
+had introduced. The fourth read changed nothing. The meaning checks restored
+one sentence that the first read had cut, and narrowed one phrase.
+
 **How to do it.** `tools/copy_edit.py --reads DIR` keeps each read's request
 and reply. On sections the copy editor's instructions were not tuned on, run
 the copy editor with `--reads`, then give the blind judge
