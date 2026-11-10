@@ -11,7 +11,7 @@ added: 2026-11-07
 closed: 2026-11-10
 pr: 2083
 payoff: A reader checking why a release took a patch number finds the two-part test the baseline and the cut items apply.
-verify: grep -qiE 'test has two (halves|parts)' ROADMAP.md
+verify: grep -qF 'The two halves of the patch test' ROADMAP.md
 recurrences: 2026-11-07 PL-V82M
 ---
 
