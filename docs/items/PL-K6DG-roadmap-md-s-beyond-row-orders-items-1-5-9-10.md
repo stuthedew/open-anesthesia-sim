@@ -3,11 +3,13 @@ id: PL-K6DG
 title: ROADMAP.md's Beyond row orders items 1-5, 9-10 and 13-15 by § "Development pathway", which also orders items 24 and 20 and item 8's scenario events, and item 30 places itself in Phase 1 but is on no row
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md
 added: 2026-11-07
+closed: 2026-11-10
+pr: 2085
 payoff: A reader looking past v0.8.0 reads one order for the planned items, with item 30 placed where the owner put it.
 verify: grep -qE '^\| (11|12\+) \|.*[^0-9.]30[^0-9]' ROADMAP.md
 ---
@@ -29,3 +31,5 @@ verify: grep -qE '^\| (11|12\+) \|.*[^0-9.]30[^0-9]' ROADMAP.md
 **Checked 2026-11-09:** the Beyond row still orders items 1-5, 9-10 and 13-15 "in 'Development pathway' order". Phase 2 still orders item 24, then items 5, 3 and 4, then item 8's scenario events and item 20. Item 30 still says "Phase 1, ahead of the substance generalization" (project owner, 2026-09-02) and is on no timeline row. The record already holds each order, so placing the items to match it is a session's work.
 
 **Generator check.** One-off: a finding from the `ROADMAP.md` structure-read sweep. The fact misread is whether one `ROADMAP.md` passage still agrees with a later record of the same thing. No head's `misread:` states that fact for `ROADMAP.md`, and the cluster came from one deliberate read rather than from a mechanism that keeps producing it.
+
+**Done 2026-11-10.** The Beyond row now lists every item it covers in § "Development pathway" order: item 30; items 6 and 7 with the substance generalization; items 1 and 2; item 24; items 5, 3 and 4; item 8's scenario events and item 20; items 9 and 10; then items 13-15. It says item 30 comes first because the project owner placed it ahead of the generalization on 2026-09-02. Phase 1 in § "Development pathway" now names item 30 first too, so the two orders match, and its next paragraph says the generalization is the first half of item 6 and comes before nitrous oxide itself, item 7 and item 2, since item 30 now comes before the generalization. Where the generalization returns to a numbered row stays with the owner's condition in the Beyond row (`PL-5XG1`).

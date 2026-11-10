@@ -445,16 +445,16 @@ to clear the ground that the feature releases are built on:
 | 8 | **Gate 3** | **Frozen 2026-10-25**, the day v0.7.0 was scoped, five days after v0.6.0 shipped, and recorded in that milestone's own section below. Its work ships in `v0.6.x` patches as it clears, before v0.7.0's implementation begins. The current baseline above gives how many entries had cleared when v0.6.16 was cut, and where the list's size is counted now. | — |
 | 9 | **v0.7.0 — the schematic** | Planned-milestone items 27 and 28: a compartment schematic whose containers fill to tension, as Gas Man's Picture does, labelled with their amounts and with a bar showing where the agent *is*, and the agent cost View. **Scoped 2026-10-25** by `PL-LF0P` (project owner, 2026-10-25, ratified, over containers drawn to scale, over Gas Man's Picture as it is, and over leaving item 28 unscheduled), and it has its own section below. (Written `v0.6.0` until 2026-09-16, when item 34 took that number and this moved down two, and `v0.8.0` from then until 2026-09-26, when break-out came off the timeline and this moved up one.) **Its Required scope closed in v0.6.16.** The cut waits on Gate 3 and on the project owner's test drive. | 1 L, 9 M, 3 S |
 | 10 | **Gate 4** | Frozen when v0.7.0 ships. Its work ships in `v0.7.x` patches as it clears, before v0.8.0's implementation begins. | — |
-| 11 | **v0.8.0 — the next milestone** | What it holds is the project owner's pick, made when it is scoped. It was multi-substance and nitrous oxide until 2026-09-26, when those came off the timeline (Beyond row). | — |
-| 12+ | **Beyond** | The substance generalization with nitrous oxide and its effects (items 6 and 7), the machine and its interlocks (items 1-5), save/load and replay (9, 10), then intravenous agents (13-15), in "Development pathway" order. **The substance generalization and items 6 and 7 came off the timeline on 2026-09-26** (project owner, 2026-09-26: "Add it back once we have a really fleshed out single agent set up with workspaces all working"). Whether that condition is met is the owner's judgment, so a session placing the next row after v0.7.0 asks the owner rather than placing the generalization by pathway order (`PL-5XG1`). **Item 40, the machine-profile framework, is no longer in this row.** The project owner split it out of item 1 on 2026-09-20. It is patch-track work that may ship whenever its items finish, and it takes no version of its own and freezes no gate. What stays here is the interlock baseline, and the machine behaviors that need the solver work that item 40 defers. | — |
+| 11 | **v0.8.0 — the next milestone** | What it holds is the project owner's pick, made when it is scoped. It was the substance generalization and nitrous oxide until 2026-09-26, when those came off the timeline (Beyond row). | — |
+| 12+ | **Beyond** | In § "Development pathway" order: patient factors (item 30); the substance generalization with nitrous oxide and its effects (items 6 and 7); the machine abstraction with interlocks (item 1) and agent switching (item 2); the preferences panel (item 24); end-tidal control, override mode and direct injection (items 5, 3 and 4); item 8's scenario events and accessibility (item 20); save/load and replay (items 9 and 10); then intravenous agents (items 13-15). Item 30 comes first because the project owner placed it ahead of the substance generalization on 2026-09-02, and item 30's entry gives the reason. **The substance generalization and items 6 and 7 came off the timeline on 2026-09-26** (project owner, 2026-09-26: "Add it back once we have a really fleshed out single agent set up with workspaces all working"). Whether that condition is met is the owner's judgment, so a session placing the next row after v0.7.0 asks the owner rather than placing the generalization by pathway order (`PL-5XG1`). **Item 40, the machine-profile framework, is no longer in this row.** The project owner split it out of item 1 on 2026-09-20. It is patch-track work that may ship whenever its items finish, and it takes no version of its own and freezes no gate. What stays here is the interlock baseline, and the machine behaviors that need the solver work that item 40 defers. | — |
 
-**The Size column counts the items a step was scoped with, by effort (L, M
-and S).** For a milestone, the count is its Required scope when it was
+**The Size column counts the items that a step was scoped with, by effort
+(L, M and S).** For a milestone, the count is its Required scope when it was
 scoped, and for rows 1 and 2 it is the frozen list. Items added later are not
 counted, so a shipped row's count of closed Required-scope ids can be larger.
 A row shows "—" when it has no scope of its own to count: the MVP marker, a
-row before it is scoped, a patch track other than `v0.4.x`, and a gate, whose list
-its milestone's section counts.
+row before it is scoped, a patch track other than `v0.4.x`, and a gate, whose
+list is counted in its milestone's section.
 
 **Rows 1 and 2 are the only releases whose whole content is a frozen list, and
 row 2's list is a gate while row 1's is not.** Row 2 is Gate 0's release. Row 1
@@ -1642,32 +1642,33 @@ replaced".
 
 ### Phase 1 — scientific maturity
 
-Generalize the patient's state from one agent to N substances that are
-present at the same time. Then come items 6 and 7 (nitrous oxide,
-concentration and second-gas effects), then item 1 (machine abstraction with
-interlocks), then item 2 (agent switching with residual washout).
-§ "The timeline" places none of this phase, and its Beyond row says when the
-generalization returns to the timeline. Item 40, the machine-profile
-framework, is **not** part of this phase, because nothing in a config file
-needs the substance generalization.
+Item 30 (patient factors) comes first, ahead of the substance generalization
+(project owner, 2026-09-02), for the reason that item 30's entry gives. Next
+comes the substance generalization, which extends the patient's state from
+one agent to N substances that are present at the same time. Then come items
+6 and 7 (nitrous oxide, concentration and second-gas effects), then item 1
+(machine abstraction with interlocks), then item 2 (agent switching with
+residual washout). § "The timeline" places none of this phase, and its Beyond
+row says when the generalization returns to the timeline. Item 40, the
+machine-profile framework, is **not** part of this phase, because nothing in a
+config file needs the substance generalization.
 
-The generalization comes first because three separate items need the same
-thing: holding more than one substance at once, with kinetics for each
-substance. Agent switching needs the residual of the old agent while the new
-one washes in. Nitrous oxide needs a second gas throughout. The second-gas
-effect needs the coupling between them. Doing the generalization once, and
-deliberately, makes it one design decision instead of three special cases.
-The second-gas effect is also the phenomenon that this class of simulator is
-most used to teach. Without it, there is no credible inhalational simulator
-to build an interface on.
+The generalization is the first half of item 6, and it comes before nitrous
+oxide itself, item 7 and item 2, because those three need the same thing: holding more than one substance at once, with kinetics
+for each substance. Agent switching needs the residual of the old agent while
+the new one washes in. Nitrous oxide needs a second gas throughout. The
+second-gas effect needs the coupling between the two gases. Doing the
+generalization once, and deliberately, makes it one design decision instead
+of three special cases. The second-gas effect is also the phenomenon that this
+class of simulator is most used to teach. Without it, there is no credible
+inhalational simulator to build an interface on.
 
-It also settles the intravenous question without a speculative abstraction.
-"A substance with compartmental kinetics and an effect site" is also the shape
-that an intravenous agent needs. So IV becomes an extension rather than a
-rewrite. This works only if the generalization is designed as substances,
-rather than as "volatile agent, plus nitrous oxide as a special case".
-Designing it as substances is a requirement of this phase, not an optional
-nicety.
+The generalization settles the intravenous question without a speculative
+abstraction. "A substance with compartmental kinetics and an effect site" is
+also the shape that an intravenous agent needs, so intravenous support becomes
+an extension rather than a rewrite. This works only if the generalization is
+designed as substances, not as "volatile agent, plus nitrous oxide as a special
+case". Designing it as substances is a requirement of this phase.
 
 ### Phase 2 — an interface that can drive the machine
 
