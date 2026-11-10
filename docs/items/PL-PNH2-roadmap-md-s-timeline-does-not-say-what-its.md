@@ -3,11 +3,13 @@ id: PL-PNH2
 title: ROADMAP.md's timeline does not say what its Size column counts or as of when, whether rows 1 and 2, the v0.4.x track and Gate 3 have shipped or cleared, how v0.5.0's sixteen items square with its 20 ids and undated 185 entries, or what 'Row 11 is the intended order' covers
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md
 added: 2026-11-07
+closed: 2026-11-10
+pr: 2084
 payoff: The owner can read from the timeline alone what each step holds and whether it is done.
 verify: grep -qiE 'the Size column (counts|gives)' ROADMAP.md
 ---
@@ -55,3 +57,5 @@ that match is withdrawn.
 **Checked 2026-11-09:** the timeline's Size column still has no note saying what it counts. Rows 1 and 2 give no ship date, although the version table marks v0.2.8 and v0.3.0 completed. "Row 11 is the intended order" is unchanged. Each of the four parts is answered by the version table, the tags, `bin/docket wave` or `git log -S` for the date of the 185-entry count, so the fix is a session's and does not need the author.
 
 **Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** The problem was present when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. `ROADMAP.md` there already had the Size column with no note, "Row 11 is the intended order", and the v0.5.0 row's "sixteen items carry it".
+
+**Done 2026-11-10.** A paragraph under the table now says what the Size column counts: the items a step was scoped with, by effort, taken when it was scoped, so a shipped row's count of closed Required-scope ids can be larger. It also says when a row shows "—". v0.5.0 and v0.7.0, which are scoped, now carry sizes counted from their Required scope in the commits that scoped them: 18 items (3 L, 13 M, 2 S) at `0e7a6528` and 13 items (1 L, 9 M, 3 S) at `817a4d88`, with each item's `effort:` field. Rows 1 and 2 give their ship dates from the tags (v0.2.8 on 2026-09-01, v0.3.0 on 2026-09-02). The `v0.4.x` row says it shipped: its nine items closed between v0.4.4 (2026-09-06) and v0.4.19 (2026-09-13), from each item's `milestone:` field. The Gate 3 row points at the current baseline for how many entries had cleared when v0.6.16 was cut. It states no "not yet" status, because the documentation check refuses one in the timeline: the next step would make it false (`PL-0B22`). The v0.7.0 row says its Required scope closed in v0.6.16 and that the cut waits on Gate 3 and the test drive. v0.5.0's "sixteen items carry it" is gone, its scoping count of 18 sits beside the 20 that shipped, and the 185-entry count is dated 2026-09-21, the day `git log -S` shows it was written. Part 4's "Row 11 is the intended order" was already gone, removed by the restructure. The `v0.4.x` name agrees with the patch-track rule, because that track follows v0.4.0.
