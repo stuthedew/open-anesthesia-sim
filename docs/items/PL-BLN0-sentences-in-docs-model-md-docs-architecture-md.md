@@ -251,3 +251,16 @@ first tries `workspaces.json.previous`, and a file that is not UTF-8 text is set
 aside like an invalid one rather than refused like a newer one. The repair of
 § "Layering" for PL-G1J9 also left `.claude/rules/ui-calculations.md`
 paraphrasing the old sentence, so that rule now says the same as the document.
+
+**Corrected 2026-11-10, after the blind review.** Step 1's table says PL-GPTN's
+paragraph named only `PL-TH35`. It also named Blender's `SpaceType`, so the
+first build, which counted any code span that was not an item id, would have
+passed it. Both review passes found this. A paragraph now names code only with
+a Python, JSON, TOML or YAML path, a directory outside `docs/`, or a name that
+the simulator's source or tests define (`_defined_code`). A "no code yet" form
+is resolved against the queue even where its paragraph also names code. The
+tighter rule failed 21 more paragraphs, which name their code now. One
+describes code nobody has written, and declares it against PL-PKLR. The review
+also found that `app/wash_in.py` and `app/compartment_schematic.py` derive
+displayed values, so § "Layering" names them, and PL-HL9P records that the
+schematic's module loads the toolkit.

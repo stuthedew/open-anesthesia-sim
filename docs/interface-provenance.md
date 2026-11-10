@@ -837,7 +837,9 @@ regular editor, under the usual rules.
 that its code and roadmap do not drift apart, or into a private vocabulary.** It
 calls a pane an *Area* and a named set of panes a *Workspace*. What occupies an
 area is a *View*, which Blender calls an *editor*, as the introduction defines.
-A project rule requires these words (`.claude/rules/ui-areas.md`).
+A project rule requires these words (`.claude/rules/ui-areas.md`), and the code
+uses them: `Area` in `layout/tree.py`, `Workspace` in `layout/workspace.py` and
+the `View` protocol in `app/view_contract.py`.
 
 **A workspace and a layout are separate levels.** A workspace is a task-level
 object, and a layout is the geometry of the areas in one window. Blender split
@@ -845,7 +847,8 @@ workspace from layout in version 2.8, and that split is what makes the behaviour
 that `ROADMAP.md` item 34 wants possible at all. The roadmap calls for a
 workspace to pin which **run** it shows (`ROADMAP.md` item 34), much as a
 Blender workspace can pin a scene. If a workspace were only a layout, it would
-have nowhere to keep that run. Blender's Pin Scene is an opt-in exception to its
+have nowhere to keep that run. Here a `Workspace` holds its `layout` and, beside
+it, the `pinned_run` that its Views show. Blender's Pin Scene is an opt-in exception to its
 own rule that interface and data stay separate
 (§ "Workspace and Screen are two concepts because one was doing two jobs"). A
 design that cites Pin Scene as precedent should say that Pin Scene is an opt-in
@@ -859,7 +862,7 @@ boundary between
 area and view is the strongest and cleanest part of Blender's design, and the
 most transferable.
 
-**Each view serializes itself.** The layout layer therefore saves a workspace
+**Each view serializes itself**, through `View.save_state`. The layout layer therefore saves a workspace
 without knowing what any area holds, such as an F_A/F_I chart. In Blender, each
 editor also saves and loads its own data (`SpaceType.blend_write` and
 `blend_read_data`). That delegation is the right way to save a workspace without
@@ -872,7 +875,7 @@ area to another view and back restores the first view's state. The roadmap's
 which hold each editor's state
 (§ "What survives a resize, a split, a join, and a swap"). This project copies
 the outcome, not the swapping. The part of Blender's design to copy is how it
-bounds an area's list without a cap.
+bounds an area's list without a cap. This project has no code yet (`PL-PKLR`).
 
 **A view kind is a tag looked up in a registry, never a subclass.** Nothing in
 the layout layer knows that any concrete view class exists. Each tag is written
@@ -935,7 +938,8 @@ modelled values. Calling the displays editors would tell the user they can
 change values that they cannot, and the clinical-output standard in `CLAUDE.md`
 treats that as a presentation defect rather than a naming preference. `Widget`
 was unavailable because `QWidget` is the base class of every View, and
-`Component` was rejected as vaguer, though not wrong.
+`Component` was rejected as vaguer, though not wrong. The contract every View
+implements is the `View` protocol in `app/view_contract.py`.
 
 Neither Blender's term nor Eclipse's carries over whole, which is the cause of this
 divergence (the comparison is in `PL-GPYV`). Eclipse, the closest precedent,
@@ -962,7 +966,8 @@ A saved Qt splitter state (`QSplitter.saveState()`) goes wrong in the same way
 as Blender's substitution. Restoring a three-child state into a two-child
 splitter returns `True` and produces a plausible-looking wrong layout instead of
 failing. This project already ruled out the saved splitter state as a source of
-truth, partly for that reason (`PL-C842`).
+truth, partly for that reason (`PL-C842`). It saves its own layout value
+instead (`layout/serialization.py`).
 
 **A required value is never hidden to make room.** When a region will not fit,
 Blender makes it disappear (§ "An editor cannot refuse a size, and there is no
@@ -972,9 +977,10 @@ directly unsafe. A set of displayed values is unconditional: no Workspace may
 remove them, and nothing may cover them (`docs/MODEL.md` § "Minimum displayed
 outputs"). Silently collapsing one of those values is exactly the failure that
 the unconditional set exists to prevent. Where any other display cannot fit, the
-interface must say so rather than quietly shrink it away.
+interface must say so rather than quietly shrink it away. `layout/sizing.py`
+decides whether a View fits, and `app/area_layout.py` says when one does not.
 
-The unconditional set sits outside the area system. Each top-level window keeps
+The unconditional set (`app/unconditional_set.py`) sits outside the area system. Each top-level window keeps
 its own unconditional region outside its own area system, holding the invariant
 tier and the run that window shows (restated on 2026-09-16, when the project
 settled what a broken-out window must display). The per-substance tier appears
@@ -996,7 +1002,7 @@ reaches its minimum size (`PL-K285`; `border_range` in
 hands each editor a context through which it can reach the window, the screen
 and every other Area, and § "An editor is isolated by convention, not by
 construction" counts the editors that do. Here, each View should be handed what
-it draws and given no route to its container at all, so that Views stay
+it draws, through `ViewContext` and `ViewTick`, and given no route to its container at all, so that Views stay
 interchangeable by construction. That is a deliberate narrowing of Blender's
 contract, not a copy of it. Isolation is cheap to build now and expensive to add
 later, which is why the project's rule file for interface areas

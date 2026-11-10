@@ -8158,7 +8158,7 @@ PARAGRAPH_FAMILY_DOCUMENT = "\n".join(
     [
         "# Overview",
         "",
-        "The run steps in `AgentUptakeSystem.advance()`.",  # line 3
+        "The run steps in `advance()`, in `core/uptake.py`.",  # line 3
         "",
         "- a list entry that names nothing",  # line 5
         "- a second entry, wrapped onto",  # line 6
@@ -8210,16 +8210,57 @@ def test_a_paragraph_family_reads_every_paragraph_down_to_the_next_chapter() -> 
     [
         ("Built by `AgentUptakeSystem.for_agent()`.", True),
         ("Written by `core/thing.py`, after `PL-8888`.", True),
+        ("Read from `data/patients/`.", True),
+        ("Installed by `pyproject.toml`.", True),
         ("Recorded in `PL-8888`.", False),
         ("Recorded in `PL-8888` and `PL-TH35`.", False),
         ("Planned, no code yet (`PL-8888`).", False),
         ("No code span at all.", False),
+        ("Blender's contract is `SpaceType`, as `PL-TH35` says.", False),
+        ("Stated in `docs/MODEL.md` and `docs/items/`.", False),
+        ("Saved by `SpaceType.blend_write`.", False),
     ],
 )
-def test_a_paragraph_names_code_only_with_a_span_that_is_not_an_item_id(
+def test_a_paragraph_names_code_only_with_a_name_the_code_defines(
     paragraph: str, names: bool
 ) -> None:
-    assert doc_check._names_code(paragraph) is names
+    """A Blender name, a document path and an item id name none of this project's code."""
+    defined = {"AgentUptakeSystem", "for_agent", "save_state"}
+
+    assert doc_check._names_code(paragraph, defined) is names
+
+
+def test_the_code_names_are_what_the_tree_defines(tmp_path: Path) -> None:
+    """Classes, functions, fields and attributes count, and a function's locals do not."""
+    module = tmp_path / "src" / "anesthesia_sim" / "thing.py"
+    module.parent.mkdir(parents=True)
+    module.write_text(
+        "LIMIT = 1\n"
+        "class Thing:\n"
+        "    width: int\n"
+        "    def grow(self):\n"
+        "        area = 2\n"
+        "        self.height = area\n"
+    )
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "add", "-A"], cwd=tmp_path, check=True)
+
+    names = doc_check._defined_code(tmp_path).names
+
+    assert {"LIMIT", "Thing", "width", "grow", "height"} <= names
+    assert "area" not in names
+
+
+def test_a_declaration_is_resolved_even_where_the_paragraph_names_code(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A "no code yet" against a closed item fails though the paragraph names a module."""
+    monkeypatch.setattr(doc_check, "BOUND_FAMILIES", (_paragraph_family(),))
+    document = "# Overview\n\nThe chooser in `core/thing.py` is planned, no code yet (`PL-8888`).\n"
+    for status, expected in (("ready", 0), ("done", 1)):
+        report = _check_numeric_family(tmp_path / status, document, status)
+
+        assert len(report.errors) == expected, report.errors
 
 
 def test_a_paragraph_naming_no_code_is_an_error(

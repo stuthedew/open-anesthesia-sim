@@ -288,7 +288,7 @@ try:
     # script's comments, which the host-claim check reads (`PL-W9VC`).
     from docket.shell import Reading, Word, script_lines, shell_words, simple_commands
     from docket.shell import comments as shell_comments
-    from docket.store import ID_PATTERN, ID_RE, read_items
+    from docket.store import ID_PATTERN, read_items
 
     # Reading `git tag` is a second borrowing, for the same reason as the first.
     # `vcs` collapses every way git can fail to answer - not installed, not a
@@ -4329,31 +4329,104 @@ def _paragraph_members(text: str, family: BoundFamily) -> Iterator[tuple[int, st
         yield first, textwrap.dedent("\n".join(lines[first - 1 : last]))
 
 
-def _names_code(member: str) -> bool:
-    """Whether a paragraph holds a code span that is not an item id alone.
+#: The suffixes of a cited file that is the simulator's code or a data file it
+#: reads. A Markdown path names a document about the code, not the code.
+CODE_PATH_SUFFIXES = frozenset({".py", ".json", ".toml", ".yml", ".yaml"})
 
-    A code span is how these documents name a module, a symbol, a path or a
-    test, and naming one is what lets `format_candidates` list the paragraph
-    on a branch that changes it. An item id in a code span names work and not
-    code. PL-GPTN's paragraph cited only `PL-TH35`, and it read as open work
-    for weeks after that item's code shipped. The declared-none form's own span
-    is an item id, so it never counts as a name. `docket.store` owns what an
-    item id looks like.
+#: Where the code that the two bound documents describe is defined.
+CODE_ROOTS = (Path(PACKAGE_ROOT), Path("tests"))
+
+
+@dataclass(frozen=True)
+class DefinedCode:
+    """The names the simulator's tracked Python defines, and the files that could not be read."""
+
+    names: frozenset[str]
+    unread: tuple[str, ...]
+
+
+def _defined_code(root: Path) -> DefinedCode:
+    """Every class, function, field and constant name defined under `CODE_ROOTS`.
+
+    A name counts when a `class` or `def` defines it at any depth, when a module
+    or a class body assigns it, or when an attribute such as `self.windows` is
+    assigned. A function's local variables do not count, because a name as
+    common as `area` would then match a sentence about Blender.
+    """
+    names: set[str] = set()
+    unread: list[str] = []
+    for relative in CODE_ROOTS:
+        if not (root / relative).is_dir():
+            continue
+        for path in tracked_under(root, relative, ".py"):
+            try:
+                tree = ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
+            except (SyntaxError, ValueError, *UNREADABLE):
+                unread.append(path.relative_to(root).as_posix())
+                continue
+            bodies = [tree.body]
+            for node in ast.walk(tree):
+                if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+                    names.add(node.name)
+                    if isinstance(node, ast.ClassDef):
+                        bodies.append(node.body)
+                elif isinstance(node, ast.Attribute) and isinstance(node.ctx, ast.Store):
+                    names.add(node.attr)
+            for statement in (each for body in bodies for each in body):
+                targets = (
+                    statement.targets
+                    if isinstance(statement, ast.Assign)
+                    else [statement.target]
+                    if isinstance(statement, ast.AnnAssign)
+                    else []
+                )
+                names.update(target.id for target in targets if isinstance(target, ast.Name))
+    return DefinedCode(frozenset(names), tuple(unread))
+
+
+def _names_code(member: str, defined: Collection[str]) -> bool:
+    """Whether a paragraph names, in a code span, a file or a name the simulator's code holds.
+
+    Naming one is what lets `format_candidates` list the paragraph on a branch
+    that changes that code. A span counts when it is a path to a Python or JSON
+    file, or to a directory outside `docs/`, or when its last dotted part,
+    before any call parentheses, is a name in `defined`. So `docs/MODEL.md`, an
+    item id and a name from Blender's source do not count. PL-GPTN's paragraph
+    named only Blender's `SpaceType` and `PL-TH35`, and it read as open work
+    for weeks after that item's code shipped. Whether a cited path exists stays
+    `check_citations`' question.
 
     Whether the code named is the code the paragraph describes stays a
     reviewer's question, as it does for a named test.
     """
     for span in _code_spans(member):
         content = SPAN_BREAK_RE.sub("", span["content"]).strip()
-        if content and not ID_RE.match(content):
+        if _is_path_citation(content):
+            if PurePosixPath(content).suffix in CODE_PATH_SUFFIXES or (
+                content.endswith("/") and not content.startswith("docs/")
+            ):
+                return True
+            continue
+        parts = content.split("(", 1)[0].split(".")
+        if all(part.isidentifier() for part in parts) and parts[-1] in defined:
             return True
     return False
+
+
+#: The names `_defined_code` found for the root that `check_bound_families` is
+#: checking, set only while it runs, so `CODE_ENTITY` can ask about one member.
+_DEFINED_CODE: ContextVar[frozenset[str]] = ContextVar("doc_check_defined_code")
+
+
+def _names_defined_code(member: str) -> bool:
+    """`_names_code` against the names of the tree being checked."""
+    return _names_code(member, _DEFINED_CODE.get())
 
 
 #: What a paragraph that describes the code must name. Its declared-none form
 #: is "no code yet (`PL-XXXX`)", for a paragraph that describes code an open
 #: item still owes.
-CODE_ENTITY = _entity_kind("code", _names_code)
+CODE_ENTITY = _entity_kind("code", _names_defined_code)
 
 #: The study of Blender's window system, whose last chapter says what this
 #: project's interface takes from it.
@@ -4483,6 +4556,21 @@ def check_bound_families(root: Path, report: Report) -> None:
     sentence it sits under - stays a reviewer's question, exactly as it does
     for `check_provenance` and `check_named_tests`.
     """
+    defined = _defined_code(root)
+    if defined.unread:
+        report.declined.append(
+            f"{', '.join(defined.unread)}: the parser refuses it, so a paragraph of a bound "
+            "family that names only code defined there is reported as naming no code"
+        )
+    token = _DEFINED_CODE.set(defined.names)
+    try:
+        _check_each_bound_family(root, report)
+    finally:
+        _DEFINED_CODE.reset(token)
+
+
+def _check_each_bound_family(root: Path, report: Report) -> None:
+    """`check_bound_families`' reading of each family, while the tree's code names are set."""
     items: Mapping[str, Item] | None = None
     store_read = False
     for family in BOUND_FAMILIES:
@@ -4512,10 +4600,14 @@ def check_bound_families(root: Path, report: Report) -> None:
             # document holds several and a line number alone does not say which
             # promise was broken.
             where = f'{family.document}:{line}: § "{family.heading}"'
-            if family.kind.names(member):
-                continue
+            # A declared-none form is resolved wherever it stands, even in a
+            # member that also names its entity, because a paragraph that says
+            # "no code yet" against a closed item reads as open work whatever
+            # else it names (`PL-BLN0`).
             declared = next(_statement_matches(family.kind.declares_none, member, PROSE), None)
             if declared is None:
+                if family.kind.names(member):
+                    continue
                 report.errors.append(
                     f"{where} promises that {family.promise}; this member names no "
                     f"{family.kind.noun} and does not declare that it has none "

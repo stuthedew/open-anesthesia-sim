@@ -5,7 +5,6 @@ and how data flows through it. It is a map for contributors, not a scientific
 specification. To find where a change belongs, start at § "Where new code
 belongs", the last chapter.
 § "Layering" says what an Area, a View and a Workspace are.
-
 For the equations, units, parameter provenance, and numerical method, see
 [`docs/MODEL.md`](MODEL.md). For version history and milestones, see
 [`ROADMAP.md`](../ROADMAP.md). For the origin of the interface's area and
@@ -29,15 +28,18 @@ data/  --loaded by-->  core/  --read by-->  app/
   toolkit, no wall-clock time, and no I/O beyond reading the packaged JSON
   files in `data/`. Every quantity it produces is deterministic for identical
   inputs.
-- **`app/`** is the PySide6 user interface. It computes no model quantity. It
-  reads immutable snapshots from `core/` through the controller
+- **`app/`** is the PySide6 user interface. It advances no part of the model.
+  It reads immutable snapshots from `core/` through the controller
   (`app/controller.py`), and the chart also reads
-  `SimulationController.drawn_window`. It converts a value only for display:
-  a fraction to a percent or a MAC multiple, a drawn value to its axis unit,
-  and the liquid agent used to a cost at the reader's price. Each conversion
-  sits in a module that loads no toolkit and has its own tests:
-  `app/formatting.py`, `app/chart_frame.py` and `app/agent_cost.py`. It
-  forwards user input back as setter calls.
+  `SimulationController.drawn_window`. It derives a value only for display: a
+  fraction as a percent or a MAC multiple, a drawn value in its axis unit, the
+  F_A/F_I ratio, and the liquid agent used as a cost at the reader's price.
+  Each of these sits in a module that loads no toolkit and has its own tests:
+  `app/formatting.py`, `app/chart_frame.py`, `app/wash_in.py` and
+  `app/agent_cost.py`. `app/compartment_schematic.py` computes each
+  container's fill and each compartment's share of the agent held, and
+  `tests/unit/test_compartment_schematic.py` tests it. `app/` forwards user
+  input back as setter calls.
 - **`layout/`** is the area layout as a value. A window is divided into
   **Areas**, and each Area holds one **View**: a widget such as a chart or the
   setting controls. Any View can occupy any Area. A **Workspace** is a named
@@ -468,7 +470,8 @@ one trunk with N branches. Sub-forks of forks are excluded, not merely unimpleme
 owner, 2026-08-25). They multiply without bound and offer little over branching
 from the trunk again.
 
-This section is the object map. What a branch *guarantees* is stated and
+This section is the object map of `BranchedCase`, its runs and the
+`RunDefinition` each run carries. What a branch *guarantees* is stated and
 measured in one place only:
 `docs/MODEL.md` § "The canonical evaluation rule". That section says that a
 branch's run definition opens at a keyframe of the case, and why. It says that
@@ -553,8 +556,9 @@ circuit volume, applied before any state is, because
 fraction. A volume set afterwards would move the branch off the state it opened
 at.
 
-A branch inherits the four live controls, read from the settings of the trunk's
-stretch, which hold each value as it was set. The rebuilt branch is then
+When `SimulationController.resumed_at` opens a branch, the branch inherits the
+four live controls, read from the settings of the trunk's stretch, which hold
+each value as it was set. The rebuilt branch is then
 checked against those settings rather than trusted. The check covers every
 setting the stretch carries, and the agent's displayed references, since the
 agent and patient are read again from their data files. A refusal names each
@@ -631,7 +635,8 @@ side of it.
 Where a run stands is not, in general, a setting change. On a 120 s run with
 two control changes, 3 of the 1 201 instants it can stand at are keyframes. So
 the trunk holds no keyframe there, and nothing records one. The branch's
-*definition* opens at the keyframe at or before the fork, while its clock and
+*definition* opens at the keyframe at or before the fork
+(`SimulationController._keyframe_before`), while its clock and
 its live system stand at the fork. This costs the trunk nothing and reproduces
 it element-wise. The obvious route was measured and refused. Recording a
 keyframe where the run halts makes the branch exact against the trunk it forked
@@ -775,7 +780,7 @@ to Pause for a lock that Pause cannot lift.
 **The full statement is in `docs/MODEL.md` § "What a branch comparison asserts,
 and what it does not".** It is stated there because it is a claim about the
 model, not about how the code is arranged. This section covers only the part of
-that claim that the structure above decides, which is three things.
+that claim that the structure of `BranchedCase` decides, which is three things.
 
 **The comparison is a trunk and one branch of it, and the structure enforces
 this.** `BranchedCase` forks only its trunk, so it cannot express a branch of
@@ -796,7 +801,7 @@ difference between two control timelines. The inheritance list above is the
 audit of that claim, not a convenience.
 
 **The shared history is the same object, not a reproduction of one.** A branch's
-definition carries the trunk's own keyframe, and both runs sit in the case's
+`RunDefinition` carries the trunk's own `Keyframe`, and both runs sit in the case's
 single time frame. So the runs agree before the fork by construction, not
 because they meet a tolerance. `docs/MODEL.md` § "What this requires of a
 branch" is where that is stated and measured, and the residual it leaves is
@@ -1021,8 +1026,10 @@ ratified) and question Q4 of `PL-WV9K` (project owner, 2026-09-27, specified).
   outcome in `store.Loaded`, so that the interface can show it on the line
   under the Workspace tabs. There are five cases.
   - *none*: the launch shows the shipped set and says nothing, unless
-    `workspaces.json.previous` can be used. Then it shows that file's set and
-    says so (`_without_current_file`).
+    `workspaces.json.previous` exists (`_without_current_file`). If that file
+    validates, the launch shows its set and says so. If it cannot be used, the
+    launch shows the shipped set and says why. If a newer build wrote it, the
+    launch also turns saving off for the session and says so.
   - *older*: the launch migrates the file in memory with
     `layout/migrations.py`, one step per version. The reader is told only
     where a step lost information. At the next save, the file as it was
@@ -1031,10 +1038,10 @@ ratified) and question Q4 of `PL-WV9K` (project owner, 2026-09-27, specified).
     leaves it untouched. It shows the shipped set and turns saving off for the
     session. A notice names the file and both versions.
   - *unreadable*: the launch handles a file it cannot read (`OSError`) as it
-    handles a newer one. It sets aside a file that is not UTF-8 text
+    handles a newer one (`WorkspaceStore._load`). It sets aside a file that is not UTF-8 text
     (`UnicodeDecodeError`), as it does an invalid one.
   - *invalid at a version this build reads*: the launch sets the file aside
-    unchanged as `workspaces.invalid-<UTC time>.json`. It loads
+    unchanged as `workspaces.invalid-<UTC time>.json` (`_set_aside`). It loads
     `workspaces.json.previous` if that file validates, and the shipped set
     otherwise. A notice says which one it loaded, and saving stays on.
 
@@ -1112,7 +1119,7 @@ open-circuit system with `numpy.linalg.eig`
 **On Linux, the Qt wheels need shared objects from five OS packages.** Running
 `ldd` on 2026-09-16 showed that the wheels' `Qt/lib/libQt6Gui.so.6` and
 `Qt/plugins/platforms/libqoffscreen.so` link to the shared objects below, which
-resolve outside the wheels.
+resolve outside the wheels that `pyproject.toml` installs.
 
 | shared object | Debian/Ubuntu package |
 | --- | --- |
@@ -1142,7 +1149,8 @@ PyPI for each user. A bundled build is part of the packaging work in
 `ROADMAP.md`.
 
 pyqtgraph is MIT, and numpy is `BSD-3-Clause AND 0BSD AND MIT AND Zlib AND
-CC0-1.0`. Both wheels ship their licence text.
+CC0-1.0`. Both are dependencies in `pyproject.toml`, and both wheels ship their licence
+text.
 
 ## Development scripts and hooks
 
@@ -1307,7 +1315,8 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
   Breaking a surface out into a second top-level window is wanted but not
   scheduled. `ROADMAP.md` § "Explicitly out of scope for v0.6.0" says where it
   stands. Once it is built, the routing question gains a second half: *which
-  window* a surface is instantiated in. `docs/MODEL.md` § "Minimum displayed
+  window* a surface is instantiated in. Until then, `app/area_layout.py` builds
+every Area in the main window. `docs/MODEL.md` § "Minimum displayed
   outputs" answers that half, not this entry.
 - A new way of *rendering* a value that a reader interprets →
   `app/formatting.py`. Examples are a unit, a decimal count, or a marker for
