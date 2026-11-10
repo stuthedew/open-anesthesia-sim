@@ -2,7 +2,7 @@
 id: PL-YKKC
 title: A reverse outline of docs/MODEL.md (2026-11-10) found structural problems to weigh in the next structure pass: the model's own sections are about 11% of the document, several headings do not name what they hold, terms are used before they are defined, and developer notes sit mid-section or fill half of one
 status: untriaged
-feature: model-by-reader
+feature: model-md-structure
 added: 2026-11-10
 ---
 
@@ -24,16 +24,18 @@ within-section findings. Check each point below against `PL-1VXY` before acting
 on it.
 
 A second reverse outline was made the same day in another session, on branch
-`claude/elegant-babbage-m7igyw` (pull request #2088). Its items are in the
-`model-by-reader` feature, including `PL-P3GZ`, which asks whether to split
-`docs/MODEL.md` by reader, and `PL-9RLM`, which commits that outline. Point 5
-below overlaps `PL-P3GZ`, so decide that question first.
+`claude/elegant-babbage-m7igyw` (pull request #2088). Its items share this
+item's feature: `PL-9RLM` commits that outline as
+`docs/prose-review/model-reverse-outline.tsv`, `PL-B07T` drafts a clinician's
+model description from it, and `PL-P3GZ` asks whether to split
+`docs/MODEL.md` by reader. Point 5 below overlaps `PL-P3GZ`, so decide that
+question first.
 
 **That outline takes precedence** (project owner, 2026-11-10: the other session
 runs a more capable model, so defer to it where appropriate). Treat each point
 below as a second reading to check against that outline. Where the two
-disagree, the `model-by-reader` outline wins. Where it already covers a point,
-drop the point here. This item is therefore filed in `model-by-reader`.
+disagree, that outline wins. Where it already covers a point, drop the point
+here.
 
 **Findings, by consequence.**
 
