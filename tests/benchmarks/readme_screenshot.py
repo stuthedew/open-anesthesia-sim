@@ -10,38 +10,39 @@ with, so the image shows what a reader sees when they press Start and wait.
 
 The README shows a frozen copy of displayed clinical values, so the image must
 keep three things in one frame: the agent's name, the 1 MAC value that each
-×MAC figure is divided by, and the playback rate. The whole window is grabbed
-at 1440 by 1300 pixels, which holds the page from the title bar to the
-disclaimer, so no number is cut off from its units or its label.
+×MAC figure is divided by, and the playback rate. The script grabs the whole
+window at 1440 by 1300 pixels. That size holds the page from the title bar to
+the disclaimer, so no number is cut off from its units or its label.
 
-**When to retake it.** Run this script again whenever a change alters what
-the default Workspace shows: a readout, a label, a legend, a control, the
+**When to retake the image.** Run this script again whenever a change alters
+what the default Workspace shows: a readout, a label, a legend, a control, the
 layout, or a value the default case produces. Commit the new image with the
 README's alt text and caption updated: the alt text lists the six readouts the
-image shows, and the caption gives the release the code follows and the date.
-A stale image shows a display that no longer exists, which is worse than no
-image. A change to the model that moves a readout fails
+image shows, and the caption gives the date and the release that the code comes
+after. A stale image shows a display that no longer exists, which is worse than
+no image. A change to the model that moves a readout fails
 `tests/unit/test_readme_claims.py` until the image is retaken. A change to the
 layout or the chart alone fails no test, so the session making it retakes the
 image.
 
-**What the image cannot show exactly.** The container draws with the fonts it
-has installed, so the type in the image can differ from what the project
-owner's machine draws. Between releases the version in the image names the
-commit that rendered it. That is usually a branch commit, which a squash merge
-leaves off `main`, so the caption names the release and the date instead.
+**What the image cannot show exactly.** The image is rendered in a container
+and uses the fonts installed there, so its type can differ from what the project
+owner's machine draws. Between releases, the version in the image names the
+commit it was rendered from. That is usually a branch commit, which a squash
+merge leaves off `main`, so the caption names the release and the date instead.
 
-Run it from the repository root with `uv run python tests/benchmarks/readme_screenshot.py`.
-It prints the path it wrote and the version shown in the image.
+Run this script from the repository root with
+`uv run python tests/benchmarks/readme_screenshot.py`. It prints the path it
+wrote and the version shown in the image.
 """
 
 import os
 from pathlib import Path
 
-#: Where `README.md` reads the image from.
+#: The path to the image that `README.md` shows.
 SCREENSHOT_PATH = Path("assets/screenshots/dashboard.png")
 
-#: Ten minutes shows the circuit near its plateau while the alveolar and
+#: At ten minutes the circuit is near its plateau while the alveolar and
 #: vessel-rich traces are still rising, so the image shows uptake in progress.
 SIMULATED_S = 600.0
 

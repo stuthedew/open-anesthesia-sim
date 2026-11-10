@@ -20,7 +20,7 @@ for teaching.
 <!-- provenance: data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4 -->
 
 *The default case after ten simulated minutes, rendered on 2026-11-09 from the
-code after release 0.6.16. Every value shown is a model output.
+code after release 0.6.16. Every value shown is a model output. The script
 `tests/benchmarks/readme_screenshot.py` retakes the image.*
 
 ## What it is for

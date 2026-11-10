@@ -3,14 +3,15 @@
 `README.md` § "What it simulates" tells a reader three things the interface
 offers: the playback rates, the range of chart time bases, and the agents. Each
 is decided by a constant in the package, and nothing else compares the README
-with those constants. Without these tests, adding a playback rate, moving the
-narrowest or widest time base, or shipping a fourth agent would leave the README
-stating the old value with every other check passing (`PL-GQWP`).
+with those constants. Without these tests, someone could add a playback rate,
+move the narrowest or widest time base, or ship a fourth agent, and the README
+would go on stating the old value while every other check passed (`PL-GQWP`).
 
 The README's image of the window shows six modelled concentrations, and its alt
-text lists them. The last test runs the default case for as long as the image
-shows and compares (`PL-MBP6`). A change to the model that moves a readout then
-fails here until the image is retaken.
+text lists them. The last test runs the default case for the same simulated
+time as the image and compares the run's readouts with those in the alt text
+(`PL-MBP6`). A change to the model that moves a readout then fails here until
+the image is retaken.
 
 Each test fails with a message that names the sentence to update.
 """
@@ -86,11 +87,11 @@ def test_the_readme_names_exactly_the_shipped_agents() -> None:
 
 
 def test_the_readme_image_shows_the_readouts_the_default_case_reaches() -> None:
-    """The alt text's six readouts are what the default case shows after the image's run length.
+    """The alt text's six readouts are what the default case shows at the image's simulated time.
 
-    The run is the one `tests/benchmarks/readme_screenshot.py` renders: a new controller's
-    default settings, started and stepped at the interface's own step for
-    `readme_screenshot.SIMULATED_S`.
+    The run is the one `tests/benchmarks/readme_screenshot.py` renders: a new controller
+    with its default settings, started and advanced in the interface's own steps up to that
+    time (`readme_screenshot.SIMULATED_S`).
     """
 
     controller = SimulationController()
