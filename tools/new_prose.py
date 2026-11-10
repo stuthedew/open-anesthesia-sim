@@ -52,17 +52,20 @@ reviewed only where a reader row for string literals names its file, and a
 docstring or comment only where another row does, so an interface notice and
 the docstring beside it are judged for different readers (`PL-Q98K`). The
 report lists the readers of every file it prints a passage from, and names
-under each passage the readers to judge it for (`PL-R7Q6`).
+under each passage the readers to judge it for (`PL-R7Q6`). A row for a
+reader in `UNEDITED_READERS` is ignored, so an item brief, a workflow file, a
+commit message, a pull request body and a reply are never printed.
 
 The tool exits 0 when it read the diff, whether or not it printed a passage,
 and exits 1 when the diff could not be read or the default branch is unknown. A
 changed file that will not parse is named in a "Not read" line, so a partial
 result is never given as a whole one.
 
-**`--draft FILE --kind WORDS` prepares a reply or a pull request body for review
-before it is sent.** It prints the rule, the reader rows whose first cell
+**`--draft FILE --kind WORDS` prepares a draft for review before it is written
+into the file it is for.** It prints the rule, the reader rows whose first cell
 contains WORDS, and the whole file as passage 1 (`PL-J1ZM` part 3). It exits 1
-when no row's first cell contains WORDS.
+when no row's first cell contains WORDS. Replies and pull request bodies have
+no row here, because the copy editor does not edit them (`UNEDITED_READERS`).
 
 **`--section FILE --heading TEXT` prints one Markdown section as passage 1,
 with every row open to rewrite.** A changed passage may be rewritten only with
@@ -316,9 +319,32 @@ def read_by(table: Sequence[Reader], units: Iterable[Unit]) -> list[Unit]:
     return [unit for unit in units if readers_of(table, unit.path, unit.kind)]
 
 
-def rule_table() -> list[Reader]:
-    """The reader table of the plain-writing rule at `RULE`."""
+#: The readers whose texts the copy editor does not edit (project owner,
+#: 2026-11-10). They are the readers of item briefs, the workflow's files, commit
+#: messages, pull request titles and bodies, and replies. The owner limited
+#: these texts to two copy-editor reads on 2026-11-09 and then took them out of
+#: the review altogether: the copy editor edits only the documents and code
+#: that a clinician, a learner or a contributor reads. The strings are the
+#: "Reader" cells of the rule's table, so a reworded cell fails
+#: `tests/unit/test_new_prose.py` instead of bringing those texts back in.
+UNEDITED_READERS = (
+    "A later session, or the owner reading the history",
+    "The project owner, an anesthesiologist and intensive-care physician",
+)
+
+
+def whole_rule_table() -> list[Reader]:
+    """Every row of the plain-writing rule's reader table, including the unedited readers."""
     return reader_table(RULE.read_text(encoding="utf-8"))
+
+
+def rule_table() -> list[Reader]:
+    """The rows of the plain-writing rule's reader table for the texts the copy editor edits.
+
+    A row for one of `UNEDITED_READERS` is left out, so no mode of this tool
+    prints a passage for those readers alone, and `--count` does not count one.
+    """
+    return [reader for reader in whole_rule_table() if reader.who not in UNEDITED_READERS]
 
 
 def is_document(path: str) -> bool:
@@ -975,10 +1001,14 @@ def branch_reviews(root: Path, base: str, table: Sequence[Reader]) -> Reviewed:
     """A review of each long passage changed between the fork from `base` and the working tree."""
     fork, against = doc_check._diff_from(root, base)
     found = Reviewed(base, against, [], [], [])
+    whole = whole_rule_table()
     for path in doc_check._changed_paths(root, fork):
         if not may_review(path) or not (root / path).is_file():
             continue
         named = bool(readers_of(table, path))
+        if not named and readers_of(whole, path):
+            # A row names the file, but only for a reader the copy editor does not edit for.
+            continue
         try:
             reviews = reviews_of(
                 path,
@@ -1462,13 +1492,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--draft",
         type=Path,
         metavar="FILE",
-        help="print the reply or pull request body in FILE as one passage, for the readers "
-        "that --kind names",
+        help="print the draft in FILE as one passage, for the readers that --kind names",
     )
     parser.add_argument(
         "--kind",
         help="with --draft, words from the first cell of the reader rows the draft is for, "
-        "such as 'replies' or 'pull request'",
+        "such as 'README'",
     )
     modes.add_argument(
         "--section",
@@ -1504,8 +1533,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             text = draft_report(args.draft, args.kind, table)
             if text is None:
                 print(
-                    f"new_prose: no answer: no row of the reader table in {RULE.name} has "
-                    f"{args.kind!r} in its first cell",
+                    f"new_prose: no answer: no row of the reader table in {RULE.name} for a "
+                    f"text the copy editor edits has {args.kind!r} in its first cell",
                     file=sys.stderr,
                 )
                 return 1

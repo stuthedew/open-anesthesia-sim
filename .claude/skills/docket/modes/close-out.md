@@ -286,7 +286,10 @@ page and decides which file a session reads.
    `python3 tools/new_prose.py` to a file in the scratchpad. That tool prints
    each passage that the branch changed in a file that has a row in the
    reader table of `.claude/rules/plain-writing.md`, with the readers that
-   the row names. It prints a passage whatever its length, because short
+   the row names. It prints none from an item brief or a workflow file: the
+   copy editor edits only the documents and code that a clinician, a learner
+   or a contributor reads, and not item briefs, the workflow's files, commit
+   messages, pull request bodies or replies (project owner, 2026-11-10). It prints a passage whatever its length, because short
    passages were awkward in 25% of `PL-Y55Q`'s blind verdicts and many of the
    messages a learner reads are short (project owner, 2026-11-04, ratified,
    over `PL-PRCS`'s minimum of 30 words). It leaves out a string literal of one
@@ -307,12 +310,10 @@ page and decides which file a session reads.
    that the edit lost back to the copy editor to restore. It runs up to five
    rounds of checks, each about as long as the first read. Where a statement
    is still lost after the last round, the tool keeps the passage as it was
-   and lists what the edit lost under "Meaning check:" (`PL-F0Q2`). An item
-   brief, a workflow file, a commit message, a pull request body or a reply
-   gets at most two reads and two rounds of meaning checks (project owner,
-   2026-11-09). For each passage the copy editor returns `[N] keep`, or
-   `[N] rewrite` with the new text and each cut with its reason, as its
-   instructions in `.claude/agents/copy-editor.md` say.
+   and lists what the edit lost under "Meaning check:" (`PL-F0Q2`). For each
+   passage the copy editor returns `[N] keep`, or `[N] rewrite` with the new
+   text and each cut with its reason, as its instructions in
+   `.claude/agents/copy-editor.md` say.
 
    **Apply each rewrite as it stands.** Revert one edit only where it lost or
    changed a value, a unit, a condition, an identifier or a citation, and
