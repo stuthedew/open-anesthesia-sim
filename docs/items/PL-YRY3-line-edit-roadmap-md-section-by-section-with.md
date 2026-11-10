@@ -192,4 +192,15 @@ the sentence now quoted in `PL-J3ZK`.
 6. Item 39's "Correcting the water half alone is what that note explicitly warns against" follows "Both notes"; name the note.
 7. Item 43's "the baselines of the four check items" does not say which four items or what a baseline is.
 
+**Left for this line edit by `PL-VM1Q`, 2026-11-10.** `PL-VM1Q` corrected the completed-release records' false and stale statements, and left these wording calls. Its brief has the answer behind each, under the question number given.
+
+1. Define, point to or replace the terms that the completed-release sections use without defining: "beat", "cadence", "parse floor", "grandfathered", "captures" and "groom" in v0.2.8 (question 6); "the presumption", "the refilling-queue problem", "the cut", "score architecture", "keyframe" and "bucket cache" in v0.4.0 (14); the v0.4.26 terms of question 23; Gate 1's terms of question 35; and the Required-scope terms of question 38.
+2. Point v0.2.0's out-of-scope vaporizer bullet to planned-milestone item 1 and `PL-439V` (question 2).
+3. Remove the four hand-written "Closed ... (pull request N)" notes in v0.2.8's list (question 3).
+4. Give Gate 1's opening a pointer to § "Which findings re-enter the gate" (question 26).
+5. Put Gate 1's `PL-S6WW` paragraph in the past tense: #669 corrected the sentence it calls false (question 34).
+6. Decide whether `PL-Y5WR` belongs to v0.5.0's score-architecture group rather than its boundaries group, and recount the groups' sizes (question 37).
+7. Name the queue's own check and the documentation check in words in v0.5.0's definition of done (question 39).
+8. Move the owner's 2026-09-21 quotation and the "nine open items" count from v0.5.0's out-of-scope list to `PL-4B1G` (question 40).
+
 **Generator check.** One-off: the line edit the owner asked to follow each restructure. No mechanism produces it.

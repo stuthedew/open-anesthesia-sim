@@ -145,7 +145,7 @@ number because the next minor number was not free.
 | v0.2.10 | Completed | Interface-safety and accessibility patch on the same model: the supported input ranges became the model's own and are refused in `core/` rather than only bounded by the sliders, the alveolar readout stopped calling a modelled value "end-tidal", every readout now names its compartment above a smaller clinical gloss and shares one baseline with its neighbours, two colours that failed WCAG AA on clinical text were replaced, and the application acquired a name. | 11 items | `PL-1K0L` |
 | v0.2.11 | Completed | Transactional-step and core-boundary patch on the same model: a simulation step that cannot be completed is now rolled back in full, so a halted run shows the last completed step rather than four of five sub-exchanges applied in order, and the entry point to the scientific core is named `AgentUptakeSystem` for what it owns rather than for anatomy that is one of its four compartments. | 5 items | `PL-1K0L` |
 | v0.2.12 | Completed | Provenance and parallelism patch on the same model, changing no equation, parameter or numerical method and leaving `src/anesthesia_sim/data/` byte-identical to v0.2.11: `docs/MODEL.md`'s prose values are now held to the data files they restate rather than only its provenance table, so a data-file edit can no longer leave a stated figure quietly wrong, and a figure derived from several values reports that it needs recomputing when an input moves. | 6 items | `PL-1K0L` |
-| v0.3.0 | Completed | The foundation: Gate 0's inherited backlog cleared, 21 of 21 frozen entries closed across the v0.2.6 to v0.3.0 patch series — the splitting-error bound widened across setting changes, the simulation step made transactional and bounded to the split's applicability domain, the `core/` boundary refactors, and the live tooling defects. | 7 items | `PL-1K0L` |
+| v0.3.0 | Completed | The foundation: Gate 0's inherited backlog cleared, 21 of 21 frozen entries closed across the v0.2.5 to v0.3.0 patch series — the splitting-error bound widened across setting changes, the simulation step made transactional and bounded to the split's applicability domain, the `core/` boundary refactors, and the live tooling defects. | 7 items | `PL-1K0L` |
 | v0.3.1 | Completed | Provenance-integrity and rollback patch on the same model, adding no capability and changing no equation, parameter or numerical method: `src/anesthesia_sim/data/` is byte-identical to v0.3.0, `docs/MODEL.md` is unchanged, and `src/` changes in one file. | 15 items | `PL-1K0L` |
 | v0.3.2 | Completed | Provenance-honesty patch, and the release that decided how this project's numbers may be cited. | 8 items | `PL-1K0L` |
 | v0.3.3 | Completed | Delegation and interface-boundary patch on the same model, adding no capability and changing no equation, parameter, numerical method, unit or displayed value: `src/anesthesia_sim/data/` is byte-identical to v0.3.2 and the one `src/` change is behavior-preserving. | 5 items | `PL-1K0L` |
@@ -3113,9 +3113,13 @@ v0.1.0 is complete only when:
   prediction; and
 - no deferred feature has entered the release accidentally.
 
-All the criteria above were met when the release was tagged. The section
-`docs/MODEL.md` § "Release gate" has the matching checklist for the scientific
-documentation.
+All the criteria above were met when the release was tagged, with one gap.
+The mass-balance tolerance was stated in `docs/MODEL.md`, but the
+step-refinement tolerance (0.5 % relative) was stated only in its test, and
+that test compared the 0.1 s step with 0.05 s only. The reference scenarios
+were the two directional tests: ventilation of 2 against 8 L/min, and cardiac
+output of 2.5 against 7.5 L/min. The section `docs/MODEL.md` § "Release gate"
+has the matching checklist for the scientific documentation.
 
 ### Explicitly out of scope for v0.1.0
 
@@ -3155,7 +3159,8 @@ per-agent data and the loading capability to select among agents.
   this module's JSON validation to Pydantic while working on it, because the
   boilerplate in its `_require_*` helpers grows with each new agent schema.
   The module is isolated behind plain dataclass returns, so the switch is
-  low-risk here.
+  low-risk here. The migration landed just after the tag (`8457af33`) and
+  first shipped in v0.2.1.
 - Add independent reference tests for isoflurane and desflurane wash-in,
   uptake, and washout. Follow the same pattern of directional solubility,
   equilibrium, and mass balance already used for sevoflurane in
@@ -3241,8 +3246,9 @@ More entries have been admitted since then. Some came in under the completion
 rule and the scope test described after this list, and one came in at the
 project owner's direction. So the list's whole content is the entries below,
 not the original seventeen. The text after the list sets out what the freeze
-closes and what it does not. Each entry records its own outcome when it
-closes, as § "The cadence" above describes.
+closes and what it does not. Each entry's item file records how it closed.
+The release shipped on 2026-09-01 (#176) with 37 entries done and `PL-J786`
+dropped.
 
 **It is a frozen scope, not a fourth gate in the cadence.** The first group
 below is debt as § "What counts" defines it, and every entry in it
@@ -3367,8 +3373,9 @@ the two table rows that name this release.
   close*; this one closes with a repository edit.
 - PL-HDY6 (S) The scope reader counts any id a milestone's section names, so
   `docket next` reports an id the section names *to exclude* as in scope for
-  the current step. Admitted 2026-09-01 under the scope test, after the four
-  above and on the same reading: it is the queue's ranking misdirecting a
+  the current step. Admitted 2026-09-01 under the scope test, after `PL-3576`,
+  `PL-1Q3S`, `PL-RWZV` and `PL-H8MQ` (admitted together in #129) and on the
+  same reading: it is the queue's ranking misdirecting a
   session on `main` today, telling it that `PL-68XK` clears this gate on the
   strength of the paragraph below that says `PL-68XK` does not. The fix is not
   simply to prefer this subsection - v0.4.0 names nine open ids as its own
@@ -3420,7 +3427,8 @@ the two table rows that name this release.
 - PL-CMCB (S) All ten `type: ignore` directives sit under `tests/`, outside
   `[tool.mypy] files`, so `warn_unused_ignores` has never evaluated one.
   Admitted 2026-08-31 under the scope test: it is the mypy half of what
-  `PL-ZN0N` and `PL-69J3` did for `noqa`. The weakest of the seven — inert
+  `PL-ZN0N` and `PL-69J3` did for `noqa`. The weakest of the seven admitted together on
+  2026-08-31 (#119) — inert
   reporting rather than a loop that misfires — and the first to drop if this
   list needs shortening.
 - PL-RWZV (S) The brief check tests for a literal marker, so an elaborated
@@ -3435,7 +3443,8 @@ the two table rows that name this release.
   different totals — eighteen, thirty-one and thirty-two — were live in this
   file at once, so a session reading it to learn how much of the release is left
   read a number that was wrong. Every admission pays the correction by hand,
-  the four of 2026-09-01 included.
+  the four of 2026-09-01 (`PL-3576`, `PL-1Q3S`, `PL-RWZV`, `PL-H8MQ`)
+  included.
 
 **Two items on the approved list are not entries.** `PL-J3ZK` (restore the tag
 provenance) and `PL-20ZR` (the workflow-before-features ordering is
@@ -3454,7 +3463,8 @@ a hook that no session can read. PL-H7XN's test is that no rule was lost,
 which needs a review of the file rather than a command. PL-CMCB's deliverable
 is a verdict on ten suppressions rather than an exit code.
 
-**What the freeze closes, and what it does not** (project owner, 2026-08-30).
+**What the freeze closes, and what it does not** (project owner, 2026-08-30,
+`PL-QDN7`). This rule applies to every frozen list.
 The list is closed to new *scope*: new behavior, new capability, or another
 workflow idea raised while this release runs. It is not closed to the work
 that an entry already on the list needs before it is actually done. A finding
@@ -3469,7 +3479,9 @@ a finding which continues or completes an item inside the frozen list belongs
 to the same list. When the section was first written, this paragraph said the
 opposite, and it was wrong.
 
-**The list is a scope, not a set of items** (project owner, 2026-08-31). The
+**The list is a scope, not a set of items** (project owner, 2026-08-31,
+recorded in `docs/WORKING_NOTES.md` § "Open thread: the v0.2.8 gate's
+membership test"). This scope test applied to v0.2.8's list only. The
 scope decides membership. The completion rule above is one case of the scope,
 not the test itself. This release's scope is the goal stated at the top of
 this section. That goal is a development loop reliable enough to run two long
@@ -3554,8 +3566,8 @@ actually reach. Its failure path can no longer leave partial state behind.
 
 Its contents are exactly Gate 0's items that fall outside the teachable case's
 own scope. Those are the items listed under § "Debt gate: the frozen list" in
-the v0.4.0 section below. Nothing may be added to that list
-(see § "The gate is a snapshot, not a moving target").
+the v0.4.0 section below. Only findings that § "The gate is a snapshot, not a
+moving target" re-admits may join that list, and seven did after the freeze.
 
 It is a minor release rather than a patch, by a deliberate exception that is
 recorded under § "Versioning decision" above. That exception covers Gate 0
@@ -3627,12 +3639,14 @@ blocked. See § "Designed for forking" below.
 count as debt under § "The debt gate" above. Six of them are inside this
 milestone's own Required scope, so this milestone clears them, as "Debt inside
 the milestone's own scope" says. The other fourteen are cleared before
-implementation begins. The list itself stays frozen. As each entry closes, it
-records its own outcome, as § "The cadence" above describes.
+implementation begins. The list itself stays frozen. Each entry's item file
+records how it closed. All 21 entries were closed by 2026-09-02, when v0.3.0
+shipped, and none was dropped.
 
-**Cleared before v0.4.0 begins — 21 entries, 22 item ids** (14 and 15 at the
-freeze). Seven entries were added later, as the three notes beneath this list
-explain. These entries are exactly what v0.3.0, the foundation release, ships.
+**Cleared before v0.4.0 begins — 21 entries, 22 item ids** (14 entries and 14
+ids at the freeze; `PL-SWFM` was filed later that day and joined `PL-Z4GF`'s
+entry). Seven entries were added later, as the first three notes beneath this
+list explain. These entries are exactly what v0.3.0, the foundation release, ships.
 
 Count entries, not ids. The PL-Z4GF/PL-SWFM entry below holds two ids for one
 problem. So both numbers above are true, but only the first one, the count of
@@ -3682,18 +3696,17 @@ under § "What counts":*
   the branch, never in chat
 - PL-4F6P (S) A `**Worked.**` note said "nothing the brief did not specify"
   for a test that reached into a private class
-- PL-N2N1 (S) — **done** (commit `ebefcc2`). `docket release` does not update
+- PL-N2N1 (S) `docket release` does not update
   this file's version table or baseline heading. Added after the freeze; see
   below.
-- PL-K79K (S) — **done** (commit `54bdb5b`). The session-start digest told
+- PL-K79K (S) The session-start digest told
   every session to run `bin/docket triage`, which did not exist. Added after
   the freeze; see below.
 
 *Documentation, performance, and the one decision that is the project
 owner's:*
 
-- PL-Z4GF **and PL-SWFM** (S) — **both done** (commits `d40ff83`, `6e19632`).
-  One entry holding two ids: PL-Z4GF closed the README half of its original
+- PL-Z4GF **and PL-SWFM** (S) One entry holding two ids: PL-Z4GF closed the README half of its original
   scope, and the remainder — this file's own duplicated v0.2.3 table row and
   stale "Current baseline" heading — surfaced later under the separate id
   PL-SWFM. Per "The gate is a snapshot, not a moving target" and its presence
@@ -3701,21 +3714,21 @@ owner's:*
   this frozen scope, so it cleared here rather than at the next gate,
   regardless of which id or session it surfaced under.
 - PL-010 (S) Stop rebuilding render objects on every frame
-- PL-Y2GG (S) — **done.** Apache-2.0, chosen by the project owner (commit
-  `d40ff83`).
+- PL-Y2GG (S) Apache-2.0, chosen by the project owner.
 
-**Two entries added 2026-08-30 under the presence rule, both cleared in the
+**Two entries, `PL-N2N1` and `PL-K79K`, added 2026-08-30 under the presence
+rule, both cleared in the
 same batch that added them.** The rule in "The gate is a snapshot, not a moving
 target" says that a finding re-enters this gate when the problem it describes
 was already present at the freeze. That is true whatever id the finding is
 filed under, and however long after the freeze someone noticed it.
 
-The first of these entries continues the scope of the PL-Z4GF/PL-SWFM entry.
+The first, `PL-N2N1`, continues the scope of the PL-Z4GF/PL-SWFM entry.
 It is the same document drifting for the same reason. This time the finding is
 the mechanism behind the drift, rather than one more instance of it. The
 PL-Z4GF/PL-SWFM entry is the case that the presence rule was written for.
 
-The second entry advertised a command that does not exist. It had done so
+The second, `PL-K79K`, advertised a command that does not exist. It had done so
 since `6f1b5b1` on 2026-08-24, the day before this list was frozen. So by date
 it was present at the freeze. It is also a `defect` by § "What counts" above,
 because it is a live mechanism that `main` depends on, and it does not work.
@@ -3723,8 +3736,9 @@ because it is a live mechanism that `main` depends on, and it does not work.
 Neither entry adds to the work that the gate has left, because both are
 closed.
 
-**Four entries added 2026-08-30 from an outside review of the repository,
-which recorded nothing of its own.** All four re-enter this gate rather than
+**Four entries added 2026-08-30 from an outside consultant's read-only review
+of the repository, whose fourteen findings a session filed as items
+(`820aa7b7`).** All four re-enter this gate rather than
 being deferred to Gate 1. They qualify on both of the grounds that "The gate is
 a snapshot, not a moving target" allows. They are the only findings from that
 review that re-enter it:
@@ -3737,9 +3751,9 @@ review that re-enter it:
   `"Alveolar / end-tidal"` label has been in the interface since `74bec83` on
   2026-08-23, two days before the freeze.
 - *By the safety/science exception.* PL-VP7N is `safety`, PL-SLHS is
-  `safety`/`science`, PL-9Y42 is `science` and PL-NV9W is `safety`. This
-  milestone's out-of-scope list names these classes as ones that re-enter the
-  gate, whenever they were captured.
+  `safety`/`science`, PL-9Y42 is `science` and PL-NV9W is `safety`. § "The
+  gate is a snapshot, not a moving target" names these classes as ones that
+  re-enter the gate, whenever they were captured.
 
 PL-NV9W was added three entries later than the others. `PL-NV9W` records
 why.
@@ -3912,12 +3926,12 @@ findings and `safety`/`science` findings, which re-enter this gate.
 
   What this release did to the numbers is still worth stating, for two
   reasons. This release is what made the growth reachable at all, and the
-  score work is not yet scheduled. Before the playback multiplier, twelve
+  score work was not yet scheduled. Before the playback multiplier, twelve
   simulated hours meant sitting in front of the application for twelve hours.
   At 300x, twelve simulated hours take 2.4 minutes and about 55 MB. A
-  simulated day takes 8 minutes and 110 MB. A simulated week takes 34 minutes
-  and roughly 770 MB. Until `PL-T691` and `PL-2FM6` land, that growth is
-  unbounded and nothing tracks it. That is the cost of dropping the entry
+  simulated day takes 4.8 minutes and 110 MB. A simulated week takes 34 minutes
+  and roughly 770 MB. Until `PL-T691` (v0.4.8) and `PL-2FM6` (v0.4.12)
+  landed, that growth was unbounded and nothing tracked it. That is the cost of dropping the entry
   rather than deferring it.
 
 - **A documentation sweep** (queue item PL-RCTQ). It covers the sections of
@@ -4014,22 +4028,25 @@ v0.4.0 is complete only when all of the following are true:
 
 ### Goal
 
-**Run the same simulator on PySide6 + pyqtgraph, lose nothing a learner can do
-today, and do the interface pass once on the way.**
+**Run the same simulator on PySide6 + pyqtgraph, and lose nothing a learner can
+do today.** The Goal also took in the interface pass (planned-milestone item
+33) until 2026-09-16, when `PL-L9RD` reversed that.
 
 The measured case is in `docs/WORKING_NOTES.md` under "Measured on real
-hardware", and none of it is about speed. The lag that the toolkit question (`PL-QXSB`)
-was opened on is gone. The owner reports that the Flet build is no longer noticeably slow
+hardware". The slowness that the toolkit question (`PL-QXSB`) was opened on is
+gone, so the case does not rest on it. The owner reports that the Flet build is no longer noticeably slow
 after `PL-2FM6`. Four grounds remain:
 
-- **Input latency** is 0.85-2.46 ms p90, against Flet's 20-30 ms, and latency
+- **Input latency** is 0.85-2.46 ms p90 (measured 2026-09-10 on the owner's
+  Mac), against Flet's 20-30 ms (measured 2026-09-08 in the container), and latency
   is the axis that "laggy" named. The gap comes from the mechanism, not the
   hardware. Flet's event loop is blocked by a control-tree diff every frame,
   and Qt has no diff.
 - **`PL-GS3R` is a safety decision, and this choice decides it.** Its cheapest
   route out of 0.26 MAC of chord error is more columns. More columns cost
-  49.4 ms of a 200 ms budget on Qt. On Flet, the diff alone costs about 78 ms for
-  the same columns, before its client renders anything.
+  49.4 ms of a 200 ms budget on Qt (measured 2026-09-10). On Flet, the diff
+  alone costs about 78 ms for the same columns (computed from `PL-YSZN`'s
+  24.5 µs per point), before its client renders anything.
 - **`PL-2QMK`** is exercised here rather than argued. The Qt spike (`PL-55DH`) writes a
   PNG of the running interface in the very container where Flet's renderer cannot
   load. Most of `presentation-safety` waits on that ability.
@@ -4058,8 +4075,8 @@ after `PL-2FM6`. Four grounds remain:
    port that said nothing about hover would therefore *lose* the Flet build's
    hover instead of reproducing it. Building the readout on Flet first was
    refused, because on Flet the same content takes roughly 1 870 per-point
-   strings, and here it takes one format callable. That item has the
-   measurement.
+   strings, and here it takes one format callable. `PL-YVHK` records
+   the cost, which `PL-KP7H` measured on 2026-09-08.
 2. **The dashboard** (queue item `PL-25KS`). This covers the readout row, the
    parameter controls, the agent selector, the transport, the new-case dialog
    and the notice banner. They live in `app/simulation_view.py`, which was
@@ -4085,8 +4102,8 @@ after `PL-2FM6`. Four grounds remain:
    *The inert handles are the deliberate half, not an oversight.* A draggable
    splitter would let a learner do something they cannot do today, so live
    handles would be new capability. § "Fixes this port carries" excludes new
-   capability "whatever its size". Live handles would also put a fourth entry
-   beside `PL-16ZC` on the wrong side of that line. Parity below means
+   capability "whatever its size". Live handles would also join `PL-16ZC` on the
+   wrong side of that line. Parity below means
    "identical except for this list", and it can be checked only while the
    enumeration stays closed. Making the handles live is item 34's first step
    and costs one line.
@@ -4122,7 +4139,8 @@ after `PL-2FM6`. Four grounds remain:
    pyqtgraph and numpy are added, and `flet` and `flet-charts` are removed.
    numpy arrives as a dependency of a plotting library. That reopens the scope
    of `docs/WORKING_NOTES.md` § "Decided: no numpy" but does not contradict
-   its conclusion. That note is argued again rather than cited either way.
+   its conclusion. `PL-3SQT` reargued it and left numpy undeclared: pyqtgraph
+   installs it, and nothing under `src/` imports it.
 6. **Headless rendering tests** (queue item `PL-YCWZ`). `PL-2QMK` has been
    waiting for these tests, and they make the rest of `presentation-safety`
    workable. With this port ahead of v0.5.0, they also mean that `PL-8PSW` is
@@ -4195,8 +4213,8 @@ the rewritten surface rides the port, and a *feature* in the rewritten surface
 waits for it, because either one written on Flet first would be written twice.
 Gate 1 § "Sequenced past v0.5.0, so not clearable before it begins" lists the
 disposition, and `PL-16ZC`'s brief holds the reasoning. `PL-16ZC` is not in this milestone's Required
-scope and does not ship with it. It waits for `PL-G59B` to land. After that it
-is an ordinary queue item against the Qt chart.
+scope. It waited for `PL-G59B`, was then built as an ordinary queue item
+against the Qt chart, and shipped in the v0.4.26 tag (#597).
 
 ### Items this port moots or transforms
 
@@ -4215,7 +4233,7 @@ done and then thrown away.
   owes it is the shape, not the code.** The Qt view is built decomposed from
   the start, so `PL-B9PY`'s design is a required input to `PL-25KS` rather
   than a pass to redo. That design is also why the move costs less than it
-  would have a week ago. The shape the Qt view needs is already designed and
+  would have before `PL-B9PY` was promoted on 2026-09-08. The shape the Qt view needs is already designed and
   already reviewed.
 - **`PL-NGF7`** is a defect *of Flet*, deferred to this milestone (project
   owner, 2026-09-10). When Material disables a control, every colour the
@@ -4232,8 +4250,9 @@ done and then thrown away.
   capability was demonstrated rather than assumed. The Qt spike rendered the
   interface offscreen inside the web container before the decision was taken.
   `PL-7J96`, by contrast, would have built a Playwright renderer for the
-  interface that this milestone replaces. The decision accepts that the
-  shipped Flet build gets no automated wrapping check before the port. The two
+  interface that this milestone replaces. The decision accepted that the
+  shipped Flet build had no automated check that drew it, and so none that
+  would catch a wrapped label, until the port deleted it. The two
   defects `PL-7J96` records are filed and dispositioned separately, so what is
   given up is the gate, not the fixes. `PL-MBP6` was blocked on `PL-7J96` and is re-pointed at `PL-YCWZ`.
 - **`PL-NC2P`** and **`PL-YMY7`** are coverage items over the
@@ -4255,6 +4274,10 @@ done and then thrown away.
   `TIME_BASE_LADDER` and recorded in `docs/MODEL.md`.
 - `docs/ARCHITECTURE.md` describes the interface that exists.
 - The Qt spike tree is deleted and no module imports Flet.
+
+The cut (`PL-06YW`, 2026-09-17) checked each criterion against a closed item.
+`docs/MODEL.md` records `PL-GS3R`'s departure for four of the ladder's ten
+rungs (15 min, 1 h, 4 h and 12 h), not for every rung.
 
 ### Explicitly out of scope for v0.4.26
 
@@ -4281,10 +4304,10 @@ done and then thrown away.
   enforces that boundary. The spike proved it by driving the real
   `SimulationController` with no adaptation at all.
 - **Where the Qt styling layer lives, left open on purpose** (`PL-Y4YX`). Today
-  27 `setStyleSheet` sites compose CSS strings from `app/theme.py`'s constants,
+  27 `setStyleSheet` sites (counted 2026-09-16) compose CSS strings from `app/theme.py`'s constants,
   with partial helpers in the view modules. Yet `theme.py`'s own comment
-  forbids it to import a toolkit. The port ships with the styling composed
-  where it is today.
+  forbids it to import a toolkit. The port shipped with the styling composed in
+  place, and `PL-Y4YX` moved it to `app/stylesheets.py` in v0.5.24.
 - **The schematic** (planned-milestone item 27). This port makes it affordable
   and does not begin it.
 - **The area system** (planned-milestone item 34, v0.6.0). Required scope item
@@ -4319,8 +4342,8 @@ other grounds:**
    `libegl1` was installed (`PL-VHLZ`). Required scope item 6 has since landed
    headless rendering tests over the real interface, in
    `tests/integration/test_qt_rendering.py`. `PL-7J96`, the Flet equivalent,
-   is `dropped` as superseded, so the Flet build gets no automated rendering
-   check at all. `PL-8PSW` carries more presentation-safety risk than any
+   is `dropped` as superseded, so the Flet build had no automated check that
+   drew it until it was deleted. `PL-8PSW` carries more presentation-safety risk than any
    other item in v0.5.0. Six channels are already spent, the design rests on a
    two-compartment cap, and every curve owes an attribution to its run.
 2. **Two `P1` `safety`-classed items sat blocked behind this port.** They are
@@ -4337,7 +4360,8 @@ other grounds:**
 to apply.** Nothing new is built in `app/simulation_view.py` or the Flet
 chart-series module before this port. v0.5.0's port-neutral spine is untouched
 and still ships on its own schedule. Only its display half waits. `PL-8PSW` and
-`PL-LPLD`'s bookmark list are the two open items that moved.
+`PL-LPLD`'s bookmark list were the two open items that waited for the port.
+`PL-8PSW` shipped inside the port, and `PL-LPLD` shipped in v0.4.33.
 
 **Why this number, which is a patch number for a rewrite of the whole
 dashboard.** § "Versioning decision" chooses a release's number by the
@@ -4347,8 +4371,8 @@ argument for the restyle it replaces. v0.2.8 is the precedent for
 machinery at this scale taking a patch number. It had thirty-eight frozen
 entries and no simulator change.
 
-**Why it takes a section, which no patch in this project ever has.** A rewrite of 5 133 lines
-with its own goal, required scope, definition of done and out-of-scope list is
+**Why it takes a section, which no patch in this project ever has.** A rewrite of the 5 133 lines
+in the three Flet modules (counted 2026-09-14), with its own goal, required scope, definition of done and out-of-scope list is
 a milestone by this file's own test, whatever number it ships under. `PL-L09X` records the first reason, which was mechanical
 and was spent on 2026-09-14.
 
@@ -4376,11 +4400,25 @@ count behind it and the three grounds. So `PL-8PSW` (the two-branch overlay)
 and `PL-LPLD`'s bookmark list are built once, on pyqtgraph, rather than on Flet
 and then again.
 
-**Nothing else about this milestone moves.** Its goal, required scope,
-definition of done and out-of-scope list are unchanged. Its port-neutral spine
-is untouched by the port and ships on the schedule it had. That spine is
-`PL-CTD7`, `PL-B8MK`, `PL-Z3W6`, `PL-W7H9`, `PL-49R8`, and the durable halves
-of `PL-RD3B` and `PL-LPLD`.
+**Nothing else about this milestone moved with the port** (2026-09-14). The
+milestone shipped on 2026-09-21. Its port-neutral spine was untouched by the
+port:
+
+- `PL-CTD7`: a bookmark crossing halts the run on the step that crosses it,
+  with a distinct outcome for a mark never reached (v0.4.35).
+- `PL-B8MK`: a branch can be taken at a bookmark instant (v0.5.0).
+- `PL-Z3W6`: a test asserts that a branch reproduces its parent up to the
+  branch point (v0.5.0).
+- `PL-W7H9`: `docs/MODEL.md` and `docs/ARCHITECTURE.md` state what a
+  comparison asserts and what it does not (v0.5.0).
+- `PL-49R8`: a rule against bringing back a sample store (v0.5.0).
+- The durable halves of `PL-RD3B`, the controller's run vocabulary moved into
+  `app/run_series.py` (v0.4.26), and `PL-LPLD`, time bookmarks and MAC targets
+  as two lists (v0.4.33).
+
+The Required scope changed after 2026-09-14: `PL-MN4J` joined on 2026-09-16,
+`PL-2FM6` and `PL-8LXM` left on 2026-09-19, and `PL-VKJW` joined the same
+day.
 
 ### Goal
 
@@ -4419,7 +4457,9 @@ between them.
 
 The milestone promotes planned-milestone item 26 (bookmarks), item
 12 (forking), item 11 (side-by-side comparison), and the replay half of item 8,
-which is the resimulation driver only. A replay control that the user sees is
+which is the resimulation driver only. `PL-T691` delivered the applied
+timeline that the driver would have replayed, and the driver itself was
+narrowed away on 2026-09-14 (`PL-J2TD`). A replay control that the user sees is
 item 10. It stays behind item 9's save/load, which is out of scope here
 (project owner, 2026-09-06).
 
@@ -4436,12 +4476,12 @@ parent's history, rather than a reproduction. Item 12 requires that property.
 Beneath the three gaps above sits a fourth problem, which is a debt rather than a
 gap: the run's sample store has no size limit. `PL-011` was dropped on
 2026-09-05 on the promise that the score architecture would remove that store
-rather than put a limit on it. A comparison holds two runs. So this is the
+rather than put a limit on it. `PL-2FM6` removed it in v0.4.12 (2026-09-08). A comparison holds two runs. So this is the
 milestone where the promise is kept, or else the debt doubles.
 
 ### Debt gate: the frozen list
 
-**Frozen 2026-09-06, the day this milestone was scoped.** This list holds every
+**Gate 1, frozen 2026-09-06, the day this milestone was scoped.** This list holds every
 open item that is debt by § "The debt gate" above. This is by a wide margin the
 largest gate this project has held. Gate 0 held twenty-one items, and v0.2.8's
 frozen scope held thirty-eight. The group headings below state the size, and so
@@ -4471,23 +4511,23 @@ on the day. A re-entering item is added to it with the date and the reason,
 exactly as v0.4.0's three post-freeze notes record theirs.
 
 **How the third group is meant to be worked.** The third group splits almost
-evenly between the two lanes that `docket.toml` declares. The two halves share
+evenly between the product and workflow lanes (§ "Terms this file uses"). The two halves share
 no files, so they are worked at the same time in two sessions rather than
 one after the other. That is what the lane split was built for. The product
 half must also be ordered against the milestone's own work. Much of it names
 `app/controller.py`, `core/` and `docs/MODEL.md`, which `PL-T691`
-restructures. Clearing it *after* that restructure would mean diagnosing each
+restructured in v0.4.8, on 2026-09-07, the day after the freeze. Clearing it *after* that restructure would mean diagnosing each
 item again against code that had moved. That is exactly the cost that
 "The debt gate" names when it opens. It is also the reason this list was
 frozen whole rather than narrowed (project owner, 2026-09-06).
 
 **Cleared by the `v0.4.x` track, ahead of this gate — 7 entries**
 
-**Two moved here from "Cleared by v0.5.0 itself" on 2026-09-08, and one added** (project
+**Two moved here from "Cleared by v0.5.0 itself" on 2026-09-08, and two added** (project
 owner). The reason is a measurement rather than a preference, and `PL-4RBD`
 records it. `PL-4RBD` is now `P1`, `safety`. The sampler had to arrive before
-the safety item could close properly, and `PL-2FM6` came forward with it. Required
-scope below drops to sixteen items. The gate total rises by two, for `PL-ZX12`
+the safety item could close properly, and `PL-2FM6` came forward with it. Both have
+since left Required scope (`PL-C4RS`, 2026-09-19). The gate total rises by two, for `PL-ZX12`
 and `PL-GS3R`. `PL-2FM6` and `PL-8LXM` moved between groups rather than
 joining the gate.
 
@@ -4552,8 +4592,7 @@ prose again. `PL-YXXG` records the reasoning.
   lands there is no recording cadence to state and `SIMULATION_STEP_S` plays one
   role again. Its durable half — the owner's 2026-09-05 chart-faithful-only
   decision, recorded nowhere else — is transplanted into `PL-2FM6`'s **Done when**
-  and held there by a `verify:` grep. Counts as cleared, so the gate stands at 132
-  entries, 44 cleared. `PL-4RBD` is deliberately **not** dropped with it.
+  and held there by a `verify:` grep. Counts as cleared. `PL-4RBD` is deliberately **not** dropped with it.
 - PL-DXQC (S) The v0.4.0 Goal section states two problems in the present tense that are now fixed
 - PL-F5GN (S) The oracle's independence check walks only ImportFrom, so a plain import bypasses it
 - PL-GVXP (S) Separate the six chart traces by more than colour, and meet contrast minima
@@ -4656,10 +4695,10 @@ milestone's Required scope, so all eight clear before implementation begins.
 Five are in the product lane or apply to both halves, and three are in the
 workflow lane.
 
-**The hole the freeze left is closed, and it cost eight entries.** Three of them,
-`PL-NBWP`, `PL-NBCJ` and `PL-B1WW`, are `P1` `safety` or `science` findings.
-They concern the step size, the control resolution of the playback burst, and
-the oracle of the reference gate. That is the class of finding this rule
+**The hole the freeze left is closed, and it cost eight entries.** `PL-NBWP` and
+`PL-NBCJ` are `P1` `safety` and `science` findings, on the playback burst's
+control resolution and the step size. `PL-B1WW`, a `P2` `test` finding,
+concerns the reference gate's oracle. That is the class of finding this rule
 exists to catch rather than defer. The session that scoped this milestone also
 captured four items of its own. `PL-QYPX` and `PL-3P2P` closed with the change
 that scoped this milestone. `PL-D9GM` is `planning`. `PL-M26Q` is `infra`, a
@@ -4783,7 +4822,7 @@ checks that read `theme.py`. `PL-QXSB` records why the three are on the list.
 
 `PL-LT51` was filed on 2026-09-10 out of `PL-8SDL`. `PL-8SDL` identified the
 four references that Lowe and Ernst cite for the reference patient's organ
-volumes and blood flows. `PL-LT51` is `science`-classed. So it re-enters this
+volumes and blood flows. `PL-LT51` is classed `science` and `docs`. So it re-enters this
 gate whatever the presence test says about it, under the second of the two
 unconditional exceptions in "The gate is a snapshot". It is not inside this
 milestone's Required scope, so it clears before implementation begins.
@@ -4796,7 +4835,8 @@ every publisher. That argument does not survive the evidence. The project
 owner turned around two interlibrary loans in three days for exactly this
 chain of references: `PL-7HDS` on 2026-09-08 and `PL-8SDL` on 2026-09-10.
 Reference 26 was read on the day the item was filed. Deferring the item would
-shrink the gate on a claim that the last week disproves.
+shrink the gate on a claim that those three days disprove. `PL-LT51` closed on
+2026-09-10 (#494, v0.4.13), when all four references had been read.
 
 **What it has already established belongs beside the entry**, because it
 changes what the remaining reading is for. Table 8 of ICRP Committee II, on
@@ -4935,7 +4975,8 @@ This model has no term for that mechanism. The finding points at cohorts in
 `tests/reference/test_published_wash_in_and_elimination.py` that already sit at
 +3.79 SD and +4.15 SD. Ruling out the desflurane candidate is bookkeeping. The
 second half is a named, quantified departure that bears on an existing
-discrepancy, which is why it is not deferred with the apparatus.
+discrepancy, which is why it was not declined to Gate 2 with the
+workflow-apparatus items from the same triage.
 
 Neither is inside this milestone's Required scope, so both clear before
 implementation begins.
@@ -4948,8 +4989,7 @@ implementation begins.
 
 `PL-YVHK` is `safety`-classed, so it re-enters this gate whatever its presence
 answer. It does so under the second of the two unconditional exceptions in
-"The gate is a snapshot". **It is also the one entry in this block that does not clear before
-implementation begins.** Its disposition is in its brief, and
+"The gate is a snapshot". It closed on 2026-09-15, in v0.4.26. Its disposition is in its brief, and
 § "Sequenced past v0.5.0" lists it as sequenced behind the port. The two statements do not conflict. The presence
 rule decides that a safety finding is recorded against the current gate. The
 snapshot rule decides that a recorded deferral is how the finding may then be
@@ -4959,9 +4999,8 @@ is forbidden.
 **What it is.** It is the build half of `PL-YLKR`, split from it by the project
 owner's decision of 2026-09-14. The design and its derivation landed on
 v0.4.x, in `docs/MODEL.md`
-§ "The chart's hover readout: what the tooltip may show". What remains is
-writing the hover against pyqtgraph, which cannot be done before the toolkit
-exists. The item carries `safety` for the same reason its parent did. A
+§ "The chart's hover readout: what the tooltip may show". The hover was then
+written against pyqtgraph and shipped in v0.4.26 (#588). The item carries `safety` for the same reason its parent did. A
 reader may stop the simulation to look at a number. If nothing around that
 number says the value is modelled rather than measured, that is the
 modelled-versus-measured failure that `CLAUDE.md` names.
@@ -4970,10 +5009,11 @@ modelled-versus-measured failure that `CLAUDE.md` names.
 owner). It is `P1` `safety`. It asks for an interpretation disclaimer beside
 the use disclaimer, stating that the compartment readouts and chart traces are
 modelled rather than measured. That is the line that `CLAUDE.md`'s safety
-standard draws on the surface a clinician reads. The item rides the Qt port
+standard draws on the surface a clinician reads. The item rode the Qt port
 behind `PL-25KS` (port the dashboard) under the carried-fix rule. The reason is
 that text on a dashboard being rewritten from scratch should be written once.
-Like the five carried entries, it clears before v0.5.0 begins.
+Like the five entries the port carried (`PL-3355`, `PL-Q4VH`, `PL-THXF`,
+`PL-TG60`, `PL-W8DQ`), it closed before v0.5.0, in v0.4.26.
 § "Sequenced past v0.5.0" below carries it in that table. The port names it
 under § "Decisions the port has to make anyway", so that the port's parity
 claim stays checkable.
@@ -5152,7 +5192,7 @@ begins.
   gas flow", and its `provenance_gap` adds that no clinical convention for a
   default flow "HAS NOT BEEN SOUGHT". `PL-4DCG`'s survey has since sought one
   and found the claim superseded, and `docs/MODEL.md` § "Parameter provenance"
-  and `docs/machine-survey.md` § "(a2)" both restate it. `science`: a reader
+  and `docs/machine-survey.md` § "(a2)" both restate that rationale. `science`: a reader
   consulting the document this project calls authoritative for provenance is
   told a clinical-practice claim the project's own survey contradicts. **The
   number is not what is open.** The project owner ruled on 2026-09-20 (ratified,
@@ -5182,9 +5222,9 @@ readers about its own limits. The `safety` entry is the successor to
   **compartment** answers. The cause it named is untouched: the percent axis is
   scaled by the alveolar peak, so two slow compartments of one run contend
   inside one hover radius exactly as two runs' copies of one compartment did.
-  Measured incidentally while closing `PL-JVHL` — at 20 minutes on the branched
-  sevoflurane case the trunk's and the branch's fat values land on the same
-  pixel row of a 480 px plot. `safety` for `PL-JVHL`'s reason: the box prints a
+  `PL-0RZ0`'s brief records the measurement on one run (2026-09-20): two or
+  more compartments sit inside the hover radius over 37.0% of the hoverable
+  area. `safety` for `PL-JVHL`'s reason: the box prints a
   compartment name and a value, fat and muscle at one instant can differ
   severalfold, and a hand movement too small to aim with changes which of them
   is being read. **The scan comes before any rule** — `PL-JVHL`'s own lesson is
@@ -5266,8 +5306,9 @@ instant only if the learner had happened to mark a control-event instant.
   clock, its own `began_at_s` and its own halt set. Measured 2026-09-20 on a
   trunk halted at 0.4 ×MAC reading `reached` while the branch forked there reads
   `still_running`. Captured after the freeze and re-entering under the
-  unconditional `safety` exception; the problem is older than the freeze, the
-  panel having read one snapshot since two runs could be drawn at all. It is
+  unconditional `safety` exception. The problem postdates the freeze: the
+  panel landed with `PL-LPLD` on 2026-09-20. It was folded into `PL-LHBY` and
+  closed with it (#811). It is
   masked while a standing is close to a permanent latch, and `PL-3K9B`'s decision
   unmasks it by making the standing answer where each run *is*.
 
@@ -5282,20 +5323,20 @@ instant only if the learner had happened to mark a control-event instant.
   of `PL-LHBY` and reproduced by failing one of two displayed runs: the run's own
   panel read `Stopped — simulation error` while its mark clause claimed the mark
   was still ahead of it. Captured after the freeze and re-entering under the
-  unconditional `safety` exception; the problem is older than the freeze and
-  older than `PL-LHBY`, the standing having been wrong since `PL-CTD7` and
+  unconditional `safety` exception. The problem postdates the freeze and
+  predates `PL-LHBY`, the standing having been wrong since `PL-CTD7` (2026-09-20) and
   invisible only because `STILL_RUNNING` rendered as silence. What `PL-LHBY`
   changed is that the standing is now drawn in words on an attributed row, where
   a learner can read it.
 
 **Added 2026-09-21 under the unconditional safety/science exception — 1 entry**
 
-This entry is the third `safety` finding from the adversarial review of
+This entry is the second `safety` finding from the adversarial review of
 `#784`. It was placed in this gate in the triage pass of 2026-09-21.
 `PL-LHBY` above is the first, and it was admitted on 2026-09-20 under the same
-exception. Its three feature-mates from that review (the other findings filed
-under the same feature) are not here. One is deferred below. The other three
-are classed `test` alone.
+exception. Its five mates from that review are not here. Two are deferred below
+(`PL-WG73`, `PL-624C`), and three (`PL-FKN7`, `PL-R17Y`, `PL-RS3Z`) are
+classed `test` alone.
 
 - PL-25DD (S) — **added 2026-09-21, `safety`.** The wash-in state line and the
   off-scale notice are placed one per run into two shared columns beside the
@@ -5330,7 +5371,8 @@ two of those four need nothing. `build_transport_row` already carries
   length", and `REFUSED_SETTING_NOTICE_TEMPLATE`'s "The simulation is unchanged
   and still running its previous setting". `safety`: the last is not merely
   unattributed but *false* of the run it is not about, and the hazard table's
-  existing row for reading a failed halt as a pause spends the distinction it
+  existing row "reading a run halted by a failure as one the user paused"
+  (`docs/MODEL.md`) spends the distinction it
   buys the moment two runs are drawn.
 
 - PL-C3GS (M) — **added 2026-09-21, `safety`.** `_holder(self._sidebar_column,
@@ -5476,16 +5518,9 @@ The last eleven are the feature itself.
 the cited paper and every reference to them. Both items moved into the
 `v0.4.x` track on 2026-09-08 and shipped there. `PL-C4RS` records the rest.
 
-**Five more shipped early the same way**, in v0.4.25 (2026-09-14, `PL-G7RD`):
-`PL-TFX5`, `PL-J2TD`, `PL-ZMRT`, `PL-B9PY` and `PL-5328`, ahead of the port;
-the scope list is unchanged and they are closed against it. **`PL-8PSW` makes a
-sixth**, in v0.4.26 (2026-09-17, `PL-06YW`): the two-branch overlay, asked for
-by id and built on the port's own chart rather than twice, on the same
-disposition - its Required-scope entry below records what shipped and is
-unchanged. **`PL-MN4J` makes a seventh**, in v0.4.28 (2026-09-19, `PL-T2LH`):
-the chart hover naming which of two drawn runs it reads, on the same
-disposition - its Required-scope entry below records what shipped and is
-unchanged too.
+**All twenty ids below are `done`.** Fourteen shipped early in the `v0.4.x`
+track and six in v0.5.0 itself, and `PL-4B1G`, the item that cut v0.5.0,
+lists each id's release.
 
 #### The score architecture
 
@@ -5577,8 +5612,8 @@ unchanged too.
   is element-for-element the case it would have been unmarked. This item
   waited behind `PL-LPLD` and `PL-CTD7`, which build the bookmark and the halt
   it is taken at, and both closed the same day. It remains ahead of the entry
-  below, because that entry's branch "taken between two recorded samples" is
-  this one.
+  below, because the branch that `PL-Z3W6`'s brief requires to be "taken between
+  two of them" (between recorded samples) is this one.
 
   **The interface half is `PL-TYWQ` and shipped 2026-09-21.** `PL-VKJW` landed
   the fork panel on 2026-09-20, on a different branch. That panel offered only
@@ -5690,8 +5725,9 @@ v0.5.0 is complete only when:
 - a branch taken at any recorded control event or bookmark reproduces its
   parent element-wise at every sampled point up to the branch point, and a test
   asserts this;
-- a bookmark halts the run on the step that crosses it, at every playback
-  multiplier, and a test asserts this. A threshold that is never reached ends
+- a time bookmark or MAC target halts the run on the step that crosses it, at
+  every playback multiplier, and a test asserts this. A MAC target that is
+  never reached ends
   in a distinct, visible outcome rather than in silence;
 - two branches can be read on one time axis. Every curve is attributable to
   its run and to the settings that produced it, with no readout, label, legend
@@ -5726,19 +5762,20 @@ v0.5.0 is complete only when:
   does not keep** are `PL-W4XQ` (there is no way back to a mark set behind the
   clock), `PL-ZW0J` with `PL-8XMV` (whether returning to a mark forks or
   truncates, and the setting that chooses between the two), `PL-LLBV` (the
-  whole-step fork guard refuses 35.5% of the one-decimal times a user could
-  type), `PL-7TBQ` (`has_recorded_run` is true before the learner has touched
+  check that a fork instant is a whole number of 0.1 s steps, measured on
+  2026-09-14 to refuse 35.5% of the one-decimal times from 0 to 3600 s, then
+  dropped on 2026-09-27 as unreachable), `PL-7TBQ` (`has_recorded_run` is true before the learner has touched
   the branch) and `PL-3QSX` (the unit of a listed MAC target).
 
   **Those five belong to Gate 2, and that is the intended mechanism, not a
-  deferral.** Gate 2 freezes on the day this milestone ships and is cleared
-  before v0.6.0's implementation begins. So the interaction debt is paid before
-  the area system is built on top of it. § "The cadence" already arranges this
+  deferral.** Gate 2 (timeline row 6) froze on 2026-09-21, the day this
+  milestone shipped, and is cleared before v0.6.0's implementation begins. So the interaction debt is paid before
+  planned-milestone item 34's area system is built on top of it. § "The cadence" already arranges this
   for findings made inside a milestone.
 
   **What decided it was `PL-ZW0J`, not the schedule.** `PL-ZW0J` asks whether
   returning to a mark forks, or truncates after a confirmation. The answer
-  decides what the act this milestone is named for actually does. The project
+  decides what taking a branch actually does. The project
   owner deferred that question on 2026-09-20 because they wanted to use the
   feature first. Widening v0.5.0 to complete the interaction would settle the
   question without the use it was deferred for. So the milestone is cut on the
@@ -5769,8 +5806,9 @@ v0.5.0 is complete only when:
 - A schematic compartment view (item 27) and agent cost (item 28).
 - Patient factors (age, sex, weight and body composition) and any change to
   the MAC basis (item 30).
-- Horizontal panning of the chart window (queue item PL-Z7LY). The fit-run
-  scale still makes panning optional rather than necessary.
+- Horizontal panning of the chart window (queue item PL-Z7LY). The default
+  "Fit run" time scale, which always shows the whole run, still makes panning
+  optional rather than necessary.
 - Any change to the governing equations, the parameter set, or the exact
   solution the matrix exponential computes. This milestone changes the
   questions the model can be *asked*, never the answers it gives.
