@@ -30,7 +30,8 @@ should understand each sentence the first time they read it (project owner,
 | String literals in `src/`, such as interface notices and refusal messages | A learner: a trainee in anesthesiology or critical care using the simulator | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Act on a notice beside a value, or learn from a refusal which condition failed and the value that failed it. |
 | String literals in `src/`, such as interface notices and refusal messages | A Python developer who meets the message in a log, a traceback or a test | Python, and the basics of anesthesia. | This repository's own names and history. | Find the input that failed and its value, and fix it. |
 | Replies, and questions and review requests to the project owner | The project owner, an anesthesiologist and intensive-care physician | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and what the session did. | Make a decision, or learn what changed. |
-| Item briefs in `docs/items/`; the workflow's files in `.claude/`, `tools/`, `subprojects/docket/src/`, `CLAUDE.md`, `docs/apparatus.md`, `docs/maintainer.md`, `docs/worker.md`, `docs/resident-instructions.md`, `docs/WORKING_NOTES.md`, `docs/dead-ends.md` and `docs/prose-review/README.md`; commit messages; and pull request titles and bodies | A later session, or the owner reading the history | Python, anesthesia, and this repository's rules. | What the writing session knew and did not write down. | Pick up the work, or find out why a change was made. |
+| Item briefs in `docs/items/`; the workflow's files in `.claude/`, `tools/`, `subprojects/docket/src/`, `CLAUDE.md`, `docs/apparatus.md`, `docs/maintainer.md`, `docs/worker.md`, `docs/resident-instructions.md`, `docs/WORKING_NOTES.md`, `docs/dead-ends.md` and `docs/prose-review/README.md`; and commit messages | A later session, or the owner reading the history | Python, anesthesia, and this repository's rules. | What the writing session knew and did not write down. | Pick up the work, or find out why a change was made. |
+| Pull request titles and bodies, which the squash merge makes the commit message on `main` | The project owner deciding whether a change can merge, or anyone reading `main`'s history later | Python, anesthesia, and this repository's rules. | What the writing session knew and did not write down. | Decide whether the change can merge, or find out why it was made. |
 
 The two `README.md` rows are the readers that `README.md` § "What it is for"
 names. `docs/releases/` has no row, because `bin/docket release` writes each
@@ -40,8 +41,9 @@ for the copy editor only when a row names that file, and it gives each passage
 that row's readers. A new row therefore brings the files it names into the
 review with no other change. The copy editor does not edit text whose only
 reader is a later session or the project owner: item briefs, the workflow's
-files, commit messages, pull request bodies and replies (project owner,
-2026-11-10). Those still follow this rule.
+files, commit messages and replies. It does edit pull request titles and
+bodies (project owner, 2026-11-10). The unedited texts still follow this
+rule.
 
 **Write what the reader needs to act on, and stop.** Find the reader and what
 they will do with the text in the table above. Put what they see first, then

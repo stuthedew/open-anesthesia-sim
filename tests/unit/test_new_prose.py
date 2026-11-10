@@ -687,10 +687,28 @@ def test_a_python_file_is_compared_by_its_prose_alone(
     assert "gone  7" not in out
 
 
-@pytest.mark.parametrize("kind", ["replies", "pull request titles and bodies"])
-def test_a_reply_or_a_pull_request_body_has_no_row_to_draft_for(kind: str) -> None:
-    """The copy editor edits neither, so the tool refuses drafts of both (`--draft --kind`)."""
-    assert not any(kind in reader.kind.casefold() for reader in new_prose.rule_table())
+def test_a_reply_has_no_row_to_draft_for() -> None:
+    """The copy editor does not edit a reply, so the tool refuses a draft of one."""
+    assert not any("replies" in reader.kind.casefold() for reader in new_prose.rule_table())
+
+
+def test_a_pull_request_body_has_a_row_to_draft_for(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The owner put pull request titles and bodies back in the review on 2026-11-10 (`PL-N2VQ`).
+
+    The pull-request skill runs `--draft FILE --kind "pull request"` on the
+    title and body. Read against the real rule, the draft is printed for the
+    pull request row's reader, and for no reader the copy editor does not edit.
+    """
+    draft = tmp_path / "body.md"
+    draft.write_text("Fix the chart.\n\nThe chart now keeps its scale.\n", encoding="utf-8")
+
+    assert main(["--draft", str(draft), "--kind", "pull request"]) == 0
+    shown = capsys.readouterr().out.partition("The writing rule ends here")[2]
+    assert "The project owner deciding whether a change can merge" in shown
+    assert not any(reader in shown for reader in new_prose.UNEDITED_READERS)
+    assert "[1] body.md, rows 1-3. Draft: 9 words." in shown
 
 
 #: A document whose first section holds four long paragraphs.

@@ -3,12 +3,14 @@ id: PL-N2VQ
 title: Put pull request titles and bodies back in the copy editor's review, at the owner's request of 2026-11-10
 priority: P1
 effort: S
-status: ready
+status: done
 classes: defect
 feature: copy-editor
 touches: tools/new_prose.py, tests/unit/test_new_prose.py, .claude/rules/plain-writing.md, .claude/skills/pull-request/SKILL.md, .claude/skills/docket/modes/close-out.md, docs/prose-review/README.md
 deferred-from: v0.7.0 - the owner's request of 2026-11-10, after the gate froze
 added: 2026-11-10
+closed: 2026-11-10
+pr: 2081
 payoff: pull request titles and bodies, which become the history on main, are copy edited again as the owner asked
 verify: grep -q 'def test_a_pull_request_body_has_a_row_to_draft_for' tests/unit/test_new_prose.py
 ---
@@ -22,3 +24,5 @@ verify: grep -q 'def test_a_pull_request_body_has_a_row_to_draft_for' tests/unit
 **Done when.** `python3 tools/new_prose.py --draft FILE --kind "pull request"` prints a draft for review, a reply still has no row, and the pull-request skill asks for the copy edit. A test asserts both.
 
 **Generator check.** A one-off: the owner's own change to a scope set an hour earlier. No head states the fact, and the pause on new workflow mechanisms does not hold it, because the owner asked for it.
+
+**Done 2026-11-10.** `.claude/rules/plain-writing.md` gives pull request titles and bodies a row of their own, whose reader is "The project owner deciding whether a change can merge, or anyone reading `main`'s history later". That reader is not in `UNEDITED_READERS`, so `python3 tools/new_prose.py --draft FILE --kind "pull request"` prints a draft again, and a reply still has no row. The pull-request skill's step that copy edits the title and body is back, with the new date. Close-out step 8, the sentence after the rule's table, `docs/prose-review/README.md` and the tool's own help say what the review covers. `test_a_pull_request_body_has_a_row_to_draft_for` reads the real rule, and it fails on `main` before this change, where `--draft --kind "pull request"` exits 1.

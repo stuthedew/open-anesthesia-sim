@@ -54,7 +54,7 @@ the docstring beside it are judged for different readers (`PL-Q98K`). The
 report lists the readers of every file it prints a passage from, and names
 under each passage the readers to judge it for (`PL-R7Q6`). A row for a
 reader in `UNEDITED_READERS` is ignored, so an item brief, a workflow file, a
-commit message, a pull request body and a reply are never printed.
+commit message and a reply are never printed.
 
 The tool exits 0 when it read the diff, whether or not it printed a passage,
 and exits 1 when the diff could not be read or the default branch is unknown. A
@@ -64,8 +64,9 @@ result is never given as a whole one.
 **`--draft FILE --kind WORDS` prepares a draft for review before it is written
 into the file it is for.** It prints the rule, the reader rows whose first cell
 contains WORDS, and the whole file as passage 1 (`PL-J1ZM` part 3). It exits 1
-when no row's first cell contains WORDS. Replies and pull request bodies have
-no row here, because the copy editor does not edit them (`UNEDITED_READERS`).
+when no row's first cell contains WORDS. The pull-request skill runs it with
+`--kind "pull request"` on a pull request's title and body. A reply has no row
+here, because the copy editor does not edit one (`UNEDITED_READERS`).
 
 **`--section FILE --heading TEXT` prints one Markdown section as passage 1,
 with every row open to rewrite.** A changed passage may be rewritten only with
@@ -321,10 +322,10 @@ def read_by(table: Sequence[Reader], units: Iterable[Unit]) -> list[Unit]:
 
 #: The readers whose texts the copy editor does not edit (project owner,
 #: 2026-11-10). They are the readers of item briefs, the workflow's files, commit
-#: messages, pull request titles and bodies, and replies. The owner limited
-#: these texts to two copy-editor reads on 2026-11-09 and then took them out of
-#: the review altogether: the copy editor edits only the documents and code
-#: that a clinician, a learner or a contributor reads. The strings are the
+#: messages and replies. The owner limited these texts to two copy-editor reads
+#: on 2026-11-09 and then took them out of the review altogether. An hour later
+#: the owner put pull request titles and bodies back, so they have a row of
+#: their own, with a reader not named here (`PL-N2VQ`). The strings are the
 #: "Reader" cells of the rule's table, so a reworded cell fails
 #: `tests/unit/test_new_prose.py` instead of bringing those texts back in.
 UNEDITED_READERS = (
@@ -1560,7 +1561,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--kind",
         help="with --draft, words from the first cell of the reader rows the draft is for, "
-        "such as 'README'",
+        "such as 'README' or 'pull request'",
     )
     modes.add_argument(
         "--section",

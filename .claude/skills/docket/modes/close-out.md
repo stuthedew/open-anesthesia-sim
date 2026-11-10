@@ -287,9 +287,11 @@ page and decides which file a session reads.
    each passage that the branch changed in a file that has a row in the
    reader table of `.claude/rules/plain-writing.md`, with the readers that
    the row names. It prints none from an item brief or a workflow file: the
-   copy editor edits only the documents and code that a clinician, a learner
-   or a contributor reads, and not item briefs, the workflow's files, commit
-   messages, pull request bodies or replies (project owner, 2026-11-10). It prints a passage whatever its length, because short
+   copy editor edits the documents and code that a clinician, a learner or a
+   contributor reads, and pull request titles and bodies, which the
+   pull-request skill sends to it. It does not edit item briefs, the
+   workflow's files, commit messages or replies (project owner, 2026-11-10).
+   It prints a passage whatever its length, because short
    passages were awkward in 25% of `PL-Y55Q`'s blind verdicts and many of the
    messages a learner reads are short (project owner, 2026-11-04, ratified,
    over `PL-PRCS`'s minimum of 30 words). It leaves out a string literal of one
