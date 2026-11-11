@@ -31,9 +31,10 @@ PMID 21249841. The full text is in the private reference corpus, and pp.
 - The 14 heuristics, by the chapter's short names: Consistency, Visibility,
   Match, Minimalist, Memory, Feedback, Flexibility, Message, Error, Closure,
   Undo, Language, Control, Document.
-- Each violation gets a severity from 0 to 4. 2 is a "Minor usability
-  problem", 3 is a "Major usability problem", and 4 is a "Usability
-  catastrophe. Imperative to fix before product can be released."
+- Each violation gets a severity from 0 to 4. 0 is "Not a usability problem
+  at all", 1 is a "Cosmetic problem only", 2 is a "Minor usability problem",
+  3 is a "Major usability problem", and 4 is a "Usability catastrophe.
+  Imperative to fix before product can be released."
 - Evaluators work independently. Their lists are merged into one, each
   evaluator rates every violation on it, and the ratings are averaged.
 - "Typically one evaluator can only catch 35 percent of the usability
@@ -45,14 +46,46 @@ PMID 21249841. The full text is in the private reference corpus, and pp.
    the current build. For each violation record the task, what was seen, the
    heuristic and a severity.
 2. The owner does the same on their Mac, before reading the session's list.
-   The reply of 2026-11-10 gave them the tasks, the heuristic names and the
-   scale.
+   The tasks are above, and the heuristics and the scale are in "What each
+   heuristic asks" below.
 3. Merge the two lists, collect both ratings for every violation, and
    average them.
 4. Record the merged list in this item, sorted by severity. File each
    violation rated 3 or higher as an item, or name the open item that already
    holds it. `PL-CXYV`, `PL-571L`, `PL-4JCC`, `PL-9YPR` and `PL-CBYS` hold
    some already.
+
+**Which build to evaluate (the session's decision, 2026-11-10).** Both
+evaluators walk the same commit of `main`, taken after the three open items
+of the `window-is-the-frame` feature have merged: `PL-4JCC`, `PL-9YPR` and
+`PL-CBYS`. Those items change where every panel sits and remove the page
+scroll, and another session was building them on 2026-11-10. Findings about
+layout made on the build before them would describe a screen that no longer
+exists. Record the commit in this item beside the merged list. The owner can
+overrule this and evaluate today's build.
+
+**What each heuristic asks.** These are one-line paraphrases of the chapter's
+definitions on pp. 327-28, for the owner's independent pass.
+
+1. Consistency: the same word, mark or action means the same thing
+   everywhere, and conventions are followed.
+2. Visibility: the screen always shows what state the simulation is in.
+3. Match: what the screen shows fits the model the learner already holds.
+4. Minimalist: nothing on screen that the task does not need.
+5. Memory: the learner does not have to remember a value from one place to
+   use it in another.
+6. Feedback: each action gets a prompt, informative response.
+7. Flexibility: shortcuts and customization exist for the practiced user.
+8. Message: an error message says what went wrong and how to recover.
+9. Error: the design prevents the mistake instead of reporting it.
+10. Closure: the learner is told when a task has finished.
+11. Undo: an action can be reversed.
+12. Language: the words are the learner's own.
+13. Control: the learner, not the program, decides what happens next.
+14. Document: help is available where it is needed.
+
+For each violation, note four things: the task, what was seen, the heuristic
+or heuristics, and the severity. One problem can violate several heuristics.
 
 **Limits the chapter states.** A heuristic evaluation does not show what the
 interface does well, and it does not reveal a missing function. Two
