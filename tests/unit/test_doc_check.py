@@ -7778,6 +7778,7 @@ def test_a_numeric_family_reads_each_paragraph_that_states_a_number_with_a_unit(
         ("That blood holds about 0.18 mL.", "mL"),
         ("Davis and Mapleson's 1222 ml is the same object.", "ml"),
         ("The cardiac output is 6480 ml/min.", "ml/min"),
+        ("The amount is stated at 20 °C.", "°C"),
     ],
     ids=[
         "pixels",
@@ -7793,6 +7794,7 @@ def test_a_numeric_family_reads_each_paragraph_that_states_a_number_with_a_unit(
         "millilitres",
         "lower-case-millilitres",
         "millilitres-per-minute",
+        "celsius",
     ],
 )
 def test_a_figure_in_each_unit_the_documents_write_is_read_with_that_unit(
@@ -7864,8 +7866,9 @@ def test_a_volume_restated_in_millilitres_with_no_marker_is_refused(tmp_path: Pa
     [
         ("The liquid weighs 1.5203 g/mL.", "DENSITY_G_ML", "1.5203 g/mL"),
         ("The molar mass is 184.49 g/mol.", "MOLAR_MASS_G_MOL", "184.49 g/mol"),
+        ("The density was measured at 20 °C.", "REFERENCE_TEMPERATURE_CELSIUS", "20 °C"),
     ],
-    ids=["density", "molar-mass"],
+    ids=["density", "molar-mass", "celsius"],
 )
 def test_a_density_or_molar_mass_restated_with_its_unit_and_no_marker_is_refused(
     tmp_path: Path, sentence: str, constant: str, expected: str
@@ -7873,7 +7876,8 @@ def test_a_density_or_molar_mass_restated_with_its_unit_and_no_marker_is_refused
     """An agent file stores its liquid density in g/mL and its molar mass in g/mol.
 
     Reading "g" alone, as a unit no value is stored in, let a restated density
-    go stale with nothing asking.
+    go stale with nothing asking. The reference temperature is stored in °C,
+    and "20 °C" read as a bare number let it go stale the same way (`PL-5L84`).
     """
     value = expected.split()[0]
     root = _repo(tmp_path, model=_model_with(sentence))
