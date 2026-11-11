@@ -176,7 +176,9 @@ Candidate tasks, drawn from what the simulator already does:
 1. Is this order agreed?
 2. Who is the first-pass learner, and which tasks are right? These decide what
    the simulator is for, so they are the owner's.
-3. Can the owner supply the full text of Zhang et al. 2003?
+3. Can the owner supply the full text of Zhang et al. 2003? **Answered
+   2026-11-10:** the owner supplied the AHRQ chapter below, which gives the
+   heuristic list.
 
 **What follows an answer.** Once the order and the tasks are agreed, file the
 heuristic evaluation, the wireframes, the token and component set, and the
@@ -194,3 +196,34 @@ holds the buttons' missing pressed and focus states. `PL-571L` holds the cut-off
 tick labels. `PL-4JCC`, `PL-9YPR` and `PL-CBYS` are the `window-is-the-frame`
 feature, which decides the window's frame and so the surface that the
 wireframes start from.
+
+
+**Added 2026-11-10: the clinical heuristic set.** The owner supplied Zhang J,
+Patel VL, Johnson TR, Chung P, Turley JP. Evaluating and predicting patient
+safety for medical devices with integral information technology. In: Advances
+in Patient Safety: From Research to Implementation, volume 2. Agency for
+Healthcare Research and Quality; 2005.
+https://www.ahrq.gov/sites/default/files/wysiwyg/professionals/quality-patient-safety/patient-safety-resources/resources/advances-in-patient-safety/vol2/Zhang.pdf.
+Its section on heuristic evaluation was read in full. It supersedes Nielsen's
+ten heuristics as the set to use in step 2 of the recommendation.
+
+- The chapter gives 14 heuristics, built from Nielsen's ten and Shneiderman's
+  eight rules "with a focus on medical devices": consistency and standards,
+  visibility of system state, match between system and world, minimalist,
+  minimize memory load, informative feedback, flexibility and efficiency, good
+  error messages, prevent errors, clear closure, reversible actions, use users'
+  language, users in control, and help and documentation.
+- Each violation gets a severity from 0 to 4: 0 is not a usability problem, 1
+  is cosmetic, 2 is minor, 3 is major and "important to fix", and 4 is a
+  "usability catastrophe" that is "imperative to fix before product can be
+  released".
+- Evaluators work independently, their lists are merged into one, and each
+  then rates every violation. The ratings are averaged.
+- "Typically one evaluator can only catch 35 percent of the usability
+  problems, but 3-5 evaluators can detect 60-75 percent."
+- "Ideally, double experts trained in both usability and the target clinical
+  domain should be the evaluators." The owner is the clinical expert here.
+- Its stated limit: a heuristic evaluation does not show what an interface does
+  well, and it does not reveal missing functions. The chapter's second method,
+  an extended hierarchical task analysis, covers that gap, and it starts from
+  the same task list that step 1 asks for.
