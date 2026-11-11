@@ -176,9 +176,11 @@ class PatientCompartments:
                         f"{name} of {value!r} has type {type(value).__name__}, not TissueGroup"
                     )
 
+                # `float()` keeps the sum unchanged now that a fraction is a checked
+                # type, for the reason `total_perfusion_fraction` gives.
                 require_perfusion_fractions_sum_to_one(
                     sum(
-                        (value if field == name else getattr(self, field)).perfusion_fraction
+                        float((value if field == name else getattr(self, field)).perfusion_fraction)
                         for field in _TISSUE_GROUP_FIELDS
                     )
                 )
@@ -286,9 +288,16 @@ class PatientCompartments:
 
     @property
     def total_perfusion_fraction(self) -> float:
-        """Return the sum of the tissue perfusion fractions, which must be 1 within tolerance."""
+        """Return the sum of the tissue perfusion fractions, which must be 1 within tolerance.
 
-        return sum(tissue.perfusion_fraction for tissue in self.tissues)
+        Each fraction is added as the plain `float` it equals. CPython's `sum`
+        adds plain `float`s with a compensation for rounding, and adds a
+        `float` subclass without it. So adding the checked type could give a
+        sum that differs in its last digit from the sum the tolerance was
+        always compared with.
+        """
+
+        return sum(float(tissue.perfusion_fraction) for tissue in self.tissues)
 
     @property
     def tissue_return_partial_pressure_fraction(self) -> float:

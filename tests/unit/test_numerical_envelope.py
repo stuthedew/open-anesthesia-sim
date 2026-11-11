@@ -25,6 +25,7 @@ from typing import NamedTuple
 import pytest
 
 from anesthesia_sim.core.blood import VenousBloodCompartment
+from anesthesia_sim.core.blood_flow import BloodFlow, PerfusionFraction
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.governing_equations import (
@@ -228,7 +229,7 @@ def _fat(tissue_gas: float) -> TissueGroup:
     return TissueGroup(
         name="fat",
         volume_l=CompartmentVolume(14.5),
-        perfusion_fraction=0.06,
+        perfusion_fraction=PerfusionFraction(0.06),
         tissue_gas_partition_coefficient=PartitionCoefficient(tissue_gas),
     )
 
@@ -250,7 +251,9 @@ def test_a_tissue_group_refuses_a_blood_gas_coefficient_whose_quotient_leaves_th
         group.tissue_blood_partition_coefficient_for(PartitionCoefficient(1e4))
 
     with pytest.raises(SimulationConfigurationError, match=r"^fat tissue_blood_partition_coeff"):
-        group.time_constant_s(1.0, PartitionCoefficient(1e4))
+        group.time_constant_s(
+            BloodFlow(CardiacOutput(1.0), PerfusionFraction(1.0)), PartitionCoefficient(1e4)
+        )
 
 
 def test_an_agent_whose_tissue_blood_coefficient_leaves_the_envelope_is_refused() -> None:
@@ -332,7 +335,8 @@ def test_every_product_and_quotient_at_the_envelope_s_corners_is_finite_and_posi
 
     volumes = (MINIMUM_VOLUME_L, MAXIMUM_VOLUME_L)
     coefficients = (MINIMUM_PARTITION_COEFFICIENT, MAXIMUM_PARTITION_COEFFICIENT)
-    flow_l_min = MAXIMUM_CARDIAC_OUTPUT_L_MIN
+    cardiac_output_l_min = CardiacOutput(MAXIMUM_CARDIAC_OUTPUT_L_MIN)
+    flow_l_min = BloodFlow(cardiac_output_l_min, PerfusionFraction(1.0))
 
     for volume, coefficient in product(volumes, coefficients):
         pool = VenousBloodCompartment(
@@ -342,7 +346,7 @@ def test_every_product_and_quotient_at_the_envelope_s_corners_is_finite_and_posi
         tissue = TissueGroup(
             name="corner",
             volume_l=CompartmentVolume(volume),
-            perfusion_fraction=1.0,
+            perfusion_fraction=PerfusionFraction(1.0),
             tissue_gas_partition_coefficient=PartitionCoefficient(coefficient),
         )
         settings = TissueGroupEquationSettings(
@@ -351,7 +355,7 @@ def test_every_product_and_quotient_at_the_envelope_s_corners_is_finite_and_posi
 
         for value in (
             pool.capacity_l,
-            pool.time_constant_s(flow_l_min),
+            pool.time_constant_s(cardiac_output_l_min),
             tissue.capacity_l,
             tissue.time_constant_s(flow_l_min, PartitionCoefficient(1.0)),
             settings.washin_rate_s,
@@ -390,7 +394,12 @@ def _settings(
         max_delivered_concentration_percent=Percent(8.0),
         tissues=tuple(
             TissueGroupEquationSettings(
-                name, CompartmentVolume(volume), flow, PartitionCoefficient(tissue_blood)
+                name,
+                CompartmentVolume(volume),
+                # Each flow is built as the whole of a cardiac output of its own size,
+                # which is the same number (`PL-GKG4`).
+                BloodFlow(CardiacOutput(flow), PerfusionFraction(1.0)),
+                PartitionCoefficient(tissue_blood),
             )
             for name, (volume, tissue_blood), flow in zip(
                 ("vessel_rich", "muscle", "fat"), tissues, flows, strict=True

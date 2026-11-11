@@ -8,6 +8,12 @@ from dataclasses import dataclass
 from math import inf
 from typing import TYPE_CHECKING
 
+from anesthesia_sim.core.blood_flow import (
+    BloodFlow,
+    PerfusionFraction,
+    require_blood_flow,
+    require_perfusion_fraction,
+)
 from anesthesia_sim.core.checked_number import shown
 from anesthesia_sim.core.concentration import Fraction, require_fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
@@ -19,20 +25,13 @@ from anesthesia_sim.core.numerical_envelope import (
     require_compartment_volume,
     tissue_blood_partition_coefficient,
 )
-from anesthesia_sim.core.supported_ranges import (
-    CardiacOutput,
-    require_cardiac_output,
-    require_compartment_step,
-)
+from anesthesia_sim.core.supported_ranges import CardiacOutput, require_compartment_step
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.validation import (
     require_a_capacity_with_room_for_the_agent,
     require_nonnegative_finite,
-    require_positive_finite,
     require_within_the_capacity,
 )
-
-PERFUSION_FRACTION_UPPER_BOUND = 1.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,7 +67,7 @@ class TissueGroup:
 
     name: str
     volume_l: CompartmentVolume
-    perfusion_fraction: float
+    perfusion_fraction: PerfusionFraction
     tissue_gas_partition_coefficient: PartitionCoefficient
     agent_amount_l: float = 0.0
 
@@ -129,20 +128,23 @@ class TissueGroup:
             to 1 only when the patient is built, and a tissue group does not know which
             patient it belongs to. A fraction changed afterwards would change the group's
             blood flow, which is its fraction of the cardiac output. Nothing would then
-            check that the flows still add up to the cardiac output. A later write checks
-            the new value first, so a value that the constructor would refuse gets the
-            constructor's own error message. A copy and a pickle write the fraction onto
-            a new group, which has none yet, so both still work.
+            check that the flows still add up to the cardiac output. The fraction is a
+            checked type, built only above 0 and at most 1 (`core/blood_flow.py`), so
+            this method checks its type and not its range. A later write checks the
+            type first, so a bare number gets the same error as it does when the
+            group is built. A copy and a pickle write the fraction onto a new group,
+            which has none yet, so both still work.
 
             Raises:
                 TypeError: the field written is `name` and `value` is not a `str`.
                     Also raised when the volume was not built as a
-                    `CompartmentVolume`, or a coefficient as a
-                    `PartitionCoefficient`, or when the value written to any other
-                    field is not an `int` or a `float` (`require_a_number`).
+                    `CompartmentVolume`, a coefficient as a
+                    `PartitionCoefficient`, or the perfusion fraction as a
+                    `PerfusionFraction`, or when the agent amount is not an
+                    `int` or a `float` (`require_a_number`).
                 SimulationConfigurationError: the name is blank. Also raised when
-                    the perfusion fraction is not positive and finite, or is above
-                    1, or is written to a group that already has one. Also raised
+                    the perfusion fraction is written to a group that already has
+                    one. Also raised
                     when a tissue:gas coefficient is written to a group that
                     already has one. Also raised when the agent amount is negative
                     or not finite, or would be more than the tissue holds at a
@@ -183,10 +185,7 @@ class TissueGroup:
                         "Tissue compartments",
                     )
             elif name == "perfusion_fraction":
-                require_positive_finite(field, value)
-
-                if value > PERFUSION_FRACTION_UPPER_BOUND:
-                    raise SimulationConfigurationError(f"{field} must not exceed 1")
+                require_perfusion_fraction(field, value)
 
                 if hasattr(self, "perfusion_fraction"):
                     raise SimulationConfigurationError(
@@ -319,33 +318,37 @@ class TissueGroup:
 
         return self.partial_pressure_fraction
 
-    def blood_flow_l_min_at(self, cardiac_output_l_min: CardiacOutput) -> float:
+    def blood_flow_l_min_at(self, cardiac_output_l_min: CardiacOutput) -> BloodFlow:
         """Return this group's blood flow $`Q_i = f_iQ`$ at a cardiac output, in L/min.
 
         The flow is the group's perfusion fraction of the cardiac output
-        (`docs/MODEL.md` § "Tissue groups"), and this is the only place where
-        the product is computed. The group stores no flow of its own, so no
-        write can leave its flow out of step with the cardiac output
-        (`PL-HQF5`). Its callers pass the cardiac output of the patient to
-        which the group belongs.
+        (`docs/MODEL.md` § "Tissue groups"). `BloodFlow` forms the product, and
+        this is the only place in a run that builds one (`core/blood_flow.py`).
+        The group stores no flow of its own, so no write can leave its flow out
+        of step with the cardiac output (`PL-HQF5`). Its callers pass the
+        cardiac output of the patient to which the group belongs.
 
         Raises:
             TypeError: `cardiac_output_l_min` was not built as a
                 `CardiacOutput` (`core/supported_ranges.py`).
         """
 
-        require_cardiac_output(cardiac_output_l_min)
-
-        return cardiac_output_l_min * self.perfusion_fraction
+        return BloodFlow(cardiac_output_l_min, self.perfusion_fraction)
 
     def time_constant_s(
-        self, blood_flow_l_min: float, blood_gas_partition_coefficient: PartitionCoefficient
+        self, blood_flow_l_min: BloodFlow, blood_gas_partition_coefficient: PartitionCoefficient
     ) -> float:
         """Return the perfusion-limited tissue time constant $`\\tau_i = V_i\\lambda_{i:b}/Q_i`$.
 
         `docs/MODEL.md` § "Tissue uptake and return" defines it. That section
         also gives the zero-flow case, for which this method returns `inf`. An
         unperfused tissue exchanges nothing, so it never reaches equilibrium.
+        The method also returns `inf` where the flow is above zero but so small
+        that the quotient is larger than any `float`. The largest tissue the
+        numerical envelope admits needs a flow below about 3e-299 L/min for
+        that. A tissue stepped alone at such a flow is left unchanged. The
+        exact change over the longest supported step, 24 hours, is less than
+        5e-296 L (`PL-GKG4`).
         The seconds-per-minute factor appears here because $`Q_i`$ is given in
         litres per minute, while every time in the model is in seconds.
 
@@ -361,13 +364,14 @@ class TissueGroup:
         coefficient is the patient's `blood_gas_partition_coefficient`.
 
         Raises:
-            TypeError: the flow is not an `int` or a `float`, or the blood:gas
-                coefficient was not built as a `PartitionCoefficient`.
-            SimulationConfigurationError: the flow is negative or not finite, or
-                the tissue:blood coefficient lies outside the numerical envelope.
+            TypeError: the flow was not built as a `BloodFlow`
+                (`core/blood_flow.py`), or the blood:gas coefficient was not
+                built as a `PartitionCoefficient`.
+            SimulationConfigurationError: the tissue:blood coefficient lies
+                outside the numerical envelope.
         """
 
-        require_nonnegative_finite(f"{self.name} blood_flow_l_min", blood_flow_l_min)
+        require_blood_flow(f"{self.name} blood_flow_l_min", blood_flow_l_min)
         tissue_blood = self.tissue_blood_partition_coefficient_for(blood_gas_partition_coefficient)
 
         if blood_flow_l_min == 0.0:
@@ -392,7 +396,7 @@ class TissueGroup:
         self,
         arterial_partial_pressure_fraction: Fraction,
         simulation_step_s: float,
-        blood_flow_l_min: float,
+        blood_flow_l_min: BloodFlow,
         blood_gas_partition_coefficient: PartitionCoefficient,
     ) -> float:
         """Advance the tissue exactly for a constant arterial fraction and blood flow.
@@ -416,11 +420,11 @@ class TissueGroup:
         Raises:
             TypeError: the arterial fraction was not built as a `Fraction`,
                 which is the type that checks it lies in the range 0 to 1
-                (`core/concentration.py`), or the blood:gas coefficient was not
-                built as a `PartitionCoefficient`.
+                (`core/concentration.py`), or the blood flow was not built as a
+                `BloodFlow`, or the blood:gas coefficient was not built as a
+                `PartitionCoefficient`.
             SimulationConfigurationError: the tissue:blood coefficient lies
-                outside the numerical envelope, or `blood_flow_l_min` is negative or not
-                finite, or `simulation_step_s` is outside the range that
+                outside the numerical envelope, or `simulation_step_s` is outside the range that
                 `require_compartment_step` accepts (`PL-WP52`, `PL-YT3T`). The
                 step must be positive and finite, no shorter than
                 `MINIMUM_SIMULATION_STEP_S`, and no longer than the supported run

@@ -413,16 +413,11 @@ def test_a_run_cannot_open_or_change_under_a_flow_outside_the_supported_ranges(
     held = system.equation_settings()
 
     def rebuilt(value: float) -> UptakeEquationSettings:
+        # The reproduction scaled the tissue flows to sum to the cardiac output. Since
+        # `PL-GKG4` a tissue flow is built only as a fraction of a supported cardiac
+        # output, so those scaled flows cannot be built either. The record refuses the
+        # cardiac output before it compares the flows with it.
         changed: dict[str, object] = {field: value}
-
-        if field == "cardiac_output_l_min":
-            changed["tissues"] = tuple(
-                replace(
-                    tissue,
-                    blood_flow_l_min=tissue.blood_flow_l_min / held.cardiac_output_l_min * value,
-                )
-                for tissue in held.tissues
-            )
 
         return replace(held, **changed)
 

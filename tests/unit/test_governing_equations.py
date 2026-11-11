@@ -25,6 +25,7 @@ from typing import NamedTuple
 import numpy
 import pytest
 
+from anesthesia_sim.core.blood_flow import BloodFlow, PerfusionFraction
 from anesthesia_sim.core.concentration import Percent, fraction_from_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.governing_equations import (
@@ -76,10 +77,22 @@ DELIVERED_FRACTION = fraction_from_percent(DELIVERED_PERCENT)
 MAX_DELIVERED_PERCENT = Percent(8.0)
 """Sevoflurane's vaporizer maximum, which the `PL-BBMG` reproduction exceeded."""
 
+
+def _blood_flow(l_min: float) -> BloodFlow:
+    """Return a blood flow of exactly `l_min`, as the whole of a cardiac output of that size.
+
+    A `BloodFlow` is built only from a cardiac output and a perfusion fraction
+    (`PL-GKG4`). A fraction of 1 multiplies the cardiac output by 1.0, which
+    changes no `float`, so each test keeps the flow it states.
+    """
+
+    return BloodFlow(CardiacOutput(l_min), PerfusionFraction(1.0))
+
+
 TISSUES = (
-    ("vessel_rich", CompartmentVolume(6.0), 5.85, PartitionCoefficient(1.7)),
-    ("muscle", CompartmentVolume(33.0), 1.482, PartitionCoefficient(2.9)),
-    ("fat", CompartmentVolume(14.5), 0.468, PartitionCoefficient(51.0)),
+    ("vessel_rich", CompartmentVolume(6.0), _blood_flow(5.85), PartitionCoefficient(1.7)),
+    ("muscle", CompartmentVolume(33.0), _blood_flow(1.482), PartitionCoefficient(2.9)),
+    ("fat", CompartmentVolume(14.5), _blood_flow(0.468), PartitionCoefficient(51.0)),
 )
 """(name, volume_l, blood_flow_l_min, tissue:blood coefficient) for each group.
 
@@ -179,7 +192,7 @@ def _settings_with_flow(field: str, value: float) -> UptakeEquationSettings:
             TissueGroupEquationSettings(
                 name=name,
                 volume_l=volume_l,
-                blood_flow_l_min=blood_flow_l_min / CARDIAC_OUTPUT_L_MIN * value,
+                blood_flow_l_min=_blood_flow(blood_flow_l_min / CARDIAC_OUTPUT_L_MIN * value),
                 tissue_blood_partition_coefficient=tissue_blood,
             )
             for name, volume_l, blood_flow_l_min, tissue_blood in TISSUES
@@ -415,7 +428,9 @@ def test_an_unpickled_tissue_group_record_is_rebuilt_through_its_checks(protocol
 
     held = _settings()
 
-    with pytest.raises(SimulationConfigurationError, match="vessel_rich blood_flow_l_min"):
+    with pytest.raises(
+        TypeError, match="^vessel_rich blood_flow_l_min of nan was not built as BloodFlow"
+    ):
         pickle.loads(_forged_pickle(held.tissues[0], protocol, "blood_flow_l_min", nan, held))
 
 
@@ -677,7 +692,7 @@ def test_a_zero_tissue_flow_leaves_that_group_alone() -> None:
         TissueGroupEquationSettings(
             name=name,
             volume_l=volume_l,
-            blood_flow_l_min=0.0 if name == "fat" else blood_flow_l_min,
+            blood_flow_l_min=_blood_flow(0.0) if name == "fat" else blood_flow_l_min,
             tissue_blood_partition_coefficient=tissue_blood,
         )
         for name, volume_l, blood_flow_l_min, tissue_blood in TISSUES
@@ -807,7 +822,7 @@ def test_a_tissue_flow_mismatch_is_stated_in_litres_per_minute() -> None:
                 TissueGroupEquationSettings(
                     name=name,
                     volume_l=volume_l,
-                    blood_flow_l_min=blood_flow_l_min,
+                    blood_flow_l_min=_blood_flow(blood_flow_l_min),
                     tissue_blood_partition_coefficient=tissue_blood,
                 )
                 for (name, volume_l, _, tissue_blood), blood_flow_l_min in zip(
@@ -830,7 +845,7 @@ def test_rejects_a_tissue_group_count_the_model_does_not_have() -> None:
         TissueGroupEquationSettings(
             name="vessel_rich",
             volume_l=CompartmentVolume(6.0),
-            blood_flow_l_min=CARDIAC_OUTPUT_L_MIN,
+            blood_flow_l_min=_blood_flow(CARDIAC_OUTPUT_L_MIN),
             tissue_blood_partition_coefficient=PartitionCoefficient(1.7),
         ),
     )
@@ -854,8 +869,8 @@ def test_rejects_a_tissue_group_count_the_model_does_not_have() -> None:
         (
             "blood_flow_l_min",
             -0.1,
-            SimulationConfigurationError,
-            "^muscle blood_flow_l_min must be nonnegative and finite" + REFUSAL_REASON,
+            TypeError,
+            "^muscle blood_flow_l_min of -0.1 was not built as BloodFlow, it is float",
         ),
         (
             "tissue_blood_partition_coefficient",
@@ -871,15 +886,16 @@ def test_rejects_a_tissue_group_that_could_not_describe_a_tissue(
 ) -> None:
     """A tissue group refuses a value that could not describe a tissue.
 
-    Since `PL-QX2G` the volume and the coefficient are checked types, so the record refuses
-    either one passed as a bare float. `CompartmentVolume(0.0)` and `PartitionCoefficient(0.0)`
-    are refused when they are built, which the test below checks.
+    Since `PL-QX2G` the volume and the coefficient are checked types, and since `PL-GKG4` the
+    blood flow is one too. So the record refuses each of them passed as a bare float.
+    `CompartmentVolume(0.0)` and `PartitionCoefficient(0.0)` are refused when they are built,
+    which the test below checks.
     """
 
     fields: dict[str, object] = {
         "name": "muscle",
         "volume_l": CompartmentVolume(33.0),
-        "blood_flow_l_min": 0.023,
+        "blood_flow_l_min": _blood_flow(0.023),
         "tissue_blood_partition_coefficient": PartitionCoefficient(2.9),
     }
     fields[field] = value
@@ -964,18 +980,19 @@ def test_the_system_matrix_does_not_depend_on_a_tissue_group_s_name() -> None:
 
 
 def test_equal_settings_form_the_same_propagator_bit_for_bit_whatever_built_them() -> None:
-    """A record stores plain floats and a tuple, so equal records make one cache key (`PL-5BD7`).
+    """A record stores one type per field and a tuple, so equal records make one cache key.
 
-    Both propagator caches key on the record by value. A `numpy.float64`
-    volume compares and hashes equal to the plain `float`. But CPython's `sum`
-    adds values of exact type `float` with compensation, and adds a subclass
-    without it. So before the record stored its fields as exact floats, the
-    propagator built from a subclass differed in 39 of 81 entries at 7 s. A
-    list of tissue groups was accepted, and it could not be hashed. The
-    expected propagator here is the one built from plain floats and a tuple,
-    which is what every record built by `AgentUptakeSystem.equation_settings`
-    stores. Since `PL-QX2G` a volume or coefficient reaches the record only as
-    its checked type, so a `numpy.float64` is built into that type first.
+    Both propagator caches key on the record by value (`PL-5BD7`). A
+    `numpy.float64` volume compares and hashes equal to the plain `float`. But
+    CPython's `sum` adds values of exact type `float` with compensation, and
+    adds a subclass without it. So while a record could store a field as either
+    type, the propagator built from a subclass differed in 39 of 81 entries at
+    7 s. A list of tissue groups was accepted, and it could not be hashed. The
+    expected propagator here is the one built from the record that
+    `AgentUptakeSystem.equation_settings` builds. Since `PL-QX2G` a volume or
+    coefficient reaches the record only as its checked type, and since
+    `PL-GKG4` a blood flow does too. So a `numpy.float64` is built into that
+    type first.
     """
 
     plain = _settings()
@@ -988,7 +1005,10 @@ def test_equal_settings_form_the_same_propagator_bit_for_bit_whatever_built_them
             TissueGroupEquationSettings(
                 name=tissue.name,
                 volume_l=CompartmentVolume(numpy.float64(tissue.volume_l)),
-                blood_flow_l_min=numpy.float64(tissue.blood_flow_l_min),
+                blood_flow_l_min=BloodFlow(
+                    CardiacOutput(numpy.float64(tissue.blood_flow_l_min)),
+                    PerfusionFraction(numpy.float64(1.0)),
+                ),
                 tissue_blood_partition_coefficient=PartitionCoefficient(
                     numpy.float64(tissue.tissue_blood_partition_coefficient)
                 ),
@@ -1000,7 +1020,7 @@ def test_equal_settings_form_the_same_propagator_bit_for_bit_whatever_built_them
     assert type(built_otherwise.tissues) is tuple
     assert type(built_otherwise.circuit_volume_l) is CompartmentVolume
     assert all(type(tissue.volume_l) is CompartmentVolume for tissue in built_otherwise.tissues)
-    assert all(type(tissue.blood_flow_l_min) is float for tissue in built_otherwise.tissues)
+    assert all(type(tissue.blood_flow_l_min) is BloodFlow for tissue in built_otherwise.tissues)
     assert hash(built_otherwise) == hash(plain)
 
     for interval_s in (0.84, 7.0, 600.0):

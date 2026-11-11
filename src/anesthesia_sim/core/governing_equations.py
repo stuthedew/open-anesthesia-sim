@@ -87,6 +87,7 @@ from __future__ import annotations
 from dataclasses import dataclass, fields
 from math import isfinite
 
+from anesthesia_sim.core.blood_flow import BloodFlow, require_blood_flow
 from anesthesia_sim.core.concentration import (
     Fraction,
     Percent,
@@ -312,27 +313,6 @@ def require_canonical_state(state: object) -> None:
         )
 
 
-def _hold_as_exact_floats(record: object, fields: tuple[str, ...]) -> None:
-    """Replace each named field of a frozen settings record with the exact `float` it equals.
-
-    Both propagator caches key on a settings record by value. That is safe only if two
-    equal records build the same propagator bit for bit. A `numpy.float64` or another
-    `float` subclass compares and hashes equal to the plain `float`. But CPython's `sum`
-    adds values of exact type `float` with Neumaier compensation, and adds a subclass
-    without it. So the matrix exponential built from a subclass differed in 39 of its 81
-    entries at 7 s (`PL-5BD7`, measured 2026-10-05). An `int` is stored as the `float` it
-    equals, for the same reason. Each field has passed `require_nonnegative_finite`, so it
-    is an `int` or a `float` within the range a `float` can represent, and `float()`
-    changes no value. The fields that hold a checked type are not passed here: the flows,
-    the concentrations, and since `PL-QX2G` the volumes and partition coefficients
-    (`core/numerical_envelope.py`). Each of those fields has the same type in every
-    record, so it cannot be stored in two ways.
-    """
-
-    for field in fields:
-        object.__setattr__(record, field, float(getattr(record, field)))
-
-
 def _restore_through_checks(record: object, state: object) -> None:
     """Restore an unpickled settings record by building it again through its constructor.
 
@@ -393,7 +373,21 @@ class TissueGroupEquationSettings:
 
     The blood flow is stored in litres per minute and read in litres per
     second, for the reason that `UptakeEquationSettings` gives for its own
-    flows.
+    flows. It is a `BloodFlow`, built only from a cardiac output and a
+    perfusion fraction (`core/blood_flow.py`, `PL-GKG4`). So it lies between
+    zero and a supported cardiac output in every record, and this record
+    checks its type and not its sign.
+
+    Every field but the name holds a checked type, so equal values in a field
+    always have the same type. That matters because both propagator caches key
+    on a settings record by value, which is safe only if two equal records
+    build the same propagator bit for bit. CPython's `sum` adds values of
+    exact type `float` with Neumaier compensation, and adds a subclass
+    without it. A blood flow stored as a `numpy.float64` in one record and as a
+    plain `float` in another gave matrix exponentials that differed in 39 of
+    their 81 entries at 7 s (`PL-5BD7`, measured 2026-10-05). The matrix reads
+    the flow through `blood_flow_l_s`, which is a plain `float` in every
+    record.
 
     The volume and the partition coefficient are checked types, built only
     inside the numerical envelope (`core/numerical_envelope.py`). So the
@@ -402,26 +396,25 @@ class TissueGroupEquationSettings:
     1e-300 L with a coefficient of 1e-30 made that product underflow to zero.
 
     Raises:
-        TypeError: the volume was not built as a `CompartmentVolume`, or the
-            coefficient as a `PartitionCoefficient`.
-        SimulationConfigurationError: the blood flow is negative or not
-            finite. The flow is checked here so that a matrix is never
-            assembled from a parameter set that could not describe a tissue.
+        TypeError: the volume was not built as a `CompartmentVolume`, the
+            blood flow as a `BloodFlow`, or the coefficient as a
+            `PartitionCoefficient`. The flow's type is checked here so that a
+            matrix is never assembled from a parameter set that could not
+            describe a tissue.
     """
 
     name: str
     volume_l: CompartmentVolume
-    blood_flow_l_min: float
+    blood_flow_l_min: BloodFlow
     tissue_blood_partition_coefficient: PartitionCoefficient
 
     def __post_init__(self) -> None:
         require_compartment_volume(f"{self.name} volume_l", self.volume_l)
-        require_nonnegative_finite(f"{self.name} blood_flow_l_min", self.blood_flow_l_min)
+        require_blood_flow(f"{self.name} blood_flow_l_min", self.blood_flow_l_min)
         require_coefficient(
             f"{self.name} tissue_blood_partition_coefficient",
             self.tissue_blood_partition_coefficient,
         )
-        _hold_as_exact_floats(self, ("blood_flow_l_min",))
 
     def __setstate__(self, state: object) -> None:
         """Restore an unpickled or copied record through the constructor's checks (`PL-S11T`)."""
@@ -494,9 +487,10 @@ class UptakeEquationSettings:
     flow fields take `FreshGasFlow`, `AlveolarVentilation` and `CardiacOutput`,
     which cannot be built outside their ranges (`core/supported_ranges.py`). So
     nothing here checks a range again, and a bare `float` is rejected as the
-    programming error it is. A tissue group's flow needs no range of its own.
-    Each tissue flow is nonnegative and together they sum to cardiac output, so
-    none can exceed it.
+    programming error it is. A tissue group's flow is a `BloodFlow`, built
+    only as a perfusion fraction of a cardiac output, so it lies between zero
+    and a supported cardiac output (`core/blood_flow.py`). This record checks
+    that the three together sum to its own cardiac output.
 
     **The dial is bounded by the vaporizer maximum stored beside it**
     (`PL-BBMG`). The limit on the delivered concentration is the maximum of
@@ -625,8 +619,10 @@ class UptakeEquationSettings:
             # gave L/s figures, it named values that the screen never shows.
             # The sum is rounded for the message only, for the reason that
             # `TISSUE_BLOOD_FLOW_STATED_DECIMALS` gives (`PL-M4M0`).
+            # `float()` keeps the sum that the message has always shown. `sum` adds
+            # a `float` subclass without the compensation it gives a plain `float`.
             tissue_blood_flow_l_min = round(
-                sum(tissue.blood_flow_l_min for tissue in self.tissues),
+                sum(float(tissue.blood_flow_l_min) for tissue in self.tissues),
                 TISSUE_BLOOD_FLOW_STATED_DECIMALS,
             )
 

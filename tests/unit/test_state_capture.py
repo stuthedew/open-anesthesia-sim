@@ -42,6 +42,7 @@ import pytest
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidator
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.blood import VenousBloodCompartment
+from anesthesia_sim.core.blood_flow import PerfusionFraction
 from anesthesia_sim.core.circuit import BreathingCircuit, DeliverableFreshGasFlowRange
 from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
@@ -114,7 +115,7 @@ def _tissue_group() -> TissueGroup:
     return TissueGroup(
         name="vessel_rich",
         volume_l=CompartmentVolume(6.0),
-        perfusion_fraction=1.0,
+        perfusion_fraction=PerfusionFraction(1.0),
         tissue_gas_partition_coefficient=PartitionCoefficient(1.14),
         agent_amount_l=0.41,
     )
@@ -569,7 +570,9 @@ def test_the_propagator_cache_key_covers_every_equation_setting() -> None:
             "a tissue volume",
         ),
         (
-            lambda s: object.__setattr__(s.patient.tissues[1], "perfusion_fraction", 0.2),
+            lambda s: object.__setattr__(
+                s.patient.tissues[1], "perfusion_fraction", PerfusionFraction(0.2)
+            ),
             "a tissue blood flow, moved through a perfusion fraction written past its guard",
         ),
         (

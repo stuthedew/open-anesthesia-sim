@@ -11,6 +11,10 @@ types. They are:
   `core/supported_ranges.py`.
 - The compartment volume `CompartmentVolume` and the partition coefficient
   `PartitionCoefficient`, in `core/numerical_envelope.py`.
+- A tissue group's perfusion fraction `PerfusionFraction` and its blood flow
+  `BloodFlow`, in `core/blood_flow.py`. A `BloodFlow` is built from a cardiac
+  output and a perfusion fraction, where every other type is built from one
+  number.
 
 So a value of one of these types proves that its check ran
 (`.claude/rules/core-domain.md` § "A quantity with a check of its own is a
@@ -145,7 +149,7 @@ class CheckedQuantity:
 
     __slots__ = ()
 
-    def __reduce__(self) -> tuple[type[CheckedQuantity], tuple[float | int]]:
+    def __reduce__(self) -> tuple[type[CheckedQuantity], tuple[float | int, ...]]:
         """Rebuild the value through its own type's constructor, at every pickle protocol.
 
         At protocols 0 and 1, a `float` or `int` subclass is pickled through
@@ -157,7 +161,8 @@ class CheckedQuantity:
         makes every protocol call it, so a value edited outside its range is refused on
         load with the constructor's own exception. A `Fraction` or `Percent` is rebuilt
         under its type's default `name`, because neither stores the name it was built
-        with.
+        with. `BloodFlow` has its own version of this method, because it is built from
+        two values (`core/blood_flow.py`).
         """
 
         number: float | int = int(self) if isinstance(self, int) else float(self)  # type: ignore[arg-type]
