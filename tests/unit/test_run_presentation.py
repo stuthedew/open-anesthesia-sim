@@ -102,7 +102,7 @@ def _run_at(elapsed_s: float, *, agent_id: str = "sevoflurane") -> SimulationCon
 
 
 def _run_with_a_control_change() -> SimulationController:
-    """A run paused at 90 s, whose delivered concentration was then moved from 2% to 3%."""
+    """Return a run paused at 90 s, whose delivered concentration was then moved from 2% to 3%."""
 
     controller = _run_at(90.0)
     controller.set_delivered_concentration_percent(Percent(3.0))
@@ -192,7 +192,7 @@ def test_a_drawn_run_lists_and_counts_the_control_changes_it_was_given() -> None
 
 
 def test_a_drawn_run_that_a_mark_stopped_says_so() -> None:
-    """A run that stopped on the learner's mark at 30 s is not stated as a plain pause."""
+    """A run stopped by the learner's bookmark at 30 s is not described as a plain pause."""
 
     controller = SimulationController()
     controller.add_time_bookmark(TimeBookmark(CaseInstant(30.0)))
@@ -217,7 +217,7 @@ def test_a_drawn_run_that_a_mark_stopped_says_so() -> None:
 def test_a_branch_and_a_compared_run_lock_the_agent_selector_on_a_frame_and_on_a_halt(
     changes: dict[str, object], lock_reason: str
 ) -> None:
-    """The agent chip gives the same reason whether a frame drew or the run halted."""
+    """The agent chip gives the same lock reason whether a frame was drawn or the run halted."""
 
     controller = _run_at(30.0)
     state = _state(**changes)
@@ -233,11 +233,11 @@ def test_a_branch_and_a_compared_run_lock_the_agent_selector_on_a_frame_and_on_a
 
 
 def test_a_stopped_run_s_banner_states_what_the_panel_refused_on_a_frame_and_on_a_halt() -> None:
-    """A refused setting, an offered branch and a refused Reset each reach the banner.
+    """A refused setting, an offered branch and a refused Reset each appear in the banner.
 
-    The run is given the status of one that reached the supported run length,
-    because that banner is the one that names a branch as the way to a new
-    setting. A real run takes 24 hours of simulated time to reach it.
+    The test marks the run as having reached the supported run length, because
+    only the banner of such a run names a branch as the way to a new setting. A
+    real run takes 24 hours of simulated time to reach that length.
     """
 
     controller = _run_at(30.0)
@@ -431,9 +431,9 @@ def test_withheld_values_are_the_withheld_form_of_each_surface() -> None:
 
 
 def test_withheld_readouts_keep_each_panel_s_gloss_and_the_playback_rate() -> None:
-    """A withheld row still says what each panel is, and how fast the run is played.
+    """Withheld readouts still say what each panel is, and how fast the run is played.
 
-    The expected glosses are those of a frame drawn from a real run.
+    The expected panel descriptions are those of a frame drawn from a real run.
     """
 
     drawn = drawn_values(_run_at(90.0).snapshot(), PlaybackRate(4)).readouts
