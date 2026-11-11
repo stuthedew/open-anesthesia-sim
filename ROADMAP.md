@@ -131,6 +131,10 @@ number because the next minor number was not free.
 
 ### Version table
 
+The item that cuts a release ships in no release. It carries no milestone, and
+the release procedure keeps it out of every later release's count and notes,
+so no release's notes name it (`PL-KRS6`).
+
 | Version | Status | What the release holds | Items | Details |
 | --- | --- | --- | --- | --- |
 | v0.0.1 | Completed | Initial runnable prototype: deterministic simulation clock, controller/view separation, basic charting and controls, and project quality tooling. | | |
@@ -324,7 +328,8 @@ own account of what it was for is untouched. The section is written after the
 tag. That is the one time a notes file is edited, and it is safe because a
 tagged release is never re-cut. Two kinds of span are exempt. The first is a
 release's own cut pull request. It is inside its own span by construction, and
-the next release stamps it every time. The second is the newest tag's span,
+no release's notes name it, because the item that cuts a release ships in no
+release (§ "Version table"). The second is the newest tag's span,
 until the next release's notes exist. Before then, its pointer would have to
 name a release that nobody has cut. The cut that writes those notes is asked
 for the pointer on its own branch (`PL-JLYG`).
