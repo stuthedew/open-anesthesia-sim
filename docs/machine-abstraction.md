@@ -81,8 +81,7 @@ circuit ($`M_{\mathrm{delivered}}`$) and exhausted from it
 ($`M_{\mathrm{exhausted}}`$); their rows are the accounting rows. The ninth is
 the constant one, written $`\mathbf 1`$, through whose column a term that does
 not depend on any state enters. The alveolar, venous and tissue rows are the
-patient rows. The exact
-propagator is $`\exp(A\,\Delta t)`$. The symbols are those of `docs/MODEL.md`
+patient rows. The exact propagator is $`\exp(A\,\Delta t)`$. The symbols are those of `docs/MODEL.md`
 § "Symbols": $`\dot V_F`$ is the fresh gas flow, $`\dot V_A`$ the alveolar
 ventilation, $`F_D`$ the delivered fraction set at the vaporizer, $`F_I`$ the
 inspired fraction and $`F_A`$ the alveolar fraction. Five entries of the matrix
@@ -174,8 +173,9 @@ is built (`CompartmentVolume` in `core/numerical_envelope.py`).
 Automated end-tidal control fails the first and third conditions: its
 controllers read the patient's state during the step, and one of them runs a
 simplified patient model of its own, which is state outside the run's (survey
-entry (b4), automated end-tidal or target control). So it is planned separately, as planned-milestone item 5, "Automated
-end-tidal control", rather than as a machine in this abstraction.
+entry (b4), automated end-tidal or target control). So it is planned
+separately, as planned-milestone item 5, "Automated end-tidal control", rather
+than as a machine in this abstraction.
 
 ## Question 3: how a machine composes with the existing core
 
@@ -419,10 +419,9 @@ calibrated maximum of the Tec 6, which Johnston et al. characterised *"from 1%
 to 18%"*, and `docs/MODEL.md` already names that provenance. Nothing about
 desflurane itself sets its maximum at 18%. It belongs on the (machine, agent)
 pair, as `agent_limits`. Today it is a field of each agent's data file under
-`src/anesthesia_sim/data/agents/`, and no machine limits the dial. Moving
-it there to `agent_limits` is the data migration that the machine milestone
-makes. Until then
-nothing displayed changes.
+`src/anesthesia_sim/data/agents/`, and no machine limits the dial. Moving it
+from there into `agent_limits` is the data migration that the machine
+milestone makes. Until then nothing displayed changes.
 
 ## Which values belong to the machine, the run and the model
 
@@ -450,9 +449,9 @@ when the profile states none.
   machine field would either block every machine or force each one to
   fabricate a number. The opening flow is instead an opening condition of a
   run: a teaching choice, as the provenance note of the reference breathing
-  system's data file (its `provenance_gap` field) already calls it. Where the field
-  lives and what value it takes are independent questions, and a separate item
-  decides the value (`PL-NM7X`).
+  system's data file (its `provenance_gap` field) already calls it. Where the
+  field lives and what value it takes are independent questions, and a
+  separate item decides the value (`PL-NM7X`).
 - **Opening dial position** is the same kind of condition, and the code already
   treats it so: building the uptake model for an agent
   (`AgentUptakeSystem.for_agent()`) starts the vaporizer at that agent's 1 MAC.
@@ -499,8 +498,8 @@ carrying a `DeliverableFreshGasFlowRange`, and `BreathingCircuit` holds both
 claims and refuses in each one's own words. `reference_circle_system.json`
 declares `null`, the survey's (b8) having found no reachable range for any
 surveyed machine, so the envelope alone binds and nothing displayed changed.
-Two consequences for the machine milestone's own work, recorded here because this document is
-where its scope is read. The field is **optional, defaulting to `None`**,
+Two consequences for the machine milestone's own work, recorded here because
+this document is where its scope is read. The field is **optional, defaulting to `None`**,
 which means *declares no range* rather than *unlimited*; Question 4's refusal
 of an `unknown` applies to required fields, and this is not one. And neither
 of the survey's other (b8) quantities was built beside it, for the reasons
@@ -604,14 +603,14 @@ same machine — and the interface states that rather than offering two names
 that produce one curve. Nothing in the interface states it yet: the machine
 chooser and the machine's own panel that carry the statement are built by
 the machine milestone and by the comparison table's item (`PL-WZVZ`), and the
-test that the
-statement is on screen belongs to that work.
+test that the statement is on screen belongs to that work.
 
 **The decision not to represent inlet position is an instance, not a rule, and
-its condition is named.** It stops being true when the model gains a gas phase
-with more than one compartment, so that inspired gas and mean circuit gas can
-differ. `ROADMAP.md` plans that as planned-milestone item 39, "Gas-phase
-conditions for each compartment", and a multi-limb circuit is one form of it.
+its condition is named.** It stops being true when either of two things
+happens, and both let inspired gas differ from mean circuit gas. One is
+planned-milestone item 39, "Gas-phase conditions for each compartment", which
+`ROADMAP.md` names as where the circuit's internal topology would go. The other
+is a multi-limb circuit entering the model by any other route.
 Written as a rule it would outlive its own evidence and be obeyed by sessions
 that were not here. The statement in the interface is a different matter: the
 last paragraph of this section says why it outlives the decision.
@@ -653,9 +652,9 @@ the statement covers, not whether the statement is required.
 
 **Decided (project owner, 2026-09-20, ratified, recorded in `PL-FG9D`)**, on
 this session's recommendation and over naming the machine by its trade name in
-the running interface. It is what a learner sees, so the decision was theirs; the case
-below is the one they ratified rather than one they authored, which is the
-distinction `CLAUDE.md` asks to be recorded — **ordinary evidence reopens it**:
+the running interface. It is what a learner sees, so the decision was theirs;
+the case below is the one they ratified rather than one they authored, which is
+the distinction `CLAUDE.md` asks to be recorded — **ordinary evidence reopens it**:
 a measurement, a cost this case did not carry, or a constraint that appears
 later.
 
@@ -817,12 +816,12 @@ that nobody works it out again from scratch.
 - **Every `unknown` in the survey.** The survey records apparatus volumes, flow
   floors, agent lists and sample flows as unknown for the GE and Getinge
   machines, and for three of the five Dräger ones. Its § "What is missing, and
-  how the next session gets it" names the manuals and the route. **These unknowns are a condition on each profile, not
-  on this abstraction.** Question 4's refusal 2 rejects a profile with
-  `unknown` in a field the model reads, so such a machine stays out until its
-  fields are known. That
-  machine's manual is sought when its profile is built, not in advance (project
-  owner, 2026-09-20). The design is complete without any of these values:
+  how the next session gets it" names the manuals and the route. **These
+  unknowns are a condition on each profile, not on this abstraction.**
+  Question 4's refusal 2 rejects a profile with `unknown` in a required field
+  the model reads, so such a machine stays out until its fields are known.
+  That machine's manual is sought when its profile is built, not in advance
+  (project owner, 2026-09-20). The design is complete without any of these values:
   meanwhile it runs on the reference profile by construction, not for want of
   evidence.
 
