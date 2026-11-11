@@ -16,7 +16,7 @@ one collected module, and the trial is deleted once its decision is recorded.
 `frame_cost`.
 """
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import pytest
@@ -234,3 +234,75 @@ def test_the_window_reports_the_same_pixels_across_a_change_of_host(
     assert "Style sheet: THE SAME PIXELS under Dark and Light." in verdict
     assert (tmp_path / "style-trial-Light.png").exists()
     assert (tmp_path / "style-trial-Dark.png").exists()
+    assert (tmp_path / "style-trial-difference.png").exists()
+
+
+def _record_twice(
+    window: ComparisonWindow, monkeypatch: pytest.MonkeyPatch, between: Callable[[], None]
+) -> str:
+    """Record the window as Light, make a change, record it as Dark, and return its lines."""
+
+    monkeypatch.setattr(style_trial, "colour_scheme_name", lambda _application: "Light")
+    window.record_appearance()
+    between()
+    monkeypatch.setattr(style_trial, "colour_scheme_name", lambda _application: "Dark")
+    window.record_appearance()
+
+    return window.verdict_text()
+
+
+def test_the_window_says_when_only_the_lettering_differs(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A change to the lettering alone is reported as that, for both arms.
+
+    On macOS Qt draws lettering by the host appearance, so this is the case
+    the owner's Mac is expected to show. Here the lettering is changed by
+    hand between the two recordings.
+    """
+
+    monkeypatch.setattr(style_trial, "SCREENSHOT_DIRECTORY", tmp_path)
+    window = ComparisonWindow(application)
+
+    def reletter() -> None:
+        for arm in Arm:
+            for button in window.held_buttons(arm):
+                button.setText("Stari")
+
+    verdict = _record_twice(window, monkeypatch, reletter)
+
+    for arm in Arm:
+        (line,) = [line for line in verdict.splitlines() if line.startswith(arm.value)]
+        assert "DIFFERENT PIXELS under Dark and Light" in line
+        assert "5 of 5 buttons" in line
+        assert line.endswith("so ONLY THE LETTERING differs.")
+
+
+def test_the_window_says_when_the_fill_differs(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A fill that follows the host is reported as more than lettering.
+
+    The custom style reads its fill from the palette, so a palette whose
+    button colour changes between the recordings changes its buttons. The
+    style sheet names its colours and is unchanged.
+    """
+
+    monkeypatch.setattr(style_trial, "SCREENSHOT_DIRECTORY", tmp_path)
+    window = ComparisonWindow(application)
+
+    def darken_the_button_role() -> None:
+        palette = QPalette(application.palette())
+        palette.setColor(
+            QPalette.ColorGroup.Active, QPalette.ColorRole.Button, QColor(_DARK_SURFACE)
+        )
+        application.setPalette(palette)
+        # Widgets take a changed application palette when its event is delivered.
+        application.processEvents()
+
+    verdict = _record_twice(window, monkeypatch, darken_the_button_role)
+
+    assert "Style sheet: THE SAME PIXELS under Dark and Light." in verdict
+    (line,) = [line for line in verdict.splitlines() if line.startswith(Arm.STYLE.value)]
+    assert "pixels STILL DIFFER" in line
+    assert line.endswith("so the edge or the fill differs.")

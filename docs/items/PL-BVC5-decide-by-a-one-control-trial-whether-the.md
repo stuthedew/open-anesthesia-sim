@@ -172,6 +172,37 @@ tick with `QPainter`.
    slowdown". With the style as the application's style, 20 paired runs
    measure one: 0.4 to 1.6 ms of a frame that takes 54 ms and has 200 ms.
 
+**The owner's Mac, first run, 2026-11-11.** The owner ran the comparison
+window, recorded both appearances, and sent a picture of the window under
+Light. Both rows read "DIFFERENT PIXELS under Dark and Light": the style
+sheet's row as well as the custom style's. In the picture the two rows look
+alike. The window did not yet say where the pixels differ.
+
+The lettering is the likely place, and this is a reading of Qt's source, not
+yet a measurement on the Mac. `QCoreTextFontEngine::imageForGlyph`
+(`src/gui/text/coretext/qfontengine_coretext.mm` at tag `v6.11.0`, fetched
+from GitHub and read on 2026-11-11; PySide6 here is 6.11.2) draws each letter
+with a black fill unless the platform's colour scheme is Dark, and with a
+white fill when it is. Its comment says that macOS's grey-scale font
+smoothing "adjusts its dilation (stem darkening) parameters based on the fill
+color", and that "we use the application's current appearance to decide
+whether to draw with white or black fill". So the same dark lettering on the
+same light surface can be drawn a little heavier under one appearance than
+the other, whichever arm draws the button. The declared colours should not
+move: `QGuiApplicationPrivate::setPalette` (`qguiapplication.cpp`, same tag)
+keeps every role the application set and fills only the others from the
+host's theme.
+
+The window now records each row twice, with its lettering and without, and
+reports the number of differing pixels, the largest colour step, and whether
+the buttons without lettering are the same. It also saves
+`out/style-trial-difference.png`, which shows each row under each appearance
+and the pixels that differ. If the second run reports that only the
+lettering differs, in both rows, the difference belongs to Qt's text drawing
+and the shipped style sheets have it too, so it does not count against the
+custom style. Whether the two appearances look the same is still the owner's
+to say.
+
 **Recommended.** Count test 1 as passed, and install the style on the
 application as Qt advises. The test was written to find out whether drawing
 in Python costs enough to matter here. It costs at most 0.8% of the frame

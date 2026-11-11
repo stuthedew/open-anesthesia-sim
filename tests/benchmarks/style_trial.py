@@ -31,7 +31,9 @@ states are this file's own, and nothing ships them.
 2. The same look under the light and the dark host appearance:
    `style_trial_checks.py` checks it against a simulated dark host, and the
    comparison window's "Record this appearance" button checks it on a real
-   one.
+   one. Where the pixels differ, the window says whether the difference is
+   in the lettering alone, because on macOS Qt draws lettering by the host
+   appearance whatever draws the button (see `Recording`).
 3. No image files: neither arm of the button needs one. The check box row
    shows the control that does. A style sheet that styles a check box's
    indicator draws no tick unless it names an image, and `TrialStyle` draws
@@ -504,6 +506,98 @@ def digest(image: QImage) -> str:
     return hashlib.sha256(bytes(fixed.constBits())).hexdigest()[:12]
 
 
+@dataclass(frozen=True)
+class PixelDifference:
+    """How far two renderings of one control are apart.
+
+    Attributes:
+        pixels: The number of pixels whose colour differs.
+        largest_step: The largest difference in any one colour channel of any
+            pixel, on the 0 to 255 scale. A step of a few units is invisible,
+            and a step near 255 is one colour replaced by another.
+    """
+
+    pixels: int
+    largest_step: int
+
+
+def difference_between(first: QImage, second: QImage) -> PixelDifference:
+    """Compare two images pixel by pixel.
+
+    Images of different sizes count as differing in every pixel of the larger
+    one, by the full step. The window that calls this function runs on the
+    owner's desktop, where a report is more use than an exception.
+    """
+
+    if first.size() != second.size():
+        larger = max(first.width() * first.height(), second.width() * second.height())
+
+        return PixelDifference(pixels=larger, largest_step=255)
+
+    one = bytes(first.convertToFormat(QImage.Format.Format_ARGB32).constBits())
+    two = bytes(second.convertToFormat(QImage.Format.Format_ARGB32).constBits())
+    pixels = 0
+    largest_step = 0
+
+    for offset in range(0, len(one), 4):
+        step = max(
+            abs(left - right)
+            for left, right in zip(one[offset : offset + 4], two[offset : offset + 4], strict=True)
+        )
+
+        if step:
+            pixels += 1
+            largest_step = max(largest_step, step)
+
+    return PixelDifference(pixels=pixels, largest_step=largest_step)
+
+
+def differing_pixel_mask(first: QImage, second: QImage) -> QImage:
+    """An image of the first one's size: INK where the two differ, PANEL elsewhere."""
+
+    mask = QImage(first.size(), QImage.Format.Format_ARGB32)
+    mask.fill(QColor(PANEL))
+
+    if first.size() != second.size():
+        mask.fill(QColor(INK))
+
+        return mask
+
+    for x in range(first.width()):
+        for y in range(first.height()):
+            if first.pixel(x, y) != second.pixel(x, y):
+                mask.setPixelColor(x, y, QColor(INK))
+
+    return mask
+
+
+@dataclass(frozen=True)
+class Recording:
+    """One arm's five held buttons, as drawn under one host appearance.
+
+    The buttons are recorded twice because lettering and the button around it
+    are drawn by different code. On macOS, Qt draws each letter with a black
+    or a white fill according to the host appearance, and macOS thickens a
+    letter's strokes by an amount that depends on that fill
+    (`QCoreTextFontEngine::imageForGlyph`, `qfontengine_coretext.mm`, Qt
+    6.11.0). So the same dark lettering on the same light surface can come out
+    a little heavier or lighter under Dark than under Light, whichever arm
+    drew the button. The recording without lettering shows whether anything
+    else changed.
+
+    Attributes:
+        lettered: The five buttons as the window shows them.
+        bare: The same five buttons, at the same size, with no lettering.
+    """
+
+    lettered: tuple[QImage, ...]
+    bare: tuple[QImage, ...]
+
+
+#: How many times larger than life the difference picture draws each button.
+DIFFERENCE_PICTURE_SCALE: Final = 4
+
+
 # ------------------------------------------------- the comparison window
 
 
@@ -522,7 +616,7 @@ class ComparisonWindow(QWidget):
         super().__init__()
         self._application = application
         self._style = TrialStyle()
-        self._recorded: dict[Arm, dict[str, str]] = {arm: {} for arm in Arm}
+        self._recorded: dict[Arm, dict[str, Recording]] = {arm: {} for arm in Arm}
         self.setWindowTitle("PL-BVC5 trial: one button, drawn two ways")
         self.setAutoFillBackground(True)
         column = QVBoxLayout(self)
@@ -538,6 +632,9 @@ class ComparisonWindow(QWidget):
             grid.addWidget(self._caption(state.value), 0, index)
 
         self._rows: dict[Arm, list[HeldButton]] = {arm: [] for arm in Arm}
+        # The same buttons with no lettering. They are never shown, and
+        # `record_appearance` renders them to tell lettering from the rest.
+        self._bare_rows: dict[Arm, list[HeldButton]] = {arm: [] for arm in Arm}
 
         for row, arm in enumerate(Arm, start=1):
             grid.addWidget(self._caption(arm.value), row, 0)
@@ -546,6 +643,9 @@ class ComparisonWindow(QWidget):
                 button = held_button(arm, state, self._style)
                 self._rows[arm].append(button)
                 grid.addWidget(button, row, index, Qt.AlignmentFlag.AlignLeft)
+                bare = held_button(arm, state, self._style, text="")
+                bare.setFixedSize(button.sizeHint())
+                self._bare_rows[arm].append(bare)
 
         grid.setColumnStretch(len(ButtonState) + 1, 1)
         column.addLayout(grid)
@@ -595,22 +695,27 @@ class ComparisonWindow(QWidget):
 
         return label
 
-    def row_digest(self, arm: Arm) -> str:
-        """The fingerprint of one arm's row of five held buttons, as drawn now."""
+    def held_buttons(self, arm: Arm) -> tuple[HeldButton, ...]:
+        """One arm's row of five held buttons, in the order of `ButtonState`."""
 
-        return "-".join(digest(image_of(button)) for button in self._rows[arm])
+        return tuple(self._rows[arm])
 
     def record_appearance(self) -> None:
-        """Fingerprint both rows under the host appearance in force, and say what has matched.
+        """Record both rows under the host appearance in force, and say what has matched.
 
         It also saves a picture of the window, named for the appearance, in
-        `SCREENSHOT_DIRECTORY`.
+        `SCREENSHOT_DIRECTORY`. Once two appearances are recorded it saves
+        `style-trial-difference.png` there too: each row under each
+        appearance, and the pixels that differ.
         """
 
         scheme = colour_scheme_name(self._application)
 
         for arm in Arm:
-            self._recorded[arm][scheme] = self.row_digest(arm)
+            self._recorded[arm][scheme] = Recording(
+                lettered=tuple(image_of(button) for button in self._rows[arm]),
+                bare=tuple(image_of(button) for button in self._bare_rows[arm]),
+            )
 
         self._write_verdict()
         print(self._verdict.text(), flush=True)
@@ -620,10 +725,37 @@ class ComparisonWindow(QWidget):
         if self.grab().save(str(saved)):
             print(f"Saved {saved}", flush=True)
 
+        picture = self.difference_picture()
+        difference = SCREENSHOT_DIRECTORY / "style-trial-difference.png"
+
+        if picture is not None and picture.save(str(difference)):
+            print(f"Saved {difference}", flush=True)
+
     def verdict_text(self) -> str:
         """The lines the window shows beside the record button."""
 
         return self._verdict.text()
+
+    def _compared(self, arm: Arm) -> tuple[str, str] | None:
+        """The two recorded appearances to compare for one arm, or None with fewer than two.
+
+        They are the first by name, and the first after it whose lettered row
+        differs from it. Where every recording matches, they are the first two.
+        """
+
+        recorded = self._recorded[arm]
+        names = sorted(recorded)
+
+        if len(names) < 2:
+            return None
+
+        first = names[0]
+
+        for other in names[1:]:
+            if _row_difference(recorded[first].lettered, recorded[other].lettered).pixels:
+                return first, other
+
+        return first, names[1]
 
     def _write_verdict(self) -> None:
         """Write, for each arm, the appearances recorded and whether their pixels are the same."""
@@ -632,23 +764,127 @@ class ComparisonWindow(QWidget):
 
         for arm in Arm:
             recorded = self._recorded[arm]
+            pair = self._compared(arm)
 
             if not recorded:
                 lines.append(f"{arm.value}: nothing recorded yet.")
-            elif len(recorded) == 1:
+            elif pair is None:
                 (scheme,) = recorded
                 lines.append(
                     f"{arm.value}: recorded under {scheme}. Switch the appearance and record again."
                 )
             else:
-                same = len(set(recorded.values())) == 1
                 names = " and ".join(sorted(recorded))
-                lines.append(
-                    f"{arm.value}: {'THE SAME PIXELS' if same else 'DIFFERENT PIXELS'} "
-                    f"under {names}."
+                first, second = (recorded[name] for name in pair)
+                lettered = _row_difference(first.lettered, second.lettered)
+                bare = _row_difference(first.bare, second.bare)
+                buttons = sum(
+                    difference_between(one, two).pixels > 0
+                    for one, two in zip(first.lettered, second.lettered, strict=True)
                 )
 
+                if not lettered.pixels:
+                    lines.append(f"{arm.value}: THE SAME PIXELS under {names}.")
+                    continue
+
+                counted = (
+                    f"{arm.value}: DIFFERENT PIXELS under {names}: {lettered.pixels} pixels in "
+                    f"{buttons} of {len(first.lettered)} buttons, largest colour step "
+                    f"{lettered.largest_step} of 255."
+                )
+
+                if bare.pixels:
+                    lines.append(
+                        f"{counted} Drawn without lettering, {bare.pixels} pixels STILL DIFFER "
+                        f"(largest step {bare.largest_step}), so the edge or the fill differs."
+                    )
+                else:
+                    lines.append(
+                        f"{counted} Drawn without lettering the buttons are THE SAME, so ONLY "
+                        "THE LETTERING differs."
+                    )
+
         self._verdict.setText("\n".join(lines))
+
+    def difference_picture(self) -> QImage | None:
+        """Each arm's row under the two compared appearances, and the pixels that differ.
+
+        Returns:
+            The picture, drawn `DIFFERENCE_PICTURE_SCALE` times larger than
+            life so that single pixels can be seen, or None until some arm has
+            two appearances recorded.
+        """
+
+        strips: list[tuple[str, tuple[QImage, ...]]] = []
+
+        for arm in Arm:
+            pair = self._compared(arm)
+
+            if pair is None:
+                continue
+
+            first, second = (self._recorded[arm][name] for name in pair)
+            strips.append((f"{arm.value}, {pair[0]}", first.lettered))
+            strips.append((f"{arm.value}, {pair[1]}", second.lettered))
+            strips.append(
+                (
+                    f"{arm.value}, pixels that differ",
+                    tuple(
+                        differing_pixel_mask(one, two)
+                        for one, two in zip(first.lettered, second.lettered, strict=True)
+                    ),
+                )
+            )
+
+        if not strips:
+            return None
+
+        scale = DIFFERENCE_PICTURE_SCALE
+        gap = 12
+        caption_width = 260
+        cell_width = max(image.width() for _, images in strips for image in images) * scale
+        cell_height = max(image.height() for _, images in strips for image in images) * scale
+        columns = max(len(images) for _, images in strips)
+        picture = QImage(
+            caption_width + columns * (cell_width + gap) + gap,
+            len(strips) * (cell_height + gap) + gap,
+            QImage.Format.Format_ARGB32,
+        )
+        picture.fill(QColor(PANEL))
+        painter = QPainter(picture)
+        painter.setPen(QColor(INK))
+
+        for row, (caption, images) in enumerate(strips):
+            top = gap + row * (cell_height + gap)
+            painter.drawText(
+                QRect(gap, top, caption_width - gap, cell_height),
+                int(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft),
+                caption,
+            )
+
+            for column, image in enumerate(images):
+                enlarged = image.scaled(
+                    image.width() * scale,
+                    image.height() * scale,
+                    Qt.AspectRatioMode.IgnoreAspectRatio,
+                    Qt.TransformationMode.FastTransformation,
+                )
+                painter.drawImage(caption_width + column * (cell_width + gap), top, enlarged)
+
+        painter.end()
+
+        return picture
+
+
+def _row_difference(first: Sequence[QImage], second: Sequence[QImage]) -> PixelDifference:
+    """The difference between two renderings of one row of buttons, summed over the row."""
+
+    each = [difference_between(one, two) for one, two in zip(first, second, strict=True)]
+
+    return PixelDifference(
+        pixels=sum(difference.pixels for difference in each),
+        largest_step=max(difference.largest_step for difference in each),
+    )
 
 
 # ----------------------------------------------------------- measurements
