@@ -296,39 +296,97 @@ tolerance said that 0.9 s over 0.01 s can come out just below 90. In 64-bit
 floats that quotient is exactly 90. The module and its test use 0.7 / 0.1,
 which is 6.999999999999999.
 
-**Replays after the move, 2026-11-11.** Each row reverts one fix on a clean
-tree at `d05f089d`, runs `uv run pytest tests/unit/test_generated_runs.py -q
--x`, and restores the tree. The reverts are the ones in the table above, made
-where the code now is: `PL-N559`'s is `WASH_IN_ROUNDING_ALLOWANCE = 0.0` in
-`core/rounding.py`, and `PL-81Q2`'s passes zero squarings to
-`propagator_rounding` and `run_rounding` for the canonical state and the
-window.
+**Blind review of (b), 2026-11-11: two passes, five findings, all fixed.**
+Each was checked against the code before it was fixed.
+
+1. Pass 1, blocking, and pass 2, should-fix: a step inside the numerical
+   envelope exceeds the bound with its margin of 3. Reproduced: the plan that
+   pass 1 gave fails the generated test with "a difference of 1.277e-14 is
+   1.13 times its rounding allowance". Fixed by the margin of 8, below.
+2. Pass 1, optional: no drawn or listed plan needed more than 32 squarings
+   over one segment, so the branch that requires the run definition's refusal
+   never ran. A listed plan now holds the stiffest corner for 1 700 s, which
+   needs 33. The window check also asked the module for the squarings of the
+   window's spacing under a short segment's matrix, which could pass the cap
+   once a longer plan existed. It is now capped at 32.
+3. Pass 2, optional: an interval between two rounded instants can be wrong by
+   more than one unit in the last place of the later instant. Reproduced: 1.25
+   units from step 2 356 to step 6 244 at 0.01 s, and 1.17 units from step
+   82 188 to step 326 590 at 0.1 s. Each instant carries half a unit and the
+   subtraction half more, so `clock_rounding` now returns 1.5 units over the
+   interval.
+4. Pass 2, optional: two property tests in `tests/unit/test_rounding.py` had
+   no `derandomize` setting. They have it now.
+
+**Decided in the session, 2026-11-11: the margin on one propagator's bound is
+8, not 3.** The design's part 1 allows "a measurement with its margin and a
+test that measures it again", and the margin of 3 was that. It was set from a
+shipped agent's sweep (0.6 to 2.7, 2026-10-03) and the envelope's corners
+(2.5, 2026-10-26), and neither covers the inside of the envelope. No simulator
+code reads the bound, so the change moves no learner-visible comparison. It
+moves the allowances of `tests/unit/test_generated_runs.py`,
+`tests/unit/test_numerical_envelope_sweep.py` and `tests/unit/test_rounding.py`,
+and the figures in `docs/MODEL.md`. What was measured, all in leading terms,
+2**s times 2**-52:
+
+- 240 000 propagators drawn across the envelope, four seeds of 60 000, each
+  compared with a 50-digit exponential. The largest error in a fraction's row
+  was 3.47, at 7 squarings. The largest at each number of squarings from none
+  to 19 was 3.23, 3.29, 3.30, 3.23, 3.33, 3.18, 3.08, 3.47, 2.94, 3.24, 2.87,
+  3.08, 3.08, 3.27, 3.08, 3.00, 2.81, 2.75, 2.69 and 1.18.
+- 120 000 states after one step, with the opening fraction drawn as well:
+  3.63 at most, and 18 above 3.
+- The corner that pass 2 reported, with 400 opening fractions: 3.91 at most.
+- The five worst propagators, each stepped 1, 30, 300 and 2 000 times: the
+  state stayed 2.6 to 3.5 per step from the 50-digit solution at every length.
+  So the error of one step repeats, and the summed bound is the right shape.
+
+The margin is about twice the largest of these, and a power of two so that the
+bound is exact in binary. Routes weighed and refused: a margin of 4 or 5,
+which leaves 2% to 28% above 3.91 and would fail again on correct code in the
+weekly run's thousands of draws; and a bound proved from a count of the
+rounded operations. A first-order count by this session put that near 8.5
+with no squarings, but the session did not check the count against a published
+analysis, so the module does not state it (inferred, not verified). With the
+margin of 8 the summed bound for 24 h at the 1 ms step is 1.5e-7, which is 154
+times the agent balance's 1e-9 and 6.5 times below `LIVE_READING_GAP`. The
+test that held `LIVE_READING_GAP` to ten times the bound now holds it to five
+times, as a warning distance. At the interface's 0.1 s step the summed bound
+for 24 h is 1.5e-9, above the agent balance's limit. The balance does not rest
+on the bound: a correct 24-hour run of a shipped agent left a residual below
+4e-11.
+
+**Replays after the review's fixes, 2026-11-11.** Each row reverts one fix on
+a clean tree at `b76478c0`, runs `uv run pytest
+tests/unit/test_generated_runs.py -q -x`, and restores the tree. The reverts
+are the ones in the table of part (a), made where the code now is:
+`PL-N559`'s is `WASH_IN_ROUNDING_ALLOWANCE = 0.0` in `core/rounding.py`, and
+`PL-81Q2`'s passes zero squarings to `propagator_rounding` and `run_rounding`
+for the canonical state and the window.
 
 | Item | Fails in the suite's run | Failure |
 | --- | --- | --- |
 | `PL-XST1` | Yes | "a running total against the exact sum of its step amounts: a difference of 3.33e-16 is 1.4 times its rounding allowance", after 34 steps. |
 | `PL-D88N` | Yes, on a listed plan | `AgentSimulationValidationError` with a relative error of 1.04e-9. |
 | `PL-9B1M` | Yes, on a listed plan | "alveolar partial_pressure_fraction of 1.000000000000001 is outside 0 to 1". |
-| `PL-81Q2` | No. It fails at 1 000 drawn plans. | "the stepped state against the canonical state: a difference of 4.21e-12 is 1.03 times its rounding allowance", after 97 steps. |
+| `PL-81Q2` | No. It also passes at 1 000 drawn plans. | None. |
 | `PL-N559` | Yes, on a listed plan | "a run that only washes in is described as elimination", after 1 step with every flow at zero. |
 | `PL-9SL5` | Yes | "the last column is at 0.08099999999999999 and not at the 0.081 asked for", after 81 steps. |
 | `PL-QVBR` | No | None. The reverse of #1917 applied to `app/bookmarks.py` and left a conflict in `app/controller.py`. The test imports neither module, so it passes whatever they hold. |
 
-Six of the seven fail, as they did before the move. The drawn plans that fail
-`PL-XST1`, `PL-81Q2` and `PL-9SL5` differ from the ones recorded for part (a),
-because the test's source changed and Hypothesis draws from it.
+Five of the seven fail. Before the margin changed, at `d05f089d`, the same
+replays gave six: `PL-81Q2` passed the suite's run and failed at 1 000 drawn
+plans, with "the stepped state against the canonical state: a difference of
+4.21e-12 is 1.03 times its rounding allowance" after 97 steps. That failure
+was 3% past an allowance that correct code also exceeds, by up to 30%. With
+the margin at 8, the allowance for the steps taken covers what removing the
+squarings from the canonical state and the window takes away. The weekly run
+in (c) should replay `PL-81Q2` at its several thousand draws.
 
-**Checks.** `make check` ran twice on the branch. The first run failed one
-test and the second failed three, all of them lists that a new `core/` module
-must be added to. Each was fixed. A third run, at `0c28b265`, passed: 12 266 tests, with
-every line and branch of `core/` covered.
-
-**Left for (b) before its pull request is ready.** The two blind review
-passes that a change to `core/` and `docs/MODEL.md` owes, the copy editor's
-pass over the new prose, and the pull request's title and body. The session
-that built (b) stopped here for length, at 2.3 times its spend budget. The
-pull request is #2121, a draft. It changes `core/`, so it waits for the
-project owner's review.
+**Prose review skipped.** The project owner said "skip copy edit" on
+2026-11-11, so the copy editor read none of the branch's docstrings and
+comments, and did not edit the pull request's title and body. The
+`Prose-review:` record says read 0.
 
 **Done when.** The module in 1 exists and each rounding allowance reads it.
 The generated test in 2 exists, and each of the seven members is replayed
