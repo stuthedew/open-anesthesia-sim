@@ -32,8 +32,8 @@ Each comparison allows a stated amount of rounding. A helper (`_rounding`)
 gives the amount for a number of propagators, the matrix exponentials that each
 advance the state over one interval. Each call says how many propagators it
 counts. Hypothesis is steered toward the draw with the largest difference
-relative to its allowance. The draw is derandomized, so every pass of the
-suite tests the same runs.
+relative to its allowance. Every ordinary run draws the same runs, and a
+weekly run draws new ones (`tests/hypothesis_profiles.py`).
 
 The test accepts a halt on the agent balance only when the rounding of the
 run's steps so far has reached the balance tolerance, as `docs/MODEL.md`
@@ -758,7 +758,7 @@ FIFTY_STEPS = (Action(setting="hold", position=0.0, steps=50),)
     # relative one (found by the blind review of this test, 2026-11-11).
     Plan(None, STIFFEST_CORNER, 1e-6 * CEILING, (0.0, 0.0, 1.0), 0.0, 0.1, FIFTY_STEPS, 0.0, 2)
 )
-@settings(derandomize=True, database=None, deadline=None, max_examples=EXAMPLES)
+@settings(max_examples=EXAMPLES)
 @given(_plans())
 def test_a_generated_run_keeps_what_must_hold_after_every_action(plan: Plan) -> None:
     """Every check in the module docstring holds, and a replay of the plan gives the same bits.
