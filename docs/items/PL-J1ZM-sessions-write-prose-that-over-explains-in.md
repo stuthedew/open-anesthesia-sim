@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: defect
 feature: copy-editor
-touches: .claude/rules/plain-writing.md, .claude/rules/instruction-writing.md, .claude/agents/copy-editor.md, docs/prose-review/gold, tools/new_prose.py, .claude/skills/docket/modes/close-out.md, docs/dead-ends.md, docs/items/PL-9331-make-docs-model-md-assumptions-known.md, docs/items/PL-BSYT-apply-the-prose-review-s-rewrites-of-four-docs.md, docs/items/PL-J37P-make-docs-model-md-displayed-precision-readable.md, docs/items/PL-PS5H-make-docs-model-md-minimum-displayed-outputs-up.md, docs/items/PL-XBJ3-make-docs-model-md-the-chart-s-hover-readout.md, docs/items/PL-XT53-make-docs-model-md-the-control-input-timeline.md, docs/items/PL-YVL0-make-docs-model-md-reset-behavior-through.md
+touches: .claude/rules/plain-writing.md, .claude/rules/instruction-writing.md, .claude/agents/copy-editor.md, docs/prose-review/gold, tools/new_prose.py, .claude/skills/docket/modes/close-out.md, docs/dead-ends.md, docs/items/PL-9331-make-docs-model-md-assumptions-known.md, docs/items/PL-BSYT-apply-the-prose-review-s-rewrites-of-four-docs.md, docs/items/PL-J37P-make-docs-model-md-displayed-precision-readable.md, docs/items/PL-PS5H-make-docs-model-md-minimum-displayed-outputs-up.md, docs/items/PL-XBJ3-make-docs-model-md-the-chart-s-hover-readout.md, docs/items/PL-XT53-make-docs-model-md-the-control-input-timeline.md, docs/items/PL-YVL0-make-docs-model-md-reset-behavior-through.md, .claude/skills/pull-request/SKILL.md, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_arming.py, docket.toml, CLAUDE.md, .claude/skills/docket/modes/start.md, tools/effort_trial.py, docs/prose-review/README.md, docs/resident-instructions.md, docs/items/PL-HNNH-sessions-skip-naming-in-the-pull-request-body.md, docs/items/PL-TG6P-text-written-after-the-copy-editor-has-run-is.md
 deferred-from: v0.7.0 - waits on PL-TG6P, PL-DH17, PL-HNNH and PL-TTBF, four copy-editor findings whose problems are new since the freeze and which no release schedules, so it is deferred with them on the terms of § "Deferring to the next gate"; not safety or science
 added: 2026-11-03
 payoff: every reader, from a clinician in docs/MODEL.md to the owner reading a reply, gets the point in a few sentences, and changes stop growing text that then needs its own rewrite
@@ -145,3 +145,25 @@ The runs are few, so the table shows direction only. Instructions that say what 
 1. A "Merge" from the owner means the text met a minimum, not that it reads well: "I don't want to be the copy editor, I can help a little bit, but I don't want to have to do all that ... I will accept it when it meets the minimum bar, but doesn't necessarily mean it is optimal" (project owner, 2026-11-04 19:58Z, in the `PL-SP6H` session). So build step 1 asks the owner to read six short drafts and no more, and the measurement records the owner's words about each branch's text as well as whether it merged.
 2. The owner accepted one document paragraph in words, the 55-word `PL-ZDZ0` paragraph: "Sounds good" (2026-11-04 00:02Z). It is the first example for documents.
 3. A reply that points at an earlier reply is refused as often as a long one: "Give me complete prompt" (2026-11-04 00:35Z) and "Give me context for item 2" (2026-11-11 02:04Z). The reply examples must show each request stated in full.
+
+**First drafts under the new instructions, 2026-11-11.** This is build step 1. A fresh session wrote each text through `claude -p` at high effort, from a working copy that held the draft rule, with the whole resident set loaded. That differs from the writing test above, where each instruction ran alone. The words in each text:
+
+| Text | Current rule | Selection sentence in the rule, no example | With examples | The text that merged |
+| --- | --- | --- | --- | --- |
+| Pull request body, #2104 | 546 | 499 | 258 in the rule; 171 and 208 in the pull-request skill | 308 |
+| Pull request body, #2106 | 610 | 594 | 372 in the rule; 375 and 324 in the skill | 316 |
+| Docstring, `_names_a_bare_number` | 103 | 127, 96 | 108 | 76 |
+| Docstring, `TissueGroup.blood_flow_l_min_at` | 150 | 138, 121 | not run: it is the example | 87 |
+| Docstring, `set_delivered_concentration_percent` | not run | not run | 108 | 88 |
+| Reply recording the `PL-P3GZ` decision | not run | 609 | 547 | 563 |
+| Reply recording the interface design round | not run | 453 | not run: it is the example | 374 |
+| Reply on the clinician draft's four issues | not run | not run | 750 | 783 |
+
+1. **The selection sentence did little once the resident set was loaded.** It gave 499 and 594 words against 546 and 610. Alone it had given 300 and 374.
+2. **Examples cut the pull request bodies by about half**, wherever they sat. In the pull-request skill, which a session reads just before it writes a body, they add nothing to the resident set. The draft skill section "Write the title and body" holds the guidance and two bodies written by hand for #2099 and #2108. The owner has not read them yet.
+3. **Docstrings and replies did not get shorter with one example each.** Both tests are weak. A docstring was written alone, and in a real session it is written beside its code. A reply was written from a flat list of the facts in the original reply, so the original session had already chosen them. The reply drafts did drop the lines that report where the id was put, which checks ran and the effort trial's arm.
+4. **Not yet tried for docstrings and replies:** a second example of each, and a draft written inside a real session's work.
+
+**Where the drafts are.** `.claude/rules/plain-writing.md` and `.claude/skills/pull-request/SKILL.md` on this branch hold the draft rule and the draft skill section. They are not final. The docstring and reply examples in the rule are provisional and were written by hand. `tools/doc_check.py` reports that the resident set grew by 582 characters, so the rule must be cut to less than its old length before the pull request is ready. `.claude/agents/copy-editor.md` still lists the five patterns itself, so the copy editor keeps them when it runs on request. Its text is unchanged, because a change needs a run of the test set.
+
+**The build's pull requests.** Steps 3, 4 and 5 do not depend on the owner's reading, so they go first, on #2119. The rule and its examples follow once the owner has accepted the drafts.
