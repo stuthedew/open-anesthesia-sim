@@ -3,13 +3,15 @@ id: PL-P3GZ
 title: Decide whether to split docs/MODEL.md by reader: the reverse outline puts 13% of its words in a model description and 72% with a developer
 priority: P2
 effort: L
-status: needs-decision
+status: done
 classes: docs, planning
 feature: model-md-structure
-touches: docs/MODEL.md
+touches: docs/MODEL.md, docs/items/PL-1VXY-apply-the-2026-11-05-chapter-reads-within.md, docs/items/PL-52KB-docs-model-md-has-five-broken-section-pointers.md, docs/items/PL-19W8-hold-docs-model-md-known-limitations-numeric.md
 blocked-by: PL-B07T
 deferred-from: v0.7.0 - a decision about how docs/MODEL.md is divided between readers; the schematic release does not depend on it
 added: 2026-11-10
+closed: 2026-11-11
+pr: 2105
 payoff: a clinician finds the model, its values and its limits without reading past tests, interface rules and decision history
 verify: grep -qE '^[*][*]Decision [(]project owner' docs/items/PL-P3GZ-*.md
 ---
@@ -63,7 +65,7 @@ specification for the model as implemented, and
 **Decision needed.** Whether to split `docs/MODEL.md` by reader, into which
 documents, and which of them are generated from the tests and data files.
 
-**Recommendation.** Split it. Keep `docs/MODEL.md` as the model description
+**Recommendation.** [superseded 2026-11-11: the design round below kept the split and the model description, and revised the rest. No table is generated and the requirements get no numbers.] Split it. Keep `docs/MODEL.md` as the model description
 that a clinician reads: the model, its equations and parameters, its
 assumptions and the limitations that change a clinical conclusion. Move the
 interface behaviour to a numbered requirements list tied to its tests.
@@ -306,7 +308,33 @@ its risk is the one-time port by branches in flight. The choice is the
 owner's because it changes which documents are the model's specification
 and it puts this work ahead of release work.
 
-**What waits on this.** The owner asked the Projects trial's coordinator on
+**Decision (project owner, 2026-11-11, ratified):** option 1. Split
+`docs/MODEL.md` by reader, starting now. It was chosen over splitting after
+v0.7.0 ships and over leaving the document whole. The owner's words were
+"Agree with recs". The answer takes the round's design as written: the four
+documents, the three stages and the four calls the round took. The work is
+filed as seven items under the feature `model-md-structure`, in the order
+they run:
+
+| Stage | Item | What it does | Status |
+| --- | --- | --- | --- |
+| 1 | `PL-CTXZ` | Moves the seven interface sections to the interface document. | `ready`, P1 |
+| 1 | `PL-6PPZ` | Moves the six verification sections to the verification document. | waits on `PL-CTXZ`, P1 |
+| 1 | `PL-FWR6` | Moves § "Parameter provenance" to the parameter document. | waits on `PL-6PPZ`, P1 |
+| 2 | `PL-48MX` | Replaces what is left of `docs/MODEL.md` with the accepted draft. | waits on `PL-FWR6`, P1 |
+| 3 | `PL-SY7G` | Sorts the interface document by reader. | waits on `PL-48MX`, P2 |
+| 3 | `PL-4H8Q` | Sorts the verification document by reader. | waits on `PL-48MX`, P2 |
+| 3 | `PL-N83Z` | Sorts the parameter document by reader. | waits on `PL-48MX`, P2 |
+
+The three moves run one after another because each edits `docs/MODEL.md`,
+`CLAUDE.md` and the documentation check. The P1 on the first four records
+the owner's choice to start now, ahead of the remaining interface work.
+`PL-1VXY` now waits on `PL-48MX`, and the stage 3 items apply its findings.
+`PL-52KB` stays startable, because it is on v0.7.0's frozen list and making
+it wait on the split would take it off that release's gate. Its pointers can
+be fixed before or after the moves.
+
+**What waits on this.** [superseded 2026-11-11: the owner decided to split. `PL-HTB9` and `PL-52KB` no longer wait on this item. `PL-1VXY` waits on `PL-48MX`, because the text it edits moves first. The hold on copy editor runs and within-section restructuring lasts for `docs/MODEL.md` until `PL-48MX` closes, and for each developer document until its stage 3 item closes.] The owner asked the Projects trial's coordinator on
 2026-11-10 to hold all copy editor runs, line edits and within-section
 restructuring of `docs/MODEL.md` until this is decided. That covers `PL-1VXY`
 (apply the chapter reads' within-section findings), `PL-52KB` (five broken
