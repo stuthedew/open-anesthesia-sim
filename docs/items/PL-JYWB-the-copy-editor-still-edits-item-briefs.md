@@ -2,6 +2,7 @@
 id: PL-JYWB
 title: The copy editor still edits item briefs, workflow files, pull request bodies and replies, which the project owner limited it away from on 2026-11-10
 status: done
+milestone: v0.6.17
 deferred-from: v0.7.0 - an owner-requested change to the workflow, worked at once rather than placed on the release's gate
 added: 2026-11-10
 closed: 2026-11-10

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: repo-copy-edit
+milestone: v0.6.17
 touches: tools/copy_edit.py, tests/unit/test_copy_edit.py, docs/items/PL-HTB9-tools-copy-edit-py-fails-on-a-whole-document.md
 deferred-from: v0.7.0 - a new problem, not present at the freeze: tools/copy_edit.py and its reply_of arrived in 7fca61f8 (PL-TQ4J)
 added: 2026-11-09

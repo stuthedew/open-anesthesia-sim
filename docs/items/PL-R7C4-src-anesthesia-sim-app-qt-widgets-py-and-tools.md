@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: docs
+milestone: v0.6.17
 touches: src/anesthesia_sim/app/stylesheets.py, tools/contrast_check.py
 added: 2026-10-06
 closed: 2026-11-09

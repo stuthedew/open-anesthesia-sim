@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: copy-editor
+milestone: v0.6.17
 touches: tools/new_prose.py, tests/unit/test_new_prose.py, docs/items/PL-HNNH-sessions-skip-naming-in-the-pull-request-body.md
 deferred-from: v0.7.0 - a new problem, not present at the freeze: --compare arrived in 5df31d49 (PL-JP8X); deferred with PL-J1ZM, which waits on it
 added: 2026-11-04

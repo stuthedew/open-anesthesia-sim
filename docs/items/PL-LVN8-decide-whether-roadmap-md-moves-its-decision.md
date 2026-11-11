@@ -3,6 +3,7 @@ id: PL-LVN8
 title: Decide whether ROADMAP.md moves its decision history to the items, starting with each release's long version-table entry and v0.5.0's 2,000 rows of gate dispositions, and keeps one line for each
 status: done
 feature: roadmap-structure
+milestone: v0.6.17
 touches: ROADMAP.md, .claude/skills/docket/modes/release.md
 added: 2026-11-07
 closed: 2026-11-07

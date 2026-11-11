@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: prose-quality
+milestone: v0.6.17
 touches: src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/tissue.py, tests/unit/test_governing_equations.py
 deferred-from: v0.7.0 - a new problem: at the freeze docs/MODEL.md also called arterial blood flow-limited, so the comments matched it; they first disagreed when a8d87c68 (PL-T9VT, 2026-11-04) changed the term, after the freeze
 added: 2026-11-04

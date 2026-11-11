@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: docs
+milestone: v0.6.17
 touches: src/anesthesia_sim/app/__init__.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/wash_in.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/control_timeline.py, src/anesthesia_sim/core/__init__.py, tests/unit/test_formatting.py, tests/unit/test_wash_in.py, tests/unit/test_chart_time_base.py, tests/unit/test_dashboard_frame.py, tests/integration/test_sevo_controller.py
 added: 2026-10-11
 closed: 2026-11-09
