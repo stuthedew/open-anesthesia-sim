@@ -593,12 +593,18 @@ RECORD_DIRS = (
 #: What stands between a document and a quotation that claims the document
 #: holds the words: nothing, a possessive, a section mark, a comma, a colon, a
 #: parenthesis, or "under" or "section".
+# regex: a citation's connective in a Python string, a comment, a JSON note or
+# an item brief. No one parser reads all four, and `tools/doc_check.py` reads
+# the same connectives with a pattern (`CITATION_CONNECTIVE`).
 CLAIMING_GAP_RE = re.compile(
     r"`?(?:['’]s(?:\s+own)?)?\s*(?:[,:(]|§{1,2}|under|section)?\s*", re.IGNORECASE
 )
 #: The start of a wrapped line inside a quotation: its indentation, and the
 #: marker that a Python comment (`#` or `#:`) or a quoted paragraph (`>`)
 #: repeats on each line.
+# regex: a line break with the next line's indentation and comment marker, to
+# put a wrapped quotation on one line. A string method would need one pass for
+# each of the three markers.
 WRAP_RE = re.compile(r"\n[ \t]*(?:#+:?|>)?[ \t]*")
 
 
@@ -612,6 +618,10 @@ def citation_after(document: str) -> re.Pattern[str]:
     opens on a letter, a digit or a code span, so the closing mark of a string
     literal that holds the path opens none.
     """
+    # regex: a path, a short gap and a quotation, read in Python, Markdown, JSON
+    # and TOML alike. The Markdown reader in `tools/doc_check.py` reads only a
+    # document, a brief and a docstring, which is why the first run of this
+    # move missed the citations in string literals and comments.
     return re.compile(
         r"(?P<document>" + re.escape(document) + r")"
         r"(?P<gap>`?(?:['’]s)?+(?:[^\"'\n.;]|\.(?!\s)|" + WRAP_RE.pattern + r"){0,40}?)"
@@ -738,10 +748,35 @@ def repoint(
     return Repointed(changed, unplaced)
 
 
-#: A mention of either document of a move, and a quotation that may name a section.
+#: A quotation that may name a section, in double or single quotation marks.
+# regex: a quotation in any kind of text file, as `citation_after` reads one.
+# It opens on a letter, a digit or a code span, so a possessive's apostrophe
+# opens none.
 LATER_QUOTATION_RE = re.compile(
     r"\"([\w`][^\"\n]{2,200}?(?:\n[^\"\n]{0,200}?){0,2}?)\"|(?<![\w])'([\w`][^'\n]{2,120}?)'(?![\w])"
 )
+
+
+def _mentions(text: str, documents: Sequence[str]) -> list[tuple[int, str]]:
+    """Where `text` names each of `documents`, in order, as the offset and the path."""
+    found: list[tuple[int, str]] = []
+    for document in documents:
+        start = text.find(document)
+        while start != -1:
+            found.append((start, document))
+            start = text.find(document, start + len(document))
+    return sorted(found)
+
+
+def _to_paragraph_end(span: str) -> str:
+    """`span` up to its first blank line, or its first line that holds only a comment marker."""
+    lines = span.split("\n")
+    kept = len(lines[0])
+    for line in lines[1:]:
+        if line.strip().rstrip(":").strip("#") == "":
+            return span[:kept]
+        kept += 1 + len(line)
+    return span
 
 
 def misattributed(
@@ -761,28 +796,24 @@ def misattributed(
     heads = {
         name: doc_check._headings((root / name).read_text(encoding="utf-8")) for name in documents
     }
-    mention = re.compile("|".join(re.escape(name) for name in documents))
     found: list[str] = []
     for path in _tracked_texts(root) if paths is None else paths:
         try:
             text = (root / path).read_text(encoding="utf-8")
         except UnicodeDecodeError:
             continue
-        mentions = list(mention.finditer(text))
-        for index, named in enumerate(mentions):
-            end = mentions[index + 1].start() if index + 1 < len(mentions) else len(text)
-            span = text[named.end() : min(end, named.end() + 500)]
-            paragraph_end = re.search(r"\n[ \t]*(?:#+:?[ \t]*)?\n", span)
-            if paragraph_end:
-                span = span[: paragraph_end.start()]
-            own = named.group()
+        mentions = _mentions(text, documents)
+        for index, (start, own) in enumerate(mentions):
+            after = start + len(own)
+            end = mentions[index + 1][0] if index + 1 < len(mentions) else len(text)
+            span = _to_paragraph_end(text[after : min(end, after + 500)])
             other = destination if own == source else source
             for quoted in LATER_QUOTATION_RE.finditer(span):
                 term = doc_check._normalized(WRAP_RE.sub(" ", quoted.group(1) or quoted.group(2)))
                 if doc_check._cites_heading(term, heads[other]) and not doc_check._cites_heading(
                     term, heads[own]
                 ):
-                    row = text.count("\n", 0, named.end() + quoted.start()) + 1
+                    row = text.count("\n", 0, after + quoted.start()) + 1
                     found.append(f"{path}:{row}: after {own}: {term[:80]}")
     return found
 
