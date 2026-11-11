@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect
+milestone: v0.6.18
 touches: pyproject.toml, docs/mutation-testing.md
 added: 2026-11-11
 closed: 2026-11-11
