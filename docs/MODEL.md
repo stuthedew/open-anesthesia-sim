@@ -1303,7 +1303,9 @@ $$
 than any number the computer can hold. `TissueGroup.time_constant_s` then returns infinity, as
 it does at zero flow, and a tissue group stepped on its own is left unchanged. The exact change
 is far smaller than any amount the simulator displays. A test in
-`tests/unit/test_blood_flow.py` checks this at the smallest flow that can be created.
+`tests/unit/test_blood_flow.py` checks this at the smallest flow that can be created. The
+venous pool's time constant (`VenousBloodCompartment.time_constant_s`) is infinite in the same
+way at a cardiac output that small, and a second test there checks it.
 
 ### Venous blood
 
@@ -4893,10 +4895,11 @@ compartments' constructors run no check of their own. A copy and a pickle write 
 because each compartment is a `slots=True` dataclass, which they restore one field at a time. A
 `__dict__` would be updated without calling `__setattr__`.
 
-**Every checked type is built from an `int` or a `float` and nothing else, with no sign at
-zero.** One file states what every checked type is built from (`core/checked_number.py`), and
-`FreshGasFlow`, `AlveolarVentilation`, `CardiacOutput`, `Fraction`, `Percent` and `CaseInstant`
-all build through it. They accept an `int` or a `float`, subclasses included, so a NumPy double
+**Every checked type but `BloodFlow` is built from an `int` or a `float` and nothing else, with
+no sign at zero.** `BloodFlow` is built from a `CardiacOutput` and a `PerfusionFraction`, and it
+refuses a number. One file states what every other checked type is built from
+(`core/checked_number.py`), and `FreshGasFlow`, `AlveolarVentilation`, `CardiacOutput`,
+`PerfusionFraction`, `Fraction`, `Percent` and `CaseInstant` all build through it. They accept an `int` or a `float`, subclasses included, so a NumPy double
 passes. A `bool`, a `Decimal` or a string is refused with a `TypeError` that names the value and
 its type, before any comparison reads it. So is a value already built as another checked type,
 such as a `StepCount` or a `CaseInstant` passed to a flow's constructor, because such a value is

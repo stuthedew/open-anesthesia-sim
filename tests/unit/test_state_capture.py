@@ -216,8 +216,14 @@ def _perturb(value: object) -> object:
         # after it.
         return type(value)(value / 2.0 if value else 1.0)
 
+    if isinstance(value, PerfusionFraction):
+        # A perfusion fraction is halved, because it has no room above 1, and the halved
+        # value is built as its type again.
+        return PerfusionFraction(value / 2.0)
+
     if isinstance(value, float):
-        # A plain float is halved for the same reason: a perfusion fraction has no room above 1.
+        # The plain floats left are amounts of agent. Each is halved, because a compartment
+        # refuses an amount above its capacity. An amount of zero moves to 1 L.
         return value / 2.0 if value else 1.0
 
     if isinstance(value, DeliverableFreshGasFlowRange):

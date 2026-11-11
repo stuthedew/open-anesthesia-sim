@@ -15,8 +15,8 @@ cardiac output, and nothing else produces one.
 Until these types existed, a blood flow was a bare `float`. Three places each
 checked by hand that it was finite and not negative: a tissue group's time
 constant, the venous pool's time constant and a tissue group's equation
-settings. Each accepted a flow of 5e-324 L/min and a flow of 1.8e308 L/min,
-which no cardiac output inside its supported range can give (`PL-GKG4`).
+settings. Each accepted a flow of 1.8e308 L/min, which no cardiac output
+inside its supported range can give (`PL-GKG4`).
 """
 
 from __future__ import annotations

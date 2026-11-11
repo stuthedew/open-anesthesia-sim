@@ -94,9 +94,13 @@ and `Percent` keep their own rejection of each other. Their message says to
 convert rather than to rebuild, because mixing up that pair is a missed
 conversion and not a swapped argument. The stored-value checks are
 `require_case_instant`, `require_step_count`, `require_simulation_step`, the
-flows' `require_*`, `require_fraction` and `require_percent`, and
-`require_compartment_volume` and `require_coefficient`. They all read the class
-hierarchy in the same way and reject in the same words (`PL-848D`, `PL-CX2C`).
+flows' `require_*`, `require_fraction` and `require_percent`,
+`require_compartment_volume` and `require_coefficient`, and
+`require_perfusion_fraction`. They all read the class hierarchy in the same
+way and reject in the same words (`PL-848D`, `PL-CX2C`). `require_blood_flow`
+reads the hierarchy in the same way and words its rejection differently,
+because a blood flow is built from two quantities and not from one number
+(`core/blood_flow.py`).
 
 **Minus zero is stored as zero** (`PL-LLMN`). `-0.0` equals zero and lies
 inside every closed interval here. Rejecting it would therefore reject the

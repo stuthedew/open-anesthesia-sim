@@ -4,10 +4,11 @@ A tissue group's blood flow is its perfusion fraction of the cardiac output,
 $`Q_i = f_iQ`$ (`docs/MODEL.md` § "Tissue groups"). Three places in `core/`
 took that flow as a bare `float` and checked by hand only that it was finite
 and not negative (`PL-GKG4`). The first tests here replay that report. They
-pass each place a bare number and expect a refusal. Two of the numbers are
-ones that no cardiac output and perfusion fraction could give. The later tests
-check the two types that replaced the hand checks, `PerfusionFraction` and
-`BloodFlow` (`core/blood_flow.py`).
+pass each place a bare number and expect a refusal. The largest of the numbers
+is one that no cardiac output and perfusion fraction could give. The other two
+are numbers that a flow can hold, and they are refused too, because nothing
+built them as a flow. The later tests check the two types that replaced the
+hand checks, `PerfusionFraction` and `BloodFlow` (`core/blood_flow.py`).
 """
 
 import copy
@@ -17,6 +18,7 @@ from math import inf, nan, nextafter
 
 import pytest
 
+from anesthesia_sim.core.blood import VenousBloodCompartment
 from anesthesia_sim.core.blood_flow import BloodFlow, PerfusionFraction
 from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
@@ -141,6 +143,26 @@ def test_a_perfusion_fraction_is_built_only_from_an_int_or_a_float(
         TypeError, match=f"^perfusion_fraction of .* has type {named}, not int or float"
     ):
         PerfusionFraction(not_a_number)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    ("not_a_fraction", "refusal"),
+    [
+        (True, "has type bool, not int or float"),
+        (Fraction(0.2), "was built as Fraction, which is not PerfusionFraction"),
+    ],
+)
+def test_a_refusal_of_the_wrong_type_names_the_tissue_group_s_fraction(
+    not_a_fraction: object, refusal: str
+) -> None:
+    """A refusal of the type gives the name the caller supplied, as a refusal of the range does.
+
+    Three tissue groups each hold a fraction. A message that said only
+    "perfusion_fraction" would not show which group's value was wrong.
+    """
+
+    with pytest.raises(TypeError, match=f"^muscle perfusion_fraction of .* {refusal}"):
+        PerfusionFraction(not_a_fraction, name="muscle perfusion_fraction")  # type: ignore[arg-type]
 
 
 def test_a_partial_pressure_fraction_is_not_a_perfusion_fraction() -> None:
@@ -302,4 +324,71 @@ def test_a_flow_too_small_for_a_finite_time_constant_leaves_a_tissue_unchanged()
     assert tissue.time_constant_s(flow, blood_gas) == inf
     assert tissue.advance(Fraction(1.0), 86_400.0, flow, blood_gas) == 0.0
     assert tissue.agent_amount_l == 0.0
+    assert 0.0 < exact_change_l < 5e-296
+
+
+def test_a_saved_blood_flow_that_is_not_a_number_is_refused_as_a_blood_flow() -> None:
+    """A saved flow that is not a number is refused with a `TypeError` that names the blood flow.
+
+    A pickle or a copy rebuilds a flow by calling the first member of the pair
+    that `__reduce__` returns with the saved number. This test calls it with a
+    string, as a saved state edited by hand could hold. The cardiac output's
+    own refusal names `cardiac_output_l_min`, which the record that holds the
+    flow stores unchanged, so the message must name the saved blood flow first.
+    """
+
+    restore, _saved = BloodFlow(CardiacOutput(5.0), PerfusionFraction(0.75)).__reduce__()
+
+    with pytest.raises(TypeError) as raised:
+        restore("3.75")  # type: ignore[arg-type]
+
+    assert str(raised.value).startswith(
+        "a saved blood_flow_l_min of '3.75' cannot be restored. A blood flow is a perfusion "
+        "fraction of a cardiac output, so it is restored as the whole of a cardiac output equal "
+        "to it, and that is refused: cardiac_output_l_min of '3.75' has type str"
+    )
+
+
+def test_a_tissue_s_time_constant_is_infinite_only_where_it_is_too_large_to_hold() -> None:
+    """A small flow gives a finite time constant until the quotient passes the largest `float`.
+
+    The 2 L group has a tissue:blood coefficient of 4 at a blood:gas
+    coefficient of 0.5, so its time constant is 60 x 2 x 4 / Q, or 480 / Q
+    seconds. At 1e-305 L/min that is 4.8e307 s, which a `float` holds. At
+    1e-306 L/min it is 4.8e308 s, which is above the largest `float` of about
+    1.8e308. So `inf` is returned for the second flow and not for the first.
+    """
+
+    tissue = _muscle()
+    blood_gas = PartitionCoefficient(0.5)
+    still_finite = BloodFlow(CardiacOutput(1.0), PerfusionFraction(1e-305))
+    too_small = BloodFlow(CardiacOutput(1.0), PerfusionFraction(1e-306))
+
+    assert tissue.time_constant_s(still_finite, blood_gas) == 480.0 / 1e-305
+    assert tissue.time_constant_s(still_finite, blood_gas) < inf
+    assert tissue.time_constant_s(too_small, blood_gas) == inf
+
+
+def test_a_cardiac_output_too_small_for_a_finite_time_constant_leaves_the_pool_unchanged() -> None:
+    """The venous pool's time constant is `inf` at a cardiac output too small for a finite one.
+
+    The pool's time constant is 60 x V / Q. For a 1 L pool it is 6e307 s at
+    1e-306 L/min, which a `float` holds, and 6e308 s at 1e-307 L/min, which is
+    above the largest `float`. At the second output the time constant is `inf`,
+    as at zero cardiac output. Stepped alone for 24 hours towards a fraction of
+    0.99, the pool then takes up 0.65 L x 0.99 x 86 400 s / 6e308 s, about
+    9e-305 L. That is worked out here from the cardiac output and not from
+    the time constant. The code leaves the pool unchanged, which is wrong by
+    less than the 5e-296 L that `time_constant_s` states.
+    """
+
+    venous_blood = VenousBloodCompartment(
+        volume_l=CompartmentVolume(1.0), blood_gas_partition_coefficient=PartitionCoefficient(0.65)
+    )
+    exact_change_l = 0.65 * 0.99 * (86_400.0 * 1e-307 / (60.0 * 1.0))
+
+    assert venous_blood.time_constant_s(CardiacOutput(1e-306)) == 60.0 / 1e-306
+    assert venous_blood.time_constant_s(CardiacOutput(1e-307)) == inf
+    assert venous_blood.advance(Fraction(0.99), 86_400.0, CardiacOutput(1e-307)) == 0.0
+    assert venous_blood.agent_amount_l == 0.0
     assert 0.0 < exact_change_l < 5e-296

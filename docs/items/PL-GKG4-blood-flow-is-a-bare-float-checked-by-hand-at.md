@@ -44,11 +44,17 @@ fractions are `PerfusionFraction`s. The note in `core/parameters.py` that kept
 the perfusion fraction a bare `float` on the public side (`PL-KL2Q`) is
 rewritten, because `PL-LHCL` decided the other way.
 
-**Failed first.** `tests/unit/test_blood_flow.py` replays the report at the
-three places, with 5e-324, 3.75 and the largest float. It uses only what
-existed before the change. Against `main` at `e084968ac`, `uv run pytest -q -p
-no:randomly tests/unit/test_blood_flow.py` gave `9 failed`, each with `Failed:
-DID NOT RAISE TypeError`.
+**Failed first.** The first three tests in `tests/unit/test_blood_flow.py`
+replay the report at the three places, with 5e-324, 3.75 and the largest
+float. They use only what existed before the change. The rest of the file
+imports `core/blood_flow.py`, which the change added, so the whole file cannot
+be collected against the old code. The variant that can is the file up to
+`def _muscle()`, with its two imports of `core.blood` and `core.blood_flow`
+removed, saved as `tests/unit/test_blood_flow_replay.py` in a checkout of
+`main` at `e084968ac`. There, `uv run pytest -q -p no:randomly
+tests/unit/test_blood_flow_replay.py` gave `9 failed`, each with `Failed: DID
+NOT RAISE TypeError`. Run again that way on 2026-11-11 after the review, with
+the same result.
 
 **Decided while building, each with one clearly better option.**
 
@@ -112,3 +118,58 @@ no guard in that test's modules builds, so they are not drawn. That is step
 
 Each fix has a test of the whole message. Before the fixes those tests fail
 on the message text.
+
+**The adversarial review of step (b), 2026-11-11.** Three passes, each for one
+class of defect. The pass on save and restore stopped on the account's usage
+limit before it reported, so the session ran its checks directly: 56 flows and
+4 fractions through every pickle protocol, `copy` and `deepcopy`, the whole
+uptake system and its settings record the same way, and edited saved values.
+All held. The other two passes ran.
+
+*Numbers and domain.* No value differed from `main` in about 580,000 compared
+(whole-model runs at 9 cardiac outputs and 3 steps, a 24-hour replay,
+hand-built settings, compartments stepped alone). Two findings, both wording,
+both real, both fixed:
+
+1. The module docstring of `core/blood_flow.py`, and the test file's, said
+   that no cardiac output can give a flow of 5e-324 L/min. One can. Only the
+   1.8e308 L/min flow became impossible.
+2. The venous pool's time constant is also `inf` at a cardiac output above
+   zero and below 60 V / 1.8e308, about 4e-307 L/min for the reference pool.
+   Its docstring said so only for zero. The behaviour is the same on `main`.
+   The docstring and `docs/MODEL.md` now say it, with the same bound as the
+   tissue's (below 5e-296 L over 24 hours), and a test checks it.
+
+*Tests and rules.* 48 mutants, 37 killed. Eight findings, all real when run,
+all fixed:
+
+1. Nothing tested the new check in `ReferenceAdultParameters`. A test now
+   hands each of the three fields a bare 0.06.
+2. `core/supported_ranges.py` still said, in two docstrings, that a tissue's
+   blood flow is a plain `float`.
+3. Nothing tested the `TypeError` half of the restore's refusal.
+4. Nothing tested the `float()` in the three sums. A test now builds a patient
+   at fractions of 0.7, 0.2 and 0.1, whose total is 1.0 as plain `float`s and
+   0.9999999999999999 as the subclass. The other two conversions cannot be
+   seen from outside: one sits behind the 1e-12 tolerance on the sum, the
+   other inside a message rounded to 6 decimals. They stay, so that each sum
+   is the arithmetic it was.
+5. The "Failed first" record above named a command that no longer collects
+   against the old code. It now names the variant.
+6. `docs/MODEL.md` and `core/checked_number.py` each said something of every
+   checked type that is false of `BloodFlow`.
+7. The state-capture test's helper wrote a halved perfusion fraction as a
+   plain `float`.
+8. Nothing tested that a refusal of the wrong type gives the fraction's name.
+
+It also asked for a test that the time constant stays finite at a flow just
+large enough, which pins "infinite only where the quotient overflows". Two
+tests now do that, one for the tissue and one for the pool. Each new test was
+run against the mutant it was written for, and each failed there (8 of 8).
+Two smaller wording slips went with them: a garbled phrase in
+`docs/ARCHITECTURE.md`, and "an unperfused tissue" in the docstring of
+`require_nonnegative_finite`, which no longer checks any flow.
+
+Three surviving mutants are left as they are. One differs from the code only
+for a saved minus zero edited by hand, one is unreachable because the payload
+has already validated the value, and the third is the pair in finding 4.

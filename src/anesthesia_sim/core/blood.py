@@ -208,6 +208,12 @@ class VenousBloodCompartment:
 
         It is `inf` at zero cardiac output, as the tissue group's time
         constant is at zero flow: nothing circulates, so nothing mixes.
+        It is also `inf` where the cardiac output is above zero but so small
+        that the quotient is larger than any `float`. The largest pool the
+        numerical envelope admits needs a cardiac output below about
+        3e-303 L/min for that. A pool stepped alone at such an output is left
+        unchanged. The exact change over the longest supported step, 24
+        hours, is less than 5e-296 L (`PL-GKG4`).
 
         The pool's blood flow $`Q`$ is the whole cardiac output. It is an
         argument, because the pool stores none. For the pool in a patient, it
