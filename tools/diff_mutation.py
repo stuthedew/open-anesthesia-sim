@@ -372,7 +372,9 @@ def rule_disagreements(root: Path, table: Mapping[str, object]) -> list[str]:
         mutated = is_mutated(name, table)
         if widget and mutated:
             found.append(
-                f"{name} imports {_listed(widget)} and is mutated. Name it in do_not_mutate."
+                f"{name} imports {_listed(widget)} and is mutated. Keep the import in a "
+                "widget module, or name this module in do_not_mutate, which takes every "
+                "mutant of it out of the run."
             )
         elif widget and name in reasons:
             found.append(
