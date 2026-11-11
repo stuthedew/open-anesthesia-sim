@@ -3,14 +3,16 @@ id: PL-86VL
 title: Two interface-wording tests in test_simulation_view.py pass any wording they do not list: the end-tidal check misses ET, Et, EtSevo and FET, and the emergence-time check finds a hedge only in the 12 characters before its phrase
 priority: P1
 effort: M
-status: ready
+status: done
 classes: safety, test, defect
 feature: presentation-safety
-touches: tests/integration/test_simulation_view.py
+touches: tests/integration/test_simulation_view.py, tests/integration/test_interface_wording.py, tests/integration/approved_interface_strings.json, docs/ARCHITECTURE.md
 deferred-from: v0.7.0 - not live: checked 2026-11-07 (PL-8C8W): no string the view shows uses an end-tidal abbreviation, and the alveolar readout reads "end-tidal-equivalent"; none of the eight phrases the emergence-time check guards appears in a string the view shows, only in the docstring at app/controller.py:426; so no learner can see a wrong value now
 added: 2026-11-03
+closed: 2026-11-11
+pr: 2140
 payoff: a readout labelled with an end-tidal abbreviation, or any new interface wording, cannot reach the screen without a person approving it
-verify: grep -q 'def test_every_string_the_view_shows_is_on_the_approved_list' tests/integration/test_simulation_view.py && grep -qF 'ET sevo' tests/integration/test_simulation_view.py
+verify: grep -q 'def test_every_string_the_view_shows_is_on_the_approved_list' tests/integration/test_interface_wording.py && grep -q 'ET sevo' tests/integration/test_simulation_view.py
 ---
 
 **Problem.** Two interface-wording tests in test_simulation_view.py pass any wording they do not list: the end-tidal check misses ET, Et, EtSevo and FET, and the emergence-time check finds a hedge only in the 12 characters before its phrase
@@ -71,3 +73,9 @@ end-tidal check's test names "ET sevo" among the labels it refuses.
 hold wording to a list of forbidden phrases, and no head records that shape.
 
 **Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. It stays deferred to the next gate: its `deferred-from:` records the check that no learner can see a wrong value now (`PL-8C8W`). Both wording checks were byte-identical at `817a4d88` (`ae8fc7bc`, 2026-09-15).
+
+**Built 2026-11-11.** `tests/integration/test_interface_wording.py` builds a dashboard with one Area for each registered View, and records every string it holds, hidden ones included, for a sevoflurane run before Start, at 2 min and at 10 min. `test_every_string_the_view_shows_is_on_the_approved_list` compares them with `tests/integration/approved_interface_strings.json`. A failure lists each string that is new or gone at each point, and says to rerun with `APPROVE_INTERFACE_WORDING=1` and commit the file, so the reviewer sees the wording change in the diff. A plain JSON file was used rather than syrupy, so there is no new dependency. The build version is replaced by `{version}` before the comparison, because it changes with every commit. Widths of 1000, 1400 and 1900 px gave the same strings, so the strings do not depend on the font or the layout.
+
+In `tests/integration/test_simulation_view.py`, `_UNHEDGED_END_TIDAL` now also refuses "ET" and "FET" as whole words, and "Et" alone or joined to an agent's name, matched with their capitals so that "Reset" and "Settings" pass. The wake-up check reads the negation from the clause that holds the phrase, with "not", "never", "no" or "cannot" counting, instead of the 12 characters before it. `test_the_end_tidal_check_refuses_each_spelling_and_abbreviation` names "ET sevo 2.1 %" among the labels it refuses. Against the code before the fix, the old pattern finds none of "ET sevo 2.1 %", "Et 1.8", "EtSevo" and "FET", so those four cases fail; the old 12-character window passes "not shown; predicted wake time" and refuses "this is never a time to wake", so `test_the_wake_up_check_reads_the_hedge_from_the_phrase_s_own_clause` fails on both (checked by running the old expressions on the same inputs).
+
+**Every branch that changes interface text now updates the approved list.** Two open branches change text on screen: the agent-amount captions (`PL-HQPF`, #2136) and the start-over work (`PL-MVCF`, #2138, whose withheld-value strings show only on a halt and so are not recorded here). Whichever merges second reruns the approval and commits the file.

@@ -337,8 +337,50 @@ _WINDOW_HEIGHT_PX = 1000
 #: The two required glosses, restated rather than imported so an edit to the
 #: application cannot move both sides of the assertion at once.
 _ALVEOLAR_METRIC_QUALIFIER = "end-tidal-equivalent"
-#: Any spelling of end-tidal not followed by the hedge, anywhere on screen.
-_UNHEDGED_END_TIDAL = re.compile(r"end[\s-]?tidal(?!-equivalent)", re.IGNORECASE)
+#: Any spelling of end-tidal not followed by the hedge, anywhere on screen,
+#: and the abbreviations that clinicians and anesthesia monitors use for it:
+#: "ET" and "FET" as whole words, and "Et" alone or joined to an agent's name,
+#: as in "Et 1.8" or "EtSevo" (`PL-86VL`). The abbreviations are matched with
+#: their capitals, so that "et" inside a word such as "Reset" is not one.
+_UNHEDGED_END_TIDAL = re.compile(
+    r"(?i:end[\s-]?tidal)(?!-equivalent)|\b(?:F?ET|Et)(?:[A-Z][a-z]*)?\b"
+)
+
+#: A word that negates the phrase after it in the same clause. The hedge on a
+#: wake-up phrase is read from the clause that holds the phrase, because a
+#: negation's reach ends at the end of its clause, as NegEx ends it at the end
+#: of the sentence (`PL-86VL`).
+_NEGATION = re.compile(r"\b(?:not|never|no|cannot)\b")
+
+#: Where a clause ends: a sentence's end, a semicolon, a colon or a new line.
+_CLAUSE_END = re.compile(r"[.;:!?\n]")
+
+#: Phrases that would state a time to wake up as a prediction for this patient.
+_WAKE_PREDICTIONS = (
+    "time to wake",
+    "time to awaken",
+    "wake-up time",
+    "wakeup time",
+    "emergence time",
+    "time to emergence",
+    "predicted wake",
+    "will wake",
+)
+
+
+def _unhedged_wake_predictions(text: str) -> list[str]:
+    """Each wake-up prediction in `text` whose own clause holds no negation before it."""
+
+    found: list[str] = []
+
+    for clause in _CLAUSE_END.split(text.lower()):
+        for phrase in _WAKE_PREDICTIONS:
+            for match in re.finditer(re.escape(phrase), clause):
+                if _NEGATION.search(clause[: match.start()]) is None:
+                    found.append(phrase)
+
+    return found
+
 
 #: The index of each readout panel in the row, from the table the widgets are
 #: built from, so a test names a compartment rather than a column number.
@@ -6149,6 +6191,37 @@ def test_the_screen_says_a_control_mark_is_an_input_not_a_measurement(
     assert "Run record:" in prose
 
 
+@pytest.mark.parametrize(
+    "label", ["end-tidal sevoflurane", "End tidal 1.8%", "ET sevo 2.1 %", "Et 1.8", "EtSevo", "FET"]
+)
+def test_the_end_tidal_check_refuses_each_spelling_and_abbreviation(label: str) -> None:
+    """A readout labelled "ET sevo", or with any other end-tidal spelling, fails (`PL-86VL`)."""
+
+    assert _UNHEDGED_END_TIDAL.search(label) is not None
+
+
+@pytest.mark.parametrize(
+    "label", ["Alveolar (end-tidal-equivalent)", "Reset", "Settings", "FETCH", "Delivered"]
+)
+def test_the_end_tidal_check_passes_the_hedge_and_words_that_contain_et(label: str) -> None:
+    assert _UNHEDGED_END_TIDAL.search(label) is None
+
+
+def test_the_wake_up_check_reads_the_hedge_from_the_phrase_s_own_clause() -> None:
+    """A negation earlier in the same clause hedges the phrase, and one in another clause does not.
+
+    The check used to look at the 12 characters before the phrase. It passed
+    "not shown; predicted wake time", where the negation belongs to another
+    clause, and failed "this is never a time to wake", which is hedged
+    (`PL-86VL`).
+    """
+
+    assert _unhedged_wake_predictions("not shown; predicted wake time") == ["predicted wake"]
+    assert _unhedged_wake_predictions("this is never a time to wake") == []
+    assert _unhedged_wake_predictions("This model does not predict a time to wake.") == []
+    assert _unhedged_wake_predictions("Band shown. Time to wake: 14 min") == ["time to wake"]
+
+
 def test_the_interface_never_predicts_a_time_to_wake_up(application: QApplication) -> None:
     """`PL-F52R`: the claim the band exists *instead of*, checked against the whole tree.
 
@@ -6172,19 +6245,8 @@ def test_the_interface_never_predicts_a_time_to_wake_up(application: QApplicatio
         if any(word in lowered for word in ("wake", "awaken", "arousal", "emergence")):
             assert duration.search(lowered) is None, value
 
-    for forbidden in (
-        "time to wake",
-        "time to awaken",
-        "wake-up time",
-        "wakeup time",
-        "emergence time",
-        "time to emergence",
-        "predicted wake",
-        "will wake",
-    ):
-        for match in re.finditer(re.escape(forbidden), prose):
-            preceding = prose[max(0, match.start() - 12) : match.start()]
-            assert "not " in preceding, (forbidden, preceding)
+    for value in strings:
+        assert _unhedged_wake_predictions(value) == [], value
 
     assert "population" in prose
     assert "±1 sd" in prose
