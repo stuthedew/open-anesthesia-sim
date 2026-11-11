@@ -3,8 +3,11 @@
 Everything here is addressed to the person running the sessions, not to the
 sessions themselves. It lives outside `CLAUDE.md` for that reason. A rule that
 a session cannot act on still costs every session the context it takes to read
-it. `docs/worker.md` is the opposite kind of document. It holds instructions to
-a worker agent.
+it. Sessions read this file only when something points them to it, so a rule
+for sessions never lives only here. Where a passage says what a session does,
+it states what the session guarantees you, and names where sessions read the
+rule (`PL-GZFR`). `docs/worker.md` is the opposite kind of document. It holds
+instructions to a worker agent.
 
 ## Rules for sessions live in the repository
 
@@ -28,7 +31,10 @@ disagreement. Sending every rule to the repository prevents it.
 **What the instructions keep** is the project's own state and nothing else.
 That is the Goal, the Order and its pause, the compaction rule, and a pointer
 to `.claude/skills/docket/modes/coordinator.md`. The compaction rule is the one
-rule that lives only in the instructions, by your word of 2026-10-04. The mode
+rule that lives only in the instructions, by your word of 2026-10-04. It
+covers what a Projects thread does when its context fills. The `/compact`
+practice in § "Settings that make sessions cheaper" covers your own sessions,
+so the two are separate rules (`PL-WP3Z`). The mode
 file holds the coordination rules: the thread caps, how a thread's model is
 read from the `[models]` table, what every brief says, where threads post and
 record, merging, and releases (project owner, 2026-10-25, ratified, over
@@ -184,7 +190,9 @@ model per call). A subagent runs at the session's own effort level unless the
 owner approves a lower one for that task (project owner, 2026-10-19). Both rules
 cover subagents that copy values as well as those that search. On 2026-10-19, a
 session set Sonnet subagents to work on the session ledger's values because of
-the old wording here, and the owner asked why.
+the old wording here, and the owner asked why. Sessions read both rules in the
+list of refuted approaches that the session-start digest prints (`PL-2D28`).
+`.claude/rules/apparatus-standard.md` also states the effort rule.
 
 **Exploration subagents run on Opus** (project owner, 2026-10-17, ratified, over
 Haiku 5.5, Sonnet 5.5 and a per-call cheaper model for quick lookups,
@@ -287,14 +295,14 @@ The decision replaces two ratified records whose stated reason was cost. One
 set `high` for apparatus sessions (2026-10-17, `PL-SW0B`). The other set `max`
 for simulator sessions (2026-09-19, below). Cost alone never justifies a lower
 setting (§ "Match model capability to the work"), so a session does not argue
-for `high` on cost. On Anthropic's SWE-bench Pro subset, Opus 5.5 solved 95.3% of tasks at
-`high` for $0.29 each and 96.7% at `xhigh` for $0.74 each. That is 1.4 points
-for about 2.5 times the cost. The page calls its figures directional
-(*Optimizing for cost and intelligence*,
+for `high` on cost. Sessions read that rule in the session-start digest's list
+of refuted approaches (`PL-2D28`). On Anthropic's SWE-bench Pro subset, Opus
+5.5 solved 95.3% of tasks at `high` for $0.29 each and 96.7% at `xhigh` for
+$0.74 each. That is 1.4 points for about 2.5 times the cost. The page calls its
+figures directional (*Optimizing for cost and intelligence*,
 https://platform.claude.com/docs/en/about-claude/models/optimizing-for-cost-and-intelligence,
-read 2026-10-17). The same page reports 88.4% at `high` and 91.1% at `xhigh`
-on an internal agentic-coding set. It gives no figure for `max` (read
-2026-10-19).
+read 2026-10-17). The same page reports 88.4% at `high` and 91.1% at `xhigh` on
+an internal agentic-coding set. It gives no figure for `max` (read 2026-10-19).
 
 **The owner wants evidence on whether `high` causes real problems** (project
 owner, 2026-10-19). The session ledger records each session's model and
@@ -316,15 +324,16 @@ ratified, over keeping 1 in 4 to spend less of the usage allowance on `xhigh`,
 `PL-TN18`). The effort trial starts on Friday 2026-10-23 at 11 pm CDT
 (2026-10-24 04:00 UTC). Until then, every session runs at `high`.
 
-This is how the trial works (`PL-HYRM`, `PL-8MZ9`). The session-start hook
-runs `tools/effort_trial.py session-start` in every cloud session, including a
-resumed one. The script picks the session's arm from a hash of its session id,
-so a resumed session keeps the same arm. The script writes the arm as both
-`effortLevel` and `maxEffortLevel` in `.claude/settings.local.json`. It then
-prints a line that names the arm. The `maxEffortLevel` cap applies from the
-session's first request, and it outranks the app's effort picker. A cap only
-lowers a level, though. A session in the `xhigh` arm whose picker sent `high`
-runs at `high`. So keep the picker at `xhigh` for the length of the trial.
+This is how the trial works (`PL-HYRM`, `PL-8MZ9`). The session-start hook runs
+`tools/effort_trial.py session-start` in every cloud session, including a
+resumed one and a Projects thread. The script picks the session's arm from a
+hash of its session id, so a resumed session keeps the same arm. The script
+writes the arm as both `effortLevel` and `maxEffortLevel` in
+`.claude/settings.local.json`. It then prints a line that names the arm. The
+`maxEffortLevel` cap applies from the session's first request, and it outranks
+the app's effort picker. A cap only lowers a level, though. A session in the
+`xhigh` arm whose picker sent `high` runs at `high`. So keep the picker at
+`xhigh` for the length of the trial.
 
 Each session's start-of-session digest names its arm, and the session tells
 you the arm in its first reply. The digest line stays in the session's
@@ -344,7 +353,9 @@ move it. The command writes the new cap and records the move. The level then
 holds through a compaction, and the model review leaves the session out of
 both arms. A session that starts work on a generator's cause runs the same
 command, under your rule of 2026-11-02 that such work runs at `xhigh`
-(`PL-WBW3`).
+(`PL-WBW3`). Sessions read that rule in
+`.claude/skills/docket/modes/triage.md` § "Generators, how they rank, and the
+pause they set".
 
 Until 2026-10-24, the cloud environment's setup script drew the arm, but it
 put no session in either arm (`PL-8MZ9`). § "Give Projects threads the
@@ -416,7 +427,9 @@ deletes a workflow run 90 days after it ran (`PL-4SFQ`).
   real work clears that many times over.
 - **A session asking you to type `/compact` is resetting at its budget**
   (project owner, 2026-09-25, ratified, over pasting a handoff prompt into a
-  new session, `PL-YJG1`). The session pushes everything first, so anything
+  new session, `PL-YJG1`). Sessions follow
+  `.claude/skills/docket/modes/start.md` § "Check the spend before starting,
+  and reset in place". The session pushes everything first, so anything
   the summary drops is already on disk. It also keeps its branch, its claim
   and its pull-request watch. `/compact` works in cloud sessions and takes
   optional focus text (`/compact keep the open question about X`). `/clear`
@@ -460,6 +473,10 @@ for permissions you thought you had turned off, change the mode in its
 dropdown.
 
 ## What comes to you before it merges
+
+Sessions follow this section through `.claude/skills/pull-request/SKILL.md`
+and the text that `bin/docket arm` prints, which gives each trailer's form at
+the moment a session records it.
 
 **A pull request comes to you only for a real decision or a high-risk change,
 and housekeeping merges on green** (project owner, 2026-10-17, `PL-DKBG`). A
@@ -534,8 +551,10 @@ open a file to find it (project owner, 2026-11-02, `PL-77QB`).
 
 Until the session has recorded its question for you, `arm` tells it to send you
 nothing about the pull request. A hook, `.claude/hooks/owner_ask_guard.py`,
-puts the record into the thread's message itself (`PL-X4MD`). When a thread's
-message to you in Projects names a pull request, and that thread's own pull
+puts the record into the thread's message itself (`PL-X4MD`). It runs in a
+Projects thread through the setup script in § "Give Projects threads the
+repository's hooks with one setup script". When a thread's message to you in
+Projects names a pull request, and that thread's own pull
 request waits for your read, the hook adds a line at the end of the message:
 
 - **A question for you is recorded.** The line is that question, unless the
@@ -658,11 +677,13 @@ box shows what will land.
 ## Bring a stale base in when you merge, with Update branch
 
 Since 2026-09-23, `main` requires a pull request's branch to be up to date
-before it merges (`PL-6MW8`). Sessions deliberately leave a pull request behind
-`main` while it waits on you. They do so because each update re-runs CI in
-full, which takes two to five minutes, and an update made before you merge goes
-stale as soon as another pull request lands. So the update is yours to make,
-once, when you come to merge:
+before it merges (`PL-6MW8`). Sessions follow this section through
+`.claude/skills/pull-request/SKILL.md` § "Bring `origin/main` in once" and the
+text that `bin/docket arm` prints. Sessions deliberately leave a pull request
+behind `main` while it waits on you. They do so because each update re-runs CI
+in full, which takes two to five minutes, and an update made before you merge
+goes stale as soon as another pull request lands. So the update is yours to
+make, once, when you come to merge:
 
 1. Open the pull request in the Mac's browser. If it is still a draft, leave
    it. The draft carries a session's claim, and GitHub will not merge it. That
@@ -733,7 +754,9 @@ exempt, a session's merge would pass the up-to-date check that `main` applies
 to everyone else. It would then land a stale branch whenever another pull
 request merged between the session's check of the branch and its merge call.
 So the merge guard, `.claude/hooks/direct_merge_guard.py`, asks GitHub at each merge call into
-this repository. It rejects the merge while **Do not allow bypassing the above
+this repository. It runs in every session, and in a Projects thread through
+the setup script in § "Give Projects threads the repository's hooks with one
+setup script". It rejects the merge while **Do not allow bypassing the above
 settings** is off (`PL-S17R`, `PL-NXRJ`). A merge in another repository, such
 as the references corpus, cannot leave this repository's `main` stale, so the
 hook lets it through without asking (project owner, 2026-11-02, ratified,
@@ -892,25 +915,30 @@ runner refuses to start while the bash or make on its `PATH` is older than bash
    `--no-push` one, keeps both the clone and the log. Its line names the
    clone to read (`PL-TX7K`).
 
-Each branch belongs to a worker, so review it as delegated work. Run
-`bin/docket verify <id>` on the branch, then open its pull request. A pushed
-run also commits its record to the branch, as
-`docs/worker-runs/<branch>-<started>.json`. The run's line names that file.
-Before it opens the pull request, the reviewing session runs
-`python3 tools/worker_runs.py review <file> --outcome accepted|fixed|sent-back --note "<one line>"`.
-`make check` fails until the session does this (`PL-87BR`). The records are
-how headless work is compared with chat-session work. So the record of a
-sent-back branch still belongs on `main`. Carry its two record commits to a
-branch of their own. Once that lands, the daily branch sweep deletes the
-sent-back worker branch, so its item returns to `bin/docket next` (`PL-W5JR`). `--item <id>` runs one named item. `--per-run-usd` caps
-the cost of one run (default $15). `--no-push --model claude-sonnet-5-5` is
-the form used for `PL-6FX6`'s trial. In that form the clone cannot push, so the
-work stays on your machine. The cost that each run reports is Claude Code's
+Each branch belongs to a worker, so ask a session to review it as delegated
+work. A pushed run also commits its record to the branch, as
+`docs/worker-runs/<branch>-<started>.json`, and the run's line names that file.
+The reviewing session runs `bin/docket verify <id>` on the branch and records
+its review in that file before it opens the pull request. `make check` fails
+until it does (`PL-87BR`). The records are how headless work is compared with
+chat-session work. So the record of a sent-back branch still belongs on
+`main`, and the session carries its two record commits to a branch of their
+own. Once that lands, the daily branch sweep deletes the sent-back worker
+branch, so its item returns to `bin/docket next` (`PL-W5JR`). Sessions read
+these steps in `.claude/skills/pull-request/SKILL.md` § "Open the pull request
+with the work".
+`--item <id>` runs one named item. `--per-run-usd` caps the cost of one run
+(default $15). `--model <id>` overrides the `[models]` table's model for one
+batch. An ordinary run leaves it off and takes the table's model. `PL-6FX6`'s
+trial uses it to run the same five items once with `--model claude-sonnet-5-5`
+and once with `--model claude-haiku-5-5`, before the table's own run on Opus
+5.5. Those two batches also pass `--no-push`, so their clones cannot push and
+the work stays on your machine. The cost that each run reports is Claude Code's
 own estimate, which can differ from the bill. So read the Console's figure
 again at each launch, rather than carrying forward the runner's last figure.
 Runners before `PL-NQ0M` kept a ledger at
-`~/.local/state/open-anesthesia-sim/api-credit-ledger.jsonl`. Nothing reads
-it now, so you can delete it.
+`~/.local/state/open-anesthesia-sim/api-credit-ledger.jsonl`. Nothing reads it
+now, so you can delete it.
 
 ## Have a strong model read the model document against the data, once
 
@@ -953,7 +981,8 @@ steps 1 to 4.
 
 `.github/workflows/tag-release.yml` tags each release on the commit that cut
 it, once that commit reaches `main`. When a run fails, the session fixes the
-cause and starts a new run itself. Two cases are left to you (`PL-F23S`,
+cause and starts a new run itself, as `.claude/skills/docket/modes/release.md`
+says. Two cases are left to you (`PL-F23S`,
 `PL-S641`). While a release is untagged, `bin/docket release` refuses to cut
 the next one, and its refusal message names both cases.
 
@@ -987,56 +1016,66 @@ is recorded. Then delete the tag from `origin` with
 described above. To undo the deletion, push the old commit back as the tag
 with `git push origin COMMIT:refs/tags/VERSION`.
 
-## Keeping the toolchain current
+## Noticing when dependencies or Python change
 
-**When a dependency or the interpreter moves, a scheduled run notices and the
-owner decides. Nothing upgrades on a schedule, and nothing gates on it.**
+**When a dependency or Python itself moves, a scheduled run notices and you
+decide what to do. Nothing upgrades on a schedule, and nothing blocks a pull
+request on it.**
 
-This is a multi-year project, so every version constraint in `pyproject.toml`
-will be wrong eventually. `requires-python` admits two CPython minor versions,
-3.14 and 3.15, and CPython ships a new one each year. The interface's two
-toolkits each carry an upper bound: PySide6-Essentials below 7.0 and pyqtgraph
-below 0.15. The dev tools have only lower bounds, so their behaviour changes
-underneath the gate. The failure being guarded against is not a stale pin. It
-is returning after a gap to a tree that no longer builds. By then the upgrade
-that would fix it is several versions wide, and the cost of coming back exceeds
-what a hobby project will pay.
+The failure this guards against is returning after a gap to a tree that no
+longer builds. By then the upgrade that would fix it is several versions wide,
+and coming back costs more than a hobby project will pay. On a project with a
+multi-year horizon, every version limit in `pyproject.toml` will be wrong
+eventually. `requires-python` admits two CPython minor versions, 3.14 and
+3.15, and CPython ships a new one each year. The interface's two toolkits each
+have an upper limit: PySide6-Essentials below 7.0 and pyqtgraph below 0.15.
+The dev tools have only lower limits, so their behaviour changes underneath the
+checks that every pull request must pass.
 
-The risk is real here, and `pyproject.toml` records the instance. In pydantic
+It has happened here, and `pyproject.toml` records the instance. In pydantic
 2.12.4, the library began passing `prefer_fwd_module=` to `typing._eval_type`.
 CPython added that keyword between 3.14.0rc2 and 3.14.0 final. Parameter
 loading in the scientific core stopped working. It took one dependency, one
 patch version and one interpreter build.
 
-**What notices.** `.github/workflows/drift.yml` runs monthly and on demand. It
-asks two questions that `quality.yml` is right not to ask, and a third
-question that runs weekly:
+**What notices.** `quality.yml`, the checks every pull request must pass,
+tests the versions locked in `uv.lock` on the Python that `.python-version`
+names. `.github/workflows/drift.yml` tests what has moved past them. It runs
+two checks on the first of each month, and whenever you start it by hand:
 
-- *`dependencies`* checks the newest release that each bound in
-  `pyproject.toml` already allows. It resolves them with `uv sync --upgrade`.
-  A failure means that a dependency broke the project inside a range that this
-  project has already said it accepts.
-- *`interpreter`* checks the newest stable CPython. It relaxes the upper bound
-  on `requires-python` in the runner only. A failure means that the next
-  interpreter is not ready for this tree, or that this tree is not ready for
-  it.
-- *`order`* runs the whole suite in a shuffled order every Monday. It uses
-  pytest-randomly, with the date as the seed. A failure means that a test
-  passes only when another test runs before it. The run's output names the
-  seed that reproduces the failure (`PL-75D9`).
+- *`dependencies`* tests the newest release that each limit in
+  `pyproject.toml` already allows. A failure means that a dependency broke the
+  project inside a range that this project has already said it accepts.
+- *`interpreter`* tests the newest stable CPython. A failure means that the
+  next interpreter is not ready for this tree, or that this tree is not ready
+  for it. The check lifts the upper limit on `requires-python` for its own run
+  only, and the declared range does not change.
 
-The workflow also prints what exists *beyond* the declared bounds, and does not
-fail on it, because crossing a major bound is a deliberate migration that CI
-should not attempt. That step is how anyone learns at all that a PySide6 7.0 or
-a pydantic 3 is available.
+The workflow also lists the releases beyond the declared limits, such as a
+PySide6 7.0 or a pydantic 3, and does not fail on them. Crossing a major limit
+is a deliberate migration that CI should not attempt. That list is how anyone
+learns at all that such a release is available.
 
-**What does not happen: automated upgrades.** There are no automated dependency
-pull requests and no version-bump campaign. The current pins are correct today.
-The point is to know when one stops being correct, not to raise numbers on a
-schedule. Automated bumps were considered and rejected, on the evidence this
-project already cites about narrow versus broad automation. Broad automation
-accumulates noise until people route around it, which is the failure
-`PL-ZBJ0` records.
+The digest that starts each session names every `drift.yml` job whose newest
+run on `main` did not pass, and tells the session to fix what it found or
+record it as an item (`PL-JTWV`).
+
+The workflow runs three other report-only checks on its schedule, which test
+something other than versions. The comment above each job in `drift.yml` says
+how it works.
+
+- *`order`* runs the whole suite in a shuffled order every Monday. A failure
+  means that a test passes only when another test runs before it
+  (`PL-75D9`).
+- *`doc-quotes`* checks every Monday that each quotation of Claude Code's
+  documentation is still on its page (`PL-S7LT`).
+- *`restated-constants`* checks each month that no test copies a
+  supported-range limit's value instead of importing it (`PL-0Z0F`).
+
+**What does not happen: automated upgrades.** No automated pull request
+raises a dependency's version, and no campaign raises them on a schedule.
+`PL-QSWS` holds that decision. Broad automation accumulates noise until people
+route around it, which is the failure `PL-ZBJ0` records.
 
 **Why it reports rather than gates.** Nobody here controls the versions that
 the workflow resolves. So gating on them would let an unrelated upstream
@@ -1053,10 +1092,11 @@ nobody acts on, delete the workflow rather than working around it.
 The cloud container's `Stop` hook, `~/.claude/stop-hook-git-check.sh`, belongs
 to Anthropic, and it is rewritten at every container start. So
 `.claude/hooks/stop_hook_patch.py` corrects the hook at each session start, for
-this project only (`PL-WW08`, `PL-483K`). The hook makes two false demands to
-push, and the patch corrects both. Both are already reported on Anthropic's
-public issue tracker, so neither needs a new report (`PL-90CJ`). Both issues
-were open on 2026-10-03:
+this project only (`PL-WW08`, `PL-483K`). That includes a Projects thread,
+through the setup script in § "Give Projects threads the repository's hooks
+with one setup script". The hook makes two false demands to push, and the patch
+corrects both. Both are already reported on Anthropic's public issue tracker,
+so neither needs a new report (`PL-90CJ`). Both issues were open on 2026-10-03:
 
 - [anthropics/claude-code#83490](https://github.com/anthropics/claude-code/issues/83490)
   is about the stale `origin/<branch>` that a merged pull request leaves
@@ -1104,9 +1144,17 @@ started in that environment.
 
 ### Give Projects threads the repository's hooks with one setup script
 
-A Claude Projects thread does not load `.claude/settings.json`, so none of the
-repository's hooks run in it: not the guards, not the session-start digest and
-not the stop hook patch. Claude Code's documentation says so, in
+**This project's threads run the repository's hooks, through the setup
+script below.** On 2026-11-03, after the script was added, a thread's start
+printed the session-start digest, and the gate-status guard refused a test
+command in it (`PL-CR81`). On 2026-11-11 another thread had the guards, the
+digest and the stop hook patch, with the hooks copied into its user settings
+(`PL-M8Z7`).
+
+The script is still needed, because Claude Code does not load
+`.claude/settings.json` in a Projects thread. Without it, none of the
+repository's hooks run in a thread: not the guards, not the session-start
+digest and not the stop hook patch. Claude Code's documentation says so, in
 [What threads pick up from your repositories](https://code.claude.com/docs/en/claude-projects.md#what-threads-pick-up-from-your-repositories)
 (read 2026-10-26), and `PL-CR81` records the measurement. A thread does read
 the user settings file, `~/.claude/settings.json`. `.claude/hooks/thread_hooks.py`
