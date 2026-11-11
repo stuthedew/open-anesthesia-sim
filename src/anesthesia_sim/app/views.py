@@ -56,6 +56,7 @@ from anesthesia_sim.app.compartment_schematic import SCHEMATIC_HEADING
 from anesthesia_sim.app.dashboard_frame import (
     CHART_HEADING,
     INTERPRETATION_DISCLAIMER_TEXT,
+    NO_CASE_TO_BRANCH_TEXT,
     NO_TRACES_SHOWN_TEXT,
     TIME_BASE_LABEL,
     WASH_IN_DENOMINATOR_TEXT,
@@ -81,7 +82,7 @@ from anesthesia_sim.app.qt_chart import (
     WashInLegend,
 )
 from anesthesia_sim.app.qt_schematic import RunSchematic
-from anesthesia_sim.app.qt_widgets import FocusedComboBox, styled_label
+from anesthesia_sim.app.qt_widgets import BookmarksPanel, FocusedComboBox, ForkPanel, styled_label
 from anesthesia_sim.app.stylesheets import panel_stylesheet, selector_stylesheet
 from anesthesia_sim.app.theme import (
     INK,
@@ -96,6 +97,7 @@ from anesthesia_sim.app.theme import (
 from anesthesia_sim.app.view_contract import (
     STATE_VERSION_KEY,
     UNREADABLE_STATE_TEXT,
+    CaseSurfaces,
     FrameRequest,
     RunSurfaces,
     SavedState,
@@ -107,6 +109,8 @@ from anesthesia_sim.app.view_contract import (
 __all__ = [
     "AccountingView",
     "AgentCostView",
+    "BookmarksView",
+    "BranchView",
     "CompartmentSchematicView",
     "ConcentrationView",
     "ParameterControlsView",
@@ -115,7 +119,8 @@ __all__ = [
 
 #: The saved-state version for the Views here that have no setting of their
 #: own, which are the accounting View, the setting controls View, the
-#: compartment schematic and the agent cost View. The agent cost View's unit
+#: compartment schematic, the agent cost View, the bookmarks View and the branch
+#: View. The agent cost View's unit
 #: is the reader's preference, not the View's own setting (`PL-B396`). Each of
 #: them saves only this version and nothing else.
 _STATE_VERSION: Final = 1
@@ -134,6 +139,8 @@ _CONCENTRATION_VIEW_NAME: Final = "concentrationView"
 _WASH_IN_VIEW_NAME: Final = "washInView"
 _SCHEMATIC_VIEW_NAME: Final = "compartmentSchematicView"
 _AGENT_COST_VIEW_NAME: Final = "agentCostView"
+_BOOKMARKS_VIEW_NAME: Final = "bookmarksView"
+_BRANCH_VIEW_NAME: Final = "branchView"
 
 
 class _RunCopies[W: QWidget]:
@@ -662,6 +669,109 @@ class ParameterControlsView(_RunSurfaceView):
 
     def __init__(self, context: ViewContext) -> None:
         super().__init__(context, lambda run: run.build_parameter_controls())
+
+
+class _CasePanelView[W: QWidget](QWidget):
+    """A View that shows one copy of a panel of the case, built on the View's first tick.
+
+    The panel belongs to the case and to no run, so the View shows one copy
+    whatever the number of runs displayed. The dashboard writes the copy on
+    every frame and restates it on a halt (`view_contract.CaseSurfaces`).
+    Where the dashboard has no such panel to give, the View shows a line that
+    says why (`PL-TH35` Q6).
+    """
+
+    def __init__(
+        self,
+        context: ViewContext,
+        object_name: str,
+        build: Callable[[CaseSurfaces], W | None],
+        absent_text: str,
+    ) -> None:
+        super().__init__()
+        self._build = build
+        self._panel: W | None = None
+        self._drawn = False
+        self.state_notice = _state_notice_for(context)
+        self.absent_notice = styled_label(absent_text, color=MUTED, wrap=True)
+        self.absent_notice.setHidden(True)
+        self._column = _panel_column(self, object_name)
+        self._column.addWidget(self.state_notice)
+        self._column.addWidget(self.absent_notice)
+        self._column.addStretch(1)
+
+    @property
+    def panel(self) -> W | None:
+        """The View's copy of the panel, or None before the first tick and where there is none."""
+
+        return self._panel
+
+    def refresh(self, tick: ViewTick) -> None:
+        """Build the copy on the first tick. The dashboard writes its values from then on."""
+
+        if self._drawn:
+            return
+
+        self._panel = self._build(tick.case)
+
+        if self._panel is None:
+            self.absent_notice.setHidden(False)
+        else:
+            # The copy goes below the state notice and above the stretch.
+            self._column.insertWidget(1, self._panel)
+
+        self._drawn = True
+
+    @property
+    def owes_a_frame(self) -> bool:
+        return not self._drawn
+
+    def frame_request(self) -> FrameRequest | None:
+        return None
+
+    def save_state(self) -> SavedState:
+        return _saved_state()
+
+    def painted_strings(self) -> tuple[str, ...]:
+        return ()
+
+
+class BookmarksView(_CasePanelView[BookmarksPanel]):
+    """The case's marked instants and marked heights, with the button that opens their editor.
+
+    Every Area that shows this View lists the same marks, because the marks
+    belong to the case (`PL-9YPR`).
+
+    Args:
+        context: What the View is built from.
+    """
+
+    def __init__(self, context: ViewContext) -> None:
+        # Every dashboard has marks to list, so the line for an absent panel is never shown.
+        super().__init__(
+            context, _BOOKMARKS_VIEW_NAME, lambda case: case.build_bookmarks_panel(), ""
+        )
+
+
+class BranchView(_CasePanelView[ForkPanel]):
+    """Where a learner opens a branch of the case: the point to open it at, and the buttons.
+
+    Each Area that shows this View keeps its own selection in the list of
+    points. A press opens the branch at the point selected in the copy that
+    was pressed (`PL-9YPR`). Where the dashboard holds no case, the View shows
+    `dashboard_frame.NO_CASE_TO_BRANCH_TEXT` and no control.
+
+    Args:
+        context: What the View is built from.
+    """
+
+    def __init__(self, context: ViewContext) -> None:
+        super().__init__(
+            context,
+            _BRANCH_VIEW_NAME,
+            lambda case: case.build_branch_control(),
+            NO_CASE_TO_BRANCH_TEXT,
+        )
 
 
 class CompartmentSchematicView(QWidget):

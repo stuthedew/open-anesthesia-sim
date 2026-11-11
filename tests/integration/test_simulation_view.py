@@ -108,6 +108,7 @@ from anesthesia_sim.app.dashboard_frame import (
     NEW_CASE_IS_NOT_A_VIEW_TEXT,
     NO_CONTROL_CHANGES_TEXT,
     NO_MAC_TARGETS_TEXT,
+    NO_CASE_TO_BRANCH_TEXT,
     NO_TIME_BOOKMARKS_TEXT,
     NO_TRACES_SHOWN_TEXT,
     READOUT_PANELS,
@@ -167,7 +168,13 @@ from anesthesia_sim.app.playback import (
     playback_rate_for,
 )
 from anesthesia_sim.app.qt_chart import TraceLegend
-from anesthesia_sim.app.qt_widgets import BookmarkDialog, MarkListingLabel, ParameterSlider
+from anesthesia_sim.app.qt_widgets import (
+    BookmarkDialog,
+    BookmarksPanel,
+    ForkPanel,
+    MarkListingLabel,
+    ParameterSlider,
+)
 from anesthesia_sim.app.run_series import (
     COMPARTMENT_QUANTITIES,
     COMPARTMENT_STATE_INDEX,
@@ -195,12 +202,16 @@ from anesthesia_sim.app.unconditional_set import (
 )
 from anesthesia_sim.app.view_registry import (
     AGENT_ACCOUNTING,
+    BOOKMARKS,
+    BRANCH,
     CONCENTRATION_CHART,
     PARAMETER_CONTROLS,
     WASH_IN,
 )
 from anesthesia_sim.app.views import (
     AccountingView,
+    BookmarksView,
+    BranchView,
     ConcentrationView,
     ParameterControlsView,
     WashInView,
@@ -256,7 +267,9 @@ from anesthesia_sim.layout.workspace import Origin, Workspace, WorkspaceName, Wo
 #: finds the View it reads, whichever Workspace is shipped first. The
 #: parameter controls run across the top. Under them, the concentration chart
 #: sits over the F_A/F_I plot, beside the accounting. That was the dashboard's
-#: layout before it began opening on the shipped Workspaces (`PL-2KXB`).
+#: layout before it began opening on the shipped Workspaces (`PL-2KXB`). The
+#: bookmarks and the branch control share the row at the foot, where that
+#: layout had them before they became Views (`PL-9YPR`).
 _EVERY_VIEW = WorkspaceSet(
     (
         Workspace(
@@ -267,7 +280,7 @@ _EVERY_VIEW = WorkspaceSet(
                     Window(
                         Split(
                             Orientation.COLUMN,
-                            (0.25, 0.75),
+                            (0.2, 0.6, 0.2),
                             (
                                 Area(AreaId(4), PARAMETER_CONTROLS),
                                 Split(
@@ -285,11 +298,16 @@ _EVERY_VIEW = WorkspaceSet(
                                         Area(AreaId(2), AGENT_ACCOUNTING),
                                     ),
                                 ),
+                                Split(
+                                    Orientation.ROW,
+                                    (0.5, 0.5),
+                                    (Area(AreaId(5), BOOKMARKS), Area(AreaId(6), BRANCH)),
+                                ),
                             ),
                         )
                     ),
                 ),
-                AreaId(5),
+                AreaId(7),
             ),
         ),
     ),
@@ -362,6 +380,24 @@ def _torn_down_views(application: QApplication) -> Iterator[None]:
 
 
 # ------------------------------------------------------------------ helpers
+
+
+def _fork_panel(view: SimulationView) -> ForkPanel:
+    """The branch control in the dashboard's first Area that shows the branch View."""
+
+    panel = next(v for v in view.layout_container.views() if isinstance(v, BranchView)).panel
+    assert panel is not None, "the branch View holds no control: the dashboard has no case"
+
+    return panel
+
+
+def _marks_panel(view: SimulationView) -> BookmarksPanel:
+    """The lists of marks in the dashboard's first Area that shows the bookmarks View."""
+
+    panel = next(v for v in view.layout_container.views() if isinstance(v, BookmarksView)).panel
+    assert panel is not None, "the bookmarks View has not drawn its first frame"
+
+    return panel
 
 
 def _concentration(view: SimulationView) -> ConcentrationView:
@@ -624,7 +660,7 @@ def _case_view(
 def _offered_fork_instants(view: SimulationView) -> tuple[float, ...]:
     """The instants the permanent selector holds, in the order it holds them."""
 
-    selector = view._fork_panel.point_selector
+    selector = _fork_panel(view).point_selector
 
     return tuple(float(selector.itemData(index)) for index in range(selector.count()))
 
@@ -637,7 +673,7 @@ def _take_fork(view: SimulationView, instant_s: float) -> None:
     `fork_offer` lists the control event first.
     """
 
-    panel = view._fork_panel
+    panel = _fork_panel(view)
     index = panel.point_selector.findData(instant_s)
     assert index >= 0, f"the branch control does not offer {instant_s} s"
     panel.point_selector.setCurrentIndex(index)
@@ -647,7 +683,7 @@ def _take_fork(view: SimulationView, instant_s: float) -> None:
 def _select_fork_entry(view: SimulationView, label: str) -> None:
     """Choose the branch control's entry that reads `label`, as a reader picks it by its words."""
 
-    selector = view._fork_panel.point_selector
+    selector = _fork_panel(view).point_selector
     index = selector.findText(label)
     assert index >= 0, (
         f"the branch control offers no {label!r}; it offers "
@@ -2000,7 +2036,7 @@ def test_a_halt_on_a_mark_is_told_apart_from_a_pause_during_a_comparison(
     view.present(False)
 
     assert case.trunk.snapshot().bookmark_halt is not None, "the trunk stopped, but not on its mark"
-    assert view._fork_panel.here_button.isHidden() is True
+    assert _fork_panel(view).here_button.isHidden() is True
     assert trunk._status_text.text() == "Paused — stopped on your mark"
     assert branch._status_text.text() == "Paused"
 
@@ -2078,8 +2114,8 @@ def test_a_run_that_halts_on_a_mark_under_its_own_timers_is_redrawn(
     assert run._readout_row.panels[_CLOCK_INDEX].value_label.text() == stood_at
     assert run._pause_button.isEnabled() is False
     assert run._start_button.isEnabled() is True
-    assert view._fork_panel.here_button.isHidden() is False
-    assert view._fork_panel.here_button.text() == HALT_FORK_LABEL_TEMPLATE.format(instant=stood_at)
+    assert _fork_panel(view).here_button.isHidden() is False
+    assert _fork_panel(view).here_button.text() == HALT_FORK_LABEL_TEMPLATE.format(instant=stood_at)
 
 
 def test_a_run_that_arrives_at_the_supported_run_length_under_its_own_timers_is_redrawn(
@@ -6847,7 +6883,7 @@ def test_a_hidden_advisory_and_a_closed_combo_entry_are_held_but_not_shown(
 def _opened_bookmark_dialog(view: SimulationView) -> BookmarkDialog:
     """The editor, opened the way the button opens it."""
 
-    view._bookmarks_panel.edit_button.click()
+    _marks_panel(view).edit_button.click()
     dialog = view._bookmark_dialog
 
     assert dialog is not None
@@ -6858,8 +6894,8 @@ def _opened_bookmark_dialog(view: SimulationView) -> BookmarkDialog:
 def test_a_dashboard_opens_with_both_collections_listed_as_empty(application: QApplication) -> None:
     view = _shown_view(application, SimulationController())
 
-    assert view._bookmarks_panel.times.text() == NO_TIME_BOOKMARKS_TEXT
-    assert view._bookmarks_panel.targets.text() == NO_MAC_TARGETS_TEXT
+    assert _marks_panel(view).times.text() == NO_TIME_BOOKMARKS_TEXT
+    assert _marks_panel(view).targets.text() == NO_MAC_TARGETS_TEXT
 
 
 def test_an_instant_entered_in_the_dialog_is_listed_beside_the_chart(
@@ -6871,7 +6907,7 @@ def test_an_instant_entered_in_the_dialog_is_listed_beside_the_chart(
     dialog.time_label_edit.setText("intubation")
     dialog.add_time_button.click()
 
-    assert "intubation" in view._bookmarks_panel.times.text()
+    assert "intubation" in _marks_panel(view).times.text()
     assert dialog.time_list.count() == 1
 
 
@@ -6898,7 +6934,7 @@ def test_a_target_entered_in_the_dialog_names_its_compartment_and_height(
     dialog.height_spin.setValue(0.8)
     dialog.add_target_button.click()
 
-    listed = view._bookmarks_panel.targets.text()
+    listed = _marks_panel(view).targets.text()
 
     assert listed == "Vessel-rich 0.80 ×MAC"
 
@@ -7054,7 +7090,7 @@ def test_a_mark_edited_after_a_fork_reaches_the_branch_too(application: QApplica
     # And the panel still draws, which is what the refusal above would stop.
     view.present(False)
 
-    assert view._bookmarks_panel.targets.text().startswith("Vessel-rich")
+    assert _marks_panel(view).targets.text().startswith("Vessel-rich")
 
 
 def test_a_refusal_leaves_every_run_carrying_the_same_marks(application: QApplication) -> None:
@@ -7099,7 +7135,7 @@ def test_the_dialog_and_the_panel_list_one_set_of_rows(application: QApplication
 
     listed = [dialog.time_list.item(row).text() for row in range(dialog.time_list.count())]
 
-    assert view._bookmarks_panel.times.text() == "\n".join(listed)
+    assert _marks_panel(view).times.text() == "\n".join(listed)
 
 
 def test_a_wrapped_mark_row_is_told_apart_from_the_row_below_it(application: QApplication) -> None:
@@ -7211,7 +7247,7 @@ def test_a_branch_halted_on_a_mark_says_so(application: QApplication) -> None:
     assert view.runs[1].snapshot().elapsed_s == pytest.approx(114.7)
     assert view.runs[1].is_running is False
 
-    listed = view._bookmarks_panel.targets.text()
+    listed = _marks_panel(view).targets.text()
 
     assert f"{run_label(SECOND_RUN)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.REACHED]}" in listed
     assert f"{run_label(FIRST_RUN)} {MARK_STILL_RUNNING_TEXT}" in listed
@@ -7232,7 +7268,7 @@ def test_a_mark_the_branch_cannot_reach_is_not_drawn_as_the_trunk_left_it(
 
     view = _halted_branch_view(application)
 
-    listed = view._bookmarks_panel.times.text()
+    listed = _marks_panel(view).times.text()
 
     assert listed.endswith(
         f"{run_label(SECOND_RUN)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.BEFORE_THIS_BRANCH]}"
@@ -7289,8 +7325,8 @@ def test_a_failed_run_s_marks_do_not_stand_as_reachable(application: QApplicatio
 
     said = MARK_STANDING_COMPARED_TEXT[MarkStanding.NOT_REACHED_BEFORE_FAILURE]
     still_reachable = f"{run_label(FIRST_RUN)} {MARK_STILL_RUNNING_TEXT}"
-    times = view._bookmarks_panel.times.text()
-    targets = view._bookmarks_panel.targets.text()
+    times = _marks_panel(view).times.text()
+    targets = _marks_panel(view).targets.text()
 
     assert f"{run_label(FIRST_RUN)} {said}" in times
     assert f"{run_label(FIRST_RUN)} {said}" in targets
@@ -7320,7 +7356,7 @@ def test_a_lone_run_states_a_mark_s_standing_without_naming_a_run(
     controller.add_time_bookmark(TimeBookmark(CaseInstant(30.0), "check"))
     view.present(False)
 
-    listed = view._bookmarks_panel.times.text()
+    listed = _marks_panel(view).times.text()
 
     assert listed.endswith(MARK_STANDING_TEXT[MarkStanding.PASSED])
     assert run_label(FIRST_RUN) not in listed
@@ -7335,7 +7371,7 @@ def test_the_bookmark_panel_sits_outside_the_region_between_the_two_plots(
     view = _shown_view(application, SimulationController())
     page = _page_of(view)
     areas = view.layout_container
-    marks = view._bookmarks_panel
+    marks = _marks_panel(view)
 
     assert not areas.isAncestorOf(marks), "the marks sit inside an Area"
     assert page.isAncestorOf(marks)
@@ -7361,8 +7397,7 @@ def test_the_shipped_dashboard_opens_over_a_case_it_can_branch(application: QApp
 
     assert view.case is case
     assert view.case.trunk is view.runs[0].controller
-    assert view._fork_section.isHidden() is False
-    assert view._fork_panel.take_button.isHidden() is False
+    assert _fork_panel(view).take_button.isHidden() is False
 
 
 def test_a_dashboard_over_loose_runs_offers_no_branch_control(application: QApplication) -> None:
@@ -7370,8 +7405,13 @@ def test_a_dashboard_over_loose_runs_offers_no_branch_control(application: QAppl
 
     view = _shown_view(application, SimulationController())
 
+    branch = next(v for v in view.layout_container.views() if isinstance(v, BranchView))
+
     assert view.case is None
-    assert view._fork_section.isHidden() is True
+    assert branch.panel is None
+    assert branch.findChildren(QPushButton) == []
+    assert branch.absent_notice.isHidden() is False
+    assert branch.absent_notice.text() == NO_CASE_TO_BRANCH_TEXT
 
 
 def test_a_dashboard_refuses_a_case_rooted_in_another_run() -> None:
@@ -7397,7 +7437,7 @@ def test_the_branch_control_offers_exactly_the_trunks_keyframes(application: QAp
 
     case = _branched_case()
     view = _case_view(application, case)
-    selector = view._fork_panel.point_selector
+    selector = _fork_panel(view).point_selector
     offered = [selector.itemData(index) for index in range(selector.count())]
     labels = [selector.itemText(index) for index in range(selector.count())]
 
@@ -7539,10 +7579,10 @@ def test_a_fork_from_the_default_selection_draws_one_frame(
     presented = view.presented_frames
 
     if door == "here":
-        view._fork_panel.here_button.click()
+        _fork_panel(view).here_button.click()
     elif door == "mark":
         _select_fork_entry(view, _BEHIND_MARK_LABEL)
-        view._fork_panel.take_button.click()
+        _fork_panel(view).take_button.click()
     else:
         _take_fork(view, 60.0)
 
@@ -7614,7 +7654,7 @@ def test_the_wash_in_state_and_off_scale_lines_name_their_run(application: QAppl
     trunk.set_fresh_gas_flow(FreshGasFlow(2.0))
     trunk.pause()
     view = _case_view(application, BranchedCase(trunk))
-    selector = view._fork_panel.point_selector
+    selector = _fork_panel(view).point_selector
     _take_fork(view, selector.itemData(selector.count() - 1))
     _settle(application)
 
@@ -7856,7 +7896,7 @@ def test_the_sidebar_panels_name_the_run_they_record(application: QApplication) 
     _advance_to(trunk, 600.0)
     trunk.pause()
     view = _case_view(application, BranchedCase(trunk))
-    selector = view._fork_panel.point_selector
+    selector = _fork_panel(view).point_selector
     _take_fork(view, selector.itemData(selector.count() - 1))
     _settle(application)
 
@@ -8224,7 +8264,7 @@ def test_a_second_fork_is_refused_while_two_runs_are_shown(application: QApplica
     view = _case_view(application, case)
     _take_fork(view, 60.0)
 
-    panel = view._fork_panel
+    panel = _fork_panel(view)
 
     assert panel.take_button.isHidden() is True
     assert panel.take_button.isEnabled() is False
@@ -8261,10 +8301,10 @@ def test_a_branch_is_offered_at_the_mark_the_run_is_standing_on(application: QAp
     assert halt is not None
     halted_s = halt.instant_s
 
-    assert view._fork_panel.here_button.isHidden() is False
+    assert _fork_panel(view).here_button.isHidden() is False
     assert halted_s not in case.fork_points_s
 
-    view._fork_panel.here_button.click()
+    _fork_panel(view).here_button.click()
 
     assert len(view.runs) == 2
     assert len(case.branches) == 1
@@ -8276,7 +8316,7 @@ def test_a_branch_is_offered_at_the_mark_the_run_is_standing_on(application: QAp
     assert case.fork_points_s == (0.0, 60.0)
     # And the trunk still stands where it stopped.
     assert case.trunk.snapshot().elapsed_s == pytest.approx(halted_s)
-    assert view._fork_panel.notice.notice() is None
+    assert _fork_panel(view).notice.notice() is None
 
 
 def test_the_fork_here_says_which_instant_it_will_open_the_branch_at(
@@ -8295,11 +8335,11 @@ def test_the_fork_here_says_which_instant_it_will_open_the_branch_at(
     halt = case.trunk.snapshot().bookmark_halt
     assert halt is not None
 
-    label = view._fork_panel.here_button.text()
+    label = _fork_panel(view).here_button.text()
 
     assert label == HALT_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(halt.instant_s))
 
-    view._fork_panel.here_button.click()
+    _fork_panel(view).here_button.click()
 
     assert case.branches[0].snapshot().elapsed_s == pytest.approx(halt.instant_s)
 
@@ -8333,12 +8373,12 @@ def test_a_mark_inside_a_step_branches_where_the_run_stopped_not_where_it_was_ma
     assert halt.instant_s == pytest.approx(halted_s)
     assert halt.instant_s != pytest.approx(marked_s)
 
-    label = view._fork_panel.here_button.text()
+    label = _fork_panel(view).here_button.text()
 
     assert format_elapsed(halted_s) in label
     assert format_elapsed(marked_s) not in label
 
-    view._fork_panel.here_button.click()
+    _fork_panel(view).here_button.click()
 
     assert case.branches[0].snapshot().elapsed_s == pytest.approx(halted_s)
 
@@ -8361,7 +8401,7 @@ def test_the_fork_here_is_on_the_panel_whenever_the_trunk_stops_and_off_it_while
 
     case = _branched_case()
     view = _case_view(application, case)
-    button = view._fork_panel.here_button
+    button = _fork_panel(view).here_button
     offered_before = list(_offered_fork_instants(view))
     paused_s = case.trunk.snapshot().elapsed_s
 
@@ -8419,7 +8459,7 @@ def test_a_paused_trunk_is_branched_where_it_stands_from_the_panel(
 
     case, view, _ = _rewind_case(application)
     paused_s = case.trunk.snapshot().elapsed_s
-    button = view._fork_panel.here_button
+    button = _fork_panel(view).here_button
 
     assert paused_s not in _offered_fork_instants(view)
     assert button.isHidden() is False
@@ -8432,7 +8472,7 @@ def test_a_paused_trunk_is_branched_where_it_stands_from_the_panel(
     assert case.branches[0].began_at_s == paused_s
     assert view.runs[1].controller is case.branches[0]
     assert case.trunk.snapshot().elapsed_s == paused_s
-    assert view._fork_panel.notice.notice() is None
+    assert _fork_panel(view).notice.notice() is None
 
 
 def test_the_fork_here_is_refused_with_the_rest_while_two_runs_are_shown(
@@ -8452,15 +8492,15 @@ def test_the_fork_here_is_refused_with_the_rest_while_two_runs_are_shown(
 
     assert len(view.runs) == 2
     assert case.trunk.snapshot().bookmark_halt is not None
-    assert view._fork_panel.here_button.isHidden() is True
-    assert view._fork_panel.here_button.isEnabled() is False
-    assert view._fork_panel.here_button.text() == ""
+    assert _fork_panel(view).here_button.isHidden() is True
+    assert _fork_panel(view).here_button.isEnabled() is False
+    assert _fork_panel(view).here_button.text() == ""
 
     view._handle_here_fork()
 
     assert len(view.runs) == 2
     assert len(case.branches) == 1
-    assert view._fork_panel.lock_text.text() == comparing_fork_lock_text(COMPARED)
+    assert _fork_panel(view).lock_text.text() == comparing_fork_lock_text(COMPARED)
 
 
 def test_a_fork_here_the_case_refuses_is_reported_and_adds_no_run(
@@ -8478,11 +8518,11 @@ def test_a_fork_here_the_case_refuses_is_reported_and_adds_no_run(
     case, view = _halted_trunk_case(application)
     case.trunk.start()
 
-    view._fork_panel.here_button.click()
+    _fork_panel(view).here_button.click()
 
     assert len(view.runs) == 1
     assert case.branches == ()
-    notice = view._fork_panel.notice.notice()
+    notice = _fork_panel(view).notice.notice()
     assert notice is not None
     # It names what is wrong rather than reporting a generic failure, so a
     # reader who pressed a button that was there a moment ago learns why.
@@ -8504,7 +8544,7 @@ def test_a_failing_frame_on_a_paused_trunk_withdraws_branch_here(
 
     case = _branched_case()
     view = _case_view(application, case)
-    here = view._fork_panel.here_button
+    here = _fork_panel(view).here_button
     assert here.isHidden() is False, "the paused trunk offers no branch here to withdraw"
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
 
@@ -8533,7 +8573,7 @@ def test_a_trunk_halted_by_a_failing_frame_offers_no_branch_at_all(
     mark = TimeBookmark(CaseInstant(30.0), "check")
     case.trunk.add_time_bookmark(mark)
     view = _case_view(application, case)
-    panel = view._fork_panel
+    panel = _fork_panel(view)
     # Induction, the mark the trunk passed and its one setting change.
     assert panel.point_selector.count() == 3, "the trunk offers no keyframe or mark to withdraw"
     assert panel.here_button.isHidden() is False, "the paused trunk offers no branch here"
@@ -8590,7 +8630,7 @@ def test_a_trunk_failed_on_its_own_step_keeps_its_earlier_keyframes_branchable(
     assert trunk.has_failed is True
     assert view.runs[0]._status_text.text() == STATUS_FAILED_TEXT
     assert _offered_fork_instants(view) == (0.0, 60.0)
-    assert view._fork_panel.take_button.isHidden() is False
+    assert _fork_panel(view).take_button.isHidden() is False
 
     _take_fork(view, 60.0)
 
@@ -8614,7 +8654,7 @@ def test_a_fork_panel_the_case_cannot_restate_on_a_halt_offers_nothing(
 
     case = _branched_case()
     view = _case_view(application, case)
-    assert view._fork_panel.point_selector.count() > 0
+    assert _fork_panel(view).point_selector.count() > 0
 
     def unanswerable(case: BranchedCase) -> NoReturn:
         raise RuntimeError("the case could not say where its trunk stands")
@@ -8628,8 +8668,8 @@ def test_a_fork_panel_the_case_cannot_restate_on_a_halt_offers_nothing(
     assert "Traceback" not in capfd.readouterr().err
     assert case.trunk.has_failed is True
     assert view.runs[0]._status_text.text() == STATUS_FAILED_TEXT
-    assert view._fork_panel.here_button.isHidden() is True
-    assert view._fork_panel.point_selector.count() == 0
+    assert _fork_panel(view).here_button.isHidden() is True
+    assert _fork_panel(view).point_selector.count() == 0
 
 
 def test_a_failing_frame_withdraws_the_last_frames_bookmark_standings(
@@ -8654,7 +8694,7 @@ def test_a_failing_frame_withdraws_the_last_frames_bookmark_standings(
     # Ahead of the paused clock, so the run has not reached it yet.
     controller.add_time_bookmark(TimeBookmark(CaseInstant(600.0), "check"))
     view = _shown_view(application, controller)
-    ahead = view._bookmarks_panel.times.text()
+    ahead = _marks_panel(view).times.text()
     assert ahead == "10m – check", "the mark is not listed as still to come"
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
 
@@ -8662,13 +8702,13 @@ def test_a_failing_frame_withdraws_the_last_frames_bookmark_standings(
 
     assert controller.has_failed is True
     assert view.runs[0]._status_text.text() == STATUS_FAILED_TEXT
-    halted = view._bookmarks_panel.times.text()
+    halted = _marks_panel(view).times.text()
     assert halted == "10m – check · not reached before the simulation error"
 
     monkeypatch.undo()
     view.present(False)
 
-    assert view._bookmarks_panel.times.text() == halted
+    assert _marks_panel(view).times.text() == halted
 
 
 def test_a_failing_frame_restates_each_displayed_run_s_own_bookmark_standings(
@@ -8690,7 +8730,7 @@ def test_a_failing_frame_restates_each_displayed_run_s_own_bookmark_standings(
     view.present(False)
 
     assert all(run.controller.has_failed for run in view.runs)
-    targets = view._bookmarks_panel.targets.text()
+    targets = _marks_panel(view).targets.text()
     failed = MARK_STANDING_COMPARED_TEXT[MarkStanding.NOT_REACHED_BEFORE_FAILURE]
     reached = MARK_STANDING_COMPARED_TEXT[MarkStanding.REACHED]
 
@@ -8713,7 +8753,7 @@ def test_a_bookmark_panel_that_cannot_be_restated_on_a_halt_lists_no_standing(
     controller = _paused_run_with_history()
     controller.add_time_bookmark(TimeBookmark(CaseInstant(600.0), "check"))
     view = _shown_view(application, controller)
-    panel = view._bookmarks_panel
+    panel = _marks_panel(view)
     assert panel.times.isHidden() is False
 
     def unanswerable(self: SimulationController) -> NoReturn:
@@ -9624,7 +9664,7 @@ def test_a_dashboard_slot_that_raises_withdraws_branching_and_names_the_dashboar
         raise RuntimeError("the marks editor could not be built")
 
     monkeypatch.setattr(simulation_view_module, "BookmarkDialog", refuse)
-    view._bookmarks_panel.edit_button.click()
+    _marks_panel(view).edit_button.click()
 
     assert [run.controller.has_failed for run in view.runs] == [True] * len(view.runs)
     assert case.trunk.fork_refusal == (
@@ -9649,7 +9689,7 @@ def test_a_halt_whose_dials_cannot_be_written_still_withdraws_branch_here(
     case = _branched_case()
     view = _case_view(application, case)
     trunk = view.runs[0]
-    here = view._fork_panel.here_button
+    here = _fork_panel(view).here_button
     assert here.isHidden() is False, "the paused trunk offers no Branch here to withdraw"
     monkeypatch.setattr(
         BreathingCircuit,
@@ -9934,8 +9974,8 @@ def test_every_run_state_surface_outside_the_run_view_reads_alike_on_a_drawn_run
     view = _case_view(application, case)
     _opened_bookmark_dialog(view)
     view.present(False)
-    view._fork_panel.point_selector.clear()
-    view._fork_panel.take_button.click()
+    _fork_panel(view).point_selector.clear()
+    _fork_panel(view).take_button.click()
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
 
     case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(45.0), "later"))
@@ -9944,7 +9984,7 @@ def test_every_run_state_surface_outside_the_run_view_reads_alike_on_a_drawn_run
     view.present(False)
 
     assert case.trunk.has_failed is True
-    assert view._fork_panel.notice.notice() == FORK_NOTHING_SELECTED_TEXT
+    assert _fork_panel(view).notice.notice() == FORK_NOTHING_SELECTED_TEXT
 
     halted = _surface_states(view)
 
@@ -10082,9 +10122,9 @@ def test_a_dial_write_that_refuses_on_a_halt_still_restates_every_panel(
     case = _branched_case()
     case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(600.0), "check"))
     view = _case_view(application, case)
-    here = view._fork_panel.here_button
+    here = _fork_panel(view).here_button
     assert here.isHidden() is False, "the paused trunk offers no branch here to withdraw"
-    assert view._bookmarks_panel.times.text() == "10m – check"
+    assert _marks_panel(view).times.text() == "10m – check"
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
     monkeypatch.setattr(
         BreathingCircuit,
@@ -10098,8 +10138,8 @@ def test_a_dial_write_that_refuses_on_a_halt_still_restates_every_panel(
     assert case.trunk.has_failed is True
     assert view.runs[0]._status_text.text() == STATUS_FAILED_TEXT
     assert here.isHidden() is True
-    assert view._fork_panel.point_selector.count() == 0
-    assert view._bookmarks_panel.times.text() == (
+    assert _fork_panel(view).point_selector.count() == 0
+    assert _marks_panel(view).times.text() == (
         "10m – check · not reached before the simulation error"
     )
 
@@ -10138,7 +10178,7 @@ def test_a_withdrawn_bookmark_panel_withdraws_the_open_dialog(
     view.present(False)
 
     assert controller.has_failed is True
-    assert view._bookmarks_panel.times.isHidden() is True
+    assert _marks_panel(view).times.isHidden() is True
     assert all(widget.isHidden() for widget in withdrawn)
 
     monkeypatch.undo()
@@ -10173,7 +10213,7 @@ def test_a_wrapped_mark_row_is_never_clipped(application: QApplication, height_p
     application.processEvents()
     rows = [
         label
-        for label in view._bookmarks_panel.findChildren(QLabel)
+        for label in _marks_panel(view).findChildren(QLabel)
         if label.isVisible() and label.wordWrap() and _WRAPPING_MARK_NAME.strip() in label.text()
     ]
 
@@ -10210,7 +10250,7 @@ def test_a_fork_on_a_run_whose_snapshot_refuses_keeps_no_branch(
     if door == "take":
         _take_fork(view, 60.0)
     else:
-        view._fork_panel.here_button.click()
+        _fork_panel(view).here_button.click()
 
     assert "Traceback" not in capfd.readouterr().err
     assert case.branches == ()
@@ -10310,11 +10350,11 @@ def test_unmarking_the_mark_the_trunk_stopped_on_leaves_the_fork_here(
     view.present(False)
 
     assert case.trunk.snapshot().bookmark_halt is None
-    assert view._fork_panel.here_button.text() == HERE_FORK_LABEL_TEMPLATE.format(
+    assert _fork_panel(view).here_button.text() == HERE_FORK_LABEL_TEMPLATE.format(
         instant=format_elapsed(halted_s)
     )
 
-    view._fork_panel.here_button.click()
+    _fork_panel(view).here_button.click()
 
     assert len(case.branches) == 1
     assert case.branches[0].began_at_s == halted_s
@@ -10332,7 +10372,7 @@ def test_a_branch_the_case_refuses_is_reported_and_adds_no_run(application: QApp
 
     case = _branched_case()
     view = _case_view(application, case)
-    panel = view._fork_panel
+    panel = _fork_panel(view)
     unkeyframed = ForkPoint(CaseInstant(30.0), format_elapsed(30.0), None)
     panel.set_offer(
         fork_offer(
@@ -10371,7 +10411,7 @@ def test_a_mark_branch_the_case_refuses_is_reported_and_adds_no_run(
 
     case = _branched_case()
     view = _case_view(application, case)
-    panel = view._fork_panel
+    panel = _fork_panel(view)
     unmarked = TimeBookmark(CaseInstant(30.0), "since removed")
     panel.set_offer(
         fork_offer(
@@ -10401,11 +10441,11 @@ def test_a_branch_control_with_nothing_selected_says_so(application: QApplicatio
     """A press that cannot name an instant is reported rather than ignored."""
 
     view = _case_view(application, _branched_case())
-    view._fork_panel.point_selector.clear()
-    view._fork_panel.take_button.click()
+    _fork_panel(view).point_selector.clear()
+    _fork_panel(view).take_button.click()
 
     assert len(view.runs) == 1
-    assert view._fork_panel.notice.notice() == FORK_NOTHING_SELECTED_TEXT
+    assert _fork_panel(view).notice.notice() == FORK_NOTHING_SELECTED_TEXT
 
 
 def test_an_agent_change_clears_the_fork_refusal_notice(application: QApplication) -> None:
@@ -10420,10 +10460,10 @@ def test_an_agent_change_clears_the_fork_refusal_notice(application: QApplicatio
 
     view = _case_view(application, _branched_case())
     trunk = view.runs[0]
-    view._fork_panel.point_selector.clear()
-    view._fork_panel.take_button.click()
+    _fork_panel(view).point_selector.clear()
+    _fork_panel(view).take_button.click()
 
-    assert view._fork_panel.notice.notice() == FORK_NOTHING_SELECTED_TEXT
+    assert _fork_panel(view).notice.notice() == FORK_NOTHING_SELECTED_TEXT
 
     _select_agent(trunk, "desflurane")
     dialog = trunk._new_case_dialog
@@ -10431,19 +10471,19 @@ def test_an_agent_change_clears_the_fork_refusal_notice(application: QApplicatio
     dialog.discard_button.click()
 
     assert trunk.controller.agent_id == "desflurane"
-    assert view._fork_panel.notice.notice() is None
+    assert _fork_panel(view).notice.notice() is None
 
-    view._fork_panel.point_selector.clear()
-    view._fork_panel.take_button.click()
+    _fork_panel(view).point_selector.clear()
+    _fork_panel(view).take_button.click()
 
-    assert view._fork_panel.notice.notice() == FORK_NOTHING_SELECTED_TEXT
+    assert _fork_panel(view).notice.notice() == FORK_NOTHING_SELECTED_TEXT
     assert trunk.controller.snapshot().has_recorded_run is False
 
     _select_agent(trunk, "isoflurane")
 
     assert trunk._new_case_dialog is None
     assert trunk.controller.agent_id == "isoflurane"
-    assert view._fork_panel.notice.notice() is None
+    assert _fork_panel(view).notice.notice() is None
 
 
 def test_a_branch_shows_the_agent_chip_in_place_of_the_selector(application: QApplication) -> None:
@@ -10520,9 +10560,9 @@ def test_resetting_the_trunk_ends_the_comparison(application: QApplication) -> N
     assert view.case.branches == ()
     assert _concentration(view).legend._run_count == 1
     assert view.runs[0]._run_name_text.isHidden() is True
-    assert view._fork_panel.take_button.isHidden() is False
-    assert view._fork_panel.lock_text.isHidden() is True
-    assert view._fork_panel.notice.notice() is None
+    assert _fork_panel(view).take_button.isHidden() is False
+    assert _fork_panel(view).lock_text.isHidden() is True
+    assert _fork_panel(view).notice.notice() is None
     # A branch just taken holds nothing, so the Reset asked nothing (`PL-W5WX`).
     assert view.runs[0]._reset_dialog is None
 
@@ -10538,7 +10578,7 @@ def test_a_refused_branch_does_not_survive_a_one_run_reset(application: QApplica
 
     case = _branched_case()
     view = _case_view(application, case)
-    panel = view._fork_panel
+    panel = _fork_panel(view)
     panel.set_offer(
         fork_offer(
             (CaseInstant(0.0), CaseInstant(30.0), CaseInstant(60.0)),
@@ -10611,8 +10651,8 @@ def test_resetting_a_branch_leaves_the_comparison_standing(application: QApplica
     assert view.case is case
     assert len(case.branches) == 1
     assert branch.snapshot().elapsed_s == pytest.approx(60.0)
-    assert view._fork_panel.lock_text.isHidden() is False
-    assert view._fork_panel.take_button.isHidden() is True
+    assert _fork_panel(view).lock_text.isHidden() is False
+    assert _fork_panel(view).take_button.isHidden() is True
 
 
 def _branch_holding_work(view: SimulationView, application: QApplication, work: str) -> RunView:
@@ -10885,7 +10925,7 @@ def test_the_bookmark_editor_is_not_modal_and_holds_no_run(application: QApplica
     view = _shown_view(application, controller)
     run = view.runs[0]
 
-    view._bookmarks_panel.edit_button.click()
+    _marks_panel(view).edit_button.click()
     _settle(application)
     dialog = view._bookmark_dialog
     assert dialog is not None
@@ -10977,7 +11017,7 @@ def test_taking_a_branch_leaves_the_concentration_chart_in_view(
     if door == "selector":
         _take_fork(view, 60.0)
     else:
-        view._fork_panel.here_button.click()
+        _fork_panel(view).here_button.click()
 
     _settle(application)
     _settle(application)
@@ -11028,7 +11068,7 @@ def test_the_comparison_lock_names_the_run_whose_reset_ends_it(application: QApp
     view = _case_view(application, _branched_case())
     _take_fork(view, 60.0)
 
-    lock = view._fork_panel.lock_text.text()
+    lock = _fork_panel(view).lock_text.text()
 
     assert lock == comparing_fork_lock_text(COMPARED)
 
@@ -11054,8 +11094,8 @@ def test_the_comparison_lock_names_the_run_whose_reset_ends_it(application: QApp
     _settle(application)
 
     assert len(view.runs) == 1
-    assert view._fork_panel.lock_text.isHidden() is True
-    assert view._fork_panel.take_button.isHidden() is False
+    assert _fork_panel(view).lock_text.isHidden() is True
+    assert _fork_panel(view).take_button.isHidden() is False
 
 
 def test_a_branch_added_while_the_dashboard_runs_gets_its_own_step_timer(
@@ -11271,7 +11311,7 @@ def test_a_vanished_fork_instant_leaves_nothing_selected(application: QApplicati
     trunk.set_fresh_gas_flow(FreshGasFlow(original_flow + 2.0))
     case = BranchedCase(trunk)
     view = _case_view(application, case)
-    panel = view._fork_panel
+    panel = _fork_panel(view)
 
     assert case.fork_points_s == (0.0, 60.0)
 
@@ -11314,7 +11354,7 @@ def test_a_fork_instant_still_offered_stays_selected_when_the_offer_grows(
     trunk.set_fresh_gas_flow(FreshGasFlow(original_flow + 2.0))
     case = BranchedCase(trunk)
     view = _case_view(application, case)
-    panel = view._fork_panel
+    panel = _fork_panel(view)
     panel.point_selector.setCurrentIndex(panel.point_selector.findData(60.0))
 
     trunk.start()
@@ -11351,7 +11391,7 @@ def test_a_cleared_fork_selection_stays_cleared_when_the_list_next_changes(
     trunk.set_fresh_gas_flow(FreshGasFlow(original_flow + 2.0))
     case = BranchedCase(trunk)
     view = _case_view(application, case)
-    panel = view._fork_panel
+    panel = _fork_panel(view)
     panel.point_selector.setCurrentIndex(panel.point_selector.findData(60.0))
     trunk.set_fresh_gas_flow(FreshGasFlow(original_flow))
     view.present(False)
@@ -11389,7 +11429,7 @@ def test_a_mark_set_behind_the_trunk_s_clock_is_offered_and_branched_at(
     """
 
     case, view, mark = _rewind_case(application)
-    panel = view._fork_panel
+    panel = _fork_panel(view)
     labels = [panel.point_selector.itemText(row) for row in range(panel.point_selector.count())]
     keyframes = case.fork_points_s
 
@@ -11437,7 +11477,7 @@ def test_a_mark_still_ahead_of_the_trunk_s_clock_is_not_offered(application: QAp
     case.trunk.add_time_bookmark(ahead)
     view.present(False)
 
-    selector = view._fork_panel.point_selector
+    selector = _fork_panel(view).point_selector
     offered = [selector.itemData(row) for row in range(selector.count())]
     labels = [selector.itemText(row) for row in range(selector.count())]
 
@@ -11466,7 +11506,7 @@ def test_a_selected_mark_is_cleared_not_moved_when_the_learner_unmarks_it(
     later = TimeBookmark(CaseInstant(100.0))
     case.trunk.add_time_bookmark(later)
     view.present(False)
-    panel = view._fork_panel
+    panel = _fork_panel(view)
     _select_fork_entry(view, _BEHIND_MARK_LABEL)
 
     dialog = _opened_bookmark_dialog(view)
@@ -11506,7 +11546,7 @@ def _widest_mark_entry_fits(application: QApplication) -> tuple[int, int]:
     """
 
     view = _case_view(application, _branched_case())
-    panel = view._fork_panel
+    panel = _fork_panel(view)
     metrics = panel.point_selector.fontMetrics()
     hours = max((f"{hour}h" for hour in range(10, 24)), key=metrics.horizontalAdvance)
     minutes = max((f"{minute}m" for minute in range(10, 60)), key=metrics.horizontalAdvance)
@@ -11693,7 +11733,7 @@ def test_a_branch_taken_after_a_dropped_one_is_named_by_a_new_number(
     assert [panel.run_name_label.text() for panel in branch._readout_row.panels] == ["Run 3"] * len(
         branch._readout_row.panels
     )
-    assert view._fork_panel.lock_text.text() == comparing_fork_lock_text(
+    assert _fork_panel(view).lock_text.text() == comparing_fork_lock_text(
         ComparedRuns("Run 1", "Run 3")
     )
     assert _wash_in(view).legend._run_names == ("Run 1", "Run 3")

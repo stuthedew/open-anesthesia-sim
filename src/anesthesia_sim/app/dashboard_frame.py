@@ -526,6 +526,10 @@ MARK_ATTRIBUTION_TEMPLATE: Final = "{run} {said}"
 # opens. The heading names the mechanism and says nothing else, under the same
 # rule as the mark headings.
 FORK_HEADING: Final = "Branch"
+#: What the branch View shows where the dashboard was handed loose runs and
+#: holds no case. A control there could only refuse, so none is drawn, and the
+#: View says why its rectangle is empty (`PL-9YPR`). A placeholder.
+NO_CASE_TO_BRANCH_TEXT: Final = "These runs belong to no case, so no branch can be opened."
 FORK_POINT_LABEL: Final = "From"
 # The label is "Branch", not "Branch here" (`PL-Y2SL`). On the button below,
 # "here" names where the paused trunk stands, while this button branches at
