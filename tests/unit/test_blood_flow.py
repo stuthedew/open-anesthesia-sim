@@ -40,7 +40,7 @@ BARE_FLOWS_L_MIN = (5e-324, 3.75, sys.float_info.max)
 def test_a_tissue_group_s_time_constant_refuses_a_blood_flow_given_as_a_bare_number(
     blood_flow_l_min: float,
 ) -> None:
-    """`PL-GKG4`'s first place: `TissueGroup.time_constant_s` checked the flow by hand."""
+    """A tissue group's time constant, first in `PL-GKG4`'s report, checked a flow by hand."""
 
     patient = AgentUptakeSystem.for_agent("sevoflurane").patient
 
@@ -55,7 +55,7 @@ def test_a_tissue_group_s_time_constant_refuses_a_blood_flow_given_as_a_bare_num
 def test_the_venous_pool_s_time_constant_refuses_a_flow_given_as_a_bare_number(
     blood_flow_l_min: float,
 ) -> None:
-    """`PL-GKG4`'s second place: `VenousBloodCompartment.time_constant_s` did the same."""
+    """The venous pool's time constant, second in `PL-GKG4`'s report, checked a flow by hand."""
 
     venous_blood = AgentUptakeSystem.for_agent("sevoflurane").patient.venous_blood
 
@@ -67,7 +67,7 @@ def test_the_venous_pool_s_time_constant_refuses_a_flow_given_as_a_bare_number(
 def test_a_tissue_group_s_equation_settings_refuse_a_blood_flow_given_as_a_bare_number(
     blood_flow_l_min: float,
 ) -> None:
-    """`PL-GKG4`'s third place: `TissueGroupEquationSettings` stored the flow it was given."""
+    """A tissue group's equation settings, third in `PL-GKG4`'s report, stored the flow given."""
 
     with pytest.raises(TypeError, match="BloodFlow"):
         TissueGroupEquationSettings(
@@ -96,8 +96,8 @@ def test_a_perfusion_fraction_above_zero_and_at_most_one_is_built_as_its_number(
     """The range is above 0 and at most 1 (`docs/MODEL.md` § "Tissue groups").
 
     Both ends are written out here. The smallest positive `float` is the
-    first value above 0, and 1 is a group that receives the whole cardiac
-    output. An `int` 1 is stored as the `float` it equals.
+    first value above 0, and 1 is the fraction of a group that receives the
+    whole cardiac output. An `int` 1 is stored as the `float` it equals.
     """
 
     built = PerfusionFraction(accepted)
@@ -181,11 +181,11 @@ def test_a_partial_pressure_fraction_is_not_a_perfusion_fraction() -> None:
 
 
 def test_a_blood_flow_is_the_perfusion_fraction_of_the_cardiac_output() -> None:
-    """$`Q_i = f_iQ`$: a quarter of 8 L/min is 2 L/min, and the product is a `BloodFlow`.
+    """A quarter of 8 L/min is a `BloodFlow` of 2 L/min, as $`Q_i = f_iQ`$ gives.
 
     The expected values are worked by hand. Each factor is exact in binary,
     so each product is exact. Arithmetic on the flow gives a plain `float`,
-    which carries no proof.
+    which does not show that any check ran.
     """
 
     flow = BloodFlow(CardiacOutput(8.0), PerfusionFraction(0.25))
@@ -266,7 +266,7 @@ def test_a_cardiac_output_is_not_a_tissue_group_s_blood_flow() -> None:
     The venous pool takes the cardiac output, so this is the likeliest slip.
     The refusal says how a blood flow is built. It does not say to build the
     flow from another value, because the flow is built from this cardiac
-    output and the group's perfusion fraction (found at review of `PL-GKG4`).
+    output and the group's perfusion fraction (`PL-GKG4`).
     """
 
     with pytest.raises(TypeError) as raised:
@@ -305,15 +305,17 @@ def test_a_blood_flow_survives_a_pickle_and_a_copy_as_the_same_flow(protocol: in
 def test_a_flow_too_small_for_a_finite_time_constant_leaves_a_tissue_unchanged() -> None:
     """A flow of 5e-324 L/min is accepted, and the tissue it perfuses does not change.
 
-    `PL-GKG4` reported that this flow was accepted as a bare number. It is
+    The old hand checks accepted this flow as a bare number (`PL-GKG4`). It is
     still a flow that can be built, as the smallest perfusion fraction of
     1 L/min, because zero flow is supported and the model is continuous down
-    to it. The time constant, 60 x 2 L x 4 / 5e-324 L/min, is about 1e326 s,
-    which is larger than any `float`, so it is `inf` as at zero flow. Stepped
-    alone for 24 hours towards a fraction of 1, the 4 L tissue takes up
-    4 L x 86 400 s / 1e326 s, about 4e-321 L. That is worked out here from the
-    flow and not from the time constant. The code leaves the tissue unchanged,
-    which is wrong by less than the 5e-296 L that `time_constant_s` states.
+    to it. With a tissue:blood coefficient of 4, the time constant is
+    60 x 2 L x 4 / 5e-324 L/min, about 1e326 s. That is larger than any
+    `float`, so it is `inf` as at zero flow. Stepped alone for 24 hours
+    towards a fraction of 1, the tissue takes up 4 L x 86 400 s / 1e326 s,
+    about 4e-321 L, where 4 L is its capacity. That is worked out here from
+    the flow and not from the time constant. The code leaves the tissue
+    unchanged, which is wrong by less than the 5e-296 L that
+    `time_constant_s` states.
     """
 
     tissue = _muscle()

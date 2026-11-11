@@ -15,8 +15,8 @@ from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME
 CARDIAC_OUTPUT_L_MIN = CardiacOutput(5.0)
 """The cardiac output, in L/min, at which these tests mix the pool, unless a test says otherwise.
 
-The pool's blood flow is the whole cardiac output. The pool has stored no flow
-since `PL-HQF5`, so each closed form takes the cardiac output as an argument
+The pool's blood flow is the whole cardiac output. The pool stores no flow
+(`PL-HQF5`), so each closed form takes the cardiac output as an argument
 (`PL-GKG4`).
 """
 
@@ -234,11 +234,11 @@ def test_the_blood_gas_coefficient_is_written_once_and_a_copy_keeps_it() -> None
 def test_a_refused_blood_flow_leaves_the_flow_as_it_was(cardiac_output_l_min: float) -> None:
     """A flow that was not built as a `CardiacOutput` is refused, and nothing changes.
 
-    The flow was a stored field until `PL-HQF5`, and a write to that field
-    refused a flow that was negative or not finite (`PL-19Y0`). The pool's flow
-    is the cardiac output, which is now an argument of `time_constant_s` and
-    `advance`. Since `PL-GKG4` both refuse any bare number, 5.0 L/min
-    included, before anything changes.
+    The flow was once a stored field, and a write to that field refused a flow
+    that was negative or not finite (`PL-19Y0`, `PL-HQF5`). The pool's flow is
+    the cardiac output, which is now an argument of `time_constant_s` and
+    `advance`. Both refuse any bare number, 5.0 L/min included, before anything
+    changes (`PL-GKG4`).
     """
 
     venous = _build_venous_blood()

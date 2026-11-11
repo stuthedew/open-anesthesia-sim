@@ -177,7 +177,8 @@ class PatientCompartments:
                     )
 
                 # `float()` keeps the sum unchanged now that a fraction is a checked
-                # type, for the reason `total_perfusion_fraction` gives.
+                # type, because `sum` adds a `float` subclass without the compensation
+                # for rounding that it gives a plain `float`.
                 require_perfusion_fractions_sum_to_one(
                     sum(
                         float((value if field == name else getattr(self, field)).perfusion_fraction)

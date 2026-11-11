@@ -159,16 +159,18 @@ class CheckedQuantity:
 
         At protocols 0 and 1, a `float` or `int` subclass is pickled through
         `copyreg._reduce_ex`. Without this method, loading it calls `float.__new__` or
-        `int.__new__` directly, so the type's own `__new__`, which runs the range check,
-        never runs. A hand-edited protocol-0 pickle loaded a `Fraction` of 1.5 and a
+        `int.__new__` directly, so the range check in the type's own `__new__` never
+        runs. A hand-edited protocol-0 pickle loaded a `Fraction` of 1.5 and a
         `StepCount` of -5 (`PL-5D1Z`, measured 2026-10-05). Protocol 2 and later,
-        `copy.copy` and `copy.deepcopy` already called the type itself. This method
+        `copy.copy` and `copy.deepcopy` already call the type itself. This method
         makes every protocol call it, so a value edited outside its range is refused on
-        load with the constructor's own exception. A `Fraction` or `Percent` is rebuilt
-        under its type's default `name`, because neither stores the name it was built
-        with. `BloodFlow` has its own version of this method, because it is built from
-        two values (`core/blood_flow.py`). So the first member of the pair is typed as
-        whatever rebuilds the value, which for every other type is the type itself.
+        load with the constructor's own exception.
+
+        A `Fraction` or `Percent` is rebuilt under its type's default `name`, because
+        neither stores the name it was built with. `BloodFlow` has its own version of
+        this method, because it is built from two values (`core/blood_flow.py`). So the
+        first member of the pair that this method returns is typed as anything that
+        rebuilds the value. For every other type, it is the type itself.
         """
 
         number: float | int = int(self) if isinstance(self, int) else float(self)  # type: ignore[arg-type]

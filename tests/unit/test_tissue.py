@@ -285,16 +285,16 @@ def test_a_direct_write_is_held_to_the_constructors_checks(
 ) -> None:
     """An assignment that bypasses the constructor and the setters is refused as they refuse it.
 
-    Until `PL-19Y0`, only the agent amount was checked at the write (`PL-544D`). So
+    Only the agent amount used to be checked at the write (`PL-544D`, `PL-19Y0`). So
     `perfusion_fraction = 7.0` and `volume_l = -1.0` were each accepted on a built tissue. A
     bare number is now refused as a perfusion fraction whatever its value (`PL-GKG4`). A
     valid `PerfusionFraction` is refused too, because the fraction is written once
-    (`PL-Z0HN`), and a blood flow is not a field that can be written (`PL-HQF5`). A volume or
+    (`PL-Z0HN`). A blood flow is not a field that can be written (`PL-HQF5`). A volume or
     a tissue:gas coefficient is also checked against the agent that the tissue holds.
     Lowering either one shrinks the capacity, and the partial pressure is the amount held
     divided by that capacity. A value of 0.5 for either one, with 2.0 L of agent held, would
-    put this tissue at two atmospheres. A name that is not a field passes the guard to the
-    slots, which refuse it. So a misspelt write cannot leave the intended field unchanged
+    put this tissue at two atmospheres. A name that is not a field passes through the guard,
+    and the slots refuse it. So a misspelt write cannot leave the intended field unchanged
     while appearing to succeed. Nothing is written when a value is refused.
     """
 
@@ -352,11 +352,11 @@ def test_a_capacity_at_the_agent_held_is_written_and_a_copy_is_held_to_it_too() 
 def test_a_refused_blood_flow_leaves_the_flow_as_it_was(blood_flow_l_min: float) -> None:
     """A flow that was not built as a `BloodFlow` is refused, and nothing changes.
 
-    The flow was a stored field until `PL-HQF5`, and writing that field refused a flow
-    that was negative or not finite (`PL-19Y0`). The flow is now the argument of
-    `time_constant_s` and `advance`. Since `PL-GKG4` both refuse any bare number, a
-    flow of 1.0 L/min included, before anything changes. A `BloodFlow` cannot be
-    negative or not finite, because it is a perfusion fraction of a cardiac output.
+    The flow was once a stored field, and writing that field refused a flow that was
+    negative or not finite (`PL-19Y0`, `PL-HQF5`). The flow is now the argument of
+    `time_constant_s` and `advance`. Both refuse any bare number, a flow of 1.0 L/min
+    included, before anything changes (`PL-GKG4`). A `BloodFlow` cannot be negative or
+    not finite, because it is a perfusion fraction of a cardiac output.
     """
 
     tissue = _build_tissue()
@@ -382,12 +382,12 @@ def test_a_refused_blood_flow_leaves_the_flow_as_it_was(blood_flow_l_min: float)
 
 
 def test_a_tissue_is_perfused_at_its_fraction_of_the_cardiac_output() -> None:
-    """$`Q_i = f_iQ`$: a 0.2 fraction of 6.5 L/min is 1.3 L/min, computed when it is read.
+    """At a cardiac output of 6.5 L/min, a fraction of 0.2 gives 1.3 L/min, computed when read.
 
-    The expected flow is worked by hand. A bare `float` is refused, because
-    only a `CardiacOutput` carries the supported range (`PL-HQF5`). The flow
-    returned is a `BloodFlow`, the type that the group's own closed form takes
-    (`PL-GKG4`).
+    The expected flow, $`Q_i = f_iQ`$, is worked by hand. A bare `float` is
+    refused, because only a `CardiacOutput` carries the supported range
+    (`PL-HQF5`). The flow returned is a `BloodFlow`, the type that the group's
+    own closed form takes (`PL-GKG4`).
     """
 
     tissue = _build_tissue()

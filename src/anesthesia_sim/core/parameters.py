@@ -774,7 +774,7 @@ Finite = Annotated[float, BeforeValidator(_validate_finite)]
 NonNegativeFinite = Annotated[float, BeforeValidator(_validate_nonnegative_finite)]
 PositiveFraction = Annotated[float, BeforeValidator(_validate_positive_fraction)]
 PositivePercent = Annotated[float, BeforeValidator(_validate_positive_percent)]
-"""**This note says which set of types a new field in this file uses** (`PL-KL2Q`).
+"""**A new field in this file takes its type from its layer, not from its quantity** (`PL-KL2Q`).
 
 Two overlapping sets of types meet here, and they do different halves of one
 job. The `Positive*` aliases above are Pydantic `BeforeValidator`s. They check
@@ -784,7 +784,7 @@ dimensionless conventions apart at every call site. `Fraction` and `Percent`
 are also checked when built, against the whole of their range (0 through 1,
 0 through 100, zero included). `MacMultiple` is a `NewType` that checks nothing
 at runtime (`PL-4R3W`). Which type a field takes depends on its layer, not on
-the quantity:
+its quantity:
 
 - **A `_...Payload` field takes a `Positive*` alias.** The payload's job is to
   refuse a bad file, and the payload is discarded immediately afterwards. A
@@ -805,17 +805,16 @@ the quantity:
 - **A perfusion fraction takes `PositiveFraction` in the payload and
   `PerfusionFraction` on the public side** (`core/blood_flow.py`, `PL-GKG4`).
   A tissue group's blood flow is built only from a cardiac output and a
-  `PerfusionFraction`, so the fraction is checked once, where it is built.
-  Until `PL-GKG4` it stayed a bare `float` on the public side, on the argument
-  that a type per parameter was more than a type per boundary. `PL-LHCL`
-  decided the other way for every number in `core/`.
+  `PerfusionFraction`, so the fraction is checked once, where it is built. It
+  has a type of its own because every number in `core/` is to get one
+  (`PL-LHCL`).
 
-**Merging the two was weighed and rejected.**
+**Merging the two sets would remove the boundary between them.**
 `Annotated[Fraction, BeforeValidator(_validate_positive_fraction)]` would
-validate and keep conventions apart in one annotation. It would also remove the
-boundary that `_StrictPayload`'s docstring calls deliberate. The payload would
+validate and keep conventions apart in one annotation. But the payload would
 then carry the public type, so nothing would distinguish a value that has
-passed through `parse_*` from one that has not.
+passed through `parse_*` from one that has not. `_StrictPayload`'s docstring
+calls that boundary deliberate.
 """
 
 

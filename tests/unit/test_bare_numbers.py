@@ -350,10 +350,10 @@ BARE_NUMBERS: dict[str, str] = {
     for name in names
 }
 
-# This count equals the length of `BARE_NUMBERS`. It was 173 on 2026-11-11,
-# when the list was written. Giving a quantity a checked type lowers it. A
-# change that raises it shows a reviewer that the change adds a bare number.
-# The blood flow and the perfusion fraction took it to 165 (`PL-GKG4`).
+# This count equals the length of `BARE_NUMBERS`. It was 173 on 2026-11-11, when the
+# list was written. Giving a quantity a checked type lowers it. A change that raises
+# it shows a reviewer that the change adds a bare number. The blood flow and the
+# perfusion fraction took it to 165 (`PL-GKG4`).
 MOST_BARE_NUMBERS = 165
 
 

@@ -175,3 +175,22 @@ Two smaller wording slips went with them: a garbled phrase in
 Three surviving mutants are left as they are. One differs from the code only
 for a saved minus zero edited by hand, one is unreachable because the payload
 has already validated the value, and the third is the pair in finding 4.
+
+**The copy edit of step (b), 2026-11-11, and where it stopped.** The copy
+editor read the 94 passages the branch had changed before the adversarial
+review, and offered 42 rewrites. Four of them equalled the original. Of the
+other 38, 33 are applied. Five are not: four are passages that the review
+fixes had since changed, so the rewrite no longer matched, and one, a
+paragraph of `docs/ARCHITECTURE.md`, turned a sentence into list items that
+name no code, which that document's own rule refuses. Four statements that a
+rewrite dropped were put back by hand: "finite" in the description of the
+sweep in `docs/MODEL.md`, the pointer to `core/run_definition.py`, and two
+item ids in `core/governing_equations.py`. A rewrite of one `docs/MODEL.md`
+paragraph that this change did not touch was left out.
+
+The project owner then said "stop copy editor" and "skip copy editor"
+(project owner, 2026-11-10 at about 22:50 CST). A second run, on the 21
+passages that the review fixes added or changed, was stopped after its four
+reads and before its meaning checks, and nothing from it is applied. Those 21
+passages, and the pull request's title and body, are as the session wrote
+them.

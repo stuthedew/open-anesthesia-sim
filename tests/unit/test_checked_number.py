@@ -516,9 +516,8 @@ def test_a_blood_flow_unpickled_at_any_protocol_is_rebuilt_through_its_checks(
     cardiac output equal to it (`core/blood_flow.py`). So the edited number
     meets the cardiac output's check. The refusal names the saved blood flow
     first and then gives the reason that `CardiacOutput` gives when it is
-    built directly from the edited number. Before the review of `PL-GKG4`, the
-    refusal named only a cardiac output, which the saved record still held
-    unchanged.
+    built directly from the edited number. The refusal used to name only a
+    cardiac output, which the saved record still held unchanged.
     """
 
     held = INSIDE_EVERY_RANGE[CardiacOutput]

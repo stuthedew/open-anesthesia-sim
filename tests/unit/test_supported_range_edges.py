@@ -221,11 +221,12 @@ TYPICAL: Mapping[str, object] = {
     "tissue_return_partial_pressure_fraction": Fraction(0.0),
 }
 
-# The properties and methods that may compute `inf`: a time constant where
-# nothing flows, or where so little flows that the quotient overflows. The
-# venous pool's takes the cardiac output, so it is drawn (`PL-GKG4`). A tissue's
-# time constant behaves the same way. It is not listed here because it takes a
-# `BloodFlow`, which no guard in these modules builds.
+# These are the properties and methods that may compute `inf`. Each is a time
+# constant that is `inf` where nothing flows, or where so little flows that the
+# quotient overflows. The venous pool's time constant takes the cardiac output,
+# so it is drawn (`PL-GKG4`). A tissue's time constant behaves the same way. It
+# is not listed here because it takes a `BloodFlow`, which no guard in these
+# modules builds.
 INFINITE_WHERE_NOTHING_FLOWS: frozenset[object] = frozenset(
     {BreathingCircuit.time_constant_s, VenousBloodCompartment.time_constant_s}
 )

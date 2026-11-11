@@ -128,9 +128,9 @@ def _restored_blood_flow(blood_flow_l_min: float) -> BloodFlow:
     cardiac output's check. That check is the right one, because a blood flow
     lies between zero and the largest cardiac output. A number that the check
     refuses is refused here as a blood flow, with the cardiac output's reason
-    after it. Without that, an edited tissue flow would be reported as a
-    cardiac output, which the record that holds it stores unchanged (found at
-    review of `PL-GKG4`).
+    after it. Otherwise an edited tissue flow would be reported as a cardiac
+    output, although the record that holds the flow stores its cardiac output
+    unchanged (`PL-GKG4`).
 
     Raises:
         TypeError: the saved number is not an `int` or a `float`.

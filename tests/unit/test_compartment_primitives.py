@@ -227,10 +227,10 @@ class _Perfused[
 ]:
     """A patient compartment, and the blood flow at which its closed form is evaluated.
 
-    Neither patient compartment has stored a flow since `PL-HQF5`, so the flow
-    that a case walks is carried beside the compartment and passed to each
-    call. A tissue group takes a `BloodFlow`, and the venous pool takes the
-    cardiac output, which is its flow (`PL-GKG4`).
+    Neither patient compartment stores a flow (`PL-HQF5`), so each test case
+    carries its flow beside the compartment and passes it to each call. A
+    tissue group takes a `BloodFlow`, and the venous pool takes the cardiac
+    output, which is its flow (`PL-GKG4`).
     """
 
     compartment: CompartmentT

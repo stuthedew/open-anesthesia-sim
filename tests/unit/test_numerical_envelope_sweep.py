@@ -512,11 +512,10 @@ def _require_the_compartments_alone(corner: Corner) -> None:
     up to the supported run length, as `require_compartment_step` checks. The
     venous pool's blood flow is the cardiac output, and a tissue's is a
     perfusion fraction of it. So each runs at zero, at the smallest positive
-    float and at the largest supported cardiac output. Until `PL-GKG4` both
-    took any finite flow that was not negative, and the sweep also ran them at
-    the largest float, a flow that no cardiac output gives. The circuit's
-    exchange must close its own agent balance. Every amount must lie between its
-    starting value and its equilibrium.
+    float and at the largest supported cardiac output, the largest flow that
+    can be built (`PL-GKG4`). The circuit's exchange must close its own agent
+    balance. Every amount must lie between its starting value and its
+    equilibrium.
     """
 
     for step_s in (MINIMUM_SIMULATION_STEP_S, MAXIMUM_ELAPSED_SIMULATION_TIME_S):

@@ -886,10 +886,9 @@ def test_rejects_a_tissue_group_that_could_not_describe_a_tissue(
 ) -> None:
     """A tissue group refuses a value that could not describe a tissue.
 
-    Since `PL-QX2G` the volume and the coefficient are checked types, and since `PL-GKG4` the
-    blood flow is one too. So the record refuses each of them passed as a bare float.
-    `CompartmentVolume(0.0)` and `PartitionCoefficient(0.0)` are refused when they are built,
-    which the test below checks.
+    The volume, the coefficient and the blood flow are checked types (`PL-QX2G`, `PL-GKG4`), so
+    the record refuses each of them passed as a bare float. `CompartmentVolume(0.0)` and
+    `PartitionCoefficient(0.0)` are refused when they are built, which the test below checks.
     """
 
     fields: dict[str, object] = {
@@ -989,10 +988,9 @@ def test_equal_settings_form_the_same_propagator_bit_for_bit_whatever_built_them
     type, the propagator built from a subclass differed in 39 of 81 entries at
     7 s. A list of tissue groups was accepted, and it could not be hashed. The
     expected propagator here is the one built from the record that
-    `AgentUptakeSystem.equation_settings` builds. Since `PL-QX2G` a volume or
-    coefficient reaches the record only as its checked type, and since
-    `PL-GKG4` a blood flow does too. So a `numpy.float64` is built into that
-    type first.
+    `AgentUptakeSystem.equation_settings` builds. A volume, a coefficient or a
+    blood flow reaches the record only as its checked type (`PL-QX2G`,
+    `PL-GKG4`). So a `numpy.float64` is built into that type first.
     """
 
     plain = _settings()

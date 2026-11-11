@@ -98,7 +98,7 @@ class TissueGroup:
             three values are checked together. An amount above the capacity is refused.
             So is a volume or a coefficient too small for the amount the tissue already
             holds. Such a value would put the partial pressure above one atmosphere
-            without the amount's own check ever running (`PL-544D`, found at review).
+            without the amount's own check ever running (`PL-544D`).
             `require_room_for_the_agent_held` makes this check. The constructor writes
             the amount last, after the volume and the coefficient have passed their own
             checks. So the volume and the coefficient are checked against the amount only
@@ -118,7 +118,7 @@ class TissueGroup:
             built new and put into the patient in place of the old group, and the
             patient then checks the quotient. Before this rule, a write straight onto a
             group in a built patient was accepted. The next step then halted with an
-            error that blamed the numerics (found at review).
+            error that blamed the numerics.
 
             Each refusal names the group as well as the field, as in `"muscle volume_l"`,
             because all three groups hold every field (`PL-2TZT`).
@@ -142,14 +142,13 @@ class TissueGroup:
                     `PartitionCoefficient`, or the perfusion fraction as a
                     `PerfusionFraction`, or when the agent amount is not an
                     `int` or a `float` (`require_a_number`).
-                SimulationConfigurationError: the name is blank. Also raised when
-                    the perfusion fraction is written to a group that already has
-                    one. Also raised
-                    when a tissue:gas coefficient is written to a group that
-                    already has one. Also raised when the agent amount is negative
-                    or not finite, or would be more than the tissue holds at a
-                    partial pressure of one atmosphere. That last check runs when
-                    the amount, the volume or the tissue:gas coefficient is written.
+                SimulationConfigurationError: the name is blank, or the
+                    perfusion fraction or the tissue:gas coefficient is written
+                    to a group that already has one. Also raised when the agent
+                    amount is negative or not finite, or would be more than the
+                    tissue holds at a partial pressure of one atmosphere. That
+                    last check runs when the amount, the volume or the
+                    tissue:gas coefficient is written.
             """
 
             if name == "name":
@@ -349,6 +348,7 @@ class TissueGroup:
         that. A tissue stepped alone at such a flow is left unchanged. The
         exact change over the longest supported step, 24 hours, is less than
         5e-296 L (`PL-GKG4`).
+
         The seconds-per-minute factor appears here because $`Q_i`$ is given in
         litres per minute, while every time in the model is in seconds.
 
