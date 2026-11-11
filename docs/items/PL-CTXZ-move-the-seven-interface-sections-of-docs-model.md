@@ -4,11 +4,13 @@ title: Move the seven interface sections of docs/MODEL.md, word for word, to a n
 priority: P1
 owner-priority: P1, 2026-11-11, ratified
 effort: L
-status: ready
+status: done
 classes: docs
 feature: model-md-structure
 touches: docs/, tools/, subprojects/docket/, .claude/, CLAUDE.md, docket.toml, README.md, ROADMAP.md, src/anesthesia_sim/, tests/
 added: 2026-11-11
+closed: 2026-11-11
+pr: 2109
 payoff: a contributor finds what the interface must show in one document, and a clinician no longer reads past 60,000 words of interface rules to reach the model
 verify: ! grep -qE '^## (Runtime controls|Minimum displayed outputs)$' docs/MODEL.md
 ---
