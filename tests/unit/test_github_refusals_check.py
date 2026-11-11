@@ -264,9 +264,7 @@ def test_the_required_check_is_the_one_job_that_main_s_copy_of_the_workflow_repo
     `pull_request` the job would be the pull request's own copy.
     """
     reported = [
-        job.check_name
-        for job in rcc.reporting_jobs(WORKFLOWS)
-        if job.workflow == "merge-hold.yml"
+        job.check_name for job in rcc.reporting_jobs(WORKFLOWS) if job.workflow == "merge-hold.yml"
     ]
     assert reported == ["merge-hold"] == [grc.MERGE_HOLD_CHECK]
     lines = (WORKFLOWS / "merge-hold.yml").read_text(encoding="utf-8").splitlines()

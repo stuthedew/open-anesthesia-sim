@@ -867,6 +867,7 @@ request. Where one is missing it fails and names the setting:
 | --- | --- |
 | A forced push to `main`, its deletion, or a change to it outside a pull request | Settings > Rules > Rulesets > **Base** |
 | A merge into `main` past its required checks, by you or a session | Settings > Branches > the rule for `main` > **Do not allow bypassing the above settings** |
+| The merge of a pull request that `bin/docket arm` holds, armed or not | Settings > Branches > the rule for `main` > **Require status checks to pass before merging** > `merge-hold` |
 | A forced push to any other branch | Settings > Rules > Rulesets > **All branches** |
 | A release tag deleted or moved | Settings > Rules > Rulesets > **Release tags** |
 
