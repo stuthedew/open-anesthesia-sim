@@ -646,7 +646,13 @@ class _Run:
             for index, (_, matrix) in enumerate(self.segments)
             if index + 1 == len(self.segments) or self.segments[index + 1][0] > start_s
         ]
-        column_squarings = max(_squarings(matrix, spacing_s) for matrix in inside)
+        # A segment shorter than the spacing holds a propagator over its own
+        # length, which needs fewer squarings than the spacing would. The window
+        # was evaluated without a refusal, so none of its propagators needed
+        # more than the cap.
+        column_squarings = min(
+            max(_squarings(matrix, spacing_s) for matrix in inside), MAXIMUM_SQUARINGS
+        )
         # The window chains one propagator per column, and one more at each
         # setting change inside it. Its last column is pinned to the instant
         # asked for, which can differ from the chained time by one unit in the
@@ -704,6 +710,7 @@ STIFFEST_CORNER = SMALLEST_CORNER._replace(blood_gas=1e4, tissue_blood=1e-3)
 
 ONE_STEP = (Action(setting="hold", position=0.0, steps=1),)
 FIFTY_STEPS = (Action(setting="hold", position=0.0, steps=50),)
+LONG_HOLD = (Action(setting="hold", position=0.0, steps=17_000),)
 
 
 # The three plans below set up conditions that the drawn plans reach only after
@@ -729,6 +736,14 @@ FIFTY_STEPS = (Action(setting="hold", position=0.0, steps=50),)
     # its balance is inside the absolute bound of 1e-12 L while outside the
     # relative one (found by the blind review of this test, 2026-11-11).
     Plan(None, STIFFEST_CORNER, 1e-6 * CEILING, (0.0, 0.0, 1.0), 0.0, 0.1, FIFTY_STEPS, 0.0, 2)
+)
+@example(
+    # The stiffest corner held for 1 700 s, which is longer than any drawn plan.
+    # One propagator over that stretch needs 33 squarings, one more than the
+    # cap, so the run definition must refuse the canonical state. The run holds
+    # too little agent to halt on the agent balance (found by the blind review
+    # of the rounding module, 2026-11-11).
+    Plan(None, STIFFEST_CORNER, 1e-9 * CEILING, (0.0, 0.0, 1.0), 0.0, 0.1, LONG_HOLD, 0.0, 2)
 )
 @settings(derandomize=True, database=None, deadline=None, max_examples=EXAMPLES)
 @given(_plans())
