@@ -17,10 +17,8 @@ failure path is written once:
 - A guard that raises, or that does not finish within its `deadline_s`, lets
   the call through, and the note it leaves names the guard and the error.
 - A guard with an `unjudged` rule refuses the call instead where that rule
-  gives a reason. Two guards have one. The merge guard refuses a call that
-  mentions a merge, since a merge that nothing judged would land on `main`
-  unchecked (`PL-NXRJ`). The gh guard refuses a Bash call that names `gh`,
-  since `gh` can write to GitHub (`PL-3986`).
+  gives a reason. One guard has one: the gh guard refuses a Bash call that
+  names `gh`, since `gh` can write to GitHub (`PL-3986`).
 - A guard that prints something other than a hook's JSON is read as one that
   crashed.
 
@@ -73,33 +71,6 @@ for _directory in (HOOKS, TOOLS):
 import hook_input  # noqa: E402 - found through the path set just above
 
 
-def mentions_merge(payload: str) -> bool:
-    """Whether the call's text contains "merge" in any case.
-
-    Every call the merge guard takes for a merge contains it, so no merge gets
-    through unjudged, and the other MCP calls, such as a Projects thread's
-    posts, are not refused with it. `guard.sh` holds the same rule for when no
-    Python can run.
-    """
-    return "merge" in payload.lower()
-
-
-#: The refusal of a call the merge guard could not judge, followed by why.
-MERGE_UNJUDGED = (
-    "Refused: the direct-merge-guard hook could not judge whether this call merges a pull "
-    "request, and the call mentions a merge. A session merges by arming auto-merge "
-    "(`enable_pr_auto_merge`) while a check is pending. Where GitHub will not arm a pull "
-    "request because it is already in clean status, tell the owner it cannot be armed and "
-    "that the Squash and merge is theirs, in the browser, and do not merge it another way "
-    "(`docs/maintainer.md`; `PL-NXRJ`). What stopped the guard: "
-)
-
-
-def merge_unjudged(payload: str, why: str) -> str | None:
-    """The reason to refuse a call the merge guard could not judge, where it mentions a merge."""
-    return MERGE_UNJUDGED + why + "." if mentions_merge(payload) else None
-
-
 def gh_unjudged(payload: str, why: str) -> str | None:
     """The gh guard's own `unjudged` rule, imported only when it is needed.
 
@@ -146,8 +117,6 @@ GROUPS: dict[str, tuple[Guard, ...]] = {
         Guard("push-check-guard", "push_check_guard", deadline_s=110),
     ),
     "pre-mcp": (
-        # Past its two reads of GitHub (`MERGE_READ_TIMEOUT_S` each).
-        Guard("direct-merge-guard", "direct_merge_guard", deadline_s=40, unjudged=merge_unjudged),
         Guard("pr-body-email-guard", "email_screen"),
         # Past the 45 seconds it gives `bin/docket arm` (`ARM_TIMEOUT_S`).
         Guard("owner_ask_guard", "owner_ask_guard", deadline_s=55),
@@ -273,8 +242,8 @@ def main(argv: list[str]) -> int:
             [], [unchecked(f"`{name}`", "no group or guard has that name in `guard.py`")], None
         )
     else:
-        # Each guard is still run on a call it cannot read, since the merge
-        # guard refuses one that mentions a merge.
+        # Each guard is still run on a call it cannot read, since a guard's
+        # `unjudged` rule may refuse it.
         found = judged(guards, payload)
         if not isinstance(call, dict):
             found.notes.append(unchecked(name, "the call it was handed is not a JSON object"))

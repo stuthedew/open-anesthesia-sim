@@ -144,15 +144,19 @@ branch `stranded` named, and `<commit>` each commit it named:
 git fetch origin main
 git checkout -B <branch> origin/main
 git cherry-pick <commit>
-git push --force-with-lease -u origin <branch>
+git push -u origin <branch>
 ```
 
 The remote still holds the old branch, because the commit pushed after the
-merge recreated it, so a plain push is rejected as behind it. The lease push
-replaces it, and moves this clone's stale `origin/<branch>` with it, so that
-ref needs no deleting (`PL-82J5`). Where the remote no longer holds the
-branch, the lease refuses the push, and a plain `git push -u origin <branch>`
-is the one to run.
+merge recreated it, so that push is rejected as behind it. Never force it:
+GitHub refuses a forced push on every branch, and this recipe named
+`--force-with-lease` until 2026-11-11 (`PL-39Y1`). Check that every commit
+`git log --oneline origin/main..origin/<branch>` lists is either on `main` or
+carried by the cherry-pick. Then end the reply by asking the project owner to
+archive and delete the old branch, with the owner's push below filled in, and
+push again once it is gone. That push also moves this clone's stale
+`origin/<branch>`, so the ref needs no deleting (`PL-82J5`). Where the remote
+no longer holds the branch, the push lands the first time.
 
 **`bin/docket branch` names this case while the commit is still
 recoverable**, which is the cheaper end of the same problem: it prints the
@@ -170,6 +174,7 @@ but a commit carried across stops reading that way once its change is on `main`
 sweep copies its tip to `refs/archive/<branch>/<tip>` and deletes it. So restart
 the branch and delete nothing on the remote. The reply names a branch to the project owner
 only where `python3 tools/branch_sweep.py` keeps one that should go anyway,
+or where a restarted branch cannot be pushed until the old one is gone,
 with the sweep's own push for them to run, since the same push from a session
 is refused (`docs/worker.md` § "Ref operations a session cannot perform"). Fill
 in the branch and the full forty-character tip the session judged, which

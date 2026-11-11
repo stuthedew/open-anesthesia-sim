@@ -22,7 +22,7 @@ test file that the branch changes, the check runs the mutants of the display
 modules twice: once against the base version of the tests that the branch
 changed, and once against the branch's version of the changed files. A mutant
 that the base version catches and the branch's version misses refuses the
-branch. The display modules are the seven files under `app/` that
+branch. The display modules are the eight files under `app/` that
 `[tool.mutmut] only_mutate` names.
 
 The same two runs also take the mutants of each `core/` module that the
@@ -232,13 +232,22 @@ Each of these was measured on 2026-10-17.
   `mutants/`, because the copy is not a clean git repository. So `make mutate`
   runs only the unit test files that import the simulator, and the slower test
   trees are the second tier.
-- **One test is left out.**
+- **Two tests are left out.** Each lists the functions in the modules of
+  `core/`, and inside mutmut the list also holds mutmut's generated copies.
   `tests/unit/test_supported_range_edges.py::test_each_guard_admits_only_what_its_functions_compute`
-  lists the functions of each module, so inside mutmut it would call mutmut's
-  generated copies of them. It is deselected, which drops all 7 of its
+  would call those copies. It is deselected, which drops all 7 of its
   parametrized cases. A survivor in `core/supported_ranges.py`, or in a
   constructor that one of its guards checks, is therefore not evidence of a gap
   until the second tier has run.
+  `tests/unit/test_bare_numbers.py::test_every_bare_number_in_core_is_listed_with_its_reason`
+  would find the copies' numbers, which its list does not name. It reads the
+  source text, which is the same whichever mutant is running, so it could
+  never kill a mutant and leaving it out hides no survivor (`PL-GP8G`).
+- **A unit test that reads a file needs that file in the copy.** mutmut copies
+  only what `[tool.mutmut] also_copy` in `pyproject.toml` names. A test that
+  reads any other file fails inside `mutants/`, and mutmut then stops with
+  `failed to collect stats. runner returned 1` before it runs a mutant.
+  `README.md` was added for `tests/unit/test_readme_claims.py` (`PL-GP8G`).
 - **`strict=` gives noise.** 11 of the 14 equivalent survivors in the
   matrix-exponential group change `strict=` on `zip` or `map`, where the
   lengths are equal by construction. A `# pragma: no mutate` comment on those

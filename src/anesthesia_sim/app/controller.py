@@ -93,11 +93,11 @@ class RunStatus:
 
     `SimulationController.status()` builds one from the controller's own
     run-state fields and the run-length guard. It builds no compartment
-    value, so a caller can read it for a run whose `snapshot()` raises.
-    `RunView.present_halt` needs that, because the snapshot's own
-    `Fraction`s are among the values that can cause a halt (`PL-7DJK`).
-    `RunSettings` extends this class, and `SimulationSnapshot` extends
-    `RunSettings`. So `dashboard_frame.status_word`, `transport` and
+    value, so a caller can read a `RunStatus` for a run whose `snapshot()`
+    raises. `run_presentation.halted_run` needs that, because the
+    snapshot's own `Fraction`s are among the values that can cause a halt
+    (`PL-7DJK`). `RunSettings` extends this class, and `SimulationSnapshot`
+    extends `RunSettings`. So `dashboard_frame.status_word`, `transport` and
     `notice` accept any of the three, and a frame that drew reads the three
     facts from the snapshot it drew from.
     """
@@ -161,7 +161,7 @@ class RunSettings(RunStatus):
     type, a string the controller holds, or one of the accepted range's two
     floats. It builds no compartment value, so like `RunStatus` it can be
     read for a run whose `snapshot()` raises. `dashboard_frame.setting_readouts`
-    accepts it, and that lets `RunView.present_halt` write every dial from
+    accepts it, and that lets `run_presentation.halted_run` build every dial from
     the values the run holds. Without it, a dial dragged into a halt kept
     the value from before the drag printed beside it, because no frame
     followed to rewrite it (`PL-85LJ`). `RunRecord` extends this class, and
@@ -1235,16 +1235,16 @@ class SimulationController:
         )
 
     def status(self) -> RunStatus:
-        """Whether this run is advancing and, if not, why, built without any compartment value.
+        """Return whether this run is advancing and, if not, why, building no compartment value.
 
-        `RunView.present_halt` reads this where it presents a halt.
-        `snapshot()` builds every compartment's fraction, and a rejection of
-        one of those fractions is one of the halts to present. A halt
-        described from a fresh snapshot was not described at all when the
-        snapshot itself raised (`PL-7DJK`). The three fields come from the
-        controller's own run state and from the run-length guard. The guard
-        reads the step count and the step length, which are both checked types
-        that the state holds, and it builds no `Fraction`.
+        The run's view presents a halt from the run's record, which carries this status
+        (`RunView.presentation`, `record()`). Taking a snapshot (`snapshot()`) builds every
+        compartment's fraction, and the rejection of any of them is one of the halts to
+        present. A halt presented from a fresh snapshot was not presented at all when the
+        snapshot itself raised (`PL-7DJK`). The three fields of this status come from the
+        controller's own run state and from the run-length guard. The guard reads the step
+        count and the step length, both checked types that the state holds, and builds no
+        `Fraction`.
         """
 
         return RunStatus(
@@ -1255,14 +1255,15 @@ class SimulationController:
         )
 
     def settings(self) -> RunSettings:
-        """The agent and the four settings in force, built without any compartment value.
+        """Return the agent and the four settings in force, building no compartment value.
 
-        `RunView.present_halt` calls this when it writes a setting control on a run whose
-        `snapshot()` raises. The run holds the setting that a drag applied. So the control is
-        written from this value, not left on the value from before the drag (`PL-85LJ`). The
-        controller holds the agent and its MAC itself. The vaporizer maximum comes from the
-        circuit, and it is the value the core enforces (`PL-1MGB`). The four settings come from
-        the compartments. Each one is a checked type, built when it was set.
+        The method that returns the run's record (`record()`) calls this. On a run where taking
+        a snapshot raises (`snapshot()`), the run's view writes the setting controls from that
+        record (`RunView.presentation`). The run holds the setting that a drag applied, so the
+        control is written from this value, not left on the value from before the drag
+        (`PL-85LJ`). The controller holds the agent and its MAC itself. The vaporizer maximum
+        comes from the circuit, and it is the value the core enforces (`PL-1MGB`). The four
+        settings come from the compartments. Each one is a checked type, built when it was set.
         """
 
         system = self._state.uptake_system

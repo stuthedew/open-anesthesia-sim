@@ -3,11 +3,13 @@ id: PL-95BJ
 title: A push that deletes a remote branch with git's hooks switched off passes .claude/hooks/push_check_guard.py: push_targets asks skips_hooks only of a push that sends commits, and --no-verify skips the pre-push hook that refuses the deletion
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: defect
 touches: .claude/hooks/push_check_guard.py, tests/unit/test_push_check_guard.py
 deferred-from: v0.7.0 - a new problem, not present at the freeze (817a4d88): the guard's question about skipped hooks, and the pre-push refusal of a deletion it protects, arrived after it
 added: 2026-11-10
+closed: 2026-11-11
+reason: Anthropic's proxy refuses a session's git push that deletes a branch whatever its flags, so the guard is taught no further spelling; PL-39Y1 records it
 payoff: no spelling of a push can delete a remote branch from a session, so the only copy of an unmerged item or commit cannot be lost that way
 verify: grep -q 'def test_a_deleting_push_that_skips_git_hooks_is_refused' tests/unit/test_push_check_guard.py
 reenters: PL-1ZZ0
