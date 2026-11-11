@@ -5,9 +5,8 @@ not the specification, which is still `docs/MODEL.md`. It was written on
 2026-11-11 from the paragraphs of `docs/MODEL.md` at commit `50af1a2e` that a
 clinician needs in order to trust or interpret a displayed value. It leaves out
 test descriptions, interface requirements, code names and decision history.
-Where the two disagree, `docs/MODEL.md` is right. Sources are cited as
-`docs/MODEL.md` cites them. Where only an author and year appear, the full
-citation is in the `sources` entry of the agent, patient or machine data file.
+Where the two disagree, `docs/MODEL.md` is right. Sources are cited by
+author and year, and § "References" at the end gives each one in full.
 
 ## 1. What the simulator is for
 
@@ -94,19 +93,17 @@ coefficient and the difference in partial pressure. The model does not
 represent diffusion-limited exchange, in which blood leaves before it has
 equilibrated. Jones and Rowland-Yeo call the two "perfusion rate-limited" and
 "permeability rate-limited", and give the first as typical of small lipophilic
-molecules, which the volatile agents are (Jones HM, Rowland-Yeo K. Basic
-concepts in physiologically based pharmacokinetic modeling in drug discovery
-and development. *CPT Pharmacometrics Syst Pharmacol* 2013;2:e63,
-doi:10.1038/psp.2013.41). Yasuda et al. assumed perfusion-limited delivery to
-the tissues when they fitted sevoflurane and isoflurane kinetics in volunteers
-(*Anesth Analg* 1991;72:316-24, p. 319).
+molecules, which the volatile agents are (Jones and Rowland-Yeo 2013). Yasuda
+et al. assumed perfusion-limited delivery to the tissues when they fitted
+sevoflurane and isoflurane kinetics in volunteers (Yasuda et al. 1991a,
+p. 319).
 
 **Arterial blood is not a separate compartment.** The model has no shunt and
 one alveolar compartment, so all arterial blood has equilibrated with alveolar
 gas. Arterial partial pressure, as a fraction, is defined as the alveolar
 fraction, $`F_a \equiv F_A`$, with no arterial volume or mixing delay. This is
 a simplification of the model. In patients, arterial partial pressure runs
-below end-tidal during administration, as Carpenter and Eger measured.
+below end-tidal during administration, as Carpenter and Eger (1989) measured.
 
 **Inspired gas is circuit gas.** The circuit is perfectly mixed, with no dead
 space and no separate inspiratory and expiratory limbs. The gas the patient
@@ -120,12 +117,8 @@ ratio the textbook curve of inhaled-anesthetic uptake.
 from the Gas Man simulator. In Gas Man, as here, each tissue group exchanges
 agent only with blood, at a perfusion-limited rate, and arterial partial
 pressure is displayed without being tracked as a compartment. Gas Man tracks
-alveolar gas and the vessel-rich, muscle and fat groups (Philip JH. Gas Man
-Version 4.1 Teaches Inhalation Kinetics. Society for Technology in Anesthesia,
-<https://www.stahq.org/files/7913/2743/1066/Abstract_57.pdf>; Do distribution
-volumes and clearances relate to tissue volumes and blood flows? A computer
-simulation. *BMC Anesthesiology*,
-<https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1508141/>).
+alveolar gas and the vessel-rich, muscle and fat groups (Philip, Gas Man
+Version 4.1; Hendrickx, Lemmens and Shafer 2006).
 
 **The three tissue groups are Eger's five-compartment model without its lung
 and intertissue-diffusion compartments.** Eger grouped the body's tissues by
@@ -135,8 +128,8 @@ contribution to uptake is considered insignificant" (Carpenter et al. 1986, as
 Hendrickx and De Wolf report it on p. 163). Eger and Saidman describe that
 group as "ligaments, tendons, cartilage, bone, and other avascular tissues",
 which "does not contribute to uptake because of its minimal or absent
-perfusion" (*Anesth Analg* 2005;100(4):1020-33, p. 1023). Gas Man also has
-exactly three tissue groups (Workbook, Model Parameters table, p. 168). The
+perfusion" (Eger and Saidman 2005, p. 1023). Gas Man also has exactly three
+tissue groups (Philip, Workbook, Model Parameters table, p. 168). The
 three groups here hold 6.0, 33.0 and 14.5 L, which is 53.5 L in a 70 kg
 patient. That total is the sum of three compartments and is not a body
 composition.
@@ -161,9 +154,17 @@ agent in blood and fat is dissolved, so the volume expresses an amount of
 agent and not gas present in the body. The condition matters only when an
 amount is converted into moles, mass or millilitres of liquid. It changes no
 concentration, because every equation works with fractions, physical volumes
-and partition coefficients, which are ratios. Body stores are physically at
-37 °C, where the molar volume is 25.450 L/mol, so converting an alveolar,
-venous or tissue amount at 20 °C overstates it by 5.8% (a factor of 1.058).
+and partition coefficients, which are ratios.
+
+The model physically has two conditions under that one label. The circuit
+volume is at ambient temperature and the fresh gas flow is a flow at the
+common gas outlet, so the circuit, delivered and exhausted amounts are at the
+stated condition and are exact there. The alveolar gas volume is at body
+temperature, and the partition coefficients behind the venous and tissue
+amounts were measured at 37 °C, where the molar volume is 25.450 L/mol. Those
+three stores hold 5.5% fewer moles than their 20 °C label implies, so
+converting an alveolar, venous or tissue amount at 20 °C overstates it by
+5.8% (a factor of 1.058).
 
 | Symbol | Meaning | Unit |
 | --- | --- | --- |
@@ -194,12 +195,10 @@ The symbols for the inspired fraction, $`F_I`$, and a tissue group's fraction,
 $`F_i`$, differ only in case.
 
 Symbols and the gas-phase cascade $`F_D \rightarrow F_I \rightarrow F_A`$
-follow Hendrickx and De Wolf (pp. 161-162). They attribute the $`F_D - F_I`$
-gradient to rebreathing (p. 169) and the $`F_I - F_A`$ gradient to uptake
-(p. 171), and describe the teaching role of the $`F_A/F_I`$ curve (p. 167)
-(Hendrickx JFA, De Wolf A. Special aspects of pharmacokinetics of inhalation
-anesthesia. In: Schüttler J, Schwilden H, eds. *Modern Anesthetics.* Handbook
-of Experimental Pharmacology 182. Springer, 2008:159-186).
+follow Hendrickx and De Wolf (2008, pp. 161-162). They attribute the
+$`F_D - F_I`$ gradient to rebreathing (p. 169) and the $`F_I - F_A`$ gradient
+to uptake (p. 171), and describe the teaching role of the $`F_A/F_I`$ curve (p.
+167).
 
 ## 4. Assumptions
 
@@ -217,7 +216,7 @@ Every value the model computes rests on these assumptions.
 - The alveolar gas volume is constant. Uptake draws agent out of the alveolar
   gas without reducing its volume, and no inspired flow replaces the gas that
   blood absorbs. This excludes nitrous oxide, simultaneous gases, and the
-  concentration and second-gas effects (§ 9.1).
+  concentration and second-gas effects (§ 10.2).
 - Carrier gases do not affect agent kinetics.
 - The breathing system is a semi-closed circle whose surplus gas valve is
   open. Exhaust outflow equals fresh-gas inflow at every instant, so one fresh
@@ -227,10 +226,10 @@ Every value the model computes rests on these assumptions.
 - Temperature is constant. Every stored gas volume is at 20 °C and 760 mmHg,
   dry, and no equation converts between ambient and body conditions.
 - Inspired gas reaches the alveoli undiluted by water vapor, because the
-  modeled alveoli hold no water (§ 9.12).
+  modeled alveoli hold no water (§ 10.12).
 - Ambient pressure is 760 mmHg, so the model applies only at sea level. More
   than anything else in the model, the vaporizer control depends on this
-  (§ 9.13).
+  (§ 10.13).
 
 ## 5. Equations
 
@@ -244,10 +243,10 @@ $$
 
 so the three groups together receive the whole cardiac output. The fractions
 must sum to 1 within one part in a million million. This is the model's whole
-representation of perfusion, and it comes from one assumption in Mapleson's
-Appendix 1: "it has been thought legitimate to assume that **the blood flow to
-any region is a fixed fraction of the total cardiac output** from 20 to 70
-years of age."
+representation of perfusion, and it comes from one assumption in Appendix 1 of
+Mapleson (1963): "it has been thought legitimate to assume that **the blood
+flow to any region is a fixed fraction of the total cardiac output** from 20 to
+70 years of age."
 
 ### 5.2 How much agent each compartment holds
 
@@ -485,22 +484,22 @@ partition coefficient the two print is the same.
 | MAC-awake (fraction of 1 MAC) | 0.34 ± 0.05 | 0.31 ± 0.05 | 0.36 ± 0.063 | Katoh et al. 1993 for sevoflurane and isoflurane; Chortkoff et al. 1995 for desflurane (tier 1) |
 | Maximum delivered concentration (percent) | 8.0 | 5.0 | 18.0 | Dräger Vapor 2000 specification; Kelly and Kong 2011; Johnston et al. 1994 on the Tec 6 (tier 1) |
 | Molar mass (g/mol) | 200.05 | 184.49 | 168.04 | ChEMBL formula masses (tier 2, because a molar mass is computed from the formula) |
-| Liquid density at 20 °C (g/mL, mean ± SD) | 1.5203 ± 0.0008 | 1.5019 ± 0.0006 | 1.4651 ± 0.0004 | Laster, Fang and Eger. *Anesth Analg* 1994;78(6):1152-3 (tier 1) |
+| Liquid density at 20 °C (g/mL, mean ± SD) | 1.5203 ± 0.0008 | 1.5019 ± 0.0006 | 1.4651 ± 0.0004 | Laster, Fang and Eger 1994 (tier 1) |
 
 **Blood:gas.** Each agent's data file cites primary measurements beside the
 stored tier-3 value and marks them as not adopted. Against the older
-measurements (Strum and Eger for sevoflurane, Lerman et al. 1984 for
-isoflurane, Eger for desflurane) the stored values are 5.2%, 11.0% and 0.9%
-low. Esper et al. 2015 measured all three in 120 surgical patients at 37 °C.
-Only its abstract was read. Against its means the stored values are 12.2%,
+measurements (Strum and Eger 1987 for sevoflurane, Lerman et al. 1984 for
+isoflurane, Eger 1987 for desflurane) the stored values are 5.2%, 11.0% and
+0.9% low. Esper et al. 2015 measured all three in 120 surgical patients at 37
+°C. Only its abstract was read. Against its means the stored values are 12.2%,
 10.3% and 26.3% low. Desflurane's gap is the widest in the project, about 3.8
-of Esper's standard deviations. Weber et al. note in their own Table 1 that
-Gas Man's blood/gas coefficients "differ from them observed by Esper et al."
-The Gas Man values were kept because all twelve partition coefficients then
-come from one table, so the three agents can be compared directly.
+of Esper's standard deviations. Weber et al. note in their own Table 1 that Gas
+Man's blood/gas coefficients "differ from them observed by Esper et al." The
+Gas Man values were kept because all twelve partition coefficients then come
+from one table, so the three agents can be compared directly.
 
 **Tissue:gas.** All nine coefficients are Gas Man's figures for the human
-measurements of Yasuda, Targ and Eger (*Anesth Analg* 1989;69(3):370-3). That
+measurements of Yasuda, Targ and Eger (1989). That
 study measured all three agents in the same specimens, in one laboratory with
 one technique, so a systematic error in the technique affects every agent
 alike. The specimens were from 14 autopsies, 6 to 10 per tissue, with a mean
@@ -535,33 +534,33 @@ run opens at 1 MAC, and it is the divisor for every value shown in MAC
 multiples. The simulator refuses any agent whose own vaporizer cannot deliver
 its 1 MAC. § 8.2 gives what the stored MAC costs the display.
 
-**MAC-awake.** Katoh et al. determined sevoflurane and isoflurane MAC-awake by
-a slow, equilibrated washout and by a fast one. Slow washout gave 0.34 of MAC
-for sevoflurane and 0.31 for isoflurane, against 0.22 for both by fast
-washout. Katoh attributes the disagreement to end-tidal-to-arterial and
+**MAC-awake.** Katoh et al. (1993) determined sevoflurane and isoflurane
+MAC-awake by a slow, equilibrated washout and by a fast one. Slow washout gave
+0.34 of MAC for sevoflurane and 0.31 for isoflurane, against 0.22 for both by
+fast washout. Katoh attributes the disagreement to end-tidal-to-arterial and
 arterial-to-cerebral differences, which this model represents as the gap
 between the alveolar and vessel-rich traces. The stored values are the
-slow-washout ones, and they belong against the vessel-rich trace. Katoh's
-brain concentration at awakening during fast washout (0.30 and 0.26 of MAC
-with arterial pressure set equal to end-tidal, 0.34 and 0.30 with a correction
-for 20% dead-space gas) was calculated from a one-compartment brain model and
-was not measured. So the stored values, and the choice of the vessel-rich
-trace, rest on a modelled estimate that agrees with an equilibrated
-measurement.
+slow-washout ones, and they belong against the vessel-rich trace. Katoh's brain
+concentration at awakening during fast washout (0.30 and 0.26 of MAC with
+arterial pressure set equal to end-tidal, 0.34 and 0.30 with a correction for
+20% dead-space gas) was calculated from a one-compartment brain model and was
+not measured. So the stored values, and the choice of the vessel-rich trace,
+rest on a modelled estimate that agrees with an equilibrated measurement.
 
 The three agents' fractions were not determined by one method. Katoh's
-slow-washout arm is descending. Chortkoff and Song et al. determined
+slow-washout arm is descending. Chortkoff et al. and Song et al. (2005)
+determined
 desflurane MAC-awake by ascending stepwise equilibration. All are equilibrated
 determinations, so all three belong against the vessel-rich trace, but each
 agent keeps its own value.
 
 MAC-awake is stored as a fraction of MAC and never as a percent, because a
 published percent is tied to the MAC of its own population. Chortkoff's
-desflurane MAC-awake of 2.60% is 36% of a MAC of about 7.25%, Rampil's figure
-for ages 18-30. Dividing 2.60% by the stored 6.0% (Rampil's figure for ages
-31-65) would give 0.433, and the band would be drawn 20% too high. At 0.36 of
-6.0% the band's centre is 2.16%, and Song et al. measured 2.17% in a
-population that Rampil's 31-65 year MAC describes.
+desflurane MAC-awake of 2.60% is 36% of a MAC of about 7.25%, the figure of
+Rampil et al. (1991) for ages 18-30. Dividing 2.60% by the stored 6.0%
+(Rampil's figure for ages 31-65) would give 0.433, and the band would be drawn
+20% too high. At 0.36 of 6.0% the band's centre is 2.16%, and Song et al.
+measured 2.17% in a population that Rampil's 31-65 year MAC describes.
 
 ### 6.3 The reference adult
 
@@ -582,31 +581,32 @@ population that Rampil's 31-65 year MAC describes.
 Ten of the eleven come from the Gas Man default patient (tier 3). The venous
 pool is the eleventh.
 
-**The reference patient adopts no primary source.** The longest chain behind
-it runs Gas Man (tier 3) to Lowe and Ernst (tier 2) to ICRP Committee II
+**The reference patient adopts no primary source.** The longest chain behind it
+runs Gas Man (tier 3) to Lowe and Ernst 1981 (tier 2) to ICRP Committee II 1960
 (tier 2), and contains no measurement. The volumes and flows are the source's
 absolute values for a 70 kg adult. They are not scaled from the weight, which
 no equation uses, so changing the weight alone would change nothing.
 
 **Five parameters have a measurement cited beside them and not adopted:**
 
-- *Alveolar gas volume.* Hudgel and Devadatta measured FRC by helium dilution
-  in ten healthy awake men. Read with Wahba's review of the roughly 20 percent
-  reduction under general anesthesia, that brackets the stored volume.
-- *Cardiac output.* Cattermole et al. measured a median of 5.51 L/min in 686
-  subjects of 50 to 75 kg. The stored 5.0 L/min is 9.3 percent below it. Lowe
-  and Ernst's relation, $`0.2M^{3/4}`$ for body mass $`M`$ in kg, gives
+- *Alveolar gas volume.* Hudgel and Devadatta (1984) measured FRC by helium
+  dilution in ten healthy awake men. Read with Wahba's (1991) review of the
+  roughly 20 percent reduction under general anesthesia, that brackets the
+  stored volume.
+- *Cardiac output.* Cattermole et al. (2017) measured a median of 5.51 L/min in
+  686 subjects of 50 to 75 kg. The stored 5.0 L/min is 9.3 percent below it.
+  Lowe and Ernst's relation, $`0.2M^{3/4}`$ for body mass $`M`$ in kg, gives
   4.84 L/min at 70 kg, and is derived and not measured.
-- *Muscle volume.* Janssen et al.'s whole-body MRI gives a skeletal-muscle
-  mass that appears to agree with the stored volume. The agreement is a
-  coincidence, because those men averaged about 86 kg.
-- *Fat flow fraction.* Heinonen et al.'s PET measurement of resting adipose
-  perfusion is about half of what the stored fraction implies. This is the
-  largest of the five gaps, and it changes the shape of a displayed curve
-  (§ 9.8).
-- *Muscle flow fraction.* Frayn and Karpe's review supplies the comparison. It
-  shows that the fat gap concerns the absolute flow and not the muscle-to-fat
-  ratio, which the stored fractions get right.
+- *Muscle volume.* Janssen et al.'s (2000) whole-body MRI gives a
+  skeletal-muscle mass that appears to agree with the stored volume. The
+  agreement is a coincidence, because those men averaged about 86 kg.
+- *Fat flow fraction.* Heinonen et al.'s (2012) PET measurement of resting
+  adipose perfusion is about half of what the stored fraction implies. This is
+  the largest of the five gaps, and it changes the shape of a displayed curve
+  (§ 10.8).
+- *Muscle flow fraction.* Frayn and Karpe's (2014) review supplies the
+  comparison. It shows that the fat gap concerns the absolute flow and not the
+  muscle-to-fat ratio, which the stored fractions get right.
 
 **The other six have no comparison.** The weight is a label. The default
 alveolar ventilation is Gas Man's program default. The vessel-rich volume and
@@ -615,13 +615,13 @@ measurement exists of what the model means by them. The venous pool is a
 well-mixed volume and is not the physiologic venous blood volume, which is
 several times larger.
 
-**Venous pool, 1.222 L.** Davis and Mapleson (*Br J Anaesth* 1981;53:399-405)
-state on p. 400 that for models of inhaled anesthetics the venous pools may be
-combined, "in which case it would be marginally more accurate to make ... the
-combined venous pool 1222 ml (23.6%)" of the blood volume of a 70 kg standard
-man. They derive it from the ICRP (1975) blood distribution, so it is tier 2.
-It replaced Gas Man's program default of 1.0 L. At 5.0 L/min of cardiac
-output, the mixed-venous time constant is 14.7 s, against 12.0 s at 1.0 L.
+**Venous pool, 1.222 L.** Davis and Mapleson (1981) state on p. 400 that for
+models of inhaled anesthetics the venous pools may be combined, "in which case
+it would be marginally more accurate to make ... the combined venous pool 1222
+ml (23.6%)" of the blood volume of a 70 kg standard man. They derive it from
+the ICRP (1975) blood distribution, so it is tier 2. It replaced Gas Man's
+program default of 1.0 L. At 5.0 L/min of cardiac output, the mixed-venous time
+constant is 14.7 s, against 12.0 s at 1.0 L.
 
 ### 6.4 The breathing circuit
 
@@ -641,17 +641,18 @@ a published Gas Man trajectory has to set the volume to 8.0 L. The 6.0 L is an
 assembled total, and no source divides it between apparatus and patient
 circuit.
 
-Machines in current use hold less. Shin et al. print apparatus volumes of
-4.7 L for a Dräger Primus, 2.1 L for a Perseus A500 and 2.0 L for a Zeus IE.
-With the 1.2 L patient circuit they used, the assembled totals are 5.9, 3.3
-and 3.2 L, without the 3 L reservoir bag. At the default flow the circuit time
+Machines in current use hold less. Shin et al. (2017) print apparatus volumes
+of 4.7 L for a Dräger Primus, 2.1 L for a Perseus A500 and 2.0 L for a Zeus IE.
+With the 1.2 L patient circuit they used, the assembled totals are 5.9, 3.3 and
+3.2 L, without the 3 L reservoir bag. At the default flow the circuit time
 constant therefore runs from 89 s to about 50 s, a factor of about 1.8 across
 machines that a learner could meet in one department.
 
-Volume is not the whole difference between machines. Fukuda et al. moved only
+Volume is not the whole difference between machines. Fukuda et al. (2006)
+moved only
 the fresh gas inlet, with the machine and its volume fixed, and the
 inspired-to-delivered ratio of isoflurane and sevoflurane rose significantly
-at low flow (*J Anesth* 2006;20(4):268-73). That ratio, $`F_I/F_D`$, is what
+at low flow. That ratio, $`F_I/F_D`$, is what
 the circuit equation computes, and the model does not represent the layout of
 a machine's internal gas paths.
 
@@ -752,15 +753,13 @@ Two omissions set the limit, and both are negligible over a case and not over
 days:
 
 - **Metabolism.** Sevoflurane constrains the limit, because 2% to 5% of the
-  absorbed dose is metabolized, against far less for isoflurane and
-  desflurane. Its metabolism begins immediately. Kharasch's review reports
-  these figures and finds that metabolism "does not contribute to the
-  termination of clinical drug effect" (Kharasch ED. Biotransformation of
-  sevoflurane. *Anesth Analg* 1995;81(6 Suppl):S27-38, PMID 7486145,
-  doi:10.1097/00000539-199512001-00005). That holds while ventilation and
-  perfusion dominate the trace, and becomes progressively false once only the
-  slow tail is still moving.
-- **The fat group's flow** (§ 9.8), which acts directly on the slow tail of
+  absorbed dose is metabolized, against far less for isoflurane and desflurane.
+  Its metabolism begins immediately. Kharasch's review reports these figures
+  and finds that metabolism "does not contribute to the termination of clinical
+  drug effect" (Kharasch 1995). That holds while ventilation and perfusion
+  dominate the trace, and becomes progressively false once only the slow tail
+  is still moving.
+- **The fat group's flow** (§ 10.8), which acts directly on the slow tail of
   washout.
 
 The 24 hours are not inside the exposure range over which sevoflurane's
@@ -772,7 +771,7 @@ maximum reaches at most about 96 MAC-hours. Past the measured range, even the
 size of the omission is unmeasured.
 
 Within the 24 hours, the washout tail already lacks its largest measured term
-(§ 9.9).
+(§ 10.9).
 
 **Volatile sedation in intensive care is out of scope.** It runs for days
 through an anesthetic-conserving device, which is the regime in which this
@@ -936,9 +935,9 @@ taught from this curve, so the plot can be laid beside a published figure.
   flow changes mid-run, a rise across the change shows the setting moving and
   does not show uptake slowing. The plot carries marks where each setting
   changed.
-- The ratio is shown to two decimals. Yasuda et al. report 0.850, 0.733 and
-  0.90 with standard deviations of 0.018, 0.027 and 0.01, so a third decimal
-  would be finer than that spread.
+- The ratio is shown to two decimals. Yasuda et al. (1991a, 1991b) report
+  0.850, 0.733 and 0.90 with standard deviations of 0.018, 0.027 and 0.01, so a
+  third decimal would be finer than that spread.
 
 ### 8.5 Precision
 
@@ -1021,13 +1020,9 @@ errors.** A pass does rule out a model whose structure is wrong.
 ### 9.1 Wash-in at 30 minutes: agrees
 
 Yasuda et al. published $`F_A/F_I`$ at 30 minutes for all three agents in two
-volunteer studies (Yasuda N, Lockhart SH, Eger EI 2nd, et al. Comparison of
-kinetics of sevoflurane and isoflurane in humans. *Anesth Analg*
-1991;72(3):316-24, PMID 1994760, doi:10.1213/00000539-199103000-00007; Yasuda
-N, Lockhart SH, Eger EI 2nd, et al. Kinetics of desflurane, isoflurane, and
-halothane in humans. *Anesthesiology* 1991;74(3):489-98, PMID 2001028,
-doi:10.1097/00000542-199103000-00017). The figures are mean ± SD, read from
-the two abstracts.
+volunteer studies: Yasuda et al. 1991a, in *Anesth Analg*, and Yasuda et al.
+1991b, in *Anesthesiology*. The sections below name each paper by its journal.
+The figures are mean ± SD, read from the two abstracts.
 
 | Agent | $`F_A/F_I`$ at 30 min | Cohort | Published $`F_I`$ | Source |
 | --- | --- | --- | --- | --- |
@@ -1079,7 +1074,7 @@ Esper et al.'s 0.57 ± 0.04 does. But the 30-minute ratio stays within one SD
 at every flow only while blood:gas is about 0.46 or lower. At 0.57 it falls
 outside at every flow, from −1.35 SD at 10 L/min to −2.61 SD at 1 L/min. The
 vessel-rich and muscle coefficients cannot close the gap at any value within
-Yasuda et al. 1989's measurements (brain 0.54 ± 0.02, muscle 0.94 ± 0.35).
+Yasuda, Targ and Eger's measurements (brain 0.54 ± 0.02, muscle 0.94 ± 0.35).
 
 ### 9.3 Elimination at five minutes: does not agree
 
@@ -1179,7 +1174,7 @@ curves fitted to the volunteers' washout, the shipped model's alveolar tail:
   desflurane.
 
 In every fitted curve, a fourth compartment that the model lacks carries the
-largest term over most of the middle stretch (§ 9.9). Until the seventh hour
+largest term over most of the middle stretch (§ 10.9). Until the seventh hour
 the rebreathing circuit and the muscle group's slow return hold the shipped
 tail above the curve. With the rebreathing removed, the model's tissue return
 alone is a third to a half of the mean curve between hours 8 and 13.
@@ -1210,18 +1205,15 @@ shortfall.
 
 The model's parameters and compartment structure descend from Gas Man. A
 prospective study measured how closely Gas Man tracks end-expired sevoflurane
-in patients (Candries E, De Wolf AM, Hendrickx JFA. Prospective validation of
-Gas Man simulations of sevoflurane in O2/air over a wide fresh gas flow range.
-*J Clin Monit Comput* 2022;36(6):1881-1890, PMID 35318567,
-doi:10.1007/s10877-022-00842-0; abstract read). Twenty-eight ASA I-II adults
-having gynecologic or urologic surgery were maintained on sevoflurane in
-O₂/air, fourteen on a Dräger Zeus and fourteen on a Getinge FLOW-i. Fresh gas
-flow was re-randomised every fifteen minutes over 0.2 to 6 L/min. Each case
-was re-run in Gas Man with the patient's weight and the same flows, vaporizer
-settings and minute ventilation, and with cardiac output at the Gas Man
-default. Over the whole hour Gas Man tracked both workstations to within 10%
-on both measures, with a drift of −0.96%/h [−1.14, −0.88] on the FLOW-i and
-−0.57%/h [−0.85, −0.16] on the Zeus. By phase:
+in patients (Candries, De Wolf and Hendrickx 2022; abstract read). Twenty-eight
+ASA I-II adults having gynecologic or urologic surgery were maintained on
+sevoflurane in O₂/air, fourteen on a Dräger Zeus and fourteen on a Getinge
+FLOW-i. Fresh gas flow was re-randomised every fifteen minutes over 0.2 to 6
+L/min. Each case was re-run in Gas Man with the patient's weight and the same
+flows, vaporizer settings and minute ventilation, and with cardiac output at
+the Gas Man default. Over the whole hour Gas Man tracked both workstations to
+within 10% on both measures, with a drift of −0.96%/h [−1.14, −0.88] on the
+FLOW-i and −0.57%/h [−0.85, −0.16] on the Zeus. By phase:
 
 | Workstation | Phase | Median performance error | Median absolute performance error |
 | --- | --- | --- | --- |
@@ -1312,7 +1304,8 @@ removes: the oxygen consumed, the vapor taken up, and any nitrous oxide. The
 gap is an absolute rate, so it is small where the flow is large and is the
 whole of the model's spill where the flow is small. For the reference adult it
 is on the order of 0.3 L/min early in a case. About 240 ml/min of that is
-oxygen, from the $`10M^{3/4}`$ relation on page 17 of Lowe and Ernst, which is
+oxygen, from the $`10M^{3/4}`$ relation on page 17 of Lowe and Ernst (1981),
+which is
 Brody's interspecies metabolic relation and not a measurement in an
 anesthetized adult. The rest is the 65 ml/min of sevoflurane vapor that the
 model computes early in induction. At the opening fresh gas flow of 4.0 L/min,
@@ -1322,10 +1315,7 @@ it is half or more.
 **Closed-circuit technique is not modeled, nor is a machine mode that shuts
 the surplus gas valve.** Meyer et al. describe one: "In the automatic
 controlled mode of the Zeus anesthesia machine, the surplus gas valve can be
-closed to prevent any loss of gas volume" (Meyer J-U, Kullik G, Wruck N, Kück
-K, Manigel J. Advanced technologies and devices for inhalational anesthetic
-drug dosing. In: Schüttler J, Schwilden H, eds. *Modern Anesthetics.* Handbook
-of Experimental Pharmacology vol. 182. Berlin: Springer; 2008:451-470). With
+closed to prevent any loss of gas volume" (Meyer et al. 2008). With
 the valve shut, two things change that the model cannot follow. The agent that
 the model counts as exhausted is instead carried into the alveoli and kept.
 And the fresh gas flow stops being a setting and becomes the patient's total
@@ -1333,8 +1323,8 @@ uptake, which the model cannot compute because it does not track oxygen.
 
 ### 10.4 Absorption by the circuit
 
-The modeled circuit's walls hold no agent. Targ, Yasuda and Eger measured what
-a real circuit holds (*Anesth Analg* 1989;69(2):218-25, PMID 2764290). Their
+The modeled circuit's walls hold no agent. Targ, Yasuda and Eger (1989)
+measured what a real circuit holds. Their
 Table 1 gives plastic/gas and rubber/gas partition coefficients after 6 to 9
 weeks' equilibration:
 
@@ -1393,14 +1383,36 @@ it.
 
 ### 10.8 The fat group's blood flow
 
-The stored fat flow is about twice Heinonen et al.'s PET measurement and
-matches the Yasuda washout fits. Neither source settles it. The fat group's
-time constant is long compared with any simulated case whichever is right, so
-no displayed curve reaches a wrong endpoint. What moves with the flow is how
-much agent fat has taken up by the end of a case, which sets the slow tail of
-washout, and it moves by up to about a factor of two. **A learner who reads
-the fat trace as a physiologic prediction should treat its fat loading as
-uncertain by about that much, in an unsettled direction.**
+The stored fat flow fraction implies 2.07 mL of blood per 100 mL of fat per
+minute: 0.06 of the 5.0 L/min default cardiac output, flowing into 14.5 L. Two
+human sources disagree about which way that errs.
+
+- Heinonen et al. (2012) measured resting subcutaneous adipose perfusion in
+  the thigh of six healthy young women by PET. Their figure is close to half
+  of what the stored fraction implies.
+- The two Yasuda 1991 papers fitted five compartments to each volunteer's
+  washout and read the slowest as fat. They estimate its flow as 2.4 ± 0.6 and
+  2.2 ± 0.5 mL per 100 mL per minute for sevoflurane and isoflurane (*Anesth
+  Analg* Table 5, p. 322), and 2.1 ± 0.4 and 2.2 ± 0.2 for desflurane and
+  isoflurane (*Anesthesiology* Table 5, p. 496), at the fat:blood coefficients
+  of Yasuda, Targ and Eger (1989). At this model's stored fat solubilities,
+  their fitted time constants give 2.5, 2.5, 2.3 and 2.6.
+
+Read as evidence about the fat group's flow, the PET measurement puts the
+stored figure at about twice the truth, and the washout fits put it at or a
+little below the truth. Neither settles it. The PET figure is one depot in one
+small cohort, awake and at rest, set against a whole-body compartment whose
+depots differ (Frayn and Karpe 2014). The fitted compartment is fat only by
+the authors' assignment. Its volume is a third to two fifths of the fat this
+model stores, and the analysis "only accounts for about 25 L of the body
+volume" (*Anesth Analg* p. 323). The PET measurement is not adopted.
+
+The fat group's time constant is long compared with any simulated case
+whichever is right, so no displayed curve reaches a wrong endpoint. What moves
+with the flow is how much agent fat has taken up by the end of a case, which
+sets the slow tail of washout, and it moves by up to about a factor of two. **A
+learner who reads the fat trace as a physiologic prediction should treat its
+fat loading as uncertain by about that much, in an unsettled direction.**
 
 ### 10.9 Intertissue diffusion: the missing fourth compartment
 
@@ -1410,11 +1422,7 @@ may occur between fat and muscle; this effect has been ignored in the Gas Man
 model" (Workbook, Appendix B, p. 170). Carpenter et al. needed a fifth
 compartment to fit human washout in 27 of 36 data sets, with a time constant
 that "lies between the time constants predicted for muscle and fat"
-(Carpenter RL, Eger EI 2nd, Johnson BH, Unadkat JD, Sheiner LB.
-Pharmacokinetics of inhaled anesthetics in humans: measurements during and
-after the simultaneous administration of enflurane, halothane, isoflurane,
-methoxyflurane, and nitrous oxide. *Anesth Analg* 1986;65(6):575-82,
-PMID 3706798). Both Yasuda papers found five compartments
+(Carpenter et al. 1986). Both Yasuda papers found five compartments
 in every washout they fitted, and interpreted the fourth as "a layer of fat
 that receives anesthetic from adjacent vessel-rich organs by intertissue
 diffusion" (*Anesth Analg* p. 320, *Anesthesiology* p. 493). Their time
@@ -1536,27 +1544,183 @@ volumes percent while the delivered partial pressure is approximately
 preserved, and the dial needs no altitude correction. Boumphrey and Marshall
 give $`\%_1 = \%_\mathrm{cal} \times P_\mathrm{cal} / P_1`$: isoflurane
 dialled to 2% at 101.3 kPa delivers 4.05% at 50 kPa, which is 2.026 kPa either
-way (Boumphrey S, Marshall N. Understanding vaporizers. *Contin Educ Anaesth
-Crit Care Pain* 2011;11:199-203).
+way (Boumphrey and Marshall 2011).
 
 **Desflurane comes from a gas-vapor blender** (Tec 6, Tec 6 Plus). Desflurane
 boils at 22.8 °C, so the sump is kept at about 39 °C and about 1460 mmHg, and
-pure vapor is injected into the fresh gas in the ratio that the dial sets.
-"The pressure in the vapor circuit is electronically regulated to equal the
-pressure in the fresh gas circuit… vaporizer output is constant because the
-amount of flow through each circuit is proportional" (Andrews JJ, Johnston RV.
-The new Tec6 desflurane vaporizer. *Anesth Analg* 1993;76:1338-1341). Output
+pure vapor is injected into the fresh gas in the ratio that the dial sets. "The
+pressure in the vapor circuit is electronically regulated to equal the pressure
+in the fresh gas circuit… vaporizer output is constant because the amount of
+flow through each circuit is proportional" (Andrews and Johnston 1993). Output
 is a constant volumes percent, so the delivered partial pressure falls with
-ambient pressure. Datex-Ohmeda states: "Decreased atmospheric pressure, with
-altitude, does not significantly affect the concentration of agent delivered
-(V/V), but decreases the partial pressure of the agent in the ratio of the
-atmospheric pressure to the calibrated pressure of 760 mm Hg. To compensate
-for the reduction of vapor pressure output at altitude, the rotary valve must
-be advanced to maintain the required agent partial pressure."
+ambient pressure. Datex-Ohmeda's specification sheet for the Tec 6 Plus states:
+"Decreased atmospheric pressure, with altitude, does not significantly affect
+the concentration of agent delivered (V/V), but decreases the partial pressure
+of the agent in the ratio of the atmospheric pressure to the calibrated
+pressure of 760 mm Hg. To compensate for the reduction of vapor pressure output
+at altitude, the rotary valve must be advanced to maintain the required agent
+partial pressure."
 
 **The MAC that the display divides by is a sea-level percent too.** 1 MAC is a
 partial pressure quoted as a percentage of one atmosphere, so at reduced
 ambient pressure the percentage needed to reach it rises while the partial
 pressure does not. James and White proposed MAPP, minimum alveolar partial
-pressure, on this ground (James MF, White JF. Anesthetic considerations at
-moderate altitude. *Anesth Analg* 1984;63:1097-1105).
+pressure, on this ground (James and White 1984).
+
+## References
+
+Two entries carry a suffix that the text uses: Yasuda et al. 1991a and 1991b.
+Four sources appear in the text only as another source cites them, and have no
+entry: the ICRP (1975) blood distribution (in Davis and Mapleson 1981), Brody's
+metabolic relation (in Lowe and Ernst 1981), and Fiserova-Bergerova et al.'s
+and Lowe's tissue coefficients (in Yasuda, Targ and Eger 1989, p. 373).
+
+- Andrews JJ, Johnston RV. The new Tec6 desflurane vaporizer. *Anesth Analg*
+  1993;76:1338-1341.
+- Boumphrey S, Marshall N. Understanding vaporizers. *Contin Educ Anaesth Crit
+  Care Pain* 2011;11:199-203.
+- Candries E, De Wolf AM, Hendrickx JFA. Prospective validation of Gas Man
+  simulations of sevoflurane in O2/air over a wide fresh gas flow range.
+  *J Clin Monit Comput* 2022;36(6):1881-1890. PMID 35318567,
+  doi:10.1007/s10877-022-00842-0.
+- Carpenter RL, Eger EI 2nd. Alveolar-to-arterial-to-venous anesthetic partial
+  pressure differences in humans. *Anesthesiology* 1989;70(4):630-5.
+  PMID 2930000.
+- Carpenter RL, Eger EI 2nd, Johnson BH, Unadkat JD, Sheiner LB.
+  Pharmacokinetics of inhaled anesthetics in humans: measurements during and
+  after the simultaneous administration of enflurane, halothane, isoflurane,
+  methoxyflurane, and nitrous oxide. *Anesth Analg* 1986;65(6):575-82.
+  PMID 3706798.
+- Cattermole GN, Leung PYM, Ho GYL, Lau PWS, Chan CPY, Chan SSW, Smith BE,
+  Graham CA, Rainer TH. The normal ranges of cardiovascular parameters
+  measured using the ultrasonic cardiac output monitor. *Physiol Rep*
+  2017;5(6):e13195. doi:10.14814/phy2.13195.
+- ChEMBL database, release 34 (EMBL-EBI). Compounds CHEMBL1200694
+  (sevoflurane, C4H3F7O), CHEMBL1256 (isoflurane, C3H2ClF5O) and CHEMBL1200733
+  (desflurane, C3H2F6O).
+- Chortkoff BS, Eger EI 2nd, Crankshaw DP, Gonsowski CT, Dutton RC, Ionescu P.
+  Concentrations of desflurane and propofol that suppress response to command
+  in humans. *Anesth Analg* 1995;81(4):737-743.
+  doi:10.1097/00000539-199510000-00014.
+- Datex-Ohmeda. *Tec 6 Plus Vaporizer* specification sheet AN3307-A/1100,
+  © 2000 Datex-Ohmeda Division, Instrumentarium Corp.
+- Davis NR, Mapleson WW. Structure and quantification of a physiological model
+  of the distribution of injected agents and inhaled anaesthetics.
+  *Br J Anaesth* 1981;53(4):399-405. doi:10.1093/bja/53.4.399.
+- De Wolf AM, Van Zundert TC, De Cooman S, Hendrickx JF. Theoretical effect of
+  hyperventilation on speed of recovery and risk of rehypnotization following
+  recovery - a Gas Man simulation. *BMC Anesthesiol* 2012;12:22.
+  doi:10.1186/1471-2253-12-22.
+- Dräger Vapor 2000 sevoflurane vaporizer specification: calibrated
+  concentration range 0.2-8%.
+  <https://zurichcorp.com/product/drager-vapor-2000-sevoflurane-precise-anesthesia-vaporization-for-optimal-patient-care/>
+- Eger EI 2nd. Partition coefficients of I-653 in human blood, saline, and
+  olive oil. *Anesth Analg* 1987;66(10):971-973. PMID 3631593.
+- Eger EI 2nd, Saidman LJ. Illustrations of inhaled anesthetic uptake,
+  including intertissue diffusion to and from fat. *Anesth Analg*
+  2005;100(4):1020-33. PMID 15781517,
+  doi:10.1213/01.ANE.0000146961.70058.A1.
+- Esper T, Wehner M, Meinecke C-D, Rueffert H. Blood/Gas partition
+  coefficients for isoflurane, sevoflurane, and desflurane in a clinically
+  relevant patient population. *Anesth Analg* 2015;120(1):45-50.
+  doi:10.1213/ANE.0000000000000516.
+- Frayn KN, Karpe F. Regulation of human subcutaneous adipose tissue blood
+  flow. *Int J Obes* 2014;38(8):1019-1026. doi:10.1038/ijo.2013.200.
+- Fukuda T, Fukunaga A, Toyooka H. Site of fresh gas inlet and ratios of the
+  delivered fraction and inspired fraction of inhaled isoflurane and
+  sevoflurane in low-flow anesthesia. *J Anesth* 2006;20(4):268-273.
+  PMID 17072690, doi:10.1007/s00540-006-0417-6.
+- Heinonen I, Bucci M, Kemppainen J, Knuuti J, Nuutila P, Boushel R,
+  Kalliokoski KK. Regulation of subcutaneous adipose tissue blood flow during
+  exercise in humans. *J Appl Physiol* 2012;112(6):1059-1063.
+  doi:10.1152/japplphysiol.00732.2011.
+- Hendrickx JFA, De Wolf A. Special aspects of pharmacokinetics of inhalation
+  anesthesia. In: Schüttler J, Schwilden H, eds. *Modern Anesthetics.*
+  Handbook of Experimental Pharmacology 182. Springer, 2008:159-186.
+- Hendrickx JFA, Lemmens HJM, Shafer SL. Do distribution volumes and
+  clearances relate to tissue volumes and blood flows? A computer simulation.
+  *BMC Anesthesiol* 2006;6:7. PMID 16772041, doi:10.1186/1471-2253-6-7.
+- Hudgel DW, Devadatta P. Decrease in functional residual capacity during
+  sleep in normal humans. *J Appl Physiol* 1984;57(5):1319-1322.
+  doi:10.1152/jappl.1984.57.5.1319.
+- International Commission on Radiological Protection. Report of Committee II
+  on Permissible Dose for Internal Radiation (1959). Recommendations of the
+  International Commission on Radiological Protection. Oxford: Pergamon Press;
+  1960.
+- James MF, White JF. Anesthetic considerations at moderate altitude.
+  *Anesth Analg* 1984;63:1097-1105.
+- Janssen I, Heymsfield SB, Wang ZM, Ross R. Skeletal muscle mass and
+  distribution in 468 men and women aged 18-88 yr. *J Appl Physiol*
+  2000;89(1):81-88. doi:10.1152/jappl.2000.89.1.81.
+- Johnston RV, Andrews JJ, Deyo DJ, Trahan LA, Savrick MD, Grady JJ, Prough
+  DS. The effects of carrier gas composition on the performance of the Tec 6
+  desflurane vaporizer. *Anesth Analg* 1994;79(3):548-552. PMID 8067562.
+- Jones HM, Rowland-Yeo K. Basic concepts in physiologically based
+  pharmacokinetic modeling in drug discovery and development.
+  *CPT Pharmacometrics Syst Pharmacol* 2013;2:e63. doi:10.1038/psp.2013.41.
+- Katoh T, Suguro Y, Kimura T, Ikeda K. Cerebral awakening concentration of
+  sevoflurane and isoflurane predicted during slow and fast alveolar washout.
+  *Anesth Analg* 1993;77(5):1012-1017.
+  doi:10.1213/00000539-199311000-00024.
+- Kelly JM, Kong K-L. Accuracy of ten isoflurane vaporisers in current
+  clinical use. *Anaesthesia* 2011;66(8):682-688. PMID 21749341.
+- Kharasch ED. Biotransformation of sevoflurane. *Anesth Analg* 1995;81(6
+  Suppl):S27-38. PMID 7486145, doi:10.1097/00000539-199512001-00005.
+- Laster MJ, Fang Z, Eger EI 2nd. Specific gravities of desflurane, enflurane,
+  halothane, isoflurane, and sevoflurane. *Anesth Analg* 1994;78(6):1152-3.
+  PMID 8198275, doi:10.1213/00000539-199406000-00022.
+- Lerman J, Gregory GA, Willis MM, Eger EI 2nd. Age and solubility of volatile
+  anesthetics in blood. *Anesthesiology* 1984;61(2):139-143.
+  doi:10.1097/00000542-198408000-00005.
+- Lowe HJ, Ernst EA. *The Quantitative Practice of Anesthesia: Use of Closed
+  Circuit.* Baltimore: Williams & Wilkins; 1981. ISBN 0683052004.
+- Mapleson WW. An electric analogue for uptake and exchange of inert gases and
+  other agents. *J Appl Physiol* 1963;18(1):197-204.
+  doi:10.1152/jappl.1963.18.1.197.
+- Mapleson WW. Effect of age on MAC in humans: a meta-analysis.
+  *Br J Anaesth* 1996;76(2):179-185. doi:10.1093/bja/76.2.179.
+- Meyer J-U, Kullik G, Wruck N, Kück K, Manigel J. Advanced technologies and
+  devices for inhalational anesthetic drug dosing. In: Schüttler J, Schwilden
+  H, eds. *Modern Anesthetics.* Handbook of Experimental Pharmacology
+  vol. 182. Berlin: Springer; 2008:451-470.
+- Philip JH. Gas Man Version 4.1 Teaches Inhalation Kinetics. Society for
+  Technology in Anesthesia.
+  <https://www.stahq.org/files/7913/2743/1066/Abstract_57.pdf>
+- Philip JH. *Workbook for Gas Man(R): a simulation and teaching tool.*
+  Chestnut Hill, MA: Med Man Simulations, Inc.; document dated 2012-05-16,
+  preface dated October 2010. <https://gasmanweb.com/Workbook.pdf>
+- Rampil IJ, Lockhart SH, Zwass MS, Peterson N, Yasuda N, Eger EI 2nd,
+  Weiskopf RB, Damask MC. Clinical characteristics of desflurane in surgical
+  patients: minimum alveolar concentration. *Anesthesiology*
+  1991;74(3):429-433. doi:10.1097/00000542-199103000-00007.
+- Shin HW, Yu HN, Bae GE, Huh H, Park JY, Kim JY. The effect of fresh gas flow
+  rate and type of anesthesia machine on time to reach target sevoflurane
+  concentration. *BMC Anesthesiol* 2017;17(1):10. PMID 28103806,
+  doi:10.1186/s12871-016-0294-y.
+- Song J-G, Cao Y-F, Yang L-Q, Yu W-F, Li Q, Song J-C, Fu X-Y, Fu Q. Awakening
+  concentration of desflurane is decreased in patients with obstructive
+  jaundice. *Anesthesiology* 2005;102(3):562-565.
+  doi:10.1097/00000542-200503000-00014.
+- Strum DP, Eger EI 2nd. Partition coefficients for sevoflurane in human
+  blood, saline, and olive oil. *Anesth Analg* 1987;66(7):654-656.
+  PMID 3605675.
+- Targ AG, Yasuda N, Eger EI 2nd. Solubility of I-653, sevoflurane,
+  isoflurane, and halothane in plastics and rubber composing a conventional
+  anesthetic circuit. *Anesth Analg* 1989;69(2):218-225. PMID 2764290.
+- Wahba RW. Perioperative functional residual capacity. *Can J Anaesth*
+  1991;38(3):384-400. doi:10.1007/BF03007630.
+- Weber J, Schmidt J, Wirth S, Schumann S, Philip JH, Eberhart LHJ.
+  Context-sensitive decrement times for inhaled anesthetics in obese patients
+  explored with Gas Man. *J Clin Monit Comput* 2021;35(2):343-354.
+  PMCID PMC7943506.
+- Yasuda N, Lockhart SH, Eger EI 2nd, Weiskopf RB, Liu J, Laster M, Taheri S,
+  Peterson NA. Comparison of kinetics of sevoflurane and isoflurane in humans.
+  *Anesth Analg* 1991;72(3):316-24. PMID 1994760,
+  doi:10.1213/00000539-199103000-00007. Cited as Yasuda et al. 1991a.
+- Yasuda N, Lockhart SH, Eger EI 2nd, Weiskopf RB, Johnson BH, Freire BA,
+  Fassoulaki A. Kinetics of desflurane, isoflurane, and halothane in humans.
+  *Anesthesiology* 1991;74(3):489-98. PMID 2001028,
+  doi:10.1097/00000542-199103000-00017. Cited as Yasuda et al. 1991b.
+- Yasuda N, Targ AG, Eger EI 2nd. Solubility of I-653, sevoflurane,
+  isoflurane, and halothane in human tissues. *Anesth Analg*
+  1989;69(3):370-373. PMID 2774233.

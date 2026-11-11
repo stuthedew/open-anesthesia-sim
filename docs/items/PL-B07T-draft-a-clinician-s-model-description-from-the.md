@@ -3,12 +3,14 @@ id: PL-B07T
 title: Draft a clinician's model description from the paragraphs the reverse outline labels Model description, as a separate file for the owner to read before docs/MODEL.md changes
 priority: P2
 effort: M
-status: ready
+status: done
 classes: docs
 feature: model-md-structure
-touches: docs/prose-review/model-description-draft.md
+touches: docs/prose-review/model-description-draft.md, docs/prose-review/README.md, docs/items/PL-P3GZ-decide-whether-to-split-docs-model-md-by-reader.md
 deferred-from: v0.7.0 - a draft document for the owner to read; the schematic release does not depend on it
 added: 2026-11-10
+closed: 2026-11-11
+pr: 2092
 payoff: the owner can judge a clinician's model description of about an eighth of today's length before anything in docs/MODEL.md moves
 verify: grep -qE '^[*][*]The owner read the draft' docs/items/PL-B07T-*.md
 ---
@@ -160,6 +162,61 @@ meeting a test, a code name or an item id, and every limitation has a heading
 they can find. Its cost is the list above: the draft is checked against
 nothing, so it would need the stored-value markers back before it replaced
 any part of `docs/MODEL.md`.
+
+**The owner read the draft** and answered on 2026-11-11: "Yes with
+references" (project owner, 2026-11-11, ratified, over leaving the draft with
+author-and-year citations and no list). The draft is the document a clinician
+should get, in its contents and order, once it carries a reference list. The
+owner also asked how to deal with the three weaknesses the session had named:
+no reference list, numbers that nothing checks, and two sentences written from
+the outline's summary and not from the paragraph.
+
+**What changed after the verdict, 2026-11-11.**
+
+1. *Reference list.* The draft now ends with § "References", 47 entries, and
+   its text cites by author and year. Each citation is copied from
+   `docs/MODEL.md`, `docs/machine-survey.md` or a `sources` entry under
+   `src/anesthesia_sim/data/`. One is not: `docs/MODEL.md` gives the paper
+   "Do distribution volumes and clearances relate to tissue volumes and blood
+   flows?" by title and address only, and its authors, year and volume
+   (Hendrickx, Lemmens and Shafer, *BMC Anesthesiol* 2006;6:7) come from its
+   PubMed record, PMID 16772041, metadata and abstract read 2026-11-11.
+2. *The two sentences.* § 3's statement about the 37 °C stores and the opening
+   of § 10.8 on the fat group's blood flow are rewritten from the paragraphs
+   of `docs/MODEL.md` they summarise ("One reference condition, where the
+   model physically has two", and "The fat group's flow is twice a resting
+   depot measurement"). Both of the earlier sentences were true. § 10.8 now
+   gives the figures behind "about twice": 2.07 mL per 100 mL per minute
+   stored, the fits' 2.1 to 2.4 as published and 2.3 to 2.6 at the model's
+   solubilities.
+3. *Seven wrong section pointers.* Sections 4, 6.3, 7.3 and 9.6 pointed at
+   "§ 9.x" for limitations that are in § 10. Each now names the right section.
+4. *The numbers, checked once.* A script compared every number in the draft
+   with every number in `docs/MODEL.md` at `50af1a2e`. All are there. Five are
+   written differently: `docs/MODEL.md` gives the effect of one standard
+   deviation of a partition coefficient as 8.7×10⁻⁴ to 6.8×10⁻² percentage
+   points, and the draft writes the same values as decimals. The comparison
+   cannot tell that a number sits beside the right quantity, so it finds a
+   mistyped value and not a misplaced one. It was a single run and no check
+   repeats it.
+
+The draft is now about 15,500 words, of which the reference list is about
+1,250.
+
+**What `PL-P3GZ` takes from this.** The owner accepts this draft as the
+clinician's document. Two things still stand between it and replacing any
+part of `docs/MODEL.md`:
+
+- *Nothing ties its values to the data files.* `tools/doc_check.py` checks
+  the stored-value markers only in the documents that its
+  `PROVENANCE_DOCUMENTS` names, which are `docs/MODEL.md` and `README.md`. A
+  clinician's document that stands as specification needs its markers back
+  and its path in that list, so that a stored value that changes fails the
+  check there as it does in `docs/MODEL.md` today.
+- *A value could sit beside the wrong quantity.* The one-off comparison above
+  does not catch that. The markers do, for the 49 stored values. For the
+  rest, the owner's read of the parameter tables and the validation tables
+  (§ 6, § 9) is the check.
 
 **Done when.** The owner has read the draft, and this item records in a
 paragraph that opens "**The owner read the draft**" whether it is the
