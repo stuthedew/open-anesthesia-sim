@@ -33,7 +33,11 @@ from anesthesia_sim.app.dashboard_frame import (
     above_the_axis_top,
     compartment_fraction,
 )
-from anesthesia_sim.app.display_units import REFERENCE_CONDITION_LABEL, DisplayUnit
+from anesthesia_sim.app.display_units import (
+    BODY_STORES_CONDITION_LINES,
+    REFERENCE_CONDITION_LABEL,
+    DisplayUnit,
+)
 from anesthesia_sim.app.formatting import (
     CHART_AXIS_TOP_MAC,
     MAC_UNIT_SUFFIX,
@@ -52,6 +56,7 @@ __all__ = [
     "CONTAINER_ORDER",
     "INSTANT_LINE_TEMPLATE",
     "OFF_SCALE_LINE_TEMPLATE",
+    "AMOUNT_CONDITION_LINES",
     "SCALE_CAPTION_TEMPLATE",
     "SCHEMATIC_HEADING",
     "SHARE_LINE_TEMPLATE",
@@ -84,13 +89,8 @@ CONTAINER_ORDER: Final[tuple[RecordedQuantity, ...]] = tuple(
 INSTANT_LINE_TEMPLATE: Final = "At {instant} of simulated time"
 COMPARED_INSTANT_LINE_TEMPLATE: Final = "{run}, at {instant} of simulated time"
 
-#: The schematic's heading. It names the unit of the amounts and the temperature
-#: and pressure they are stated at, once for every container (`PL-HQPF`). The
-#: wording is a placeholder, but the condition must be on screen.
-SCHEMATIC_HEADING: Final = (
-    "Where the agent is: each compartment's tension, and its amount in "
-    f"{DisplayUnit.AGENT_VAPOUR_MILLILITRES.recorded} at {REFERENCE_CONDITION_LABEL}"
-)
+#: The schematic's heading. The wording is a placeholder.
+SCHEMATIC_HEADING: Final = "Where the agent is: each compartment's tension and amount"
 
 #: The caption that says what a container's height means. A height is a
 #: tension on the concentration chart's scale. So the caption names that scale
@@ -103,6 +103,17 @@ SCHEMATIC_HEADING: Final = (
 SCALE_CAPTION_TEMPLATE: Final = (
     "Fill height is tension, on the concentration chart's scale: 0 to {top}{unit} ({top_mac}).\n"
     "A container's height is its tension, not its amount of agent."
+)
+
+#: The lines under the scale caption that name the unit of the amounts and the
+#: temperature and pressure they are stated at, once for every container
+#: (`PL-HQPF`). Five of the six containers hold agent in the body, so the second
+#: line says that their amounts read high at that condition. The lines are
+#: explicit for the same reason as the scale caption's. The wording is a
+#: placeholder, but the condition and its effect must be on screen.
+AMOUNT_CONDITION_LINES: Final = (
+    f"Amounts are {DisplayUnit.AGENT_VAPOUR_MILLILITRES.recorded} at {REFERENCE_CONDITION_LABEL}.\n"
+    f"{BODY_STORES_CONDITION_LINES}"
 )
 
 #: The lines that name the containers whose tension is above the top of the
@@ -222,11 +233,13 @@ def scale_caption(snapshot: SimulationSnapshot) -> str:
         chart_axis_top_percent(mac_percent), chart_grid_interval_percent(mac_percent)
     )
 
-    return SCALE_CAPTION_TEMPLATE.format(
+    scale = SCALE_CAPTION_TEMPLATE.format(
         top=ticks[-1][1],
         unit=DisplayUnit.CONCENTRATION.axis_title,
         top_mac=f"{CHART_AXIS_TOP_MAC:g}{MAC_UNIT_SUFFIX}",
     )
+
+    return f"{scale}\n{AMOUNT_CONDITION_LINES}"
 
 
 def off_scale_line(readings: tuple[ContainerReading, ...]) -> str | None:

@@ -12,7 +12,7 @@ import pytest
 
 from anesthesia_sim.app import dashboard_frame
 from anesthesia_sim.app.agent_cost import LIQUID_CAPTION_TEMPLATE, VAPOUR_CAPTION_TEMPLATE
-from anesthesia_sim.app.compartment_schematic import SCHEMATIC_HEADING
+from anesthesia_sim.app.compartment_schematic import AMOUNT_CONDITION_LINES
 from anesthesia_sim.app.control_record import (
     CONTROL_INPUT_DISPLAY_UNITS,
     CONTROL_INPUT_UNITS,
@@ -116,10 +116,19 @@ def test_every_agent_amount_unit_names_the_reference_condition() -> None:
     An amount of vapour means nothing without its temperature and pressure, and
     the amounts held in the body are stated at 20 °C though they are at body
     temperature (`PL-HQPF`). The liquid figure names only its temperature, since
-    a liquid's volume barely changes with pressure.
+    a liquid's volume barely changes with pressure. The accounting panel and
+    the schematic also say that the amounts held in the body read high under
+    that label, because they are body-temperature gas (blind review of
+    `PL-HQPF`).
     """
 
-    assert dashboard_frame.ACCOUNTING_UNIT_CAPTION.endswith(", at 20 °C and 1 atm")
-    assert SCHEMATIC_HEADING.endswith("millilitres of vapour at 20 °C and 1 atm")
+    body = "Amounts in the body read high,\nas they are gas at body temperature."
+
+    assert dashboard_frame.ACCOUNTING_UNIT_CAPTION == (
+        f"Litres of equivalent pure agent gas,\nat 20 °C and 1 atm.\n{body}"
+    )
+    assert (
+        AMOUNT_CONDITION_LINES == f"Amounts are millilitres of vapour at 20 °C and 1 atm.\n{body}"
+    )
     assert VAPOUR_CAPTION_TEMPLATE.endswith(" at 20 °C and 1 atm.")
     assert LIQUID_CAPTION_TEMPLATE.endswith(" at 20 °C.")

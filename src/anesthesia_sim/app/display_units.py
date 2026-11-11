@@ -43,7 +43,12 @@ from anesthesia_sim.core.liquid_agent import (
     STANDARD_ATMOSPHERE_PA,
 )
 
-__all__ = ["REFERENCE_CONDITION_LABEL", "REFERENCE_TEMPERATURE_LABEL", "DisplayUnit"]
+__all__ = [
+    "BODY_STORES_CONDITION_LINES",
+    "REFERENCE_CONDITION_LABEL",
+    "REFERENCE_TEMPERATURE_LABEL",
+    "DisplayUnit",
+]
 
 #: The temperature at which the model states every amount of agent, as a label.
 #: A liquid volume needs only the temperature, because a liquid's volume barely
@@ -54,6 +59,19 @@ REFERENCE_TEMPERATURE_LABEL: Final = f"{REFERENCE_TEMPERATURE_CELSIUS:g} °C"
 #: agent vapour, as a label. The pressure is written in standard atmospheres.
 REFERENCE_CONDITION_LABEL: Final = (
     f"{REFERENCE_TEMPERATURE_LABEL} and {REFERENCE_PRESSURE_PA / STANDARD_ATMOSPHERE_PA:g} atm"
+)
+
+#: What the reference condition means for the agent held in the body. The
+#: alveolar, venous and tissue amounts are body-temperature gas carried under
+#: the 20 °C label, so read at that label they overstate the agent held
+#: (`docs/MODEL.md` § "Known limitations", "One reference condition, where the
+#: model physically has two"). The line says which way the amounts are off. The
+#: size of the error is in that section. The wording is a placeholder, but what
+#: it must say is not. It is two short lines because the captions it ends are
+#: never set to wrap. A line wider than about 214 px widens the accounting
+#: panel's column, which takes that width from the concentration plot beside it.
+BODY_STORES_CONDITION_LINES: Final = (
+    "Amounts in the body read high,\nas they are gas at body temperature."
 )
 
 

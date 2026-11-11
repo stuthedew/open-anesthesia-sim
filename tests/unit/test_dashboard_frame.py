@@ -2446,7 +2446,10 @@ def test_the_accounting_unit_caption_names_litres_of_agent_gas_and_its_condition
     A volume of gas also needs its temperature and pressure (`PL-HQPF`).
     """
 
-    assert ACCOUNTING_UNIT_CAPTION == "Litres of equivalent pure agent gas, at 20 °C and 1 atm"
+    assert ACCOUNTING_UNIT_CAPTION == (
+        "Litres of equivalent pure agent gas,\nat 20 °C and 1 atm.\n"
+        "Amounts in the body read high,\nas they are gas at body temperature."
+    )
 
 
 # --- the control-change panel ----------------------------------------------------
