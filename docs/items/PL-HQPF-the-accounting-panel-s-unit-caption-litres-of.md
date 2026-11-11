@@ -6,7 +6,6 @@ effort: M
 status: ready
 classes: defect, safety
 touches: src/anesthesia_sim/app/display_units.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/agent_cost.py, src/anesthesia_sim/app/qt_schematic.py, tests/unit/test_display_units.py, docs/MODEL.md
-deferred-from: v0.7.0 - present at the freeze (817a4d88 holds the accounting caption) and not on the frozen list; found by the 2026-11-10 audit. The hazard is an incomplete label, not a wrong value: checked 2026-11-10, each amount on screen is correct in the unit docs/MODEL.md § 'Agent amount' defines, and a learner who assumes body temperature misreads a stored amount by 5.8%. Whether v0.7.0 takes it instead was put to the owner on 2026-11-10
 added: 2026-11-10
 payoff: every agent amount on screen says it is stated at 20 °C and 1 atm, so a learner can tell an amount held in the body from one at body temperature
 verify: grep -q 'def test_every_agent_amount_unit_names_the_reference_condition' tests/unit/test_display_units.py
@@ -24,6 +23,6 @@ verify: grep -q 'def test_every_agent_amount_unit_names_the_reference_condition'
 
 **Gate disposition, put to the owner on 2026-11-10.** The item is recorded as deferred from v0.7.0 so that the store is valid, on the grounds its `deferred-from` gives. **Recommended:** v0.7.0 takes it, with `PL-RJN9`, because the label is small and v0.7.0 is the release that shows an agent cost stated at this condition. Taking it means adding it to the frozen list or to the release's required scope in `ROADMAP.md`, which is the owner's to approve.
 
-**Answered 2026-11-10 (project owner, ratified, over deferring it to the next gate).** v0.7.0 takes this item, together with `PL-RJN9` (the cost captions type the temperature as text). Still to do, in the commit that edits `ROADMAP.md`: add both ids to v0.7.0's section there, remove the `deferred-from` line from both items, and correct the roadmap's statements that every id in v0.7.0's Required scope is closed (the current-baseline paragraph and row 9 of the timeline). The session that recorded this answer stopped before that edit because it had passed its token budget, and it continues after a reset.
+**Answered 2026-11-10 (project owner, ratified, over deferring it to the next gate).** v0.7.0 takes this item, together with `PL-RJN9` (the cost captions type the temperature as text). `PL-LMJ8` made the roadmap edit on 2026-11-10: `ROADMAP.md` § "v0.7.0 - the schematic" names both items in Required scope entry 13 and in the frozen list's first group, and neither item carries `deferred-from` now.
 
 **Generator check.** A one-off as a display gap. Its second half is `PL-RJN9`, which already records the typed copy as an instance of `PL-40SJ`'s fact.
