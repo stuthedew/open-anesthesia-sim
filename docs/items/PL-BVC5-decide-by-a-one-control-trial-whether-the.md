@@ -3,13 +3,14 @@ id: PL-BVC5
 title: Decide by a one-control trial whether the interface pass builds its controls as a custom Qt style or as style sheets
 priority: P2
 effort: S
-status: needs-decision
+status: ready
 classes: planning
 feature: interface-pass-design-round
 touches: tests/benchmarks/style_trial.py, tests/benchmarks/style_trial_checks.py
 deferred-from: v0.7.0 - captured after the freeze; the interface pass's own work (planned-milestone item 33), not safety or science
 added: 2026-11-11
 payoff: the interface pass builds its six controls once, in the mechanism that measurement supports
+not-delegable: the trial's result rests on the owner's answers and a run on the owner's Mac, which no command can check
 ---
 
 **Problem.** Decide by a one-control trial whether the interface pass builds its controls as a custom Qt style or as style sheets
@@ -163,7 +164,7 @@ tick with `QPainter`.
    sheet draws, such as a scroll bar or a spin box, takes Fusion's look. The
    `dashboard` command shows it.
 
-**Decision needed.** Two answers from the owner.
+**Decision needed.** Two answers from the owner. [Both recorded below, 2026-11-11.]
 
 1. *What the Mac shows.* Run the comparison window and the dashboard under
    the light and the dark appearance, with the steps in the pull request body
@@ -210,6 +211,38 @@ and the shipped style sheets have it too, so it does not count against the
 custom style. Whether the two appearances look the same is still the owner's
 to say.
 
+**The owner's Mac, second run, 2026-11-11.** The owner recorded Dark and
+then Light, and sent the window under each and the difference picture.
+
+- The style sheet's line read "DIFFERENT PIXELS under Dark and Light: 960
+  pixels in 5 of 5 buttons, largest colour step 72 of 255. Drawn without
+  lettering the buttons are THE SAME". The window's edge cut off the rest of
+  the line and the custom style's line.
+- The difference picture shows the custom style's row. In both rows the
+  differing pixels are the letters of "Start" in all five buttons, and no
+  pixel of an edge or a fill.
+- In the picture the lettering is heavier under Dark than under Light, by
+  the same amount in both rows. `PL-YZ9L` records this for the whole
+  interface.
+- Of the dashboard with the custom style as the application's style, under
+  both appearances, the owner wrote "Item 5 looks the same".
+
+**Answer 1, test 2 counts as passed** (session's reading of the owner's
+run, 2026-11-11). The test asks whether the custom style looks the same
+under both appearances. Everything the custom style draws is pixel-identical
+under both. The lettering differs, Qt's text drawing causes that, and it
+differs in the same way under a style sheet. The session took this reading
+without asking, because the measurement leaves one reading.
+
+**Result: the trial passes, and the interface pass builds its controls in
+the custom style.** Test 1 counts as passed by the owner's answer, test 2 by
+the run above, and neither button needs an image file. By the rule the owner
+approved on 2026-11-10, each control is built in the style, and that
+control's style sheet is deleted as it moves. The style is installed on the
+application. `PL-8G4V` moves `TrialStyle` into `src/anesthesia_sim/app/` with
+the first control and deletes the trial's two files.
+
+[Answered 2026-11-11: see "Answer 1", "Answer 2" and "Result" above.]
 **Recommended.** Count test 1 as passed, and install the style on the
 application as Qt advises. The test was written to find out whether drawing
 in Python costs enough to matter here. It costs at most 0.8% of the frame
