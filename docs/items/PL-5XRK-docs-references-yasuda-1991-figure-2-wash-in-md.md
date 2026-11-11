@@ -3,11 +3,13 @@ id: PL-5XRK
 title: docs/references/yasuda-1991-figure-2-wash-in.md: neither Anesth Analg table has a 1.5-minute row, though the protocol sampled at 1.5 minutes and only the Anesthesiology figure is said to plot no point there; say why (copy editor structure read, 2026-11-07)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: references-structure
 touches: docs/references/yasuda-1991-figure-2-wash-in.md
 added: 2026-11-07
+closed: 2026-11-11
+pr: 2106
 payoff: a reader can tell whether the wash-in values the simulator is tested against cover every point the figure plots
 verify: grep -qE '^\| 1\.5 \||The \*Anesth Analg\* figure plots' docs/references/yasuda-1991-figure-2-wash-in.md
 ---
@@ -23,3 +25,5 @@ verify: grep -qE '^\| 1\.5 \||The \*Anesth Analg\* figure plots' docs/references
 **Generator check.** One-off: a finding from the `docs/references/` structure read (2026-11-07).
 
 **Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** `git show 817a4d88:docs/references/yasuda-1991-figure-2-wash-in.md` already has the *Anesth Analg* tables with no 1.5-minute row (rows 109 and 124 go from 1 to 2 minutes), and only the *Anesthesiology* figure is said to plot no point there (row 134). So the problem was present at the freeze, commit `817a4d88` (2026-10-24), and this finding belongs on v0.7.0's frozen list rather than deferred.
+
+**Done 2026-11-11.** Page 320 of the *Anesth Analg* paper was rendered at 800 dpi and read against the x-axis ticks at 5 and 10 minutes. On every curve the marker after the 1-minute point sits at 2 minutes, so the figure plots no point at 1.5 minutes, although the protocol on page 317 sampled then. No point was mistimed, so there is no science finding. Before 1 minute, the markers are crowded against the y-axis, as the note already says. The note now says both, in the sentence beginning "The *Anesth Analg* figure plots". The close-out copy edit of the changed passages is owed. The project owner paused the copy editor on 2026-11-11 at 00:10Z ("Pausing copy editor stuff"), and the coordinator directed that these fact fixes land without it. Run it on these passages once the pause is lifted.
