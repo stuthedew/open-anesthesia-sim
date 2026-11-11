@@ -1102,7 +1102,7 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-HQPF (M) The accounting panel's unit caption ('Litres of equivalent pure agent gas') and the schematic's unit ('mL vapour') do not name the condition an agent amount is stated at, 20 °C and 1 atm, so a learner cannot tell that an amount held in the body is stated at room temperature and reads 5.8% high
 - PL-RJN9 (S) The agent cost View's two captions in src/anesthesia_sim/app/agent_cost.py write '20 degrees C' as text, a second copy of core/liquid_agent.py's REFERENCE_TEMPERATURE_CELSIUS, so a change to the reference temperature would leave the captions naming the old one
 
-**Cleared before v0.7.0's implementation begins, unless deferred - 157 entries**
+**Cleared before v0.7.0's implementation begins, unless deferred - 160 entries**
 
 - PL-H57W (L) Since PL-CZXN no check measures whether a branch that changes no core function weakens a core unit test, because PL-7FPD's route compares only the display modules' mutants; the same comparison over core's mutants took 538 to 968 s for one changed test file
 - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
@@ -1261,6 +1261,9 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-11Z9 (S) The agent cost View does not say on its face that its figures are modelled: 'Liquid used by the vaporizer' can read as a measured volume, and v0.7.0's definition of done asks the modelled label only of the schematic
 - PL-FCYQ (M) No test replays a recorded control-input timeline into a fresh run and compares the two, though docs/MODEL.md § The control-input timeline requires that the replay reproduces the run
 - PL-BLN0 (L) Sentences in docs/MODEL.md, docs/ARCHITECTURE.md and docs/interface-provenance.md that restate how the code or the interface behaves go stale when the code changes, because nothing ties a free-prose sentence to the code it describes
+- PL-MVCF (S) A Reset that raises after it has cleared the run is not counted as a start-over, so a halt keeps the discarded run's cards under a clock of 10 min for a run at 0 s
+- PL-SV2Q (S) When a run's dials cannot be built after a Reset or an agent change, the dial row and the delivered line keep the discarded run's setting: 'Delivered 8.00% (4.00 ×MAC)' beside '1 MAC desflurane = 6.0%'
+- PL-CT4K (S) Six open safety items filed on 2026-11-10 (PL-0G2P, PL-B8DL, PL-G2WC, PL-GJ1W, PL-GKG4, PL-LHCL) are not on v0.7.0's frozen list, though a safety item re-enters the gate whether or not its problem was present at the freeze
 
 ### Captures after the cut
 
@@ -1375,6 +1378,13 @@ freeze. The project owner chose to put both items in this milestone (project
 owner, 2026-11-10, ratified, over deferring them to the next gate). Required
 scope entry 13 names both, so they are in the first group, and `PL-RJN9` is
 no longer deferred.
+
+**`PL-MVCF`, `PL-SV2Q` and `PL-CT4K` joined the frozen list on 2026-11-11,
+after the freeze.** `PL-MVCF` and `PL-SV2Q` are classed `safety`, so they
+re-enter whether or not their problem was present. Each leaves a discarded
+run's values on screen after a halt, and each is on `main`. `PL-CT4K` is not
+`safety`, but it completes this list: it places six `safety` items that the
+list does not yet name.
 
 ### Required scope
 

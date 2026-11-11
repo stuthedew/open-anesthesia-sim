@@ -1,8 +1,15 @@
 ---
 id: PL-CXYV
 title: Start, Pause and Reset look the same pressed, keyboard-focused and at rest
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, ux
+touches: src/anesthesia_sim/app/stylesheets.py, tests
+deferred-from: v0.7.0 - captured after the freeze; no displayed value is wrong, and it belongs with the interface pass rather than the schematic
 added: 2026-11-11
+payoff: a learner who presses or tabs to Start, Pause or Reset sees which button acted or will act
+verify: grep -rq 'def test_each_run_button_draws_a_pressed_and_a_focused_state' tests/
 ---
 
 **Problem.** Start, Pause and Reset look the same pressed, keyboard-focused and at rest
@@ -95,3 +102,7 @@ still not observed.
 **Relation to the interface pass.** The pass will define every state of every
 control (`PL-HS9M`, `PL-BVC5`). This finding does not wait for it: a focus
 mark and a pressed state on these three buttons can land alone.
+
+**Done when.** Start, Pause and Reset each draw a pressed state and a keyboard-focus mark that differ from the resting state. A test grabs each button at rest, pressed and focused under the Fusion style, finds the three images different, and fails on today's `main`.
+
+**Generator check.** A one-off so far. The fact is which states a button styled by a style sheet draws. The earlier fix that added the disabled state to `transport_button_stylesheet`, after declaring `:enabled` only, is a first instance, so a third would make this a generator. No head's `misread:` states it.

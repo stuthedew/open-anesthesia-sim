@@ -1,10 +1,15 @@
 ---
 id: PL-MF90
 title: Choose one token set and one component set for the interface pass, in the NCSA style the owner picked
-status: untriaged
+priority: P2
+effort: L
+status: blocked
+classes: planning, ux
 feature: interface-pass-design-round
-blocked-by: PL-2V6V, PL-BVC5
+blocked-by: PL-2V6V
 added: 2026-11-11
+payoff: every control and readout follows one set of sizes, spaces and colours, so a change to the look is made once
+not-delegable: the owner chooses among the token and component sets
 ---
 
 **Problem.** Choose one token set and one component set for the interface pass, in the NCSA style the owner picked
@@ -21,3 +26,7 @@ components: a compartment readout, an agent chip, a parameter row and a
 reference mark. `ROADMAP.md` planned-milestone item 33 lists what the pass
 keeps: the contrast minimums, the fixed ISO 5360 agent colours, dash pattern
 as the channel that separates the traces, and no dark mode in this pass.
+
+**Why it matters.** One token set and one component set make every control and readout follow the same rules, so the interface pass changes the look in one place instead of in each widget.
+
+**Done when.** One type scale, one spacing scale, one set of surfaces and one accent are recorded, and one set of controls with every state and the four domain components are built on them, keeping planned-milestone item 33's contrast minimums and agent colours.
