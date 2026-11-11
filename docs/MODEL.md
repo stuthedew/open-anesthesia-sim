@@ -8,11 +8,11 @@ This document specifies the scientific model that the simulator implements. Its
 equations and compartment structure have not changed since v0.1.0, and every
 supported agent shares them.
 
-`docs/INTERFACE.md` states what the interface must show and do, including its
-controls and the outputs that must be displayed. It also gives the ranges of
-the settings, and the length of a run, over which the model is claimed to
-represent a patient (`docs/INTERFACE.md` § "Supported input ranges" and
-§ "Supported run length").
+A separate document, `docs/INTERFACE.md`, states what the interface must show
+and do, including its controls and the outputs that must be displayed. It
+also gives the ranges of the settings, and the length of a run, over which the
+model is claimed to represent a patient (`docs/INTERFACE.md`
+§ "Supported input ranges" and § "Supported run length").
 
 A statement here that gives a version has been true *since* that version. The
 project's roadmap (`ROADMAP.md`) lists the current release in its version table.

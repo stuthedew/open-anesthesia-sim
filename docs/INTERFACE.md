@@ -4,9 +4,10 @@ This document states what the simulator's interface must show and do: its
 controls, what a reset and a change of agent do, the questions asked before a
 run is discarded, what a comparison of two runs of one case shows, the boundary
 between the interface and the model, and the outputs that must be displayed.
-§ "Runtime controls" also gives the ranges of the settings, and the length of a
-run, over which the model is claimed to represent a patient. `docs/MODEL.md`
-specifies the model that computes the displayed values.
+It also gives the ranges of the settings, and the length of a run, over which
+the model is claimed to represent a patient (§ "Supported input ranges" and
+§ "Supported run length"). A separate document, `docs/MODEL.md`, specifies the
+model that computes the displayed values.
 
 ## Runtime controls
 
