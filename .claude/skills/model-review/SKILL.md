@@ -180,9 +180,12 @@ a poor design choice that needed rework or behavior nobody intended. Each
 monthly run does this:
 
 1. **Unit and groups.** The unit is a closed item, joined to its sessions
-   through the ledger. Items worked only at `high` on Opus 5.5 form one group.
-   Items worked only at `xhigh` or `max` on Opus 5.5 form the other. Items
-   worked at mixed levels are counted and left out.
+   through the ledger. Items worked only at `high` form one group, and items
+   worked only at `xhigh` or `max` form the other, within one model at a
+   time. Each model is its own comparison, or its own stratum in a pooled
+   test, and two models' items never share a group (project owner,
+   2026-11-11, `PL-7KF5`). Items worked at mixed levels or on mixed models are
+   counted and left out.
 2. **Outcomes.** The measures § "Outcome measures" defines above, within
    their windows.
 3. **Adequate data first.** Before any test, compute the number of items each
@@ -212,7 +215,11 @@ monthly run does this:
    gives a new session id and can change it, so use the first such line in a
    session, and count the sessions whose later lines differ. The split was one
    session in four at `xhigh` until `PL-TN18` merged on 2026-10-24, and one in
-   two after, so analyze the two periods as strata. A session whose digest
+   two after, so analyze the two periods as strata. The trial runs on every
+   model, so analyze each model as a stratum too, and never compare one
+   model's `high` sessions with another model's `xhigh` ones (`PL-7KF5`).
+   When a model first appears in the ledger, check that it accepts both
+   levels, and report a model that does not apart. A session whose digest
    leaves 2 when divided by 4 was `high` under the first rule and is `xhigh`
    under the second, so it prints a different arm if it resumes on the new
    code; the first-line rule assigns it. A session with no line, or whose line

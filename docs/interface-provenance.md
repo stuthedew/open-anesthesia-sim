@@ -876,7 +876,9 @@ area to another view and back restores the first view's state. The roadmap's
 which hold each editor's state
 (§ "What survives a resize, a split, a join, and a swap"). This project copies
 the outcome, not the swapping. The part of Blender's design to copy is how it
-bounds an area's list without a cap. This project has no code yet (`PL-PKLR`).
+bounds an area's list without a cap. This project keeps one saved state for each View kind
+in each Area (`AreaLayout.view_states`), so the number of registered kinds
+bounds an Area's list.
 
 **A view kind is a tag looked up in a registry, never a subclass.** Nothing in
 the layout layer knows that any concrete view class exists. Each tag is written
@@ -927,6 +929,19 @@ runs Next Workspace (Blender Manual, "Workspaces" page). Blender's function for
 cycling workspaces also wraps at both ends (`space_workspace_cycle_invoke` in
 `source/blender/editors/screen/screen_ops.cc`, `blender/blender` `main`). Both
 sources were read on 2026-10-19.
+
+**Maximize Area is adopted and not yet built** (`PL-5XVQ`; project owner,
+2026-11-11, ratified, over leaving a learner to rearrange a Workspace in order
+to study one View). In Blender, Maximize Area (Ctrl+Spacebar) expands one area
+to fill the window, and keeps the editor's menu bar and the status bar visible.
+The same shortcut, or Restore Area, returns the area to its size and restores
+the previous layout (Blender Manual, "Areas", sections "Maximize Area" and
+"Restore Area"; read 2026-11-11). Here, the maximized Area will fill the room
+that the Areas share. The unconditional region stays above it and the use
+disclaimer stays below it, because no Workspace may remove either. For the
+same reason, this project has no equivalent of Blender's Focus Mode, which
+also hides the Topbar and the Status Bar. Maximize Area has no code yet
+(`PL-VJD2`).
 
 ### Diverged, and each divergence has a specific cause
 

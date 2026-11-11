@@ -54,7 +54,7 @@ from anesthesia_sim.app.unconditional_set import (
     UnconditionalValue,
     unconditional_set,
 )
-from anesthesia_sim.app.views import ConcentrationView
+from anesthesia_sim.app.views import BookmarksView, BranchView, ConcentrationView
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
 from anesthesia_sim.layout.store import USER_DIRECTORY_VARIABLE, WORKSPACES_FILE_NAME
 from anesthesia_sim.layout.tree import AreaId
@@ -229,12 +229,14 @@ def _operation(
     raise AssertionError(f"Area {area_id} offers no available {group or ''} {label!r} entry")
 
 
-def _area_showing_chart(view: SimulationView) -> AreaId:
+def _area_showing(view: SimulationView, kind: type[QWidget]) -> AreaId:
+    """Return the one Area whose View is a `kind`."""
+
     container = view.layout_container
-    (chart,) = (v for v in container.views() if isinstance(v, ConcentrationView))
+    (shown,) = (v for v in container.views() if isinstance(v, kind))
 
     return next(
-        area.id for area in container.model.areas() if container.frame(area.id).isAncestorOf(chart)
+        area.id for area in container.model.areas() if container.frame(area.id).isAncestorOf(shown)
     )
 
 
@@ -273,27 +275,33 @@ def _drag_only_border(application: QApplication, view: SimulationView, by_px: in
 def _rearrange(
     application: QApplication, view: SimulationView, directory: Path, check: Callable[[str], None]
 ) -> WorkspaceSet:
-    """Split, swap, join and close the chart's Area, switch Workspaces, then save the set.
+    """Split, swap and join the chart's Area, close another, switch Workspaces, then save the set.
 
     `check` runs after each operation and is given the operation's name. The
     saved file goes to `directory`, so a dashboard launched from it reloads
     what was arranged. Returns the Workspace set that was saved.
     """
 
-    chart_area = _area_showing_chart(view)
+    # The Default Workspace opens with four Areas: the chart, the parameter
+    # controls, the bookmarks and the branch control.
+    chart_area = _area_showing(view, ConcentrationView)
     view.layout_container.perform(_operation(view, chart_area, None, SPLIT_SIDE_BY_SIDE_LABEL))
-    assert len(view.layout_container.model.areas()) == 3
+    assert len(view.layout_container.model.areas()) == 5
     check("a split")
 
     view.layout_container.perform(_operation(view, chart_area, SWAP_WITH_LABEL, ""))
     check("a swap")
 
     view.layout_container.perform(_operation(view, chart_area, JOIN_WITH_LABEL, ""))
-    assert len(view.layout_container.model.areas()) == 2
+    assert len(view.layout_container.model.areas()) == 4
     check("a join")
 
-    view.layout_container.perform(_operation(view, chart_area, None, _CLOSE_LABEL))
-    assert len(view.layout_container.model.areas()) == 1
+    # The chart's Area is beside a column of three Areas. No single neighbour
+    # shares its whole edge, so it cannot be closed. The bookmarks' Area can:
+    # the Area above it in the column takes its place.
+    bookmarks_area = _area_showing(view, BookmarksView)
+    view.layout_container.perform(_operation(view, bookmarks_area, None, _CLOSE_LABEL))
+    assert len(view.layout_container.model.areas()) == 3
     check("closing an Area")
 
     strip = view.tab_strip
@@ -362,7 +370,7 @@ def test_every_layout_operation_leaves_the_unconditional_set_on_screen(
 
     try:
         assert reloaded.workspaces == saved
-        assert len(reloaded.layout_container.model.areas()) == 1
+        assert len(reloaded.layout_container.model.areas()) == 3
         _check(application, reloaded, "reloading the saved Workspaces", seen)
     finally:
         _close(application, reloaded)
@@ -420,7 +428,8 @@ def test_a_branched_case_keeps_both_runs_drawn_and_named(
     view = _launch(application, case.trunk, tmp_path, case=case)
 
     try:
-        panel = view._fork_panel
+        panel = next(v for v in view.layout_container.views() if isinstance(v, BranchView)).panel
+        assert panel is not None, "the Default Workspace's branch View holds no control"
         index = panel.point_selector.findData(_HISTORY_S)
         assert index >= 0, f"the branch control does not offer {_HISTORY_S} s"
         panel.point_selector.setCurrentIndex(index)

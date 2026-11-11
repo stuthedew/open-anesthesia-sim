@@ -1077,20 +1077,6 @@ EXEMPT: dict[str, tuple[Exemption, ...]] = {
         ),
         Exemption(
             "PANEL",
-            "the rule between sections of the chart column",
-            "not required for understanding - the heading under it carries the boundary",
-            "the horizontal rule `_section_divider` draws, at three places: above the "
-            "wash-in section, above the bookmarks panel and above the fork panel. Each "
-            "sits directly over a heading or a titled panel - `WASH_IN_HEADING` in bold "
-            "`INK`, and the `_bookmarks_panel` and `_fork_panel` carry their own titles "
-            "- so the section break the rule marks is already carried by text, and the "
-            "criterion's own test is passed with the rule invisible. Its own reason "
-            "rather than the ruling's, because a rule separating two regions of content "
-            "is structure a reader uses where a gridline is not, and the case had to be "
-            "made for it separately - PL-HKTB's brief was right that the two may part",
-        ),
-        Exemption(
-            "PANEL",
             "the rule under each Area's header",
             "not required for understanding - the header's controls carry the boundary",
             "the 1px rule `AreaFrame` draws between an Area's header and its View "

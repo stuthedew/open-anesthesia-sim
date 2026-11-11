@@ -74,11 +74,12 @@ after a change, the simulator stops the run and says why.
 ### The window
 
 The window is divided into Areas, which you can split, join, resize, swap and
-close. Each Area holds one View, and its View chooser offers all six: the
-concentration chart, the wash-in plot, the parameter controls, the agent
-accounting, the compartment schematic and the agent cost. An arrangement is kept
-as a Workspace, and you switch between Workspaces by their tabs. Three come with
-the simulator: Default, Induction and Maintenance.
+close. Each Area holds one View, and its View chooser offers all eight: the
+concentration chart, the wash-in plot, the parameter controls, the bookmarks,
+the branch control, the agent accounting, the compartment schematic and the
+agent cost. An arrangement is kept as a Workspace, and you switch between
+Workspaces by their tabs. Three come with the simulator: Default, Induction and
+Maintenance.
 
 A region outside the Areas shows the simulated time, the playback speed, whether
 the simulation is running or halted and why, the agent and its 1 MAC, the
@@ -93,6 +94,12 @@ is safe alone.
 
 While a case runs, the window shows the following.
 
+- The bookmarks View lists the instants and the MAC multiples you marked, and
+  opens the editor that adds and removes them. All three Workspaces include
+  this View.
+- The branch View opens a second run from an earlier instant of the case. The
+  second run is drawn beside the first, so you can change a setting and
+  compare the two. All three Workspaces include this View.
 - The agent accounting View shows the agent delivered, exhausted and stored,
   and any agent left unaccounted for. None of the three Workspaces includes
   this View.

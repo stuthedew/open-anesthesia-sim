@@ -17,6 +17,8 @@ from anesthesia_sim.app.view_contract import View, ViewContext
 from anesthesia_sim.app.view_registry import (
     AGENT_ACCOUNTING,
     AGENT_COST,
+    BOOKMARKS,
+    BRANCH,
     COMPARTMENT_SCHEMATIC,
     CONCENTRATION_CHART,
     PARAMETER_CONTROLS,
@@ -61,6 +63,8 @@ def test_each_tag_is_the_string_a_saved_file_holds() -> None:
         AGENT_ACCOUNTING,
         COMPARTMENT_SCHEMATIC,
         AGENT_COST,
+        BOOKMARKS,
+        BRANCH,
     ] == [
         "concentration_chart",
         "wash_in",
@@ -68,6 +72,8 @@ def test_each_tag_is_the_string_a_saved_file_holds() -> None:
         "agent_accounting",
         "compartment_schematic",
         "agent_cost",
+        "bookmarks",
+        "branch",
     ]
     assert set(REGISTERED) == {
         "concentration_chart",
@@ -76,6 +82,8 @@ def test_each_tag_is_the_string_a_saved_file_holds() -> None:
         "agent_accounting",
         "compartment_schematic",
         "agent_cost",
+        "bookmarks",
+        "branch",
     }
 
 
@@ -99,6 +107,8 @@ def test_every_shipped_workspace_names_only_registered_kinds() -> None:
         "wash_in",
         "parameter_controls",
         "compartment_schematic",
+        "bookmarks",
+        "branch",
     }
 
 

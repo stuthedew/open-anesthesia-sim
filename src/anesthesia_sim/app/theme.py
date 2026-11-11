@@ -367,9 +367,6 @@ LEGEND_ENTRY_SPACING = 16
 # planned-milestone item 33's visual pass.
 LEGEND_LINE_SPACING = 6
 
-# The rule between the concentration panel and the wash-in section below it.
-SECTION_DIVIDER_HEIGHT = 16
-
 # The two chart references are furniture, meaning chart marks that are not
 # data. They are drawn in the interface's own ink and label colours rather
 # than in a seventh and eighth hue. A new hue would join the trace palette's
@@ -703,8 +700,8 @@ EQUILIBRIUM_LINE_STROKE_WIDTH = 1.5
 # the percent axis, and it wraps "0.25" onto two lines.
 WASH_IN_AXIS_LABEL_SIZE = 34
 
-# GRIDLINE colours the chart gridlines and axis lines, the rule between sections
-# of the chart column, and the sliders' unfilled groove. PL-2CS8 named it.
+# GRIDLINE colours the chart gridlines and axis lines, the rule under each
+# Area's header, and the sliders' unfilled groove. PL-2CS8 named it.
 # Before that, it was the bare literal "#D9E2EC" at five sites and was defined
 # nowhere. `tools/contrast_check.py` reads named constants, so it could not see
 # the colour at all, and it reported the file the colour sat in as checked.
@@ -733,8 +730,8 @@ WASH_IN_AXIS_LABEL_SIZE = 34
 # any drawn point. The chart passes the criterion's own test, which is to
 # assume the area is invisible and ask whether the graphic is still understood.
 # Without the rulings, the chart is six labelled traces against two labelled
-# axes. The axis lines, the section rule and the groove each have their own
-# grounds for exemption, given for each use in `EXEMPT`.
+# axes. The axis lines, the rule under each Area's header and the groove each
+# have their own grounds for exemption, given for each use in `EXEMPT`.
 #
 # The grey is not darkened, and that decision comes from the chart's hierarchy
 # rather than from the criterion. The lightest trace, `MUSCLE_COLOR`, is 3.43:1

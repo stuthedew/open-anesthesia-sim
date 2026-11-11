@@ -158,9 +158,20 @@ lower case and in upper case for the first, and wrapped in `XX` for the
 second.
 
 The check gave no answer at first, for two causes that were on `main`. This
-branch fixed both in `pyproject.toml`, and `PL-GP8G` fixed both on `main`
-while the branch was open, so the merge took `main`'s settings. The two
-regression tests this branch wrote stay in `tests/unit/test_diff_mutation.py`.
+branch fixed both in `pyproject.toml` and wrote two regression tests. `main`
+then fixed both in `PL-GP8G` and added a CI check of the mutation run's
+first step in `PL-PG0S`, so the merges took `main`'s settings and tests, and
+nothing of this branch's two fixes remains in its difference from `main`.
+
+**Edits to the moved sections that arrived from `main`, 2026-11-11.**
+`PL-9YPR` edited four passages of the moved sections in `docs/MODEL.md`
+while this branch was open: two under "Every value and what qualifies it
+come from one step", on when the banner names Reset alone, and two under
+"Color contrast, and the standard this interface is held to", on the
+gridline grey's exemption from SC 1.4.11. The merge ported each to
+`docs/INTERFACE.md`
+word for word, and `python3 tools/model_rewrite.py lost` still lists no
+fact held fewer times.
 
 **The copy edit of the last two comments was skipped.** The two tests above
 each gained a two-line comment after the last copy edit. The project owner
