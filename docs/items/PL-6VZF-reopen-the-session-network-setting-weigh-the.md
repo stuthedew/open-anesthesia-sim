@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: docs, infra
-touches: .claude/rules/citing-sources.md, CLAUDE.md, .claude/rules/instruction-writing.md, docs/resident-instructions.md, docs/worker.md
+touches: .claude/rules/citing-sources.md, CLAUDE.md, .claude/rules/instruction-writing.md, docs/resident-instructions.md, docs/worker.md, docs/items/PL-HS9M-the-interface-pass-has-no-agreed-order-of-work.md
 added: 2026-11-11
 closed: 2026-11-11
 pr: 2111
