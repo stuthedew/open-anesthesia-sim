@@ -435,7 +435,9 @@ two, also record it as a field**: `bin/docket set <id> --reenters PL-XXXX`,
 naming the closed head or item whose fix should have covered this one.
 `bin/docket inflow` counts that field per period and names any closed item
 three filings re-enter - the three post-close instances above - and it reads
-nothing from the prose line (`PL-WXKD`). `bin/docket inflow --lane product`
+nothing from the prose line (`PL-WXKD`). It counts the three per fact: a
+filing that names any head of a fact counts against the first head that stated
+it, so name whichever head you found (`PL-YSV3`). `bin/docket inflow --lane product`
 does the same for product filings (`PL-K5CX`).
 
 **On a grooming pass, compare the heads with each other** (`PL-5MYR`). The
@@ -444,8 +446,10 @@ each other, and that gap gave one record a head per reader: four for who holds
 an item, and three for gate dispositions before `PL-WD5Z`. Each was found only
 by a sweep the owner asked for. So read `bin/docket generators --misread` once,
 whole, and ask whether any two lines state one fact. The sort puts lines with
-the same wording side by side; drifted wording puts them apart, so read the
-whole list rather than neighbours only. Treat each overlap pair it prints as a
+the same wording side by side, and counts the heads under a fact that has more
+than one. Drifted wording puts them apart and splits that count, so read the
+whole list rather than neighbours only, and give two heads of one fact the same
+words. Treat each overlap pair it prints as a
 lead, not a verdict: a member two heads share is a misattribution, a member
 with two causes, or a sign the heads share a fact. Four outcomes, all yours to
 act on in the pass:
