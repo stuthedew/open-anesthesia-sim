@@ -78,7 +78,7 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.config import load  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
-from docket.markdown import Heading, headings  # noqa: E402
+from docket.markdown import PROSE, Heading, headings  # noqa: E402
 from docket.store import CITED_ID_RE  # noqa: E402
 from docket.vcs import (  # noqa: E402
     RECORDS,
@@ -691,7 +691,7 @@ def repoint(
         other = destination if name == source else source
         prose = doc_check.without_fences(text)
         edits: list[tuple[int, int, str]] = []
-        for match in doc_check._statement_matches(doc_check.CITATION_RE, prose, doc_check.PROSE):
+        for match in doc_check._statement_matches(doc_check.CITATION_RE, prose, PROSE):
             before = match.string[max(match.pos, match.start() - 200) : match.start() + 1]
             if match["term"] is None or doc_check.QUALIFIED_RE.search(before):
                 continue
