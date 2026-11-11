@@ -76,18 +76,19 @@ the diff, say it again in plain words.
 For a branch that added a test and changed no simulator code:
 
 > A new test fails when a public parameter, field or return value in `core/`
-> is a bare `float` or `int` that is not on the test's list. The list holds
-> 173 entries, each under the reason it is not yet a checked type. This is
-> step (a) of `PL-LHCL`, which stays open. No file under `src/` changes, so
-> every simulated and displayed value is the same.
+> is a plain `float` or `int`, unless the test's list names it. The list has
+> 173 entries, grouped by the reason each one is not yet a checked type. This
+> is step (a) of `PL-LHCL` (give every number in `core/` a checked type),
+> which stays open. No file under `src/` changes, so every simulated and
+> displayed value is the same.
 >
-> Two findings from the blind review are worth knowing. Thirteen guards
-> compare two numbers and accept NaN, and 21 entries sit on records that check
-> nothing. `PL-LHCL` records both for the steps that give those numbers
-> checked types.
+> The blind review found two things worth knowing. Thirteen checks compare
+> two numbers in a way that accepts NaN. Twenty-one of the listed numbers
+> belong to records that check nothing. `PL-LHCL` records both, for the later
+> steps that give those numbers checked types.
 >
-> Nothing needs your review. The full suite passes, and the new test failed
-> first with its list emptied.
+> Nothing needs your review. The full test suite passes, and the new test
+> failed first when its list was emptied.
 
 For a branch that added item files only:
 
@@ -96,7 +97,8 @@ For a branch that added item files only:
 > up. The fourth records your question about the sessions' network allowlist.
 >
 > Nothing needs your review before it merges. The questions for you are in
-> `PL-HS9M`, `PL-BVC5` and `PL-6VZF`.
+> `PL-HS9M` (the order of work for the interface), `PL-BVC5` (how the
+> controls are drawn) and `PL-6VZF` (the network allowlist).
 
 ## Run the blind review passes before a simulator pull request is ready
 
