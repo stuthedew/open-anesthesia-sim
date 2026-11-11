@@ -32,6 +32,16 @@ a focus mark of its own. The owner was asked on 2026-11-10 to press Tab and
 look at Start, and has not answered. The View chooser and the Workspace tabs
 already declare a focus border.
 
+**Added 2026-11-10: Tab may not reach a button on a Mac at all.** Qt's
+`Qt::FocusPolicy` documentation says of `Qt::StrongFocus`: "On macOS this will
+also be indicate that the widget accepts tab focus when in 'Text/List focus
+mode'" (https://doc.qt.io/qt-6/qt.html, the whole page read on 2026-11-10).
+So a system setting on the Mac decides whether Tab stops on a button. Which
+setting, and its default, are not confirmed: Apple's help page returned no
+readable text to a direct request. The owner's check therefore has three
+possible results, and each is a different finding: Tab reaches Start and a
+mark shows; Tab reaches Start and no mark shows; Tab never reaches Start.
+
 **Relation to the interface pass.** The pass will define every state of every
 control (`PL-HS9M`, `PL-BVC5`). This finding does not wait for it: a focus
 mark and a pressed state on these three buttons can land alone.
