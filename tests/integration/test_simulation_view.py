@@ -72,6 +72,7 @@ from anesthesia_sim.app.bookmarks import MacTarget, MarkStanding, TimeBookmark
 from anesthesia_sim.app.chart_frame import (
     COMPARED_COMPARTMENT_CAP,
     HOVER_INSTANT_RESOLUTION_S,
+    ChartFrame,
     format_trace_hover,
 )
 from anesthesia_sim.app.chart_time_base import (
@@ -80,6 +81,7 @@ from anesthesia_sim.app.chart_time_base import (
     ChartTimeBase,
     time_base_for_span,
 )
+from anesthesia_sim.app.compartment_schematic import SchematicShown
 from anesthesia_sim.app.control_record import ControlChange, ControlInput
 from anesthesia_sim.app.control_timeline import ControlAdjustment, group_adjustments
 from anesthesia_sim.app.controller import (
@@ -204,6 +206,7 @@ from anesthesia_sim.app.unconditional_set import (
     UnconditionalValue,
     unconditional_set,
 )
+from anesthesia_sim.app.view_contract import ViewTick
 from anesthesia_sim.app.view_registry import (
     AGENT_ACCOUNTING,
     AGENT_COST,
@@ -2063,6 +2066,12 @@ def test_a_halt_shows_the_last_frame_whose_readouts_were_written_on_every_panel(
     readouts were written. So the cards and the accounting panel again show
     one state of the run (`PL-RNYV`, `PL-RF2S`). The expected cards and
     amounts are those of a second run built directly and stepped to 60 s.
+
+    The readout row is where a frame fails after every View has drawn it.
+    A frame can also fail in a View, after the Views before it have drawn
+    it. `test_a_schematic_that_refuses_a_frame_leaves_every_view_on_the_frame_the_readouts_show`
+    covers that with the schematic, which is where this test put its
+    refusal while the run wrote its own schematic.
     """
 
     controller = _fresh_run(60.0)
@@ -2098,6 +2107,132 @@ def test_a_halt_shows_the_last_frame_whose_readouts_were_written_on_every_panel(
         (readout.value, readout.secondary) for readout in readouts(at_60_s, DEFAULT_PLAYBACK_RATE)
     ]
     assert _accounting_reading(_accounting_panel(run)) == _accounting_of(at_60_s)
+
+
+def test_a_schematic_that_refuses_a_frame_leaves_every_view_on_the_frame_the_readouts_show(
+    application: QApplication,
+) -> None:
+    """A View that cannot write a frame does not leave the View before it on that frame.
+
+    The accounting View sits before the schematic View in reading order, and
+    the agent cost View after it. The first frame draws the run at 60 s. The
+    schematic then refuses the value of any later frame. On the frame at
+    120 s the accounting View writes its panel, and then the schematic
+    refuses. The halt tries the frame again, and the same happens. The
+    accounting panel then showed the amounts at 120 s, beside readouts and
+    a clock at 1m (blind review of `PL-RF2S`).
+
+    After the halt, the readouts, the accounting panel, the schematic and
+    the cost panel must show the frame at 60 s, the last whose readouts
+    were written. The expected cards and amounts are those of a second run
+    built directly and stepped to 60 s, and the instant on the schematic and
+    on the cost panel is written out by hand.
+    """
+
+    controller = _fresh_run(60.0)
+    view = _shown_view(application, controller, workspaces=_RUN_PANEL_VIEWS)
+    run = view.runs[0]
+    accounting_view, schematic_view, cost_view = view.layout_container.views()
+    assert isinstance(accounting_view, AccountingView)
+    assert isinstance(schematic_view, CompartmentSchematicView)
+    assert isinstance(cost_view, AgentCostView)
+    panel = accounting_view.panels[0]
+    schematic = schematic_view.schematics[0]
+    first_frame = run.presentation(controller.snapshot()).values.schematic
+    show = schematic.show_schematic
+    written_before_the_schematic: list[str] = []
+
+    def refusing_a_later_frame(shown: SchematicShown) -> None:
+        if shown != first_frame:
+            written_before_the_schematic.append(panel._agent_amounts_text.text())
+            raise ValueError("the schematic could not show this value")
+
+        show(shown)
+
+    schematic.show_schematic = refusing_a_later_frame  # type: ignore[method-assign]
+    controller.start()
+    _advance(controller, 60.0)
+    later = accounting(controller.snapshot()).amounts
+    at_60_s = _fresh_run(60.0).snapshot()
+
+    view.present(False)
+
+    assert later != accounting(at_60_s).amounts
+    assert written_before_the_schematic == [later, later], (
+        "the accounting View did not write the frame at 120 s before the schematic refused it, "
+        "on the frame and on the halt's second attempt"
+    )
+    assert controller.has_failed is True
+    assert run._status_text.text() == STATUS_FAILED_TEXT
+    assert [
+        (card.value_label.text(), card.secondary_label.text()) for card in run._readout_row.panels
+    ] == [
+        (readout.value, readout.secondary) for readout in readouts(at_60_s, DEFAULT_PLAYBACK_RATE)
+    ]
+    assert _accounting_reading(panel) == _accounting_of(at_60_s)
+    assert schematic.name_text.text() == "At 1m of simulated time"
+    assert cost_view.panels[0].name_text.text() == "At 1m of simulated time"
+
+
+def test_a_view_that_cannot_draw_the_frame_a_halt_tries_again_leaves_every_view_on_one_frame(
+    application: QApplication,
+) -> None:
+    """A View placed before one that raises is not left on a frame the run's readouts never took.
+
+    An accounting View sits before the concentration chart in reading order,
+    and a second one sits after it. The first frame draws the run at 60 s.
+    From then on the chart raises on every frame it is handed. On the frame
+    at 120 s the first accounting View writes its panel, and then the chart
+    raises. The halt tries the frame again, and the same happens. The first
+    accounting View then showed the amounts at 120 s, beside readouts and a
+    second accounting View that showed 60 s (blind review of `PL-RF2S`).
+
+    After the halt, the readouts and both accounting Views must show the
+    frame at 60 s, the last whose readouts were written. The expected cards
+    and amounts are those of a second run built directly and stepped to 60 s.
+    """
+
+    controller = _fresh_run(60.0)
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    view.layout_container.choose_view(AreaId(4), AGENT_ACCOUNTING)
+    _settle(application)
+    kinds = [type(shown) for shown in view.layout_container.views()]
+    before_the_chart, after_the_chart = (
+        shown.panels[0]
+        for shown in view.layout_container.views()
+        if isinstance(shown, AccountingView)
+    )
+    assert kinds.index(AccountingView) < kinds.index(ConcentrationView)
+    written_before_the_chart: list[str] = []
+
+    def refusing(frame: ChartFrame) -> None:
+        written_before_the_chart.append(before_the_chart._agent_amounts_text.text())
+        raise ValueError("the chart could not draw this frame")
+
+    _concentration(view).chart.draw = refusing  # type: ignore[method-assign]
+    controller.start()
+    _advance(controller, 60.0)
+    later = accounting(controller.snapshot()).amounts
+    at_60_s = _fresh_run(60.0).snapshot()
+
+    view.present(False)
+
+    assert later != accounting(at_60_s).amounts
+    assert written_before_the_chart == [later, later], (
+        "the first accounting View did not write the frame at 120 s before the chart raised, "
+        "on the frame and on the halt's second attempt"
+    )
+    assert controller.has_failed is True
+    assert run._status_text.text() == STATUS_FAILED_TEXT
+    assert [
+        (panel.value_label.text(), panel.secondary_label.text())
+        for panel in run._readout_row.panels
+    ] == [
+        (readout.value, readout.secondary) for readout in readouts(at_60_s, DEFAULT_PLAYBACK_RATE)
+    ]
+    assert _accounting_reading(after_the_chart) == _accounting_of(at_60_s)
+    assert _accounting_reading(before_the_chart) == _accounting_of(at_60_s)
 
 
 def test_a_halt_whose_dials_and_1_mac_line_cannot_be_built_is_still_stated(
@@ -12409,6 +12544,149 @@ def test_a_branch_dropped_while_frames_fail_leaves_no_widget_in_any_view(
 
     assert len(view.findChildren(ParameterControls)) == 1
     assert len(view.findChildren(AccountingPanel)) == 1
+
+
+def _no_tick_without_a_frame(tick: ViewTick) -> NoReturn:
+    """Stand in for a View's `refresh` in a test where the View raises on a halt's tick.
+
+    The tests that use it make every frame fail, so the only tick that
+    reaches a View is the one a halt hands it, which has no frame.
+    """
+
+    assert tick.frame is None, "a frame was drawn in a test where every frame must fail"
+
+    raise RuntimeError("this View could not show the tick")
+
+
+def _dial_readings(row: RunDials) -> list[tuple[str, int]]:
+    """Each dial of one run in a setting controls View: its value label and its thumb's place."""
+
+    controls = row.controls
+    assert controls is not None, "the View shows no dials for this run"
+
+    return [
+        (dial.value_label.text(), dial.slider.sliderPosition())
+        for dial in controls.findChildren(ParameterSlider)
+    ]
+
+
+def test_a_view_that_raises_on_a_halt_leaves_no_dropped_branch_in_the_views_after_it(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """One View that raises on a halt's tick does not stop the Views after it learning of the halt.
+
+    Every frame fails, so the halt's tick is the only thing that tells a
+    View which runs are left. The concentration chart raises on that tick.
+    One setting controls View sits before the chart in reading order. A
+    second one, the accounting View, the schematic View and the agent cost
+    View sit after it. The trunk's Reset then drops the branch. When the
+    Views after the chart were handed nothing, they went on showing Run 2's
+    dials and panels, and the name "Run 1", beside a dashboard that held one
+    unnamed run at 0 s (blind review of `PL-RF2S`).
+
+    Each View after the chart must show what the View before it shows: one
+    run, not named, with its values withheld, because the run has started
+    over and no frame has drawn since. Each expected text is written out by
+    hand, or is the withheld form that `dashboard_frame` gives.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+
+    for area, kind in ((3, PARAMETER_CONTROLS), (5, COMPARTMENT_SCHEMATIC), (6, AGENT_COST)):
+        view.layout_container.choose_view(AreaId(area), kind)
+        _settle(application)
+
+    view.add_run(case.fork_here())
+    view.render_tick()
+    _settle(application)
+    views = view.layout_container.views()
+    kinds = [type(shown) for shown in views]
+    assert kinds == [
+        ParameterControlsView,
+        ConcentrationView,
+        ParameterControlsView,
+        AccountingView,
+        CompartmentSchematicView,
+        AgentCostView,
+    ]
+    before_the_chart, chart, after_the_chart, accounting_view, schematic, cost = views
+    assert isinstance(before_the_chart, ParameterControlsView)
+    assert isinstance(after_the_chart, ParameterControlsView)
+    assert isinstance(accounting_view, AccountingView)
+    assert isinstance(schematic, CompartmentSchematicView)
+    assert isinstance(cost, AgentCostView)
+    assert len(after_the_chart.rows) == len(accounting_view.panels) == 2
+    assert len(schematic.schematics) == len(cost.panels) == 2
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+    monkeypatch.setattr(chart, "refresh", _no_tick_without_a_frame)
+
+    trunk = view.runs[TRUNK_RUN_INDEX]
+    trunk._reset_button.click()
+    dialog = trunk._reset_dialog
+
+    if dialog is not None:
+        dialog.discard_button.click()
+
+    _settle(application)
+
+    assert len(view.runs) == 1
+    assert trunk.controller.has_failed is True
+    assert trunk.snapshot().elapsed_s == 0.0
+    assert len(before_the_chart.rows) == 1
+    assert len(after_the_chart.rows) == 1, "the dropped branch's dials are still shown"
+    assert _dial_readings(after_the_chart.rows[0]) == _dial_readings(before_the_chart.rows[0])
+    assert [panel._accounting_heading_text.text() for panel in accounting_view.panels] == [
+        "Agent accounting validation"
+    ]
+    assert _accounting_reading(accounting_view.panels[0]) == _withheld_accounting()
+    assert [_run_named_on(drawn.name_text.text()) for drawn in schematic.schematics] == [None]
+    assert [_run_named_on(panel.name_text.text()) for panel in cost.panels] == [None]
+    assert len(view.findChildren(ParameterControls)) == 2, "one row of dials for each of two Views"
+    assert len(view.findChildren(AccountingPanel)) == 1
+
+
+def test_a_view_that_raises_on_a_halt_leaves_no_dial_on_a_setting_the_run_refused(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A dial moved on a halted run goes back to the run's setting in every View.
+
+    The run holds a fresh gas flow of 2.0 L/min, and a halted run refuses a
+    dial. Every frame fails, and the concentration chart raises on the
+    halt's tick. One setting controls View sits before the chart in reading
+    order and one after it. A learner drags the fresh gas flow dial to
+    7.0 L/min in the second View. The halt that follows the refusal is the
+    only thing that writes the dial back. When the Views after the chart
+    were handed nothing, the dial's thumb stayed on 7.0 L/min beside a first
+    View that showed 2.0 L/min (blind review of `PL-RF2S`).
+    """
+
+    controller = _paused_run_with_history(60.0)
+    view = _shown_view(application, controller)
+    view.layout_container.choose_view(AreaId(3), PARAMETER_CONTROLS)
+    _settle(application)
+    before_the_chart, after_the_chart = (
+        shown for shown in view.layout_container.views() if isinstance(shown, ParameterControlsView)
+    )
+    in_force = _dial_readings(before_the_chart.rows[0])
+    assert _dial_readings(after_the_chart.rows[0]) == in_force
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+    monkeypatch.setattr(_concentration(view), "refresh", _no_tick_without_a_frame)
+
+    with pytest.raises(RuntimeError, match="this View could not show the tick"):
+        view.present(False)
+
+    assert controller.has_failed is True
+    moved = after_the_chart.rows[0].controls
+    assert moved is not None
+
+    _drag(moved._fresh_gas_flow_slider, 7.0, FLOW_DISPLAY_DECIMALS)
+    _settle(application)
+
+    assert controller.settings().fresh_gas_flow_l_min == 2.0
+    assert moved._fresh_gas_flow_slider.value_label.text() == "2.0 L/min"
+    assert _dial_readings(after_the_chart.rows[0]) == in_force
+    assert _dial_readings(before_the_chart.rows[0]) == in_force
 
 
 def test_a_request_that_names_a_run_the_dashboard_does_not_hold_halts_every_run(

@@ -40,9 +40,13 @@ tick when no frame can be drawn: on a halt, and at once after a dial is
 dragged. That tick carries no frame and no snapshots. Its presentations hold
 the values of the last frame that drew, or withhold them when the run has
 started over since that frame. A chart draws nothing from such a tick, and
-only drops its lines for the runs that the tick no longer names. A View asks
-for a change to a run's setting through `ViewRequests`, naming the run by its
-`run_id`.
+only drops its lines for the runs that the tick no longer names. Every View
+is handed a tick with no frame, even when a View before it in reading order
+raises on that tick. The first exception is raised once the last View has
+been handed the tick. A tick with a frame stops at the first View that
+raises, and the halt that follows hands every View a tick with no frame. A
+View asks for a change to a run's setting through `ViewRequests`, naming the
+run by its `run_id`.
 
 **A chart's time window is its own** (project owner, 2026-10-19, ratified,
 over one shared window saved per Workspace; `PL-L59K`). Q2 and Q7 made the

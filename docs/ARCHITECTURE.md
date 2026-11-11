@@ -947,6 +947,14 @@ nothing from a tick with no frame. A tick with no frame carries the case's
 panels too. A bookmarks View or a branch View whose first tick has no frame
 takes its copy from that tick, and the copy shows what the halt restated.
 
+A View that raises on a tick with no frame does not keep the tick from the
+Views after it. The adapter hands the tick to every View, and then raises the
+first exception (`AreaLayout.refresh`). On a tick with a frame, the adapter
+stops at the first View that raises, and the halt that follows hands every
+View the runs. The halt then tries the frame once more. When that attempt
+fails too, a View may already have drawn it, so the halt hands every View the
+runs again. Every View then shows the frame that each run's own panel shows.
+
 Four parts of a `RunPresentation` can be computed only for a frame, and are held
 together in `RunValues`: the readouts and the clock read with them, the
 compartment schematic, the delivered agent of the cost panel, and the accounting

@@ -529,6 +529,14 @@ class AreaLayout(QWidget):
         for. With None, no frame was drawn, and every View is handed a tick
         that carries no frame and no snapshots.
 
+        A View that raises on a tick with a frame stops the tick there. The
+        caller halts every run, and the halt hands every View a tick with no
+        frame. A View that raises on a tick with no frame does not stop the
+        tick. On a halt that tick is the only thing that tells a View which
+        runs are left and what each one shows. If it stopped at the first
+        View that raised, each View after it would go on showing a run that
+        was removed, or the settings from before the halt (`PL-RF2S`).
+
         Args:
             frames: The tick's frames, one for each window that
                 `frame_requests` returned, or None when no frame was drawn.
@@ -542,9 +550,11 @@ class AreaLayout(QWidget):
             ValueError: `frames` is None and `snapshots` is not empty. No
                 View is handed anything.
             KeyError: A View asks for a window that `frames` does not hold.
-            Exception: whatever a View raises while drawing. The Views after
-                it are not drawn. For a tick with a frame, the caller halts
-                every run.
+            Exception: Whatever a View raises while it is handed the tick.
+                On a tick with a frame, the Views after it are handed
+                nothing, and the caller halts every run. On a tick with no
+                frame, every View is handed the tick and the Areas are
+                settled, and then the first exception is raised.
         """
 
         if frames is None and snapshots:
@@ -552,12 +562,24 @@ class AreaLayout(QWidget):
                 f"a tick with no frame carries no snapshots, and {len(snapshots)} were given"
             )
 
+        first_error: Exception | None = None
+
         for _, view in tuple(self._views.values()):
             request = view.frame_request()
             frame = None if request is None or frames is None else frames[request.time_base]
-            view.refresh(ViewTick(frame, snapshots, runs, selection, preferences, case))
+
+            try:
+                view.refresh(ViewTick(frame, snapshots, runs, selection, preferences, case))
+            except Exception as raised:
+                if frames is not None:
+                    raise
+
+                first_error = first_error or raised
 
         self.follow_needs()
+
+        if first_error is not None:
+            raise first_error
 
     def follow_needs(self) -> None:
         """Settle the Areas again if what was just drawn changed what a View needs.

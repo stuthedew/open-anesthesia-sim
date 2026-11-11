@@ -1768,7 +1768,9 @@ class SimulationView(QWidget):
         this method, so the copy shows the restated marks and offer.
 
         Raises:
-            Exception: Whatever a View raises while it writes the tick.
+            Exception: The first exception that a View raises while it writes
+                the tick. Every View is handed the tick all the same
+                (`AreaLayout.refresh`).
         """
 
         drawn = self._runs_the_views_show()
@@ -2296,12 +2298,16 @@ class SimulationView(QWidget):
         the panels in the Areas show each halted run as its own panel shows it. A run that
         was removed while frames fail is dropped from every View, and a View that a reader
         chose while frames fail shows the runs (`PL-RF2S`). This comes after each run's halt
-        and the restatements, so a View that raises cannot hide either (`PL-25KS`).
+        and the restatements, so a View that raises cannot hide either (`PL-25KS`). A View
+        that raises on this tick does not keep the tick from the Views after it
+        (`AreaLayout.refresh`).
 
-        The frame is then tried again. It can fail after the Views have drawn it, when a
-        run's own panel cannot write it. The Views would then show that frame beside a
-        panel that shows the one before it. So the Views are handed the runs once more,
-        and every panel of a run shows the frame that the run's own panel shows.
+        The frame is then tried again. When it fails again, some Views may already have
+        drawn it: the Views placed before a View that raised, or every View when a run's
+        own panel then refused the frame. Those Views would show that frame beside a
+        run's own panel that shows the one before it. So whenever the second attempt
+        fails, the Views are handed the runs once more, and every panel of a run shows
+        the frame that the run's own panel shows.
 
         One run's `show_halt` can raise after it has shown the halt, when its dials
         cannot be built. That exception does not stop the halt path. Every other run
@@ -2339,14 +2345,13 @@ class SimulationView(QWidget):
             try:
                 self._refresh_view()
             except Exception:
-                # The frame failed again. Where it failed after the Views drew
-                # it, they show values that a run's own panel did not take, so
-                # they are handed the runs once more.
-                if not self._frame_failed:
-                    try:
-                        self._show_views_the_runs()
-                    except Exception as raised:
-                        presentation_error = presentation_error or raised
+                # The frame failed again. Any View that drew it before it
+                # failed shows values that no run's own panel took, so every
+                # View is handed the runs once more.
+                try:
+                    self._show_views_the_runs()
+                except Exception as raised:
+                    presentation_error = presentation_error or raised
         finally:
             self._halting_every_run = False
 
