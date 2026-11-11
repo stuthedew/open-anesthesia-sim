@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: copy-editor
+milestone: v0.6.17
 touches: tools/new_prose.py, tests/unit/test_new_prose.py, .claude/rules/plain-writing.md, .claude/skills/pull-request/SKILL.md, .claude/skills/docket/modes/close-out.md, docs/prose-review/README.md
 deferred-from: v0.7.0 - the owner's request of 2026-11-10, after the gate froze
 added: 2026-11-10
