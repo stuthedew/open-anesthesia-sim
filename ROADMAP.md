@@ -1372,18 +1372,17 @@ milestone clears it together with `PL-RJN9`.** A review of earlier fixes found
 that the accounting panel and the schematic show agent amounts without the
 condition they are stated at, 20 °C and 1 atm. The accounting panel's caption
 was already in the tree at `817a4d88`, so the problem was present at the
-freeze. The project owner chose to put both items in this milestone (project
-owner, 2026-11-10, ratified, over deferring them to the next gate). Required
-scope entry 13 names both, so they are in the first group, and `PL-RJN9` is
-no longer deferred.
+freeze. Required scope entry 13 names both items (project owner, 2026-11-10,
+ratified, over deferring them to the next gate), so they are in the first
+group, the entries cleared by v0.7.0 itself.
 
 **`PL-19M4` joined the frozen list on 2026-11-11, after the freeze.** It is
-classed `safety`. When an item closes, the mutation check measures a change
-only in the modules that `pyproject.toml` names by hand. `app/bookmarks.py`,
+classed `safety`. When an item closed, the mutation check covered its change
+only in the modules that `pyproject.toml` named by hand. `app/bookmarks.py`,
 `app/controller.py` and every module under `layout/` import no Qt and were
 outside that list at `817a4d88`, so the problem was present at the freeze.
 `app/bookmarks.py` decides which side of a MAC target a reading is on, and no
-test places a reading on either edge of the band.
+test placed a reading on either edge of the band around the target.
 
 ### Required scope
 

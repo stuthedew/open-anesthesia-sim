@@ -264,7 +264,7 @@ def test_the_toolkit_packages_are_the_two_routes_into_qt() -> None:
     assert toolkit_packages() == {"PySide6", "pyqtgraph"}
 
 
-#: A table that leaves `src/pkg/qt_view.py` and `src/pkg/broken.py` out, and
+#: This table leaves `src/pkg/qt_view.py` and `src/pkg/broken.py` out, and
 #: gives `broken.py` a reason.
 RULED_TOML = """\
 [tool.mutmut]
@@ -279,7 +279,7 @@ pytest_add_cli_args_test_selection = ["@selected-tests.txt"]
 
 @pytest.fixture
 def ruled(repo: Path) -> Path:
-    """`repo` with a widget module and a module left out for a reason, as `RULED_TOML` has them."""
+    """Return `repo` with a widget module and a module left out for a reason, per `RULED_TOML`."""
     _write(repo, "pyproject.toml", RULED_TOML)
     _write(repo, "src/pkg/qt_view.py", "from PySide6 import QtWidgets\n")
     _write(repo, "src/pkg/broken.py", "def g():\n    return 2\n")
@@ -1341,9 +1341,10 @@ def test_a_branch_whose_changed_core_test_still_catches_every_mutant_passes(
             "def test_x():\n    from anesthesia_sim.core import dosing\n",
             {"anesthesia_sim.core", "anesthesia_sim.core.dosing"},
         ),
-        # A module of any part of the package is named, since the caller keeps
-        # the ones that mutmut mutates. A relative import names nothing, and
-        # neither does a package whose name only begins with this one's.
+        # The result lists a module from any part of the package, since the
+        # caller keeps the ones that mutmut mutates. A relative import adds
+        # nothing, and neither does a package whose name only begins with
+        # this one's.
         (
             "from anesthesia_sim.layout import sizing\nfrom . import core\n",
             {"anesthesia_sim.layout", "anesthesia_sim.layout.sizing"},

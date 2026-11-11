@@ -540,10 +540,10 @@ def test_a_reading_within_one_part_in_a_hundred_thousand_of_the_height_is_at_it(
 def test_a_reading_exactly_on_the_lower_edge_of_the_band_is_inside_it() -> None:
     """The band includes its lower edge, and the next float below that edge is outside it.
 
-    The target is at 1.00 ×MAC, so the band's half-width is one part in a
-    hundred thousand of 1.0, and the edge is `1.0 - 1e-5` with no rounding in
-    the product. A step that lands on the edge from below therefore crosses the
-    target, and a step from the edge to the height crosses nothing.
+    The target is at 1.00 ×MAC, so the band around it has a half-width of
+    `HEIGHT_BAND`, which is 1e-5, times 1.0. Multiplying by 1.0 adds no rounding,
+    which leaves the lower edge at exactly `1.0 - 1e-5`. A step that lands on the edge from below therefore
+    crosses the target, and a step from the edge to 1.00 ×MAC crosses nothing.
     """
 
     target = _target(multiple=1.0)

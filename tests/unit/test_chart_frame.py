@@ -2013,9 +2013,10 @@ def test_a_preview_at_the_run_s_own_setting_coincides_with_what_the_run_then_dra
 def test_a_preview_on_an_axis_that_ends_at_the_reach_predicts_nothing() -> None:
     """An axis with no time ahead of the run has no prediction to draw, not a single point.
 
-    `SimulationController.preview_window` returns an empty window where the
-    axis ends at or before the reach. The axis here ends exactly at the reach,
-    and one step past it the prediction holds the reach and that step.
+    The controller's preview window (`SimulationController.preview_window`) is
+    empty when the axis ends at or before the run's reach. The axis here ends
+    exactly at the reach. An axis one step longer gets a prediction that holds
+    the reach and that step.
     """
 
     controller = _run(60.0)
