@@ -1181,9 +1181,15 @@ specialist standard in `CLAUDE.md` that applies to this document (`PL-KRGY`).
 ## Tests (`tests/`)
 
 - **`tests/unit/`** — tests of one module's behavior in isolation, such as a
-  compartment, a validator, a parameter loader, the controller and the
-  displayed-value formatters. One test checks what the dashboard would show on
-  each tick, with no toolkit loaded (`test_dashboard_frame.py`). Another
+  compartment, a validator, a parameter loader and the displayed-value
+  formatters. The controller drives a whole run, so its tests are in
+  `tests/integration/`. About half of this directory's files test the
+  repository's own tooling instead: the scripts in `tools/`, the hooks and
+  the CI workflows. A file that imports `anesthesia_sim` is a simulator test.
+  A file that does not is a tooling test, held to the lighter standard in
+  `.claude/rules/apparatus-standard.md`, and `tools/workflow_paths_check.py`
+  applies that rule. One test checks what the dashboard would show on each
+  tick, with no toolkit loaded (`test_dashboard_frame.py`). Another
   checks the one value a run's panel is written from, on a frame and on a
   halt (`test_run_presentation.py`). Every
   operation and refusal of the area layout is tested in `test_layout_model.py`,
