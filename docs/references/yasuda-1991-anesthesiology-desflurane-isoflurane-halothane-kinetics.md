@@ -16,9 +16,9 @@ Route and depth: the project owner's own copy, kept outside this repository
 (the private corpus). The paper is a scan with no text layer, so it was read as
 page images. Printed pages 489, 490 and 491 were read on 2026-10-26 for
 `PL-4QCJ`, and every fact below that cites them was checked against them that
-day. Pages 492, 494 and 497 were read on 2026-09-13. The facts below that cite
-those pages are as they were recorded then (`PL-4QCJ`), and were not checked
-against the paper again.
+day. Pages 492, 494 and 497 were first read on 2026-09-13, and were read again
+on 2026-11-11, when every fact below that cites them was checked against them
+(`PL-56DQ`).
 
 ## Values recorded from the paper
 
@@ -32,7 +32,7 @@ most likely the 29-minute sample, although the paper does not say so.
 | --- | --- | --- | --- | --- |
 | F_A/F_I at 30 min of administration, mean ± SD | 0.90 ± 0.01 | 0.73 ± 0.03 | not taken | Abstract, page 489 |
 | F_A/F_A0 after 5 min of elimination, mean ± SD | 0.14 ± 0.02 | 0.22 ± 0.02 | 0.25 ± 0.02 | Abstract, page 489 |
-| Recovery, the volume recovered per volume taken up, mean ± SD | 105 ± 25% | 102 ± 13% | 64 ± 9% | Abstract, page 489 |
+| Recovery, the volume recovered per volume taken up, mean ± SD | 105 ± 25% | 102 ± 13% | 64 ± 9% | Abstract, page 489; Table 6, page 497 |
 
 All values are stated in the text, n = 8. None was read from a figure.
 
@@ -80,10 +80,20 @@ Page 490 states each of these.
   F_M = f_A × F_A + f_D × F_I, where f_A and f_D are the fractions of
   ventilation from the alveoli and from the dead space. f_A and f_D were
   averaged from the 10-, 15- and 20-minute samples, using the same formula.
-- **Page 492, recorded 2026-09-13.** Alveolar ventilation is V_A = f_A × V_E,
-  in the total-body-clearance method.
-- **Page 494, recorded 2026-09-13.** The pulmonary elimination clearances and
-  the total body clearances.
+- **Page 492.** Total body clearance is the dose delivered to the alveoli,
+  F_I × V_A × 30 min, divided by the area under the alveolar concentration
+  curves of administration and elimination. Alveolar ventilation in that dose
+  is V_A = f_A × V_E.
+- **Page 494.** The pulmonary elimination clearances, defined as V_1 × k_10,
+  were 4.11 ± 0.45 l/min for desflurane, 3.94 ± 0.34 l/min for isoflurane and
+  3.94 ± 0.33 l/min for halothane, and did not differ among the three agents.
+  The total body clearances were 4.6 ± 0.9 l/min for desflurane,
+  4.8 ± 0.5 l/min for halothane and 4.0 ± 0.5 l/min for isoflurane. Those of
+  desflurane and halothane were significantly greater than that of
+  isoflurane. The page prints the last two spreads as "0.51/min", which reads
+  as 0.5 l/min with the space before the unit lost. Each value is the mean
+  of the eight volunteers. The text does not say what the spread after it
+  is. The abstract and Table 6 give their values as mean ± SD.
 
 ## Where this repository uses these facts
 
@@ -101,6 +111,12 @@ Page 490 states each of these.
   apparatus facts, that section concludes that the 50 ml of tubing is a series
   dead space, which reduces alveolar ventilation, and cannot explain
   desflurane's residual.
+- **The ventilation derivation and the clearances.** The same section of
+  `docs/MODEL.md` uses the page 491 formula and the page 492 definition to
+  show that f_A is the alveolar fraction of total minute ventilation, and that
+  it already excludes the 50 ml of tubing. It uses the page 494 pulmonary
+  elimination clearances as a consistency check on the model's alveolar
+  ventilation of 4.0 L/min, and does not adopt them as that ventilation.
 
 ## Other facts from this paper, and where they are recorded
 
