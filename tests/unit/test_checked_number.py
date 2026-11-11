@@ -512,10 +512,13 @@ def test_a_blood_flow_unpickled_at_any_protocol_is_rebuilt_through_its_checks(
 ) -> None:
     """A saved blood flow edited to 1000 L/min is refused on load, at every protocol (`PL-GKG4`).
 
-    A `BloodFlow` is saved as the whole of a cardiac output equal to it
-    (`core/blood_flow.py`). So the number in the file is a cardiac output, and
-    the refusal expected on load is the one that `CardiacOutput` gives when it
-    is built directly from the edited number.
+    A `BloodFlow` is saved as its number and restored as the whole of a
+    cardiac output equal to it (`core/blood_flow.py`). So the edited number
+    meets the cardiac output's check. The refusal names the saved blood flow
+    first and then gives the reason that `CardiacOutput` gives when it is
+    built directly from the edited number. Before the review of `PL-GKG4`, the
+    refusal named only a cardiac output, which the saved record still held
+    unchanged.
     """
 
     held = INSIDE_EVERY_RANGE[CardiacOutput]
@@ -530,7 +533,11 @@ def test_a_blood_flow_unpickled_at_any_protocol_is_rebuilt_through_its_checks(
     with pytest.raises(AnesthesiaSimulationError) as built_directly:
         CardiacOutput(written)
 
-    with pytest.raises(
-        type(built_directly.value), match=f"^{re.escape(str(built_directly.value))}$"
-    ):
+    with pytest.raises(type(built_directly.value)) as refused:
         pickle.loads(_tampered(pickled, held, written, protocol))
+
+    assert str(refused.value) == (
+        "a saved blood_flow_l_min of 1000.0 cannot be restored. A blood flow is a perfusion "
+        "fraction of a cardiac output, so it is restored as the whole of a cardiac output "
+        f"equal to it, and that is refused: {built_directly.value}"
+    )

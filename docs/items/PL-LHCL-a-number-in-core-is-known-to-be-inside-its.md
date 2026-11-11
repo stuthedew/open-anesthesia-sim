@@ -241,7 +241,7 @@ item id as its subject. Each now ends "It is to get a checked type …
 **Built 2026-11-11, step (b): the blood-flow type, which closes `PL-GKG4`.**
 `PL-GKG4`'s item has the record: the two types in `core/blood_flow.py`, the
 failed-first run, and the four decisions taken while building. The bare list
-went from 173 to 164, and the reasons `BLOOD_FLOW` and `PERFUSION_FRACTION`
+went from 173 to 165, and the reasons `BLOOD_FLOW` and `PERFUSION_FRACTION`
 are gone. Step (a)'s open question is answered there: `inf` is the result for
 a flow too small for a finite time constant, and the flow has no smallest
 positive value.

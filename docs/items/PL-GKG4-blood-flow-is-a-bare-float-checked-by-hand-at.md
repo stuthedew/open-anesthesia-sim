@@ -87,10 +87,28 @@ earlier messages named only the field. No run changes: the matrix reads
 **Still bare, and why.** `TissueGroupEquationSettings.blood_flow_l_s` and the
 two `total_perfusion_fraction` returns are derived values, and are listed
 under that reason in `tests/unit/test_bare_numbers.py`. The count there went
-from 173 to 164.
+from 173 to 165.
 
 **The range-edge test now draws the venous pool.** Its two methods take a
 `CardiacOutput`, so `tests/unit/test_supported_range_edges.py` hands them
 every cardiac-output edge. A tissue group's methods take a `BloodFlow`, which
 no guard in that test's modules builds, so they are not drawn. That is step
 (d) of `PL-LHCL`.
+
+**The blind review of step (b), 2026-11-11, pass 2.** Two findings, both
+`optional`, both real when run, both fixed.
+
+1. A saved flow edited out of range was refused in the cardiac output's
+   words, which sends a reader to a value the record still holds unchanged.
+   `BloodFlow.__reduce__` now saves the flow's number, and
+   `_restored_blood_flow` rebuilds it through the constructor and names the
+   saved blood flow before the cardiac output's reason. The return of
+   `__reduce__` is a plain number, so it is on the bare list as a checked
+   type's plain number, and the count is 165.
+2. A cardiac output handed to a tissue group as its flow was told to build
+   the flow "from the value that it should hold, not from this one". A flow
+   is built from that cardiac output and a fraction, so `require_blood_flow`
+   now says how a flow is built.
+
+Each fix has a test of the whole message. Before the fixes those tests fail
+on the message text.

@@ -239,16 +239,25 @@ def test_a_blood_flow_is_built_from_a_cardiac_output_and_a_perfusion_fraction_an
 
 
 def test_a_cardiac_output_is_not_a_tissue_group_s_blood_flow() -> None:
-    """A tissue group refuses the whole cardiac output where its own flow belongs."""
+    """A tissue group refuses the whole cardiac output where its own flow belongs.
 
-    with pytest.raises(
-        TypeError,
-        match="^muscle blood_flow_l_min of 5.0 was built as CardiacOutput, which is not BloodFlow",
-    ):
+    The venous pool takes the cardiac output, so this is the likeliest slip.
+    The refusal says how a blood flow is built. It does not say to build the
+    flow from another value, because the flow is built from this cardiac
+    output and the group's perfusion fraction (found at review of `PL-GKG4`).
+    """
+
+    with pytest.raises(TypeError) as raised:
         _muscle().time_constant_s(
             CardiacOutput(5.0),  # type: ignore[arg-type]
             PartitionCoefficient(0.5),
         )
+
+    assert str(raised.value) == (
+        "muscle blood_flow_l_min of 5.0 was built as CardiacOutput, which is not BloodFlow: "
+        "build it as BloodFlow(cardiac_output_l_min, perfusion_fraction), the tissue group's "
+        'perfusion fraction of the cardiac output (docs/MODEL.md, "Tissue groups")'
+    )
 
 
 @pytest.mark.parametrize("protocol", range(pickle.HIGHEST_PROTOCOL + 1))

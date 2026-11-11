@@ -21,6 +21,8 @@ which no cardiac output inside its supported range can give (`PL-GKG4`).
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from anesthesia_sim.core.checked_number import (
     CheckedQuantity,
     require_a_number,
@@ -93,7 +95,8 @@ class BloodFlow(float, CheckedQuantity):
     The flow does not store its two factors. So a pickle or a copy rebuilds it
     as the whole of a cardiac output equal to the flow. That gives the same
     number and runs both checks. A saved flow that was edited to lie outside
-    the cardiac output's range is refused on load.
+    the cardiac output's range is refused on load, and the refusal names the
+    blood flow (`_restored_blood_flow`).
 
     Raises:
         TypeError: `cardiac_output_l_min` was not built as a `CardiacOutput`,
@@ -111,35 +114,40 @@ class BloodFlow(float, CheckedQuantity):
 
         return super().__new__(cls, cardiac_output_l_min * perfusion_fraction)
 
-    def __reduce__(self) -> tuple[type[BloodFlow], tuple[CardiacOutput, PerfusionFraction]]:
-        """Rebuild the flow through its constructor, as the whole of an equal cardiac output."""
+    def __reduce__(self) -> tuple[Callable[[float], BloodFlow], tuple[float]]:
+        """Rebuild the flow from its number, through `_restored_blood_flow`."""
 
-        return (
-            type(self),
-            (CardiacOutput(float(self)), PerfusionFraction(MAXIMUM_PERFUSION_FRACTION)),
-        )
+        return (_restored_blood_flow, (float(self),))
 
 
-def _require_built(
-    name: str, value: object, built_type: type[CheckedQuantity], built_from: str
-) -> None:
-    """Refuse a value that was not built as `built_type`, and say how to build it.
+def _restored_blood_flow(blood_flow_l_min: float) -> BloodFlow:
+    """Rebuild a saved blood flow as the whole of a cardiac output equal to it.
 
-    A value built as another checked quantity is a swapped argument. It is
-    named as that quantity first, and the message does not say to rebuild it
-    (`require_not_another_quantity`, `core/checked_number.py`).
+    A pickle or a copy calls this function, and nothing else does. It builds
+    the flow through `BloodFlow`'s constructor, so the saved number meets the
+    cardiac output's check. That check is the right one, because a blood flow
+    lies between zero and the largest cardiac output. A number that the check
+    refuses is refused here as a blood flow, with the cardiac output's reason
+    after it. Without that, an edited tissue flow would be reported as a
+    cardiac output, which the record that holds it stores unchanged (found at
+    review of `PL-GKG4`).
+
+    Raises:
+        TypeError: the saved number is not an `int` or a `float`.
+        SimulationConfigurationError: the saved number is negative, above the
+            largest supported cardiac output, or not finite.
     """
 
-    if isinstance(value, built_type):
-        return
+    try:
+        whole_cardiac_output_l_min = CardiacOutput(blood_flow_l_min)
+    except (TypeError, SimulationConfigurationError) as refusal:
+        raise type(refusal)(
+            f"a saved blood_flow_l_min of {shown(blood_flow_l_min)} cannot be restored. A "
+            "blood flow is a perfusion fraction of a cardiac output, so it is restored as "
+            f"the whole of a cardiac output equal to it, and that is refused: {refusal}"
+        ) from refusal
 
-    require_not_another_quantity(name, value, built_type)
-
-    raise TypeError(
-        f"{name} of {shown(value)} was not built as {built_type.__name__}, it is "
-        f"{type(value).__name__}: build it as {built_type.__name__}({built_from}), which "
-        'checks it once (docs/MODEL.md, "Tissue groups")'
-    )
+    return BloodFlow(whole_cardiac_output_l_min, PerfusionFraction(MAXIMUM_PERFUSION_FRACTION))
 
 
 def require_perfusion_fraction(name: str, perfusion_fraction: object) -> None:
@@ -152,12 +160,25 @@ def require_perfusion_fraction(name: str, perfusion_fraction: object) -> None:
     `TissueGroup` and `ReferenceAdultParameters`, and where a `BloodFlow` is
     built from one.
 
+    A value built as another checked quantity is a swapped argument. It is
+    named as that quantity, and the message does not say to rebuild it
+    (`require_not_another_quantity`, `core/checked_number.py`).
+
     Raises:
         TypeError: `perfusion_fraction` is not a `PerfusionFraction`. A bare
             `float` is refused too, whatever its value.
     """
 
-    _require_built(name, perfusion_fraction, PerfusionFraction, "...")
+    if isinstance(perfusion_fraction, PerfusionFraction):
+        return
+
+    require_not_another_quantity(name, perfusion_fraction, PerfusionFraction)
+
+    raise TypeError(
+        f"{name} of {shown(perfusion_fraction)} was not built as PerfusionFraction, it is "
+        f"{type(perfusion_fraction).__name__}: build it as PerfusionFraction(...), which "
+        'checks it against its range once (docs/MODEL.md, "Tissue groups")'
+    )
 
 
 def require_blood_flow(name: str, blood_flow_l_min: object) -> None:
@@ -168,9 +189,28 @@ def require_blood_flow(name: str, blood_flow_l_min: object) -> None:
     `TissueGroupEquationSettings`, and where a tissue group's own closed form
     takes one.
 
+    A cardiac output handed in as the flow is the likeliest slip, because the
+    venous pool's matching methods take the cardiac output itself. So the
+    message for a value built as another checked quantity says how a flow is
+    built, where `require_not_another_quantity` would say to build it from
+    another value. A `BloodFlow` is built from two values, and one of them is
+    that cardiac output (found at review of `PL-GKG4`).
+
     Raises:
         TypeError: `blood_flow_l_min` is not a `BloodFlow`. A bare `float` and
             a `CardiacOutput` are both refused, whatever their value.
     """
 
-    _require_built(name, blood_flow_l_min, BloodFlow, "cardiac_output_l_min, perfusion_fraction")
+    if isinstance(blood_flow_l_min, BloodFlow):
+        return
+
+    if isinstance(blood_flow_l_min, CheckedQuantity):
+        found = f"was built as {type(blood_flow_l_min).__name__}, which is not BloodFlow"
+    else:
+        found = f"was not built as BloodFlow, it is {type(blood_flow_l_min).__name__}"
+
+    raise TypeError(
+        f"{name} of {shown(blood_flow_l_min)} {found}: build it as "
+        "BloodFlow(cardiac_output_l_min, perfusion_fraction), the tissue group's perfusion "
+        'fraction of the cardiac output (docs/MODEL.md, "Tissue groups")'
+    )

@@ -127,6 +127,7 @@ names such a value as the flow it was built as.
 from __future__ import annotations
 
 import sys
+from collections.abc import Callable
 
 
 class CheckedQuantity:
@@ -149,7 +150,7 @@ class CheckedQuantity:
 
     __slots__ = ()
 
-    def __reduce__(self) -> tuple[type[CheckedQuantity], tuple[float | int, ...]]:
+    def __reduce__(self) -> tuple[Callable[..., CheckedQuantity], tuple[float | int]]:
         """Rebuild the value through its own type's constructor, at every pickle protocol.
 
         At protocols 0 and 1, a `float` or `int` subclass is pickled through
@@ -162,7 +163,8 @@ class CheckedQuantity:
         load with the constructor's own exception. A `Fraction` or `Percent` is rebuilt
         under its type's default `name`, because neither stores the name it was built
         with. `BloodFlow` has its own version of this method, because it is built from
-        two values (`core/blood_flow.py`).
+        two values (`core/blood_flow.py`). So the first member of the pair is typed as
+        whatever rebuilds the value, which for every other type is the type itself.
         """
 
         number: float | int = int(self) if isinstance(self, int) else float(self)  # type: ignore[arg-type]

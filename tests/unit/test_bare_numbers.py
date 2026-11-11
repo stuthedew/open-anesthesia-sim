@@ -155,10 +155,11 @@ LISTED: dict[str, dict[str, tuple[str, ...]]] = {
         ),
     },
     PLAIN_NUMBER: {
+        "blood_flow": ("BloodFlow.__reduce__ -> return",),
         "checked_number": (
             "CheckedQuantity.__reduce__ -> return",
             "negative_zero_as_zero -> return",
-        )
+        ),
     },
     SHOWN_IN_A_REFUSAL: {"supported_ranges": ("describe_count(count)",)},
     COMPARTMENT_STEP: {
@@ -352,8 +353,8 @@ BARE_NUMBERS: dict[str, str] = {
 # This count equals the length of `BARE_NUMBERS`. It was 173 on 2026-11-11,
 # when the list was written. Giving a quantity a checked type lowers it. A
 # change that raises it shows a reviewer that the change adds a bare number.
-# The blood flow and the perfusion fraction took it to 164 (`PL-GKG4`).
-MOST_BARE_NUMBERS = 164
+# The blood flow and the perfusion fraction took it to 165 (`PL-GKG4`).
+MOST_BARE_NUMBERS = 165
 
 
 def _names_a_bare_number(
