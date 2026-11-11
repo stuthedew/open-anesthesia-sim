@@ -2765,38 +2765,38 @@ def _merged_lines(state: BranchState, merged: MergedPullRequest) -> list[str]:
 def _push_over_lines(branch: str, push: str, *, since: str) -> list[str]:
     """The push after a restart, which meets the old branch wherever the remote still holds it.
 
-    It does whenever anything was pushed after the merge, or the branch was
-    never deleted, and a plain push is then refused as non-fast-forward, with
-    git's own hint pointing at `git pull` - which merges the squash-merged
-    history back in, the duplicate the restart exists to prevent (`PL-K3W5`).
-    So the refusal is named before it arrives, and so is the push that
-    replaces the old branch.
+    The remote holds it whenever anything was pushed after the merge, or the
+    branch was never deleted. A plain push is then refused as non-fast-forward,
+    and git's own hint points at `git pull`, which merges the squash-merged
+    history back in. That is the duplicate the restart exists to prevent
+    (`PL-K3W5`), so the refusal is named before it arrives.
 
-    **Both flags, because `--force-with-lease` alone protects nothing here.**
-    Its lease is the tracking ref, and every `docket` read command fetches, so
-    a commit another writer pushed to the branch is in that ref without having
-    been carried: measured 2026-10-01 against scratch repositories, the lease
-    alone overwrote it, while `--force-if-includes` refused it as "remote ref
-    updated since checkout" and the lease refused one never fetched as "stale
-    info". The pair passes where the remote holds only what this checkout's
-    branch has held - the merged commits and the originals of the
-    cherry-picks - because the branch's reflog still holds the tip it was
-    pushed from. That is a check on what was held, not on what was carried, so
-    the cherry-pick above has to carry the whole list, which it is built from.
-    Where the pair refuses, the remote holds a commit this checkout never had,
-    and the line says to stop and read it: a recipe for that case would have
-    to guess at whose it is. Conditional on a refusal, since a remote that deleted the branch takes
-    the plain push, where the lease, measured against a stale tracking ref,
-    would refuse. `since` bounds the read to what came after the merge where
-    the merged head is known.
+    **No forced push is printed (`PL-39Y1`).** Until 2026-11-11 these lines
+    printed `git push --force-with-lease --force-if-includes`, which replaced
+    the old branch. A GitHub ruleset now refuses a forced push on every branch,
+    because the session guards that read a command's words let another spelling
+    of a forced push through four times. So the old branch has to leave the
+    remote before the restarted one can be pushed. A session cannot delete a
+    branch there, and the lines hand that to the project owner. The owner's
+    push copies the tip to an archive ref before it deletes the branch, so a
+    commit another writer pushed, which this checkout never had, is kept and
+    never overwritten. The lines still say to read what the old branch holds
+    first, because a commit left under an archive ref is carried nowhere.
+    `since` bounds that read to what came after the merge, where the merged
+    head is known. The owner's push has one home, the capture mode of the
+    docket skill, and the lines name it instead of printing a second copy.
     """
     return [
         f"  Where the remote still holds the old branch, {push} is refused as non-fast-forward. "
-        "Never `git pull`, which merges the merged history back in; replace the old branch "
-        "with a push that refuses where the remote holds a commit this checkout never had:",
-        f"  git push --force-with-lease --force-if-includes origin {branch}",
-        "  Refused even then: stop, `git fetch origin`, and read what the remote holds with "
-        f"`git log --oneline {since}..origin/{branch}` before pushing anything.",
+        "Never `git pull`, which merges the merged history back in, and never force the push, "
+        "which GitHub refuses on every branch.",
+        "  Read what the old branch holds with `git fetch origin` and "
+        f"`git log --oneline {since}..origin/{branch}`, and carry across any commit that is not "
+        "here.",
+        "  Then ask the project owner to archive and delete the old branch, with the push in "
+        '.claude/skills/docket/modes/capture.md § "Mode: housekeeping nobody filed", and '
+        "push once it is gone:",
+        f"  git push -u origin {branch}",
     ]
 
 

@@ -11007,18 +11007,23 @@ def test_a_squash_merged_captures_only_pull_request_is_landed_to_branch_and_arm(
 
 
 @pytest.mark.parametrize("another_writer", [False, True], ids=["carried", "another-writer"])
-def test_the_landed_recipe_run_as_printed_pushes_over_the_old_branch(
+def test_the_landed_recipe_run_as_printed_forces_nothing_onto_the_old_branch(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], another_writer: bool
 ) -> None:
     """`PL-K3W5`'s reproduction, with the recipe run exactly as `branch` prints it.
 
     A branch pushed, squash-merged and deleted, then one more commit pushed to
     it, so the remote holds the old branch again. The printed restart and
-    cherry-pick are run, and a plain push is refused as non-fast-forward. The
-    printed push then replaces the old branch with the merged base and the
-    carried commit alone. Where another writer pushed a commit this checkout
-    never had, fetched as every docket read fetches, it refuses rather than
-    overwrite it, which `--force-with-lease` alone did not.
+    cherry-pick are run, and the printed push is refused as non-fast-forward,
+    leaving the remote as it was.
+
+    Until 2026-11-11 the recipe then printed a forced push, which replaced the
+    old branch. GitHub refuses a forced push on every branch now, so the recipe
+    prints none (`PL-39Y1`). The project owner archives and deletes the old
+    branch, with the push `tools/branch_sweep.py` runs, and the printed push
+    then lands the merged base and the carried commit alone. A commit that
+    another writer pushed, which this checkout never had, is kept under the
+    archive ref and is never overwritten.
     """
     root, git = _arm_repo(tmp_path)
     _commit_file(git, root, "docs/items/PL-F4F4-new.md", _item_document("PL-F4F4"), ARM_T0)
@@ -11041,12 +11046,13 @@ def test_the_landed_recipe_run_as_printed_pushes_over_the_old_branch(
     else:
         assert _arm(root) == 1
         said = capsys.readouterr().out
-        assert "then push over the old branch the remote may still hold, never `git pull`" in said
+        assert "then push, never `git pull` and never a forced push" in said
     remote_tip = git("rev-parse", f"origin/{ARM_BRANCH}").strip()
 
     assert main(["branch", "--items", str(root / "docs" / "items")]) == 0
     printed = [line.strip() for line in capsys.readouterr().out.splitlines()]
     assert "refused as non-fast-forward" in " ".join(printed)
+    assert "--force" not in " ".join(printed)
     restart, pick, push = (
         next(line for line in printed if line.startswith(start))
         for start in ("git fetch origin main && git checkout -B", "git cherry-pick", "git push")
@@ -11054,23 +11060,35 @@ def test_the_landed_recipe_run_as_printed_pushes_over_the_old_branch(
     for command in (restart, pick):
         subprocess.run(command, shell=True, cwd=root, check=True, capture_output=True)
 
-    plain = subprocess.run(
-        ["git", "push", "origin", ARM_BRANCH], cwd=root, capture_output=True, text=True
+    def on_remote(ref: str) -> str:
+        return git("ls-remote", "origin", ref).split()[0]
+
+    refused = subprocess.run(push, shell=True, cwd=root, capture_output=True, text=True)
+    assert refused.returncode != 0
+    assert "non-fast-forward" in refused.stderr
+    assert on_remote(f"refs/heads/{ARM_BRANCH}") == remote_tip
+
+    # The owner's part: the tip copied to an archive ref and the branch
+    # deleted, as one transaction.
+    archive = f"refs/archive/{ARM_BRANCH}/{remote_tip}"
+    elsewhere("fetch", "-q", "origin")
+    elsewhere(
+        "push",
+        "-q",
+        "--atomic",
+        f"--force-with-lease=refs/heads/{ARM_BRANCH}:{remote_tip}",
+        "origin",
+        f"{remote_tip}:{archive}",
+        f":refs/heads/{ARM_BRANCH}",
     )
-    assert plain.returncode != 0
-    assert "non-fast-forward" in plain.stderr
-    forced = subprocess.run(push, shell=True, cwd=root, capture_output=True, text=True)
-    on_remote = git("ls-remote", "origin", f"refs/heads/{ARM_BRANCH}").split()[0]
-    if another_writer:
-        assert forced.returncode != 0
-        assert on_remote == remote_tip
-        return
-    assert forced.returncode == 0, forced.stderr
-    assert on_remote == git("rev-parse", "HEAD").strip()
-    assert git("rev-list", "--count", f"origin/main..{on_remote}").strip() == "1"
-    assert git("diff", "--name-only", "origin/main", on_remote).split() == [
-        "docs/items/PL-G5G5-next.md"
-    ]
+
+    pushed = subprocess.run(push, shell=True, cwd=root, capture_output=True, text=True)
+    assert pushed.returncode == 0, pushed.stderr
+    tip = on_remote(f"refs/heads/{ARM_BRANCH}")
+    assert tip == git("rev-parse", "HEAD").strip()
+    assert on_remote(archive) == remote_tip
+    assert git("rev-list", "--count", f"origin/main..{tip}").strip() == "1"
+    assert git("diff", "--name-only", "origin/main", tip).split() == ["docs/items/PL-G5G5-next.md"]
 
 
 def test_a_forge_that_could_not_be_asked_is_unknown_to_arm_and_said_by_branch(

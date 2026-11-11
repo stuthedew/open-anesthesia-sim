@@ -204,13 +204,19 @@ def test_the_restart_recipe_the_refusal_prints_replaces_the_stale_ref(clone: Clo
     assert clone.sh("git rev-parse refs/remotes/origin/b1").stdout == head
 
 
-def test_the_recipe_replaces_a_branch_the_remote_still_holds(clone: Clone) -> None:
-    """A commit pushed after the merge leaves the old branch on the remote, and the lease push
-    the message names replaces it and moves the stale ref."""
+def test_the_recipe_forces_nothing_onto_a_branch_the_remote_still_holds(clone: Clone) -> None:
+    """A commit pushed after the merge leaves the old branch on the remote.
+
+    The recipe's push is then refused, and the message names no forced push,
+    because GitHub refuses one on every branch (`PL-39Y1`). It named
+    `--force-with-lease` until 2026-11-11. Once the project owner has deleted
+    the old branch, the same push lands and moves the stale ref.
+    """
     clone.sh(
         "git checkout -q -b b3 && git commit -q --allow-empty -m left-behind "
         "&& git push -q -u origin b3 && git checkout -q main"
     )
+    left_behind = clone.sh("git rev-parse refs/remotes/origin/b3").stdout
 
     restarted = clone.sh(
         "git fetch -q origin main && git checkout -q -B b3 origin/main "
@@ -218,12 +224,23 @@ def test_the_recipe_replaces_a_branch_the_remote_still_holds(clone: Clone) -> No
     )
     assert restarted.returncode == 0, restarted.stderr
     assert clone.sh("git push -q -u origin b3").returncode != 0
-    done = clone.sh("git push -q --force-with-lease -u origin b3")
+    assert clone.sh("git ls-remote origin refs/heads/b3").stdout.split()[0] == left_behind.strip()
+    said = " ".join(clone.sh("git branch -dr origin/b3").stderr.split())
+    assert "--force" not in said
+    assert "Never force that push" in said
+    assert "ask the project owner to archive and delete the old branch" in said
+
+    subprocess.run(
+        ["git", "-C", str(clone.remote), "branch", "-q", "-D", "b3"],
+        check=True,
+        env=_environment(clone.tmp, agent=False),
+        capture_output=True,
+    )
+    done = clone.sh("git push -q -u origin b3")
 
     assert done.returncode == 0, done.stderr
     head = clone.sh("git rev-parse HEAD").stdout
     assert clone.sh("git rev-parse refs/remotes/origin/b3").stdout == head
-    assert "--force-with-lease" in clone.sh("git branch -dr origin/b3").stderr
 
 
 def test_the_owners_own_git_is_left_alone(clone: Clone) -> None:
