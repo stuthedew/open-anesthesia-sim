@@ -335,10 +335,11 @@ the app's effort picker. A cap only lowers a level, though. A session in the
 `xhigh` arm whose picker sent `high` runs at `high`. So keep the picker at
 `xhigh` for the length of the trial.
 
-Each session's start-of-session digest names its arm, and the session tells
-you the arm in its first reply. The digest line stays in the session's
-transcript. That line is the trial's record of the arm, and the model review
-reads it from the transcript by session id. Sessions on your own computer are
+Each session's start-of-session digest names its arm. The digest line stays
+in the session's transcript. That line is the trial's record of the arm, and
+the model review reads it from the transcript by session id. A session no
+longer repeats the arm in its first reply, because you do not act on it
+(`PL-J1ZM`). Sessions on your own computer are
 not in the trial, and the script writes nothing there.
 
 Projects threads are not in the trial either. A thread does not read
