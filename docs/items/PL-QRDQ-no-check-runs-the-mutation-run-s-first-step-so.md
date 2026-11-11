@@ -16,8 +16,6 @@ added: 2026-11-11
 
 **What a check would cost.** The first step took about 19 minutes on a four-core container on 2026-11-11 (`PL-R8HY`), against 2 min 59 s for the same tests outside mutmut. A check that runs the step on every pull request would add that time, so `PL-R8HY` comes first. A cheaper form may exist: run the selected tests once under `MUTANT_UNDER_TEST=stats` in the copied tree, only when a pull request adds or changes a file under `tests/unit/`. Nobody has measured it.
 
-**Checked 2026-11-11 (`PL-R8HY`).** The 19 minutes was two passes over the tests, and both paid for mutmut's wrapper around every function of every mutated file. With one little-called file mutated, the first pass took 3 min 41 s on four idle cores. So a check that runs the unit tests inside the mutation copy with one such file mutated would add about 4 minutes, not 19.
-
 **Not built.** A check is a new workflow mechanism, and the generator pause in `CLAUDE.md` § "What this project is" holds one while a workflow-lane head is still generating. `PL-GP8G`'s generator check counts three instances in one item. A further test that lands this way makes this item the head of a generator.
 
 **Done when.** Either a check refuses a pull request whose unit tests fail inside the mutation copy, or the item records a decision that the cost is not worth it, with the count of instances since 2026-11-11.
