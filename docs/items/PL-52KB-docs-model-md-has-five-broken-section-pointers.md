@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: model-md-structure
-touches: docs/MODEL.md
+touches: docs/MODEL.md, src/anesthesia_sim/app/formatting.py
 added: 2026-11-05
 closed: 2026-11-11
 pr: 2112
@@ -78,6 +78,16 @@ holds what it points to.
    tolerances", which contradicted § "Mass-balance identity"'s statement that
    the release gate is the relative residual alone. The two tests named in the
    section's note for developers assert both bounds.
+
+The check of 2026-11-09 was wrong that "Why the axis is fixed rather than
+fitted" appears nowhere. The comment above `CHART_AXIS_TOP_MAC` in
+`src/anesthesia_sim/app/formatting.py` still named it, wrapped across two
+lines, so a one-line search missed it. The second blind review pass found it.
+The comment now names the paragraph "The axis is fixed rather than fitted" in
+`docs/MODEL.md` § "F_A/F_I as a displayed ratio". The other missing name, "The
+chart's vertical range is denominated in MAC, and fixed", is gone: the
+paragraph now opens "The chart's vertical range is set in MAC, and fixed", and
+both places that point to it use that wording.
 
 None of the three edits lies in, or points into, the seven interface sections
 that `PL-CTXZ` (#2109) is moving. No copy editor run was made on these
