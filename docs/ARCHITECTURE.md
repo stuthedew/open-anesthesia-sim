@@ -675,43 +675,40 @@ list, because it has no instant. A fork at a height is taken through
 
 `app/main.py` builds the `BranchedCase` and opens the dashboard over its
 trunk. So the application is a *case* from its first frame, not a run that
-might later be made into one (`PL-VKJW`). Three things follow from this. Each
+might later be made into one (`PL-VKJW`). Four things follow from this. Each
 is a property of the display, not of the model:
 
-- **The branch control belongs to the case**, so `SimulationView` builds it,
-  as it builds the bookmark panel, and neither `RunView` does. Each is shown
-  in a View of its own, `views.BranchView` and `views.BookmarksView`. More
-  than one Area can show either, so `SimulationView` builds a copy for each
-  View through `view_contract.CaseSurfaces` and writes every copy
-  (`PL-9YPR`). The branch control offers
-  `BranchedCase.fork_points_s`, `BranchedCase.mark_fork_points` and
-  `BranchedCase.here_fork_point`, and it takes the branch through `fork_at`,
-  `fork_at_mark` or `fork_here`. `dashboard_frame.fork_offer` decides what the
-  control shows, and `qt_widgets.ForkPanel` draws it. A learner pauses at the
-  decision point, or marks it and is stopped there, and then forks at that
-  point. The shipped Workspaces place the bookmarks before the branch control
-  for that reason. Returning to a
-  mark forks the run rather than truncating it. The trunk is kept, and the
-  change is made on a branch drawn beside it. A learner who wants to try
-  something else from the same point uses the branch's own Reset (project
-  owner, 2026-10-12, ratified, over truncating the run at the mark after a
-  confirm as Gas Man does, `PL-ZW0J`).
-- **Two controls, because the ways into a fork last for different lengths of
-  time** (`PL-TYWQ`, `PL-Y2SL`). The selector offers two kinds of row in one
-  list, earliest first. The first kind is each instant in
-  `BranchedCase.fork_points_s`, taken through `fork_at`. The second kind is
-  every time bookmark that the trunk has passed, from
-  `BranchedCase.mark_fork_points` and taken through `fork_at_mark`
-  (`PL-W4XQ`). A mark's row is labelled with the instant at which its branch
-  opens and with "on your mark", in the halt label's wording, so the row never
-  states where the mark itself lies. Below the selector, a second button takes
-  the branch at the point where the paused trunk is, through `fork_here`. The
-  button is on the panel whenever `BranchedCase.here_fork_point` offers that
-  point and no comparison is shown. It is labelled "Branch here: 1h23m", with
-  the instant at which the branch will open. When a mark stopped the trunk
-  there, the label is "..., stopped on your mark". Every entry and the button
-  open under what the dial says at their instant, so two controls labelled
-  with one instant open under the same settings (`PL-ZR49`).
+- **The branch control belongs to the case**, so the dashboard
+  (`SimulationView`) builds it, as it builds the bookmark panel, and no run's
+  view (`RunView`) does. Each is shown in a View of its own, `views.BranchView`
+  and `views.BookmarksView`. More than one Area can show either, so the
+  dashboard builds a copy for each View through `view_contract.CaseSurfaces`
+  and writes every copy (`PL-9YPR`). A function decides what the control shows
+  (`dashboard_frame.fork_offer`), and a widget draws it
+  (`qt_widgets.ForkPanel`). A learner pauses at the decision point, or marks it
+  and is stopped there, and then forks at that point, so the shipped
+  Workspaces place the bookmarks before the branch control. Returning to a mark
+  forks the run rather than truncating it. The trunk is kept, and the change is
+  made on a branch drawn beside it. A learner who wants to try something else
+  from the same point uses the branch's own Reset (project owner, 2026-10-12,
+  ratified, over truncating the run at the mark after a confirm as Gas Man
+  does, `PL-ZW0J`).
+- **A selector and a "Branch here" button, because the ways into a fork last
+  for different lengths of time** (`PL-TYWQ`, `PL-Y2SL`). The selector offers
+  two kinds of row in one list, earliest first. The first kind is each of the
+  trunk's keyframes (`BranchedCase.fork_points_s`), taken through `fork_at`.
+  The second kind is every time bookmark that the trunk has passed
+  (`BranchedCase.mark_fork_points`), taken through `fork_at_mark` (`PL-W4XQ`).
+  A mark's row is labelled with the instant at which its branch opens and with
+  "on your mark", in the halt label's wording, so the row never states where
+  the mark itself lies. Below the selector, a second button takes the branch at
+  the point where the paused trunk is, through `fork_here`. The button is on
+  the panel whenever `BranchedCase.here_fork_point` offers that point and no
+  comparison is shown. It is labelled "Branch here: 1h23m", with the instant at
+  which the branch will open. When a mark stopped the trunk there, the label is
+  "..., stopped on your mark". A branch taken from any row or from the button
+  opens under the dial settings at its instant, so two controls labelled with
+  one instant open under the same settings (`PL-ZR49`).
 
   Pausing records no keyframe, so the paused point adds nothing to
   `fork_points_s`. The selector therefore never loses a row as the run moves.
@@ -1308,11 +1305,11 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
   bookmark editor is the worked example (`PL-LPLD`). It writes each mark to
   every displayed run, so that the copies the controllers hold stay equal. The
   branch control is the second example (`PL-VKJW`). The instants it offers are
-  the trunk's keyframes. A copy of it in each run would give a branch a
-  control that could only refuse. Both are shown in Views. `SimulationView`
-  builds a copy for each View that shows one, through
-  `view_contract.CaseSurfaces`, as a run builds its copies through
-  `RunSurfaces` (`PL-9YPR`). Getting this the wrong way round is not a
+  the trunk's keyframes and the marks the trunk has passed. A copy of it in
+  each run would give a branch a control that could only refuse. The bookmarks
+  and the branch control are shown in Views. `SimulationView` builds a copy
+  for each View that shows one, through `view_contract.CaseSurfaces`, as a run
+  builds its copies through `RunSurfaces` (`PL-9YPR`). Getting this the wrong way round is not a
   matter of tidiness. A run's panel put on the dashboard would state one
   branch's numbers over both runs. A shared control duplicated into each run
   would let a reader interpret a comparison under two different settings.

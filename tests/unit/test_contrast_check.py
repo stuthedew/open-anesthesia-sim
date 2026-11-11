@@ -1025,11 +1025,13 @@ def test_every_known_shortfall_names_an_item_that_exists() -> None:
 
 
 def test_the_shipped_gridline_is_exempt_in_each_of_its_four_uses() -> None:
-    """`PL-HKTB`. The one exempt colour is the gridline grey, and the record is of a colour
-    the criterion would otherwise fail: under 3:1 on the panel it is drawn on, in four uses
-    each named once, so nothing the constant draws is left where it was. The rule under each
-    Area's header joined with `PL-50PZ`. The rule between the sections of the page left with
-    `PL-9YPR`, which removed the section it divided.
+    """The gridline grey is the one exempt colour, in each of its four uses (`PL-HKTB`).
+
+    The exemption records a colour that the criterion would otherwise fail: it is less than 3:1
+    on the panel it is drawn on. Each of the four uses is named once, so nothing the constant
+    draws is left where it was. The rule under each Area's header became a use with `PL-50PZ`.
+    The rule between the sections of the page stopped being one with `PL-9YPR`, which removed
+    the section it divided.
     """
     palette = contrast_check.read_palette(REPO_ROOT)
     uses = contrast_check.EXEMPT["GRIDLINE"]

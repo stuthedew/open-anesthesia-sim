@@ -1,6 +1,6 @@
 """Unit tests for `layout/shipped.py`: the Workspaces shipped under `data/workspaces/`.
 
-`PL-KXTL` ships three Workspaces as validated, versioned JSON. They are read
+Three Workspaces ship as validated, versioned JSON (`PL-KXTL`). They are read
 by the same reader that a user's own `workspaces.json` goes through. These
 tests check that each shipped file is what it claims to be: one Workspace, at
 the current version, naming its own file's id, and written in the form that
@@ -9,7 +9,8 @@ Workspace contains the accounting View (project owner, 2026-09-16). The
 default gives the chart the window's full height beside a column of the
 parameter controls, the bookmarks and the branch control. The chart at full
 height is the composition the pixel budget was set for (`PL-84QX`), and the
-other two joined the column in `PL-9YPR`.
+bookmarks and the branch control joined the column later (`PL-9YPR`).
+
 The tests of refusals run against a directory of the test's own.
 """
 

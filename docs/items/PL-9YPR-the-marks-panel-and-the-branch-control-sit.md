@@ -49,8 +49,10 @@ What the branch holds (commit led by this id, pull request `#2103`, a draft):
   `theme.SECTION_DIVIDER_HEIGHT` and the colour exemption for the divider in
   `tools/contrast_check.py`. `docs/MODEL.md` § "Color contrast" now names the
   line under each Area's header in the divider's place.
-- Each copy of the branch control keeps its own selection. A press opens the
-  branch at the point selected in the copy that was pressed.
+- The dashboard keeps one selected branch point for the case, and every copy
+  of the branch control shows it (`dashboard_frame.kept_fork_selection`). The
+  first design, a selection in each copy, was replaced after review finding 1
+  below.
 - The three shipped Workspaces show both Views. Default and Induction stack
   Parameters, Bookmarks and Branch in the right-hand column. Maintenance puts
   Bookmarks and Branch in a row under Parameters. The placement is a
@@ -83,9 +85,8 @@ What the branch holds (commit led by this id, pull request `#2103`, a draft):
 - Where the two Views sit in each shipped Workspace, their titles
   ("Bookmarks", "Branch") and their 220 by 120 px minimum.
 - A Workspace may leave the branch View out. The banner at the supported run
-  length still names a branch as a way out when the case can take one,
-  because every Area's View chooser offers the branch View. Whether the
-  banner should say where to find it is left for the interface pass.
+  length then names Reset alone (review finding 2 below). Whether the banner
+  should say where to find the branch View is left for the interface pass.
 
 **Release note.** A layout saved before this change shows neither View until
 the reader chooses one in an Area or uses "Reset this Workspace".

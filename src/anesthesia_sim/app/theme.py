@@ -730,8 +730,8 @@ WASH_IN_AXIS_LABEL_SIZE = 34
 # any drawn point. The chart passes the criterion's own test, which is to
 # assume the area is invisible and ask whether the graphic is still understood.
 # Without the rulings, the chart is six labelled traces against two labelled
-# axes. The axis lines, the section rule and the groove each have their own
-# grounds for exemption, given for each use in `EXEMPT`.
+# axes. The axis lines, the rule under each Area's header and the groove each
+# have their own grounds for exemption, given for each use in `EXEMPT`.
 #
 # The grey is not darkened, and that decision comes from the chart's hierarchy
 # rather than from the criterion. The lightest trace, `MUSCLE_COLOR`, is 3.43:1

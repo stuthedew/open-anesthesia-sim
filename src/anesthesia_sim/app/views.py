@@ -683,8 +683,8 @@ class _CasePanelView[W: QWidget](QWidget):
     The rows sit in a scroll area of the View's own. An Area may be shorter
     than a long mark name needs once the name wraps, and narrower than the
     branch control's row of buttons. The View then scrolls, and no row is
-    clipped. Step 2 of `PL-CBYS` moves this scroll into the container, for
-    every View.
+    clipped. Step 2 of `PL-CBYS` is to move this scroll into the container,
+    for every View.
     """
 
     def __init__(

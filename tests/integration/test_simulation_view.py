@@ -268,7 +268,7 @@ from anesthesia_sim.layout.run_identity import RunId, SessionToken
 from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, ViewKind, Window
 from anesthesia_sim.layout.workspace import Origin, Workspace, WorkspaceName, WorkspaceSet
 
-#: One Workspace that holds every View this build registers. Each test then
+#: One Workspace that holds each View these tests read. Each test then
 #: finds the View it reads, whichever Workspace is shipped first. The
 #: parameter controls run across the top. Under them, the concentration chart
 #: sits over the F_A/F_I plot, beside the accounting. That was the dashboard's
@@ -12538,7 +12538,7 @@ def test_a_stopped_run_names_a_branch_only_while_an_area_shows_the_branch_contro
     )
 
     # An Area can hold a branch control that it does not draw, as when a pin's
-    # notice covers the View (`PL-1D3Z`). Hiding the View reaches that state.
+    # notice covers the View (`PL-1D3Z`). Hiding the View produces that state.
     next(v for v in view.layout_container.views() if isinstance(v, BranchView)).hide()
     view.present(False)
 
@@ -12551,7 +12551,7 @@ def test_a_stopped_run_names_a_branch_only_while_an_area_shows_the_branch_contro
 def test_a_failing_frame_withdraws_the_branch_offer_from_every_copy(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A halt restates every Area's copy of the branch control, not one of them (`PL-9YPR`)."""
+    """A halt restates every Area's copy of the branch control, not just one (`PL-9YPR`)."""
 
     case = _branched_case()
     view = _case_view(application, case)
@@ -12580,7 +12580,7 @@ def test_a_failing_frame_withdraws_the_branch_offer_from_every_copy(
 def test_a_halt_that_cannot_restate_the_marks_hides_them_in_every_copy_and_in_a_new_one(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Every copy of the marks shows no standing after such a halt, and so does a copy built then.
+    """After a halt that cannot restate the marks, every copy, old or new, shows no standing.
 
     A copy built while the marks are withdrawn must not show a new panel's
     empty lists, which would read as "no marks set" (`PL-9YPR`, `PL-YHR3`).
@@ -12628,7 +12628,7 @@ def test_the_bookmarks_and_the_branch_control_are_registered_under_their_kinds()
     """Each Area's chooser lists the two Views by these titles (`PL-9YPR`).
 
     An Area never gives a View less room than its declared minimum. Both
-    minimums are placeholders that `PL-CBYS` sets again with each Area's room.
+    minimums are placeholders that `PL-CBYS` will set again with each Area's room.
     """
 
     bookmarks, branch = REGISTERED[BOOKMARKS], REGISTERED[BRANCH]

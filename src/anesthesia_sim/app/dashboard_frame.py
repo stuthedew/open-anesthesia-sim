@@ -528,7 +528,7 @@ MARK_ATTRIBUTION_TEMPLATE: Final = "{run} {said}"
 FORK_HEADING: Final = "Branch"
 #: What the branch View shows where the dashboard was handed loose runs and
 #: holds no case. A control there could only refuse, so none is drawn, and the
-#: View says why its rectangle is empty (`PL-9YPR`). A placeholder.
+#: View says why its rectangle is empty (`PL-9YPR`). The wording is a placeholder.
 NO_CASE_TO_BRANCH_TEXT: Final = "These runs belong to no case, so no branch can be opened."
 FORK_POINT_LABEL: Final = "From"
 # The label is "Branch", not "Branch here" (`PL-Y2SL`). On the button below,
@@ -2731,12 +2731,13 @@ def kept_fork_selection(
     **A selection whose point is no longer offered is cleared, and a cleared
     selection stays clear** (`PL-J12Z`). Falling back to the first entry would
     put induction under a learner who had chosen a later decision point, and
-    the next press would branch there. A point leaves the offer without a
+    the next press would branch there. A point can leave the offer without a
     reset: a keyframe collapses when a dial is returned to its previous value
     at the same instant, and a mark leaves when it is unmarked.
 
-    The first offer that holds a point is the one exception. Nobody has chosen
-    yet, so the first entry is selected, as a selector normally does.
+    An offer shown first, or shown after an offer that held no point, is the
+    one exception. Nobody has chosen yet, so the first entry is selected, as a
+    selector normally does.
 
     Args:
         previous: The points of the offer shown before this one, or None
@@ -2745,8 +2746,9 @@ def kept_fork_selection(
         points: The points of the offer about to be shown.
 
     Returns:
-        The first of `points` where `previous` held none. Otherwise
-        `selected` where `points` still holds it, and None where it does not.
+        The first of `points` where `previous` is None or held no point, or
+        None where `points` is empty too. Otherwise `selected` where `points`
+        still holds it, and None where it does not.
     """
 
     if not previous:

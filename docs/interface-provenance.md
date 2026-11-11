@@ -938,9 +938,10 @@ The same shortcut, or Restore Area, returns the area to its size and restores
 the previous layout (Blender Manual, "Areas", sections "Maximize Area" and
 "Restore Area"; read 2026-11-11). Here, the maximized Area will fill the room
 that the Areas share. The unconditional region stays above it and the use
-disclaimer stays below it, because no Workspace may remove either. Blender's
-Focus Mode also hides the Topbar and the Status Bar. This project has no
-equivalent, for the same reason. This project has no code yet (`PL-VJD2`).
+disclaimer stays below it, because no Workspace may remove either. For the
+same reason, this project has no equivalent of Blender's Focus Mode, which
+also hides the Topbar and the Status Bar. Maximize Area has no code yet
+(`PL-VJD2`).
 
 ### Diverged, and each divergence has a specific cause
 

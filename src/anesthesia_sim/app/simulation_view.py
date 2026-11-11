@@ -1,31 +1,31 @@
 """The shared part of the dashboard, which every displayed run uses, in PySide6.
 
-`PL-B9PY` divided the dashboard into a part that all runs share and a part
-for each run. `SimulationView` is the shared part. It holds what two runs
-cannot each have a copy of: the compartment selection, the time base, the
-Areas (resizable panes) and the Views in them, the marks and the branch
-control. The marks and the branch control are shown by Views. The dashboard
-builds a copy for each View that asks, and writes every copy (`PL-9YPR`). It
-also holds one `RunView` per run, and each `RunView` holds everything else for
-its run. `app/area_layout.py` builds the Views through the
-View registry, each from the View contract's context (`app/view_contract.py`,
-`PL-TH35`). So this class names no View, except to keep the concentration
-chart in view after a branch.
+The dashboard is divided into a part that all runs share and a part for each
+run (`PL-B9PY`). `SimulationView` is the shared part. It holds what two runs
+cannot each have a copy of: the compartment selection, the Areas (resizable
+panes) and the Views in them, the marks and the branch control. The marks and
+the branch control are shown by Views. The dashboard builds a copy for each
+View that asks, and writes every copy (`PL-9YPR`). It also holds one `RunView`
+per run, and each `RunView` holds everything else for its run. The layout
+adapter (`app/area_layout.py`) builds the Views through the View registry,
+each from the View contract's context (`app/view_contract.py`, `PL-TH35`). So
+this class names no View, except to keep the concentration chart in view after
+a branch.
 
-**The unconditional region is outside the splitters** (`PL-NWTM`). The
-unconditional region holds the values that must be on screen at all times.
-Each run's transport row, its notice banner, its readouts and its
-control-change record sit in a band across the top of the page. The use
-disclaimer sits in a line across the foot of the page. `docs/MODEL.md`
-§ "Minimum displayed outputs" requires those values on screen in every
-Workspace, and `app/unconditional_set.py` declares which values they are.
-`_place_run` rejects a run when the band does not hold every value that the
-run declares. Under the band is the Workspace tab strip, and under the strip
-are the Areas of the current Workspace (`PL-2KXB`). `app/area_layout.py`
-draws the Areas from that Workspace's layout model, so a reader can drag the
-borders between them (`PL-W9P6`). The Areas are the layout container. No
-widget in the band sits inside an Area, so no split, join or close of an Area
-and no Workspace switch can affect the band.
+**The unconditional region is outside the splitters** (`PL-NWTM`). It holds
+the values that must be on screen at all times. `docs/MODEL.md` § "Minimum
+displayed outputs" requires them in every Workspace, and
+`app/unconditional_set.py` declares which values they are. Each run's
+transport row, its notice banner, its readouts and its control-change record
+sit in a band across the top of the page. The use disclaimer sits in a line
+across the foot of the page. A run is rejected when the band does not hold
+every value that the run declares (`_place_run`). Under the band is the
+Workspace tab strip, and under the strip are the Areas of the current
+Workspace (`PL-2KXB`). The layout adapter draws the Areas from that
+Workspace's layout model, so a reader can drag the borders between them
+(`PL-W9P6`). The Areas are the layout container. No widget in the band sits
+inside an Area, so no split, join or close of an Area and no Workspace switch
+can affect the band.
 
 **The dashboard owns the Workspaces** (`PL-2KXB`). It holds the
 `WorkspaceSet` and opens on its current Workspace. When the tab strip hands it
@@ -598,8 +598,8 @@ class SimulationView(QWidget):
         middle.setObjectName(_MIDDLE_NAME)
         middle.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         middle.setStyleSheet(page_stylesheet(_MIDDLE_NAME))
-        # The strip and the Areas sit together, with no spacing between them,
-        # so the strip reads as the Areas' own.
+        # The Workspace tab strip and the Areas sit together, with no spacing
+        # between them, so the strip reads as the Areas' own.
         middle_column = _spaced_column(middle, 0)
 
         self._tabs = WorkspaceTabs(

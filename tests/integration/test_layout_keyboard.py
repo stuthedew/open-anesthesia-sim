@@ -338,7 +338,7 @@ def test_every_layout_operation_is_reachable_from_the_keyboard(
     strip = view.tab_strip
     first = areas.model.areas()[0].id
     kinds = {area.id: area.view for area in areas.model.areas()}
-    # The shipped Default Workspace's count, so the test follows that file.
+    # The count comes from the shipped Default Workspace, so the test follows that file.
     started = len(kinds)
 
     # Resize. The Resize submenu gives the first Area's right border the focus.
@@ -370,7 +370,7 @@ def test_every_layout_operation_is_reachable_from_the_keyboard(
     _choose_in_area_menu(application, view, first, (JOIN_WITH_LABEL, label))
     assert len(areas.model.areas()) == started
 
-    # Close: a neighbour takes the closed Area's place, so one Area fewer again.
+    # Close: a neighbour takes the closed Area's place, so there is one Area fewer again.
     survivor = next(area.id for area in areas.model.areas() if area.id != first)
     _choose_in_area_menu(application, view, survivor, (CLOSE_AREA_LABEL,))
     assert len(areas.model.areas()) == started - 1

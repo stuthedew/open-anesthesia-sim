@@ -1317,8 +1317,8 @@ class MarkListingLabel(QWidget):
 class BookmarksPanel(QWidget):
     """The case's two collections of marks, with the control that opens the editor.
 
-    A `views.BookmarksView` shows one copy of this panel in each Area that
-    holds it (`PL-9YPR`).
+    Each Area that holds a `views.BookmarksView` shows its own copy of this
+    panel (`PL-9YPR`).
 
     The panel is read-only. Marks are created and removed in
     `BookmarkDialog`. So the panel in front of the reader while a case runs
@@ -1377,19 +1377,19 @@ class BookmarksPanel(QWidget):
 
 
 class ForkPanel(QWidget):
-    """Where a learner takes a branch: which point to open it at, and the button.
+    """Where a learner takes a branch: which point to open it at, and the two buttons.
 
     The dashboard builds the panel, as it builds the marks, and no `RunView`
-    does. A `views.BranchView` shows one copy in each Area that holds it
+    does. Each Area that holds a `views.BranchView` shows its own copy
     (`PL-9YPR`). The points the panel offers belong to the *case*: the
-    trunk's keyframes and the marks the trunk has passed. A
-    control copied into each displayed run would give a branch a control that
-    can only refuse (`docs/ARCHITECTURE.md` § "Where new code belongs").
+    trunk's keyframes and the marks the trunk has passed. A control copied
+    into each displayed run would give a branch a control that can only
+    refuse (`docs/ARCHITECTURE.md` § "Where new code belongs").
 
-    The panel decides nothing. Which points are offered, how they are
-    rendered and whether the control is shown at all are settled in
-    `dashboard_frame.fork_offer`, where a test can check them without a
-    display. This class writes that result into widgets.
+    The panel decides nothing. A function settles which points are offered,
+    how they are rendered and whether the control is shown at all, so a test
+    can check them without a display (`dashboard_frame.fork_offer`). This
+    class writes that function's result into widgets.
 
     **The panel keeps the `ForkPoint`s it was given, in the selector's order,
     and returns one of them** (`selected_point`). So the caller acts on the
@@ -1488,9 +1488,9 @@ class ForkPanel(QWidget):
         controls.addStretch(1)
         column.addLayout(controls)
         # The refusal sits directly under the selector's row and above the here
-        # button. A review of `PL-9YPR` found it below the fold of a short
-        # Area as the panel's last row, so a refused press changed nothing a
-        # learner could see.
+        # button. A review (`PL-9YPR`) found it below the fold of a short Area
+        # when it was the panel's last row, so a refused press changed nothing
+        # a learner could see.
         column.addWidget(self.notice)
         here_row = QHBoxLayout()
         here_row.setSpacing(CONTROL_ROW_SPACING)

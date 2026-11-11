@@ -47,12 +47,12 @@ preferences and saves them (`app/preferences.py`). Each tick shows them to
 every View in `ViewTick.preferences`, and a View asks for a change through
 `ViewRequests.agent_cost_unit` or `ViewRequests.agent_price` (`PL-1P15`).
 
-**The case's panels are shown as copies too** (`PL-9YPR`). The bookmarks and
-the branch control belong to the case, and no run owns them. A View that shows
-one asks `ViewTick.case` for a copy of its own on its first tick. The
-dashboard then writes every live copy on each frame, as a run writes the
-copies of its own surfaces. So two Areas can show the bookmarks at once, and
-neither View holds the case.
+**Each View that shows a panel of the case gets a copy of its own**
+(`PL-9YPR`). The bookmarks and the branch control belong to the case, and no
+run owns them. A View that shows one asks `ViewTick.case` for its copy on its
+first tick. The dashboard then writes every live copy on each frame, as a run
+writes the copies of its own surfaces. So two Areas can show the bookmarks at
+once, and neither View holds the case.
 
 **What a View is drawn from** (Q3). Each View states which frame it draws,
 through `View.frame_request`. The request gives the window and the plot width
@@ -80,8 +80,8 @@ the saved state again. A split gives the new Area a copy of the source View's
 state, and a swap moves each instance with its state. Splitting and swapping
 are left to `PL-2KXB`, and they build on `save_state` as it stands here.
 
-**What a View owes when there is nothing to draw** (Q6). The View shows text
-in its rectangle that states what is absent, and never leaves it blank. The
+**What a View must do when there is nothing to draw** (Q6). It must show text
+in its rectangle that states what is absent, and never leave it blank. The
 charts' advisories, such as `dashboard_frame.NO_TRACES_SHOWN_TEXT`, are the
 pattern.
 
