@@ -154,6 +154,25 @@ Before the fixes: 9 failed, 1 passed. The one that passed is the fresh gas flow 
 
 After the fixes: 10 passed. Four defects planted in the fixed code each fail a test: keeping the values before the writes (2 tests), not storing the record in `show_halt` (1), leaving the 1 MAC line on its earlier text (1), and writing the values before the statement (1).
 
+**Where the first pull request stands, written 2026-11-11 at 02:55 UTC before a third reset in place.** The code and tests are commit `a53cfb383` on `claude/gracious-darwin-3hq5tg`, pushed. The whole test suite passed on `58525f77f` (8,935 passed, 1 skipped), and the two changed test files pass on `a53cfb383`. Draft `#2094` still has the claim's placeholder title and body. `$S` below is the session's scratchpad, `/tmp/claude-0/-home-user-open-anesthesia-sim/17ed6256-217d-529b-b9e7-c01361f983a0/scratchpad`. A container restart empties nothing there but kills the three runs.
+
+Three runs were going, each started through the harness:
+
+- The prose review of the 110 passages the branch changed up to `58525f77f`: `python3 tools/copy_edit.py --reads $S/reads2 $S/prose2.txt`, reply in `$S/copy_edit2.out`. `$S/copy_edit2.err` ends with `exit=N` when it is done.
+- The prose review of the 8 passages changed after that, listed with `python3 tools/new_prose.py --base 1fdfbba70`: reply in `$S/copy_edit3.out`, and `$S/copy_edit3.err` ends with `exit=N`.
+- The mutation run, `make mutate`, with its log in `$S/mutate.log`. `pyproject.toml` holds `PL-GP8G`'s two-line fix uncommitted for this run. Restore the file with `git checkout -- pyproject.toml` before the gate, and never commit that fix under this item.
+
+What is left, in order:
+
+1. Apply each rewrite from the two prose reviews as it stands. Revert one only where it lost or changed a value, a unit, a condition, an identifier or a citation. Where both reviews rewrote one passage, the later review's passage is the current text. Run `python3 tools/new_prose.py --compare` and note the facts each grown passage carries.
+2. Sort the mutation run's survivors on changed lines as `docs/mutation-testing.md` § "Read a survivor" says, and write a test for each real gap.
+3. Bring `origin/main` in, restore `pyproject.toml`, and run `make check` through the harness.
+4. Commit with `Prose-review: read N, rewrote M, rejected K` and `Owner-read: not needed - <why>` beside the `Co-authored-by:` line.
+5. Fill the three placeholders in the draft title and body at `$S/pr_body.md` (prose review counts, mutation result, gate result). If the file is gone, write the body again from this item: why, what changed, what a learner sees, the replay, each review finding with its outcome, the four filed items, and the three pull requests to come. Run it through the copy editor as the pull-request skill says, publish it on `#2094`, and read the published title and body back.
+6. Run `bin/docket yield PL-RF2S`, ask `bin/docket arm` alone, and follow its answer.
+
+The blind review's three findings, for the body: (1) should-fix, fixed: a frame kept its values before it wrote them and a halt wrote values before the status word, so a value that a widget refused hid the halt. (2) should-fix, fixed: only a `ValueError` from the dials was carried, so a `TypeError` left the builder, nothing was written, and the halt was tried again on every tick. (3) optional, fixed: nothing compared a presentation's run with the panel's run.
+
 **The owner's read is not needed for the first pull request.** Nothing a learner sees in normal use changes, on the side-by-side comparison above. The differences are confined to a run that has already stopped on an internal fault.
 
 **What is left after the first pull request merges.** Restart the branch on `origin/main`, claim the item again and build the second pull request from "Found for the second pull request" above. `PL-SV2Q` and `PL-MVCF` fit there. `PL-VZ57`'s lead, the price form after an agent change that no frame draws, is still not checked.
