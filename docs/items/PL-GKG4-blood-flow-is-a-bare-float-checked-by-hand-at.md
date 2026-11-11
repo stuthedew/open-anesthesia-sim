@@ -204,6 +204,9 @@ branch. `make check` passed in the same run.
 - Twelve changed or removed the `name=` that `parse_reference_adult_parameters`
   gives each `PerfusionFraction`. No input reaches that name: the payload has
   already checked the fraction against the same range, above 0 and at most 1,
-  so the constructor cannot refuse it there. The three lines are marked
-  `# pragma: no mutate`. The names stay, so that a refusal would name the
-  field if the payload's check were ever loosened.
+  so the constructor cannot refuse it there. The three lines were first
+  marked `# pragma: no mutate`, and a second audit still counted the twelve:
+  mutmut reads that marker only on a line of its own between statements, or
+  at the end of a whole statement, and not after an argument inside a call.
+  So the three names are removed, which leaves nothing there to mutate. A
+  comment says why no name is given.
