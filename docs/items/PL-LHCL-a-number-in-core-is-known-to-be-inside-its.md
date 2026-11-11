@@ -174,3 +174,18 @@ keep `time_constant_s` finite. (b) has to say whether `inf` is the right
 result there, as it is at zero flow, or whether the flow has a smallest
 positive value. Each of (b) and (c) removes its entries from `LISTED` and
 lowers `MOST_BARE_NUMBERS`.
+
+**Where step (a) stands, 2026-11-11 00:40 UTC.** The test is committed on
+`claude/festive-cori-it7vs1` and its draft pull request is `#2099`. The
+session stopped for length before close-out, at 143,000 tokens of spend. Still
+owed before `#2099` is marked ready, as `bin/docket arm` lists them: the prose
+review of the test file's 11 docstrings and comments; one blind review pass;
+an `Owner-read:` record (the change adds a test and no behaviour, so the
+judgment to record is whether the owner reads the list's reasons); the copy
+edit of the title and body; and `bin/docket yield PL-LHCL`, because the item
+stays open for steps (b) to (e). The branch contains
+`origin/claude/peaceful-mayer-evwc0n`, the branch that filed this item, so
+when `#2095` merges, bringing `main` in may report this file as added on both
+sides. Keep this branch's copy. `docs/MODEL.md` was left unchanged for (a):
+its paragraph on `tests/unit/test_record_writes.py` under the mass-balance
+identity is where (b) or (c) adds one on this test.
