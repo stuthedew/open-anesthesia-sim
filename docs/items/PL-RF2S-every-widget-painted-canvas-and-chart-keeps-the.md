@@ -160,7 +160,7 @@ Three runs were going, each started through the harness:
 
 - The prose review of the 110 passages the branch changed up to `58525f77f`: `python3 tools/copy_edit.py --reads $S/reads2 $S/prose2.txt`, reply in `$S/copy_edit2.out`. `$S/copy_edit2.err` ends with `exit=N` when it is done.
 - The prose review of the 8 passages changed after that, listed with `python3 tools/new_prose.py --base 1fdfbba70`: reply in `$S/copy_edit3.out`, and `$S/copy_edit3.err` ends with `exit=N`.
-- The mutation run, `make mutate`, with its log in `$S/mutate.log`. `pyproject.toml` holds `PL-GP8G`'s two-line fix uncommitted for this run. Restore the file with `git checkout -- pyproject.toml` before the gate, and never commit that fix under this item.
+- The mutation run, `make mutate`, finished at about 03:00 UTC with `PL-GP8G`'s two-line fix applied locally. The fix is not committed and `pyproject.toml` is restored. It is saved as `$S/pl-gp8g-workaround.patch` for a rerun, and it is never committed under this item. Result on the unit tests alone: 346 mutants on the changed functions, 311 killed, 35 survived. The survivors by function: `halted_run` 9, `drawn_run` 7, `withheld_readouts` 6, `_presentation` 5, `_at_playback_rate` 3, `run_statement` 2, and 1 each in `drawn_values`, `status_word` and `compared_run_notice`. Their diffs are in `$S/mutate.log`. None is sorted yet. Many pass a notice or a flag through to a function that the integration tests exercise, so run each against the whole suite as `docs/mutation-testing.md` § "Second tier" says before writing a unit test for it.
 
 What is left, in order:
 
