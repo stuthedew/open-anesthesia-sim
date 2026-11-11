@@ -145,19 +145,21 @@ range of every fraction, the agent balance, each running total against an
 exact sum, the state against the 50-digit solution, the stepped state against
 the canonical one, a sampled window's last column, and the wash-in reading.
 It then replays the plan and requires the same bits. Each run of the suite
-draws 100 plans, always the same ones, in about 8 s.
+draws 100 plans, always the same ones, in about 11 s.
 
 **Replays, 2026-11-11.** Each row reverts one fix in the working tree, runs
 `uv run pytest tests/unit/test_generated_runs.py -q -x`, and restores the
 tree. "Drawn plans needed" was measured before the three listed plans below
-were added.
+were added. Every row was run again after the blind review's fixes, at 100
+drawn plans and then at 1 000, with the same result. The failure messages are
+from that second run.
 
 | Item | What was reverted | Fails in the suite's run | Drawn plans needed | Failure |
 | --- | --- | --- | --- | --- |
 | `PL-XST1` | `record_external_agent_transfer` adds each transfer with a plain `+`. | Yes | 100 | "a running total against the exact sum of its step amounts: a difference of 3.25e-19 is 1.08 times its rounding allowance", after 51 steps. |
 | `PL-D88N` | No code: the fix kept the tolerance and documented the halt. The test's acceptance of that halt was removed. | Yes, on a listed plan | 1 000 | `AgentSimulationValidationError` with a relative error of 1.04e-9, after 24 steps. |
 | `PL-9B1M` | `MAXIMUM_INPUT_FRACTION = 1.0`. | Yes, on a listed plan | 300 | "alveolar partial_pressure_fraction of 1.000000000000001 is outside 0 to 1", after 1 step. |
-| `PL-81Q2` | No code: the item changed none. The squarings were removed from the test's allowances for the canonical state and the window. | No | 1 000 | "the stepped state against the canonical state: a difference of 7.29e-13 is 1.28 times its rounding allowance", after 27 steps. The 59-column chain that the item measured was not reached. |
+| `PL-81Q2` | No code: the item changed none. The squarings were removed from the test's allowances for the canonical state and the window. | No | 1 000 | "the stepped state against the canonical state: a difference of 2.37e-12 is 1.09 times its rounding allowance", after 103 steps. The 59-column chain that the item measured was not reached. |
 | `PL-N559` | `WASH_IN_ROUNDING_ALLOWANCE = 0.0`. | Yes, on a listed plan | 1 000 | "a run that only washes in is described as elimination", after 1 step with every flow at zero. |
 | `PL-9SL5` | `RunDefinition.evaluate` forms every column time as `start_s + column * spacing_s`. | Yes | 100 | "the last column is at 238.2 and not at the 238.20000000000002 asked for". |
 | `PL-QVBR` | The reverse of #1917's changes to `app/bookmarks.py` and `app/controller.py`. | No | Passed at 1 000 | None. The test sets no MAC target and opens no branch. |
@@ -185,6 +187,16 @@ a stepped state. **Recommended for (b):** the module states the figure for n
 steps as the summed bound, which is tight enough to use, and the agent balance
 keeps its fixed 1e-9 as `PL-D88N` decided. Put to the project owner on
 2026-11-11.
+
+**Blind review, 2026-11-11: four findings, all fixed.** The test held the
+agent balance to the relative bound alone, where the model passes a step on
+either bound. It accepted a halt wherever a step needed a squaring, and now
+accepts one only where the summed rounding of the steps taken has reached
+1e-9. Its allowances were pooled over the whole run, and are now summed action
+by action. Its coefficients were not drawn across the whole envelope. After
+the fixes, over 1 000 drawn plans, the largest difference was 0.95 of its
+allowance: the stepped state against the 50-digit solution, over 35 steps.
+The margin of three on one propagator's bound is therefore nearly used.
 
 **Allowances the test states for now, which (b) moves into the module.** Three
 have no home in `core/` yet: the rounding of the clock, which the run
