@@ -45,3 +45,12 @@ structure-read sweep of 2026-11-05.
 fixes was already in its file at `817a4d88`, the commit that froze Gate 3, so
 under ROADMAP.md § "The gate is a snapshot, not a moving target" the item
 joins v0.7.0's frozen list rather than being deferred by its capture date.
+
+**After the decision to split, 2026-11-11.** The project owner decided on
+2026-11-11 to split `docs/MODEL.md` by reader (`PL-P3GZ`), which ends the
+hold of 2026-11-10 on this item. It stays startable, because it is on
+v0.7.0's frozen list and making it wait on the split would take it off the
+release's gate. A pointer fixed before `PL-CTXZ`, `PL-6PPZ` or `PL-FWR6`
+moves its section moves with the text. A pointer fixed afterwards is fixed
+in the document that then holds it, and may name a section of another
+document.
