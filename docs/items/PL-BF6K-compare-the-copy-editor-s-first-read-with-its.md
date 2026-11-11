@@ -53,7 +53,10 @@ the statements the meaning check finds lost in each version.
 
 **Done when.** This item records the result in a paragraph that opens
 "**Measured 20**" with the date, and either puts a change of `MAX_READS` to
-the owner with that result or says why the limit of four stays.
+the owner with that result or says why the limit of four stays. It also puts
+back to the owner the pause on copy editing the title and body of a pull
+request that changes no simulator path (`PL-WBT6`), which lasts until this
+measurement.
 
 **Generator check.** A one-off. It measures part of the fix built for
 `PL-J1ZM` (sessions over-explain in every kind of text), so the pause on new

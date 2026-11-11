@@ -56,6 +56,16 @@ changed a value, a unit, a condition, an identifier or a citation. Then
 publish the copy editor's rewrite with the `🤖 Generated with` lines added
 back.
 
+**A branch that changes no simulator path skips that copy edit, until
+`PL-BF6K` has measured the copy editor's audit reads** (project owner,
+2026-11-11 at 00:06 UTC, ratified, over keeping the edit on every pull
+request, `PL-WBT6`). `python3 tools/blind_review.py --count` prints 0 for
+such a branch. Write its title and body as `.claude/rules/plain-writing.md`
+says and publish them unedited. On `#2088`, which changed item files and two
+workflow files, the edit of a 381-word title and body took 12 model runs, 15
+minutes and $2.75, and it kept three changes of wording. A pull request that
+changes a simulator path keeps the edit.
+
 ## Run the blind review passes before a simulator pull request is ready
 
 **A simulator pull request is not marked ready or armed until its blind
