@@ -183,9 +183,7 @@ review of the test file's 11 docstrings and comments; one blind review pass;
 an `Owner-read:` record (the change adds a test and no behaviour, so the
 judgment to record is whether the owner reads the list's reasons); the copy
 edit of the title and body; and `bin/docket yield PL-LHCL`, because the item
-stays open for steps (b) to (e). The branch contains
-`origin/claude/peaceful-mayer-evwc0n`, the branch that filed this item, so
-when `#2095` merges, bringing `main` in may report this file as added on both
-sides. Keep this branch's copy. `docs/MODEL.md` was left unchanged for (a):
+stays open for steps (b) to (e). `main` was brought in after `#2095` merged, so the
+branch differs from `main` only by the test and this record. `docs/MODEL.md` was left unchanged for (a):
 its paragraph on `tests/unit/test_record_writes.py` under the mass-balance
 identity is where (b) or (c) adds one on this test.
