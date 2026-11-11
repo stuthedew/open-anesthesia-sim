@@ -1,0 +1,90 @@
+name: merge-hold
+
+# Refuse the merge of a pull request that `bin/docket arm` holds (`PL-39Y1`).
+#
+# `bin/docket arm` tells a session whether a pull request may be armed for
+# auto-merge. It holds one whose branch still carries an open claim, one that
+# changes the simulator with no record of whether the owner must read it, and
+# one that waits on the owner's read. Only the session read that answer. A
+# session that armed a held pull request anyway met nothing on GitHub's side,
+# and green CI merged it. This job asks the same rule on GitHub, so a held
+# pull request fails a check, and a required check refuses the merge whoever
+# asks for it and by whatever route.
+#
+# **The trigger is `pull_request_target` on purpose.** A workflow on that
+# event is read from the default branch, and `actions/checkout` checks out the
+# default branch, so the job and the rule it runs are `main`'s. A pull request
+# cannot edit either to let itself through. GitHub documents the event as
+# running "in the context of the base of the pull request, rather than in the
+# context of the merge commit"
+# (https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#pull_request_target).
+# `quality.yml` runs on `pull_request`, where the job is the pull request's
+# own copy.
+#
+# **Nothing the pull request brought is run.** That event gives the job the
+# base repository's rights, so running a pull request's code here is the hole
+# GitHub warns about on that page. The step runs `main`'s `bin/docket`, which
+# reads the pull request's commits through git: their trailers, the paths they
+# change and the claims they carry. It runs no command from the branch's
+# files, which is why it leaves out the two counts `bin/docket arm` makes in a
+# session, the prose review and the blind review passes. The step says so
+# beside a pass. The token is read-only.
+#
+# **A pull request from a fork fails.** The rule reads the branch by name from
+# this repository, and a fork's branch is not here. A name it shares with a
+# branch that is here would otherwise be answered for the wrong commits.
+#
+# `synchronize` re-runs the job on each push, which is how it clears: the push
+# that releases a claim, or the one that carries the record of the owner's
+# go-ahead, `Owner-read: given - <date>, "<the owner's words>"`.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+# One lane per pull request. A later push makes the earlier answer irrelevant,
+# and this workflow never runs on `push`, so there is no `main` lane to
+# protect (`PL-QD9K`).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # **This job's name is load-bearing outside the tree**, as `checks` and
+  # `pr-title` are: branch protection matches a required status check by name.
+  #
+  # not-required: `main` cannot require it before it has run there once, and it first runs when this file is on `main`; the item that follows `PL-39Y1` removes this line with the owner's change to the setting
+  merge-hold:
+    runs-on: ubuntu-latest
+    # One checkout and one standard-library command.
+    timeout-minutes: 5
+
+    steps:
+      # No `ref:`, so this is the default branch, never the pull request.
+      # `fetch-depth: 0` fetches every branch, which puts the pull request's
+      # branch and every claim in the clone as data.
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      # The floor `subprojects/docket/pyproject.toml` declares, as in
+      # `pr-title.yml`.
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.11'
+
+      # The branch's name reaches the command through the environment and not
+      # a `${{ }}` interpolation inside `run:`, because a pull request chooses
+      # it.
+      - name: nothing `bin/docket arm` reads from the pull request's commits holds its merge
+        env:
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+        run: |
+          if [ "$PR_REPO" != "$GITHUB_REPOSITORY" ]; then
+            echo "unknown - this pull request's branch is in $PR_REPO, and the rule reads a branch of $GITHUB_REPOSITORY, so it was not read"
+            exit 2
+          fi
+          bin/docket arm --merge-hold "$PR_BRANCH"
