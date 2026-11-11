@@ -6,7 +6,7 @@
       "name": "Default",
       "origin": "shipped:default",
       "layout": {
-        "next_area_id": 3,
+        "next_area_id": 5,
         "windows": [
           {
             "tree": {
@@ -21,8 +21,26 @@
                   "view": "concentration_chart"
                 },
                 {
-                  "area": 2,
-                  "view": "parameter_controls"
+                  "split": "column",
+                  "sizes": [
+                    0.34,
+                    0.33,
+                    0.33
+                  ],
+                  "children": [
+                    {
+                      "area": 2,
+                      "view": "parameter_controls"
+                    },
+                    {
+                      "area": 3,
+                      "view": "bookmarks"
+                    },
+                    {
+                      "area": 4,
+                      "view": "branch"
+                    }
+                  ]
                 }
               ]
             }
