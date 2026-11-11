@@ -5,12 +5,13 @@ typed, and after each of four fixes, another spelling got past them. A check
 now reads GitHub's own rules instead (`tools/github_refusals_check.py`). These
 tests replay every recorded escape against GitHub's settings for this
 repository on 2026-11-11, when only `main` had a rule, and against the settings
-that the owner is asked to apply (`PL-39Y1`).
+that the owner is asked to apply (`PL-39Y1`, `PL-KH7Y`).
 """
 
 from __future__ import annotations
 
 from dataclasses import replace
+from pathlib import Path
 
 import github_refusals_check as grc
 import pytest
@@ -49,6 +50,8 @@ RECORDED = {
     "/rulesets/21260116": BASE_RULESET,
 }
 
+WORKFLOWS = Path(__file__).resolve().parents[2] / ".github" / "workflows"
+
 # The two rulesets that the owner is asked to create (`PL-39Y1`).
 ALL_BRANCHES = {
     "id": 2,
@@ -68,8 +71,18 @@ RELEASE_TAGS = {
     "rules": [{"type": "deletion"}, {"type": "non_fast_forward"}],
     "bypass_actors": [],
 }
+# `main` with the `merge-hold` check added to its required checks (`PL-KH7Y`).
+MAIN_REQUIRES_MERGE_HOLD = {
+    "protection": {
+        "required_status_checks": {
+            "enforcement_level": "everyone",
+            "contexts": ["checks", "pr-title", "merge-hold"],
+        }
+    }
+}
 ASKED_FOR = {
     **RECORDED,
+    "/branches/main": MAIN_REQUIRES_MERGE_HOLD,
     "/rules/branches/main": [
         *RECORDED["/rules/branches/main"],
         {"type": "non_fast_forward", "ruleset_id": 2},
@@ -136,12 +149,20 @@ def test_every_escape_says_what_refuses_it_or_that_nothing_does(escape: grc.Esca
         ("git push --force origin <branch>", {"branch-history"}),
         ("curl -X PATCH .../git/refs/heads/<branch> -d '{\"force\": true}'", {"branch-history"}),
         ("curl -X POST .../git/refs with a release tag's name, after deleting it", {"tag-history"}),
+        (
+            "enable_pr_auto_merge on a pull request that `bin/docket arm` holds",
+            {"default-merge-hold"},
+        ),
     ],
 )
 def test_the_settings_of_2026_11_11_let_these_escapes_through(
     monkeypatch: pytest.MonkeyPatch, spelling: str, absent: set[str]
 ) -> None:
-    """Only `main` had a rule, so nothing refused a forced push to any other branch."""
+    """Only `main` had a rule, and it did not yet require the `merge-hold` check.
+
+    So nothing refused a forced push to any other branch, and a pull request
+    that `bin/docket arm` held still merged once armed.
+    """
     escape = next(escape for escape in grc.GUARD_ESCAPES if escape.spelling == spelling)
     assert set(escape.rules) & _missing(monkeypatch, RECORDED) == absent
 
@@ -178,6 +199,7 @@ def _complete(monkeypatch: pytest.MonkeyPatch) -> grc.Settings:
         ({"default_rules": frozenset({"non_fast_forward", "deletion"})}, "default-pull-request"),
         ({"enforcement": "non_admins"}, "default-binds-admins"),
         ({"enforcement": None}, "default-binds-admins"),
+        ({"required_checks": frozenset({"checks", "pr-title"})}, "default-merge-hold"),
         ({"other_rules": frozenset()}, "branch-history"),
         ({"tag_rules": frozenset({"deletion"})}, "tag-history"),
         ({"bypass": ("Base: RepositoryRole 5",)}, "no-bypass"),
@@ -200,10 +222,55 @@ def test_admins_left_unbound_is_what_the_merge_guard_used_to_read(
     answers = {
         **ASKED_FOR,
         "/branches/main": {
-            "protection": {"required_status_checks": {"enforcement_level": "non_admins"}}
+            "protection": {
+                "required_status_checks": {
+                    "enforcement_level": "non_admins",
+                    "contexts": ["checks", "pr-title", "merge-hold"],
+                }
+            }
         },
     }
     assert _missing(monkeypatch, answers) == {"default-binds-admins"}
+
+
+def test_the_merge_hold_check_counts_where_a_ruleset_requires_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """GitHub keeps required checks in a branch protection rule or in a ruleset.
+
+    The owner may move them from one to the other, and the rule must not fail
+    on a requirement that only moved.
+    """
+    answers = {
+        **ASKED_FOR,
+        "/branches/main": RECORDED["/branches/main"],
+        "/rules/branches/main": [
+            *ASKED_FOR["/rules/branches/main"],
+            {
+                "type": "required_status_checks",
+                "ruleset_id": 21260116,
+                "parameters": {"required_status_checks": [{"context": "merge-hold"}]},
+            },
+        ],
+    }
+    assert _missing(monkeypatch, answers) == set()
+
+
+def test_the_required_check_is_the_one_job_that_main_s_copy_of_the_workflow_reports() -> None:
+    """The rule names the check that `.github/workflows/merge-hold.yml` reports.
+
+    The workflow must run only on `pull_request_target`. GitHub then reads the
+    job from `main`, so a pull request cannot edit the job that judges it. On
+    `pull_request` the job would be the pull request's own copy.
+    """
+    reported = [
+        job.check_name
+        for job in rcc.reporting_jobs(WORKFLOWS)
+        if job.workflow == "merge-hold.yml"
+    ]
+    assert reported == ["merge-hold"] == [grc.MERGE_HOLD_CHECK]
+    lines = (WORKFLOWS / "merge-hold.yml").read_text(encoding="utf-8").splitlines()
+    assert set(rcc.triggers(lines)) == {"pull_request_target"}
 
 
 # --- reading GitHub's settings -----------------------------------------------

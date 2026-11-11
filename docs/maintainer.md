@@ -519,8 +519,8 @@ the branch as `Owner-read: given - <date>, "<your words>"`, and the pull
 request can then be armed. A check named `merge-hold` runs the same rule on
 GitHub for every pull request, from `main`'s copy of the rule. It fails while
 the branch holds an open claim, changes the simulator with no record, or
-waits on you with no `given` record. It refuses a merge only once `main`
-requires it, which is `PL-KH7Y`'s step for you (`PL-39Y1`). `subprojects/docket/src/docket/arming.py` decides what merges
+waits on you with no `given` record. `main` requires that check, so a pull
+request it fails cannot merge, armed or not (`PL-39Y1`, `PL-KH7Y`). `subprojects/docket/src/docket/arming.py` decides what merges
 without you. A change to that file waits on you in only three cases. It
 changes or deletes an existing test that pins `arm`'s results, it moves the
 file, or it carries a `needed` record. Otherwise it merges on green (project
