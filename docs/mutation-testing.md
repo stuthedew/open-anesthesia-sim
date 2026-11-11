@@ -187,7 +187,8 @@ that the mutant survives all three test trees.
 
 ## Pitfalls
 
-Each of these was measured on 2026-10-17.
+Each of these was measured on 2026-10-17, except where an entry gives its own
+date.
 
 - **mutmut's default fork mode gives false kills.** In fork mode, mutmut runs
   the tests once in a parent process and then forks a child for each mutant.

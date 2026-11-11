@@ -489,7 +489,7 @@ def _stub_run(monkeypatch: pytest.MonkeyPatch, root: Path, code: int, log_text: 
 def _record_runs(
     monkeypatch: pytest.MonkeyPatch, root: Path, found: dict[str, str]
 ) -> list[tuple[list[str], list[str] | None]]:
-    """Stub a mutmut run that reports `found`, and return the list its calls are added to.
+    """Stub a mutmut run that reports `found`, and return the list that records its calls.
 
     Each call adds the patterns it was given and the files it may mutate.
     """
@@ -815,8 +815,9 @@ def test_a_run_without_the_verdict_names_every_mutant_of_each_changed_function(
     ran = _record_runs(monkeypatch, tabled, dict.fromkeys(names, "killed"))
 
     assert main(["--root", str(tabled), "--base", "main"]) == 0
-    # Names, so that mutmut's pass with no mutant applied runs only their tests,
-    # and the changed file alone, so that no other file's functions are wrapped.
+    # The run is given the mutants' names, so that mutmut's pass with no mutant
+    # applied runs only their tests. The run may mutate only the changed file,
+    # so that no other file's functions are wrapped.
     assert ran == [(names, ["src/pkg/core/model.py"])]
     assert "pkg.core.model.outer: 2 mutants - 2 killed" in capsys.readouterr().out
 
@@ -846,9 +847,9 @@ def test_a_run_without_the_verdict_runs_nothing_when_the_listing_holds_no_mutant
 def test_main_refuses_a_run_that_finds_none_of_the_mutants_the_listing_named(
     tabled: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    # The listing and the run each generate the mutants. A run that finds none
-    # of the listed names generated different ones, and "no mutants" would be
-    # a wrong answer about functions the listing shows to have some.
+    # The listing and the run each generate the mutants. When a run finds none
+    # of the listed names, it generated different mutants, and "no mutants" would
+    # be a wrong result for functions the listing shows to have some.
     listed = diff_mutation.Listing(
         {"pkg.core.model.x_outer__mutmut_1": OUTER_SHOWN},
         frozenset({"pkg.core.model.x_outer__mutmut_1"}),
@@ -883,7 +884,8 @@ def test_run_starts_mutmut_with_the_files_it_may_mutate(
     script = diff_mutation.RUN_SCRIPT
     assert started == [
         ("-c", script, '["src/a.py", "src/b.py"]', "pkg.b.x_f__mutmut_1"),
-        # `null` leaves `only_mutate` as `pyproject.toml` gives it, for `--all`.
+        # Under `--all`, the run is given `null`, so the files mutmut may mutate
+        # (`only_mutate`) stay as `pyproject.toml` gives them.
         ("-c", script, "null"),
     ]
 
