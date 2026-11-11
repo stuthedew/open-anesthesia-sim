@@ -22,6 +22,7 @@ import pytest
 
 from anesthesia_sim.app import run_presentation
 from anesthesia_sim.app.agent_cost import WITHHELD_DELIVERED
+from anesthesia_sim.app.bookmarks import TimeBookmark
 from anesthesia_sim.app.compartment_schematic import WITHHELD_SCHEMATIC
 from anesthesia_sim.app.control_timeline import group_adjustments
 from anesthesia_sim.app.controller import SimulationController
@@ -54,6 +55,7 @@ from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
 )
 from anesthesia_sim.core.parameters import parse_breathing_circuit_parameters
+from anesthesia_sim.core.supported_ranges import CaseInstant
 from anesthesia_sim.layout.run_identity import RunIdentities
 
 _RUN_ID = RunIdentities().mint()
@@ -99,6 +101,15 @@ def _run_at(elapsed_s: float, *, agent_id: str = "sevoflurane") -> SimulationCon
     return controller
 
 
+def _run_with_a_control_change() -> SimulationController:
+    """A run paused at 90 s, whose delivered concentration was then moved from 2% to 3%."""
+
+    controller = _run_at(90.0)
+    controller.set_delivered_concentration_percent(Percent(3.0))
+
+    return controller
+
+
 def _drawn(controller: SimulationController, state: RunPanelState) -> RunPresentation:
     snapshot = controller.snapshot()
 
@@ -139,14 +150,16 @@ def test_a_drawn_run_states_the_snapshot_it_was_given_on_every_part() -> None:
 
     controller = _run_at(90.0)
 
-    shown = _drawn(controller, _state())
+    shown = _drawn(controller, _state(case=3))
 
     assert shown.standing is ValuesStanding.DRAWN
     assert shown.run_id == _RUN_ID
+    assert shown.case == 3
     assert shown.record == controller.record()
     assert shown.values.readouts[_CLOCK_INDEX].value == "1m30s"
     assert shown.values.schematic.instant == "1m30s"
     assert shown.values.delivered.instant == "1m30s"
+    assert shown.values.accounting.status.text == "Valid"
     assert shown.one_mac == "1 MAC sevoflurane = 2.0%"
     assert shown.statement.agent_id == "sevoflurane"
     assert shown.delivered_line is not None
@@ -164,6 +177,98 @@ def test_a_drawn_run_restates_an_open_new_case_question_from_its_snapshot() -> N
 
     assert shown.new_case is not None
     assert any("1m30s" in line for line in shown.new_case.body)
+
+
+def test_a_drawn_run_lists_and_counts_the_control_changes_it_was_given() -> None:
+    """The control-change panel and the new-case question state the run's one change."""
+
+    controller = _run_with_a_control_change()
+
+    shown = _drawn(controller, _state(pending_agent_name="Desflurane"))
+
+    assert shown.statement.timeline.entries == "1m30s · Delivered agent 2.00% -> 3.00%"
+    assert shown.new_case is not None
+    assert any("1 recorded control change " in line for line in shown.new_case.body)
+
+
+def test_a_drawn_run_that_a_mark_stopped_says_so() -> None:
+    """A run that stopped on the learner's mark at 30 s is not stated as a plain pause."""
+
+    controller = SimulationController()
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(30.0)))
+    controller.start()
+
+    for _ in range(round(60.0 / SIMULATION_STEP_S)):
+        if not controller.snapshot().is_running:
+            break
+
+        controller.advance(SIMULATION_STEP_S)
+
+    shown = _drawn(controller, _state())
+
+    assert shown.values.readouts[_CLOCK_INDEX].value == "30s"
+    assert shown.statement.status.text == "Paused — stopped on your mark"
+
+
+@pytest.mark.parametrize(
+    ("changes", "lock_reason"),
+    [({"is_branch": True}, "Locked to the case"), ({"comparing": True}, "Locked while comparing")],
+)
+def test_a_branch_and_a_compared_run_lock_the_agent_selector_on_a_frame_and_on_a_halt(
+    changes: dict[str, object], lock_reason: str
+) -> None:
+    """The agent chip gives the same reason whether a frame drew or the run halted."""
+
+    controller = _run_at(30.0)
+    state = _state(**changes)
+    lone = _drawn(controller, _state())
+    frame = _drawn(controller, state)
+    controller.fail("the frame could not be drawn")
+
+    halt = _halted(controller, state, KeptValues(state.case, frame.values))
+
+    assert lone.statement.transport.selector_locked is False
+    assert frame.statement.transport.selector_lock_reason == lock_reason
+    assert halt.statement.transport.selector_lock_reason == lock_reason
+
+
+def test_a_stopped_run_s_banner_states_what_the_panel_refused_on_a_frame_and_on_a_halt() -> None:
+    """A refused setting, an offered branch and a refused Reset each reach the banner.
+
+    The run is given the status of one that reached the supported run length,
+    because that banner is the one that names a branch as the way to a new
+    setting. A real run takes 24 hours of simulated time to reach it.
+    """
+
+    controller = _run_at(30.0)
+    reason = "this run has reached 86400 s of simulated time"
+    snapshot = replace(controller.snapshot(), supported_limit_reason=reason)
+    record = replace(controller.record(), supported_limit_reason=reason)
+    adjustments = group_adjustments(snapshot.control_timeline)
+    kept = KeptValues(0, drawn_values(snapshot, PlaybackRate(1)))
+    setting_refused = _state(rejected_setting_notice="Setting refused: too high.")
+    states = {
+        "plain": _state(),
+        "setting": setting_refused,
+        "branch": replace(setting_refused, branch_offered=True),
+        "reset": _state(refused_reset_notice="Reset was refused: no run can be built."),
+    }
+
+    for banners in (
+        {name: drawn_run(snapshot, adjustments, state).notice for name, state in states.items()},
+        {
+            name: halted_run(record, adjustments, state, kept).notice
+            for name, state in states.items()
+        },
+    ):
+        assert all(banner is not None for banner in banners.values())
+        assert "Setting refused" not in str(banners["plain"])
+        assert "Setting refused: too high." in str(banners["setting"])
+        assert "branch at an earlier instant" not in str(banners["setting"])
+        assert "Setting refused: too high." in str(banners["branch"])
+        assert "branch at an earlier instant" in str(banners["branch"])
+        assert "Reset was refused" not in str(banners["plain"])
+        assert "Reset was refused: no run can be built." in str(banners["reset"])
 
 
 def test_a_compared_run_s_banner_names_the_run() -> None:
@@ -202,6 +307,19 @@ def test_a_compared_run_s_halt_banner_names_the_run() -> None:
     assert lone.notice is not None
     assert lone.notice.startswith("Simulation stopped")
     assert compared.notice == f"Run 2: {lone.notice}"
+
+
+def test_a_halt_lists_the_control_changes_of_the_run_it_stopped() -> None:
+    """A halted run's control-change panel still lists the change made before the halt."""
+
+    controller = _run_with_a_control_change()
+    state = _state()
+    frame = _drawn(controller, state)
+    controller.fail("the frame could not be drawn")
+
+    shown = _halted(controller, state, KeptValues(state.case, frame.values))
+
+    assert shown.statement.timeline.entries == "1m30s · Delivered agent 2.00% -> 3.00%"
 
 
 def test_a_halt_keeps_every_value_of_the_last_frame_while_the_run_is_the_one_it_drew() -> None:
@@ -310,6 +428,21 @@ def test_withheld_values_are_the_withheld_form_of_each_surface() -> None:
     assert [readout.name for readout in withheld.readouts] == [
         panel.name for panel in READOUT_PANELS
     ]
+
+
+def test_withheld_readouts_keep_each_panel_s_gloss_and_the_playback_rate() -> None:
+    """A withheld row still says what each panel is, and how fast the run is played.
+
+    The expected glosses are those of a frame drawn from a real run.
+    """
+
+    drawn = drawn_values(_run_at(90.0).snapshot(), PlaybackRate(4)).readouts
+
+    withheld = withheld_values(PlaybackRate(4)).readouts
+
+    assert [readout.qualifier for readout in withheld] == [readout.qualifier for readout in drawn]
+    assert {"inspired", "end-tidal-equivalent"} < {readout.qualifier for readout in withheld}
+    assert withheld[_CLOCK_INDEX].secondary == "4× real time"
 
 
 def test_every_value_a_frame_draws_differs_from_its_withheld_form() -> None:

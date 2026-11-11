@@ -715,6 +715,7 @@ def test_a_run_a_mark_stopped_is_not_worded_as_the_learner_s_own_pause() -> None
     assert (
         status_word(at_limit, stopped_on_mark=True).text == "Stopped — supported run length reached"
     )
+    assert status_word(at_limit, stopped_on_mark=True).emphasis is Emphasis.MUTED
 
 
 def test_refresh_view_reports_a_failed_run_as_stopped_not_paused() -> None:
