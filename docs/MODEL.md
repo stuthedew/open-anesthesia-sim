@@ -6415,13 +6415,14 @@ under that setting either.
 The banner states the refusal and the way out: Reset, which keeps every setting.
 At the supported run length, a branch is a second way out: a new run from an
 earlier instant, with each dial at its setting from that instant. The banner
-names a branch only when one can be taken. It names Reset alone on a dashboard
-with no branch control, and while the run is compared with another, because
+names a branch only when one can be taken. It names Reset alone while no Area
+shows the branch View, and while the run is compared with another, because
 comparison locks the branch control.
 
 **For developers.** For each scenario, a test requires every screen element in a
 group to describe the step that the scenario names. It also requires every other
-screen element to be listed with the reason it belongs to no group.
+screen element to be listed with the reason it belongs to no group. On a
+dashboard that holds no case to branch, the banner names Reset alone.
 
 ### Naming the run in a comparison
 
@@ -7577,15 +7578,15 @@ The interface goes beyond AA in two places:
 
 **The gridline grey is exempt from SC 1.4.11** (project owner, 2026-09-27,
 ratified, over darkening the grey to 3:1; `PL-HKTB`). It colors the plot's
-gridlines, the axis lines, the line between sections of the chart column and
-the sliders' unfilled groove, at 1.31:1 against the panel. The criterion
+gridlines, the axis lines, the line under each Area's header and the sliders'
+unfilled groove, at 1.31:1 against the panel. The criterion
 applies only to a graphical object *required to understand the content*. The
 values that the gridlines mark are shown in three other ways: each gridline
 stands at an axis tick labeled in text at 5.00:1, the readouts state every
 compartment's current value, and hovering over any drawn point shows its exact
-value. The line between sections sits over a bold heading or a titled panel
-that already marks the boundary. The groove is the edge of a slider whose
-handle and filled track identify it.
+value. The line under an Area's header sits between the header's menu and the
+View's own heading, which already mark the boundary. The groove is the edge of
+a slider whose handle and filled track identify it.
 
 **The contrast ratios are computed from the interface's own colors**, with
 WCAG 2.2's definitions of relative luminance and contrast ratio, each time the
