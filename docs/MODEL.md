@@ -1304,9 +1304,9 @@ than any number the computer can hold. Then the method that computes $`\tau_i`$
 (`TissueGroup.time_constant_s`) returns infinity, as it does at zero flow, and a tissue group
 stepped on its own is left unchanged. The exact change in the agent it holds is far smaller than
 any amount the simulator displays. A test in `tests/unit/test_blood_flow.py` checks this at the
-smallest flow that can be created. The
-venous pool's time constant (`VenousBloodCompartment.time_constant_s`) is infinite in the same
-way at a cardiac output that small, and a second test there checks it.
+smallest flow that can be created. The venous pool's time constant
+(`VenousBloodCompartment.time_constant_s`) is infinite in the same way at a cardiac output that
+small, and a second test there checks it.
 
 ### Venous blood
 
@@ -4901,8 +4901,9 @@ because each compartment is a `slots=True` dataclass, which they restore one fie
 no sign at zero.** `BloodFlow` is built from a `CardiacOutput` and a `PerfusionFraction`, and it
 refuses a number. One file states what every other checked type is built from
 (`core/checked_number.py`), and `FreshGasFlow`, `AlveolarVentilation`, `CardiacOutput`,
-`PerfusionFraction`, `Fraction`, `Percent` and `CaseInstant` all build through it. They accept an `int` or a `float`, subclasses included, so a NumPy double
-passes. A `bool`, a `Decimal` or a string is refused with a `TypeError` that names the value and
+`PerfusionFraction`, `Fraction`, `Percent` and `CaseInstant` all build through it. They accept
+an `int` or a `float`, subclasses included, so a NumPy double passes. A `bool`, a `Decimal` or a
+string is refused with a `TypeError` that names the value and
 its type, before any comparison reads it. So is a value already built as another checked type,
 such as a `StepCount` or a `CaseInstant` passed to a flow's constructor, because such a value is
 a swapped argument. Minus zero is stored as zero, so a readout never shows `-0.0 L/min`. The
