@@ -1,12 +1,19 @@
-"""Write a reader's file to disk atomically, for every store that keeps such a file.
+"""Write a reader's file to disk atomically: the steps that every such store shares.
 
 Two stores keep a file in the reader's data directory: the Workspaces
 (`layout/store.py`) and the preferences (`app/preferences.py`). Both write a
 file the same way. They write the whole text to a temporary file beside the
 target and `fsync` it, replace the target with `os.replace`, and then make a
 best effort to `fsync` the directory. `layout/store.py` gives the reasons for
-each step (`PL-SSQW`). The steps live here once, so the two stores cannot come
-to write a file in two different ways (`PL-93B3`).
+each step (`PL-SSQW`).
+
+This module holds the steps that the two stores share, so that they write and
+flush a file the same way (`PL-93B3`). `write_synced` writes and `fsync`s the
+temporary file, `sync_directory_quietly` flushes the directory, and
+`remove_quietly` removes the temporary file after a failed save. Each store
+calls `os.replace` itself. The Workspaces store copies its previous generation
+between the write and the replace, and reports a failure at each step by name,
+so a change to how the file is replaced is made in both stores (`PL-PKP4`).
 
 Nothing here imports Qt or chooses a directory. Each store takes its directory
 from its caller.
