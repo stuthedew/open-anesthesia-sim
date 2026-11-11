@@ -227,3 +227,12 @@ ten heuristics as the set to use in step 2 of the recommendation.
   well, and it does not reveal missing functions. The chapter's second method,
   an extended hierarchical task analysis, covers that gap, and it starts from
   the same task list that step 1 asks for.
+
+**Added 2026-11-10: both supplied papers are in the private reference corpus.**
+The owner asked for the two papers they supplied to be added to
+`stuthedew/open-anesthesia-sim-references`. Zhang et al. 2005 (PMID 21249841,
+pp. 323-36) and Arneson, Fu and Gatzke 2025 are there as PDFs with text
+dumps. Each has an entry in the corpus's `README.md` with its verified
+citation. `INDEX.md` there has a heading for interface design and usability
+evaluation, whose rows give the page of each passage quoted above. A session
+that runs the heuristic evaluation reads the chapter there.
