@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, safety
 feature: model-claims-held-by-tests
+milestone: v0.6.17
 touches: docs/MODEL.md, src/anesthesia_sim/app/formatting.py, tests/unit/test_formatting.py, tests/unit/test_agent_cost.py, tests/integration/test_agent_cost_view.py, ROADMAP.md
 added: 2026-11-04
 closed: 2026-11-04

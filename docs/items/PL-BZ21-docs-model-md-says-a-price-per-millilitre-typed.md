@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: model-claims-held-by-tests
+milestone: v0.6.17
 touches: docs/MODEL.md
 deferred-from: v0.7.0 - a documentation misstatement of an error's direction; the screen still shows the far-off price per millilitre that catches the mistake, so no learner is misled while it waits
 added: 2026-11-04

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: model-claims-held-by-tests
+milestone: v0.6.17
 touches: ROADMAP.md, docs/items
 added: 2026-11-02
 closed: 2026-11-07

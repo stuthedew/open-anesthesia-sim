@@ -3,6 +3,7 @@ id: PL-SVGH
 title: Restructure docs/ARCHITECTURE.md as its copy editor's structure read proposes: state each repeated fact once, move failures and halts out of Data flow, define Area, View and Workspace where they first appear (copy editor structure read, 2026-11-05)
 status: done
 feature: architecture-md-structure
+milestone: v0.6.17
 touches: docs/ARCHITECTURE.md
 added: 2026-11-05
 closed: 2026-11-07

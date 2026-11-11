@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, docs
 feature: roadmap-structure
+milestone: v0.6.17
 touches: ROADMAP.md, docs/items/PL-11Z9-the-agent-cost-view-does-not-say-on-its-face.md, docs/items/PL-5B1N-simulated-traces-should-be-solid-and-a-dotted.md, docs/items/PL-71H3-answer-the-questions-the-structure-read-of.md, docs/items/PL-HDRN-bin-docket-arm-does-not-hold-a-simulator-pull.md, docs/items/PL-HGZS-the-copy-editor-passes-over-explained-text-and.md, docs/items/PL-J5GC-the-run-screen-s-widgets-each-have-one-writer.md, docs/items/PL-L6QR-re-run-the-area-model-queue-audit-when-roadmap.md, docs/items/PL-LF0P-scope-v0-7-0-the-schematic-in-roadmap-md-and.md, docs/items/PL-YRLM-decide-which-release-builds-planned-milestone.md, docs/items/PL-YRY3-line-edit-roadmap-md-section-by-section-with.md, docs/items/PL-B6V1-restructure-roadmap-md-slice-6-give-each-v0-6-0.md
 blocked-by: PL-G6DP
 added: 2026-11-07

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, docs
 feature: roadmap-structure
+milestone: v0.6.17
 touches: ROADMAP.md, docs/maintainer.md, subprojects/docket/README.md, docs/items/PL-18BD-bin-docket-wave-cannot-read-a-gate-deferral.md, docs/items/PL-82B0-doc-check-s-declined-ids-reads-only-the-first.md, docs/items/PL-BYHS-roadmap-md-says-flet-is-pre-1-0-and-its-1-0-is.md, docs/items/PL-J6HP-gate-facts-which-entries-a-milestone-clears.md, docs/items/PL-LG78-docs-maintainer-md-keeping-the-toolchain.md, docs/items/PL-P669-eleven-tagged-release-spans-cover-a-closing.md, docs/items/PL-SL70-bin-docket-wave-and-gate-count-the-seven-gate-1.md, docs/items/PL-4BCF-restructure-roadmap-md-slice-9-head-v0-5-0-s.md, docs/items/PL-B6V1-restructure-roadmap-md-slice-6-give-each-v0-6-0.md, docs/items/PL-G6DP-restructure-roadmap-md-slice-4-move-the.md
 blocked-by: PL-DWGC
 added: 2026-11-07

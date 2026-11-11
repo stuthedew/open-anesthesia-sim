@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: model-md-structure
+milestone: v0.6.17
 touches: docs/MODEL.md
 added: 2026-11-07
 closed: 2026-11-07

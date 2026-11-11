@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, test
 feature: project-introduction
+milestone: v0.6.17
 touches: README.md, tests/unit/test_readme_claims.py
 added: 2026-09-06
 closed: 2026-11-09

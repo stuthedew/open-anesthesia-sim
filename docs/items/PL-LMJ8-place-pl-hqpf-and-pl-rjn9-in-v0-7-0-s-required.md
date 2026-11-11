@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: housekeeping
+milestone: v0.6.17
 touches: ROADMAP.md, docs/items/PL-HQPF-the-accounting-panel-s-unit-caption-litres-of.md, docs/items/PL-RJN9-the-agent-cost-view-s-two-captions-in-src.md, docs/items/PL-19W8-hold-docs-model-md-known-limitations-numeric.md
 added: 2026-11-11
 closed: 2026-11-11
