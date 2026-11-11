@@ -322,11 +322,7 @@ def missing(found: Settings) -> list[Refusal]:
 def main(argv: list[str] | None = None) -> int:
     root = Path(__file__).resolve().parent.parent
     parser = argparse.ArgumentParser(description=(__doc__ or "").partition("\n")[0])
-    parser.add_argument(
-        "--repo",
-        default=os.environ.get("GITHUB_REPOSITORY"),
-        help="owner/name; defaults to $GITHUB_REPOSITORY, then to the origin remote",
-    )
+    required_checks_check.add_repo_argument(parser)
     parser.add_argument(
         "--branch", default=None, help="the default branch; read from the checkout where not given"
     )
