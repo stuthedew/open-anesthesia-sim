@@ -3,14 +3,16 @@ id: PL-FCYQ
 title: No test replays a recorded control-input timeline into a fresh run and compares the two, though docs/MODEL.md § The control-input timeline requires that the replay reproduces the run
 priority: P1
 effort: M
-status: ready
+status: done
 classes: test, safety
 feature: tests-detect-wrong-values
-touches: tests/integration/test_controller.py
+touches: tests/integration/test_control_timeline_replay.py
 deferred-from: v0.7.0 - not live: checked 2026-11-09: all four control setters in app/controller.py go through _change_setting, which records each accepted change, so no learner sees a setting the timeline left out now; the test guards the next path that might not
 added: 2026-11-05
+closed: 2026-11-11
+pr: 2139
 payoff: a setting that changes the curves without a mark on the chart fails a test, so a learner can trust that the marks name every input behind the curves
-verify: grep -q 'def test_replaying_the_control_timeline_reproduces_the_run' tests/integration/test_controller.py
+verify: grep -q 'def test_the_recorded_timeline_reproduces_the_run_step_for_step' tests/integration/test_control_timeline_replay.py
 ---
 
 **Problem.** No test replays a recorded control-input timeline into a fresh run and compares the two, though docs/MODEL.md § The control-input timeline requires that the replay reproduces the run
@@ -24,3 +26,7 @@ verify: grep -q 'def test_replaying_the_control_timeline_reproduces_the_run' tes
 **Generator check.** One-off: a requirement in `docs/MODEL.md` with no test of its own. The fact is whether the control timeline holds every setting the model ran under; no head states it.
 
 **Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** Present. At 817a4d88, `docs/MODEL.md` already required that the timeline, "re-applied to a fresh run at the recorded times, must reproduce" the run. The only replay test in `tests/integration/test_controller.py` was `test_a_branch_inherits_its_parent_s_settings_at_the_fork`, which checks a branch's settings and not the run's states. So the item belongs on v0.7.0's frozen list. It is deferred from there on the not-live terms recorded in `deferred-from`.
+
+**Built 2026-11-11.** `tests/integration/test_control_timeline_replay.py` drives a controller through 1,505 steps of sevoflurane. The case sets the dial before Start, drags the fresh gas flow from 5 to 1 L/min over five consecutive steps, moves the dial twice inside one step, moves the cardiac output and back inside one step, offers a 9% setting that the 8% vaporizer refuses, and changes the alveolar ventilation and the cardiac output. The fresh run is an `AgentUptakeSystem` built for the same agent, with nothing taken from the controller. Each recorded change is applied through the core's own setter at the instant the run's clock defines (steps taken times the step), and the two state vectors must be equal after every step. The arithmetic is identical on both sides, so the comparison is exact. A second test leaves each recorded change out in turn and shows that the replay then differs, so every entry in the case acts on the states.
+
+The test is in a file of its own, not in `tests/integration/test_controller.py`, because another branch (`claude/epic-archimedes-vmpesj`) is editing that file. This is a new test of behaviour that already holds, so there is no code before a fix to run it against. As a check that it catches the defect it names, a probe that made the controller skip recording the cardiac output change at 120.5 s turned the comparison false (`fcyq_probe.py`, run by hand, not kept).
