@@ -57,11 +57,14 @@ from .plan import (
     HELD,
     PLACEMENT_MARKS,
     Cluster,
+    Fact,
     Feature,
     Gate,
     Overlap,
     Standing,
     effort_total,
+    facts,
+    misread_fact,
     placement_clause,
     placement_mark,
     recommend,
@@ -1976,7 +1979,10 @@ def format_misread(
     session reads to compare heads with each other: one line per head, sorted
     by the stated fact so that two heads naming one record sit together, which
     is the comparison nobody was making (`PL-5MYR`). Sorted case-insensitively
-    because the order is for a reader's eye, then by id so it is stable.
+    because the order is for a reader's eye. The heads of one fact are in the
+    order they were filed, and a fact with more than one head is followed by
+    a line that counts them and dates the first, so a fact on its third or
+    fifth root-cause item reads as one returning cause (`PL-YSV3`).
 
     A head stating nothing is listed last rather than left out, for the
     apparatus floor: a head missing from this list is a head a capture is
@@ -1989,11 +1995,8 @@ def format_misread(
         lines = ["no item carries a sound `root-cause-of:`, so no generator is recorded"]
         return "\n".join(lines + _outside_clusters(unsound, ()))
     heads = [cluster.head for cluster in clusters.values()]
-    stated = sorted(
-        (head for head in heads if head.misread),
-        key=lambda head: (head.misread.casefold(), head.identifier),
-    )
-    missing = sorted((head for head in heads if not head.misread), key=lambda h: h.identifier)
+    stated = sorted(facts(clusters).items())
+    missing = sorted((head for head in heads if not misread_fact(head)), key=lambda h: h.identifier)
     labels = {head.identifier: f"{head.identifier} ({head.status})" for head in heads}
     width = max(len(label) for label in labels.values())
     lines = [
@@ -2001,13 +2004,23 @@ def format_misread(
         "by the fact so heads stating one fact sit together:",
         "",
     ]
-    for head in stated:
-        lines.append(f"  {labels[head.identifier]:<{width}}  {head.misread}")
+    for _, fact in stated:
+        for head in fact.heads:
+            lines.append(f"  {labels[head.identifier]:<{width}}  {head.misread}")
+        if len(fact.heads) > 1:
+            lines.append(f"  {'':<{width}}  {_fact_count(fact)}")
     for head in missing:
         lines.append(f"  {labels[head.identifier]:<{width}}  [no misread:] - docket check names it")
     lines.extend(_format_overlaps(overlaps))
     lines.extend(_outside_clusters(unsound, ()))
     return "\n".join(lines)
+
+
+def _fact_count(fact: Fact) -> str:
+    """How many heads have stated `fact`, and when the first was filed."""
+    first = fact.first.added
+    filed = f"filed {first.isoformat()}" if first else "with no filing date recorded"
+    return f"{len(fact.heads)} heads have stated this fact, the first {filed}"
 
 
 def _outside_clusters(
@@ -4368,21 +4381,40 @@ def format_inflow(report: Inflow) -> str:
     }
     succeeded = {c: f for c, f in report.reentered.items() if c in report.successors}
     owed_none = {c: f for c, f in report.reentered.items() if c in report.answered}
+
+    def fix_count(closed: str) -> list[str]:
+        """The line saying how many heads the fact under `closed` has had, if several."""
+        fact = report.facts.get(closed)
+        if fact is None or len(fact.heads) < 2:
+            return []
+        return [f"           {_fact_count(fact)}: {fact.stated}"]
+
+    if report.reentered:
+        lines += [
+            "",
+            "A filing that re-enters a head is counted against the first head that stated the",
+            "same misread: fact, so the filings against one fact's heads are counted together.",
+        ]
     if unanswered:
         lines += ["", "Re-entered by three or more filings, a generator whose fix did not hold:"]
-        lines += [f"  {closed}  by {', '.join(filed)}" for closed, filed in unanswered.items()]
+        for closed, filed in unanswered.items():
+            lines += [f"  {closed}  by {', '.join(filed)}", *fix_count(closed)]
     if succeeded:
         lines += [
             "",
-            "Re-entered by three or more filings and answered by a successor: a head whose own",
-            "reenters: names the line holds the question, until three filings after the last",
-            "successor closed:",
+            "Re-entered by three or more filings and answered by a successor: a later head of",
+            "the same fact, or a head whose own reenters: names the line, holds the question,",
+            "until three filings after the last successor closed:",
         ]
         for closed, filed in succeeded.items():
             heads = ", ".join(
                 f"{head.identifier} ({head.status})" for head in report.successors[closed]
             )
-            lines += [f"  {closed}  by {', '.join(filed)}", f"           successor {heads}"]
+            lines += [
+                f"  {closed}  by {', '.join(filed)}",
+                f"           successor {heads}",
+                *fix_count(closed),
+            ]
     # A line answered with no successor owed is listed apart too, naming the
     # item that records the answer (`PL-C4F0`).
     if owed_none:
@@ -4395,7 +4427,11 @@ def format_inflow(report: Inflow) -> str:
             answers = ", ".join(
                 f"{answer.identifier} ({answer.status})" for answer in report.answered[closed]
             )
-            lines += [f"  {closed}  by {', '.join(filed)}", f"           answered by {answers}"]
+            lines += [
+                f"  {closed}  by {', '.join(filed)}",
+                f"           answered by {answers}",
+                *fix_count(closed),
+            ]
     return "\n".join(lines)
 
 
