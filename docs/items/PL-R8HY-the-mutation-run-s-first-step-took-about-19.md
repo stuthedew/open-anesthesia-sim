@@ -2,6 +2,7 @@
 id: PL-R8HY
 title: The mutation run's first step took about 19 minutes on a four-core container on 2026-11-11, where tools/diff_mutation.py's docstring says about two and a half: the same 3,576 unit tests ran in 2 min 59 s outside mutmut
 status: untriaged
+feature: mutation-run-first-step
 added: 2026-11-11
 ---
 
