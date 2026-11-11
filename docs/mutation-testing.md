@@ -57,6 +57,12 @@ must come from, and that rule applies whatever the score.
   time limit.
 - `make mutate ARGS="--base origin/main"` compares the branch with a named
   branch instead of the default branch.
+- `make mutate ARGS=--first-step` builds mutmut's copy of the tree, runs the
+  simulator's unit tests in it with no mutant applied, and stops. It reports
+  the test that would stop every mutation run at its first step, and took
+  2 min 25 s on a four-core container on 2026-11-11. CI's `mutation-copy` job
+  runs it on every pull request that changes more than item files
+  (`PL-PG0S`).
 - `bin/docket verify` runs the same tool with `--verdict`, which prints the run
   as JSON for its check `the unit tests catch a mutation of each changed line`.
   `docket.toml`'s `mutation_command` names it. A survivor on a changed line
@@ -280,6 +286,8 @@ date.
   reads any other file fails inside `mutants/`, and mutmut then stops with
   `failed to collect stats. runner returned 1` before it runs a mutant.
   `README.md` was added for `tests/unit/test_readme_claims.py` (`PL-GP8G`).
+  CI's `mutation-copy` job now fails the pull request that adds such a test,
+  so the next session's mutation run does not find it first (`PL-PG0S`).
 - **`strict=` gives noise.** 11 of the 14 equivalent survivors in the
   matrix-exponential group change `strict=` on `zip` or `map`, where the
   lengths are equal by construction. A `# pragma: no mutate` comment on those

@@ -35,6 +35,11 @@ version. A mutant that only the base version catches goes into the same
 `uncaught` list (project owner, 2026-10-24, ratified, over leaving those tests
 unmeasured, `PL-7FPD` and `PL-H57W`). `compare_tests` says what it leaves out.
 
+`--first-step` runs no mutant. It builds mutmut's copy of the tree and runs
+the selected tests there once, as mutmut's first step does, so that CI fails
+the pull request that adds a test which would stop every mutation run there
+(`PL-PG0S`). `first_step` says what it leaves out.
+
 `--all` runs every mutant instead and prints the kill rate of each module.
 `docs/mutation-testing.md` records the baseline that such a run measured, and
 says how to read a survivor. mutmut is in the `mutation` dependency group, so
@@ -205,23 +210,17 @@ CORE_PACKAGE = f"{PACKAGE}.core"
 #: How long a run of a changed test's base version, with no mutant applied,
 #: may take before the file is reported as not compared.
 CLEAN_TIMEOUT_S = 900
-#: The script `listing` runs to generate mutants without running any test, and
-#: to print each listed mutant's diff, as JSON keyed by name. It calls the
-#: steps mutmut 3.8.0's `run` takes before it collects coverage, which is the
-#: slow part, and the function `mutmut show` prints from. They are mutmut's
-#: internals rather than its command line, so the pinned version in
-#: `pyproject.toml` is what keeps them. `listing` falls back to running every
-#: mutant when the script fails.
-LIST_SCRIPT = """
-import fnmatch, json, shutil, sys
+#: The script that builds `mutants/` and generates the mutants without running
+#: any test. It calls the steps mutmut 3.8.0's `run` takes before it collects
+#: coverage, which is the slow part. They are mutmut's internals rather than its
+#: command line, so the pinned version in `pyproject.toml` is what keeps them.
+#: `first_step` runs it alone, and `listing` runs it inside `LIST_SCRIPT`.
+COPY_SCRIPT = """
+import shutil
 from pathlib import Path
 from mutmut.__main__ import create_mutants
-from mutmut.mutation.data import SourceFileMutationData
-from mutmut.mutation.diff_apply import get_diff_for_mutant
 from mutmut.mutation.trampoline import set_mutant_under_test
-from mutmut.utils.file_utils import (
-    copy_also_copy_files, copy_src_dir, setup_source_paths, walk_mutatable_files,
-)
+from mutmut.utils.file_utils import copy_also_copy_files, copy_src_dir, setup_source_paths
 shutil.rmtree("mutants", ignore_errors=True)
 Path("mutants").mkdir()
 set_mutant_under_test("mutant_generation")
@@ -229,6 +228,18 @@ copy_src_dir()
 copy_also_copy_files()
 setup_source_paths()
 create_mutants(1)
+"""
+#: The script `listing` runs: `COPY_SCRIPT`, then a print of the diff of each
+#: mutant whose name matches one of the script's arguments, as JSON keyed by
+#: name. It prints with the function `mutmut show` prints from. `listing` falls
+#: back to running every mutant when the script fails.
+LIST_SCRIPT = (
+    COPY_SCRIPT
+    + """
+import fnmatch, json, sys
+from mutmut.mutation.data import SourceFileMutationData
+from mutmut.mutation.diff_apply import get_diff_for_mutant
+from mutmut.utils.file_utils import walk_mutatable_files
 patterns = sys.argv[1:]
 shown = {}
 for path in walk_mutatable_files():
@@ -239,6 +250,7 @@ for path in walk_mutatable_files():
             shown[name] = get_diff_for_mutant(name, path=path)
 print(json.dumps(shown))
 """
+)
 #: The script `run` starts mutmut with. Its first argument is a JSON list of
 #: the files mutmut may mutate, or `null` for every file that `only_mutate`
 #: names. The rest are the arguments of `mutmut run`. mutmut 3.8.0 reads
@@ -621,6 +633,73 @@ def recorded_exit_codes(root: Path, paths: Iterable[str]) -> dict[str, int]:
         if meta.is_file():
             codes.update(json.loads(meta.read_text(encoding="utf-8"))["exit_code_by_key"])
     return codes
+
+
+def first_step(root: Path, table: Mapping[str, object]) -> int:
+    """Run mutmut's first step without its coverage collection, and print what failed.
+
+    mutmut's first run of the selected tests, in its copy of the tree, stops
+    the whole run when one test fails there (`PL-PG0S`). A test fails there and
+    nowhere else when it reads a file that the copy does not hold, or when it
+    lists a module's functions and meets the mutant copies that mutmut adds.
+    So this builds the copy as mutmut does, generates every mutant, and runs
+    the same tests with the same arguments, with no mutant applied.
+
+    It leaves out mutmut's record of which functions each test calls, which
+    made the step take about 19 minutes in one process on 2026-11-11
+    (`PL-R8HY`), and it spreads the tests over every core. So a test that
+    fails only while that record is kept, or only when every test shares one
+    process, would pass here and still stop mutmut. None such is known.
+
+    Returns pytest's exit status: 0 when every selected test passed in the
+    copy. `Refusal` where the copy could not be built.
+    """
+    built = subprocess.run(
+        [sys.executable, "-c", COPY_SCRIPT],
+        cwd=root,
+        capture_output=True,
+        env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+        check=False,
+    )
+    if built.returncode:
+        error = built.stderr.decode("utf-8", errors="replace")[-2000:]
+        raise Refusal(f"mutmut could not build {MUTANTS}/ (exit {built.returncode}):\n{error}")
+    tests = simulator_unit_tests(root)
+    (root / MUTANTS / selection_file(table)).write_text("".join(f"{t}\n" for t in tests), "utf-8")
+    command = [
+        sys.executable,
+        "-m",
+        "pytest",
+        "--rootdir=.",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "-n",
+        "auto",
+        "--dist",
+        "worksteal",
+        *_strings(table, "pytest_add_cli_args_test_selection"),
+    ]
+    print(
+        f"Running the {len(tests)} simulator test files under {UNIT_TESTS}/ in mutmut's "
+        f"copy of the tree, {MUTANTS}/, with no mutant applied.",
+        flush=True,
+    )
+    done = subprocess.run(
+        command,
+        cwd=root / MUTANTS,
+        env={**os.environ, "MUTANT_UNDER_TEST": "", "PYTHONPATH": "src"},
+        check=False,
+    )
+    if done.returncode:
+        print(
+            f"\nA test above fails in {MUTANTS}/, so every mutation run would stop at its "
+            "first step. Make the test pass there: copy the file it reads through "
+            "[tool.mutmut] also_copy, or, where it cannot run against mutated code, "
+            "deselect it there with the reason (pyproject.toml says how).",
+            flush=True,
+        )
+    return done.returncode
 
 
 def _test_files(root: Path, name: str) -> list[str]:
@@ -1446,6 +1525,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     modes = parser.add_mutually_exclusive_group()
     modes.add_argument("--all", action="store_true", help="run every mutant, not the changed ones")
     modes.add_argument(
+        "--first-step",
+        action="store_true",
+        help="run the selected tests in mutmut's copy of the tree, with no mutant, and stop",
+    )
+    modes.add_argument(
         "--verdict",
         action="store_true",
         help="print, as JSON for docket verify, the changed lines' mutants the tests missed",
@@ -1462,6 +1546,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     try:
         table = mutmut_table(root)
+        if args.first_step:
+            return first_step(root, table)
         if args.all:
             code, log = run(root, (), table)
             if code:

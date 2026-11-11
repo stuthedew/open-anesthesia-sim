@@ -1309,7 +1309,7 @@ def scripts(draw: st.DrawFn) -> str:
     return "".join(out)
 
 
-@settings(derandomize=True, database=None, deadline=None, max_examples=300)
+@settings(max_examples=300)
 @given(scripts())
 def test_the_lexer_reads_generated_commands_as_bash_does(script: str) -> None:
     """Each command bash runs from a generated script is one `shell_words` reads, word for word.
@@ -1325,8 +1325,9 @@ def test_the_lexer_reads_generated_commands_as_bash_does(script: str) -> None:
     parse instead, which is where the faults the generator steers round live,
     and would want a reader of its own.
 
-    Hypothesis draws the scripts, derandomized, so a red run reproduces
-    exactly: words in every quoting, continuations and comments; `$( )`,
+    Hypothesis draws the scripts, the same ones on every ordinary run, so a
+    red run reproduces exactly, and new ones on a weekly run (the root
+    `conftest.py` loads the profiles): words in every quoting, continuations and comments; `$( )`,
     nested backquotes, `${...}` with a default, and process substitutions;
     arithmetic expansions, a substitution inside some (`PL-3Z8B`);
     redirections, `>>`, `>|`, `<>`, `&>>`, a closed descriptor, a `{v}`

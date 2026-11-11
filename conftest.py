@@ -120,6 +120,11 @@ the report of any test phase that failed with that exception gets a section
 for each stream the exception captured, which pytest prints beside the
 traceback. Every test is covered at once, and no fixture has to remember it.
 
+**Hypothesis's profiles are registered before any test module is imported**
+(`PL-V067`). `tests/hypothesis_profiles.py` defines them and says why. A run
+in `subprojects/docket/`'s own environment, which has no Hypothesis, skips
+this.
+
 At the repository root rather than in each tree, for two reasons. One rule
 covers both trees and `pytest` resolves `rootdir` here however it is invoked -
 including from inside `subprojects/docket/`, whose own `pyproject.toml`
@@ -136,6 +141,7 @@ import sys
 import zlib
 from collections.abc import Generator
 from fnmatch import fnmatch
+from importlib.util import find_spec, module_from_spec, spec_from_file_location
 from pathlib import Path
 
 import pytest
@@ -145,6 +151,27 @@ os.environ["GIT_CONFIG_SYSTEM"] = "/dev/null"
 
 sys.dont_write_bytecode = True
 os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
+
+
+def _register_hypothesis_profiles() -> None:
+    """Run `tests/hypothesis_profiles.py`'s `register`, where Hypothesis and the file are there.
+
+    The module is loaded from its path, because this file is also run where
+    the repository root is not on the import path, and copied into scratch
+    projects that hold no `tests/` directory. `subprojects/docket/`'s own
+    environment has no Hypothesis, and none of the docket tests that run there
+    use it.
+    """
+    path = Path(__file__).resolve().parent / "tests" / "hypothesis_profiles.py"
+    spec = spec_from_file_location("hypothesis_profiles", path)
+    if find_spec("hypothesis") is None or not path.is_file() or spec is None or not spec.loader:
+        return
+    module = module_from_spec(spec)
+    spec.loader.exec_module(module)
+    module.register()
+
+
+_register_hypothesis_profiles()
 
 #: The marker a test that reads the item store carries.
 READS_ITEM_STORE = "reads_item_store"
