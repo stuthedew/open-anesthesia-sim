@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: one-source-of-truth
+milestone: v0.6.17
 touches: src/anesthesia_sim/core/supported_ranges.py
 deferred-from: v0.7.0 - a new problem: d130a946 (2026-10-25 03:44, after the freeze) typed ControlChange.elapsed_s as CaseInstant and left the docstring saying float
 added: 2026-11-03

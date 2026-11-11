@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: architecture-md-structure
+milestone: v0.6.17
 touches: docs/ARCHITECTURE.md
 added: 2026-11-05
 closed: 2026-11-09

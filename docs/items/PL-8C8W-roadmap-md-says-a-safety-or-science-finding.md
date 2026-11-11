@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: roadmap-structure
+milestone: v0.6.17
 touches: ROADMAP.md, tools/doc_check.py
 added: 2026-11-07
 closed: 2026-11-07

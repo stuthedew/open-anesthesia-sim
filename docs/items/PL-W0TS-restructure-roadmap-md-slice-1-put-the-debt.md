@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, docs
 feature: roadmap-structure
+milestone: v0.6.17
 touches: ROADMAP.md, subprojects/docket/src/docket/roadmap.py
 deferred-from: v0.7.0 - filed after the gate froze; the roadmap's arrangement and wording, with no displayed value depending on it
 added: 2026-11-07

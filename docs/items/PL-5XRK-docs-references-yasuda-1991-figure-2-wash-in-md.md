@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: references-structure
+milestone: v0.6.17
 touches: docs/references/yasuda-1991-figure-2-wash-in.md
 added: 2026-11-07
 closed: 2026-11-11

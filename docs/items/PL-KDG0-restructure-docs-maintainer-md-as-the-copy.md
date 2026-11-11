@@ -3,6 +3,7 @@ id: PL-KDG0
 title: Restructure docs/maintainer.md as the copy editor's structure read proposes: state each decision once where it applies, give subagent rules, auto mode and the cloud environment their own sections
 status: done
 feature: repo-copy-edit
+milestone: v0.6.17
 touches: docs/maintainer.md
 added: 2026-11-07
 closed: 2026-11-07

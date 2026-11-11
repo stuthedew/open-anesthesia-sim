@@ -1,9 +1,16 @@
 ---
 id: PL-HS9M
 title: The interface pass has no agreed order of work, first-pass learner or task list, and the design round's recommendations wait on the owner
-status: untriaged
+priority: P2
+effort: M
+status: done
+classes: planning, ux
 feature: interface-pass-design-round
 added: 2026-11-11
+closed: 2026-11-11
+pr: 2116
+payoff: the interface pass has an agreed order of work, a named learner and four tasks, so its next step can start
+not-delegable: a design round: its result is the owner's recorded answers, which no command can prove
 ---
 
 **Problem.** The interface pass has no agreed order of work, first-pass learner or task list, and the design round's recommendations wait on the owner
@@ -236,3 +243,48 @@ dumps. Each has an entry in the corpus's `README.md` with its verified
 citation. `INDEX.md` there has a heading for interface design and usability
 evaluation, whose rows give the page of each passage quoted above. A session
 that runs the heuristic evaluation reads the chapter there.
+
+**Added 2026-11-10: the owner asked for context on questions 1 and 2, and
+the session added a recommendation for the learner.** Neither question is
+answered yet.
+
+- Question 1, the order. The recommendation above is unchanged. The
+  alternative put to the owner is to apply the NCSA look first. It shows a
+  result sooner, and it styles a layout that the later steps may rearrange.
+- Question 2, the learner. **Recommendation (session, 2026-11-10, not yet
+  answered by the owner):** a resident early in training who works through a
+  case alone. `.claude/rules/ui-reader.md` already names the resident as the
+  teaching target. The second candidate is an educator who runs a case in
+  front of a group, which asks for text that reads from a distance and for a
+  comparison that sets up quickly. Which comes first is the session's
+  judgment and rests on no source.
+- Why one learner and a short task list. Arneson et al. (file p. 4) describe a
+  first release that holds "what users need to complete a core workflow, but
+  perhaps not all possible user workflows", and say theirs "prioritized
+  workflows for one key user group". Zhang et al. 2005 (p. 324) define user
+  analysis as identifying users' "expertise and skills; knowledge; educational
+  background" and "time available for learning and training", and task
+  analysis as "identifying the procedures and actions to be carried out, and
+  the information to be processed to achieve task goals". Both passages were
+  re-read in the private corpus on 2026-11-10.
+- The owner was also asked whether the four candidate tasks are ones they
+  teach, and which task is missing.
+
+**Answered 2026-11-10.** The owner replied "Agree with recs" to the reply that
+put questions 1 and 2 with the context above.
+
+- Question 1: the order is agreed (project owner, 2026-11-10, ratified, over
+  applying the NCSA look first). It is tasks, heuristic evaluation, grey-box
+  layouts, one style with one set of controls, then resident testing.
+- Question 2: the first-pass learner is a resident early in training who
+  works through a case alone (project owner, 2026-11-10, ratified, over an
+  educator running a case in front of a group). The four candidate tasks are
+  the task list. The owner named no fifth task.
+
+**What follows, filed in this feature.** `PL-8Q1P` is the heuristic
+evaluation and comes first. `PL-2V6V` is the grey-box layouts, `PL-MF90` the
+token and component set, and `PL-DSXJ` the resident rounds. `PL-BVC5`, the
+one-control trial, was approved in the same reply.
+
+**Generator check.** One-off, and work the owner asked for: a design round
+that the roadmap places before the interface pass.

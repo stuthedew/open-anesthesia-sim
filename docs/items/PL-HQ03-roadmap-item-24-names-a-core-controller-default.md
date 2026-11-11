@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: release-roadmap-seam
+milestone: v0.6.17
 touches: ROADMAP.md
 added: 2026-09-08
 closed: 2026-11-09
