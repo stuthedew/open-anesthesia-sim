@@ -39,6 +39,10 @@ This folder holds the paragraphs the copy editor must never pass again
   paragraph, list, table, code block and heading, with the reader who needs
   it, what kind of text it is and where it would best live. `PL-9RLM` says
   how it was made, and nothing reads it but a session.
+- `model-description-draft.md` is a draft of the model's description for a
+  clinician, written from that outline for the project owner to read
+  (`PL-B07T`). It is not the specification, which is `docs/MODEL.md`, and
+  nothing reads it.
 
 ## Adding an entry
 
