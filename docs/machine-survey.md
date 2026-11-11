@@ -39,7 +39,8 @@ patients or on a bench, quantities that this model computes:
   the authors name that differ between the two are the fresh gas inlet, which
   sits closer to the patient on the Perseus, and the Zeus's injection
   vaporizer, which in fresh-gas mode mixes the agent in a chamber next to the
-  ventilator and so adds a delay.
+  ventilator and so adds a delay. § "(b3)" sets that delay against the
+  manufacturer's account of the mode.
 - In patients, Fukuda et al. (Fukuda 2006) compared two positions of the
   **fresh gas inlet** during low-flow anesthesia: between the inspiratory valve
   and the absorber, and between the inspiratory valve and the patient. On the
@@ -152,7 +153,8 @@ machine they studied and at a fixed circuit volume, and their abstract supports
 neither. Shin et al.'s reasons for the difference between the Perseus and the
 Zeus had been listed with two features that do not differ between them.
 `docs/MODEL.md` and `docs/machine-abstraction.md` still repeat the Fukuda
-claim, and `PL-4G3N` corrects them.
+claim, and `docs/machine-abstraction.md` also repeats the old list of Shin et
+al.'s reasons. `PL-4G3N` corrects both.
 
 ## The variables
 
@@ -362,7 +364,13 @@ enters:
 - **Fresh gas mode.** The user sets a fresh gas agent concentration, and the
   vapour mixes with fresh gas before it enters the breathing system. *"In this
   dosing mode the agent dosage performance is equivalent to a conventional
-  vaporizer."* The model's existing term therefore describes this mode.
+  vaporizer."* On that account, the model's existing term describes this mode.
+  Shin et al. posit a delay in it, from the chamber where the agent is mixed,
+  as one reason the Zeus reached its target more slowly than the Perseus at
+  nearly the same circuit volume (§ "The headline finding"). They did not
+  measure the delay, and Meyer et al. do not mention one. Until a source
+  settles it, a Zeus profile in fresh gas mode may not be described as fully
+  reproduced by the existing term.
 - **Auto control mode.** Agent enters the breathing system through a separate
   inlet, and its delivery is *"independent of the FGF settings"*. A closed
   feedback loop adjusts the dose to reach an expiratory target.
@@ -632,7 +640,8 @@ alternatives, and each machine uses one.
   independently of fresh gas flow. The two routes need different equations.
   The Zeus anesthesia machine has both. Its manufacturer describes the fresh
   gas mode as equivalent to a conventional vaporizer (Meyer et al., quoted
-  in (b3)).
+  in (b3)). Shin et al. posit a mixing delay in that mode, which (b3) sets
+  against it.
 - **Who runs the control loop** (b4). A manually dialled machine takes $`F_D`$
   and $`\dot V_F`$ as inputs. An automated machine produces both as the outputs
   of parallel feedback controllers, one of which runs its own simplified patient
