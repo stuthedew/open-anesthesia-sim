@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: feature, ux
 feature: window-is-the-frame
-touches: src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/views.py, docs/MODEL.md
+touches: src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/views.py, docs/MODEL.md, src/anesthesia_sim/app/view_registry.py, src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/layout/sizing.py, src/anesthesia_sim/data/workspaces, README.md, docs/ARCHITECTURE.md, docs/interface-provenance.md, .claude/rules/ui-areas.md
 deferred-from: v0.7.0 - the gate's frozen list does not name it, and it is built after PL-9YPR's pull request merges
 added: 2026-11-11
 payoff: every shipped Workspace fits the window on a laptop, so the Induction wash-in chart opens on screen and not below the fold
@@ -157,3 +157,70 @@ minimum width of 220 px in `view_registry.py`, and its row of selector and
 button needs about 308 px. At the narrowest Area a border drag reaches, the
 Branch button is behind a sideways scroll. Set the declared minimum from what
 the row needs when this item decides the room each Area gets.
+
+**Build plan, 2026-11-11, from reading the code before any edit.** Nothing is
+built yet. The plan keeps one rule for every View, so no View gets a
+capability of its own.
+
+1. **What an Area's need means.** `AreaLayout._view_need` in
+   `app/area_layout.py` returns the larger of the registry's declared minimum
+   and the widget's Qt minimum. Change it to return the declared minimum
+   alone. The declared minimum becomes the least room in which a View is
+   shown at all. In a smaller Area the too-small notice still shows. Between
+   the declared minimum and the widget's Qt minimum, the View scrolls inside
+   its Area. `layout/sizing.py` needs no change to its logic, only to the
+   sentences of its module docstring that say a View is never clipped and
+   that a host grows to hold every need.
+2. **The scroll inside each Area.** `AreaFrame` wraps a View, and not an
+   `AreaNotice`, in a scroll area of its own. Keep `frame.content` as the
+   View, because 44 test lines read it, and show or hide the wrapper where
+   the frame now shows or hides `content`. The wrapper must size the View to
+   the larger of its viewport and the View's `minimumSizeHint`. A plain
+   `QScrollArea` with `setWidgetResizable(True)` gives a height-for-width
+   layout its preferred height, so the wash-in View scrolled more than it
+   needed in the mock-up. The mock-up's `Fit` class in the scratch script
+   overrode `resizeEvent` to do the sizing, and the build does the same.
+   Remove the scroll area inside `views._CasePanelView`.
+3. **What the Areas tell the page.** `AreaLayout._settle` reports
+   `minimum_extent` of the needs through `minimumSizeHint`, and the page's
+   scroll area grows to it. Report the `minimum_extent` of each Area's floor
+   at the floor's own width instead. The page then never grows past the
+   window while the floors fit, and `settle` shows the too-small notice in an
+   Area that cannot have its need, as it already does in a host that cannot
+   grow. The page's scroll area stays as the fallback for a window smaller
+   than the floors, so `SimulationView`'s code that keeps the chart in view
+   stays as it is.
+4. **The two charts.** In `views.ConcentrationView` and `views.WashInView`,
+   move the time-axis caption, the reference lines, the legend and the
+   hidden-trace and capped-trace lines into one box that scrolls above the
+   plot (least height 34 px in the mock-up, vertical policy Maximum, stretch
+   2 against the plot's 3). Add a least plot height to `app/theme.py`, 160 px
+   for the concentration plot and 120 px for the wash-in plot, and use it in
+   `qt_chart.py` where the plot's minimum height is now `CHART_HEIGHT` and
+   `WASH_IN_CHART_HEIGHT`. The preferred heights stay.
+5. **Declared minimums in `app/view_registry.py`, as placeholders.** The
+   concentration chart's height is what its folded layout needs with one run,
+   about 300 px, to be measured. Every other View is 120 px high. The Branch
+   View's width is what its row needs, about 308 px. Rewrite the module
+   docstring's paragraph on the declared size and `RegisteredView.minimum`.
+6. **Shipped Workspaces in `data/workspaces/`.** Induction's left column is
+   0.6 and 0.4 now. Give the wash-in a larger share so its plot is not short
+   at 1920 by 1080, and check that at 1366 by 768 the chart is held at its
+   need and the wash-in scrolls inside its Area. Give Maintenance's schematic
+   a taller Area (it needs 358 px). Measure all three Workspaces at both
+   sizes and put the table here.
+7. **Tests.** The page's scroll bar has no range in any shipped Workspace at
+   1366 by 768 and 1920 by 1080. A View taller than its Area scrolls inside
+   the Area and stays shown. An Area below its declared minimum still shows
+   the notice. The concentration plot is on screen in Induction at 1366 by
+   768. A View kept across a split is still shown in its new frame. Tests
+   that give a View its need through the widget's minimum size, and not
+   through the registry, change to declare it.
+8. **Documents.** `docs/MODEL.md`, `README.md` § "The window",
+   `docs/ARCHITECTURE.md`, `docs/interface-provenance.md`,
+   `.claude/rules/ui-areas.md` answer 4, and a dated note in `PL-K285` that
+   its Q2 answer changed here.
+
+The second mock-up's script is not in the repository. It patched
+`AreaLayout._content_for` and `_view_need` and the two chart Views'
+constructors, as steps 1, 2 and 4 describe.
