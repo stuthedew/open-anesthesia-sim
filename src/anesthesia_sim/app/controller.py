@@ -1237,7 +1237,7 @@ class SimulationController:
     def status(self) -> RunStatus:
         """Whether this run is advancing and, if not, why, built without any compartment value.
 
-        `RunView.presentation` reads this where it states a halt.
+        `RunView.presentation` states a halt from `record()`, which carries these fields.
         `snapshot()` builds every compartment's fraction, and a rejection of
         one of those fractions is one of the halts to present. A halt
         described from a fresh snapshot was not described at all when the
@@ -1257,9 +1257,10 @@ class SimulationController:
     def settings(self) -> RunSettings:
         """The agent and the four settings in force, built without any compartment value.
 
-        `RunView.presentation` calls this when it states a setting control on a run whose
-        `snapshot()` raises. The run holds the setting that a drag applied. So the control is
-        written from this value, not left on the value from before the drag (`PL-85LJ`). The
+        `record()` calls this, and `RunView.presentation` states a setting control from the
+        record on a run whose `snapshot()` raises. The run holds the setting that a drag
+        applied. So the control is written from this value, not left on the value from
+        before the drag (`PL-85LJ`). The
         controller holds the agent and its MAC itself. The vaporizer maximum comes from the
         circuit, and it is the value the core enforces (`PL-1MGB`). The four settings come from
         the compartments. Each one is a checked type, built when it was set.

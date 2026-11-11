@@ -921,18 +921,22 @@ Every widget of a run is written by one writer, from one value.
 identity, the four dials, the control-change panel, the banner and every
 compartment value from one `RunPresentation` (`app/run_presentation.py`).
 `drawn_run` builds that value from the snapshot a frame drew from, and
-`halted_run` builds it from the run's record when no frame can draw. So on
-each of these widgets a halted run shows what a frame would show. A dial
-dragged into the halt shows the value the run holds, rather than the value from
-before the drag (`PL-85LJ`). An agent changed just before the halt is named on
-every identity widget (`PL-1YDD`). The control-change panel lists the record
-that the run holds (`PL-DTJQ`). Some things only a frame can state: the
-readouts and the clock read with them, the accounting panel, the off-scale and
-wash-in lines, and both legends. These stay as the last frame drew them.
-Values shown together still describe one step. After a halt that no frame
-has drawn since the run started over, by a Reset or an agent change, each
-readout card and the clock withhold their values, and the accounting panel
-withholds its verdict and amounts. After an accounting halt, the accounting
+`halted_run` builds it from the run's record when no frame can draw. On the
+widgets that state the record, a halted run shows what a frame would show. A
+dial dragged into the halt shows the value the run holds, rather than the value
+from before the drag (`PL-85LJ`). An agent changed just before the halt is
+named on every identity widget (`PL-1YDD`). The control-change panel lists the
+record that the run holds (`PL-DTJQ`). Four parts of the value can be computed
+only for a frame, and `RunValues` holds them together: the readouts and the
+clock read with them, the compartment schematic, the delivered agent of the
+cost panel, and the accounting panel. A halt writes all four as the last frame
+wrote them, so values shown together still describe one step. After a halt
+that no frame has drawn since the run started over, by a Reset or an agent
+change, all four are withheld together: each readout card and the clock
+withhold their values, the schematic and the delivered agent show no amount,
+and the accounting panel withholds its verdict and amounts. The off-scale and
+wash-in lines and both legends belong to Views, which only a frame draws, and
+they stay as the last frame drew them. After an accounting halt, the accounting
 panel shows the rejected step's check, whether or not a frame draws. A stopped
 run refuses a dial, so the dials keep the settings the run holds (`PL-3B34`).
 `test_every_value_and_its_qualifiers_on_screen_come_from_one_state`
@@ -1270,6 +1274,9 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
   `tests/unit/test_dashboard_frame.py`. The widget that draws it goes in
   `app/qt_widgets.py`, and that widget decides nothing. The code that places
   it goes in `app/run_view.py` or `app/simulation_view.py`.
+  A panel of one run that states a value only a frame can compute is also a
+  field of `RunValues` in `app/run_presentation.py`, with a withheld form, so
+  that a halt writes it with the run's other values.
 
   To choose between those two, first ask *whose* panel it is. A panel that
   states a particular run's numbers belongs to `RunView`. Such panels include

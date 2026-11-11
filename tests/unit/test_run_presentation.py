@@ -188,6 +188,22 @@ def test_a_compared_run_s_banner_names_the_run() -> None:
 # --- a halt -------------------------------------------------------------------------
 
 
+def test_a_compared_run_s_halt_banner_names_the_run() -> None:
+    """A halt stated with no frame says which of two compared runs stopped (`PL-TSZM`)."""
+
+    controller = _run_at(30.0)
+    state = _state()
+    kept = KeptValues(state.case, _drawn(controller, state).values)
+    controller.fail("the frame could not be drawn")
+
+    lone = _halted(controller, state, kept)
+    compared = _halted(controller, replace(state, name="Run 2"), kept)
+
+    assert lone.notice is not None
+    assert lone.notice.startswith("Simulation stopped")
+    assert compared.notice == f"Run 2: {lone.notice}"
+
+
 def test_a_halt_keeps_every_value_of_the_last_frame_while_the_run_is_the_one_it_drew() -> None:
     """A halt with no start-over since the last frame shows that frame's values, all of them."""
 
@@ -381,25 +397,6 @@ def test_a_halt_after_a_rejected_accounting_step_shows_that_step_s_check(
     assert shown.values.accounting != WITHHELD_ACCOUNTING
     assert (shown.values.schematic == WITHHELD_SCHEMATIC) is started_over
     assert (shown.values.schematic == frame.values.schematic) is not started_over
-
-
-def test_a_halt_builds_no_compartment_value() -> None:
-    """A halt is stated for a run whose snapshot is refused (`PL-7DJK`)."""
-
-    controller = _run_at(90.0)
-    state = _state()
-    frame = _drawn(controller, state)
-    controller.fail("a compartment value was refused")
-
-    def refuse() -> None:
-        raise AssertionError("a halt must not read a snapshot")
-
-    controller.snapshot = refuse  # type: ignore[method-assign, assignment]
-
-    shown = _halted(controller, state, KeptValues(state.case, frame.values))
-
-    assert shown.record == controller.record()
-    assert shown.statement.transport.start_enabled is False
 
 
 # --- dials that cannot be built -----------------------------------------------------

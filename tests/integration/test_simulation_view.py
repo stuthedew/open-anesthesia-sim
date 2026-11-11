@@ -2581,6 +2581,7 @@ def test_a_halt_is_stated_before_its_dials_are_written(
     assert notice is not None
     assert "Simulation stopped" in notice
     assert "step exploded" in notice
+    assert run.owes_a_frame is False
 
 
 def _failing_assembly(*args: object, **kwargs: object) -> NoReturn:
@@ -3579,7 +3580,7 @@ def _a_halt_after_a_frame_drawn_for_a_new_agent(
     so the run has not started over since that frame. The halt keeps what that frame
     wrote, and every group of readings describes the new case at its opening. After a
     Reset or an agent change, a halt withholds values until a frame is drawn. Drawing a
-    frame ends that withholding (`RunView.refresh`). If it did not, the halt would
+    frame ends that withholding (`RunView.show_presentation`). If it did not, the halt would
     withhold values that do describe the run on screen. Until the test-strength pass of
     `PL-J5GC`, no test checked this.
     """
@@ -3609,6 +3610,41 @@ def _a_halt_after_a_frame_drawn_for_a_new_agent(
     }
 
 
+def _a_halt_after_frames_drawn_later_than_the_first(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> tuple[RunView, _GroupReadings]:
+    """Return a view that opened at 0 s, drew frames at 300 s and 600 s, then failed to draw.
+
+    Every other scenario builds its dashboard after the run has advanced, so the
+    values that the dashboard opened with are also the last frame's. Here they
+    differ. A halt keeps the values of the last frame drawn, which is the frame at
+    600 s. A panel that kept the first frame of the case would show the opening's
+    cards and "Delivered: 0.0 L" under a banner that calls them the last frame drawn
+    (adversarial review of `PL-RF2S`).
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    controller.start()
+    _advance(controller, 300.0)
+    view.present(False)
+    _advance(controller, 300.0)
+    view.present(False)
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+
+    view.present(False)
+
+    assert controller.has_failed is True
+    step = _fresh_run(600.0).snapshot()
+
+    return run, {
+        "readouts": _readouts_of(step),
+        "settings": _settings_of(step),
+        "accounting": _accounting_of(step),
+    }
+
+
 _ONE_STATE_SCENARIOS: Final[
     Mapping[str, Callable[[QApplication, pytest.MonkeyPatch], tuple[RunView, _GroupReadings]]]
 ] = {
@@ -3630,6 +3666,9 @@ _ONE_STATE_SCENARIOS: Final[
         _a_frame_after_an_agent_change_that_followed_an_accounting_halt
     ),
     "halt after a frame drawn for a new agent": _a_halt_after_a_frame_drawn_for_a_new_agent,
+    "halt after frames drawn later than the first": (
+        _a_halt_after_frames_drawn_later_than_the_first
+    ),
 }
 
 
@@ -7907,20 +7946,25 @@ def test_the_halt_and_refusal_banners_name_their_run(application: QApplication) 
 
 
 def test_a_halt_stated_without_a_frame_still_names_the_run_it_stopped(
-    application: QApplication,
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """`show_presentation` has no frame by design, so the name cannot be read off one.
+    """A halt is stated with no frame, so the run's name cannot be read off one.
 
-    It shows a halt from the snapshot alone, because the frame is what may
-    have failed (`PL-25KS`). `_halt_every_run` swallows the redraw that
+    `show_halt` states a halt from the run's record alone, because the frame is
+    what may have failed (`PL-25KS`). `_halt_every_run` swallows the redraw that
     follows. So when the shared render path raises, this banner is the last
     one written. Taking the run count from the frame would drop the
     attribution in exactly that case (`PL-TSZM`).
+
+    Every frame fails here. Until the adversarial review of `PL-RF2S`, the
+    redraw succeeded and wrote a banner of its own over the halt's, so the test
+    passed on a halt whose banner named no run.
     """
 
     view = _case_view(application, _branched_case())
     _take_fork(view, 60.0)
     _settle(application)
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
 
     for run in view.runs:
         run._presented = False
