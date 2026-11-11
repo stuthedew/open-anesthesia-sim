@@ -3,11 +3,13 @@ id: PL-8ZD7
 title: docs/machine-survey.md: answer the close-out copy editor's queries (contradictions and unstated reading depth)
 priority: P2
 effort: L
-status: ready
+status: done
 classes: defect, docs
 feature: machine-docs-structure
-touches: docs/machine-survey.md
+touches: docs/machine-survey.md, docs/items/PL-37N4-docs-machine-abstraction-md-answer-the-close.md
 added: 2026-11-07
+closed: 2026-11-11
+pr: 2112
 payoff: a clinician or contributor checking a machine value against the survey finds a source and a reading depth for each entry, and no choice asked for that was already made
 verify: ! grep -qF 'Choose option 1 or 2' docs/machine-survey.md
 ---
@@ -100,3 +102,45 @@ The structure read's other per-chapter queries are in the project's shared files
 **Generator check.** One-off: queries from the `docs/machine-survey.md` copy edit and structure read (`PL-3K13`, `PL-3MTS`).
 
 **Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** `git show 817a4d88:docs/machine-survey.md` already has "the one entry that reaches an equation" (row 545), "bucket" with no definition (row 134), "the accuracy table's default-flow" column with no location (row 189), "No machine publishes one" (row 596), and the Bashraheel entry with no reading depth (row 791). Some individual queries may concern wording added after the freeze; the item as a whole was present. So the problem was present at the freeze, commit `817a4d88` (2026-10-24), and this finding belongs on v0.7.0's frozen list rather than deferred.
+
+## Done (2026-11-11)
+
+Each query above, and each chapter query of the structure read, was read against the survey as it stood after `PL-KZ60`. The sources were read again where a fix rested on them: Shin et al. 2017 at full text (Tables 1-3, through NCBI efetch), and the abstracts of Fukuda et al. 2006, Targ et al. 1989, Bashraheel et al., Jakobsson et al., Leijonhufvud et al. and Zumsande et al. through the PubMed MCP server.
+
+**The copy edit's queries, fixed in `docs/machine-survey.md`:**
+
+- "Choose option 1 or 2" (Passages 37 and 42). The (b7) entry under § "What `PL-FG9D` needs" now points to `docs/machine-abstraction.md` § "Fresh gas inlet position is not modelled", which records the choice: leave inlet position and topology out, and say so where a machine is chosen.
+- "The only survey entry that affects an equation" (Passages 34 and 42). (b11) now says that, like delivery mode (b3), it changes an equation rather than a parameter.
+- "The accuracy table" (Passages 25 and 42). The phrase came from `PL-4DCG`'s brief, which called it "`docs/MODEL.md`'s accuracy table". No table in `docs/MODEL.md` now has a default-flow column, so (a2) now says what the default flow sets: $`\tau_C`$ at the start, and for the whole of a run in which the flow is not changed.
+- "Bucket" (Passage 35). § "Ruled out" now says its lines are bucket (c), and that an item needing more than a line has its own entry under § "The variables".
+- 300 mL/min (Passage 33). No source gave it as practice, and § "(a2)" says a study's chosen flow is not a report of practice. (b10) now uses Shin et al.'s own case: their 200 mL/min sample was 40% of their lowest flow, 0.5 L/min.
+- The multi-gas module (Passage 33). Meyer et al. describe Dräger's ILCA, and they do not say which machine carries it, so (b10) names the module and no longer says that a surveyed machine has it.
+- The absorption source (Passages 35 and 42, and the structure read). Targ, Yasuda and Eger 1989 is now cited and listed in § "Sources". Its abstract names bellows among the parts measured, so the line no longer calls the absorption a property of the disposable circuit alone, and it now gives its condition for coming back.
+- Reading depth (Passages 40 and 42). Bashraheel, Jakobsson, Leijonhufvud and Zumsande now each say "Abstract read 2026-11-11", and each abstract confirms the machine the table names for it. The two ISO entries already say that neither standard was read.
+- The "not critical" ruling (Passage 24). (a1) now says the project owner ruled on 2026-09-01, and that the reference circle system's data file records the ruling in its note on the Gas Man source (`PL-4YY1`).
+- The 8.0% and 5.0% maxima (Passage 26). (b2) now points to `docs/MODEL.md` § "Delivery-limit and MAC parameters", which names the vaporizers behind each maximum, and to the agent data files. "The maximum belongs to the device, not to the agent" became "set by the delivery device, not by the agent alone", which no longer contradicts the sentence after it.
+- "No machine publishes one" (Passage 37). The data table and (a2) now say that no source found gives a default fresh gas flow.
+- Where the design is written (Passages 18 and 42). The introduction names `docs/machine-abstraction.md`.
+- "Every run" (Passage 42). (a1) now says the difference shows in the first two minutes at the default 4 L/min.
+- "This model's only machine parameter" (Passage 19). The headline now says that circuit volume is the only property of the machine in the circuit equation.
+- The minimum total flow (Passage 31). The data table no longer lists it as a field of its own: it is the lower limit of the deliverable range, as (b8) says.
+
+**The structure read's queries (`PL-3MTS`):**
+
+- Shin et al.'s volumes. The headline now says that Shin et al. added the apparatus volume from Dräger's manual to their 1.2 L circuit and computed the time constant from the sum (their Table 3), that the apparatus volumes are tier 2, and what the times to target were (their Table 2).
+- Fukuda et al.'s machines were named by `PL-KZ60`. The headline now also says that the abstract gives no fresh gas flow and no values of the ratio.
+- The comparison table (`PL-WZVZ`) is defined at its first mention, in (b7).
+- "This session" is now dated 2026-09-19 and names the survey's item, `PL-4DCG`.
+- Biro 1997 studied the Dräger Sulla 808V, so it left the Fabius row. The rule now says that a study before 2006 is listed for the axis it shows and does not count toward inclusion, which covers Hendrickx 2001 in the GE row.
+- US presence. `PL-4DCG`'s brief sets no US condition, so the exclusion of Mindray, Penlon and Spacelabs is now stated in the rule's terms: the survey cites no study of them.
+- The (b7) entry now cites Fukuda et al. for the inlet, and says that no study here measured the effect of the rest of the topology.
+- Tier 1. Rule 1 now names tier 1 and `docs/MODEL.md` § "Source hierarchy: what may be cited as the authority for a value". Kalmar et al. stay in the second group of § "Sources", whose heading no longer claims a tier: § "(a2)" cites them for the authors' conclusion, and § "(b4)" for consumption that rises with the speed setting, and neither backs a stored value.
+- Biro's tier. Biro stays with the measurements. That group's heading no longer says "of quantities this model computes", so it fits Biro and Targ, whose measured quantities the model does not compute.
+
+**The structure read's chapter queries.** Of those still standing after the restructure, these were fixed: the introduction's pointers to the machines and the source rules; one name for the machine milestone and its design; planned-milestone item 6 for the multi-substance state; a gloss of "interlock" and of "machine profile"; examples of data and of behavior; "a set of bounds"; Shin's third workstation and the size of the Perseus-Zeus difference; the rule now admitting a direct comparison as well as an axis, which the Apollo, Fabius and Avance rows needed; a pointer from the machines table to the sources of each axis; "Three routes"; the "gap" wording of rule 4; the bucket (b) definition; the ambient-pressure question, which `PL-5K5C` already settled by recording that the model holds at sea level; the FLOW-i named in (a2); the agent named in (b4); (b9)'s misfilling hazard tied to agent-specific filling, which is what it explains; "model selection" in (b9); one pair of names for the Zeus's two modes; the condition for each ruled-out line; a pointer from § "What `PL-FG9D` needs" to the variables' codes and sources; the machine profile named as the data file; $`\dot V_F`$ defined; the volume reflector, which no source read here describes, now said to be unknown; and the dates and group headings in § "Sources", including Candries et al.'s "reference implementation".
+
+**Answered as not a defect.** No item tracks getting the manufacturers' data or the standards' texts, because the project owner decided on 2026-09-20 to seek each value only when a machine profile needs it, and § "What is missing" says so. Kern et al., Lerman and Correa, and Morimoto et al. are cited only in the machines table, and they are measurements, so they stay in that group.
+
+**Filed and moved.** The 2006 start of the inclusion window has no recorded reason. The survey now says so, and `PL-VJNQ` holds it. Two of this item's Passage 42 queries concern `docs/machine-abstraction.md` and were missing from `PL-37N4`, so they were added there; the rest of Passage 42 is already in `PL-37N4`, or no longer applies ("Hendrickx et al. measured it for both device classes" is no longer in that file).
+
+**Not done.** The page in Meyer et al. for each quotation, which an outline query asked for and which is outside this item's list. The Meyer entry says that the page of each passage can be recovered from the corpus dump.

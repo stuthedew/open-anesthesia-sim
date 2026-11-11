@@ -68,6 +68,10 @@ not a defect, with the reason. In particular, § "Sources" gains an entry, begin
 - Passage 16: "When a machine's delivery and removal strategies are already in the closed set" names only two of the three slots that the next sentence mentions. Which case covers a machine that needs a new dial mapping?
 - Passage 17: the Targ entry has two problems:
 
+- From `PL-8ZD7`'s list (its "Passage 42", the same close-out copy edit), two queries this list did not hold. "Five entries of that matrix involve the fresh gas flow" does not match the equation: $`A_{F_I,F_A} = \dot V_A/V_C`$ contains no $`\dot V_F`$, and the text later rewrites only "four of the five entries". The same count appears twice more.
+- From `PL-8ZD7`'s list: the reader needs to know what the 9.86 L measures, and where "the reference profile's provenance note" is.
+- Passage 17's Targ query, updated 2026-11-11: `PL-8ZD7` added Targ, Yasuda and Eger 1989 to the survey's § "Sources", so "Each source below is cited in `docs/machine-survey.md`" now holds for it. Check the entry's other problems against the survey's new entry.
+
 ## Queries from the structure read (`PL-39ZK`, 2026-11-07)
 
 The structure read of 2026-11-05 raised these. The document's restructure on 2026-11-07 (`PL-39ZK`) answered the queries it could. The rest are below, in the restructured document's terms. Where a query repeats one above, it says so.
