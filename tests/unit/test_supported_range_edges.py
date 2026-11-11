@@ -202,7 +202,8 @@ TIED: Mapping[tuple[type, type], Callable[[typing.Any], object]] = {
 # shipped tick, the count of a run that has not stepped and the state it opens
 # at, and the narrowest width that the chart's selector offers. The other
 # values give a bookmark set's view of a run that has reached no mark, has
-# crossed no height and is neither at its cap nor failed.
+# crossed no height and is neither at its cap nor failed. The squarings are
+# those of a shipped agent's step, which needs none.
 TYPICAL: Mapping[str, object] = {
     "after": {},
     "before": {},
@@ -210,6 +211,7 @@ TYPICAL: Mapping[str, object] = {
     "reached_crossings": frozenset(),
     "reached_instants_s": frozenset(),
     "run_failed": False,
+    "squarings": 0,
     "step_count": StepCount(0),
     "stopped_at_cap": False,
     "tick_interval_s": SIMULATION_TICK_INTERVAL_S,

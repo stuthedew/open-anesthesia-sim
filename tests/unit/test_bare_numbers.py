@@ -390,7 +390,10 @@ BARE_NUMBERS: dict[str, str] = {
 # This count equals the length of `BARE_NUMBERS`. It was 173 on 2026-11-11,
 # when the list was written. Giving a quantity a checked type lowers it. A
 # change that raises it shows a reviewer that the change adds a bare number.
-MOST_BARE_NUMBERS = 173
+# `core/rounding.py` added seven the same day: the squarings and the result of
+# its two bounds on a propagator, and the instant, the interval and the result
+# of its bound on the clock (`PL-GJ1W`).
+MOST_BARE_NUMBERS = 180
 
 
 def _names_a_bare_number(
