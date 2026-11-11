@@ -1886,7 +1886,7 @@ def test_a_frame_that_cannot_be_drawn_on_a_discrete_action_halts_every_run(
 def test_a_halt_whose_frame_cannot_be_drawn_is_still_shown_on_every_run(
     application: QApplication,
 ) -> None:
-    """The frame is the shared render path, so a halt caused by its exception cannot wait for it.
+    """The shared render path draws the frame, so a halt from its exception cannot wait for one.
 
     Every controller is failed. A reader has to see the status word and the
     banner that say so, and neither needs a frame. Here one run's frame cannot
@@ -2063,11 +2063,11 @@ def test_a_halt_that_cannot_be_stated_is_not_tried_again_on_every_tick(
     """A halt whose statement cannot be built is attempted once, not on every render tick.
 
     Every frame fails, and so does the statement of the halt that follows.
-    The run's record is stored as written before the halt is built. So the
-    render ticks that follow find no frame owed, assemble nothing and raise
-    nothing. When the record was stored only by a halt that could be built,
-    each tick assembled the frame again and printed the same exception
-    (adversarial review of `PL-RF2S`).
+    Before the halt is built, the run's record is stored as the one last
+    written. So the render ticks that follow find the run's record unchanged,
+    assemble nothing and raise nothing. When the record was stored only by a
+    halt that could be built, each tick assembled the frame again and printed
+    the same exception (adversarial review of `PL-RF2S`).
     """
 
     controller = SimulationController()
@@ -2374,10 +2374,10 @@ def test_a_halt_is_shown_when_the_snapshot_itself_is_refused(
     `snapshot()` builds every compartment's fraction. So an alveolar quotient
     above 1 refuses the snapshot and, through it, the frame. The test gets
     that quotient by replacing what the compartment returns. No supported
-    setting produces one (`core/concentration.py`), and since `PL-544D` a
-    write larger than the capacity is refused. Before `PL-7DJK`,
-    `show_presentation` read a fresh snapshot for the status word, the transport
-    and the banner. So the same refusal escaped the render tick, with the
+    setting produces one (`core/concentration.py`), and a write larger than
+    the capacity is refused (`PL-544D`). `show_presentation` used to read a
+    fresh snapshot for the status word, the transport and the banner
+    (`PL-7DJK`). So the same refusal escaped the render tick, with the
     controller failed and the screen showing "Running", Pause offered and no
     banner. The three are now written from `SimulationController.record()`,
     which builds no compartment value. The banner says that no frame of the
@@ -2740,8 +2740,8 @@ def test_a_drag_that_halts_the_run_lists_the_record_the_run_holds(
 #: run drawn by a frame and on the same run halted with every frame failing.
 #: Each is mapped to the reason it may differ. The test below requires every
 #: other widget attribute, including one added later, to show the same content
-#: on both runs. That requirement makes `RunView.show_presentation` the one
-#: writer of a run's state, rather than a list that somebody has to maintain.
+#: on both runs. That requirement keeps `RunView.show_presentation` the one
+#: writer of a run's state, with no list of widgets for somebody to maintain.
 #: A widget left out of `show_presentation` still shows the last frame's run on
 #: a halt, and the test fails there (`PL-X7D5`).
 #:
@@ -2856,14 +2856,14 @@ def test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one(
 
     The run is drawn. Then, with every frame failing, it is changed in every
     way that a run-state widget shows, so the halt is the only writer of what
-    the screen says. The changes are a new agent, which is a new case with no
-    control changes, the delivered dial renamed, and the run failed by the
-    frame. That screen is compared, widget attribute by widget attribute, with
-    the same run once a frame draws it. It is one state, written once from
-    the halt's presentation and once from the frame's. Before both went through
-    one writer, the halt wrote four widgets and a dial row. The agent identity and the
-    control-change panel went on showing the run that the last frame drew
-    (`PL-1YDD`, `PL-DTJQ`, `PL-X7D5`).
+    the screen says. There are three changes. A new agent starts a new case
+    with no control changes. The delivered dial is renamed. The frame fails
+    the run. That screen is compared, widget attribute by widget attribute,
+    with the same run once a frame draws it. It is one state, written once
+    from the halt's presentation and once from the frame's. Before both went
+    through one writer, the halt wrote four widgets and a dial row. The agent
+    identity and the control-change panel went on showing the run that the
+    last frame drew (`PL-1YDD`, `PL-DTJQ`, `PL-X7D5`).
 
     Every widget attribute is compared unless `FRAME_WIDGETS` names it. So a
     widget added to `RunView` later is checked here without being listed.
@@ -3324,11 +3324,11 @@ def _a_dial_write_refused_after_the_cards(
     """A frame that wrote the cards for a new agent, then could not write the dials.
 
     `show_presentation` writes the cards first, and raises the refusal from
-    `setting_readouts` last. Before `PL-6RJ0`, the 1 MAC line was written with the
-    dials, so it went on naming the old agent above the new agent's cards. The
-    settings group is not checked here. `setting_readouts` refuses every state in
-    this scenario, so no dial can be written from any state, and the banner names
-    the refusal.
+    `setting_readouts` last. The 1 MAC line used to be written with the dials,
+    so it went on naming the old agent above the new agent's cards
+    (`PL-6RJ0`). The settings group is not checked here. `setting_readouts`
+    refuses every state in this scenario, so no dial can be written from any
+    state, and the banner names the refusal.
     """
 
     controller = SimulationController()
@@ -3762,7 +3762,7 @@ def test_a_setting_changed_on_a_halted_run_is_not_shown_as_the_setting_its_value
     """A dial moved on a stopped run springs back, records nothing, and the banner says why.
 
     No step runs after a stop, so a new setting would sit beside values that it never
-    produced. Until `PL-3B34`, the moved dial was applied. The cardiac output then showed
+    produced. The moved dial used to be applied (`PL-3B34`). The cardiac output then showed
     10.0 L/min beside concentrations computed at 5.0 L/min. The record also claimed a
     change at the instant of the stop, and that change never acted on the patient.
 
@@ -3770,12 +3770,14 @@ def test_a_setting_changed_on_a_halted_run_is_not_shown_as_the_setting_its_value
     names a different way out for each (project owner, 2026-10-26). The supported run
     length is the expected end of a long run, so its way out is a branch at an earlier
     instant, which can take the new setting. A failure is a fault, so Reset remains its
-    way out. Each scenario builds its run. It takes the dial settings that the run
-    should show from a run that never stopped.
+    way out.
 
     The halt that the run shows when no frame can be drawn (`show_presentation`) gives
     the same refusal and the same way out. Until the test-strength pass of
     `PL-J5GC`, no test checked that banner after a refused dial.
+
+    Each scenario builds its run. It takes the dial settings that the run should show
+    from a run that never stopped.
     """
 
     run, expected = _ONE_STATE_SCENARIOS[scenario](application, monkeypatch)
@@ -9893,7 +9895,7 @@ def test_a_halt_whose_dials_cannot_be_written_still_withdraws_branch_here(
 
     `show_presentation` raises once it has shown the halt, when a fresh gas flow range is narrower
     than the dial's step (`PL-M3M2`). `_halt_run` used to ask for no frame then, and the
-    dashboard restates its branch panel only when it draws. So "Branch here" kept offering
+    dashboard rewrites its branch panel only when it draws. So "Branch here" kept offering
     the halted trunk. Every slot of a run reaches this path through the halt gate, including
     `_handle_adjustment_start`, which no `try` guarded before (blind review of `PL-HJKN`).
     """
@@ -10324,7 +10326,7 @@ def test_a_dial_write_that_refuses_on_a_halt_still_restates_every_panel(
     shows for one run. `_halt_every_run` used to call it in a bare loop. So the
     exception left the halt path before the branch panel and the bookmark panel
     were restated. "Branch here" stayed enabled over a failed trunk, and a mark
-    ahead of the clock still showed as still to come (`PL-TLH4`). The exception
+    ahead of the clock went on showing as still to come (`PL-TLH4`). The exception
     now waits until the panels are restated and the frame is tried. The test
     checks the bookmark row against the literal text of a mark that a failed run
     cannot reach, as `test_a_failing_frame_withdraws_the_last_frames_bookmark_standings`

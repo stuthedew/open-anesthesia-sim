@@ -340,7 +340,7 @@ def test_a_halt_keeps_every_value_of_the_last_frame_while_the_run_is_the_one_it_
 def test_a_halt_after_a_start_over_withholds_every_value_of_the_discarded_run() -> None:
     """After a Reset or an agent change that no frame has drawn, a halt keeps no value at all.
 
-    This is the case behind `PL-6RJ0`, `PL-J5GC`, `PL-RNYV`, `PL-B396` and
+    This is the scenario behind `PL-6RJ0`, `PL-J5GC`, `PL-RNYV`, `PL-B396` and
     `PL-B8DL`. Each of them found one more value that a halt had left on
     screen from the run before. The loop walks the fields of `RunValues`, so
     a value added to the frame later is checked here without being named.
@@ -380,13 +380,13 @@ def test_withheld_values_state_no_number_and_no_agent_of_any_run() -> None:
     """A withheld value holds no agent's name, and no number that belongs to a run.
 
     The expected property is worked out here, not read from the constants. A
-    withheld value stands under the heading of the run that replaced the
+    withheld value sits under the heading of the run that replaced the
     discarded one. So any number in it, and any agent it named, would be read
-    as that run's. Some standing text holds a digit: the playback rate, which
-    is a setting of the view (`PL-P58M`), and a unit's caption, which states
-    the temperature the unit is defined at. Such text reads the same on two
-    frames of different agents at different instants, once the agent's name
-    is taken out. Every other digit on a frame belongs to its run.
+    as that run's. Some text reads the same on two frames of different agents
+    at different instants, once the agent's name is taken out. Part of that
+    text holds a digit: the playback rate, which is a setting of the view
+    (`PL-P58M`), and a unit's caption, which states the temperature the unit
+    is defined at. Every other digit on a frame belongs to its run.
     """
 
     rate = PlaybackRate(20)

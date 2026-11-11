@@ -866,43 +866,48 @@ slot into a halt. `RunView.step_tick` steps the run and
 run and the second halts every run. They do so because a `TypeError` from a
 refactor is exactly as silent inside a Qt slot as a modelling failure is.
 
-`dashboard_frame.halt_disposition` decides which halt applies, and
-`RunView.halt` routes by its decision. A failure goes through
+A halt is one of two kinds: a failure, or a stop at the supported run length.
+One function (`dashboard_frame.halt_disposition`) decides which kind an
+exception calls for. The run's view routes the halt by that decision
+(`RunView.halt`). A failure goes through
 `SimulationController.fail()`. When a `SimulationDomainLimitError` is raised on
 a path that the controller does not step itself, such as a setting, it goes
 through `halt_at_supported_limit()`. A run that steps onto the supported run
-length meets no exception. `SimulationController.advance()` halts it on the
-step that arrives there, and the snapshot reads the limit from the run's own
-state (`PL-5291`). No branch or Reset lands on the limit, because
-`_resume_point` rejects a fork there, as § "What a branch is, and what it
-shares with its parent" says (`PL-VHQX`).
+length meets no exception. The controller halts it on the step that arrives
+there (`SimulationController.advance()`). The snapshot reads the limit from the
+run's own state (`PL-5291`). No branch or Reset lands on the limit, because a
+fork there is rejected (`_resume_point`, `PL-VHQX`), as § "What a branch is,
+and what it shares with its parent" says.
 
-`fail()` sets a third run state. The snapshot carries it as `failure_reason`,
-and the dashboard renders it as "Stopped — simulation error" with a banner over
-the values. A halted run must never look like a pause, because a pause is a run
-that continues when asked and a halt is a run that cannot continue. `RunStatus`
-carries both halts, and the snapshot extends `RunStatus`.
-`run_presentation.halted_run` states a halt from the `RunRecord` that
-`SimulationController.record()` returns, and `RunRecord` also extends
-`RunStatus`. `halted_run` does this without building any compartment value,
-because the snapshot's own `Fraction`s are among the values that can cause a
-halt. The banner it writes (`dashboard_frame.halt_notice`) says that no frame of
-the stopped run has been drawn. The first frame that draws replaces that
-banner (`PL-7DJK`).
+Failing a run (`fail()`) sets a third run state, after running and paused. The
+snapshot carries it as `failure_reason`, and the dashboard renders it as
+"Stopped — simulation error" with a banner over the values. A halted run must
+never look like a pause, because a pause is a run that continues when asked and
+a halt is a run that cannot continue.
 
 The supported-limit halt is a fourth run state, distinct from the failure. The
 snapshot carries it as `supported_limit_reason`, and the status reads
 "Stopped — supported run length reached" in place of the failure wording. It is
-kept separate because nothing went wrong. The run stands on a completed step,
-at a time the model claims to represent, and the next step would be refused in
-exactly the same way. Neither halt can be resumed. A halt is cleared only by
-`reset()` or by starting a fresh run with `set_agent()`. But `reset()` can
-itself refuse, when the settings record is one the definition cannot open on.
-It refuses before it clears anything. `RunView._handle_reset` halts the run on
-that refusal through the same path (`PL-M4M0`). In every other halt, the banner
-names reset as the way out. So this banner says instead that no setting can
-repair the refusal, and that closing and reopening the application starts a new
-run (`PL-01GY`).
+kept separate because nothing went wrong. The run is at a completed step, at a
+time the model claims to represent, and the next step would be refused in
+exactly the same way.
+
+Neither halt can be resumed. A halt is cleared only by `reset()` or by
+starting a fresh run with `set_agent()`. But `reset()` can itself refuse, when
+the settings record is one the definition cannot open on. It refuses before it
+clears anything. The run's Reset handler halts the run on that refusal through
+the same path (`RunView._handle_reset`, `PL-M4M0`). In every other halt, the
+banner names Reset as the way out. So the banner for a refused Reset says
+instead that no setting can repair the refusal, and that closing and reopening
+the application starts a new run (`PL-01GY`).
+
+One function (`run_presentation.halted_run`) states a halt from the run's
+record, a `RunRecord` that `SimulationController.record()` returns. It builds
+no compartment value, because the snapshot's own `Fraction`s are among the
+values that can cause a halt. The record and the snapshot both extend the run's
+status (`RunStatus`), which carries both halts. The banner that this function
+writes (`dashboard_frame.halt_notice`) says that no frame of the stopped run has
+been drawn. The first frame that draws replaces that banner (`PL-7DJK`).
 
 A control used on a run whose snapshot refuses meets the same halt, rather than
 an exception that the toolkit prints, because its slot passes the halt gate. A

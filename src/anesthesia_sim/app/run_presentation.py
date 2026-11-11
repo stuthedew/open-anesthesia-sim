@@ -1,29 +1,29 @@
 """Everything one run's panel shows at one moment, as one value that one call writes.
 
-`RunView.show_presentation` is the only code that writes a run's widgets, and it writes all
-of them from one `RunPresentation`. Two functions here build that value, and
-neither loads a GUI toolkit. `drawn_run` builds it from the snapshot that a
-frame drew from. `halted_run` builds it from the run's record when no frame
-can be drawn. `tests/unit/test_run_presentation.py` tests both with no widget.
+`RunView.show_presentation` is the only code that writes a run's widgets, and
+it writes all of them from one `RunPresentation`. Two functions here build
+that value, and neither loads a GUI toolkit. `drawn_run` builds it from the
+snapshot that a frame drew from. `halted_run` builds it from the run's record
+when no frame can be drawn. `tests/unit/test_run_presentation.py` tests both
+with no widget.
 
-Before this module, a frame and a halt each wrote the widgets themselves, and
-each wrote a different part of them. A value that the halt left out stayed on
-screen from the run before, under a heading that named the run after it. Four
-fixes each added the missed widget to the halt, and to a test's list of
-widgets (`PL-X7D5`, `PL-J5GC`, `PL-5JTH`, `PL-GTH6`). The next widget was
-missed in the same way (`PL-B8DL`, `PL-0G2P`). Here a halt is not a second
-writer. It is a `RunPresentation` whose values are kept or withheld, and
-`RunView.show_presentation` writes it exactly as it writes a drawn one (`PL-RF2S`).
+A halt is not a second writer. It is a `RunPresentation` whose values are kept
+or withheld, and `RunView.show_presentation` writes it exactly as it writes a
+drawn one (`PL-RF2S`). Before this module, a frame and a halt each wrote the
+widgets themselves, and each wrote a different part of them. A value that the
+halt left out stayed on screen from the run before, under a heading that named
+the run after it. Four fixes each added the missed widget to the halt, and to a
+test's list of widgets (`PL-X7D5`, `PL-J5GC`, `PL-5JTH`, `PL-GTH6`). The next
+widget was missed in the same way (`PL-B8DL`, `PL-0G2P`).
 
 **A halt keeps or withholds the values that only a frame can compute.** The
 readouts, the schematic, the delivered agent and the accounting panel are
 compartment values, and a halt builds none, because the halt may be the
 refusal of one of them (`PL-7DJK`). `RunValues` holds the four together.
-`halted_run` returns the `RunValues` of the last frame that drew, unless the
-run has started over since that frame. Then the kept values describe a run
-that was discarded, and `halted_run` returns `withheld_values` in their place.
-All four are kept or withheld as one value, so no one of them can be left
-behind.
+`halted_run` uses the `RunValues` of the last frame that drew, unless the run
+has started over since that frame. Then the kept values describe a run that
+was discarded, and `halted_run` uses `withheld_values` in their place. All
+four are kept or withheld as one value, so no one of them can be left behind.
 """
 
 from collections.abc import Sequence
@@ -73,8 +73,8 @@ class ValuesStanding(StrEnum):
         KEPT: No frame can be drawn, and they are the values of the last
             frame that drew. The run has not started over since that frame.
         WITHHELD: No frame can be drawn, and the run has started over since
-            the last frame that drew. Each value is replaced by a mark that
-            keeps its unit.
+            the last frame that drew. Each value is replaced by a placeholder
+            that keeps its unit.
     """
 
     DRAWN = "drawn"
@@ -86,9 +86,9 @@ class ValuesStanding(StrEnum):
 class RunValues:
     """The compartment values of one run at one instant: everything only a frame can compute.
 
-    The four are built together from one snapshot, kept together, and
-    withheld together. So the readouts, the schematic, the delivered agent
-    and the accounting panel always describe the same state of the same run
+    The readouts, the schematic, the delivered agent and the accounting
+    panel are built together from one snapshot, kept together, and withheld
+    together. So they always describe the same state of the same run
     (`PL-RNYV`, `PL-B396`).
 
     Attributes:
@@ -317,8 +317,9 @@ def halted_run(
     run is still the one that frame drew. When the run has started over
     since, they are withheld. After a step whose accounting failed its
     check, the accounting panel shows that step's check, which the record
-    carries. The clock's playback line is restated from `state` in either
-    case, because a reader can change the rate on a halted run (`PL-P58M`).
+    carries. The clock's playback line is restated from `state` whether the
+    values are kept or withheld, because a reader can change the rate on a
+    halted run (`PL-P58M`).
 
     Args:
         record: `SimulationController.record()`.

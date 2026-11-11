@@ -1,7 +1,7 @@
 """One run on the dashboard, with its controller, controls and readouts, in PySide6.
 
-`PL-B9PY` divided the dashboard into a part that all runs share and a part
-for each run. `RunView` is the part for each run. It holds what two displayed
+The dashboard has a part that all runs share and a part for each run
+(`PL-B9PY`). `RunView` is the part for each run. It holds what two displayed
 runs cannot share: a controller, seven readouts, four settings, the
 transport (the run's playback controls), the agent identity, the notices, and
 the accounting and control-change panels. `SimulationView` holds what the runs
@@ -10,11 +10,12 @@ refers to another run.
 
 `app/dashboard_frame.py` decides every claim that this class displays, and
 does so without a GUI toolkit. `app/run_presentation.py` calls that module's
-functions once per tick and gathers the results into one value. `show_presentation` writes
-that value into widgets that decide nothing (`PL-25KS`, decision D2). No
-number is formatted here and no colour is declared here. Colours come from
-`app/theme.py`, and they reach a widget through the functions in
-`app/stylesheets.py` that compose stylesheets (decision D10, `PL-Y4YX`).
+functions once per tick and gathers the results into one value.
+`show_presentation` writes that value into widgets that decide nothing
+(`PL-25KS`, decision D2). No number is formatted here and no colour is
+declared here. Colours come from `app/theme.py`, and they reach a widget
+through the functions in `app/stylesheets.py` that compose stylesheets
+(decision D10, `PL-Y4YX`).
 
 **Agent colour has one writer.** `_apply_agent_color_scheme` is the only
 method under `app/` that writes the ISO 5360 identity pair. It writes the pair
@@ -38,28 +39,31 @@ the toolkit and leave the run still showing "Paused" (`PL-HJKN`).
 `dashboard_frame.halt_disposition` decides how the stop is reported. A
 `SimulationDomainLimitError` is reported as reaching the supported run length,
 and anything else as a failure (`PL-V6M0`, `PL-Y5WR`, `PL-YK2V`).
-A halted run is shown before any attempt to draw a frame, by `show_halt`. It writes the
-presentation that `presentation` builds when it is given no snapshot. That
-presentation is built from the controller's record, and reading that record
-builds no compartment value. There are two reasons for this. First, the frame is drawn by a render
-path that all runs share, and that path may be what raised. A halt reported
-only through the frame would then leave every status word showing "Paused" for
-a failed controller (`PL-25KS`). Second, building a fresh snapshot builds
-compartment values. When building one of those values was what raised, a halt
-reported from the snapshot was never shown at all (`PL-7DJK`).
 
-**Every widget of a run has one writer, and it writes one value.** `show_presentation`
-writes all of a run's widgets from one `RunPresentation`
+**A halt is shown from the controller's record, before any attempt to draw a
+frame.** `show_halt` writes the presentation that `presentation` builds when
+it is given no snapshot. That presentation is built from the controller's
+record, and reading that record builds no compartment value. The halt comes
+before any attempt to draw a frame because the frame is drawn by a render
+path that all runs share, and that path may be what raised. A halt reported
+only through the frame would then leave every status word showing "Paused"
+for a failed controller (`PL-25KS`). The halt comes from the record because
+building a fresh snapshot builds compartment values. When building one of
+those values was what raised, a halt reported from the snapshot was never
+shown at all (`PL-7DJK`).
+
+**Every widget of a run is written by one method, from one value.**
+`show_presentation` writes all of a run's widgets from one `RunPresentation`
 (`app/run_presentation.py`). The run-state widgets show what the run holds:
 the status word, the transport, the agent identity, the dials, the
 control-change panel and the banner. The value widgets show compartment
 values: the readouts, their clock, the schematic, the delivered agent and the
 accounting panel. A drawn frame and a halt each build a presentation, and
-`show_presentation` writes the same widgets for both. On a halt the compartment values are
-the last frame's, or are withheld together when the run has started over since
-that frame. An earlier version of the halt code wrote to a list of widgets
-chosen by hand. Each widget that the list missed went on showing the run as it
-was at the last frame (`PL-X7D5`, `PL-RF2S`).
+`show_presentation` writes the same widgets for both. On a halt the
+compartment values are the last frame's, or are withheld together when the run
+has started over since that frame. An earlier version of the halt code wrote
+to a list of widgets chosen by hand. Each widget that the list missed went on
+showing the run as it was at the last frame (`PL-X7D5`, `PL-RF2S`).
 
 **Timers move the run and nothing else** (decision D7). Each run has one
 `QTimer`, which drives `step_tick`. `step_tick` advances the controller by the
@@ -521,12 +525,13 @@ class RunView(QWidget):
         self._interpretation_text = styled_label(
             INTERPRETATION_DISCLAIMER_TEXT, color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True
         )
-        # These two labels sit on the heading line above the row. One shows the dial's
-        # setting in both units. The other shows the 1 MAC value that divides every
-        # ×MAC number in the row. Both values are in `docs/MODEL.md`'s per-substance
-        # tier. The dial and the chart's caption cannot carry them, because each is now
-        # a View that a reader can close (`PL-NWTM`). `show_presentation` writes both
-        # from one record on every path, so the two cannot disagree.
+        # These two labels sit on the heading line above the row. One shows the
+        # delivered dial's setting in both units. The other shows the 1 MAC value
+        # that divides every ×MAC number in the row. Both values are in
+        # `docs/MODEL.md`'s per-substance tier. The dial and the chart's caption
+        # cannot carry them, because each is now a View that a reader can close
+        # (`PL-NWTM`). `show_presentation` writes both from one record on every
+        # path, so the two cannot disagree.
         self._delivered_text = styled_label("", color=INK)
         self._one_mac_text = styled_label("", color=MUTED)
         self._readout_row = ReadoutRow(
@@ -766,9 +771,9 @@ class RunView(QWidget):
         screen even if the same write fails again (`PL-25KS`, `PL-7DJK`,
         `PL-85LJ`).
 
-        The values of a drawn frame are kept for a later halt only once all
-        four have been written. So a halt rewrites the last frame that the
-        panel showed in full.
+        The compartment values of a drawn frame are kept for a later halt
+        only once all four have been written. So a halt rewrites the last
+        frame that the panel showed in full.
 
         A part that could not be built (`NotBuilt`) is not written. The 1
         MAC line is cleared in its place, so that it cannot state another
@@ -863,9 +868,10 @@ class RunView(QWidget):
     def show_halt(self) -> None:
         """Write this run from its controller's record, when no frame can be drawn.
 
-        The record is stored as written before the presentation is built.
-        So a halt that cannot be built is not tried again on every render
-        tick, with its exception printed each time (`owes_a_frame`).
+        Before the presentation is built, the record is stored as the one this
+        view last wrote. So a halt that cannot be built is not tried again on
+        every render tick, with its exception printed each time
+        (`owes_a_frame`).
 
         Raises:
             Exception: As `show_presentation` raises it.
@@ -1667,10 +1673,10 @@ class RunView(QWidget):
 
         `show_presentation` can raise an exception after it has written the halt,
         when a dial cannot be written (`PL-M3M2`). The frame is still asked
-        for, because the dashboard restates its own panels, such as "Branch
-        here", only when it draws a frame. Before this change, no frame was
-        asked for here, so those panels kept offering the halted run as it was
-        before the halt (blind review of `PL-HJKN`).
+        for, because the dashboard rewrites its own panels, such as "Branch
+        here", only when it draws a frame. No frame used to be asked for here,
+        so those panels kept offering the halted run as it was before the halt
+        (blind review of `PL-HJKN`).
 
         Args:
             error: The exception that was raised.
@@ -1795,7 +1801,7 @@ class RunView(QWidget):
         on which the branch appears, before any chart frame is drawn
         (`PL-C3GS`).
 
-        The name is also *stored* here, as well as drawn, because the notice
+        The name is *stored* here as well as drawn, because the notice
         banner is named from it too (`presentation`). That banner also sits
         in a column that the runs share. It is written on a path that has no
         frame to read a run count from (`PL-TSZM`). Unlike the headings, the

@@ -1042,9 +1042,10 @@ def status_word(status: RunStatus, *, stopped_on_mark: bool) -> StatusWord:
 
     A failure outranks the supported run length for the reason `notice`
     gives. The two cannot both arise from one run, and if a failure is
-    somehow recorded, it is the more serious statement. A paused run that a
-    mark stopped says so, so that it is not mistaken for the learner's own
-    Pause (`STATUS_MARK_HALT_TEXT`, `PL-QBQX`).
+    somehow recorded, it is the more serious statement. The word for a
+    paused run that a mark stopped says that a mark stopped it, so that the
+    stop is not mistaken for the learner's own Pause
+    (`STATUS_MARK_HALT_TEXT`, `PL-QBQX`).
 
     Args:
         status: The run's status this tick, either a `RunStatus` or the
@@ -1055,10 +1056,9 @@ def status_word(status: RunStatus, *, stopped_on_mark: bool) -> StatusWord:
         stopped_on_mark: Whether a step of the run halted it on a mark
             (`SimulationSnapshot.stopped_on_mark`). A branch at its fork
             carries the parent step's halt record and is not stopped on a
-            mark. It is a
-            separate argument because a `RunStatus` does not carry the halt
-            record, which is worked out from the canonical states
-            (`SimulationController._halt_crossing`).
+            mark. It is a separate argument because a `RunStatus` does not
+            carry the halt record, which is worked out from the canonical
+            states (`SimulationController._halt_crossing`).
 
     Returns:
         The word and its emphasis.
@@ -1835,7 +1835,7 @@ def notice(
     of everything else on screen, while a refusal describes only one control.
     A failure in turn outranks the supported run length. A setting refused on
     a stopped run is stated inside the stopped run's banner, in place of its
-    exit (`_stopped_run_exit`, `PL-3B34`).
+    way out (`_stopped_run_exit`, `PL-3B34`).
 
     `RunView.show_presentation` writes this banner while the frame for which the status
     was read is on screen. That is what lets the failure wording say that the
@@ -1904,7 +1904,7 @@ def halt_notice(
     """Return the banner for a halt with no frame drawn yet: a stopped run, or nothing.
 
     `RunView.show_presentation` writes this banner from the run's status alone,
-    before it attempts any frame. A failure uses
+    before any frame is attempted. A failure uses
     `UNDRAWN_FAILURE_NOTICE_TEMPLATE` rather than `notice`'s wording, because
     with no frame drawn the values on screen are not the step the run stopped
     at. The first frame that draws writes `notice`'s banner in its place.
@@ -2123,7 +2123,8 @@ def rejected_step_accounting(rejected: AgentSimulationValidationResult) -> Accou
         rejected: The rejected step's check, with the totals it judged.
 
     Returns:
-        The panel's three parts: "Validation failed" and the rejected step's totals.
+        The panel's three parts: "Validation failed", `ACCOUNTING_REJECTED_DETAIL_TEXT`
+        and the rejected step's totals.
     """
 
     return Accounting(
@@ -2778,9 +2779,9 @@ class RunStatement:
     a frame drew from. `run_presentation.halted_run` builds it from
     `SimulationController.record()` when no frame can draw. So a widget
     listed here shows the same thing on a drawn run and on a halted run in
-    the same state. Before this class existed, the halt wrote a list of
-    widgets chosen by hand, and each widget the list missed went on showing
-    the last frame's run (`PL-X7D5`, `PL-1YDD`, `PL-DTJQ`).
+    the same state. Before this class existed, the halt wrote only to a list
+    of widgets chosen by hand, and each widget the list missed went on
+    showing the last frame's run (`PL-X7D5`, `PL-1YDD`, `PL-DTJQ`).
 
     The four dials are built next to this statement from the same record,
     rather than carried in it. `setting_readouts` can raise for a control that

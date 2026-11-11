@@ -2047,18 +2047,19 @@ class SimulationView(QWidget):
         just failed, and it may fail again for the same cause. For example, two runs may
         have come to use different agents, or a snapshot's own values may be rejected. A
         halt shown only through the frame would then never be seen (`PL-25KS`, `PL-7DJK`).
+        If presenting the frame fails afterwards, the halt is not undone.
 
-        The branch controls are restated from the case for the same reason
+        The dashboard's own panels are restated without the frame, for the same reason as
+        the halts. The branch controls are restated from the case
         (`_restate_fork_panel`, `PL-MMNX`). The bookmark standings are restated from each
-        run's controller for the same reason (`_restate_bookmark_panel`, `PL-YHR3`). Both
-        restatements come from one list, `halt_restatements`. A test checks that this list
-        covers every control the dashboard offers outside a run (`PL-5JTH`). The trunk
-        records that its dashboard failed, so the case then offers no branch at all. A
-        branch opened now would be drawn by the same dashboard and could fail the same
-        way (`PL-T2Q2`). If presenting the frame fails afterwards, the halt is not undone.
+        run's controller (`_restate_bookmark_panel`, `PL-YHR3`). Both restatements come
+        from one list, `halt_restatements`. A test checks that this list covers every
+        control the dashboard offers outside a run (`PL-5JTH`). The trunk records that
+        its dashboard failed, so the case then offers no branch at all. A branch opened
+        now would be drawn by the same dashboard and could fail the same way (`PL-T2Q2`).
 
         One run's `show_halt` can raise after it has shown the halt, when its dials
-        cannot be written. That exception no longer stops the halt path. Every other run
+        cannot be written. That exception does not stop the halt path. Every other run
         still shows its halt, every panel is restated, and the dashboard tries to draw the
         frame. Only then does the first exception escape, so it still reaches the console
         rather than being hidden (`PL-TLH4`).

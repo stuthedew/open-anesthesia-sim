@@ -93,11 +93,11 @@ class RunStatus:
 
     `SimulationController.status()` builds one from the controller's own
     run-state fields and the run-length guard. It builds no compartment
-    value, so a caller can read it for a run whose `snapshot()` raises.
-    `run_presentation.halted_run` needs that, because the snapshot's own
-    `Fraction`s are among the values that can cause a halt (`PL-7DJK`).
-    `RunSettings` extends this class, and `SimulationSnapshot` extends
-    `RunSettings`. So `dashboard_frame.status_word`, `transport` and
+    value, so a caller can read a `RunStatus` for a run whose `snapshot()`
+    raises. `run_presentation.halted_run` needs that, because the
+    snapshot's own `Fraction`s are among the values that can cause a halt
+    (`PL-7DJK`). `RunSettings` extends this class, and `SimulationSnapshot`
+    extends `RunSettings`. So `dashboard_frame.status_word`, `transport` and
     `notice` accept any of the three, and a frame that drew reads the three
     facts from the snapshot it drew from.
     """
