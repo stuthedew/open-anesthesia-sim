@@ -116,13 +116,13 @@ PAST_ESCAPES = (
 
 
 def test_the_check_names_every_escape_the_item_records() -> None:
-    assert {escape.spelling for escape in grc.ESCAPES} >= set(PAST_ESCAPES)
+    assert {escape.spelling for escape in grc.GUARD_ESCAPES} >= set(PAST_ESCAPES)
 
 
-@pytest.mark.parametrize("escape", grc.ESCAPES, ids=lambda escape: escape.spelling)
+@pytest.mark.parametrize("escape", grc.GUARD_ESCAPES, ids=lambda escape: escape.spelling)
 def test_every_escape_says_what_refuses_it_or_that_nothing_does(escape: grc.Escape) -> None:
     """An escape names GitHub rules, the proxy with its source, or the gap it leaves open."""
-    known = {refusal.key for refusal in grc.REFUSALS}
+    known = {refusal.key for refusal in grc.GITHUB_RULES}
     assert set(escape.rules) <= known
     assert escape.rules or escape.proxy or escape.open
     assert not (escape.open and (escape.rules or escape.proxy))
@@ -140,7 +140,7 @@ def test_the_settings_of_2026_11_11_let_these_escapes_through(
     monkeypatch: pytest.MonkeyPatch, spelling: str, absent: set[str]
 ) -> None:
     """Only `main` had a rule, so a forced push to any other branch met nothing."""
-    escape = next(escape for escape in grc.ESCAPES if escape.spelling == spelling)
+    escape = next(escape for escape in grc.GUARD_ESCAPES if escape.spelling == spelling)
     assert set(escape.rules) & _missing(monkeypatch, RECORDED) == absent
 
 
@@ -150,7 +150,7 @@ def test_a_merge_past_the_checks_was_already_refused_on_2026_11_11(
     """`main` bound an admin to its checks, whichever client sent the merge."""
     absent = _missing(monkeypatch, RECORDED)
     for spelling in ("bash -c 'gh pr merge <number> --squash'", PAST_ESCAPES[4]):
-        escape = next(escape for escape in grc.ESCAPES if escape.spelling == spelling)
+        escape = next(escape for escape in grc.GUARD_ESCAPES if escape.spelling == spelling)
         assert escape.rules and not set(escape.rules) & absent
 
 

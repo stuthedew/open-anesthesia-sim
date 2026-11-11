@@ -5,7 +5,7 @@ pull request, and none of those can be undone from the session. Four fixes
 put a guard in the session, and each guard read what the session typed. A
 hook can read nothing else, so each time another spelling of the same action
 passed: `PL-61FT`, `PL-1ZZ0`, `PL-95BJ` and the guard leads in `PL-VZ57`.
-`ESCAPES` lists those spellings.
+`GUARD_ESCAPES` lists those spellings.
 
 **The refusal belongs where the action lands.** A cloud session acts on GitHub
 as the owner's account, an admin, through Anthropic's proxy. The proxy keeps
@@ -16,7 +16,7 @@ read 2026-11-11). GitHub then refuses the action whichever client sends it
 and however the command is spelt. The session's hooks stay as early warnings.
 
 **So this check reads GitHub's rules and fails where one is missing.**
-`REFUSALS` names each rule, the action it refuses and the setting that
+`GITHUB_RULES` names each rule, the action it refuses and the setting that
 restores it. The rules live in repository settings, where an edit leaves no
 commit, and a guard that trusted them unread would keep passing after one was
 switched off. `required_checks_check.py` reads the required status checks the
@@ -110,7 +110,7 @@ class Refusal:
     setting: str
 
 
-REFUSALS = (
+GITHUB_RULES = (
     Refusal(
         "default-history",
         "a forced push can replace the history of `main`",
@@ -175,7 +175,7 @@ class Escape:
     spelling: str
     #: The item that recorded it.
     item: str
-    #: The keys of the `REFUSALS` that refuse it at GitHub.
+    #: The keys of the `GITHUB_RULES` that refuse it at GitHub.
     rules: tuple[str, ...] = ()
     #: Why the proxy refuses it, where no rule is needed.
     proxy: str = ""
@@ -184,7 +184,7 @@ class Escape:
 
 
 MERGE_RULES = ("default-pull-request", "default-binds-admins")
-ESCAPES = (
+GUARD_ESCAPES = (
     Escape("git push --no-verify origin --delete <branch>", "PL-95BJ", proxy=PROXY),
     Escape("git -c core.hooksPath=/dev/null push origin --delete <branch>", "PL-95BJ", proxy=PROXY),
     Escape("CLAUDECODE= git push origin --delete <branch>", "PL-39Y1", proxy=PROXY),
@@ -314,8 +314,8 @@ def read(repo: str, branch: str, token: str | None) -> Settings:
 
 
 def missing(found: Settings) -> list[Refusal]:
-    """Each rule in `REFUSALS` that `found` does not hold."""
-    return [refusal for refusal in REFUSALS if not refusal.holds(found)]
+    """Each rule in `GITHUB_RULES` that `found` does not hold."""
+    return [refusal for refusal in GITHUB_RULES if not refusal.holds(found)]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -351,10 +351,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  The owner's setting: {refusal.setting}")
         for role in found.bypass if refusal.key == "no-bypass" else ():
             print(f"  On a bypass list: {role}")
-        for escape in ESCAPES:
+        for escape in GUARD_ESCAPES:
             if refusal.key in escape.rules:
                 print(f"  Passed a session guard ({escape.item}): {escape.spelling}")
-    for escape in ESCAPES:
+    for escape in GUARD_ESCAPES:
         if escape.open:
             print(f"  refused by nothing: {escape.spelling} - {escape.open}")
     if absent:
@@ -363,7 +363,7 @@ def main(argv: list[str] | None = None) -> int:
             "stands in for them (`PL-39Y1`)."
         )
         return 1
-    print(f"github-refusals: OK - GitHub holds all {len(REFUSALS)} rules.")
+    print(f"github-refusals: OK - GitHub holds all {len(GITHUB_RULES)} rules.")
     return 0
 
 
