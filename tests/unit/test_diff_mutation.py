@@ -1399,7 +1399,7 @@ def test_reads_the_notes() -> None:
 
 @pytest.fixture
 def copyable(repo: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """`repo` with a simulator unit test that reads `notes.txt`, and a copy step needing no mutmut."""
+    """`repo` with a simulator unit test that reads `notes.txt`, and a copy step without mutmut."""
     _write(repo, "pyproject.toml", TABLE_TOML)
     _write(repo, "src/anesthesia_sim/__init__.py", "")
     _write(repo, "tests/unit/test_notes.py", _READS_A_FILE)

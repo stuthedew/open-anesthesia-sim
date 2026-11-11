@@ -3,11 +3,13 @@ id: PL-8YCC
 title: docs/ARCHITECTURE.md § Tests says tests/unit/ tests the controller in isolation, but the controller's tests are in tests/integration/test_controller.py, and the section does not say that 78 of the 146 test files in tests/unit/ test repository tooling
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: unit-test-review
 touches: docs/ARCHITECTURE.md
 added: 2026-11-11
+closed: 2026-11-11
+pr: 2131
 payoff: a contributor reading where tests go is sent to the right directory and told which standard each test file is held to
 verify: grep -qF 'so its tests are in' docs/ARCHITECTURE.md
 ---

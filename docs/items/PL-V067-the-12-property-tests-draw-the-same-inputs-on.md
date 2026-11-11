@@ -3,11 +3,13 @@ id: PL-V067
 title: The 12 property tests draw the same inputs on every run, the weekly shuffled run included, because each sets derandomize=True on its own decorator: no scheduled run gives them new inputs
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: unit-test-review
 touches: tests/hypothesis_profiles.py, conftest.py, tests/conftest.py, tests/unit/test_hypothesis_profiles.py, .github/workflows/drift.yml, tests/unit/test_generated_runs.py, tests/unit/test_supported_range_edges.py, tests/unit/test_formatting.py, tests/unit/test_exponential_approach.py, tests/unit/test_required_checks_reference.py, tests/unit/test_makefile_reference.py, subprojects/docket/tests/test_frontmatter_reference.py, subprojects/docket/tests/test_shell.py, ROADMAP.md
 added: 2026-11-11
+closed: 2026-11-11
+pr: 2131
 payoff: the property tests reach new inputs every week, while every pull request's run stays repeatable
 verify: grep -q 'def test_no_property_test_sets_a_setting_that_the_profiles_decide' tests/unit/test_hypothesis_profiles.py
 ---

@@ -3,11 +3,13 @@ id: PL-PG0S
 title: No check or CI job runs the mutation tool's first step, so a new unit test that cannot run inside the mutation copy of the tree stops every mutation run until a session next needs one: PL-GP8G's two tests and PL-CTXZ's deselected test, in the week of 2026-11-09
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: unit-test-review
 touches: tools/diff_mutation.py, tests/unit/test_diff_mutation.py, .github/workflows/quality.yml, tests/unit/test_required_checks_check.py, docs/mutation-testing.md, ROADMAP.md
 added: 2026-11-11
+closed: 2026-11-11
+pr: 2131
 payoff: a unit test that would stop every mutation run fails its own pull request, so no later session's close-out finds it first
 verify: grep -q 'def test_first_step_fails_on_a_test_that_reads_a_file_the_copy_does_not_hold' tests/unit/test_diff_mutation.py
 ---
