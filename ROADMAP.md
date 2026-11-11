@@ -1388,7 +1388,9 @@ already fixed their inputs on their own decorators, and
 Nothing ran the mutation tool's first step outside a mutation run, and the two
 test files were already long, at 8,933 and 5,114 lines. They are `PL-V067`,
 `PL-8YCC`, `PL-PG0S` and `PL-1FPR`. A fifth, `PL-19M4`, is placed by the
-branch that holds it.
+branch that holds it. `PL-1FPR` stays on the list but is deferred to the next
+gate, because it waits on `PL-RF2S`, which this list does not hold, and it
+changes no value a learner sees.
 
 ### Required scope
 
