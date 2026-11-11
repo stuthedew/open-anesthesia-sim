@@ -5,6 +5,7 @@ priority: P1
 effort: L
 status: done
 classes: defect, docs
+milestone: v0.6.17
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, .claude/rules/ui-calculations.md, docs/MODEL.md, docs/ARCHITECTURE.md, docs/interface-provenance.md, docs/items/PL-LJY8-docs-maintainer-md-has-the-headless-worker-take.md, docs/items/PL-HR4T-docs-model-md-intended-use-lists-extreme.md, docs/items/PL-N3SK-docs-model-md-known-limitations-says-nothing-on.md, docs/items/PL-LKX7-docs-interface-md-displayed-precision-says-a.md, docs/items/PL-97S1-two-citations-name-docs-model-md-s-known.md, docs/items/PL-LNFG-tools-doc-check-py-checks-no-citation-inside-a.md
 added: 2026-11-09
 closed: 2026-11-09

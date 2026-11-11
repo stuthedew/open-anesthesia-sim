@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, docs
 feature: interface-provenance-structure
+milestone: v0.6.17
 touches: docs/interface-provenance.md
 deferred-from: v0.7.0 - a contributor document's structure, with no displayed value or schematic behaviour depending on it
 added: 2026-11-05

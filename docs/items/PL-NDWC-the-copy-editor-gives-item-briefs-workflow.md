@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: session-cost
 feature: copy-editor
+milestone: v0.6.17
 touches: tools/copy_edit.py, tests/unit/test_copy_edit.py, .claude/skills/docket/modes/close-out.md, docs/prose-review/README.md, docs/apparatus.md
 added: 2026-11-09
 closed: 2026-11-09
