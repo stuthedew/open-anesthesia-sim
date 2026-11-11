@@ -63,8 +63,13 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "subprojects" / "docket" / "src"))
+
+from docket.vcs import default_branch, github_token
+
+# The reader of GitHub's settings that this check shares.
 import required_checks_check
-from required_checks_check import GITHUB_API, default_branch, github_token, repo_slug
+from open_pull_requests import GITHUB_API, repo_slug
 
 #: A branch name that no ruleset names, so its rules are those of every branch.
 PROBE = "claude/a-branch-no-ruleset-names"
