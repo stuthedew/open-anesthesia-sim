@@ -67,3 +67,10 @@ choice.
 
 **Why it is the owner's.** A custom style adds drawing code that the project
 then maintains, and it changes how every later control is built.
+
+**Approved 2026-11-10.** The owner replied "Agree with recs" to the reply
+that recommended this trial (project owner, 2026-11-10, ratified, over
+building the controls as style sheets without a trial). The trial changes
+files under `src/anesthesia_sim/app/`, so it starts in a session of its own.
+Its second test needs the owner: run the trial build on the Mac in the light
+and the dark appearance.
