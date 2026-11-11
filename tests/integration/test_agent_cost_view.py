@@ -37,7 +37,7 @@ from anesthesia_sim.app.formatting import AgentAmountUnit
 from anesthesia_sim.app.main import open_dashboard, open_preferences
 from anesthesia_sim.app.preferences import PREFERENCES_FILE_NAME, AgentPrice, PreferencesStore
 from anesthesia_sim.app.simulation_view import SimulationView
-from anesthesia_sim.app.view_registry import AGENT_COST, REGISTERED
+from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING, AGENT_COST, REGISTERED
 from anesthesia_sim.app.views import AgentCostView
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
@@ -475,6 +475,38 @@ def test_a_reset_that_no_frame_draws_withholds_the_delivered_agent_with_the_read
     assert panel.cost_text.text() == "—"
     assert panel.working_text.isHidden()
     assert "sevoflurane" not in panel.cost_label_text.text()
+
+
+def test_a_price_form_opened_after_an_agent_change_that_no_frame_draws_names_the_new_agent(
+    application: QApplication, shown: list[SimulationView], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The price form starts on the agent the run holds, although no frame has drawn it.
+
+    The run opens on sevoflurane. While every frame fails, the learner changes
+    it to desflurane, and then chooses the agent cost View for an Area. The
+    form's selector lists sevoflurane first. A form that no tick has told of
+    the run's agent would therefore name sevoflurane, which the run no longer
+    holds (`PL-VZ57`'s lead, `PL-RF2S`).
+    """
+
+    view = _dashboard(
+        application,
+        shown,
+        SimulationController(),
+        workspaces=_workspaces(Area(AreaId(1), AGENT_ACCOUNTING)),
+    )
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+    run = view.runs[0]
+    combo = run._agent_dropdown
+    combo.setCurrentIndex(combo.findData("desflurane"))
+    assert run.controller.agent_id == "desflurane"
+    assert run.controller.has_failed is True
+
+    view.layout_container.choose_view(AreaId(1), AGENT_COST)
+    _settle(application)
+    (cost_view,) = _cost_views(view)
+
+    assert cost_view.price_entry.agent_id == "desflurane"
 
 
 def test_the_panel_follows_its_run_through_an_agent_change_and_a_comparison(

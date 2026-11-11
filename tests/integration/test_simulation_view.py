@@ -3733,6 +3733,35 @@ def test_an_accounting_panel_opened_after_each_scenario_shows_the_same_step(
     assert _accounting_reading(run.build_accounting_panel()) == expected["accounting"]
 
 
+def test_a_halt_whose_dials_cannot_be_built_shows_no_setting_of_the_discarded_run(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """After an agent change whose dials cannot be built, no earlier setting stays on screen.
+
+    The run held sevoflurane at 8.00%, which is 4.00 ×MAC. The learner changes
+    to desflurane while every frame fails and no dial can be built. The dial
+    row and the delivered line used to keep "8.00%" and "4.00 ×MAC", beside a
+    1 MAC line that named desflurane (`PL-SV2Q`). The dashboard now holds no
+    dial for the run, and the delivered line withholds both of its values. The
+    withheld line is written out by hand.
+    """
+
+    run, _ = _a_halt_after_an_agent_change_whose_dials_cannot_be_written(application, monkeypatch)
+    _settle(application)
+    dashboard = run.parent()
+    assert isinstance(dashboard, SimulationView)
+
+    dials = [
+        (dial.name_label.text(), dial.value_label.text(), dial.secondary_label.text())
+        for dial in dashboard.findChildren(ParameterSlider)
+    ]
+
+    assert run._one_mac_text.text() == "1 MAC desflurane = 6.0%"
+    assert dials == []
+    assert run._delivered_text.text() != "Delivered 8.00% (4.00 \u00d7MAC)"
+    assert run._delivered_text.text() == "Delivered \u2014% (\u2014 \u00d7MAC)"
+
+
 # How a stopped run states a dial that it refused (`PL-3B34`). This is written as
 # a literal rather than read from the controller or `dashboard_frame`, so a change
 # to the wording fails here.
