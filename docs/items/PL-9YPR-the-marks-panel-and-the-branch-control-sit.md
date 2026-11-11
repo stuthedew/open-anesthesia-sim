@@ -1,14 +1,35 @@
 ---
 id: PL-9YPR
 title: The marks panel and the branch control sit under the Areas as fixed page sections (SimulationView._build_case_section, which calls their place a placeholder), not as Views, against the owner's 2026-09-16 rule that every main UI element is a View an Area can hold; they add their height to every Workspace and no Workspace can move or close them
+priority: P2
+effort: M
 status: untriaged
+classes: feature
 feature: window-is-the-frame
+touches: src/anesthesia_sim/app/views.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/view_contract.py, src/anesthesia_sim/app/view_registry.py, src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/data/workspaces/default.json, tests/integration/test_simulation_view.py
 added: 2026-11-11
+payoff: a learner can put the bookmarks and the branch control in any Area, or leave them out, and no fixed section under the Areas adds to the page's height
 ---
 
 **Problem.** The marks panel and the branch control sit under the Areas as fixed page sections (SimulationView._build_case_section, which calls their place a placeholder), not as Views, against the owner's 2026-09-16 rule that every main UI element is a View an Area can hold; they add their height to every Workspace and no Workspace can move or close them
 
-**Progress, 2026-11-11: built, tested and swept. Triage, the reviews and the pull request's text are left. The session stopped here for length, not for the work.**
+**Why it matters.** A learner on a laptop scrolls past the Areas to reach
+the bookmarks and the branch control, and no Workspace can move, resize or
+leave out either of them. They are the last two main elements that are not
+Views, so the page cannot stop scrolling (`PL-CBYS`) while they stay under
+the Areas.
+
+**Done when.** The bookmarks and the branch control are Views that every
+Area's chooser offers. Nothing sits between the Areas and the disclaimer.
+The three shipped Workspaces show both Views. A test shows each View in three
+Areas at once and checks that every copy follows the case.
+
+**Generator check.** A one-off. `SimulationView._build_case_section` recorded
+its own place as a placeholder when v0.6.0 built the Areas, and this item
+finishes that work. No reader misread a fact.
+
+**Progress, 2026-11-11: built, tested and swept. The reviews and the pull
+request's text are left.**
 
 What the branch holds (commit led by this id, pull request `#2103`, a draft):
 
@@ -70,41 +91,22 @@ the reader chooses one in an Area or uses "Reset this Workspace".
 
 Still to do before this item closes:
 
-0. Move eight more tests that pin the shipped Workspaces' old shape. The
-   full check on commit `0eecaba84` ran 12,227 tests: 8 failed and 12,216
-   passed (2026-11-11). Seven expect the shipped files as they were, and one
-   still reads the removed attribute:
-   - `tests/unit/test_layout_shipped.py`:
-     `test_the_default_gives_the_chart_the_full_height_beside_the_parameter_controls`
-     and `test_induction_shows_the_wash_in_chart` list each Workspace's kinds.
-   - `tests/unit/test_layout_sizing.py`:
-     `test_a_shipped_workspace_on_a_small_extent_names_its_too_small_areas_and_none_has_no_size`
-     expects three Areas' sizes, and the file now has five.
-   - `tests/integration/test_workspace_tabs.py`:
-     `test_a_tab_switches_the_layout_and_leaves_the_run` lists the View
-     classes shown.
-   - `tests/integration/test_dark_appearance.py`:
-     `test_a_selector_popup_draws_the_theme_rather_than_the_host_palette`
-     counts four popups and finds three. Find out which selector it no longer
-     reaches before changing the count, because the branch control's selector
-     now sits in a scroll area.
-   - `tests/integration/test_layout_safety.py`:
-     `test_every_layout_operation_leaves_the_unconditional_set_on_screen` and
-     `test_a_halted_run_keeps_its_halt_reason_on_screen` count three Areas
-     after a split and find five.
-     `test_a_branched_case_keeps_both_runs_drawn_and_named` reads
-     `view._fork_panel`.
-
-1. Triage this item: `**Why it matters.**`, `**Done when.**` and a
-   `**Generator check.**` line in this brief, then priority, effort, classes,
-   touches, `verify:` and `payoff:` with `bin/docket set`. A `verify:` that
-   fits: `grep -q 'def test_each_branch_view_keeps_its_own_point' tests/integration/test_simulation_view.py`
-   (it must be seen failing on `origin/main` first).
-2. Triage the rest of the claimed group: `PL-CBYS` (this item is its step 1;
-   its step 2 needs a mock-up at 1366 by 768 and 1920 by 1080, Induction
-   Workspace in both, shown to the owner first), `PL-4JCC`, `PL-5XVQ`,
-   `PL-QKDV` (drop `PL-PKLR`, correct one sentence in
-   `docs/interface-provenance.md`) and `PL-62PF`.
+0. Done, 2026-11-11. The eight tests that pinned the shipped Workspaces' old
+   shape now expect the new one. Two things they showed:
+   - In Default the chart's Area can no longer be closed. It sits beside a
+     column of three Areas, so no single neighbour shares its whole edge, and
+     its Close Area entry is unavailable. The same was already true of the
+     Parameters Area in Induction. The layout-safety tests close the
+     bookmarks' Area instead. A placeholder: whether Close Area should give
+     the room to a whole column is left for the interface pass.
+   - A dashboard built with no case builds no branch control, so two
+     dark-appearance tests had stopped reaching the branch point's selector.
+     Both now build the dashboard with a case, as `main` does.
+1. Done, 2026-11-11: this item is triaged.
+2. Done, 2026-11-11: the claimed group is triaged. `PL-CBYS` is now step 2,
+   the build, and opens with the mock-up for the owner. `PL-4JCC` waits for
+   it. `PL-5XVQ` holds two document edits. `PL-QKDV` is done and `PL-PKLR`
+   dropped. `PL-62PF` is ready in the workflow lane.
 3. Close out: the prose review and its trailer, two blind review passes, the
    owner's read and its trailer, the pull request's title and body through
    the copy editor, then mark `#2103` ready and arm it only when

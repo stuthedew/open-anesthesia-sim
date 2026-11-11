@@ -1,9 +1,15 @@
 ---
 id: PL-CBYS
 title: The page still scrolls at every common screen size, though PL-JG82's brief says v0.6.0 removes the page scroll: the Areas and the marks and branch section sit in one scrolling page, which measured offscreen on 2026-11-11 scrolls 414 px (Default) and 832 px (Induction) at 1366 by 768, and 102 px and 520 px at 1920 by 1080, so the Induction Workspace's wash-in chart opens below the fold; decide whether the Areas fill exactly the space between the unconditional region and the disclaimer, as a Blender window's Areas fill the window
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: feature, ux
 feature: window-is-the-frame
+touches: src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/views.py, docs/MODEL.md
 added: 2026-11-11
+payoff: every shipped Workspace fits the window on a laptop, so the Induction wash-in chart opens on screen and not below the fold
+verify: grep -q 'def test_no_shipped_workspace_scrolls_the_page' tests/integration/test_simulation_view.py
 ---
 
 **Problem.** The page still scrolls at every common screen size, though PL-JG82's brief says v0.6.0 removes the page scroll: the Areas and the marks and branch section sit in one scrolling page, which measured offscreen on 2026-11-11 scrolls 414 px (Default) and 832 px (Induction) at 1366 by 768, and 102 px and 520 px at 1920 by 1080, so the Induction Workspace's wash-in chart opens below the fold; decide whether the Areas fill exactly the space between the unconditional region and the disclaimer, as a Blender window's Areas fill the window
@@ -57,3 +63,23 @@ today's screen at 1366 by 768 and 1920 by 1080. How the Induction Workspace's
 two charts share 515 px is still open: one chart scrolls inside its Area, or
 the Workspace is recomposed. This item needs triage and a split into build
 items for steps 1 and 2 before work starts.
+
+**Triaged, 2026-11-11: this item is now step 2, the build.** Step 1 is
+`PL-9YPR`, built on pull request `#2103`. Step 3 stays with the visual pass
+(planned-milestone item 33).
+
+**Why it matters.** On a 1366 by 768 laptop the Induction Workspace's wash-in
+chart opens below the fold, and a border drag changes the page's length as
+well as the Areas' shares. A learner arranges a page, where the design they
+were promised is a window.
+
+**Done when.** The session first renders a mock-up at 1366 by 768 and 1920 by
+1080, Induction Workspace in both, and the owner has seen it. Then the Areas
+take exactly the room between the unconditional region and the disclaimer,
+the page scroll bar has no range at either size in any shipped Workspace, and
+a View that needs more height than its Area scrolls inside the Area. The
+scroll that `PL-9YPR` put inside `_CasePanelView` moves into the container.
+`docs/MODEL.md` and `PL-K285`'s recorded answer are updated to match.
+
+**Generator check.** A one-off. It reopens a ratified answer (`PL-K285` Q2)
+on a measurement, and no reader misread a fact.
