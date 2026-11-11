@@ -53,7 +53,11 @@ branch and screens the pushed commits for an email address. So a push with
 `--no-verify` is refused, naming the assignment, and the assignment leaves the
 `pre-push` hook to run (`PL-5R11`). An assignment spelled any other way, such
 as `export` on an earlier line or `env PUSH_CHECKS=skip git push`, is not read,
-and the push is checked as any other.
+and the push is checked as any other. Refusing `--no-verify` is an early
+warning: a spelling this guard does not read still skips the `pre-push` hook.
+Anthropic's proxy is then what refuses a push that deletes a branch, and
+GitHub's rulesets are what refuse a forced push
+(`tools/github_refusals_check.py`, `PL-39Y1`).
 
 **Which tree**: the push's own - the payload's `cwd`, moved by any `cd`
 before the push and by the push's `-C` options - and only where git's common

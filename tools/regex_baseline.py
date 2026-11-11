@@ -102,11 +102,6 @@ GRANDFATHERED_REGEX: dict[str, dict[tuple[str, str], int]] = {
     "tests/reference/test_mac_awake_washout_figures.py": {("_one", "findall"): 1},
     "tests/unit/test_ci_concurrency.py": {("<module>", "compile"): 4, ("_concurrency", "match"): 1},
     "tests/unit/test_config_home_check.py": {("_letters", "findall"): 1},
-    "tests/unit/test_direct_merge_guard.py": {
-        ("_matches", "fullmatch"): 1,
-        ("_matches", "search"): 1,
-        ("_matches", "split"): 1,
-    },
     "tests/unit/test_gate_status_guard.py": {
         ("test_the_tracked_makefile_runs_no_recipe_under_a_dry_run", "fullmatch"): 1,
         ("test_the_tracked_makefile_runs_no_recipe_under_a_dry_run", "match"): 1,

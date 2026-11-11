@@ -53,6 +53,9 @@ docket arm                   # whether this branch's pull request may be armed: 
 docket arm --owner-ask       # only the line the owner may be sent, exiting 0; 3 for a hold
                              # for the owner's read with no ask recorded, 2 where it
                              # cannot answer, 1 otherwise
+docket arm --merge-hold claude/x      # for the required check on GitHub: whether anything
+                             # read from the commits of that branch's copy on the remote
+                             # holds its merge, exiting 0, 1, or 2 where it cannot answer
 docket ci-scope --base origin/main   # items, apparatus or full: whether this branch
                              # changed item files alone, or apparatus files alone, for CI
 docket branch                # where this branch stands against the default one
