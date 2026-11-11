@@ -801,7 +801,7 @@ def test_token_is_read_in_one_precedence(
 
     def fake(repo: str, branch: str, token: str | None) -> tuple[set[str], list[str]]:
         asked.append(token)
-        return {"checks", "pr-title"}, ["classic branch protection"]
+        return {"checks", "merge-hold", "pr-title"}, ["classic branch protection"]
 
     monkeypatch.setattr(rcc, "required_contexts", fake)
     assert rcc.main(["--repo", "o/r", "--branch", "main"]) == 0
@@ -832,23 +832,25 @@ def test_the_repository_is_read_from_a_token_bearing_origin(
 # --- end to end, against this repository's own workflows ---------------------
 
 
-def test_this_repository_requires_exactly_checks_and_pr_title() -> None:
+def test_this_repository_requires_exactly_checks_merge_hold_and_pr_title() -> None:
     """Assert the tree's half of the live reconciliation, without a network.
 
-    The job names `checks` and `pr-title` are load-bearing outside the tree,
-    which is why each job key carries a comment saying so. Both this test and
-    CI fail if either job is renamed or a new reporting job declares no
-    exemption. This test fails earlier, in `make check`, before the push. The
-    two parts of the test suite report too, and are exempt because `checks`
-    gates them (`PL-T9X9`). The `merge-hold` job is exempt until it has run on
-    `main` once, because `main` can require it only from then on (`PL-39Y1`).
+    The job names `checks`, `merge-hold` and `pr-title` are load-bearing
+    outside the tree, which is why each job key carries a comment saying so.
+    Both this test and CI fail if one of those jobs is renamed or a new
+    reporting job declares no exemption from being required. This test fails
+    earlier, in `make check`, before the push.
+
+    The two parts of the test suite report too, and are exempt because
+    `checks` gates them (`PL-T9X9`). The `merge-hold` job lost its exemption
+    once it had run on `main` and `main` required it (`PL-KH7Y`).
     """
     jobs = rcc.reporting_jobs(ROOT / ".github" / "workflows")
     required = [job for job in jobs if job.not_required is None]
-    assert sorted(job.check_name for job in required) == ["checks", "pr-title"]
-    assert {job.workflow for job in required} == {"quality.yml", "pr-title.yml"}
+    assert sorted(job.check_name for job in required) == ["checks", "merge-hold", "pr-title"]
+    assert {job.workflow for job in required} == {"quality.yml", "merge-hold.yml", "pr-title.yml"}
     exempt = sorted(job.check_name for job in jobs if job.not_required is not None)
-    assert exempt == ["checks-part-1", "checks-part-2", "merge-hold"]
+    assert exempt == ["checks-part-1", "checks-part-2"]
 
 
 def test_off_a_pull_request_the_branch_is_docket_s(
@@ -862,7 +864,7 @@ def test_off_a_pull_request_the_branch_is_docket_s(
 
     def fake(repo: str, branch: str, token: str | None) -> tuple[set[str], list[str]]:
         asked.append(branch)
-        return {"checks", "pr-title"}, ["classic branch protection"]
+        return {"checks", "merge-hold", "pr-title"}, ["classic branch protection"]
 
     monkeypatch.setattr(rcc, "required_contexts", fake)
 
