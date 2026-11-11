@@ -3,12 +3,14 @@ id: PL-BVC5
 title: Decide by a one-control trial whether the interface pass builds its controls as a custom Qt style or as style sheets
 priority: P2
 effort: S
-status: ready
+status: done
 classes: planning
 feature: interface-pass-design-round
 touches: tests/benchmarks/style_trial.py, tests/benchmarks/style_trial_checks.py
 deferred-from: v0.7.0 - captured after the freeze; the interface pass's own work (planned-milestone item 33), not safety or science
 added: 2026-11-11
+closed: 2026-11-11
+pr: 2118
 payoff: the interface pass builds its six controls once, in the mechanism that measurement supports
 not-delegable: the trial's result rests on the owner's answers and a run on the owner's Mac, which no command can check
 ---
@@ -96,6 +98,9 @@ over Fusion that takes every colour from a declared palette role. At rest and
 when unavailable the design is the shipped run controls' button. The pointer,
 pressed and focus states are the trial's own.
 
+[The table and the figures under "Test 1" are replaced by "Rerun of test 1
+with the corrected order", below. They are kept because the owner's answer
+was given on them.]
 *Test 1, frame cost.* `uv run python tests/benchmarks/style_trial.py
 compare-frame-cost --invocations 20` ran `frame_cost.measure` at its defaults
 (300x, 60 minutes of run, 1600 by 1000, 20 frames) in a fresh process per
@@ -241,6 +246,63 @@ approved on 2026-11-10, each control is built in the style, and that
 control's style sheet is deleted as it moves. The style is installed on the
 application. `PL-8G4V` moves `TrialStyle` into `src/anesthesia_sim/app/` with
 the first control and deletes the trial's two files.
+
+**Blind review, 2026-11-11, and what it changed.** One blind review pass
+read the branch and named five points. All five were real.
+
+1. *The pixel count read freed memory.* `difference_between` copied each
+   image's buffer after the image was freed. In the web container 40 bytes
+   of 5,400 in such a copy were wrong, at the start and the end of the
+   buffer, so a difference in the first or the last pixels went uncounted.
+   Fixed, with a check. The Mac's count of 960 pixels and its largest
+   colour step of 72 came through this fault, so each may be off by a few
+   pixels a button. The difference picture reads each pixel by another
+   route and shows the same result: only the lettering differs.
+2. *The custom style's line on the Mac was never read.* The window did not
+   grow with the lines it wrote, so the last line was cut off. Fixed, with
+   a check. Test 2's result for the custom style therefore rests on the
+   difference picture and on the owner's report of the dashboard, and the
+   sentence "Everything the custom style draws is pixel-identical under
+   both" in "Answer 1" claims more than was read. What the picture shows is
+   that the custom style's rows differ only in the letters of "Start", and
+   that the letters keep their colour under both appearances and are
+   heavier under Dark. A label that took its colour from the host would
+   change colour. The simulated dark host gave the same pixels in all five
+   states. The session kept its reading that test 2 passed.
+3. *The frame-cost arms ran in the same order in every rotation*, so an
+   arm's place in the rotation was added to its difference from the
+   shipped dashboard. Fixed: each rotation now starts one arm later
+   (`rotation_order`), and the comparison prints each arm's paired
+   difference from the first arm, which no code in the tree did before.
+   The rerun is below, and it replaces the table under "Test 1".
+4. *The trial's check box indicator is a placeholder too.* `PL-8G4V` now
+   says so, and says to leave the indicator to Fusion until it is designed.
+5. *No code in the tree made the pixel comparison with the shipped
+   dashboard.* A scratch script made it. `PL-8G4V` now says to write it as
+   a test with the first control.
+
+**Rerun of test 1 with the corrected order, 2026-11-11.** The same command,
+all five arms, 20 rotations, in the web container on PySide6 6.11.2. The
+shipped dashboard took 55.0 ms a frame: 27.7 ms of simulation and 27.0 ms of
+interface. Each figure is the arm's mean difference from the shipped
+dashboard, paired by rotation, plus or minus two standard errors.
+
+| Arm | Interface, ms per frame | Paint stage alone, ms | Simulation stage, ms |
+| --- | --- | --- | --- |
+| `TrialStyle` is the application's style, every style sheet kept | +0.37 ± 0.78 | +0.11 ± 0.26 | +0.25 ± 0.62 |
+| The same, and `TrialStyle` draws the three run controls | +0.30 ± 0.78 | +0.14 ± 0.25 | +0.04 ± 0.70 |
+| The application keeps Fusion, and `TrialStyle` is set on the three run controls alone | -0.55 ± 0.86 | -0.18 ± 0.31 | -0.43 ± 0.83 |
+| `EveryCallThroughPythonStyle` is the application's style | +1.02 ± 0.69 | +0.46 ± 0.25 | -0.80 ± 0.59 |
+
+With three functions reimplemented, the rerun cannot tell the custom
+style's cost from zero. With eight, the interface takes about 1 ms more a
+frame, which is 0.5% of the 200 ms budget. The simulation stage, which a
+style cannot change, still read 0.80 ms faster under the last arm, so this
+harness does not resolve a difference smaller than about 1 ms. The first
+run's "0.4 to 0.7 ms with three functions and 1.6 ms with eight" was
+therefore stated more finely than the harness supports. The owner's answer
+that test 1 counts as passed was given on those figures. The rerun's are
+smaller, so the answer is unchanged.
 
 [Answered 2026-11-11: see "Answer 1", "Answer 2" and "Result" above.]
 **Recommended.** Count test 1 as passed, and install the style on the

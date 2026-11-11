@@ -24,9 +24,10 @@ measurements).
 1. Install the style on the application. Qt's `QWidget::setStyle` page says
    that real applications should avoid a style set on single widgets.
 2. Every function the style reimplements in Python is entered for every
-   call from every widget. Three functions cost 0.4 to 0.7 ms a frame and
-   eight cost 1.6 ms, of a 54 ms frame with a 200 ms budget. Reimplement
-   only the functions a control needs, and run
+   call from every widget. Three functions cost too little to measure, and
+   eight cost about 1 ms a frame, of a 55 ms frame with a 200 ms budget.
+   The trial's comparison does not resolve a difference smaller than about
+   1 ms. Reimplement only the functions a control needs, and run
    `tests/benchmarks/frame_cost.py` after each control moves.
 3. A control keeps its style sheet until it moves. With the style installed
    and every sheet kept, each widget that a sheet draws was pixel-identical
