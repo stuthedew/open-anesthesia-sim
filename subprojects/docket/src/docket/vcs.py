@@ -1541,14 +1541,30 @@ def _raw_writes(output: str) -> Iterator[tuple[str, str]]:
     `--format=` there is no format line, and the records run back to back with
     nothing between two commits (measured on git 2.43.0, 2026-09-27).
     """
+    for blob, path in _raw_records(output):
+        if set(blob) != {"0"}:
+            yield blob, path
+
+
+def _raw_records(output: str) -> Iterator[tuple[str, str]]:
+    """Each change a `--raw -z` listing names: the blob it wrote, and the path it went to.
+
+    The one parse behind `_raw_writes` and `_raw_deletions`. A deletion's blob
+    is the null oid.
+    """
     fields = iter(output.split("\0"))
     for head in fields:
         words = head.split()
         if len(words) != 5 or not words[0].startswith(":"):
             continue
-        path = next(fields, "")
-        if set(words[3]) != {"0"}:
-            yield words[3], path
+        yield words[3], next(fields, "")
+
+
+def _raw_deletions(output: str) -> Iterator[str]:
+    """Each path a `--raw -z` listing says was deleted."""
+    for blob, path in _raw_records(output):
+        if set(blob) == {"0"}:
+            yield path
 
 
 def _written_since(fork_point: str, base: str, root: Path, run: Runner) -> frozenset[str]:
@@ -1595,7 +1611,26 @@ def _written_since(fork_point: str, base: str, root: Path, run: Runner) -> froze
     of the whole history takes 0.211 s, which bounds a fork of any age. None of
     the 20 changed verdict against the whole-history set it replaced.
     """
-    listing = run(
+    return frozenset(blob for blob, _ in _raw_writes(_changes_since(fork_point, base, root, run)))
+
+
+def _deleted_since(fork_point: str, base: str, root: Path, run: Runner) -> frozenset[str]:
+    """Every path the default branch's commits deleted after `fork_point`.
+
+    The walk `_written_since` makes, read for its deletions (`PL-HXYJ`). A
+    deletion writes no blob, so the evidence that the base took one is the
+    path. Like a write, a deletion since the fork does not decay: a file
+    written at that path later leaves the deletion in the walk.
+    """
+    return frozenset(_raw_deletions(_changes_since(fork_point, base, root, run)))
+
+
+def _changes_since(fork_point: str, base: str, root: Path, run: Runner) -> str:
+    """git's raw listing of what each of the base's commits after `fork_point` changed.
+
+    `_written_since` says why the walk is asked this way.
+    """
+    return run(
         changed_path_args(
             "log",
             "--raw",
@@ -1608,7 +1643,6 @@ def _written_since(fork_point: str, base: str, root: Path, run: Runner) -> froze
         ),
         root,
     )
-    return frozenset(blob for blob, _ in _raw_writes(listing))
 
 
 def _landing_split(
@@ -1643,7 +1677,7 @@ def _landing_split(
     its branch (`PL-RLTK`).
 
     **Both sides are returned, because two readers need opposite halves.**
-    `_work_already_on_base` needs to know the outstanding side is empty;
+    `_LandingSplit.whole` needs to know the outstanding side is empty;
     `orphaned` needs to know neither side is, which is what a branch looks like
     when its pull request took part of its work and something pushed the rest
     afterwards. Computing them separately would be two spellings of one
@@ -1670,18 +1704,39 @@ def _landing_split(
     return tuple(landed), tuple(outstanding)
 
 
-def _work_already_on_base(split: tuple[tuple[str, ...], tuple[str, ...]]) -> bool:
-    """Whether everything a ref adds is content the split counts as the base's.
+@dataclass(frozen=True)
+class _LandingSplit:
+    """A ref's net change since its fork, split by whether the base took each path.
 
-    `_landing_split` carries the reasoning; this is the all-or-nothing reading
-    of it, kept as a named rule rather than spelled at the one call site so
-    that `orphaned`'s reading of the same split sits beside it and the two can
-    be compared. A ref introducing nothing has an empty landed side and reads
-    as not landed, which is what keeps a branch with no commits yet in the
-    report.
+    **The whole answer to "did the base take this ref's change", in one
+    value** (`PL-2CL5`). A change gives a path content or deletes it, and the
+    two are tested differently. Content is tested by the blobs the base wrote
+    since the fork (`_landing_split`). A deletion is tested by the path
+    (`_Landings._deletions`). While the two tests were separate methods, each
+    reader combined them by hand, and a reader that asked only the first read
+    a deletion as no change: `orphaned` (`PL-TFF9`), `_unlanded_refs`
+    (`PL-N80K`) and `_Landings.taken_whole` (`PL-80SM`) in turn. `_Landings`
+    now returns both halves together, so a reader cannot ask for one alone.
     """
-    landed, outstanding = split
-    return bool(landed) and not outstanding
+
+    #: Paths the ref gave content that the base wrote since the fork.
+    landed: tuple[str, ...] = ()
+    #: Paths the ref gave content that the base has not written since.
+    outstanding: tuple[str, ...] = ()
+    #: Paths the ref deleted that the base deleted too.
+    dropped: tuple[str, ...] = ()
+    #: Paths the ref deleted that the base has kept.
+    kept: tuple[str, ...] = ()
+
+    @property
+    def whole(self) -> bool:
+        """Whether the base took everything the ref changed.
+
+        `_landing_split` carries the reasoning. A ref that changed nothing
+        reads as not taken, which keeps a branch with no commits yet in the
+        report.
+        """
+        return bool(self.landed or self.dropped) and not (self.outstanding or self.kept)
 
 
 class _Landings:
@@ -1720,6 +1775,8 @@ class _Landings:
         self.run = run
         self._forks: dict[str, str] = {}
         self._written: dict[str, frozenset[str]] = {}
+        self._deleted: dict[str, frozenset[str]] = {}
+        self._tip: frozenset[str] | None = None
 
     def fork(self, ref: str) -> str:
         """The commit `ref` left the base from, or `""` where git could not say."""
@@ -1727,34 +1784,42 @@ class _Landings:
             self._forks[ref] = self.run(["merge-base", self.base, ref], self.root).strip()
         return self._forks[ref]
 
-    def split(self, ref: str) -> tuple[tuple[str, ...], tuple[str, ...]] | None:
-        """`ref`'s net change since its fork, split by whether the base wrote it since."""
+    def landing(self, ref: str) -> _LandingSplit | None:
+        """`ref`'s net change since its fork, split by whether the base took each path.
+
+        `None` where git would not name the fork or answer the diff.
+        """
         fork = self.fork(ref)
         if not fork:
             return None
         if fork not in self._written:
             self._written[fork] = _written_since(fork, self.base, self.root, self.run)
-        return _landing_split(ref, fork, self._written[fork], self.root, self.run)
+        split = _landing_split(ref, fork, self._written[fork], self.root, self.run)
+        if split is None:
+            return None
+        dropped, kept = self._deletions(ref, fork)
+        return _LandingSplit(landed=split[0], outstanding=split[1], dropped=dropped, kept=kept)
 
     def taken_whole(self, ref: str) -> bool:
-        """Whether everything `ref` changed since its fork is content the base wrote since."""
-        split = self.split(ref)
-        return split is not None and _work_already_on_base(split)
+        """Whether the base took everything `ref` changed since its fork."""
+        found = self.landing(ref)
+        return found is not None and found.whole
 
-    def deletions(self, ref: str) -> tuple[tuple[str, ...], tuple[str, ...]]:
-        """The paths `ref` deleted since its fork, split by whether the base's tip lacks them.
+    def _deletions(self, ref: str, fork: str) -> tuple[tuple[str, ...], tuple[str, ...]]:
+        """The paths `ref` deleted since `fork`, split by whether the base deleted them too.
 
-        `split` sees only paths a change gives content, so a deleted path is in
-        neither of its halves (`PL-TFF9`). A deletion has no blob to look for
-        in what the base wrote, so the test is the base's tip instead. A path
-        the fork held and the tip lacks is one the base deleted since, which
-        is the deletion landed. A path the tip still holds is the deletion
-        outstanding. Where git would not answer, the ref deleted nothing as
-        far as this can say, which is what every reader assumed before.
+        `_landing_split` sees only paths a change gives content, so a deleted
+        path is in neither of its halves (`PL-TFF9`). A deletion has no blob to
+        look for in what the base wrote, so the test is the path. The base took
+        the deletion where its tip no longer holds the path, or where one of
+        its commits since the fork deleted it. The second test stops the answer
+        decaying. Read from the tip alone, a merged deletion read as
+        outstanding again once a later commit wrote a file at that path
+        (`PL-HXYJ`). A path the tip holds that no commit since the fork deleted
+        is the deletion outstanding. Where git would not answer, the ref
+        deleted nothing as far as this can say, which is what every reader
+        assumed before.
         """
-        fork = self.fork(ref)
-        if not fork:
-            return (), ()
         gone = listed_paths(
             self.run(
                 changed_path_args("diff", "--name-only", "--diff-filter=D", fork, ref, "--"),
@@ -1763,13 +1828,21 @@ class _Landings:
         )
         if not gone:
             return (), ()
-        tree = self.run(["ls-tree", "-r", "-z", "--name-only", self.base], self.root)
-        if not answered(tree):
-            return (), ()
-        held = frozenset(listed_paths(tree))
+        if self._tip is None:
+            tree = self.run(["ls-tree", "-r", "-z", "--name-only", self.base], self.root)
+            if not answered(tree):
+                return (), ()
+            self._tip = frozenset(listed_paths(tree))
+        dropped = {path for path in gone if path not in self._tip}
+        if len(dropped) < len(gone):
+            # Asked only for a path the tip holds, which is rare, so the
+            # second walk of the base is paid only then.
+            if fork not in self._deleted:
+                self._deleted[fork] = _deleted_since(fork, self.base, self.root, self.run)
+            dropped |= self._deleted[fork].intersection(gone)
         return (
-            tuple(path for path in gone if path not in held),
-            tuple(path for path in gone if path in held),
+            tuple(path for path in gone if path in dropped),
+            tuple(path for path in gone if path not in dropped),
         )
 
 
@@ -2229,11 +2302,11 @@ class _Refs:
     #: after it is one no squash can have taken.
     taken: list[str]
     unreadable: set[str]
-    #: Per unlanded ref, the paths it introduces that the base already holds
-    #: and the paths it does not. Kept because deciding a ref is unlanded
-    #: computes it, and `orphaned` would otherwise ask git the same question a
-    #: second time to find out *which* half was which.
-    landing: dict[str, tuple[tuple[str, ...], tuple[str, ...]]]
+    #: Per unlanded ref, its change since the fork, split by whether the base
+    #: took each path. Kept because deciding a ref is unlanded computes it,
+    #: and `orphaned` would otherwise ask git the same question a second time
+    #: to find out *which* half was which.
+    landing: dict[str, _LandingSplit]
     #: The reader every split above came from, its forks and base walks kept.
     #: `claims.holdings` puts the same questions to it - of each commit of a
     #: branch's landed prefix, and of the tip a disposition's fork is read
@@ -2292,20 +2365,20 @@ def _unlanded_refs(
     unlanded: list[str] = []
     taken: list[str] = []
     unreadable: set[str] = set()
-    landing: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {}
+    landing: dict[str, _LandingSplit] = {}
     landings = _Landings(base, root, run)
     for name in candidates:
         if not landings.fork(name):
             unreadable.add(name)
             continue
-        split = landings.split(name)
-        # A deletion gives no path content, so it is in neither half of the
-        # split. Without the second test, a commit made after the merge that
-        # only deletes a file left the split all landed, and the branch read
-        # as taken whole (`PL-N80K`).
-        if split is None or not _work_already_on_base(split) or landings.deletions(name)[1]:
+        found = landings.landing(name)
+        # A deletion gives no path content. Read from the content split alone,
+        # a commit made after the merge that only deletes a file left the
+        # branch reading as taken whole (`PL-N80K`). `whole` counts both kinds
+        # of change.
+        if found is None or not found.whole:
             unlanded.append(name)
-            landing[name] = split or ((), ())
+            landing[name] = found or _LandingSplit()
         else:
             taken.append(name)
     return _Refs(
@@ -4458,7 +4531,7 @@ def cuts_in_flight(
 
     **`on_base` is what makes the answer usable, and leaving it out breaks
     this.** A squash merge keeps none of the branch's commits, so a merged
-    release branch stays "unlanded" by `_work_already_on_base`'s test whenever
+    release branch stays "unlanded" by `_LandingSplit.whole`'s test whenever
     it carries anything else the base did not take - measured 2026-09-04, the
     branch whose v0.3.9 release had merged twenty minutes earlier was still
     listed. A three-dot diff then reports its notes file forever, and a guard
@@ -6138,7 +6211,7 @@ def stranded(
     known = {identifier.upper() for identifier in known_ids}
     landings = _Landings(base, root, run)
     changes = _ItemChanges(base, root, items_dir, run)
-    splits: dict[str, tuple[tuple[str, ...], tuple[str, ...]] | None] = {}
+    splits: dict[str, _LandingSplit | None] = {}
     here = _item_blobs("HEAD", root, items_dir, run)
     elsewhere: dict[str, tuple[str, list[str]]] = {}
     edited: dict[str, tuple[str, str, str, list[str]]] = {}
@@ -6164,10 +6237,10 @@ def stranded(
             if blob in (base_blob, mine):
                 continue
             if ref not in splits:
-                splits[ref] = landings.split(ref)
+                splits[ref] = landings.landing(ref)
             split = splits[ref]
             if split is not None:
-                landed, outstanding = split
+                landed, outstanding = split.landed, split.outstanding
                 # In the landed half, the base wrote this copy since the ref's
                 # fork and has been past it; in neither, the ref never wrote it
                 # since its own fork, so it is the fork's copy and the base
@@ -6470,7 +6543,7 @@ def _commits_by_landing(
     goes unreported.
 
     **Nor is a commit that only deletes.** `deleted` names the landed paths
-    that are deletions the base's tip shows (`_Landings.deletions`). Another
+    that are deletions the base's tip shows (`_LandingSplit.dropped`). Another
     pull request deleting the same file converges with a branch that deleted
     it, and a one-path deletion converges more easily than a one-path write,
     so a commit whose every path is one of those proves no merge (`PL-TFF9`).
@@ -6505,7 +6578,7 @@ def _commits_by_landing(
     """
     # Not `changed_path_args`: each commit's paths are matched against
     # `_landing_split`'s, which holds only the paths a change puts content at,
-    # and the deletions `_Landings.deletions` adds, so a rename git detects is
+    # and the deletions `_LandingSplit.dropped` adds, so a rename git detects is
     # read by its new name alone (`PL-KR69`). One it scores below 50% lists as
     # a deletion and an addition, and both are classified (`PL-TFF9`).
     output = run(["log", "-z", "--format=%x1e%H%x1f%s", "--name-only", f"^{base}", ref, "--"], root)
@@ -6594,11 +6667,11 @@ def landed_whole(
         an invitation to restart.
     """
     landings = _Landings(base, root, run)
-    split = landings.split(ref)
-    if split is None:
+    found = landings.landing(ref)
+    if found is None:
         return False
-    dropped = landings.deletions(ref)[0]
-    landed = (*split[0], *dropped)
+    dropped = found.dropped
+    landed = (*found.landed, *dropped)
     if not landed:
         return False
     # No outstanding set: the whole-commit verdict reads the landed half alone,
@@ -6703,11 +6776,12 @@ def orphaned(
     branches: list[OrphanedBranch] = []
     rewritten: list[str] = []
     for name in refs.unlanded:
-        landed, outstanding = refs.landing.get(name, ((), ()))
-        # A deleted path is in neither half of the split, so a commit deleting
-        # one would be classified as neither taken nor left behind (`PL-TFF9`).
-        dropped, kept = refs.landings.deletions(name)
-        landed = (*landed, *dropped)
+        found = refs.landing.get(name, _LandingSplit())
+        # A deleted path is in neither half of the content split, so a commit
+        # deleting one would be classified as neither taken nor left behind
+        # (`PL-TFF9`).
+        dropped, kept, outstanding = found.dropped, found.kept, found.outstanding
+        landed = (*found.landed, *dropped)
         if not (landed and (outstanding or kept)):
             continue
         # **The outstanding side is narrowed to what the base's tip is missing
