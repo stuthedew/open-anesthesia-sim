@@ -344,6 +344,9 @@ _ALVEOLAR_METRIC_QUALIFIER = "end-tidal-equivalent"
 #: counts unless a small letter follows, so "Et1.8", "EtSevo" and "EtAA" count
 #: and "Etc" does not. A small "et" counts only when a capital or a digit
 #: follows, as in "etSev", so that "et" inside a word such as "Reset" is not one.
+# regex: a search through free interface text for a word and its capitalised
+# abbreviations, where whether a letter follows decides the match. No parser
+# reads this text, and a string method cannot test the following letter.
 _UNHEDGED_END_TIDAL = re.compile(
     r"(?i:end[\s-]?tidal)(?!-equivalent)|\bF?ET(?![A-Z])|\bEt(?![a-z])|\bet(?=[A-Z0-9])"
 )
@@ -354,7 +357,7 @@ _UNHEDGED_END_TIDAL = re.compile(
 #: NegEx ends it at the end of the sentence (`PL-86VL`). "Modelled, not
 #: measured, predicted wake" is therefore not hedged: the "not" belongs to
 #: "measured".
-_NEGATION = re.compile(r"\b(?:not|never|no|cannot)\b")
+_NEGATIONS = frozenset({"not", "never", "no", "cannot"})
 
 #: How many words before a wake-up phrase a negation may stand and still
 #: govern it. "does not predict a time to wake" puts "not" three words before
@@ -362,8 +365,8 @@ _NEGATION = re.compile(r"\b(?:not|never|no|cannot)\b")
 _NEGATION_REACH_WORDS = 4
 
 #: Where a clause ends: a sentence's end, a semicolon, a colon, a comma, a dash
-#: or a new line.
-_CLAUSE_END = re.compile(r"[.;:!?,\n\u2014\u2013]|\s-\s")
+#: or a new line. Each is turned into a new line, and the text is split there.
+_CLAUSE_ENDS_TO_NEW_LINE = str.maketrans(dict.fromkeys(".;:!?,\u2014\u2013", "\n"))
 
 #: Phrases that would state a time to wake up as a prediction for this patient.
 _WAKE_PREDICTIONS = (
@@ -383,12 +386,16 @@ def _unhedged_wake_predictions(text: str) -> list[str]:
 
     found: list[str] = []
 
-    for clause in _CLAUSE_END.split(text.lower()):
+    clauses = text.lower().replace(" - ", "\n").translate(_CLAUSE_ENDS_TO_NEW_LINE).split("\n")
+
+    for clause in clauses:
         for phrase in _WAKE_PREDICTIONS:
-            for match in re.finditer(re.escape(phrase), clause):
-                words_before = " ".join(clause[: match.start()].split()[-_NEGATION_REACH_WORDS:])
-                if _NEGATION.search(words_before) is None:
+            start = clause.find(phrase)
+            while start != -1:
+                words_before = clause[:start].split()[-_NEGATION_REACH_WORDS:]
+                if _NEGATIONS.isdisjoint(word.strip("'\"()") for word in words_before):
                     found.append(phrase)
+                start = clause.find(phrase, start + 1)
 
     return found
 

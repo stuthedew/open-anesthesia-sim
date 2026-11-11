@@ -37,7 +37,6 @@ commit. It is replaced by `{version}` before its digits are masked.
 
 import json
 import os
-import re
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -57,7 +56,7 @@ from anesthesia_sim.layout.workspace import Origin, Workspace, WorkspaceName, Wo
 APPROVED_FILE = Path(__file__).with_name("approved_interface_strings.json")
 APPROVE_VARIABLE = "APPROVE_INTERFACE_WORDING"
 VERSION_PLACEHOLDER = "{version}"
-_DIGIT = re.compile(r"[0-9]")
+_DIGITS_TO_HASH = str.maketrans(dict.fromkeys("0123456789", "#"))
 
 #: The points at which the strings are recorded, each an agent and a simulated
 #: time. Sevoflurane, the default agent, is recorded before Start, during
@@ -109,7 +108,7 @@ def application() -> Iterator[QApplication]:
 def _masked(text: str) -> str:
     """`text` with the version replaced and each digit replaced by `#`."""
 
-    return _DIGIT.sub("#", text.replace(APP_BUILD_VERSION, VERSION_PLACEHOLDER))
+    return text.replace(APP_BUILD_VERSION, VERSION_PLACEHOLDER).translate(_DIGITS_TO_HASH)
 
 
 def _strings_at(application: QApplication, agent_id: str, elapsed_s: float | None) -> list[str]:

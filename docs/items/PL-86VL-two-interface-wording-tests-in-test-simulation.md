@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: safety, test, defect
 feature: presentation-safety
-touches: tests/integration/test_simulation_view.py, tests/integration/test_interface_wording.py, tests/integration/approved_interface_strings.json, docs/ARCHITECTURE.md
+touches: tests/integration/test_simulation_view.py, tests/integration/test_interface_wording.py, tests/integration/approved_interface_strings.json, docs/ARCHITECTURE.md, tools/regex_baseline.py
 deferred-from: v0.7.0 - not live: checked 2026-11-07 (PL-8C8W): no string the view shows uses an end-tidal abbreviation, and the alveolar readout reads "end-tidal-equivalent"; none of the eight phrases the emergence-time check guards appears in a string the view shows, only in the docstring at app/controller.py:426; so no learner can see a wrong value now
 added: 2026-11-03
 closed: 2026-11-11
