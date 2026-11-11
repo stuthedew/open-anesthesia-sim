@@ -76,3 +76,53 @@ resolves, the checks that read `docs/MODEL.md` read the new file, and
 the repository named no home but `docs/MODEL.md` for a test's description,
 an interface requirement or a value's source history, so each change added
 them there. No new head.
+
+**Built 2026-11-11.** The interface document is `docs/INTERFACE.md`, named
+like `docs/MODEL.md` and `docs/ARCHITECTURE.md`.
+
+*The move.* `python3 tools/model_rewrite.py move --to docs/INTERFACE.md` cut
+lines 3814 to 9651 of `docs/MODEL.md`, the seven sections, and appended them
+to the new file under a title and one opening paragraph. `docs/MODEL.md`
+§ "Status" gained one paragraph that names the new document. The moved text
+differs from the original in two ways only, both made by the script. In 72
+places a section mark that names a section still in `docs/MODEL.md` now has
+`` `docs/MODEL.md` `` before it, and in 4 of those the word "above" or "below"
+after it is gone, because the documentation check reads those words as "in
+this file". The text left in `docs/MODEL.md` gained `` `docs/INTERFACE.md` ``
+before 39 marks in the same way. `python3 tools/model_rewrite.py lost` prints
+no equation, declaration, code span, citation or number as held fewer times,
+and prints those two paths as the only additions.
+
+*The citations.* The same command re-pointed about 380 citations in about 110 files: the
+code, the tests, the standing documents and the open briefs. It reads a
+mention of `docs/MODEL.md` and the quotation after it, and re-points the
+mention when the quotation names a heading that only the new document has, or
+words that only the new document holds. Nine citations that the script could
+not read were re-pointed by hand: messages in `core/supported_ranges.py`,
+`core/circuit.py`, `app/formatting.py` and `app/dashboard_frame.py` whose
+section name is split across two string literals or filled in from a variable.
+The script took the quotation after a path in a `verify:` command for that
+path's own, which is wrong for `grep 'text' path`. So each open item's
+`verify:` was then pointed at the document that holds its text, and the six
+items whose titles name a moved section were renamed to the file names their
+new titles give.
+
+*What reads the new file.* `docket.arming.SPECIFICATION_DOCS` lists the
+documents of the specification, and `tools/product_paths.py` passes it on.
+`tools/doc_check.py` (the stored-value markers and the two bound families
+that moved), `tools/model_rewrite.py` and `tools/model_doc_review.py` read it.
+`PL-6PPZ` and `PL-FWR6` each add their document there. Four lists restate a
+path and stay separate, because `tools/config_home_check.py` compares each
+with its home and names every copy when one differs: `protected_paths`,
+`product_paths` and the `simulator` area in `docket.toml`, and
+`SECOND_PASS_PATHS` in `docket.arming`. `CLAUDE.md`, `docs/worker.md`, the
+reader table in `.claude/rules/plain-writing.md` and the rules, skills and
+agents that named `docs/MODEL.md` as the specification name both files.
+
+*What was left.* A mention of `docs/MODEL.md` that names no section was not
+re-pointed, because no script can tell which document it means. `PL-10BC`
+holds that. The copy editor read only the three passages this item wrote: the
+new document's opening paragraph, the new paragraph in `docs/MODEL.md` and
+the two entries in `README.md`'s list of documents. It read none of the moved
+text, as this brief requires, and none of the passages where only a path
+changed.
