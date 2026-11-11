@@ -6,7 +6,7 @@ effort: L
 status: ready
 classes: safety, refactor
 feature: every-view-in-run-state-tests
-touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/views.py, src/anesthesia_sim/app/view_contract.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/run_surfaces.py, src/anesthesia_sim/app/run_presentation.py, src/anesthesia_sim/app/controller.py, tests/integration, tests/unit, tools/contrast_check.py, docs/ARCHITECTURE.md
+touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/views.py, src/anesthesia_sim/app/view_contract.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/run_surfaces.py, src/anesthesia_sim/app/run_presentation.py, src/anesthesia_sim/app/controller.py, tests/integration, tests/unit, tools/contrast_check.py, docs/ARCHITECTURE.md, pyproject.toml, docs/mutation-testing.md, .claude/skills/docket/modes/close-out.md
 deferred-from: v0.7.0 - a new problem, not present at the freeze (817a4d88, 2026-10-25): its three members were filed on 2026-11-10; not live: checked 2026-11-10, the audit found no wrong value on screen behind any member, and the gap is in the tests
 added: 2026-11-11
 payoff: a value from an earlier run, or from the other compared run, has no widget to stay in, because every View and panel is drawn whole from one value on every path
@@ -126,6 +126,8 @@ Each replay listed below fails against the code before its fix. `PL-B8DL`, `PL-0
 4. After it merges, restart the branch on `origin/main`, claim the item again and build the second pull request from "Found for the second pull request" above.
 
 `PL-VZ57`'s lead, the price form after an agent change that no frame draws, is still not checked.
+
+**Added to the first pull request on 2026-11-11.** `app/run_presentation.py` is in `[tool.mutmut] only_mutate` in `pyproject.toml`. It computes values the interface displays and loads no toolkit, which is that list's own rule, and the logic it holds was in `app/run_view.py`, which mutmut does not mutate. `docs/mutation-testing.md` and close-out step 7 now count eight display modules.
 
 **Generator check.** This item is the head for the three open members of `every-view-in-run-state-tests`, and states the cause beneath the four closed heads it names.
 

@@ -22,7 +22,7 @@ test file that the branch changes, the check runs the mutants of the display
 modules twice: once against the base version of the tests that the branch
 changed, and once against the branch's version of the changed files. A mutant
 that the base version catches and the branch's version misses refuses the
-branch. The display modules are the seven files under `app/` that
+branch. The display modules are the eight files under `app/` that
 `[tool.mutmut] only_mutate` names.
 
 The same two runs also take the mutants of each `core/` module that the
