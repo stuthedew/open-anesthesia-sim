@@ -32,8 +32,10 @@ grows to hold them, and the marks and branch section (`PL-9YPR`) adds its
 height under them. A Workspace is then a page a learner scrolls, and a border
 drag changes the page's length as well as the Areas' shares.
 
-**Recommendation (session, 2026-11-11, not yet put to the owner as a
-decision).** Make the window the frame, in three steps that each stand alone:
+**Decided: make the window the frame** (project owner, 2026-11-11, ratified,
+over keeping the page that grows and scrolls, which `PL-K285` Q2 built). The
+owner agreed to the session's recommendation, in three steps that each stand
+alone:
 
 1. Make the marks panel and the branch control Views (`PL-9YPR`), so nothing
    but Areas sits between the region and the disclaimer.
@@ -48,3 +50,10 @@ What it costs: step 2 changes `PL-K285` Q2's ratified answer and what a
 learner sees on a laptop, so it is the owner's decision. The Induction
 Workspace's two stacked charts cannot both hold their present minimum in
 515 px, so one of them scrolls inside its Area or the Workspace is recomposed.
+
+**What the decision leaves to the building session.** No mock-up was shown
+before the owner agreed, so the first build step renders the result beside
+today's screen at 1366 by 768 and 1920 by 1080. How the Induction Workspace's
+two charts share 515 px is still open: one chart scrolls inside its Area, or
+the Workspace is recomposed. This item needs triage and a split into build
+items for steps 1 and 2 before work starts.
