@@ -136,6 +136,108 @@ here before building further. (b) The module that states the rounding, and
 each allowance moved onto it. (c) The weekly 24 h run at the 1 ms step.
 `PL-LHCL`'s walking test lands first where the two touch the same signature.
 
+**Part (a) built, 2026-11-11: `tests/unit/test_generated_runs.py`.** Each
+plan is a shipped agent, or volumes and coefficients drawn from the numerical
+envelope, with the flows and the dial drawn across their supported ranges. A
+plan has up to four actions, and each action changes at most one setting and
+takes up to 2 000 steps. After every action the test checks seven things: the
+range of every fraction, the agent balance, each running total against an
+exact sum, the state against the 50-digit solution, the stepped state against
+the canonical one, a sampled window's last column, and the wash-in reading.
+It then replays the plan and requires the same bits. Each run of the suite
+draws 100 plans, always the same ones, in about 11 s.
+
+**Replays, 2026-11-11.** Each row reverts one fix in the working tree, runs
+`uv run pytest tests/unit/test_generated_runs.py -q -x`, and restores the
+tree. "Drawn plans needed" was measured before the three listed plans below
+were added. Every row was run again after the blind review's fixes, at 100
+drawn plans and then at 1 000, with the same result. The failure messages are
+from that second run.
+
+| Item | What was reverted | Fails in the suite's run | Drawn plans needed | Failure |
+| --- | --- | --- | --- | --- |
+| `PL-XST1` | `record_external_agent_transfer` adds each transfer with a plain `+`. | Yes | 100 | "a running total against the exact sum of its step amounts: a difference of 3.25e-19 is 1.08 times its rounding allowance", after 51 steps. |
+| `PL-D88N` | No code: the fix kept the tolerance and documented the halt. The test's acceptance of that halt was removed. | Yes, on a listed plan | 1 000 | `AgentSimulationValidationError` with a relative error of 1.04e-9, after 24 steps. |
+| `PL-9B1M` | `MAXIMUM_INPUT_FRACTION = 1.0`. | Yes, on a listed plan | 300 | "alveolar partial_pressure_fraction of 1.000000000000001 is outside 0 to 1", after 1 step. |
+| `PL-81Q2` | No code: the item changed none. The squarings were removed from the test's allowances for the canonical state and the window. | No | 1 000 | "the stepped state against the canonical state: a difference of 2.37e-12 is 1.09 times its rounding allowance", after 103 steps. The 59-column chain that the item measured was not reached. |
+| `PL-N559` | `WASH_IN_ROUNDING_ALLOWANCE = 0.0`. | Yes, on a listed plan | 1 000 | "a run that only washes in is described as elimination", after 1 step with every flow at zero. |
+| `PL-9SL5` | `RunDefinition.evaluate` forms every column time as `start_s + column * spacing_s`. | Yes | 100 | "the last column is at 238.2 and not at the 238.20000000000002 asked for". |
+| `PL-QVBR` | The reverse of #1917's changes to `app/bookmarks.py` and `app/controller.py`. | No | Passed at 1 000 | None. The test sets no MAC target and opens no branch. |
+
+Six of the seven fail the test with their fix reverted. The prediction was
+five. `PL-XST1` was predicted to need the weekly run. It fails within 51 steps,
+because the test holds each running total to twice Kahan's bound of the exact
+sum, and a plain sum leaves that bound at once. `PL-QVBR` passes, as predicted.
+
+**What the replays show about the test's reach.** The 100 drawn plans alone
+catch two of the seven, `PL-XST1` and `PL-9SL5`. The conditions of `PL-N559`,
+`PL-9B1M` and `PL-D88N` are listed in the test as three fixed plans, so the
+suite's run covers them. A new defect of their kind would be found by the
+drawn plans only after 300 to 1 000 draws, which take 25 to 80 s. So the
+weekly run in (c) needs several thousand draws as well as the 24 h run.
+
+**Measured while building: rounding grows in proportion to the steps at the
+envelope's slow corners.** Design part 1 refuses a bound summed over every
+step, on `PL-D88N`'s measurement of shipped agents. That does not hold across
+the envelope. A state held at equilibrium in a 10 000 L tissue drifted by
+1.6e-12 over 4 308 steps. Over 600 drawn plans the largest drift was 0.79 of
+the summed bound with its margin of three, and 38 times a bound that grows as
+the square root of the steps. The test therefore allows the summed bound for
+a stepped state.
+
+**Decided 2026-11-11: for (b), the module states the figure for n steps as
+the summed bound, and the agent balance keeps its fixed 1e-9** (project owner,
+2026-11-11, ratified, over design part 1's refusal of a bound summed over
+every step). The owner's words were "If this would be best practice then
+agree", so the sources were read before the decision was recorded. They
+support it. The worst-case bound for n operations grows in proportion to n. A
+bound that grows as the square root of n holds only where the rounding errors
+are independent and average zero. Both papers say that this fails when the
+same operation repeats or the errors share a sign, and one step repeated n
+times is that case.
+
+- Higham NJ, Mary T. A new approach to probabilistic rounding error analysis.
+  SIAM J Sci Comput 2019;41(5):A2815-A2835, doi:10.1137/18M1226312. Read as
+  MIMS EPrint 2018.33, https://eprints.maths.manchester.ac.uk/2731/1/paper.pdf.
+  Section 5: "under the assumption that rounding errors are independent and
+  of zero mean", the bounds are of the order of the square root of n times u
+  "instead of nu". Section 4.2: "two cases where Model 2.1 is invalid and the
+  probabilistic bound does not hold. In the first case the rounding errors
+  have nonzero mean and in the second case they are dependent."
+- Connolly MP, Higham NJ, Mary T. Stochastic rounding and its probabilistic
+  backward error analysis. SIAM J Sci Comput 2021;43(1):A566-A585,
+  doi:10.1137/20M1334796. Read as MIMS EPrint 2020.12,
+  https://eprints.maths.manchester.ac.uk/2778/1/paper.pdf. Section 7, on a
+  sum that stops changing under round to nearest: "This leads to necessarily
+  negative rounding errors", and the error then grows as nu.
+- Croci et al. 2022, section 6.1, already cited above: the two assumptions
+  "are often satisfied in practice, but it is easy to construct examples where
+  either of the assumptions fails and the backward error almost attains the
+  worst-case bound". Read at https://pmc.ncbi.nlm.nih.gov/articles/PMC8905452/.
+
+A background reader opened each source and quoted it on 2026-11-11. The two
+MIMS quotations were then checked against the downloaded text. None of the
+three papers analyses a propagator applied n times, so the measurement above
+is the evidence for this model and the papers are the reason it was expected.
+The publishers' own pages, and Higham's *Accuracy and Stability of Numerical
+Algorithms*, were refused by the session's network and were not read.
+
+**Blind review, 2026-11-11: four findings, all fixed.** The test held the
+agent balance to the relative bound alone, where the model passes a step on
+either bound. It accepted a halt wherever a step needed a squaring, and now
+accepts one only where the summed rounding of the steps taken has reached
+1e-9. Its allowances were pooled over the whole run, and are now summed action
+by action. Its coefficients were not drawn across the whole envelope. After
+the fixes, over 1 000 drawn plans, the largest difference was 0.95 of its
+allowance: the stepped state against the 50-digit solution, over 35 steps.
+The margin of three on one propagator's bound is therefore nearly used.
+
+**Allowances the test states for now, which (b) moves into the module.** Three
+have no home in `core/` yet: the rounding of the clock, which the run
+definition reads as a difference of two rounded instants; a floor of about
+1e-292 below which a float no longer carries 53 bits; and twice Kahan's bound
+for a running total.
+
 **Done when.** The module in 1 exists and each rounding allowance reads it.
 The generated test in 2 exists, and each of the seven members is replayed
 against it with its fix reverted, with the result recorded here per member.
