@@ -99,6 +99,7 @@ from anesthesia_sim.core.supported_ranges import (
     CardiacOutput,
     CaseInstant,
     FreshGasFlow,
+    StepCount,
 )
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
@@ -488,7 +489,7 @@ class _Run:
             try:
                 result = self.system.advance(step)
             except AgentSimulationValidationError:
-                reached = self.stepped_rounding + run_rounding(squarings, taken + 1)
+                reached = self.stepped_rounding + run_rounding(squarings, StepCount(taken + 1))
 
                 if reached < ACCOUNTING_RELATIVE_TOLERANCE:
                     raise
@@ -499,7 +500,7 @@ class _Run:
             self.exhausted_l.append(result.fresh_gas_exchange.exhausted_agent_l)
             self.steps += 1
 
-        self.stepped_rounding += run_rounding(squarings, steps)
+        self.stepped_rounding += run_rounding(squarings, StepCount(steps))
         self.definition.advance_to(CaseInstant(self.elapsed_s))
 
         return True
@@ -559,7 +560,9 @@ class _Run:
 
         scales = self._scales(owed_l)
         exact = _exact_state(self.matrix, before, self.plan.step_s, action.steps)
-        over_the_action = run_rounding(_squarings(self.matrix, self.plan.step_s), action.steps)
+        over_the_action = run_rounding(
+            _squarings(self.matrix, self.plan.step_s), StepCount(action.steps)
+        )
 
         for value, reference, scale in zip(state, exact, scales, strict=True):
             residuals.record(
@@ -650,7 +653,7 @@ class _Run:
         # last place of that instant.
         allowance = (
             canonical_allowance
-            + run_rounding(column_squarings, columns + len(inside))
+            + run_rounding(column_squarings, StepCount(columns + len(inside)))
             + clock_rounding(self.elapsed_s, spacing_s)
         )
 

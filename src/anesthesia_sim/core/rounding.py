@@ -53,6 +53,7 @@ from typing import Final
 
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.matrix_exponential import MAXIMUM_SQUARINGS
+from anesthesia_sim.core.supported_ranges import StepCount, require_step_count
 
 MACHINE_EPSILON: Final = sys.float_info.epsilon
 """The spacing of 64-bit floats just above 1, which is 2**-52, about 2.2e-16.
@@ -120,13 +121,20 @@ def propagator_rounding(squarings: int) -> float:
             rate in the system and the interval.
 
     Raises:
-        TypeError: `squarings` is not an `int`.
+        TypeError: `squarings` is not an `int`. A `bool` is refused too,
+            because `True` would count as one squaring.
         SimulationConfigurationError: `squarings` is negative or above
             `MAXIMUM_SQUARINGS`. The matrix exponential module refuses to
             build a propagator that needs more, so no bound is stated for one.
     """
 
-    _require_a_count("squarings", squarings)
+    if isinstance(squarings, bool) or not isinstance(squarings, int):
+        raise TypeError(f"squarings must be an int, not a {type(squarings).__name__}")
+
+    if squarings < 0:
+        raise SimulationConfigurationError(
+            f"squarings must be at least zero, and {squarings} is not"
+        )
 
     if squarings > MAXIMUM_SQUARINGS:
         raise SimulationConfigurationError(
@@ -138,7 +146,7 @@ def propagator_rounding(squarings: int) -> float:
     return PROPAGATOR_MARGIN * 2.0**squarings * MACHINE_EPSILON
 
 
-def run_rounding(squarings: int, steps: int) -> float:
+def run_rounding(squarings: int, steps: StepCount) -> float:
     """Return the bound on the rounding of `steps` steps in a row, as a share of the state's scale.
 
     The bound is `steps` times `propagator_rounding(squarings)`: each step's
@@ -151,12 +159,13 @@ def run_rounding(squarings: int, steps: int) -> float:
         steps: How many steps, or chained propagators, the value has behind it.
 
     Raises:
-        TypeError: either argument is not an `int`.
-        SimulationConfigurationError: either argument is negative, or
-            `squarings` is above `MAXIMUM_SQUARINGS`.
+        TypeError: `steps` was not built as a `StepCount`, or `squarings`
+            is not an `int`.
+        SimulationConfigurationError: `squarings` is negative or above
+            `MAXIMUM_SQUARINGS`.
     """
 
-    _require_a_count("steps", steps)
+    require_step_count(steps)
 
     return propagator_rounding(squarings) * steps
 
@@ -193,22 +202,6 @@ def clock_rounding(instant_s: float, interval_s: float) -> float:
         )
 
     return math.ulp(instant_s) / interval_s
-
-
-def _require_a_count(name: str, value: int) -> None:
-    """Refuse a value that is not a whole number of at least zero.
-
-    Raises:
-        TypeError: `value` is not an `int`. A `bool` is refused too, because
-            `True` would count as one.
-        SimulationConfigurationError: `value` is negative.
-    """
-
-    if isinstance(value, bool) or not isinstance(value, int):
-        raise TypeError(f"{name} must be an int, not a {type(value).__name__}")
-
-    if value < 0:
-        raise SimulationConfigurationError(f"{name} must be at least zero, and {value} is not")
 
 
 # The fixed allowances. Each belongs to one kind of comparison.

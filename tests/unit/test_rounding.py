@@ -29,7 +29,7 @@ from anesthesia_sim.core.rounding import (
     run_rounding,
 )
 from anesthesia_sim.core.simulation_step import MINIMUM_SIMULATION_STEP_S
-from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S
+from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S, StepCount
 
 SOURCE_ROOT = Path(__file__).resolve().parents[2] / "src" / "anesthesia_sim"
 
@@ -73,7 +73,7 @@ def test_no_bound_is_stated_outside_the_squarings_a_propagator_can_have(squaring
         propagator_rounding(squarings)
 
     with pytest.raises(SimulationConfigurationError, match="squarings"):
-        run_rounding(squarings, 1)
+        run_rounding(squarings, StepCount(1))
 
 
 @pytest.mark.parametrize("not_a_count", [True, 1.0, "1", None])
@@ -83,13 +83,15 @@ def test_a_count_that_is_not_an_int_is_refused(not_a_count: object) -> None:
     with pytest.raises(TypeError, match="squarings must be an int"):
         propagator_rounding(not_a_count)  # type: ignore[arg-type]
 
-    with pytest.raises(TypeError, match="steps must be an int"):
+    with pytest.raises(TypeError):
         run_rounding(0, not_a_count)  # type: ignore[arg-type]
 
 
-def test_a_negative_number_of_steps_is_refused() -> None:
-    with pytest.raises(SimulationConfigurationError, match="steps must be at least zero"):
-        run_rounding(0, -1)
+def test_a_number_of_steps_not_built_as_a_step_count_is_refused() -> None:
+    """A bare `int` carries no proof that it is whole and nonnegative, so it is refused."""
+
+    with pytest.raises(TypeError, match="StepCount"):
+        run_rounding(0, 5)  # type: ignore[arg-type]
 
 
 @given(st.integers(0, MAXIMUM_SQUARINGS), st.integers(0, STEPS_IN_THE_LONGEST_RUN))
@@ -103,8 +105,10 @@ def test_a_run_is_bounded_by_the_sum_of_its_steps_bounds(squarings: int, steps: 
 
     expected = 3.0 * steps * 2.0 ** (squarings - 52)
 
-    assert run_rounding(squarings, steps) == pytest.approx(expected, rel=2.0**-52, abs=0.0)
-    assert run_rounding(squarings, 0) == 0.0
+    bound = run_rounding(squarings, StepCount(steps))
+
+    assert bound == pytest.approx(expected, rel=2.0**-52, abs=0.0)
+    assert run_rounding(squarings, StepCount(0)) == 0.0
 
 
 def test_clock_rounding_is_one_unit_in_the_last_place_of_the_instant_over_the_interval() -> None:
@@ -138,7 +142,7 @@ def test_the_agent_balance_limit_is_below_the_summed_bound_of_the_longest_run() 
     assert AGENT_ACCOUNTING_RELATIVE_TOLERANCE == 1e-9
     assert STEPS_IN_THE_LONGEST_RUN == 86_400_000
 
-    ratio = run_rounding(0, STEPS_IN_THE_LONGEST_RUN) / 1e-9
+    ratio = run_rounding(0, StepCount(STEPS_IN_THE_LONGEST_RUN)) / 1e-9
 
     assert 57.0 < ratio < 58.0
 
@@ -154,7 +158,7 @@ def test_the_reading_allowance_is_ten_times_the_summed_bound_of_the_longest_run(
     the allowance, or the zones around its two edges would meet.
     """
 
-    assert run_rounding(0, STEPS_IN_THE_LONGEST_RUN) * 10.0 <= LIVE_READING_GAP
+    assert run_rounding(0, StepCount(STEPS_IN_THE_LONGEST_RUN)) * 10.0 <= LIVE_READING_GAP
     assert LIVE_READING_GAP * 10.0 <= HEIGHT_BAND * (1.0 + MACHINE_EPSILON)
 
 

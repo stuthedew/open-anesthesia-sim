@@ -204,6 +204,7 @@ LISTED: dict[str, dict[str, tuple[str, ...]]] = {
     },
     INSTANT_OR_WINDOW: {
         "matrix_exponential": ("matrix_exponential(interval_s)",),
+        "rounding": ("clock_rounding(instant_s)", "clock_rounding(interval_s)"),
         "run_definition": (
             "RunDefinition.evaluate(columns)",
             "RunDefinition.evaluate(start_s)",
@@ -359,6 +360,13 @@ LISTED: dict[str, dict[str, tuple[str, ...]]] = {
         "patient": (
             "PatientCompartments.mixed_venous_partial_pressure_fraction -> return",
             "PatientCompartments.tissue_return_partial_pressure_fraction -> return",
+        ),
+        "rounding": (
+            "clock_rounding -> return",
+            "propagator_rounding -> return",
+            "propagator_rounding(squarings)",
+            "run_rounding -> return",
+            "run_rounding(squarings)",
         ),
         "supported_ranges": ("maximum_step_count -> return",),
         "tissue": (
