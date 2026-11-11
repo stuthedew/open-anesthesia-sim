@@ -9,8 +9,9 @@ like this one found it, run once in the parsing review of 2026-10-10 (C1); this
 runs one on every pull request, held to PyYAML 6.0, a dev dependency, as
 `test_markdown_reference.py` holds `docket.markdown` to markdown-it-py.
 
-Hypothesis draws the front matters, derandomized, so a red run reproduces
-exactly and the suite stays deterministic. Each is YAML PyYAML composes into
+Hypothesis draws the front matters. Every ordinary run draws the same ones, so
+a red run reproduces exactly, and a weekly run draws new ones (the root
+`conftest.py` loads the profiles). Each is YAML PyYAML composes into
 one mapping, built from the forms a front matter here writes and the ones that
 broke a reader: plain, quoted, flow and block scalar values, lists at the key's
 column and under it, nested mappings and a mapping in a list entry, comments,
@@ -278,7 +279,7 @@ def _pyyaml_reading(block: list[str]) -> list[tuple[str, int, int]]:
     return found
 
 
-@settings(derandomize=True, database=None, deadline=None, max_examples=2000)
+@settings(max_examples=2000)
 @given(front_matters())
 def test_keys_end_each_value_where_pyyaml_does(block: list[str]) -> None:
     expected = _pyyaml_reading(block)
@@ -303,7 +304,7 @@ def _pyyaml_quoted(block: list[str]) -> list[tuple[str, int, int, int, int]]:
     ]
 
 
-@settings(derandomize=True, database=None, deadline=None, max_examples=2000)
+@settings(max_examples=2000)
 @given(front_matters())
 def test_quoted_places_each_quoted_scalar_where_pyyaml_does(block: list[str]) -> None:
     expected = _pyyaml_quoted(block)
@@ -348,7 +349,7 @@ def _pyyaml_comments(block: list[str]) -> list[tuple[int, int]]:
     return found
 
 
-@settings(derandomize=True, database=None, deadline=None, max_examples=1000)
+@settings(max_examples=1000)
 @given(front_matters())
 def test_comments_places_each_comment_where_pyyaml_reads_one(block: list[str]) -> None:
     assert list(comments(block)) == _pyyaml_comments(block), "\n".join(block)
@@ -444,13 +445,13 @@ def _pyyaml_content_end(line: str) -> int:
     )
 
 
-@settings(derandomize=True, database=None, deadline=None, max_examples=2000)
+@settings(max_examples=2000)
 @given(yaml_lines())
 def test_uncommented_ends_a_line_where_pyyaml_ends_its_content(line: str) -> None:
     assert uncommented(line).rstrip() == line[: _pyyaml_content_end(line)], line
 
 
-@settings(derandomize=True, database=None, deadline=None, max_examples=500)
+@settings(max_examples=500)
 @given(one_line_quoted())
 def test_unquote_reads_a_quoted_scalar_as_pyyaml_loads_it(token: str) -> None:
     assert unquote(token) == yaml.safe_load(f"k: {token}")["k"], token

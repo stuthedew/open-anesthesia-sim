@@ -1497,3 +1497,66 @@ def test_a_changed_test_the_table_deselects_is_not_compared(repo: Path, runs: Ru
 
     assert compare_tests(repo, change, table) == Compared()
     assert runs.asked == []
+
+
+#: A stand-in for `COPY_SCRIPT`, which needs mutmut: it builds `mutants/` from
+#: the source and the tests alone, as mutmut does for a file that `also_copy`
+#: does not name.
+_COPY_SOURCE_AND_TESTS = """
+import shutil
+shutil.rmtree("mutants", ignore_errors=True)
+shutil.copytree("src", "mutants/src")
+shutil.copytree("tests", "mutants/tests")
+"""
+
+#: A simulator unit test that reads a file outside the source and the tests.
+_READS_A_FILE = """\
+from pathlib import Path
+
+import anesthesia_sim
+
+
+def test_reads_the_notes() -> None:
+    assert Path("notes.txt").read_text(encoding="utf-8") == "kept"
+"""
+
+
+@pytest.fixture
+def copyable(repo: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """`repo` with a simulator unit test that reads `notes.txt`, and a copy step without mutmut."""
+    _write(repo, "pyproject.toml", TABLE_TOML)
+    _write(repo, "src/anesthesia_sim/__init__.py", "")
+    _write(repo, "tests/unit/test_notes.py", _READS_A_FILE)
+    _write(repo, "notes.txt", "kept")
+    monkeypatch.setattr(diff_mutation, "COPY_SCRIPT", _COPY_SOURCE_AND_TESTS)
+    return repo
+
+
+def test_first_step_fails_on_a_test_that_reads_a_file_the_copy_does_not_hold(
+    copyable: Path, capfd: pytest.CaptureFixture[str]
+) -> None:
+    """The case `PL-GP8G` found on `main`: the test passes in the tree and fails in the copy."""
+    assert main(["--root", str(copyable), "--first-step"]) == 1
+    assert "every mutation run would stop at its first step" in capfd.readouterr().out
+    assert (copyable / "mutants" / "selected-tests.txt").read_text(encoding="utf-8") == (
+        "tests/unit/test_notes.py\n"
+    )
+
+
+def test_first_step_passes_once_the_copy_holds_the_file(
+    copyable: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        diff_mutation,
+        "COPY_SCRIPT",
+        _COPY_SOURCE_AND_TESTS + 'shutil.copy2("notes.txt", "mutants/notes.txt")\n',
+    )
+    assert main(["--root", str(copyable), "--first-step"]) == 0
+
+
+def test_first_step_refuses_when_the_copy_cannot_be_built(
+    copyable: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(diff_mutation, "COPY_SCRIPT", "raise SystemExit(3)")
+    assert main(["--root", str(copyable), "--first-step"]) == 1
+    assert "no answer: mutmut could not build mutants/ (exit 3)" in capsys.readouterr().err
