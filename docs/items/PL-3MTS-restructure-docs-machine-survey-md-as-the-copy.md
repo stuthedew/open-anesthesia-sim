@@ -3,6 +3,7 @@ id: PL-3MTS
 title: Restructure docs/machine-survey.md as the copy editor's structure read proposes
 status: done
 feature: machine-docs-structure
+milestone: v0.6.17
 touches: docs/machine-survey.md, docs/items/PL-8ZD7-docs-machine-survey-md-answer-the-close-out.md
 added: 2026-11-07
 closed: 2026-11-09

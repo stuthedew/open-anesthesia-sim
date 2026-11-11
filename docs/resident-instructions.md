@@ -731,7 +731,15 @@ sentence goes when `list_sessions` lists a `hearth-thread` session or its
 `tags` filter answers inside a session. The second goes when `PL-NZC0`
 closes.
 
-## Rule 14's reachability sentence, added 2026-09-26
+## Rule 14's reachability sentence, added 2026-09-26, retired 2026-11-10
+
+**Retired.** The condition at the end of this section was met on 2026-11-10.
+A session reads the network setting with the `get_environment` tool, and the
+owner set it to `Full` that day, so no list of allowed domains is left to
+misreport (`PL-6VZF`). `.claude/rules/citing-sources.md` still says to probe a
+host before saying it does not answer. Removing the sentence took 357
+characters out of the resident set. What follows is the record of why it was
+added.
 
 Rule 14's re-verification bullet now ends by naming a host's reachability as
 external state: probe the host before a reply repeats that it is blocked, and
@@ -761,6 +769,27 @@ its wrapping. It goes when a session can read the allowed domains, since a
 check could then compare a document's claim against the list;
 `$HTTPS_PROXY/__agentproxy/status` reports the proxy's state and not its
 policy, checked 2026-09-26.
+
+## Never cite a source from memory, added 2026-11-10
+
+`PL-6VZF` added four sentences to `CLAUDE.md` § "Proactive expert review and
+domain best practices", in the bullet that already says to consult the source
+before forming a recommendation. They say to read a source in the session
+before citing it, to say what was read, and not to cite a source that cannot
+be read. In the design round of 2026-11-10 a session gave the owner five
+claims marked "from memory", because the network allowlist refused the hosts
+that held their sources. The owner opened the network that day and said: "you
+should never cite anything from memory. Should always look it up".
+
+**The carrier test.** A citation is given in a reply, and a session reads no
+file before it writes one, so a `paths:` scope cannot carry the rule.
+`.claude/rules/citing-sources.md` loads only on the stored parameter files,
+`docs/MODEL.md` and `docs/references/`. No check reads a reply before it is
+sent.
+
+**What was replaced, and the cost.** The four sentences are 317 characters.
+Rule 14's reachability sentence, 357 characters with its wrapping, was retired
+in the same change, by the condition its own section set.
 
 ## Rule 15, clock times in Central, added 2026-09-27
 

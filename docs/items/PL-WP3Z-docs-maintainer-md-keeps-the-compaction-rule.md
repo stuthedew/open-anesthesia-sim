@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: maintainer-guide-structure
+milestone: v0.6.17
 touches: docs/maintainer.md, .claude/skills/docket/modes/start.md
 deferred-from: v0.7.0 - a new problem, not present at the freeze: the sentence that the compaction rule lives only in the instructions arrived in ec9eeb8d (PL-NZC0)
 added: 2026-11-07

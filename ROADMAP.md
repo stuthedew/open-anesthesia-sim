@@ -27,66 +27,70 @@ explicit out-of-scope list.
   the cause produced point back to it. A head is live while the cause still
   produces items, and spent once it no longer does.
 
-## Current baseline: v0.6.16
+## Current baseline: v0.6.17
 
-In v0.6.16 the copy editor is fixed and back in use, and the five
-`docs/MODEL.md` rewrites that it blocked are finished. The fix and the five
-rewrites are the six items of entry 12 in v0.7.0's Required scope, and all six
-close here. That closed every id in v0.7.0's Required scope as it then stood.
-The project owner added entry 13 later, on 2026-11-10. The release has 11
-items. It is a patch on both halves of the patch test in
-§ "Versioning decision": it crosses no capability boundary, and v0.7.0 is
-given to a milestone section, so no patch release may take that number.
-v0.6.16 also finishes two features, `reader-first-prose` and `repo-copy-edit`,
-and closes one generator head, `PL-HGZS`, as spent.
+In v0.6.17 the agent cost View shows the delivered agent in whole millilitres
+of liquid, and `docs/MODEL.md` is restructured so that each fact has one home
+and then line edited section by section. The contributor documents are
+restructured and copy edited too: `docs/ARCHITECTURE.md`,
+`docs/interface-provenance.md`, the two machine documents, `docs/maintainer.md`
+and `docs/references/`. The release has 96 items. It is a patch on both halves
+of the patch test in § "Versioning decision": it crosses no capability
+boundary, and v0.7.0 is given to a milestone section, so no patch release may
+take that number. v0.6.17 finishes five features: `landing-deletions`,
+`maintainer-guide-structure`, `prose-quality`, `references-structure` and
+`release-roadmap-seam`.
 
 v0.7.0 is cut only after its Required scope has closed, Gate 3's frozen list
-has cleared and the project owner has test-driven `main`. None of the 11 items
-is on that list. When v0.6.16 was cut, 87 of the gate's 90 entries had
-cleared. The list is longer now: on 2026-11-07 it gained every finding whose
-problem was present when the gate froze (`PL-GW0P`). The counts in the list's
-two headings under § "v0.7.0 - the schematic" give its size.
+has cleared and the project owner has test-driven `main`. Two ids in the
+Required scope are open. The project owner added both as entry 13 on
+2026-11-10: `PL-HQPF`, which makes the accounting panel and the schematic name
+the 20 °C and 1 atm at which an agent amount is stated, and `PL-RJN9`, which
+makes the agent cost View read that temperature from the model instead of
+writing it as text. When v0.6.17 was cut, 119 of the gate's 168 entries had
+cleared, 36 were open for this gate to clear, and 11 were deferred to the next
+gate.
 
-**No code, equation, model parameter or stored value changed, and no run can
-differ:**
+**One displayed precision changed. No model code, equation, parameter or
+stored value changed, and no run can differ:**
 
-| Tree | v0.6.15 tag | This cut | What moved |
+| Tree | v0.6.16 tag | This cut | What moved |
 | --- | --- | --- | --- |
-| `src/` | `fc47153` | `a66313e` | comments and docstrings in two `app/` files |
-| `src/anesthesia_sim/core/` | `8186a8c` | `8186a8c` | nothing |
+| `src/` | `a66313e` | `a110105` | the delivered-liquid precision in `app/formatting.py`; docstrings and comments elsewhere |
+| `src/anesthesia_sim/core/` | `8186a8c` | `a72bd99` | docstrings and comments only |
 | `src/anesthesia_sim/data/` | `c3fbdbc` | `c3fbdbc` | nothing |
 | `tests/reference/` | `545a009` | `545a009` | nothing |
-| `docs/MODEL.md` | `e3f95ff` | `6bb0708` | the plain-English rewrite |
-| `README.md` | `c5e9784` | `6644ce2` | the copy edit |
+| `docs/MODEL.md` | `6bb0708` | `93505d9` | the restructure and the line edit |
+| `README.md` | `6644ce2` | `a8f2abf` | a window image, and the elimination result |
 | `.github/` | `fefd203` | `fefd203` | nothing |
 
-`tools/ast_identity.py` finds no code moved in `app/chart_frame.py` or
-`app/unconditional_set.py`. Because `core/` and `data/` are the same trees,
-the trajectories were not re-measured.
+`tools/ast_identity.py` finds only docstrings and comments changed in `core/`,
+and the numbers and units in them are unchanged. The `core/` docstrings and
+comments about arterial blood now say that the model has no shunt and one
+alveolar compartment, and that the lung's exchange with blood is
+perfusion-limited, so arterial blood leaves the lung at the alveolar partial
+pressure. They had called that simplification flow-limited (`PL-Z6FR`,
+`#2076`). Because `core/` and `data/` compute as they
+did, the trajectories were not re-measured.
 
-**The copy editor** (`PL-HGZS`, `#2038`). The copy editor used to ask whether
-each sentence was clear and each fact present, so it kept text its reader did
-not need and sometimes lengthened it. Its instructions now cut a repeated fact,
-words a fact does not need, and a fact meant for another reader. A blind judge
-preferred the edited text for six of seven sections the instructions were not
-tuned on.
+**The delivered agent in whole millilitres** (`PL-SP6H`, `#2024`). The agent
+cost View shows the delivered agent in liquid to the whole millilitre, where it
+showed a tenth. The figure's only uncertainty is the measured liquid density.
+At the largest supported total, one step of 0.1 mL is about a thirtieth of one
+SD of that uncertainty, so the tenth implied more precision than the density
+supports. The same change corrected `docs/MODEL.md`'s litre-precision figures.
 
-**The model specification in plain English.** `#2040` and `#2042` rewrote the
-rest of `docs/MODEL.md`'s interface sections, from § "Minimum displayed
-outputs" to § "Interface boundary", and § "How this document is held to the
-tree", for a clinician reader. The history behind each value moved to the
-items. Two stale statements were corrected on the way: the agreement between
-a branch and its trunk (`PL-4VJG`) and the clause a gate-count check applies
-(`PL-6VBY`).
+**The model specification** (`PL-BSMF`, `PL-BZ21`, `PL-FDW6`, `#2054`;
+`PL-95SW`, `#2049`). `docs/MODEL.md` now gives each fact one home, and no
+chapter relies on a later one. The line edit that followed was audited section
+by section, and each statement it dropped was restored.
 
-**The README** (`PL-4LWM`, `PL-8BLJ`, `#2041`). `README.md` was copy edited
-with the fixed copy editor, and its pre-release warning no longer uses
-headings that GitHub's outline put ahead of the project name.
-
-**The writing rule on model limitations** (`PL-BS6N`, `#2031`). The writing rule
-now says to state a model limitation only where it could change what a
-clinician concludes from a displayed value. `#2031` merged inside the v0.6.15
-tag's span, and v0.6.15's notes point to it here.
+**The README** (`PL-MBP6`, `#2078`; `PL-L9FC`, `PL-GQWP`, `#2075`).
+`README.md` shows the default case's window, and a test fails when the
+readouts in that image go stale. Its validation paragraph now reports both
+halves of the Yasuda comparison, the elimination check that fails as well as
+the wash-in check that passes. Tests hold its playback rates, chart time bases
+and agent list to the code.
 
 § "What a tag ships that its notes may not name" says how work ships that
 merges on `main` after a release is cut and before its pull request lands.
@@ -250,7 +254,8 @@ number because the next minor number was not free.
 | v0.6.13 | Completed | **The release where the compartment schematic ships, drawing the circuit, the alveoli, venous blood and the three tissue groups as containers filled to their modelled tension, each labelled with its tension and its amount in millilitres of vapour, with one bar of each compartment's share of the agent the run holds, placed beside the concentration chart in the Maintenance Workspace; where the agent cost View shows the delivered agent in millilitres of liquid equivalent; where a reader's agent price and cost unit get a preferences file of their own; where a MAC target that a step lands on exactly reads the same on a branch as on the trunk; where an Area's floor is measured only at the width the Area is drawn at; and where the charts hand pyqtgraph numpy arrays.** | 22 items | `PL-PZGY` |
 | v0.6.14 | Completed | **The release where the halted-dashboard guard reads a scroll bar's Qt container as part of the bar, so the drift run's upgraded dependencies, PySide6 6.12.0 among them, no longer fail it on a scroll bar that the layout shows on only one of the two dashboards it compares, and where four documents stop claiming more than their sources or the code support: the stored tissue:gas coefficients are Gas Man's figures for Yasuda, Targ and Eger's measurements rather than roundings of them, `docs/MODEL.md` names the held runs' own rounding bound, `control_timeline.py` says where the delivered dial's units change, and a textbook is tier 2 everywhere.** | 5 items | `PL-T343` |
 | v0.6.15 | Completed | **The release where the agent cost View shows what the delivered agent cost in money, at a bottle price the reader sets for each agent, with the price's currency and date beside the cost; where most sections of `docs/MODEL.md` are rewritten in plain English for a clinician reader, with the history behind each value moved to the items; where every guard hook runs through one module that records a crash instead of passing silently, and judges the action a command performs rather than how it is spelled; where the owner-ask guard flags a pull request waiting on the owner by its state rather than by its wording; and where the step-size test's 0.5% limit, which never decided a result, is removed.** | 98 items | `PL-8B6Z` |
-| v0.6.16 | Completed / current baseline | **The release where the copy editor cuts a repeated fact, words a fact does not need and a fact meant for another reader, and is back in use; where the rest of `docs/MODEL.md`'s interface sections, and its section on how the document is held to the tree, are rewritten for a clinician reader; where `README.md` is copy edited with the fixed copy editor; and where the writing rule says a model limitation earns a sentence only where it could change what a clinician concludes from a displayed value.** | 11 items | `PL-80PZ` |
+| v0.6.16 | Completed | **The release where the copy editor cuts a repeated fact, words a fact does not need and a fact meant for another reader, and is back in use; where the rest of `docs/MODEL.md`'s interface sections, and its section on how the document is held to the tree, are rewritten for a clinician reader; where `README.md` is copy edited with the fixed copy editor; and where the writing rule says a model limitation earns a sentence only where it could change what a clinician concludes from a displayed value.** | 11 items | `PL-80PZ` |
+| v0.6.17 | Completed / current baseline | **The release where the agent cost View shows the delivered agent in whole millilitres of liquid, because a tenth implied more precision than the measured density supports, and where `docs/MODEL.md` gives each fact one home and is line edited with every dropped statement restored.** | 96 items | `PL-FNJ3` |
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
