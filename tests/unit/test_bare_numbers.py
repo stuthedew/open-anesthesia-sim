@@ -2,23 +2,24 @@
 
 A checked type, such as `CardiacOutput`, proves that its range check ran. A
 bare `float` proves nothing, so whether it was checked depends on who reads the
-call chain. `PL-ZGYX` swept `core/` once for bare numbers and built no standing
-check. Four items found more after it closed (`PL-LHCL`).
+call chain. An earlier item (`PL-ZGYX`) swept `core/` once for bare numbers and
+built no standing check. Four items found more after it closed (`PL-LHCL`).
 
 These tests read the source of every module in `core/`. They collect each
 public parameter, dataclass field and return value whose annotation names
-`float` or `int`, alone or inside another type such as `tuple[float, ...]`.
-An alias such as `Matrix = tuple[tuple[float, ...], ...]`, or a `NewType` over
-`float`, checks nothing, so an annotation that names one counts as bare too.
-Each one must appear in `BARE_NUMBERS` below with the reason it is bare. A
-name is public unless it starts with one underscore. A method such as
-`__new__` is public, because it is how a caller builds the type.
+`float` or `int`, alone or inside another type such as `tuple[float, ...]`. An
+annotation also counts as bare when it names an alias such as
+`Matrix = tuple[tuple[float, ...], ...]` or a `NewType` over `float`, because
+neither checks anything. Each bare number the tests find must appear in
+`BARE_NUMBERS` below with the reason it is bare. A name is public unless it
+starts with one underscore. A method such as `__new__` is public, because it
+is how a caller builds the type.
 
-A new bare number fails the first test until it is typed or listed.
-`MOST_BARE_NUMBERS` must equal the length of the list, so adding an entry also
-means raising that count, where a reviewer sees it. `PL-LHCL` types the listed
-numbers, one quantity at a time, and removes each entry and lowers the count
-as it does.
+A new bare number fails the first test until it is given a checked type or
+listed. The count `MOST_BARE_NUMBERS` must equal the length of the list, so
+adding an entry also means raising that count, where a reviewer sees it. One
+item (`PL-LHCL`) gives the listed numbers checked types, one quantity at a time,
+and removes each entry and lowers the count as it does.
 """
 
 from __future__ import annotations
@@ -35,68 +36,77 @@ CORE = Path(core.__file__).resolve().parent
 
 BARE_TYPES = frozenset({"float", "int"})
 
-# The first three reasons are permanent. A number has to be bare at the place
-# that checks it, and where a checked type hands back the plain number that it
-# stores.
+# The first three reasons are permanent. A number has to be bare where it is
+# checked, and where a checked type hands back the plain number it stores.
 THE_CHECK = (
     "This is the check itself: a checked type's constructor, or a guard, takes the bare "
     "number and refuses it or passes it."
 )
 PLAIN_NUMBER = (
-    "The plain number that a checked type's constructor stores, or that a restore passes "
-    "back to that constructor."
+    "The plain number that a checked type's constructor stores, or that loading the type "
+    "from a pickle or a copy passes back to that constructor."
 )
 SHOWN_IN_A_REFUSAL = "A count that a refusal message shows, which may be the value refused."
 
-# The other reasons each name a quantity that `PL-LHCL` has still to type. An
-# entry goes when its quantity is typed. A reason says that something checks
-# the number only where a run on 2026-11-11 showed that it does.
+# Each of the other reasons names a quantity that one item (`PL-LHCL`) has
+# yet to give a checked type. An entry leaves the list when its quantity
+# gets one. A reason says that something checks the number only where that
+# check refused NaN or a value outside its range when it was run on 2026-11-11.
 COMPARED_BY_A_GUARD = (
     "A number that a guard compares with another number or with a limit. The guard "
-    "leaves the number's own check to its caller, so it accepts NaN. PL-LHCL types the "
-    "amounts, capacities and concentrations that these guards take."
+    "leaves the number's own check to its caller, so it accepts NaN. The amounts, "
+    "capacities and concentrations that these guards take are still to get checked types "
+    "(PL-LHCL)."
 )
 BLOOD_FLOW = (
-    "A blood flow, checked by hand as finite and not negative at three places. PL-GKG4 "
-    "gives it a type built only from a cardiac output and a perfusion fraction."
+    "A blood flow, checked by hand as finite and not negative at three places. It is "
+    "to get a checked type built only from a cardiac output and a perfusion fraction (PL-GKG4)."
 )
 PERFUSION_FRACTION = (
     "A perfusion fraction or a sum of them. TissueGroup checks the one it holds, and "
-    "ReferenceAdultParameters does not check its three. It is typed with the blood flow "
-    "built from it (PL-GKG4)."
+    "ReferenceAdultParameters does not check its three. It is to get a checked type with "
+    "the blood flow built from it (PL-GKG4)."
 )
-COMPARTMENT_STEP = "A compartment's own step for its closed form. PL-LHCL types it."
+COMPARTMENT_STEP = (
+    "A compartment's own step for its closed form. It is still to get a checked type (PL-LHCL)."
+)
 INSTANT_OR_WINDOW = (
-    "An instant, an interval, or a window's bound, spacing or column count. PL-LHCL types it."
+    "An instant, an interval, or a window's bound, spacing or column count. It is still to "
+    "get a checked type (PL-LHCL)."
 )
-STATE_VECTOR = "A state vector of amounts and fractions. PL-LHCL types it with the agent amounts."
+STATE_VECTOR = (
+    "A state vector of amounts and fractions. It is to get a checked type with the agent "
+    "amounts (PL-LHCL)."
+)
 MATRIX = (
     "A matrix of plain floats: the system matrix, or a propagator built from it. Nothing "
-    "checks its entries, so multiply returns NaN for a NaN operand. PL-LHCL types it with "
-    "the state vectors."
+    "checks its entries, so multiply returns NaN for a NaN operand. It is to get a checked "
+    "type with the state vectors (PL-LHCL)."
 )
 STORED_PARAMETER = (
     "A stored parameter, a bound of a stored range, or a conversion of one. The loader "
     "checks a value read from a data file, and some records built directly do not: "
-    "MacAwakeReference accepts NaN. PL-LHCL types it."
+    "MacAwakeReference accepts NaN. It is still to get a checked type (PL-LHCL)."
 )
 CLOSED_FORM = (
     "An argument or result of the exponential closed form, which states its own valid "
-    "inputs. PL-LHCL types it with the amounts and steps it is called with."
+    "inputs. It is to get a checked type with the amounts and steps it is called with "
+    "(PL-LHCL)."
 )
 AGENT_AMOUNT = (
     "An agent amount in litres, or a total or error of amounts, on a compartment, the "
-    "validator or a method. PL-LHCL types it last, after measuring what a checked type "
-    "costs at each step."
+    "validator or a method. It is to get a checked type last, after a measurement of what "
+    "a checked type costs at each step (PL-LHCL)."
 )
 UNCHECKED_AMOUNT = (
     "An agent amount on a state or result record that checks nothing, so the record can "
-    "be built with NaN or a negative amount. PL-LHCL types it with the other agent amounts."
+    "be built with NaN or a negative amount. It is to get a checked type with the other "
+    "agent amounts (PL-LHCL)."
 )
 DERIVED = (
     "A value that the code computes from other values. Arithmetic on a checked type "
-    "returns a plain float, so the result carries no proof. PL-LHCL gives it a type that "
-    "only its derivation builds."
+    "returns a plain float, so the result carries no proof. It is to get a type that only "
+    "its derivation builds (PL-LHCL)."
 )
 
 LISTED: dict[str, dict[str, tuple[str, ...]]] = {
@@ -369,19 +379,22 @@ BARE_NUMBERS: dict[str, str] = {
     for name in names
 }
 
-# The length of `BARE_NUMBERS`. It was 173 on 2026-11-11, when the list was
-# written, and it only goes down.
+# This count equals the length of `BARE_NUMBERS`. It was 173 on 2026-11-11,
+# when the list was written. Giving a quantity a checked type lowers it. A
+# change that raises it shows a reviewer that the change adds a bare number.
 MOST_BARE_NUMBERS = 173
 
 
 def _names_a_bare_number(
     annotation: ast.expr | None, bare_names: frozenset[str] = BARE_TYPES
 ) -> bool:
-    """Whether an annotation names `float`, `int` or an alias of one anywhere in it.
+    """Return whether an annotation names `float`, `int` or an alias of one anywhere in it.
 
-    `bare_names` holds `float`, `int` and each alias that `_bare_type_names`
-    found. A quoted annotation is parsed and read the same way. One that does
-    not parse is treated as bare, so that it is looked at instead of passed.
+    The names to look for (`bare_names`) are `float` and `int` unless the
+    caller passes more. The walk passes those two and each alias found by
+    searching the modules (`_bare_type_names`). A quoted annotation is parsed
+    and read the same way. One that does not parse is treated as bare, so that
+    a person looks at it instead of the test passing it.
     """
 
     if annotation is None:
@@ -407,10 +420,10 @@ def _names_a_bare_number(
 
 
 def _is_a_type_expression(value: ast.expr) -> bool:
-    """Whether a module-level value is written as a type.
+    """Return whether a module-level value is written as a type.
 
     A type is a name, a subscript, a union or a `NewType`. A call such as
-    `float("inf")` builds a number, so it is not one.
+    `float("inf")` builds a number, so it is not a type.
     """
 
     if isinstance(value, (ast.Name, ast.Attribute, ast.Subscript)):
@@ -430,11 +443,10 @@ def _is_a_type_expression(value: ast.expr) -> bool:
 def _aliases_in(source: str, bare_names: frozenset[str]) -> set[str]:
     """Return each module-level name that one module assigns to a type naming a bare number.
 
-    `Matrix = tuple[tuple[float, ...], ...]` and
-    `MacMultiple = NewType("MacMultiple", float)` are two. Neither checks
-    anything, so a parameter annotated with one is as bare as a `float`. A
-    class is not an alias, because a checked type is a class whose constructor
-    runs the check.
+    Two examples are `Matrix = tuple[tuple[float, ...], ...]` and
+    `MacMultiple = NewType("MacMultiple", float)`. Neither checks anything, so
+    a parameter annotated with one is as bare as a `float`. A class is not an
+    alias, because a checked type is a class whose constructor runs the check.
     """
 
     aliases: set[str] = set()
@@ -484,7 +496,7 @@ def _bare_type_names(sources: Iterable[str]) -> frozenset[str]:
 
 
 def _is_public(name: str) -> bool:
-    """Whether a name has no leading underscore, or is a method such as `__new__`."""
+    """Return whether a name has no leading underscore, or is a method such as `__new__`."""
 
     return not name.startswith("_") or (name.startswith("__") and name.endswith("__"))
 
@@ -507,7 +519,7 @@ def _statements(body: list[ast.stmt]) -> Iterator[ast.stmt]:
 def _in_function(
     owner: str, function: ast.FunctionDef | ast.AsyncFunctionDef, bare_names: frozenset[str]
 ) -> Iterator[str]:
-    """Yield a key for each bare parameter of a function, and one for a bare return."""
+    """Yield a key for each bare parameter of a function, and one for a bare return value."""
 
     arguments = function.args
     parameters = [*arguments.posonlyargs, *arguments.args, *arguments.kwonlyargs]
@@ -531,9 +543,9 @@ def bare_numbers_in(module: str, source: str, bare_names: frozenset[str] | None 
 
     The keys take three forms: `module.Class.method(parameter)` for a
     parameter, `module.Class.field` for a field, and
-    `module.function -> return` for a return value. `bare_names` holds the
-    aliases that other modules define. Without it, the walk uses the aliases
-    that this source defines.
+    `module.function -> return` for a return value. The aliases that other
+    modules define are passed in as `bare_names`. Without `bare_names`, the
+    walk uses the aliases that this source defines.
     """
 
     if bare_names is None:
@@ -597,8 +609,8 @@ def test_the_count_is_the_length_of_the_list() -> None:
     assert len(BARE_NUMBERS) == MOST_BARE_NUMBERS, (
         f"BARE_NUMBERS has {len(BARE_NUMBERS)} entries and MOST_BARE_NUMBERS is "
         f"{MOST_BARE_NUMBERS}. After removing entries, lower MOST_BARE_NUMBERS to the new "
-        "length. A new number in core/ takes a checked type, not a new entry, so the count "
-        "is never raised."
+        "length. After adding an entry, raise it, so that a reviewer sees that the change "
+        "adds a bare number."
     )
 
 
@@ -610,10 +622,13 @@ def test_every_entry_gives_a_reason() -> None:
 
 # The signatures below are the bare numbers that past items reported, as the
 # code stood when each was filed. Each is replayed through the walk, which must
-# name it. `PL-GKG4`: a blood flow checked by hand at three places. `PL-8W1Q`
-# reported a restore, which `tests/unit/test_record_restores.py` will cover;
-# its record's bare state is here. `PL-HSFV`: the settings record held its
-# flows as `float` before `PL-0YYV` typed them.
+# name it. One item (`PL-GKG4`) reported a blood flow checked by hand at three
+# places. Another (`PL-8W1Q`) reported that a record loaded from a pickle or a
+# copy skips its constructor's checks. `tests/unit/test_record_restores.py`
+# will cover that load. The record it named (`Keyframe`) is here, and its
+# `state` field is the bare number. A third (`PL-HSFV`) reported the settings
+# record's flows, held as `float` until they were given a checked type
+# (`PL-0YYV`).
 PAST_ESCAPES = """
 from dataclasses import dataclass
 

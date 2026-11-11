@@ -215,3 +215,25 @@ number 2, a count shown in a refusal 1 (these 25 stay bare); compared by a
 guard 13, blood flow 7, perfusion fraction 6, compartment step 4, instant or
 window 11, state vector 8, matrix 7, stored parameter 27, closed form 9,
 agent amount 20, unchecked amount on a record 18, derived value 18 (148).
+
+**The copy edit of step (a), 2026-11-11.** The copy editor read the test's 14
+docstrings and comments and rewrote 11. All 11 rewrites were applied and none
+was reverted. It raised four queries, each answered in the file:
+
+1. The count's comment said the count "only goes down", and the count test's
+   message said it "is never raised", while the module docstring said that
+   adding an entry means raising the count. The docstring is the rule: an
+   entry may be added, and raising the count shows a reviewer that the change
+   adds a bare number. The comment and the message now say so.
+2. "A run on 2026-11-11" did not say what was run. The comment now says that
+   a reason claims a check only where that check refused NaN or a value
+   outside its range.
+3. `_names_a_bare_number`'s docstring said the names to look for include the
+   aliases, though the default is `float` and `int`. It now says which names
+   the default holds and which the walk passes.
+4. "A restore" was not explained. The comment above `PAST_ESCAPES` and the
+   `PLAIN_NUMBER` reason now say "loaded from a pickle or a copy".
+
+The editor also noted that the reason strings used "types" as a verb with the
+item id as its subject. Each now ends "It is to get a checked type …
+(PL-LHCL)".
