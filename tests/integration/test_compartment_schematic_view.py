@@ -34,18 +34,19 @@ from anesthesia_sim.app.dashboard_frame import (
 )
 from anesthesia_sim.app.formatting import format_elapsed
 from anesthesia_sim.app.qt_schematic import RunSchematic, SchematicCanvas
+from anesthesia_sim.app.qt_widgets import ForkPanel
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES
 from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import MUTED, PANEL, WARNING
-from anesthesia_sim.app.view_registry import COMPARTMENT_SCHEMATIC, REGISTERED
-from anesthesia_sim.app.views import CompartmentSchematicView
+from anesthesia_sim.app.view_registry import BRANCH, COMPARTMENT_SCHEMATIC, REGISTERED
+from anesthesia_sim.app.views import BranchView, CompartmentSchematicView
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.parameters import load_agent_parameters
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CaseInstant, FreshGasFlow
 from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.shipped import shipped_workspaces
-from anesthesia_sim.layout.tree import Area, AreaId, Window
+from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, Window
 from anesthesia_sim.layout.workspace import Origin, Workspace, WorkspaceName, WorkspaceSet
 
 #: One Workspace that shows only the schematic, so every run it draws is the
@@ -56,6 +57,29 @@ _SCHEMATIC_ONLY = WorkspaceSet(
             WorkspaceName("Schematic"),
             Origin.mine(),
             LayoutModel((Window(Area(AreaId(1), COMPARTMENT_SCHEMATIC)),), AreaId(2)),
+        ),
+    ),
+    0,
+)
+
+#: The schematic beside the branch control, for a test that opens a branch.
+_SCHEMATIC_AND_BRANCH = WorkspaceSet(
+    (
+        Workspace(
+            WorkspaceName("Schematic and branch"),
+            Origin.mine(),
+            LayoutModel(
+                (
+                    Window(
+                        Split(
+                            Orientation.ROW,
+                            (0.7, 0.3),
+                            (Area(AreaId(1), COMPARTMENT_SCHEMATIC), Area(AreaId(2), BRANCH)),
+                        )
+                    ),
+                ),
+                AreaId(3),
+            ),
         ),
     ),
     0,
@@ -117,6 +141,15 @@ def _dashboard(
 def _settle(application: QApplication) -> None:
     application.sendPostedEvents(None, QEvent.Type.DeferredDelete)
     application.processEvents()
+
+
+def _branch_control(view: SimulationView) -> ForkPanel:
+    """The branch control in the one Area that shows it."""
+
+    (branch,) = (v for v in view.layout_container.views() if isinstance(v, BranchView))
+    assert branch.panel is not None
+
+    return branch.panel
 
 
 def _schematic(view: SimulationView) -> CompartmentSchematicView:
@@ -271,7 +304,7 @@ def test_the_schematic_follows_its_run_through_a_reset_an_agent_change_and_a_com
     trunk.set_fresh_gas_flow(FreshGasFlow(2.0))
     trunk.pause()
     case = BranchedCase(trunk)
-    view = _dashboard(application, shown, trunk, case)
+    view = _dashboard(application, shown, trunk, case, _SCHEMATIC_AND_BRANCH)
 
     _assert_every_label_matches_its_run(view)
     assert _schematic(view).schematics[0].name_text.text().startswith("At ")
@@ -284,7 +317,7 @@ def test_the_schematic_follows_its_run_through_a_reset_an_agent_change_and_a_com
     _assert_every_label_matches_its_run(view)
 
     # A branch opens a comparison: two schematics, each named.
-    panel = view._fork_panel
+    panel = _branch_control(view)
     panel.point_selector.setCurrentIndex(panel.point_selector.findData(60.0))
     panel.take_button.click()
     _settle(application)
@@ -366,12 +399,12 @@ def test_a_branch_taken_at_a_mark_behind_the_clock_draws_that_instant(
     _advance_to(trunk, 120.0)
     trunk.pause()
     case = BranchedCase(trunk)
-    view = _dashboard(application, shown, trunk, case)
+    view = _dashboard(application, shown, trunk, case, _SCHEMATIC_AND_BRANCH)
     trunk.add_time_bookmark(TimeBookmark(CaseInstant(75.05), "what if"))
     view.present(False)
-    selector = view._fork_panel.point_selector
+    selector = _branch_control(view).point_selector
     selector.setCurrentIndex(selector.findText(f"{format_elapsed(751 * 0.1)}, on your mark"))
-    view._fork_panel.take_button.click()
+    _branch_control(view).take_button.click()
     _settle(application)
     view.present(False)
 

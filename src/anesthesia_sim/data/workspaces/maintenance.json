@@ -6,7 +6,7 @@
       "name": "Maintenance",
       "origin": "shipped:maintenance",
       "layout": {
-        "next_area_id": 4,
+        "next_area_id": 6,
         "windows": [
           {
             "tree": {
@@ -23,7 +23,8 @@
                 {
                   "split": "column",
                   "sizes": [
-                    0.65,
+                    0.45,
+                    0.2,
                     0.35
                   ],
                   "children": [
@@ -34,6 +35,23 @@
                     {
                       "area": 3,
                       "view": "parameter_controls"
+                    },
+                    {
+                      "split": "row",
+                      "sizes": [
+                        0.5,
+                        0.5
+                      ],
+                      "children": [
+                        {
+                          "area": 4,
+                          "view": "bookmarks"
+                        },
+                        {
+                          "area": 5,
+                          "view": "branch"
+                        }
+                      ]
                     }
                   ]
                 }
