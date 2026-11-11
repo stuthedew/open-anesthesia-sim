@@ -779,7 +779,7 @@ $$
 $$
 
 **For developers.** In the code, the tolerance on $`\sum_i f_i = 1`$ is
-`FLOW_FRACTION_TOLERANCE = 1e-12`.
+`FLOW_FRACTION_TOLERANCE = 1e-12`, defined in `core/rounding.py`.
 
 ## Compartment capacities
 
@@ -1422,7 +1422,7 @@ another field, or names the open item that will check it.
 
 Two bounds apply, and each one addresses a different question.
 
-**The run-time halt thresholds, as implemented in `core/agent_simulation_validation.py`:**
+**The run-time halt thresholds.** The two tolerances are defined in `core/rounding.py`, and the minimum scale in `core/agent_simulation_validation.py`:
 
 ```text
 AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L = 1e-12
@@ -2548,6 +2548,79 @@ only by what the squarings add.
 
 Tests of the matrix exponential module still trigger the propagator's own refusals, with a matrix
 built to match (`tests/unit/test_matrix_exponential.py`).
+
+### How far a computed value can be from the exact one
+
+Every value the model computes is rounded to a 64-bit number, so it differs slightly from the
+exact value of its equation. The table gives the largest difference that the model allows in each
+comparison it makes. None of them reaches a displayed digit. Over the longest supported run, 24 h
+at the 1 ms step, the bound on a reading is 5.8 parts in 10⁸ of the reading, and the readouts
+show a percentage to two decimals.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
+
+| What is compared | Allowed difference | Kind |
+| --- | --- | --- |
+| The state after one step, against the exact solution | $`3 \cdot 2^{s} \cdot 2^{-52}`$ of the largest fraction in the run, where $`s`$ is the number of squarings the step needs. With no squarings that is 6.7e-16. | Bound |
+| The state after $`n`$ steps, against the exact solution | $`n`$ times the allowance for one step | Bound |
+| A running total of delivered or exhausted agent, against the exact sum of its step amounts | $`2^{-51}`$ of the total, which is 4.4e-16 | Bound |
+| Agent held, delivered and exhausted (§ "Mass-balance identity") | One part in 10⁹ of the agent handled, or 1e-12 L | Fixed |
+| A reading stepped to an instant, against the canonical reading of that instant (§ "The canonical evaluation rule") | 1e-6 of the reading | Fixed |
+| $`F_A/F_I`$ above 1 in a run that is still washing in (§ "F_A/F_I as a displayed ratio") | 1e-6 | Fixed |
+| A reading at the height of a MAC target (§ "Halting on a marked crossing") | 1e-5 of the height | Fixed |
+| The tissue perfusion fractions, against a sum of 1 (§ "Tissue groups") | 1e-12 | Fixed |
+| The tissue blood flows, against cardiac output | One part in 10⁹ of cardiac output, plus 1e-12 L/s | Fixed |
+| A count of steps, axis ticks or grid units, against a whole number | 1e-9 of the count | Fixed |
+
+A bound follows from the arithmetic, and a test fails when a result exceeds it. A fixed allowance
+is a chosen number, far above the rounding that was measured and far below a displayed digit. The
+section named in each row gives its measurement.
+
+**The bound for $`n`$ steps is the sum of the steps' bounds.** The other candidate grows as the
+square root of $`n`$. It holds where the rounding errors are independent and average zero, and a
+run that repeats one step $`n`$ times meets neither condition. A state held at equilibrium in a
+10 000 L tissue drifted by 1.6e-12 over 4 308 steps on 2026-11-11, which is 38 times the
+square-root figure. Over 1 000 generated runs, the largest difference was 0.95 of the summed
+bound.
+<!-- provenance: core/numerical_envelope.py MAXIMUM_VOLUME_L = 10000 -->
+
+- Higham and Mary show that the square-root bounds hold "under the assumption that rounding
+  errors are independent and of zero mean", and give "two cases where Model 2.1 is invalid and
+  the probabilistic bound does not hold. In the first case the rounding errors have nonzero mean
+  and in the second case they are dependent" (Higham NJ, Mary T. A new approach to probabilistic
+  rounding error analysis. SIAM J Sci Comput 2019;41(5):A2815-A2835. doi:10.1137/18M1226312,
+  sections 5 and 4.2).
+- Connolly, Higham and Mary describe a sum that stops changing under round to nearest: "This
+  leads to necessarily negative rounding errors", and the error then grows in proportion to
+  $`n`$ (Connolly MP, Higham NJ, Mary T. Stochastic rounding and its probabilistic backward
+  error analysis. SIAM J Sci Comput 2021;43(1):A566-A585. doi:10.1137/20M1334796, section 7).
+- Croci et al. say that the two assumptions "are often satisfied in practice, but it is easy to
+  construct examples where either of the assumptions fails and the backward error almost attains
+  the worst-case bound" (Croci M, Fasi M, Higham NJ, Mary T, Mikaitis M. Stochastic rounding:
+  implementation, error analysis and applications. R Soc Open Sci 2022;9:211631.
+  doi:10.1098/rsos.211631, section 6.1).
+<!-- not-restated: 2.1 -->
+
+The first two papers were read on 2026-11-11 as their MIMS EPrints, 2018.33 and 2020.12, in the
+passages quoted. The third was read the same day in the full text at PubMed Central (PMC8905452),
+in section 6.1. None of them analyses one propagator applied $`n`$ times, so the measurement is
+the evidence for the summed bound here, and the papers are the reason it was expected.
+
+**The agent balance does not use the summed bound.** It keeps its fixed limit of one part in
+10⁹, for the reason that § "The numerical envelope" gives: the summed bound for the longest run is
+58 times that limit, and a limit that wide would let a real accounting error pass.
+
+**For developers.** `core/rounding.py` defines every figure in the table, and each comparison in
+`core/` and `app/` reads its allowance from there. `propagator_rounding` is the bound for one
+step, `run_rounding` the bound for $`n`$ steps, and `RUNNING_TOTAL_ROUNDING` the bound for a
+running total. `clock_rounding` bounds one more term: a run definition measures an interval as
+the difference of two rounded instants, which moves a reading by at most one unit in the last
+place of the later instant, divided by the interval. `tests/unit/test_rounding.py` checks each
+figure and that no other module in `core/` or `app/` defines an allowance.
+`tests/unit/test_generated_runs.py` holds generated runs to the bounds after every action, and
+`tests/unit/test_numerical_envelope_sweep.py` holds one step from each corner of the envelope to
+the bound for one step. The margin of 3 is a measurement that those two tests repeat. Two
+tolerances for the shares of a window that its areas take stay in `layout/`.
 
 ## Parameter provenance
 
@@ -4020,7 +4093,7 @@ exponential. A running trunk also holds live readings, carried forward step by
 step. These can lie about 1e-14 from the canonical readings, on the other side
 of a height, which is why the trunk does not decide a crossing from them.
 
-The height band (`bookmarks.HEIGHT_BAND`) is there because a steady
+The height band (`HEIGHT_BAND` in `core/rounding.py`) is there because a steady
 compartment's canonical reading moves in its last digit from step to step. When
 crossings were tested at the exact height, a run with no ventilation and a
 target on the circuit at 1.00 ×MAC of a 1 MAC dial halted 965 times in ten
@@ -4030,7 +4103,7 @@ A canonical reading costs about 2 ms, and a whole step about 60 µs, so the live
 readings screen each step. A step is tested again from the canonical readings
 when its live readings cross a mark, or when either live reading differs from
 the height of a band edge by less than 1e-6 of that height
-(`bookmarks.LIVE_READING_GAP`). Any other step is let through, because its
+(`LIVE_READING_GAP` in `core/rounding.py`). Any other step is let through, because its
 canonical readings lie on the same side of each band edge as its live readings.
 So the run halts only on a crossing that its halt record names. The widest gap
 between the live and canonical readings in a 2 h run at the 0.001 s step

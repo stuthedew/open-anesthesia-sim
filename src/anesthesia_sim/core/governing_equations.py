@@ -101,6 +101,10 @@ from anesthesia_sim.core.numerical_envelope import (
     require_coefficient,
     require_compartment_volume,
 )
+from anesthesia_sim.core.rounding import (
+    CARDIAC_OUTPUT_RELATIVE_TOLERANCE,
+    CARDIAC_OUTPUT_TOLERANCE_L_S,
+)
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ELAPSED_SIMULATION_TIME_S,
     MAXIMUM_FRESH_GAS_FLOW_L_MIN,
@@ -193,26 +197,6 @@ exhaust at the circuit's fraction. Neither fraction exceeds 1, so neither total
 can pass the fresh gas volume of a whole case at the fastest supported flow.
 That is 10 L/min for 1 440 min. A larger total describes no case, and the
 accumulator rows would carry it to `inf` (`PL-0WFJ`, found at review).
-"""
-
-CARDIAC_OUTPUT_TOLERANCE_L_S = 1e-12
-CARDIAC_OUTPUT_RELATIVE_TOLERANCE = 1e-9
-"""How far the tissue flows may sum away from cardiac output.
-
-Blood leaving the tissue groups is all of the blood that returns to the venous
-pool. `docs/MODEL.md`'s venous balance is
-$`dF_v/dt = (\\sum_i Q_i F_i - QF_v)/V_v`$. So if $`\\sum_i Q_i`$ did not equal
-$`Q`$, the model would put agent into that pool at one rate and take it out at
-another. It would then create or destroy agent at a steady rate for as long as
-the mismatch lasted.
-
-`patient.py` already requires the perfusion *fractions* to sum to one, which
-is the same statement about the same quantity. It is checked again here
-because these settings are assembled separately from those compartments, and
-this is the object from which the equations are actually built. The check sits
-one call away from the arithmetic it protects, rather than in the class that
-usually supplies the values. The absolute tolerance is what lets a zero cardiac
-output pass, which `docs/MODEL.md` § "Supported input ranges" requires.
 """
 
 TISSUE_BLOOD_FLOW_STATED_DECIMALS = 6
@@ -611,6 +595,18 @@ class UptakeEquationSettings:
                     f"{type(tissue).__name__}"
                 )
 
+        # Blood leaving the tissue groups is all of the blood that returns to the
+        # venous pool. `docs/MODEL.md`'s venous balance is
+        # dF_v/dt = (sum_i Q_i F_i - Q F_v)/V_v. If the tissue flows did not sum to
+        # cardiac output, the model would put agent into that pool at one rate and
+        # take it out at another. It would then create or destroy agent at a steady
+        # rate for as long as the mismatch lasted.
+        #
+        # `patient.py` already requires the perfusion fractions to sum to one, which
+        # is the same statement about the same quantity. It is checked again here
+        # because these settings are assembled separately from those compartments,
+        # and this is the object from which the equations are built. `core/rounding.py`
+        # states both allowances and what each is for.
         tissue_blood_flow_l_s = sum(tissue.blood_flow_l_s for tissue in self.tissues)
 
         if abs(tissue_blood_flow_l_s - self.cardiac_output_l_s) > (

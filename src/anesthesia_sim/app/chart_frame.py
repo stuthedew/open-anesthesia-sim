@@ -109,6 +109,7 @@ from anesthesia_sim.app.theme import (
 from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO, is_wash_in
 from anesthesia_sim.core.concentration import Fraction, MacPercent, Percent, percent_from_fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.rounding import WHOLE_COUNT_TOLERANCE
 from anesthesia_sim.core.supported_ranges import CaseInstant, require_case_instant
 
 __all__ = [
@@ -281,14 +282,6 @@ _HOVER_MODELLED_MARKER: Final = "Modelled"
 # rather than a literal at each join, so a line built from three tokens or from
 # four is punctuated the same way.
 _HOVER_CONTEXT_SEPARATOR: Final = " · "
-
-# `percent_axis_ticks` divides the top of the percent axis by its tick interval.
-# Floating-point rounding can leave the result slightly less than a whole number.
-# When the result falls short by no more than this tolerance, it counts as that
-# whole number. So a top that is an exact multiple of the interval keeps its last
-# tick. The tolerance is a billionth of one interval, so a tick kept this way is
-# never more than that far above the top of the axis.
-_PERCENT_TICK_COUNT_TOLERANCE: Final = 1e-9
 
 
 @dataclass(frozen=True, slots=True)
@@ -1433,7 +1426,11 @@ def percent_axis_ticks(
     if not interval_percent > 0.0:
         raise ValueError(f"interval_percent must be strictly positive, got {interval_percent!r}")
 
-    count = floor(top_percent / interval_percent + _PERCENT_TICK_COUNT_TOLERANCE)
+    # Rounding can leave the quotient just below the whole number it equals. Adding
+    # the allowance keeps the last tick of a top that is an exact multiple of the
+    # interval. A tick kept this way is never more than a billionth of an interval
+    # above the top of the axis.
+    count = floor(top_percent / interval_percent + WHOLE_COUNT_TOLERANCE)
 
     return tuple(
         (index * interval_percent, f"{index * interval_percent:g}") for index in range(count + 1)

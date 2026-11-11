@@ -28,12 +28,12 @@ what must hold for any run:
 The test then repeats the same actions on a fresh system and requires the same
 bits.
 
-Each comparison allows a stated amount of rounding. A helper (`_rounding`)
-gives the amount for a number of propagators, the matrix exponentials that each
-advance the state over one interval. Each call says how many propagators it
-counts. Hypothesis is steered toward the draw with the largest difference
-relative to its allowance. The draw is derandomized, so every pass of the
-suite tests the same runs.
+Each comparison allows a stated amount of rounding, and `core/rounding.py`
+states every amount. `run_rounding` gives the amount for a number of
+propagators, the matrix exponentials that each advance the state over one
+interval. Each call says how many propagators it counts. Hypothesis is steered
+toward the draw with the largest difference relative to its allowance. The draw
+is derandomized, so every pass of the suite tests the same runs.
 
 The test accepts a halt on the agent balance only when the rounding of the
 run's steps so far has reached the balance tolerance, as `docs/MODEL.md`
@@ -42,7 +42,6 @@ from a step.
 """
 
 import math
-import sys
 from decimal import Context, Decimal
 from typing import NamedTuple
 
@@ -53,8 +52,6 @@ from test_numerical_envelope_sweep import (
     CEILING,
     CEILING_DIAL_PERCENT,
     COEFFICIENT_CORNERS,
-    MACHINE_EPSILON,
-    PROPAGATOR_MARGIN,
     VOLUMES,
     Corner,
     _system,
@@ -78,9 +75,16 @@ from anesthesia_sim.core.governing_equations import (
     UptakeEquationSettings,
     build_system_matrix,
 )
-from anesthesia_sim.core.matrix_exponential import Matrix
+from anesthesia_sim.core.matrix_exponential import MAXIMUM_SQUARINGS, Matrix
 from anesthesia_sim.core.numerical_envelope import MAXIMUM_VOLUME_L, MINIMUM_VOLUME_L
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES
+from anesthesia_sim.core.rounding import (
+    RUNNING_TOTAL_ROUNDING,
+    SMALLEST_FULL_PRECISION_MAGNITUDE,
+    clock_rounding,
+    propagator_rounding,
+    run_rounding,
+)
 from anesthesia_sim.core.run_definition import RunDefinition
 from anesthesia_sim.core.simulation_step import (
     MAXIMUM_SIMULATION_STEP_S,
@@ -126,36 +130,12 @@ run. It is written here as a literal so that a change to the model's constant
 fails this test.
 """
 
-RUNNING_TOTAL_RELATIVE_ALLOWANCE = 2.0 * sys.float_info.epsilon
-"""How far a compensated running total may lie from the exactly rounded sum of its terms.
-
-This is a rounding limit. Kahan's compensated sum of terms x_j equals the sum
-of x_j(1 + d_j) with each |d_j| at most 2**-52, plus a term of order
-N * 2**-106 (Goldberg D. What every computer scientist should know about
-floating-point arithmetic. ACM Comput Surv 1991;23(1):5-48, Theorem 8, p. 46).
-Every term here is nonnegative, so the total lies within 2**-52 of the exact
-sum, relative to that sum. The allowance is twice that, which leaves room for
-the rounding of the exact sum itself. A plain running sum of 2 000 terms
-exceeds it.
-"""
-
 ACCOUNTING_ABSOLUTE_TOLERANCE_L = 1e-12
 """The agent balance also passes when it closes to within 1e-12 L of agent gas.
 
 This is the model's second published limit. `docs/MODEL.md` § "Mass-balance
 identity" says that a step passes if it meets either bound, so a run that holds
 little agent is judged by this one.
-"""
-
-SMALLEST_FULL_PRECISION_SCALE = sys.float_info.min / sys.float_info.epsilon
-"""The smallest magnitude a difference is measured against, about 1e-292.
-
-Below the smallest normal float, 2.2e-308, a value is stored with fewer than 53
-bits, so its rounding is no longer a fixed share of its size. A run that opens
-at a fraction of 2e-311 would otherwise be held to a share of 2e-311, which is
-finer than the spacing of the floats there. Measuring against this scale
-allows a difference of about 1e-307 for each step, which is still some 300
-orders of magnitude below any displayed digit.
 """
 
 SETTINGS = ("hold", "fresh gas flow", "alveolar ventilation", "cardiac output", "dial")
@@ -255,26 +235,6 @@ def _plans(draw: st.DrawFn) -> Plan:
         window_start=draw(st.floats(0.0, 0.9)),
         columns=draw(st.integers(2, MOST_COLUMNS)),
     )
-
-
-def _rounding(squarings: int, propagators: float) -> float:
-    """Return the relative rounding allowed after `propagators` propagators of `squarings` each.
-
-    The matrix exponential module (`core/matrix_exponential.py`) bounds one
-    propagator's relative error at about 2**squarings times double precision's
-    2**-52. Each propagator is allowed three times that bound
-    (`PROPAGATOR_MARGIN`), the same margin that the envelope sweep test allows.
-
-    A stepped run counts one propagator for every step, so its allowance grows
-    in proportion to the number of steps. An allowance that grows as the square
-    root of the number of steps was tried first and is too small. A state held
-    at equilibrium in a 10 000 L tissue drifted by 1.6e-12 over 4 308 steps,
-    which is 0.57 of this allowance and 38 times the square-root one (simulated
-    2026-11-11). Such a slow compartment does not pull the state back, so each
-    step's rounding adds to the last.
-    """
-
-    return PROPAGATOR_MARGIN * 2.0**squarings * MACHINE_EPSILON * propagators
 
 
 def _largest_dial_percent(settings_now: UptakeEquationSettings) -> float:
@@ -455,24 +415,28 @@ class _Run:
         return tuple(state)
 
     def _time_rounding_of_the_open_segment(self) -> float:
-        """Return how far rounding of the clock can move a reading, as a share of its range.
+        """Return how far rounding of the clock can move a reading of the open segment.
 
-        The run definition measures a segment as the difference of two rounded
-        instants, which can differ from the stepped interval by one unit in the
-        last place of the later instant. A reading is most sensitive to that
-        time error when one of the system's time constants equals the interval,
-        and even then it moves by less than the time error divided by the
-        interval.
+        The figure is `clock_rounding` for the segment's interval. A segment
+        that no step has been taken in has no interval and no clock rounding.
         """
 
         interval_s = self.elapsed_s - self.segment_opened_s
 
-        return math.ulp(self.elapsed_s) / interval_s if interval_s > 0.0 else 0.0
+        return clock_rounding(self.elapsed_s, interval_s) if interval_s > 0.0 else 0.0
 
     def _canonical_rounding_of_the_open_segment(self) -> float:
-        """Return the rounding allowed for the one propagator that spans the open segment."""
+        """Return the rounding allowed for the one propagator that spans the open segment.
 
-        return _rounding(_squarings(self.matrix, self.elapsed_s - self.segment_opened_s), 1)
+        A long segment at a stiff corner needs more squarings than the matrix
+        exponential module allows. The run definition refuses that propagator,
+        and the rounding module states no bound for it. The figure returned is
+        then infinite, and `check` requires the refusal.
+        """
+
+        squarings = _squarings(self.matrix, self.elapsed_s - self.segment_opened_s)
+
+        return propagator_rounding(squarings) if squarings <= MAXIMUM_SQUARINGS else math.inf
 
     def change(self, action: Action) -> None:
         """Apply one action's setting, and record it in the run definition if it changed."""
@@ -524,7 +488,7 @@ class _Run:
             try:
                 result = self.system.advance(step)
             except AgentSimulationValidationError:
-                reached = self.stepped_rounding + _rounding(squarings, taken + 1)
+                reached = self.stepped_rounding + run_rounding(squarings, taken + 1)
 
                 if reached < ACCOUNTING_RELATIVE_TOLERANCE:
                     raise
@@ -535,7 +499,7 @@ class _Run:
             self.exhausted_l.append(result.fresh_gas_exchange.exhausted_agent_l)
             self.steps += 1
 
-        self.stepped_rounding += _rounding(squarings, steps)
+        self.stepped_rounding += run_rounding(squarings, steps)
         self.definition.advance_to(CaseInstant(self.elapsed_s))
 
         return True
@@ -547,8 +511,8 @@ class _Run:
         and an accumulated amount against the agent the run has to account for.
         """
 
-        scales = [max(self.highest, SMALLEST_FULL_PRECISION_SCALE)] * STATE_SIZE
-        scales[DELIVERED_AGENT_L] = max(owed_l, SMALLEST_FULL_PRECISION_SCALE)
+        scales = [max(self.highest, SMALLEST_FULL_PRECISION_MAGNITUDE)] * STATE_SIZE
+        scales[DELIVERED_AGENT_L] = max(owed_l, SMALLEST_FULL_PRECISION_MAGNITUDE)
         scales[EXHAUSTED_AGENT_L] = scales[DELIVERED_AGENT_L]
         scales[UNIT_STATE] = 1.0
 
@@ -568,7 +532,7 @@ class _Run:
             residuals.record(
                 "a fraction outside the opening state and the delivered concentrations",
                 max(fraction - self.highest, self.lowest - fraction, 0.0),
-                stepped * max(self.highest, SMALLEST_FULL_PRECISION_SCALE),
+                stepped * max(self.highest, SMALLEST_FULL_PRECISION_MAGNITUDE),
                 context,
             )
 
@@ -589,13 +553,13 @@ class _Run:
             residuals.record(
                 "a running total against the exact sum of its step amounts",
                 abs(total_l - exact_l),
-                RUNNING_TOTAL_RELATIVE_ALLOWANCE * exact_l,
+                RUNNING_TOTAL_ROUNDING * exact_l,
                 context,
             )
 
         scales = self._scales(owed_l)
         exact = _exact_state(self.matrix, before, self.plan.step_s, action.steps)
-        over_the_action = _rounding(_squarings(self.matrix, self.plan.step_s), action.steps)
+        over_the_action = run_rounding(_squarings(self.matrix, self.plan.step_s), action.steps)
 
         for value, reference, scale in zip(state, exact, scales, strict=True):
             residuals.record(
@@ -622,6 +586,11 @@ class _Run:
             canonical = None
 
         if canonical is not None:
+            assert math.isfinite(canonical_allowance), (
+                f"the run definition gave a state from a propagator that needs more than "
+                f"{MAXIMUM_SQUARINGS} squarings; {context}"
+            )
+
             for value, other, scale in zip(state, canonical, scales, strict=True):
                 residuals.record(
                     "the stepped state against the canonical state",
@@ -681,8 +650,8 @@ class _Run:
         # last place of that instant.
         allowance = (
             canonical_allowance
-            + _rounding(column_squarings, columns + len(inside))
-            + math.ulp(self.elapsed_s) / spacing_s
+            + run_rounding(column_squarings, columns + len(inside))
+            + clock_rounding(self.elapsed_s, spacing_s)
         )
 
         for value, other, scale in zip(window.states[-1].values, canonical, scales, strict=True):

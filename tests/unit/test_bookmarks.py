@@ -21,7 +21,6 @@ import math
 import pytest
 
 from anesthesia_sim.app.bookmarks import (
-    HEIGHT_BAND,
     BookmarkCrossing,
     BookmarkSet,
     MacTarget,
@@ -33,6 +32,7 @@ from anesthesia_sim.app.formatting import mac_multiple
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.core.concentration import MacMultiple, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.rounding import HEIGHT_BAND
 from anesthesia_sim.core.run_definition import RunDefinition
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import (

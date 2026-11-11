@@ -13,11 +13,19 @@ from anesthesia_sim.core.exceptions import (
     AgentSimulationValidationError,
     SimulationConfigurationError,
 )
+from anesthesia_sim.core.rounding import (
+    AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L,
+    AGENT_ACCOUNTING_RELATIVE_TOLERANCE,
+)
 from anesthesia_sim.core.validation import require_nonnegative_finite
 
-AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L = 1e-12
-AGENT_ACCOUNTING_RELATIVE_TOLERANCE = 1e-9
 MINIMUM_RELATIVE_SCALE_L = 1e-15
+"""The least amount of agent, in litres, that the relative error is divided by.
+
+Before any agent is delivered to a run that opened empty, the agent handled is
+zero, and this floor keeps the relative error from being 0/0. It is not an
+allowance for rounding, so it is defined here and not in `core/rounding.py`.
+"""
 
 #: The three totals that `AgentSimulationValidator.__setattr__` requires to be
 #: nonnegative and finite.

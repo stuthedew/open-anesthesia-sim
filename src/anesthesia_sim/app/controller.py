@@ -3488,7 +3488,7 @@ class SimulationController:
         from the live readings at the exact height could then stop the trunk on
         a target that a branch opened on the same step shows as still running.
         So a target's height is treated as a narrow band
-        (`bookmarks.HEIGHT_BAND`). Where neither live reading lies near an edge
+        (`HEIGHT_BAND` in `core/rounding.py`). Where neither live reading lies near an edge
         of a band, the live readings give the same result as the canonical
         ones. A step that they find crosses nothing then needs no canonical
         reading. A step that they find crosses a mark, or that has a live

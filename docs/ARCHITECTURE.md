@@ -97,6 +97,7 @@ src/anesthesia_sim/
 │   ├── supported_ranges.py        # the declared domain: FreshGasFlow, AlveolarVentilation and CardiacOutput, which cannot hold a flow outside it, CaseInstant, which cannot hold an instant outside the run length, StepCount, a whole nonnegative count, and the guards that refuse a run outside it
 │   ├── simulation_step.py         # the run's step: its supported range, and SimulationStep, which cannot hold one outside it
 │   ├── numerical_envelope.py      # where core's arithmetic is shown correct: CompartmentVolume and PartitionCoefficient, which cannot hold a volume or a coefficient outside it, and the one place the tissue:blood quotient is formed
+│   ├── rounding.py                # how far a computed value can be from the exact one: the bound for one propagator, for one step and for a run of n steps, and each fixed allowance that a comparison in core/ or app/ reads (PL-GJ1W)
 │   ├── exceptions.py              # exception hierarchy; every core failure is inside it
 │   ├── parameters.py              # load + validate agent/patient/machine JSON data
 │   ├── liquid_agent.py            # the 20 °C reference condition's molar volume, LiquidDensity, and the conversion of an amount of vapour into the millilitres of liquid agent it came from (PL-KZ99)
