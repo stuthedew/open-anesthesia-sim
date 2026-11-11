@@ -3,10 +3,11 @@ id: PL-CBYS
 title: The page still scrolls at every common screen size, though PL-JG82's brief says v0.6.0 removes the page scroll: the Areas and the marks and branch section sit in one scrolling page, which measured offscreen on 2026-11-11 scrolls 414 px (Default) and 832 px (Induction) at 1366 by 768, and 102 px and 520 px at 1920 by 1080, so the Induction Workspace's wash-in chart opens below the fold; decide whether the Areas fill exactly the space between the unconditional region and the disclaimer, as a Blender window's Areas fill the window
 priority: P2
 effort: M
-status: ready
+status: needs-decision
 classes: feature, ux
 feature: window-is-the-frame
 touches: src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/views.py, docs/MODEL.md
+deferred-from: v0.7.0 - it waits on the owner's choice between two Induction arrangements, and the gate's frozen list does not name it
 added: 2026-11-11
 payoff: every shipped Workspace fits the window on a laptop, so the Induction wash-in chart opens on screen and not below the fold
 verify: grep -q 'def test_no_shipped_workspace_scrolls_the_page' tests/integration/test_simulation_view.py
@@ -83,3 +84,48 @@ scroll that `PL-9YPR` put inside `_CasePanelView` moves into the container.
 
 **Generator check.** A one-off. It reopens a ratified answer (`PL-K285` Q2)
 on a measurement, and no reader misread a fact.
+
+**The mock-up, 2026-11-11, and the question it raised.** Rendered from the
+branch with a patch in the render script (scratch only, nothing built): the
+Areas take exactly the room, a plot may shrink to 160 px (concentrations) or
+120 px (wash-in), and a View taller than its Area scrolls inside it. Same run
+in every picture, 2% sevoflurane at 5 minutes. Measured:
+
+- At 1366 by 768 the Areas get 1334 by 488 px. The band of readouts, the tab
+  strip and the disclaimer take the other 280 px of height.
+- The concentration chart's heading, reference lines and legend take about
+  250 px above its plot. The wash-in chart's take about 170 px.
+- Induction as shipped, at 1366 by 768: the chart's Area has 261 px and the
+  wash-in's has 173 px. Each chart scrolls inside its Area (151 px and
+  128 px), and neither plot is on screen until the learner scrolls. Stacked,
+  the two charts cannot both show a plot in 488 px whatever the plot's floor:
+  the text above the two plots and the two Area headers take about 300 px.
+- Induction with the charts side by side (shares 0.34, 0.25, 0.41), and the
+  rule that a chart keeps its plot in view while the block above it scrolls
+  on its own: both plots are on screen at 1366 by 768 (218 px and 164 px
+  tall), and the legend blocks scroll 114 px and 41 px.
+- At 1920 by 1080 nothing scrolls in either arrangement. Stacked gives plots
+  about 1280 px wide; side by side gives plots about 540 px and 390 px wide
+  and 380 px and 480 px tall.
+- The Parameters View needs 590 px of width for its four controls in one row.
+  In a quarter-width column at 1366 px it scrolls 50 px sideways. That is
+  `PL-4JCC`'s to fix by letting the controls wrap.
+- Maintenance at 1366 by 768: the schematic needs 358 px and its Area has
+  137 px. It needs a taller Area, a placeholder choice for the building
+  session.
+
+**Decision needed.** Which Induction ships? A learner on a laptop sees one
+of these when they open Induction.
+
+- A. Charts side by side at every window size. Both curves are on screen at
+  1366 by 768. On a large monitor each plot is narrower than today.
+- B. Charts stacked, as shipped. On a large monitor the plots are wide. At
+  1366 by 768 neither curve is on screen until the learner scrolls inside
+  each Area.
+
+**Recommendation:** A. Induction exists to show the wash-in beside the
+concentrations, and B hides both curves on the commonest laptop size. A
+learner with a large monitor can drag the charts into a stack and save that
+layout; a learner on a laptop cannot make room that is not there. Either
+answer gets the plot-stays-in-view rule for both charts, which the session
+decides as a placeholder.
