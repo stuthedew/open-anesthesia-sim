@@ -29,23 +29,23 @@ explicit out-of-scope list.
 
 ## Current baseline: v0.6.16
 
-v0.6.16 is the release in which the copy editor is fixed and back in use, and
-the five `docs/MODEL.md` rewrites that it blocked are finished. The fix and the
-five rewrites are the six items of entry 12 in v0.7.0's Required scope, and
-all six close here. Every id in v0.7.0's Required scope is now closed. The
-release has 11 items. It is a patch on both halves of the patch test in
-§ "Versioning decision": it crosses no
-capability boundary, and v0.7.0 is given to a milestone section, so no patch
-release may take that number. v0.6.16 also finishes two features,
-`reader-first-prose` and `repo-copy-edit`, and closes one generator head,
-`PL-HGZS`, as spent.
+In v0.6.16 the copy editor is fixed and back in use, and the five
+`docs/MODEL.md` rewrites that it blocked are finished. The fix and the five
+rewrites are the six items of entry 12 in v0.7.0's Required scope, and all six
+close here. That closed every id in v0.7.0's Required scope as it then stood.
+The project owner added entry 13 later, on 2026-11-10. The release has 11
+items. It is a patch on both halves of the patch test in
+§ "Versioning decision": it crosses no capability boundary, and v0.7.0 is
+given to a milestone section, so no patch release may take that number.
+v0.6.16 also finishes two features, `reader-first-prose` and `repo-copy-edit`,
+and closes one generator head, `PL-HGZS`, as spent.
 
-v0.7.0 is cut only after Gate 3's frozen list has cleared and the project owner
-has test-driven `main`. None of the 11 items is on that list. When v0.6.16 was
-cut, 87 of the gate's 90 entries had cleared. The list is longer now: on
-2026-11-07 it gained every finding whose problem was present when the gate froze
-(`PL-GW0P`). The counts in the list's two headings under
-§ "v0.7.0 - the schematic" give its size.
+v0.7.0 is cut only after its Required scope has closed, Gate 3's frozen list
+has cleared and the project owner has test-driven `main`. None of the 11 items
+is on that list. When v0.6.16 was cut, 87 of the gate's 90 entries had
+cleared. The list is longer now: on 2026-11-07 it gained every finding whose
+problem was present when the gate froze (`PL-GW0P`). The counts in the list's
+two headings under § "v0.7.0 - the schematic" give its size.
 
 **No code, equation, model parameter or stored value changed, and no run can
 differ:**
@@ -442,8 +442,8 @@ to clear the ground that the feature releases are built on:
 | 7 | **v0.6.0 — the layout is the reader's** | **Shipped 2026-10-20**, all 40 Required-scope ids closed (`PL-9CS6`). Planned-milestone item 34's tiled half: the layout model, the View contract, the view registry, workspaces, persistence, the unconditional display region, and every layout operation. **Scoped 2026-09-16** (project owner, ratified on `PL-NMTF` - chosen over inserting item 34 ahead of v0.5.0, and over one undivided milestone with break-out inside it). The serialized layout format carries a multi-window root from v1; nothing in this release creates a second window. Break-out, item 34's second half, is on no row: it is wanted eventually and not soon (project owner, 2026-09-26), and came off the timeline that day, having been the next release, "the second screen", since 2026-09-16 (`PL-V1Y7`) — see that section's "Explicitly out of scope" for why the split costs nothing structural, and why v0.6.0 keeps what break-out needs. **The placement was reopened and re-affirmed on 2026-09-17** (project owner, ratified - chosen over moving item 34 ahead of v0.5.0, on the argument that every interface question settled before the area model is settled against a layout that is going away). Planned-milestone item 34's entry carries the count, and the rule that round produced, which ended when this release shipped item 34's View contract and view registry. | 4 L, 16 M, 3 S |
 | — | **v0.6.x — one source of truth** | Planned-milestone item 43: every second copy of a shared fact replaced by a read of its one home, with a check per shape whose baseline can only shrink and is burned down to zero. **Placed 2026-10-19** (project owner, 2026-10-19, ratified on `PL-2LB5`, over folding the fixes into v0.6.0 and over leaving them unplaced): it is built after v0.6.0 ships, and its inventory (`PL-K88Z`) runs before then, because the inventory decides how large the row is. Patch-track work like item 40: it crosses no capability boundary, so it takes no version of its own and freezes no gate. **Inventoried 2026-10-19** by `PL-K88Z`, whose brief records the count. | — |
 | — | **v0.6.x — the interface pass** | Planned-milestone item 33: one deliberate visual design pass over the whole interface - palette, type scale, spacing rhythm, density and the visual composition of each surface - rather than the per-defect corrections the queue has been making one at a time. **Arrangement is item 34's and not this row's** (`PL-BNYF`, 2026-09-16); the entry for item 33 carries why. A patch track rather than a numbered milestone, because it crosses no capability boundary. **Restored here 2026-09-16**, having been absorbed into v0.4.26 on 2026-09-10 and un-absorbed when that port turned out not to have redecided the visuals; the row that release's own entry reversed is this one. **Moved here from between MVP and Gate 2 on 2026-09-16** (project owner, 2026-09-16, ratified - chosen over leaving it ahead of item 34, on the argument that item 34 and break-out introduce an area header, a workspace tab strip, a live splitter handle and a drag affordance, none of which exists to be styled today; what the other side bought was a styled interface two releases sooner, and `PL-BNYF`'s separation of arrangement from appearance means the composition of each surface would mostly have survived the move). It renumbers from `v0.5.x` to `v0.7.x` as a consequence: a patch track takes the number of the release it follows, which is mechanical rather than a second decision. `PL-PHKP` carries it. **Renumbered `v0.6.x` on 2026-09-26** by the same rule, when break-out came off the timeline and this row came to follow v0.6.0 (`PL-V1Y7`); the entry for item 33 records why the argument that placed it still holds. It is a design round with the project owner before it is items: the owner framed it as "a decent size overhaul (theme, style, overall polish)" and as not urgent, wanted after the simulator works. | — |
-| 8 | **Gate 3** | **Frozen 2026-10-25**, the day v0.7.0 was scoped, five days after v0.6.0 shipped, and recorded in that milestone's own section below. Its work ships in `v0.6.x` patches as it clears, before v0.7.0's implementation begins. The current baseline above gives how many entries had cleared when v0.6.16 was cut, and where the list's size is counted now. | — |
-| 9 | **v0.7.0 — the schematic** | Planned-milestone items 27 and 28: a compartment schematic whose containers fill to tension, as Gas Man's Picture does, labelled with their amounts and with a bar showing where the agent *is*, and the agent cost View. **Scoped 2026-10-25** by `PL-LF0P` (project owner, 2026-10-25, ratified, over containers drawn to scale, over Gas Man's Picture as it is, and over leaving item 28 unscheduled), and it has its own section below. (Written `v0.6.0` until 2026-09-16, when item 34 took that number and this moved down two, and `v0.8.0` from then until 2026-09-26, when break-out came off the timeline and this moved up one.) **Its Required scope closed in v0.6.16.** The cut waits on Gate 3 and on the project owner's test drive. | 1 L, 9 M, 3 S |
+| 8 | **Gate 3** | **Frozen 2026-10-25**, the day v0.7.0 was scoped, five days after v0.6.0 shipped, and recorded in that milestone's own section below. Its work ships in `v0.6.x` patches as it clears, before v0.7.0's implementation begins. The current baseline above says how many of its entries had cleared when v0.6.16 was cut, and where its current size is given. | — |
+| 9 | **v0.7.0 — the schematic** | Planned-milestone items 27 and 28: a compartment schematic whose containers fill to tension, as Gas Man's Picture does, labelled with their amounts and with a bar showing where the agent *is*, and the agent cost View. **Scoped 2026-10-25** by `PL-LF0P` (project owner, 2026-10-25, ratified, over containers drawn to scale, over Gas Man's Picture as it is, and over leaving item 28 unscheduled), and it has its own section below. (Written `v0.6.0` until 2026-09-16, when item 34 took that number and this moved down two, and `v0.8.0` from then until 2026-09-26, when break-out came off the timeline and this moved up one.) **Its Required scope closed in v0.6.16, except entry 13, which the project owner added on 2026-11-10** (`PL-HQPF`, `PL-RJN9`). That entry requires every agent amount on screen to name the condition it is stated at. The cut waits on entry 13, on Gate 3 and on the project owner's test drive. | 1 L, 9 M, 3 S |
 | 10 | **Gate 4** | Frozen when v0.7.0 ships. Its work ships in `v0.7.x` patches as it clears, before v0.8.0's implementation begins. | — |
 | 11 | **v0.8.0 — the next milestone** | What it holds is the project owner's pick, made when it is scoped. It was the substance generalization and nitrous oxide until 2026-09-26, when those came off the timeline (Beyond row). | — |
 | 12+ | **Beyond** | In § "Development pathway" order: patient factors (item 30); the substance generalization with nitrous oxide and its effects (items 6 and 7); the machine abstraction with interlocks (item 1) and agent switching (item 2); the preferences panel (item 24); end-tidal control, override mode and direct injection (items 5, 3 and 4); item 8's scenario events and accessibility (item 20); save/load and replay (items 9 and 10); then intravenous agents (items 13-15). Item 30 comes first because the project owner placed it ahead of the substance generalization on 2026-09-02, and item 30's entry gives the reason. **The substance generalization and items 6 and 7 came off the timeline on 2026-09-26** (project owner, 2026-09-26: "Add it back once we have a really fleshed out single agent set up with workspaces all working"). Whether that condition is met is the owner's judgment, so a session placing the next row after v0.7.0 asks the owner rather than placing the generalization by pathway order (`PL-5XG1`). **Item 40, the machine-profile framework, is no longer in this row.** The project owner split it out of item 1 on 2026-09-20. It is patch-track work that may ship whenever its items finish, and it takes no version of its own and freezes no gate. What stays here is the interlock baseline, and the machine behaviors that need the solver work that item 40 defers. | — |
@@ -1076,14 +1076,14 @@ open entry of the previous list (`PL-JV5Q`). v0.6.0's gate deferred it to Gate
 § "Captures after the cut" records `PL-4LS8`, which held the one question that
 build left open.
 
-**The four entries v0.6.0's gate deferred for item 28 are cleared by this
-milestone instead.** `PL-B396`, `PL-KZ99`, `PL-0S0V` and `PL-VJZK` came onto
-this list deferred from v0.6.0, because no release scheduled planned-milestone
-item 28 (`PL-DB64`). This milestone schedules item 28. So the Required scope
+**This milestone itself clears the four entries that v0.6.0's gate deferred
+for item 28.** `PL-B396`, `PL-KZ99`, `PL-0S0V` and `PL-VJZK` came onto this
+list deferred from v0.6.0, because no release scheduled planned-milestone
+item 28 (`PL-DB64`). This milestone schedules item 28, so the Required scope
 below names all four, and they are in the first group. `PL-B396` is now also
 classed `safety`, because it builds a unit conversion that is displayed.
 
-**Cleared by v0.7.0 itself - 9 entries**
+**Cleared by v0.7.0 itself - 11 entries**
 
 - PL-RNYV (L) Build the compartment schematic View: the circuit, the alveoli, venous blood and the three tissue groups as containers filled to tension, each labelled with its tension and its amount of agent vapour
 - PL-0S0V (M) AGENT_VOLUME_DISPLAY_DECIMALS and the other display-precision constants are one Final per quantity, but once the unit is reader-selectable precision is a function of quantity AND unit, and docs/MODEL.md's derivation has to be per-unit too
@@ -1094,8 +1094,10 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-KZ99 (M) Store each agent's molar mass and liquid density with the density's measurement temperature, so a vapour-to-liquid conversion is derived from a primary measurement rather than from a published composite constant
 - PL-S79P (M) Draw each compartment's share of the agent the run holds as one bar on the compartment schematic, so fat's growing share shows while its tension stays near zero
 - PL-VJZK (M) A reader-set agent price makes a displayed economic value's provenance partly the reader's, so the stored price needs its currency and the date it was set, and the display must not read as an authoritative figure
+- PL-HQPF (M) The accounting panel's unit caption ('Litres of equivalent pure agent gas') and the schematic's unit ('mL vapour') do not name the condition an agent amount is stated at, 20 °C and 1 atm, so a learner cannot tell that an amount held in the body is stated at room temperature and reads 5.8% high
+- PL-RJN9 (S) The agent cost View's two captions in src/anesthesia_sim/app/agent_cost.py write '20 degrees C' as text, a second copy of core/liquid_agent.py's REFERENCE_TEMPERATURE_CELSIUS, so a change to the reference temperature would leave the captions naming the old one
 
-**Cleared before v0.7.0's implementation begins, unless deferred - 158 entries**
+**Cleared before v0.7.0's implementation begins, unless deferred - 157 entries**
 
 - PL-H57W (L) Since PL-CZXN no check measures whether a branch that changes no core function weakens a core unit test, because PL-7FPD's route compares only the display modules' mutants; the same comparison over core's mutants took 538 to 968 s for one changed test file
 - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
@@ -1253,7 +1255,6 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-2BG1 (S) MODEL.md calls each stored MAC '1 MAC for a 40-year-old adult' (Delivery-limit and MAC parameters, and three provenance table rows), but its adopted source, De Wolf et al. 2012, gives a flat adult MAC with no age, and the same section's table shows the stored values 2.6% to 11.1% off Mapleson's age-40 figures
 - PL-11Z9 (S) The agent cost View does not say on its face that its figures are modelled: 'Liquid used by the vaporizer' can read as a measured volume, and v0.7.0's definition of done asks the modelled label only of the schematic
 - PL-FCYQ (M) No test replays a recorded control-input timeline into a fresh run and compares the two, though docs/MODEL.md § The control-input timeline requires that the replay reproduces the run
-- PL-RJN9 (S) The agent cost View's two captions in src/anesthesia_sim/app/agent_cost.py write '20 degrees C' as text, a second copy of core/liquid_agent.py's REFERENCE_TEMPERATURE_CELSIUS, so a change to the reference temperature would leave the captions naming the old one
 - PL-BLN0 (L) Sentences in docs/MODEL.md, docs/ARCHITECTURE.md and docs/interface-provenance.md that restate how the code or the interface behaves go stale when the code changes, because nothing ties a free-prose sentence to the code it describes
 
 ### Captures after the cut
@@ -1335,7 +1336,7 @@ deferred, because their problems began after the freeze: `PL-8G3F`, `PL-K4MQ`,
 `PL-JTTD`, `PL-7R8S`, `PL-LPV0`, `PL-Z6FR` and `PL-HXF0`.
 
 **40 captures joined the frozen list on 2026-11-09, after the freeze.** The
-triage pass of 2026-11-09 checked each one against `817a4d88`, and each brief
+triage pass that day checked each one against `817a4d88`, and each brief
 records what it found. For 38 of them the problem was already present at the
 freeze, so they re-enter as § "Which findings re-enter the gate" says. They are
 `PL-97S1`, `PL-G0R3`, `PL-GW26`, `PL-HR4T`, `PL-HVLD`, `PL-G1J9`, `PL-GSPR`,
@@ -1347,17 +1348,28 @@ freeze, so they re-enter as § "Which findings re-enter the gate" says. They are
 for the project owner, and they count as debt while they wait at
 `needs-decision`. The same pass filed `PL-BLN0`, the generator head for
 document sentences that restate the code and go stale. It completes entries
-already on the list, such as `PL-G1J9` and `PL-HR4T`. The other two captures, `PL-11Z9` and `PL-RJN9`, are new problems in the agent cost
-View, which arrived on 2026-11-02, after the freeze. Both are classed
+already on the list, such as `PL-G1J9` and `PL-HR4T`.
+
+The other two captures are `PL-11Z9` and `PL-RJN9`, new problems in the agent
+cost View, which arrived on 2026-11-02, after the freeze. Both are classed
 `safety`, so they re-enter whether or not their problem was present.
 `PL-11Z9`'s hazard is live: the View does not say that its figures are
 modelled, so a learner can take them for measurements today.
 
-`PL-FCYQ` and `PL-RJN9` stay on the list but are deferred to the next gate, on
-the terms of § "Deferring to the next gate". The check found that neither
-hazard is live, so no learner can see a wrong value now. `PL-RJN9`'s captions
-still name the temperature and pressure that the conversion uses. Each item's
-`deferred-from:` says why it is deferred.
+`PL-FCYQ` stays on the list but is deferred to the next gate, on the terms of
+§ "Deferring to the next gate". The triage pass found that its hazard is not
+live, so no learner can see a wrong value now. `PL-RJN9` was deferred on the
+same terms until 2026-11-10.
+
+**`PL-HQPF` joined the frozen list on 2026-11-10, after the freeze, and this
+milestone clears it together with `PL-RJN9`.** A review of earlier fixes found
+that the accounting panel and the schematic show agent amounts without the
+condition they are stated at, 20 °C and 1 atm. The accounting panel's caption
+was already in the tree at `817a4d88`, so the problem was present at the
+freeze. The project owner chose to put both items in this milestone (project
+owner, 2026-11-10, ratified, over deferring them to the next gate). Required
+scope entry 13 names both, so they are in the first group, and `PL-RJN9` is
+no longer deferred.
 
 ### Required scope
 
@@ -1491,6 +1503,25 @@ still name the temperature and pressure that the conversion uses. Each item's
     made, so that the sections a learner reads beside the schematic, the agent
     cost View and the other displays are written for a clinician.
 
+#### The condition an agent amount is stated at
+
+13. **Every agent amount on screen names the condition it is stated at**
+    (queue items `PL-HQPF` and `PL-RJN9`). The project owner added this to
+    v0.7.0 (project owner, 2026-11-10, ratified, over deferring both items to
+    the next gate). An agent amount is a volume of vapour, and the model
+    states every amount at 20 °C and 1 atm. The accounting panel's unit
+    caption, the schematic's amount unit and the agent cost View's two
+    captions each name that temperature and pressure. Each label takes the
+    two values from the constants that the conversion from vapour to liquid
+    uses, so that a label cannot name a condition the figure was not computed
+    at. The body's stores
+    are not converted to 37 °C for display (project owner, 2026-11-10,
+    ratified, over converting them). The accounting panel sums the delivered,
+    exhausted and stored amounts, and they add up only when all three are
+    stated at one condition. `docs/MODEL.md` § "Known limitations" already
+    says that the 20 °C label overstates the alveolar, venous and tissue
+    stores by 5.8%, because they are held at body temperature.
+
 ### Definition of done
 
 **The compartment schematic**
@@ -1531,6 +1562,13 @@ still name the temperature and pressure that the conversion uses. Each item's
   computed conversion. It checks the cost against that figure times the price.
 - The price and the unit survive a restart, in a preferences file separate
   from every Workspace.
+
+**The condition an agent amount is stated at**
+
+- Every agent amount on the accounting panel, the schematic and the agent
+  cost View names 20 °C and 1 atm with its unit. A test asserts that each
+  label states the values of the constants that the conversion from vapour to
+  liquid uses.
 
 **The copy editor**
 
