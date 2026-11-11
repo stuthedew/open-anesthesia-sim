@@ -1,10 +1,11 @@
-"""Tests for `.claude/hooks/gh_write_guard.py`, which keeps `gh` in Bash to reads (`PL-3986`).
+"""Tests for `.claude/hooks/gh_write_guard.py`, which limits `gh` in Bash to reading (`PL-3986`).
 
-The email guard reads MCP calls only, so a pull request body published
-through `gh` in Bash never met it. What is
-pinned: the three spellings `PL-3986` names are refused, the search the
-harness hands a session `gh` for is not, each refusal names the MCP route,
-and the hook is wired on Bash and refuses from its own script.
+The email guard checks MCP calls only, so it never saw a pull request body
+published through `gh` in Bash. These tests check that the hook refuses the
+three `gh` spellings that `PL-3986` names, but lets through the search for
+which the harness gives a session `gh`. They also check that each refusal
+names the MCP route, and that the hook is wired on Bash calls and refuses from
+its own script.
 """
 
 from __future__ import annotations

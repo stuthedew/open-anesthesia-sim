@@ -1,18 +1,17 @@
-"""Every guard runs through one entry point, which says so when a guard could not check a call.
+"""Every guard runs through one entry point, which reports when a guard could not check a call.
 
-`PL-9KSJ` found that each guard wrote its own failure path, and that every one
-of them let a call through unchecked and said nothing when it crashed. These
-tests hold the replacement to its promise:
+Each guard used to handle its own failures. Whenever one crashed, it let the
+call through unchecked and said nothing (`PL-9KSJ`). These tests check that:
 
 - every hook that `.claude/settings.json` wires on a tool call starts at
   `guard.sh`, unless `EXEMPT` below names it with a reason;
-- a guard that raises, prints something other than a hook's output, or runs
-  past its deadline lets the call through with a note naming the guard;
-- a `python3` that is missing or dies before deciding gets the same note
-  from `guard.sh`;
-- a call that mentions a merge is let through on those paths like any other,
-  since GitHub refuses a merge past `main`'s checks and no guard here judges
-  one (`PL-39Y1`);
+- when a guard raises, prints something other than a hook's output, or runs
+  past its deadline, the call goes through with a note naming the guard;
+- when `python3` is missing or dies before deciding, `guard.sh` gives the
+  same note;
+- in those cases, a call that mentions a merge goes through like any other,
+  because GitHub refuses a merge that bypasses `main`'s checks and no guard
+  here judges one (`PL-39Y1`);
 - each wiring's `timeout` covers the deadlines of its guards, and each
   guard's deadline covers the waits the guard sets for itself.
 """
@@ -73,7 +72,8 @@ QUIET_CALL = json.dumps(
     }
 )
 
-#: A merge, which no guard judges: GitHub refuses one past `main`'s checks.
+#: A merge, which no guard judges, because GitHub refuses one that bypasses
+#: `main`'s checks.
 MERGE_CALL = json.dumps(
     {
         "hook_event_name": "PreToolUse",
@@ -313,7 +313,7 @@ def test_the_failure_note_keeps_the_event_it_answers(tmp_path: Path) -> None:
 def test_a_call_that_mentions_a_merge_is_let_through_when_no_guard_could_check_it(
     payload: str, tmp_path: Path
 ) -> None:
-    """The launcher once refused these for the merge guard, which `PL-39Y1` removed."""
+    """The launcher once refused these calls for the merge guard, now removed (`PL-39Y1`)."""
     assert not entry_point.judged(entry_point.GROUPS["pre-mcp"], payload).refusals
     decided = _launch("pre-mcp", payload, _failing_python(tmp_path))
     assert decided is not None

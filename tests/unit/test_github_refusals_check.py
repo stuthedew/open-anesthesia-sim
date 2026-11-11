@@ -1,10 +1,11 @@
 """Each escape that got past a session guard is refused at GitHub, or named as open (`PL-39Y1`).
 
 The guards on branch deletion, forced pushes and merges read what a session
-typed, and four fixes each met another spelling. `tools/github_refusals_check.py`
-reads GitHub's own rules instead. These tests replay every recorded escape
-against the settings GitHub held on 2026-11-11, when only `main` had a rule,
-and against the settings the item asks the owner for.
+typed, and after each of four fixes, another spelling got past them. A check
+now reads GitHub's own rules instead (`tools/github_refusals_check.py`). These
+tests replay every recorded escape against GitHub's settings for this
+repository on 2026-11-11, when only `main` had a rule, and against the settings
+that the owner is asked to apply (`PL-39Y1`).
 """
 
 from __future__ import annotations
@@ -15,10 +16,11 @@ import github_refusals_check as grc
 import pytest
 import required_checks_check as rcc
 
-# What GitHub answered for this repository on 2026-11-11, before the owner
-# added a rule: `GET /repos/{repo}/branches/main`, `/rules/branches/main`,
+# GitHub's responses for this repository on 2026-11-11, before the owner added
+# a rule, trimmed to the keys the check reads. The requests were
+# `GET /repos/{repo}/branches/main`, `/rules/branches/main`,
 # `/rules/branches/<a claude branch>`, `/rulesets?targets=tag` and
-# `/rulesets/21260116`, trimmed to the keys the check reads.
+# `/rulesets/21260116`.
 BASE_RULESET = {
     "id": 21260116,
     "name": "Base",
@@ -47,7 +49,7 @@ RECORDED = {
     "/rulesets/21260116": BASE_RULESET,
 }
 
-# The two rulesets the item asks the owner to create.
+# The two rulesets that the owner is asked to create (`PL-39Y1`).
 ALL_BRANCHES = {
     "id": 2,
     "name": "All branches",
@@ -82,7 +84,7 @@ ASKED_FOR = {
 
 
 def _github(monkeypatch: pytest.MonkeyPatch, answers: dict[str, object]) -> None:
-    """Answer the check's reads of GitHub from `answers`, keyed by the path after the repository."""
+    """Serve the check's GitHub requests from `answers`, keyed by the path after the repository."""
 
     def fake_get(url: str, token: str | None, attempts: int = 3) -> object:
         path = url.split("/repos/o/r", 1)[1]
@@ -100,8 +102,8 @@ def _missing(monkeypatch: pytest.MonkeyPatch, answers: dict[str, object]) -> set
 
 # --- each past escape, replayed ---------------------------------------------
 
-# Every spelling the item records as having passed a session guard, written
-# here independently of the check's own table.
+# Every spelling recorded as having got past a session guard (`PL-39Y1`),
+# written here independently of the check's own table.
 PAST_ESCAPES = (
     "git push --no-verify origin --delete <branch>",
     "git -c core.hooksPath=/dev/null push origin --delete <branch>",
@@ -139,7 +141,7 @@ def test_every_escape_says_what_refuses_it_or_that_nothing_does(escape: grc.Esca
 def test_the_settings_of_2026_11_11_let_these_escapes_through(
     monkeypatch: pytest.MonkeyPatch, spelling: str, absent: set[str]
 ) -> None:
-    """Only `main` had a rule, so a forced push to any other branch met nothing."""
+    """Only `main` had a rule, so nothing refused a forced push to any other branch."""
     escape = next(escape for escape in grc.GUARD_ESCAPES if escape.spelling == spelling)
     assert set(escape.rules) & _missing(monkeypatch, RECORDED) == absent
 
@@ -147,7 +149,7 @@ def test_the_settings_of_2026_11_11_let_these_escapes_through(
 def test_a_merge_past_the_checks_was_already_refused_on_2026_11_11(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """`main` bound an admin to its checks, whichever client sent the merge."""
+    """`main`'s checks applied to an admin too, whichever client sent the merge."""
     absent = _missing(monkeypatch, RECORDED)
     for spelling in ("bash -c 'gh pr merge <number> --squash'", PAST_ESCAPES[4]):
         escape = next(escape for escape in grc.GUARD_ESCAPES if escape.spelling == spelling)
@@ -191,7 +193,10 @@ def test_a_rule_taken_away_is_named(
 def test_admins_left_unbound_is_what_the_merge_guard_used_to_read(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """`direct_merge_guard.py` refused a merge on this reading; the check now fails on it."""
+    """The check fails when `main`'s required status checks do not apply to admins.
+
+    The merge guard (`direct_merge_guard.py`) refused a merge on this setting.
+    """
     answers = {
         **ASKED_FOR,
         "/branches/main": {
@@ -201,7 +206,7 @@ def test_admins_left_unbound_is_what_the_merge_guard_used_to_read(
     assert _missing(monkeypatch, answers) == {"default-binds-admins"}
 
 
-# --- the read -----------------------------------------------------------------
+# --- reading GitHub's settings -----------------------------------------------
 
 
 def test_a_tag_ruleset_counts_only_where_it_is_active_and_covers_a_release_tag(

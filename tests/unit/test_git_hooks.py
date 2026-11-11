@@ -207,10 +207,10 @@ def test_the_restart_recipe_the_refusal_prints_replaces_the_stale_ref(clone: Clo
 def test_the_recipe_forces_nothing_onto_a_branch_the_remote_still_holds(clone: Clone) -> None:
     """A commit pushed after the merge leaves the old branch on the remote.
 
-    The recipe's push is then refused, and the message names no forced push,
-    because GitHub refuses one on every branch (`PL-39Y1`). It named
-    `--force-with-lease` until 2026-11-11. Once the project owner has deleted
-    the old branch, the same push lands and moves the stale ref.
+    The recipe's push is then refused, and the refusal message names no forced
+    push, because GitHub refuses one on every branch (`PL-39Y1`). Once the
+    project owner has deleted the old branch, the same push lands and moves the
+    stale ref.
     """
     clone.sh(
         "git checkout -q -b b3 && git commit -q --allow-empty -m left-behind "
