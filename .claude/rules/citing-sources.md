@@ -18,20 +18,35 @@ question, decided by `docs/MODEL.md` § "Source hierarchy: what may be cited as
 the authority for a value". That one is about whether a document counts; this
 one is about how you reached it. Both have to be answered.
 
-## Direct HTTP reaches an allowlist, and the list has a date on it
+## Direct HTTP reaches any host, and a publisher can still refuse
 
-The environment's **Network access** setting decides this, and it is a property
-of the cloud environment rather than of this project. It takes four levels —
-`None`, `Trusted` (the default), `Full` (any domain) and `Custom` (an
-allowlist, optionally including the `Trusted` defaults) — set from the
-environment dialog at `claude.ai/code`. This environment is on `Custom`
-(project owner, 2026-09-19, ratified, over `Full` — chosen because this
-repository is public, its copyright exposure is not yet closed, and an
-allowlist is a record of what a session could reach where `Full` is not).
+The environment's **Network access** setting decides which hosts a session can
+reach. It belongs to the cloud environment and not to this repository. The
+owner sets it in the environment dialog at `claude.ai/code`, and a session
+reads it with the `get_environment` tool. Since 2026-11-10 it is `Full`, which
+allows any domain (project owner, 2026-11-10, ratified, over keeping the
+`Custom` allowlist chosen on 2026-09-19). `PL-6VZF` holds the evidence and the
+list of hosts that the change discarded.
 
-So "can I fetch this?" has no standing answer, only a measured one.
-**Re-measure rather than trusting the snapshot below**, substituting the hosts
-you actually need:
+The allowlist did not control what it was chosen to control. A commit to this
+public repository is what creates copyright exposure, and the list never
+limited commits. A reviewer of a stored value needs a record of what was read,
+and the list recorded only what a session could reach. In the design round of
+2026-11-10 the list refused ten hosts that held primary sources, and five
+claims reached the owner from memory.
+
+Two rules do the work the list was chosen for:
+
+1. **Read a source in the session before citing it.** `CLAUDE.md` § "Proactive
+   expert review and domain best practices" states the rule: no citation comes
+   from memory. A source that cannot be read is not cited.
+2. **Commit nothing fetched from a third party**: no full text, no figure and
+   no screenshot of another party's page. `docs/references/README.md` §
+   "Redistribution" says which files this public repository may hold, and the
+   same file says what an extraction note may quote.
+
+**Measure whether a host answers before saying that it does not.** Substitute
+the hosts you need:
 
 ```sh
 for h in doi.org api.crossref.org pubmed.ncbi.nlm.nih.gov www.nejm.org; do
@@ -40,101 +55,45 @@ for h in doi.org api.crossref.org pubmed.ncbi.nlm.nih.gov www.nejm.org; do
 done
 ```
 
-`000` is the gateway refusing the CONNECT; any HTTP status means the host
-answered. `curl -sS "$HTTPS_PROXY/__agentproxy/status"` names the reason under
-`recentRelayFailures`.
+Any HTTP status means the host answered. `000` means the gateway refused the
+CONNECT, which `Full` should never produce. Read the setting with
+`get_environment` before concluding anything, and
+`curl -sS "$HTTPS_PROXY/__agentproxy/status"` names the reason under
+`recentRelayFailures`. Do **not** route around the gateway: no alternate proxy,
+no disabling TLS verification, no unsetting `HTTPS_PROXY`. A host the gateway
+refuses means the owner changed the setting, and that decision is the owner's.
 
-**Measured 2026-09-19: the indexes opened and the publishers did not.**
-
-- **Reached on 2026-09-19** — `doi.org` 301, `api.crossref.org` 302, `api.openalex.org` 429,
-  `link.springer.com` 303, `arxiv.org` 200, `pubmed.ncbi.nlm.nih.gov` 200,
-  `eutils.ncbi.nlm.nih.gov` 301, `search.worldcat.org` 200, and
-  `www.sciencedirect.com` 403 (which is the trap below, not a refusal).
-- **Refused at the CONNECT on 2026-09-19** — `www.nejm.org`, `epubs.siam.org`,
-  `journals.sagepub.com`, `www.w3.org`, `www.icrp.org`, `en.wikipedia.org`,
-  `www.google.com`, `example.com`.
-
-That split is the thing to carry, and it is more useful than either half on its
-own: **an identifier can now be checked at the source, and a paywalled full
-text still cannot be fetched from the publisher.** Resolving a DOI, confirming
-a volume and page range, or pulling a Crossref or OpenAlex record is a direct
-call now, so `CLAUDE.md`'s requirement to consult the source rather than memory
-reaches those outright and there is no excuse left for an unverified
-identifier. Reading the article is still the PubMed route and the private
-corpus below.
-
-It earned its keep immediately: the first session able to resolve a DOI from
-here found that `core/matrix_exponential.py` had been citing one that does not
-exist (`PL-5MT4`).
-
-`pypi.org`, `files.pythonhosted.org`, `registry.npmjs.org` and
-`api.anthropic.com` sit in the proxy's own `noProxy` list, so they bypass the
-gateway entirely and prove nothing about the allowlist. Do not read one of them
-answering as evidence that egress is open.
-
-**A bare `403` can mean either of two opposite things.** The table tells them
-apart:
+**A `403` can come from the gateway or from the publisher.** The table tells
+them apart:
 
 | What you see | What happened |
 | --- | --- |
-| `curl: (56) CONNECT tunnel failed, response 403`, and `%{http_code}` is `000` | the gateway refused — the host was never contacted |
+| `curl: (56) CONNECT tunnel failed, response 403`, and `%{http_code}` is `000` | the gateway refused, and the host was never contacted |
 | `HTTP/1.1 200 Connection Established`, then `HTTP/2 403` | the tunnel opened and the **publisher** refused the client |
 
-`www.sciencedirect.com` was the live instance of the second on 2026-09-19 and
-again on 2026-10-06: it was reachable and answered `403` to an unattended
-client, which is the publisher's bot block rather than an egress refusal. Reading that as "still blocked" sends a
-reachable source to memory; reading a real refusal as a bot block sends a
-session hunting for a user agent that will never work.
+`www.sciencedirect.com` answered `403` to an unattended client on 2026-09-19
+and again on 2026-10-06. That is the publisher's bot block, and no user agent
+gets past it. `WebFetch` returns a structured `EGRESS_BLOCKED` naming the
+domain for a host the gateway refuses. For a host that answers, it returns a
+small model's summary of the page and not the page itself. That settles
+whether the host is reachable, and nothing it quotes: read a quotation or a
+value from the page with `curl` (`PL-B1BW`).
 
-**`WebFetch` tells them apart where `curl` does not**, and is the cheaper
-check: it returns a structured `EGRESS_BLOCKED` naming the domain for a refused
-host, and for an allowed one a small model's answer about the page rather than
-the page itself, which settles reachability and nothing it quotes: a quotation
-or a value is read from the page with `curl` (`PL-B1BW`). Verified 2026-09-19 — it returned
-`{"error_type":"EGRESS_BLOCKED","domain":"www.nejm.org", ...}` for NEJM and
-resolved `api.crossref.org/works/10.1073/pnas.2400215121` to its title,
-journal, volume and DOI.
+**A publisher's refusal, or a paywall, ends the direct route and not the
+search for the source.** The PubMed MCP server returns a structured record and
+an abstract. The private reference corpus holds full texts that publishers do
+not serve to a session. Where neither holds the passage a citation needs, the
+last limit below says what to do. Never narrow the claim until something
+reachable supports it, and never take a search summary for a reading.
 
-**A refused host licenses no inference about the source.** It is not evidence
-that the literature is unreachable. Concluding that it is sends a session to
-memory, which both rules above forbid. Check the host before concluding
-anything about a source, because the answer is per host and dated. Do **not**
-try to route around the gateway: no alternate proxy, no disabling TLS
-verification, no unsetting `HTTPS_PROXY`. The allowlist is a decision the
-project owner took about what a public repository's sessions may reach.
-Evading it is not a workaround but a reversal of that decision. Where a host is
-genuinely refused, there is still a route.
-
-Read "there is a route" as "the block is not the end of it", never as "keep
-hunting until something turns up" — the second reading is what produces a
-search summary dressed as a reading. Whether that route carries what a given
-citation needs is a separate question, and the fourth limit below is the case
-where the honest answer is no.
-
-**The PubMed MCP server and the private reference corpus remain routes.**
-They were adopted on 2026-09-04, when the environment was on `Trusted` and
-every literature host was refused at the CONNECT. PubMed is the route to a
-structured record and an abstract. The corpus is the route to a full text that
-the publishers will not serve.
-
-**No check in this repository can replace the dated sentence above, and that is
-structural rather than a gap in the tooling.** The allowlist is enforced at the
-gateway, outside the sandbox; nothing in the tree can read it, set it, or scope
-it per repository. Only `remote.defaultEnvironmentId` is settable from
-`.claude/settings.json`, and it binds `claude --cloud` alone rather than the
-Desktop and web surfaces this project is worked from — so a committed setting
-would be a guarantee that silently does not hold (project owner, 2026-09-19,
-ratified, over a second environment selected per session). `CLAUDE.md` §
-"Prefer deterministic tooling over repeated model work" does not reach this
-one, because the decidable part sits outside the tree. What is owed instead is
-the date, the command that re-measures, and no claim that outlives the next
-environment edit. Whether a claim carries its date is the half the tree can
-decide, so `tools/doc_check.py` refuses a sentence that names a host beside a
-refusal and carries none (`PL-CLW5`).
+**A sentence that says a host was refused carries its date.** The setting sits
+outside the tree, so a file here can only record what a probe showed on one
+day. `tools/doc_check.py` refuses a sentence that names a host beside a refusal
+and gives no date (`PL-CLW5`).
 
 ## The PubMed MCP server is that route
 
-Verified 2026-09-04, the day of the historical measurement above: search
+Verified 2026-09-04: search
 returned 23 hits for `"MAC-awake" AND sevoflurane`; metadata returned PMID,
 PMCID, DOI, journal, volume, pages, authors and abstract; and full text came
 back for an open-access article given its PMC id.
@@ -272,8 +231,9 @@ one to invent:
 Many of the `sources` entries under `src/anesthesia_sim/data/` already named
 a route or a depth when this rule was written. So this is the existing
 convention made compulsory, not an addition. Every note you write or touch
-names **which route** (PubMed metadata, PubMed full text, or
-a document already held in `docs/references/`) and **how deeply you read**
+names **which route** (PubMed metadata, PubMed full text, the
+source's own page, the private corpus, or a document already held in
+`docs/references/`) and **how deeply you read**
 (full text, or the abstract only).
 
 That sentence is the whole mechanism. Once written down, a citation taken from
