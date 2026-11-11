@@ -6,8 +6,10 @@ tests check that each shipped file is what it claims to be: one Workspace, at
 the current version, naming its own file's id, and written in the form that
 the writer produces. They also check what each arrangement shows. No shipped
 Workspace contains the accounting View (project owner, 2026-09-16). The
-default gives the chart the window's full height beside the parameter
-controls, which is the composition the pixel budget was set for (`PL-84QX`).
+default gives the chart the window's full height beside a column of the
+parameter controls, the bookmarks and the branch control. The chart at full
+height is the composition the pixel budget was set for (`PL-84QX`), and the
+other two joined the column in `PL-9YPR`.
 The tests of refusals run against a directory of the test's own.
 """
 
@@ -44,6 +46,8 @@ WASH_IN = ViewKind("wash_in")
 PARAMETERS = ViewKind("parameter_controls")
 ACCOUNTING = ViewKind("agent_accounting")
 SCHEMATIC = ViewKind("compartment_schematic")
+BOOKMARKS = ViewKind("bookmarks")
+BRANCH = ViewKind("branch")
 DEFAULT = ShippedWorkspaceId("default")
 
 
@@ -107,7 +111,16 @@ def test_the_default_gives_the_chart_the_full_height_beside_the_parameter_contro
 
     assert isinstance(tree, Split)
     assert tree.orientation is Orientation.ROW
-    assert [child.view for child in tree.children if isinstance(child, Area)] == [CHART, PARAMETERS]
+    chart, beside = tree.children
+    assert isinstance(chart, Area)
+    assert chart.view == CHART
+    assert isinstance(beside, Split)
+    assert beside.orientation is Orientation.COLUMN
+    assert [child.view for child in beside.children if isinstance(child, Area)] == [
+        PARAMETERS,
+        BOOKMARKS,
+        BRANCH,
+    ]
 
 
 def test_induction_shows_the_wash_in_chart() -> None:
@@ -115,7 +128,7 @@ def test_induction_shows_the_wash_in_chart() -> None:
         area.view for area in shipped_workspace(ShippedWorkspaceId("induction")).layout.areas()
     ]
 
-    assert kinds == [CHART, WASH_IN, PARAMETERS]
+    assert kinds == [CHART, WASH_IN, PARAMETERS, BOOKMARKS, BRANCH]
 
 
 def test_maintenance_shows_the_compartment_schematic_beside_the_concentration_chart() -> None:
@@ -137,10 +150,14 @@ def test_maintenance_shows_the_compartment_schematic_beside_the_concentration_ch
     assert first.view == CHART
     assert isinstance(second, Split)
     assert second.orientation is Orientation.COLUMN
-    assert [child.view for child in second.children if isinstance(child, Area)] == [
-        SCHEMATIC,
-        PARAMETERS,
-    ]
+    schematic, parameters, case = second.children
+    assert isinstance(schematic, Area)
+    assert schematic.view == SCHEMATIC
+    assert isinstance(parameters, Area)
+    assert parameters.view == PARAMETERS
+    assert isinstance(case, Split)
+    assert case.orientation is Orientation.ROW
+    assert [child.view for child in case.children if isinstance(child, Area)] == [BOOKMARKS, BRANCH]
 
 
 def test_induction_opens_its_concentration_chart_on_the_15_minute_window() -> None:
