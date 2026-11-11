@@ -3,11 +3,13 @@ id: PL-9YPR
 title: The marks panel and the branch control sit under the Areas as fixed page sections (SimulationView._build_case_section, which calls their place a placeholder), not as Views, against the owner's 2026-09-16 rule that every main UI element is a View an Area can hold; they add their height to every Workspace and no Workspace can move or close them
 priority: P2
 effort: M
-status: untriaged
+status: done
 classes: feature
 feature: window-is-the-frame
 touches: src/anesthesia_sim/app/views.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/view_contract.py, src/anesthesia_sim/app/view_registry.py, src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/data/workspaces/default.json, tests/integration/test_simulation_view.py
 added: 2026-11-11
+closed: 2026-11-11
+pr: 2103
 payoff: a learner can put the bookmarks and the branch control in any Area, or leave them out, and no fixed section under the Areas adds to the page's height
 verify: grep -q 'def test_the_selected_branch_point_survives_the_branch_view_being_rebuilt' tests/integration/test_simulation_view.py
 ---
@@ -237,3 +239,14 @@ all caught by the unit tests, none surviving. It ran in a scratch copy with
 fix the run stops before its first mutant. A fix of this session's to the
 same line was withdrawn when `PL-GP8G` turned up on another branch. Not
 mutated: seven changed module-level lines of `app/dashboard_frame.py`.
+
+**Close-out, 2026-11-11.** The copy editor read the branch's 93 changed
+passages. Twenty rewrites were applied, three edits rejected, and its queries
+led to ten corrections (commit `2b2411f1e`). The audit, run in the repository
+once `PL-GP8G` reached `main`, accepted the item: seven mutants of the changed
+functions, all caught, none surviving, and the whole-repository check passed.
+The project owner read the changed sentences of `README.md` and
+`docs/MODEL.md` and answered "merge" (2026-11-11). On the owner's instruction
+of the same day ("stop copy editor"), the pull request's title and body were
+published without the copy editor.
+
