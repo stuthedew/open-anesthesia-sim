@@ -18,7 +18,9 @@ text `on`, so nothing has to be mapped back. PyYAML also departs from the YAML
 Test Suite on tabs, flow-collection edge cases, anchors and tags, so the
 strategy draws none of those.
 
-Hypothesis draws the workflows, derandomized, so a red run reproduces exactly.
+Hypothesis draws the workflows. Every ordinary run draws the same ones, so a
+red run reproduces exactly, and a weekly run draws new ones
+(`tests/hypothesis_profiles.py`).
 Each workflow is built from the forms the closed items name:
 
 - `on:` as an event name, a flow list, a block list or a block or flow mapping,
@@ -339,7 +341,7 @@ def _held_to_pyyaml(lines: list[str]) -> None:
     assert [(step.line, step.keys) for step in read_steps] == _pyyaml_steps(lines), text
 
 
-@settings(derandomize=True, database=None, deadline=None, max_examples=1000)
+@settings(max_examples=1000)
 @given(workflows())
 def test_required_checks_reads_generated_workflows_as_yaml_does(lines: list[str]) -> None:
     _held_to_pyyaml(lines)

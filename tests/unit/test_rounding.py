@@ -11,7 +11,7 @@ from fractions import Fraction
 from pathlib import Path
 
 import pytest
-from hypothesis import given, settings
+from hypothesis import given
 from hypothesis import strategies as st
 from test_generated_runs import ONE_STEP, Plan, _build
 from test_numerical_envelope import _decimal_exponential, _squarings
@@ -261,7 +261,6 @@ def test_a_number_of_steps_not_built_as_a_step_count_is_refused() -> None:
         run_rounding(0, 5)  # type: ignore[arg-type]
 
 
-@settings(derandomize=True, database=None, deadline=None)
 @given(st.integers(0, MAXIMUM_SQUARINGS), st.integers(0, STEPS_IN_THE_LONGEST_RUN))
 def test_a_run_is_bounded_by_the_sum_of_its_steps_bounds(squarings: int, steps: int) -> None:
     """The bound for n steps is n times the bound for one, and no steps carry no rounding.
@@ -391,7 +390,6 @@ def test_the_whole_count_allowance_separates_rounding_from_a_fractional_count() 
     assert math.floor(2.5 + WHOLE_COUNT_TOLERANCE) == 2
 
 
-@settings(derandomize=True, database=None, deadline=None)
 @given(st.lists(st.floats(0.0, 1e3), min_size=1, max_size=2_000))
 def test_a_compensated_total_stays_inside_the_running_total_allowance(terms: list[float]) -> None:
     """Kahan's sum of nonnegative terms lies within the allowance of the exactly rounded sum.

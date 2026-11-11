@@ -217,30 +217,45 @@ def test_a_shipped_workspace_on_a_small_extent_names_its_too_small_areas_and_non
     model = shipped_workspace(ShippedWorkspaceId("induction")).layout
     tree = model.windows[0].tree
     # The induction Workspace is a row(0.75, 0.25) with two children: a
-    # column(0.6, 0.4) of Areas 1 and 2, and Area 3. Each Area needs 300 by 300.
+    # column(0.6, 0.4) of Areas 1 and 2, and a column(0.34, 0.33, 0.33) of
+    # Areas 3, 4 and 5. Each Area needs 300 by 300.
     needs = _each(tree, PixelSize(300, 300))
     floors = _each(tree, PixelSize(60, 40))
     fit = settle(tree, PixelSize(508, 408), _HANDLE_PX, needs, _fixed(floors), kept=frozenset())
 
-    # The Areas need 300 + 8 + 300 = 608 px of width and 608 px of height. The
-    # window has only 508 by 408 px, so it is 100 px short across and 200 px
-    # short down, 300 px in all. No single drop clears both. Dropping Area 1 or
-    # Area 2 shortens the column to 300 + 8 + 40 = 348 but leaves the width, and
-    # dropping Area 3 leaves the height. Each pair of Areas clears both. Areas 2
-    # and 3 have the smallest share of the pairs, 0.75 * 0.4 + 0.25 = 0.55,
-    # against 0.7 for Areas 1 and 3 and 0.75 for Areas 1 and 2. So Areas 2 and
-    # 3 drop.
+    # The window is 508 by 408 px. Across, the two columns need 300 + 8 + 300 =
+    # 608 px, so one whole column must drop to its 60 px floors. Down, the left
+    # column needs 300 + 8 + 300 = 608 px, so one of its Areas must drop, which
+    # leaves 300 + 8 + 40 = 348. The right column needs 300 * 3 + 16 = 916 px,
+    # so two of its Areas must drop, which leaves 300 + 40 + 40 + 16 = 396.
     #
-    # The row's 500 px give 375 and 125, which are at least the column's 300
-    # and Area 3's 60. The column's 400 px would give 240 and 160, so Area 1 is
-    # held at its 300, and Area 2 takes the other 100.
+    # So four Areas drop, in one of two ways: the whole left column and two of
+    # the right, or the whole right column and one of the left. The shares are
+    # 0.45 and 0.3 on the left, and 0.085, 0.0825 and 0.0825 on the right. The
+    # first way drops at least 0.75 + 0.165 = 0.915 of the window. The second
+    # drops 0.25 + 0.3 = 0.55 with Area 2, which is the least. So Areas 2, 3, 4
+    # and 5 drop.
+    #
+    # The row's 500 px give 375 and 125, which are at least the left column's
+    # 300 and the right column's 60. The left column's 400 px would give 240
+    # and 160, so Area 1 is held at its 300, and Area 2 takes the other 100.
+    # The right column's 392 px give 133.28, 129.36 and 129.36. Rounded down
+    # they sum to 391, and the pixel left over goes to Area 4, the earlier of
+    # the two Areas that lost the most.
     assert fit.apportionment.areas == {
         AreaId(1): PixelSize(375, 300),
         AreaId(2): PixelSize(375, 100),
-        AreaId(3): PixelSize(125, 408),
+        AreaId(3): PixelSize(125, 133),
+        AreaId(4): PixelSize(125, 130),
+        AreaId(5): PixelSize(125, 129),
     }
     assert fit.drawn == {AreaId(1)}
-    assert [entry.area_id for entry in fit.too_small] == [AreaId(2), AreaId(3)]
+    assert [entry.area_id for entry in fit.too_small] == [
+        AreaId(2),
+        AreaId(3),
+        AreaId(4),
+        AreaId(5),
+    ]
     assert all(
         size.width_px > 0 and size.height_px > 0 for size in fit.apportionment.areas.values()
     )

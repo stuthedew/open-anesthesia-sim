@@ -306,8 +306,16 @@ jobs:
   # with the worker count the runner had, since the order a worker meets
   # depends on how many workers share the collection.
   #
+  # The same run also gives the property tests new inputs (`PL-V067`). Every
+  # other run draws the same inputs for them, from `tests/hypothesis_profiles.py`'s
+  # `repeatable` profile. This job loads its `exploring` profile, with the date
+  # as Hypothesis's seed too, so each week tries inputs that no earlier run
+  # tried. To reproduce a red property test, add
+  # `--hypothesis-profile=exploring --hypothesis-seed=SEED` to the command above.
+  #
   # It reports and gates nothing, like the rest of this file. A red result
-  # names two tests that share state, and that is a defect in one of them.
+  # names two tests that share state, or a property test's input that breaks
+  # it, and either is a defect.
   order:
     if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 6 * * 1'
     runs-on: ubuntu-latest
@@ -332,7 +340,7 @@ jobs:
       # so the versions are the ones every other run tests.
       - run: uv sync --locked --dev
 
-      - run: uv run pytest -n auto --dist worksteal -p randomly --randomly-seed="$(date -u +%Y%m%d)"
+      - run: uv run pytest -n auto --dist worksteal -p randomly --randomly-seed="$(date -u +%Y%m%d)" --hypothesis-profile=exploring --hypothesis-seed="$(date -u +%Y%m%d)"
 
   # Is each quotation of Claude Code's documentation still on its page?
   #

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: planning, ux
 feature: interface-pass-design-round
+milestone: v0.6.18
 added: 2026-11-11
 closed: 2026-11-11
 pr: 2116

@@ -1,29 +1,31 @@
 """The shared part of the dashboard, which every displayed run uses, in PySide6.
 
-`PL-B9PY` divided the dashboard into a part that all runs share and a part
-for each run. `SimulationView` is the shared part. It holds what two runs
-cannot each have a copy of: the compartment selection, the time base, the
-Areas (resizable panes) and the Views in them, the marks and the branch
-control. It also holds one `RunView` per run, and each `RunView` holds
-everything else for its run. `app/area_layout.py` builds the Views through the
-View registry, each from the View contract's context (`app/view_contract.py`,
-`PL-TH35`). So this class names no View, except to keep the concentration
-chart in view after a branch.
+The dashboard is divided into a part that all runs share and a part for each
+run (`PL-B9PY`). `SimulationView` is the shared part. It holds what two runs
+cannot each have a copy of: the compartment selection, the Areas (resizable
+panes) and the Views in them, the marks and the branch control. The marks and
+the branch control are shown by Views. The dashboard builds a copy for each
+View that asks, and writes every copy (`PL-9YPR`). It also holds one `RunView`
+per run, and each `RunView` holds everything else for its run. The layout
+adapter (`app/area_layout.py`) builds the Views through the View registry,
+each from the View contract's context (`app/view_contract.py`, `PL-TH35`). So
+this class names no View, except to keep the concentration chart in view after
+a branch.
 
-**The unconditional region is outside the splitters** (`PL-NWTM`). The
-unconditional region holds the values that must be on screen at all times.
-Each run's transport row, its notice banner, its readouts and its
-control-change record sit in a band across the top of the page. The use
-disclaimer sits in a line across the foot of the page. `docs/MODEL.md`
-§ "Minimum displayed outputs" requires those values on screen in every
-Workspace, and `app/unconditional_set.py` declares which values they are.
-`_place_run` rejects a run when the band does not hold every value that the
-run declares. Under the band is the Workspace tab strip, and under the strip
-are the Areas of the current Workspace (`PL-2KXB`). `app/area_layout.py`
-draws the Areas from that Workspace's layout model, so a reader can drag the
-borders between them (`PL-W9P6`). The Areas are the layout container. No
-widget in the band sits inside an Area, so no split, join or close of an Area
-and no Workspace switch can affect the band.
+**The unconditional region is outside the splitters** (`PL-NWTM`). It holds
+the values that must be on screen at all times. `docs/MODEL.md` § "Minimum
+displayed outputs" requires them in every Workspace, and
+`app/unconditional_set.py` declares which values they are. Each run's
+transport row, its notice banner, its readouts and its control-change record
+sit in a band across the top of the page. The use disclaimer sits in a line
+across the foot of the page. A run is rejected when the band does not hold
+every value that the run declares (`_place_run`). Under the band is the
+Workspace tab strip, and under the strip are the Areas of the current
+Workspace (`PL-2KXB`). The layout adapter draws the Areas from that
+Workspace's layout model, so a reader can drag the borders between them
+(`PL-W9P6`). The Areas are the layout container. No widget in the band sits
+inside an Area, so no split, join or close of an Area and no Workspace switch
+can affect the band.
 
 **The dashboard owns the Workspaces** (`PL-2KXB`). It holds the
 `WorkspaceSet` and opens on its current Workspace. When the tab strip hands it
@@ -111,8 +113,11 @@ from anesthesia_sim.app.dashboard_frame import (
     RENDER_INTERVAL_S,
     TRUNK_RUN_INDEX,
     USE_DISCLAIMER_TEXT,
+    BookmarkPanel,
     BranchAtStake,
     ComparedRuns,
+    ForkOffer,
+    ForkPoint,
     NewCaseQuestion,
     RunMarks,
     bookmark_panel,
@@ -120,6 +125,7 @@ from anesthesia_sim.app.dashboard_frame import (
     comparing_fork_lock_text,
     displayed_run_count,
     fork_offer,
+    kept_fork_selection,
     refused_setting_notice,
     run_label,
     trunk_reset_question,
@@ -137,22 +143,10 @@ from anesthesia_sim.app.preferences import (
 )
 from anesthesia_sim.app.qt_widgets import BookmarkDialog, BookmarksPanel, ForkPanel, styled_label
 from anesthesia_sim.app.run_series import RecordedQuantity
+from anesthesia_sim.app.run_surfaces import keep_until_destroyed
 from anesthesia_sim.app.run_view import RunView
-from anesthesia_sim.app.stylesheets import (
-    foreground_stylesheet,
-    page_stylesheet,
-    panel_stylesheet,
-    scroll_area_stylesheet,
-)
-from anesthesia_sim.app.theme import (
-    GRIDLINE,
-    PAGE_PADDING,
-    PAGE_SPACING,
-    PANEL_PADDING,
-    SECTION_DIVIDER_HEIGHT,
-    VIEW_ROW_SPACING,
-    WARNING,
-)
+from anesthesia_sim.app.stylesheets import page_stylesheet, scroll_area_stylesheet
+from anesthesia_sim.app.theme import PAGE_PADDING, PAGE_SPACING, WARNING
 from anesthesia_sim.app.unconditional_set import INHALED_AGENT, unconditional_set, window_region
 from anesthesia_sim.app.view_contract import PreferencesInForce, ViewRequests
 from anesthesia_sim.app.views import ConcentrationView
@@ -182,7 +176,6 @@ _PAGE_NAME: Final = "dashboardPage"
 _MIDDLE_NAME: Final = "dashboardMiddle"
 _REGION_NAME: Final = "unconditionalRegion"
 _RECORD_COLUMN_NAME: Final = "controlRecordColumn"
-_CASE_SECTION_NAME: Final = "caseSection"
 
 
 def _within(widget: QWidget, ancestor: QWidget) -> bool:
@@ -503,16 +496,24 @@ class SimulationView(QWidget):
         # them, so the copies stay equal by construction. The arrangement exists
         # to make one failure impossible: two runs compared at two different
         # heights because a learner typed one of them twice.
-        self._bookmarks_panel = BookmarksPanel()
+        #
+        # A bookmarks View shows the marks, and each one asks for a copy of
+        # the panel (`build_bookmarks_panel`). This list holds the copies that
+        # Qt has not destroyed, and `_marks_shown` holds what they were last
+        # written, or None where the lists are withdrawn (`PL-9YPR`).
+        self._bookmarks_panels: list[BookmarksPanel] = []
+        self._marks_shown: BookmarkPanel | None = None
         self._bookmark_dialog: BookmarkDialog | None = None
-        self._bookmarks_panel.edit_button.clicked.connect(self._open_bookmark_dialog)
 
-        # The panel where a branch is taken. It is built beside the marks for
-        # the same reason that the marks are built here. Both offer instants of
-        # the *case*, so neither belongs inside a `RunView`.
-        self._fork_panel = ForkPanel()
-        self._fork_panel.take_button.clicked.connect(self._handle_fork)
-        self._fork_panel.here_button.clicked.connect(self._handle_here_fork)
+        # The copies of the panel where a branch is taken, one for each branch
+        # View, with the offer and the selected point they were last written.
+        # The dashboard builds them for the same reason that it builds the
+        # marks. Both offer instants of the *case*, so neither belongs inside
+        # a `RunView`. The selected point is kept here and not in a copy, so
+        # that it outlives every copy (`kept_fork_selection`).
+        self._fork_panels: list[ForkPanel] = []
+        self._fork_offer_shown: ForkOffer | None = None
+        self._fork_selection: ForkPoint | None = None
 
         self._build_page()
 
@@ -597,7 +598,9 @@ class SimulationView(QWidget):
         middle.setObjectName(_MIDDLE_NAME)
         middle.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         middle.setStyleSheet(page_stylesheet(_MIDDLE_NAME))
-        middle_column = _spaced_column(middle, PAGE_SPACING)
+        # The Workspace tab strip and the Areas sit together, with no spacing
+        # between them, so the strip reads as the Areas' own.
+        middle_column = _spaced_column(middle, 0)
 
         self._tabs = WorkspaceTabs(
             self._workspaces,
@@ -616,14 +619,8 @@ class SimulationView(QWidget):
         current = self._workspaces.current
         self._areas = AreaLayout(current.layout, requests, states=current.view_state)
         self._areas.views_changed.connect(partial(self.present, False))
-        # The strip and the Areas sit together, with no page spacing between
-        # them, so the strip reads as the Areas' own.
-        workspace = QWidget()
-        workspace_column = _spaced_column(workspace, 0)
-        workspace_column.addWidget(self._tabs)
-        workspace_column.addWidget(self._areas, 1)
-        middle_column.addWidget(workspace, 1)
-        middle_column.addWidget(self._build_case_section())
+        middle_column.addWidget(self._tabs)
+        middle_column.addWidget(self._areas, 1)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -777,47 +774,6 @@ class SimulationView(QWidget):
 
         self._tabs.show_set(workspaces)
 
-    def _build_case_section(self) -> QWidget:
-        """Build the case's controls under the Areas: first the marks, then the branch control.
-
-        Neither is a View, because neither belongs to a plot. Both deal with
-        instants of the case rather than of any one run or plot. So neither
-        sits inside a `RunView` or an Area. Where they sit is a placeholder
-        (`PL-TH35`).
-        """
-
-        panel = QWidget()
-        panel.setObjectName(_CASE_SECTION_NAME)
-        panel.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        panel.setStyleSheet(panel_stylesheet(_CASE_SECTION_NAME))
-        column = QVBoxLayout(panel)
-        column.setContentsMargins(PANEL_PADDING, PANEL_PADDING, PANEL_PADDING, PANEL_PADDING)
-        column.setSpacing(VIEW_ROW_SPACING)
-
-        # The marks get a section of their own. They are not placed inside the
-        # concentration chart's View, although they are most often read
-        # against that chart. There are two reasons, and the second is the
-        # stronger. First, the marks belong to the case rather than to either
-        # plot, so nesting them in one plot's chrome would say otherwise.
-        # Second, `PL-F9TQ` limits what may stand between a chart heading and
-        # its plot. A control placed there would restart the build-up of
-        # items there that `PL-F9TQ` stopped.
-        column.addWidget(self._bookmarks_panel)
-
-        # The branch control goes below the marks, for the same reason and one
-        # more. A learner marks the decision point and then forks there, so
-        # the two controls are read in that order. The whole section, divider
-        # included, is hidden when the dashboard holds no case. So a dashboard
-        # that cannot branch shows no seam where the control would have been.
-        self._fork_section = QWidget()
-        fork_column = _spaced_column(self._fork_section, column.spacing())
-        fork_column.addWidget(self._section_divider())
-        fork_column.addWidget(self._fork_panel)
-        self._fork_section.setHidden(self._case is None)
-        column.addWidget(self._fork_section)
-
-        return panel
-
     # ------------------------------------------------------------ the runs
 
     def _place_run(self, controller: SimulationController) -> RunView:
@@ -847,7 +803,7 @@ class SimulationView(QWidget):
             controller,
             self,
             run_id=self._run_identities.mint(),
-            branch_control=self._case is not None,
+            branch_control=self._branch_control_shown,
         )
 
         if not self._runs:
@@ -1203,10 +1159,14 @@ class SimulationView(QWidget):
 
     @halt_gate
     def _handle_fork(self) -> None:
-        """Create a branch at the point the panel is set to, and draw it beside the trunk.
+        """Create a branch at the selected point, and draw it beside the trunk.
+
+        Every copy of the branch control shows the one selected point that
+        this dashboard keeps, so the branch opens at the point that the
+        pressed copy shows (`PL-9YPR`).
 
         There are three ways to start a branch, and the panel's selector offers two of
-        them. The point that the selector returns decides which one is used. A branch
+        them. The selected point decides which one is used. A branch
         at a recorded control event is made through `BranchedCase.fork_at`, at the
         event's instant. A branch at a mark that the trunk has passed is made through
         `fork_at_mark`, which is given the mark itself (`PL-W4XQ`). So the case works
@@ -1242,7 +1202,7 @@ class SimulationView(QWidget):
             return
 
         self._runs[TRUNK_RUN_INDEX].snapshot()
-        point = self._fork_panel.selected_point()
+        point = self._fork_selection
 
         if point is None:
             self._fork_refusal = FORK_NOTHING_SELECTED_TEXT
@@ -1385,7 +1345,7 @@ class SimulationView(QWidget):
         try:
             self._refresh_fork_panel()
         except Exception:
-            self._fork_panel.set_offer(
+            self._show_fork_offer(
                 fork_offer(
                     (),
                     marks=(),
@@ -1420,7 +1380,7 @@ class SimulationView(QWidget):
         if self._case is None:
             return
 
-        self._fork_panel.set_offer(
+        self._show_fork_offer(
             fork_offer(
                 self._case.fork_points_s,
                 marks=self._case.mark_fork_points,
@@ -1429,6 +1389,81 @@ class SimulationView(QWidget):
                 refusal=self._fork_refusal,
             )
         )
+
+    def _show_fork_offer(self, offer: ForkOffer) -> None:
+        """Write `offer` into every copy of the branch control, and keep it for the next copy.
+
+        The selected point is carried from the last offer to this one by
+        `kept_fork_selection`, whether or not any copy is on screen.
+        """
+
+        shown = self._fork_offer_shown
+        self._fork_selection = kept_fork_selection(
+            None if shown is None else shown.points, self._fork_selection, offer.points
+        )
+        self._fork_offer_shown = offer
+        self._write_fork_panels()
+
+    def _write_fork_panels(self) -> None:
+        """Write the offer in force and the selected point into every copy of the branch control."""
+
+        offer = self._fork_offer_shown
+
+        if offer is None:
+            return
+
+        for panel in self._fork_panels:
+            panel.set_offer(offer, self._fork_selection)
+
+    @halt_gate
+    def _handle_fork_point_chosen(self, panel: ForkPanel) -> None:
+        """Take the point a learner chose in `panel`, and show it in every other copy.
+
+        `panel` already shows the point, so it is not written again. Writing it
+        would also replace its entries between frames, under the learner's
+        pointer, where the offer has changed since the last frame.
+        """
+
+        self._fork_selection = panel.selected_point()
+        offer = self._fork_offer_shown
+
+        if offer is None:
+            return
+
+        for other in self._fork_panels:
+            if other is not panel:
+                other.set_offer(offer, self._fork_selection)
+
+    def _branch_control_shown(self) -> bool:
+        """Whether a branch control is on screen, so that a banner may send a learner to it.
+
+        A dashboard with no case has no control. A dashboard with a case has
+        one only while an Area shows the branch View and draws it.
+        """
+
+        return any(panel.isVisibleTo(self) for panel in self._fork_panels)
+
+    def build_branch_control(self) -> ForkPanel | None:
+        """Build a copy of the branch control for a View, showing the offer and the point in force.
+
+        Returns:
+            The copy, which this dashboard writes on every frame and restates
+            on a halt. None where the dashboard was handed loose runs: it has
+            no case to branch, so a control could only refuse.
+        """
+
+        if self._case is None:
+            return None
+
+        panel = keep_until_destroyed(self._fork_panels, ForkPanel())
+        panel.take_button.clicked.connect(self._handle_fork)
+        panel.here_button.clicked.connect(self._handle_here_fork)
+        panel.point_selector.currentIndexChanged.connect(
+            partial(self._handle_fork_point_chosen, panel)
+        )
+        self._write_fork_panels()
+
+        return panel
 
     def _compared_runs(self) -> ComparedRuns | None:
         """What the trunk and its branch are called while both are drawn, or None while one is."""
@@ -1439,16 +1474,6 @@ class SimulationView(QWidget):
         trunk, branch = self._runs
 
         return ComparedRuns(run_label(trunk.run_id), run_label(branch.run_id))
-
-    def _section_divider(self) -> QFrame:
-        """The rule between two sections of the chart column."""
-
-        divider = QFrame()
-        divider.setFrameShape(QFrame.Shape.HLine)
-        divider.setFixedHeight(SECTION_DIVIDER_HEIGHT)
-        divider.setStyleSheet(foreground_stylesheet(GRIDLINE))
-
-        return divider
 
     # ---------------------------------------------------------- presenting
 
@@ -1621,6 +1646,7 @@ class SimulationView(QWidget):
                 tuple(self._runs[i] for i in drawn),
                 selection,
                 PreferencesInForce(self._preferences, self._preferences_notice),
+                self,
             )
 
         self._frame_failed = False
@@ -1669,7 +1695,10 @@ class SimulationView(QWidget):
                 controllers[0].settings(),
             )
         except Exception:
-            self._bookmarks_panel.withdraw()
+            self._marks_shown = None
+
+            for marks in self._bookmarks_panels:
+                marks.withdraw()
 
             if self._bookmark_dialog is not None:
                 self._bookmark_dialog.withdraw()
@@ -1740,7 +1769,10 @@ class SimulationView(QWidget):
                 for run, run_standings in zip(self._runs, standings, strict=True)
             ),
         )
-        self._bookmarks_panel.set_panel(panel)
+        self._marks_shown = panel
+
+        for marks in self._bookmarks_panels:
+            marks.set_panel(panel)
 
         if self._bookmark_dialog is None:
             return
@@ -1752,6 +1784,25 @@ class SimulationView(QWidget):
                 reference.agent_mac_percent,
             )
         )
+
+    def build_bookmarks_panel(self) -> BookmarksPanel:
+        """Build a copy of the two lists of marks for a View, showing the marks listed now.
+
+        Returns:
+            The copy, which this dashboard writes on every frame and restates
+            on a halt. Its lists are hidden until a frame has listed the
+            marks, and while a halt could not work out their standings.
+        """
+
+        panel = keep_until_destroyed(self._bookmarks_panels, BookmarksPanel())
+        panel.edit_button.clicked.connect(self._open_bookmark_dialog)
+
+        if self._marks_shown is None:
+            panel.withdraw()
+        else:
+            panel.set_panel(self._marks_shown)
+
+        return panel
 
     @halt_gate
     def _open_bookmark_dialog(self) -> None:
@@ -2104,13 +2155,13 @@ class SimulationView(QWidget):
         been built, because one restatement writes both.
         """
 
-        bookmarks: tuple[QWidget, ...] = (self._bookmarks_panel,)
+        bookmarks: tuple[QWidget, ...] = tuple(self._bookmarks_panels)
 
         if self._bookmark_dialog is not None:
             bookmarks = (*bookmarks, self._bookmark_dialog)
 
         return (
-            HaltRestatement((self._fork_panel,), self._restate_fork_panel),
+            HaltRestatement(tuple(self._fork_panels), self._restate_fork_panel),
             HaltRestatement(bookmarks, self._restate_bookmark_panel),
         )
 
