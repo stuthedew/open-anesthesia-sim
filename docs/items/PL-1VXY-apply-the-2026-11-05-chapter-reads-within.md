@@ -3,10 +3,11 @@ id: PL-1VXY
 title: Apply the 2026-11-05 chapter reads' within-section findings to docs/MODEL.md: PL-BSMF applied only the outline read, and the 30 chapter reads in /mnt/project-files/v0.7.0/repo-copy-edit/runs/docs-MODEL-md/structure/chapter-NN.txt also move paragraphs within a section and fix headings; their row numbers are from cfb15a4a, before the restructure
 priority: P2
 effort: L
-status: ready
+status: blocked
 classes: docs
 feature: model-md-structure
 touches: docs/MODEL.md
+blocked-by: PL-48MX
 added: 2026-11-07
 payoff: each section of MODEL.md reads in the order its reader needs, so a qualifying paragraph comes before the value it qualifies, and the line edit can start
 verify: ! grep -qF 'milestone (v0.1.0) must demonstrate' docs/MODEL.md
@@ -64,3 +65,12 @@ reads mounted, so it suits a Projects thread.
 
 **Generator check.** One-off: this item applies the `docs/MODEL.md`
 structure-read sweep of 2026-11-05. It is not a defect with a cause of its own.
+
+**Waits on the split, 2026-11-11.** The project owner decided on 2026-11-11
+to split `docs/MODEL.md` by reader (`PL-P3GZ`). The text this item edits
+moves to three new documents (`PL-CTXZ`, `PL-6PPZ`, `PL-FWR6`), and what is
+left is replaced by the description the owner accepted (`PL-48MX`). So this
+item waits on `PL-48MX`. The three items that then sort each document
+(`PL-SY7G`, `PL-4H8Q`, `PL-N83Z`) apply this item's findings for the
+sections they hold, and the session that applies the last of them closes
+this item.

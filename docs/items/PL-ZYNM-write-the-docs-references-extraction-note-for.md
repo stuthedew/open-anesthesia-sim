@@ -3,11 +3,13 @@ id: PL-ZYNM
 title: Write the docs/references extraction note for the Gas Man Workbook's bookmark controls and workflow, read 2026-09-20
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: provenance
 touches: docs/references
 added: 2026-09-20
+closed: 2026-11-11
+pr: 2107
 payoff: stops the next session cloning the corpus and re-reading a 199-page book to answer the same bookmark-workflow question
 verify: grep -rqF 'Clicking Add will cause the playback to pause' docs/references/
 ---
@@ -79,3 +81,27 @@ name" - do not say which of the two they mean.
 **Done when.** `docs/references/` carries a note for this source recording the
 above with its locators, in `PL-Z3V5`'s shape, and `docs/references/README.md`
 points at it from the Workbook's entry.
+
+**Done 2026-11-11.** The reading is a new entry in the Workbook's section of
+`docs/references/README.md` § "The documents", not a separate note file.
+`PL-Z3V5` settled that shape on 2026-10-26: the Workbook is one of the sources
+whose readings stay inside their entry, and "a later reading of the source is
+added to it". So the entry is the note, and no pointer to another file is
+needed. Every quotation and page above was checked against the corpus's text
+extraction (`text/gasman_workbook/01_Front_Matter_Ch1-4.txt` and
+`05_Appendices_Bibliography.txt`) on 2026-11-11, and all of them hold. The
+entry's route-and-depth paragraph now names Chapter 2's pp. 15, 18 and 22-23.
+
+The entry says how this repository relates to the reading as it stands now. Its
+time bookmarks halt a run, and a learner returns to one by taking a branch
+there (`PL-B8MK`, and `PL-W4XQ`, which closed after this item was written). The
+replay half of Appendix E's second use is still `ROADMAP.md` planned item 10.
+The brief's claim that `PL-B8MK` made "the same choice" as Gas Man's
+one-second default was not carried into the entry. A branch taken at a
+bookmark stands at the bookmark itself, while Gas Man's default pauses one
+second before it, and the entry says that instead.
+
+The close-out copy edit of the new entry is owed. The project owner paused the
+copy editor on 2026-11-11 at 00:10Z ("Pausing copy editor stuff"), and the
+coordinator directed that fact records land without it. Run it on this entry
+once the pause is lifted.

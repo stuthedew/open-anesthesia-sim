@@ -3,12 +3,14 @@ id: PL-JSBW
 title: docs/references/yasuda-1991-anesthesiology-desflurane-isoflurane-halothane-kinetics.md records how the paper derived alveolar ventilation (pages 491, 492, 494) but not what this repository uses those facts for; docs/MODEL.md's dead-space conclusion rests only on the apparatus facts (copy editor structure read, 2026-11-07)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: references-structure
 touches: docs/references/yasuda-1991-anesthesiology-desflurane-isoflurane-halothane-kinetics.md
 deferred-from: v0.7.0 - a new problem: the note did not exist at the freeze (817a4d88); 0d8ad8f9 (PL-4QCJ, 2026-10-25) created it with its list of uses as written
 added: 2026-11-07
+closed: 2026-11-11
+pr: 2106
 payoff: a reader checking the dead-space argument in docs/MODEL.md learns from the note every fact of the paper it rests on
 verify: grep -qF '**The ventilation derivation and the clearances.**' docs/references/yasuda-1991-anesthesiology-desflurane-isoflurane-halothane-kinetics.md
 ---
@@ -22,3 +24,5 @@ verify: grep -qF '**The ventilation derivation and the clearances.**' docs/refer
 **Done when.** § "Where this repository uses these facts" has a bullet led "**The ventilation derivation and the clearances.**". It says that `docs/MODEL.md` § "Desflurane's residual, and why the parameter file was not changed" uses the page 491 formula and the page 492 definition to define f_A, and the page 494 clearances as a consistency check on the operating point.
 
 **Generator check.** One-off: a finding from the `docs/references/` structure read (2026-11-07).
+
+**Done 2026-11-11.** § "Where this repository uses these facts" has the bullet "**The ventilation derivation and the clearances.**". It says that `docs/MODEL.md` § "Desflurane's residual, and why the parameter file was not changed" uses the page 491 formula and the page 492 definition to show what f_A is, and the page 494 clearances as a consistency check on the model's 4.0 L/min alveolar ventilation. The page 492 entry was also checked against the page and now says how total body clearance was computed. The close-out copy edit of the changed passages is owed. The project owner paused the copy editor on 2026-11-11 at 00:10Z ("Pausing copy editor stuff"), and the coordinator directed that these fact fixes land without it. Run it on these passages once the pause is lifted.
