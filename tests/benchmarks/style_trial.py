@@ -534,8 +534,13 @@ def difference_between(first: QImage, second: QImage) -> PixelDifference:
 
         return PixelDifference(pixels=larger, largest_step=255)
 
-    one = bytes(first.convertToFormat(QImage.Format.Format_ARGB32).constBits())
-    two = bytes(second.convertToFormat(QImage.Format.Format_ARGB32).constBits())
+    # Each converted image is held in a name until its bytes are copied. The
+    # buffer that `constBits` returns does not keep its image alive, and a
+    # copy made after the image is freed held 40 wrong bytes of 5,400 here.
+    first_fixed = first.convertToFormat(QImage.Format.Format_ARGB32)
+    second_fixed = second.convertToFormat(QImage.Format.Format_ARGB32)
+    one = bytes(first_fixed.constBits())
+    two = bytes(second_fixed.constBits())
     pixels = 0
     largest_step = 0
 
@@ -680,10 +685,8 @@ class ComparisonWindow(QWidget):
         self._verdict = self._caption("")
         self._verdict.setWordWrap(True)
         self._verdict.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        foot = QHBoxLayout()
-        foot.addWidget(record)
-        foot.addWidget(self._verdict, 1)
-        column.addLayout(foot)
+        column.addWidget(record, 0, Qt.AlignmentFlag.AlignLeft)
+        column.addWidget(self._verdict)
         record.setFocus()
         self._write_verdict()
 
@@ -718,6 +721,9 @@ class ComparisonWindow(QWidget):
             )
 
         self._write_verdict()
+        # The lines lengthen with each recording, so the window grows to show
+        # them whole. On the owner's Mac the last line was cut off.
+        self.adjustSize()
         print(self._verdict.text(), flush=True)
         SCREENSHOT_DIRECTORY.mkdir(parents=True, exist_ok=True)
         saved = SCREENSHOT_DIRECTORY / f"style-trial-{scheme}.png"
@@ -988,13 +994,53 @@ def frame_cost(arm: FrameArm) -> dict[str, float]:
     }
 
 
+def rotation_order(arms: Sequence[FrameArm], rotation: int) -> tuple[FrameArm, ...]:
+    """The order the arms run in during one rotation, counted from zero.
+
+    Rotation 0 runs the arms as given, and each later rotation starts one arm
+    later and wraps around. Over a number of rotations that is a multiple of
+    the number of arms, every arm runs equally often in every place.
+    """
+
+    start = rotation % len(arms)
+
+    return (*arms[start:], *arms[:start])
+
+
+@dataclass(frozen=True, slots=True)
+class PairedDifference:
+    """How one arm's timings differ from the first arm's, rotation by rotation.
+
+    Attributes:
+        mean_ms: The mean of the differences, in milliseconds per frame.
+        standard_error_ms: The standard error of that mean.
+    """
+
+    mean_ms: float
+    standard_error_ms: float
+
+
+def paired_difference(arm: Sequence[float], baseline: Sequence[float]) -> PairedDifference:
+    """Compare one arm with the baseline arm, pairing the two timings of each rotation."""
+
+    differences = [value - base for value, base in zip(arm, baseline, strict=True)]
+    spread = statistics.stdev(differences) if len(differences) > 1 else 0.0
+
+    return PairedDifference(
+        mean_ms=statistics.fmean(differences), standard_error_ms=spread / len(differences) ** 0.5
+    )
+
+
 def compare_frame_cost(
     invocations: int, arms: Sequence[FrameArm] = tuple(FrameArm)
 ) -> dict[str, dict[str, list[float]]]:
     """Run each arm `invocations` times, each in a fresh process, in rotation.
 
     The arms alternate so that drift in the machine's speed falls on all of
-    them alike.
+    them alike. Each rotation also starts one arm later than the one before
+    (`rotation_order`), because an arm's place in a rotation changes its
+    timing: with the shipped dashboard always first, the simulation stage,
+    which a style cannot change, read 0.79 ms faster in the second arm.
 
     Returns:
         For each arm, each stage's median from every invocation, in order.
@@ -1002,8 +1048,8 @@ def compare_frame_cost(
 
     collected: dict[str, dict[str, list[float]]] = {arm.value: {} for arm in arms}
 
-    for _ in range(invocations):
-        for arm in arms:
+    for rotation in range(invocations):
+        for arm in rotation_order(arms, rotation):
             finished = subprocess.run(
                 [sys.executable, __file__, "frame-cost", "--arm", arm.value],
                 check=True,
@@ -1139,6 +1185,18 @@ def _print_frame_comparison(invocations: int, arms: Sequence[FrameArm]) -> int:
             cells.append(
                 f"{statistics.median(values):7.2f} ({min(values):5.2f}-{max(values):5.2f})"
             )
+
+        print(f"{arm:<18}" + "".join(f"{cell:>26}" for cell in cells))
+
+    baseline, *others = collected
+    print(f"Mean difference from {baseline}, paired by rotation (plus or minus 2 standard errors)")
+
+    for arm in others:
+        cells = []
+
+        for stage in stages:
+            paired = paired_difference(collected[arm][stage], collected[baseline][stage])
+            cells.append(f"{paired.mean_ms:+6.2f} (+-{2 * paired.standard_error_ms:4.2f})")
 
         print(f"{arm:<18}" + "".join(f"{cell:>26}" for cell in cells))
 

@@ -30,7 +30,10 @@ measurements).
    `tests/benchmarks/frame_cost.py` after each control moves.
 3. A control keeps its style sheet until it moves. With the style installed
    and every sheet kept, each widget that a sheet draws was pixel-identical
-   to the shipped dashboard.
+   to the shipped dashboard. A scratch script made that comparison, and the
+   branch does not hold it. Write it as a test in the suite with the first
+   control: the dashboard under the style, against the dashboard without it,
+   pixel by pixel outside the controls that have moved.
 4. On a Mac the application runs Qt's macOS style today. A style over Fusion
    gives Fusion's look to every control that no style sheet draws, such as a
    scroll bar or a spin box. The owner saw the dashboard this way on
@@ -38,6 +41,17 @@ measurements).
    same under both.
 5. Take every colour from a role of the declared palette. The `Disabled`
    group stays the host's (`PL-05M4`).
+
+6. The trial's check box indicator is a placeholder, like its button, and
+   does not move as it is. A style on the application draws every check box
+   indicator, so it redrew the six legend check boxes that show and hide the
+   chart's traces, whose style sheet sets only the label's colour. The
+   trial's indicator reads only whether the box is checked. It draws an
+   unavailable box like an available one, and a partly checked box like an
+   unchecked one. Its tick is the panel colour on the primary colour, where
+   `tools/contrast_check.py` declares the tick as painted from the palette's
+   own roles. Leave the indicator to Fusion until `PL-MF90` designs it. When
+   it moves, draw every state and update that contrast declaration.
 
 **Order.** The design of the first control comes from `PL-MF90` (choose one
 token set and one component set). The trial's five-state button is a

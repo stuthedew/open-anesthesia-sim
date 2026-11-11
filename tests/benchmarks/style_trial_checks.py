@@ -23,16 +23,27 @@ import pytest
 import style_trial
 from PySide6.QtCore import QRect
 from PySide6.QtGui import QColor, QImage, QPalette
-from PySide6.QtWidgets import QApplication, QCheckBox, QPushButton, QStyle, QStyleOptionButton
+from PySide6.QtWidgets import (
+    QApplication,
+    QCheckBox,
+    QLabel,
+    QPushButton,
+    QStyle,
+    QStyleOptionButton,
+)
 from style_trial import (
     Arm,
     ButtonState,
     ComparisonWindow,
+    FrameArm,
     TrialStyle,
+    difference_between,
     digest,
     dress,
     held_button,
     image_of,
+    paired_difference,
+    rotation_order,
     trial_button_stylesheet,
     trial_check_box_stylesheet,
 )
@@ -306,3 +317,73 @@ def test_the_window_says_when_the_fill_differs(
     (line,) = [line for line in verdict.splitlines() if line.startswith(Arm.STYLE.value)]
     assert "pixels STILL DIFFER" in line
     assert line.endswith("so the edge or the fill differs.")
+
+
+def test_a_difference_in_the_first_and_the_last_pixel_is_counted(application: QApplication) -> None:
+    """The count reads the images' own pixels, at both ends of the buffer.
+
+    An earlier version copied each buffer after its image was freed. The
+    first and the last bytes of that copy were wrong, and wrong in the same
+    way for both images, so a difference there went uncounted.
+    """
+
+    first = QImage(54, 25, QImage.Format.Format_RGB32)
+    first.fill(QColor("#404040"))
+    second = QImage(first)
+    second.setPixelColor(0, 0, QColor("#404070"))
+    second.setPixelColor(53, 24, QColor("#504040"))
+
+    difference = difference_between(first, second)
+
+    assert difference.pixels == 2
+    assert difference.largest_step == 0x70 - 0x40
+
+
+def test_the_window_grows_to_show_every_line_it_writes(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """After two recordings that differ, no line is cut off.
+
+    On the owner's Mac the custom style's line, which is the last, was cut off.
+    """
+
+    monkeypatch.setattr(style_trial, "SCREENSHOT_DIRECTORY", tmp_path)
+    window = ComparisonWindow(application)
+    window.show()
+    application.processEvents()
+
+    def reletter() -> None:
+        for arm in Arm:
+            for button in window.held_buttons(arm):
+                button.setText("Stari")
+
+    verdict = _record_twice(window, monkeypatch, reletter)
+    application.processEvents()
+    label = next(label for label in window.findChildren(QLabel) if label.text() == verdict)
+
+    assert label.height() >= label.heightForWidth(label.width())
+    assert window.rect().contains(label.geometry())
+
+
+def test_every_arm_runs_equally_often_in_every_place() -> None:
+    """Over as many rotations as there are arms, each arm takes each place once."""
+
+    arms = tuple(FrameArm)
+    orders = [rotation_order(arms, rotation) for rotation in range(len(arms))]
+
+    assert orders[0] == arms
+    for place in range(len(arms)):
+        assert {order[place] for order in orders} == set(arms)
+
+
+def test_a_paired_difference_is_the_mean_of_the_differences_within_each_rotation() -> None:
+    """Worked by hand: the differences are 1, 2 and 3 ms.
+
+    Their mean is 2 ms. Their sample standard deviation is 1 ms, so the
+    standard error of the mean is 1 divided by the square root of 3.
+    """
+
+    paired = paired_difference(arm=[11.0, 22.0, 33.0], baseline=[10.0, 20.0, 30.0])
+
+    assert paired.mean_ms == pytest.approx(2.0)
+    assert paired.standard_error_ms == pytest.approx(1.0 / 3.0**0.5)
