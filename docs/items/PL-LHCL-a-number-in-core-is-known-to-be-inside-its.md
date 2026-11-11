@@ -259,3 +259,12 @@ positive value.
 - CPython's `sum` adds a `float` subclass without the compensation it gives a
   plain `float`. Wherever a bare number that is summed becomes a checked type,
   add it as `float(value)`, or the sum can change in its last digit.
+- The cost of a checked type built on every step, measured 2026-11-11 on a
+  loaded machine with `timeit` (best of 15 repeats), `main` at `e084968ac`
+  against step (b): `TissueGroup.blood_flow_l_min_at` 0.10 us against 0.28 us,
+  `AgentUptakeSystem.settings_key` 2.4 to 2.6 us against 3.4 us,
+  `equation_settings` 11.2 to 11.8 us against 10.8 to 11.3 us, and one
+  `advance` of 0.1 s 34 to 37 us on both. So one derived type built three
+  times a step costs about 0.6 us and does not move the step. Step (e) should
+  measure the agent amounts the same way before typing them, because a step
+  reads and writes those far more often.
