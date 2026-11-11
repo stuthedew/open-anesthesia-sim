@@ -94,3 +94,12 @@ that `PL-CTXZ` (#2109) is moving. No copy editor run was made on these
 passages: the project owner's hold of 2026-11-11 keeps copy editor runs off
 `docs/MODEL.md` until `PL-48MX` closes, and his separate pause of the copy
 editor still applies.
+
+**The close-out copy edit is owed.** The four changed passages, three in
+`docs/MODEL.md` and the comment in `src/anesthesia_sim/app/formatting.py`,
+have had no copy editor review. The project owner paused the copy editor on
+2026-11-11 at 00:10 UTC, and his hold keeps it off `docs/MODEL.md` until
+`PL-48MX` closes. `bin/docket arm` holds a simulator branch until that review
+is recorded, so the pull request stays a draft until both lift (the
+coordinator's call, 2026-11-11 02:28 UTC). Then run close-out step 8 on the
+branch and arm it.
