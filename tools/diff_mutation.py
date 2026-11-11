@@ -29,9 +29,9 @@ still sees the survivors on its unchanged lines.
 **`--verdict` also compares each changed simulator unit test with its base
 version.** A mutant of the code cannot show that a branch weakened a test,
 because the test is what changed. So `compare_tests` runs the mutants of the
-display modules under `app/`, and of each `core/` module the test imports by
-name, against the base version of each changed test and against the branch's
-version. A mutant that only the base version catches goes into the same
+mutated modules under `app/`, and of each other mutated module that the test
+imports by name, against the base version of each changed test and against the
+branch's version. A mutant that only the base version catches goes into the same
 `uncaught` list (project owner, 2026-10-24, ratified, over leaving those tests
 unmeasured, `PL-7FPD` and `PL-H57W`). `compare_tests` says what it leaves out.
 
