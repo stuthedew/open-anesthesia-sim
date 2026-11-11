@@ -148,3 +148,23 @@ messages, and the copy edit of the branch's 70 changed passages, whose output
 is `copy.txt` in the session's scratchpad. `PL-5XVQ` (Maximize Area's two
 document entries) closed on this branch, so its two paragraphs need the copy
 editor too.
+
+**The focused pass on what a learner sees, 2026-11-11.** It reproduced
+findings 1, 2 and 4 above with scripts, and added three. Its scripts and
+pictures are under `review-b/` in the session's scratchpad.
+
+6. Not yet checked, likely real: a refused branch writes its reason
+   (`ForkPanel.notice`, the panel's last row) below the fold. At 1366 by 768
+   in Default the reason is off the page, and in Maintenance it is below the
+   View's own scroll, while the Branch button stays in view. Step 2
+   (`PL-CBYS`) changes the room each Area has, so decide there or here
+   whether the reason moves beside the button.
+7. Not yet checked: in a Workspace pinned to a run that is no longer open,
+   the Bookmarks and Branch Areas show the pin's notice instead of their
+   Views, though both belong to the case and show no single run
+   (`AreaFrame.show_pin`). While the pinned run is open, their headers read
+   that run's name.
+8. Not yet checked: the Branch View's declared minimum width (220 px in
+   `view_registry.py`) is less than its control row needs (about 308 px), so
+   at the narrowest Area a border drag reaches the Branch button is out of
+   sight behind a sideways scroll.
