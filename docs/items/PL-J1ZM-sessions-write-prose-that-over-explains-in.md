@@ -230,6 +230,18 @@ Read side by side, the two texts of each pair are alike (this session's reading,
 
 By the rule the owner agreed to, the resident set is not rewritten. What happens to this item is put to the owner.
 
+**Two more tests on 2026-11-11, after the owner asked why a session does not follow the writing rule. Neither fixed it.** Each is one run.
+
+- A sentence added to the resident writing rule, telling a session to write a reply in the owner's words and not in the words of the item file and the code. The reply written from the same material is 798 words. The judging run failed it on criteria 1 to 5, and failed the reply written under today's files on criteria 1 to 4.
+- The method that the published sources describe: a second run rewrites a finished draft for a named reader. The run had no file of this repository. It was given the draft, a description of the reader, and an instruction to keep every number, to say each thing in the reader's words, to leave out what the reader does not act on, and to list what it could not understand. It rewrote four texts: the reply and the docstring written under today's files, and the two pull request bodies that the owner rejected (#2104 and #2106).
+  - It kept all five phrases that the owner rejected, and listed none of them as hard to understand. "Two rules stood only in your guide" and "the *Anesthesiology* paper" are in the rewrites as they were in the drafts.
+  - Each text grew: the reply from 991 to 1,069 words, the docstring from 293 to 389, and the two bodies from 206 to 227 and from 320 to 366.
+  - It replaced some words of the code. "Frame" appears 8 times in the reply and not at all in the rewrite, which says "screen update".
+  - It kept all 31 numbers in the reply.
+  - Its lists of what it could not understand name real gaps, such as "headless worker", which item "recorded in the item" means, and what a "View" is.
+
+The sources, each read on 2026-11-11 by a research subagent and not opened by this session: Anthropic's prompting best practices, for a draft, a review and a refinement as separate calls (https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices, four sections); Claude Code's best practices, for a reviewer that has not seen the work (https://code.claude.com/docs/en/best-practices, review sections); Zaretsky et al., JAMA Netw Open 2024, where a rewrite of discharge summaries for patients lowered the reading grade from 11.0 to 6.2 and left out information (https://doi.org/10.1001/jamanetworkopen.2024.0357, full text); Blevins et al. 2025, for models that take on the style of their context (https://arxiv.org/abs/2508.03276, abstract); Hinds 1999, for experts who misjudge what a novice knows and resist correction (https://doi.org/10.1037/1076-898X.5.2.205, abstract).
+
 **Still to build.** Step 4, which moves reporting out of replies: `CLAUDE.md` has four sentences that tell a session to report something "in your reply". Cut `.claude/rules/plain-writing.md` to less than its old length and record the rule's edits in `docs/resident-instructions.md`. Write the docstring and reply examples to the guides above, and test them where the text is written. Then measure Done-when.
 
 **The build's pull requests.** Steps 3 and 5 are on #2119. The edits to tests in `subprojects/docket/tests/test_cli.py` change tests that pin `bin/docket arm`'s answers, so #2119 waits for the owner's read.
