@@ -26,8 +26,8 @@ name: merge-hold
 # GitHub warns about on that page. The step runs `main`'s `bin/docket`, which
 # reads the pull request's commits through git: their trailers, the paths they
 # change and the claims they carry. It runs no command from the branch's
-# files, which is why it leaves out the two counts `bin/docket arm` makes in a
-# session, the prose review and the blind review passes. The step says so
+# files, which is why it leaves out the count `bin/docket arm` makes in a
+# session, of the blind review passes. The step says so
 # beside a pass. The token is read-only.
 #
 # **A pull request from a fork fails.** The rule reads the branch by name from

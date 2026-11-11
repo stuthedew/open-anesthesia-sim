@@ -686,30 +686,16 @@ armed_failing_command = "python3 tools/open_pull_requests.py --armed-failing"
 # instead.
 open_draft_command = "python3 tools/open_pull_requests.py --open-draft"
 
-# How `bin/docket arm` counts the long docstrings and comments a simulator
-# branch adds that no prose review covers (`PL-W04Z`). Close-out step 8's review
-# ran on one of six simulator branches before this hold existed. The package
-# appends the commit carrying the newest `Prose-review:` trailer, where one
-# does, and the script prints how many units added since then need a review.
-# It exits non-zero where it could not count, which `arm` holds on.
-#
-# It runs under `uv run python` and not the bare `python3`, because it parses
-# the simulator's source with `ast` and that source targets Python 3.14. The
-# bare interpreter is the 3.11 tools floor, which cannot parse every file
-# under `src/`, so the count exited 2 and `arm` held correct work (`PL-Q508`).
-# The `Makefile` runs its source-reading tools the same way (`PL-MB3F`).
-# Paused with close-out step 8 from 2026-11-04 until the owner brought the copy
-# editor back on 2026-11-05 (PL-HGZS).
-prose_count_command = "uv run python tools/new_prose.py --count"
-
 # How `bin/docket arm` counts the blind generalist review passes a simulator
 # branch owes (`PL-HDRN`): one, or two where it changes the model's code, its
 # parameter files or `docs/MODEL.md` (`PL-TDV9`). `arm` holds the branch until
 # its newest `Blind-review:` trailer records at least that many passes, and
-# holds where the script exits non-zero. It runs under `uv run python` for the
-# reason the prose count does: it parses each changed test under `tests/` to
+# holds where the script exits non-zero. It runs under `uv run python` and not
+# the bare `python3`, because it parses each changed test under `tests/` to
 # tell a test of the tooling from the simulator's, and those tests may use
-# grammar newer than the bare interpreter reads.
+# grammar newer than the bare interpreter reads, which is the 3.11 tools floor
+# (`PL-Q508`). The `Makefile` runs its source-reading tools the same way
+# (`PL-MB3F`).
 blind_count_command = "uv run python tools/blind_review.py --count"
 
 # What `bin/docket record N` runs once it has written the number on a branch:
