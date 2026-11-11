@@ -83,11 +83,7 @@ from anesthesia_sim.app.qt_chart import (
 )
 from anesthesia_sim.app.qt_schematic import RunSchematic
 from anesthesia_sim.app.qt_widgets import BookmarksPanel, FocusedComboBox, ForkPanel, styled_label
-from anesthesia_sim.app.stylesheets import (
-    clear_scroll_area_stylesheet,
-    panel_stylesheet,
-    selector_stylesheet,
-)
+from anesthesia_sim.app.stylesheets import panel_stylesheet, selector_stylesheet
 from anesthesia_sim.app.theme import (
     INK,
     METRIC_QUALIFIER_SIZE,
@@ -706,7 +702,6 @@ class _CasePanelView[W: QWidget](QWidget):
         self.absent_notice = styled_label(absent_text, color=MUTED, wrap=True)
         self.absent_notice.setHidden(True)
         body = QWidget()
-        body.setObjectName(f"{object_name}Body")
         self._column = QVBoxLayout(body)
         self._column.setContentsMargins(0, 0, 0, 0)
         self._column.setSpacing(VIEW_ROW_SPACING)
@@ -716,7 +711,6 @@ class _CasePanelView[W: QWidget](QWidget):
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
-        self.scroll_area.setStyleSheet(clear_scroll_area_stylesheet(body.objectName()))
         self.scroll_area.setWidget(body)
         _panel_column(self, object_name).addWidget(self.scroll_area)
 

@@ -221,3 +221,11 @@ that reason. The seven still to act on before close-out:
 
 The reviewer's scripts and logs are under `review-c/` in the session's
 scratchpad.
+
+**All seven acted on, 2026-11-11.** Findings 1, 2, 3, 4 and 6 are test
+changes in `tests/integration/test_simulation_view.py`. Finding 2's test
+hides the Branch View to reach a control that exists and is not drawn, the
+state `PL-1D3Z` describes. Finding 5: `clear_scroll_area_stylesheet` is
+removed, because under the palette the application declares the scroll area
+already paints the panel colour. Finding 7: the tab strip and the Areas now
+sit directly in the scrolling part of the page.

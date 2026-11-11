@@ -107,7 +107,6 @@ from anesthesia_sim.app.dashboard_frame import (
     MAX_DISPLAYED_RUNS,
     NEW_CASE_CARRYOVER_TEMPLATE,
     NEW_CASE_IS_NOT_A_VIEW_TEXT,
-    NO_CASE_TO_BRANCH_TEXT,
     NO_CONTROL_CHANGES_TEXT,
     NO_MAC_TARGETS_TEXT,
     NO_TIME_BOOKMARKS_TEXT,
@@ -207,6 +206,7 @@ from anesthesia_sim.app.view_registry import (
     BRANCH,
     CONCENTRATION_CHART,
     PARAMETER_CONTROLS,
+    REGISTERED,
     WASH_IN,
 )
 from anesthesia_sim.app.views import (
@@ -7363,26 +7363,16 @@ def test_a_lone_run_states_a_mark_s_standing_without_naming_a_run(
     assert run_label(FIRST_RUN) not in listed
 
 
-def test_the_bookmark_panel_sits_outside_the_region_between_the_two_plots(
-    application: QApplication,
-) -> None:
-    # `PL-F9TQ` governs what may sit between a chart heading and its plot.
-    # The marks belong to the case rather than to either plot, so they are in
-    # a View of their own and in neither chart View (`PL-9YPR`).
+def test_the_bookmark_panel_is_placed_inside_its_bookmarks_view(application: QApplication) -> None:
+    # The marks belong to the case, so they have a View of their own
+    # (`PL-9YPR`). A View builds its copy of the panel on its first frame, and
+    # a copy that was built and never placed would be drawn nowhere.
     view = _shown_view(application, SimulationController())
+    bookmarks = next(v for v in view.layout_container.views() if isinstance(v, BookmarksView))
     marks = _marks_panel(view)
-    charts = [
-        shown
-        for shown in view.layout_container.views()
-        if isinstance(shown, ConcentrationView | WashInView)
-    ]
 
-    assert len(charts) == 2
-    assert not any(chart.isAncestorOf(marks) for chart in charts)
-    assert any(
-        isinstance(shown, BookmarksView) and shown.isAncestorOf(marks)
-        for shown in view.layout_container.views()
-    )
+    assert bookmarks.isAncestorOf(marks)
+    assert marks.isVisibleTo(view)
 
 
 # ------------------------------------------------------------------ branching
@@ -7403,6 +7393,11 @@ def test_the_shipped_dashboard_opens_over_a_case_it_can_branch(application: QApp
     assert view.case.trunk is view.runs[0].controller
     assert _fork_panel(view).take_button.isHidden() is False
 
+    branch = next(v for v in view.layout_container.views() if isinstance(v, BranchView))
+
+    # The sentence that says no branch can be opened never shows beside a working control.
+    assert branch.absent_notice.isHidden() is True
+
 
 def test_a_dashboard_over_loose_runs_offers_no_branch_control(application: QApplication) -> None:
     """A control that could only refuse would present itself as working."""
@@ -7415,7 +7410,9 @@ def test_a_dashboard_over_loose_runs_offers_no_branch_control(application: QAppl
     assert branch.panel is None
     assert branch.findChildren(QPushButton) == []
     assert branch.absent_notice.isHidden() is False
-    assert branch.absent_notice.text() == NO_CASE_TO_BRANCH_TEXT
+    assert branch.absent_notice.text() == (
+        "These runs belong to no case, so no branch can be opened."
+    )
 
 
 def test_a_dashboard_refuses_a_case_rooted_in_another_run() -> None:
@@ -12286,6 +12283,16 @@ def test_a_stopped_run_names_a_branch_only_while_an_area_shows_the_branch_contro
         "setting."
     )
 
+    # An Area can hold a branch control that it does not draw, as when a pin's
+    # notice covers the View (`PL-1D3Z`). Hiding the View reaches that state.
+    next(v for v in view.layout_container.views() if isinstance(v, BranchView)).hide()
+    view.present(False)
+
+    covered = trunk._notice_text.notice()
+    assert _fork_panels(view) != []
+    assert covered is not None
+    assert covered.endswith(refused + "Reset to start a new run, which keeps every setting.")
+
 
 def test_a_failing_frame_withdraws_the_branch_offer_from_every_copy(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
@@ -12361,6 +12368,45 @@ def test_a_halt_that_cannot_restate_the_marks_hides_them_in_every_copy_and_in_a_
     for panel in (*panels, built):
         assert panel.times.isHidden() is False
         assert panel.targets.isHidden() is False
+
+
+def test_the_bookmarks_and_the_branch_control_are_registered_under_their_kinds() -> None:
+    """Each Area's chooser lists the two Views by these titles (`PL-9YPR`).
+
+    An Area never gives a View less room than its declared minimum. Both
+    minimums are placeholders that `PL-CBYS` sets again with each Area's room.
+    """
+
+    bookmarks, branch = REGISTERED[BOOKMARKS], REGISTERED[BRANCH]
+
+    assert BOOKMARKS == "bookmarks"
+    assert bookmarks.factory is BookmarksView
+    assert bookmarks.title == "Bookmarks"
+    assert (bookmarks.minimum.width_px, bookmarks.minimum.height_px) == (220, 120)
+    assert BRANCH == "branch"
+    assert branch.factory is BranchView
+    assert branch.title == "Branch"
+    assert (branch.minimum.width_px, branch.minimum.height_px) == (220, 120)
+
+
+def test_a_bookmarks_panel_built_between_frames_lists_the_marks_on_screen(
+    application: QApplication,
+) -> None:
+    """A copy built after the last frame lists the marks that the frame's copy lists.
+
+    The trunk is standing on the mark that halted it, so the frame listed
+    one time bookmark. A new panel's own lists are empty (`PL-9YPR`).
+    """
+
+    _, view = _halted_trunk_case(application)
+    drawn = _marks_panel(view)
+    built = view.build_bookmarks_panel()
+    # The dashboard owns the copy, so the copy is deleted with it.
+    built.setParent(view)
+
+    assert any("the decision point" in text for text in _strings_of(drawn.times, ()))
+    assert _strings_of(built.times, ()) == _strings_of(drawn.times, ())
+    assert built.times.isHidden() is False
 
 
 def test_a_branch_control_built_between_frames_shows_the_offer_on_screen(

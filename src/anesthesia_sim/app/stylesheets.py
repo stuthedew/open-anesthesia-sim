@@ -64,19 +64,6 @@ def scroll_area_stylesheet() -> str:
     return f"QScrollArea {{ background-color: {BACKGROUND}; }}"
 
 
-def clear_scroll_area_stylesheet(body_name: str) -> str:
-    """A scroll area that paints no surface, so the panel it sits on shows through it.
-
-    Args:
-        body_name: The object name of the widget the scroll area scrolls.
-    """
-
-    return (
-        "QScrollArea { background: transparent; } "
-        f"QWidget#{body_name} {{ background: transparent; }}"
-    )
-
-
 def panel_stylesheet(object_name: str) -> str:
     """The panel surface: PANEL, rounded, scoped to one widget so its children keep their own."""
 

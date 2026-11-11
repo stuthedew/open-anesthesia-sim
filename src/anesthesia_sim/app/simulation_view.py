@@ -598,7 +598,9 @@ class SimulationView(QWidget):
         middle.setObjectName(_MIDDLE_NAME)
         middle.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         middle.setStyleSheet(page_stylesheet(_MIDDLE_NAME))
-        middle_column = _spaced_column(middle, PAGE_SPACING)
+        # The strip and the Areas sit together, with no spacing between them,
+        # so the strip reads as the Areas' own.
+        middle_column = _spaced_column(middle, 0)
 
         self._tabs = WorkspaceTabs(
             self._workspaces,
@@ -617,13 +619,8 @@ class SimulationView(QWidget):
         current = self._workspaces.current
         self._areas = AreaLayout(current.layout, requests, states=current.view_state)
         self._areas.views_changed.connect(partial(self.present, False))
-        # The strip and the Areas sit together, with no page spacing between
-        # them, so the strip reads as the Areas' own.
-        workspace = QWidget()
-        workspace_column = _spaced_column(workspace, 0)
-        workspace_column.addWidget(self._tabs)
-        workspace_column.addWidget(self._areas, 1)
-        middle_column.addWidget(workspace, 1)
+        middle_column.addWidget(self._tabs)
+        middle_column.addWidget(self._areas, 1)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
