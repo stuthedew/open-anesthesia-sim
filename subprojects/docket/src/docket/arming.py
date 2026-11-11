@@ -411,7 +411,8 @@ PROSE_UNCOUNTED = (
 #: of the owner's objections in `PL-J1ZM`'s measurement of 2026-11-04 were to
 #: text written after the copy editor's run, to answer a query it raised.
 BODY_REVIEW = "Body-review"
-BODY_FORM = re.compile(r"[0-9a-f]{16}")
+#: How many hexadecimal digits a `BODY_REVIEW` record holds.
+BODY_DIGITS = 16
 
 #: What a `hold` tells the session when the pull request body names no facts
 #: for a passage that grew (`PL-HNNH`). The lines naming the passages follow
@@ -1608,9 +1609,7 @@ def arm(
             merged=forge.merged,
         )
     change = _read_change(root, where, items_dir, record_dir)
-    reviews = _read_reviews(
-        root, where, change, prose_count, blind_count, body_prose, forge.number
-    )
+    reviews = _read_reviews(root, where, change, prose_count, blind_count, body_prose, forge.number)
     record, misread = _owner_read(root, where.run, where.base, change.on_list, tip=where.tip)
     ask, misasked = _owner_ask(root, where.run, where.base, change.worked, tip=where.tip)
     claims, unclaimed = _read_claims(root, where, now=now, items_dir=items_dir)
@@ -1889,7 +1888,9 @@ def _read_reviews(
     body_since, body_recorded = "", ""
     if body.digest:
         body_since, body_recorded = _newest_trailer(root, run, span, BODY_REVIEW)
-        if body_since and not BODY_FORM.fullmatch(body_recorded):
+        if body_since and not (
+            len(body_recorded) == BODY_DIGITS and set(body_recorded) <= set("0123456789abcdef")
+        ):
             unread.append(
                 f"the {BODY_REVIEW} record on {body_since[:12]} is not the 16 digits that "
                 f"`tools/new_prose.py --body-record` prints, so it was not read: {body_recorded}"

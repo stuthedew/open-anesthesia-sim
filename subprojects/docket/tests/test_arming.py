@@ -559,8 +559,7 @@ def test_arm_holds_while_the_published_body_is_not_the_recorded_one(tmp_path: Pa
 
     assert changed.answer == arming.HOLD
     assert changed.lines[0].endswith(
-        f"its pull request body is not the text that the Body-review record on {review[:12]} "
-        "covers"
+        f"its pull request body is not the text that the Body-review record on {review[:12]} covers"
     )
 
 
@@ -572,7 +571,9 @@ def test_arm_holds_when_the_body_could_not_be_checked(tmp_path: Path) -> None:
     held = _arm_body(root, lambda number: arming.BodyProse(declined="GitHub gave no body"))
 
     assert held.answer == arming.HOLD
-    assert held.lines[0].endswith("its pull request body could not be checked - GitHub gave no body")
+    assert held.lines[0].endswith(
+        "its pull request body could not be checked - GitHub gave no body"
+    )
     assert arming.BODY_UNCHECKED in held.lines
 
 
@@ -600,7 +601,7 @@ def test_a_change_outside_the_simulator_asks_nothing_of_the_body(tmp_path: Path)
 
 
 def test_a_claim_keeps_the_body_asks_out_of_the_answer(tmp_path: Path) -> None:
-    """A claimed branch's pull request is a draft with a placeholder body, so nothing is asked of it."""
+    """A claimed branch's pull request is a draft with a placeholder body, so `arm` asks nothing."""
     verdict = arming.Verdict(
         answer=arming.HOLD,
         branch="claude/x",

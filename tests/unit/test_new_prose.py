@@ -1199,11 +1199,11 @@ def test_the_body_digest_ignores_what_the_harness_adds_and_sees_a_changed_word()
     Both of the owner's objections on 2026-11-04 were to text written after
     the copy editor's run (`PL-TG6P`), so one added sentence must change it.
     """
-    draft = "Closes `PL-X`.\n\nThe readout rounds to 0.01.\n"
+    draft = "Closes `PL-B7QX`.\n\nThe readout rounds to 0.01.\n"
     published = (
         '<!-- claude-projects-attribution: {"github_login":"someone"} -->\r\n'
         "_Requested by **Someone** · [project thread](https://example.invalid/t)_\r\n\r\n"
-        "Closes `PL-X`.\r\n\r\nThe readout rounds\r\nto 0.01.\r\n\r\n"
+        "Closes `PL-B7QX`.\r\n\r\nThe readout rounds\r\nto 0.01.\r\n\r\n"
         "🤖 Generated with [Claude Code](https://claude.com/claude-code)\r\n\r\n"
         "https://claude.ai/code/session_x"
     )
@@ -1218,9 +1218,9 @@ def test_body_record_prints_the_trailer_for_the_body_below_the_title(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     draft = tmp_path / "draft.md"
-    draft.write_text("PL-X: a title\n\nCloses `PL-X`.\n", encoding="utf-8")
+    draft.write_text("PL-B7QX: a title\n\nCloses `PL-B7QX`.\n", encoding="utf-8")
 
     assert main(["--body-record", str(draft)]) == 0
     assert capsys.readouterr().out == (
-        f"Body-review: {new_prose.body_digest('Closes `PL-X`.')}\n"
+        f"Body-review: {new_prose.body_digest('Closes `PL-B7QX`.')}\n"
     )
