@@ -199,6 +199,14 @@ the outline's summary and not from the paragraph.
    cannot tell that a number sits beside the right quantity, so it finds a
    mistyped value and not a misplaced one. It was a single run and no check
    repeats it.
+5. *The tables, checked once.* A second script took each of the draft's 62
+   table rows that hold two or more numbers. For 53 of them, `docs/MODEL.md`
+   holds the same numbers together, in one table row or within twelve lines.
+   The other nine are rows of two tables the draft rearranges. The agent
+   table in § 6.2 matches the three agent data files value for value, and the
+   elimination table in § 9.3 matches the two tables of `docs/MODEL.md` it
+   joins. Running prose is not covered: a correct number beside the wrong
+   quantity in a sentence would pass both scripts.
 
 The draft is now about 15,500 words, of which the reference list is about
 1,250.
