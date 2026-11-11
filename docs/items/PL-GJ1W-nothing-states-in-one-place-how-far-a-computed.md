@@ -136,6 +136,62 @@ here before building further. (b) The module that states the rounding, and
 each allowance moved onto it. (c) The weekly 24 h run at the 1 ms step.
 `PL-LHCL`'s walking test lands first where the two touch the same signature.
 
+**Part (a) built, 2026-11-11: `tests/unit/test_generated_runs.py`.** Each
+plan is a shipped agent, or volumes and coefficients drawn from the numerical
+envelope, with the flows and the dial drawn across their supported ranges. A
+plan has up to four actions, and each action changes at most one setting and
+takes up to 2 000 steps. After every action the test checks seven things: the
+range of every fraction, the agent balance, each running total against an
+exact sum, the state against the 50-digit solution, the stepped state against
+the canonical one, a sampled window's last column, and the wash-in reading.
+It then replays the plan and requires the same bits. Each run of the suite
+draws 100 plans, always the same ones, in about 8 s.
+
+**Replays, 2026-11-11.** Each row reverts one fix in the working tree, runs
+`uv run pytest tests/unit/test_generated_runs.py -q -x`, and restores the
+tree. "Drawn plans needed" was measured before the three listed plans below
+were added.
+
+| Item | What was reverted | Fails in the suite's run | Drawn plans needed | Failure |
+| --- | --- | --- | --- | --- |
+| `PL-XST1` | `record_external_agent_transfer` adds each transfer with a plain `+`. | Yes | 100 | "a running total against the exact sum of its step amounts: a difference of 3.25e-19 is 1.08 times its rounding allowance", after 51 steps. |
+| `PL-D88N` | No code: the fix kept the tolerance and documented the halt. The test's acceptance of that halt was removed. | Yes, on a listed plan | 1 000 | `AgentSimulationValidationError` with a relative error of 1.04e-9, after 24 steps. |
+| `PL-9B1M` | `MAXIMUM_INPUT_FRACTION = 1.0`. | Yes, on a listed plan | 300 | "alveolar partial_pressure_fraction of 1.000000000000001 is outside 0 to 1", after 1 step. |
+| `PL-81Q2` | No code: the item changed none. The squarings were removed from the test's allowances for the canonical state and the window. | No | 1 000 | "the stepped state against the canonical state: a difference of 7.29e-13 is 1.28 times its rounding allowance", after 27 steps. The 59-column chain that the item measured was not reached. |
+| `PL-N559` | `WASH_IN_ROUNDING_ALLOWANCE = 0.0`. | Yes, on a listed plan | 1 000 | "a run that only washes in is described as elimination", after 1 step with every flow at zero. |
+| `PL-9SL5` | `RunDefinition.evaluate` forms every column time as `start_s + column * spacing_s`. | Yes | 100 | "the last column is at 238.2 and not at the 238.20000000000002 asked for". |
+| `PL-QVBR` | The reverse of #1917's changes to `app/bookmarks.py` and `app/controller.py`. | No | Passed at 1 000 | None. The test sets no MAC target and opens no branch. |
+
+Six of the seven fail the test with their fix reverted. The prediction was
+five. `PL-XST1` was predicted to need the weekly run. It fails within 51 steps,
+because the test holds each running total to twice Kahan's bound of the exact
+sum, and a plain sum leaves that bound at once. `PL-QVBR` passes, as predicted.
+
+**What the replays show about the test's reach.** The 100 drawn plans alone
+catch two of the seven, `PL-XST1` and `PL-9SL5`. The conditions of `PL-N559`,
+`PL-9B1M` and `PL-D88N` are listed in the test as three fixed plans, so the
+suite's run covers them. A new defect of their kind would be found by the
+drawn plans only after 300 to 1 000 draws, which take 25 to 80 s. So the
+weekly run in (c) needs several thousand draws as well as the 24 h run.
+
+**Measured while building: rounding grows in proportion to the steps at the
+envelope's slow corners.** Design part 1 refuses a bound summed over every
+step, on `PL-D88N`'s measurement of shipped agents. That does not hold across
+the envelope. A state held at equilibrium in a 10 000 L tissue drifted by
+1.6e-12 over 4 308 steps. Over 600 drawn plans the largest drift was 0.79 of
+the summed bound with its margin of three, and 38 times a bound that grows as
+the square root of the steps. The test therefore allows the summed bound for
+a stepped state. **Recommended for (b):** the module states the figure for n
+steps as the summed bound, which is tight enough to use, and the agent balance
+keeps its fixed 1e-9 as `PL-D88N` decided. Put to the project owner on
+2026-11-11.
+
+**Allowances the test states for now, which (b) moves into the module.** Three
+have no home in `core/` yet: the rounding of the clock, which the run
+definition reads as a difference of two rounded instants; a floor of about
+1e-292 below which a float no longer carries 53 bits; and twice Kahan's bound
+for a running total.
+
 **Done when.** The module in 1 exists and each rounding allowance reads it.
 The generated test in 2 exists, and each of the seven members is replayed
 against it with its fix reverted, with the result recorded here per member.
