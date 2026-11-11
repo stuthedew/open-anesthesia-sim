@@ -596,14 +596,12 @@ def first_step(root: Path, table: Mapping[str, object]) -> int:
         [sys.executable, "-c", COPY_SCRIPT],
         cwd=root,
         capture_output=True,
-        encoding="utf-8",
         env={**os.environ, "PYTHONIOENCODING": "utf-8"},
         check=False,
     )
     if built.returncode:
-        raise Refusal(
-            f"mutmut could not build {MUTANTS}/ (exit {built.returncode}):\n{built.stderr[-2000:]}"
-        )
+        error = built.stderr.decode("utf-8", errors="replace")[-2000:]
+        raise Refusal(f"mutmut could not build {MUTANTS}/ (exit {built.returncode}):\n{error}")
     tests = simulator_unit_tests(root)
     (root / MUTANTS / selection_file(table)).write_text("".join(f"{t}\n" for t in tests), "utf-8")
     command = [
