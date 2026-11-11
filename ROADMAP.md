@@ -48,22 +48,31 @@ writing it as text. When v0.6.18 was cut, 119 of the gate's 168 entries had
 cleared, 36 were open for this gate to clear, those 2 were open for the
 milestone to clear, and 11 were deferred to the next gate.
 
-**No model code, equation, parameter or stored value changed, and no run can
-differ. The tag ships one interface change that the release notes do not
-name:**
+**No model code, equation or parameter changed, and no run can differ. The
+tag also ships two interface changes that these notes do not name, because
+they merged after the cut:**
 
 | Tree | v0.6.17 tag | This cut | What moved |
 | --- | --- | --- | --- |
-| `src/` | `a110105` | `7c8a67a` | five modules under `app/`: each run's panel is written from one value (`#2094`) |
+| `src/` | `a110105` | `6da93f5` | modules under `app/`: each run's panel is written from one value (`#2094`), and the bookmarks and branch control are Views (`#2103`) |
 | `src/anesthesia_sim/core/` | `a72bd99` | `a72bd99` | nothing |
-| `src/anesthesia_sim/data/` | `c3fbdbc` | `c3fbdbc` | nothing |
+| `src/anesthesia_sim/data/` | `c3fbdbc` | `9f4943e` | the three shipped Workspace layouts, which now place the Bookmarks and Branch Views (`#2103`); no model parameter |
 | `tests/reference/` | `545a009` | `545a009` | nothing |
-| `docs/MODEL.md` | `93505d9` | `93505d9` | nothing |
-| `README.md` | `a8f2abf` | `a8f2abf` | nothing |
+| `docs/MODEL.md` | `93505d9` | `aa0b791` | two paragraphs on the banner and the Area header line (`#2103`) |
+| `README.md` | `a8f2abf` | `c2632c1` | the layout description (`#2103`) |
 | `.github/` | `fefd203` | `b7b61e1` | the `merge-hold` workflow, and a step in `quality.yml` that reads GitHub's rules |
 
-Because `core/` and `data/` are unchanged, the trajectories were not
-re-measured.
+Because `core/` and the model's parameter files are unchanged, the
+trajectories were not re-measured.
+
+**The bookmarks and the branch control as Views** (`#2103`). The two fixed
+sections under the Areas are now Views named "Bookmarks" and "Branch", which a
+learner places, moves or removes like any other View. The three shipped
+Workspaces show both. A layout saved before this change shows neither until
+the learner chooses one in an Area or resets the Workspace. The banner of a run
+stopped at the supported run length names a branch only while an Area shows the
+Branch View. `PL-9YPR`, `PL-QKDV` and `PL-5XVQ` closed with it, and v0.6.19's
+notes will name them.
 
 **The run panel written from one value** (`#2094`). This is the first of four
 pull requests for `PL-RF2S`, which is still open, so the notes of the release
@@ -269,7 +278,7 @@ number because the next minor number was not free.
 | v0.6.15 | Completed | **The release where the agent cost View shows what the delivered agent cost in money, at a bottle price the reader sets for each agent, with the price's currency and date beside the cost; where most sections of `docs/MODEL.md` are rewritten in plain English for a clinician reader, with the history behind each value moved to the items; where every guard hook runs through one module that records a crash instead of passing silently, and judges the action a command performs rather than how it is spelled; where the owner-ask guard flags a pull request waiting on the owner by its state rather than by its wording; and where the step-size test's 0.5% limit, which never decided a result, is removed.** | 98 items | `PL-8B6Z` |
 | v0.6.16 | Completed | **The release where the copy editor cuts a repeated fact, words a fact does not need and a fact meant for another reader, and is back in use; where the rest of `docs/MODEL.md`'s interface sections, and its section on how the document is held to the tree, are rewritten for a clinician reader; where `README.md` is copy edited with the fixed copy editor; and where the writing rule says a model limitation earns a sentence only where it could change what a clinician concludes from a displayed value.** | 11 items | `PL-80PZ` |
 | v0.6.17 | Completed | **The release where the agent cost View shows the delivered agent in whole millilitres of liquid, because a tenth implied more precision than the measured density supports, and where `docs/MODEL.md` gives each fact one home and is line edited with every dropped statement restored.** | 96 items | `PL-FNJ3` |
-| v0.6.18 | Completed / current baseline | **The release where GitHub's own settings refuse a forced push, the deletion of `main` and the merge of a pull request that the project holds, and where the order of work, the learner and the tasks for the interface pass are agreed; a learner sees no change in normal use.** | 6 items | `PL-MH1H` |
+| v0.6.18 | Completed / current baseline | **The release where GitHub's own settings refuse a forced push, the deletion of `main` and the merge of a pull request that the project holds, and where the order of work, the learner and the tasks for the interface pass are agreed.** | 6 items | `PL-MH1H` |
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.

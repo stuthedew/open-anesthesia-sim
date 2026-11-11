@@ -26,5 +26,4 @@ closed but not stamped, so the tag will ship them and the v0.6.19 notes will
 name them. The baseline section is now wrong in three places. It says that no
 stored value changed. It says that the tag ships one interface change that
 the notes do not name. Its tree table gives `src/`, `data/`, `docs/MODEL.md`
-and `README.md` the hashes from before the merge. Rewrite the section before
-the pull request is marked ready.
+and `README.md` the hashes from before the merge. The same session then rewrote the section to match the merged tree.
