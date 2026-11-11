@@ -30,6 +30,13 @@ hand, including one working on a generator's cause under the owner's rule of
 2026-11-02, is counted and left out of both arms. A Projects thread is in
 neither arm whatever its digest line says, because a thread never reads the
 effort cap
+Amended 2026-11-11 (`PL-7KF5`, project owner): the trial runs on every model a
+cloud session is started on, and a change of model does not end it. The hook
+already draws an arm whatever the model. The two arms are compared within one
+model at a time, with model as a stratum beside the split period, and two
+models' sessions are never pooled in one group. When a model first appears in
+the ledger, check that it accepts both `high` and `xhigh`; a model that does
+not is reported apart
 
 ## Runs
 

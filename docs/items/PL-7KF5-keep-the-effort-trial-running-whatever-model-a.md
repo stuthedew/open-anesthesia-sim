@@ -3,12 +3,16 @@ id: PL-7KF5
 title: Keep the effort trial running whatever model a session runs on, and compare high against xhigh only within one model
 priority: P2
 effort: S
-status: untriaged
+status: done
 classes: defect
 feature: effort-trial
 touches: docs/model-review.md, .claude/skills/model-review/SKILL.md, docs/maintainer.md
+deferred-from: v0.7.0 - workflow tooling outside the schematic release
 added: 2026-11-11
+closed: 2026-11-11
+pr: 2137
 payoff: a change of model neither ends the effort trial nor mixes two models' sessions in one comparison
+verify: grep -q 'Amended 2026-11-11 (`PL-7KF5`' docs/model-review.md && grep -q 'PL-7KF5' .claude/skills/model-review/SKILL.md
 ---
 
 **Problem.** The trial is registered as "effort `xhigh` against `high` on Opus 5.5 cloud sessions" (`docs/model-review.md` § "Trials"). The model review's effort monitoring forms its two groups from items worked "on Opus 5.5" only (`.claude/skills/model-review/SKILL.md` § "Effort monitoring", step 1). So a session started on any other model drops out of the trial, and a switch of the default model would end the trial without the owner deciding to end it. The owner asked on 2026-11-11 that the trial continue regardless of the model chosen, with the comparison kept like for like (project owner, 2026-11-11: "session effort trial continues regardless of model chosen. (Should be comparing apples to apples)").
