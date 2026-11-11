@@ -166,6 +166,17 @@ cost about what the whole-file comparison did and could pass the limit, so the
 audit would then have no answer. No change to that file in the 200 merges
 before 2026-10-31 reached half of its tests.
 
+The rule in § "Which modules are mutated" added 16 modules of `app/` to this
+comparison, and `app/controller.py` holds most of their mutants that a display
+test reaches: 892 of the 1,040 that the tests of
+`tests/unit/test_dashboard_frame.py` reach. On 2026-11-11 the same one-line
+change to that helper, which 60 tests now reach, took 2,510 s under the rule.
+The base run took 23 minutes and the branch run 19, where they had taken 19.7
+and 16.7, and the run compared 1,646 mutants where it had compared 1,322. The
+copy editor and three short test runs shared the four cores with it. That is
+about a third of the 2-hour limit, so the controller's mutants stay in the comparison
+(`PL-19M4`).
+
 `make mutate` runs `tools/diff_mutation.py` through `uv run --group mutation`.
 mutmut is pinned to version 3.8.0 in the `mutation` dependency group, so
 `uv sync` leaves it out and no test needs it. The tool's docstring
