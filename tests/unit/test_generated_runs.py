@@ -2,7 +2,8 @@
 
 Every other test steps the model from listed settings, and most step it once.
 This test draws a run instead (`PL-GJ1W`). It draws a shipped agent, or volumes
-and partition coefficients from anywhere in the numerical envelope. It draws
+and partition coefficients from anywhere in the numerical envelope, with one
+volume and one tissue:blood coefficient for all three tissue groups. It draws
 the flows and the dial across their supported ranges and at their edges. It
 then changes one setting at a time and steps up to `MOST_STEPS_IN_AN_ACTION`
 times after each change. After every action it checks what must hold for any
@@ -30,8 +31,9 @@ its allowance. The draw is derandomized, so every run of the suite tests the
 same plans.
 
 For developers. A run that halts on the agent balance is accepted only where
-its step needs at least one squaring, which `docs/MODEL.md` § "The numerical
-envelope" documents (`PL-D88N`). No other refusal from a step is accepted.
+the rounding of the steps it has taken has reached the balance tolerance, as
+`docs/MODEL.md` § "The numerical envelope" documents (`PL-D88N`). No other
+refusal from a step is accepted.
 """
 
 import math
@@ -132,6 +134,14 @@ the rounding of the exact sum itself. A plain running sum of 2 000 terms
 exceeds it.
 """
 
+ACCOUNTING_ABSOLUTE_TOLERANCE_L = 1e-12
+"""The agent balance also passes when it closes to within 1e-12 L of agent gas.
+
+This is the model's second published limit. `docs/MODEL.md` § "Mass-balance
+identity" says that a step passes if it meets either bound, so a run that
+holds little agent is held to this one.
+"""
+
 SMALLEST_FULL_PRECISION_SCALE = sys.float_info.min / sys.float_info.epsilon
 """The smallest magnitude a difference is measured against, about 1e-292.
 
@@ -182,13 +192,27 @@ _VOLUMES_L = st.sampled_from(VOLUMES) | st.floats(-2.0, 4.0).map(
     lambda exponent: min(max(10.0**exponent, MINIMUM_VOLUME_L), MAXIMUM_VOLUME_L)
 )
 
-# Away from the corners, a blood:gas coefficient from 1e-2 to 1e3 and a
-# tissue:blood coefficient from about 0.13 to 7.9 keep their product, the
-# tissue:gas coefficient, inside the envelope of 1e-3 to 1e4.
-_COEFFICIENTS = st.sampled_from(COEFFICIENT_CORNERS) | st.tuples(
-    st.floats(-2.0, 3.0).map(lambda exponent: 10.0**exponent),
-    st.floats(-0.9, 0.9).map(lambda exponent: 10.0**exponent),
-)
+
+@st.composite
+def _interior_coefficients(draw: st.DrawFn) -> tuple[float, float]:
+    """Draw a blood:gas and a tissue:blood coefficient whose product is inside the envelope too.
+
+    Each is ten to a drawn power. The blood:gas power runs over the whole
+    envelope, from -3 to 4. The tissue:blood power then runs over every value
+    that keeps the tissue:blood coefficient and the tissue:gas coefficient,
+    their product, inside 1e-3 to 1e4. It stops 0.01 short of each end, so
+    that rounding of the product cannot leave the envelope.
+    """
+
+    blood_gas_power = draw(st.floats(-3.0, 4.0))
+    tissue_blood_power = draw(
+        st.floats(max(-3.0, -3.0 - blood_gas_power) + 0.01, min(4.0, 4.0 - blood_gas_power) - 0.01)
+    )
+
+    return 10.0**blood_gas_power, 10.0**tissue_blood_power
+
+
+_COEFFICIENTS = st.sampled_from(COEFFICIENT_CORNERS) | _interior_coefficients()
 
 _STEPS_S = st.sampled_from((MAXIMUM_SIMULATION_STEP_S, MINIMUM_SIMULATION_STEP_S)) | st.floats(
     MINIMUM_SIMULATION_STEP_S, MAXIMUM_SIMULATION_STEP_S
@@ -383,11 +407,18 @@ class _Run:
         self.steps = 0
         self.delivered_l: list[float] = []
         self.exhausted_l: list[float] = []
-        self.matrices = [build_system_matrix(self.settings)]
+        # Each stretch of the run under one set of settings: when it opened, and its matrix.
+        self.segments = [(0.0, build_system_matrix(self.settings))]
         self.segment_opened_s = 0.0
         self.closed_time_rounding = 0.0
-        self.most_step_squarings = 0
-        self.most_canonical_squarings = 0
+        self.closed_canonical_rounding = 0.0
+        self.stepped_rounding = 0.0
+
+    @property
+    def matrix(self) -> Matrix:
+        """The system matrix of the settings the run is under now."""
+
+        return self.segments[-1][1]
 
     @property
     def elapsed_s(self) -> float:
@@ -425,6 +456,11 @@ class _Run:
 
         return math.ulp(self.elapsed_s) / interval_s if interval_s > 0.0 else 0.0
 
+    def _canonical_rounding_of_the_open_segment(self) -> float:
+        """Return the rounding of the one propagator that spans the open segment."""
+
+        return _rounding(_squarings(self.matrix, self.elapsed_s - self.segment_opened_s), 1)
+
     def change(self, action: Action) -> None:
         """Apply one action's setting, and record it in the run definition if it changed."""
 
@@ -441,33 +477,43 @@ class _Run:
         if dial_fraction <= self.dial_fraction:
             self.only_washes_in = False
 
-        self.most_canonical_squarings = max(
-            self.most_canonical_squarings,
-            _squarings(self.matrices[-1], self.elapsed_s - self.segment_opened_s),
-        )
-        self.closed_time_rounding += self._time_rounding_of_the_open_segment()
         self.definition.record_change(changed)
-        self.segment_opened_s = self.elapsed_s
         self.settings = changed
         self.dial_fraction = dial_fraction
         self.lowest = min(self.lowest, dial_fraction)
         self.highest = max(self.highest, dial_fraction)
-        self.matrices.append(build_system_matrix(changed))
+
+        if self.elapsed_s == self.segment_opened_s:
+            # No step was taken under the settings this change replaces, so no
+            # propagator was formed from them.
+            self.segments[-1] = (self.segment_opened_s, build_system_matrix(changed))
+            return
+
+        self.closed_canonical_rounding += self._canonical_rounding_of_the_open_segment()
+        self.closed_time_rounding += self._time_rounding_of_the_open_segment()
+        self.segment_opened_s = self.elapsed_s
+        self.segments.append((self.elapsed_s, build_system_matrix(changed)))
 
     def step(self, steps: int) -> bool:
-        """Take `steps` steps. Return False where the run halts as `docs/MODEL.md` documents."""
+        """Take `steps` steps. Return False where the run halts as `docs/MODEL.md` documents.
+
+        A halt on the agent balance is accepted only where the rounding of the
+        steps taken so far can explain it: the summed bound of their
+        propagators has reached the balance's relative tolerance (`PL-D88N`).
+        Where it has not, the halt is a loss or gain of agent that rounding
+        does not account for, and it fails the test.
+        """
 
         step = SimulationStep(self.plan.step_s)
-        squarings = _squarings(self.matrices[-1], self.plan.step_s)
-        self.most_step_squarings = max(self.most_step_squarings, squarings)
+        squarings = _squarings(self.matrix, self.plan.step_s)
 
-        for _ in range(steps):
+        for taken in range(steps):
             try:
                 result = self.system.advance(step)
             except AgentSimulationValidationError:
-                # `PL-D88N`: the fixed balance tolerance halts a stepped run
-                # only where the step's propagator needs squarings.
-                if squarings == 0:
+                reached = self.stepped_rounding + _rounding(squarings, taken + 1)
+
+                if reached < ACCOUNTING_RELATIVE_TOLERANCE:
                     raise
 
                 return False
@@ -476,6 +522,7 @@ class _Run:
             self.exhausted_l.append(result.fresh_gas_exchange.exhausted_agent_l)
             self.steps += 1
 
+        self.stepped_rounding += _rounding(squarings, steps)
         self.definition.advance_to(CaseInstant(self.elapsed_s))
 
         return True
@@ -499,7 +546,7 @@ class _Run:
 
         state = self.state()
         context = f"after {self.steps} steps of {self.plan}, at {state}"
-        stepped = _rounding(self.most_step_squarings, self.steps)
+        stepped = self.stepped_rounding
 
         assert all(math.isfinite(value) for value in state), context
 
@@ -517,7 +564,7 @@ class _Run:
         residuals.record(
             "the agent balance",
             abs(unaccounted_l),
-            ACCOUNTING_RELATIVE_TOLERANCE * max(owed_l, SMALLEST_FULL_PRECISION_SCALE),
+            max(ACCOUNTING_RELATIVE_TOLERANCE * owed_l, ACCOUNTING_ABSOLUTE_TOLERANCE_L),
             context,
         )
 
@@ -534,8 +581,8 @@ class _Run:
             )
 
         scales = self._scales(owed_l)
-        exact = _exact_state(self.matrices[-1], before, self.plan.step_s, action.steps)
-        over_the_action = _rounding(_squarings(self.matrices[-1], self.plan.step_s), action.steps)
+        exact = _exact_state(self.matrix, before, self.plan.step_s, action.steps)
+        over_the_action = _rounding(_squarings(self.matrix, self.plan.step_s), action.steps)
 
         for value, reference, scale in zip(state, exact, scales, strict=True):
             residuals.record(
@@ -545,13 +592,12 @@ class _Run:
                 context,
             )
 
-        canonical_squarings = max(
-            self.most_canonical_squarings,
-            _squarings(self.matrices[-1], self.elapsed_s - self.segment_opened_s),
-        )
-        time_rounding = self.closed_time_rounding + self._time_rounding_of_the_open_segment()
         canonical_allowance = (
-            stepped + _rounding(canonical_squarings, len(self.matrices)) + time_rounding
+            stepped
+            + self.closed_canonical_rounding
+            + self._canonical_rounding_of_the_open_segment()
+            + self.closed_time_rounding
+            + self._time_rounding_of_the_open_segment()
         )
 
         try:
@@ -609,13 +655,19 @@ class _Run:
             return
 
         spacing_s = (self.elapsed_s - start_s) / (columns - 1)
-        column_squarings = max(_squarings(matrix, spacing_s) for matrix in self.matrices)
+        # Only a segment that ends after the window starts has a propagator in it.
+        inside = [
+            matrix
+            for index, (_, matrix) in enumerate(self.segments)
+            if index + 1 == len(self.segments) or self.segments[index + 1][0] > start_s
+        ]
+        column_squarings = max(_squarings(matrix, spacing_s) for matrix in inside)
         # The window chains one propagator per column, and one more at each
         # setting change inside it. Its last column is pinned to the instant
         # asked for, which can differ from the chained time by one rounding.
         allowance = (
             canonical_allowance
-            + _rounding(column_squarings, columns + len(self.matrices))
+            + _rounding(column_squarings, columns + len(inside))
             + math.ulp(self.elapsed_s) / spacing_s
         )
 
@@ -665,6 +717,7 @@ STIFFEST_CORNER = SMALLEST_CORNER._replace(blood_gas=1e4, tissue_blood=1e-3)
 """Every volume at 0.01 L with a blood:gas coefficient of 1e4, where a step needs squarings."""
 
 ONE_STEP = (Action(setting="hold", position=0.0, steps=1),)
+FIFTY_STEPS = (Action(setting="hold", position=0.0, steps=50),)
 
 
 # The three plans below are conditions that the drawn plans reach only after
@@ -683,17 +736,13 @@ ONE_STEP = (Action(setting="hold", position=0.0, steps=1),)
 @example(
     # `PL-D88N`: the same opening at the stiffest corner, which halts on the
     # agent balance within about 24 steps.
-    Plan(
-        None,
-        STIFFEST_CORNER,
-        CEILING,
-        (0.0, 0.0, 1.0),
-        0.0,
-        0.1,
-        (Action(setting="hold", position=0.0, steps=50),),
-        0.0,
-        2,
-    )
+    Plan(None, STIFFEST_CORNER, CEILING, (0.0, 0.0, 1.0), 0.0, 0.1, FIFTY_STEPS, 0.0, 2)
+)
+@example(
+    # The stiffest corner holding little agent. The run does not halt, because
+    # its balance is inside the absolute bound of 1e-12 L while outside the
+    # relative one (found by the blind review of this test, 2026-11-11).
+    Plan(None, STIFFEST_CORNER, 1e-6 * CEILING, (0.0, 0.0, 1.0), 0.0, 0.1, FIFTY_STEPS, 0.0, 2)
 )
 @settings(derandomize=True, database=None, deadline=None, max_examples=EXAMPLES)
 @given(_plans())
