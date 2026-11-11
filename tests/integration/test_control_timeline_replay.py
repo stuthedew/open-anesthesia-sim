@@ -11,13 +11,15 @@ The test drives a `SimulationController` through a case that changes all four
 controls, and records the full state vector after every step. It then builds
 the fresh run from the core alone, as `.claude/rules/test-oracles.md` rule 2
 asks: an `AgentUptakeSystem` for the same agent, with no object taken from the
-controller. Each recorded change is applied at its recorded instant through the
-core's own setter, and the two runs' states are compared element for element
-at every step. The arithmetic is the same on both sides, so the comparison is
-exact.
+controller. The fresh run opens under the settings the case's run opened
+under, which Reset kept from the run before it. Each recorded change is
+applied at its recorded instant through the core's own setter, and the two
+runs' states are compared element for element at every step. The arithmetic
+is the same on both sides, so the comparison is exact.
 """
 
 from collections.abc import Callable
+from dataclasses import dataclass
 
 import pytest
 
@@ -49,6 +51,27 @@ _CORE_SETTERS: dict[ControlInput, Callable[[AgentUptakeSystem, float], None]] = 
 }
 
 
+#: How each control's value in force is read from the core, to check the value
+#: that the change list shows a change starting from.
+_CORE_READERS: dict[ControlInput, Callable[[AgentUptakeSystem], float]] = {
+    ControlInput.FRESH_GAS_FLOW: lambda system: system.circuit.fresh_gas_flow_l_min,
+    ControlInput.DELIVERED: lambda system: system.circuit.delivered_concentration_percent,
+    ControlInput.ALVEOLAR_VENTILATION: lambda system: system.alveoli.alveolar_ventilation_l_min,
+    ControlInput.CARDIAC_OUTPUT: lambda system: system.patient.cardiac_output_l_min,
+}
+
+
+@dataclass(frozen=True)
+class _RecordedCase:
+    """What the case's run recorded, and what it did, for a replay to compare against."""
+
+    opening_settings: dict[ControlInput, float]
+    """The value of each control when the run opened, which its timeline does not hold."""
+    timeline: tuple[ControlChange, ...]
+    states: list[tuple[float, ...]]
+    """The state vector after each step."""
+
+
 def _state(controller: SimulationController) -> tuple[float, ...]:
     return controller._state.uptake_system.state_vector()
 
@@ -61,13 +84,13 @@ def _advance(controller: SimulationController, steps: int, states: list[tuple[fl
         states.append(_state(controller))
 
 
-def _a_case_that_changes_every_control() -> tuple[
-    tuple[ControlChange, ...], list[tuple[float, ...]], int
-]:
-    """Run a case through the controller, and return its timeline and its state after each step.
+def _a_case_that_changes_every_control() -> _RecordedCase:
+    """Run a case through the controller, and return what it recorded and its state after each step.
 
     The case holds each kind of input that the timeline treats differently:
 
+    - settings changed on an earlier run, which Reset keeps and the timeline
+      of the new run does not hold;
     - a setting made before Start, at 0 s;
     - a drag of the fresh gas flow over five steps, one setting per step, as a
       held key gives;
@@ -76,12 +99,23 @@ def _a_case_that_changes_every_control() -> tuple[
     - a setting the core refuses, which never takes effect;
     - a change to each of the other two controls.
 
-    Returns:
-        The control timeline, the state after each step, and the number of steps.
     """
 
     controller = SimulationController(_AGENT_ID)
     states: list[tuple[float, ...]] = []
+
+    controller.set_fresh_gas_flow(FreshGasFlow(6.0))
+    controller.set_cardiac_output(CardiacOutput(4.0))
+    controller.start()
+    _advance(controller, 100, [])
+    controller.reset()
+    opened = controller.settings()
+    opening_settings = {
+        ControlInput.FRESH_GAS_FLOW: opened.fresh_gas_flow_l_min,
+        ControlInput.DELIVERED: opened.delivered_concentration_percent,
+        ControlInput.ALVEOLAR_VENTILATION: opened.alveolar_ventilation_l_min,
+        ControlInput.CARDIAC_OUTPUT: opened.cardiac_output_l_min,
+    }
 
     controller.set_delivered_concentration_percent(Percent(6.0))
     controller.start()
@@ -109,23 +143,40 @@ def _a_case_that_changes_every_control() -> tuple[
     controller.set_cardiac_output(CardiacOutput(3.0))
     _advance(controller, 300, states)
 
-    return controller.record().control_timeline, states, len(states)
+    return _RecordedCase(opening_settings, controller.record().control_timeline, states)
 
 
-def _replayed(timeline: tuple[ControlChange, ...], steps: int) -> list[tuple[float, ...]]:
+def _replayed(
+    opening_settings: dict[ControlInput, float],
+    timeline: tuple[ControlChange, ...],
+    steps: int,
+    *,
+    check_previous_values: bool = True,
+) -> list[tuple[float, ...]]:
     """Build a fresh run from the core, apply each change at its instant, and step it.
 
     The instant before each step is the steps taken times the step, which is
-    how a run's clock is defined (`SimulationState.elapsed_s`).
+    how a run's clock is defined (`SimulationState.elapsed_s`). Before each
+    change is applied, the value it starts from must be the value in force,
+    because the change list shows it as the setting the change was made from.
+    A timeline with an entry left out breaks that chain, so its replay skips
+    the check.
     """
 
     system = AgentUptakeSystem.for_agent(_AGENT_ID)
+
+    for control, value in opening_settings.items():
+        _CORE_SETTERS[control](system, value)
+
     pending = list(timeline)
     states: list[tuple[float, ...]] = []
 
     for steps_taken in range(steps):
         while pending and pending[0].elapsed_s == steps_taken * MAXIMUM_SIMULATION_STEP_S:
             change = pending.pop(0)
+            if check_previous_values:
+                assert _CORE_READERS[change.control](system) == change.previous_value, change
+
             _CORE_SETTERS[change.control](system, change.new_value)
 
         system.advance(_STEP)
@@ -139,10 +190,11 @@ def _replayed(timeline: tuple[ControlChange, ...], steps: int) -> list[tuple[flo
 def test_the_recorded_timeline_reproduces_the_run_step_for_step() -> None:
     """Applying the timeline to a fresh run gives the same state after every step."""
 
-    timeline, states, steps = _a_case_that_changes_every_control()
+    case = _a_case_that_changes_every_control()
 
-    assert {change.control for change in timeline} == set(ControlInput)
-    assert _replayed(timeline, steps) == states
+    assert {change.control for change in case.timeline} == set(ControlInput)
+    assert case.opening_settings[ControlInput.FRESH_GAS_FLOW] == 6.0
+    assert _replayed(case.opening_settings, case.timeline, len(case.states)) == case.states
 
 
 def test_the_replay_detects_a_setting_that_the_timeline_left_out() -> None:
@@ -152,9 +204,12 @@ def test_the_replay_detects_a_setting_that_the_timeline_left_out() -> None:
     without a record would make the two runs differ.
     """
 
-    timeline, states, steps = _a_case_that_changes_every_control()
+    case = _a_case_that_changes_every_control()
 
-    for left_out in range(len(timeline)):
-        partial = timeline[:left_out] + timeline[left_out + 1 :]
+    for left_out in range(len(case.timeline)):
+        partial = case.timeline[:left_out] + case.timeline[left_out + 1 :]
+        replayed = _replayed(
+            case.opening_settings, partial, len(case.states), check_previous_values=False
+        )
 
-        assert _replayed(partial, steps) != states, timeline[left_out]
+        assert replayed != case.states, case.timeline[left_out]
