@@ -519,7 +519,7 @@ MARK_ATTRIBUTION_TEMPLATE: Final = "{run} {said}"
 # say what the control sets. What a height on a given compartment does and
 # does not assert is stated in `docs/MODEL.md` § "MAC multiples as a display
 # unit", not in a paragraph in a dialog.
-# The branch control's words follow, beside the marks and for the same reason.
+# The branch control's words follow the marks' words, for the same reason.
 # Both offer instants of the *case* rather than of either run, so both are
 # panels of the dashboard rather than of a `RunView` (`docs/ARCHITECTURE.md`
 # § "Where new code belongs"). "From" labels the instant at which the branch

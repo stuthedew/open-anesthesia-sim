@@ -8,7 +8,7 @@ added: 2026-11-11
 
 **Problem.** The marks panel and the branch control sit under the Areas as fixed page sections (SimulationView._build_case_section, which calls their place a placeholder), not as Views, against the owner's 2026-09-16 rule that every main UI element is a View an Area can hold; they add their height to every Workspace and no Workspace can move or close them
 
-**Progress, 2026-11-11: built, with 15 tests still to move. The session stopped here for length, not for the work.**
+**Progress, 2026-11-11: built, tested and swept. Triage, the reviews and the pull request's text are left. The session stopped here for length, not for the work.**
 
 What the branch holds (commit led by this id, pull request `#2103`, a draft):
 
@@ -35,54 +35,52 @@ What the branch holds (commit led by this id, pull request `#2103`, a draft):
   placeholder (`PL-4JCC` is the item about the Parameters Area's height).
 - Measured offscreen at 1920 by 1080 with one run at 5 minutes: the Default
   Workspace no longer scrolls (the page scrolled 102 px before).
+- Each of the two Views holds its rows in a scroll area of its own
+  (`_CasePanelView.scroll_area`), so a long mark name that wraps is not
+  clipped in a short Area. Step 2 of `PL-CBYS` moves that scroll into the
+  container for every View.
+- The 15 tests that pinned the old section now read the panels from the
+  Views. Five new tests at the end of
+  `tests/integration/test_simulation_view.py` show the kind in three Areas:
+  every copy lists the case's marks, each branch control keeps its own point
+  and a press branches at it, a failing frame withdraws the offer from every
+  copy, a halt that cannot restate the marks hides them in every copy and in
+  one built afterwards, and a copy built between frames shows the offer on
+  screen. Each of six deliberate breaks to the writers in
+  `app/simulation_view.py` failed at least one of the five (run 2026-11-11).
+- Documents swept: `docs/ARCHITECTURE.md` (the map lines for
+  `simulation_view.py`, `view_contract.py` and `views.py`; § "Where new code
+  belongs"; the halt paragraph), `README.md` § "The window" (eight Views, and
+  a line for each new one), `docs/MODEL.md` (one sentence on the banner at
+  the supported run length), and the docstrings of `BookmarksPanel` and
+  `ForkPanel`. `.claude/rules/ui-areas.md` and `docs/interface-provenance.md`
+  name neither panel and needed no change.
+
+**Placeholders decided by the session, 2026-11-11.**
+
+- Where the two Views sit in each shipped Workspace, their titles
+  ("Bookmarks", "Branch") and their 220 by 120 px minimum.
+- A Workspace may leave the branch View out. The banner at the supported run
+  length still names a branch as a way out when the case can take one,
+  because every Area's View chooser offers the branch View. Whether the
+  banner should say where to find it is left for the interface pass.
+
+**Release note.** A layout saved before this change shows neither View until
+the reader chooses one in an Area or uses "Reset this Workspace".
 
 Still to do before this item closes:
 
-1. Move the 15 tests that pin the old arrangement. Run
-   `tests/integration/test_simulation_view.py`,
-   `tests/integration/test_agent_cost_view.py`,
-   `tests/integration/test_compartment_schematic_view.py`,
-   `tests/integration/test_layout_keyboard.py`,
-   `tests/unit/test_contrast_check.py` and `tests/unit/test_view_registry.py`
-   to list them. Their causes:
-   - `test_agent_cost_view.py` and `test_compartment_schematic_view.py` still
-     read `view._fork_panel`. Give each the helper that
-     `test_simulation_view.py` has (`_fork_panel(view)`), and a layout that
-     shows the branch View.
-   - `test_simulation_view.py`'s `_drag_area_border` expects one row
-     splitter, and the test layout `_EVERY_VIEW` now has two.
-   - `test_a_dashboard_over_loose_runs_offers_no_branch_control` needs
-     `QPushButton` imported.
-   - `test_the_bookmark_panel_sits_outside_the_region_between_the_two_plots`
-     asserts the marks sit in no Area. Assert instead that they sit in no
-     chart View.
-   - The test near "splitting and closing the chart area leaves the
-     unconditional values where they were" compares the page's strings and
-     now also finds the bookmarks' strings.
-   - `test_the_shipped_gridline_is_exempt_in_each_of_its_five_uses`: four
-     uses now. `test_view_registry.py`: add the two tags, and the two kinds
-     to the shipped Workspaces' expected set.
-     `test_layout_keyboard.py`: the shipped Default Workspace has four Areas.
-   - `test_a_wrapped_mark_row_is_never_clipped` fails for a real reason. An
-     Area gives its View the widget's minimum size hint, which does not count
-     the lines a wrapped label needs at the Area's width. So a long mark name
-     is clipped in the Bookmarks Area (75 px needed, 15 px given at 700 px
-     wide). **Decided (session, 2026-11-11):** the fix is step 2 of `PL-CBYS`,
-     where a View that needs more height scrolls inside its Area. Until that
-     lands, `_CasePanelView` holds its panel in a scroll area of its own, and
-     step 2 moves that scroll to the container for every View.
-2. Add tests for what is new: two bookmarks Views list the same marks; two
-   branch Views each keep their own selection and a press branches at the
-   pressed copy's point; a View built after a halt shows the restated state;
-   `halt_restatements` covers every live copy.
-3. Sweep the documents: `docs/ARCHITECTURE.md` (the map's line for
-   `simulation_view.py`, § "Where new code belongs" on the branch control and
-   the bookmarks, and the sentence about "the case section below the Areas"),
-   `.claude/rules/ui-areas.md`, `docs/interface-provenance.md`, `README.md`.
-4. A reader's saved layout from before this change shows neither View until
-   they choose one in an Area or use "Reset this Workspace". Say so in the
-   release note line.
-5. Triage the rest of the claimed group: `PL-CBYS` (this item is its step 1;
-   its step 2 needs a mock-up shown to the owner first), `PL-4JCC`, `PL-5XVQ`,
+1. Triage this item: `**Why it matters.**`, `**Done when.**` and a
+   `**Generator check.**` line in this brief, then priority, effort, classes,
+   touches, `verify:` and `payoff:` with `bin/docket set`. A `verify:` that
+   fits: `grep -q 'def test_each_branch_view_keeps_its_own_point' tests/integration/test_simulation_view.py`
+   (it must be seen failing on `origin/main` first).
+2. Triage the rest of the claimed group: `PL-CBYS` (this item is its step 1;
+   its step 2 needs a mock-up at 1366 by 768 and 1920 by 1080, Induction
+   Workspace in both, shown to the owner first), `PL-4JCC`, `PL-5XVQ`,
    `PL-QKDV` (drop `PL-PKLR`, correct one sentence in
    `docs/interface-provenance.md`) and `PL-62PF`.
+3. Close out: the prose review and its trailer, two blind review passes, the
+   owner's read and its trailer, the pull request's title and body through
+   the copy editor, then mark `#2103` ready and arm it only when
+   `bin/docket arm` says so.

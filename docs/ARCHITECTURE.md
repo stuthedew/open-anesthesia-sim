@@ -119,11 +119,11 @@ src/anesthesia_sim/
 │   ├── control_record.py           # what a run's settings are addressed by and the change a run records: ControlInput, CONTROL_INPUT_DISPLAY_UNITS and CONTROL_INPUT_UNITS, control_value (which settings field holds each control's value, PL-000W), ControlChange; toolkit-independent
 │   ├── display_units.py            # DisplayUnit: each unit the interface states, with its recorded spelling, the label beside a value and its chart axis title, so the record, the panel, the formatters and the chart read one member (PL-G84G); toolkit-independent
 │   ├── bookmarks.py                # what a learner marks a case at, held in two collections: TimeBookmark (an instant), MacTarget (a height on one compartment), BookmarkSet; toolkit-independent, and it detects a crossing between two readings it is handed (§ "What a branch is, and what it shares with its parent")
-│   ├── simulation_view.py          # SimulationView on PySide6: what runs share - the unconditional region above the layout container, which refuses a run lacking a declared value, the compartment selection every View is shown, the chart frame a tick assembles for each window a chart View asks for (PL-L59K), the case section of bookmarks and branching under the Areas, the render tick, and the Workspaces: the tab strip over the Areas switches among them, and a pinned Workspace's Views draw its run alone (PL-2KXB); no domain logic
+│   ├── simulation_view.py          # SimulationView on PySide6: what runs share - the unconditional region above the layout container, which refuses a run lacking a declared value, the compartment selection every View is shown, the chart frame a tick assembles for each window a chart View asks for (PL-L59K), the case's bookmarks and branch control, each built as a copy for every View that shows one (PL-9YPR), the render tick, and the Workspaces: the tab strip over the Areas switches among them, and a pinned Workspace's Views draw its run alone (PL-2KXB); no domain logic
 │   ├── area_layout.py              # AreaLayout: the one module that builds QSplitters, every one from a layout.LayoutModel; a drag on a border becomes LayoutModel.resize and every splitter follows the new model (PL-W9P6), stopping in WARNING at an Area's least size, moving one border alone with Shift and undone by Escape; a border in the tab order moves one step per arrow key, and the Area menu's Resize entry gives one the focus (PL-M352); a right-click on each Area's header opens an AreaMenu that splits, joins, swaps or closes it, and a corner drag splits or joins it, or with Ctrl swaps it, with a preview drawn over the Areas (PL-2KXB, PL-R5G4); each Area is an AreaFrame whose header holds a ViewChooser listing every registered kind, and a choice is LayoutModel.set_view (PL-50PZ); each Area's View is built by its registry entry's factory, saved when replaced, and drawn from each ViewTick (PL-TH35); an Area whose View kind is not registered, or whose factory fails, shows an AreaNotice instead (PL-R1WQ); no View is drawn below its need, and an Area that cannot be given it shows the size it needs (PL-K285); load draws another Workspace from its layout and View state, and a pinned Workspace's run is named in every Area's header, or stated absent in place of each View (PL-2KXB)
 │   ├── workspace_tabs.py           # WorkspaceTabs: the Workspace tab strip above the Areas, drawn from a WorkspaceSet it does not own; shipped tabs first, a rule, then the reader's own; each tab's menu entry worked out before it is shown, Delete and Reset asking first, and rename in place (PL-QW1Z, PL-2KXB); a Layout menu, opened by a right-click on the strip outside a tab, lists every Workspace and holds the current one's entries, and Ctrl+PgUp and Ctrl+PgDn step through them (PL-M352, PL-R5G4); the entries that save and restore Workspaces are in § "User state: the saved Workspaces" (PL-DWHG)
-│   ├── view_contract.py            # the View contract every View implements: the View protocol, the ViewContext it is built from, the FrameRequest naming the window and width it draws, the ViewTick it is drawn from, the RunSurfaces a View may show, ViewRequests for a change to shared state or a frame, including the agent cost View's unit and the reader's price for an agent (PL-B396, PL-1P15), PreferencesInForce, the reader's preferences each tick shows every View (PL-B396), and the saved-state version check (PL-TH35)
-│   ├── views.py                    # the shipped Views, each a QWidget satisfying view_contract.View: ConcentrationView, WashInView, ParameterControlsView, AccountingView (PL-TH35) and CompartmentSchematicView, which shows one RunSchematic per displayed run, each a run surface its run writes, withholds and names (PL-RNYV), and AgentCostView, which shows one RunAgentCost per displayed run in the unit the reader's preferences hold, with a selector that asks the dashboard to change it (PL-B396), the cost at the reader's price, and the form that sets that price (PL-1P15); each chart View holds and saves its own time window and writes the lines that depend on it from its own frame (PL-L59K)
+│   ├── view_contract.py            # the View contract every View implements: the View protocol, the ViewContext it is built from, the FrameRequest naming the window and width it draws, the ViewTick it is drawn from, the RunSurfaces and the CaseSurfaces a View may show (PL-9YPR), ViewRequests for a change to shared state or a frame, including the agent cost View's unit and the reader's price for an agent (PL-B396, PL-1P15), PreferencesInForce, the reader's preferences each tick shows every View (PL-B396), and the saved-state version check (PL-TH35)
+│   ├── views.py                    # the shipped Views, each a QWidget satisfying view_contract.View: ConcentrationView, WashInView, ParameterControlsView, AccountingView (PL-TH35), BookmarksView and BranchView, which each show a copy of a panel of the case (PL-9YPR), and CompartmentSchematicView, which shows one RunSchematic per displayed run, each a run surface its run writes, withholds and names (PL-RNYV), and AgentCostView, which shows one RunAgentCost per displayed run in the unit the reader's preferences hold, with a selector that asks the dashboard to change it (PL-B396), the cost at the reader's price, and the form that sets that price (PL-1P15); each chart View holds and saves its own time window and writes the lines that depend on it from its own frame (PL-L59K)
 │   ├── view_registry.py            # the View registry: each View kind's tag, written once as a literal, its RegisteredView entry with the factory that builds it, and RETIRED_TAGS for a tag renamed or removed; REQUIRED_REACHABLE, the kinds a build fails on import without (PL-50PZ); the text of the missing-kind and failed-build notices (PL-R1WQ)
 │   ├── run_view.py                 # one run's widgets, controller, handlers, refresh and halt; RunView, instantiated once per run (the seam PL-B9PY drew)
 │   ├── halt_gate.py                # halt_gate: every slot of RunView and SimulationView is called through it (§ "Failures and halts", PL-HJKN); toolkit-independent
@@ -677,14 +677,19 @@ trunk. So the application is a *case* from its first frame, not a run that
 might later be made into one (`PL-VKJW`). Three things follow from this. Each
 is a property of the display, not of the model:
 
-- **The branch control belongs to the case**, so it sits beside the bookmark
-  panel in `SimulationView` rather than in either `RunView`. It offers
+- **The branch control belongs to the case**, so `SimulationView` builds it,
+  as it builds the bookmark panel, and neither `RunView` does. Each is shown
+  in a View of its own, `views.BranchView` and `views.BookmarksView`. More
+  than one Area can show either, so `SimulationView` builds a copy for each
+  View through `view_contract.CaseSurfaces` and writes every copy
+  (`PL-9YPR`). The branch control offers
   `BranchedCase.fork_points_s`, `BranchedCase.mark_fork_points` and
   `BranchedCase.here_fork_point`, and it takes the branch through `fork_at`,
   `fork_at_mark` or `fork_here`. `dashboard_frame.fork_offer` decides what the
   control shows, and `qt_widgets.ForkPanel` draws it. A learner pauses at the
   decision point, or marks it and is stopped there, and then forks at that
-  point, which is the order in which the two panels are read. Returning to a
+  point. The shipped Workspaces place the bookmarks before the branch control
+  for that reason. Returning to a
   mark forks the run rather than truncating it. The trunk is kept, and the
   change is made on a branch drawn beside it. A learner who wants to try
   something else from the same point uses the branch's own Reset (project
@@ -944,8 +949,9 @@ curves on the plot (`PL-G3K7`). `SimulationView._halt_every_run` restates the
 branch controls from the case, so a failed trunk offers no branch from where it
 stands (`PL-MMNX`). It also restates the bookmark standings from each run's
 controller. So a mark that the failed run will never reach is not listed as
-still to come (`PL-YHR3`). Both of these panels, and the marks editor with the
-bookmark panel, are restated from one list, `SimulationView.halt_restatements`.
+still to come (`PL-YHR3`). Every copy of both panels, and the marks editor
+with the bookmark panels, is restated from one list,
+`SimulationView.halt_restatements`.
 `test_every_dashboard_control_is_restated_on_a_halt` fails on any dashboard
 control that is not covered by a run, a listed panel or a named exemption. So a
 panel added later is checked without anyone having to remember it (`PL-5JTH`).
@@ -1280,7 +1286,10 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
   that the copies the controllers hold stay equal. The branch control is the
   second example (`PL-VKJW`). The instants it offers are the trunk's
   keyframes. A copy of it in each run would give a branch a control that could
-  only refuse. Getting this the wrong way round is not a matter of tidiness. A
+  only refuse. Both are shown in Views. `SimulationView` builds a copy for
+  each View that shows one, through `view_contract.CaseSurfaces`, as a run
+  builds its copies through `RunSurfaces` (`PL-9YPR`). Getting this the wrong
+  way round is not a matter of tidiness. A
   run's panel put on the dashboard would state one branch's numbers over both
   runs. A shared control duplicated into each run would let a reader interpret
   a comparison under two different settings.
@@ -1301,8 +1310,9 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
   and any View can occupy any Area, so inside an Area the question has no
   answer. For a View, follow the new-View entry above (`PL-TH35`). This entry
   still decides **where the code goes** for what stays outside the Areas: the
-  unconditional region and the case section below the Areas. The setting
-  controls were a third such surface until `PL-2KXB` made them a View. Inside an
+  unconditional region. The setting controls were a second such surface until
+  `PL-2KXB` made them a View. The bookmarks and the branch control were a
+  third until `PL-9YPR` made them Views. Inside an
   Area, this entry's *reason* still applies, though its routing does not. A
   run's panel must not state one branch's numbers over both runs. A control
   shared between runs must not be duplicated into each run. Both are properties

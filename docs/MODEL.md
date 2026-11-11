@@ -6416,8 +6416,8 @@ The banner states the refusal and the way out: Reset, which keeps every setting.
 At the supported run length, a branch is a second way out: a new run from an
 earlier instant, with each dial at its setting from that instant. The banner
 names a branch only when one can be taken. It names Reset alone on a dashboard
-with no branch control, and while the run is compared with another, because
-comparison locks the branch control.
+that holds no case to branch, and while the run is compared with another,
+because comparison locks the branch control.
 
 **For developers.** For each scenario, a test requires every screen element in a
 group to describe the step that the scenario names. It also requires every other

@@ -1315,7 +1315,10 @@ class MarkListingLabel(QWidget):
 
 
 class BookmarksPanel(QWidget):
-    """The two collections beside the chart, with the control that opens the editor.
+    """The case's two collections of marks, with the control that opens the editor.
+
+    A `views.BookmarksView` shows one copy of this panel in each Area that
+    holds it (`PL-9YPR`).
 
     The panel is read-only. Marks are created and removed in
     `BookmarkDialog`. So the panel in front of the reader while a case runs
@@ -1376,9 +1379,10 @@ class BookmarksPanel(QWidget):
 class ForkPanel(QWidget):
     """Where a learner takes a branch: which point to open it at, and the button.
 
-    The panel sits beside the marks rather than inside a `RunView`, for the
-    same reason the marks sit there. The points it offers belong to the
-    *case*: the trunk's keyframes and the marks the trunk has passed. A
+    The dashboard builds the panel, as it builds the marks, and no `RunView`
+    does. A `views.BranchView` shows one copy in each Area that holds it
+    (`PL-9YPR`). The points the panel offers belong to the *case*: the
+    trunk's keyframes and the marks the trunk has passed. A
     control copied into each displayed run would give a branch a control that
     can only refuse (`docs/ARCHITECTURE.md` § "Where new code belongs").
 
