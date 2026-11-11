@@ -20,7 +20,7 @@ from typing import NoReturn
 import pytest
 from PySide6.QtCore import QEvent
 from PySide6.QtGui import QColor, QImage
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QLabel
 
 from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app.bookmarks import TimeBookmark
@@ -33,7 +33,7 @@ from anesthesia_sim.app.dashboard_frame import (
     WITHHELD_CONCENTRATION_TEXT,
 )
 from anesthesia_sim.app.formatting import format_elapsed
-from anesthesia_sim.app.qt_schematic import SchematicCanvas
+from anesthesia_sim.app.qt_schematic import RunSchematic, SchematicCanvas
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES
 from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.simulation_view import SimulationView
@@ -457,6 +457,78 @@ def test_a_reset_that_no_frame_draws_withholds_the_schematic_with_the_readouts(
     assert schematic.off_scale_text.isHidden()
     assert schematic.share_bar.segments is None
     assert schematic.share_text.isHidden()
+
+
+def _everything_drawn(schematic: RunSchematic) -> tuple[object, ...]:
+    """Every text, reading and share that one run's schematic draws, in a fixed order.
+
+    Nothing here names a value. The labels are found by walking the widget,
+    so a label added to it later is compared too.
+    """
+
+    return (
+        [label.text() for label in schematic.findChildren(QLabel) if not label.isHidden()],
+        schematic.canvas.painted_strings(),
+        schematic.canvas.readings,
+        schematic.share_bar.segments,
+    )
+
+
+def test_a_schematic_reset_with_no_frame_is_drawn_like_one_that_never_showed_a_run(
+    application: QApplication, shown: list[SimulationView], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """After a Reset that no frame draws, the schematic keeps nothing of the discarded run.
+
+    Two dashboards hold the same state: a run at its opening, halted, with no
+    frame drawn of it. One showed a run at 90 s first and was then Reset, and
+    the other never drew a frame. Everything the schematic of each draws is
+    read back, and the two must be equal. So a value left from the
+    discarded run fails this test whether a label holds it or the canvas
+    paints it, and no assertion has to name the value (`PL-RF2S`, replaying
+    `PL-B8DL` and `PL-0G2P`).
+
+    The two are compared by what they draw and not by their pixels. A
+    dashboard whose first frame failed lays its Areas out at other widths
+    than one that drew a frame, so the two images differ in size.
+
+    The test above names each value it checks, and it does not name the
+    instant in the schematic's heading. With that instant kept from the
+    discarded run, the test above passes and this one fails.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance_to(controller, 90.0)
+    controller.pause()
+    used = _dashboard(application, shown, controller, workspaces=shipped_workspaces())
+    used.layout_container.choose_view(AreaId(2), COMPARTMENT_SCHEMATIC)
+    _settle(application)
+    used.present(False)
+    _assert_every_label_matches_its_run(used)
+
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+    run = used.runs[0]
+    run._reset_button.click()
+    dialog = run._reset_dialog
+    if dialog is not None:
+        dialog.discard_button.click()
+    _settle(application)
+    used.present(False)
+
+    fresh = _dashboard(application, shown, SimulationController(), workspaces=shipped_workspaces())
+    fresh.layout_container.choose_view(AreaId(2), COMPARTMENT_SCHEMATIC)
+    _settle(application)
+    fresh.present(False)
+    _settle(application)
+
+    assert run.controller.has_failed is True
+    assert fresh.runs[0].controller.has_failed is True
+    # The fresh dashboard's View holds no copy of the schematic. A View is given
+    # its runs by a tick, and a dashboard whose first frame fails gives none
+    # (`PL-RF2S`, second pull request). So the fresh run builds its copy here.
+    on_screen = _schematic(used).schematics[0]
+    never_used = fresh.runs[0].build_compartment_schematic()
+    assert _everything_drawn(on_screen) == _everything_drawn(never_used)
 
 
 def _painted(canvas: SchematicCanvas) -> QImage:

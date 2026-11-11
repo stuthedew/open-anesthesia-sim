@@ -514,7 +514,13 @@ under `tests/` that imports the simulator, to `docs/MODEL.md`, to
 decision, the pull request waits, rather than merging a clinical change that
 nobody reviewed. `not needed` arms the pull request to merge on green, with
 the reason in the pull request body. `needed` holds it for you, whatever paths
-it changes. `subprojects/docket/src/docket/arming.py` decides what merges
+it changes. When you answer, the session records the date and your words on
+the branch as `Owner-read: given - <date>, "<your words>"`, and the pull
+request can then be armed. A check named `merge-hold` runs the same rule on
+GitHub for every pull request, from `main`'s copy of the rule. It fails while
+the branch holds an open claim, changes the simulator with no record, or
+waits on you with no `given` record. `main` requires that check, so a pull
+request it fails cannot merge, armed or not (`PL-39Y1`, `PL-KH7Y`). `subprojects/docket/src/docket/arming.py` decides what merges
 without you. A change to that file waits on you in only three cases. It
 changes or deletes an existing test that pins `arm`'s results, it moves the
 file, or it carries a `needed` record. Otherwise it merges on green (project
@@ -753,16 +759,15 @@ applies to admins. A session's GitHub calls are made as you. If admins were
 exempt, a session's merge would pass the up-to-date check that `main` applies
 to everyone else. It would then land a stale branch whenever another pull
 request merged between the session's check of the branch and its merge call.
-So the merge guard, `.claude/hooks/direct_merge_guard.py`, asks GitHub at each merge call into
-this repository. It runs in every session, and in a Projects thread through
-the setup script in § "Give Projects threads the repository's hooks with one
-setup script". It rejects the merge while **Do not allow bypassing the above
-settings** is off (`PL-S17R`, `PL-NXRJ`). A merge in another repository, such
-as the references corpus, cannot leave this repository's `main` stale, so the
-hook lets it through without asking (project owner, 2026-11-02, ratified,
-`PL-L08H`). The session then tells you that it cannot arm the
-pull request and that the Squash and merge is yours. Merge it on the Mac, as
-step 1 says for a branch that is already current.
+So a step of the `checks` job, `tools/github_refusals_check.py`, reads that
+setting on every pull request. It fails while **Do not allow bypassing the
+above settings** is off (`PL-39Y1`). Until 2026-11-11 a hook in the session
+read the setting instead, and only for a merge sent through the GitHub tools
+(`PL-S17R`, `PL-NXRJ`). While the setting is off, GitHub holds nobody to the
+checks, so a session does not merge: it tells you that the Squash and merge is
+yours. Merge it on the Mac, as step 1 says for a branch that is already
+current. After you switch the setting back on, re-run the failed `checks` job
+on each open pull request.
 
 ## Give update-armed its token, and renew it
 
@@ -848,6 +853,45 @@ When the restore has worked, the last line shows `* [new branch]`. If the log
 has expired, `git ls-remote origin 'refs/archive/*'` lists every archived tip.
 GitHub's Branches page does not show an archive ref, and no clone fetches one
 unless it is asked to.
+
+## Keep the GitHub rules that refuse a forced push, a moved tag and an unchecked merge
+
+A session acts on GitHub as your account. A guard inside the session reads
+only what the session typed, and four such guards were each passed by another
+spelling of the same action (`PL-39Y1`). GitHub's own rules refuse the action
+however it is spelled, and a session cannot change them. A step of the
+`checks` job, `tools/github_refusals_check.py`, reads them on every pull
+request. Where one is missing it fails and names the setting:
+
+| What GitHub refuses | Where you set it |
+| --- | --- |
+| A forced push to `main`, its deletion, or a change to it outside a pull request | Settings > Rules > Rulesets > **Base** |
+| A merge into `main` past its required checks, by you or a session | Settings > Branches > the rule for `main` > **Do not allow bypassing the above settings** |
+| The merge of a pull request that `bin/docket arm` holds, armed or not | Settings > Branches > the rule for `main` > **Require status checks to pass before merging** > `merge-hold` |
+| A forced push to any other branch | Settings > Rules > Rulesets > **All branches** |
+| A release tag deleted or moved | Settings > Rules > Rulesets > **Release tags** |
+
+Leave every ruleset's **Bypass list** empty. A role on it exempts your
+account, and so exempts every session.
+
+**To create "All branches":** Settings > Rules > Rulesets > **New ruleset** >
+**New branch ruleset**. Name it `All branches`, set **Enforcement status** to
+Active, and under **Target branches** click **Add target** > **Include all
+branches**. Tick **Block force pushes** and untick every other rule. That
+includes **Restrict deletions**, because the daily sweep and GitHub's cleanup
+after a merge both delete branches. Click **Create**.
+
+**To create "Release tags":** the same page, **New ruleset** > **New tag
+ruleset**. Name it `Release tags`, set it Active, and under **Target tags**
+click **Add target** > **Include by pattern** and enter `v*`. Leave **Restrict
+deletions** and **Block force pushes** ticked. Click **Create**.
+
+**What "All branches" costs you.** A session whose pull request has merged
+restarts its branch from `main` and pushes it. If a commit reached the old
+branch after the merge, GitHub still holds that branch and refuses the push.
+The session's reply then gives you one command to run on the Mac, which copies
+the old branch's tip to an archive ref and deletes the branch. It is the
+sweep's own push, so the branch restores as the section above says.
 
 ## Spend the monthly API credit on delegable items
 

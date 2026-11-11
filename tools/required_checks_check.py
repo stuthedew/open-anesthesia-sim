@@ -126,12 +126,11 @@ are read on.
 
 **What agreement here does and does not prove.** It proves that every job
 reporting onto a pull request is in the required list, and that every name in
-that list is reported by a job. It does not prove that the list blocks a merge:
-this repository's protection is set to `non_admins`, so an administrator can
-merge past a red required check - which is how `PL-KPP1`'s orphaned `floor`
-requirement was recovered from at all. That is a deliberate escape hatch on a
-solo project rather than a defect, and it is recorded here so the check is not
-read as a guarantee it does not make.
+that list is reported by a job. It does not prove that the list blocks a merge.
+Whether the required checks also bind an administrator is a separate setting,
+and a session merges as the owner, who is one. `tools/github_refusals_check.py`
+reads that setting, and its `default-binds-admins` rule fails where the checks
+do not bind an administrator (`PL-39Y1`).
 
 **The escape hatch is declared in the tree, where a reviewer reads it.** A job
 that reports a check and is deliberately *not* required carries a
@@ -1371,14 +1370,19 @@ def _repo_from_git(root: Path) -> str:
     return slug
 
 
-def main(argv: list[str] | None = None) -> int:
-    root = Path(__file__).resolve().parent.parent
-    parser = argparse.ArgumentParser(description=__doc__.partition("\n")[0])
+def add_repo_argument(parser: argparse.ArgumentParser) -> None:
+    """Add `--repo`, which each check of GitHub's settings takes."""
     parser.add_argument(
         "--repo",
         default=os.environ.get("GITHUB_REPOSITORY"),
         help="owner/name; defaults to $GITHUB_REPOSITORY, then to the origin remote",
     )
+
+
+def main(argv: list[str] | None = None) -> int:
+    root = Path(__file__).resolve().parent.parent
+    parser = argparse.ArgumentParser(description=__doc__.partition("\n")[0])
+    add_repo_argument(parser)
     parser.add_argument(
         "--branch",
         # On a `pull_request` run this is the branch the pull request targets,

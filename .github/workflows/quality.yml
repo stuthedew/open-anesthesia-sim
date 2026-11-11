@@ -498,6 +498,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 tools/required_checks_check.py
 
+      # The rules that refuse a forced push, a deleted or moved release tag
+      # and a merge past the checks live in repository settings too, and a
+      # session's own guards only read what the session typed (`PL-39Y1`).
+      # This fails where GitHub no longer holds one of those rules. A step
+      # here for the reason the step above is one: it adds no check name.
+      - name: check that GitHub refuses what a session must never do
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 tools/github_refusals_check.py
+
       # **Last in the job, and that is the point** (`PL-7K2C`). No step reads the
       # replay's answer, and it is the most expensive and the most failure-prone
       # step here. It ran straight after the test suite until then, ahead of the
