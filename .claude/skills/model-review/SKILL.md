@@ -261,7 +261,18 @@ finds faults the session accepts (`PL-0BRY`):
    the pull requests the report could not count in full.
 3. Compare the total with the bar below, and say the result in one line.
 4. Where the reviewed pull requests' items have since been re-entered, join
-   them to the "A fix that did not hold" measure above. That shows whether
+   them to the "A fix that did not hold" measure above. Leave out each
+   re-entry that was filed on the reviewed branch, because a pass or the
+   authoring session found that fault before the merge and review did not miss
+   it. The record is the commit that added the re-entering item's file to
+   `main`. `git log origin/main --diff-filter=A --format=%s --
+   'docs/items/<id>-*'` prints that commit's subject, and the re-entry was
+   filed on the reviewed branch when the subject ends with the reviewed item's
+   `pr:` number, as in `(#1782)`. Do not compare the re-entry's `added:` date
+   with the merge date instead: 7 of the 21 re-entries filed on a merge day
+   reached `main` in a later commit (`PL-PW83`). Apply the rule to every group
+   in a comparison, and report how many re-entries it left out of each. What
+   is left shows whether
    faults the passes missed came back as items, which is the measure the
    authoring session's own judgment cannot bias. Recording `repeat` does not
    make it possible to estimate how many faults both passes missed:
