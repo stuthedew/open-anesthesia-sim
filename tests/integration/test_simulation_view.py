@@ -3576,13 +3576,12 @@ def _a_halt_after_a_frame_drawn_for_a_new_agent(
 ) -> tuple[RunView, _GroupReadings]:
     """Return a view that drew a frame after an agent change, then failed to draw the next one.
 
-    The frame drawn after the change wrote every card and the clock for the new case,
-    so the run has not started over since that frame. The halt keeps what that frame
-    wrote, and every group of readings describes the new case at its opening. After a
-    Reset or an agent change, a halt withholds values until a frame is drawn. Drawing a
-    frame ends that withholding (`RunView.show_presentation`). If it did not, the halt would
-    withhold values that do describe the run on screen. Until the test-strength pass of
-    `PL-J5GC`, no test checked this.
+    After a Reset or an agent change, a halt withholds values until a frame is drawn
+    (`RunView.show_presentation`). If drawing a frame did not end the withholding, the halt
+    would withhold values that do describe the run on screen (`PL-J5GC`). Here the frame
+    drawn after the change wrote every card and the clock for the new case, so the run has
+    not started over since that frame. The halt keeps what that frame wrote, and every
+    group of readings describes the new case at its opening.
     """
 
     controller = SimulationController()
@@ -3620,7 +3619,7 @@ def _a_halt_after_frames_drawn_later_than_the_first(
     differ. A halt keeps the values of the last frame drawn, which is the frame at
     600 s. A panel that kept the first frame of the case would show the opening's
     cards and "Delivered: 0.0 L" under a banner that calls them the last frame drawn
-    (adversarial review of `PL-RF2S`).
+    (`PL-RF2S`).
     """
 
     controller = SimulationController()
@@ -7948,17 +7947,17 @@ def test_the_halt_and_refusal_banners_name_their_run(application: QApplication) 
 def test_a_halt_stated_without_a_frame_still_names_the_run_it_stopped(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A halt is stated with no frame, so the run's name cannot be read off one.
+    """A halt is stated with no frame to read the run's name from, yet names the run it stopped.
 
-    `show_halt` states a halt from the run's record alone, because the frame is
-    what may have failed (`PL-25KS`). `_halt_every_run` swallows the redraw that
-    follows. So when the shared render path raises, this banner is the last
-    one written. Taking the run count from the frame would drop the
-    attribution in exactly that case (`PL-TSZM`).
+    It is stated from the run's record alone, because the frame is what may
+    have failed (`show_halt`, `PL-25KS`). Halting every run swallows the redraw that
+    follows (`_halt_every_run`), so when the shared render path raises, the halt's banner
+    is the last one written. If the run count came from the frame, the banner would name
+    no run in exactly that case (`PL-TSZM`).
 
-    Every frame fails here. Until the adversarial review of `PL-RF2S`, the
-    redraw succeeded and wrote a banner of its own over the halt's, so the test
-    passed on a halt whose banner named no run.
+    Every frame fails here. A redraw that succeeded would write a banner of its own
+    over the halt's, so the test would pass on a halt whose banner named no run
+    (`PL-RF2S`).
     """
 
     view = _case_view(application, _branched_case())

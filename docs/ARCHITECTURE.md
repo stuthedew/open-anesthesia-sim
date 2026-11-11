@@ -905,63 +905,68 @@ repair the refusal, and that closing and reopening the application starts a new
 run (`PL-01GY`).
 
 A control used on a run whose snapshot refuses meets the same halt, rather than
-an exception that the toolkit prints, because every slot of `RunView` and
-`SimulationView` passes the halt gate. A `RunView` slot halts its own run
-through `_halt_run`, and a `SimulationView` slot halts every run, because it
-acts on the case. `_halt_run` restates the halt from `record()`. So on a run
-whose snapshot refused, the agent selector goes back to the agent that the
-record names. The snapshot cannot name it, because the snapshot is what
-refused (`PL-V2HC`). When each slot was given its own `try` by hand, six slots
-were left without one, each found by a separate review (`PL-HJKN`). So
-`test_every_slot_that_touches_a_run_passes_the_halt_gate` now fails on a
-connected slot that does not pass the gate.
+an exception that the toolkit prints, because its slot passes the halt gate. A
+`RunView` slot halts its own run and shows the halt from the run's record
+(`_halt_run`, `record()`). So on a run whose snapshot refused, the agent
+selector goes back to the agent that the record names. The snapshot cannot name
+it, because the snapshot is what refused (`PL-V2HC`). A `SimulationView` slot
+halts every run, because it acts on the case. When each slot was given its own
+`try` by hand, six slots were left without one, each found by a separate review
+(`PL-HJKN`). So a test now fails on any connected slot that does not pass the
+gate (`test_every_slot_that_touches_a_run_passes_the_halt_gate`).
 
-Every widget of a run is written by one writer, from one value.
-`RunView.show_presentation` writes the status word, the transport, the agent
-identity, the four dials, the control-change panel, the banner and every
-compartment value from one `RunPresentation` (`app/run_presentation.py`).
-`drawn_run` builds that value from the snapshot a frame drew from, and
-`halted_run` builds it from the run's record when no frame can draw. On the
-widgets that state the record, a halted run shows what a frame would show. A
-dial dragged into the halt shows the value the run holds, rather than the value
-from before the drag (`PL-85LJ`). An agent changed just before the halt is
-named on every identity widget (`PL-1YDD`). The control-change panel lists the
-record that the run holds (`PL-DTJQ`). Four parts of the value can be computed
-only for a frame, and `RunValues` holds them together: the readouts and the
-clock read with them, the compartment schematic, the delivered agent of the
-cost panel, and the accounting panel. A halt writes all four as the last frame
-wrote them, so values shown together still describe one step. After a halt
-that no frame has drawn since the run started over, by a Reset or an agent
-change, all four are withheld together: each readout card and the clock
-withhold their values, the schematic and the delivered agent show no amount,
-and the accounting panel withholds its verdict and amounts. The off-scale and
-wash-in lines and both legends belong to Views, which only a frame draws, and
-they stay as the last frame drew them. After an accounting halt, the accounting
-panel shows the rejected step's check, whether or not a frame draws. A stopped
-run refuses a dial, so the dials keep the settings the run holds (`PL-3B34`).
-`test_every_value_and_its_qualifiers_on_screen_come_from_one_state`
-checks each value and what qualifies it against one step (`PL-J5GC`).
-`test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one`
-requires every other widget to follow the halt by default. So a widget added
-later is checked without anyone listing it (`PL-X7D5`).
+One method (`RunView.show_presentation`) writes every widget of a run from one
+value, a `RunPresentation` (`app/run_presentation.py`). Those widgets include the
+status word, the transport, the agent identity, the four dials, the control-change
+panel, the banner and every compartment value. The `RunPresentation` is built
+from the snapshot a frame drew from (`drawn_run`) or, when no frame can draw,
+from the run's record (`halted_run`). On the widgets that the record fills, a
+halted run shows what a frame would show. A dial dragged into the halt shows the
+value the run holds, rather than the value from before the drag (`PL-85LJ`). An
+agent changed just before the halt is named on every identity widget
+(`PL-1YDD`). The control-change panel lists the record that the run holds
+(`PL-DTJQ`).
 
-The legends are told what a frame drew only once both plots have drawn it. So
+Four parts of a `RunPresentation` can be computed only for a frame, and are held
+together in `RunValues`: the readouts and the clock read with them, the
+compartment schematic, the delivered agent of the cost panel, and the accounting
+panel. A halt writes all four as the last frame wrote them, so values shown
+together still describe one step. When the run has started over, by a Reset or
+an agent change, and no frame has drawn since, a halt withholds all four
+together. Each readout card and the clock withhold their values, the schematic
+and the delivered agent show no amount, and the accounting panel withholds its
+verdict and amounts. The off-scale and wash-in lines and both legends belong to
+Views, which only a frame draws, and they stay as the last frame drew them.
+After an accounting halt, the accounting panel shows the rejected step's check,
+whether or not a frame draws. A stopped run refuses a dial, so the dials keep
+the settings the run holds (`PL-3B34`).
+
+One test checks that each value on screen and what qualifies it come from one
+step (`test_every_value_and_its_qualifiers_on_screen_come_from_one_state`,
+`PL-J5GC`). A second requires every other widget to read the same on a halted
+run as on a drawn one. It includes a widget by default, so one added later is
+checked without anyone listing it
+(`test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one`,
+`PL-X7D5`).
+
+The legends are told what a frame drew only once both plots have drawn it, so
 when the frame that a click asked for fails, the legend boxes still name the
-curves on the plot (`PL-G3K7`). `SimulationView._halt_every_run` restates the
-branch controls from the case, so a failed trunk offers no branch from where it
-stands (`PL-MMNX`). It also restates the bookmark standings from each run's
-controller. So a mark that the failed run will never reach is not listed as
-still to come (`PL-YHR3`). Both of these panels, and the marks editor with the
-bookmark panel, are restated from one list, `SimulationView.halt_restatements`.
-`test_every_dashboard_control_is_restated_on_a_halt` fails on any dashboard
-control that is not covered by a run, a listed panel or a named exemption. So a
-panel added later is checked without anyone having to remember it (`PL-5JTH`).
-The trunk records that its dashboard failed, so it then also offers no keyframe
-and no passed mark. A branch opened at one of them would be drawn by the same
-dashboard, which could fail the same way. A raise in one of the dashboard's own
-slots is recorded the same way as a frame that fails, because it too belongs to
-no single run (`SimulationController.record_failed_frame`, `PL-T2Q2`,
-`PL-HJKN`).
+curves on the plot (`PL-G3K7`). Halting every run rewrites the branch controls
+from the case, so a failed trunk offers no branch from where it stands
+(`SimulationView._halt_every_run`, `PL-MMNX`). It also rewrites the bookmark
+standings from each run's controller, so a mark that the failed run will never
+reach is not listed as still to come (`PL-YHR3`). Both of these panels, and the
+marks editor with the bookmark panel, are rewritten from one list
+(`SimulationView.halt_restatements`). A test fails on any dashboard control
+that is not covered by a run, a listed panel or a named exemption, so a panel
+added later is checked without anyone having to remember it
+(`test_every_dashboard_control_is_restated_on_a_halt`, `PL-5JTH`). The trunk
+records that its dashboard failed, so it then also offers no keyframe and no
+passed mark. A branch opened at one of them would be drawn by the same
+dashboard, which could fail the same way. An exception raised in one of the
+dashboard's own slots is recorded the same way as a frame that fails, because
+it too belongs to no single run (`SimulationController.record_failed_frame`,
+`PL-T2Q2`, `PL-HJKN`).
 
 A run can stop itself inside its own step tick, on a mark or on arriving at the
 supported run length. Such a run asks for no frame, and nothing else needs to
@@ -1256,46 +1261,48 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
   the `View` protocol in `app/view_contract.py`, and is built from a
   `ViewContext` alone. It is drawn from each `ViewTick`. It asks for a
   change to shared state through the context's requests, and it never holds
-  that state itself. The module docstring of `app/view_contract.py` states the
+  that state itself. A View never shows a value from the unconditional set, the
+  values that `docs/MODEL.md` § "Minimum displayed outputs" requires on screen
+  at all times. The module docstring of `app/view_contract.py` states the
   contract, and `ConcentrationView` is the example to read from end to end.
   Then give the View a tag, written as a literal in `app/view_registry.py`.
   Beside the tag, add a `RegisteredView` entry that names the class as its
   factory. Saved layouts name a View by its tag, so the tag never changes.
   When a View is renamed or removed, its tag goes into `RETIRED_TAGS` with the
   release that retired it. That old tag is never registered again
-  (`PL-R1WQ`). Every Area's chooser lists the new kind of View at once
-  (`PL-50PZ`). `tests/integration/test_view_contract.py` builds the View,
-  checks it against the protocol, and checks that it reads back the state it
-  saves. A View never shows a value from the unconditional set, the values
-  that `docs/MODEL.md` § "Minimum displayed outputs" requires on screen at all
-  times.
+  (`PL-R1WQ`). Each Area holds one View, and its chooser lists the new kind
+  of View at once (`PL-50PZ`). A test builds the View, checks it against the
+  protocol, and checks that it reads back the state it saves
+  (`tests/integration/test_view_contract.py`).
 - A new display panel or control → three places. What the panel *claims* goes
   in `app/dashboard_frame.py`, as a plain value with a test in
   `tests/unit/test_dashboard_frame.py`. The widget that draws it goes in
   `app/qt_widgets.py`, and that widget decides nothing. The code that places
   it goes in `app/run_view.py` or `app/simulation_view.py`.
-  A panel of one run that states a value only a frame can compute is also a
-  field of `RunValues` in `app/run_presentation.py`, with a withheld form, so
-  that a halt writes it with the run's other values.
+  When a panel of one run states a value that only a frame can compute, the
+  panel is also a field of `RunValues` in `app/run_presentation.py`, so that a
+  halt writes it with the run's other values. Give that field a withheld form:
+  what it shows when a halt comes before any frame has drawn since the run
+  started over.
 
-  To choose between those two, first ask *whose* panel it is. A panel that
-  states a particular run's numbers belongs to `RunView`. Such panels include
-  readouts, settings, transport, and the record of what was changed during the
-  run. `RunView` is instantiated once per run, and the dashboard places the
-  panel by looping over its runs. A panel about the chart that both runs are
-  drawn on belongs to `SimulationView` or to the chart View that draws it. Such
-  panels include an axis, a legend, a reference, and the compartment
-  selection. A chart's time window belongs to that chart View alone
-  (`PL-L59K`). A control that asks one question of the whole case, rather than
-  of either run, also belongs to `SimulationView`. The bookmark editor is the
-  worked example (`PL-LPLD`). It writes each mark to every displayed run, so
-  that the copies the controllers hold stay equal. The branch control is the
-  second example (`PL-VKJW`). The instants it offers are the trunk's
-  keyframes. A copy of it in each run would give a branch a control that could
-  only refuse. Getting this the wrong way round is not a matter of tidiness. A
-  run's panel put on the dashboard would state one branch's numbers over both
-  runs. A shared control duplicated into each run would let a reader interpret
-  a comparison under two different settings.
+  To choose between `app/run_view.py` and `app/simulation_view.py`, first ask
+  *whose* panel it is. A panel that states a particular run's numbers belongs
+  to `RunView`. Such panels include readouts, settings, transport, and the
+  record of what was changed during the run. Each run gets its own `RunView`,
+  and the dashboard places the panel by looping over its runs. A panel about
+  the chart that both runs are drawn on belongs to `SimulationView` or to the
+  chart View that draws it. Such panels include an axis, a legend, a
+  reference, and the compartment selection. A chart's time window belongs to
+  that chart View alone (`PL-L59K`). A control that asks one question of the
+  whole case, rather than of either run, also belongs to `SimulationView`. The
+  bookmark editor is the worked example (`PL-LPLD`). It writes each mark to
+  every displayed run, so that the copies the controllers hold stay equal. The
+  branch control is the second example (`PL-VKJW`). The instants it offers are
+  the trunk's keyframes. A copy of it in each run would give a branch a
+  control that could only refuse. Getting this the wrong way round is not a
+  matter of tidiness. A run's panel put on the dashboard would state one
+  branch's numbers over both runs. A shared control duplicated into each run
+  would let a reader interpret a comparison under two different settings.
 
   In either place, read only what `SimulationSnapshot` already carries and
   what a `DrawnWindow` already returns. A window holds its states per
