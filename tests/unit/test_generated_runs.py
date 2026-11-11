@@ -738,6 +738,30 @@ LONG_HOLD = (Action(setting="hold", position=0.0, steps=17_000),)
     Plan(None, STIFFEST_CORNER, 1e-6 * CEILING, (0.0, 0.0, 1.0), 0.0, 0.1, FIFTY_STEPS, 0.0, 2)
 )
 @example(
+    # One step that needs 5 squarings, whose state lands 3.4 leading terms from
+    # the 50-digit solution. It failed while `PROPAGATOR_MARGIN` was 3, with a
+    # difference 1.13 times its allowance (found by the blind review of the
+    # rounding module, 2026-11-11).
+    Plan(
+        None,
+        Corner(
+            circuit_l=918.8696053890402,
+            alveolar_l=1662.2739873313274,
+            venous_l=0.013309137204588203,
+            tissue_l=0.05379281056928648,
+            blood_gas=775.1252855300395,
+            tissue_blood=1.453520370492207,
+        ),
+        0.531887589207829,
+        (0.4428973210177197, 0.42985577848716605, 1.0),
+        0.4200385149876751,
+        0.1,
+        ONE_STEP,
+        0.0,
+        2,
+    )
+)
+@example(
     # The stiffest corner held for 1 700 s, which is longer than any drawn plan.
     # One propagator over that stretch needs 33 squarings, one more than the
     # cap, so the run definition must refuse the canonical state. The run holds

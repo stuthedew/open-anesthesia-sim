@@ -31,14 +31,15 @@ rounding and far below anything a learner could read.
 square-root rule holds where the rounding errors are independent and average
 zero. A run repeats one propagator n times, so its errors are neither. A state
 held at equilibrium in a 10 000 L tissue drifted by 1.6e-12 over 4 308 steps,
-which is 38 times the square-root rule's figure. Over 1 000 generated runs the
-largest difference reached 0.95 of the summed bound (measured 2026-11-11,
-`tests/unit/test_generated_runs.py`). `docs/MODEL.md` § "How far a computed
-value can be from the exact one" gives the sources.
+which is 38 times the square-root rule's figure. The five worst single steps
+found on 2026-11-11 were each repeated 2 000 times, and the error after n steps
+stayed at n times the error of one (`PROPAGATOR_MARGIN` records the runs).
+`docs/MODEL.md` § "How far a computed value can be from the exact one" gives the
+sources.
 
 **The agent balance does not use the summed bound.** It keeps its fixed limit
 of one part in 10**9 (project owner, 2026-11-11, ratified, with the decision
-above). Summed over the longest run a learner can reach, the bound is about 58
+above). Summed over the longest run a learner can reach, the bound is about 150
 times that limit, so a limit set from it would let a real accounting error
 pass. `AGENT_ACCOUNTING_RELATIVE_TOLERANCE` says what this costs.
 
@@ -73,20 +74,40 @@ instead allows a difference of about 1e-307 for each step. That is some 300
 orders of magnitude below any displayed digit.
 """
 
-PROPAGATOR_MARGIN: Final = 3.0
+PROPAGATOR_MARGIN: Final = 8.0
 """How many times the leading term 2**s times `MACHINE_EPSILON` one propagator's error may reach.
 
 `core/matrix_exponential.py` derives the leading term: the shift leaves an
 error of a few units in the last place, and each of the s squarings can double
-it. The margin is a measurement. On 2026-10-03, the worst entry of a
-propagator stayed between 0.6 and 2.7 times the leading term at every number of
-squarings from none to 45 (`MAXIMUM_SQUARINGS` in that module records the
-runs). The margin rounds 2.7 up to 3. Two tests measure it again on every pass
-of the suite. `tests/unit/test_numerical_envelope_sweep.py` steps once from
-each corner of the numerical envelope, and its worst result on 2026-10-26 was
-2.5 times the leading term. `tests/unit/test_generated_runs.py` steps generated
-runs, and its worst result on 2026-11-11 was 0.95 of the bound with this margin
-included. A lower margin fails that test, and so the margin is nearly used.
+it. The margin is a measurement with a safety factor, and not a proof.
+
+On 2026-11-11, 240 000 single steps were drawn across the numerical envelope,
+and each propagator was compared with a 50-digit evaluation of the same
+exponential. The largest error in a fraction's row was 3.5 times the leading
+term. The error passed 3 leading terms at 13 of the 15 numbers of squarings
+from none to 14. Applying a propagator to a state rounds too. At one corner,
+the state after one step lay up to 3.9 leading terms from the 50-digit
+solution, depending on the state it started from. The margin is about twice
+that, and it is a power of two so that the bound is exact in binary. The margin
+was 3 until that day. Two blind reviews of this module each found runs inside
+the envelope that exceeded it, by factors of up to 1.3 (`PL-GJ1W`).
+
+The same error repeats on every step. The five steps with the largest
+propagator errors were each repeated 2 000 times, and the state stayed 2.6 to
+3.5 leading terms per step from the 50-digit solution.
+
+Earlier measurements covered less of the envelope. On 2026-10-03, with the
+alveolar volume of a shipped agent driven down a decade at a time, the worst
+entry stayed between 0.6 and 2.7 times the leading term from no squarings to 45
+(`MAXIMUM_SQUARINGS` in `core/matrix_exponential.py` records the runs). On
+2026-10-26, one step from each corner of the envelope reached 2.5 times
+(`tests/unit/test_numerical_envelope_sweep.py`).
+
+Two tests measure the margin again on every pass of the suite.
+`tests/unit/test_rounding.py` recomputes the four worst propagators found. It
+requires each to stay inside this margin and the largest to pass 3 leading
+terms.
+`tests/unit/test_generated_runs.py` holds generated runs to `run_rounding`.
 """
 
 RUNNING_TOTAL_ROUNDING: Final = 2.0 * MACHINE_EPSILON
@@ -107,13 +128,20 @@ allowance within 51 steps (`PL-XST1`, replayed 2026-11-11).
 """
 
 
+CLOCK_ROUNDING_UNITS: Final = 1.5
+"""How many units in the last place of the later instant a measured interval can be wrong by.
+
+`clock_rounding` gives the three roundings that add up to it.
+"""
+
+
 def propagator_rounding(squarings: int) -> float:
     """Return the bound on one propagator's rounding, as a share of the state's scale.
 
     The bound is `PROPAGATOR_MARGIN` times 2**squarings times
     `MACHINE_EPSILON`. A step applies one propagator, so this is also the bound
-    for one step. With no squarings it is 6.7e-16, and at the cap of 32
-    squarings it is 2.9e-6.
+    for one step. With no squarings it is 1.8e-15, and at the cap of 32
+    squarings it is 7.6e-6.
 
     Args:
         squarings: How many times the scaled propagator was squared. The
@@ -174,11 +202,16 @@ def clock_rounding(instant_s: float, interval_s: float) -> float:
     """Return how far rounding of the clock can move a reading, as a share of its range.
 
     A run definition measures an interval as the difference of two rounded
-    instants. That difference can be wrong by one unit in the last place of
-    the later instant. A reading is most sensitive to an error in time when
-    one of the system's time constants equals the interval. Even then, the
-    reading moves by less than the time error divided by the interval, which
-    is the figure returned.
+    instants. Each instant is within half a unit in the last place of its
+    exact value, and the subtraction rounds by at most half a unit more. So
+    the difference can be wrong by one and a half units in the last place of
+    the later instant. On 2026-11-11 the interval from step 2 356 to step
+    6 244 of a 0.01 s step was wrong by 1.25 units. A reading is most
+    sensitive to an error in time when one of the system's time constants
+    equals the interval. Even then, the reading moves by less than the time
+    error divided by the interval. A total that grows in proportion to time,
+    such as the agent delivered at a constant setting, moves by exactly that
+    share. The figure returned is the time error divided by the interval.
 
     Args:
         instant_s: The later of the two instants, in seconds.
@@ -201,7 +234,7 @@ def clock_rounding(instant_s: float, interval_s: float) -> float:
             f"interval_s must be finite and above zero, and {interval_s!r} is not"
         )
 
-    return math.ulp(instant_s) / interval_s
+    return CLOCK_ROUNDING_UNITS * math.ulp(instant_s) / interval_s
 
 
 # The fixed allowances. Each belongs to one kind of comparison.
@@ -215,8 +248,8 @@ this limit admits is rounding (`docs/MODEL.md` § "Mass-balance identity").
 
 The limit is fixed, and it is not the summed bound. A correct 24-hour run of a
 shipped agent left a residual below 4e-11, so the limit is at least 25 times
-the measured rounding. `run_rounding` for that run at the 1 ms step is 5.8e-8,
-about 58 times the limit. A limit that wide would let a real accounting error
+the measured rounding. `run_rounding` for that run at the 1 ms step is 1.5e-7,
+about 150 times the limit. A limit that wide would let a real accounting error
 pass (`PL-D88N`).
 
 The cost is a documented halt. At the stiffest corners of the numerical
@@ -300,8 +333,8 @@ the three agents, in runs that included a setting change. As a share of the
 reading, it was at most 1.4e-10 over 24 h at the 0.1 s step, 2.9e-10 over 6 h
 at the 0.01 s step, and 1.2e-9 over 2 h at the 0.001 s step. It grows with the
 number of steps. Scaled in proportion to 24 h at the 0.001 s step it is 1.4e-8,
-and `run_rounding` for that run is 5.8e-8. This allowance is about seventeen
-times the bound and seventy times the scaled measurement.
+and `run_rounding` for that run is 1.5e-7. This allowance is about six times
+the bound and seventy times the scaled measurement.
 
 `app/bookmarks.py` uses it to decide when a MAC target can be judged from the
 stepped readings alone. It is ten times finer than `HEIGHT_BAND`, so the zones

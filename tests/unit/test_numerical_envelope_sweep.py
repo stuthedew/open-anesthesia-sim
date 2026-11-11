@@ -62,7 +62,7 @@ from anesthesia_sim.core.numerical_envelope import (
 )
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES
 from anesthesia_sim.core.patient import PatientCompartments
-from anesthesia_sim.core.rounding import MACHINE_EPSILON, propagator_rounding
+from anesthesia_sim.core.rounding import MACHINE_EPSILON, PROPAGATOR_MARGIN, propagator_rounding
 from anesthesia_sim.core.run_definition import RunDefinition
 from anesthesia_sim.core.simulation_step import (
     MAXIMUM_SIMULATION_STEP_S,
@@ -955,6 +955,6 @@ def test_every_shipped_agent_steps_without_squarings_at_any_supported_setting(
             f"{step_s} s step needs {squarings} squarings. The mass-balance check's fixed "
             "tolerance of 1e-9 assumes none, so it would halt a correct long run. Choose a "
             "tolerance that widens only by what the squarings add, about "
-            "3 * (2**s - 1) * 2**-52 per step summed over the accounting period, as PL-D88N "
-            "records."
+            f"{PROPAGATOR_MARGIN:g} * (2**s - 1) * 2**-52 per step summed over the accounting "
+            "period, as PL-D88N records."
         )
