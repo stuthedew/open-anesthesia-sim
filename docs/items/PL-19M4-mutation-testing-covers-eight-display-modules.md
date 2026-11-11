@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: defect, safety, test
 feature: one-source-of-truth
-touches: pyproject.toml, tools/diff_mutation.py, tests/unit/test_diff_mutation.py, docs/mutation-testing.md, tests/unit/test_bookmarks.py, docs/apparatus.md, ROADMAP.md
+touches: pyproject.toml, tools/diff_mutation.py, tests/unit/test_diff_mutation.py, docs/mutation-testing.md, tests/unit/test_bookmarks.py, tests/unit/test_chart_frame.py, docs/apparatus.md, ROADMAP.md, .claude/skills/docket/modes/close-out.md
 added: 2026-11-11
 payoff: a change to any display module that imports no Qt is measured by the mutation check when its item closes, and a new such module is covered without anyone adding it to a list
 verify: grep -q 'def test_every_module_outside_the_mutation_run_imports_qt_or_is_named_with_its_reason' tests/unit/test_diff_mutation.py

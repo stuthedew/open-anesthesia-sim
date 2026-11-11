@@ -104,7 +104,7 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.arming import TESTS, imports_product, is_test_file  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
-from docket.python import assignment_targets, without_docstrings  # noqa: E402
+from docket.python import assignment_targets, imports, without_docstrings  # noqa: E402
 from docket.vcs import (  # noqa: E402
     GitUnanswered,
     default_base,
@@ -116,7 +116,8 @@ from docket.vcs import (  # noqa: E402
 )
 
 import doc_check  # noqa: E402
-from product_paths import PACKAGE  # noqa: E402
+from import_boundary_check import BOUNDARIES  # noqa: E402
+from product_paths import LAYOUT_DIR, PACKAGE  # noqa: E402
 
 #: The directory mutmut copies the tree into and runs the tests in. mutmut
 #: 3.8.0 fixes the name, relative to the directory it runs from.
@@ -181,11 +182,15 @@ NOTE_NAMES = 5
 #: interface displays exists to catch a fault in the display code, so all of
 #: these mutants run against the two versions of a changed test (`PL-7FPD`).
 DISPLAY_PACKAGE = f"{PACKAGE}.app"
-#: The package whose mutants measure a changed test only where it imports the
-#: module by name. A test that builds a run reaches most of `core/`, and all of
-#: those mutants would take 9 to 16 minutes for each version of the test, so
-#: only the modules the test names run (`PL-H57W`).
-CORE_PACKAGE = f"{PACKAGE}.core"
+#: A module outside `DISPLAY_PACKAGE` measures a changed test only where the
+#: test imports the module by name. A test that builds a run reaches most of
+#: `core/`, and all of those mutants would take 9 to 16 minutes for each
+#: version of the test, so only the modules the test names run (`PL-H57W`).
+#: The modules under `layout/` and at the top of the package are compared the
+#: same way (`PL-19M4`).
+#: The table in `pyproject.toml` that gives, by path, the reason for each
+#: module that the run leaves out though it imports no toolkit.
+LEFT_OUT = ("tool", "diff_mutation", "left_out")
 #: How long a run of a changed test's base version, with no mutant applied,
 #: may take before the file is reported as not compared.
 CLEAN_TIMEOUT_S = 900
@@ -308,6 +313,94 @@ def is_mutated(path: str, table: Mapping[str, object]) -> bool:
         and (not only or any(fnmatch.fnmatch(path, glob) for glob in only))
         and not any(fnmatch.fnmatch(path, glob) for glob in never)
     )
+
+
+def toolkit_packages() -> frozenset[str]:
+    """The packages whose import makes a module widget code, which the run leaves out.
+
+    They are the outside packages that `tools/import_boundary_check.py` keeps
+    out of `layout/`, which are Qt by each route into it. That check is where
+    the project already names them, so this reads them there.
+    """
+    return frozenset(
+        boundary.package
+        for boundary in BOUNDARIES
+        if boundary.tree == LAYOUT_DIR and boundary.package.split(".")[0] != PACKAGE
+    )
+
+
+def left_out(root: Path) -> dict[str, str]:
+    """The reason `pyproject.toml` gives for each module left out that imports no toolkit.
+
+    The reasons are the `[tool.diff_mutation.left_out]` table, by the module's
+    path. `Refusal` where an entry's reason is not text, or is empty.
+    """
+    with (root / "pyproject.toml").open("rb") as handle:
+        found: object = tomllib.load(handle)
+    for key in LEFT_OUT:
+        found = found.get(key, {}) if isinstance(found, dict) else {}
+    if not isinstance(found, dict) or not all(
+        isinstance(reason, str) and reason.strip() for reason in found.values()
+    ):
+        raise Refusal(f"[{'.'.join(LEFT_OUT)}] must give each path its reason, as text")
+    return dict(found)
+
+
+def rule_disagreements(root: Path, table: Mapping[str, object]) -> list[str]:
+    """Each way the table's choice of modules departs from the rule, one line for each.
+
+    The rule is that mutmut mutates every module under `source_paths`, with two
+    exceptions: a module that imports a toolkit package, by `toolkit_packages`,
+    and a module that `left_out` gives a reason for. A module's own import
+    statements decide the first exception. `do_not_mutate` has to repeat them,
+    because mutmut reads only the table, and this function keeps the repeat
+    true. A new module that imports no toolkit is mutated with no edit to the
+    table. A hand list of the mutated modules had left out all of `layout/` and
+    17 modules of `app/` that import no toolkit (`PL-19M4`).
+    """
+    toolkits = toolkit_packages()
+    reasons = left_out(root)
+    modules = [
+        name for source in _strings(table, "source_paths") for name in working_files(root, source)
+    ]
+    found: list[str] = []
+    for name in modules:
+        tree = ast.parse((root / name).read_text(encoding="utf-8"), filename=name)
+        widget = sorted(
+            {kit for imported in imports(tree) for kit in toolkits if imported.reaches(kit)}
+        )
+        mutated = is_mutated(name, table)
+        if widget and mutated:
+            found.append(
+                f"{name} imports {_listed(widget)} and is mutated. Name it in do_not_mutate."
+            )
+        elif widget and name in reasons:
+            found.append(
+                f"{name} imports {_listed(widget)}, which is why it is left out. "
+                f"Remove its entry from [{'.'.join(LEFT_OUT)}]."
+            )
+        elif not widget and not mutated and name not in reasons:
+            found.append(
+                f"{name} imports no toolkit and is not mutated. Mutate it, or give the reason "
+                f"it is left out in [{'.'.join(LEFT_OUT)}]."
+            )
+        elif not widget and mutated and name in reasons:
+            found.append(
+                f"{name} has a reason for being left out and is mutated. Name it in "
+                f"do_not_mutate, or remove its entry from [{'.'.join(LEFT_OUT)}]."
+            )
+    found += [
+        f"[{'.'.join(LEFT_OUT)}] names {name}, which is no module under source_paths."
+        for name in reasons
+        if name not in modules
+    ]
+    found += [
+        f"{key} holds {glob!r}, which matches no module under source_paths."
+        for key in ("only_mutate", "do_not_mutate")
+        for glob in _strings(table, key)
+        if not any(fnmatch.fnmatch(name, glob) for name in modules)
+    ]
+    return found
 
 
 def module_name(path: str) -> str:
@@ -1145,27 +1238,21 @@ def _clean_run(tree: Path, tests: Sequence[str]) -> int | None:
     return done.returncode
 
 
-def core_imports(source: str) -> set[str]:
-    """The names under `CORE_PACKAGE` that the test file `source` imports, as dotted modules.
+def named_modules(source: str) -> set[str]:
+    """The names under `PACKAGE` that the test file `source` imports, as dotted modules.
 
     `from anesthesia_sim.core.dosing import x` names `anesthesia_sim.core.dosing`,
     and so does `from anesthesia_sim.core import dosing` or `import
-    anesthesia_sim.core.dosing`. An import inside a function counts too. A name
-    that is not a module, such as a class that the package exports, matches no
-    mutated file, so the caller drops it.
+    anesthesia_sim.core.dosing`. An import inside a function counts too, and a
+    relative import does not. A name that is not a module, such as a class that
+    the package exports, matches no mutated file, so the caller drops it.
     """
-    names: set[str] = set()
-    for node in ast.walk(ast.parse(source)):
-        if isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
-            module = node.module
-            if module == CORE_PACKAGE or module.startswith(f"{CORE_PACKAGE}."):
-                names.add(module)
-                names.update(f"{module}.{alias.name}" for alias in node.names)
-        elif isinstance(node, ast.Import):
-            names.update(
-                alias.name for alias in node.names if alias.name.startswith(f"{CORE_PACKAGE}.")
-            )
-    return names
+    return {
+        name
+        for imported in imports(ast.parse(source))
+        for name in imported.names
+        if name.startswith(f"{PACKAGE}.")
+    }
 
 
 def _compared_statuses(
@@ -1200,8 +1287,8 @@ def compare_tests(root: Path, change: Change, table: Mapping[str, object]) -> Co
     the test is what changed. So the two versions of each changed simulator
     unit test run against the same mutants, both on the branch's source, and
     a mutant has the same name in both runs. The mutants are those of
-    `DISPLAY_PACKAGE`, and of each module of `CORE_PACKAGE` that either
-    version of a compared file imports by name, by `core_imports`.
+    `DISPLAY_PACKAGE`, and of each other mutated module that either version
+    of a compared file imports by name, by `named_modules`.
 
     Each run happens in a copy of the tree, so the main run's `mutants/` is
     left alone. In the base copy, every file the branch changed under `tests/`
@@ -1255,7 +1342,7 @@ def compare_tests(root: Path, change: Change, table: Mapping[str, object]) -> Co
             first += [t for t in branch_selection(path, base.get(path), branch) if t not in skipped]
         if path not in base:
             continue
-        imported[path] = core_imports(base[path]) | core_imports(branch or "")
+        imported[path] = named_modules(base[path]) | named_modules(branch or "")
         selection = base_selection(path, base[path], branch)
         selections.append((path, tuple(t for t in selection if t not in skipped)))
     on_branch = [path for path in unit_tests if (root / path).is_file()]
@@ -1292,8 +1379,8 @@ def compare_tests(root: Path, change: Change, table: Mapping[str, object]) -> Co
         if not tests:
             return compared
         named = set().union(*(imported[path] for path in files))
-        cores = [name for name in mutated if module_name(name) in named]
-        modules = [module_name(name) for name in cores]
+        by_name = [name for name in mutated if name not in displays and module_name(name) in named]
+        modules = [module_name(name) for name in by_name]
         # A module's own mutants are `x_` and `xǁ` names. `module.*` would also
         # take every submodule's when the module is a package such as
         # `anesthesia_sim.core` itself.
@@ -1302,7 +1389,7 @@ def compare_tests(root: Path, change: Change, table: Mapping[str, object]) -> Co
             *(pattern for module in modules for pattern in (f"{module}.x_*", f"{module}.xǁ*")),
         ]
         scope = DISPLAY_PACKAGE + (f" and of {_listed(modules)}" if modules else "")
-        compared_files = [*displays, *cores]
+        compared_files = [*displays, *by_name]
         caught = sorted(
             name
             for name, status in _compared_statuses(
@@ -1355,7 +1442,7 @@ def compare_tests(root: Path, change: Change, table: Mapping[str, object]) -> Co
             else ""
         )
         + f". Whether a changed test still catches a fault elsewhere, such as in a module "
-        f"of {CORE_PACKAGE} that it does not import by name, is not measured."
+        f"outside {DISPLAY_PACKAGE} that it does not import by name, is not measured."
     )
     return compared
 
@@ -1400,6 +1487,12 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     try:
         table = mutmut_table(root)
+        disagreements = rule_disagreements(root, table)
+        if disagreements:
+            raise Refusal(
+                "[tool.mutmut] departs from the rule for which modules are mutated, so a run "
+                "would measure the wrong ones:\n  " + "\n  ".join(disagreements)
+            )
         if args.all:
             code, log = run(root, (), table)
             if code:

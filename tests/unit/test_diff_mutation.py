@@ -33,7 +33,6 @@ from diff_mutation import (
     branch_selection,
     changed_rows,
     compare_tests,
-    core_imports,
     counts,
     deselected,
     is_mutated,
@@ -41,16 +40,18 @@ from diff_mutation import (
     module_name,
     mutated_rows,
     mutmut_table,
+    named_modules,
     recorded_exit_codes,
     report_all,
     report_branch,
+    rule_disagreements,
     selection_file,
     settle,
     simulator_unit_tests,
     statuses,
+    toolkit_packages,
     units,
     verdict,
-    working_files,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -69,7 +70,6 @@ TABLE: dict[str, object] = {
 TABLE_TOML = """\
 [tool.mutmut]
 source_paths = ["src/"]
-only_mutate = ["src/pkg/core/*"]
 pytest_add_cli_args_test_selection = ["@selected-tests.txt"]
 """
 
@@ -252,13 +252,131 @@ def test_selection_file_refuses_anything_but_one_at_file(args: list[str]) -> Non
         selection_file({"pytest_add_cli_args_test_selection": args})
 
 
-def test_every_glob_in_the_repositorys_table_matches_a_module() -> None:
-    # A module renamed under a stale glob would silently stop being mutated.
+def test_every_module_outside_the_mutation_run_imports_qt_or_is_named_with_its_reason() -> None:
+    # The repository's own table. A module left out by hand, with no reason,
+    # is a change that `bin/docket verify` would pass with nothing measured.
     table = mutmut_table(REPO_ROOT)
     assert selection_file(table) == "selected-tests.txt"
-    sources = working_files(REPO_ROOT, "src")
-    for glob in diff_mutation._strings(table, "only_mutate"):
-        assert any(fnmatch.fnmatch(name, glob) for name in sources), glob
+    assert rule_disagreements(REPO_ROOT, table) == []
+
+
+def test_the_toolkit_packages_are_the_two_routes_into_qt() -> None:
+    assert toolkit_packages() == {"PySide6", "pyqtgraph"}
+
+
+#: A table that leaves `src/pkg/qt_view.py` and `src/pkg/broken.py` out, and
+#: gives `broken.py` a reason.
+RULED_TOML = """\
+[tool.mutmut]
+source_paths = ["src/"]
+do_not_mutate = ["src/pkg/qt_view.py", "src/pkg/broken.py"]
+pytest_add_cli_args_test_selection = ["@selected-tests.txt"]
+
+[tool.diff_mutation.left_out]
+"src/pkg/broken.py" = "mutmut cannot wrap it"
+"""
+
+
+@pytest.fixture
+def ruled(repo: Path) -> Path:
+    """`repo` with a widget module and a module left out for a reason, as `RULED_TOML` has them."""
+    _write(repo, "pyproject.toml", RULED_TOML)
+    _write(repo, "src/pkg/qt_view.py", "from PySide6 import QtWidgets\n")
+    _write(repo, "src/pkg/broken.py", "def g():\n    return 2\n")
+    return repo
+
+
+def test_a_table_that_follows_the_rule_has_no_disagreement(ruled: Path) -> None:
+    # `src/pkg/other.py` and `src/pkg/core/model.py` import no toolkit and are
+    # mutated, though the table names neither.
+    assert rule_disagreements(ruled, mutmut_table(ruled)) == []
+
+
+def test_a_new_module_that_imports_no_toolkit_is_mutated_with_no_edit(ruled: Path) -> None:
+    _write(ruled, "src/pkg/added.py", "def h():\n    return 3\n")
+    table = mutmut_table(ruled)
+    assert is_mutated("src/pkg/added.py", table)
+    assert rule_disagreements(ruled, table) == []
+
+
+@pytest.mark.parametrize(
+    ("path", "text", "toml", "said"),
+    [
+        (
+            "src/pkg/chart.py",
+            "import pyqtgraph\n",
+            RULED_TOML,
+            "src/pkg/chart.py imports pyqtgraph and is mutated",
+        ),
+        (
+            "src/pkg/lazy.py",
+            "def f():\n    from PySide6.QtCore import Qt\n",
+            RULED_TOML,
+            "src/pkg/lazy.py imports PySide6 and is mutated",
+        ),
+        (
+            "src/pkg/quiet.py",
+            "x = 1\n",
+            RULED_TOML.replace('"src/pkg/broken.py"]', '"src/pkg/broken.py", "src/pkg/quiet.py"]'),
+            "src/pkg/quiet.py imports no toolkit and is not mutated",
+        ),
+        (
+            "src/pkg/quiet.py",
+            "x = 1\n",
+            RULED_TOML.replace("source_paths", 'only_mutate = ["src/pkg/core/*"]\nsource_paths'),
+            "src/pkg/quiet.py imports no toolkit and is not mutated",
+        ),
+        (
+            "src/pkg/broken.py",
+            "from PySide6 import QtCore\n",
+            RULED_TOML,
+            "src/pkg/broken.py imports PySide6, which is why it is left out",
+        ),
+        (
+            "src/pkg/broken.py",
+            "x = 1\n",
+            RULED_TOML.replace(', "src/pkg/broken.py"]', "]"),
+            "src/pkg/broken.py has a reason for being left out and is mutated",
+        ),
+        (
+            "src/pkg/quiet.py",
+            "x = 1\n",
+            RULED_TOML + '"src/pkg/gone.py" = "it was renamed"\n',
+            "names src/pkg/gone.py, which is no module under source_paths",
+        ),
+        (
+            "src/pkg/quiet.py",
+            "x = 1\n",
+            RULED_TOML.replace('"src/pkg/broken.py"]', '"src/pkg/broken.py", "src/pkg/old_*"]'),
+            "do_not_mutate holds 'src/pkg/old_*', which matches no module",
+        ),
+    ],
+)
+def test_each_departure_from_the_rule_is_named(
+    ruled: Path, path: str, text: str, toml: str, said: str
+) -> None:
+    _write(ruled, "pyproject.toml", toml)
+    _write(ruled, path, text)
+    found = rule_disagreements(ruled, mutmut_table(ruled))
+    assert [line for line in found if said in line], found
+
+
+def test_a_module_left_out_needs_a_reason_in_words(ruled: Path) -> None:
+    _write(ruled, "pyproject.toml", RULED_TOML.replace("mutmut cannot wrap it", " "))
+    with pytest.raises(Refusal, match="must give each path its reason"):
+        rule_disagreements(ruled, mutmut_table(ruled))
+
+
+def test_main_refuses_to_run_on_a_table_that_departs_from_the_rule(
+    ruled: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # No run is stubbed, so reaching mutmut would fail the test another way.
+    _write(ruled, "src/pkg/chart.py", "import pyqtgraph\n")
+    assert main(["--root", str(ruled), "--all"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "departs from the rule for which modules are mutated" in captured.err
+    assert "src/pkg/chart.py imports pyqtgraph and is mutated" in captured.err
 
 
 def test_the_tests_that_run_are_the_unit_tests_that_import_the_simulator(repo: Path) -> None:
@@ -1144,8 +1262,7 @@ CORE_MUTANT = "anesthesia_sim.core.concentration.x_to_percent__mutmut_1"
 def _weakened_core(repo: Path) -> Change:
     """The branch's change once it drops an assertion from `CORE_TEST`, with core mutated."""
     _git(repo, "checkout", "-q", "main")
-    table = TABLE_TOML.replace('"src/pkg/core/*"', '"src/pkg/core/*", "src/anesthesia_sim/core/*"')
-    _write(repo, "pyproject.toml", table)
+    _write(repo, "pyproject.toml", TABLE_TOML)
     for module in ("__init__", "concentration", "exceptions", "dosing"):
         _write(repo, f"src/anesthesia_sim/core/{module}.py", "def to_percent(x):\n    return x\n")
     _write(repo, "tests/unit/test_c.py", CORE_TEST)
@@ -1224,14 +1341,20 @@ def test_a_branch_whose_changed_core_test_still_catches_every_mutant_passes(
             "def test_x():\n    from anesthesia_sim.core import dosing\n",
             {"anesthesia_sim.core", "anesthesia_sim.core.dosing"},
         ),
-        # A module outside core, a relative import, and a module whose name
-        # only begins with the package's name are not core modules.
-        ("from anesthesia_sim.app import formatting\nfrom . import core\n", set()),
-        ("import anesthesia_sim.core_extra\nfrom anesthesia_sim.core_extra import x\n", set()),
+        # A module of any part of the package is named, since the caller keeps
+        # the ones that mutmut mutates. A relative import names nothing, and
+        # neither does a package whose name only begins with this one's.
+        (
+            "from anesthesia_sim.layout import sizing\nfrom . import core\n",
+            {"anesthesia_sim.layout", "anesthesia_sim.layout.sizing"},
+        ),
+        ("import anesthesia_sim_extra.core\nfrom anesthesia_sim_extra import x\n", set()),
     ],
 )
-def test_core_imports_are_the_core_modules_a_test_file_names(source: str, names: set[str]) -> None:
-    assert core_imports(source) == names
+def test_named_modules_are_the_package_modules_a_test_file_names(
+    source: str, names: set[str]
+) -> None:
+    assert named_modules(source) == names
 
 
 def test_a_branch_whose_changed_test_still_catches_every_mutant_passes(

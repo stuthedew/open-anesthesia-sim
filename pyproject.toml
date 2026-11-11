@@ -181,37 +181,54 @@ pythonpath = ["tools", ".claude/hooks", "subprojects/docket/src"]
 # records the baseline.
 [tool.mutmut]
 source_paths = ["src/"]
-# The clinical model, and the eight presentation modules that compute a value
-# the interface displays and import no Qt. `dashboard_frame.py`,
-# `chart_frame.py` and `control_timeline.py` build the readouts, the chart
-# labels and the control text (`PL-7FPD`). `run_presentation.py` builds the
-# one value that a run's panel is written from (`PL-RF2S`). The rest of `app/`
-# is Qt widget code, whose tests are integration tests that mutmut does not
-# run.
-only_mutate = [
-    "src/anesthesia_sim/core/*",
-    "src/anesthesia_sim/app/formatting.py",
-    "src/anesthesia_sim/app/chart_time_base.py",
-    "src/anesthesia_sim/app/wash_in.py",
-    "src/anesthesia_sim/app/run_series.py",
-    "src/anesthesia_sim/app/dashboard_frame.py",
-    "src/anesthesia_sim/app/chart_frame.py",
-    "src/anesthesia_sim/app/control_timeline.py",
-    "src/anesthesia_sim/app/run_presentation.py",
+# The rule: every module under `src/` is mutated unless it imports Qt, or is
+# named below with its reason. No list of the mutated modules is kept, so a new
+# module that imports no Qt is mutated with no edit here. A hand list of the
+# mutated modules had left out all of `layout/` and 17 modules of `app/` that
+# import no Qt (`PL-19M4`). mutmut reads only this table, so
+# `do_not_mutate` has to name each module that imports `PySide6` or
+# `pyqtgraph`. Those are widget code, whose tests are integration tests that
+# mutmut does not run. `rule_disagreements` in `tools/diff_mutation.py` reads
+# every module's imports, and `make mutate` and a unit test both fail when this
+# list and the imports disagree.
+do_not_mutate = [
+    "src/anesthesia_sim/app/area_layout.py",
+    "src/anesthesia_sim/app/main.py",
+    "src/anesthesia_sim/app/qt_agent_cost.py",
+    "src/anesthesia_sim/app/qt_agent_price.py",
+    "src/anesthesia_sim/app/qt_chart.py",
+    "src/anesthesia_sim/app/qt_schematic.py",
+    "src/anesthesia_sim/app/qt_widgets.py",
+    "src/anesthesia_sim/app/run_surfaces.py",
+    "src/anesthesia_sim/app/run_view.py",
+    "src/anesthesia_sim/app/simulation_view.py",
+    "src/anesthesia_sim/app/views.py",
+    "src/anesthesia_sim/app/workspace_tabs.py",
+    # Imports no Qt. `[tool.diff_mutation.left_out]` gives the reason.
+    "src/anesthesia_sim/app/display_units.py",
 ]
 # pytest reads its test files from `mutants/selected-tests.txt`, which
 # `tools/diff_mutation.py` writes before each run: every test file under
-# `tests/unit/` that imports the simulator. Each deselected test lists the
-# functions in the modules of `core/`. Under mutmut the list also holds the
-# mutant copies of those functions, and the test fails on them. The first
+# `tests/unit/` that imports the simulator. Each deselected test fails on
+# mutmut's copy of the code with no mutant applied, and mutmut stops when one
+# does. The first two list the functions in the modules of `core/`. Under
+# mutmut the list also holds the mutant copies of those functions. The first
 # test calls them to check its guards. The second finds their bare numbers,
-# which its own list does not name (`PL-GP8G`).
+# which its own list does not name (`PL-GP8G`). The third reads a layout from
+# 150 frames short of the recursion limit. mutmut's wrapper adds two frames to
+# every call of a mutated function, so the reader runs out of stack. The
+# fourth lists what `app/stylesheets.py` imports, and mutmut's copy of that
+# module also imports mutmut's wrapper (`PL-19M4`).
 pytest_add_cli_args_test_selection = [
     "@selected-tests.txt",
     "--deselect",
     "tests/unit/test_supported_range_edges.py::test_each_guard_admits_only_what_its_functions_compute",
     "--deselect",
     "tests/unit/test_bare_numbers.py::test_every_bare_number_in_core_is_listed_with_its_reason",
+    "--deselect",
+    "tests/unit/test_layout_serialization.py::test_whether_a_document_reads_does_not_depend_on_where_its_caller_stands",
+    "--deselect",
+    "tests/unit/test_stylesheets.py::test_the_module_imports_nothing_but_the_theme_and_the_standard_library",
 ]
 # The default, `fork`, imports each test module once, unmutated, and then forks
 # a process for each mutant. A test whose expected value is computed when its
@@ -226,6 +243,18 @@ forkserver_warmup = "none"
 # mutmut 3.8.0 fails to copy a file whose directory it has not created, so
 # `docs/` is copied whole.
 also_copy = ["tools/", "subprojects/docket/src/", "docs/", "README.md"]
+
+# The reason for each module that mutmut leaves out though it imports no Qt, by
+# its path. Each one is in `do_not_mutate` above too, and a module with no
+# entry here is mutated.
+[tool.diff_mutation.left_out]
+"src/anesthesia_sim/app/display_units.py" = """\
+mutmut 3.8.0 wraps `DisplayUnit.__init__`, and `Enum` calls it for each member \
+while the class is still being built, before the wrapper's table of mutants \
+exists. Every import of the module then raises `KeyError: '_mutmut_orig'`, so \
+no test can run. The module holds that one function, with 3 mutants \
+(measured 2026-11-11)."""
+
 # The application's target, not the whole repository's. `tools/ruff.toml` and
 # `subprojects/docket/ruff.toml` extend this file and override
 # `target-version` to the bare-`python3` floor, because both trees are run by
