@@ -56,7 +56,6 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
-import os
 import sys
 import urllib.parse
 from collections.abc import Callable
