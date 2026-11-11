@@ -60,17 +60,25 @@ of comparisons a learner's readings depend on, and adds test time to every
 run of the suite.
 
 1. One module in `core/` states the rounding a computed value can carry: for
-   one propagator, for one step, and for a run of n steps. Every allowance in
-   `core/` and `app/` that exists because of rounding is computed from it, and
-   the 13 separate constants go.
+   one propagator, for one step, and for a run of n steps. Each figure is
+   either a bound that is tight enough to use, as the propagator's 2**s times
+   machine epsilon is, or a measurement with its margin and a test that
+   measures it again. A worst-case bound summed over every step is not used:
+   `PL-D88N` measured it 58 times looser than the 1e-9 it would replace.
+   Every allowance in `core/` and `app/` that exists because of rounding
+   reads this module, and the 13 separate constants go.
 2. A generated test draws settings across the supported ranges and at their
-   edges, changes them during a run, steps thousands of times, and asserts
-   after every action what must always hold: the agent balance closes; every
-   fraction stays between the lowest and highest of the opening state and the
-   delivered concentration; the stepped and canonical readings agree; two
-   routes to one instant agree; the same actions replayed give the same bits.
-   Each assertion allows the rounding that the module in 1 states, and no
-   more.
+   edges, changes them during a run, and steps thousands of times inside one
+   action. It asserts after every action what must always hold: the agent
+   balance closes; every fraction stays between the lowest and highest of the
+   opening state and the delivered concentration; the stepped and canonical
+   readings agree; two routes to one instant agree; the same actions replayed
+   give the same bits. Between setting changes the system is linear with a
+   known exact solution, so the test also compares the state with the
+   50-digit reference that `tests/unit/test_numerical_envelope.py` already
+   has. Each assertion allows the rounding that the module in 1 states, and
+   no more. The test steers its draws toward the largest residual, with
+   Hypothesis's `target`.
 3. A weekly job runs the full 24 h at the 1 ms step floor, which is 8.64e7
    steps and too long for every commit.
 
@@ -78,6 +86,46 @@ run of the suite.
 a computed value lands on exactly, unless the test draws its thresholds from
 the run's own readings. Growth that appears only past the length a per-commit
 test can run, which is what the weekly job and the stated bound are for.
+
+**Established practice, read 2026-11-11.** A background reader opened each
+source below and quoted it; two quotes were checked against the downloaded
+text. The session's network refused the publishers of Oberkampf and Roy 2010,
+Roache 2002, Salari and Knupp 2000, ASME V&V 40, the FDA's 2023 guidance and
+Higham 2002, so none of those was read and nothing here rests on them.
+
+- Verification standards separate finding errors in the code from estimating
+  the error of one calculation, and list round-off under the second, apart
+  from discretization error (Anderson AE, Ellis BJ, Weiss JA. Comput Methods
+  Biomech Biomed Engin 2007;10(3):171-184, doi:10.1080/10255840601160484,
+  section 4.1; Galappaththige S et al. PLoS Comput Biol 2022,
+  doi:10.1371/journal.pcbi.1010541). Code verification ranks an exact
+  analytical solution first as the thing to compare against (Anderson,
+  section 4.2.1). That is design part 2's 50-digit reference.
+- A tolerance needs a source: "consider them equal if they are within some
+  error bound E ... raises as many questions as it answers. What should the
+  value of E be?" (Goldberg D. ACM Comput Surv 1991;23(1):5-48,
+  doi:10.1145/103162.103163, p. 28). A tighter tolerance in a test finds more
+  faults (Kelly, cited in Kanewala U, Bieman JM. Inf Softw Technol
+  2014;56(10):1219-1232, arXiv:1804.01954, section 3.3).
+- A worst-case rounding bound is pessimistic, and replacing its
+  size-dependent constants by their square roots is the stated rule of thumb
+  (Croci M et al. R Soc Open Sci 2022;9:211631, doi:10.1098/rsos.211631,
+  section 6.1). Unbiased rounding grows as the square root of the number of
+  steps in a billion-step integration, and compensated summation cuts it by
+  one to two orders of magnitude (Rein H, Spiegel DS. MNRAS
+  2015;446(2):1424-1437, arXiv:1409.4779). That matches what `PL-D88N` and
+  `PL-XST1` measured here, and it is why part 1 measures run-length growth.
+- Carrying an interval with every value was weighed and refused: "the bounds
+  can blow up catastrophically" (Johansson F. IEEE Trans Comput
+  2017;66(8):1281-1292, arXiv:1611.02831, section 1; Goldberg p. 27).
+- Generated tests have stated limits. Random generation "is not especially
+  good at satisfying difficult properties" (MacIver DR et al. J Open Source
+  Softw 2019;4(43):1891, doi:10.21105/joss.01891). A stateful Hypothesis test
+  runs 50 actions by default, so a defect that needs millions of steps is out
+  of its reach, which is what part 3 is for. A relation checked this way is a
+  necessary property only (Chen TY et al. Computer 2016;49(6):48-55,
+  doi:10.1109/MC.2016.176), and a hand-chosen list of relations "can miss
+  some important" ones (Kanewala and Bieman, section 3.3).
 
 **Done when.** The module in 1 exists and each rounding allowance reads it.
 The generated test in 2 exists, and each of the seven members is replayed

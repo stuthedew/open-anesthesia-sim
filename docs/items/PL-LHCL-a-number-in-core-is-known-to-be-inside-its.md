@@ -91,6 +91,19 @@ signatures in `core/`, which is safety-critical code they read.
    from the types, as `tests/unit/test_supported_range_edges.py` already
    reads them.
 
+**Established practice, read 2026-11-11.** A range cannot be made
+unrepresentable in a type system of this kind, and the stated remedy is the
+one this repository already uses for the flows and concentrations: "use an
+abstract newtype with a smart constructor" (King A. Parse, don't validate.
+2019. https://lexi-lambda.github.io/blog/2019/11/05/parse-don-t-validate/).
+The same essay names what a hand check costs: validation makes it "extremely
+difficult or impossible to determine if everything was actually validated up
+front". Types that state a relation between values restrict what they can say
+so that checking stays decidable (Jhala R, Vazou N. Refinement Types: A
+Tutorial. arXiv:2010.07763, section 2.3), so a relation stays with the record
+that holds both values. Meyer's 1992 paper on design by contract was not
+reachable from this session and nothing here rests on it.
+
 **What it costs.** Signature changes across `core/` and the tests that call
 it, in several pull requests, each read by the owner. A checked type on a
 value computed at every step (an agent amount) costs a construction per step,
