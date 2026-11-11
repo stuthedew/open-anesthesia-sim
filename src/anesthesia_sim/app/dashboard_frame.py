@@ -2688,6 +2688,42 @@ def fork_offer(
     )
 
 
+def kept_fork_selection(
+    previous: Sequence[ForkPoint] | None, selected: ForkPoint | None, points: Sequence[ForkPoint]
+) -> ForkPoint | None:
+    """Return the point the branch selector shows as selected once `points` is the offer.
+
+    The dashboard keeps one selection for the case, and every copy of the
+    branch control shows it. So a copy that is built later, such as after a
+    switch of Workspace, shows the point the learner chose (`PL-9YPR`).
+
+    **A selection whose point is no longer offered is cleared, and a cleared
+    selection stays clear** (`PL-J12Z`). Falling back to the first entry would
+    put induction under a learner who had chosen a later decision point, and
+    the next press would branch there. A point leaves the offer without a
+    reset: a keyframe collapses when a dial is returned to its previous value
+    at the same instant, and a mark leaves when it is unmarked.
+
+    The first offer that holds a point is the one exception. Nobody has chosen
+    yet, so the first entry is selected, as a selector normally does.
+
+    Args:
+        previous: The points of the offer shown before this one, or None
+            where no offer has been shown.
+        selected: The point selected under `previous`, or None for no point.
+        points: The points of the offer about to be shown.
+
+    Returns:
+        The first of `points` where `previous` held none. Otherwise
+        `selected` where `points` still holds it, and None where it does not.
+    """
+
+    if not previous:
+        return points[0] if points else None
+
+    return selected if selected in points else None
+
+
 def _here_fork_label(here: HereForkPoint) -> str:
     """Return the label of the fork where the trunk stands: its instant, and any stopping mark.
 

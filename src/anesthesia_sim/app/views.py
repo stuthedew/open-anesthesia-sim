@@ -777,10 +777,10 @@ class BookmarksView(_CasePanelView[BookmarksPanel]):
 class BranchView(_CasePanelView[ForkPanel]):
     """Where a learner opens a branch of the case: the point to open it at, and the buttons.
 
-    Each Area that shows this View keeps its own selection in the list of
-    points. A press opens the branch at the point selected in the copy that
-    was pressed (`PL-9YPR`). Where the dashboard holds no case, the View shows
-    `dashboard_frame.NO_CASE_TO_BRANCH_TEXT` and no control.
+    The selected point belongs to the case, so every Area that shows this
+    View shows the same selection, and a copy built after a switch of
+    Workspace shows it too (`PL-9YPR`). Where the dashboard holds no case, the
+    View shows `dashboard_frame.NO_CASE_TO_BRANCH_TEXT` and no control.
 
     Args:
         context: What the View is built from.

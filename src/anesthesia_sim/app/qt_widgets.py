@@ -1395,8 +1395,8 @@ class ForkPanel(QWidget):
     and returns one of them** (`selected_point`). So the caller acts on the
     point it was handed, either a keyframe's `CaseInstant` or a mark itself.
     It does not act on the string a reader sees, or on a value read back out
-    of Qt. When the list is rebuilt, a kept selection is found in the new
-    list by `ForkPoint` equality, never by `findData`, for two reasons.
+    of Qt. The selected point is found in the list by `ForkPoint` equality,
+    never by `findData`, for two reasons.
     First, Qt holds a `float` subclass as an opaque Python object, and
     `findData` matches that object only by identity. So an equal
     `CaseInstant` built anew is not found (measured 2026-10-04, PySide6,
@@ -1472,7 +1472,7 @@ class ForkPanel(QWidget):
         self._point_label = styled_label(FORK_POINT_LABEL, color=MUTED)
         # The points behind the selector's entries, one per entry, in the
         # selector's order. `selected_point` returns one of them, and
-        # `set_offer` compares a new offer against them.
+        # `set_offer` rebuilds the entries when a new offer differs from them.
         self._offered: tuple[ForkPoint, ...] = ()
 
         column = QVBoxLayout(self)
@@ -1508,32 +1508,25 @@ class ForkPanel(QWidget):
 
         return None if index < 0 else self._offered[index]
 
-    def set_offer(self, offer: ForkOffer) -> None:
-        """Draw one tick's offer, keeping the reader's selection where it still exists.
+    def set_offer(self, offer: ForkOffer, selected: ForkPoint | None) -> None:
+        """Draw one tick's offer, with `selected` as the selected point.
+
+        The dashboard owns the selection and passes it with every offer
+        (`dashboard_frame.kept_fork_selection`). Every copy of the panel then
+        shows the same point, and a copy that is built later shows the point
+        the learner chose (`PL-9YPR`). Where the offer does not hold
+        `selected`, and where `selected` is None, nothing is selected. So
+        `selected_point` returns None, and a press is refused with a notice
+        that says so (`PL-J12Z`). Qt selects the first entry whenever an
+        emptied selector is refilled, which is why the index is set on every
+        call.
 
         The entries are rebuilt only when they have changed. A running trunk
         adds an entry at every setting change and at every mark its clock
-        reaches. A selector rebuilt every frame would drop a reader's choice
-        mid-click. The rebuild runs under a `QSignalBlocker`, so that
-        refilling the control cannot be mistaken for a reader operating it.
-
-        **A selection whose point is no longer offered is cleared rather than
-        moved, and a cleared selection stays clear** (`PL-J12Z`). The point
-        is looked up by equality in the new list. When it is not there,
-        `setCurrentIndex(-1)` leaves nothing selected, so `selected_point`
-        returns None and the button says so. Falling back to the first entry
-        would put *induction* under a reader who had chosen a later decision
-        point, and the next press would branch there. That would be a
-        silently substituted default, of exactly the kind `CLAUDE.md`'s
-        safety-critical standard refuses. It can happen without a reset. A
-        keyframe collapses when a dial is returned to its previous value at
-        the same instant, which is a learner changing their mind. A mark
-        leaves the list when it is unmarked. Qt itself selects the first
-        entry whenever an emptied selector is refilled. That is why the index
-        is set on every rebuild, not only when a selection survives. The
-        first fill is the one exception, and it selects the first entry as a
-        selector normally does. Nobody has chosen yet, so no choice is being
-        replaced.
+        reaches, and a selector rebuilt every frame would close under a
+        reader's click. Both the rebuild and the index are written under a
+        `QSignalBlocker`, so that the dashboard writing the control is not
+        mistaken for a reader operating it.
 
         **The here button is shown or hidden as a whole, never emptied in
         place.** The button carries its instant in its own label, so there is
@@ -1546,26 +1539,21 @@ class ForkPanel(QWidget):
 
         Args:
             offer: `dashboard_frame.fork_offer`'s result this tick.
+            selected: The point to show as selected, or None for no point.
         """
 
-        if offer.points != self._offered:
-            selected = self.selected_point()
-            first_fill = not self._offered
-
-            with QSignalBlocker(self.point_selector):
+        with QSignalBlocker(self.point_selector):
+            if offer.points != self._offered:
                 self.point_selector.clear()
 
                 for point in offer.points:
                     self.point_selector.addItem(point.label, userData=float(point.instant_s))
 
-                if first_fill:
-                    self.point_selector.setCurrentIndex(0)
-                elif selected in offer.points:
-                    self.point_selector.setCurrentIndex(offer.points.index(selected))
-                else:
-                    self.point_selector.setCurrentIndex(-1)
+                self._offered = offer.points
 
-            self._offered = offer.points
+            self.point_selector.setCurrentIndex(
+                offer.points.index(selected) if selected in offer.points else -1
+            )
 
         # An offer of no points is withdrawn like a locked one. It comes only
         # from a trunk whose frame failed, and a live button over an empty

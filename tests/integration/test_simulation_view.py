@@ -10386,7 +10386,8 @@ def test_a_branch_the_case_refuses_is_reported_and_adds_no_run(application: QApp
             marks=(),
             comparing=None,
             here=None,
-        )
+        ),
+        None,
     )
     panel.point_selector.setCurrentIndex(panel.point_selector.findData(30.0))
 
@@ -10425,7 +10426,8 @@ def test_a_mark_branch_the_case_refuses_is_reported_and_adds_no_run(
             marks=(MarkForkPoint(unmarked, CaseInstant(300 * 0.1)),),
             comparing=None,
             here=None,
-        )
+        ),
+        None,
     )
     _select_fork_entry(view, f"{format_elapsed(30.0)}, on your mark")
 
@@ -10591,7 +10593,8 @@ def test_a_refused_branch_does_not_survive_a_one_run_reset(application: QApplica
             marks=(),
             comparing=None,
             here=None,
-        )
+        ),
+        None,
     )
     panel.point_selector.setCurrentIndex(panel.point_selector.findData(30.0))
     panel.take_button.click()
@@ -11575,7 +11578,8 @@ def _widest_mark_entry_fits(application: QApplication) -> tuple[int, int]:
             marks=(MarkForkPoint(TimeBookmark(instant), instant),),
             comparing=None,
             here=None,
-        )
+        ),
+        None,
     )
     _select_fork_entry(view, f"{hours}{minutes}{seconds}, on your mark")
     option = QStyleOptionComboBox()
@@ -12083,15 +12087,15 @@ def test_every_bookmarks_view_lists_the_case_s_marks_and_follows_a_new_one(
         assert any("second look" in text for text in _strings_of(panel.times, ()))
 
 
-def test_each_branch_view_keeps_its_own_point_and_a_press_branches_at_it(
+def test_every_branch_view_shows_the_one_selected_point_and_a_press_branches_at_it(
     application: QApplication,
 ) -> None:
-    """Three Areas showing the branch control each keep the point chosen there (`PL-9YPR`).
+    """Three Areas showing the branch control show one selection, the case's (`PL-9YPR`).
 
     The trunk offers induction, a mark at 30 s and its setting change at
-    60 s. Each copy is set to a different one. A frame leaves each choice
-    where it was, and the button of the copy set to 30 s opens the branch at
-    30 s.
+    60 s, and every copy starts on induction. The mark is chosen in the
+    second copy. All three then show it, a frame leaves it there, and the
+    button of the third copy opens the branch at 30 s.
     """
 
     case = _branched_case()
@@ -12102,23 +12106,156 @@ def test_each_branch_view_keeps_its_own_point_and_a_press_branches_at_it(
 
     assert len(panels) == 3
     assert len({id(panel) for panel in panels}) == 3, "the Areas share one control"
+    assert [float(panel.point_selector.currentData()) for panel in panels] == [0.0, 0.0, 0.0]
 
-    chosen_s = (60.0, 30.0, 0.0)
+    index = panels[1].point_selector.findData(30.0)
+    assert index >= 0, "the control does not offer the mark at 30 s"
+    panels[1].point_selector.setCurrentIndex(index)
 
-    for panel, instant_s in zip(panels, chosen_s, strict=True):
-        index = panel.point_selector.findData(instant_s)
-        assert index >= 0, f"the control does not offer {instant_s} s"
-        panel.point_selector.setCurrentIndex(index)
+    assert [float(panel.point_selector.currentData()) for panel in panels] == [30.0, 30.0, 30.0]
 
     view.present(False)
 
-    assert tuple(float(panel.point_selector.currentData()) for panel in panels) == chosen_s
+    assert [float(panel.point_selector.currentData()) for panel in panels] == [30.0, 30.0, 30.0]
 
-    panels[1].take_button.click()
+    panels[2].take_button.click()
     _settle(application)
 
     assert len(case.branches) == 1
     assert case.branches[0].snapshot().elapsed_s == pytest.approx(30.0)
+
+
+def _rebuild_the_branch_view(application: QApplication, view: SimulationView) -> ForkPanel:
+    """Show another View in the branch control's Area and then the branch View again.
+
+    `_EVERY_VIEW` shows the branch View in Area 6 alone, so no copy of the
+    control exists between the two choices.
+
+    Returns:
+        The new copy of the branch control.
+    """
+
+    before = _fork_panel(view)
+    view.layout_container.choose_view(AreaId(6), AGENT_ACCOUNTING)
+    _settle(application)
+
+    assert _fork_panels(view) == []
+
+    view.layout_container.choose_view(AreaId(6), BRANCH)
+    _settle(application)
+    view.present(False)
+    after = _fork_panel(view)
+
+    assert after is not before
+
+    return after
+
+
+def test_the_selected_branch_point_survives_the_branch_view_being_rebuilt(
+    application: QApplication,
+) -> None:
+    """A copy of the branch control built later shows the point the learner chose (`PL-9YPR`).
+
+    A blind review found that a new copy started on induction, as a control
+    nobody had used does. A switch of Workspace rebuilds every View, so the
+    learner's choice of the setting change at 60 s became 0 s, and the next
+    press opened the branch at induction.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    selector = _fork_panel(view).point_selector
+    selector.setCurrentIndex(selector.findData(60.0))
+
+    rebuilt = _rebuild_the_branch_view(application, view)
+
+    assert float(rebuilt.point_selector.currentData()) == 60.0
+
+    rebuilt.take_button.click()
+    _settle(application)
+
+    assert len(case.branches) == 1
+    assert case.branches[0].snapshot().elapsed_s == pytest.approx(60.0)
+
+
+def test_a_cleared_branch_selection_stays_clear_when_the_branch_view_is_rebuilt(
+    application: QApplication,
+) -> None:
+    """A selection cleared because its mark was removed is still clear in a new copy (`PL-J12Z`).
+
+    The learner chooses the mark at 30 s and then removes the mark. Nothing
+    is selected, and a copy built afterwards must not put induction in its
+    place. A press there is refused and opens no branch.
+    """
+
+    case = _branched_case()
+    mark = TimeBookmark(CaseInstant(30.0), "check")
+    case.trunk.add_time_bookmark(mark)
+    view = _case_view(application, case)
+    selector = _fork_panel(view).point_selector
+    selector.setCurrentIndex(selector.findData(30.0))
+    case.trunk.remove_time_bookmark(mark)
+    view.present(False)
+
+    assert selector.currentIndex() == -1
+
+    rebuilt = _rebuild_the_branch_view(application, view)
+
+    assert [rebuilt.point_selector.itemData(row) for row in range(2)] == [0.0, 60.0]
+    assert rebuilt.point_selector.currentIndex() == -1
+
+    rebuilt.take_button.click()
+    _settle(application)
+
+    assert case.branches == ()
+    assert rebuilt.notice.notice() == FORK_NOTHING_SELECTED_TEXT
+
+
+def test_a_stopped_run_names_a_branch_only_while_an_area_shows_the_branch_control(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The banner sends a learner to the branch control only while it is on screen (`PL-9YPR`).
+
+    A blind review found that the banner named a branch whenever the
+    dashboard held a case. Since the branch control became a View, a
+    Workspace may show it in no Area, and the banner then sent the learner to
+    a control that was not there. The supported run length here ends at
+    300 s, for the reason that `_a_dial_moved_at_the_supported_run_length`
+    gives.
+    """
+
+    last_step = round(300.0 / SIMULATION_STEP_S)
+    monkeypatch.setattr(
+        supported_ranges_module, "maximum_step_count", lambda simulation_step_s: last_step
+    )
+    refused = f"{_CARDIAC_OUTPUT_REFUSED_ON_A_STOPPED_RUN}. "
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 300.0)
+    view = _case_view(application, BranchedCase(controller))
+    trunk = view.runs[0]
+    view.layout_container.choose_view(AreaId(6), AGENT_ACCOUNTING)
+    _settle(application)
+
+    assert _fork_panels(view) == []
+
+    _drag(trunk._setting_controls[0]._cardiac_output_slider, 10.0, FLOW_DISPLAY_DECIMALS)
+
+    hidden = trunk._notice_text.notice()
+    assert hidden is not None
+    assert hidden.endswith(refused + "Reset to start a new run, which keeps every setting.")
+
+    view.layout_container.choose_view(AreaId(6), BRANCH)
+    _settle(application)
+    view.present(False)
+
+    shown = trunk._notice_text.notice()
+    assert shown is not None
+    assert shown.endswith(
+        refused + "To try a different setting, branch at an earlier instant, where each dial "
+        "starts at what it was set to then, or Reset to start a new run, which keeps every "
+        "setting."
+    )
 
 
 def test_a_failing_frame_withdraws_the_branch_offer_from_every_copy(

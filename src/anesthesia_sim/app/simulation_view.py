@@ -117,6 +117,7 @@ from anesthesia_sim.app.dashboard_frame import (
     BranchAtStake,
     ComparedRuns,
     ForkOffer,
+    ForkPoint,
     NewCaseQuestion,
     RunMarks,
     bookmark_panel,
@@ -124,6 +125,7 @@ from anesthesia_sim.app.dashboard_frame import (
     comparing_fork_lock_text,
     displayed_run_count,
     fork_offer,
+    kept_fork_selection,
     refused_setting_notice,
     run_label,
     trunk_reset_question,
@@ -504,11 +506,14 @@ class SimulationView(QWidget):
         self._bookmark_dialog: BookmarkDialog | None = None
 
         # The copies of the panel where a branch is taken, one for each branch
-        # View, and the offer they were last written. The dashboard builds
-        # them for the same reason that it builds the marks. Both offer
-        # instants of the *case*, so neither belongs inside a `RunView`.
+        # View, with the offer and the selected point they were last written.
+        # The dashboard builds them for the same reason that it builds the
+        # marks. Both offer instants of the *case*, so neither belongs inside
+        # a `RunView`. The selected point is kept here and not in a copy, so
+        # that it outlives every copy (`kept_fork_selection`).
         self._fork_panels: list[ForkPanel] = []
         self._fork_offer_shown: ForkOffer | None = None
+        self._fork_selection: ForkPoint | None = None
 
         self._build_page()
 
@@ -801,7 +806,7 @@ class SimulationView(QWidget):
             controller,
             self,
             run_id=self._run_identities.mint(),
-            branch_control=self._case is not None,
+            branch_control=self._branch_control_shown,
         )
 
         if not self._runs:
@@ -1156,15 +1161,15 @@ class SimulationView(QWidget):
     # ----------------------------------------------------------- branching
 
     @halt_gate
-    def _handle_fork(self, panel: ForkPanel) -> None:
-        """Create a branch at the point `panel` is set to, and draw it beside the trunk.
+    def _handle_fork(self) -> None:
+        """Create a branch at the selected point, and draw it beside the trunk.
 
-        `panel` is the copy of the branch control whose button was pressed.
-        Each copy keeps its own selection, so the branch opens at the point
-        that the pressed copy shows (`PL-9YPR`).
+        Every copy of the branch control shows the one selected point that
+        this dashboard keeps, so the branch opens at the point that the
+        pressed copy shows (`PL-9YPR`).
 
         There are three ways to start a branch, and the panel's selector offers two of
-        them. The point that the selector returns decides which one is used. A branch
+        them. The selected point decides which one is used. A branch
         at a recorded control event is made through `BranchedCase.fork_at`, at the
         event's instant. A branch at a mark that the trunk has passed is made through
         `fork_at_mark`, which is given the mark itself (`PL-W4XQ`). So the case works
@@ -1200,7 +1205,7 @@ class SimulationView(QWidget):
             return
 
         self._runs[TRUNK_RUN_INDEX].snapshot()
-        point = panel.selected_point()
+        point = self._fork_selection
 
         if point is None:
             self._fork_refusal = FORK_NOTHING_SELECTED_TEXT
@@ -1389,15 +1394,60 @@ class SimulationView(QWidget):
         )
 
     def _show_fork_offer(self, offer: ForkOffer) -> None:
-        """Write `offer` into every copy of the branch control, and keep it for the next copy."""
+        """Write `offer` into every copy of the branch control, and keep it for the next copy.
 
+        The selected point is carried from the last offer to this one by
+        `kept_fork_selection`, whether or not any copy is on screen.
+        """
+
+        shown = self._fork_offer_shown
+        self._fork_selection = kept_fork_selection(
+            None if shown is None else shown.points, self._fork_selection, offer.points
+        )
         self._fork_offer_shown = offer
+        self._write_fork_panels()
+
+    def _write_fork_panels(self) -> None:
+        """Write the offer in force and the selected point into every copy of the branch control."""
+
+        offer = self._fork_offer_shown
+
+        if offer is None:
+            return
 
         for panel in self._fork_panels:
-            panel.set_offer(offer)
+            panel.set_offer(offer, self._fork_selection)
+
+    @halt_gate
+    def _handle_fork_point_chosen(self, panel: ForkPanel) -> None:
+        """Take the point a learner chose in `panel`, and show it in every other copy.
+
+        `panel` already shows the point, so it is not written again. Writing it
+        would also replace its entries between frames, under the learner's
+        pointer, where the offer has changed since the last frame.
+        """
+
+        self._fork_selection = panel.selected_point()
+        offer = self._fork_offer_shown
+
+        if offer is None:
+            return
+
+        for other in self._fork_panels:
+            if other is not panel:
+                other.set_offer(offer, self._fork_selection)
+
+    def _branch_control_shown(self) -> bool:
+        """Whether a branch control is on screen, so that a banner may send a learner to it.
+
+        A dashboard with no case has no control. A dashboard with a case has
+        one only while an Area shows the branch View and draws it.
+        """
+
+        return any(panel.isVisibleTo(self) for panel in self._fork_panels)
 
     def build_branch_control(self) -> ForkPanel | None:
-        """Build a copy of the branch control for a View, showing the offer in force.
+        """Build a copy of the branch control for a View, showing the offer and the point in force.
 
         Returns:
             The copy, which this dashboard writes on every frame and restates
@@ -1409,11 +1459,12 @@ class SimulationView(QWidget):
             return None
 
         panel = keep_until_destroyed(self._fork_panels, ForkPanel())
-        panel.take_button.clicked.connect(partial(self._handle_fork, panel))
+        panel.take_button.clicked.connect(self._handle_fork)
         panel.here_button.clicked.connect(self._handle_here_fork)
-
-        if self._fork_offer_shown is not None:
-            panel.set_offer(self._fork_offer_shown)
+        panel.point_selector.currentIndexChanged.connect(
+            partial(self._handle_fork_point_chosen, panel)
+        )
+        self._write_fork_panels()
 
         return panel
 

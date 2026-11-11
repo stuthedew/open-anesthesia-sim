@@ -9,6 +9,7 @@ feature: window-is-the-frame
 touches: src/anesthesia_sim/app/views.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/view_contract.py, src/anesthesia_sim/app/view_registry.py, src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/data/workspaces/default.json, tests/integration/test_simulation_view.py
 added: 2026-11-11
 payoff: a learner can put the bookmarks and the branch control in any Area, or leave them out, and no fixed section under the Areas adds to the page's height
+verify: grep -q 'def test_the_selected_branch_point_survives_the_branch_view_being_rebuilt' tests/integration/test_simulation_view.py
 ---
 
 **Problem.** The marks panel and the branch control sit under the Areas as fixed page sections (SimulationView._build_case_section, which calls their place a placeholder), not as Views, against the owner's 2026-09-16 rule that every main UI element is a View an Area can hold; they add their height to every Workspace and no Workspace can move or close them
@@ -168,3 +169,19 @@ pictures are under `review-b/` in the session's scratchpad.
    `view_registry.py`) is less than its control row needs (about 308 px), so
    at the narrowest Area a border drag reaches the Branch button is out of
    sight behind a sideways scroll.
+
+**Findings 1, 2 and 5 fixed, 2026-11-11.** The selected branch point is now
+one value that the dashboard keeps for the case
+(`dashboard_frame.kept_fork_selection`), and every copy of the control shows
+it. A per-copy selection, the first design, was refuted by finding 1: it died
+with its copy. Saving it in the View's state was weighed and refused, because
+a Workspace file outlives the case and would restore an instant of a case
+that no longer exists. With one selection, no copy can show an instant beside
+a refusal that says none is selected, which was finding 5. The banner of a
+run stopped at the supported length names a branch only while a branch
+control is on screen (`SimulationView._branch_control_shown`). Four tests
+were added and each fails against the code without the fixes. The test
+`test_each_branch_view_keeps_its_own_point...` is gone with the design it
+checked, so the item's `verify:` now names
+`test_the_selected_branch_point_survives_the_branch_view_being_rebuilt`.
+Findings 4, 6, 7 and 8 are still to check.
