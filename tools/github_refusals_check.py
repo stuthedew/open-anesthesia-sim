@@ -138,7 +138,7 @@ REFUSALS = (
         "branch-history",
         "a forced push can replace the history of a branch other than `main`",
         lambda found: "non_fast_forward" in found.other_rules,
-        f'{RULESETS} > New ruleset > New branch ruleset: Enforcement status Active, an empty '
+        f"{RULESETS} > New ruleset > New branch ruleset: Enforcement status Active, an empty "
         'Bypass list, every branch as the target, "Block force pushes" ticked and "Restrict '
         'deletions" unticked.',
     ),
@@ -146,7 +146,7 @@ REFUSALS = (
         "tag-history",
         "a release tag can be deleted or moved to another commit",
         lambda found: {"deletion", "non_fast_forward"} <= found.tag_rules,
-        f'{RULESETS} > New ruleset > New tag ruleset: Enforcement status Active, an empty '
+        f"{RULESETS} > New ruleset > New tag ruleset: Enforcement status Active, an empty "
         'Bypass list, the target pattern `v*`, and "Restrict deletions" and "Block force '
         'pushes" both ticked.',
     ),
@@ -203,7 +203,9 @@ ESCAPES = (
         "PL-39Y1",
         rules=("default-history", "branch-history"),
     ),
-    Escape("git push --force origin <branch>", "PL-VZ57", rules=("default-history", "branch-history")),
+    Escape(
+        "git push --force origin <branch>", "PL-VZ57", rules=("default-history", "branch-history")
+    ),
     Escape(
         "curl -X POST .../git/refs with a release tag's name, after deleting it",
         "PL-39Y1",
@@ -222,7 +224,9 @@ def _types(rules: object) -> frozenset[str]:
     if not isinstance(rules, list):
         return frozenset()
     return frozenset(
-        rule["type"] for rule in rules if isinstance(rule, dict) and isinstance(rule.get("type"), str)
+        rule["type"]
+        for rule in rules
+        if isinstance(rule, dict) and isinstance(rule.get("type"), str)
     )
 
 
