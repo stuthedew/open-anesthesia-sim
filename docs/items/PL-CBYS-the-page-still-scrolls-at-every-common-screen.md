@@ -293,3 +293,26 @@ plan.** Steps 1, 2, 4, 5 and 6 are built. Step 3 was not built, and steps 7 and
   `view._tabs.activate(index)`, and reads
   `view._page_scroll.verticalScrollBar().maximum()` and each
   `AreaFrame.view_scroll`'s scroll bars.
+
+**The whole suite at `cb76d6cb1`, 2026-11-11:** 12,281 passed, 12 failed and
+8 errored. Each needs reading before it is changed: a test may be right and
+the build wrong.
+
+- `tests/integration/test_layout_adapter.py`:
+  `test_a_layout_of_one_area_is_its_view_alone`,
+  `test_a_view_the_new_layout_does_not_hold_leaves_the_container`,
+  `test_every_area_has_a_header_whose_chooser_names_its_view`,
+  `test_the_header_and_the_rule_are_the_chrome_these_tests_allow_for`.
+- `tests/integration/test_layout_keyboard.py`:
+  `test_the_controls_area_has_its_least_width_from_the_first_frame`.
+- `tests/integration/test_qt_rendering.py`:
+  `test_the_hover_reports_the_drawn_state_on_the_shipped_chart`,
+  `test_the_hover_box_stays_inside_a_plot_at_its_least_height`.
+- `tests/integration/test_simulation_view.py`:
+  `test_the_page_stops_holding_the_chart_once_the_reader_scrolls`,
+  `test_the_hover_readout_states_the_agent_compartment_and_both_units`,
+  `test_every_control_that_paints_its_own_content_declares_a_foreground`,
+  `test_spare_height_goes_to_the_plots_and_not_to_the_readouts`,
+  `test_the_page_takes_the_height_the_areas_ask_for_after_the_views_draw`.
+- All eight tests in `tests/benchmarks/test_frame_cost.py` errored. Whether
+  they also error on `main` is not checked.
