@@ -12172,7 +12172,8 @@ not on screen. The circuit's amount and the delivered and exhausted totals are
 exact. The conversion to liquid converts a delivered or exhausted amount
 exactly and a stored amount 5.8 % high. The agent cost View converts only the
 delivered amount, which is the figure that means cost, so its liquid figure is
-exact. Removing this limitation would need a gas-phase model that carries
+exact. A stored total in millilitres of liquid is refused for this reason
+(§ "Agent amounts in millilitres, and the cost"). Removing this limitation would need a gas-phase model that carries
 explicit conditions per compartment, which is well outside the current
 milestone.
 
