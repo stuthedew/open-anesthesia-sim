@@ -12,7 +12,7 @@ A separate document, `docs/INTERFACE.md`, states what the interface must show
 and do, including its controls and the outputs that must be displayed. It
 also gives the ranges of the settings, and the length of a run, over which the
 model is claimed to represent a patient (`docs/INTERFACE.md`
-§ "Supported input ranges" and § "Supported run length").
+§ "Supported input ranges" and `docs/INTERFACE.md` § "Supported run length").
 
 A statement here that gives a version has been true *since* that version. The
 project's roadmap (`ROADMAP.md`) lists the current release in its version table.
