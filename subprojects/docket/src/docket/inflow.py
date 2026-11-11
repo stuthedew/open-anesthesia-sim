@@ -28,6 +28,16 @@ over shipping without the column). Neither proxy carries the fact: path
 recurrence is the arithmetic above, and `root-cause-of:` records members filed
 while their head was open.
 
+**A re-entry is counted against the fact, not the item it names.** A fact
+that sessions keep misreading gets a new head each time a fix does not hold,
+and a filing names whichever head its session found. Counted per named item,
+the filings against one fact were spread over its heads, so no head reached
+three and each line read as answered by the next (`PL-YSV3`). So a filing
+that re-enters a head counts against the first head that stated the same
+fact, as `plan.facts` groups them, and a fact's later heads are its
+successors. An item that is no head, or a head that states no fact, keeps a
+line of its own.
+
 **A line a successor head answers says so.** A head recorded after a closed
 head's fix did not hold carries its own `reenters:` naming that head
 (`PL-4097`), so it is counted among the re-entries it explains. The list names
@@ -91,10 +101,10 @@ from .model import (
     LANE_WORKFLOW,
     MIN_ROOT_CAUSE_ITEMS,
     Item,
-    is_generator,
     is_under,
     owner_set_priority,
 )
+from .plan import Fact, clusters, facts
 from .trend import BY_WEEK, WINDOWS, _windows, window_label
 from .vcs import FilingParents
 
@@ -231,22 +241,29 @@ class Inflow:
     #: Which half of the generator check's population was counted:
     #: `LANE_WORKFLOW` for apparatus filings, `LANE_PRODUCT` for product ones.
     lane: str = LANE_WORKFLOW
-    #: Each closed item that `MIN_ROOT_CAUSE_ITEMS` or more filings re-enter,
-    #: with those filings: triage's "three post-close instances of one head"
-    #: rule, a generator whose fix did not hold. Counted over the filings
-    #: `filed` counts, for the reason `reentries` is.
+    #: Each line that `MIN_ROOT_CAUSE_ITEMS` or more filings re-enter, with
+    #: those filings: triage's "three post-close instances of one head" rule,
+    #: a generator whose fix did not hold. A line is a fact, under the id of
+    #: the first head that stated it, and it collects the filings that
+    #: re-enter any head of that fact. A closed item that is no head, or a
+    #: head that states no fact, is a line under its own id. Counted over the
+    #: filings `filed` counts, for the reason `reentries` is.
     reentered: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
-    #: For each id in `reentered` a successor answers, the heads whose
-    #: `reenters:` names it, by id. Read over every item rather than over the
+    #: For each id in `reentered` that is a fact's first head, that fact with
+    #: all its heads, so a report can say how many fixes the fact has had.
+    facts: Mapping[str, Fact] = field(default_factory=dict)
+    #: For each id in `reentered` a successor answers, its successors by id:
+    #: the fact's later heads, and any head whose `reenters:` names the line's
+    #: item or one of its heads. Read over every item rather than over the
     #: filings counted, since the record makes a head the successor whether or
     #: not its own `touches` made it an apparatus filing. A line whose heads
     #: have all closed is left out once `MIN_ROOT_CAUSE_ITEMS` filings re-enter
-    #: it after the last head closed.
+    #: it after the last successor closed.
     successors: Mapping[str, tuple[Item, ...]] = field(default_factory=dict)
     #: For each id in `reentered` with no successor, the items whose
-    #: `no-successor:` names it and which fewer than `MIN_ROOT_CAUSE_ITEMS`
-    #: filings re-enter it after, by id. Read over every item, as `successors`
-    #: is.
+    #: `no-successor:` names the line's item or one of its heads, and which
+    #: fewer than `MIN_ROOT_CAUSE_ITEMS` filings re-enter it after, by id.
+    #: Read over every item, as `successors` is.
     answered: Mapping[str, tuple[Item, ...]] = field(default_factory=dict)
     #: Why a sweep's filings could not be told apart, or `""`. Set only where
     #: some item records `sweep:` and git could not say which item's work
@@ -357,10 +374,15 @@ def analyze(
         else:
             by_sweep = _filed_by_sweep(items, filing) - headed
     swept = headed | by_sweep
+    groups = clusters(list(items))
+    # Each head that states a fact, to the fact. The fact's first head is the
+    # id its line is listed under.
+    fact_of = {head.identifier: fact for fact in facts(groups).values() for head in fact.heads}
     reentering: dict[str, list[str]] = {}
     for _, item in filings:
         if item.identifier not in swept:
-            for closed in dict.fromkeys(item.reenters):
+            lines = (_line(named, fact_of) for named in item.reenters)
+            for closed in dict.fromkeys(lines):
                 reentering.setdefault(closed, []).append(item.identifier)
     first_named: dict[str, date] = {}
     for when, item in filings:
@@ -392,8 +414,17 @@ def analyze(
         for closed, filed in sorted(reentering.items())
         if len(filed) >= MIN_ROOT_CAUSE_ITEMS
     }
-    known = {item.identifier for item in items if item.identifier}
     added = {item.identifier: item.added for item in items}
+    # Every id a filing can name to reach each line: the line's own, and for
+    # a fact each head that states it.
+    named_by = {
+        closed: frozenset(
+            head.identifier for head in fact_of[closed].heads
+        )
+        if closed in fact_of
+        else frozenset({closed})
+        for closed in reentered
+    }
     successors = {
         closed: heads
         for closed, filed in reentered.items()
@@ -401,15 +432,19 @@ def analyze(
             heads := tuple(
                 sorted(
                     (
-                        item
-                        for item in items
-                        if closed in item.reenters and is_generator(item, known)
+                        cluster.head
+                        for cluster in groups.values()
+                        if cluster.head.identifier != closed
+                        and (
+                            cluster.head.identifier in named_by[closed]
+                            or not named_by[closed].isdisjoint(cluster.head.reenters)
+                        )
                     ),
                     key=lambda head: head.identifier,
                 )
             )
         )
-        and _successors_hold(heads, filed, added)
+        and _successors_hold(_holders(closed, heads, fact_of), filed, added)
     }
     answered = {
         closed: answers
@@ -421,7 +456,7 @@ def analyze(
                     (
                         item
                         for item in items
-                        if closed in item.no_successor
+                        if not named_by[closed].isdisjoint(item.no_successor)
                         and _reentered_after(filed, added, item.added) < MIN_ROOT_CAUSE_ITEMS
                     ),
                     key=lambda answer: answer.identifier,
@@ -436,10 +471,37 @@ def analyze(
         excluded=excluded,
         lane=lane,
         reentered=reentered,
+        facts={closed: fact_of[closed] for closed in reentered if closed in fact_of},
         successors=successors,
         answered=answered,
         sweeps_unread=sweeps_unread,
     )
+
+
+def _line(named: str, fact_of: Mapping[str, Fact]) -> str:
+    """The line a filing that re-enters `named` counts against.
+
+    A head that states a fact counts against the fact's first head, so the
+    filings against one fact's successive heads are counted together. Any
+    other item is its own line.
+    """
+    fact = fact_of.get(named)
+    return fact.first.identifier if fact else named
+
+
+def _holders(
+    closed: str, successors: Sequence[Item], fact_of: Mapping[str, Fact]
+) -> tuple[Item, ...]:
+    """The heads whose being open answers the line `closed`.
+
+    Its successors, and the fact's first head while that head is open: a
+    filing may re-enter a later head that closed before the first did, and
+    the first is then still working on the fact.
+    """
+    fact = fact_of.get(closed)
+    if fact and fact.first.is_open:
+        return (fact.first, *successors)
+    return tuple(successors)
 
 
 def _successors_hold(

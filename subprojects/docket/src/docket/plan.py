@@ -183,6 +183,59 @@ def clusters(items: list[Item], known: Collection[str] | None = None) -> dict[st
     }
 
 
+def misread_fact(head: Item) -> str:
+    """The key under which two heads state one fact: the `misread:` line, case and edges aside.
+
+    `Item.misread` asks a second head of one fact to write the same words, so
+    the same words are the record that two heads share a fact. Two heads that
+    word one fact differently are two facts here. Whether they are one is the
+    judgment `docket generators --misread` leaves to its reader.
+    """
+    return head.misread.strip().casefold()
+
+
+@dataclass(frozen=True)
+class Fact:
+    """One misread fact, with every sound head that states it.
+
+    `heads` are in the order they were filed, by `added:` and then by id, with
+    a head that has no `added:` last. A fact with several heads has had that
+    many root-cause items: each later head was recorded because the fix
+    before it did not end the misreading.
+    """
+
+    heads: tuple[Item, ...]
+
+    @property
+    def first(self) -> Item:
+        return self.heads[0]
+
+    @property
+    def stated(self) -> str:
+        """The fact in the words of its first head."""
+        return self.first.misread.strip()
+
+
+def facts(groups: Mapping[str, Cluster]) -> dict[str, Fact]:
+    """Each fact the heads in `groups` state, by `misread_fact`'s key.
+
+    The one grouping of heads by fact. `docket inflow` counts re-entries
+    against it, and `docket generators --misread` counts a fact's heads from
+    it (`PL-YSV3`). A head that states no fact is in no group.
+    """
+    by_fact: dict[str, list[Item]] = {}
+    for cluster in groups.values():
+        key = misread_fact(cluster.head)
+        if key:
+            by_fact.setdefault(key, []).append(cluster.head)
+    return {
+        key: Fact(
+            tuple(sorted(heads, key=lambda head: (head.added or date.max, head.identifier)))
+        )
+        for key, heads in by_fact.items()
+    }
+
+
 @dataclass(frozen=True)
 class Overlap:
     """Two sound generator heads whose clusters touch, and how.

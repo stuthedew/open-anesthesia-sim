@@ -40,6 +40,7 @@ def _item(
     classes: tuple[str, ...] = ("defect",),
     no_successor: tuple[str, ...] = (),
     sweep: str = "",
+    misread: str = "",
 ) -> Item:
     return Item(
         identifier=identifier,
@@ -61,6 +62,7 @@ def _item(
         reenters=reenters,
         no_successor=no_successor,
         sweep=sweep,
+        misread=misread,
     )
 
 
@@ -275,6 +277,105 @@ def test_a_line_re_entered_after_its_successors_closed_lists_as_open_again() -> 
     assert analyze(working, CONFIG, today=date(2026, 9, 14)).successors == {
         "PL-FXD0": (first, still_open)
     }
+
+
+_FACT = "Who holds an item now, and whether that holder is still live"
+
+
+def _fact_chain() -> list[Item]:
+    """Three members, then three closed heads that state one fact, in filing order.
+
+    Each head was filed after the one before it closed. The second states the
+    fact in another case, which is still the same words. The members name a
+    product path, so they are no apparatus filing themselves.
+    """
+    members = [_item(f"PL-0MB{n}", date(2026, 8, 1), touches=("src/c.py",)) for n in (1, 2, 3)]
+    names = ("PL-0MB1", "PL-0MB2", "PL-0MB3")
+    first = _item(
+        "PL-0HD3",
+        date(2026, 8, 2),
+        closed=date(2026, 8, 5),
+        root_cause_of=names,
+        misread=_FACT,
+    )
+    second = _item(
+        "PL-0HD2",
+        date(2026, 8, 10),
+        closed=date(2026, 8, 12),
+        root_cause_of=names,
+        reenters=("PL-0HD3",),
+        misread=_FACT.upper(),
+    )
+    third = _item(
+        "PL-0HD1",
+        date(2026, 8, 20),
+        closed=date(2026, 8, 22),
+        root_cause_of=names,
+        reenters=("PL-0HD2",),
+        misread=f"  {_FACT} ",
+    )
+    return [*members, first, second, third]
+
+
+def test_reentries_of_one_fact_across_its_heads_are_counted_together() -> None:
+    """`PL-YSV3`: one filing against each of a fact's three heads is three against the fact.
+
+    Counted per named item, each head had one filing, so none reached three
+    and the fact read as three settled lines. The line is listed under the
+    first head filed, whatever its id sorts as, and says how many heads the
+    fact has had.
+    """
+    chain = _fact_chain()
+    later = [
+        _item("PL-0RG1", date(2026, 9, 1), reenters=("PL-0HD3",)),
+        _item("PL-0RG2", date(2026, 9, 2), reenters=("PL-0HD2",)),
+        # Naming two heads of the fact is still one filing against it.
+        _item("PL-0RG3", date(2026, 9, 3), reenters=("PL-0HD1", "PL-0HD2")),
+    ]
+
+    settled = analyze([*chain, *later[:2]], CONFIG, today=date(2026, 9, 7))
+
+    assert settled.reentered == {"PL-0HD3": ("PL-0HD2", "PL-0HD1", "PL-0RG1", "PL-0RG2")}
+    assert [head.identifier for head in settled.successors["PL-0HD3"]] == ["PL-0HD1", "PL-0HD2"]
+    text = format_inflow(settled)
+    assert "a generator whose fix did not hold:" not in text
+    assert "successor PL-0HD1 (done), PL-0HD2 (done)" in text
+    assert f"3 heads have stated this fact, the first filed 2026-08-02: {_FACT}" in text
+
+    reopened = analyze([*chain, *later], CONFIG, today=date(2026, 9, 7))
+
+    assert reopened.reentered == {
+        "PL-0HD3": ("PL-0HD2", "PL-0HD1", "PL-0RG1", "PL-0RG2", "PL-0RG3")
+    }
+    assert reopened.successors == {}
+    text = format_inflow(reopened)
+    unanswered = text.split("a generator whose fix did not hold:")[1]
+    assert "PL-0HD3  by PL-0HD2, PL-0HD1, PL-0RG1, PL-0RG2, PL-0RG3" in unanswered
+    assert f"3 heads have stated this fact, the first filed 2026-08-02: {_FACT}" in unanswered
+    assert "answered by a successor" not in text
+
+
+def test_an_answer_naming_any_head_of_a_fact_answers_the_fact() -> None:
+    """A `no-successor:` written against a later head answers the line its fact is listed under."""
+    chain = _fact_chain()
+    later = [_item(f"PL-0RH{n}", date(2026, 9, n), reenters=("PL-0HD1",)) for n in (1, 2, 3)]
+    answer = _item("PL-0NSW", date(2026, 9, 2), no_successor=("PL-0HD2",))
+
+    report = analyze([*chain, *later, answer], CONFIG, today=date(2026, 9, 7))
+
+    assert report.successors == {}
+    assert report.answered == {"PL-0HD3": (answer,)}
+
+
+def test_a_fact_whose_first_head_is_still_open_is_answered_by_it() -> None:
+    """The first head holds the question while it is open, though a later head closed first."""
+    *members, first, second, third = _fact_chain()
+    working = replace(first, status="ready", closed=None)
+    later = [_item(f"PL-0RJ{n}", date(2026, 9, n), reenters=("PL-0HD1",)) for n in (1, 2, 3)]
+
+    report = analyze([*members, working, second, third, *later], CONFIG, today=date(2026, 9, 7))
+
+    assert "PL-0HD3" in report.successors
 
 
 def test_a_line_answered_with_no_successor_is_listed_apart() -> None:
