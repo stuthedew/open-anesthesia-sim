@@ -316,7 +316,10 @@ Each was checked against the code before it was fixed.
    subtraction half more, so `clock_rounding` now returns 1.5 units over the
    interval.
 4. Pass 2, optional: two property tests in `tests/unit/test_rounding.py` had
-   no `derandomize` setting. They have it now.
+   no `derandomize` setting. `b76478c0` gave it to them. `PL-V067` then
+   landed on `main` and moved that setting into a profile that every property
+   test runs under, so the merge at `d12dcab7` removed it from the two
+   decorators again. Both tests draw the same inputs on every ordinary run.
 
 **Decided in the session, 2026-11-11: the margin on one propagator's bound is
 8, not 3.** The design's part 1 allows "a measurement with its margin and a
@@ -357,12 +360,15 @@ on the bound: a correct 24-hour run of a shipped agent left a residual below
 4e-11.
 
 **Replays after the review's fixes, 2026-11-11.** Each row reverts one fix on
-a clean tree at `b76478c0`, runs `uv run pytest
+a clean tree, runs `uv run pytest
 tests/unit/test_generated_runs.py -q -x`, and restores the tree. The reverts
 are the ones in the table of part (a), made where the code now is:
 `PL-N559`'s is `WASH_IN_ROUNDING_ALLOWANCE = 0.0` in `core/rounding.py`, and
 `PL-81Q2`'s passes zero squarings to `propagator_rounding` and `run_rounding`
-for the canonical state and the window.
+for the canonical state and the window. The seven were run at `b76478c0`, and
+again at `d12dcab7` after `main` changed how the test's runs are drawn
+(`PL-V067`). Both gave the table below. The run at 1 000 drawn plans was made
+at `b76478c0` only.
 
 | Item | Fails in the suite's run | Failure |
 | --- | --- | --- |
@@ -393,9 +399,9 @@ module alone, `mutmut run "anesthesia_sim.core.rounding.x_*"`, then caught
 all 35 of its mutants. The mutants of the other functions the branch touched
 were not run.
 
-**Checks after the review's fixes.** `make check` passed at `ce6b6737`:
-12 321 tests passed and 3 were skipped, with every line and branch of `core/`
-covered.
+**Checks after the review's fixes.** `make check` passed at `ce6b6737`, with
+12 321 tests, and again at `d12dcab7` with `main` merged in: 12 360 tests
+passed and 3 were skipped, with every line and branch of `core/` covered.
 
 **Left for (b).** The project owner's review of the change to `core/` and
 `docs/MODEL.md`. The pull request is #2121.
