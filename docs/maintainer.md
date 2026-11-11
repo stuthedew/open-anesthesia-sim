@@ -3,8 +3,11 @@
 Everything here is addressed to the person running the sessions, not to the
 sessions themselves. It lives outside `CLAUDE.md` for that reason. A rule that
 a session cannot act on still costs every session the context it takes to read
-it. `docs/worker.md` is the opposite kind of document. It holds instructions to
-a worker agent.
+it. Sessions read this file only when something points them to it, so a rule
+for sessions never lives only here. Where a passage says what a session does,
+it states what the session guarantees you, and names where sessions read the
+rule (`PL-GZFR`). `docs/worker.md` is the opposite kind of document. It holds
+instructions to a worker agent.
 
 ## Rules for sessions live in the repository
 
@@ -187,7 +190,9 @@ model per call). A subagent runs at the session's own effort level unless the
 owner approves a lower one for that task (project owner, 2026-10-19). Both rules
 cover subagents that copy values as well as those that search. On 2026-10-19, a
 session set Sonnet subagents to work on the session ledger's values because of
-the old wording here, and the owner asked why.
+the old wording here, and the owner asked why. Sessions read both rules in the
+list of refuted approaches that the session-start digest prints (`PL-2D28`).
+`.claude/rules/apparatus-standard.md` also states the effort rule.
 
 **Exploration subagents run on Opus** (project owner, 2026-10-17, ratified, over
 Haiku 5.5, Sonnet 5.5 and a per-call cheaper model for quick lookups,
@@ -290,14 +295,14 @@ The decision replaces two ratified records whose stated reason was cost. One
 set `high` for apparatus sessions (2026-10-17, `PL-SW0B`). The other set `max`
 for simulator sessions (2026-09-19, below). Cost alone never justifies a lower
 setting (§ "Match model capability to the work"), so a session does not argue
-for `high` on cost. On Anthropic's SWE-bench Pro subset, Opus 5.5 solved 95.3% of tasks at
-`high` for $0.29 each and 96.7% at `xhigh` for $0.74 each. That is 1.4 points
-for about 2.5 times the cost. The page calls its figures directional
-(*Optimizing for cost and intelligence*,
+for `high` on cost. Sessions read that rule in the session-start digest's list
+of refuted approaches (`PL-2D28`). On Anthropic's SWE-bench Pro subset, Opus
+5.5 solved 95.3% of tasks at `high` for $0.29 each and 96.7% at `xhigh` for
+$0.74 each. That is 1.4 points for about 2.5 times the cost. The page calls its
+figures directional (*Optimizing for cost and intelligence*,
 https://platform.claude.com/docs/en/about-claude/models/optimizing-for-cost-and-intelligence,
-read 2026-10-17). The same page reports 88.4% at `high` and 91.1% at `xhigh`
-on an internal agentic-coding set. It gives no figure for `max` (read
-2026-10-19).
+read 2026-10-17). The same page reports 88.4% at `high` and 91.1% at `xhigh` on
+an internal agentic-coding set. It gives no figure for `max` (read 2026-10-19).
 
 **The owner wants evidence on whether `high` causes real problems** (project
 owner, 2026-10-19). The session ledger records each session's model and
@@ -348,7 +353,9 @@ move it. The command writes the new cap and records the move. The level then
 holds through a compaction, and the model review leaves the session out of
 both arms. A session that starts work on a generator's cause runs the same
 command, under your rule of 2026-11-02 that such work runs at `xhigh`
-(`PL-WBW3`).
+(`PL-WBW3`). Sessions read that rule in
+`.claude/skills/docket/modes/triage.md` § "Generators, how they rank, and the
+pause they set".
 
 Until 2026-10-24, the cloud environment's setup script drew the arm, but it
 put no session in either arm (`PL-8MZ9`). § "Give Projects threads the
@@ -420,7 +427,9 @@ deletes a workflow run 90 days after it ran (`PL-4SFQ`).
   real work clears that many times over.
 - **A session asking you to type `/compact` is resetting at its budget**
   (project owner, 2026-09-25, ratified, over pasting a handoff prompt into a
-  new session, `PL-YJG1`). The session pushes everything first, so anything
+  new session, `PL-YJG1`). Sessions follow
+  `.claude/skills/docket/modes/start.md` § "Check the spend before starting,
+  and reset in place". The session pushes everything first, so anything
   the summary drops is already on disk. It also keeps its branch, its claim
   and its pull-request watch. `/compact` works in cloud sessions and takes
   optional focus text (`/compact keep the open question about X`). `/clear`
@@ -464,6 +473,10 @@ for permissions you thought you had turned off, change the mode in its
 dropdown.
 
 ## What comes to you before it merges
+
+Sessions follow this section through `.claude/skills/pull-request/SKILL.md`
+and the text that `bin/docket arm` prints, which gives each trailer's form at
+the moment a session records it.
 
 **A pull request comes to you only for a real decision or a high-risk change,
 and housekeeping merges on green** (project owner, 2026-10-17, `PL-DKBG`). A
@@ -664,11 +677,13 @@ box shows what will land.
 ## Bring a stale base in when you merge, with Update branch
 
 Since 2026-09-23, `main` requires a pull request's branch to be up to date
-before it merges (`PL-6MW8`). Sessions deliberately leave a pull request behind
-`main` while it waits on you. They do so because each update re-runs CI in
-full, which takes two to five minutes, and an update made before you merge goes
-stale as soon as another pull request lands. So the update is yours to make,
-once, when you come to merge:
+before it merges (`PL-6MW8`). Sessions follow this section through
+`.claude/skills/pull-request/SKILL.md` § "Bring `origin/main` in once" and the
+text that `bin/docket arm` prints. Sessions deliberately leave a pull request
+behind `main` while it waits on you. They do so because each update re-runs CI
+in full, which takes two to five minutes, and an update made before you merge
+goes stale as soon as another pull request lands. So the update is yours to
+make, once, when you come to merge:
 
 1. Open the pull request in the Mac's browser. If it is still a draft, leave
    it. The draft carries a session's claim, and GitHub will not merge it. That
@@ -899,16 +914,18 @@ runner refuses to start while the bash or make on its `PATH` is older than bash
    `--no-push` one, keeps both the clone and the log. Its line names the
    clone to read (`PL-TX7K`).
 
-Each branch belongs to a worker, so review it as delegated work. Run
-`bin/docket verify <id>` on the branch, then open its pull request. A pushed
-run also commits its record to the branch, as
-`docs/worker-runs/<branch>-<started>.json`. The run's line names that file.
-Before it opens the pull request, the reviewing session runs
-`python3 tools/worker_runs.py review <file> --outcome accepted|fixed|sent-back --note "<one line>"`.
-`make check` fails until the session does this (`PL-87BR`). The records are how headless work is compared with chat-session work. So the record
-of a sent-back branch still belongs on `main`. Carry its two record commits to
-a branch of their own. Once that lands, the daily branch sweep deletes the
-sent-back worker branch, so its item returns to `bin/docket next` (`PL-W5JR`).
+Each branch belongs to a worker, so ask a session to review it as delegated
+work. A pushed run also commits its record to the branch, as
+`docs/worker-runs/<branch>-<started>.json`, and the run's line names that file.
+The reviewing session runs `bin/docket verify <id>` on the branch and records
+its review in that file before it opens the pull request. `make check` fails
+until it does (`PL-87BR`). The records are how headless work is compared with
+chat-session work. So the record of a sent-back branch still belongs on
+`main`, and the session carries its two record commits to a branch of their
+own. Once that lands, the daily branch sweep deletes the sent-back worker
+branch, so its item returns to `bin/docket next` (`PL-W5JR`). Sessions read
+these steps in `.claude/skills/pull-request/SKILL.md` § "Open the pull request
+with the work".
 `--item <id>` runs one named item. `--per-run-usd` caps the cost of one run
 (default $15). `--model <id>` overrides the `[models]` table's model for one
 batch. An ordinary run leaves it off and takes the table's model. `PL-6FX6`'s
@@ -963,7 +980,8 @@ steps 1 to 4.
 
 `.github/workflows/tag-release.yml` tags each release on the commit that cut
 it, once that commit reaches `main`. When a run fails, the session fixes the
-cause and starts a new run itself. Two cases are left to you (`PL-F23S`,
+cause and starts a new run itself, as `.claude/skills/docket/modes/release.md`
+says. Two cases are left to you (`PL-F23S`,
 `PL-S641`). While a release is untagged, `bin/docket release` refuses to cut
 the next one, and its refusal message names both cases.
 
