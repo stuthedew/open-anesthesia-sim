@@ -5788,8 +5788,8 @@ def cmd_arm(args: argparse.Namespace) -> int:
                 "review passes ran. `bin/docket arm` counts both in the session."
             )
             return 0
-        for line in verdict.lines:
-            print(line)
+        for said in verdict.lines:
+            print(said)
         return verdict.code if verdict.answer == arming.UNKNOWN else 1
     if args.owner_ask:
         verdict = arming.arm(
