@@ -887,8 +887,8 @@ carries both halts, and the snapshot extends `RunStatus`.
 `RunStatus`. `halted_run` does this without building any compartment value,
 because the snapshot's own `Fraction`s are among the values that can cause a
 halt. The banner it writes (`dashboard_frame.halt_notice`) says that no frame of
-the stopped run has been drawn. `refresh` replaces that banner on the first
-frame that draws (`PL-7DJK`).
+the stopped run has been drawn. The first frame that draws replaces that
+banner (`PL-7DJK`).
 
 The supported-limit halt is a fourth run state, distinct from the failure. The
 snapshot carries it as `supported_limit_reason`, and the status reads

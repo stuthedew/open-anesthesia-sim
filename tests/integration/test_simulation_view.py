@@ -79,11 +79,13 @@ from anesthesia_sim.app.chart_time_base import (
     ChartTimeBase,
     time_base_for_span,
 )
+from anesthesia_sim.app.compartment_schematic import SchematicShown
 from anesthesia_sim.app.control_record import ControlChange, ControlInput
 from anesthesia_sim.app.control_timeline import ControlAdjustment, group_adjustments
 from anesthesia_sim.app.controller import (
     BranchedCase,
     MarkForkPoint,
+    RunRecord,
     RunSettings,
     SimulationController,
     SimulationSnapshot,
@@ -1924,6 +1926,204 @@ def test_a_halt_whose_frame_cannot_be_drawn_is_still_shown_on_every_run(
         assert "RuntimeError: this run's frame could not be built" in notice
         assert run._pause_button.isEnabled() is False
         assert run._start_button.isEnabled() is False
+
+
+@pytest.mark.parametrize("refuses_every_write", [False, True], ids=["one frame", "every write"])
+def test_a_halt_after_a_frame_whose_value_could_not_be_written_is_still_stated(
+    application: QApplication, refuses_every_write: bool
+) -> None:
+    """A frame whose schematic cannot be written stops the run, and the panel says so.
+
+    The schematic refuses the second frame's value, and in one case every
+    value after it. The halt writes the last frame's values again. When it
+    wrote them before the status word and the banner, the same refusal left
+    the panel showing "Running" with Pause enabled over a failed run (blind
+    review of `PL-RF2S`). The status word, the transport and the banner are
+    now written first.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    first_frame = run._schematic_shown
+    show = run._show_schematic
+
+    def refusing(shown: SchematicShown) -> None:
+        if refuses_every_write or shown != first_frame:
+            raise ValueError("the schematic could not show this value")
+
+        show(shown)
+
+    run._show_schematic = refusing  # type: ignore[method-assign]
+    controller.advance(SIMULATION_STEP_S)
+
+    if refuses_every_write:
+        with pytest.raises(ValueError, match="the schematic could not show this value"):
+            view.present(False)
+    else:
+        view.present(False)
+
+    assert controller.has_failed is True
+    assert run._status_text.text() == STATUS_FAILED_TEXT
+    notice = run._notice_text.notice()
+    assert notice is not None
+    assert "ValueError: the schematic could not show this value" in notice
+    assert run._pause_button.isEnabled() is False
+    assert run._start_button.isEnabled() is False
+
+
+def test_a_halt_rewrites_the_last_frame_whose_values_were_all_written(
+    application: QApplication,
+) -> None:
+    """A frame that wrote its cards but not its schematic is not the frame a halt keeps.
+
+    The first frame draws the run at 60 s. The frame at 120 s writes the
+    cards, and then the schematic refuses it. The halt that follows writes
+    all four compartment values from one frame. That frame is the one at
+    60 s, the last whose values were all written, so the cards and the
+    schematic again show one state of the run (`PL-RNYV`). The expected cards
+    are those of a second run built directly and stepped to 60 s.
+    """
+
+    controller = _fresh_run(60.0)
+    run = _shown_view(application, controller).runs[0]
+    first_frame = run._schematic_shown
+    show = run._show_schematic
+
+    def refusing_a_later_frame(shown: SchematicShown) -> None:
+        if shown != first_frame:
+            raise ValueError("the schematic could not show this value")
+
+        show(shown)
+
+    run._show_schematic = refusing_a_later_frame  # type: ignore[method-assign]
+    controller.start()
+    _advance(controller, 60.0)
+
+    with pytest.raises(ValueError, match="the schematic could not show this value"):
+        run.show_presentation(run.presentation(controller.snapshot()))
+
+    assert run._readout_row.panels[_CLOCK_INDEX].value_label.text() == format_elapsed(120.0)
+    controller.fail("the frame at 120 s could not be written")
+
+    run.show_presentation(run.presentation())
+
+    assert run._status_text.text() == STATUS_FAILED_TEXT
+    assert [
+        (panel.value_label.text(), panel.secondary_label.text())
+        for panel in run._readout_row.panels
+    ] == [
+        (readout.value, readout.secondary)
+        for readout in readouts(_fresh_run(60.0).snapshot(), DEFAULT_PLAYBACK_RATE)
+    ]
+
+
+def test_a_halt_whose_dials_and_1_mac_line_cannot_be_built_is_still_stated(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A record whose MAC is a bare number still shows its halt, with no 1 MAC line.
+
+    The dials and the 1 MAC line both refuse a MAC that was not built as
+    `MacPercent`, with a `TypeError`. When that exception left the builder,
+    nothing of the halt was written, and the panel went on showing the run
+    as it was before it failed (blind review of `PL-RF2S`). The halt is now
+    written without the two parts, and the 1 MAC line is cleared.
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    assert run._one_mac_text.text() == "1 MAC sevoflurane = 2.0%"
+    record = controller.record
+
+    def record_with_an_unchecked_mac() -> RunRecord:
+        return replace(record(), agent_mac_percent=2.0)  # type: ignore[arg-type]
+
+    controller.record = record_with_an_unchecked_mac  # type: ignore[method-assign]
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+
+    with pytest.raises(TypeError, match="mac_percent of 2.0 was not built as MacPercent"):
+        view.present(False)
+
+    assert controller.has_failed is True
+    assert run._status_text.text() == STATUS_FAILED_TEXT
+    notice = run._notice_text.notice()
+    assert notice is not None
+    assert "RuntimeError: this frame could not be assembled" in notice
+    assert run._pause_button.isEnabled() is False
+    assert run._start_button.isEnabled() is False
+    assert run._one_mac_text.text() == ""
+    assert run.owes_a_frame is False
+
+
+def test_a_halt_that_cannot_be_stated_is_not_tried_again_on_every_tick(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A halt whose statement cannot be built is attempted once, not on every render tick.
+
+    Every frame fails, and so does the statement of the halt that follows.
+    The run's record is stored as written before the halt is built. So the
+    render ticks that follow find no frame owed, assemble nothing and raise
+    nothing. When the record was stored only by a halt that could be built,
+    each tick assembled the frame again and printed the same exception
+    (adversarial review of `PL-RF2S`).
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    assemblies: list[None] = []
+
+    def failing_assembly(*args: object, **kwargs: object) -> NoReturn:
+        assemblies.append(None)
+        raise RuntimeError("this frame could not be assembled")
+
+    def no_statement(*args: object, **kwargs: object) -> NoReturn:
+        raise ValueError("this run could not be stated")
+
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", failing_assembly)
+    monkeypatch.setattr(run_presentation_module, "run_statement", no_statement)
+
+    with pytest.raises(ValueError, match="this run could not be stated"):
+        view.present(False)
+
+    assert controller.has_failed is True
+    attempted = len(assemblies)
+    assert attempted > 0
+
+    for _ in range(5):
+        view.render_tick()
+
+    assert len(assemblies) == attempted
+    assert run.owes_a_frame is False
+
+
+def test_a_run_s_panel_refuses_a_presentation_built_for_another_run(
+    application: QApplication,
+) -> None:
+    """One run's values cannot be written into the other run's panel.
+
+    The second run is running and the first is not. The second run's
+    presentation is refused by the first run's panel before anything is
+    written, so the first panel still shows its own status word.
+    """
+
+    first = SimulationController()
+    second = SimulationController()
+    second.start()
+    view = _shown_view(application, first, second)
+    trunk, branch = view.runs
+    own_status = trunk._status_text.text()
+    assert branch._status_text.text() != own_status
+
+    with pytest.raises(
+        ValueError, match="a presentation built for Run 2 was given to the panel of Run 1"
+    ):
+        trunk.show_presentation(branch.presentation(second.snapshot()))
+
+    assert trunk._status_text.text() == own_status
+    assert trunk._start_button.isEnabled() is True
 
 
 # ------------------------------------------ a run that stops itself (PL-T995)

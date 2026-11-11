@@ -249,8 +249,8 @@ REJECTED_ACCOUNTING_NOTICE_TEMPLATE: Final = (
 # stopped run has been drawn. At that point the chart and the readouts still show
 # the frame drawn before the stop, which is not the step the run stopped at. So
 # "the values shown are the last completed step" would be the stale-state
-# misreading that the hazard table in `docs/MODEL.md` names. `refresh` replaces
-# this banner with `FAILURE_NOTICE_TEMPLATE` on the first frame that draws. Which
+# misreading that the hazard table in `docs/MODEL.md` names. The first frame that
+# draws replaces this banner with `FAILURE_NOTICE_TEMPLATE`. Which
 # of the two banners is shown is therefore decided by whether a frame drew, not
 # guessed from the reason (`PL-7DJK`).
 UNDRAWN_FAILURE_NOTICE_TEMPLATE: Final = (
@@ -1907,7 +1907,7 @@ def halt_notice(
     before it attempts any frame. A failure uses
     `UNDRAWN_FAILURE_NOTICE_TEMPLATE` rather than `notice`'s wording, because
     with no frame drawn the values on screen are not the step the run stopped
-    at. `refresh` writes `notice`'s banner on the first frame that draws.
+    at. The first frame that draws writes `notice`'s banner in its place.
     After a step failure, the rollback leaves the run drawable, so its frame
     replaces this banner in the same turn. After a refused displayed value,
     the frame is refused again, so this banner stays. Which banner is shown is
@@ -2785,7 +2785,7 @@ class RunStatement:
     The four dials are built next to this statement from the same record,
     rather than carried in it. `setting_readouts` can raise for a control that
     can offer no setting, and everything here has to be on screen before that
-    refusal is raised (`PL-85LJ`, `run_presentation.DialsNotOffered`).
+    refusal is raised (`PL-85LJ`, `run_presentation.NotBuilt`).
 
     Attributes:
         agent_id: The running agent. `RunView._apply_agent_color_scheme`

@@ -118,19 +118,23 @@ class KeptValues:
 
 
 @dataclass(frozen=True, slots=True)
-class DialsNotOffered:
-    """Why the four setting controls could not be built for a run.
+class NotBuilt:
+    """Why one part of a presentation could not be built for a run.
 
-    `setting_readouts` refuses a control that can offer no accepted setting.
-    The refusal is carried in the presentation, so that `RunView.show_presentation` can
-    put the status word, the transport and the banner on screen before it
-    raises the refusal (`PL-25KS`, `PL-7DJK`, `PL-85LJ`).
+    Two parts can fail while the run can still be stated. One is the four
+    setting controls with the delivered line, which `setting_readouts`
+    refuses for a control that can offer no accepted setting. The other is
+    the 1 MAC line. Both also fail for a record whose MAC was not built as
+    `MacPercent`. The exception is carried in the presentation, so that
+    `RunView.show_presentation` can put the status word, the transport and
+    the banner on screen before it raises the exception (`PL-25KS`,
+    `PL-7DJK`, `PL-85LJ`).
 
     Attributes:
-        error: The exception that `setting_readouts` raised.
+        error: The exception that building the part raised.
     """
 
-    error: ValueError
+    error: Exception
 
 
 @dataclass(frozen=True, slots=True)
@@ -182,13 +186,15 @@ class RunPresentation:
             transport and the control-change panel.
         notice: The banner's text, naming the run while a second run is
             drawn, or None for no banner.
-        one_mac: The line stating 1 MAC of the running agent. It is the
-            divisor of every ×MAC number in `values` and `dials`.
+        one_mac: The line stating 1 MAC of the running agent, or why it
+            could not be built. 1 MAC is the divisor of every ×MAC number in
+            `values` and `dials`.
         standing: Where `values` came from.
         values: The compartment values.
-        dials: The four setting controls, or why they could not be built.
+        dials: The four setting controls, or why they or the delivered line
+            could not be built.
         delivered_line: The delivered concentration's line beside the 1 MAC
-            line, or None when the dials could not be built.
+            line, or None when `dials` holds no controls.
         new_case: The open new-case question, restated for the snapshot this
             presentation was drawn from. It is None when no such question is
             open, and on a halt. A halted run does not step, so the figures
@@ -201,10 +207,10 @@ class RunPresentation:
     record: RunRecord
     statement: RunStatement
     notice: str | None
-    one_mac: str
+    one_mac: str | NotBuilt
     standing: ValuesStanding
     values: RunValues
-    dials: tuple[SettingReadout, ...] | DialsNotOffered
+    dials: tuple[SettingReadout, ...] | NotBuilt
     delivered_line: str | None
     new_case: NewCaseQuestion | None
 
@@ -266,8 +272,9 @@ def drawn_run(
 
     Raises:
         TypeError: As `drawn_values` raises it.
-        ValueError: As `drawn_values` raises it. A refusal from
-            `setting_readouts` is not raised. It is returned in `dials`.
+        ValueError: As `drawn_values` raises it. An exception raised while
+            building the dials or the 1 MAC line is not raised here. It is
+            returned in `dials` or in `one_mac`.
     """
 
     values = drawn_values(snapshot, state.playback_rate)
@@ -383,7 +390,12 @@ def _presentation(
     values: RunValues,
     new_case: NewCaseQuestion | None,
 ) -> RunPresentation:
-    """Build the presentation's run-state parts from `record`, around `values`."""
+    """Build the presentation's run-state parts from `record`, around `values`.
+
+    An exception raised while building the dials, the delivered line or
+    the 1 MAC line is returned in that part. So a halt whose record refuses
+    one of them is still stated.
+    """
 
     statement = run_statement(
         record,
@@ -393,12 +405,21 @@ def _presentation(
         banner=banner,
         stopped_on_mark=stopped_on_mark,
     )
-    dials: tuple[SettingReadout, ...] | DialsNotOffered
+    dials: tuple[SettingReadout, ...] | NotBuilt
+    line: str | None
+    one_mac: str | NotBuilt
 
     try:
         dials = setting_readouts(record)
-    except ValueError as error:
-        dials = DialsNotOffered(error)
+        line = _delivered_line(dials)
+    except Exception as error:
+        dials = NotBuilt(error)
+        line = None
+
+    try:
+        one_mac = format_mac_reference(record.agent_display_name, record.agent_mac_percent)
+    except Exception as error:
+        one_mac = NotBuilt(error)
 
     return RunPresentation(
         run_id=state.run_id,
@@ -407,11 +428,11 @@ def _presentation(
         record=record.run_record(),
         statement=statement,
         notice=compared_run_notice(statement.banner, state.name),
-        one_mac=format_mac_reference(record.agent_display_name, record.agent_mac_percent),
+        one_mac=one_mac,
         standing=standing,
         values=values,
         dials=dials,
-        delivered_line=None if isinstance(dials, DialsNotOffered) else _delivered_line(dials),
+        delivered_line=line,
         new_case=new_case,
     )
 

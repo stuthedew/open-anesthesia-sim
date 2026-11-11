@@ -38,7 +38,7 @@ the toolkit and leave the run still showing "Paused" (`PL-HJKN`).
 `dashboard_frame.halt_disposition` decides how the stop is reported. A
 `SimulationDomainLimitError` is reported as reaching the supported run length,
 and anything else as a failure (`PL-V6M0`, `PL-Y5WR`, `PL-YK2V`).
-A halted run is shown before any attempt to draw a frame, by `show_presentation` with the
+A halted run is shown before any attempt to draw a frame, by `show_halt`. It writes the
 presentation that `presentation` builds when it is given no snapshot. That
 presentation is built from the controller's record, and reading that record
 builds no compartment value. There are two reasons for this. First, the frame is drawn by a render
@@ -136,6 +136,7 @@ from anesthesia_sim.app.dashboard_frame import (
     readouts,
     refused_reset_exit,
     refused_setting_notice,
+    run_label,
     setting_readouts,
     status_word,
     substance_heading,
@@ -154,8 +155,8 @@ from anesthesia_sim.app.qt_agent_cost import RunAgentCost
 from anesthesia_sim.app.qt_schematic import RunSchematic
 from anesthesia_sim.app.qt_widgets import NewCaseDialog, NoticeLabel, ReadoutRow, styled_label
 from anesthesia_sim.app.run_presentation import (
-    DialsNotOffered,
     KeptValues,
+    NotBuilt,
     RunPanelState,
     RunPresentation,
     RunValues,
@@ -756,12 +757,23 @@ class RunView(QWidget):
         record (`PL-DTJQ`). So a halt is written as fully as a frame is. A
         widget added here is written on both paths.
 
-        The writes keep one order. The compartment values come first. The
-        agent colour is written before anything that shows it. The dials
-        come last, and a presentation whose dials could not be built raises
-        their refusal only then. So the status word, the transport and the
-        banner are on screen before the refusal leaves this method
-        (`PL-25KS`, `PL-7DJK`, `PL-85LJ`).
+        The writes keep one order. The run-state widgets come first: the
+        agent colour, which is written before anything that shows it, then
+        the status word, the transport, the 1 MAC line and the banner. The
+        compartment values follow, and the dials come last. So a halt is
+        stated before any write that can fail. A frame whose compartment
+        values cannot be written halts the run, and that halt is then on
+        screen even if the same write fails again (`PL-25KS`, `PL-7DJK`,
+        `PL-85LJ`).
+
+        The values of a drawn frame are kept for a later halt only once all
+        four have been written. So a halt rewrites the last frame that the
+        panel showed in full.
+
+        A part that could not be built (`NotBuilt`) is not written. The 1
+        MAC line is cleared in its place, so that it cannot state another
+        agent's MAC above this run's values (`PL-6RJ0`). The refusal is
+        raised once every other widget has been written.
 
         Before writing anything, the method stores the presentation's record
         as the one this view last wrote. The render tick draws whenever a
@@ -776,29 +788,28 @@ class RunView(QWidget):
             presentation: What `presentation` built for this run.
 
         Raises:
-            ValueError: If the presentation's dials could not be built
-                (`DialsNotOffered`). That happens for a control with no step
-                of its resolution inside the range the run accepts
-                (`PL-7CRY`). Every other widget has been written by then.
+            ValueError: If the presentation was built for another run. Then
+                nothing is written. Also if the presentation's dials could
+                not be built (`NotBuilt`), for a control with no step of
+                its resolution inside the range the run accepts (`PL-7CRY`).
+                Every other widget has been written by then.
+            Exception: Whatever else building the 1 MAC line or the dials
+                raised, such as a `TypeError` for a record whose MAC was not
+                built as `MacPercent`. Every other widget has been written
+                by then.
         """
 
+        if presentation.run_id != self.run_id:
+            raise ValueError(
+                f"a presentation built for {run_label(presentation.run_id)} was given to the "
+                f"panel of {run_label(self.run_id)}: build it with that panel's `presentation`"
+            )
+
         self._written_record = presentation.record
+        drawn = presentation.standing is ValuesStanding.DRAWN
 
-        if presentation.standing is ValuesStanding.DRAWN:
+        if drawn:
             self._presented = True
-            self._kept = KeptValues(presentation.case, presentation.values)
-
-        values = presentation.values
-        self._readout_row.set_readouts(values.readouts)
-        self._show_schematic(values.schematic)
-        self._show_delivered(values.delivered)
-        self._show_accounting(values.accounting)
-
-        if presentation.new_case is not None and self._new_case_dialog is not None:
-            self._new_case_dialog.show_question(presentation.new_case)
-
-        if presentation.standing is ValuesStanding.DRAWN:
-            self._restate_reset_question()
 
         statement = presentation.statement
         self._apply_agent_color_scheme(statement.agent_id)
@@ -815,18 +826,53 @@ class RunView(QWidget):
         self._control_timeline_overflow_text.setText(statement.timeline.overflow)
         self._control_timeline_overflow_text.setHidden(not statement.timeline.overflow)
         # The 1 MAC line states the divisor of the delivered line beside it and of the
-        # cards' ×MAC numbers. It is written before the dials. So a refusal raised for
-        # the dials cannot leave another agent's 1 MAC on screen (`PL-6RJ0`).
-        self._one_mac_text.setText(presentation.one_mac)
+        # cards' ×MAC numbers. It is written before the cards and the dials. So a
+        # refusal raised for either cannot leave another agent's 1 MAC on screen
+        # (`PL-6RJ0`).
+        one_mac = presentation.one_mac
+        self._one_mac_text.setText("" if isinstance(one_mac, NotBuilt) else one_mac)
         self._notice_text.set_notice(presentation.notice)
 
-        if isinstance(presentation.dials, DialsNotOffered):
-            raise presentation.dials.error
+        values = presentation.values
+        self._readout_row.set_readouts(values.readouts)
+        self._show_schematic(values.schematic)
+        self._show_delivered(values.delivered)
+        self._show_accounting(values.accounting)
 
-        self._show_settings(presentation.dials)
+        if drawn:
+            self._kept = KeptValues(presentation.case, values)
+
+        if presentation.new_case is not None and self._new_case_dialog is not None:
+            self._new_case_dialog.show_question(presentation.new_case)
+
+        if drawn:
+            self._restate_reset_question()
+
+        dials = presentation.dials
+
+        if not isinstance(dials, NotBuilt):
+            self._show_settings(dials)
 
         if presentation.delivered_line is not None:
             self._delivered_text.setText(presentation.delivered_line)
+
+        for part in (one_mac, dials):
+            if isinstance(part, NotBuilt):
+                raise part.error
+
+    def show_halt(self) -> None:
+        """Write this run from its controller's record, when no frame can be drawn.
+
+        The record is stored as written before the presentation is built.
+        So a halt that cannot be built is not tried again on every render
+        tick, with its exception printed each time (`owes_a_frame`).
+
+        Raises:
+            Exception: As `show_presentation` raises it.
+        """
+
+        self._written_record = self.controller.record().run_record()
+        self.show_presentation(self.presentation())
 
     def _refresh_against_last_frame(self, snapshot: SimulationSnapshot) -> None:
         """Rewrite this run's own widgets now, from `snapshot`, while the charts wait.
@@ -1568,7 +1614,7 @@ class RunView(QWidget):
         """Stop the run for an exception, and record the disposition that it calls for.
 
         This method draws nothing and writes nothing on screen. To show the
-        halt, `_halt_run` and `SimulationView._halt_every_run` call `show_presentation`
+        halt, `_halt_run` and `SimulationView._halt_every_run` call `show_halt`
         after they call this method.
 
         Args:
@@ -1630,13 +1676,13 @@ class RunView(QWidget):
             error: The exception that was raised.
 
         Raises:
-            ValueError: What `show_presentation` raised, once the frame has been asked for.
+            Exception: What `show_halt` raised, once the frame has been asked for.
         """
 
         self.halt(error)
 
         try:
-            self.show_presentation(self.presentation())
+            self.show_halt()
         finally:
             self.presentation_requested.emit(False)
 

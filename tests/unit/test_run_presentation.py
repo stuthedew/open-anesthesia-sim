@@ -16,9 +16,11 @@ import json
 from collections.abc import Iterator
 from dataclasses import fields, is_dataclass, replace
 from importlib.resources import files
+from typing import NoReturn
 
 import pytest
 
+from anesthesia_sim.app import run_presentation
 from anesthesia_sim.app.agent_cost import WITHHELD_DELIVERED
 from anesthesia_sim.app.compartment_schematic import WITHHELD_SCHEMATIC
 from anesthesia_sim.app.control_timeline import group_adjustments
@@ -33,8 +35,8 @@ from anesthesia_sim.app.dashboard_frame import (
 )
 from anesthesia_sim.app.playback import PlaybackRate
 from anesthesia_sim.app.run_presentation import (
-    DialsNotOffered,
     KeptValues,
+    NotBuilt,
     RunPanelState,
     RunPresentation,
     RunValues,
@@ -47,7 +49,10 @@ from anesthesia_sim.app.run_presentation import (
 from anesthesia_sim.core import uptake_system
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidator
 from anesthesia_sim.core.concentration import Percent
-from anesthesia_sim.core.exceptions import AgentSimulationValidationError
+from anesthesia_sim.core.exceptions import (
+    AgentSimulationValidationError,
+    SimulationConfigurationError,
+)
 from anesthesia_sim.core.parameters import parse_breathing_circuit_parameters
 from anesthesia_sim.layout.run_identity import RunIdentities
 
@@ -146,7 +151,7 @@ def test_a_drawn_run_states_the_snapshot_it_was_given_on_every_part() -> None:
     assert shown.statement.agent_id == "sevoflurane"
     assert shown.delivered_line is not None
     assert shown.delivered_line == "Delivered 2.00% (1.00 ×MAC)"
-    assert not isinstance(shown.dials, DialsNotOffered)
+    assert not isinstance(shown.dials, NotBuilt)
     assert shown.new_case is None
 
 
@@ -429,9 +434,95 @@ def test_dials_that_cannot_be_built_are_carried_and_everything_else_is_still_sta
 
     shown = halted_run(record, group_adjustments(record.control_timeline), state, opening)
 
-    assert isinstance(shown.dials, DialsNotOffered)
+    assert isinstance(shown.dials, NotBuilt)
     assert isinstance(shown.dials.error, ValueError)
     assert shown.delivered_line is None
     assert shown.notice is not None
     assert shown.statement.transport.start_enabled is False
     assert shown.one_mac == "1 MAC sevoflurane = 2.0%"
+
+
+@pytest.mark.parametrize(
+    ("malformed", "dials_error", "one_mac"),
+    [
+        pytest.param(
+            {"agent_mac_percent": 2.0}, TypeError, TypeError, id="a MAC not built as MacPercent"
+        ),
+        pytest.param(
+            {"delivered_concentration_percent": 150.0},
+            TypeError,
+            "1 MAC sevoflurane = 2.0%",
+            id="a delivered setting not built as Percent",
+        ),
+        pytest.param(
+            {"fresh_gas_flow_l_min": 2.03},
+            ValueError,
+            "1 MAC sevoflurane = 2.0%",
+            id="a fresh gas flow between two steps of its dial",
+        ),
+    ],
+)
+def test_a_halt_is_stated_for_a_record_whose_dials_or_1_mac_line_cannot_be_built(
+    malformed: dict[str, float], dials_error: type[Exception], one_mac: type[Exception] | str
+) -> None:
+    """A record that a dial or the 1 MAC line refuses still gives a halt its status and banner.
+
+    Each record holds one value that the run's own setters would refuse: a
+    MAC or a delivered concentration that is a bare number, or a fresh gas
+    flow of 2.03 L/min on a dial of 0.1 L/min steps. Before this test, a
+    `TypeError` left `halted_run`, so nothing of the halt was written
+    (blind review of `PL-RF2S`). Each part that cannot be built now carries
+    its exception, and every other part is built.
+    """
+
+    controller = SimulationController()
+    controller.fail("a value was refused")
+    state = _state()
+    record = replace(controller.record(), **malformed)  # type: ignore[arg-type]
+    opening = KeptValues(state.case, withheld_values(state.playback_rate))
+
+    shown = halted_run(record, group_adjustments(record.control_timeline), state, opening)
+
+    assert isinstance(shown.dials, NotBuilt)
+    assert type(shown.dials.error) is dials_error
+    assert shown.delivered_line is None
+
+    if isinstance(one_mac, str):
+        assert shown.one_mac == one_mac
+    else:
+        assert isinstance(shown.one_mac, NotBuilt)
+        assert type(shown.one_mac.error) is one_mac
+
+    assert shown.notice is not None
+    assert "a value was refused" in shown.notice
+    assert shown.statement.transport.start_enabled is False
+    assert shown.statement.transport.pause_enabled is False
+    assert shown.record == record.run_record()
+
+
+def test_dials_refused_by_the_core_are_carried_like_any_other_refusal(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A dial whose words the core refuses is carried, though the refusal is no `ValueError`.
+
+    `dashboard_frame._setting_words` documents a `SimulationConfigurationError`
+    for a delivered concentration that is not a percent from 0 to 100. That
+    class is neither a `TypeError` nor a `ValueError`.
+    """
+
+    def refused(settings: object) -> NoReturn:
+        raise SimulationConfigurationError("percent of 150.0 is outside 0 to 100")
+
+    monkeypatch.setattr(run_presentation, "setting_readouts", refused)
+    controller = SimulationController()
+    controller.fail("a value was refused")
+    state = _state()
+    opening = KeptValues(state.case, withheld_values(state.playback_rate))
+
+    shown = _halted(controller, state, opening)
+
+    assert isinstance(shown.dials, NotBuilt)
+    assert type(shown.dials.error) is SimulationConfigurationError
+    assert shown.delivered_line is None
+    assert shown.one_mac == "1 MAC sevoflurane = 2.0%"
+    assert shown.statement.transport.start_enabled is False
