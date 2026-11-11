@@ -132,6 +132,7 @@ from anesthesia_sim.app.dashboard_frame import (
     fork_offer,
     halt_disposition,
     halt_notice,
+    kept_fork_selection,
     mac_awake_caption,
     mac_reference_caption,
     new_case_question,
@@ -3682,6 +3683,58 @@ def _offered_labels(offer: ForkOffer) -> tuple[str, ...]:
 _MARK_INSIDE_A_STEP = MarkForkPoint(
     TimeBookmark(CaseInstant(45.35), "the decision point"), CaseInstant(454 * 0.1)
 )
+
+
+_INDUCTION_POINT = ForkPoint(CaseInstant(0.0), "0s", None)
+_SETTING_CHANGE_POINT = ForkPoint(CaseInstant(60.0), "1m", None)
+_MARK_POINT = ForkPoint(
+    CaseInstant(60.0), "1m, on your mark", TimeBookmark(CaseInstant(60.0), "check")
+)
+
+
+def test_the_first_offer_that_holds_a_point_selects_its_first_point() -> None:
+    """Before any offer, and after an offer of no points, nobody has chosen: the first is selected.
+
+    The point selected before does not matter then, because an offer of no
+    points comes from a trunk whose frame failed, and the selector was empty.
+    """
+
+    points = (_INDUCTION_POINT, _SETTING_CHANGE_POINT)
+
+    assert kept_fork_selection(None, None, points) == _INDUCTION_POINT
+    assert kept_fork_selection((), None, points) == _INDUCTION_POINT
+    assert kept_fork_selection((), _SETTING_CHANGE_POINT, points) == _INDUCTION_POINT
+    assert kept_fork_selection(None, None, ()) is None
+    assert kept_fork_selection((), _SETTING_CHANGE_POINT, ()) is None
+
+
+def test_a_selected_point_is_kept_while_the_offer_still_holds_it() -> None:
+    """The selection follows its point to a new place in the list, found by equality."""
+
+    before = (_INDUCTION_POINT, _SETTING_CHANGE_POINT)
+    after = (_INDUCTION_POINT, ForkPoint(CaseInstant(30.0), "30s", None), _SETTING_CHANGE_POINT)
+    rebuilt = ForkPoint(CaseInstant(60.0), "1m", None)
+
+    assert kept_fork_selection(before, _SETTING_CHANGE_POINT, after) == _SETTING_CHANGE_POINT
+    assert kept_fork_selection(before, rebuilt, after) == _SETTING_CHANGE_POINT
+    assert kept_fork_selection(before, _INDUCTION_POINT, after) == _INDUCTION_POINT
+
+
+def test_a_selected_point_that_leaves_the_offer_is_cleared_and_stays_clear() -> None:
+    """Induction is never put in place of a point the learner chose (`PL-J12Z`).
+
+    A setting change and a mark at the same instant are two points, so a
+    selected mark that is removed is cleared even while the setting change at
+    its instant stays on offer.
+    """
+
+    with_mark = (_INDUCTION_POINT, _SETTING_CHANGE_POINT, _MARK_POINT)
+    without_mark = (_INDUCTION_POINT, _SETTING_CHANGE_POINT)
+
+    assert kept_fork_selection(with_mark, _MARK_POINT, without_mark) is None
+    assert kept_fork_selection(without_mark, None, without_mark) is None
+    assert kept_fork_selection(without_mark, None, with_mark) is None
+    assert kept_fork_selection(with_mark, _SETTING_CHANGE_POINT, (_INDUCTION_POINT,)) is None
 
 
 def test_fork_offer_labels_every_keyframe_the_trunk_holds() -> None:
