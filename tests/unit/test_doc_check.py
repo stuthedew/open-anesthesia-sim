@@ -8106,6 +8106,36 @@ def test_a_developer_note_holds_the_passage_directly_above_it_and_none_below() -
     assert held == {7, 9, 11, 17}
 
 
+def test_a_paragraph_held_only_by_its_markers_does_not_stop_a_developer_note() -> None:
+    """Regression for `PL-5L84`: a marker under a paragraph cut off the note below it.
+
+    Line 3 carries no form, and the note on line 8 names a test. Line 5
+    states 10 L/min, and its marker ties that figure to a stored value. Before
+    the fix, line 5 held itself through its marker, so the note's reach
+    stopped there and nothing held line 3. A paragraph that declares its own
+    test still stops the note, as line 5 of `NOTE_HELD_DOCUMENT` shows.
+    """
+    document = "\n".join(
+        [
+            "### Displayed precision",
+            "",
+            "One step of the display is 0.1 L of vapour.",  # line 3
+            "",
+            "The largest fresh gas flow is 10 L/min.",  # line 5
+            "<!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->",
+            "",
+            "**For developers.** `test_the_step_is_derived` repeats it.",  # line 8
+            "",
+        ]
+    )
+
+    members = dict(doc_check._numeric_paragraph_members(document, _numeric_family()))
+    held = {line for line, member in members.items() if doc_check._holds_its_figures(member)}
+
+    assert sorted(members) == [3, 5]
+    assert held == {3, 5}
+
+
 @pytest.mark.parametrize(
     ("status", "refused"), [("ready", [3, 15, 19]), ("done", [3, 5, 15, 19, 23, 25])]
 )
