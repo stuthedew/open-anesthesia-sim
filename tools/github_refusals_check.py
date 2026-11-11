@@ -218,7 +218,8 @@ GUARD_ESCAPES = (
     Escape(
         "enable_pr_auto_merge on a pull request that `bin/docket arm` holds",
         "PL-VZ57",
-        open="no required check runs the rule of `bin/docket arm` yet",
+        open="the `merge-hold` check fails on such a pull request, and `main` does not "
+        "require that check yet (`PL-KH7Y`)",
     ),
 )
 

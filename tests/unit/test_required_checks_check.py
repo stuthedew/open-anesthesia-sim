@@ -839,14 +839,16 @@ def test_this_repository_requires_exactly_checks_and_pr_title() -> None:
     carries a comment saying so. Renaming one, or adding a reporting job that
     declares no exemption, fails here as well as in CI - and here it fails in
     `make check`, before the push. The two parts of the test suite report too,
-    and are exempt because `checks` gates them (`PL-T9X9`).
+    and are exempt because `checks` gates them (`PL-T9X9`). `merge-hold` is
+    exempt until it has run on `main` once, which is the first moment `main`
+    can require it (`PL-39Y1`).
     """
     jobs = rcc.reporting_jobs(ROOT / ".github" / "workflows")
     required = [job for job in jobs if job.not_required is None]
     assert sorted(job.check_name for job in required) == ["checks", "pr-title"]
     assert {job.workflow for job in required} == {"quality.yml", "pr-title.yml"}
     exempt = sorted(job.check_name for job in jobs if job.not_required is not None)
-    assert exempt == ["checks-part-1", "checks-part-2"]
+    assert exempt == ["checks-part-1", "checks-part-2", "merge-hold"]
 
 
 def test_off_a_pull_request_the_branch_is_docket_s(

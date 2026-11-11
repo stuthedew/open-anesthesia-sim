@@ -42,7 +42,11 @@ every later push while a pull request is open.
   (`JUDGE_ASK`), so a judgment nobody made fails safe rather than merging a
   clinical change unread. A record saying `needed` holds it for the owner's
   read, and so does a change to an existing test that pins this module's
-  answers (`PINS`). The pull request then merges on the owner's word alone.
+  answers (`PINS`). The pull request then waits for the owner's answer,
+  which the session records as `Owner-read: given` with the date and their
+  words (`READ_GIVEN`). `merge_hold` gives this same answer for a branch's
+  copy on the remote, so that a required check on GitHub refuses the merge
+  of a held pull request whoever arms it (`PL-39Y1`).
   A change to this module that edits no such test arms, and the answer names
   it. A switch of auto-merge off that no commit records as the session's also
   holds it (`AUTO_MERGE`). Once no claim holds it, a hold for the owner's
@@ -126,7 +130,7 @@ import re
 import sys
 from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path, PurePosixPath
 
 from .claiming import _git
@@ -202,9 +206,18 @@ SHOWN = 5
 #: 2026-10-17, `PL-DKBG`). Its value is `READ_NEEDED` or `READ_NOT_NEEDED`,
 #: then " - " and the reason, which the report and the pull request body
 #: carry. Git reads a trailer from a commit message's last paragraph alone.
+#:
+#: `READ_GIVEN` is a third value, the owner's own answer on a pull request held
+#: for them: `given - <date>, "<the owner's words>"`. It releases every hold
+#: that waits on the owner, for the change as it stood when they answered
+#: (project owner, 2026-11-11, ratified, over a label only the owner sets,
+#: `PL-39Y1`). The session writes it, so it is a record to audit and not a
+#: proof: a session's writes are the owner's account's on GitHub, and nothing
+#: there tells the two apart.
 OWNER_READ = "Owner-read"
 READ_NEEDED = "needed"
 READ_NOT_NEEDED = "not needed"
+READ_GIVEN = "given"
 
 #: The commit trailer that carries what a hold for the owner's read asks him
 #: (project owner, 2026-10-18, `PL-9JHM`). `arm` prints it as the ask's
@@ -332,6 +345,17 @@ ASK_LINE = (
     "find it. Attach "
     "a generated file only for the full set of changes, and still quote the ones that "
     "change meaning:"
+)
+
+#: What a hold for the owner's read says about releasing it. Since `PL-39Y1`
+#: the `merge-hold` check on GitHub runs this module's rule on every pull
+#: request, so a held one cannot merge on the owner's word alone: their answer
+#: has to be on the branch.
+GIVEN_ASK = (
+    "  Once the owner has answered, record their go-ahead on a commit that changes nothing "
+    f'else, as `{OWNER_READ}: {READ_GIVEN} - <date>, "<their words>"`, and push it. The '
+    "`merge-hold` check on the pull request runs this rule, so the pull request cannot merge "
+    "before that. Record only what the owner said: never write a go-ahead they did not give."
 )
 
 #: What a `hold` without a claim tells a session about a repair push. A
@@ -951,12 +975,15 @@ class OwnerRead:
     """A session's recorded judgment of whether the owner needs to read the branch.
 
     `commit` carries the `OWNER_READ` trailer, `needed` is its answer, and
-    `why` is the reason the session gave, which the report repeats.
+    `why` is the reason the session gave, which the report repeats. `given`
+    says the record is the owner's own go-ahead, and `why` is then the date
+    and their words.
     """
 
     commit: str
     needed: bool
     why: str
+    given: bool = False
 
 
 def parse_owner_read(value: str) -> tuple[bool, str] | None:
@@ -970,6 +997,29 @@ def parse_owner_read(value: str) -> tuple[bool, str] | None:
     if not dash or not why.strip() or word not in {READ_NEEDED, READ_NOT_NEEDED}:
         return None
     return word == READ_NEEDED, why.strip()
+
+
+def parse_owner_given(value: str) -> str | None:
+    """The date and the owner's words from an `OWNER_READ` value recording their go-ahead.
+
+    The form is `given - <date>, "<the owner's words>"`, with the date as
+    `2026-11-11` and the words in double quotes. `None` for any other value. The
+    date and the quoted words are required, because a go-ahead that cannot be
+    traced to something the owner said cannot be audited.
+    """
+    word, dash, said = value.partition(" - ")
+    if not dash or word.strip().lower() != READ_GIVEN:
+        return None
+    day, comma, words = said.strip().partition(", ")
+    words = words.strip()
+    try:
+        date.fromisoformat(day.strip())
+    except ValueError:
+        return None
+    quoted = len(words) > 2 and words.startswith('"') and words.endswith('"')
+    if not comma or not quoted or not words[1:-1].strip():
+        return None
+    return f"{day.strip()}, {words}"
 
 
 @dataclass(frozen=True)
@@ -1171,7 +1221,12 @@ class Verdict:
         gate itself does not, since 2026-10-19 (`PL-9JHM`). A move does,
         because `PINS` is found from where the module is, so a module moved to
         another depth reads a test file that does not exist and finds no pin.
+
+        A record of the owner's go-ahead releases all three, because each
+        waits on the owner and they have answered (`PL-39Y1`).
         """
+        if self.record is not None and self.record.given:
+            return False
         return self.moved or bool(self.pinned) or (self.record is not None and self.record.needed)
 
     @property
@@ -1195,7 +1250,12 @@ class Verdict:
                 f"arm - {self.branch} waits on no read from the owner, holds no open claim, "
                 f"and contains {self.base}'s tip: mark its pull request ready and arm it"
             ]
-            if self.read and self.record is not None:
+            if self.record is not None and self.record.given:
+                said.append(
+                    f"  The owner's go-ahead is recorded on {self.record.commit[:12]}: "
+                    f"{self.record.why}. Quote it in the pull request body."
+                )
+            elif self.read and self.record is not None:
                 count = len(self.read)
                 noun = "path" if count == 1 else "paths"
                 said.append(
@@ -1307,6 +1367,7 @@ class Verdict:
                 said.append(READ_ASK)
             else:
                 said.extend((ASK_LINE, f"  {self.ask.line}"))
+            said.append(GIVEN_ASK)
         return (*said, *notes)
 
     @property
@@ -1487,7 +1548,9 @@ def arm(
         )
     change = _read_change(root, where, items_dir, record_dir)
     reviews = _read_reviews(root, where, change, prose_count, blind_count)
-    record, misread = _owner_read(root, where.run, where.base, change.on_list, tip=where.tip)
+    record, misread = _owner_read(
+        root, where.run, where.base, change.on_list, worked=change.worked, tip=where.tip
+    )
     ask, misasked = _owner_ask(root, where.run, where.base, change.worked, tip=where.tip)
     claims, unclaimed = _read_claims(root, where, now=now, items_dir=items_dir)
     behind, uncounted = _read_behind(root, where)
@@ -1901,7 +1964,9 @@ def _owner_ask_answer(
     hold.
     """
     change = _read_change(root, where, items_dir, record_dir)
-    record, misread = _owner_read(root, where.run, where.base, change.on_list, tip=where.tip)
+    record, misread = _owner_read(
+        root, where.run, where.base, change.on_list, worked=change.worked, tip=where.tip
+    )
     if not Verdict(HOLD, moved=change.moved, pinned=change.pinned, record=record).needs_owner:
         unread = (*where.unread, *change.unread, *misread, *_silenced(where))
         if where.unpulled or unread:
@@ -1976,6 +2041,72 @@ def owner_ask_on(
     where = _Branch(branch, base, remotes, None, ran, run, "", (), tip=tip)
     return _owner_ask_answer(
         root, where, items_dir=items_dir, record_dir=record_dir, now=now, newest=None
+    )
+
+
+def merge_hold(
+    root: Path,
+    branch: str,
+    *,
+    items_dir: str,
+    now: datetime,
+    record_dir: str = "",
+    runner: Runner | None = None,
+) -> Verdict:
+    """`arm`'s answer for `branch`'s copy on the remote, for a check that gates the merge.
+
+    A session could arm a pull request that `arm` held, because only the
+    session read the answer (`PL-39Y1`). A required check on GitHub asks this
+    for every pull request, from a checkout of the default branch, so the
+    rule it runs is the default branch's and not the pull request's. It runs
+    the stages `arm` runs, through the remote's copy of `branch` as
+    `owner_ask_on` reads it, so the two cannot disagree.
+
+    Three things `arm` reads are left out. The forge is not asked, because
+    whether the pull request already merged and whether its auto-merge was
+    switched off are about arming. The prose review and the blind review
+    passes are not counted, because both counts run the project's own
+    commands on the branch's files, and a check that runs with the default
+    branch's rights must not run what a pull request brought. The caller says
+    so beside a pass. A `behind` answer is returned as it is: GitHub's own
+    rule keeps a branch behind its base from merging.
+    """
+    ran = runner or _run_git
+    run = _Silences(ran)
+    remotes = _remotes(root, run)
+    base = default_base(root, runner=run)
+    if run.reason or not resolved(base):
+        reason = run.reason or f"no default branch could be established to compare {branch} with"
+        return Verdict(UNKNOWN, branch=branch, unread=(reason,))
+    if branch == _head_name(base, remotes):
+        reason = f"{branch} is the default branch, which opens no pull request of its own"
+        return Verdict(UNKNOWN, branch=branch, base=base, unread=(reason,))
+    tip = f"refs/remotes/{REMOTE}/{branch}"
+    if not run(["rev-parse", "--verify", "--quiet", f"{tip}^{{commit}}"], root).strip():
+        reason = run.reason or f"{tip} is not in this checkout, so {branch} could not be read"
+        return Verdict(UNKNOWN, branch=branch, base=base, unread=(reason,))
+    where = _Branch(branch, base, remotes, None, ran, run, "", (), tip=tip)
+    change = _read_change(root, where, items_dir, record_dir)
+    record, misread = _owner_read(
+        root, where.run, where.base, change.on_list, worked=change.worked, tip=where.tip
+    )
+    ask, misasked = _owner_ask(root, where.run, where.base, change.worked, tip=where.tip)
+    claims, unclaimed = _read_claims(root, where, now=now, items_dir=items_dir)
+    behind, uncounted = _read_behind(root, where)
+    unread = (*change.unread, *misread, *unclaimed, *uncounted, *_silenced(where))
+    return _settle(
+        _held(
+            where,
+            change,
+            record=record,
+            ask=ask,
+            misasked=misasked,
+            claims=claims,
+            switched_off="",
+            reviews=_Reviews(),
+            behind=behind,
+            unread=unread,
+        )
     )
 
 
@@ -2195,7 +2326,13 @@ def _owner_ask(
 
 
 def _owner_read(
-    root: Path, run: Runner, base: str, paths: Sequence[str], *, tip: str = "HEAD"
+    root: Path,
+    run: Runner,
+    base: str,
+    paths: Sequence[str],
+    *,
+    worked: Sequence[str] = (),
+    tip: str = "HEAD",
 ) -> tuple[OwnerRead | None, tuple[str, ...]]:
     """The newest `OWNER_READ` record that covers `paths`, and what went unread.
 
@@ -2209,6 +2346,12 @@ def _owner_read(
     its last value where it carries several. A value in neither form is said
     and not read, so it covers nothing: a simulator change it was meant for
     still holds, and anything else is `unknown` rather than armed.
+
+    A record of the owner's go-ahead covers the branch only where no commit
+    since has changed `worked`, the paths outside the store and the records.
+    The owner answered for the change they were shown. A go-ahead that an
+    earlier commit carries is therefore read as a record saying needed, so the
+    hold it released applies again (`PL-39Y1`).
     """
     span = _since_change(root, run, base, paths, tip=tip)
     if span is None:
@@ -2216,12 +2359,22 @@ def _owner_read(
     commit, value = _newest_trailer(root, run, span, OWNER_READ)
     if not commit:
         return None, ()
+    words = parse_owner_given(value)
+    if words is not None:
+        late = _since_change(root, run, base, worked, tip=tip)
+        if late is not None and _newest_trailer(root, run, late, OWNER_READ)[0] == commit:
+            return OwnerRead(commit=commit, needed=False, why=words, given=True), ()
+        stale = (
+            "the owner's go-ahead recorded there came before the branch's newest change "
+            "outside the store, which they have not read"
+        )
+        return OwnerRead(commit=commit, needed=True, why=stale), ()
     parsed = parse_owner_read(value)
     if parsed is None:
         return None, (
-            f"the {OWNER_READ} record on {commit[:12]} is neither "
-            f"'{READ_NEEDED} - <why>' nor '{READ_NOT_NEEDED} - <why>', so it was not read: "
-            f"{value}",
+            f"the {OWNER_READ} record on {commit[:12]} is not '{READ_NEEDED} - <why>', "
+            f"'{READ_NOT_NEEDED} - <why>' or '{READ_GIVEN} - <date>, \"<the owner's words>\"', "
+            f"so it was not read: {value}",
         )
     return OwnerRead(commit=commit, needed=parsed[0], why=parsed[1]), ()
 

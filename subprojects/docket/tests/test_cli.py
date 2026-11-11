@@ -11715,6 +11715,158 @@ def test_an_owner_read_record_in_neither_form_is_said_and_covers_nothing(
     assert "so it was not read: not needed" in out
 
 
+# --- the owner's go-ahead, and the same rule asked for a merge (`PL-39Y1`) ----
+#
+# A session could arm a pull request that `arm` held, because only the session
+# read `arm`'s answer. `arm --merge-hold` gives the same answer for a branch's
+# copy on the remote, from a checkout of `main`, so that a required check on
+# GitHub can refuse the merge. A check that binds the owner too needs a record
+# of their answer, or a pull request held for them could never merge.
+
+GO_AHEAD = 'given - 2026-09-01, "looks right, merge it"'
+
+
+def _merge_hold(root: Path, branch: str = ARM_BRANCH) -> int:
+    return main(
+        ["arm", "--merge-hold", branch, "--items", str(root / "docs" / "items"), "--now", ARM_NOW]
+    )
+
+
+@pytest.mark.parametrize(
+    ("value", "words"),
+    [
+        (GO_AHEAD, '2026-09-01, "looks right, merge it"'),
+        ('Given - 2026-09-01, "ok"', '2026-09-01, "ok"'),
+        ('given - "merge it"', None),
+        ("given - 2026-09-01", None),
+        ('given - 2026-09-01, ""', None),
+        ('given - yesterday, "merge it"', None),
+        ("given - 2026-09-01, merge it", None),
+        ("needed - a clinical value changes", None),
+    ],
+)
+def test_a_go_ahead_carries_its_date_and_the_owners_words(value: str, words: str | None) -> None:
+    assert arming.parse_owner_given(value) == words
+
+
+def test_the_owners_go_ahead_releases_a_hold_for_their_read(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A record of the owner's answer arms what a record saying needed held."""
+    root, git = _arm_repo(tmp_path)
+    _put(git, root, "CLAUDE.md", "2026-09-01T12:00:00+00:00")
+    _record_read(git, "needed - a rule sessions run under", "2026-09-01T12:01:00+00:00")
+
+    assert _arm(root) == arming.NO_ASK
+    assert "record their go-ahead" in capsys.readouterr().out
+
+    _record_read(git, GO_AHEAD, "2026-09-01T12:02:00+00:00")
+
+    assert _arm(root) == 0
+    out = capsys.readouterr().out
+    assert out.startswith(f"arm - {ARM_BRANCH} waits on no read")
+    assert "The owner's go-ahead is recorded on" in out
+    assert '"looks right, merge it"' in out
+
+
+def test_a_go_ahead_does_not_cover_a_change_made_after_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The owner answered for the change they read, so a later change holds again."""
+    root, git = _arm_repo(tmp_path)
+    _put(git, root, "CLAUDE.md", "2026-09-01T12:00:00+00:00")
+    _record_read(git, "needed - a rule sessions run under", "2026-09-01T12:01:00+00:00")
+    _record_read(git, GO_AHEAD, "2026-09-01T12:02:00+00:00")
+    _commit_file(git, root, "CLAUDE.md", "X = 2\n", "2026-09-01T12:03:00+00:00")
+
+    assert _arm(root) == arming.NO_ASK
+    out = capsys.readouterr().out
+    assert "came before the branch's newest change" in out
+
+
+def test_a_go_ahead_in_no_readable_form_releases_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root, git = _arm_repo(tmp_path)
+    _put(git, root, "CLAUDE.md", "2026-09-01T12:00:00+00:00")
+    _record_read(git, "needed - a rule sessions run under", "2026-09-01T12:01:00+00:00")
+    _record_read(git, "given - the owner said yes", "2026-09-01T12:02:00+00:00")
+
+    assert _arm(root) == 2
+    assert "so it was not read: given - the owner said yes" in capsys.readouterr().out
+
+
+def test_merge_hold_refuses_the_merge_of_a_pull_request_arm_holds(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The escape replayed: a held pull request, armed anyway, met nothing on GitHub's side.
+
+    Asked from a checkout of `main`, as the required check asks it, the held
+    branch fails, and it passes once the owner's go-ahead is on the remote.
+    """
+    root, git = _arm_repo(tmp_path)
+    _put(git, root, "CLAUDE.md", "2026-09-01T12:00:00+00:00")
+    _record_read(git, "needed - a rule sessions run under", "2026-09-01T12:01:00+00:00")
+    git("push", "-q", "-u", "origin", ARM_BRANCH)
+    git("checkout", "-q", "main")
+
+    assert _merge_hold(root) == 1
+    out = capsys.readouterr().out
+    assert out.startswith(f"hold - {ARM_NO_ASK}{ARM_BRANCH}: the Owner-read record on ")
+
+    git("checkout", "-q", ARM_BRANCH)
+    _record_read(git, GO_AHEAD, "2026-09-01T12:02:00+00:00")
+    git("push", "-q", "origin", ARM_BRANCH)
+    git("checkout", "-q", "main")
+
+    assert _merge_hold(root) == 0
+    out = capsys.readouterr().out
+    assert out.startswith(f"pass - nothing `bin/docket arm` reads from {ARM_BRANCH}'s commits")
+    assert "prose review" in out
+
+
+def test_merge_hold_refuses_a_branch_with_an_open_claim_and_an_unjudged_simulator_change(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root, git = _arm_repo(tmp_path)
+    _claim_by_hand(git, "PL-B1B1", ARM_BRANCH, ARM_T0)
+    git("push", "-q", "-u", "origin", ARM_BRANCH)
+    git("checkout", "-q", "main")
+
+    assert _merge_hold(root) == 1
+    assert "a merge would erase its open claim on PL-B1B1" in capsys.readouterr().out
+
+    git("checkout", "-qb", "claude/unjudged-w3k8", "main")
+    _put(git, root, "src/anesthesia_sim/core/uptake.py", "2026-09-01T12:00:00+00:00")
+    git("push", "-q", "-u", "origin", "claude/unjudged-w3k8")
+    git("checkout", "-q", "main")
+
+    assert _merge_hold(root, "claude/unjudged-w3k8") == 1
+    assert "no Owner-read record on a commit since its newest change" in capsys.readouterr().out
+
+
+def test_merge_hold_passes_a_branch_that_is_only_behind_and_cannot_answer_for_one_it_lacks(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """GitHub's own up-to-date rule covers a branch behind `main`, so that is no hold here."""
+    root, git = _arm_repo(tmp_path)
+    _commit_file(git, root, "docs/items/PL-F4F4-new.md", _item_document("PL-F4F4"), ARM_T0)
+    git("push", "-q", "-u", "origin", ARM_BRANCH)
+    elsewhere = _other_writer(tmp_path)
+    elsewhere("commit", "-q", "--allow-empty", "-m", "main moves on")
+    elsewhere("push", "-q", "origin", "main")
+    git("fetch", "-q", "origin")
+    git("checkout", "-q", "main")
+
+    assert _merge_hold(root) == 0
+    assert capsys.readouterr().out.startswith("pass - ")
+
+    assert _merge_hold(root, "claude/never-pushed") == 2
+    out = capsys.readouterr().out
+    assert out.startswith("unknown - ")
+    assert "claude/never-pushed could not be read" in out
+
+
 def test_a_change_to_the_gate_waits_on_the_owner_only_as_any_change_does(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

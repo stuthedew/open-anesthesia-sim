@@ -2772,8 +2772,8 @@ def _push_over_lines(branch: str, push: str, *, since: str) -> list[str]:
     (`PL-K3W5`), so the refusal is named before it arrives.
 
     **No forced push is printed (`PL-39Y1`).** Until 2026-11-11 these lines
-    printed `git push --force-with-lease --force-if-includes`, which replaced
-    the old branch. A GitHub ruleset now refuses a forced push on every branch,
+    printed a push with `--force-with-lease` and `--force-if-includes`, which
+    replaced the old branch. A GitHub ruleset now refuses a forced push on every branch,
     because the session guards that read a command's words let another spelling
     of a forced push through four times. So the old branch has to leave the
     remote before the restarted one can be pushed. A session cannot delete a
