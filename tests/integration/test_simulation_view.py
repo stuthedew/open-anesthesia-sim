@@ -53,6 +53,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLayout,
     QLineEdit,
+    QPushButton,
     QScrollArea,
     QScrollBar,
     QSplitter,
@@ -106,9 +107,9 @@ from anesthesia_sim.app.dashboard_frame import (
     MAX_DISPLAYED_RUNS,
     NEW_CASE_CARRYOVER_TEMPLATE,
     NEW_CASE_IS_NOT_A_VIEW_TEXT,
+    NO_CASE_TO_BRANCH_TEXT,
     NO_CONTROL_CHANGES_TEXT,
     NO_MAC_TARGETS_TEXT,
-    NO_CASE_TO_BRANCH_TEXT,
     NO_TIME_BOOKMARKS_TEXT,
     NO_TRACES_SHOWN_TEXT,
     READOUT_PANELS,
@@ -260,7 +261,7 @@ from anesthesia_sim.core.units import SECONDS_PER_HOUR, SECONDS_PER_MINUTE
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.run_identity import RunId, SessionToken
-from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, Window
+from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, ViewKind, Window
 from anesthesia_sim.layout.workspace import Origin, Workspace, WorkspaceName, WorkspaceSet
 
 #: One Workspace that holds every View this build registers. Each test then
@@ -7366,19 +7367,22 @@ def test_the_bookmark_panel_sits_outside_the_region_between_the_two_plots(
     application: QApplication,
 ) -> None:
     # `PL-F9TQ` governs what may sit between a chart heading and its plot.
-    # The marks belong to the case rather than to either plot, so they are a
-    # section of their own below the Areas, in no View.
+    # The marks belong to the case rather than to either plot, so they are in
+    # a View of their own and in neither chart View (`PL-9YPR`).
     view = _shown_view(application, SimulationController())
-    page = _page_of(view)
-    areas = view.layout_container
     marks = _marks_panel(view)
+    charts = [
+        shown
+        for shown in view.layout_container.views()
+        if isinstance(shown, ConcentrationView | WashInView)
+    ]
 
-    assert not areas.isAncestorOf(marks), "the marks sit inside an Area"
-    assert page.isAncestorOf(marks)
-    assert (
-        marks.mapTo(page, marks.rect().topLeft()).y()
-        >= areas.mapTo(page, areas.rect().bottomLeft()).y()
-    ), "the marks are not below the Areas"
+    assert len(charts) == 2
+    assert not any(chart.isAncestorOf(marks) for chart in charts)
+    assert any(
+        isinstance(shown, BookmarksView) and shown.isAncestorOf(marks)
+        for shown in view.layout_container.views()
+    )
 
 
 # ------------------------------------------------------------------ branching
@@ -8168,13 +8172,15 @@ def test_splitting_and_closing_the_chart_area_leaves_the_unconditional_values_wh
 def _sidebar_splitter(view: SimulationView) -> QSplitter:
     """The splitter whose one border lies between the chart panel and the sidebar.
 
-    It is the only row in `_EVERY_VIEW`, under the parameter controls' Area.
+    It is the row of `_EVERY_VIEW` that holds the chart, under the parameter
+    controls' Area. The row of bookmarks and branch control is below it.
     """
 
+    chart = _concentration(view)
     (splitter,) = (
         splitter
         for splitter in view.layout_container.findChildren(QSplitter)
-        if splitter.orientation() == Qt.Orientation.Horizontal
+        if splitter.orientation() == Qt.Orientation.Horizontal and splitter.isAncestorOf(chart)
     )
 
     return splitter
@@ -12016,3 +12022,205 @@ def test_only_the_compared_run_whose_thumb_is_held_previews_and_its_label_names_
     assert chart.preview_label(BRANCH_RUN_INDEX) == (
         f"{run_label(branch.run_id)} preview: Fresh gas flow 6.0 L/min, not applied"
     )
+
+
+# ------------------------------------- the case's panels, in more than one Area
+
+
+def _show_in_three_areas(application: QApplication, view: SimulationView, kind: ViewKind) -> None:
+    """Show `kind` in the accounting Area and the wash-in Area, as well as in its own.
+
+    `_EVERY_VIEW` shows each kind once, so three Areas then show this one.
+    """
+
+    for area_id in (AreaId(2), AreaId(3)):
+        view.layout_container.choose_view(area_id, kind)
+        _settle(application)
+
+
+def _marks_panels(view: SimulationView) -> list[BookmarksPanel]:
+    """Every Area's copy of the lists of marks."""
+
+    panels = [v.panel for v in view.layout_container.views() if isinstance(v, BookmarksView)]
+
+    return [panel for panel in panels if panel is not None]
+
+
+def _fork_panels(view: SimulationView) -> list[ForkPanel]:
+    """Every Area's copy of the branch control."""
+
+    panels = [v.panel for v in view.layout_container.views() if isinstance(v, BranchView)]
+
+    return [panel for panel in panels if panel is not None]
+
+
+def test_every_bookmarks_view_lists_the_case_s_marks_and_follows_a_new_one(
+    application: QApplication,
+) -> None:
+    """Three Areas showing the bookmarks each list the same marks (`PL-9YPR`).
+
+    The marks belong to the case, so a mark added after the Areas were made
+    appears in all three on the next frame.
+    """
+
+    case = _branched_case()
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30.0), "first look"))
+    view = _case_view(application, case)
+    _show_in_three_areas(application, view, BOOKMARKS)
+    panels = _marks_panels(view)
+
+    assert len(panels) == 3
+    assert len({id(panel) for panel in panels}) == 3, "the Areas share one panel"
+
+    for panel in panels:
+        assert any("first look" in text for text in _strings_of(panel.times, ()))
+
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(45.0), "second look"))
+    view.present(False)
+
+    for panel in panels:
+        assert any("first look" in text for text in _strings_of(panel.times, ()))
+        assert any("second look" in text for text in _strings_of(panel.times, ()))
+
+
+def test_each_branch_view_keeps_its_own_point_and_a_press_branches_at_it(
+    application: QApplication,
+) -> None:
+    """Three Areas showing the branch control each keep the point chosen there (`PL-9YPR`).
+
+    The trunk offers induction, a mark at 30 s and its setting change at
+    60 s. Each copy is set to a different one. A frame leaves each choice
+    where it was, and the button of the copy set to 30 s opens the branch at
+    30 s.
+    """
+
+    case = _branched_case()
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30.0), "check"))
+    view = _case_view(application, case)
+    _show_in_three_areas(application, view, BRANCH)
+    panels = _fork_panels(view)
+
+    assert len(panels) == 3
+    assert len({id(panel) for panel in panels}) == 3, "the Areas share one control"
+
+    chosen_s = (60.0, 30.0, 0.0)
+
+    for panel, instant_s in zip(panels, chosen_s, strict=True):
+        index = panel.point_selector.findData(instant_s)
+        assert index >= 0, f"the control does not offer {instant_s} s"
+        panel.point_selector.setCurrentIndex(index)
+
+    view.present(False)
+
+    assert tuple(float(panel.point_selector.currentData()) for panel in panels) == chosen_s
+
+    panels[1].take_button.click()
+    _settle(application)
+
+    assert len(case.branches) == 1
+    assert case.branches[0].snapshot().elapsed_s == pytest.approx(30.0)
+
+
+def test_a_failing_frame_withdraws_the_branch_offer_from_every_copy(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A halt restates every Area's copy of the branch control, not one of them (`PL-9YPR`)."""
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    _show_in_three_areas(application, view, BRANCH)
+    panels = _fork_panels(view)
+
+    assert len(panels) == 3
+    assert all(panel.point_selector.count() == 2 for panel in panels)
+    assert all(panel.here_button.isHidden() is False for panel in panels)
+
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+    view.present(False)
+
+    assert case.trunk.has_failed is True
+    restated = {
+        id(panel) for restatement in view.halt_restatements() for panel in restatement.panels
+    }
+
+    for panel in panels:
+        assert id(panel) in restated
+        assert panel.point_selector.count() == 0
+        assert panel.take_button.isHidden() is True
+        assert panel.here_button.isHidden() is True
+
+
+def test_a_halt_that_cannot_restate_the_marks_hides_them_in_every_copy_and_in_a_new_one(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Every copy of the marks shows no standing after such a halt, and so does a copy built then.
+
+    A copy built while the marks are withdrawn must not show a new panel's
+    empty lists, which would read as "no marks set" (`PL-9YPR`, `PL-YHR3`).
+    The next frame that draws shows the lists in every copy again.
+    """
+
+    controller = _paused_run_with_history()
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(600.0), "check"))
+    view = _shown_view(application, controller)
+    _show_in_three_areas(application, view, BOOKMARKS)
+    panels = _marks_panels(view)
+
+    assert len(panels) == 3
+    assert all(panel.times.isHidden() is False for panel in panels)
+
+    def unanswerable(self: SimulationController) -> NoReturn:
+        raise RuntimeError("the run could not say where it stands on its marks")
+
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+    monkeypatch.setattr(SimulationController, "bookmark_standings", unanswerable)
+    view.present(False)
+    built = view.build_bookmarks_panel()
+    # The dashboard owns the copy, so the copy is deleted with it.
+    built.setParent(view)
+
+    assert controller.has_failed is True
+    restated = {
+        id(panel) for restatement in view.halt_restatements() for panel in restatement.panels
+    }
+
+    for panel in (*panels, built):
+        assert id(panel) in restated
+        assert panel.times.isHidden() is True
+        assert panel.targets.isHidden() is True
+
+    monkeypatch.undo()
+    view.present(False)
+
+    for panel in (*panels, built):
+        assert panel.times.isHidden() is False
+        assert panel.targets.isHidden() is False
+
+
+def test_a_branch_control_built_between_frames_shows_the_offer_on_screen(
+    application: QApplication,
+) -> None:
+    """A copy built after the last frame offers what the copy drawn by that frame offers.
+
+    The trunk is standing on a mark that halted it, so the offer on screen
+    has "Branch here" named for the halt. A new control's own defaults have
+    no points and an unnamed button (`PL-9YPR`).
+    """
+
+    _, view = _halted_trunk_case(application)
+    drawn = _fork_panel(view)
+    built = view.build_branch_control()
+    assert built is not None
+    # The dashboard owns the copy, so the copy is deleted with it.
+    built.setParent(view)
+
+    def entries(panel: ForkPanel) -> list[str]:
+        selector = panel.point_selector
+
+        return [selector.itemText(index) for index in range(selector.count())]
+
+    assert len(entries(drawn)) == 3, "the frame's offer is not the one this test describes"
+    assert entries(built) == entries(drawn)
+    assert built.here_button.text() == drawn.here_button.text() != ""
+    assert built.here_button.isHidden() is drawn.here_button.isHidden() is False
+    assert built.take_button.isEnabled() is drawn.take_button.isEnabled() is True

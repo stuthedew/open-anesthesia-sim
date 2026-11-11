@@ -47,7 +47,7 @@ from types import MappingProxyType
 from typing import Final, cast
 
 from PySide6.QtCore import QObject, Qt
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QScrollArea, QVBoxLayout, QWidget
 
 from anesthesia_sim.app.agent_cost import AGENT_COST_HEADING, UNIT_CHOICE_LABEL, UNIT_CHOICES
 from anesthesia_sim.app.chart_frame import ChartFrame
@@ -83,7 +83,11 @@ from anesthesia_sim.app.qt_chart import (
 )
 from anesthesia_sim.app.qt_schematic import RunSchematic
 from anesthesia_sim.app.qt_widgets import BookmarksPanel, FocusedComboBox, ForkPanel, styled_label
-from anesthesia_sim.app.stylesheets import panel_stylesheet, selector_stylesheet
+from anesthesia_sim.app.stylesheets import (
+    clear_scroll_area_stylesheet,
+    panel_stylesheet,
+    selector_stylesheet,
+)
 from anesthesia_sim.app.theme import (
     INK,
     METRIC_QUALIFIER_SIZE,
@@ -679,6 +683,12 @@ class _CasePanelView[W: QWidget](QWidget):
     every frame and restates it on a halt (`view_contract.CaseSurfaces`).
     Where the dashboard has no such panel to give, the View shows a line that
     says why (`PL-TH35` Q6).
+
+    The rows sit in a scroll area of the View's own. An Area may be shorter
+    than a long mark name needs once the name wraps, and narrower than the
+    branch control's row of buttons. The View then scrolls, and no row is
+    clipped. Step 2 of `PL-CBYS` moves this scroll into the container, for
+    every View.
     """
 
     def __init__(
@@ -695,10 +705,20 @@ class _CasePanelView[W: QWidget](QWidget):
         self.state_notice = _state_notice_for(context)
         self.absent_notice = styled_label(absent_text, color=MUTED, wrap=True)
         self.absent_notice.setHidden(True)
-        self._column = _panel_column(self, object_name)
+        body = QWidget()
+        body.setObjectName(f"{object_name}Body")
+        self._column = QVBoxLayout(body)
+        self._column.setContentsMargins(0, 0, 0, 0)
+        self._column.setSpacing(VIEW_ROW_SPACING)
         self._column.addWidget(self.state_notice)
         self._column.addWidget(self.absent_notice)
         self._column.addStretch(1)
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll_area.setStyleSheet(clear_scroll_area_stylesheet(body.objectName()))
+        self.scroll_area.setWidget(body)
+        _panel_column(self, object_name).addWidget(self.scroll_area)
 
     @property
     def panel(self) -> W | None:
@@ -719,6 +739,7 @@ class _CasePanelView[W: QWidget](QWidget):
         else:
             # The copy goes below the state notice and above the stretch.
             self._column.insertWidget(1, self._panel)
+            self._panel.show()
 
         self._drawn = True
 
