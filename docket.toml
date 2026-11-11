@@ -510,6 +510,7 @@ workflow_paths = [
   "tests/unit/test_line_splits.py",
   "tests/unit/test_git_hooks.py",
   "tests/unit/test_gh_write_guard.py",
+  "tests/unit/test_github_refusals_check.py",
   "tests/unit/test_push_check_guard.py",
   "tests/unit/test_open_pull_requests.py",
   "tests/unit/test_owner_ask_guard.py",
