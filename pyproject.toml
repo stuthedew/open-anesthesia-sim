@@ -197,13 +197,17 @@ only_mutate = [
 ]
 # pytest reads its test files from `mutants/selected-tests.txt`, which
 # `tools/diff_mutation.py` writes before each run: every test file under
-# `tests/unit/` that imports the simulator. The deselected test lists each
-# module's functions to check its guards, so under mutmut it also calls the
-# mutant copies of those functions and fails on them.
+# `tests/unit/` that imports the simulator. Each deselected test lists the
+# functions in the modules of `core/`. Under mutmut the list also holds the
+# mutant copies of those functions, and the test fails on them. The first
+# test calls them to check its guards. The second finds their bare numbers,
+# which its own list does not name (`PL-GP8G`).
 pytest_add_cli_args_test_selection = [
     "@selected-tests.txt",
     "--deselect",
     "tests/unit/test_supported_range_edges.py::test_each_guard_admits_only_what_its_functions_compute",
+    "--deselect",
+    "tests/unit/test_bare_numbers.py::test_every_bare_number_in_core_is_listed_with_its_reason",
 ]
 # The default, `fork`, imports each test module once, unmutated, and then forks
 # a process for each mutant. A test whose expected value is computed when its
@@ -212,10 +216,12 @@ pytest_add_cli_args_test_selection = [
 # The default warm-up, `collect`, would import them unmutated once more.
 process_isolation = "forkserver"
 forkserver_warmup = "none"
-# The tests import `tools/doc_check.py` and `docket`, and read `docs/MODEL.md`.
+# The tests import `tools/doc_check.py` and `docket`, and read `docs/MODEL.md`
+# and `README.md`. A test that reads a file not copied here fails when it is
+# imported, and mutmut then stops before it runs any mutant (`PL-GP8G`).
 # mutmut 3.8.0 fails to copy a file whose directory it has not created, so
 # `docs/` is copied whole.
-also_copy = ["tools/", "subprojects/docket/src/", "docs/"]
+also_copy = ["tools/", "subprojects/docket/src/", "docs/", "README.md"]
 # The application's target, not the whole repository's. `tools/ruff.toml` and
 # `subprojects/docket/ruff.toml` extend this file and override
 # `target-version` to the bare-`python3` floor, because both trees are run by
