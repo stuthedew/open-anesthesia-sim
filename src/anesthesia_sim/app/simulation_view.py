@@ -318,7 +318,7 @@ class HaltRestatement:
     """A dashboard panel that offers an action on a run, and what restates it on a halt.
 
     To restate a widget is to rewrite it from the runs' controllers, without drawing a frame.
-    A `RunView` restates its own widgets on a halt (`RunView.present_halt`). The panels
+    A `RunView` restates its own widgets on a halt (`RunView.show_presentation`). The panels
     that belong to the dashboard itself are not inside any run. So a halt restates them
     only through this list (`SimulationView.halt_restatements`). A panel that holds a
     control and is missing from the list keeps offering its action over a run that every
@@ -1627,7 +1627,7 @@ class SimulationView(QWidget):
         self.compartment_selection_changed.emit(selection)
 
         for run, snapshot in zip(self._runs, snapshots, strict=True):
-            run.refresh(snapshot)
+            run.show_presentation(run.presentation(snapshot))
 
         self._refresh_bookmarks(
             snapshots[0].bookmarks,
@@ -2047,24 +2047,25 @@ class SimulationView(QWidget):
         just failed, and it may fail again for the same cause. For example, two runs may
         have come to use different agents, or a snapshot's own values may be rejected. A
         halt shown only through the frame would then never be seen (`PL-25KS`, `PL-7DJK`).
+        If presenting the frame fails afterwards, the halt is not undone.
 
-        The branch controls are restated from the case for the same reason
+        The dashboard's own panels are restated without the frame, for the same reason as
+        the halts. The branch controls are restated from the case
         (`_restate_fork_panel`, `PL-MMNX`). The bookmark standings are restated from each
-        run's controller for the same reason (`_restate_bookmark_panel`, `PL-YHR3`). Both
-        restatements come from one list, `halt_restatements`. A test checks that this list
-        covers every control the dashboard offers outside a run (`PL-5JTH`). The trunk
-        records that its dashboard failed, so the case then offers no branch at all. A
-        branch opened now would be drawn by the same dashboard and could fail the same
-        way (`PL-T2Q2`). If presenting the frame fails afterwards, the halt is not undone.
+        run's controller (`_restate_bookmark_panel`, `PL-YHR3`). Both restatements come
+        from one list, `halt_restatements`. A test checks that this list covers every
+        control the dashboard offers outside a run (`PL-5JTH`). The trunk records that
+        its dashboard failed, so the case then offers no branch at all. A branch opened
+        now would be drawn by the same dashboard and could fail the same way (`PL-T2Q2`).
 
-        One run's `present_halt` can raise after it has shown the halt, when its dials
-        cannot be written. That exception no longer stops the halt path. Every other run
+        One run's `show_halt` can raise after it has shown the halt, when its dials
+        cannot be written. That exception does not stop the halt path. Every other run
         still shows its halt, every panel is restated, and the dashboard tries to draw the
         frame. Only then does the first exception escape, so it still reaches the console
         rather than being hidden (`PL-TLH4`).
 
         Raises:
-            ValueError: The first exception raised by a run's `present_halt`, once
+            Exception: The first exception raised by a run's `show_halt`, once
                 everything above has been done.
         """
 
@@ -2078,7 +2079,7 @@ class SimulationView(QWidget):
 
             for run in self._runs:
                 try:
-                    run.present_halt()
+                    run.show_halt()
                 except Exception as raised:
                     presentation_error = presentation_error or raised
 

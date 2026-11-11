@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: architecture-md-structure
+milestone: v0.6.17
 touches: docs/ARCHITECTURE.md
 deferred-from: v0.7.0 - a new problem: at the freeze (817a4d88) a branch could still open on the supported run length, so the sentence was true; 2713d097 (PL-VHQX, 2026-10-31) made the controller refuse that fork and left the sentence stale
 added: 2026-11-05

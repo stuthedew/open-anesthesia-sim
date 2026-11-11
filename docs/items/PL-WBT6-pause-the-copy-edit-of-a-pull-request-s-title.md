@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: session-cost
 feature: copy-editor
+milestone: v0.6.17
 touches: .claude/skills/pull-request/SKILL.md, docs/items/PL-BF6K-compare-the-copy-editor-s-first-read-with-its.md
 added: 2026-11-11
 closed: 2026-11-11

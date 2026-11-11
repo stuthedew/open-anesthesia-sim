@@ -3,6 +3,7 @@ id: PL-39ZK
 title: Restructure docs/machine-abstraction.md as the copy editor's structure read proposes: answer the seven questions in order, state a machine's whole effect on the model once, and use one name for a machine module
 status: done
 feature: machine-docs-structure
+milestone: v0.6.17
 touches: docs/machine-abstraction.md, src/anesthesia_sim/core/circuit.py, docs/items/PL-37N4-docs-machine-abstraction-md-answer-the-close.md, docs/items/PL-D42Z-docs-machine-abstraction-md-s-b11-row-calls.md
 added: 2026-11-07
 closed: 2026-11-09

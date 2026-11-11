@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: roadmap-structure
+milestone: v0.6.17
 touches: ROADMAP.md
 deferred-from: v0.7.0 - a new problem: the list's headings and the baseline's count first disagreed when aff76df1 (2026-11-05) added PL-0P3F, after the freeze
 added: 2026-11-07

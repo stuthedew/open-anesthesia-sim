@@ -3,6 +3,7 @@ id: PL-T9S5
 title: Audit the line edit of docs/ARCHITECTURE.md (#2044) section by section for dropped statements, qualifiers, requirements and reasons, as PL-B7V7 did for the machine docs, and restore each: #2044 was checked only for dropped names, numbers and item ids, the same gap that lost statements in the MODEL.md, machine-doc and interface-provenance edits
 status: done
 feature: architecture-md-structure
+milestone: v0.6.17
 touches: docs/ARCHITECTURE.md
 added: 2026-11-07
 closed: 2026-11-07

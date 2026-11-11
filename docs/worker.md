@@ -216,20 +216,17 @@ which is why it is written here first.
 
 ## Reaching a source
 
-**A refused connection to a journal or an index is expected, and is not a
-block.** The egress proxy allows some publishers and indexes and refuses
-others, host by host, from an allowed-domains list the project owner edits in
-the environment's settings and no session can read. So probe the host before
-concluding anything about it. A refusal is `curl`'s `CONNECT tunnel failed,
-response 403` or `WebFetch`'s `EGRESS_BLOCKED`; a `403` after the tunnel opens
-is the publisher turning an unattended client away, not the proxy. A refusal is
-not the environment misbehaving under **When something errors** below, and
-there is nothing to report or work around. Where the host is refused, the
-PubMed MCP server is the route that works. On 2026-09-26 the proxy allowed
-`doi.org`, `api.crossref.org`, the NCBI hosts, Wiley, Springer and
-ScienceDirect - Wiley and ScienceDirect then refusing the client themselves -
-and refused `journals.lww.com`, `pubs.asahq.org` and `www.bjanaesthesia.org`
-(`PL-M701`).
+**A refused connection to a journal or an index is not a block.** Since
+2026-11-10 the environment's network access is `Full`, so the egress proxy
+should refuse no host (`PL-6VZF`). A publisher can still turn an unattended
+client away, and the project owner can change the setting at any time. So
+probe the host before concluding anything about it. A refusal by the proxy is
+`curl`'s `CONNECT tunnel failed, response 403` or `WebFetch`'s
+`EGRESS_BLOCKED`. A `403` after the tunnel opens is the publisher turning an
+unattended client away. Neither is the environment misbehaving under **When
+something errors** below, and there is nothing to work around. Where a
+publisher refuses, the PubMed MCP server is the route that works. Wiley and
+ScienceDirect refused an unattended client on 2026-09-26 (`PL-M701`).
 
 `.claude/rules/citing-sources.md` carries the rest: what each route returns,
 what it cannot reach, and the obligation to record which route a citation came
@@ -297,6 +294,12 @@ branch is there or not; only the presence of a printed ref says which
 for to avoid reporting a phantom deletion cannot answer if it is read the
 obvious way. Hand the owner the exact commands rather than the intent - a
 cleanup pass ends by handing over a list, not by reporting a job finished.
+
+**A forced push is refused too, on every branch** (`PL-39Y1`). A GitHub
+ruleset blocks it, and `tools/github_refusals_check.py` fails CI where that
+rule is missing. So a branch restarted after its pull request merged is pushed
+plainly. Where the remote still holds the old branch, the project owner
+archives and deletes it first, and `bin/docket branch` prints the steps.
 
 **A third shape, and it is not a refusal at all.** Where GitHub already deleted
 the branch on merge, a `git push --force-with-lease` to it fails with

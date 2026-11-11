@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs, ux
 feature: project-introduction
+milestone: v0.6.17
 touches: README.md, assets/screenshots/, tests/benchmarks/readme_screenshot.py, tests/unit/test_readme_claims.py, docket.toml
 blocked-by: PL-YCWZ
 added: 2026-09-06

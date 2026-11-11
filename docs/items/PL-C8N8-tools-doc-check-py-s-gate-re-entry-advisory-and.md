@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: roadmap-structure
+milestone: v0.6.17
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.7.0 - a new problem: PL-P0C5's restructure of 2026-11-07 moved the passages the advisory names, after the freeze
 added: 2026-11-07

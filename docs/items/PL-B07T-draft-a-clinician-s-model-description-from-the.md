@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs
 feature: model-md-structure
+milestone: v0.6.17
 touches: docs/prose-review/model-description-draft.md, docs/prose-review/README.md, docs/items/PL-P3GZ-decide-whether-to-split-docs-model-md-by-reader.md
 deferred-from: v0.7.0 - a draft document for the owner to read; the schematic release does not depend on it
 added: 2026-11-10

@@ -5751,6 +5751,12 @@ def cmd_arm(args: argparse.Namespace) -> int:
     it cannot answer, and 1 otherwise (`PL-R1HT`). That reading skips the
     checks that only decide between arming and the other holds, so it takes
     a fraction of the full answer's time (`PL-3D2F`).
+
+    With `--merge-hold BRANCH` it answers for a required check on GitHub:
+    whether anything `arm` reads from the commits of `BRANCH`'s copy on the
+    remote holds its merge (`arming.merge_hold`, `PL-39Y1`). It neither
+    fetches nor asks the forge, and exits 0 for a pass, 1 for a hold and 2
+    where it cannot answer.
     """
     inv = _invocation(args)
     unknown = arming.EXIT[arming.UNKNOWN]
@@ -5763,6 +5769,28 @@ def cmd_arm(args: argparse.Namespace) -> int:
             "told apart from it"
         )
         return unknown
+    if args.merge_hold:
+        verdict = arming.merge_hold(
+            inv.root,
+            args.merge_hold,
+            items_dir=inv.tracked,
+            now=_now(args),
+            record_dir=inv.config.record_dir,
+            runner=inv.git,
+        )
+        if verdict.answer in (arming.ARM, arming.BEHIND):
+            print(
+                f"pass - nothing `bin/docket arm` reads from {args.merge_hold}'s commits holds "
+                "its merge"
+            )
+            print(
+                "  Not read here: whether its new prose had a prose review and whether its blind "
+                "review passes ran. `bin/docket arm` counts both in the session."
+            )
+            return 0
+        for said in verdict.lines:
+            print(said)
+        return verdict.code if verdict.answer == arming.UNKNOWN else 1
     if args.owner_ask:
         verdict = arming.arm(
             inv.root,
@@ -6302,6 +6330,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="print only the line the owner may be sent about this pull request and exit 0; "
         "exit 3 where it waits on the owner's read with no Owner-ask recorded, 2 where it "
         "cannot answer, and 1 otherwise",
+    )
+    arm_cmd.add_argument(
+        "--merge-hold",
+        metavar="BRANCH",
+        default="",
+        help="answer for BRANCH's copy on the remote, whichever branch is checked out: exit 0 "
+        "where nothing read from its commits holds its merge, 1 where something does, and 2 "
+        "where that could not be read; it neither fetches nor asks the forge",
     )
     arm_cmd.set_defaults(func=cmd_arm)
     ci_scope_cmd = add(
