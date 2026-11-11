@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: architecture-md-structure
+milestone: v0.6.17
 touches: docs/ARCHITECTURE.md
 deferred-from: v0.7.0 - a new problem: at the freeze (817a4d88) the compartments still had defaults in core/ and the document held no required-argument rule; 1f0e8b1e (PL-M85T, 2026-10-25) removed the defaults and added the rule without updating the older paragraph
 added: 2026-11-05

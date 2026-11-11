@@ -3,6 +3,7 @@ id: PL-1K0L
 title: Hold the rest of each version-table row for v0.2.3 to v0.3.9, the releases cut before each release had an item of its own
 status: done
 feature: roadmap-structure
+milestone: v0.6.17
 touches: ROADMAP.md
 added: 2026-11-07
 closed: 2026-11-07

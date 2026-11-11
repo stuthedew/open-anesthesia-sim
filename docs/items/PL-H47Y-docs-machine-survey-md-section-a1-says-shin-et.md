@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: machine-profile-framework
+milestone: v0.6.17
 touches: docs/machine-survey.md
 added: 2026-10-04
 closed: 2026-11-09

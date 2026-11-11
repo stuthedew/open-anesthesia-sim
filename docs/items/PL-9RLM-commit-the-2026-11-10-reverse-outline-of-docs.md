@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: model-md-structure
+milestone: v0.6.17
 touches: docs/prose-review/model-reverse-outline.tsv, docs/prose-review/README.md
 added: 2026-11-10
 closed: 2026-11-10

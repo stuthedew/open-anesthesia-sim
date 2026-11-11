@@ -3,6 +3,7 @@ id: PL-ZMBN
 title: Copy edit docs/interface-provenance.md with the fixed copy editor, section by section, keeping every fact a contributor needs
 status: done
 feature: repo-copy-edit
+milestone: v0.6.17
 touches: docs/interface-provenance.md
 added: 2026-11-05
 closed: 2026-11-07
