@@ -6,7 +6,7 @@
       "name": "Induction",
       "origin": "shipped:induction",
       "layout": {
-        "next_area_id": 4,
+        "next_area_id": 6,
         "windows": [
           {
             "tree": {
@@ -34,8 +34,26 @@
                   ]
                 },
                 {
-                  "area": 3,
-                  "view": "parameter_controls"
+                  "split": "column",
+                  "sizes": [
+                    0.34,
+                    0.33,
+                    0.33
+                  ],
+                  "children": [
+                    {
+                      "area": 3,
+                      "view": "parameter_controls"
+                    },
+                    {
+                      "area": 4,
+                      "view": "bookmarks"
+                    },
+                    {
+                      "area": 5,
+                      "view": "branch"
+                    }
+                  ]
                 }
               ]
             }

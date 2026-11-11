@@ -519,13 +519,17 @@ MARK_ATTRIBUTION_TEMPLATE: Final = "{run} {said}"
 # say what the control sets. What a height on a given compartment does and
 # does not assert is stated in `docs/MODEL.md` § "MAC multiples as a display
 # unit", not in a paragraph in a dialog.
-# The branch control's words follow, beside the marks and for the same reason.
+# The branch control's words follow the marks' words, for the same reason.
 # Both offer instants of the *case* rather than of either run, so both are
 # panels of the dashboard rather than of a `RunView` (`docs/ARCHITECTURE.md`
 # § "Where new code belongs"). "From" labels the instant at which the branch
 # opens. The heading names the mechanism and says nothing else, under the same
 # rule as the mark headings.
 FORK_HEADING: Final = "Branch"
+#: What the branch View shows where the dashboard was handed loose runs and
+#: holds no case. A control there could only refuse, so none is drawn, and the
+#: View says why its rectangle is empty (`PL-9YPR`). The wording is a placeholder.
+NO_CASE_TO_BRANCH_TEXT: Final = "These runs belong to no case, so no branch can be opened."
 FORK_POINT_LABEL: Final = "From"
 # The label is "Branch", not "Branch here" (`PL-Y2SL`). On the button below,
 # "here" names where the paused trunk stands, while this button branches at
@@ -2713,6 +2717,44 @@ def fork_offer(
         here_label="" if offered_here is None else _here_fork_label(offered_here),
         refusal=None if comparing is not None else refusal,
     )
+
+
+def kept_fork_selection(
+    previous: Sequence[ForkPoint] | None, selected: ForkPoint | None, points: Sequence[ForkPoint]
+) -> ForkPoint | None:
+    """Return the point the branch selector shows as selected once `points` is the offer.
+
+    The dashboard keeps one selection for the case, and every copy of the
+    branch control shows it. So a copy that is built later, such as after a
+    switch of Workspace, shows the point the learner chose (`PL-9YPR`).
+
+    **A selection whose point is no longer offered is cleared, and a cleared
+    selection stays clear** (`PL-J12Z`). Falling back to the first entry would
+    put induction under a learner who had chosen a later decision point, and
+    the next press would branch there. A point can leave the offer without a
+    reset: a keyframe collapses when a dial is returned to its previous value
+    at the same instant, and a mark leaves when it is unmarked.
+
+    An offer shown first, or shown after an offer that held no point, is the
+    one exception. Nobody has chosen yet, so the first entry is selected, as a
+    selector normally does.
+
+    Args:
+        previous: The points of the offer shown before this one, or None
+            where no offer has been shown.
+        selected: The point selected under `previous`, or None for no point.
+        points: The points of the offer about to be shown.
+
+    Returns:
+        The first of `points` where `previous` is None or held no point, or
+        None where `points` is empty too. Otherwise `selected` where `points`
+        still holds it, and None where it does not.
+    """
+
+    if not previous:
+        return points[0] if points else None
+
+    return selected if selected in points else None
 
 
 def _here_fork_label(here: HereForkPoint) -> str:
