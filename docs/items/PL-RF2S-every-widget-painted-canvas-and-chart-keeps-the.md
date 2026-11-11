@@ -246,6 +246,15 @@ No test was deleted. The rewritten tests: the three copy tests of `tests/integra
 
 Filed from the build, neither fixed: `PL-CPF2` (the dial rows name no run while two runs are compared) and `PL-FBKK` (a price form that is already open stays on the earlier agent after an agent change).
 
+**Second pull request: where the close-out stands, written 2026-11-11 at 05:30 UTC before a reset in place.** The branch holds `origin/main` at `a2a12b4df` and is pushed. Draft `#2125` still has the claim's placeholder title and body. Four review subagents of this session were started at about 05:25 UTC, and none had reported when this was written:
+
+1. The blind review pass that close-out step 9 asks for (one pass owed). Its findings go to `/tmp/blind-review-t1qm8ork/pass-1/findings-pass-1.md`.
+2. A side-by-side run of the interface before (`35294da61`) and after (`70dbdc525`) the change, in normal use and with injected faults. Its scripts are under the scratchpad's `ba/`.
+3. Random sequences of actions with injected faults, checking six invariants on stale and misattributed values. Its scripts are under the scratchpad's `stale/`.
+4. Planted defects against the tests, a read of every rewritten test for lost coverage, and a search for leftovers of the old design.
+
+What is left, in order: act on each finding, with a test that fails first for each fix; record the blind review as a `Blind-review:` trailer; run the prose review of close-out step 8 and record its trailer (the gate still asks for it, because the removal of the copy editor under `PL-J1ZM` has not merged); run `bin/docket verify --self PL-RF2S PL-SV2Q` and sort its mutation survivors (`app/run_presentation.py` and `app/dashboard_frame.py` changed); claim `PL-SV2Q` alongside and close it in the commit that finishes the work, with `PL-RF2S` staying open for the third and fourth pull requests; retitle `#2125` to lead with `PL-RF2S, PL-SV2Q` before that push; sweep the documents; write the body; decide whether the owner's read is needed. A learner sees a change only with an injected fault, as in the first pull request: no dials and one line for a run whose dials cannot be built, and a withheld delivered line.
+
 **Added to the first pull request on 2026-11-11.** `app/run_presentation.py` is in `[tool.mutmut] only_mutate` in `pyproject.toml`. It computes values the interface displays and loads no toolkit, which is that list's own rule, and the logic it holds was in `app/run_view.py`, which mutmut does not mutate. `docs/mutation-testing.md` and close-out step 7 now count eight display modules.
 
 **Generator check.** This item is the head for the three open members of `every-view-in-run-state-tests`, and states the cause beneath the four closed heads it names.
