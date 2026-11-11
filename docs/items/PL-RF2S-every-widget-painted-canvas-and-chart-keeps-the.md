@@ -3,13 +3,14 @@ id: PL-RF2S
 title: Every widget, painted canvas and chart keeps the last value written to it, and three separate paths each write a part of the screen, so a value from an earlier run or the other compared run stays wherever a path does not reach: the cause under PL-X7D5, PL-J5GC, PL-5JTH and PL-GTH6, whose four fixes each added a test over a hand-kept list
 priority: P1
 effort: L
-status: needs-decision
+status: ready
 classes: safety, refactor
 feature: every-view-in-run-state-tests
 touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/views.py, src/anesthesia_sim/app/view_contract.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/run_surfaces.py, tests/integration, docs/ARCHITECTURE.md
 deferred-from: v0.7.0 - a new problem, not present at the freeze (817a4d88, 2026-10-25): its three members were filed on 2026-11-10; not live: checked 2026-11-10, the audit found no wrong value on screen behind any member, and the gap is in the tests
 added: 2026-11-11
 payoff: a value from an earlier run, or from the other compared run, has no widget to stay in, because every View and panel is drawn whole from one value on every path
+verify: grep -q 'def test_every_registered_view_draws_a_state_alike_whatever_it_drew_before' tests/integration/test_view_contract.py
 root-cause-of: PL-B8DL, PL-0G2P, PL-G2WC
 generator: live - three members, PL-B8DL, PL-0G2P and PL-G2WC, were filed on 2026-11-10, 14 days after PL-J5GC closed, and each new View or panel is another place for the next
 misread: Which widgets state a run's current state, and that each is restated on every path that changes it
@@ -17,7 +18,7 @@ misread: Which widgets state a run's current state, and that each is restated on
 
 **Problem.** Every widget, painted canvas and chart keeps the last value written to it, and three separate paths each write a part of the screen, so a value from an earlier run or the other compared run stays wherever a path does not reach: the cause under PL-X7D5, PL-J5GC, PL-5JTH and PL-GTH6, whose four fixes each added a test over a hand-kept list
 
-**Asked for by the project owner on 2026-11-11**, as a fresh look at a cause fixed four times. The request named a direction to test: build the interface so that a View cannot hold a run's value, for example by drawing every View from one snapshot of run state. It asked for the design on one screen before any code. This item holds that design and waits for the answer.
+**Asked for by the project owner on 2026-11-11**, as a fresh look at a cause fixed four times. The request named a direction to test: build the interface so that a View cannot hold a run's value, for example by drawing every View from one snapshot of run state. It asked for the design on one screen before any code. This item holds that design. [superseded 2026-11-11: the owner answered, below, and the item is ready to build.]
 
 **What each fix built, and what got past it.** Each row was checked against the code on 2026-11-11 at `origin/main`.
 
@@ -54,7 +55,14 @@ Martin Fowler's "GUI Architectures" and "Passive View" could not be fetched, so 
 
 **Why it matters.** A value left from an earlier run, or shown under the other compared run, is a correct number in the wrong context, which `CLAUDE.md`'s safety-critical standard treats as a safety failure. The audit of 2026-11-10 found none on screen. It found that no test would catch one in the compartment schematic, in the agent cost View, in any painted value or under the wrong run's name, and each View added later widens that.
 
-**Done when.** The decision below is answered and recorded here. If the answer is to build, this item is rewritten to the built form, with a `verify:` that names the test of point 6 of the design, and `PL-B8DL`, `PL-0G2P` and `PL-G2WC` close under it or say why they stay.
+**Done when.** The design below is built in four pull requests, each leaving the application working:
+
+1. The frozen value and its pure builder, and `RunView.show` in place of `refresh` and `present_halt`. What a learner sees does not change.
+2. Every View is drawn from the tick alone, on a halt as on a drawn frame, and `RunSurfaces` is gone.
+3. Each run's name travels with its values, and no reader takes `snapshots[0]`.
+4. `test_every_registered_view_draws_a_state_alike_whatever_it_drew_before` is in `tests/integration/test_view_contract.py`, over every kind in `view_registry.REGISTERED` and the whole dashboard. The tables and layouts named under "What it replaces" are removed, and `docs/ARCHITECTURE.md` describes the new shape.
+
+Each replay listed below fails against the code before its fix. `PL-B8DL`, `PL-0G2P` and `PL-G2WC` close under this item, or each says why it stays.
 
 **The design: one value for the whole screen, and one call that shows it.**
 
@@ -82,6 +90,8 @@ Martin Fowler's "GUI Architectures" and "Passive View" could not be fetched, so 
 4. A dialog that is not made a reader of the value, such as the bookmark editor or a question about a new case.
 
 **Decision needed.** Whether to replace the three write paths with one value and one call, in the four pull requests above. **Recommended:** yes. The count that decides it: the table of paths against widgets grows with every View and every panel, six Views now and more on the roadmap, and each of the four earlier fixes cost a design round and then leaked within a month. The cheaper route is to build `PL-B8DL`, `PL-0G2P` and `PL-G2WC` as filed, about 600 lines of tests. It closes today's three gaps and keeps the shape that produced them, since each is another walk over built widgets. The choice is the owner's because it is a large refactor of working code, with a real risk to the halt path.
+
+**Answered 2026-11-11, as recommended** (project owner, 2026-11-11, ratified, "agree with rec for 1"): build the one value and the one call, in the four pull requests, chosen over building `PL-B8DL`, `PL-0G2P` and `PL-G2WC` as filed. The design round wrote no code. The build claims this item afresh and starts with the first pull request.
 
 **Replays, each written to fail first.** The three open escapes are gaps in tests, and the audit of 2026-11-10 found no wrong value on screen behind them. So each replay plants the escaped defect in the code as it stands, shows that today's tests pass, and shows that the new test fails:
 
