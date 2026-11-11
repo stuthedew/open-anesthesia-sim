@@ -364,10 +364,9 @@ session, `PL-YJG1`):
    itself. Name the clock time an hour on, in Central time. After that hour,
    the summary re-reads the whole history uncached (`docs/maintainer.md`).
 
-A Projects thread cannot have `/compact` typed into it. It writes its next
-steps into the item file instead, commits and pushes that, says so in one line
-and stops. The coordinator then starts a fresh thread on the branch (the
-Projects trial's instructions, read 2026-10-03, kind unrecorded, `PL-PDVF`).
+A Projects thread follows the compaction rule in its Project's instructions
+instead of this section. By the project owner's word of 2026-10-04, that rule
+lives only there (`PL-WP3Z`).
 
 Pushed first, compaction lands where a handoff did: the resident floor, a
 summary, and files re-read, with `CLAUDE.md` and the unscoped rules
