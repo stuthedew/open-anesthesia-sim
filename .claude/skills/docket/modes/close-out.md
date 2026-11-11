@@ -269,7 +269,7 @@ page and decides which file a session reads.
 7. **Sort the survivors that step 5's audit printed, where the diff changes a
    function that mutmut mutates.** Those functions are in the modules named by
    the `only_mutate` globs in the `[tool.mutmut]` table of `pyproject.toml`:
-   `core/` and seven presentation modules. The audit's mutation check runs
+   `core/` and eight presentation modules. The audit's mutation check runs
    `make mutate`'s tool on the functions that the branch changed, so there is
    no second run to make. Sort each survivor as `docs/mutation-testing.md`
    § "Read a survivor" says, and list each one with its kind in the pull
