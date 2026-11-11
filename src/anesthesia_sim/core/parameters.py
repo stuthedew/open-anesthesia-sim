@@ -1413,19 +1413,21 @@ def parse_reference_adult_parameters(payload: object) -> ReferenceAdultParameter
         ),
         vessel_rich_perfusion_fraction=PerfusionFraction(
             tissue_groups.vessel_rich.perfusion_fraction,
-            name="tissue_groups.vessel_rich.perfusion_fraction",
+            name="tissue_groups.vessel_rich.perfusion_fraction",  # pragma: no mutate
         ),
         muscle_volume_l=CompartmentVolume(
             tissue_groups.muscle.volume_l, name="tissue_groups.muscle.volume_l"
         ),
         muscle_perfusion_fraction=PerfusionFraction(
-            tissue_groups.muscle.perfusion_fraction, name="tissue_groups.muscle.perfusion_fraction"
+            tissue_groups.muscle.perfusion_fraction,
+            name="tissue_groups.muscle.perfusion_fraction",  # pragma: no mutate
         ),
         fat_volume_l=CompartmentVolume(
             tissue_groups.fat.volume_l, name="tissue_groups.fat.volume_l"
         ),
         fat_perfusion_fraction=PerfusionFraction(
-            tissue_groups.fat.perfusion_fraction, name="tissue_groups.fat.perfusion_fraction"
+            tissue_groups.fat.perfusion_fraction,
+            name="tissue_groups.fat.perfusion_fraction",  # pragma: no mutate
         ),
         sources=_sources_to_tuple(model.sources),
         provenance_gap=model.provenance_gap,

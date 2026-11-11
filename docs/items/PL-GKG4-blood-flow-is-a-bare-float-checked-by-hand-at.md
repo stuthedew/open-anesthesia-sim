@@ -194,3 +194,16 @@ passages that the review fixes added or changed, was stopped after its four
 reads and before its meaning checks, and nothing from it is applied. Those 21
 passages, and the pull request's title and body, are as the session wrote
 them.
+
+**The branch audit's mutation check, 2026-11-11.** Of 100 mutants of changed
+lines, the unit tests caught 85 and missed 15, so the first audit refused the
+branch. `make check` passed in the same run.
+
+- Three were the last line of `require_perfusion_fraction`'s message. A test
+  now compares the whole message.
+- Twelve changed or removed the `name=` that `parse_reference_adult_parameters`
+  gives each `PerfusionFraction`. No input reaches that name: the payload has
+  already checked the fraction against the same range, above 0 and at most 1,
+  so the constructor cannot refuse it there. The three lines are marked
+  `# pragma: no mutate`. The names stay, so that a refusal would name the
+  field if the payload's check were ever loosened.

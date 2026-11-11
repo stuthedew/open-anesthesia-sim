@@ -260,6 +260,19 @@ def test_a_blood_flow_is_built_from_a_cardiac_output_and_a_perfusion_fraction_an
         BloodFlow(2.0)  # type: ignore[call-arg, arg-type]
 
 
+def test_a_bare_number_given_as_a_perfusion_fraction_is_refused_with_how_to_build_one() -> None:
+    """The refusal of a bare number gives its value and type, and says how to build a fraction."""
+
+    with pytest.raises(TypeError) as raised:
+        BloodFlow(CardiacOutput(5.0), 0.2)  # type: ignore[arg-type]
+
+    assert str(raised.value) == (
+        "perfusion_fraction of 0.2 was not built as PerfusionFraction, it is float: build it as "
+        "PerfusionFraction(...), which checks it against its range once "
+        '(docs/MODEL.md, "Tissue groups")'
+    )
+
+
 def test_a_cardiac_output_is_not_a_tissue_group_s_blood_flow() -> None:
     """A tissue group refuses the whole cardiac output where its own flow belongs.
 
