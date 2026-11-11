@@ -13,6 +13,7 @@ the `offscreen` platform that `tests/conftest.py` selects.
 """
 
 from collections.abc import Iterator
+from typing import NoReturn
 
 import pytest
 from PySide6.QtCore import QPoint, Qt
@@ -20,8 +21,9 @@ from PySide6.QtGui import QContextMenuEvent
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
+from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app.chart_time_base import time_base_for_span
-from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import SIMULATION_STEP_S
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.view_registry import WASH_IN
@@ -610,6 +612,58 @@ def test_a_pinned_workspace_draws_its_run_alone_and_names_it_on_every_area(
 
     assert _concentration(view).legend._run_names == ("Run 1", "Run 2")
     assert not view.layout_container.frame(AreaId(1)).pin_label.isVisible()
+
+
+def test_a_pinned_run_dropped_while_every_frame_fails_is_stated_as_not_open(
+    application: QApplication, shown: list[SimulationView], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A halt says in every Area that the pinned run is gone, as a drawn frame does.
+
+    The Workspace is pinned to the branch. While every frame fails, the
+    trunk's Reset drops the branch. No View is handed anything for a pinned
+    run that is not open, so each View still holds the branch's panels. The
+    halt therefore names the pin on every Area, and each Area shows its
+    notice in place of its View (`PL-RF2S`).
+    """
+
+    def failing(*args: object, **kwargs: object) -> NoReturn:
+        raise RuntimeError("this frame could not be assembled")
+
+    trunk = SimulationController()
+    trunk.start()
+
+    for _ in range(round(60.0 / SIMULATION_STEP_S)):
+        trunk.advance(SIMULATION_STEP_S)
+
+    trunk.pause()
+    case = BranchedCase(trunk)
+    view = SimulationView((trunk,), case=case, run_identities=RunIdentities(_SESSION))
+    shown.append(view)
+    view.resize(1400, 1000)
+    view.show()
+    application.processEvents()
+    view.present(False)
+    view.add_run(case.fork_here())
+    view.present(False)
+    view.tab_strip.choose(_named(view.tab_strip.operations(0), "Pin Run 2"))
+
+    for area in view.layout_container.model.areas():
+        assert view.layout_container.frame(area.id).content.isVisible()
+
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", failing)
+    view.runs[0]._reset_button.click()
+    application.processEvents()
+
+    assert len(view.runs) == 1
+    assert trunk.has_failed is True
+
+    for area in view.layout_container.model.areas():
+        frame = view.layout_container.frame(area.id)
+        notice = frame.absent_notice
+        assert notice is not None
+        assert notice.isVisible()
+        assert notice.title_label.text() == "Run 2 is not open."
+        assert not frame.content.isVisible()
 
 
 def test_a_pinned_run_that_is_not_open_is_stated_in_every_area_and_no_other_run_is_shown(

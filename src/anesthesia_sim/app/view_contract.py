@@ -29,6 +29,21 @@ from, such as the compartment selection, is shown to the View in each tick.
 The View asks for a change to it through `ViewContext.requests`, and never
 holds the value itself.
 
+**A tick names every displayed run, with a frame or without one** (`PL-RF2S`).
+`ViewTick.runs` holds one `RunPresentation` for each displayed run
+(`app/run_presentation.py`). It is everything that the run's panel shows at
+that moment. A View that shows a run's values builds its own widget for each
+run and writes the whole widget from that run's presentation on every tick. It
+finds a run's widget by `RunPresentation.run_id`, and it deletes the widget of
+a run that the tick no longer names. The dashboard also hands every View a
+tick when no frame can be drawn: on a halt, and at once after a dial is
+dragged. That tick carries no frame and no snapshots. Its presentations hold
+the values of the last frame that drew, or withhold them when the run has
+started over since that frame. A chart draws nothing from such a tick, and
+only drops its lines for the runs that the tick no longer names. A View asks
+for a change to a run's setting through `ViewRequests`, naming the run by its
+`run_id`.
+
 **A chart's time window is its own** (project owner, 2026-10-19, ratified,
 over one shared window saved per Workspace; `PL-L59K`). Q2 and Q7 made the
 time base shared state, which every chart showed. `ROADMAP.md` § "v0.6.0 -
@@ -105,20 +120,19 @@ from typing import Final, Protocol, runtime_checkable
 from anesthesia_sim.app.chart_frame import ChartFrame
 from anesthesia_sim.app.chart_time_base import ChartTimeBase
 from anesthesia_sim.app.compartment_selection import CompartmentSelection
+from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.controller import SimulationSnapshot
 from anesthesia_sim.app.formatting import AgentAmountUnit
 from anesthesia_sim.app.preferences import AgentPrice, Preferences
-from anesthesia_sim.app.qt_agent_cost import RunAgentCost
-from anesthesia_sim.app.qt_schematic import RunSchematic
+from anesthesia_sim.app.run_presentation import RunPresentation
 from anesthesia_sim.app.run_series import RecordedQuantity
-from anesthesia_sim.app.run_surfaces import AccountingPanel, ParameterControls
+from anesthesia_sim.layout.run_identity import RunId
 
 __all__ = [
     "STATE_VERSION_KEY",
     "UNREADABLE_STATE_TEXT",
     "FrameRequest",
     "PreferencesInForce",
-    "RunSurfaces",
     "SavedState",
     "View",
     "ViewContext",
@@ -142,24 +156,6 @@ UNREADABLE_STATE_TEXT: Final = (
 )
 
 
-class RunSurfaces(Protocol):
-    """The parts of one displayed run that a View may show, each built as a new copy.
-
-    `RunView` satisfies this protocol. Each method builds a new copy that
-    shows what the run shows now. From then on, the run updates every live
-    copy (`app/run_surfaces.py`, `PL-9LNF`). A View holds the copies and
-    never the run's controller.
-    """
-
-    def build_parameter_controls(self) -> ParameterControls: ...
-
-    def build_accounting_panel(self) -> AccountingPanel: ...
-
-    def build_compartment_schematic(self) -> RunSchematic: ...
-
-    def build_agent_cost(self) -> RunAgentCost: ...
-
-
 @dataclass(frozen=True, slots=True)
 class ViewRequests:
     """How a View asks the dashboard for a change or for a frame.
@@ -175,12 +171,24 @@ class ViewRequests:
             given one, in the reader's preferences.
         agent_price: Asks for the reader's price for the given agent to become
             the given one, or to be removed when it is None.
+        adjustment_start: Says that the reader pressed a dial of the given
+            run, so the changes that follow are one new adjustment.
+        setting: Asks for the given run's setting on the given control to
+            become the given value. The run applies it or refuses it, and
+            the next tick shows the setting in force.
+        preview: Says where a held dial of the given run stands, so the
+            charts can preview that value (`PL-5B1N`).
+        preview_end: Says that the held dial of the given run was released.
     """
 
     frame: Callable[[], None]
     compartment: Callable[[RecordedQuantity, bool], None]
     agent_cost_unit: Callable[[AgentAmountUnit], None]
     agent_price: Callable[[str, AgentPrice | None], None]
+    adjustment_start: Callable[[RunId], None]
+    setting: Callable[[RunId, ControlInput, float], None]
+    preview: Callable[[RunId, ControlInput, float], None]
+    preview_end: Callable[[RunId], None]
 
 
 @dataclass(frozen=True, slots=True)
@@ -226,22 +234,26 @@ class PreferencesInForce:
 
 @dataclass(frozen=True, slots=True)
 class ViewTick:
-    """What one View is shown on one frame.
+    """What one View is shown on one tick, whether or not a frame was drawn for it.
 
     Attributes:
         frame: The chart frame assembled for the window this View asked for
             through `View.frame_request`, over every displayed run. None for
-            a View that asked for none.
+            a View that asked for none, and for every View on a tick that no
+            frame was drawn for.
         snapshots: Each displayed run's snapshot, in drawing order. Every
-            frame of the tick was assembled from these same snapshots.
-        runs: Each displayed run's surfaces, in the same order.
+            frame of the tick was assembled from these same snapshots. Empty
+            on a tick that no frame was drawn for.
+        runs: What each displayed run's panel shows on this tick, in drawing
+            order. On a tick with a frame, each was built from that run's
+            snapshot in `snapshots`.
         selection: The compartment selection every frame was assembled from.
         preferences: The reader's preferences, and any notice about them.
     """
 
     frame: ChartFrame | None
     snapshots: tuple[SimulationSnapshot, ...]
-    runs: tuple[RunSurfaces, ...]
+    runs: tuple[RunPresentation, ...]
     selection: CompartmentSelection
     preferences: PreferencesInForce
 
@@ -255,12 +267,16 @@ class View(Protocol):
     """
 
     def refresh(self, tick: ViewTick) -> None:
-        """Draw `tick`. The adapter calls this method on every frame the dashboard draws.
+        """Draw `tick`.
+
+        The adapter calls this method on every frame the dashboard draws. It
+        also calls it with a tick that carries no frame, when the dashboard
+        shows the runs without drawing one.
 
         Raises:
-            Exception: Whatever drawing the frame raises. The dashboard then
-                halts every run, because a failure in the shared drawing path
-                belongs to no single run.
+            Exception: Whatever drawing the tick raises. On a tick with a
+                frame, the dashboard then halts every run, because a failure
+                in the shared drawing path belongs to no single run.
         """
         ...
 
@@ -268,10 +284,10 @@ class View(Protocol):
     def owes_a_frame(self) -> bool:
         """Whether this View needs a frame although nothing in the runs changed.
 
-        It is True before the View's first frame. It is also True for a chart
-        that is now wider than the width its last frame was sampled for
-        (`PL-9LNF`), and for a chart whose window has changed since it last
-        drew (`PL-L59K`).
+        It is True before the View's first tick, or for a chart before its
+        first frame. It is also True for a chart that is now wider than the
+        width its last frame was sampled for (`PL-9LNF`), and for a chart
+        whose window has changed since it last drew (`PL-L59K`).
         """
         ...
 

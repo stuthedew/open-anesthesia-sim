@@ -32,24 +32,24 @@ __all__ = ["RunAgentCost"]
 
 
 class RunAgentCost(QWidget):
-    """One copy of a run's agent cost panel, showing its instant, the delivered amount and its cost.
+    """One run's agent cost panel, showing its instant, the delivered amount and its cost.
 
-    The panel is one of the run's surfaces, the parts of a run that a reader
-    may place in an Area. `RunView.build_agent_cost` builds each copy. The run
-    updates every live copy at the same moments as its readouts, from the same
-    snapshot. It withholds the copies whenever it withholds the readouts, and
-    it names them whenever it names its own panels (`app/run_surfaces.py`,
-    `PL-9LNF`). The View that holds the copy gives it the reader's
-    preferences on every frame. So every copy shows the same unit, and prices
-    the run at the reader's price for the run's own agent. Each update
-    recomputes the cost from the snapshot and from the preferences that the
-    copy holds at that moment. So no cost from an earlier instant, agent or
-    price stays on screen.
+    The agent cost View builds one for each displayed run, and writes it on
+    every tick from that run's `RunPresentation` and the reader's preferences
+    (`app/views.py`, `app/run_presentation.py`). The presentation holds the
+    delivered agent, the run's name and the run's readouts together. So the
+    panel shows the same step as the readouts, and it is withheld whenever
+    they are (`PL-B396`, `PL-RF2S`). Every agent cost View is given the same
+    preferences, so every panel shows the same unit, and prices the run at
+    the reader's price for the run's own agent. Each write recomputes the
+    cost from the delivered agent and the preferences that the panel holds
+    at that moment. So no cost from an earlier instant, agent or price stays
+    on screen.
 
     Args:
-        shown: What the copies built earlier already show.
+        shown: The delivered agent to show first.
         name: The run's name while runs are compared, or None.
-        parent: The run's view, so that the copy is deleted with its run.
+        parent: The Qt parent.
     """
 
     def __init__(

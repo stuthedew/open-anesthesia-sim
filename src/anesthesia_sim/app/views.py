@@ -21,22 +21,27 @@ hands it on every frame (`PL-TH35`).
   liquid equivalent or litres of vapour, as the reader's preferences say
   (`PL-B396`).
 
-A View that shows a run's own surfaces asks the run for a copy of each, and
-the run updates every copy it has built (`app/run_surfaces.py`, `PL-9LNF`). So
-two Views of one kind show the same values, and closing one View takes nothing
-with it.
+A View that shows a run's values builds its own widget for each displayed run.
+On every tick it writes each widget whole from that run's `RunPresentation`
+(`app/run_presentation.py`, `PL-RF2S`). A tick names every displayed run, on a
+drawn frame and on a halt alike. So two Views of one kind show the same
+values, a View chosen while no frame can be drawn still shows the runs, and
+closing a View takes nothing with it. A widget belongs to the run whose
+`run_id` its presentation carries, and it is deleted on the first tick that no
+longer names that run.
 
 Each chart View holds its own time window, set from its own control and
 saved in its state (project owner, 2026-10-19, `PL-L59K`). So a chart writes
 the lines that depend on its window, such as which traces are above the axis,
-from its own frame. It writes one line per run, rather than showing a copy
-from the run.
+from its own frame, one line per run. A tick with no frame gives a chart
+nothing to draw. The chart then leaves its plot, legend and captions as they
+are, and only deletes the lines of the runs that the tick no longer names.
 
 These classes compute nothing that a reader interprets. Every caption comes
 from `app/dashboard_frame.py`, or for the schematic from
 `app/compartment_schematic.py`, or for the agent cost View from
-`app/agent_cost.py`. Every drawn value comes from the frame or from
-a copy of a run surface that the run writes.
+`app/agent_cost.py`. Every drawn value comes from the tick's frame or from
+one of the tick's presentations.
 """
 
 from __future__ import annotations
@@ -46,7 +51,7 @@ from functools import partial
 from types import MappingProxyType
 from typing import Final, cast
 
-from PySide6.QtCore import QObject, Qt
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from anesthesia_sim.app.agent_cost import AGENT_COST_HEADING, UNIT_CHOICE_LABEL, UNIT_CHOICES
@@ -54,13 +59,17 @@ from anesthesia_sim.app.chart_frame import ChartFrame
 from anesthesia_sim.app.chart_time_base import ChartTimeBase, saved_time_base, saved_time_base_value
 from anesthesia_sim.app.compartment_schematic import SCHEMATIC_HEADING
 from anesthesia_sim.app.dashboard_frame import (
+    ACCOUNTING_HEADING,
     CHART_HEADING,
     INTERPRETATION_DISCLAIMER_TEXT,
     NO_TRACES_SHOWN_TEXT,
+    SETTING_CONTROLS_NOT_SHOWN_TEXT,
     TIME_BASE_LABEL,
     WASH_IN_DENOMINATOR_TEXT,
     WASH_IN_HEADING,
     WASH_IN_MODELLED_TEXT,
+    SettingReadout,
+    compared_panel_heading,
     compartment_cap_notice,
     mac_awake_caption,
     mac_reference_caption,
@@ -71,6 +80,7 @@ from anesthesia_sim.app.dashboard_frame import (
     wash_in_state_lines,
 )
 from anesthesia_sim.app.formatting import AgentAmountUnit
+from anesthesia_sim.app.preferences import Preferences
 from anesthesia_sim.app.qt_agent_cost import RunAgentCost
 from anesthesia_sim.app.qt_agent_price import PriceEntry
 from anesthesia_sim.app.qt_chart import (
@@ -82,6 +92,8 @@ from anesthesia_sim.app.qt_chart import (
 )
 from anesthesia_sim.app.qt_schematic import RunSchematic
 from anesthesia_sim.app.qt_widgets import FocusedComboBox, styled_label
+from anesthesia_sim.app.run_presentation import NotBuilt, RunPresentation
+from anesthesia_sim.app.run_surfaces import AccountingPanel, ParameterControls
 from anesthesia_sim.app.stylesheets import panel_stylesheet, selector_stylesheet
 from anesthesia_sim.app.theme import (
     INK,
@@ -97,12 +109,13 @@ from anesthesia_sim.app.view_contract import (
     STATE_VERSION_KEY,
     UNREADABLE_STATE_TEXT,
     FrameRequest,
-    RunSurfaces,
     SavedState,
     ViewContext,
+    ViewRequests,
     ViewTick,
     unreadable_state_text,
 )
+from anesthesia_sim.layout.run_identity import RunId
 
 __all__ = [
     "AccountingView",
@@ -136,104 +149,113 @@ _SCHEMATIC_VIEW_NAME: Final = "compartmentSchematicView"
 _AGENT_COST_VIEW_NAME: Final = "agentCostView"
 
 
-class _RunCopies[W: QWidget]:
-    """One copy of a run surface per displayed run, in drawing order, in a column of their own.
+class _RunWidgets[W: QWidget]:
+    """One widget per displayed run, in drawing order, in a column of their own.
 
     A View calls `follow` with each tick's runs. A run still displayed keeps
-    its copy, a new run gets one built, and the copy of a run no longer
-    displayed is deleted. So a branch taken or removed changes only its own
-    copy, and a slider being dragged in another run's copy is not rebuilt
-    under the pointer.
+    its widget, a new run gets one built, and the widget of a run no longer
+    displayed is deleted. A run's widget is found by the run's `run_id`. So a
+    branch taken or removed changes only its own widget, and a slider being
+    dragged in another run's widget is not rebuilt under the pointer.
 
-    A copy is also deleted when its run is. A run removed while frames are
-    failing never reaches `follow` again, and its copy would otherwise go on
-    showing that run's last values beside the runs still displayed.
+    Args:
+        build: Builds the widget for a run that has none, from the run's
+            presentation in the tick that first names it.
+        spacing: The gap between two runs' widgets, in pixels.
     """
 
-    def __init__(self, build: Callable[[RunSurfaces], W], spacing: int) -> None:
+    def __init__(self, build: Callable[[RunPresentation], W], spacing: int) -> None:
         self._build = build
         self.holder = QWidget()
         self._column = QVBoxLayout(self.holder)
         self._column.setContentsMargins(0, 0, 0, 0)
         self._column.setSpacing(spacing)
-        self._copies: list[tuple[RunSurfaces, W]] = []
+        self._widgets: list[tuple[RunId, W]] = []
 
     @property
-    def copies(self) -> tuple[W, ...]:
-        """The copies shown now, one per displayed run, in drawing order."""
+    def widgets(self) -> tuple[W, ...]:
+        """The widgets shown now, one per displayed run, in drawing order."""
 
-        return tuple(copy for _, copy in self._copies)
+        return tuple(widget for _, widget in self._widgets)
 
-    def follow(self, runs: tuple[RunSurfaces, ...]) -> None:
-        """Show one copy for each of `runs`, in their order."""
+    def follow(self, runs: tuple[RunPresentation, ...]) -> None:
+        """Show one widget for each of `runs`, in their order."""
 
-        held = [run for run, _ in self._copies]
-
-        if len(held) == len(runs) and all(a is b for a, b in zip(held, runs, strict=True)):
+        if [run_id for run_id, _ in self._widgets] == [run.run_id for run in runs]:
             return
 
-        kept: list[tuple[RunSurfaces, W]] = []
+        kept: list[tuple[RunId, W]] = []
 
         for run in runs:
-            copy = next((copy for owner, copy in self._copies if owner is run), None)
-            kept.append((run, self._built_for(run) if copy is None else copy))
+            held = next((widget for owner, widget in self._widgets if owner == run.run_id), None)
+            kept.append((run.run_id, self._built_for(run) if held is None else held))
 
-        for _, copy in self._copies:
-            self._column.removeWidget(copy)
+        for _, widget in self._widgets:
+            self._column.removeWidget(widget)
 
-            if not any(copy is still for _, still in kept):
-                copy.hide()
-                copy.deleteLater()
+            if not any(widget is still for _, still in kept):
+                widget.hide()
+                widget.deleteLater()
 
-        for _, copy in kept:
-            self._column.addWidget(copy)
-            copy.show()
+        for _, widget in kept:
+            self._column.addWidget(widget)
+            widget.show()
 
-        self._copies = kept
+        self._widgets = kept
 
-    def _built_for(self, run: RunSurfaces) -> W:
-        """Build a new copy for `run`, deleted with the run and forgotten once Qt destroys it."""
+    def drop_absent(self, runs: tuple[RunPresentation, ...]) -> None:
+        """Delete the widget of each run that `runs` does not name, and change nothing else."""
 
-        copy = self._build(run)
+        named = {run.run_id for run in runs}
 
-        if isinstance(run, QObject):
-            run.destroyed.connect(copy.deleteLater)
+        for run_id, widget in self._widgets:
+            if run_id not in named:
+                self._column.removeWidget(widget)
+                widget.hide()
+                widget.deleteLater()
 
-        copy.destroyed.connect(partial(self._forget, copy))
+        self._widgets = [(run_id, widget) for run_id, widget in self._widgets if run_id in named]
 
-        return copy
+    def _built_for(self, run: RunPresentation) -> W:
+        """Build a new widget for `run`, forgotten once Qt destroys it."""
 
-    def _forget(self, copy: W, *_destroyed: object) -> None:
-        self._copies = [(run, kept) for run, kept in self._copies if kept is not copy]
+        widget = self._build(run)
+        widget.destroyed.connect(partial(self._forget, widget))
+
+        return widget
+
+    def _forget(self, widget: W, *_destroyed: object) -> None:
+        self._widgets = [(run_id, kept) for run_id, kept in self._widgets if kept is not widget]
 
 
 class _RunLines:
     """One conditional line per displayed run, written from a chart's own frame.
 
     These are the lines that a chart writes from its frame, such as which
-    traces are above the axis. `show` takes the tick's runs and one entry for
-    each run, and an entry of None hides that run's line. Each line is a copy
-    held by `_RunCopies`, so it is deleted with its run, even while no frame
-    can be drawn. So a dropped run's line never stays beside the runs still
-    displayed.
+    traces are above the axis. `show` takes a frame's runs and one entry for
+    each run, and an entry of None hides that run's line. `drop_absent` takes
+    the runs of a tick that has no frame. It deletes the line of each run
+    that the tick does not name, and it leaves every other line as the last
+    frame wrote it. So a dropped run's line never stays beside the runs still
+    displayed, even while no frame can be drawn.
     """
 
     def __init__(self, color: str, *, italic: bool) -> None:
-        self._copies = _RunCopies(
+        self._lines = _RunWidgets(
             lambda _run: styled_label(
                 "", color=color, size_px=METRIC_QUALIFIER_SIZE, italic=italic, wrap=True
             ),
             VIEW_ROW_SPACING,
         )
-        self.holder = self._copies.holder
+        self.holder = self._lines.holder
 
     @property
     def lines(self) -> tuple[QLabel, ...]:
         """The line shown for each displayed run, in drawing order."""
 
-        return self._copies.copies
+        return self._lines.widgets
 
-    def show(self, runs: tuple[RunSurfaces, ...], texts: Sequence[str | None]) -> None:
+    def show(self, runs: tuple[RunPresentation, ...], texts: Sequence[str | None]) -> None:
         """Write one line for each of `runs`, hiding each line whose entry is None.
 
         Raises:
@@ -243,11 +265,16 @@ class _RunLines:
         if len(texts) != len(runs):
             raise ValueError(f"{len(texts)} line(s) were given for {len(runs)} run(s)")
 
-        self._copies.follow(runs)
+        self._lines.follow(runs)
 
-        for line, text in zip(self._copies.copies, texts, strict=True):
+        for line, text in zip(self._lines.widgets, texts, strict=True):
             line.setText(text or "")
             line.setHidden(text is None)
+
+    def drop_absent(self, runs: tuple[RunPresentation, ...]) -> None:
+        """Delete the line of each run that `runs` does not name."""
+
+        self._lines.drop_absent(runs)
 
 
 def _read_time_base(saved: object) -> tuple[ChartTimeBase | None, str | None]:
@@ -472,12 +499,18 @@ class ConcentrationView(QWidget):
         the reference run, because the frame carries the band's edges and not
         the published fraction that they were drawn from.
 
-        Raises:
-            ValueError: If the tick carries no frame. This View always asks
-                for one.
+        A tick with no frame draws nothing, and the View still owes its first
+        frame after one. The lines of the runs that the tick no longer names
+        are deleted, and everything else stays as the last frame wrote it.
         """
 
-        frame = _frame_of(tick)
+        frame = tick.frame
+
+        if frame is None:
+            self.off_scale.drop_absent(tick.runs)
+            self.unmarked_changes.drop_absent(tick.runs)
+            return
+
         self.chart.draw(frame)
         self._drawn = True
         self._window.drew(frame)
@@ -557,12 +590,18 @@ class WashInView(QWidget):
     def refresh(self, tick: ViewTick) -> None:
         """Draw the tick's frame, then write the legend, the control and the lines from it.
 
-        Raises:
-            ValueError: If the tick carries no frame. This View always asks
-                for one.
+        A tick with no frame draws nothing, and the View still owes its first
+        frame after one. The lines of the runs that the tick no longer names
+        are deleted, and everything else stays as the last frame wrote it.
         """
 
-        frame = _frame_of(tick)
+        frame = tick.frame
+
+        if frame is None:
+            self.states.drop_absent(tick.runs)
+            self.unmarked_changes.drop_absent(tick.runs)
+            return
+
         self.chart.draw(frame)
         self._drawn = True
         self._window.drew(frame)
@@ -585,45 +624,42 @@ class WashInView(QWidget):
         return self.chart.axis_titles()
 
 
-def _frame_of(tick: ViewTick) -> ChartFrame:
-    """Return the frame that a chart View asked for. Every tick handed to the View carries it.
+class _RunPanelsView[W: QWidget](QWidget):
+    """A View that shows one widget per displayed run, one above the next, with no frame.
 
-    Raises:
-        ValueError: If the tick carries no frame. The adapter hands a frame
-            to every View that asks for one, so a tick without one means
-            the adapter and the View disagree.
+    Each tick, with a frame or without one, shows one widget for each run
+    that the tick names and writes each widget whole from that run's
+    presentation. The View counts as drawn after either kind of tick.
+
+    Args:
+        context: What the View is built from.
+        build: Builds one run's widget from the run's presentation.
     """
 
-    if tick.frame is None:
-        raise ValueError("a chart View was handed a tick without the frame it asked for")
-
-    return tick.frame
-
-
-class _RunSurfaceView(QWidget):
-    """A View that shows one copy of a run surface per displayed run, one above the next."""
-
-    def __init__(self, context: ViewContext, build: Callable[[RunSurfaces], QWidget]) -> None:
+    def __init__(self, context: ViewContext, build: Callable[[RunPresentation], W]) -> None:
         super().__init__()
         self._drawn = False
         self.state_notice = _state_notice_for(context)
-        self._copies = _RunCopies(build, PAGE_SPACING)
+        self._run_widgets = _RunWidgets(build, PAGE_SPACING)
         column = _bare_column(self)
         column.addWidget(self.state_notice)
-        column.addWidget(self._copies.holder)
+        column.addWidget(self._run_widgets.holder)
         column.addStretch(1)
 
-    @property
-    def copies(self) -> tuple[QWidget, ...]:
-        """The copy shown for each displayed run, in drawing order."""
-
-        return self._copies.copies
-
     def refresh(self, tick: ViewTick) -> None:
-        """Show one copy for each run in the tick. The runs write the copies' values."""
+        """Show one widget for each run in the tick, and write each from its run's presentation."""
 
-        self._copies.follow(tick.runs)
+        self._run_widgets.follow(tick.runs)
+
+        for widget, run in zip(self._run_widgets.widgets, tick.runs, strict=True):
+            self._write(widget, run)
+
         self._drawn = True
+
+    def _write(self, widget: W, run: RunPresentation) -> None:
+        """Write one run's widget whole from the run's presentation."""
+
+        raise NotImplementedError
 
     @property
     def owes_a_frame(self) -> bool:
@@ -639,29 +675,141 @@ class _RunSurfaceView(QWidget):
         return ()
 
 
-class AccountingView(_RunSurfaceView):
+def _accounting_heading(run: RunPresentation) -> str:
+    """Return the accounting panel's heading for `run`, naming the run while runs are compared."""
+
+    return compared_panel_heading(ACCOUNTING_HEADING, run.name)
+
+
+class AccountingView(_RunPanelsView[AccountingPanel]):
     """Every displayed run's mass-balance panel, one above the next.
 
+    Each panel is written from its run's presentation on every tick: the
+    accounting from `RunValues.accounting`, and the heading from the run's
+    name. So the panel shows the same step as the run's readouts, and it
+    withholds its verdict and amounts whenever the readouts are withheld.
+
     Args:
         context: What the View is built from.
     """
 
     def __init__(self, context: ViewContext) -> None:
-        super().__init__(context, lambda run: run.build_accounting_panel())
+        super().__init__(
+            context, lambda run: AccountingPanel(run.values.accounting, _accounting_heading(run))
+        )
+
+    @property
+    def panels(self) -> tuple[AccountingPanel, ...]:
+        """The panel shown for each displayed run, in drawing order."""
+
+        return self._run_widgets.widgets
+
+    def _write(self, widget: AccountingPanel, run: RunPresentation) -> None:
+        widget.show_heading(_accounting_heading(run))
+        widget.show_accounting(run.values.accounting)
 
 
-class ParameterControlsView(_RunSurfaceView):
+class RunDials(QWidget):
+    """One run's place in the setting controls View: its four dials, or a line in their place.
+
+    The dials are written from `RunPresentation.dials`, the run's settings in
+    force. Where those cannot be built (`run_presentation.NotBuilt`), the
+    dials are deleted and one line says that the run's setting controls
+    cannot be shown. A hidden dial would still hold the setting of the run
+    before a Reset or an agent change, so no dial is kept (`PL-SV2Q`). The
+    dials are built again on the first tick whose presentation holds them.
+
+    A moved dial asks the dashboard for the change through the View's
+    requests, naming this run by its `run_id`.
+
+    Args:
+        run_id: The run whose settings the dials show and ask to change.
+        requests: How the View asks the dashboard for a change.
+
+    Attributes:
+        controls: The four dials, or None while they cannot be shown.
+        not_shown_text: The line shown in the dials' place.
+    """
+
+    def __init__(self, run_id: RunId, requests: ViewRequests) -> None:
+        super().__init__()
+        self._run_id = run_id
+        self._requests = requests
+        self.controls: ParameterControls | None = None
+        self.not_shown_text = styled_label(
+            SETTING_CONTROLS_NOT_SHOWN_TEXT,
+            color=MUTED,
+            size_px=METRIC_QUALIFIER_SIZE,
+            italic=True,
+            wrap=True,
+        )
+        self.not_shown_text.setHidden(True)
+        self._column = QVBoxLayout(self)
+        self._column.setContentsMargins(0, 0, 0, 0)
+        self._column.addWidget(self.not_shown_text)
+
+    def show_dials(self, dials: tuple[SettingReadout, ...] | NotBuilt) -> None:
+        """Write the four dials from `dials`, or delete them and show the line in their place."""
+
+        if isinstance(dials, NotBuilt):
+            if self.controls is not None:
+                self._column.removeWidget(self.controls)
+                self.controls.setParent(None)
+                self.controls.deleteLater()
+                self.controls = None
+
+            self.not_shown_text.setHidden(False)
+
+            return
+
+        if self.controls is None:
+            self.controls = self._built(dials)
+            self._column.addWidget(self.controls)
+            # Qt shows a widget added to a visible parent only on a later pass
+            # of the event loop. The Area reads what this row needs before
+            # then, so the dials are shown now.
+            self.controls.show()
+        else:
+            self.controls.show_settings(dials)
+
+        self.not_shown_text.setHidden(True)
+
+    def _built(self, dials: tuple[SettingReadout, ...]) -> ParameterControls:
+        """Build the four dials showing `dials`, each asking for a change to this run."""
+
+        controls = ParameterControls(dials)
+        controls.adjustment_started.connect(partial(self._requests.adjustment_start, self._run_id))
+        controls.setting_requested.connect(partial(self._requests.setting, self._run_id))
+        controls.preview_requested.connect(partial(self._requests.preview, self._run_id))
+        controls.preview_ended.connect(partial(self._requests.preview_end, self._run_id))
+
+        return controls
+
+
+class ParameterControlsView(_RunPanelsView[RunDials]):
     """Every displayed run's setting controls, one row of four per run.
 
-    Moving a slider here changes that run's setting. The run then shows the
-    setting in force on every copy of this View, in whichever Areas show it.
+    Moving a slider here asks the dashboard to change that run's setting.
+    The next tick then shows the setting in force on every setting controls
+    View, in whichever Areas show one. A run whose setting controls cannot
+    be built has one line in place of its row (`RunDials`).
 
     Args:
         context: What the View is built from.
     """
 
     def __init__(self, context: ViewContext) -> None:
-        super().__init__(context, lambda run: run.build_parameter_controls())
+        requests = context.requests
+        super().__init__(context, lambda run: RunDials(run.run_id, requests))
+
+    @property
+    def rows(self) -> tuple[RunDials, ...]:
+        """Each displayed run's dials, or the line in their place, in drawing order."""
+
+        return self._run_widgets.widgets
+
+    def _write(self, widget: RunDials, run: RunPresentation) -> None:
+        widget.show_dials(run.dials)
 
 
 class CompartmentSchematicView(QWidget):
@@ -670,10 +818,11 @@ class CompartmentSchematicView(QWidget):
     Each schematic draws the circuit, the alveoli, venous blood and the three
     tissue groups as containers. Each container is filled to its tension on
     the concentration chart's scale, and labelled with its name, its tension
-    and its amount of agent vapour. Each schematic is a copy of a run surface.
-    So the run writes it at the same moments as its readouts, from the same
-    snapshot, and withholds it whenever it withholds them
-    (`RunView.build_compartment_schematic`). The View asks for no chart frame.
+    and its amount of agent vapour. Each schematic is written from its run's
+    presentation on every tick: the drawing from `RunValues.schematic`, and
+    the name from the run's name. That presentation also holds the run's
+    readouts. So the schematic shows the same step as the readouts, and it
+    is withheld whenever they are. The View asks for no chart frame.
     The statement that its values are model outputs, not measurements, appears
     once, in the View's heading, because every value the View shows is a model
     output.
@@ -686,7 +835,9 @@ class CompartmentSchematicView(QWidget):
         super().__init__()
         self._drawn = False
         self.state_notice = _state_notice_for(context)
-        self._copies = _RunCopies(lambda run: run.build_compartment_schematic(), PAGE_SPACING)
+        self._schematics = _RunWidgets(
+            lambda run: RunSchematic(run.values.schematic, run.name), PAGE_SPACING
+        )
         column = _panel_column(self, _SCHEMATIC_VIEW_NAME)
         heading = QHBoxLayout()
         heading.setSpacing(VIEW_HEADING_SPACING)
@@ -694,19 +845,28 @@ class CompartmentSchematicView(QWidget):
         heading.addWidget(styled_label(INTERPRETATION_DISCLAIMER_TEXT, color=MUTED))
         column.addWidget(self.state_notice)
         column.addLayout(heading)
-        column.addWidget(self._copies.holder)
+        column.addWidget(self._schematics.holder)
         column.addStretch(1)
 
     @property
     def schematics(self) -> tuple[RunSchematic, ...]:
         """The schematic shown for each displayed run, in drawing order."""
 
-        return self._copies.copies
+        return self._schematics.widgets
 
     def refresh(self, tick: ViewTick) -> None:
-        """Show one schematic for each run in the tick. The runs write the schematics' values."""
+        """Show one schematic for each run in the tick, written from that run's presentation.
 
-        self._copies.follow(tick.runs)
+        A tick with no frame is drawn as a tick with one is, and the View
+        counts as drawn after either.
+        """
+
+        self._schematics.follow(tick.runs)
+
+        for schematic, run in zip(self._schematics.widgets, tick.runs, strict=True):
+            schematic.show_name(run.name)
+            schematic.show_schematic(run.values.schematic)
+
         self._drawn = True
 
     @property
@@ -721,7 +881,9 @@ class CompartmentSchematicView(QWidget):
 
     def painted_strings(self) -> tuple[str, ...]:
         return tuple(
-            text for schematic in self._copies.copies for text in schematic.canvas.painted_strings()
+            text
+            for schematic in self._schematics.widgets
+            for text in schematic.canvas.painted_strings()
         )
 
 
@@ -736,9 +898,12 @@ class AgentCostView(QWidget):
     through `ViewRequests.agent_cost_unit`. Every agent cost View shows the
     same unit, and the choice survives a restart (`app/preferences.py`).
 
-    Each run's panel is a copy of a run surface (`RunView.build_agent_cost`).
-    The run updates and withholds the panel together with its readouts. The
-    View asks for no chart frame. The heading says that the values are model
+    Each run's panel is written from its run's presentation on every tick:
+    the delivered agent from `RunValues.delivered`, the name from the run's
+    name, and the unit and prices from the tick's preferences. That
+    presentation also holds the run's readouts. So the panel shows the same
+    step as the readouts, and it is withheld whenever they are. The View
+    asks for no chart frame. The heading says that the values are model
     outputs, not measurements. Under it, a notice tells the reader when a
     preference was refused or will not be kept (`PL-B396`).
 
@@ -747,8 +912,10 @@ class AgentCostView(QWidget):
     multiplied to give it, and where the price came from (`PL-1P15`). Under
     the panels, a form lets the reader set or remove that price. The form
     sends the request to the dashboard through `ViewRequests.agent_price`.
-    The project ships no price, so until the reader sets one, each panel says
-    that no cost is shown and why.
+    The form starts on the first displayed run's agent, which it reads from
+    that run's presentation. So a form opened while no frame can be drawn
+    names the agent that the run holds. The project ships no price, so until
+    the reader sets one, each panel says that no cost is shown and why.
 
     Args:
         context: What the View is built from.
@@ -759,7 +926,9 @@ class AgentCostView(QWidget):
         self._drawn = False
         self._requests = context.requests
         self.state_notice = _state_notice_for(context)
-        self._copies = _RunCopies(lambda run: run.build_agent_cost(), PAGE_SPACING)
+        self._panels = _RunWidgets(
+            lambda run: RunAgentCost(run.values.delivered, run.name), PAGE_SPACING
+        )
         # The unit the panels were last drawn in, or None before the first tick.
         self._drawn_unit: AgentAmountUnit | None = None
         self.unit_selector = FocusedComboBox()
@@ -794,7 +963,7 @@ class AgentCostView(QWidget):
         column.addLayout(heading)
         column.addLayout(choice)
         column.addWidget(self.preferences_notice)
-        column.addWidget(self._copies.holder)
+        column.addWidget(self._panels.holder)
         self.price_entry = PriceEntry(context.requests.agent_price)
         column.addWidget(self.price_entry)
         column.addStretch(1)
@@ -803,25 +972,32 @@ class AgentCostView(QWidget):
     def panels(self) -> tuple[RunAgentCost, ...]:
         """The panel shown for each displayed run, in drawing order."""
 
-        return self._copies.copies
+        return self._panels.widgets
 
     def refresh(self, tick: ViewTick) -> None:
         """Show one panel for each run in the tick, in the unit the tick's preferences hold.
+
+        Each panel is written from its run's presentation and the tick's
+        preferences. A tick with no frame is drawn as a tick with one is,
+        and the View counts as drawn after either.
 
         Raises:
             ValueError: If the preferences hold a unit that the selector does
                 not offer. The two read the same list, so that is a defect.
         """
 
-        self._copies.follow(tick.runs)
-        unit = tick.preferences.preferences.agent_cost_unit
+        self._panels.follow(tick.runs)
+        preferences: Preferences = tick.preferences.preferences
+        unit = preferences.agent_cost_unit
         index = self.unit_selector.findData(unit)
 
         if index < 0:
             raise ValueError(f"the agent cost View does not offer {unit.value}")
 
-        for panel in self._copies.copies:
-            panel.show_preferences(tick.preferences.preferences)
+        for panel, run in zip(self._panels.widgets, tick.runs, strict=True):
+            panel.show_name(run.name)
+            panel.show_delivered(run.values.delivered)
+            panel.show_preferences(preferences)
 
         self.unit_selector.setCurrentIndex(index)
         self.unit_label.setHidden(False)
@@ -829,7 +1005,7 @@ class AgentCostView(QWidget):
         self._drawn_unit = unit
 
         self.price_entry.show_prices(
-            tick.preferences.preferences, tick.snapshots[0].agent_id if tick.snapshots else None
+            preferences, tick.runs[0].statement.agent_id if tick.runs else None
         )
         notice = tick.preferences.notice
         self.preferences_notice.setText(notice or "")
@@ -853,8 +1029,9 @@ class AgentCostView(QWidget):
         """Ask for the unit the reader picked. The next tick shows it on every agent cost View.
 
         The selector is first put back to the unit the panels were drawn in.
-        Only a tick that draws the panels moves it. So while every frame fails,
-        the selector never names a unit that no value on screen is shown in.
+        Only a tick that draws the panels moves it. So where no tick follows
+        the pick, the selector never names a unit that no value on screen is
+        shown in.
         """
 
         if self._drawn_unit is not None:

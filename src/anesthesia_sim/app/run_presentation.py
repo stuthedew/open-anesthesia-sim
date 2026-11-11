@@ -42,6 +42,7 @@ from anesthesia_sim.app.controller import RunRecord, SimulationSnapshot
 from anesthesia_sim.app.dashboard_frame import (
     READOUT_PANELS,
     WITHHELD_ACCOUNTING,
+    WITHHELD_DELIVERED_LINE_TEXT,
     Accounting,
     NewCaseQuestion,
     Readout,
@@ -194,7 +195,8 @@ class RunPresentation:
         dials: The four setting controls, or why they or the delivered line
             could not be built.
         delivered_line: The delivered concentration's line beside the 1 MAC
-            line, or None when `dials` holds no controls.
+            line. When `dials` holds no controls, the line withholds both of
+            its values and keeps their units (`PL-SV2Q`).
         new_case: The open new-case question, restated for the snapshot this
             presentation was drawn from. It is None when no such question is
             open, and on a halt. A halted run does not step, so the figures
@@ -211,7 +213,7 @@ class RunPresentation:
     standing: ValuesStanding
     values: RunValues
     dials: tuple[SettingReadout, ...] | NotBuilt
-    delivered_line: str | None
+    delivered_line: str
     new_case: NewCaseQuestion | None
 
 
@@ -395,7 +397,8 @@ def _presentation(
 
     An exception raised while building the dials, the delivered line or
     the 1 MAC line is returned in that part. So a halt whose record refuses
-    one of them is still stated.
+    one of them is still stated. The delivered line is then the withheld
+    one, so that no earlier run's setting stays on screen (`PL-SV2Q`).
     """
 
     statement = run_statement(
@@ -407,7 +410,6 @@ def _presentation(
         stopped_on_mark=stopped_on_mark,
     )
     dials: tuple[SettingReadout, ...] | NotBuilt
-    line: str | None
     one_mac: str | NotBuilt
 
     try:
@@ -415,7 +417,7 @@ def _presentation(
         line = _delivered_line(dials)
     except Exception as error:
         dials = NotBuilt(error)
-        line = None
+        line = WITHHELD_DELIVERED_LINE_TEXT
 
     try:
         one_mac = format_mac_reference(record.agent_display_name, record.agent_mac_percent)

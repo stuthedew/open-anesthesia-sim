@@ -146,6 +146,7 @@ from anesthesia_sim.app.chart_time_base import ChartTimeBase
 from anesthesia_sim.app.compartment_selection import CompartmentSelection
 from anesthesia_sim.app.controller import SimulationSnapshot
 from anesthesia_sim.app.qt_widgets import styled_label
+from anesthesia_sim.app.run_presentation import RunPresentation
 from anesthesia_sim.app.stylesheets import (
     foreground_stylesheet,
     menu_stylesheet,
@@ -173,7 +174,6 @@ from anesthesia_sim.app.theme import (
 )
 from anesthesia_sim.app.view_contract import (
     PreferencesInForce,
-    RunSurfaces,
     SavedState,
     View,
     ViewContext,
@@ -515,31 +515,43 @@ class AreaLayout(QWidget):
 
     def refresh(
         self,
-        frames: Mapping[ChartTimeBase | None, ChartFrame],
+        frames: Mapping[ChartTimeBase | None, ChartFrame] | None,
         snapshots: tuple[SimulationSnapshot, ...],
-        runs: tuple[RunSurfaces, ...],
+        runs: tuple[RunPresentation, ...],
         selection: CompartmentSelection,
         preferences: PreferencesInForce,
     ) -> None:
-        """Draw every View, in the reading order of their Areas, each with the frame it asked for.
+        """Hand every View one tick, in the reading order of their Areas.
+
+        With `frames`, each View is handed the frame for the window it asked
+        for. With None, no frame was drawn, and every View is handed a tick
+        that carries no frame and no snapshots.
 
         Args:
             frames: The tick's frames, one for each window that
-                `frame_requests` returned.
+                `frame_requests` returned, or None when no frame was drawn.
             snapshots: As `ViewTick` carries them.
             runs: As `ViewTick` carries them.
             selection: As `ViewTick` carries it.
             preferences: As `ViewTick` carries them.
 
         Raises:
+            ValueError: `frames` is None and `snapshots` is not empty. No
+                View is handed anything.
             KeyError: A View asks for a window that `frames` does not hold.
             Exception: whatever a View raises while drawing. The Views after
-                it are not drawn, and the caller halts every run.
+                it are not drawn. For a tick with a frame, the caller halts
+                every run.
         """
+
+        if frames is None and snapshots:
+            raise ValueError(
+                f"a tick with no frame carries no snapshots, and {len(snapshots)} were given"
+            )
 
         for _, view in tuple(self._views.values()):
             request = view.frame_request()
-            frame = None if request is None else frames[request.time_base]
+            frame = None if request is None or frames is None else frames[request.time_base]
             view.refresh(ViewTick(frame, snapshots, runs, selection, preferences))
 
         self.follow_needs()
@@ -548,11 +560,12 @@ class AreaLayout(QWidget):
         """Settle the Areas again if what was just drawn changed what a View needs.
 
         `refresh` calls this method once the Views have drawn. After `refresh`, a
-        host may write into a widget that a View shows. That host calls this method
-        again once it has written, as the dashboard does for each run's own surfaces.
+        host may write widgets of its own, and those writes can change the room
+        that the Areas have. That host calls this method again once it has
+        written, as the dashboard does after it writes each run's own panel.
 
         A View can build, show or hide widgets while it draws. The setting
-        controls build their per-run copies on their first frame, and a chart
+        controls build each run's dials on their first tick, and a chart
         shows and hides its per-run lines. These changes post layout requests.
         Qt updates a widget's minimum size only when it handles those requests.
         Left alone, Qt would handle them on the next passes of the event loop. So

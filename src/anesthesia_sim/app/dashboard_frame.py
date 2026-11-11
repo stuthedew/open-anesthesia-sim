@@ -1249,6 +1249,17 @@ WITHHELD_MAC_MULTIPLE_TEXT: Final = f"\u2014{MAC_UNIT_SUFFIX}"
 #: of `PL-J5GC`, the clock showed the discarded run's instant beside a run standing
 #: at its opening.
 WITHHELD_ELAPSED_TIME_TEXT: Final = "\u2014"
+#: The delivered line while a run's setting controls cannot be built. Without it,
+#: the line kept the setting of the run before a Reset or an agent change, beside
+#: a 1 MAC line that already named the new agent (`PL-SV2Q`). Each value keeps
+#: its unit, so the line still says which values are missing.
+WITHHELD_DELIVERED_LINE_TEXT: Final = DELIVERED_LINE_TEMPLATE.format(
+    value=WITHHELD_CONCENTRATION_TEXT, secondary=WITHHELD_MAC_MULTIPLE_TEXT
+)
+#: What the setting controls View shows for a run whose setting controls cannot
+#: be built, in place of that run's four dials (`PL-SV2Q`). The wording is a
+#: placeholder.
+SETTING_CONTROLS_NOT_SHOWN_TEXT: Final = "This run's setting controls cannot be shown."
 #: The strings whose width each readout column reserves, in `READOUT_PANELS`
 #: order. The clock column reserves its widest elapsed form and its playback
 #: line. Every compartment column reserves the two strings above. Each column

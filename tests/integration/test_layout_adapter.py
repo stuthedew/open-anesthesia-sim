@@ -93,7 +93,14 @@ _REFRESHED: list[_TestView] = []
 
 # A View asks the dashboard for nothing here.
 _REQUESTS = ViewRequests(
-    lambda: None, lambda _quantity, _shown: None, lambda _unit: None, lambda _agent, _price: None
+    frame=lambda: None,
+    compartment=lambda _quantity, _shown: None,
+    agent_cost_unit=lambda _unit: None,
+    agent_price=lambda _agent, _price: None,
+    adjustment_start=lambda _run: None,
+    setting=lambda _run, _control, _value: None,
+    preview=lambda _run, _control, _value: None,
+    preview_end=lambda _run: None,
 )
 _PREFERENCES = PreferencesInForce(Preferences(), None)
 
@@ -1070,6 +1077,45 @@ def test_a_view_asking_for_a_window_with_no_frame_is_refused(
 
     with pytest.raises(KeyError):
         container.refresh(frames, (snapshot,), (), selection, _PREFERENCES)
+
+
+def test_a_tick_with_no_frame_reaches_every_view_and_carries_no_frame_and_no_snapshots(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """Every View is handed a tick when no frame was drawn, even a View that asks for a frame.
+
+    The dashboard hands such a tick on a halt, when no frame can be
+    assembled (`PL-RF2S`). A View that asks for a window is not refused for
+    want of its frame, as it is on a tick that has frames.
+    """
+
+    model = _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)
+    container = _show_with(application, shown, model)
+    _, _, selection = _frames((None,))
+    _BUILT[1].request = FrameRequest(time_base_for_span(900.0), 300.0)
+
+    container.refresh(None, (), (), selection, _PREFERENCES)
+
+    assert [len(view.ticks) for view in _BUILT] == [1, 1]
+    assert [view.ticks[0].frame for view in _BUILT] == [None, None]
+    assert [view.ticks[0].snapshots for view in _BUILT] == [(), ()]
+    assert all(view.ticks[0].selection is selection for view in _BUILT)
+    assert all(view.ticks[0].preferences is _PREFERENCES for view in _BUILT)
+
+
+def test_a_tick_with_no_frame_is_refused_snapshots(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """A tick with no frame that is given snapshots is refused, and no View is handed anything."""
+
+    model = _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)
+    container = _show_with(application, shown, model)
+    _, snapshot, selection = _frames((None,))
+
+    with pytest.raises(ValueError, match="carries no snapshots, and 1 were given"):
+        container.refresh(None, (snapshot,), (), selection, _PREFERENCES)
+
+    assert [len(view.ticks) for view in _BUILT] == [0, 0]
 
 
 def test_each_window_is_sampled_for_the_widest_view_that_asks_for_it(

@@ -1,24 +1,25 @@
-"""The parts of one run that a reader may place in an Area, any number of times, in PySide6.
+"""The widgets that draw one run's setting controls and its accounting panel, in PySide6.
 
-Four of a run's surfaces sit in an Area rather than in the unconditional
-region, which is the part of the page that is always on screen. Two of them
-are here: the setting controls and the accounting panel (`PL-9LNF`). The
-third, the compartment schematic, is `RunSchematic` in `app/qt_schematic.py`,
-beside the canvas it draws on (`PL-RNYV`). The fourth, the agent cost panel,
-is `RunAgentCost` in `app/qt_agent_cost.py` (`PL-B396`). The
-lines that depend on a chart's time window, such as which traces are above
-the axis, belong to each chart. `app/views.py` writes them from the chart's
-frame (`PL-L59K`). An Area can be split, so two Areas can show the same
-surface of the same run. Each class here is therefore built from nothing but
-the values it draws. It holds no controller and no run state, and a second
-instance of it draws the same values as the first
-(`.claude/rules/ui-areas.md`, rules 1 to 3; `PL-TH35` Q8).
+Four kinds of widget show one run's values in an Area, which a reader can
+split, move and close. Two of them are here: `ParameterControls`, the four
+setting controls, and `AccountingPanel`, the mass-balance panel. The third,
+the compartment schematic, is `RunSchematic` in `app/qt_schematic.py`, beside
+the canvas it draws on (`PL-RNYV`). The fourth, the agent cost panel, is
+`RunAgentCost` in `app/qt_agent_cost.py` (`PL-B396`).
 
-`RunView` keeps the run's state. It also keeps a list of the live copies of
-each kind, which `keep_until_destroyed` maintains. Its `build_*` methods
-return a new instance each time, and its writers write every live instance on
-the list. When a reader moves a control in one copy, that copy forwards the
-value to the run. The next write then shows the value in force on every copy.
+Each of the four is built from nothing but the values it draws. It holds no
+controller and no run state, so two instances given the same values draw the
+same thing (`.claude/rules/ui-areas.md`, rules 1 to 3; `PL-TH35` Q8). The
+Views in `app/views.py` build one for each displayed run, and write it on
+every tick from that run's `RunPresentation` (`app/run_presentation.py`,
+`PL-RF2S`). An Area can be split, so two Views can each hold a widget for the
+same run. Both are written from the same presentation, so they agree. When a
+reader moves a control, the View that holds it asks the dashboard for the
+change, and the next tick shows the setting in force in every View.
+
+The lines that depend on a chart's time window, such as which traces are
+above the axis, belong to each chart. `app/views.py` writes them from the
+chart's frame (`PL-L59K`).
 
 These classes decide nothing and format nothing. Each value they are given is
 already text, from `app/dashboard_frame.py`.
@@ -53,13 +54,7 @@ from anesthesia_sim.app.theme import (
     WARNING,
 )
 
-__all__ = [
-    "AccountingPanel",
-    "ParameterControls",
-    "emphasised",
-    "keep_until_destroyed",
-    "panel_frame",
-]
+__all__ = ["AccountingPanel", "ParameterControls", "emphasised", "panel_frame"]
 
 #: The theme colour each status emphasis is drawn in. `dashboard_frame` names
 #: only the role, so that it declares no colour. This table is the one place
@@ -92,46 +87,19 @@ def emphasised(label: QLabel, word: StatusWord) -> None:
     label.setStyleSheet(foreground_stylesheet(_EMPHASIS_COLOR[word.emphasis]))
 
 
-def keep_until_destroyed[W: QWidget](copies: list[W], copy: W) -> W:
-    """Add a copy that was just built to its list, and drop it when Qt destroys it.
-
-    A writer that loops over `copies` therefore never writes a deleted
-    widget. A copy that nobody places stays on the list until it is
-    destroyed.
-
-    Args:
-        copies: The copies of one kind of surface that Qt has not destroyed,
-            oldest first.
-        copy: The new copy.
-
-    Returns:
-        The same copy, so a builder can return the call.
-    """
-
-    copies.append(copy)
-    copy.destroyed.connect(lambda: _drop(copies, copy))
-
-    return copy
-
-
-def _drop[W: QWidget](copies: list[W], copy: W) -> None:
-    copies[:] = [kept for kept in copies if kept is not copy]
-
-
 class ParameterControls(QWidget):
     """The four setting controls in a row, in `dashboard_frame.PARAMETER_CONTROLS` order.
 
     Each `ParameterSlider` passes its signals up with the control it belongs
-    to, so the run can tell which setting was moved without knowing which
-    copy moved it.
+    to, so the View that holds the row can ask for a change to that setting.
 
     Attributes:
         adjustment_started: Emitted when the reader presses any slider's thumb.
         setting_requested: Emitted with the control and the value a slider
             was moved to. The run applies it or refuses it, and the next
-            `show_settings` writes the value in force on every copy.
+            `show_settings` writes the value in force.
         preview_requested: Emitted with the control and the value where a
-            held thumb stands, so the run can preview it (`PL-5B1N`).
+            held thumb stands, so the charts can preview it (`PL-5B1N`).
         preview_ended: Emitted when a held thumb is released.
     """
 

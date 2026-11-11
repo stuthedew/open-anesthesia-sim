@@ -79,7 +79,6 @@ from anesthesia_sim.app.chart_time_base import (
     ChartTimeBase,
     time_base_for_span,
 )
-from anesthesia_sim.app.compartment_schematic import SchematicShown
 from anesthesia_sim.app.control_record import ControlChange, ControlInput
 from anesthesia_sim.app.control_timeline import ControlAdjustment, group_adjustments
 from anesthesia_sim.app.controller import (
@@ -133,6 +132,7 @@ from anesthesia_sim.app.dashboard_frame import (
     ComparedRuns,
     ForkPoint,
     MarkListing,
+    Readout,
     accounting,
     comparing_fork_lock_text,
     delivered_line,
@@ -178,7 +178,7 @@ from anesthesia_sim.app.run_series import (
     DrawnWindow,
     RecordedQuantity,
 )
-from anesthesia_sim.app.run_surfaces import AccountingPanel
+from anesthesia_sim.app.run_surfaces import AccountingPanel, ParameterControls
 from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import (
@@ -199,14 +199,19 @@ from anesthesia_sim.app.unconditional_set import (
 )
 from anesthesia_sim.app.view_registry import (
     AGENT_ACCOUNTING,
+    AGENT_COST,
+    COMPARTMENT_SCHEMATIC,
     CONCENTRATION_CHART,
     PARAMETER_CONTROLS,
     WASH_IN,
 )
 from anesthesia_sim.app.views import (
     AccountingView,
+    AgentCostView,
+    CompartmentSchematicView,
     ConcentrationView,
     ParameterControlsView,
+    RunDials,
     WashInView,
 )
 from anesthesia_sim.app.wash_in import read_wash_in
@@ -401,6 +406,7 @@ def _shown_view(
     *controllers: SimulationController,
     width_px: int = _WINDOW_WIDTH_PX,
     case: BranchedCase | None = None,
+    workspaces: WorkspaceSet = _EVERY_VIEW,
 ) -> SimulationView:
     """A dashboard over these runs, shown at the fixed size and presented once.
 
@@ -409,7 +415,7 @@ def _shown_view(
     """
 
     _delete_shown_views(application)
-    view = SimulationView(controllers, case=case, workspaces=_EVERY_VIEW)
+    view = SimulationView(controllers, case=case, workspaces=workspaces)
     _SHOWN_VIEWS.append(view)
     view.resize(width_px, _WINDOW_HEIGHT_PX)
     view.show()
@@ -463,33 +469,74 @@ def _middle_of(view: SimulationView) -> tuple[QScrollArea, QWidget]:
     return scroll, middle
 
 
-def _record_panels(run: RunView) -> tuple[QWidget, QWidget]:
-    """The accounting and control-change panels a run placed on the page, in that order.
+def _dashboard_of(run: RunView) -> SimulationView:
+    """The dashboard that holds `run`."""
 
-    The accounting panel is in the sidebar beside the charts, and the
-    control-change panel is in the unconditional region (`PL-NWTM`). Each panel
-    is found through the heading placed in it, not through the build methods.
-    So the tests below measure what the page holds, whatever those methods
-    return. A second call to the method that built both panels used to build
+    dashboard = run.parent()
+    assert isinstance(dashboard, SimulationView), "the run is on no dashboard"
+
+    return dashboard
+
+
+def _setting_controls(view: SimulationView) -> ParameterControlsView:
+    """The setting controls View in the dashboard's first Area that shows one."""
+
+    return next(v for v in view.layout_container.views() if isinstance(v, ParameterControlsView))
+
+
+def _setting_row(run: RunView) -> RunDials:
+    """A run's place in the first setting controls View of the dashboard that holds the run."""
+
+    dashboard = _dashboard_of(run)
+
+    return _setting_controls(dashboard).rows[dashboard.runs.index(run)]
+
+
+def _dials(run: RunView) -> ParameterControls:
+    """A run's four dials, in the first setting controls View of the dashboard that holds the run.
+
+    A run holds no dial of its own. Each setting controls View builds the
+    dials of every displayed run, and writes them from the run's
+    presentation on every tick (`PL-RF2S`).
+    """
+
+    controls = _setting_row(run).controls
+    assert controls is not None, "the View shows no dials for this run"
+
+    return controls
+
+
+def _accounting_panel(run: RunView) -> AccountingPanel:
+    """A run's accounting panel, in the first accounting View of the run's dashboard."""
+
+    dashboard = _dashboard_of(run)
+
+    return _accounting(dashboard).panels[dashboard.runs.index(run)]
+
+
+def _record_panels(run: RunView) -> tuple[QWidget, QWidget]:
+    """The accounting and control-change panels of a run on the page, in that order.
+
+    The accounting panel is in the sidebar beside the charts, where the
+    accounting View builds it. The control-change panel is in the
+    unconditional region (`PL-NWTM`). The control-change panel is found
+    through the heading placed in it, not through the run's build method. So
+    the tests below measure what the page holds, whatever that method
+    returns. A second call to the method that built both panels used to build
     new panels with no parent and move the run's live labels into them
     (`PL-N67T`).
     """
 
-    accounting = run._accounting_panels[0]._accounting_heading_text.parentWidget()
     timeline = run._control_timeline_heading_text.parentWidget()
-    assert accounting is not None and timeline is not None, "a sidebar heading is in no panel"
+    assert timeline is not None, "the control-change heading is in no panel"
 
-    return accounting, timeline
+    return _accounting_panel(run), timeline
 
 
 def _setting_sections(view: SimulationView) -> list[QWidget]:
     """Each run's setting controls, in the first Area that shows the parameter controls."""
 
-    controls = next(
-        v for v in view.layout_container.views() if isinstance(v, ParameterControlsView)
-    )
-
-    return list(controls.copies)
+    return list(_setting_controls(view).rows)
 
 
 def _steps(run: RunView, ticks: int) -> None:
@@ -538,15 +585,11 @@ def _drag(control: ParameterSlider, value: float, decimals: int) -> None:
 
 
 def _set_fresh_gas_flow(run: RunView, flow_l_min: float) -> None:
-    _drag(run._setting_controls[0]._fresh_gas_flow_slider, flow_l_min, FLOW_DISPLAY_DECIMALS)
+    _drag(_dials(run)._fresh_gas_flow_slider, flow_l_min, FLOW_DISPLAY_DECIMALS)
 
 
 def _set_delivered_percent(run: RunView, percent: float) -> None:
-    _drag(
-        run._setting_controls[0]._delivered_concentration_slider,
-        percent,
-        CONCENTRATION_DISPLAY_DECIMALS,
-    )
+    _drag(_dials(run)._delivered_concentration_slider, percent, CONCENTRATION_DISPLAY_DECIMALS)
 
 
 def _select_playback_rate(run: RunView, multiplier: int) -> None:
@@ -1096,17 +1139,17 @@ def test_the_integer_sliders_span_the_supported_input_ranges(application: QAppli
 
     for control, minimum, maximum in (
         (
-            run._setting_controls[0]._fresh_gas_flow_slider,
+            _dials(run)._fresh_gas_flow_slider,
             MINIMUM_FRESH_GAS_FLOW_L_MIN,
             MAXIMUM_FRESH_GAS_FLOW_L_MIN,
         ),
         (
-            run._setting_controls[0]._alveolar_ventilation_slider,
+            _dials(run)._alveolar_ventilation_slider,
             MINIMUM_ALVEOLAR_VENTILATION_L_MIN,
             MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
         ),
         (
-            run._setting_controls[0]._cardiac_output_slider,
+            _dials(run)._cardiac_output_slider,
             MINIMUM_CARDIAC_OUTPUT_L_MIN,
             MAXIMUM_CARDIAC_OUTPUT_L_MIN,
         ),
@@ -1123,10 +1166,10 @@ def test_every_slider_endpoint_reaches_the_core_and_is_accepted(application: QAp
     run = view.runs[0]
 
     for control in (
-        run._setting_controls[0]._fresh_gas_flow_slider,
-        run._setting_controls[0]._alveolar_ventilation_slider,
-        run._setting_controls[0]._cardiac_output_slider,
-        run._setting_controls[0]._delivered_concentration_slider,
+        _dials(run)._fresh_gas_flow_slider,
+        _dials(run)._alveolar_ventilation_slider,
+        _dials(run)._cardiac_output_slider,
+        _dials(run)._delivered_concentration_slider,
     ):
         for endpoint in (control.slider.minimum(), control.slider.maximum()):
             control.slider.setValue(endpoint)
@@ -1144,7 +1187,7 @@ def test_fresh_gas_flow_slider_forwards_value_to_controller(application: QApplic
     _set_fresh_gas_flow(run, 7.0)
 
     assert controller.snapshot().fresh_gas_flow_l_min == 7.0
-    assert run._setting_controls[0]._fresh_gas_flow_slider.value_label.text() == "7.0 L/min"
+    assert _dials(run)._fresh_gas_flow_slider.value_label.text() == "7.0 L/min"
 
 
 def test_the_delivered_dial_reaches_the_core_as_the_percent_dialled(
@@ -1163,7 +1206,7 @@ def test_the_delivered_dial_reaches_the_core_as_the_percent_dialled(
 
     assert controller.snapshot().delivered_concentration_percent == 6.5
     assert controller.snapshot().delivered_partial_pressure_fraction == pytest.approx(0.065)
-    assert run._setting_controls[0]._delivered_concentration_slider.value_label.text() == "6.50%"
+    assert _dials(run)._delivered_concentration_slider.value_label.text() == "6.50%"
 
 
 def test_alveolar_ventilation_slider_forwards_value_to_controller(
@@ -1172,20 +1215,20 @@ def test_alveolar_ventilation_slider_forwards_value_to_controller(
     controller = SimulationController()
     run = _shown_view(application, controller).runs[0]
 
-    _drag(run._setting_controls[0]._alveolar_ventilation_slider, 8.0, FLOW_DISPLAY_DECIMALS)
+    _drag(_dials(run)._alveolar_ventilation_slider, 8.0, FLOW_DISPLAY_DECIMALS)
 
     assert controller.snapshot().alveolar_ventilation_l_min == 8.0
-    assert run._setting_controls[0]._alveolar_ventilation_slider.value_label.text() == "8.0 L/min"
+    assert _dials(run)._alveolar_ventilation_slider.value_label.text() == "8.0 L/min"
 
 
 def test_cardiac_output_slider_forwards_value_to_controller(application: QApplication) -> None:
     controller = SimulationController()
     run = _shown_view(application, controller).runs[0]
 
-    _drag(run._setting_controls[0]._cardiac_output_slider, 6.5, FLOW_DISPLAY_DECIMALS)
+    _drag(_dials(run)._cardiac_output_slider, 6.5, FLOW_DISPLAY_DECIMALS)
 
     assert controller.snapshot().cardiac_output_l_min == 6.5
-    assert run._setting_controls[0]._cardiac_output_slider.value_label.text() == "6.5 L/min"
+    assert _dials(run)._cardiac_output_slider.value_label.text() == "6.5 L/min"
 
 
 def test_the_sliders_declare_an_adjustment_boundary_when_a_drag_begins(
@@ -1211,7 +1254,7 @@ def test_the_sliders_declare_an_adjustment_boundary_when_a_drag_begins(
         controller.set_fresh_gas_flow(FreshGasFlow(3.0))
         controller.advance(SIMULATION_STEP_S)
 
-        control: ParameterSlider = getattr(run._setting_controls[0], slider_name)
+        control: ParameterSlider = getattr(_dials(run), slider_name)
         control.slider.sliderPressed.emit()
         controller.set_fresh_gas_flow(FreshGasFlow(2.0))
 
@@ -1227,7 +1270,7 @@ def test_a_declared_boundary_reaches_the_controller(application: QApplication) -
     controller.start()
     controller.set_fresh_gas_flow(FreshGasFlow(3.0))
     controller.advance(SIMULATION_STEP_S)
-    run._handle_adjustment_start()
+    run.start_adjustment()
     controller.set_fresh_gas_flow(FreshGasFlow(2.0))
 
     assert {change.adjustment for change in controller.snapshot().control_timeline} == {1, 2}
@@ -1246,7 +1289,7 @@ def test_a_drag_of_one_slider_is_marked_and_listed_once(application: QApplicatio
     run = view.runs[0]
     controller.start()
     _advance(controller, 10.0)
-    slider = run._setting_controls[0]._delivered_concentration_slider.slider
+    slider = _dials(run)._delivered_concentration_slider.slider
 
     slider.setSliderDown(True)
 
@@ -1309,9 +1352,7 @@ def test_a_refused_setting_is_reported_without_stopping_the_run(
     # The control must not keep showing a dial position the simulation is
     # not running at: that is the correct number under the wrong label.
     assert controller.snapshot().delivered_concentration_percent == delivered_before
-    assert run._setting_controls[0]._delivered_concentration_slider.value() == pytest.approx(
-        delivered_before
-    )
+    assert _dials(run)._delivered_concentration_slider.value() == pytest.approx(delivered_before)
 
 
 def test_a_refusal_notice_clears_once_a_setting_is_accepted(application: QApplication) -> None:
@@ -1357,7 +1398,7 @@ def test_every_slider_handler_refuses_without_escaping_into_the_toolkit(
     notice = run._notice_text.notice()
     assert notice is not None
     assert "Setting refused" in notice
-    control: ParameterSlider = getattr(run._setting_controls[0], slider_name)
+    control: ParameterSlider = getattr(_dials(run), slider_name)
     assert control.value() >= 0.0
 
 
@@ -1537,7 +1578,7 @@ def test_a_dragged_slider_leaves_its_frame_to_the_render_tick(application: QAppl
     run = view.runs[0]
     controller.start()
     presented = view.presented_frames
-    slider = run._setting_controls[0]._fresh_gas_flow_slider.slider
+    slider = _dials(run)._fresh_gas_flow_slider.slider
 
     slider.setSliderDown(True)
 
@@ -1550,7 +1591,7 @@ def test_a_dragged_slider_leaves_its_frame_to_the_render_tick(application: QAppl
     slider.setSliderDown(False)
 
     assert controller.snapshot().fresh_gas_flow_l_min == 7.0
-    assert run._setting_controls[0]._fresh_gas_flow_slider.value_label.text() == "7.0 L/min"
+    assert _dials(run)._fresh_gas_flow_slider.value_label.text() == "7.0 L/min"
     assert view.presented_frames == presented + 1
     assert view._render_pending is False
     assert run.preview is None
@@ -1618,7 +1659,7 @@ def test_the_render_tick_draws_a_pending_change_while_the_run_is_stopped(
 
     controller = SimulationController()
     view = _shown_view(application, controller)
-    slider = view.runs[0]._setting_controls[0]._fresh_gas_flow_slider.slider
+    slider = _dials(view.runs[0])._fresh_gas_flow_slider.slider
 
     # A key or wheel step applies with no press, and leaves its frame owed.
     # A released drag draws its own frame at once (`PL-5B1N`).
@@ -1932,10 +1973,10 @@ def test_a_halt_whose_frame_cannot_be_drawn_is_still_shown_on_every_run(
 def test_a_halt_after_a_frame_whose_value_could_not_be_written_is_still_stated(
     application: QApplication, refuses_every_write: bool
 ) -> None:
-    """A frame whose schematic cannot be written stops the run, and the panel says so.
+    """A frame whose readouts cannot be written stops the run, and the panel says so.
 
-    The schematic refuses the second frame's value, and in one case every
-    value after it. The halt writes the last frame's values again. When it
+    The readout row refuses the second frame's values, and in one case every
+    value after them. The halt writes the last frame's values again. When it
     wrote them before the status word and the banner, the same refusal left
     the panel showing "Running" with Pause enabled over a failed run (blind
     review of `PL-RF2S`). The status word, the transport and the banner are
@@ -1946,20 +1987,20 @@ def test_a_halt_after_a_frame_whose_value_could_not_be_written_is_still_stated(
     controller.start()
     view = _shown_view(application, controller)
     run = view.runs[0]
-    first_frame = run._schematic_shown
-    show = run._show_schematic
+    first_frame = readouts(controller.snapshot(), DEFAULT_PLAYBACK_RATE)
+    write = run._readout_row.set_readouts
 
-    def refusing(shown: SchematicShown) -> None:
-        if refuses_every_write or shown != first_frame:
-            raise ValueError("the schematic could not show this value")
+    def refusing(shown: Sequence[Readout]) -> None:
+        if refuses_every_write or tuple(shown) != first_frame:
+            raise ValueError("the readouts could not show these values")
 
-        show(shown)
+        write(shown)
 
-    run._show_schematic = refusing  # type: ignore[method-assign]
+    run._readout_row.set_readouts = refusing  # type: ignore[method-assign]
     controller.advance(SIMULATION_STEP_S)
 
     if refuses_every_write:
-        with pytest.raises(ValueError, match="the schematic could not show this value"):
+        with pytest.raises(ValueError, match="the readouts could not show these values"):
             view.present(False)
     else:
         view.present(False)
@@ -1968,55 +2009,58 @@ def test_a_halt_after_a_frame_whose_value_could_not_be_written_is_still_stated(
     assert run._status_text.text() == STATUS_FAILED_TEXT
     notice = run._notice_text.notice()
     assert notice is not None
-    assert "ValueError: the schematic could not show this value" in notice
+    assert "ValueError: the readouts could not show these values" in notice
     assert run._pause_button.isEnabled() is False
     assert run._start_button.isEnabled() is False
 
 
-def test_a_halt_rewrites_the_last_frame_whose_values_were_all_written(
+def test_a_halt_shows_the_last_frame_whose_readouts_were_written_on_every_panel(
     application: QApplication,
 ) -> None:
-    """A frame that wrote its cards but not its schematic is not the frame a halt keeps.
+    """A frame whose readouts could not be written is not the frame a halt shows.
 
-    The first frame draws the run at 60 s. The frame at 120 s writes the
-    cards, and then the schematic refuses it. The halt that follows writes
-    all four compartment values from one frame. That frame is the one at
-    60 s, the last whose values were all written, so the cards and the
-    schematic again show one state of the run (`PL-RNYV`). The expected cards
-    are those of a second run built directly and stepped to 60 s.
+    The first frame draws the run at 60 s. On the frame at 120 s the
+    accounting View writes its panel, and then the readout row refuses its
+    values. The halt that follows writes the readouts, and hands every View
+    the values, of one frame. That frame is the one at 60 s, the last whose
+    readouts were written. So the cards and the accounting panel again show
+    one state of the run (`PL-RNYV`, `PL-RF2S`). The expected cards and
+    amounts are those of a second run built directly and stepped to 60 s.
     """
 
     controller = _fresh_run(60.0)
-    run = _shown_view(application, controller).runs[0]
-    first_frame = run._schematic_shown
-    show = run._show_schematic
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    first_frame = readouts(controller.snapshot(), DEFAULT_PLAYBACK_RATE)
+    write = run._readout_row.set_readouts
+    refused: list[str] = []
 
-    def refusing_a_later_frame(shown: SchematicShown) -> None:
-        if shown != first_frame:
-            raise ValueError("the schematic could not show this value")
+    def refusing_a_later_frame(shown: Sequence[Readout]) -> None:
+        if tuple(shown) != first_frame:
+            refused.append(_accounting_panel(run)._agent_amounts_text.text())
+            raise ValueError("the readouts could not show these values")
 
-        show(shown)
+        write(shown)
 
-    run._show_schematic = refusing_a_later_frame  # type: ignore[method-assign]
+    run._readout_row.set_readouts = refusing_a_later_frame  # type: ignore[method-assign]
     controller.start()
     _advance(controller, 60.0)
+    later = accounting(controller.snapshot()).amounts
+    at_60_s = _fresh_run(60.0).snapshot()
 
-    with pytest.raises(ValueError, match="the schematic could not show this value"):
-        run.show_presentation(run.presentation(controller.snapshot()))
+    view.present(False)
 
-    assert run._readout_row.panels[_CLOCK_INDEX].value_label.text() == format_elapsed(120.0)
-    controller.fail("the frame at 120 s could not be written")
-
-    run.show_presentation(run.presentation())
-
+    assert later != accounting(at_60_s).amounts
+    assert refused[0] == later, "the accounting View did not write the frame at 120 s first"
+    assert controller.has_failed is True
     assert run._status_text.text() == STATUS_FAILED_TEXT
     assert [
         (panel.value_label.text(), panel.secondary_label.text())
         for panel in run._readout_row.panels
     ] == [
-        (readout.value, readout.secondary)
-        for readout in readouts(_fresh_run(60.0).snapshot(), DEFAULT_PLAYBACK_RATE)
+        (readout.value, readout.secondary) for readout in readouts(at_60_s, DEFAULT_PLAYBACK_RATE)
     ]
+    assert _accounting_reading(_accounting_panel(run)) == _accounting_of(at_60_s)
 
 
 def test_a_halt_whose_dials_and_1_mac_line_cannot_be_built_is_still_stated(
@@ -2065,21 +2109,25 @@ def test_a_halt_that_cannot_be_stated_is_not_tried_again_on_every_tick(
     Every frame fails, and so does the statement of the halt that follows.
     Before the halt is built, the run's record is stored as the one last
     written. So the render ticks that follow find the run's record unchanged,
-    assemble nothing and raise nothing. When the record was stored only by a
-    halt that could be built, each tick assembled the frame again and printed
-    the same exception (adversarial review of `PL-RF2S`).
+    build nothing and raise nothing. When the record was stored only by a
+    halt that could be built, each tick tried the frame again and printed
+    the same exception (adversarial review of `PL-RF2S`). A frame builds each
+    run's statement before it assembles anything, so the attempts are counted
+    there, and no frame gets as far as its assembly.
     """
 
     controller = SimulationController()
     view = _shown_view(application, controller)
     run = view.runs[0]
     assemblies: list[None] = []
+    statements: list[None] = []
 
     def failing_assembly(*args: object, **kwargs: object) -> NoReturn:
         assemblies.append(None)
         raise RuntimeError("this frame could not be assembled")
 
     def no_statement(*args: object, **kwargs: object) -> NoReturn:
+        statements.append(None)
         raise ValueError("this run could not be stated")
 
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", failing_assembly)
@@ -2089,13 +2137,14 @@ def test_a_halt_that_cannot_be_stated_is_not_tried_again_on_every_tick(
         view.present(False)
 
     assert controller.has_failed is True
-    attempted = len(assemblies)
+    attempted = len(statements)
     assert attempted > 0
 
     for _ in range(5):
         view.render_tick()
 
-    assert len(assemblies) == attempted
+    assert len(statements) == attempted
+    assert assemblies == []
     assert run.owes_a_frame is False
 
 
@@ -2527,7 +2576,7 @@ def test_a_drag_that_halts_the_run_leaves_its_label_on_the_dial(
     controller = _paused_run_with_history()
     view = _shown_view(application, controller)
     run = view.runs[0]
-    dial = run._setting_controls[0]._fresh_gas_flow_slider
+    dial = _dials(run)._fresh_gas_flow_slider
     assert dial.value_label.text() == "2.0 L/min"
     _read_the_alveolar_quotient_as(monkeypatch, 1.0000001)
     capfd.readouterr()
@@ -2614,10 +2663,7 @@ def test_a_halt_after_an_agent_change_names_one_agent(
     assert controller.agent_id == "desflurane"
     assert controller.has_failed is True
     assert run._status_text.text() == STATUS_FAILED_TEXT
-    assert (
-        run._setting_controls[0]._delivered_concentration_slider.name_label.text()
-        == "Delivered desflurane"
-    )
+    assert _dials(run)._delivered_concentration_slider.name_label.text() == "Delivered desflurane"
     assert run._subtitle_text.text() == format_subtitle("Desflurane")
     assert run._running_agent_text.text() == "Desflurane"
     assert run._compartment_substance_text.text() == "Modelled concentrations: Desflurane"
@@ -2759,16 +2805,16 @@ FRAME_WIDGETS: dict[str, str] = {
         "The playback line under the clock is run state, and the test below "
         "compares it on its own (`PL-P58M`)."
     ),
-    "_accounting_panels[0]._agent_amounts_text": (
+    "<accounting panel>._agent_amounts_text": (
         "the accounting panel's amounts, which are the snapshot's mass balance "
         "and so compartment values."
     ),
-    "_accounting_panels[0]._agent_accounting_status_text": (
+    "<accounting panel>._agent_accounting_status_text": (
         "the verdict on those amounts, which only a frame states. A halt that no frame "
         "has drawn since the run started over withholds it with the amounts, because it "
         "judged the discarded run (blind and adversarial reviews of `PL-J5GC`)."
     ),
-    "_accounting_panels[0]._agent_accounting_detail_text": (
+    "<accounting panel>._agent_accounting_detail_text": (
         "the sentence under the verdict, which a halt withholds with it."
     ),
     "_notice_text": (
@@ -2780,11 +2826,21 @@ FRAME_WIDGETS: dict[str, str] = {
 }
 
 
+#: The names `_widget_attributes` gives a run's dials and its accounting panel,
+#: which the Views of the run's dashboard hold.
+_SETTING_CONTROLS: Final = "<setting controls>"
+_ACCOUNTING_PANEL: Final = "<accounting panel>"
+
+
 def _widget_attributes(run: RunView) -> dict[str, QWidget]:
     """Every widget a `RunView` holds as an attribute, by name, and each widget of a tuple.
 
-    Each live copy of a run surface is included with every widget it holds,
-    named by its place in the run's list of copies (`PL-9LNF`).
+    The run's four dials and its accounting panel are included too, each with
+    every widget it holds. The run does not hold them. The first setting
+    controls View and the first accounting View of the run's dashboard build
+    them (`PL-RF2S`). They are named `<setting controls>` and
+    `<accounting panel>`, so the lists below keep checking them. The dials
+    are left out while the View shows none for the run.
     """
 
     widgets: dict[str, QWidget] = {}
@@ -2794,16 +2850,24 @@ def _widget_attributes(run: RunView) -> dict[str, QWidget]:
             widgets[name] = value
         elif isinstance(value, tuple) and value and all(isinstance(v, QWidget) for v in value):
             widgets.update({f"{name}[{index}]": item for index, item in enumerate(value)})
-        elif isinstance(value, list) and all(isinstance(v, QWidget) for v in value):
-            for index, copy in enumerate(value):
-                widgets[f"{name}[{index}]"] = copy
-                widgets.update(
-                    {
-                        f"{name}[{index}].{inner}": item
-                        for inner, item in vars(copy).items()
-                        if isinstance(item, QWidget)
-                    }
-                )
+
+    panels: dict[str, QWidget | None] = {
+        _SETTING_CONTROLS: _setting_row(run).controls,
+        _ACCOUNTING_PANEL: _accounting_panel(run),
+    }
+
+    for name, panel in panels.items():
+        if panel is None:
+            continue
+
+        widgets[name] = panel
+        widgets.update(
+            {
+                f"{name}.{inner}": item
+                for inner, item in vars(panel).items()
+                if isinstance(item, QWidget)
+            }
+        )
 
     return widgets
 
@@ -2938,16 +3002,16 @@ def test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one(
 VALUE_GROUPS: dict[str, tuple[str, ...]] = {
     "readouts": ("_readout_row", "_compartment_substance_text", "_one_mac_text"),
     "settings": (
-        "_setting_controls[0]._fresh_gas_flow_slider",
-        "_setting_controls[0]._delivered_concentration_slider",
-        "_setting_controls[0]._alveolar_ventilation_slider",
-        "_setting_controls[0]._cardiac_output_slider",
+        "<setting controls>._fresh_gas_flow_slider",
+        "<setting controls>._delivered_concentration_slider",
+        "<setting controls>._alveolar_ventilation_slider",
+        "<setting controls>._cardiac_output_slider",
         "_delivered_text",
     ),
     "accounting": (
-        "_accounting_panels[0]._agent_accounting_status_text",
-        "_accounting_panels[0]._agent_accounting_detail_text",
-        "_accounting_panels[0]._agent_amounts_text",
+        "<accounting panel>._agent_accounting_status_text",
+        "<accounting panel>._agent_accounting_detail_text",
+        "<accounting panel>._agent_amounts_text",
     ),
 }
 
@@ -2982,9 +3046,9 @@ UNGROUPED_WIDGETS: dict[str, str] = {
     "_reset_button": _STATES_THE_RECORD,
     "_playback_rate_dropdown": "the playback rate, a setting of the view, not of the run",
     "_interpretation_text": "a standing disclaimer, the same on every run",
-    "_setting_controls[0]": _HOLDS_OTHER_WIDGETS,
-    "_accounting_panels[0]": _HOLDS_OTHER_WIDGETS,
-    "_accounting_panels[0]._accounting_heading_text": (
+    "<setting controls>": _HOLDS_OTHER_WIDGETS,
+    "<accounting panel>": _HOLDS_OTHER_WIDGETS,
+    "<accounting panel>._accounting_heading_text": (
         "the panel's heading, which names the run while a second run is drawn"
     ),
     "_control_timeline_heading_text": "a standing heading",
@@ -2995,9 +3059,8 @@ UNGROUPED_WIDGETS: dict[str, str] = {
     "_control_record_panel": _HOLDS_OTHER_WIDGETS,
 }
 
-#: What a reader sees of each group in `VALUE_GROUPS`, member by member, or
-#: `None` for a group that a scenario does not check.
-_GroupReadings = dict[str, dict[str, object] | None]
+#: What a reader sees of each group in `VALUE_GROUPS`, member by member.
+_GroupReadings = dict[str, dict[str, object]]
 
 
 def _shown_readouts(run: RunView) -> dict[str, object]:
@@ -3016,25 +3079,45 @@ def _shown_readouts(run: RunView) -> dict[str, object]:
 
 
 def _shown_settings(run: RunView) -> dict[str, object]:
-    shown: dict[str, object] = {
-        f"dial {index}": (
-            slider.name_label.text(),
-            slider.qualifier_label.text(),
-            slider.slider.minimum(),
-            slider.slider.maximum(),
-            slider.slider.value(),
-            slider.value_label.text(),
-            slider.secondary_label.text(),
+    """What a reader sees of a run's settings: each dial, or the line in their place.
+
+    The dials are counted across the whole dashboard, so a dial that the
+    View no longer lists but has not deleted is still read.
+    """
+
+    row = _setting_row(run)
+    shown: dict[str, object] = {}
+
+    if row.controls is None:
+        shown["no dials"] = (
+            [dial.name_label.text() for dial in _dashboard_of(run).findChildren(ParameterSlider)],
+            row.not_shown_text.isHidden(),
+            row.not_shown_text.text(),
         )
-        for index, slider in enumerate(run._setting_controls[0].sliders)
-    }
+    else:
+        assert row.not_shown_text.isHidden()
+        shown.update(
+            {
+                f"dial {index}": (
+                    slider.name_label.text(),
+                    slider.qualifier_label.text(),
+                    slider.slider.minimum(),
+                    slider.slider.maximum(),
+                    slider.slider.value(),
+                    slider.value_label.text(),
+                    slider.secondary_label.text(),
+                )
+                for index, slider in enumerate(row.controls.sliders)
+            }
+        )
+
     shown["delivered line"] = run._delivered_text.text()
 
     return shown
 
 
 def _shown_accounting(run: RunView) -> dict[str, object]:
-    return _accounting_reading(run._accounting_panels[0])
+    return _accounting_reading(_accounting_panel(run))
 
 
 def _accounting_reading(panel: AccountingPanel) -> dict[str, object]:
@@ -3106,6 +3189,20 @@ def _settings_of(step: RunSettings) -> dict[str, object]:
     expected["delivered line"] = delivered_line(delivered)
 
     return expected
+
+
+def _no_settings() -> dict[str, object]:
+    """The settings group of a run whose dials cannot be built (`PL-SV2Q`).
+
+    The dashboard holds no dial, one line says so in their place, and the
+    delivered line withholds both of its values. Both texts are written out
+    by hand.
+    """
+
+    return {
+        "no dials": ([], False, "This run's setting controls cannot be shown."),
+        "delivered line": "Delivered \u2014% (\u2014 \u00d7MAC)",
+    }
 
 
 def _accounting_of(step: SimulationSnapshot) -> dict[str, object]:
@@ -3286,12 +3383,13 @@ def _a_halt_after_an_agent_change_whose_dials_cannot_be_written(
 ) -> tuple[RunView, _GroupReadings]:
     """An agent change after which no frame can be drawn, on a run whose dials cannot be written.
 
-    `show_presentation` writes the new agent's heading and 1 MAC line, then raises from
-    `setting_readouts` when it writes the dials. Until the blind review of
-    `PL-J5GC`, the old agent's values were withheld only after that, so the
-    exception left every card showing the old agent's percent and ×MAC number
-    under the new agent's heading. The settings group is not checked, because no
-    dial can be written from any state here.
+    `show_presentation` writes the new agent's heading and 1 MAC line, and raises the
+    refusal from `setting_readouts` last. Until the blind review of `PL-J5GC`, the old
+    agent's values were withheld only after that, so the exception left every card
+    showing the old agent's percent and ×MAC number under the new agent's heading. No
+    dial can be built from any state here. The dial row and the delivered line used
+    to keep the old agent's 8.00% and 4.00 ×MAC (`PL-SV2Q`). Now the dashboard holds
+    no dial, and the delivered line withholds its values.
     """
 
     controller = SimulationController()
@@ -3311,9 +3409,11 @@ def _a_halt_after_an_agent_change_whose_dials_cannot_be_written(
     assert controller.has_failed is True
     new_case = SimulationController("desflurane").record()
 
+    _settle(application)
+
     return run, {
         "readouts": _readouts_of(new_case, cards_withheld=True),
-        "settings": None,
+        "settings": _no_settings(),
         "accounting": _withheld_accounting(),
     }
 
@@ -3326,9 +3426,10 @@ def _a_dial_write_refused_after_the_cards(
     `show_presentation` writes the cards first, and raises the refusal from
     `setting_readouts` last. The 1 MAC line used to be written with the dials,
     so it went on naming the old agent above the new agent's cards
-    (`PL-6RJ0`). The settings group is not checked here. `setting_readouts`
-    refuses every state in this scenario, so no dial can be written from any
-    state, and the banner names the refusal.
+    (`PL-6RJ0`). `setting_readouts` refuses every state in this scenario, so
+    no dial can be built from any state, and the banner names the refusal.
+    The dashboard holds no dial, and the delivered line withholds its values
+    (`PL-SV2Q`).
     """
 
     controller = SimulationController()
@@ -3339,10 +3440,11 @@ def _a_dial_write_refused_after_the_cards(
 
     assert controller.has_failed is True
     new_case = SimulationController("desflurane").snapshot()
+    _settle(application)
 
     return run, {
         "readouts": _readouts_of(new_case),
-        "settings": None,
+        "settings": _no_settings(),
         "accounting": _accounting_of(new_case),
     }
 
@@ -3366,7 +3468,7 @@ def _a_dial_moved_on_a_failed_run(
 
     _steps(run, 1)
     assert controller.has_failed is True
-    _drag(run._setting_controls[0]._cardiac_output_slider, 10.0, FLOW_DISPLAY_DECIMALS)
+    _drag(_dials(run)._cardiac_output_slider, 10.0, FLOW_DISPLAY_DECIMALS)
 
     step = _fresh_run(300.0).snapshot()
 
@@ -3398,7 +3500,7 @@ def _a_dial_moved_at_the_supported_run_length(
     assert controller.has_reached_supported_limit is True
     run = _case_view(application, BranchedCase(controller)).runs[0]
 
-    _drag(run._setting_controls[0]._cardiac_output_slider, 10.0, FLOW_DISPLAY_DECIMALS)
+    _drag(_dials(run)._cardiac_output_slider, 10.0, FLOW_DISPLAY_DECIMALS)
 
     step = _fresh_run(300.0).snapshot()
 
@@ -3487,7 +3589,7 @@ def _a_halt_after_a_reset_that_no_frame_draws(
     run = _shown_view(application, controller).runs[0]
     _reject_the_next_accounting_check(monkeypatch)
     _steps(run, 1)
-    assert run._accounting_panels[0]._agent_accounting_status_text.text() == ACCOUNTING_FAILED_TEXT
+    assert _accounting_panel(run)._agent_accounting_status_text.text() == ACCOUNTING_FAILED_TEXT
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
 
     run._reset_button.click()
@@ -3703,34 +3805,49 @@ def test_every_value_and_its_qualifiers_on_screen_come_from_one_state(
         "the group whose value it states or qualifies, or list it with the reason it is "
         "in none"
     )
-    assert sorted((set(grouped) | set(UNGROUPED_WIDGETS)) - set(attributes)) == [], (
+    listed = set(grouped) | set(UNGROUPED_WIDGETS)
+
+    if _setting_row(run).controls is None:
+        # The View shows no dial for this run, so no dial is there to list.
+        listed = {name for name in listed if not name.startswith(_SETTING_CONTROLS)}
+
+    assert sorted(listed - set(attributes)) == [], (
         "these entries name a widget RunView no longer holds - remove them"
     )
     assert sorted(expected) == sorted(VALUE_GROUPS)
 
-    checked = [group for group, readings in expected.items() if readings is not None]
-    shown = {group: _SHOWN_GROUPS[group](run) for group in checked}
+    shown = {group: _SHOWN_GROUPS[group](run) for group in expected}
 
-    assert shown == {group: expected[group] for group in checked}
+    assert shown == expected
 
 
 @pytest.mark.parametrize("scenario", list(_ONE_STATE_SCENARIOS))
-def test_an_accounting_panel_opened_after_each_scenario_shows_the_same_step(
+def test_an_accounting_view_chosen_after_each_scenario_shows_the_same_step(
     application: QApplication, monkeypatch: pytest.MonkeyPatch, scenario: str
 ) -> None:
-    """A copy of the accounting panel built after a halt shows the step that the first copy shows.
+    """An accounting View chosen after a halt shows the step that the first View shows.
 
-    The accounting panel may sit in a View that a reader closes and opens again, so a
-    copy can be built at any time (`build_accounting_panel`). Each new copy starts from
-    what the run last wrote to the panel. Suppose a halt wrote only to the copies that
-    already existed. A copy built after the halt would then show the last frame's
-    "Valid", beside a banner that reports the failed check or that the run started over.
-    Until the test-strength pass of `PL-J5GC`, no test built a copy after a halt.
+    A reader can choose the accounting View for another Area at any time,
+    and that View builds its own panel for the run. Suppose a halt handed
+    the runs only to the Views that already existed. A View chosen after the
+    halt would then stay empty, or show the last frame's "Valid", beside a
+    banner that reports the failed check or that the run started over. Until
+    the test-strength pass of `PL-J5GC`, no test opened a panel after a
+    halt. In the scenarios whose frames fail, the halt alone draws the new
+    View (`PL-RF2S`).
     """
 
     run, expected = _ONE_STATE_SCENARIOS[scenario](application, monkeypatch)
+    dashboard = _dashboard_of(run)
 
-    assert _accounting_reading(run.build_accounting_panel()) == expected["accounting"]
+    dashboard.layout_container.choose_view(AreaId(3), AGENT_ACCOUNTING)
+    _settle(application)
+    # Area 3 comes before the sidebar's Area in reading order.
+    chosen, first = (v for v in dashboard.layout_container.views() if isinstance(v, AccountingView))
+
+    assert chosen is not first
+    assert [_accounting_reading(panel) for panel in chosen.panels] == [expected["accounting"]]
+    assert [_accounting_reading(panel) for panel in first.panels] == [expected["accounting"]]
 
 
 def test_a_halt_whose_dials_cannot_be_built_shows_no_setting_of_the_discarded_run(
@@ -3742,8 +3859,8 @@ def test_a_halt_whose_dials_cannot_be_built_shows_no_setting_of_the_discarded_ru
     to desflurane while every frame fails and no dial can be built. The dial
     row and the delivered line used to keep "8.00%" and "4.00 ×MAC", beside a
     1 MAC line that named desflurane (`PL-SV2Q`). The dashboard now holds no
-    dial for the run, and the delivered line withholds both of its values. The
-    withheld line is written out by hand.
+    dial for the run, one line says so in the dials' place, and the delivered
+    line withholds both of its values. Both texts are written out by hand.
     """
 
     run, _ = _a_halt_after_an_agent_change_whose_dials_cannot_be_written(application, monkeypatch)
@@ -3756,8 +3873,13 @@ def test_a_halt_whose_dials_cannot_be_built_shows_no_setting_of_the_discarded_ru
         for dial in dashboard.findChildren(ParameterSlider)
     ]
 
+    row = _setting_row(run)
+
     assert run._one_mac_text.text() == "1 MAC desflurane = 6.0%"
     assert dials == []
+    assert row.controls is None
+    assert row.not_shown_text.text() == "This run's setting controls cannot be shown."
+    assert row.not_shown_text.text() in dashboard.visible_strings()
     assert run._delivered_text.text() != "Delivered 8.00% (4.00 \u00d7MAC)"
     assert run._delivered_text.text() == "Delivered \u2014% (\u2014 \u00d7MAC)"
 
@@ -3851,7 +3973,7 @@ def test_a_setting_refused_at_the_supported_run_length_names_a_branch_only_while
     caseless.start()
     _advance(caseless, 300.0)
     caseless_run = _shown_view(application, caseless).runs[0]
-    _drag(caseless_run._setting_controls[0]._cardiac_output_slider, 10.0, FLOW_DISPLAY_DECIMALS)
+    _drag(_dials(caseless_run)._cardiac_output_slider, 10.0, FLOW_DISPLAY_DECIMALS)
 
     no_control = caseless_run._notice_text.notice()
     assert no_control is not None
@@ -3864,7 +3986,7 @@ def test_a_setting_refused_at_the_supported_run_length_names_a_branch_only_while
     view = _case_view(application, BranchedCase(controller))
     trunk = view.runs[0]
 
-    _drag(trunk._setting_controls[0]._cardiac_output_slider, 10.0, FLOW_DISPLAY_DECIMALS)
+    _drag(_dials(trunk)._cardiac_output_slider, 10.0, FLOW_DISPLAY_DECIMALS)
 
     alone = trunk._notice_text.notice()
     assert alone is not None
@@ -3917,7 +4039,7 @@ def test_a_setting_refused_after_the_dashboard_failed_at_the_supported_run_lengt
     assert controller.has_reached_supported_limit is True
     assert controller.fork_refusal is not None
 
-    _drag(trunk._setting_controls[0]._cardiac_output_slider, 10.0, FLOW_DISPLAY_DECIMALS)
+    _drag(_dials(trunk)._cardiac_output_slider, 10.0, FLOW_DISPLAY_DECIMALS)
 
     banner = trunk._notice_text.notice()
     assert banner is not None
@@ -4333,8 +4455,8 @@ def test_a_run_halted_on_tissue_flows_set_past_its_patient_shows_the_output_its_
         after.mixed_venous_partial_pressure_fraction
         == before.mixed_venous_partial_pressure_fraction
     )
-    assert run._setting_controls[0]._cardiac_output_slider.value_label.text() == "5.0 L/min"
-    assert run._setting_controls[0]._cardiac_output_slider.value() == 5.0
+    assert _dials(run)._cardiac_output_slider.value_label.text() == "5.0 L/min"
+    assert _dials(run)._cardiac_output_slider.value() == 5.0
     assert notice is not None
     assert "perfused at 6.0 L/min in total but cardiac output is 5.0 L/min" in notice
     assert "The values shown are the last completed step." in notice
@@ -4342,8 +4464,8 @@ def test_a_run_halted_on_tissue_flows_set_past_its_patient_shows_the_output_its_
     run._reset_button.click()
 
     assert controller.run_segments[-1].settings == ran_under
-    assert run._setting_controls[0]._cardiac_output_slider.value_label.text() == "5.0 L/min"
-    assert run._setting_controls[0]._cardiac_output_slider.value() == 5.0
+    assert _dials(run)._cardiac_output_slider.value_label.text() == "5.0 L/min"
+    assert _dials(run)._cardiac_output_slider.value() == 5.0
 
 
 def test_a_run_whose_core_setting_moved_past_its_controller_halts_on_the_last_recorded_step(
@@ -4926,10 +5048,7 @@ def test_the_delivered_label_on_screen_names_the_current_agent(application: QApp
 
     run = _shown_view(application, SimulationController(agent_id="desflurane")).runs[0]
 
-    assert (
-        run._setting_controls[0]._delivered_concentration_slider.name_label.text()
-        == "Delivered desflurane"
-    )
+    assert _dials(run)._delivered_concentration_slider.name_label.text() == "Delivered desflurane"
 
 
 def test_a_built_in_agent_without_an_identification_colour_fails_at_import() -> None:
@@ -5068,10 +5187,7 @@ def test_a_confirmed_agent_change_starts_the_new_case(application: QApplication)
     assert after.elapsed_s == 0.0
     assert after.control_timeline == ()
     assert run._agent_dropdown.currentData() == "desflurane"
-    assert (
-        run._setting_controls[0]._delivered_concentration_slider.name_label.text()
-        == "Delivered desflurane"
-    )
+    assert _dials(run)._delivered_concentration_slider.name_label.text() == "Delivered desflurane"
     assert dialog.isVisible() is False
     assert run._new_case_dialog is None
 
@@ -6535,7 +6651,7 @@ def test_the_dashboard_fits_its_window_without_a_horizontal_scrollbar(
     assert page.width() <= view.width()
     assert _concentration(view).minimumSizeHint().width() < 1000
 
-    for slider in view.runs[0]._setting_controls[0].sliders:
+    for slider in _dials(view.runs[0]).sliders:
         right_edge = slider.mapTo(page, slider.rect().bottomRight()).x()
 
         assert right_edge <= page.width(), "a setting control is laid beyond the page"
@@ -6568,7 +6684,7 @@ def test_the_sidebar_panels_measured_are_the_ones_the_page_holds(application: QA
 def test_a_second_build_of_the_record_panels_leaves_the_run_labels_on_screen(
     application: QApplication,
 ) -> None:
-    """Asking a run again for its accounting or control-change panel leaves the placed one drawn.
+    """A second accounting View, or a second ask for the control-change panel, moves no label.
 
     The method that built both panels used to build two new panels on every
     call and lay the run's own labels into them. A layout takes a widget from
@@ -6580,10 +6696,11 @@ def test_a_second_build_of_the_record_panels_leaves_the_run_labels_on_screen(
     overflow line is hidden while nothing overflows, so the test checks only
     that it is in its column. Since `PL-NWTM`, the accounting panel is in the
     sidebar and the control-change panel is in the unconditional region's
-    record column. Since `PL-9LNF`, the accounting panel may sit in an Area.
-    So a second call builds a second copy for another Area and leaves the
-    first where it is. The control-change panel stays in the region, so the
-    placed one is returned.
+    record column. Since `PL-9LNF`, the accounting panel may sit in an Area,
+    and since `PL-RF2S` the accounting View builds it. So a second accounting
+    View builds a panel of its own for another Area and leaves the first
+    where it is. The control-change panel stays in the region, so the placed
+    one is returned.
     """
 
     view = _shown_view(application, SimulationController())
@@ -6592,10 +6709,10 @@ def test_a_second_build_of_the_record_panels_leaves_the_run_labels_on_screen(
     records = view._record_column.parentWidget()
     placed = _record_panels(run)
     shown = (
-        (run._accounting_panels[0]._accounting_heading_text, sidebar),
-        (run._accounting_panels[0]._agent_accounting_status_text, sidebar),
-        (run._accounting_panels[0]._agent_accounting_detail_text, sidebar),
-        (run._accounting_panels[0]._agent_amounts_text, sidebar),
+        (_accounting_panel(run)._accounting_heading_text, sidebar),
+        (_accounting_panel(run)._agent_accounting_status_text, sidebar),
+        (_accounting_panel(run)._agent_accounting_detail_text, sidebar),
+        (_accounting_panel(run)._agent_amounts_text, sidebar),
         (run._control_timeline_heading_text, records),
         (run._control_timeline_text, records),
     )
@@ -6608,8 +6725,15 @@ def test_a_second_build_of_the_record_panels_leaves_the_run_labels_on_screen(
             "a run label is outside its column to begin with"
         )
 
-    again = (run.build_accounting_panel(), run.build_control_record())
+    again = run.build_control_record()
+    view.layout_container.choose_view(AreaId(3), AGENT_ACCOUNTING)
     _settle(application)
+    (second,) = (
+        panel
+        for chosen in view.layout_container.views()
+        if isinstance(chosen, AccountingView) and chosen is not sidebar
+        for panel in chosen.panels
+    )
 
     for label, column in shown:
         assert label.isVisible(), "a second call took a run label off screen"
@@ -6618,8 +6742,8 @@ def test_a_second_build_of_the_record_panels_leaves_the_run_labels_on_screen(
         )
 
     assert records.isAncestorOf(run._control_timeline_overflow_text)
-    assert again[0] is not placed[0], "a second call handed back the placed accounting panel"
-    assert again[1] is placed[1], "a second call built a new control-change panel"
+    assert second is not placed[0], "the second View took the placed accounting panel"
+    assert again is placed[1], "a second call built a new control-change panel"
 
 
 def test_a_second_build_call_leaves_each_run_widget_on_screen(application: QApplication) -> None:
@@ -6634,9 +6758,9 @@ def test_a_second_build_call_leaves_each_run_widget_on_screen(application: QAppl
     cannot pass on a row that never showed them. Each case names a widget
     that has to be shown to begin with. The lone run's name and the agent
     chip are hidden in this state, so the test checks only that they are on
-    the page. The setting controls are not among the cases, because since
-    `PL-9LNF` a second call builds a second copy for another Area
-    (`tests/integration/test_run_surfaces.py`).
+    the page. The setting controls are not among the cases, because the
+    setting controls View builds them, and a second View builds its own for
+    another Area (`tests/integration/test_run_surfaces.py`).
     """
 
     view = _shown_view(application, SimulationController())
@@ -6719,8 +6843,8 @@ def test_the_page_takes_the_height_the_areas_ask_for_after_the_views_draw(
 ) -> None:
     """`PL-PHPZ`: the Areas are as tall as their size hint straight after the first frame.
 
-    The setting controls sit in an Area above the charts. They build their
-    per-run copies on their first frame, which changes the Areas' size hint.
+    The setting controls sit in an Area above the charts. They build each
+    run's dials on their first frame, which changes the Areas' size hint.
     Before the fix, the page kept the hint that it read before that frame. So
     after the frame the Areas were 62 px shorter than their hint, and 45 px
     taller once the event loop had run. The expected height is the Areas' own
@@ -6763,8 +6887,8 @@ def test_two_run_views_drive_two_controllers(application: QApplication) -> None:
     assert lean.snapshot().fresh_gas_flow_l_min == pytest.approx(1.0)
     assert generous.snapshot().fresh_gas_flow_l_min == pytest.approx(6.0)
 
-    lean_flow = lean_run._setting_controls[0]._fresh_gas_flow_slider
-    generous_flow = generous_run._setting_controls[0]._fresh_gas_flow_slider
+    lean_flow = _dials(lean_run)._fresh_gas_flow_slider
+    generous_flow = _dials(generous_run)._fresh_gas_flow_slider
     assert lean_flow.value_label.text() == format_flow(1.0)
     assert generous_flow.value_label.text() == format_flow(6.0)
     assert lean_run._elapsed_time_text.text() == format_elapsed(120.0)
@@ -8153,7 +8277,7 @@ def test_the_sidebar_panels_name_the_run_they_record(application: QApplication) 
     for index, run in enumerate(view.runs):
         name = run_label(RUN_IDS[index])
         headings = (
-            run._accounting_panels[0]._accounting_heading_text,
+            _accounting_panel(run)._accounting_heading_text,
             run._control_timeline_heading_text,
         )
 
@@ -8330,9 +8454,9 @@ def test_a_lone_run_leaves_the_sidebar_panel_headings_unnamed(application: QAppl
     view = _shown_view(application, controller)
     run = view.runs[0]
 
-    assert run._accounting_panels[0]._accounting_heading_text.text() == ACCOUNTING_HEADING
+    assert _accounting_panel(run)._accounting_heading_text.text() == ACCOUNTING_HEADING
     assert run._control_timeline_heading_text.text() == CONTROL_TIMELINE_HEADING
-    assert run_label(FIRST_RUN) not in run._accounting_panels[0]._accounting_heading_text.text()
+    assert run_label(FIRST_RUN) not in _accounting_panel(run)._accounting_heading_text.text()
     assert run_label(FIRST_RUN) not in run._control_timeline_heading_text.text()
 
 
@@ -9946,7 +10070,7 @@ def test_a_halt_whose_dials_cannot_be_written_still_withdraws_branch_here(
     monkeypatch.setattr(case.trunk, "begin_control_adjustment", refuse)
 
     with pytest.raises(ValueError, match="can offer no setting"):
-        trunk._handle_adjustment_start()
+        trunk.start_adjustment()
 
     assert case.trunk.has_failed is True
     assert here.isHidden() is True
@@ -10134,7 +10258,7 @@ _SCROLL_BAR_CONTAINERS = frozenset({"qt_scrollarea_hcontainer", "qt_scrollarea_v
 
 
 def _run_widget_ids(view: SimulationView) -> set[int]:
-    """Every widget a run holds, wherever its copies are placed, and every widget under each."""
+    """Every widget `_widget_attributes` names for a run, and every widget under each."""
 
     held: set[int] = set()
 
@@ -12028,28 +12152,136 @@ def test_two_compared_runs_take_one_line_each_above_one_shared_heading(
 
 # ------------------------------------------------- Views in the dashboard
 
+#: One Workspace that holds the three Views which name a run on each run's
+#: panel: the accounting, the compartment schematic and the agent cost.
+_RUN_PANEL_VIEWS = WorkspaceSet(
+    (
+        Workspace(
+            WorkspaceName("Run panels"),
+            Origin.mine(),
+            LayoutModel(
+                (
+                    Window(
+                        Split(
+                            Orientation.ROW,
+                            (0.3, 0.4, 0.3),
+                            (
+                                Area(AreaId(1), AGENT_ACCOUNTING),
+                                Area(AreaId(2), COMPARTMENT_SCHEMATIC),
+                                Area(AreaId(3), AGENT_COST),
+                            ),
+                        )
+                    ),
+                ),
+                AreaId(4),
+            ),
+        ),
+    ),
+    0,
+)
 
-def _copies_by_view(view: SimulationView) -> dict[str, tuple[QWidget, tuple[QWidget, ...]]]:
-    """Each View that shows a run's surfaces, with the View and the copies it shows."""
+
+def _run_named_on(line: str) -> str | None:
+    """The run that a schematic's or a cost panel's first line names, or None if it names none."""
+
+    name, named, _ = line.partition(", at ")
+
+    return name if named else None
+
+
+def _runs_named_in_the_views(view: SimulationView) -> dict[str, list[str | None]]:
+    """What each of the three Views calls each run it shows, in drawing order."""
+
+    views = view.layout_container.views()
+    (accounting,) = (shown for shown in views if isinstance(shown, AccountingView))
+    (schematic,) = (shown for shown in views if isinstance(shown, CompartmentSchematicView))
+    (cost,) = (shown for shown in views if isinstance(shown, AgentCostView))
+
+    return {
+        "accounting": [panel._accounting_heading_text.text() for panel in accounting.panels],
+        "schematic": [_run_named_on(drawn.name_text.text()) for drawn in schematic.schematics],
+        "agent cost": [_run_named_on(panel.name_text.text()) for panel in cost.panels],
+    }
+
+
+@pytest.mark.parametrize("frames_fail", [False, True], ids=["frames draw", "every frame fails"])
+def test_the_views_name_each_run_while_two_are_drawn_and_only_then(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch, frames_fail: bool
+) -> None:
+    """Each View names both runs once a branch is drawn, and no run once Reset drops it.
+
+    Renaming the runs draws nothing (`PL-B1R9`). A View names a run from the
+    run's presentation, so it shows a new name on the tick that follows the
+    change to the run set. That tick is a drawn frame. While every frame
+    fails, it is the halt that the failed frame causes, which hands every
+    View the runs with no frame (`PL-RF2S`). The branch is added with no
+    frame asked for, so the render tick is what draws it. Then the trunk's
+    Reset drops the branch. Each name is written out by hand.
+    """
+
+    case = _branched_case()
+    view = _shown_view(application, case.trunk, case=case, workspaces=_RUN_PANEL_VIEWS)
+    lone: dict[str, list[str | None]] = {
+        "accounting": ["Agent accounting validation"],
+        "schematic": [None],
+        "agent cost": [None],
+    }
+    assert _runs_named_in_the_views(view) == lone
+    branch = case.fork_here()
+
+    if frames_fail:
+        monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+
+    view.add_run(branch)
+    view.render_tick()
+    _settle(application)
+
+    assert case.trunk.has_failed is frames_fail
+    assert _runs_named_in_the_views(view) == {
+        "accounting": [
+            "Agent accounting validation \u2014 Run 1",
+            "Agent accounting validation \u2014 Run 2",
+        ],
+        "schematic": ["Run 1", "Run 2"],
+        "agent cost": ["Run 1", "Run 2"],
+    }
+
+    trunk = view.runs[TRUNK_RUN_INDEX]
+    trunk._reset_button.click()
+    dialog = trunk._reset_dialog
+
+    if dialog is not None:
+        dialog.discard_button.click()
+
+    _settle(application)
+
+    assert len(view.runs) == 1
+    assert case.trunk.has_failed is frames_fail
+    assert _runs_named_in_the_views(view) == lone
+
+
+def _run_widgets_by_view(view: SimulationView) -> dict[str, tuple[QWidget, tuple[QWidget, ...]]]:
+    """Each View that shows something for each run, with the View and its widget for each run."""
 
     accounting = _accounting(view)
+    controls = _setting_controls(view)
     concentration = _concentration(view)
     wash_in = _wash_in(view)
 
     return {
-        "accounting": (accounting, accounting.copies),
+        "accounting": (accounting, accounting.panels),
+        "setting controls": (controls, controls.rows),
         "off-scale": (concentration, concentration.off_scale.lines),
         "wash-in state": (wash_in, wash_in.states.lines),
     }
 
 
-def test_each_view_places_one_copy_per_run_inside_itself(application: QApplication) -> None:
-    """`PL-TH35`: a View shows its copies of the runs' surfaces in its own rectangle.
+def test_each_view_places_one_widget_per_run_inside_itself(application: QApplication) -> None:
+    """`PL-TH35`: a View shows its widget for each run in its own rectangle.
 
-    Each run's line names the run (`PL-C3GS`), which another test reads off
-    the run's own list of copies. That list cannot tell a copy placed in its
-    View from one built and never placed. So this test checks that each copy
-    is inside its View.
+    Each run's panel names the run (`PL-C3GS`). A widget built for a run and
+    never placed would not be seen, so this test checks that each one is
+    inside its View.
     """
 
     view = _case_view(application, _branched_case())
@@ -12058,30 +12290,34 @@ def test_each_view_places_one_copy_per_run_inside_itself(application: QApplicati
 
     assert len(view.runs) == 2
 
-    for name, (shown_in, copies) in _copies_by_view(view).items():
-        assert len(copies) == 2, f"{name}: {len(copies)} copies for 2 runs"
+    for name, (shown_in, widgets) in _run_widgets_by_view(view).items():
+        assert len(widgets) == 2, f"{name}: {len(widgets)} widgets for 2 runs"
 
-        for copy in copies:
-            assert shown_in.isAncestorOf(copy), f"{name}: a copy is outside its View"
+        for widget in widgets:
+            assert shown_in.isAncestorOf(widget), f"{name}: a run's widget is outside its View"
 
-    for panel in _accounting(view).copies:
+    for panel in _accounting(view).panels:
         assert panel.isVisible(), "an accounting panel is not shown"
 
 
-def test_a_branch_dropped_while_frames_fail_leaves_no_copy_in_any_view(
+def test_a_branch_dropped_while_frames_fail_leaves_no_widget_in_any_view(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A Reset that drops the branch takes its copies away even when no frame can be drawn.
+    """A Reset that drops the branch takes its widgets away even when no frame can be drawn.
 
-    A View drops a run's copy when it is next refreshed, and with every frame
-    failing it never is. The branch's accounting panel then stayed on screen
-    with the status "Valid", beside the halted trunk, after the branch was
-    gone. Each copy is now deleted with its run.
+    A View drops a run's widget on the first tick that no longer names the
+    run. When only a drawn frame brought a tick, and every frame failed, the
+    branch's accounting panel stayed on screen with the status "Valid",
+    beside the halted trunk, after the branch was gone. The halt now hands
+    every View the runs that are left (`PL-RF2S`). The dashboard is searched
+    for dials and accounting panels too, so a widget that a View no longer
+    lists but still holds fails here.
     """
 
     view = _case_view(application, _branched_case())
     _take_fork(view, 60.0)
     _settle(application)
+    assert len(view.findChildren(ParameterControls)) == 2
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
 
     view.runs[0]._reset_button.click()
@@ -12090,8 +12326,43 @@ def test_a_branch_dropped_while_frames_fail_leaves_no_copy_in_any_view(
     assert len(view.runs) == 1
     assert view.runs[0].controller.has_failed is True
 
-    for name, (_, copies) in _copies_by_view(view).items():
-        assert len(copies) == 1, f"{name}: the dropped branch's copy is still shown"
+    for name, (_, widgets) in _run_widgets_by_view(view).items():
+        assert len(widgets) == 1, f"{name}: the dropped branch's widget is still shown"
+
+    assert len(view.findChildren(ParameterControls)) == 1
+    assert len(view.findChildren(AccountingPanel)) == 1
+
+
+def test_a_request_that_names_a_run_the_dashboard_does_not_hold_halts_every_run(
+    application: QApplication,
+) -> None:
+    """A View that asks to change a run that is gone is refused by name, and nothing is changed.
+
+    A View names the run whose setting it asks to change. The dashboard
+    holds Run 1 alone here, and the request names Run 2. No run takes the
+    setting. The refusal halts every run, as any exception in one of the
+    dashboard's own slots does, and the banner names the run that was asked
+    for and the runs that are held.
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    absent = view._run_identities.mint()
+    refusal = (
+        "a View asked for a change to Run 2, which this dashboard does not hold; it holds Run 1"
+    )
+
+    with pytest.raises(ValueError, match=refusal):
+        view._run_with(absent)
+
+    view._handle_setting_request(absent, ControlInput.FRESH_GAS_FLOW, 7.0)
+
+    assert controller.settings().fresh_gas_flow_l_min == 4.0
+    assert controller.record().control_timeline == ()
+    assert controller.has_failed is True
+    notice = view.runs[0]._notice_text.notice()
+    assert notice is not None
+    assert f"ValueError: {refusal}" in notice
 
 
 def test_a_view_chosen_while_frames_fail_does_not_ask_again_every_tick(
@@ -12147,7 +12418,7 @@ def test_a_held_thumb_previews_the_setting_without_applying_it(application: QApp
     held_flow = controller.settings().fresh_gas_flow_l_min
     view = _shown_view(application, controller)
     run = view.runs[0]
-    control = run._setting_controls[0]._fresh_gas_flow_slider
+    control = _dials(run)._fresh_gas_flow_slider
     concentration, wash_in = _concentration(view).chart, _wash_in(view).chart
 
     _hold_thumb(control, 6.0, FLOW_DISPLAY_DECIMALS)
@@ -12182,7 +12453,7 @@ def test_a_preview_is_drawn_only_inside_its_region_with_its_label(
     _advance(controller, 300.0)
     controller.pause()
     view = _shown_view(application, controller)
-    control = view.runs[0]._setting_controls[0]._cardiac_output_slider
+    control = _dials(view.runs[0])._cardiac_output_slider
     chart = _concentration(view).chart
 
     _hold_thumb(control, 8.0, FLOW_DISPLAY_DECIMALS)
@@ -12213,7 +12484,7 @@ def test_the_hover_never_answers_from_a_preview(application: QApplication) -> No
     _advance(controller, 300.0)
     controller.pause()
     view = _shown_view(application, controller)
-    control = view.runs[0]._setting_controls[0]._delivered_concentration_slider
+    control = _dials(view.runs[0])._delivered_concentration_slider
     chart = _concentration(view).chart
 
     _hold_thumb(control, 8.0, CONCENTRATION_DISPLAY_DECIMALS)
@@ -12232,7 +12503,7 @@ def test_a_stopped_run_draws_no_preview_while_its_thumb_is_held(application: QAp
     _advance(controller, 60.0)
     controller.fail("a failure the test injects")
     view = _shown_view(application, controller)
-    control = view.runs[0]._setting_controls[0]._fresh_gas_flow_slider
+    control = _dials(view.runs[0])._fresh_gas_flow_slider
 
     _hold_thumb(control, 6.0, FLOW_DISPLAY_DECIMALS)
     view.render_tick()
@@ -12249,7 +12520,7 @@ def test_only_the_compared_run_whose_thumb_is_held_previews_and_its_label_names_
     view.add_run(case.fork_at(CaseInstant(60.0)))
     view.present(False)
     branch = view.runs[BRANCH_RUN_INDEX]
-    control = branch._setting_controls[0]._fresh_gas_flow_slider
+    control = _dials(branch)._fresh_gas_flow_slider
     chart = _concentration(view).chart
 
     _hold_thumb(control, 6.0, FLOW_DISPLAY_DECIMALS)
