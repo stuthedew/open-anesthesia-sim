@@ -46,7 +46,7 @@ says how to read a survivor. mutmut is in the `mutation` dependency group, so
 `make mutate` runs this tool through `uv run --group mutation`.
 
 **mutmut takes its settings from `pyproject.toml`'s `[tool.mutmut]` table,**
-which says why each one is set. This tool decides three things that the table
+which says why each one is set. This tool decides four things that the table
 cannot.
 
 - **Which tests run.** The table names an `@` file as the test selection, and
@@ -63,6 +63,21 @@ cannot.
   it, decorators included. mutmut mutates top-level functions and the methods
   of top-level classes, so a change elsewhere, such as to a constant, is
   reported as a change outside any function.
+- **Which files mutmut mutates, and which mutants it is asked for.** mutmut
+  puts a wrapper around every function of a file it mutates. Before its first
+  mutant it runs the tests twice through those wrappers. The first pass,
+  "Running stats", runs every selected test and records which tests call
+  which function. The second, "Running clean tests", runs the tests of the
+  mutants it was asked for, with no mutant applied. On 2026-11-11 the selected
+  tests made 218 million calls through a wrapper, and the two passes took 15
+  minutes 40 seconds and 8 minutes 14 seconds. So a run of the changed
+  functions tells mutmut to mutate only the files that hold one, and a call
+  into any other file runs at its ordinary speed. It also asks for each mutant
+  by name, because mutmut finds the tests of a glob only where the glob
+  matches a function's name. `run` and `names_to_run` say how, and
+  `docs/mutation-testing.md` § "Pitfalls" has the measurements (`PL-R8HY`).
+  `--all` mutates every file that the table names and pays both passes in
+  full.
 - **What a "timeout" was.** mutmut runs a mutant's tests by their node ids,
   and pytest refuses the run when it cannot collect one of them. A mutant
   causes that when it raises while a test module is imported, or when it
@@ -75,9 +90,10 @@ cannot.
 verdict until the source of the mutated function changes. A test added since
 the last run would therefore never run against a mutant that it now kills, and
 the old "survived" verdict would be reported again (mutmut 3.8.0,
-`collect_or_load_stats` in `mutmut/__main__.py`). A fresh run costs about two
-and a half minutes of coverage collection before the first mutant, which is
-the price of an answer that is true.
+`collect_or_load_stats` in `mutmut/__main__.py`). So every run pays the two
+passes above before its first mutant, which is the price of an answer that is
+true. On 2026-11-11, on four cores, they took 4 minutes for one changed
+function in `app/wash_in.py`.
 
 Exits 0 when the run finished and its results were read, and 1 when they
 could not be read: the base branch is unknown, mutmut failed, or the table is
@@ -235,6 +251,23 @@ for path in walk_mutatable_files():
 print(json.dumps(shown))
 """
 )
+#: The script `run` starts mutmut with. Its first argument is a JSON list of
+#: the files mutmut may mutate, or `null` for every file that `only_mutate`
+#: names. The rest are the arguments of `mutmut run`. mutmut 3.8.0 reads
+#: `only_mutate` from `pyproject.toml` alone, so the script replaces the list
+#: in mutmut's loaded settings and then calls the command line's entry point.
+#: mutmut starts its helper processes with `fork`, so they keep the replaced
+#: list. `Config.only_mutate` is one of mutmut's internals, so the pinned
+#: version in `pyproject.toml` is what keeps it.
+RUN_SCRIPT = """
+import json, sys
+from mutmut.__main__ import cli
+from mutmut.configuration import config
+only = json.loads(sys.argv[1])
+if only is not None:
+    config().only_mutate = only
+cli(["run", *sys.argv[2:]])
+"""
 #: One hunk header of the diff `mutmut show` prints. Its old side numbers the
 #: lines of the function's own text, from 1.
 SHOWN_HUNK_RE = re.compile(r"^@@ -(\d+)(?:,\d+)? \+\d+(?:,\d+)? @@")
@@ -452,10 +485,10 @@ def simulator_unit_tests(root: Path) -> list[str]:
     ]
 
 
-def _mutmut(root: Path, *args: str, log: Path | None = None) -> subprocess.CompletedProcess[str]:
-    """Run one mutmut command in `root`, its output to `log` where one is given."""
+def _python(root: Path, *args: str, log: Path | None = None) -> subprocess.CompletedProcess[str]:
+    """Run this interpreter in `root` with `args`, its output to `log` where one is given."""
     environment = {**os.environ, "PYTHONIOENCODING": "utf-8"}
-    command = [sys.executable, "-m", "mutmut", *args]
+    command = [sys.executable, *args]
     if log is None:
         return subprocess.run(
             command, cwd=root, capture_output=True, encoding="utf-8", env=environment, check=False
@@ -470,6 +503,11 @@ def _mutmut(root: Path, *args: str, log: Path | None = None) -> subprocess.Compl
             env=environment,
             check=False,
         )
+
+
+def _mutmut(root: Path, *args: str, log: Path | None = None) -> subprocess.CompletedProcess[str]:
+    """Run one mutmut command in `root`, its output to `log` where one is given."""
+    return _python(root, "-m", "mutmut", *args, log=log)
 
 
 @dataclass(frozen=True)
@@ -519,17 +557,39 @@ def listing(root: Path, change: Change) -> Listing | None:
     return Listing(shown, frozenset(selected))
 
 
+def names_to_run(listed: Listing, *, verdict: bool) -> list[str]:
+    """The mutants that a run of the changed functions asks mutmut for, by name.
+
+    Under `--verdict` they are the ones that can change the verdict. Otherwise
+    they are every mutant of each changed function. The run passes names
+    rather than one glob for each function. Before its first mutant, mutmut
+    3.8.0 runs the tests of the mutants it was asked for once more, with no
+    mutant applied. It finds those tests by looking a name up, and it matches
+    a glob against the names of functions, which do not end in `__mutmut_N`.
+    A glob that ends there matches none, and mutmut then runs every selected
+    test (`tests_for_mutant_names` in `mutmut/__main__.py`, `PL-R8HY`).
+    """
+    return sorted(listed.run if verdict else listed.shown)
+
+
 def run(
     root: Path,
     patterns: Sequence[str],
     table: Mapping[str, object],
     tests: Sequence[str] | None = None,
+    only: Sequence[str] | None = None,
 ) -> tuple[int, Path]:
     """Empty `mutants/`, write the test selection into it, and run mutmut on `patterns`.
 
     The selection is `tests`, as files or test ids, and every simulator unit
     test file where it is `None`. An empty selection would make pytest run all
     of `testpaths`, so the caller never passes one.
+
+    `only` names the files whose mutants `patterns` can match, and mutmut then
+    mutates those files alone. It is `None` where every file that
+    `only_mutate` names must be mutated. mutmut puts a wrapper around each
+    function of a file it mutates, and every call through a wrapper is slow.
+    A call into any other file then runs at its ordinary speed (`PL-R8HY`).
     """
     mutants = root / MUTANTS
     shutil.rmtree(mutants, ignore_errors=True)
@@ -547,7 +607,9 @@ def run(
         file=sys.stderr,
         flush=True,
     )
-    return _mutmut(root, "run", *patterns, log=log).returncode, log
+    files = None if only is None else sorted(only)
+    done = _python(root, "-c", RUN_SCRIPT, json.dumps(files), *patterns, log=log)
+    return done.returncode, log
 
 
 def statuses(root: Path) -> dict[str, str]:
@@ -1260,7 +1322,7 @@ def _compared_statuses(
     tree holds the same source and is not a checkout. A mutant of any other
     module is left out.
     """
-    code, log = run(tree, patterns, table, tests)
+    code, log = run(tree, patterns, table, tests, only=files)
     if code:
         raise Refusal(f"mutmut exited {code} in {tree}. The end of {log}:\n{_tail(log)}")
     modules = {module_name(path) for path in files}
@@ -1515,13 +1577,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             for path, rows in change.outside.items():
                 print(f"  {path}: {len(rows)} changed lines outside any function.")
             return 0
-        listed = listing(root, change) if args.verdict else None
-        if listed is not None and not listed.run:
+        listed = listing(root, change)
+        names = None if listed is None else names_to_run(listed, verdict=args.verdict)
+        if names is not None and not names:
             print(answer(change, {}, listed))
             return 0
-        patterns = sorted(listed.run) if listed else [unit.pattern for unit in change.units]
-        code, log = run(root, patterns, table)
+        patterns = [unit.pattern for unit in change.units] if names is None else names
+        code, log = run(root, patterns, table, only=sorted({unit.path for unit in change.units}))
         if code and NOTHING_MATCHES in log.read_text(encoding="utf-8", errors="replace"):
+            if names is not None:
+                raise Refusal(
+                    f"mutmut found none of the {len(names)} mutants that the listing named, "
+                    "so the run and the listing generated different mutants."
+                )
             print(answer(change, {}, listed))
             return 0
         if code:
