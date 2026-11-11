@@ -295,6 +295,12 @@ for to avoid reporting a phantom deletion cannot answer if it is read the
 obvious way. Hand the owner the exact commands rather than the intent - a
 cleanup pass ends by handing over a list, not by reporting a job finished.
 
+**A forced push is refused too, on every branch** (`PL-39Y1`). A GitHub
+ruleset blocks it, and `tools/github_refusals_check.py` fails CI where that
+rule is missing. So a branch restarted after its pull request merged is pushed
+plainly. Where the remote still holds the old branch, the project owner
+archives and deletes it first, and `bin/docket branch` prints the steps.
+
 **A third shape, and it is not a refusal at all.** Where GitHub already deleted
 the branch on merge, a `git push --force-with-lease` to it fails with
 `! [rejected] ... (stale info)` rather than a 403, because the lease is compared

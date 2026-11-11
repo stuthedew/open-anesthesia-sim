@@ -1,15 +1,19 @@
 """PreToolUse hook on Bash: refuse a `gh` call that could change anything on GitHub.
 
 **Why** (`PL-3986`, `PL-1ZZ0`). `gh` is installed in the cloud container with
-`GH_TOKEN` set, so `gh pr merge`, `gh api .../merge` and `gh pr create --body`
-reach the actions that the merge guard and the email guard exist to check,
-and neither guard reads a Bash call. Teaching each guard
-`gh`'s commands would add one more reader of a grammar GitHub owns and
-extends, which is how the guards came to judge a request by its spelling
-rather than its action. So a session changes GitHub through the GitHub MCP
-tools alone, where both guards read every call, and this hook refuses each
-`gh` call it cannot show to be a read. The harness hands a session `gh` for
-searching only.
+`GH_TOKEN` set, so `gh pr create --body` and `gh api` can publish text that
+the email guard never screens, because that guard reads MCP calls only.
+Teaching it `gh`'s commands would add one more reader of a grammar GitHub
+owns and extends, which is how the guards came to judge a request by its
+spelling. So a session changes GitHub through the GitHub MCP tools alone,
+where the email guard reads every call, and this hook refuses each `gh` call
+it cannot show to be a read. The harness hands a session `gh` for searching
+only.
+
+**It warns early, and GitHub is what refuses a merge or a forced update**
+(`PL-39Y1`). `main`'s branch protection and the repository's rulesets refuse
+those where they land, whichever client sends them, and
+`tools/github_refusals_check.py` fails CI where one of those rules is missing.
 
 **What a read is.** `READS` names each `gh` command that only reads GitHub,
 or only writes to this machine, as `gh pr checkout` does. `gh api` is a read
@@ -39,6 +43,9 @@ through with a note that nothing checked it, as it did before `guard.py`.
 read; and any other client that carries the token, such as `curl` with
 `$GH_TOKEN` or Python's `urllib`. Each is a known gap, recorded here rather
 than read, because none is a spelling of `gh` a session writes by accident.
+GitHub's rules refuse a merge past the checks, a forced update and a moved
+release tag from any of them. Text published that way is screened by nothing,
+since GitHub has no rule that reads a body.
 
 Standard library only, beside the shell reader the Bash guards share.
 """
@@ -114,9 +121,9 @@ READ_METHODS = frozenset({"GET", "HEAD"})
 WORD_ENDS = str.maketrans({character: " " for character in ";|&()`$'\"<>"})
 
 REMEDY = (
-    "This repository sends every change to GitHub through the GitHub MCP tools, where "
-    "`direct-merge-guard.sh` judges a merge and `pr-body-email-guard.sh` screens every field "
-    "for an email address. Neither reads a Bash call, so `gh` is kept to reads (`PL-3986`). "
+    "This repository sends every change to GitHub through the GitHub MCP tools, where the "
+    "email guard screens every field for an email address. That guard reads no Bash call, "
+    "so `gh` is kept to reads (`PL-3986`). "
     "Use the MCP tool that does the same thing, such as `merge_pull_request`, "
     "`create_pull_request`, `update_pull_request` or `add_issue_comment`. Reads stay open: "
     "`gh search`, `gh pr view`, `gh run list`, and `gh api` with GET, such as "

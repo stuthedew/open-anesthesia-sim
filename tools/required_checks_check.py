@@ -1371,14 +1371,19 @@ def _repo_from_git(root: Path) -> str:
     return slug
 
 
-def main(argv: list[str] | None = None) -> int:
-    root = Path(__file__).resolve().parent.parent
-    parser = argparse.ArgumentParser(description=__doc__.partition("\n")[0])
+def add_repo_argument(parser: argparse.ArgumentParser) -> None:
+    """Add `--repo`, which each check of GitHub's settings takes."""
     parser.add_argument(
         "--repo",
         default=os.environ.get("GITHUB_REPOSITORY"),
         help="owner/name; defaults to $GITHUB_REPOSITORY, then to the origin remote",
     )
+
+
+def main(argv: list[str] | None = None) -> int:
+    root = Path(__file__).resolve().parent.parent
+    parser = argparse.ArgumentParser(description=__doc__.partition("\n")[0])
+    add_repo_argument(parser)
     parser.add_argument(
         "--branch",
         # On a `pull_request` run this is the branch the pull request targets,
