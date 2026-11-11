@@ -799,6 +799,8 @@ class SimulationController:
         cited value in a data file changes what the app actually runs.
         """
 
+        self._runs_discarded = 0
+
         self._is_running = False
         self._failure_reason: str | None = None
         self._rejected_accounting: AgentSimulationValidationResult | None = None
@@ -958,6 +960,21 @@ class SimulationController:
         """Whether the session is halted by a failure rather than paused."""
 
         return self._failure_reason is not None
+
+    @property
+    def runs_discarded(self) -> int:
+        """How many times a Reset or an agent change has begun to discard the run's state.
+
+        The count goes up just before the state is cleared or rebuilt, so it
+        has gone up even when `reset` or `set_agent` raises part-way through.
+        `RunView` compares the count before and after either call. A change
+        means that the values on screen may describe a run that is gone, so
+        they must be withheld until a frame draws, even when the call raised
+        (`PL-MVCF`). A refusal raised before anything is cleared leaves the
+        count unchanged, because the run is exactly as it was.
+        """
+
+        return self._runs_discarded
 
     @property
     def agent_id(self) -> str:
@@ -1224,6 +1241,7 @@ class SimulationController:
         current = self.snapshot()
         self.pause()
 
+        self._runs_discarded += 1
         self._forget_reached_marks()
         self._build_state(
             agent_id=agent_id,
@@ -2708,6 +2726,7 @@ class SimulationController:
         settings = self._state.uptake_system.equation_settings()
 
         self.pause()
+        self._runs_discarded += 1
         self._failure_reason = None
         self._rejected_accounting = None
         self._failed_frame_reason = None

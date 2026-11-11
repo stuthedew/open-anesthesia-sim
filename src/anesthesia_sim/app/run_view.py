@@ -1418,10 +1418,18 @@ class RunView(QWidget):
         the new exception and halted the run a second time (blind review of
         `PL-HJKN`).
 
+        **A Reset that raises after it has begun to clear the run still starts
+        the run over** (`PL-MVCF`). The run on screen is then gone, so the
+        start-over is recorded before the exception reaches the halt gate,
+        and the halt withholds every compartment value. The controller's
+        `runs_discarded` count says whether clearing began.
+
         Raises:
             Exception: What `SimulationController.reset()` raised, once the exit
                 text is chosen.
         """
+
+        discarded = self.controller.runs_discarded
 
         try:
             self.controller.reset()
@@ -1429,6 +1437,10 @@ class RunView(QWidget):
             self._refused_reset_notice = refused_reset_exit(
                 error, recorded_failure_reason=self.controller.status().failure_reason
             )
+
+            if self.controller.runs_discarded != discarded:
+                self._announce_the_start_over()
+
             raise
 
         self._rejected_setting_notice = None
@@ -1540,8 +1552,15 @@ class RunView(QWidget):
         self.snapshot()
 
         def switch() -> None:
-            self.controller.set_agent(agent_id)
-            self._announce_the_start_over()
+            discarded = self.controller.runs_discarded
+
+            try:
+                self.controller.set_agent(agent_id)
+            finally:
+                # A switch that raised after it began to rebuild the run has
+                # still discarded the run on screen (`PL-MVCF`).
+                if self.controller.runs_discarded != discarded:
+                    self._announce_the_start_over()
 
         self._apply_setting(switch)
 
