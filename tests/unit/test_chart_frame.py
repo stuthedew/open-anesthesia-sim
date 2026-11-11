@@ -2010,6 +2010,23 @@ def test_a_preview_at_the_run_s_own_setting_coincides_with_what_the_run_then_dra
     assert all(ratio == pytest.approx(later_ratio[t], rel=1e-9) for t, ratio in predicted)
 
 
+def test_a_preview_on_an_axis_that_ends_at_the_reach_predicts_nothing() -> None:
+    """An axis with no time ahead of the run has no prediction to draw, not a single point.
+
+    `SimulationController.preview_window` returns an empty window where the
+    axis ends at or before the reach. The axis here ends exactly at the reach,
+    and one step past it the prediction holds the reach and that step.
+    """
+
+    controller = _run(60.0)
+    setting = SettingPreview(ControlInput.FRESH_GAS_FLOW, 6.0)
+
+    assert controller.reached_s == 60.0
+    assert controller.preview_window(setting, 0.0, 60.0, 600).times_s == ()
+    assert controller.preview_window(setting, 0.0, 30.0, 600).times_s == ()
+    assert controller.preview_window(setting, 0.0, 60.1, 600).times_s == (60.0, 60.1)
+
+
 def test_a_preview_window_keeps_its_width_and_puts_the_reach_at_mid_plot() -> None:
     controller = _run(1200.0)
     base = time_base_for_span(900.0)
