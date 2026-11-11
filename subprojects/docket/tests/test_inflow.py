@@ -292,11 +292,7 @@ def _fact_chain() -> list[Item]:
     members = [_item(f"PL-0MB{n}", date(2026, 8, 1), touches=("src/c.py",)) for n in (1, 2, 3)]
     names = ("PL-0MB1", "PL-0MB2", "PL-0MB3")
     first = _item(
-        "PL-0HD3",
-        date(2026, 8, 2),
-        closed=date(2026, 8, 5),
-        root_cause_of=names,
-        misread=_FACT,
+        "PL-0HD3", date(2026, 8, 2), closed=date(2026, 8, 5), root_cause_of=names, misread=_FACT
     )
     second = _item(
         "PL-0HD2",

@@ -229,9 +229,7 @@ def facts(groups: Mapping[str, Cluster]) -> dict[str, Fact]:
         if key:
             by_fact.setdefault(key, []).append(cluster.head)
     return {
-        key: Fact(
-            tuple(sorted(heads, key=lambda head: (head.added or date.max, head.identifier)))
-        )
+        key: Fact(tuple(sorted(heads, key=lambda head: (head.added or date.max, head.identifier))))
         for key, heads in by_fact.items()
     }
 

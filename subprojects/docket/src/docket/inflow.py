@@ -418,9 +418,7 @@ def analyze(
     # Every id a filing can name to reach each line: the line's own, and for
     # a fact each head that states it.
     named_by = {
-        closed: frozenset(
-            head.identifier for head in fact_of[closed].heads
-        )
+        closed: frozenset(head.identifier for head in fact_of[closed].heads)
         if closed in fact_of
         else frozenset({closed})
         for closed in reentered
