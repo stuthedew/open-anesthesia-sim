@@ -178,3 +178,10 @@ each gained a two-line comment after the last copy edit. The project owner
 said "skip copy edit" on 2026-11-11, while the copy editor was reading them,
 so the trailer on the commit that records this says it read none.
 
+**Audited 2026-11-11.** `bin/docket verify --self PL-CTXZ` answered `ACCEPT`
+at `b1758cb0`, after the merge that ported `PL-9YPR`'s edits: `make check`
+passed, and the unit tests caught all 21 mutants on the lines this branch
+changed. The pull request waits on the owner's read, because the branch adds
+`docs/INTERFACE.md` to the list of documents that the merge gate holds for
+that read, and changes two tests that pin the gate's answers.
+
