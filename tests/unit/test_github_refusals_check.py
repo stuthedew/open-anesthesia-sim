@@ -238,8 +238,8 @@ def test_the_merge_hold_check_counts_where_a_ruleset_requires_it(
 ) -> None:
     """GitHub keeps required checks in a branch protection rule or in a ruleset.
 
-    The owner may move them from one to the other, and the rule must not fail
-    on a requirement that only moved.
+    The owner may move them from one to the other, and the check's
+    `default-merge-hold` rule must not fail on a requirement that only moved.
     """
     answers = {
         **ASKED_FOR,
@@ -257,7 +257,7 @@ def test_the_merge_hold_check_counts_where_a_ruleset_requires_it(
 
 
 def test_the_required_check_is_the_one_job_that_main_s_copy_of_the_workflow_reports() -> None:
-    """The rule names the check that `.github/workflows/merge-hold.yml` reports.
+    """The `default-merge-hold` rule names the check that `merge-hold.yml` reports.
 
     The workflow must run only on `pull_request_target`. GitHub then reads the
     job from `main`, so a pull request cannot edit the job that judges it. On

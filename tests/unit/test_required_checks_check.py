@@ -838,11 +838,12 @@ def test_this_repository_requires_exactly_checks_merge_hold_and_pr_title() -> No
     The job names `checks`, `merge-hold` and `pr-title` are load-bearing
     outside the tree, which is why each job key carries a comment saying so.
     Both this test and CI fail if one of those jobs is renamed or a new
-    reporting job declares no exemption. This test fails earlier, in
-    `make check`, before the push. The two parts of the test suite report too,
-    and are exempt because `checks` gates them (`PL-T9X9`). `merge-hold` lost
-    its exemption once it had run on `main` and `main` required it
-    (`PL-KH7Y`).
+    reporting job declares no exemption from being required. This test fails
+    earlier, in `make check`, before the push.
+
+    The two parts of the test suite report too, and are exempt because
+    `checks` gates them (`PL-T9X9`). The `merge-hold` job lost its exemption
+    once it had run on `main` and `main` required it (`PL-KH7Y`).
     """
     jobs = rcc.reporting_jobs(ROOT / ".github" / "workflows")
     required = [job for job in jobs if job.not_required is None]
