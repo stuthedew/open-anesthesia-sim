@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: irreversible-actions-refused-at-github
+milestone: v0.6.18
 touches: .github/workflows/merge-hold.yml, tools/github_refusals_check.py, tests/unit/test_github_refusals_check.py, tests/unit/test_required_checks_check.py, docs/maintainer.md, docs/apparatus.md
 blocked-by: PL-39Y1
 deferred-from: v0.7.0 - a guard of the workflow, which nothing in the schematic's gate depends on
