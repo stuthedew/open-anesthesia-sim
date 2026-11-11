@@ -93,8 +93,13 @@ text what the trace found. Never state a reason that no record holds.
    reader can find.
 7. **Say each thing once**, where the reader needs it, and cut words that add
    nothing.
-8. **Read it aloud.** If you would not say it that way to a colleague, rewrite
-   it.
+8. **Check every sentence before the text goes to its reader.** Go through
+   the finished text one sentence at a time. Is each word used in its everyday
+   sense? Does the text say which one each paper, file, rule or item is? Does
+   each value, unit, condition and count match its source? Is any phrase
+   copied from the files the text describes? Would you say the sentence that
+   way to a colleague? Fix what fails, and recommend a text to the project
+   owner only after this check (project owner, 2026-11-11, `PL-J1ZM`).
 
 **A pull request title names the change plainly and briefly.** The title
 becomes the squash commit's subject, the one line of `main`'s history that a
