@@ -383,6 +383,23 @@ the margin at 8, the allowance for the steps taken covers what removing the
 squarings from the canonical state and the window takes away. The weekly run
 in (c) should replay `PL-81Q2` at its several thousand draws.
 
+**Mutation check of (b), 2026-11-11.** `make mutate` on the whole branch was
+stopped at a one-hour limit after 157 mutants (`PL-33CG`, the mutation check
+that did not finish in an hour). Of its 12 survivors, five were refusal
+messages in `core/rounding.py`, which the tests matched on one word. Each
+message is now compared in full. The other seven are in `grid_spacing_s`
+and `percent_axis_ticks`, on lines the branch did not change. A run on the
+module alone, `mutmut run "anesthesia_sim.core.rounding.x_*"`, then caught
+all 35 of its mutants. The mutants of the other functions the branch touched
+were not run.
+
+**Checks after the review's fixes.** `make check` passed at `ce6b6737`:
+12 321 tests passed and 3 were skipped, with every line and branch of `core/`
+covered.
+
+**Left for (b).** The project owner's review of the change to `core/` and
+`docs/MODEL.md`. The pull request is #2121.
+
 **Prose review skipped.** The project owner said "skip copy edit" on
 2026-11-11, so the copy editor read none of the branch's docstrings and
 comments, and did not edit the pull request's title and body. The
