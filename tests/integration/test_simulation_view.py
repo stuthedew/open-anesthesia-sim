@@ -12272,7 +12272,9 @@ def _run_widgets_by_view(view: SimulationView) -> dict[str, tuple[QWidget, tuple
         "accounting": (accounting, accounting.panels),
         "setting controls": (controls, controls.rows),
         "off-scale": (concentration, concentration.off_scale.lines),
+        "unmarked changes": (concentration, concentration.unmarked_changes.lines),
         "wash-in state": (wash_in, wash_in.states.lines),
+        "wash-in unmarked changes": (wash_in, wash_in.unmarked_changes.lines),
     }
 
 
