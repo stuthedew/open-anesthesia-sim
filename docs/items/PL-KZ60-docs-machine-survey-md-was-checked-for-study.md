@@ -3,11 +3,13 @@ id: PL-KZ60
 title: docs/machine-survey.md was checked for study-protocol-read-as-practice in section (a2) only, and one of that section's three sources did not support the claim it was cited for
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: anesthesia-machine
 touches: docs/machine-survey.md
 added: 2026-09-20
+closed: 2026-11-11
+pr: 2112
 payoff: stops a wrong source claim in the survey reaching docs/MODEL.md or a data file, without paying for a 23-source re-read of claims nothing has adopted
 verify: grep -qF 'adopted into the model specification or a data file has been checked against the depth its source was read at' docs/machine-survey.md
 not-delegable: The deliverable is a per-claim judgment about what a paper establishes against the depth it was read at - the distinction that failed in section (a2), where two protocol ranges read as reports of practice. It needs full-text retrieval through the PubMed MCP server and the private reference corpus, and the verify: pins only the sentence recording the conclusion, never whether the reading behind it happened.
@@ -200,3 +202,31 @@ pattern, and a pattern justifies the sweep this re-scope declines to run on one.
 as is `classes: docs` and the reasoning above for it. `not-delegable:` still
 holds — the remaining work is still a per-claim judgment about what a paper
 establishes against the depth it was read at, over a smaller set of claims.
+
+**Done, 2026-11-11.** The brief still held when the work started: only § "(a2)" had been checked.
+
+**The adopted set.** These survey claims are used by `docs/MODEL.md`, a data file under `src/anesthesia_sim/data/`, or both, found by searching each for the survey's name and for every source in its § "Sources":
+
+1. § "(a1)": each apparatus volume found includes the absorber and excludes the patient circuit; Shin et al.'s 4.7, 2.1 and 2.0 L; the 1.2 L Hudson RCI circuit; the 3 L bag left out of the sums. `docs/MODEL.md`, `reference_circle_system.json`'s `provenance_gap`, and `core/parameters.py`'s docstring use it.
+2. § "The headline finding": Perseus A500 and Zeus IE at 3.3 and 3.2 L, 6.6 and 6.4 min at 0.5 L/min, with times to target that still differ, and Fukuda et al.'s inlet result. `docs/MODEL.md` uses both.
+3. § "(a2)": no surveyed machine publishes a startup flow; Kalmar et al.'s sentence, design and 2 L/min comparator; Candries et al. and Hoffmann et al. withdrawn as evidence of practice.
+4. § "(b8)": no deliverable flow range obtained for any of the eight machines; ISO 80601-2-13:2022 named, not read.
+5. § "(b11)": Meyer et al.'s sentence on the Zeus's surplus gas valve.
+6. The Candries entry: worse agreement during wash-in than maintenance, and the corpus not holding the paper. `docs/MODEL.md` uses both.
+
+Three other survey sources appear in `docs/MODEL.md` or a data file, each with its own citation and stated depth rather than as a claim taken from the survey: Johnston et al. 1994 (the desflurane vaporizer maximum, `data/agents/desflurane.json`), Andrews and Johnston 1993 (the Tec 6 mechanism, in the notes on ambient pressure) and ISO 5360 (the agent colours). They are outside this item's scope, which is the survey's own claims. The Biro that `docs/MODEL.md` cites is a different paper.
+
+**What each source was checked against, 2026-11-11.**
+
+- Shin et al.: full text, PubMed Central PMC5248460. Every figure in 1 and 2 holds, and "including the CO2 absorbers, but without the breathing circuits" is the paper's own wording. The headline's list of the authors' reasons did not hold: it named fresh gas decoupling and ventilator drive, but the paper says only the Primus has decoupling and that the Perseus and Zeus both have blower-driven ventilators. Corrected to the two factors that differ, inlet position and the Zeus's mixing-chamber delay.
+- Fukuda et al.: abstract only. PubMed Central does not hold it, the corpus does not, and Springer's page redirected. It does not support the headline's "moved nothing but the fresh gas inlet", "a machine changed it while its volume stayed the same", or a rise "of isoflurane and of sevoflurane" in general: one of its three machines showed no significant change, and isoflurane was compared on one machine. Corrected in the headline, § "(b7)" and the source entry. The copies in `docs/MODEL.md`, `docs/machine-abstraction.md` and the model description draft are filed as `PL-4G3N`, because a defect in `docs/MODEL.md` is filed rather than fixed in place.
+- Kalmar et al.: full text through NCBI efetch, PMC9637609. The quoted sentence closes the abstract; the Methods analyse one institution's records under one ethics approval, which supports "single-centre"; the paper calls its 2 L/min group "conventional low flow anaesthesia". Holds.
+- Candries et al.: abstract. 21% against 6% on the FLOW-i and 13% against 5% on the Zeus, by median absolute performance error over the first 15 and last 45 minutes. Holds.
+- Meyer et al.: the corpus dump `text/modern_anesthetics/08_Part_IV_Ch5-6_Index.txt`, read with `git show` from the local corpus clone. The quoted sentence is there word for word. Holds.
+- § "(a2)" and § "(b8)" are statements about what the search found, not about a source, so depth does not apply. The machine table lists eight machines, as `docs/MODEL.md` says.
+
+**Not a reopening.** The Fukuda error is a claim inferred past an abstract, not a protocol read as practice, so the third reopening condition above is not met. `PL-4DCG` wrote the survey and adopted the Fukuda sentence into `docs/MODEL.md` in one change, before this item set the rule that the adopting change checks the claim, so the first reopening condition is not met either. The unadopted remainder stays deferred.
+
+**A false sentence fixed in passing.** § "Sources" said "The depth of reading is stated on each entry", which was false for Bashraheel, Jakobsson, Leijonhufvud and Zumsande. It now names those four as carrying no depth, because none was recorded. Their depth is still unknown.
+
+**Filed.** `PL-4G3N` (the Fukuda claim in the three other documents) and `PL-45B4` (the survey says ISO 5360 was not read, while `docs/MODEL.md` quotes its Table 2).

@@ -32,19 +32,30 @@ patients or on a bench, quantities that this model computes:
   constant. The Perseus A500 and the Zeus IE came out at 3.3 L and 3.2 L, and
   6.6 min against 6.4 min at 0.5 L/min fresh gas flow. On this model's only
   machine parameter, they are effectively the same circuit. Their times to
-  target still differed significantly. The authors attribute the remaining
-  difference to the position of the fresh gas inlet relative to the patient, the
-  presence of a fresh-gas-decoupling system, the ventilator drive, and the
-  vaporizer's delivery mode.
-- On fixed machines, Fukuda et al. (Fukuda 2006) moved nothing but the
-  **fresh gas inlet**, from between the inspiratory valve and the absorber to
-  between the inspiratory valve and the patient. During low-flow anesthesia,
-  the inspired/delivered ratio of isoflurane and of sevoflurane rose
-  significantly. That ratio, $`F_I/F_D`$, is exactly what this model's circuit
-  equation computes, and a machine changed it while its volume stayed the same.
+  target still differed significantly, between the Perseus and the Zeus in its
+  fresh-gas mode. The authors posit that the difference comes from equipment
+  factors other than circuit volume and fresh gas flow. Both machines have a
+  blower-driven ventilator and neither has fresh gas decoupling. The factors
+  the authors name that differ between the two are the fresh gas inlet, which
+  sits closer to the patient on the Perseus, and the Zeus's injection
+  vaporizer, which in fresh-gas mode mixes the agent in a chamber next to the
+  ventilator and so adds a delay.
+- In patients, Fukuda et al. (Fukuda 2006) compared two positions of the
+  **fresh gas inlet** during low-flow anesthesia: between the inspiratory valve
+  and the absorber, and between the inspiratory valve and the patient. On the
+  two decoupling-style machines of the three they studied, the ACOMA
+  KMA-1300-III and the Dräger Fabius GS, the inlet next to the patient gave a
+  significantly higher inspired/delivered ratio. It did so for sevoflurane on
+  both, and for isoflurane on the ACOMA. On the third machine, a Dräger NM-GS,
+  the abstract reports no significant change. That ratio, $`F_I/F_D`$, is
+  exactly what this model's circuit equation computes. The abstract is the only
+  part of the paper this project has read, and it does not say whether moving
+  the inlet changed the circuit's volume.
 
-So a machine profile that is a volume and a set of bounds is falsified by the
-data before it is written. This does not mean that the profile must carry the
+So, on Shin et al.'s measurements alone, a machine profile that is a volume and
+a set of bounds is falsified by the data before it is written. Fukuda et al.
+show that one of the other factors, the inlet's position, changes $`F_I/F_D`$
+on some machines. This does not mean that the profile must carry the
 circuit's topology, such as where the fresh gas inlet sits. It means that the
 design of the planned machine model has to decide, explicitly, either to carry
 topology or to state that machines differing only in topology are
@@ -131,6 +142,17 @@ document by these rules:
    § "Sources" records the route beside the two entries.
 5. **Anything else is `unknown`.** A machine whose apparatus volume is unknown
    cannot be added yet. It does not get a plausible apparatus volume instead.
+
+**Every claim in this document that has been
+adopted into the model specification or a data file has been checked against the depth its source was read at**
+(2026-11-11, `PL-KZ60`). The rest are checked one claim at a time, by the
+change that adopts them. The check corrected two claims in § "The headline
+finding". Fukuda et al. had been cited for a rise in $`F_I/F_D`$ on every
+machine they studied and at a fixed circuit volume, and their abstract supports
+neither. Shin et al.'s reasons for the difference between the Perseus and the
+Zeus had been listed with two features that do not differ between them.
+`docs/MODEL.md` and `docs/machine-abstraction.md` still repeat the Fukuda
+claim, and `PL-4G3N` corrects them.
 
 ## The variables
 
@@ -422,15 +444,17 @@ which of them usually comes with decoupling.
 
 ### (b7) Fresh gas inlet position
 
-**Inlet position changes the inspired/delivered ratio, $`F_I/F_D`$, even at a
-fixed circuit volume and fresh gas flow.** The simulator's circuit equation computes
+**Inlet position changes the inspired/delivered ratio, $`F_I/F_D`$, during
+low-flow anesthesia on some machines.** The simulator's circuit equation computes
 this ratio. See the headline finding above.
 
 **One study measured an effect, and another inferred one.** In a randomised study in
 patients, Fukuda et al. moved the inlet from between the inspiratory valve and the
 absorber to between the inspiratory valve and the patient. During low-flow anesthesia
-on two decoupling-style machines, the move significantly raised $`F_I/F_D`$ for both
-isoflurane and sevoflurane. Shin et al. rank their three machines by inlet proximity
+on two decoupling-style machines, the move significantly raised $`F_I/F_D`$ for
+sevoflurane on both, and for isoflurane on the one where it was compared, the ACOMA
+KMA-1300-III. On a third machine, a Dräger NM-GS, the abstract reports no significant
+change. It does not say whether the move changed the circuit's volume. Shin et al. rank their three machines by inlet proximity
 to account for differences that their volume calculation did not explain.
 
 **Inlet position is the variable that tests the abstraction's honesty: the simulator cannot represent it, and must not fake it.** It
@@ -680,6 +704,9 @@ record — PMID, DOI, journal, volume, issue and pages — read there rather tha
 from a search summary; each entry's DOI links the original. The depth of reading
 is stated on each entry, because the abstract is as far as that route goes for a
 paywalled article: **full text read**, **abstract read**, or **metadata only**.
+Four entries used only to select the machines carry no depth, because none was
+recorded when they were added: Bashraheel et al., Jakobsson et al.,
+Leijonhufvud et al. and Zumsande et al.
 One source was read at full text from the project owner's private reference
 corpus and says so.
 
@@ -693,7 +720,13 @@ corpus and says so.
   delivered fraction and inspired fraction of inhaled isoflurane and sevoflurane
   in low-flow anesthesia. *J Anesth.* 2006;20(4):268–273.
   PMID 17072690; [DOI 10.1007/s00540-006-0417-6](https://doi.org/10.1007/s00540-006-0417-6).
-  Abstract read.
+  Abstract read, and read again on 2026-11-11 (`PL-KZ60`). The full text was
+  not reachable that day: PubMed Central does not hold it, the private
+  reference corpus does not either, and Springer's article page answered with a
+  redirect. The abstract names the three machines and reports which comparisons
+  were significant. It does not say whether moving the inlet changed the
+  circuit's volume, so this document does not cite the study for a change at a
+  fixed volume.
 - Hendrickx JF, De Cooman S, Deloof T, Vandeput D, Coddens J, De Wolf AM. The
   ADU vaporizing unit: a new vaporizer. *Anesth Analg.* 2001;93(2):391–395.
   PMID 11473867; [DOI 10.1097/00000539-200108000-00031](https://doi.org/10.1097/00000539-200108000-00031).
@@ -726,7 +759,10 @@ corpus and says so.
   Dräger's instructions for use for the Primus IE (2014), the Perseus A500
   (2013) and the Zeus IE (2015), its refs 12 to 14. Those manuals are unread,
   because `www.draeger.com` was refused on 2026-11-09, so the volumes are tier 2
-  here. Its times to target are its own measurement.
+  here. Its times to target are its own measurement. Read at full text again
+  on 2026-11-11 (`PL-KZ60`) to check the apparatus volumes, the circuit and
+  bag set-up, the circuit volumes and time constants, and the authors' reasons
+  for the difference between the Perseus and the Zeus.
 
 **Model-relevant behavior and machine description (tier 2, or device
 description).**
@@ -749,7 +785,10 @@ description).**
   Directly relevant to this project: it validates the reference
   implementation this simulator is compared against, on two workstations, and
   reports materially worse agreement during wash-in than during maintenance.
-  Its flow range is a protocol, not a report of practice — see § "(a2)".
+  Its flow range is a protocol, not a report of practice — see § "(a2)". The
+  abstract was read again on 2026-11-11 (`PL-KZ60`). It gives a median absolute
+  performance error of 21% over the first 15 minutes against 6% over the last
+  45 on the FLOW-i, and 13% against 5% on the Zeus.
 - Hendrickx JFA, De Wolf AM. The anesthesia workstation: quo vadis? *Anesth
   Analg.* 2018;127(3):671–675.
   PMID 29239956; [DOI 10.1213/ANE.0000000000002688](https://doi.org/10.1213/ANE.0000000000002688).
@@ -771,7 +810,10 @@ description).**
   one centre's records, 25 cases per group, on Flow-i workstations alone,
   comparing automated gas control (AGC) speed settings against a fixed 2 L/min
   group and a manual minimal-flow group. § "(a2)" says what that design lets it
-  show about practice.
+  show about practice. The full text was read again on 2026-11-11 through
+  NCBI's efetch service (`PL-KZ60`). Its Methods analyse one institution's
+  charting records under one ethics approval, and it calls its fixed 2 L/min
+  group "conventional low flow anaesthesia".
 - Križmarić M, Maver U, Zdravković M, Mekiš D. Effects of the reservoir bag
   disconnection on inspired gases during general anesthesia: a simulator-based
   study. *BMC Anesthesiol.* 2021;21(1):32.
@@ -787,7 +829,8 @@ description).**
   recoverable from the dump's page markers. The chapter is from a textbook and
   so is tier 2, but for what a device does it is the manufacturer's own
   technical account. Rule 3 under § "How a value gets into this document" says
-  what it may be cited for.
+  what it may be cited for. The sentence quoted in § "(b11)" was checked
+  against the dump again on 2026-11-11 (`PL-KZ60`).
 
 **Evidence that a machine was in service and studied, used only to select the
 machines surveyed.**
