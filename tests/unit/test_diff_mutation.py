@@ -13,9 +13,11 @@ dependency group. The mutant names they expect are mutmut 3.8.0's, as
 
 from __future__ import annotations
 
+import ast
 import fnmatch
 import json
 import subprocess
+import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -52,6 +54,7 @@ from diff_mutation import (
     verdict,
     working_files,
 )
+from docket.arming import imports_product
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -1373,3 +1376,48 @@ def test_a_changed_test_the_table_deselects_is_not_compared(repo: Path, runs: Ru
 
     assert compare_tests(repo, change, table) == Compared()
     assert runs.asked == []
+
+
+def _root_paths_read(tree: ast.Module) -> set[str]:
+    """The first path segment of each `Path(__file__).parents[2] / "name"` in a test module."""
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div)):
+            continue
+        left, right = node.left, node.right
+        if (
+            isinstance(left, ast.Subscript)
+            and isinstance(left.value, ast.Attribute)
+            and left.value.attr == "parents"
+            and isinstance(left.slice, ast.Constant)
+            and left.slice.value == 2
+            and isinstance(right, ast.Constant)
+            and isinstance(right.value, str)
+        ):
+            names.add(right.value.split("/")[0])
+    return names
+
+
+def test_the_mutation_run_copies_each_root_path_a_simulator_unit_test_reads() -> None:
+    """A unit test that reads a file mutmut does not copy stops the whole mutation run.
+
+    `tests/unit/test_readme_claims.py` reads `README.md` when it is imported.
+    The file was not copied, so mutmut collected no test, and the audit's
+    mutation check answered nothing for any simulator branch from 2026-11-09
+    until `PL-CTXZ` added the file to `also_copy`.
+    """
+    root = Path(__file__).resolve().parents[2]
+    table = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["tool"]["mutmut"]
+    copied = {
+        name.strip("/").split("/")[0]
+        for name in (*table["source_paths"], *table["also_copy"], "tests", "pyproject.toml")
+    }
+    missing = {}
+    for path in sorted((root / "tests" / "unit").glob("test_*.py")):
+        tree = ast.parse(path.read_bytes())
+        if not imports_product(tree):
+            continue
+        unread = _root_paths_read(tree) - copied
+        if unread:
+            missing[path.name] = sorted(unread)
+    assert missing == {}

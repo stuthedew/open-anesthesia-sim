@@ -214,8 +214,10 @@ process_isolation = "forkserver"
 forkserver_warmup = "none"
 # The tests import `tools/doc_check.py` and `docket`, and read `docs/MODEL.md`.
 # mutmut 3.8.0 fails to copy a file whose directory it has not created, so
-# `docs/` is copied whole.
-also_copy = ["tools/", "subprojects/docket/src/", "docs/"]
+# `docs/` is copied whole. `tests/unit/test_readme_claims.py` reads `README.md`
+# when it is imported, so without that file no test is collected and mutmut
+# stops before it tries a mutant.
+also_copy = ["tools/", "subprojects/docket/src/", "docs/", "README.md"]
 # The application's target, not the whole repository's. `tools/ruff.toml` and
 # `subprojects/docket/ruff.toml` extend this file and override
 # `target-version` to the bare-`python3` floor, because both trees are run by
