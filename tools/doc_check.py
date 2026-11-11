@@ -8909,6 +8909,12 @@ GATE_ONLY: dict[str, tuple[str, str]] = {
         "checks off the GitHub API and reconciles them against the jobs that report "
         "them, so a checkout with no network and no token has nothing to compare",
     ),
+    "tools/github_refusals_check.py": (
+        "ci",
+        "its answer is not in the tree either: it reads the rules GitHub holds for "
+        "the default branch, every other branch and release tags, which a checkout "
+        "with no network has no copy of (`PL-39Y1`)",
+    ),
 }
 
 #: Where a gate script may be named. `.py` is every check this project has

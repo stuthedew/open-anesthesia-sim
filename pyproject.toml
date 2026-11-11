@@ -181,10 +181,13 @@ pythonpath = ["tools", ".claude/hooks", "subprojects/docket/src"]
 # records the baseline.
 [tool.mutmut]
 source_paths = ["src/"]
-# The clinical model, and the seven presentation modules that compute a value
-# the interface displays and import no Qt. The last three build the readouts,
-# the chart labels and the control text (`PL-7FPD`). The rest of `app/` is Qt
-# widget code, whose tests are integration tests that mutmut does not run.
+# The clinical model, and the eight presentation modules that compute a value
+# the interface displays and import no Qt. `dashboard_frame.py`,
+# `chart_frame.py` and `control_timeline.py` build the readouts, the chart
+# labels and the control text (`PL-7FPD`). `run_presentation.py` builds the
+# one value that a run's panel is written from (`PL-RF2S`). The rest of `app/`
+# is Qt widget code, whose tests are integration tests that mutmut does not
+# run.
 only_mutate = [
     "src/anesthesia_sim/core/*",
     "src/anesthesia_sim/app/formatting.py",
@@ -194,14 +197,15 @@ only_mutate = [
     "src/anesthesia_sim/app/dashboard_frame.py",
     "src/anesthesia_sim/app/chart_frame.py",
     "src/anesthesia_sim/app/control_timeline.py",
+    "src/anesthesia_sim/app/run_presentation.py",
 ]
 # pytest reads its test files from `mutants/selected-tests.txt`, which
 # `tools/diff_mutation.py` writes before each run: every test file under
 # `tests/unit/` that imports the simulator. Each deselected test lists the
-# functions of the model's modules, so under mutmut it also reads the mutant
-# copies of those functions and fails on them. The first calls each function
-# to check its guards. The second reads each signature for a bare number, and
-# while it ran under mutmut no mutant was tried on any branch (`PL-CTXZ`).
+# functions in the modules of `core/`. Under mutmut the list also holds the
+# mutant copies of those functions, and the test fails on them. The first
+# test calls them to check its guards. The second finds their bare numbers,
+# which its own list does not name (`PL-GP8G`).
 pytest_add_cli_args_test_selection = [
     "@selected-tests.txt",
     "--deselect",
@@ -216,11 +220,11 @@ pytest_add_cli_args_test_selection = [
 # The default warm-up, `collect`, would import them unmutated once more.
 process_isolation = "forkserver"
 forkserver_warmup = "none"
-# The tests import `tools/doc_check.py` and `docket`, and read `docs/MODEL.md`.
+# The tests import `tools/doc_check.py` and `docket`, and read `docs/MODEL.md`
+# and `README.md`. A test that reads a file not copied here fails when it is
+# imported, and mutmut then stops before it runs any mutant (`PL-GP8G`).
 # mutmut 3.8.0 fails to copy a file whose directory it has not created, so
-# `docs/` is copied whole. `tests/unit/test_readme_claims.py` reads `README.md`
-# when it is imported, so without that file no test is collected and mutmut
-# stops before it tries a mutant.
+# `docs/` is copied whole.
 also_copy = ["tools/", "subprojects/docket/src/", "docs/", "README.md"]
 # The application's target, not the whole repository's. `tools/ruff.toml` and
 # `subprojects/docket/ruff.toml` extend this file and override

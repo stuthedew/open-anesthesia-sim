@@ -20,7 +20,6 @@ its input, is not logged. The email guard refuses through `screen` in
 `hook_input.deny` as well, under the rule `email-address` (`PL-HHKC`).
 
 The counts are a floor, and the floor is lowest for the guards that fire after
-`bin/docket record`: `push-check-guard`, `gate-status-guard` and
-`direct-merge-guard`. Their late refusals reach this directory only when a
+`bin/docket record`: `push-check-guard` and `gate-status-guard`. Their late refusals reach this directory only when a
 later record on the same machine copies them, and a container that ends after
 one pull request loses them.

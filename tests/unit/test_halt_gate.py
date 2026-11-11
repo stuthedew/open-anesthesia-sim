@@ -107,7 +107,7 @@ def test_a_keyword_only_parameter_takes_no_signal_argument() -> None:
 
 
 def test_a_raise_from_the_halt_itself_escapes_once_the_halt_is_called() -> None:
-    """Stating a halt can raise, as `present_halt` does for a dial with no setting.
+    """Stating a halt can raise, as `show_presentation` does for a dial with no setting.
 
     That exception still reaches the console, after the halt has been stated (`PL-TLH4`).
     """

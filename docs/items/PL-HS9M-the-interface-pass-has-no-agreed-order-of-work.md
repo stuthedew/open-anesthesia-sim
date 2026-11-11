@@ -1,9 +1,16 @@
 ---
 id: PL-HS9M
 title: The interface pass has no agreed order of work, first-pass learner or task list, and the design round's recommendations wait on the owner
-status: untriaged
+priority: P2
+effort: M
+status: done
+classes: planning, ux
 feature: interface-pass-design-round
 added: 2026-11-11
+closed: 2026-11-11
+pr: 2116
+payoff: the interface pass has an agreed order of work, a named learner and four tasks, so its next step can start
+not-delegable: a design round: its result is the owner's recorded answers, which no command can prove
 ---
 
 **Problem.** The interface pass has no agreed order of work, first-pass learner or task list, and the design round's recommendations wait on the owner
@@ -262,3 +269,22 @@ answered yet.
   re-read in the private corpus on 2026-11-10.
 - The owner was also asked whether the four candidate tasks are ones they
   teach, and which task is missing.
+
+**Answered 2026-11-10.** The owner replied "Agree with recs" to the reply that
+put questions 1 and 2 with the context above.
+
+- Question 1: the order is agreed (project owner, 2026-11-10, ratified, over
+  applying the NCSA look first). It is tasks, heuristic evaluation, grey-box
+  layouts, one style with one set of controls, then resident testing.
+- Question 2: the first-pass learner is a resident early in training who
+  works through a case alone (project owner, 2026-11-10, ratified, over an
+  educator running a case in front of a group). The four candidate tasks are
+  the task list. The owner named no fifth task.
+
+**What follows, filed in this feature.** `PL-8Q1P` is the heuristic
+evaluation and comes first. `PL-2V6V` is the grey-box layouts, `PL-MF90` the
+token and component set, and `PL-DSXJ` the resident rounds. `PL-BVC5`, the
+one-control trial, was approved in the same reply.
+
+**Generator check.** One-off, and work the owner asked for: a design round
+that the roadmap places before the interface pass.

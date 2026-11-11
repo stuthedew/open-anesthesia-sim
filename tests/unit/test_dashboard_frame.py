@@ -715,6 +715,7 @@ def test_a_run_a_mark_stopped_is_not_worded_as_the_learner_s_own_pause() -> None
     assert (
         status_word(at_limit, stopped_on_mark=True).text == "Stopped — supported run length reached"
     )
+    assert status_word(at_limit, stopped_on_mark=True).emphasis is Emphasis.MUTED
 
 
 def test_refresh_view_reports_a_failed_run_as_stopped_not_paused() -> None:
@@ -751,7 +752,7 @@ def test_refresh_view_does_not_offer_to_resume_a_failed_run() -> None:
 
 
 def test_a_halt_no_frame_was_drawn_for_is_worded_as_one_rather_than_as_a_failed_step() -> None:
-    """`halt_notice` is the banner `present_halt` writes, with no frame on screen for it.
+    """`halt_notice` is the banner `show_presentation` writes, with no frame on screen for it.
 
     A displayed value that the interface refused reaches a reader this way.
     The frame refuses the value again on every attempt, so this banner is the
@@ -794,7 +795,7 @@ def test_a_halt_no_frame_was_drawn_for_is_worded_as_one_rather_than_as_a_failed_
 def test_an_undrawn_halt_after_the_run_started_over_says_its_readouts_are_withheld() -> None:
     """After a Reset or an agent change, the last frame drawn belongs to the discarded run.
 
-    `RunView.present_halt` then withholds the readouts. So the banner must not
+    `RunView.show_presentation` then withholds the readouts. So the banner must not
     say that they show the last frame drawn, as it did until the adversarial
     review of `PL-J5GC`. The supported run length keeps its wording, because a
     run that has just started over has not reached it.
@@ -830,7 +831,7 @@ def test_an_undrawn_halt_after_the_run_started_over_says_its_readouts_are_withhe
 def test_a_halt_is_stated_from_the_run_status_alone() -> None:
     """A `RunStatus`, which carries no compartment value, decides the three halt widgets.
 
-    `present_halt` reads `SimulationController.record()` rather than a
+    `show_presentation` reads `SimulationController.record()` rather than a
     snapshot, because the snapshot's own `Fraction`s are among the values
     that can cause a halt (`PL-7DJK`). So `status_word`, `transport` and
     `halt_notice` each accept a bare status. A record and a snapshot are each
@@ -880,8 +881,8 @@ def test_a_halt_is_stated_from_the_run_status_alone() -> None:
 def test_a_run_is_stated_alike_from_its_record_and_from_the_snapshot_it_extends() -> None:
     """A run is stated the same way whether a frame drew it or only the controller's record exists.
 
-    `RunView._write_statement` is the only writer of the run-state widgets.
-    It is called with the snapshot a frame drew from, and with
+    `RunView.show_presentation` is the only writer of the run-state widgets.
+    Its statement is built from the snapshot a frame drew from, and from
     `SimulationController.record()` where no frame can draw (`PL-X7D5`). The
     statement reads only what the two share. A halt therefore states every
     widget that a frame would, using the same functions the frame uses.
@@ -2420,7 +2421,7 @@ def test_the_accounting_panel_refuses_names_and_amounts_that_differ_in_number(
 def test_the_withheld_accounting_panel_states_no_verdict_and_no_amount() -> None:
     """After the run starts over, the panel shows no verdict and no amount until a frame is drawn.
 
-    `RunView.present_halt` shows this panel on a halt when no frame has been drawn
+    `RunView.show_presentation` shows this panel on a halt when no frame has been drawn
     since a Reset or an agent change. The integration tests compare the panel with
     this same constant, so only this test states the text that the panel must show.
     A verdict or an amount here would describe the discarded run (blind and

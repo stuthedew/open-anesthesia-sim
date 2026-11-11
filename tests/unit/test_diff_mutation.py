@@ -1404,7 +1404,7 @@ def test_the_mutation_run_copies_each_root_path_a_simulator_unit_test_reads() ->
     `tests/unit/test_readme_claims.py` reads `README.md` when it is imported.
     The file was not copied, so mutmut collected no test, and the audit's
     mutation check answered nothing for any simulator branch from 2026-11-09
-    until `PL-CTXZ` added the file to `also_copy`.
+    until `PL-GP8G` added the file to `also_copy`.
     """
     root = Path(__file__).resolve().parents[2]
     table = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["tool"]["mutmut"]
@@ -1430,7 +1430,7 @@ def test_the_mutation_run_leaves_out_each_test_that_lists_the_models_functions()
     every function of a module reads those copies too, fails before any mutant
     is tried, and so stops the run. `test_every_bare_number_in_core_is_listed_
     with_its_reason` did that from the day it landed, 2026-11-11, until
-    `PL-CTXZ` left it out.
+    `PL-GP8G` left it out.
     """
     root = Path(__file__).resolve().parents[2]
     table = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["tool"]["mutmut"]

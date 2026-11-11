@@ -5031,17 +5031,20 @@ def test_the_restart_recipe_says_what_the_push_meets() -> None:
 
     git refuses it as non-fast-forward and its hint points at `git pull`, which
     merges the merged history back in. So every landed recipe names the
-    refusal before it arrives, refuses the pull, and prints the push that
-    replaces the old branch after the commands it follows - with both flags,
-    since the lease alone overwrote a commit another writer had pushed and a
-    docket read had fetched. The end-to-end run is in `test_cli.py`.
+    refusal before it arrives and refuses the pull.
+
+    It prints no forced push (`PL-39Y1`). Until 2026-11-11 it printed `git push
+    --force-with-lease --force-if-includes`, and GitHub now refuses a forced
+    push on every branch. The recipe hands the old branch to the project owner
+    to archive and delete, and prints the plain push to run once it is gone.
+    The end-to-end run is in `test_cli.py`.
     """
     from docket.render import format_branch_state
 
     carried = (CarriedCommit("a" * 40, "PL-0003: capture another", False),)
     merged = MergedPullRequest(number=12, head="c" * 40, carried=carried)
     state = BranchState(branch=CAPTURE_BRANCH, base=BASE, behind=0, ahead=2, merged=merged)
-    push = f"  git push --force-with-lease --force-if-includes origin {CAPTURE_BRANCH}\n"
+    push = f"  git push -u origin {CAPTURE_BRANCH}"
     printed = {
         "carried": format_branch_state(state),
         "nothing-carried": format_branch_state(replace(state, merged=replace(merged, carried=()))),
@@ -5057,7 +5060,11 @@ def test_the_restart_recipe_says_what_the_push_meets() -> None:
         assert push in text, shape
         assert text.index(push) > text.index(f"git checkout -B {CAPTURE_BRANCH} {BASE}"), shape
         assert f"git log --oneline {bound[shape]}..origin/{CAPTURE_BRANCH}`" in text, shape
-        assert "--force " not in text and " -f " not in text, shape
+        assert "--force" not in text and " -f " not in text, shape
+        assert f"+{CAPTURE_BRANCH}" not in text and "+HEAD" not in text, shape
+        assert "never force the push" in text, shape
+        assert "ask the project owner to archive and delete the old branch" in text, shape
+        assert text.index(push) > text.index("ask the project owner"), shape
     assert "that push is refused" in printed["carried"]
     assert printed["carried"].index(push) > printed["carried"].index("git cherry-pick aaaaaaaaa")
     assert "the first push after it is refused" in printed["nothing-carried"]
