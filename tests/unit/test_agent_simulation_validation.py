@@ -39,7 +39,9 @@ from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 # resolution.
 #
 # `docs/MODEL.md` § "Mass-balance identity" documents all three. It calls the
-# first two release tolerances. It states the third inline, in the denominator
+# first two the run-time halt thresholds, and keeps them apart from its release
+# gate, which bounds the relative residual alone. It states the third inline,
+# in the denominator
 # `max(initial + delivered, 1e-15 L)`, which keeps the relative error finite
 # before any agent has been delivered.
 DOCUMENTED_ABSOLUTE_TOLERANCE_L = 1e-12
@@ -580,7 +582,7 @@ def test_the_accounting_tolerances_are_the_documented_release_tolerances() -> No
     ), (
         "the conservation guard's sensitivity has changed; a deliberate change "
         'revises docs/MODEL.md § "Mass-balance identity" — which states both '
-        "release tolerances and the scale floor that keeps the relative error "
+        "run-time halt thresholds and the scale floor that keeps the relative error "
         "finite — and updates these restated values with it"
     )
 
