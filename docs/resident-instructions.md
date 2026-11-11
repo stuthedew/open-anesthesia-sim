@@ -791,6 +791,17 @@ sent.
 Rule 14's reachability sentence, 357 characters with its wrapping, was retired
 in the same change, by the condition its own section set.
 
+**Widened on 2026-11-11 to a fact stated with a disclaimer (`PL-J3H7`).** The
+four sentences name a cited source. A session then told the owner where a
+macOS setting is, marked "from memory, and not checked against Apple's page",
+and cited nothing, so the sentences did not apply. The owner answered: "Can
+you stop? Just look it up", and "The looking up instead of from memory
+statements should be default behavior for me in all interactions". One
+sentence, 159 characters, now says never to state a fact with such a note,
+and to look it up and give the source. The carrier test above applies to it
+unchanged. Nothing was cut to pay for it: it widens a sentence that is one
+day old, and no other sentence in that bullet covers a fact with no citation.
+
 ## Rule 15, clock times in Central, added 2026-09-27
 
 Replies gave clock times in UTC, the zone `bin/docket`'s digest, the
