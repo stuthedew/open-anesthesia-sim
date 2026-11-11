@@ -1,8 +1,16 @@
 ---
 id: PL-6VZF
 title: Reopen the session network setting: weigh the allowlist's recorded reasons against what it cost in the 2026-11-10 design round
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: docs, infra
+touches: .claude/rules/citing-sources.md, CLAUDE.md, .claude/rules/instruction-writing.md, docs/resident-instructions.md, docs/worker.md
 added: 2026-11-11
+closed: 2026-11-11
+pr: 2111
+payoff: a session can read any primary source before it cites it, and no citation reaches the owner from memory
+verify: grep -qF 'Never cite a source from memory' CLAUDE.md && grep -qF 'Direct HTTP reaches any host' .claude/rules/citing-sources.md && ! grep -qF 'allowed domains where no session can read them' .claude/rules/instruction-writing.md
 ---
 
 **Problem.** Reopen the session network setting: weigh the allowlist's recorded reasons against what it cost in the 2026-11-10 design round
@@ -70,3 +78,48 @@ with no owner present still fall back on weaker sources.
 
 **If the owner chooses `Full`.** `.claude/rules/citing-sources.md` states the
 `Custom` setting and its reasons, so it is edited in the same change.
+
+**Decided 2026-11-10: `Full`, and no citation from memory.** The owner
+answered: "Agree with rec for 1. Except you should never cite anything from
+memory. Should always look it up". So the decision is `Full` (project owner,
+2026-11-10, ratified, over keeping `Custom` and adding hosts), and condition 1
+above is stricter than the session recommended: memory is not a route at all
+(project owner, 2026-11-10, specified).
+
+**What changed.**
+
+- The environment. The session sent the change to the Default environment and
+  the owner approved it. Four hosts that had been refused then answered a
+  probe: `www.w3.org`, `en.wikipedia.org`, `www.usability.gov` and
+  `www.edwardtufte.com`. The Default environment is the owner's personal one,
+  so every session of theirs that uses it has the open setting.
+- `CLAUDE.md` § "Proactive expert review and domain best practices" now says
+  never to cite a source from memory: read it in the session, say what was
+  read, and do not cite a source that cannot be read. It is resident because a
+  citation is given in a reply.
+- `.claude/rules/instruction-writing.md` rule 14 lost its sentence about the
+  allowed domains, which pays for the new one. `docs/resident-instructions.md`
+  records both.
+- `.claude/rules/citing-sources.md` § "Direct HTTP reaches any host, and a
+  publisher can still refuse" replaces the allowlist section.
+  `docs/worker.md` § "Reaching a source" says the same to a worker.
+
+**Condition 2 needed no new rule.** `docs/references/README.md` §
+"Redistribution" already says which files this public repository may hold, and
+the citing rule now points at it. `git ls-files` shows no tracked PDF. A check
+that refuses a tracked full text is filed separately.
+
+**The list that `Full` discarded**, to restore `Custom` from: `doi.org`,
+`api.crossref.org`, `api.openalex.org`, `pubmed.ncbi.nlm.nih.gov`,
+`eutils.ncbi.nlm.nih.gov`, `pmc.ncbi.nlm.nih.gov`, `www.ncbi.nlm.nih.gov`,
+`onlinelibrary.wiley.com`, `link.springer.com`, `*.sciencedirect.com`,
+`arxiv.org`, `search.worldcat.org`, `creativecommons.org`, `anthropic.com`,
+`*.anthropic.com`, `claude.com`, `*.claude.com`, `blender.org`,
+`*.blender.org`, `blenderartists.org`, `*.blenderartists.org`,
+`docs.github.com`, `releases.astral.sh`, `*.qt.io`,
+`qt-project.atlassian.net`, `www.ncsa.illinois.edu` and `www.nngroup.com`.
+Package registries and the hosts of connected MCP servers were also allowed.
+
+**Generator check.** One-off, and work the owner asked for. It reopens one
+ratified decision on the owner's own question, and no reader misread a fact
+the repository holds.
