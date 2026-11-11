@@ -212,13 +212,23 @@ FLOW_CORNERS = tuple(
 """Each of the three flows at zero, at the smallest float and at its supported maximum."""
 
 
-def _tissue_flows_l_min(cardiac_output_l_min: float) -> tuple[float, float, float]:
-    """Split the cardiac output so that the three shares sum to it exactly."""
+def _tissue_flows_l_min(cardiac_output_l_min: float) -> tuple[BloodFlow, BloodFlow, BloodFlow]:
+    """Split the cardiac output so that the three shares sum to it exactly.
+
+    The third share is what the first two leave, so it is not the output times
+    a fraction. Each share is built as the whole of a cardiac output of its
+    own size, which is the same number (`PL-GKG4`).
+    """
 
     vessel_rich = cardiac_output_l_min * PERFUSION_FRACTIONS[0]
     muscle = cardiac_output_l_min * PERFUSION_FRACTIONS[1]
+    fat = cardiac_output_l_min - vessel_rich - muscle
 
-    return vessel_rich, muscle, cardiac_output_l_min - vessel_rich - muscle
+    return (
+        BloodFlow(CardiacOutput(vessel_rich), PerfusionFraction(1.0)),
+        BloodFlow(CardiacOutput(muscle), PerfusionFraction(1.0)),
+        BloodFlow(CardiacOutput(fat), PerfusionFraction(1.0)),
+    )
 
 
 def _settings(

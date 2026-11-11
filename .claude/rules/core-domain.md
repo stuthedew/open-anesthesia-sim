@@ -92,9 +92,12 @@ found letting a bad sign through would be the evidence to widen this. `PL-0YYV`
 brought the flows into line - `FreshGasFlow`, `AlveolarVentilation` and
 `CardiacOutput` in `src/anesthesia_sim/core/supported_ranges.py`, each built
 only through its guard - `PL-CN5S` the case instant and the step count,
-`CaseInstant` and `StepCount` beside them, and `PL-4R3W` the two forms of a
+`CaseInstant` and `StepCount` beside them, `PL-4R3W` the two forms of a
 concentration, `Fraction` and `Percent` in
-`src/anesthesia_sim/core/concentration.py`. A fraction is the alveolar or the
+`src/anesthesia_sim/core/concentration.py`, and `PL-GKG4` a tissue group's
+perfusion fraction and blood flow, `PerfusionFraction` and `BloodFlow` in
+`src/anesthesia_sim/core/blood_flow.py`. A `BloodFlow` is built only as a
+`PerfusionFraction` of a `CardiacOutput`, so it has no check of its own. A fraction is the alveolar or the
 venous one by where it is held, so its constructor takes the name a refusal
 gives it from the caller that builds it. The count is where this stops, in
 the code: built, it is checked for what a count is alone, whole and

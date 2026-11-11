@@ -1299,6 +1299,12 @@ Q_i = 0
 \frac{dM_i}{dt}=0
 $$
 
+**For developers.** A blood flow can be above zero and still so small that $`\tau_i`$ is larger
+than any number the computer can hold. `TissueGroup.time_constant_s` then returns infinity, as
+it does at zero flow, and a tissue group stepped on its own is left unchanged. The exact change
+is far smaller than any amount the simulator displays. A test in
+`tests/unit/test_blood_flow.py` checks this at the smallest flow that can be created.
+
 ### Venous blood
 
 Blood from the tissue groups enters the venous pool. Venous blood leaves
@@ -2110,7 +2116,8 @@ outside it.
 | Fresh gas flow | 0 to 10 L/min | `FreshGasFlow` |
 | Alveolar ventilation | 0 to 12 L/min | `AlveolarVentilation` |
 | Cardiac output | 0 to 10 L/min | `CardiacOutput` |
-| A tissue group's perfusion fraction | above 0, up to 1, the three summing to 1 | `TissueGroup` and `PatientCompartments` |
+| A tissue group's perfusion fraction | above 0, up to 1, the three summing to 1 | `PerfusionFraction` and `PatientCompartments` |
+| A tissue group's blood flow | its perfusion fraction of the cardiac output, so 0 to 10 L/min | `BloodFlow` |
 | The whole model's time step | 0.001 to 0.1 s | `SimulationStep` |
 | The time step of a compartment stepped on its own | 0.001 s to 86 400 s | `require_compartment_step` |
 | A time in the case | 0 to 86 400 s (24 hours) | `CaseInstant` |
@@ -2128,7 +2135,7 @@ outside it.
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10 -->
-<!-- provenance: core/tissue.py PERFUSION_FRACTION_UPPER_BOUND = 1 -->
+<!-- provenance: core/blood_flow.py MAXIMUM_PERFUSION_FRACTION = 1 -->
 <!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
 <!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
@@ -2171,9 +2178,11 @@ again whenever either of an agent's coefficients changes, and whenever a patient
 tissue group is replaced. A group's tissue:gas coefficient cannot be changed after the group is
 built.
 
-A tissue group or the venous pool stepped on its own accepts any blood flow that is finite and
-not negative, with no upper limit. A run computes that flow from a cardiac output that has a
-limit, so a limit here would refuse nothing a run can produce.
+A tissue group's blood flow has no range of its own. It can only be created as a perfusion
+fraction of a cardiac output, so it lies between zero and that cardiac output. A tissue group
+stepped on its own takes only a flow created that way, and the venous pool takes the cardiac
+output, which is its flow. So neither can be stepped at a flow above the largest supported
+cardiac output, or at a flow that is negative or not a finite number.
 
 The input limit of 0.99 is `MAXIMUM_INPUT_FRACTION` in `core/supported_ranges.py`. The model
 applies it to the amount of agent each compartment holds, because reading a fraction back from
@@ -2206,9 +2215,9 @@ flow is set to zero, to the smallest positive number a computer can hold and to 
 test steps the whole model once at the smallest and largest step, steps each compartment alone
 at its own limits, and computes a run over 24 hours by both the chart's method and the canonical
 one (§ "The canonical evaluation rule"). Each run washes in to the 0.99 limit, washes out from
-it, or sits at it. The sweep also steps a tissue group and the venous pool on their own at the
-largest blood flow a computer can hold, and each result stays finite and between its start and
-its equilibrium.
+it, or sits at it. The sweep also steps a tissue group and the venous pool on their own at zero flow, at the
+smallest positive flow and at the largest supported cardiac output, and each result stays
+finite and between its start and its equilibrium.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 Each result of the first test must be finite. Each fraction must lie from 0 through 1, with no
@@ -4838,6 +4847,12 @@ outside its range raises a `SimulationConfigurationError`, so a script, a notebo
 meet the same error as the interface. The error marks a refused argument, which
 § "Supported simulation step" above distinguishes from a step that broke down.
 
+A tissue group's perfusion fraction and its blood flow have types too, in `core/blood_flow.py`.
+`PerfusionFraction` is checked as above 0 and at most 1 when it is created. `BloodFlow` is
+created only by multiplying a `CardiacOutput` by a `PerfusionFraction`, and it has no check of
+its own. Until these types existed, three places each checked a blood flow by hand as finite and
+not negative, and each accepted a flow that no supported cardiac output can give.
+
 A flow is kept from one step to the next, and it can enter the simulation five ways: through a
 setter of the agent uptake system (`AgentUptakeSystem`), through the setter of the compartment
 that holds it, through that compartment's constructor, through the settings record
@@ -4916,7 +4931,9 @@ although the matrix never reads the maximum.
 A tissue group's blood flow is computed in one place (`TissueGroup.blood_flow_l_min_at`). Each
 compartment is given the flow, rather than storing it, when it computes its time constant or
 takes a step (`time_constant_s`, `advance()`), as $`Q_i`$ is given to
-$`\tau_i = V_i\lambda_{i:b}/Q_i`$. A tissue group is given the blood:gas coefficient too, so that
+$`\tau_i = V_i\lambda_{i:b}/Q_i`$. A tissue group is given a `BloodFlow`, and the venous pool is
+given the cardiac output. Each refuses a plain `float`, whatever its value, with a `TypeError`
+that names the type to build. A tissue group is given the blood:gas coefficient too, so that
 it keeps no copy that could disagree with the coefficient (§ "Blood compartments"). So every flow
 follows the cardiac output through `set_cardiac_output`, a copy, `dataclasses.replace` and a
 pickle. A copy made at another output leaves the original's flows unchanged. A new cardiac output

@@ -237,3 +237,25 @@ was reverted. It raised four queries, each answered in the file:
 The editor also noted that the reason strings used "types" as a verb with the
 item id as its subject. Each now ends "It is to get a checked type …
 (PL-LHCL)".
+
+**Built 2026-11-11, step (b): the blood-flow type, which closes `PL-GKG4`.**
+`PL-GKG4`'s item has the record: the two types in `core/blood_flow.py`, the
+failed-first run, and the four decisions taken while building. The bare list
+went from 173 to 164, and the reasons `BLOOD_FLOW` and `PERFUSION_FRACTION`
+are gone. Step (a)'s open question is answered there: `inf` is the result for
+a flow too small for a finite time constant, and the flow has no smallest
+positive value.
+
+**For steps (c) to (e), found while building (b).**
+
+- A type built from two quantities does not fit the tables in
+  `tests/unit/test_checked_number.py`, which build each type from one number.
+  `BloodFlow` is listed there in `BUILT_FROM_TWO_QUANTITIES`, and `_built`
+  builds it. The next derived type goes in the same two places.
+- `tests/unit/test_supported_range_edges.py` finds a quantity's type through
+  a `require_supported_*` guard in two modules. A function that takes a
+  `BloodFlow` or a `PerfusionFraction` is therefore not drawn. Step (d) should
+  read the edges from every `CheckedQuantity` subclass instead.
+- CPython's `sum` adds a `float` subclass without the compensation it gives a
+  plain `float`. Wherever a bare number that is summed becomes a checked type,
+  add it as `float(value)`, or the sum can change in its last digit.

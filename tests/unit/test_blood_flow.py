@@ -150,7 +150,7 @@ def test_a_partial_pressure_fraction_is_not_a_perfusion_fraction() -> None:
         TypeError,
         match="^perfusion_fraction of 0.2 was built as Fraction, which is not PerfusionFraction",
     ):
-        PerfusionFraction(Fraction(0.2))  # type: ignore[arg-type]
+        PerfusionFraction(Fraction(0.2))
 
     with pytest.raises(
         TypeError, match="^fraction of 0.2 was built as PerfusionFraction, which is not Fraction"
