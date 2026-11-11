@@ -6,7 +6,7 @@ effort: L
 status: done
 classes: docs, planning
 feature: model-md-structure
-touches: docs/MODEL.md, docs/items/PL-1VXY-apply-the-2026-11-05-chapter-reads-within.md, docs/items/PL-52KB-docs-model-md-has-five-broken-section-pointers.md, docs/items/PL-19W8-hold-docs-model-md-known-limitations-numeric.md
+touches: docs/MODEL.md, docs/items/PL-1VXY-apply-the-2026-11-05-chapter-reads-within.md, docs/items/PL-52KB-docs-model-md-has-five-broken-section-pointers.md
 blocked-by: PL-B07T
 deferred-from: v0.7.0 - a decision about how docs/MODEL.md is divided between readers; the schematic release does not depend on it
 added: 2026-11-10
