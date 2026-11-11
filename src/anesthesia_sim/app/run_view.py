@@ -1421,8 +1421,12 @@ class RunView(QWidget):
         **A Reset that raises after it has begun to clear the run still starts
         the run over** (`PL-MVCF`). The run on screen is then gone, so the
         start-over is recorded before the exception reaches the halt gate,
-        and the halt withholds every compartment value. The controller's
-        `runs_discarded` count says whether clearing began.
+        `case_restarted` is emitted, and the halt withholds every compartment
+        value. The controller's `runs_discarded` count says whether clearing
+        began. That halt is a failure, not the refusal above, so the banner
+        names the failure and Reset as the way out, as it does after a failed
+        step. A refused-setting sentence about the discarded run is cleared
+        with it (blind review of `PL-MVCF`).
 
         Raises:
             Exception: What `SimulationController.reset()` raised, once the exit
@@ -1434,11 +1438,13 @@ class RunView(QWidget):
         try:
             self.controller.reset()
         except Exception as error:
-            self._refused_reset_notice = refused_reset_exit(
-                error, recorded_failure_reason=self.controller.status().failure_reason
-            )
-
-            if self.controller.runs_discarded != discarded:
+            if self.controller.runs_discarded == discarded:
+                self._refused_reset_notice = refused_reset_exit(
+                    error, recorded_failure_reason=self.controller.status().failure_reason
+                )
+            else:
+                self._rejected_setting_notice = None
+                self._refused_reset_notice = None
                 self._announce_the_start_over()
 
             raise
@@ -1546,7 +1552,9 @@ class RunView(QWidget):
         call, after `set_agent` returns and before the frame is requested.
         So the dashboard drops everything that belonged to the old case
         before it draws, including a refusal on the branch panel
-        (`PL-BM6X`). A refused switch changes nothing and emits nothing.
+        (`PL-BM6X`). A refused switch changes nothing and emits nothing. A
+        switch that raised after it began to replace the run has discarded
+        the run on screen, so it emits `case_restarted` too (`PL-MVCF`).
         """
 
         self.snapshot()

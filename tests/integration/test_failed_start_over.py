@@ -22,11 +22,17 @@ import pytest
 from PySide6.QtCore import QEvent
 from PySide6.QtWidgets import QApplication
 
+from anesthesia_sim.app import controller as controller_module
 from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app.controller import SimulationController
-from anesthesia_sim.app.dashboard_frame import READOUT_PANELS, SIMULATION_STEP_S
+from anesthesia_sim.app.dashboard_frame import (
+    READOUT_PANELS,
+    REFUSED_RESET_WAY_OUT_TEXT,
+    SIMULATION_STEP_S,
+)
 from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.simulation_view import SimulationView
+from anesthesia_sim.core.exceptions import SimulationConfigurationError
 
 _SECONDS_PER_MINUTE = 60.0
 _WINDOW_WIDTH_PX = 1400
@@ -88,6 +94,12 @@ def _failing_note(self: SimulationController) -> NoReturn:
     raise RuntimeError("the reset failed after it cleared the run")
 
 
+def _refused_load(agent_id: str) -> NoReturn:
+    """Stand in for `load_agent_parameters`, which runs before an agent change replaces the run."""
+
+    raise SimulationConfigurationError(f"the {agent_id} parameters could not be read")
+
+
 def _cards(run: RunView) -> list[tuple[str, str]]:
     return [
         (panel.value_label.text(), panel.secondary_label.text())
@@ -130,6 +142,12 @@ def test_a_reset_that_raises_after_clearing_the_run_withholds_every_value(
     assert [panel._agent_accounting_detail_text.text() for panel in run._accounting_panels] == [
         "No frame has been drawn since the run started over."
     ] * len(run._accounting_panels)
+    # Reset ran, so the banner names the failure and does not say that Reset
+    # was refused (blind review of `PL-MVCF`).
+    notice = run._notice_text.notice()
+    assert notice is not None
+    assert "RuntimeError: the reset failed after it cleared the run" in notice
+    assert REFUSED_RESET_WAY_OUT_TEXT not in notice
 
 
 def test_a_reset_refused_before_it_clears_anything_keeps_the_last_frame(
@@ -185,3 +203,30 @@ def test_an_agent_change_that_raises_after_rebuilding_the_run_withholds_every_va
     assert [cards[index] for index in _COMPARTMENT_INDICES] == [("—%", "— ×MAC")] * len(
         _COMPARTMENT_INDICES
     )
+
+
+def test_an_agent_change_refused_before_it_replaces_the_run_keeps_the_last_frame(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A switch refused before the run is replaced is a refused setting, not a start-over.
+
+    An agent change reads the new agent's parameters before it writes
+    anything to the controller. A refusal there leaves the run as it was, so
+    the frame on screen still describes it (blind review of `PL-MVCF`).
+    """
+
+    controller = SimulationController()
+    run = _shown_run(application, controller)
+    drawn = _cards(run)
+    assert drawn[_CLOCK_INDEX][0] == "0s"
+    monkeypatch.setattr(controller_module, "load_agent_parameters", _refused_load)
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+    combo = run._agent_dropdown
+
+    combo.setCurrentIndex(combo.findData("desflurane"))
+
+    assert controller.agent_id == "sevoflurane"
+    assert _cards(run) == drawn
+    notice = run._notice_text.notice()
+    assert notice is not None
+    assert "the desflurane parameters could not be read" in notice

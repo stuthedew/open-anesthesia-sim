@@ -911,6 +911,11 @@ class SimulationController:
         if cardiac_output_l_min is not None:
             uptake_system.set_cardiac_output(cardiac_output_l_min)
 
+        # Nothing above has written to this controller, so a refusal there,
+        # such as a carried-over setting that the new agent's system refuses,
+        # leaves the run as it was. From here on the run is replaced
+        # (`runs_discarded`, blind review of `PL-MVCF`).
+        self._runs_discarded += 1
         self._agent_id = agent_id
         self._agent_display_name = agent_parameters.display_name
         self._agent_mac_percent = agent_parameters.mac_percent
@@ -963,10 +968,12 @@ class SimulationController:
 
     @property
     def runs_discarded(self) -> int:
-        """How many times a Reset or an agent change has begun to discard the run's state.
+        """How many times this controller has begun to replace its run's state.
 
-        The count goes up just before the state is cleared or rebuilt, so it
-        has gone up even when `reset` or `set_agent` raises part-way through.
+        The count goes up once when the controller is built, and again at each
+        Reset or agent change, just before the state is cleared or replaced.
+        So it has gone up even when `reset` or `set_agent` raises part-way
+        through.
         `RunView` compares the count before and after either call. A change
         means that the values on screen may describe a run that is gone, so
         they must be withheld until a frame draws, even when the call raised
@@ -1241,7 +1248,6 @@ class SimulationController:
         current = self.snapshot()
         self.pause()
 
-        self._runs_discarded += 1
         self._forget_reached_marks()
         self._build_state(
             agent_id=agent_id,
