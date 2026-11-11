@@ -1,39 +1,44 @@
 """A generated run keeps what must hold after every action, however its settings are drawn.
 
 Every other test steps the model from listed settings, and most step it once.
-This test draws a run instead (`PL-GJ1W`). It draws a shipped agent, or volumes
-and partition coefficients from anywhere in the numerical envelope, with one
-volume and one tissue:blood coefficient for all three tissue groups. It draws
-the flows and the dial across their supported ranges and at their edges. It
-then changes one setting at a time and steps up to `MOST_STEPS_IN_AN_ACTION`
-times after each change. After every action it checks what must hold for any
-run:
+This test draws a run instead (`PL-GJ1W`). It draws either a shipped agent or a
+set of volumes and partition coefficients from anywhere in the numerical
+envelope (`docs/MODEL.md` § "The numerical envelope"). A drawn set has one
+volume and one tissue:blood coefficient for all three tissue groups. The test
+draws the flows and the dial across their supported ranges and at their edges.
+It then takes a series of actions. Each action changes at most one setting and
+steps up to `MOST_STEPS_IN_AN_ACTION` times. After every action, the test checks
+what must hold for any run:
 
 1. Every fraction lies from 0 through 1, and between the lowest and highest of
-   the opening state and the delivered concentrations.
-2. The agent held, delivered and exhausted balance.
+   the opening state and the dial settings.
+2. The amounts of agent held, delivered and exhausted balance.
 3. Each running total equals the exactly rounded sum of its step amounts.
 4. The state agrees with the exact solution of the linear system over the
    action, evaluated at 50 digits.
-5. The stepped state agrees with the canonical state of the run definition.
-6. A sampled window ends exactly at the instant asked for, and its last column
-   agrees with the canonical state there.
-7. A run that only ever raised its dial, from one starting fraction and with
-   its flows unchanged, is never described as elimination.
+5. The stepped state agrees with the canonical state, the state that the run
+   definition gives for the same instant. The run definition records each
+   setting change.
+6. A sampled window holds the state at evenly spaced instants, one per column.
+   It ends exactly at the instant asked for, and its last column agrees with
+   the canonical state there.
+7. A run is never described as elimination when every compartment starts at
+   the same fraction, the flows never change and the dial only rises.
 
 The test then repeats the same actions on a fresh system and requires the same
 bits.
 
-Each comparison allows a stated amount of rounding. `_rounding` gives the
-amount for a number of propagators, and each use says how many it counts.
-Hypothesis is steered toward the draw with the largest difference relative to
-its allowance. The draw is derandomized, so every run of the suite tests the
-same plans.
+Each comparison allows a stated amount of rounding. A helper (`_rounding`)
+gives the amount for a number of propagators, the matrix exponentials that each
+advance the state over one interval. Each call says how many propagators it
+counts. Hypothesis is steered toward the draw with the largest difference
+relative to its allowance. The draw is derandomized, so every pass of the
+suite tests the same runs.
 
-For developers. A run that halts on the agent balance is accepted only where
-the rounding of the steps it has taken has reached the balance tolerance, as
-`docs/MODEL.md` § "The numerical envelope" documents (`PL-D88N`). No other
-refusal from a step is accepted.
+The test accepts a halt on the agent balance only when the rounding of the
+run's steps so far has reached the balance tolerance, as `docs/MODEL.md`
+§ "The numerical envelope" documents (`PL-D88N`). It accepts no other refusal
+from a step.
 """
 
 import math
@@ -94,9 +99,9 @@ from anesthesia_sim.core.supported_ranges import (
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 EXAMPLES = 100
-"""How many runs each run of the suite draws.
+"""How many runs the test draws on each pass of the suite.
 
-The weekly job that `PL-GJ1W` plans draws more, and runs the full 24 hours.
+A planned weekly job will draw more and run the full 24 hours (`PL-GJ1W`).
 """
 
 MOST_ACTIONS = 4
@@ -138,8 +143,8 @@ ACCOUNTING_ABSOLUTE_TOLERANCE_L = 1e-12
 """The agent balance also passes when it closes to within 1e-12 L of agent gas.
 
 This is the model's second published limit. `docs/MODEL.md` § "Mass-balance
-identity" says that a step passes if it meets either bound, so a run that
-holds little agent is held to this one.
+identity" says that a step passes if it meets either bound, so a run that holds
+little agent is judged by this one.
 """
 
 SMALLEST_FULL_PRECISION_SCALE = sys.float_info.min / sys.float_info.epsilon
@@ -166,13 +171,13 @@ class Action(NamedTuple):
 
 
 class Plan(NamedTuple):
-    """One generated run: where it opens, its step and what is done to it.
+    """A plan sets where one generated run opens, its step and what is done to it.
 
     Each position is a share of the setting's supported range, from 0 at its
-    lower edge to 1 at its upper edge. `agent_id` names a shipped agent, opened
-    with no agent in any compartment. `corner` gives the volumes and
-    coefficients of a run that is not a shipped agent's, opened with every
-    compartment at `opening_fraction`.
+    lower edge to 1 at its upper edge. A plan for a shipped agent names it in
+    `agent_id`, and the run opens with no agent in any compartment. A plan for
+    any other run gives its volumes and coefficients in `corner`, and the run
+    opens with every compartment at `opening_fraction`.
     """
 
     agent_id: str | None
@@ -198,10 +203,11 @@ def _interior_coefficients(draw: st.DrawFn) -> tuple[float, float]:
     """Draw a blood:gas and a tissue:blood coefficient whose product is inside the envelope too.
 
     Each is ten to a drawn power. The blood:gas power runs over the whole
-    envelope, from -3 to 4. The tissue:blood power then runs over every value
-    that keeps the tissue:blood coefficient and the tissue:gas coefficient,
-    their product, inside 1e-3 to 1e4. It stops 0.01 short of each end, so
-    that rounding of the product cannot leave the envelope.
+    envelope, from -3 to 4. The tissue:gas coefficient is the blood:gas
+    coefficient times the tissue:blood one. The tissue:blood power then runs
+    over every value that keeps both the tissue:blood and the tissue:gas
+    coefficient inside 1e-3 to 1e4. It stops 0.01 short of each end, so that
+    rounding cannot take the product outside the envelope.
     """
 
     blood_gas_power = draw(st.floats(-3.0, 4.0))
@@ -254,24 +260,28 @@ def _plans(draw: st.DrawFn) -> Plan:
 def _rounding(squarings: int, propagators: float) -> float:
     """Return the relative rounding allowed after `propagators` propagators of `squarings` each.
 
-    `core/matrix_exponential.py` bounds one propagator's relative error at
-    about 2**squarings times double precision's 2**-52. `PROPAGATOR_MARGIN` is
-    the factor of three that the envelope sweep allows on that bound.
+    The matrix exponential module (`core/matrix_exponential.py`) bounds one
+    propagator's relative error at about 2**squarings times double precision's
+    2**-52. Each propagator is allowed three times that bound
+    (`PROPAGATOR_MARGIN`), the same margin that the envelope sweep test allows.
 
-    The stepped path counts one propagator for every step, so its allowance
-    grows in proportion to the number of steps. A rule of thumb that grows as
-    the square root of the number of steps was tried first and is too small.
-    A state held at equilibrium in a 10 000 L tissue drifted by 1.6e-12 over
-    4 308 steps, which is 0.57 of this allowance and 38 times the square-root
-    one (measured 2026-11-11). Such a slow compartment does not pull the state
-    back, so each step's rounding adds to the last.
+    A stepped run counts one propagator for every step, so its allowance grows
+    in proportion to the number of steps. An allowance that grows as the square
+    root of the number of steps was tried first and is too small. A state held
+    at equilibrium in a 10 000 L tissue drifted by 1.6e-12 over 4 308 steps,
+    which is 0.57 of this allowance and 38 times the square-root one (simulated
+    2026-11-11). Such a slow compartment does not pull the state back, so each
+    step's rounding adds to the last.
     """
 
     return PROPAGATOR_MARGIN * 2.0**squarings * MACHINE_EPSILON * propagators
 
 
 def _largest_dial_percent(settings_now: UptakeEquationSettings) -> float:
-    """Return the highest dial the run accepts: its vaporizer's maximum, or the input ceiling."""
+    """Return the highest dial the run accepts.
+
+    It is the lower of the vaporizer's maximum and the input ceiling.
+    """
 
     return min(float(settings_now.max_delivered_concentration_percent), CEILING_DIAL_PERCENT)
 
@@ -349,8 +359,9 @@ def _exact_state(
 
     Between two setting changes the model is a linear system with constant
     coefficients, so its exact solution is the matrix exponential applied to
-    the state. The interval is the exact product of the binary step and the
-    number of steps, so the reference covers the same time as the stepped run.
+    the state. The interval is the exact product of the number of steps and the
+    step as stored in binary, so the reference covers the same time as the
+    stepped run.
     """
 
     interval_s = Context(prec=60).multiply(Decimal(step_s), Decimal(steps))
@@ -387,7 +398,7 @@ class Residuals:
 
 
 class _Run:
-    """One generated run as it is executed: the stepped system, its definition and its history."""
+    """Keeps the stepped system, run definition and history of one generated run as it executes."""
 
     def __init__(self, plan: Plan) -> None:
         self.plan = plan
@@ -407,7 +418,8 @@ class _Run:
         self.steps = 0
         self.delivered_l: list[float] = []
         self.exhausted_l: list[float] = []
-        # Each stretch of the run under one set of settings: when it opened, and its matrix.
+        # A segment is a stretch of the run under one set of settings. The list has
+        # one entry for each segment: the instant it opened and its system matrix.
         self.segments = [(0.0, build_system_matrix(self.settings))]
         self.segment_opened_s = 0.0
         self.closed_time_rounding = 0.0
@@ -422,17 +434,17 @@ class _Run:
 
     @property
     def elapsed_s(self) -> float:
-        """The instant the run has reached, formed as the application forms it: steps times step."""
+        """The instant the run has reached, as the application computes it: steps times step."""
 
         return self.steps * self.plan.step_s
 
     def state(self) -> tuple[float, ...]:
         """Return the stepped state with the running totals in its two accumulated-amount entries.
 
-        `AgentUptakeSystem.state_vector` leaves those two entries at zero,
-        because the validator owns the running totals. The run definition's
-        states carry the totals since the run opened, so this is the stepped
-        state in the same form.
+        The system's state vector (`AgentUptakeSystem.state_vector`) leaves those
+        two entries at zero, because the system keeps the running totals in its
+        validator. The run definition's states carry the totals since the run
+        opened, so this method returns the stepped state in the same form.
         """
 
         state = list(self.system.state_vector())
@@ -447,9 +459,10 @@ class _Run:
 
         The run definition measures a segment as the difference of two rounded
         instants, which can differ from the stepped interval by one unit in the
-        last place of the later instant. A reading moves fastest when a mode's
-        time constant equals the interval, and then by less than that time
-        error divided by the interval.
+        last place of the later instant. A reading is most sensitive to that
+        time error when one of the system's time constants equals the interval,
+        and even then it moves by less than the time error divided by the
+        interval.
         """
 
         interval_s = self.elapsed_s - self.segment_opened_s
@@ -457,7 +470,7 @@ class _Run:
         return math.ulp(self.elapsed_s) / interval_s if interval_s > 0.0 else 0.0
 
     def _canonical_rounding_of_the_open_segment(self) -> float:
-        """Return the rounding of the one propagator that spans the open segment."""
+        """Return the rounding allowed for the one propagator that spans the open segment."""
 
         return _rounding(_squarings(self.matrix, self.elapsed_s - self.segment_opened_s), 1)
 
@@ -604,7 +617,7 @@ class _Run:
             canonical = self.definition.state_at(self.elapsed_s)
         except SimulationConfigurationError as refusal:
             # One propagator over a long stretch at a stiff corner needs more
-            # squarings than the module allows, and says so.
+            # squarings than the module allows, and the refusal says so.
             assert "squarings" in str(refusal), refusal
             canonical = None
 
@@ -655,7 +668,7 @@ class _Run:
             return
 
         spacing_s = (self.elapsed_s - start_s) / (columns - 1)
-        # Only a segment that ends after the window starts has a propagator in it.
+        # Only a segment that ends after the window starts has a propagator in the window.
         inside = [
             matrix
             for index, (_, matrix) in enumerate(self.segments)
@@ -664,7 +677,8 @@ class _Run:
         column_squarings = max(_squarings(matrix, spacing_s) for matrix in inside)
         # The window chains one propagator per column, and one more at each
         # setting change inside it. Its last column is pinned to the instant
-        # asked for, which can differ from the chained time by one rounding.
+        # asked for, which can differ from the chained time by one unit in the
+        # last place of that instant.
         allowance = (
             canonical_allowance
             + _rounding(column_squarings, columns + len(inside))
@@ -720,12 +734,12 @@ ONE_STEP = (Action(setting="hold", position=0.0, steps=1),)
 FIFTY_STEPS = (Action(setting="hold", position=0.0, steps=50),)
 
 
-# The three plans below are conditions that the drawn plans reach only after
+# The three plans below set up conditions that the drawn plans reach only after
 # 300 to 1 000 draws (measured 2026-11-11, `PL-GJ1W`). They are listed so that
-# every run of the suite covers them.
+# every pass of the suite covers them.
 @example(
-    # `PL-N559`: with no flow at all, one step moves the alveolar fraction one
-    # rounding above the inspired fraction.
+    # `PL-N559`: with no flow at all, one step moves the alveolar fraction above
+    # the inspired fraction by one rounding error.
     Plan(None, SMALLEST_CORNER, 0.5 * CEILING, (0.0, 0.0, 0.0), 1.0, 0.1, ONE_STEP, 0.0, 2)
 )
 @example(
@@ -734,8 +748,8 @@ FIFTY_STEPS = (Action(setting="hold", position=0.0, steps=50),)
     Plan(None, SMALLEST_CORNER, CEILING, (0.0, 0.0, 1.0), 0.0, 0.1, ONE_STEP, 0.0, 2)
 )
 @example(
-    # `PL-D88N`: the same opening at the stiffest corner, which halts on the
-    # agent balance within about 24 steps.
+    # `PL-D88N`: the same opening at the stiffest corner, where the run halts on
+    # the agent balance within about 24 steps.
     Plan(None, STIFFEST_CORNER, CEILING, (0.0, 0.0, 1.0), 0.0, 0.1, FIFTY_STEPS, 0.0, 2)
 )
 @example(
@@ -750,11 +764,11 @@ def test_a_generated_run_keeps_what_must_hold_after_every_action(plan: Plan) -> 
     """Every check in the module docstring holds, and a replay of the plan gives the same bits.
 
     The expected values come from outside the stepped system: the opening state
-    and the dials for the range of a fraction, the settings for the agent held,
-    an exact sum for each running total, and a 50-digit matrix exponential for
-    the state. An error larger than a comparison's stated rounding allowance
-    fails it. An error inside that allowance passes, so this test does not show
-    that a value is right in its last digits.
+    and the dial settings for the range each fraction must lie in, the settings
+    for the agent held, an exact sum for each running total, and a 50-digit
+    matrix exponential for the state. An error larger than a comparison's stated
+    rounding allowance fails it. An error inside that allowance passes, so this
+    test does not show that a value is right in its last digits.
     """
 
     residuals = Residuals(enforce=True)
