@@ -9,7 +9,7 @@ feature: one-source-of-truth
 touches: pyproject.toml, tools/diff_mutation.py, tests/unit/test_diff_mutation.py, docs/mutation-testing.md, tests/unit/test_bookmarks.py, tests/unit/test_chart_frame.py, docs/apparatus.md, ROADMAP.md, .claude/skills/docket/modes/close-out.md
 added: 2026-11-11
 payoff: a change to any display module that imports no Qt is measured by the mutation check when its item closes, and a new such module is covered without anyone adding it to a list
-verify: grep -q 'def test_every_module_outside_the_mutation_run_imports_qt_or_is_named_with_its_reason' tests/unit/test_diff_mutation.py && grep -q 'tool.diff_mutation.left_out' docs/mutation-testing.md
+verify: grep -q 'def test_every_module_outside_the_mutation_run_imports_qt_or_is_named_with_its_reason' tests/unit/test_diff_mutation.py && grep -q 'first step under the rule' docs/mutation-testing.md
 ---
 
 **Problem.** Mutation testing covers eight display modules that pyproject.toml names by hand, and no Qt-free module added or left out since: app/agent_cost.py, app/compartment_schematic.py, app/bookmarks.py, app/playback.py and app/controller.py build values a learner sees and are in no mutation run, and a hand probe of 14 one-line changes on 2026-11-11 left three uncaught
@@ -38,7 +38,7 @@ The probe ran neither the whole suite nor mutmut, so it is a sample and not a ki
 
 **What `PL-R8HY` found, and why it matters here.** `PL-R8HY`, on `origin/claude/keen-carson-mh4oj7`, records why the mutation run's first step is slow. mutmut wraps every function in the files `only_mutate` names. Each call through the wrapper costs about 3.5 microseconds while the first step records it, and the selected unit tests make 218 million such calls, so the step takes about 17 minutes. Each module added to the run adds its calls to that step. So the cost of this item is a number of calls, and it has not been counted yet.
 
-**Design, 2026-11-11. Not built yet.** The session stopped here to reset its context, and the build follows this plan.
+**Design, 2026-11-11.** § "Built and measured" below says what of this plan is built, and § "Left to do" what is not.
 
 1. **Measure before choosing what to name out.** Three counts, all from one ordinary run of the selected unit tests with a `sys.monitoring` call counter, and one listing of mutants:
    - the mutants each added module yields, from the steps mutmut takes before its first test (`LIST_SCRIPT` in `tools/diff_mutation.py` calls them);
@@ -52,6 +52,25 @@ The probe ran neither the whole suite nor mutmut, so it is a sample and not a ki
 7. **Bring `docs/mutation-testing.md` up to date**: "the eight files" in its second section, the rule, what the check of a changed test covers, and the measured first-step time.
 
 `PL-R8HY`'s branch changes `tools/diff_mutation.py`, `docs/mutation-testing.md` and `tests/unit/test_diff_mutation.py` too. Expect to resolve against it, and land the smaller change first.
+
+**Built and measured, 2026-11-11.** On `claude/awesome-mendel-rgje5y`, draft pull request #2129.
+
+- **The rule (steps 2 and 3), commit `bf333d2a0`.** `[tool.mutmut]` keeps no `only_mutate`. `do_not_mutate` names the 12 modules of `app/` that import Qt, and `app/display_units.py`, whose reason is in `[tool.diff_mutation.left_out]`. `rule_disagreements` in `tools/diff_mutation.py` reads each module's imports through `docket.python.imports`, takes the toolkit packages from `tools/import_boundary_check.py`'s entries for `layout/`, and names each departure. `main` refuses on any, and `test_every_module_outside_the_mutation_run_imports_qt_or_is_named_with_its_reason` fails on any.
+- **Mutants.** 5,486 before, 11,702 after: `core/` 2,875, `app/` 4,985 (2,611 in the eight modules covered before, 1,074 in `app/controller.py`), `layout/` 3,781, `app_metadata.py` and `user_files.py` 61.
+- **Calls, which decide the first step.** One run of the 65 selected test files with a `sys.monitoring` counter: 6.5 million calls into the added `app/` functions (5.5 million into `app/controller.py`), 0.26 million into `layout/`, 1.2 million into the eight covered before. At `PL-R8HY`'s 3.5 microseconds a call, the added modules add about 24 s to a first step of about 17 minutes. So the first step is no reason to leave any module out.
+- **`app/controller.py` stays in the run.** The selected unit tests reach 71 of its 77 mutated functions, which hold 1,034 of its 1,074 mutants, so a unit test can be written for a changed line. The brief's claim that its tests are all integration tests was wrong: 13 unit test files import it.
+- **`app/display_units.py` is left out.** mutmut 3.8.0 wraps `DisplayUnit.__init__`, `Enum` calls it while the class is being built, and every import of the module raises `KeyError: '_mutmut_orig'`. It holds 3 mutants.
+- **Two more tests are deselected**, because each fails on mutmut's copy with no mutant applied: `tests/unit/test_layout_serialization.py::test_whether_a_document_reads_does_not_depend_on_where_its_caller_stands` (the wrapper adds two frames a call) and `tests/unit/test_stylesheets.py::test_the_module_imports_nothing_but_the_theme_and_the_standard_library` (the copy imports the wrapper). With them deselected the other 3,599 selected tests pass with every added module wrapped.
+- **The check of a changed test (step 4), same commit.** `named_modules` replaces `core_imports`, so a mutated module outside `app/` is compared where the changed test imports it by name. A changed `layout/` test was not measured before and is now.
+- **The three probes (step 5), commit `27c6aedbd`.** Two tests in `tests/unit/test_bookmarks.py` place a reading exactly on each edge of the band. Probe 3 is observable: with `<`, an axis that ends exactly at the reach gets a one-point prediction where `preview_window` promises an empty one. `test_a_preview_on_an_axis_that_ends_at_the_reach_predicts_nothing` in `tests/unit/test_chart_frame.py` fails on it. Each test was run against its fault and fails there.
+- **The whole run (step 6)** is `PL-00Y5`, commit `84b5510c5`.
+- **Documents (step 7), in part.** `docs/mutation-testing.md` has a new § "Which modules are mutated", the wider by-name comparison and two new pitfalls. `.claude/skills/docket/modes/close-out.md` step 7 and `docs/apparatus.md` name the rule.
+
+**Left to do.**
+
+1. **Decide whether `app/controller.py`'s mutants run in the check of a changed test.** That check runs every mutant of `anesthesia_sim.app.*` that the changed tests reach. `tests/unit/test_dashboard_frame.py` reaches 1,719 mutants of the eight modules covered before, 142 of the other added modules and 892 of `app/controller.py`; `tests/unit/test_chart_frame.py` reaches 1,057, 172 and 948. Comparing the controller by name would change nothing, because both files import it to build a run. A timing run of every `app/` mutant against the whole of `test_dashboard_frame.py` was still running on 2026-11-11 at 05:40 UTC, with 1,605 of about 2,750 reachable mutants done and the controller's finishing at about 0.43 a second on four cores. It was started in the session's scratch worktree and its result is lost if the container restarts. If it shows the controller taking the worst case past `bin/docket verify`'s 2-hour limit, leave the controller's mutants out of that check by a named constant with this count as its reason, and keep them in the gate on changed lines. Otherwise leave the check as it is. Record the measured times in `docs/mutation-testing.md` either way.
+2. **Run the first step once under the final table**, with `make mutate` on a branch that changes one small mutated function, or with `diff_mutation.run` on one pattern and no test selection. It must pass, since it is the proof that `make mutate` still starts. Record its time in `docs/mutation-testing.md` § "Run it" in a sentence that holds the words "first step under the rule", which this item's `verify:` waits for.
+3. **Close out**: the full quality suite, `bin/docket verify`, the copy editor, one blind review pass, the docs sweep, and the pull request's title and body.
 
 **Done when.**
 

@@ -22,23 +22,50 @@ test file that the branch changes, the check runs the mutants of the display
 modules twice: once against the base version of the tests that the branch
 changed, and once against the branch's version of the changed files. A mutant
 that the base version catches and the branch's version misses refuses the
-branch. The display modules are the eight files under `app/` that
-`[tool.mutmut] only_mutate` names.
+branch. The display modules are the modules under `app/` that mutmut mutates,
+by the rule in § "Which modules are mutated".
 
-The same two runs also take the mutants of each `core/` module that the
-changed test file imports by name, so a branch that loosens a core unit test,
-such as a wider tolerance on a concentration, is refused the same way (project
-owner, 2026-10-24, ratified, over leaving core unit tests unmeasured and over
-comparing every mutant a changed test reaches, `PL-H57W`). A module counts when
-either version of the file imports it with `from anesthesia_sim.core.x import
-...`, `from anesthesia_sim.core import x` or `import anesthesia_sim.core.x`,
-inside a function or not.
+The same two runs also take the mutants of each mutated module outside `app/`
+that the changed test file imports by name, so a branch that loosens a core
+unit test, such as a wider tolerance on a concentration, is refused the same
+way (project owner, 2026-10-24, ratified, over leaving core unit tests
+unmeasured and over comparing every mutant a changed test reaches, `PL-H57W`).
+A module counts when either version of the file imports it with `from
+anesthesia_sim.core.x import ...`, `from anesthesia_sim.core import x` or
+`import anesthesia_sim.core.x`, inside a function or not. The modules under
+`layout/` and the two at the top of the package are compared the same way
+(`PL-19M4`).
 
 A high mutation score does not show that the tests catch a wrong clinical
 value. mutmut never changes the data files or the module-level constants, and a
 mutant cannot show whether a test's expected value is right.
 `.claude/rules/test-oracles.md` says where a simulator test's expected value
 must come from, and that rule applies whatever the score.
+
+## Which modules are mutated
+
+mutmut mutates every module under `src/`, with two exceptions.
+
+1. **A module that imports Qt**, which means `PySide6` or `pyqtgraph`. It is
+   widget code, and its tests are integration tests that mutmut does not run.
+2. **A module left out for a stated reason.** `pyproject.toml` gives the
+   reason, by the module's path, in `[tool.diff_mutation.left_out]`. The one
+   entry on 2026-11-11 is `app/display_units.py`, which mutmut 3.8.0 cannot
+   wrap.
+
+No list of the mutated modules is kept, so a new module that imports no Qt is
+mutated with no edit to any file. mutmut reads only `[tool.mutmut]`, so that
+table's `do_not_mutate` names each module of both kinds. `rule_disagreements`
+in `tools/diff_mutation.py` reads every module's imports and compares them
+with the table. The tool refuses to run on a table that departs from the rule,
+and a unit test fails on one, so a new Qt module that the table does not name
+fails `make check`.
+
+Until 2026-11-11 the table listed the mutated modules by hand: `core/` and
+eight modules of `app/`. All of `layout/`, 17 modules of `app/` that import no
+Qt, and the two modules at the top of the package were outside the run, so a
+change to one of them passed the gate with nothing measured (`PL-19M4`). The
+rule took the run from 5,486 mutants to 11,702.
 
 ## Run it
 
@@ -71,12 +98,13 @@ must come from, and that rule applies whatever the score.
 
 ### What the check of a changed test leaves unmeasured
 
-- **A fault in a `core/` module that the test does not import by name.** A
-  test that builds a run reaches most of `core/` through the run, and all of
-  those mutants would take 9 to 16 minutes for each version of a changed test
-  (`PL-7FPD` has the measurements). So only the modules the file names run,
-  and a fault the test catches only through another module is not measured
-  (`PL-H57W` has the scoped cost).
+- **A fault in a module outside `app/` that the test does not import by
+  name.** A test that builds a run reaches most of `core/` through the run,
+  and all of those mutants would take 9 to 16 minutes for each version of a
+  changed test (`PL-7FPD` has the measurements). So only the modules the file
+  names run, and a fault the test catches only through another module is not
+  measured (`PL-H57W` has the scoped cost). The same applies to a module under
+  `layout/`.
 - **The Qt widget modules and the integration tests.** mutmut does not mutate
   the Qt modules, such as `simulation_view.py`, and the check runs no
   integration test.
@@ -232,8 +260,11 @@ Each of these was measured on 2026-10-17.
   `mutants/`, because the copy is not a clean git repository. So `make mutate`
   runs only the unit test files that import the simulator, and the slower test
   trees are the second tier.
-- **Two tests are left out.** Each lists the functions in the modules of
-  `core/`, and inside mutmut the list also holds mutmut's generated copies.
+- **Four tests are left out**, because each fails on mutmut's copy of the code
+  with no mutant applied, and mutmut stops when a test does. `[tool.mutmut]
+  pytest_add_cli_args_test_selection` deselects them. The first two list the
+  functions in the modules of `core/`, and inside mutmut the list also holds
+  mutmut's generated copies.
   `tests/unit/test_supported_range_edges.py::test_each_guard_admits_only_what_its_functions_compute`
   would call those copies. It is deselected, which drops all 7 of its
   parametrized cases. A survivor in `core/supported_ranges.py`, or in a
@@ -243,6 +274,22 @@ Each of these was measured on 2026-10-17.
   would find the copies' numbers, which its list does not name. It reads the
   source text, which is the same whichever mutant is running, so it could
   never kill a mutant and leaving it out hides no survivor (`PL-GP8G`).
+  `tests/unit/test_layout_serialization.py::test_whether_a_document_reads_does_not_depend_on_where_its_caller_stands`
+  reads a layout from 150 frames short of the recursion limit. mutmut's
+  wrapper adds two frames to every call of a mutated function, so the reader
+  runs out of stack there. A survivor in the depth limit of
+  `layout/serialization.py` is therefore not evidence of a gap until the
+  second tier has run.
+  `tests/unit/test_stylesheets.py::test_the_module_imports_nothing_but_the_theme_and_the_standard_library`
+  lists what `app/stylesheets.py` imports, and mutmut's copy of the module
+  also imports mutmut's wrapper. It reads the source text too, so leaving it
+  out hides no survivor (`PL-19M4`).
+- **mutmut cannot wrap an `Enum` that defines `__init__`.** `Enum` calls
+  `__init__` for each member while the class is still being built, before the
+  table of mutants that mutmut's wrapper reads exists. Every import of the
+  module then raises `KeyError: '_mutmut_orig'`, and mutmut stops with `failed
+  to collect stats. runner returned 2`. `app/display_units.py` is left out of
+  the run for this reason (`PL-19M4`).
 - **A unit test that reads a file needs that file in the copy.** mutmut copies
   only what `[tool.mutmut] also_copy` in `pyproject.toml` names. A test that
   reads any other file fails inside `mutants/`, and mutmut then stops with
