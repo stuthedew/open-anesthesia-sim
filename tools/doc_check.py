@@ -4218,7 +4218,8 @@ def _numeric_paragraph_members(text: str, family: BoundFamily) -> Iterator[tuple
     previous note, and at a paragraph that `_holds_itself`. So a note added
     to a long section holds only the passage written with it, and not every
     older paragraph back to the heading. A paragraph held only because
-    markers tie each of its figures does not stop the run, because a marker
+    markers tie each of its figures is passed over, as a paragraph with no
+    figure is: it neither stops the run nor takes the note's forms. A marker
     says which stored value a figure restates, not where a passage ends
     (`PL-5L84`). The forms by which it holds them,
     from `_note_holding_forms`, follow the markers in each member it holds.
@@ -4272,7 +4273,7 @@ def _numeric_paragraph_members(text: str, family: BoundFamily) -> Iterator[tuple
     from_notes: dict[int, list[str]] = {}
     for note in notes:
         forms = _note_holding_forms("\n".join(lines[note.start : note.end]), family.kind)
-        for block, paragraph, _ in reversed([m for m in members if m[0].end <= note.start]):
+        for block, paragraph, member in reversed([m for m in members if m[0].end <= note.start]):
             if (
                 not forms
                 or block in notes
@@ -4280,7 +4281,8 @@ def _numeric_paragraph_members(text: str, family: BoundFamily) -> Iterator[tuple
                 or _holds_itself(paragraph, family.kind)
             ):
                 break
-            from_notes[block.start] = forms
+            if not _holds_itself(member, family.kind):
+                from_notes[block.start] = forms
     for block, _, member in members:
         yield block.start + 1, "\n".join([member, *from_notes.get(block.start, [])])
 

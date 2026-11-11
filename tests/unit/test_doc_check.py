@@ -8112,8 +8112,10 @@ def test_a_paragraph_held_only_by_its_markers_does_not_stop_a_developer_note() -
     Line 3 carries no form, and the note on line 8 names a test. Line 5
     states 10 L/min, and its marker ties that figure to a stored value. Before
     the fix, line 5 held itself through its marker, so the note's reach
-    stopped there and nothing held line 3. A paragraph that declares its own
-    test still stops the note, as line 5 of `NOTE_HELD_DOCUMENT` shows.
+    stopped there and nothing held line 3. Line 5 is passed over, as a
+    paragraph with no figure is, so it does not take the note's test either.
+    A paragraph that declares its own test still stops the note, as line 5
+    of `NOTE_HELD_DOCUMENT` shows.
     """
     document = "\n".join(
         [
@@ -8134,6 +8136,8 @@ def test_a_paragraph_held_only_by_its_markers_does_not_stop_a_developer_note() -
 
     assert sorted(members) == [3, 5]
     assert held == {3, 5}
+    assert "test_the_step_is_derived" in members[3]
+    assert "test_the_step_is_derived" not in members[5]
 
 
 @pytest.mark.parametrize(
