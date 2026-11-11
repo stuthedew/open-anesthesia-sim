@@ -250,7 +250,7 @@ monthly run does this:
 
 Close-out step 9 runs one blind generalist review pass on every simulator pull
 request, and a second on one that changes the model's code, its parameter
-files or `docs/MODEL.md` (`PL-TDV9`). Each pass costs about a quarter of a
+files, `docs/MODEL.md` or `docs/INTERFACE.md` (`PL-TDV9`). Each pass costs about a quarter of a
 median simulator item, so each run of the review checks that each pass still
 finds faults the session accepts (`PL-0BRY`):
 

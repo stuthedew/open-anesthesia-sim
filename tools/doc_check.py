@@ -353,7 +353,7 @@ except ImportError as error:  # pragma: no cover - a checkout missing the subpro
 import required_checks_check
 
 # The simulator package's location is `product_paths`'s (`PL-H5T9`).
-from product_paths import MODEL_DOC, PACKAGE_DIR
+from product_paths import INTERFACE_DOC, MODEL_DOC, PACKAGE_DIR, SPECIFICATION_DOCS
 
 # Which files the repository holds is `tracked_files`'s answer, and which of
 # them are rule files is `rules_paths_check`'s, so a checkout under
@@ -456,10 +456,13 @@ ARCHITECTURE = Path("docs/ARCHITECTURE.md")
 APPARATUS_MAP = Path("docs/apparatus.md")
 PACKAGE_MAPS = (ARCHITECTURE, APPARATUS_MAP)
 MODEL = Path(MODEL_DOC)
-# The documents whose restated numbers are held to their homes (`PL-JS6P`).
-# `docs/MODEL.md` is the specification, and `README.md` is the page a new
-# reader trusts first.
-PROVENANCE_DOCUMENTS = (MODEL, Path("README.md"))
+# What the interface must show and do, which was part of `docs/MODEL.md` until
+# `PL-CTXZ` moved it out.
+INTERFACE = Path(INTERFACE_DOC)
+# The documents whose restated numbers are held to their homes (`PL-JS6P`):
+# each document of the specification, and `README.md`, the page a new reader
+# trusts first.
+PROVENANCE_DOCUMENTS = (*(Path(document) for document in SPECIFICATION_DOCS), Path("README.md"))
 
 
 # Where the release train lives. `ROADMAP.md` calls itself the authoritative
@@ -4483,7 +4486,7 @@ BOUND_FAMILIES = (
         promise="every row names the test that holds it, or says plainly that it has none",
     ),
     BoundFamily(
-        document=MODEL,
+        document=INTERFACE,
         heading="Minimum displayed outputs",
         level=2,
         kind=TEST_ENTITY,
@@ -4499,7 +4502,7 @@ BOUND_FAMILIES = (
         promise="every subsection names the test that holds it",
     ),
     BoundFamily(
-        document=MODEL,
+        document=INTERFACE,
         heading="Displayed precision",
         level=3,
         kind=FIGURE_ENTITY,

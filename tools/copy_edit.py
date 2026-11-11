@@ -175,7 +175,7 @@ RESTORE_READ = (
 )
 #: How many separate meaning checks read each version of the edit. Runs of
 #: one check on one edit find different statements lost: on
-#: `docs/MODEL.md` § "Supported run length", four runs on the same edit found
+#: `docs/INTERFACE.md` § "Supported run length", four runs on the same edit found
 #: one or two each of the four statements that it had lost, and no run found
 #: all four (`PL-F0Q2`). So each version goes to two checks, a statement that
 #: either finds lost goes back to the copy editor, and an edit passes only

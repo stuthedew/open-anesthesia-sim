@@ -1374,7 +1374,7 @@ class RunView(QWidget):
         It asks only when the dashboard says that this Reset would discard
         work in another run (`ask_before_reset`). Starting this run over needs
         no question, because pressing its own Reset is the request to discard
-        it (`docs/MODEL.md` § "Agent-change behavior").
+        it (`docs/INTERFACE.md` § "Agent-change behavior").
         """
 
         question = None if self._reset_question is None else self._reset_question()
@@ -1949,7 +1949,7 @@ class RunView(QWidget):
     def show_readings_of(self, other: RunView) -> tuple[QWidget, ...]:
         """Show `other`'s readouts in this run's panels, as one block for both runs.
 
-        `docs/MODEL.md` § "Minimum displayed outputs" pairs two runs' values
+        `docs/INTERFACE.md` § "Minimum displayed outputs" pairs two runs' values
         under one compartment name. So comparing them means reading one row
         rather than two (`PL-F2YS`). `other` keeps writing its own values, and
         only the place where they are drawn changes. The other run's own row
@@ -2057,7 +2057,7 @@ class RunView(QWidget):
         """This run's control-change panel, for the unconditional region.
 
         The record of what was changed during the run is unconditional
-        (`docs/MODEL.md` § "Minimum displayed outputs"), so it is never
+        (`docs/INTERFACE.md` § "Minimum displayed outputs"), so it is never
         placed in a surface a reader can close (`PL-NWTM`).
         """
 

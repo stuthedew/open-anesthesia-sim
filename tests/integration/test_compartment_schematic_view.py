@@ -1,6 +1,6 @@
 """The compartment schematic View in a real dashboard, from patient inputs to its drawn labels.
 
-`docs/MODEL.md` § "The compartment schematic: what its heights, amounts and
+`docs/INTERFACE.md` § "The compartment schematic: what its heights, amounts and
 share bar assert" is the specification (`PL-2881`), and `PL-RNYV` built the
 View. These tests check two things. First, they check that a run's inputs reach
 the drawn labels through the model. The expected labels come from a closed form
@@ -167,7 +167,7 @@ def _two_figures(millilitres: float) -> str:
     """An amount written to two significant figures, never finer than 0.01 mL.
 
     It is written here apart from the formatter, from the rule in
-    `docs/MODEL.md` § "Displayed precision".
+    `docs/INTERFACE.md` § "Displayed precision".
     """
 
     if millilitres == 0.0:

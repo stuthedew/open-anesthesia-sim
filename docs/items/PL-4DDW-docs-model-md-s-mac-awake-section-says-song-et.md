@@ -13,7 +13,7 @@ verify: grep -q '0.25%' docs/MODEL.md
 
 **Problem.** docs/MODEL.md's MAC-awake section says Song et al.'s 2.17% corroborates desflurane's 2.16% band centre without saying that Song's standard deviation of 0.25% leaves the comparison blind to an error of less than about 11% in the stored fraction
 
-**Evidence.** `docs/MODEL.md` § "MAC-awake as a chart reference" says the
+**Evidence.** `docs/INTERFACE.md` § "MAC-awake as a chart reference" says the
 stored fraction "corroborates independently for desflurane: 0.36 of the
 stored 6.0% is 2.16%, against the 2.17% Song et al. measured in the
 non-jaundiced control arm". Song et al. 2005's abstract (PMID 15731594, read

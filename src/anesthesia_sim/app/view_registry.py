@@ -25,7 +25,7 @@ any other. Blender keeps its retired editor numbers reserved in `eSpace_Type`
 for the same reason: a saved file's tag must never come to mean a different
 View (`PL-R1WQ` Q3).
 
-**Some kinds must stay reachable in every layout** (`PL-50PZ`). `docs/MODEL.md`
+**Some kinds must stay reachable in every layout** (`PL-50PZ`). `docs/INTERFACE.md`
 § "Minimum displayed outputs" lets a Workspace leave the agent accounting out,
 but says it "must stay reachable in every layout, and must not be removable
 from the application". `REQUIRED_REACHABLE` is that requirement as data. Each
@@ -373,7 +373,7 @@ REGISTERED: Final = registry(
     RegisteredView(AGENT_COST, "Agent cost", AgentCostView, minimum=PixelSize(320, 200)),
 )
 
-#: The View kinds `docs/MODEL.md` § "Minimum displayed outputs" requires to
+#: The View kinds `docs/INTERFACE.md` § "Minimum displayed outputs" requires to
 #: stay reachable in every layout: the agent accounting. Checked against
 #: `REGISTERED` here, so a build that drops it fails on import.
 REQUIRED_REACHABLE: Final = required_kinds(REGISTERED, AGENT_ACCOUNTING)

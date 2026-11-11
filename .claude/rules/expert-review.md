@@ -7,7 +7,8 @@ moment only when a session happened to open an item file (`PL-WWDT`);
 `docs/resident-instructions.md` carries the argument.
 
 **Scope, on sight rather than three sentences away.** This is the standard for
-the **simulator** — `src/`, `tests/`, `docs/MODEL.md`, `README.md` — and for
+the **simulator** — `src/`, `tests/`, `docs/MODEL.md`, `docs/INTERFACE.md`,
+`README.md` — and for
 any conversation deciding what goes into them. It is not the bar for the
 apparatus (`subprojects/docket/`, `bin/`, `tools/`, `.claude/`, `.github/`,
 `CLAUDE.md`, `docs/worker.md`, `docs/maintainer.md`, `docs/apparatus.md`,

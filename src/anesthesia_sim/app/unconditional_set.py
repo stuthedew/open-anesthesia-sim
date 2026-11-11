@@ -1,6 +1,6 @@
 """The values no Workspace may remove: `docs/MODEL.md`'s unconditional set, as data.
 
-`docs/MODEL.md` § "Minimum displayed outputs" -> "What this list requires
+`docs/INTERFACE.md` § "Minimum displayed outputs" -> "What this list requires
 once the layout is the reader's" divides the required display in three. The
 unconditional part is the set of values without which a reader could misread
 the run's other displayed numbers. It sits outside the area system, so no
@@ -20,7 +20,7 @@ The set has two tiers, plus the control-input record:
   A run with no volatile agent owes none of those, so the tier is passed in
   as a `SubstanceInstance` rather than written into the set.
 - **The control-input record** is unconditional on its own terms: the list
-  of settings changed during the run, which `docs/MODEL.md` states apart from
+  of settings changed during the run, which `docs/INTERFACE.md` states apart from
   both tiers ("The control-input record is unconditional, and its chart marks
   are conditional").
 
@@ -28,7 +28,7 @@ The agent accounting is deliberately not here. It is required to be
 reachable, not to be visible, so it belongs to the View registry (`PL-50PZ`).
 
 **Each top-level window's region holds part of the set** (`PL-W54S`).
-`docs/MODEL.md` § "A separate window shows the invariant tier, not the whole
+`docs/INTERFACE.md` § "A separate window shows the invariant tier, not the whole
 set" splits the set by the reason each tier is required. Every window
 carries the invariant tier, because a concentration drawn with no time, run
 state or drug is misread in whatever window it is drawn. Once a second window
@@ -272,7 +272,7 @@ def window_region(
 ) -> tuple[UnconditionalValue, ...]:
     """The values one top-level window's unconditional region must hold.
 
-    `docs/MODEL.md` § "A separate window shows the invariant tier, not the whole
+    `docs/INTERFACE.md` § "A separate window shows the invariant tier, not the whole
     set" decides the split (project owner, 2026-09-16, ratified). Every
     window holds the invariant tier, and also the run's name once more than
     one window is open. Only the main window, `MAIN_WINDOW`, holds the

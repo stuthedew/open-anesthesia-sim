@@ -73,7 +73,7 @@ replaced the Area holding this View, what would break?** Five answers recur.
    container holds the Area at that size or says why it cannot (`PL-K285`).
    Fixed geometry is for a swatch whose size is the point (`_LineSwatch`),
    never for a layout.
-5. **A required value never moves into something closeable.** `docs/MODEL.md`
+5. **A required value never moves into something closeable.** `docs/INTERFACE.md`
    § "Minimum displayed outputs" divides the display into an unconditional set,
    which no Workspace may remove, and a conditional remainder. The
    unconditional set sits in its own region outside the Areas (`PL-NWTM`). A

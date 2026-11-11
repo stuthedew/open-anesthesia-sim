@@ -7,7 +7,7 @@ effort: L
 status: ready
 classes: docs
 feature: model-md-structure
-touches: docs/MODEL.md, tools/doc_check.py, subprojects/docket/src/docket/arming.py, CLAUDE.md, .claude/rules/plain-writing.md, tools/model_rewrite.py, src/anesthesia_sim/, tests/
+touches: docs/, tools/, subprojects/docket/, .claude/, CLAUDE.md, docket.toml, README.md, ROADMAP.md, src/anesthesia_sim/, tests/
 added: 2026-11-11
 payoff: a contributor finds what the interface must show in one document, and a clinician no longer reads past 60,000 words of interface rules to reach the model
 verify: ! grep -qE '^## (Runtime controls|Minimum displayed outputs)$' docs/MODEL.md
@@ -27,7 +27,7 @@ two reuse.
 **What to do.**
 
 1. Create the interface document under `docs/`. The build chooses the file
-   name. Move these `##` sections of `docs/MODEL.md` into it unchanged:
+   name. Move these `##` sections of `docs/INTERFACE.md` into it unchanged:
    "Runtime controls"; "Reset behavior"; "Agent-change behavior";
    "Discarding a run, and the questions that guard it"; "What a branch
    comparison asserts, and what it does not"; "Interface boundary";

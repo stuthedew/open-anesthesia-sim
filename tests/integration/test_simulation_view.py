@@ -11613,7 +11613,7 @@ def test_two_runs_share_one_readout_block_whose_values_name_their_runs(
 ) -> None:
     """Each compartment's panel carries both runs' values, and each value says whose.
 
-    `docs/MODEL.md` § "Minimum displayed outputs" pairs the two values under
+    `docs/INTERFACE.md` § "Minimum displayed outputs" pairs the two values under
     one compartment name, so a second run adds lines to the block rather
     than a second row of seven panels. The names are restated as literals
     rather than read from `run_label`, which the legend also reads.

@@ -12,6 +12,7 @@ one data file, so a test names only the thing it breaks.
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import subprocess
 import sys
@@ -250,6 +251,29 @@ DATA = {
 }
 
 
+#: The bound families as `tools/doc_check.py` defines them, for the test that
+#: reads this repository's own documents.
+REPOSITORY_BOUND_FAMILIES = doc_check.BOUND_FAMILIES
+
+
+@pytest.fixture(autouse=True)
+def _bound_families_in_one_fixture_document(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Point every family of the interface document at the fixture's one model document.
+
+    `_repo` writes a single `docs/MODEL.md` that holds every bound section, as
+    the real document did until `PL-CTXZ` moved the interface sections to
+    `docs/INTERFACE.md`. The tests here are about how a family is read, not
+    about which document holds it, so they keep that one fixture document.
+    """
+    families = tuple(
+        dataclasses.replace(family, document=doc_check.MODEL)
+        if family.document == doc_check.INTERFACE
+        else family
+        for family in doc_check.BOUND_FAMILIES
+    )
+    monkeypatch.setattr(doc_check, "BOUND_FAMILIES", families)
+
+
 def _repo(
     tmp_path: Path,
     *,
@@ -343,10 +367,16 @@ def _this_repository() -> doc_check.Report:
     Three tests read the real tree, and one analysis of it took 46 to 51 s in
     an eight-worker run on four cores, so analysing it for each was about 150
     test-seconds of CI's pytest step (`PL-H9KW`). Each reads the report and
-    none changes it.
+    none changes it. It reads the families as `tools/doc_check.py` defines
+    them, not as `_bound_families_in_one_fixture_document` re-points them.
     """
 
-    return doc_check.analyze(Path(doc_check.__file__).resolve().parent.parent)
+    fixture_families = doc_check.BOUND_FAMILIES
+    doc_check.BOUND_FAMILIES = REPOSITORY_BOUND_FAMILIES
+    try:
+        return doc_check.analyze(Path(doc_check.__file__).resolve().parent.parent)
+    finally:
+        doc_check.BOUND_FAMILIES = fixture_families
 
 
 @pytest.mark.reads_item_store
@@ -8129,7 +8159,9 @@ def test_a_developer_note_declaring_no_test_yet_holds_the_paragraph_above_it_whi
 
 
 @pytest.mark.reads_item_store
-def test_this_repository_holds_every_bound_family_to_its_members() -> None:
+def test_this_repository_holds_every_bound_family_to_its_members(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """The families named in `BOUND_FAMILIES` conform here, not only in fixtures.
 
     A family joins that tuple only once its annotation pass has landed, so this
@@ -8140,10 +8172,12 @@ def test_this_repository_holds_every_bound_family_to_its_members() -> None:
     declared one against `PL-1P15` since `PL-VJZK`. Closing that item in a
     pull request that changes only item files must still run this test.
     """
+    monkeypatch.setattr(doc_check, "BOUND_FAMILIES", REPOSITORY_BOUND_FAMILIES)
     report = doc_check.Report()
     doc_check.check_bound_families(Path(__file__).resolve().parents[2], report)
 
     assert report.errors == []
+    assert report.declined == []
     assert report.declined == []
 
 

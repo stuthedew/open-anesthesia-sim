@@ -6,7 +6,7 @@ no value of its own. Each container fills from its bottom to the reading's
 `fill`, in the colour of its compartment's chart trace. So a learner who moves
 between the schematic and the chart finds each compartment in one colour. The
 compartment's name, tension and amount are painted under its container, in
-text, so no value is carried by colour or height alone (`docs/MODEL.md`
+text, so no value is carried by colour or height alone (`docs/INTERFACE.md`
 § "The compartment schematic: what its heights, amounts and share bar assert").
 
 **How the containers are joined** (`PL-RNYV`). The containers stand in one row
@@ -284,7 +284,7 @@ class ShareBar(QWidget):
     shows where the bar is. `RunSchematic` shows lines under the bar that name
     the segments in text, so no segment is told apart by colour alone. Readers
     judge a position along one common scale more accurately than an area
-    (`docs/MODEL.md` § "The compartment schematic: what its heights, amounts
+    (`docs/INTERFACE.md` § "The compartment schematic: what its heights, amounts
     and share bar assert"). So the bar carries the comparison of amounts that
     the containers' heights cannot.
     """

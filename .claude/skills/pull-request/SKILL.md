@@ -82,7 +82,8 @@ changes a simulator path keeps the edit.
 **A simulator pull request is not marked ready or armed until its blind
 generalist review passes have run and their findings are dealt with.**
 `python3 tools/blind_review.py` says how many it owes: one, or two where it
-changes the model's code, its parameter files or `docs/MODEL.md`. Close-out
+changes the model's code, its parameter files, `docs/MODEL.md` or
+`docs/INTERFACE.md`. Close-out
 step 9 in `.claude/skills/docket/modes/close-out.md` says how to run them and
 where their findings go: fixed on the branch, filed as items, or rejected,
 each listed in the pull request body (`PL-TDV9`). `bin/docket arm` holds the
@@ -95,7 +96,7 @@ arming and before every later push while a pull request is open.** **The owner
 reads only a real decision or a high-risk change, and housekeeping merges on
 green** (project owner, 2026-10-17, `PL-DKBG`). Which one a change is stays
 your call. Record it as an `Owner-read:` trailer, whose form and test `arm`
-prints. **A rewrite of `docs/MODEL.md` is housekeeping when it changes no
+prints. **A rewrite of `docs/MODEL.md` or `docs/INTERFACE.md` is housekeeping when it changes no
 value, equation, code span or citation** (project owner, 2026-11-02, ratified,
 `PL-ZTZF`). `python3 tools/model_rewrite.py lost` decides that part. It must
 add nothing, and each fact it lists as dropped must be history or a duplicate

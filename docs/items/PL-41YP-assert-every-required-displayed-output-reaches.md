@@ -30,7 +30,7 @@ verify: grep -rqE 'def test_every_minimum_displayed_output\w*widget' tests/integ
 > than write a second. Naming the new test in each bullet lets the existing
 > binding carry the widget link with no new check.
 
-**Problem.** PL-036 makes `docs/MODEL.md` § "Minimum displayed outputs" name
+**Problem.** PL-036 makes `docs/INTERFACE.md` § "Minimum displayed outputs" name
 the `SimulationSnapshot` field behind each bullet and checks those fields
 exist. That proves the field exists, not that the interface displays it.
 

@@ -66,7 +66,7 @@ delivered agent -> breathing circuit -> alveolar gas -> blood
 You can change four settings during a run without disturbing what is already in
 the patient: **fresh gas flow, delivered concentration, alveolar ventilation and
 cardiac output**. Each has a supported range, listed in
-[`docs/MODEL.md`](docs/MODEL.md) § "Supported input ranges". The simulator
+[`docs/INTERFACE.md`](docs/INTERFACE.md) § "Supported input ranges". The simulator
 refuses a setting outside its range, rather than quietly using the nearest value
 in range and showing a case nobody asked for. When the model cannot continue
 after a change, the simulator stops the run and says why.
@@ -247,8 +247,9 @@ make run          # or: uv run anesthesia-sim
 
 - [`docs/MODEL.md`](docs/MODEL.md) — the scientific specification: equations,
   units, conventions, parameter provenance, numerical method, properties the
-  model must always keep, required tests, interface requirements, assumptions
-  and known limitations.
+  model must always keep, required tests, assumptions and known limitations.
+- [`docs/INTERFACE.md`](docs/INTERFACE.md) — the interface requirements: what
+  the display must show, and what each control does.
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — how the folders `core/`,
   `app/` and `data/` fit together, and where new code belongs.
 - [`ROADMAP.md`](ROADMAP.md) — the authoritative version and milestone map.

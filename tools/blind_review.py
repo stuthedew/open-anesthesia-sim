@@ -5,7 +5,8 @@ a defect filed against them, and `PL-TBQS` on twenty more. One generalist
 reviewer, run blind, named about half of what was later filed, as many as a
 three-specialist panel. So every simulator pull request gets one blind
 generalist pass before it merges, and one that changes the model's code, its
-parameter files or `docs/MODEL.md` gets a second (project owner, 2026-10-24,
+parameter files, `docs/MODEL.md` or `docs/INTERFACE.md` gets a second (project
+owner, 2026-10-24,
 ratified, `PL-TDV9`). Close-out step 9 in `.claude/skills/docket/modes/close-out.md`
 says when the passes run and what happens to their findings.
 
@@ -76,7 +77,7 @@ from docket.vcs import (  # noqa: E402
 BRIEF = """\
 You are the single code reviewer for an open-source anesthesia simulator (inhaled-anesthetic uptake and distribution, with a Qt interface for learners). You are reviewing ONE pull request before it merges.
 
-Your directory is {DIR}. It holds `tree/`, the repository exactly as it stands with this pull request applied, and `tree/REVIEW_DIFF.patch`, the pull request's commit message and diff. Read ONLY inside {DIR}. Do not read any other path on this machine, do not run git, and do not use the network. The project's standards are in `tree/CLAUDE.md`, `tree/.claude/rules/` and `tree/docs/MODEL.md`; read what you need. You may run read-only Python against `tree/` if it helps you check a claim (for example `cd {DIR}/tree && PYTHONPATH=src python3 -c '...'`), but write nothing inside `tree/`.
+Your directory is {DIR}. It holds `tree/`, the repository exactly as it stands with this pull request applied, and `tree/REVIEW_DIFF.patch`, the pull request's commit message and diff. Read ONLY inside {DIR}. Do not read any other path on this machine, do not run git, and do not use the network. The project's standards are in `tree/CLAUDE.md`, `tree/.claude/rules/`, `tree/docs/MODEL.md` and `tree/docs/INTERFACE.md`; read what you need. You may run read-only Python against `tree/` if it helps you check a claim (for example `cd {DIR}/tree && PYTHONPATH=src python3 -c '...'`), but write nothing inside `tree/`.
 
 Your field: General review, with no specialty. Cover whatever matters most in this change: correctness of the model and its units, numerical and state behaviour, and what a clinician or learner sees on screen.
 

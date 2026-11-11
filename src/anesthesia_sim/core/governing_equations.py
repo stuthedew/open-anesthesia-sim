@@ -212,7 +212,7 @@ because these settings are assembled separately from those compartments, and
 this is the object from which the equations are actually built. The check sits
 one call away from the arithmetic it protects, rather than in the class that
 usually supplies the values. The absolute tolerance is what lets a zero cardiac
-output pass, which `docs/MODEL.md` § "Supported input ranges" requires.
+output pass, which `docs/INTERFACE.md` § "Supported input ranges" requires.
 """
 
 TISSUE_BLOOD_FLOW_STATED_DECIMALS = 6
@@ -241,7 +241,7 @@ def require_canonical_state(state: object) -> None:
     display path carries the same nine numbers in the same order as a
     canonical state, so nothing in its contents tells them apart. What does
     tell them apart is that the display path wraps its results in something
-    that is not a tuple. `docs/MODEL.md` § "The canonical evaluation rule"
+    that is not a tuple. `docs/INTERFACE.md` § "The canonical evaluation rule"
     argues for exactly this test. Even a sink that never thought to check
     rejects a value that is structurally not a state, and only such a value.
     A structural test also works for wrappers that this module has never

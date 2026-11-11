@@ -38,7 +38,7 @@ In a Markdown file, the copy editor reads the passage's whole section, from the
 heading above it to the next heading. It may rewrite the passage and the one
 unit on each side of it inside that section, so it can fold new text into the
 paragraph beside it. It may not rewrite the rest of the section, because
-`docs/MODEL.md` § "Displayed precision" runs to about 8,000 words, and a
+`docs/INTERFACE.md` § "Displayed precision" runs to about 8,000 words, and a
 one-sentence fix there would become a rewrite of all of them. That limit is a
 placeholder for the owner to overrule (`PL-22T5`). Two passages that would
 share a unit are reviewed as one. In a Python file, each changed unit is
@@ -111,7 +111,7 @@ table rows, docstrings or comments on both sides. Hunks parted only by blank
 lines make one passage. It is printed with its word count on the default branch
 and now, whatever its length, unless only its spacing changed. A whole section is
 not the passage, because a growth of 50 words would not show in a section as
-long as `docs/MODEL.md` § "Displayed precision". Then, for each file, it
+long as `docs/INTERFACE.md` § "Displayed precision". Then, for each file, it
 lists each equation, "no test yet" declaration, code span, citation, number,
 item id and date that the file held at the fork and holds fewer times now, read
 as `tools/model_rewrite.py` reads a fact. A Python file's facts are read from

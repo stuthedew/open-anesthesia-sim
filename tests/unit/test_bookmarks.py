@@ -701,7 +701,7 @@ def test_a_relabelled_mark_keeps_what_the_run_did_with_it() -> None:
 def test_a_target_still_outstanding_at_the_supported_run_length_says_it_was_not_reached() -> None:
     """A threshold above a compartment's asymptote, which is never reached.
 
-    The run stops at the limit in `docs/MODEL.md` § "Supported run length", and
+    The run stops at the limit in `docs/INTERFACE.md` § "Supported run length", and
     by then it has answered the question. So the row must not go on saying that
     the run is still working on it.
     """

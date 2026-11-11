@@ -593,7 +593,8 @@ BLIND_UNCOUNTED = (
 #: than restated, and the high-risk cases are the ones the owner's rule names
 #: in this repository's terms. What a learner can be misled by is the first,
 #: because the safety-critical standard in `CLAUDE.md` makes it so. A rewrite
-#: of docs/MODEL.md that keeps every value, equation, code span and citation is
+#: of docs/MODEL.md or docs/INTERFACE.md that keeps every value, equation, code
+#: span and citation is
 #: housekeeping, and only a sentence whose meaning needs a clinician's judgment
 #: reaches the owner (project owner, 2026-11-02, ratified, over holding every
 #: section part of `PL-ZT47` for the owner's read, `PL-ZTZF`).
@@ -604,12 +605,14 @@ JUDGE_ASK = (
     "<why>`. It is needed for a real decision, one "
     ".claude/skills/docket/modes/design.md step 4 makes the owner's, and for a high-risk "
     "change: one that changes a clinical value the "
-    "simulator computes or displays, or what docs/MODEL.md says one means, beyond "
+    "simulator computes or displays, or what docs/MODEL.md or docs/INTERFACE.md says one "
+    "means, beyond "
     "restating what the change's own tests measure; one that changes a rule sessions run "
     "under that the owner did not ask for in their own words; or one whose breakage CI "
     "would not show or a revert would not undo. Anything else is housekeeping and not "
     "needed: a refactor with its outputs pinned, a tightened test, a figure restated from "
-    "a measurement. A docs/MODEL.md rewrite is not needed when `python3 "
+    "a measurement. A rewrite of docs/MODEL.md or docs/INTERFACE.md is not needed when "
+    "`python3 "
     "tools/model_rewrite.py lost` adds no equation, code span, citation or number, every "
     "line it prints as dropped is history or a duplicate the document still holds, and no "
     "sentence changes what a value means or what a hazard row or limitation promises. "
@@ -675,6 +678,17 @@ SOURCE = "src/"
 #: path lists and for every tool, which reads it through `product_paths`.
 MODEL_DOC = "docs/MODEL.md"
 
+#: What the interface must show and do. Its sections were part of `MODEL_DOC`
+#: until the project owner split that document by reader on 2026-11-11
+#: (`PL-P3GZ`, `PL-CTXZ`).
+INTERFACE_DOC = "docs/INTERFACE.md"
+
+#: The documents that together specify the simulator. The safety-critical
+#: standard in `CLAUDE.md` applies to each. The gate's path lists below and
+#: every tool that checks the specification read this tuple, so a document
+#: that joins the specification is added here and nowhere else (`PL-CTXZ`).
+SPECIFICATION_DOCS = (MODEL_DOC, INTERFACE_DOC)
+
 #: Importing this is what makes a test file the simulator's. It is the rule
 #: `tools/workflow_paths_check.py` holds `docket.toml`'s `workflow_paths` to
 #: (`PL-JBZK`), and since 2026-10-05 the one that lets a test under `TESTS`
@@ -703,12 +717,12 @@ TEST_FILE_PATTERNS = ("test_*.py", "*_test.py")
 #: the owner's answers of 2026-10-03 and 2026-10-10, left it on his rule of
 #: 2026-10-12 that workflow items need no merge confirmation (`PL-KPM2`): what
 #: is left is the simulator's.
-READ_PATHS = (SOURCE, TESTS, MODEL_DOC, "src/anesthesia_sim/data/", "README.md")
+READ_PATHS = (SOURCE, TESTS, *SPECIFICATION_DOCS, "src/anesthesia_sim/data/", "README.md")
 
 #: The simulator's paths as the answers name them.
 READ_LIST = (
-    f"{SOURCE}, {TESTS} but a test importing no {PRODUCT_PACKAGE}, {MODEL_DOC}, "
-    "src/anesthesia_sim/data/ and README.md"
+    f"{SOURCE}, {TESTS} but a test importing no {PRODUCT_PACKAGE}, "
+    f"{', '.join(SPECIFICATION_DOCS)}, src/anesthesia_sim/data/ and README.md"
 )
 
 #: The paths whose change earns a second blind generalist review pass: the
@@ -718,7 +732,17 @@ READ_LIST = (
 #: here and not on every simulator change (project owner, 2026-10-24, ratified,
 #: over two passes on every simulator pull request and over one pass
 #: everywhere, `PL-TDV9`).
-SECOND_PASS_PATHS = ("src/anesthesia_sim/core/", "src/anesthesia_sim/data/", "docs/MODEL.md")
+#:
+#: Each path is written out, because `tools/config_home_check.py` reads this
+#: tuple as text and compares it with `docket.toml`'s `protected_paths`. So
+#: the documents of `SPECIFICATION_DOCS` are named here a second time, and
+#: that check fails when the two lists differ.
+SECOND_PASS_PATHS = (
+    "src/anesthesia_sim/core/",
+    "src/anesthesia_sim/data/",
+    "docs/MODEL.md",
+    "docs/INTERFACE.md",
+)
 
 
 def imports_product(tree: ast.Module) -> bool:

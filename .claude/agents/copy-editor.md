@@ -107,7 +107,8 @@ marked ">" for each passage with a finding, and "[N] keep" for every other
 passage.
 
 A file can have more than one reader. Edit each paragraph for the reader it
-serves where it stands. In `docs/MODEL.md`, a paragraph above a note that opens
+serves where it stands. In `docs/MODEL.md` and `docs/INTERFACE.md`, a paragraph
+above a note that opens
 "**For developers.**" serves the clinician, and the note serves the developer.
 
 ## How to edit
@@ -187,7 +188,8 @@ does not know this repository's names either.
      check fails. Where a section sets out such rules, a reader who does not
      write the text needs a few sentences: which statements they can rely
      on, how to tell a statement that nothing checks or one that records a
-     past date, and how a missing test is declared. In `docs/MODEL.md` the
+     past date, and how a missing test is declared. In `docs/MODEL.md` and
+     `docs/INTERFACE.md` the
      rules' place is the note for developers at the end of the section, and
      you move the fact there yourself
      when that note is in the ">" rows. The note runs from "**For

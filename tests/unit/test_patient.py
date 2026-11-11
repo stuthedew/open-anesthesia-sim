@@ -428,7 +428,7 @@ def test_rejects_cardiac_output_above_the_supported_range() -> None:
     At that setting, the shipped split's error coefficient is 40 times the
     documented bound. That is 91 counts of the displayed resolution, so the
     alveolar readout would be wrong in its first decimal while presenting
-    itself as settled. `docs/MODEL.md` § "Supported input ranges" records the
+    itself as settled. `docs/INTERFACE.md` § "Supported input ranges" records the
     measurement.
     """
 

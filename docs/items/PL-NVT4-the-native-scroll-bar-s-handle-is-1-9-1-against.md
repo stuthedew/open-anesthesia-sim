@@ -43,7 +43,7 @@ own groove is that, or whether the bar as a whole against the page is the pair
 that matters, has not been read at source from this container -
 `www.w3.org` is refused at the gateway (`.claude/rules/citing-sources.md`,
 measured 2026-09-19), so the Understanding document has not been consulted. Do
-not settle this from memory. `docs/MODEL.md` § "Color contrast, and the
+not settle this from memory. `docs/INTERFACE.md` § "Color contrast, and the
 standard this interface is held to" lists SC 1.4.11 as held rather than
 deferred, so if it does reach native chrome this is a gap in the claim and not
 only in the pixels.
@@ -55,7 +55,7 @@ it - the scroll bar is styled to a declared, measured pair and the requirement
 table gains the entry. The second route costs the native bar, so it is a
 decision rather than a fix.
 
-**Why it matters.** `docs/MODEL.md` § "Color contrast, and the standard this
+**Why it matters.** `docs/INTERFACE.md` § "Color contrast, and the standard this
 interface is held to" states SC 1.4.11 as held. A scroll bar is how a reader
 reaches everything below the fold. If the criterion reaches a handle against its
 groove, the section claims a conformance the interface does not have, which is a

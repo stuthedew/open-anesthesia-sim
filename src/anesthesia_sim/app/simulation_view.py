@@ -14,7 +14,7 @@ chart in view after a branch.
 unconditional region holds the values that must be on screen at all times.
 Each run's transport row, its notice banner, its readouts and its
 control-change record sit in a band across the top of the page. The use
-disclaimer sits in a line across the foot of the page. `docs/MODEL.md`
+disclaimer sits in a line across the foot of the page. `docs/INTERFACE.md`
 § "Minimum displayed outputs" requires those values on screen in every
 Workspace, and `app/unconditional_set.py` declares which values they are.
 `_place_run` rejects a run when the band does not hold every value that the
@@ -1970,7 +1970,7 @@ class SimulationView(QWidget):
         """Set or remove the reader's price for one agent, save it, and draw at once.
 
         Every cost at that agent's price is redrawn on the frame drawn here,
-        whether or not the run is advancing (`docs/MODEL.md` § "A cost at the
+        whether or not the run is advancing (`docs/INTERFACE.md` § "A cost at the
         reader's price", `PL-1P15`). Setting a price drops any refused entry
         for the agent. Removing a price drops both the price and any refused
         entry.

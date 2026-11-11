@@ -1578,7 +1578,7 @@ def test_stopping_at_the_supported_run_length_is_not_a_failure() -> None:
     be trusted. The interface reads these two fields to decide what to say.
     So if a run that stopped correctly reported a `failure_reason`, the
     interface would show "simulation error" over a sound model
-    (`docs/MODEL.md`, "Supported run length").
+    (`docs/INTERFACE.md`, "Supported run length").
     """
 
     controller = SimulationController()
@@ -2448,7 +2448,7 @@ def test_a_branch_continues_the_case_s_step_count_so_the_envelope_is_the_case_s(
 
     `require_supported_run_length` reads a step count, so a branch that
     restarted the count would get a fresh 24 h envelope. A fork taken late
-    could then be advanced well past the span that `docs/MODEL.md` § "Supported
+    could then be advanced well past the span that `docs/INTERFACE.md` § "Supported
     run length" declares, with every guard passing. The model is not claimed to
     represent a patient for a run that long. As `core/supported_ranges.py`
     argues, the model omits metabolism and its fat flow is uncertain, so how
@@ -3574,7 +3574,7 @@ def test_an_alveolar_target_can_halt_two_counts_past_its_mark_when_ventilation_r
     """In one simulation step, a reading can move more than one display count past its mark.
 
     A display count is one unit of the last digit shown. This test is the second example in
-    `docs/MODEL.md` § "Halting on a marked crossing". After 120 s with no alveolar
+    `docs/INTERFACE.md` § "Halting on a marked crossing". After 120 s with no alveolar
     ventilation, the circuit has filled but the alveolar reading is still zero. When
     ventilation is restored to 12 L/min, the alveolar reading rises fast enough that a
     0.10 ×MAC alveolar target halts showing 0.12 ×MAC.
@@ -3798,7 +3798,7 @@ def test_a_bookmark_fork_opens_its_definition_at_the_keyframe_before_it() -> Non
     The branch's clock and live system are at the bookmark. Its run definition
     opens at the keyframe *at or before* that instant, with that keyframe's
     own state. Every instant after the fork is then one propagation from the
-    same keyframe that the trunk propagates from. `docs/MODEL.md` § "What this
+    same keyframe that the trunk propagates from. `docs/INTERFACE.md` § "What this
     requires of a branch" relaxes the second of its two conditions to exactly
     that.
     """
@@ -3862,7 +3862,7 @@ column is one of the sampled points that the plot draws.
 The divergence was measured at or below 2.8e-15 on the case below. The bound is about 36 times
 that, roughly one and a half orders of magnitude. That margin keeps an ordinary floating-point
 wobble from failing the suite. The bound is also nine orders of magnitude below 1e-4, the
-smallest difference that the display resolves according to `docs/MODEL.md` § "Displayed
+smallest difference that the display resolves according to `docs/INTERFACE.md` § "Displayed
 precision". That gap is the point of the measurement: the two runs differ by far less than the
 display can show.
 """
@@ -3896,7 +3896,7 @@ def test_a_bookmark_branch_and_its_parent_agree_at_every_column_they_share() -> 
       consecutive columns and breaks the chain at a bound. So
       the trunk chains through the fork, while the branch restarts there. Without
       this third claim, a display path that had quietly become the canonical one
-      would satisfy the first two. `docs/MODEL.md` § "The canonical evaluation
+      would satisfy the first two. `docs/INTERFACE.md` § "The canonical evaluation
       rule" would then be enforcing a separation that no longer existed.
 
     The third claim is why the second is worth asserting at all. A reader who
@@ -4930,7 +4930,7 @@ def test_a_mark_added_after_the_step_that_crossed_it_reads_alike_on_every_run() 
 
     Every run here is stopped on that step or opened on it, so each mark
     inside the step counts as crossed by it: the late time mark as passed, and
-    the target as reached (`docs/MODEL.md` § "Halting on a marked crossing").
+    the target as reached (`docs/INTERFACE.md` § "Halting on a marked crossing").
     """
 
     target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.3))
@@ -5503,7 +5503,7 @@ def test_each_refusal_to_branch_where_a_run_stands_is_pinned_whole() -> None:
 def test_the_refusal_to_branch_at_the_supported_run_length_is_pinned_whole(
     trunk_stepped_onto_the_limit: SimulationController,
 ) -> None:
-    """86,400 s is the supported run length `docs/MODEL.md` § "Supported run length" states."""
+    """86,400 s is the supported run length `docs/INTERFACE.md` § "Supported run length" states."""
 
     with pytest.raises(SimulationConfigurationError) as refusal:
         trunk_stepped_onto_the_limit.resumed_here()
@@ -5546,7 +5546,7 @@ def test_each_refusal_to_branch_at_a_mark_is_pinned_whole() -> None:
 # setting that differs between the two as a change at the fork. The halt record
 # lists the marks that the step ending at that instant crossed, tested against
 # the marks as they are now. These tests check each way of branching against
-# the rule in `docs/MODEL.md` § "The canonical evaluation rule".
+# the rule in `docs/INTERFACE.md` § "The canonical evaluation rule".
 
 
 def _described(changes: tuple[ControlChange, ...]) -> list[tuple[object, ...]]:

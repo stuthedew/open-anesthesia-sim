@@ -29,7 +29,7 @@ ratio from that one record. The snapshot carries the ratio beside the agent it
 belongs to (`SimulationSnapshot.agent_vapour_per_liquid`). No other module in
 `src/` calls `liquid_volume_ml`, and a test checks that.
 
-**The cost at the reader's price** (`PL-1P15`). `docs/MODEL.md` § "A cost at
+**The cost at the reader's price** (`PL-1P15`). `docs/INTERFACE.md` § "A cost at
 the reader's price" specifies it. The cost is the delivered liquid volume
 times the price per millilitre of liquid. That price is the reader's bottle
 price divided by the bottle volume (`AgentPrice.price_per_liquid_ml`). The
@@ -263,7 +263,7 @@ WITHHELD_DELIVERED: Final = DeliveredShown(
 
 #: The line over the cost. It says in words that the price is the reader's,
 #: not only through a colour or a style, so that no reader misses the statement
-#: (`docs/MODEL.md` § "A cost at the reader's price", item 6). The wording is a
+#: (`docs/INTERFACE.md` § "A cost at the reader's price", item 6). The wording is a
 #: placeholder, but what it must say is not.
 COST_LABEL_TEMPLATE: Final = "Cost of the {agent}, at your price"
 
@@ -280,11 +280,11 @@ COST_PRICE_TEMPLATE: Final = (
 
 #: Why the figures beside a cost may not multiply to it. The cost is computed
 #: from the unrounded volume and price, so the product of the rounded figures
-#: can differ from it (`docs/MODEL.md` § "Displayed precision" says by how much).
+#: can differ from it (`docs/INTERFACE.md` § "Displayed precision" says by how much).
 #: The wording is a placeholder.
 COST_ROUNDED_TEXT: Final = "Rounded, so the figures may not multiply exactly."
 
-#: Why no cost is shown, in each case that `docs/MODEL.md` § "A cost at the
+#: Why no cost is shown, in each case that `docs/INTERFACE.md` § "A cost at the
 #: reader's price" lists. The wording is a placeholder.
 NO_PRICE_TEXT: Final = "No cost: set your price for {agent} below."
 REFUSED_PRICE_TEXT: Final = "No cost: your saved price for {agent} was refused. Set it again below."
@@ -434,7 +434,7 @@ def price_from_entry(
     """Return the price the reader entered, or refuse it with the reason.
 
     The texts are as the reader typed them. `AgentPrice` then applies every
-    check that `docs/MODEL.md` § "A cost at the reader's price" lists, the
+    check that `docs/INTERFACE.md` § "A cost at the reader's price" lists, the
     same checks it applies when the preferences file is read. A refused entry
     changes nothing, so the stored price, if any, stays in force.
 

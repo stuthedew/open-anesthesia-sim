@@ -37,7 +37,7 @@ Ten findings were raised and all ten were refuted on that ground, two skeptics
 apiece. `PL-MN4J` is the worked example: the auditor read the legend's
 closeability out of `PL-VN6M`'s brief, which is an item's supposition about a
 catalogue nobody has written, and the refutation traced `PL-MN4J`'s own case to
-`docs/MODEL.md` § "The chart's hover readout", where the item already argues the
+`docs/INTERFACE.md` § "The chart's hover readout", where the item already argues the
 *opposite* - a hover box floats free of its surroundings, so the legend's
 adjacency is worth nothing to it either way.
 

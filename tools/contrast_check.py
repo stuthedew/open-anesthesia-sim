@@ -3,7 +3,7 @@
 
 Every contrast claim in this repository used to be prose. `app/theme.py` states
 that each agent fill/foreground pair "exceeds WCAG 2.2's 4.5:1 minimum for
-normal text"; nothing computed it. `docs/MODEL.md` records the agent colors'
+normal text"; nothing computed it. `docs/INTERFACE.md` records the agent colors'
 behaviour under simulated dichromacy; nothing recomputed it when a color
 changed. A color edit could silently falsify a documented safety claim, and
 the only thing between that and a reader was whoever remembered to re-measure.
@@ -602,7 +602,7 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "1.4.11's 3:1 (PL-25KS). Also both dropdowns whose "
         "fill is set to PANEL explicitly for that same reason: the playback "
         "rate beside the transport controls (`_playback_rate_dropdown`), which "
-        "names the rate the clock is advancing at, which docs/MODEL.md requires "
+        "names the rate the clock is advancing at, which docs/INTERFACE.md requires "
         "displayed, so it is read rather than merely operated (PL-SN2C); and "
         "the chart's time base (`TimeBaseSelector`), which names how much of "
         "the run is on screen and is read the same way. Also the labels of the "

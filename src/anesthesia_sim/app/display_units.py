@@ -46,12 +46,12 @@ class DisplayUnit(Enum):
     # The multiplication sign is there for safety, not for typography. A reader
     # takes "0.80 MAC" as a depth of anesthesia. "0.80 ×MAC" says what the number
     # actually is: a partial pressure expressed as a multiple of the concentration
-    # that would be 1 MAC. `docs/MODEL.md` § "MAC multiples as a display unit"
+    # that would be 1 MAC. `docs/INTERFACE.md` § "MAC multiples as a display unit"
     # states the convention.
     MAC_MULTIPLE = ("multiple of MAC", "×MAC", "×MAC")
     # An agent amount's unit always says whether it counts vapour or liquid. A
     # millilitre of liquid gives about 180 to 210 mL of vapour, depending on the
-    # agent, so a bare "mL" could be misread by that factor. `docs/MODEL.md`
+    # agent, so a bare "mL" could be misread by that factor. `docs/INTERFACE.md`
     # § "The compartment schematic: what its heights, amounts and share bar
     # assert" sets the spelling. The wording is a placeholder, but the rule is not.
     AGENT_VAPOUR_MILLILITRES = ("millilitres of vapour", "mL vapour", "mL vapour")
@@ -63,7 +63,7 @@ class DisplayUnit(Enum):
     # the price per millilitre worked out from it, are in this unit too
     # (`PL-1P15`). The field for the bottle volume names this unit, so the reader
     # is less likely to type a volume in litres or as a count of bottles
-    # (`docs/MODEL.md` § "A cost at the reader's price").
+    # (`docs/INTERFACE.md` § "A cost at the reader's price").
     AGENT_LIQUID_MILLILITRES = ("millilitres of liquid", "mL of liquid", "mL of liquid")
 
     recorded: str

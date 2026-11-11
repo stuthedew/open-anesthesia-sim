@@ -6,7 +6,7 @@ effort: L
 status: blocked
 classes: docs
 feature: model-md-structure
-touches: docs/MODEL.md
+touches: docs/INTERFACE.md
 blocked-by: PL-48MX
 added: 2026-11-11
 payoff: each paragraph of the document is for its reader, so the copy editor can then edit it without restating what a docstring, a test or an item already says

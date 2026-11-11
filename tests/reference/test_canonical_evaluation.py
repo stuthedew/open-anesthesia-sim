@@ -1,6 +1,6 @@
 """Test the canonical evaluation rule: each result is the run definition's, not the caller's.
 
-`docs/MODEL.md` § "The canonical evaluation rule" states three things. Every
+`docs/INTERFACE.md` § "The canonical evaluation rule" states three things. Every
 stored, exported, replayed or forked value is taken from the canonical path.
 Two evaluations of one definition at one instant are bit-identical. The display
 path may be drawn, and used for nothing else. The section "The reproducibility
@@ -132,7 +132,7 @@ stretches, where one composition ends and the next begins.
 RUN_LENGTH_S = 1800.0
 
 SUPPORTED_RUN_LENGTH_S = 24 * 3600.0
-"""The longest run the model supports, from `docs/MODEL.md` § "Supported run length"."""
+"""The longest run the model supports, from `docs/INTERFACE.md` § "Supported run length"."""
 
 FRACTION_STATES: tuple[int, ...] = (
     INSPIRED_FRACTION,
@@ -542,7 +542,7 @@ def test_a_display_value_cannot_open_a_run_definition() -> None:
 def test_the_display_path_stays_within_its_measured_separation() -> None:
     """The display path stays within the published figures.
 
-    `docs/MODEL.md` § "The canonical evaluation rule" tells a reader how far
+    `docs/INTERFACE.md` § "The canonical evaluation rule" tells a reader how far
     the drawn value may sit from the canonical one. Without this test, the
     figures would only be prose in two files. A change to the equations, to
     the propagator or to how a window is walked would move them silently, and
