@@ -329,9 +329,23 @@ page and decides which file a session reads.
    reverted. Record the same three counts as a trailer in the last paragraph
    of the commit that applies the rewrites, or of the next commit where there
    were none: `Prose-review: read N, rewrote M, rejected K`, where K counts
-   the reverted edits. `bin/docket arm` holds a branch that waits on the
-   owner's review where long prose was added after the newest such trailer,
-   as `python3 tools/new_prose.py --count` counts it (`PL-W04Z`).
+   the reverted edits. `bin/docket arm` holds a branch that changes a
+   simulator path where prose was added or reworded after the newest such
+   trailer, as `python3 tools/new_prose.py --count` counts it (`PL-W04Z`).
+
+   **Text written after the copy editor's run goes back to the copy editor**
+   (`PL-TG6P`). That covers a sentence added to a changed file and a sentence
+   added to the pull request body. When the copy editor asks a question, such
+   as whether a claim still holds, answer it in one of two ways. Where the
+   reader does not need the answer, answer it to yourself and change nothing.
+   Otherwise change the text, then run this step again on the changed file,
+   or the pull-request skill's copy edit again on the body, and record the
+   new trailer. `bin/docket arm` holds a simulator pull request until that
+   is done. For a changed file it reads the `Prose-review:` trailer, as
+   above. For the body it reads the `Body-review:` trailer, which the
+   pull-request skill describes. On 2026-11-04 both of the owner's objections
+   were to text written after the copy editor's run, to answer a question it
+   raised, and no review had read that text (`PL-J1ZM`).
 
    **The step is kept because the prose review it replaced worked.** On
    2026-10-19 `PL-J6CK` found that long prose from the branch that ran that
@@ -346,7 +360,17 @@ page and decides which file a session reads.
    that a changed file held at the fork and holds fewer times now. Put back
    each one that an edit dropped by mistake. For each passage that grew, name
    in the pull request body the facts its added words carry, because growth
-   that adds no fact is how prose over-explains (`PL-J1ZM`).
+   that adds no fact is how prose over-explains (`PL-J1ZM`). The comparison
+   prints one list item to complete for each file and section that holds a
+   grown passage, such as ``- Added words in `docs/MODEL.md` § "Displayed
+   precision": ``. Write each item on one line of the body, and put the facts
+   after its colon. Where the added words carry no fact, cut them. Where they
+   must stay, say why in the item, for example that a compressed sentence was
+   split in two. A passage that is new on the branch owes no item.
+   `bin/docket arm` holds a simulator pull request until its body has an item
+   for each grown passage, and it prints the items that are missing
+   (`PL-HNNH`). While only this paragraph asked for the items, two of the
+   five branches measured on 2026-11-04 left them out.
 
    **When the owner rejects a paragraph that this review passed, add it to
    the review's test set in `docs/prose-review/rejected/`.** The owner is the

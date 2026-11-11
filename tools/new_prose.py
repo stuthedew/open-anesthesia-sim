@@ -885,6 +885,7 @@ def body_digest(body: str) -> str:
     Only the words count, so a body that GitHub rewraps or stores with other
     line endings keeps its digest, and a body with one word changed does not.
     """
+    body = body.replace("\r\n", "\n")
     for decoration in BODY_DECORATIONS:
         body = decoration.sub("", body)
     return hashlib.sha256(" ".join(body.split()).encode()).hexdigest()[:16]

@@ -20,6 +20,7 @@ import pytest
 from docket import arming, cli
 from docket.claims import Hold
 from docket.config import Config
+from docket.vcs import PULL_OPEN, NewestPullRequest, PullRequestLookup, PullRequestNumber
 
 SINCE = datetime(2026, 10, 18, 13, 0, tzinfo=UTC)
 
@@ -466,3 +467,192 @@ def test_a_copied_refusal_log_leaves_the_recorded_ask_in_force(tmp_path: Path) -
 
     assert ask("docs/hook-blocks").sendable is not None
     assert ask("").unasked
+
+
+# How `arm` holds a simulator change on its pull request body (`PL-HNNH`,
+# `PL-TG6P`). The body's reading is stubbed, because what
+# `tools/new_prose.py --body-check` prints is pinned by its own tests.
+
+BODY_COVERED = "Prose-review: read 1, rewrote 0, rejected 0"
+GROWN_PASSAGE = 'Added words in `docs/MODEL.md` § "Uptake": rows 5-6, 9 words on main, 25 now'
+DIGEST = "0123456789abcdef"
+
+
+def _arm_body(
+    root: Path, body: Callable[[int], arming.BodyProse], number: int = 0
+) -> arming.Verdict:
+    def newest(branch: str, base: str) -> PullRequestLookup:
+        return PullRequestLookup(NewestPullRequest(PullRequestNumber(number), PULL_OPEN, ""))
+
+    return arming.arm(
+        root,
+        items_dir="docs/items",
+        now=NOW,
+        fetch=False,
+        newest=newest if number else None,
+        body_prose=body,
+    )
+
+
+def test_arm_holds_until_the_body_names_each_grown_passage(tmp_path: Path) -> None:
+    """A grown passage that the body does not name holds, and the answer names the passage.
+
+    Two of the five branches measured on 2026-11-04 skipped this step while
+    only close-out step 8's prose asked for it (`PL-J1ZM`).
+    """
+    root, git = _repo(tmp_path)
+    _change(root, git, SIMULATOR, "X = 1\n")
+    _record(git, NOT_NEEDED)
+    said = {"unnamed": (GROWN_PASSAGE,)}
+    asked: list[int] = []
+
+    def body(number: int) -> arming.BodyProse:
+        asked.append(number)
+        return arming.BodyProse(unnamed=said["unnamed"])
+
+    held = _arm_body(root, body)
+
+    assert held.answer == arming.HOLD
+    assert held.lines[0] == (
+        "hold - claude/prose: its pull request body names no facts for a passage that grew"
+    )
+    at = held.lines.index(arming.GROWTH_ASK)
+    assert held.lines[at + 1] == f"    - {GROWN_PASSAGE}"
+    assert asked == [0]
+
+    said["unnamed"] = ()
+
+    assert _arm_body(root, body).answer == arming.ARM
+
+
+def test_arm_holds_while_the_published_body_is_not_the_recorded_one(tmp_path: Path) -> None:
+    """A body with no `Body-review` record holds, and so does one changed after its record.
+
+    Both of the owner's objections on 2026-11-04 were to text written after
+    the copy editor's run, to answer a query it raised (`PL-TG6P`).
+    """
+    root, git = _repo(tmp_path)
+    _change(root, git, SIMULATOR, "X = 1\n")
+    _record(git, NOT_NEEDED)
+    published = {"digest": DIGEST}
+    asked: list[int] = []
+
+    def body(number: int) -> arming.BodyProse:
+        asked.append(number)
+        return arming.BodyProse(digest=published["digest"])
+
+    unrecorded = _arm_body(root, body, number=7)
+
+    assert unrecorded.answer == arming.HOLD
+    assert unrecorded.lines[0] == (
+        "hold - claude/prose: no Body-review record covers its pull request body"
+    )
+    assert arming.BODY_ASK in unrecorded.lines
+    assert asked == [7]
+
+    review = _record(git, f"Body-review: {DIGEST}")
+
+    assert _arm_body(root, body, number=7).answer == arming.ARM
+
+    published["digest"] = "fedcba9876543210"
+    changed = _arm_body(root, body, number=7)
+
+    assert changed.answer == arming.HOLD
+    assert changed.lines[0].endswith(
+        f"its pull request body is not the text that the Body-review record on {review[:12]} "
+        "covers"
+    )
+
+
+def test_arm_holds_when_the_body_could_not_be_checked(tmp_path: Path) -> None:
+    root, git = _repo(tmp_path)
+    _change(root, git, SIMULATOR, "X = 1\n")
+    _record(git, NOT_NEEDED)
+
+    held = _arm_body(root, lambda number: arming.BodyProse(declined="GitHub gave no body"))
+
+    assert held.answer == arming.HOLD
+    assert held.lines[0].endswith("its pull request body could not be checked - GitHub gave no body")
+    assert arming.BODY_UNCHECKED in held.lines
+
+
+def test_a_malformed_body_record_is_said_and_covers_nothing(tmp_path: Path) -> None:
+    root, git = _repo(tmp_path)
+    _change(root, git, SIMULATOR, "X = 1\n")
+    _record(git, NOT_NEEDED, "Body-review: done")
+
+    held = _arm_body(root, lambda number: arming.BodyProse(digest=DIGEST), number=7)
+
+    assert held.answer == arming.HOLD
+    assert "no Body-review record covers its pull request body" in held.lines[0]
+    assert any("is not the 16 digits" in line for line in held.lines)
+
+
+def test_a_change_outside_the_simulator_asks_nothing_of_the_body(tmp_path: Path) -> None:
+    """A pull request that changes no simulator path skips the body's copy edit (`PL-WBT6`)."""
+    root, git = _repo(tmp_path)
+    _change(root, git, "tools/script.py", '"""A tool."""\n')
+
+    def body(number: int) -> arming.BodyProse:
+        raise AssertionError("the body of a change outside the simulator was checked")
+
+    assert _arm_body(root, body).answer == arming.ARM
+
+
+def test_a_claim_keeps_the_body_asks_out_of_the_answer(tmp_path: Path) -> None:
+    """A claimed branch's pull request is a draft with a placeholder body, so nothing is asked of it."""
+    verdict = arming.Verdict(
+        answer=arming.HOLD,
+        branch="claude/x",
+        base="origin/main",
+        claims=(
+            Hold(
+                key="PL-B7QX",
+                ref="claude/x",
+                kind="claim",
+                state="live",
+                since=SINCE,
+                renewed=SINCE,
+                commit="0123456789abcdef",
+            ),
+        ),
+        unnamed=(GROWN_PASSAGE,),
+        body_digest=DIGEST,
+    )
+
+    assert arming.GROWTH_ASK not in verdict.lines
+    assert arming.BODY_ASK not in verdict.lines
+    assert "pull request body" not in verdict.lines[0]
+
+
+@pytest.mark.parametrize(
+    ("script", "expected"),
+    [
+        (
+            "print('grown a passage'); print('body 0123456789abcdef')",
+            arming.BodyProse(unnamed=("a passage",), digest="0123456789abcdef"),
+        ),
+        ("pass", arming.BodyProse()),
+        ("print('three')", None),
+        ("import sys; sys.exit(1)", None),
+    ],
+)
+def test_the_body_prose_command_is_read_line_by_line(
+    tmp_path: Path, script: str, expected: arming.BodyProse | None
+) -> None:
+    """`body_prose_command` is handed the pull request's number, and any other line declines."""
+    program = tmp_path / "body.py"
+    program.write_text(
+        f"import sys\nopen(sys.argv[0] + '.args', 'w').write(' '.join(sys.argv[1:]))\n{script}\n"
+    )
+    ask = cli._body_prose(tmp_path, Config(body_prose_command=f"{sys.executable} {program}"))
+    assert ask is not None
+
+    answered = ask(7)
+
+    assert (tmp_path / "body.py.args").read_text() == "7"
+    if expected is None:
+        assert answered.declined
+        assert not answered.unnamed
+    else:
+        assert answered == expected

@@ -67,6 +67,16 @@ changed a value, a unit, a condition, an identifier or a citation. Then
 publish the copy editor's rewrite with the `🤖 Generated with` lines added
 back.
 
+**Record the copy edit as a `Body-review:` trailer** (`PL-TG6P`). Run
+`python3 tools/new_prose.py --body-record FILE` on the file that holds the
+title and body as published, and put the line it prints in the last
+paragraph of a commit. `bin/docket arm` holds a simulator pull request whose
+published body is not the recorded text. So a body changed after the copy
+edit goes through the copy editor again, and gets a new trailer. That
+includes a sentence added to answer a question from the copy editor, and a
+list item added for a grown passage. Write those list items, which close-out
+step 8 describes, before the copy edit.
+
 **A branch that changes no simulator path skips that copy edit, until
 `PL-BF6K` has measured the copy editor's audit reads** (project owner,
 2026-11-11 at 00:06 UTC, ratified, over keeping the edit on every pull
@@ -110,7 +120,9 @@ quotes it. Workflow items need no merge confirmation (project owner, 2026-10-12,
   each path outside the store that it armed.
 - **`hold`**: leave it unarmed. `arm` holds for a claim, for a simulator change
   that no `Owner-read:` record covers, for a record saying `needed`, and for an
-  edit to a test that pins `arm`'s answers. Disarm the pull request before the
+  edit to a test that pins `arm`'s answers. It also holds a simulator change
+  whose pull request body names no facts for a passage that grew, or is not
+  the text its `Body-review:` trailer records. Disarm the pull request before the
   push that brings the hold, or green CI merges half the work. While the hold
   is a claim, keep the pull request a draft. Once no claim holds it, record the
   judgment or ask the owner, as `arm` says. A pull request held for the owner
