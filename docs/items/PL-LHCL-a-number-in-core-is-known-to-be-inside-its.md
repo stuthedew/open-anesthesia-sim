@@ -6,7 +6,7 @@ effort: L
 status: ready
 classes: safety
 feature: numbers-outside-their-valid-range
-touches: src/anesthesia_sim/core, tests/unit, docs/MODEL.md
+touches: src/anesthesia_sim/core, tests/unit, tests/integration, docs/MODEL.md, docs/ARCHITECTURE.md, .claude/rules/core-domain.md
 deferred-from: v0.7.0 - filed 2026-11-11, after the gate froze; a large structural change whose design waits on the owner's answer
 added: 2026-11-11
 payoff: every number that crosses a function boundary in core/ is either a checked type or on one short list that says why it is bare, so a new unchecked way in fails a test the day it is written
