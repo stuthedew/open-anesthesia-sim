@@ -8865,6 +8865,13 @@ GATE_ONLY: dict[str, tuple[str, str]] = {
         "checks off the GitHub API and reconciles them against the jobs that report "
         "them, so a checkout with no network and no token has nothing to compare",
     ),
+    "tools/diff_mutation.py --first-step": (
+        "ci",
+        "it needs the `mutation` dependency group, which `make check`'s environment "
+        "does not install, and it takes about two and a half minutes on four cores, "
+        "while a session reaches the same step through `make mutate` whenever it runs "
+        "the mutation check (`PL-PG0S`)",
+    ),
     "tools/github_refusals_check.py": (
         "ci",
         "its answer is not in the tree either: it reads the rules GitHub holds for "

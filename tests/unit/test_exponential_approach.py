@@ -307,7 +307,7 @@ def test_at_zero_flow_the_result_is_the_start_exactly(initial: float, equilibriu
     assert exponential_approach(initial, equilibrium, 60.0, inf) == initial
 
 
-@settings(derandomize=True, database=None, deadline=None, max_examples=500)
+@settings(max_examples=500)
 @given(initial=AMOUNTS_L, equilibrium=AMOUNTS_L, step_s=STEPS_S, time_constant_s=TIME_CONSTANTS_S)
 def test_the_result_lies_between_the_start_and_the_equilibrium(
     initial: float, equilibrium: float, step_s: float, time_constant_s: float

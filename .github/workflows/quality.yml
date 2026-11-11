@@ -691,6 +691,49 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  # Can a mutation run get past its first step? (`PL-PG0S`)
+  #
+  # mutmut first runs the simulator's unit tests once in its own copy of the
+  # tree, `mutants/`, and a test that fails there stops every mutation run
+  # before it tests a mutant. A test fails there and nowhere else when it
+  # reads a file the copy does not hold, or when it lists a module's
+  # functions and meets the mutant copies mutmut adds. The two parts run the
+  # tests in the real tree, so they cannot see either case, and three such
+  # tests landed in the week of 2026-11-09. This job builds the copy and runs
+  # those tests in it once, with no mutant applied. It took 2 min 25 s on
+  # four cores on 2026-11-11. A pull request that changes only item files
+  # skips it, as the parts skip the suite.
+  #
+  # not-required: gated by `checks`, which needs this job and fails unless it succeeded
+  mutation-copy:
+    # The parts' runner, for the parts' reasons (`PL-928H`).
+    runs-on: ${{ github.event_name == 'push' && 'ubuntu-latest' || 'ubuntu-24.04-arm' }}
+    # Four times the measured run, bounding a hang rather than a slow runner.
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      # The parts' question, asked here for the same reason the second part
+      # asks it again.
+      - name: which steps this pull request needs
+        id: scope
+        if: github.event_name == 'pull_request'
+        env:
+          SCOPE_BASE: origin/${{ github.base_ref }}
+        run: bin/docket ci-scope --base "$SCOPE_BASE" --github-output "$GITHUB_OUTPUT"
+      - name: Qt's system libraries, for the offscreen platform plugin
+        if: steps.scope.outputs.scope != 'items'
+        run: sudo apt-get update && sudo apt-get install -y libegl1
+      - uses: astral-sh/setup-uv@v9.0.0
+        if: steps.scope.outputs.scope != 'items'
+        with:
+          enable-cache: true
+      - name: the simulator's unit tests in mutmut's copy of the tree
+        if: steps.scope.outputs.scope != 'items'
+        run: uv run --locked --group mutation python tools/diff_mutation.py --first-step
+
   # **This job's name is load-bearing outside the tree.** Branch protection
   # matches a required status check by name, so renaming or removing a job here
   # orphans the requirement: nothing reports it, and every pull request then
@@ -715,7 +758,7 @@ jobs:
   # `tests/unit/test_quality_step_order.py` fails on a job this one does not
   # need.
   checks:
-    needs: [checks-part-1, checks-part-2]
+    needs: [checks-part-1, checks-part-2, mutation-copy]
     if: always()
     runs-on: ubuntu-latest
     # Setup, two downloads and two `coverage` commands. Over the same runs it
@@ -745,6 +788,10 @@ jobs:
           PART_1: ${{ needs.checks-part-1.result }}
           PART_2: ${{ needs.checks-part-2.result }}
         run: test "$PART_1" = success && test "$PART_2" = success
+      - name: the mutation copy succeeded
+        env:
+          MUTATION_COPY: ${{ needs.mutation-copy.result }}
+        run: test "$MUTATION_COPY" = success
       # The parts deal the ordinary tests with other shares when they skip the
       # costly ones (`PL-STM6`). If one part answered `apparatus` and the other
       # `full`, some tests would run in neither part, and coverage could still

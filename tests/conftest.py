@@ -193,6 +193,8 @@ from restated_constants import (
     perturbed_tree,
 )
 
+from tests.hypothesis_profiles import register as register_hypothesis_profiles
+
 if TYPE_CHECKING:
     from xdist.workermanage import WorkerController
 
@@ -202,6 +204,7 @@ except ImportError:  # Windows, where `computed_once` shares nothing between wor
     fcntl = None
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+register_hypothesis_profiles()
 
 
 class _PerturbedRangesLoader(importlib.machinery.SourceFileLoader):
