@@ -2830,6 +2830,13 @@ A layout is serialized to versioned JSON.
 § "Completed: v0.6.0 - the layout is the reader's" → "Required scope"
 entries 1 and 2 hold the layout model and its adapter as built.
 
+*Maximize Area is wanted and not yet built* (project owner, 2026-11-11,
+ratified, over leaving a learner to rearrange a Workspace in order to study
+one View). Maximize Area makes one Area fill the room that the Areas share,
+and the same command puts the layout back as it was. The unconditional region
+and the use disclaimer stay on screen. Maximize Area is to be built after the
+Areas fill the window exactly, so that the page no longer scrolls (`PL-CBYS`).
+
 #### 35. Optional model of anaesthesia's effect on cardiac output and regional perfusion
 
 Add an optional model of anaesthesia's own effect on cardiac output and

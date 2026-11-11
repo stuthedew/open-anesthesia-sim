@@ -66,12 +66,13 @@ from anesthesia_sim.app.compartment_selection import (
     INITIAL_COMPARTMENT_SELECTION,
     CompartmentSelection,
 )
-from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import new_case_question
 from anesthesia_sim.app.qt_chart import TraceLegend
 from anesthesia_sim.app.qt_widgets import (
     _DECLARED_ROLES,
     BookmarkDialog,
+    ForkPanel,
     NewCaseDialog,
     declare_application_colours,
     declare_interface_colours,
@@ -556,8 +557,11 @@ def test_a_selector_popup_draws_the_theme_rather_than_the_host_palette(
     same layout.
     """
 
-    controller = SimulationController(agent_id=_AGENT_ID)
-    view = SimulationView((controller,))
+    # The dashboard holds a case, as `main` builds it. Without one, the branch
+    # View shows a notice in place of the branch control, and the branch
+    # point's selector is never built.
+    case = BranchedCase(SimulationController(agent_id=_AGENT_ID))
+    view = SimulationView((case.trunk,), case=case)
     view.resize(1600, 1000)
     view.show()
     dark_host.processEvents()
@@ -566,8 +570,9 @@ def test_a_selector_popup_draws_the_theme_rather_than_the_host_palette(
 
     popups = [box.view() for box in view.findChildren(QComboBox)]
 
-    # The shipped Default Workspace draws one chart, so it contains one
-    # time-base selector (`PL-L59K`).
+    # The shipped Default Workspace draws one chart and one branch control. So
+    # it contains one time-base selector (`PL-L59K`) and one branch point
+    # selector, beside the agent and playback rate selectors.
     assert len(popups) == 4
 
     for popup in popups:
@@ -650,13 +655,17 @@ def test_no_content_widget_in_the_interface_paints_from_the_host_palette(
     which is the only thing that applies to it.
     """
 
-    controller = SimulationController(agent_id=_AGENT_ID)
-    view = SimulationView((controller,))
+    # The dashboard holds a case, as `main` builds it, so that the walk
+    # reaches the branch control.
+    case = BranchedCase(SimulationController(agent_id=_AGENT_ID))
+    controller = case.trunk
+    view = SimulationView((controller,), case=case)
     view.resize(1600, 1000)
     view.show()
     dark_host.processEvents()
     view.present(False)
     dark_host.processEvents()
+    assert view.findChildren(ForkPanel), "the walk does not reach a branch control"
 
     editor = BookmarkDialog(view)
     editor.show()
