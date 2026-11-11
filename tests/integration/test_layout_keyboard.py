@@ -338,6 +338,8 @@ def test_every_layout_operation_is_reachable_from_the_keyboard(
     strip = view.tab_strip
     first = areas.model.areas()[0].id
     kinds = {area.id: area.view for area in areas.model.areas()}
+    # The count comes from the shipped Default Workspace, so the test follows that file.
+    started = len(kinds)
 
     # Resize. The Resize submenu gives the first Area's right border the focus.
     # Left then moves the border one step from where it is drawn, so the
@@ -352,7 +354,7 @@ def test_every_layout_operation_is_reachable_from_the_keyboard(
 
     # Split: the first Area becomes two side by side, both showing its View.
     _choose_in_area_menu(application, view, first, (SPLIT_SIDE_BY_SIDE_LABEL,))
-    assert len(areas.model.areas()) == 3
+    assert len(areas.model.areas()) == started + 1
     made = next(area.id for area in areas.model.areas() if area.id not in kinds)
     assert areas.model.area(made).view == kinds[first]
 
@@ -361,17 +363,17 @@ def test_every_layout_operation_is_reachable_from_the_keyboard(
     place = areas.model.rectangle(first)
     _choose_in_area_menu(application, view, first, (SWAP_WITH_LABEL, label))
     assert areas.model.rectangle(first) != place
-    assert len(areas.model.areas()) == 3
+    assert len(areas.model.areas()) == started + 1
 
     # Join: the first Area takes a neighbour's place, so one Area fewer.
     label = _entry(view, first, JOIN_WITH_LABEL)
     _choose_in_area_menu(application, view, first, (JOIN_WITH_LABEL, label))
-    assert len(areas.model.areas()) == 2
+    assert len(areas.model.areas()) == started
 
-    # Close: a neighbour takes the closed Area's place, leaving one.
+    # Close: a neighbour takes the closed Area's place, so there is one Area fewer again.
     survivor = next(area.id for area in areas.model.areas() if area.id != first)
     _choose_in_area_menu(application, view, survivor, (CLOSE_AREA_LABEL,))
-    assert len(areas.model.areas()) == 1
+    assert len(areas.model.areas()) == started - 1
 
     # Switch Workspace: Ctrl+PageDown and Ctrl+PageUp, then a tab's menu.
     order = display_order(view.workspaces)
