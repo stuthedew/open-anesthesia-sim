@@ -238,6 +238,98 @@ definition reads as a difference of two rounded instants; a floor of about
 1e-292 below which a float no longer carries 53 bits; and twice Kahan's bound
 for a running total.
 
+**Part (b) built, 2026-11-11: `src/anesthesia_sim/core/rounding.py`.** The
+module has two parts. The first holds the bounds that follow from the
+arithmetic: `propagator_rounding` for one propagator, which is also the bound
+for one step; `run_rounding` for n steps, which is n times that, as the owner
+decided; `clock_rounding`; `RUNNING_TOTAL_ROUNDING`, twice Kahan's bound; and
+`SMALLEST_FULL_PRECISION_MAGNITUDE`, the floor of about 1e-292. The last three
+are the allowances that the test stated for itself after part (a). The second
+part holds each fixed allowance, with what it is measured against, what the
+rounding measured and the test that measures it again. The agent balance keeps
+its fixed 1e-9 there.
+
+**What moved, and what did not.** Ten constants moved with their values
+unchanged: the two agent-balance tolerances, `FLOW_FRACTION_TOLERANCE`, the two
+cardiac-output tolerances, `WASH_IN_ROUNDING_ALLOWANCE`, `LIVE_READING_GAP`,
+`HEIGHT_BAND`, and the three constants of 1e-9 that read a quotient as a whole
+count. Those three became one, `WHOLE_COUNT_TOLERANCE`, read by
+`app/playback.py`, `app/chart_frame.py` and `app/chart_time_base.py`. No
+comparison changed its allowance. Three things stayed, each decided by the
+session:
+
+- `BORDER_ALIGNMENT_TOLERANCE` and `LAYOUT_SIZE_SUM_TOLERANCE` stay in
+  `layout/`. The design names `core/` and `app/`, and these two allow for
+  rounding in the shares of a window, which no computed clinical value reads.
+- `MINIMUM_RELATIVE_SCALE_L` stays in `core/agent_simulation_validation.py`.
+  It keeps the relative error from being 0/0 and allows for no rounding.
+- The names of the moved constants are unchanged, so every mention in
+  `docs/MODEL.md`, the data files and the release notes still names them.
+
+The problem statement counts 13 tolerance constants, six of them 1e-9. The
+count of 13 is right and includes the two in `layout/`. Seven of them were
+1e-9.
+
+**A bound is stated only up to 32 squarings.** `propagator_rounding` refuses a
+number of squarings above `MAXIMUM_SQUARINGS`, because the matrix exponential
+module never builds such a propagator. The test used to compute an allowance
+for one and then discard it when the run definition refused. It now requires
+that refusal.
+
+**The steps of `run_rounding` are a `StepCount`,** the existing checked count.
+`squarings`, the three results and the two arguments of `clock_rounding` are
+plain numbers. They are listed in `tests/unit/test_bare_numbers.py` with the
+reason, and its count rose from 173 to 180. `PL-LHCL` is the item that gives
+such values checked types.
+
+**Sources read again for the module and `docs/MODEL.md`, 2026-11-11.** Higham
+and Mary 2019 (sections 4.2 and 5) and Connolly, Higham and Mary 2021
+(section 7) were read as their MIMS EPrints, in the text extracted from each
+downloaded PDF. Croci et al. 2022 section 6.1 was read by a background reader
+in the full text at PubMed Central. Goldberg 1991, Theorem 8, was read in the
+Oracle reprint: each term is perturbed by at most twice his machine epsilon,
+which is 2**-53 for a 64-bit float. Croci et al. state the two assumptions as
+"zero mean and mean independence", for round to nearest.
+
+**A wrong example found and corrected.** The comment on the chart's grid
+tolerance said that 0.9 s over 0.01 s can come out just below 90. In 64-bit
+floats that quotient is exactly 90. The module and its test use 0.7 / 0.1,
+which is 6.999999999999999.
+
+**Replays after the move, 2026-11-11.** Each row reverts one fix on a clean
+tree at `d05f089d`, runs `uv run pytest tests/unit/test_generated_runs.py -q
+-x`, and restores the tree. The reverts are the ones in the table above, made
+where the code now is: `PL-N559`'s is `WASH_IN_ROUNDING_ALLOWANCE = 0.0` in
+`core/rounding.py`, and `PL-81Q2`'s passes zero squarings to
+`propagator_rounding` and `run_rounding` for the canonical state and the
+window.
+
+| Item | Fails in the suite's run | Failure |
+| --- | --- | --- |
+| `PL-XST1` | Yes | "a running total against the exact sum of its step amounts: a difference of 3.33e-16 is 1.4 times its rounding allowance", after 34 steps. |
+| `PL-D88N` | Yes, on a listed plan | `AgentSimulationValidationError` with a relative error of 1.04e-9. |
+| `PL-9B1M` | Yes, on a listed plan | "alveolar partial_pressure_fraction of 1.000000000000001 is outside 0 to 1". |
+| `PL-81Q2` | No. It fails at 1 000 drawn plans. | "the stepped state against the canonical state: a difference of 4.21e-12 is 1.03 times its rounding allowance", after 97 steps. |
+| `PL-N559` | Yes, on a listed plan | "a run that only washes in is described as elimination", after 1 step with every flow at zero. |
+| `PL-9SL5` | Yes | "the last column is at 0.08099999999999999 and not at the 0.081 asked for", after 81 steps. |
+| `PL-QVBR` | No | None. The reverse of #1917 applied to `app/bookmarks.py` and left a conflict in `app/controller.py`. The test imports neither module, so it passes whatever they hold. |
+
+Six of the seven fail, as they did before the move. The drawn plans that fail
+`PL-XST1`, `PL-81Q2` and `PL-9SL5` differ from the ones recorded for part (a),
+because the test's source changed and Hypothesis draws from it.
+
+**Checks.** `make check` ran twice on the branch. The first run failed one
+test and the second failed three, all of them lists that a new `core/` module
+must be added to. Each was fixed, and the tests that failed pass. The whole
+check has not been run since the last of those fixes.
+
+**Left for (b) before its pull request is ready.** The two blind review
+passes that a change to `core/` and `docs/MODEL.md` owes, the copy editor's
+pass over the new prose, and the pull request's title and body. The session
+that built (b) stopped here for length, at 2.3 times its spend budget. The
+pull request is #2121, a draft. It changes `core/`, so it waits for the
+project owner's review.
+
 **Done when.** The module in 1 exists and each rounding allowance reads it.
 The generated test in 2 exists, and each of the seven members is replayed
 against it with its fix reverted, with the result recorded here per member.
