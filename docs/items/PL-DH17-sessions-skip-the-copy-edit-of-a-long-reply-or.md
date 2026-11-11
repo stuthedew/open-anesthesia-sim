@@ -3,12 +3,14 @@ id: PL-DH17
 title: Sessions skip the copy edit of a long reply or a decision request: the PL-BSYT and PL-W6JM sessions sent four replies over 150 words with none, one of them a decision request, and nothing checks a reply
 priority: P1
 effort: M
-status: ready
+status: dropped
 classes: defect
 feature: copy-editor
 touches: .claude/rules/instruction-writing.md, .claude/hooks, .claude/settings.json
 deferred-from: v0.7.0 - a new problem, not present at the freeze: the reply copy edit arrived in efc1dc3f (PL-22T5); deferred with PL-J1ZM, which waits on it
 added: 2026-11-04
+closed: 2026-11-10
+reason: moot: on 2026-11-10 the project owner took replies out of the copy editor's scope (PL-JYWB, #2079; .claude/rules/plain-writing.md now says the copy editor does not edit replies), so no reply copy edit is left for a session to skip. The payoff named this outcome: the owner has decided whether the step earns its cost (project owner, 2026-11-10, ratified, over keeping the item open)
 payoff: a long reply or a decision request reaches the owner copy edited, or the owner has decided on the evidence whether the step earns its cost
 not-delegable: whether a hook can see a reply before the owner does is found while the item is worked, and the other outcome is a decision for the owner, so no command can prove it beforehand
 ---
