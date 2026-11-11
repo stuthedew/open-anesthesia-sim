@@ -741,11 +741,10 @@ refuses one past 128 KiB, so a long heredoc switched the guards off
 A guard that crashes, or runs past its deadline in `GROUPS`, lets the call
 through, and `guard.py` adds a note that names the guard and the error. Each
 guard used to fail in silence, so a broken guard looked like one that had
-checked the call and found nothing wrong (`PL-9KSJ`). Two guards refuse
-instead. When the merge guard cannot judge a call that mentions a merge, the
-call is refused (`PL-NXRJ`). When the gh guard cannot judge a Bash call that
-names `gh`, that call is refused (`PL-3986`). `guard.sh` gives the same note, or the same refusal, when
-`python3` is missing or dies before `guard.py` decides.
+checked the call and found nothing wrong (`PL-9KSJ`). One guard refuses
+instead. When the gh guard cannot judge a Bash call that names `gh`, that
+call is refused (`PL-3986`). `guard.sh` gives the same note when `python3` is
+missing or dies before `guard.py` decides.
 `tests/unit/test_guard.py` fails any hook in `.claude/settings.json` that does
 not start at `guard.sh`, unless the test names the hook with its reason.
 
