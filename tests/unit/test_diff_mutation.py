@@ -1373,3 +1373,21 @@ def test_a_changed_test_the_table_deselects_is_not_compared(repo: Path, runs: Ru
 
     assert compare_tests(repo, change, table) == Compared()
     assert runs.asked == []
+
+
+def test_the_mutation_run_copies_the_readme_that_a_unit_test_reads() -> None:
+    """`tests/unit/test_readme_claims.py` reads `README.md` when pytest imports it.
+
+    mutmut runs the unit tests inside its own copy of the tree. From
+    2026-11-09, when that test arrived, until the file joined `also_copy`,
+    the copy held no `README.md`, the import raised, and every mutation run
+    stopped with "failed to collect stats" before its first mutant.
+    """
+
+    import tomllib
+
+    table = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    reader = (REPO_ROOT / "tests/unit/test_readme_claims.py").read_text(encoding="utf-8")
+
+    assert '"README.md"' in reader
+    assert "README.md" in table["tool"]["mutmut"]["also_copy"]
