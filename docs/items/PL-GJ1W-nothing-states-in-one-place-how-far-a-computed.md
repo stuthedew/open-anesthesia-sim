@@ -183,10 +183,44 @@ the envelope. A state held at equilibrium in a 10 000 L tissue drifted by
 1.6e-12 over 4 308 steps. Over 600 drawn plans the largest drift was 0.79 of
 the summed bound with its margin of three, and 38 times a bound that grows as
 the square root of the steps. The test therefore allows the summed bound for
-a stepped state. **Recommended for (b):** the module states the figure for n
-steps as the summed bound, which is tight enough to use, and the agent balance
-keeps its fixed 1e-9 as `PL-D88N` decided. Put to the project owner on
-2026-11-11.
+a stepped state.
+
+**Decided 2026-11-11: for (b), the module states the figure for n steps as
+the summed bound, and the agent balance keeps its fixed 1e-9** (project owner,
+2026-11-11, ratified, over design part 1's refusal of a bound summed over
+every step). The owner's words were "If this would be best practice then
+agree", so the sources were read before the decision was recorded. They
+support it. The worst-case bound for n operations grows in proportion to n. A
+bound that grows as the square root of n holds only where the rounding errors
+are independent and average zero. Both papers say that this fails when the
+same operation repeats or the errors share a sign, and one step repeated n
+times is that case.
+
+- Higham NJ, Mary T. A new approach to probabilistic rounding error analysis.
+  SIAM J Sci Comput 2019;41(5):A2815-A2835, doi:10.1137/18M1226312. Read as
+  MIMS EPrint 2018.33, https://eprints.maths.manchester.ac.uk/2731/1/paper.pdf.
+  Section 5: "under the assumption that rounding errors are independent and
+  of zero mean", the bounds are of the order of the square root of n times u
+  "instead of nu". Section 4.2: "two cases where Model 2.1 is invalid and the
+  probabilistic bound does not hold. In the first case the rounding errors
+  have nonzero mean and in the second case they are dependent."
+- Connolly MP, Higham NJ, Mary T. Stochastic rounding and its probabilistic
+  backward error analysis. SIAM J Sci Comput 2021;43(1):A566-A585,
+  doi:10.1137/20M1334796. Read as MIMS EPrint 2020.12,
+  https://eprints.maths.manchester.ac.uk/2778/1/paper.pdf. Section 7, on a
+  sum that stops changing under round to nearest: "This leads to necessarily
+  negative rounding errors", and the error then grows as nu.
+- Croci et al. 2022, section 6.1, already cited above: the two assumptions
+  "are often satisfied in practice, but it is easy to construct examples where
+  either of the assumptions fails and the backward error almost attains the
+  worst-case bound". Read at https://pmc.ncbi.nlm.nih.gov/articles/PMC8905452/.
+
+A background reader opened each source and quoted it on 2026-11-11. The two
+MIMS quotations were then checked against the downloaded text. None of the
+three papers analyses a propagator applied n times, so the measurement above
+is the evidence for this model and the papers are the reason it was expected.
+The publishers' own pages, and Higham's *Accuracy and Stability of Numerical
+Algorithms*, were refused by the session's network and were not read.
 
 **Blind review, 2026-11-11: four findings, all fixed.** The test held the
 agent balance to the relative bound alone, where the model passes a step on
