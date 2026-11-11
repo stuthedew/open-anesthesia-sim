@@ -42,3 +42,5 @@ reenters: PL-927J
 **Built, 2026-11-11.** `_Landings.landing` returns one `_LandingSplit`, which holds the content split and the deletion split together, and its `whole` property reads both. The two separate methods are gone, so a reader cannot ask for one half. `_deleted_since` reads the deletions the base made since the fork, so a landed deletion stays landed. A branch that only deletes now reads as taken once the base deletes the same path. Before, it read as unlanded for as long as its ref lasted. `test_every_landed_reader_answers_from_the_branch_s_own_history` patches `landing`, so it still pins the three readers to one function.
 
 **Searched 2026-11-11.** Among the items filed since 2026-09-28 whose `touches` name these readers, none filed after `PL-W5JR` (2026-10-24) states this fact.
+
+**Closed out, 2026-11-11.** `make check` passed on `ab56d55af`. This work was pushed to pull request #2091, which was open and armed for `PL-YSV3`, because the session may push to one branch only. The session switched auto-merge off before that push.
