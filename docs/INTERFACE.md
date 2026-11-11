@@ -2,8 +2,8 @@
 
 This document states what the simulator's interface must show and do: its
 controls, what a reset and a change of agent do, the questions asked before a
-run is discarded, what a branch comparison shows, the boundary between the
-interface and the model, and the outputs that must be displayed.
+run is discarded, what a comparison of two runs of one case shows, the boundary
+between the interface and the model, and the outputs that must be displayed.
 `docs/MODEL.md` specifies the model that computes the displayed values.
 
 ## Runtime controls

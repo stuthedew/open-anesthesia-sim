@@ -8,9 +8,8 @@ This document specifies the scientific model that the simulator implements. Its
 equations and compartment structure have not changed since v0.1.0, and every
 supported agent shares them.
 
-`docs/INTERFACE.md` states what the interface must show and do: its controls,
-what a reset and a change of agent do, what a branch comparison shows, and the
-outputs that must be displayed.
+`docs/INTERFACE.md` states what the interface must show and do, including its
+controls and the outputs that must be displayed.
 
 A statement here that gives a version has been true *since* that version. The
 project's roadmap (`ROADMAP.md`) lists the current release in its version table.
