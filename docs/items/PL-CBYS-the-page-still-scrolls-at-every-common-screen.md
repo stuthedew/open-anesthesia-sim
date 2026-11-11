@@ -3,11 +3,11 @@ id: PL-CBYS
 title: The page still scrolls at every common screen size, though PL-JG82's brief says v0.6.0 removes the page scroll: the Areas and the marks and branch section sit in one scrolling page, which measured offscreen on 2026-11-11 scrolls 414 px (Default) and 832 px (Induction) at 1366 by 768, and 102 px and 520 px at 1920 by 1080, so the Induction Workspace's wash-in chart opens below the fold; decide whether the Areas fill exactly the space between the unconditional region and the disclaimer, as a Blender window's Areas fill the window
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: feature, ux
 feature: window-is-the-frame
 touches: src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/views.py, docs/MODEL.md
-deferred-from: v0.7.0 - it waits on the owner's choice between two Induction arrangements, and the gate's frozen list does not name it
+deferred-from: v0.7.0 - the gate's frozen list does not name it, and it is built after PL-9YPR's pull request merges
 added: 2026-11-11
 payoff: every shipped Workspace fits the window on a laptop, so the Induction wash-in chart opens on screen and not below the fold
 verify: grep -q 'def test_no_shipped_workspace_scrolls_the_page' tests/integration/test_simulation_view.py
@@ -114,7 +114,7 @@ in every picture, 2% sevoflurane at 5 minutes. Measured:
   137 px. It needs a taller Area, a placeholder choice for the building
   session.
 
-**Decision needed.** Which Induction ships? A learner on a laptop sees one
+**The question put to the owner, answered below.** Which Induction ships? A learner on a laptop sees one
 of these when they open Induction.
 
 - A. Charts side by side at every window size. Both curves are on screen at
@@ -129,6 +129,28 @@ learner with a large monitor can drag the charts into a stack and save that
 layout; a learner on a laptop cannot make room that is not there. Either
 answer gets the plot-stays-in-view rule for both charts, which the session
 decides as a placeholder.
+
+**Decided: the charts stay stacked and the concentration chart keeps its
+long time axis** (project owner, 2026-11-11: "I like the long graph of the
+main anesthetic. Not side by side"). The owner chose this after seeing both
+mock-ups, against the session's recommendation of A. It is specified, so it
+reopens only on a compelling argument.
+
+**What the session decides inside that answer, as placeholders.** A second
+mock-up, sent to the owner the same day, shows these on Induction:
+
+- The concentration chart keeps its plot on screen. Its legend block
+  scrolls in its own box above the plot.
+- At 1366 by 768 the two stacked charts need about 520 px and the Areas have
+  488 px. The concentration chart gets the room its plot needs (300 px in the
+  mock-up, plot 160 px). The wash-in Area gets the rest (126 px) and scrolls
+  122 px inside itself. A learner who wants the wash-in curve scrolls that
+  Area, drags the border between the two, or uses Maximize Area once
+  `PL-VJD2` builds it.
+- At 1920 by 1080 nothing scrolls. The wash-in plot is short there (about
+  70 px in the first mock-up), so the build gives it a larger share of the
+  column's height.
+- The Areas report only their floors, so the page never scrolls.
 
 **From the review of `PL-9YPR`, 2026-11-11.** The branch View declares a
 minimum width of 220 px in `view_registry.py`, and its row of selector and
