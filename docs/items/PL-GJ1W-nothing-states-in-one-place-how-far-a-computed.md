@@ -320,8 +320,8 @@ because the test's source changed and Hypothesis draws from it.
 
 **Checks.** `make check` ran twice on the branch. The first run failed one
 test and the second failed three, all of them lists that a new `core/` module
-must be added to. Each was fixed, and the tests that failed pass. The whole
-check has not been run since the last of those fixes.
+must be added to. Each was fixed. A third run, at `0c28b265`, passed: 12 266 tests, with
+every line and branch of `core/` covered.
 
 **Left for (b) before its pull request is ready.** The two blind review
 passes that a change to `core/` and `docs/MODEL.md` owes, the copy editor's
