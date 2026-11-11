@@ -3,13 +3,14 @@ id: PL-LHCL
 title: A number in core/ is known to be inside its valid range only where a checked type holds it, and 151 parameters and fields are still bare float or int, so each sweep (PL-ZGYX) finds the ones someone listed and the next arrives after it closes: a blood flow of 5e-324 L/min is accepted (PL-GKG4) and a restored Keyframe holds instant_s = -50.0 (PL-8W1Q)
 priority: P1
 effort: L
-status: needs-decision
+status: ready
 classes: safety
 feature: numbers-outside-their-valid-range
 touches: src/anesthesia_sim/core, tests/unit, docs/MODEL.md
 deferred-from: v0.7.0 - filed 2026-11-11, after the gate froze; a large structural change whose design waits on the owner's answer
 added: 2026-11-11
 payoff: every number that crosses a function boundary in core/ is either a checked type or on one short list that says why it is bare, so a new unchecked way in fails a test the day it is written
+not-delegable: a root cause built in several pull requests that change core/ signatures or comparison allowances, each read by the project owner, and run at extra-high effort
 root-cause-of: PL-GKG4, PL-8W1Q, PL-8JV2, PL-8LQZ
 generator: live - PL-ZGYX closed on a sweep that filed each bare number someone listed, and four items re-entered it afterwards; 86 bare float or int parameters and fields remain at public boundaries in core/ outside the guard modules, and nothing refuses the next one
 misread: Which values a quantity may take, and whether a number in hand was already checked against them
@@ -70,9 +71,9 @@ its formula is valid for gives a number that looks right. The safety-critical
 standard in `CLAUDE.md` asks for a refusal there. Each of these was found by a
 reviewer, after the code shipped.
 
-**Decision needed.** The design below, put to the project owner on 2026-11-11.
-**Recommended: take it.** It is the owner's because it changes most function
-signatures in `core/`, which is safety-critical code they read.
+**Decided 2026-11-11: build the design below** (project owner, 2026-11-11,
+ratified, over building the range part alone and over building neither).
+It was the owner's because it changes most function signatures in `core/`, which is safety-critical code they read.
 
 1. Every `float` or `int` on a public parameter, field or return in `core/` is
    a checked type, or is named on one list in a test with the reason it is
@@ -113,6 +114,15 @@ which has to be measured against the 61 µs step before it is taken.
 of one value cannot state and which stays with the record that holds both. A
 number on the bare list. A range that is itself wrong, which is validation
 and not this item.
+
+**Build order, one pull request each.** (a) The walking test and the bare
+list, with nothing else changed, so the count is fixed before it shrinks. (b)
+The blood-flow type, which closes `PL-GKG4`. (c) Restores through the
+constructor's checks, which closes `PL-8W1Q`. (d) The edges read from the
+types, replacing the hand-written 16. (e) The remaining bare numbers by
+quantity, agent amounts last, after the cost of a checked type per step is
+measured against the 61 µs step. Each replays its escape as a test that fails
+first.
 
 **Done when.** The walking test exists and fails on a new bare number and on
 a checked record that restores without its checks. `PL-GKG4` and `PL-8W1Q` are

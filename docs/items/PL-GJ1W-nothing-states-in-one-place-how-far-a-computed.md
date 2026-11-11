@@ -3,13 +3,14 @@ id: PL-GJ1W
 title: Nothing states in one place how far a computed value in core/ or app/ can be from the exact one, so each comparison picks its own allowance (13 tolerance constants, and none where nobody thought of rounding) and no test runs generated settings over many steps: seven items from 2026-10-25 to 2026-11-01 on error that accumulates or a rounded result compared exactly
 priority: P1
 effort: L
-status: needs-decision
+status: ready
 classes: safety
 feature: numbers-outside-their-valid-range
 touches: src/anesthesia_sim/core, tests/unit, docs/MODEL.md
 deferred-from: v0.7.0 - filed 2026-11-11, after the gate froze; a large structural change whose design waits on the owner's answer
 added: 2026-11-11
 payoff: a learner is not shown a run that halts, a trend labelled the wrong way or two readings that disagree because of rounding in the last digits
+not-delegable: a root cause built in several pull requests that change core/ signatures or comparison allowances, each read by the project owner, and run at extra-high effort
 root-cause-of: PL-D88N, PL-XST1, PL-9B1M, PL-81Q2, PL-N559, PL-9SL5, PL-QVBR
 generator: live - each of the seven was fixed at its own comparison with its own allowance, and nothing states the rounding a computed value carries or tests generated settings over many steps, so the next exact comparison of a rounded result is found by a reviewer
 misread: How far a computed value can be from the exact one, and so what a comparison on it proves
@@ -54,10 +55,9 @@ number that came in outside its range. Every input here was inside its range.
 "reached" and the last column of a chart. Each of these was wrong, or halted
 a correct run, because of rounding in the last digits.
 
-**Decision needed.** The design below, put to the project owner on 2026-11-11.
-**Recommended: take it.** It is the owner's because it changes the allowance
-of comparisons a learner's readings depend on, and adds test time to every
-run of the suite.
+**Decided 2026-11-11: build the design below** (project owner, 2026-11-11,
+ratified, over building the range part alone and over building neither).
+It was the owner's because it changes the allowance of comparisons a learner's readings depend on, and adds test time to every run of the suite.
 
 1. One module in `core/` states the rounding a computed value can carry: for
    one propagator, for one step, and for a run of n steps. Each figure is
@@ -126,6 +126,15 @@ Higham 2002, so none of those was read and nothing here rests on them.
   necessary property only (Chen TY et al. Computer 2016;49(6):48-55,
   doi:10.1109/MC.2016.176), and a hand-chosen list of relations "can miss
   some important" ones (Kanewala and Bieman, section 3.3).
+
+**Build order, one pull request each.** (a) The generated test, with each of
+the seven members replayed against it with its fix reverted and the result
+recorded here per member. The prediction put to the owner was five of seven:
+not `PL-XST1`, which needs the weekly run, and `PL-QVBR` only once the test
+draws thresholds from the run's own readings. If fewer than five fail, say so
+here before building further. (b) The module that states the rounding, and
+each allowance moved onto it. (c) The weekly 24 h run at the 1 ms step.
+`PL-LHCL`'s walking test lands first where the two touch the same signature.
 
 **Done when.** The module in 1 exists and each rounding allowance reads it.
 The generated test in 2 exists, and each of the seven members is replayed
