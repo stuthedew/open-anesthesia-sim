@@ -5,7 +5,7 @@ priority: P2
 effort: M
 status: ready
 classes: perf, infra
-touches: tools/diff_mutation.py, docs/mutation-testing.md, tests/unit/test_diff_mutation.py
+touches: tools/diff_mutation.py, docs/mutation-testing.md, tests/unit/test_diff_mutation.py, tests/unit/test_line_splits.py
 deferred-from: v0.7.0 - captured after the freeze; a close-out audit cost in the workflow lane, not safety or science, which its band ranks rather than the gate
 added: 2026-11-11
 payoff: a session that closes an item with a change to a mutated module waits less before its first mutant runs, or the two documents state the wait it will really have

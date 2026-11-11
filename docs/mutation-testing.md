@@ -45,9 +45,11 @@ must come from, and that rule applies whatever the score.
 - `make mutate` mutates the functions that the branch changed, compared with
   the default branch, in the modules that mutmut mutates. It prints each
   changed function with the count of its mutants by status, the diff of each
-  survivor, and the changed lines that mutmut cannot mutate. A run took about
-  five minutes on a four-core container. Half of that time went on finding
-  which tests reach which function.
+  survivor, and the changed lines that mutmut cannot mutate. On 2026-11-11, on
+  a four-core container, a run for one changed function in `app/wash_in.py`
+  took 4 minutes 58 seconds. Finding which tests call which function took 3
+  minutes 41 seconds of that. A change to a file that the tests call more
+  often takes longer, as § "Pitfalls" explains.
 - `make mutate ARGS=--all` mutates every function and prints the kill rate of
   each module. Use it to measure a new baseline. It is slow: on 2026-10-17 it
   reached 1,058 of 2,498 mutants in about 75 minutes on a four-core container,
@@ -67,7 +69,9 @@ must come from, and that rule applies whatever the score.
   left out, and a note counts it. One that cannot be placed still runs. A
   plain `make mutate` still runs every mutant of each changed function, so a
   reviewer still sees the survivors on the lines the branch left alone.
-  Neither shortens the coverage collection at the start of a run.
+  Both mutate only the files that hold a changed function, which shortens the
+  two passes over the tests that mutmut makes before its first mutant
+  (§ "Pitfalls").
 
 ### What the check of a changed test leaves unmeasured
 
@@ -135,8 +139,9 @@ before 2026-10-31 reached half of its tests.
 `make mutate` runs `tools/diff_mutation.py` through `uv run --group mutation`.
 mutmut is pinned to version 3.8.0 in the `mutation` dependency group, so
 `uv sync` leaves it out and no test needs it. The tool's docstring
-explains the three things that it decides and mutmut's settings cannot: which
-tests run, which functions changed, and what a "timeout" really was.
+explains the four things that it decides and mutmut's settings cannot: which
+tests run, which functions changed, which files mutmut mutates and which
+mutants it is asked for, and what a "timeout" really was.
 `pyproject.toml`'s `[tool.mutmut]` table says why each mutmut setting is there.
 
 mutmut works in a copy of the tree called `mutants/`, which git ignores. Its
@@ -197,6 +202,32 @@ Each of these was measured on 2026-10-17.
   `[tool.mutmut]` avoid this. mutmut's default warm-up, `collect`, imports the
   test modules before any mutant is applied and brings the problem back, so
   the warm-up is set to `none`.
+- **Every call into a file that mutmut mutates is slow.** mutmut replaces each
+  function of such a file with a wrapper. The wrapper looks up the mutant
+  under test and then calls the original function or the mutant. Before its
+  first mutant, mutmut runs the tests twice through the wrappers. "Running
+  stats" runs every selected test and records which tests call which
+  function. "Running clean tests" runs the tests of the mutants it was asked
+  for, with no mutant applied. On 2026-11-11 the 3,575 selected tests made
+  218 million calls through a wrapper, 60% of them into
+  `core/checked_number.py`, `core/validation.py` and
+  `core/supported_ranges.py`, which check inputs. With every file that
+  `only_mutate` names wrapped, a run for one changed function took 24 minutes
+  56 seconds on four idle cores: 15 minutes 40 seconds in the first pass and
+  8 minutes 14 seconds in the second. The same tests take about 3 minutes
+  on plain source. `make mutate` therefore tells mutmut to mutate only
+  the files that hold a changed function, so a call into any other file runs
+  at its ordinary speed. It also asks for each mutant by name. mutmut 3.8.0
+  finds the tests of a glob only where the glob matches a function's name,
+  and a glob that ends in `__mutmut_*` matches none, so mutmut then runs every
+  selected test in the second pass. With both changes the same run took 4
+  minutes 58 seconds. What is left depends on the changed file. A run for a
+  function in `core/checked_number.py`, the file that takes 32% of the calls,
+  spent 7 minutes 20 seconds in the first pass. A third pass, "Running
+  forced fail test", stops at the first test that calls a wrapped function.
+  It took 2 seconds with every file wrapped and 29 seconds with only
+  `app/wash_in.py` wrapped. `make mutate ARGS=--all` mutates every file and
+  pays the first two passes in full (`PL-R8HY`).
 - **What mutmut calls a timeout often is not one.** mutmut runs a mutant's
   tests by their test ids. When a mutant raises while a test module is being
   imported, or changes a test's parameters and so its id, pytest cannot
