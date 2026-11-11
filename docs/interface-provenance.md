@@ -930,6 +930,18 @@ cycling workspaces also wraps at both ends (`space_workspace_cycle_invoke` in
 `source/blender/editors/screen/screen_ops.cc`, `blender/blender` `main`). Both
 sources were read on 2026-10-19.
 
+**Maximize Area is adopted and not yet built** (`PL-5XVQ`; project owner,
+2026-11-11, ratified, over leaving a learner to rearrange a Workspace in order
+to study one View). In Blender, Maximize Area (Ctrl+Spacebar) expands one area
+to fill the window, and keeps the editor's menu bar and the status bar visible.
+The same shortcut, or Restore Area, returns the area to its size and restores
+the previous layout (Blender Manual, "Areas", sections "Maximize Area" and
+"Restore Area"; read 2026-11-11). Here, the maximized Area will fill the room
+that the Areas share. The unconditional region stays above it and the use
+disclaimer stays below it, because no Workspace may remove either. Blender's
+Focus Mode also hides the Topbar and the Status Bar. This project has no
+equivalent, for the same reason.
+
 ### Diverged, and each divergence has a specific cause
 
 **The occupant of an Area is called a View here, not an Editor** (project owner,

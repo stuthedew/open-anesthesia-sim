@@ -3,11 +3,13 @@ id: PL-5XVQ
 title: Decide whether to adopt Blender's Maximize Area (one Area fills the Area region and a second press restores the layout): no menu, key or model operation offers it, docs/interface-provenance.md's adopted, diverged and refused lists do not disposition it, and it is the one Blender layout operation a teacher projecting a single chart would use most
 priority: P3
 effort: S
-status: ready
+status: done
 classes: planning
 feature: window-is-the-frame
 touches: ROADMAP.md, docs/interface-provenance.md
 added: 2026-11-11
+closed: 2026-11-11
+pr: 2103
 payoff: the roadmap names Maximize Area, so a teacher's way to show one chart large is built after the Areas fill the window and is not forgotten
 verify: grep -qF 'Maximize Area' ROADMAP.md
 ---
