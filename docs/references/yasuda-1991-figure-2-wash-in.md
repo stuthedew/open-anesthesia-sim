@@ -96,6 +96,11 @@ protocol sample time, so the markers read at 7.40 to 7.48 minutes are listed at
 cohorts' bars are lost among overlapping marks near the axis. There the SD is
 the cohort's next readable bar, a stand-in and not a reading. The
 *Anesthesiology* figure plots no point at 1.5 or 2 minutes.
+The *Anesth Analg* figure plots no point at 1.5 minutes, although the protocol
+sampled then. On each of its curves, the next marker after the 1-minute point
+is the 2-minute point. This was checked on 2026-11-11 in a render of page 320
+at 800 dpi (`PL-5XRK`). Neither figure's 0.75-minute markers are read, for the
+reason given in § "Points and curves not read from the figures".
 
 **Sevoflurane, *Anesth Analg* Figure 2, page 320.**
 

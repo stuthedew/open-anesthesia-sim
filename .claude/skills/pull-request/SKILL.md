@@ -43,6 +43,17 @@ carry the number (`PL-86DN`). For that work, opening the pull request means
 rewriting its placeholder title and body and marking it ready. Where `claim`
 said it opened none, open it as a draft yourself before any work.
 
+**A headless worker's branch opens its pull request only after its review is
+recorded** (`PL-87BR`, moved here from `docs/maintainer.md` by `PL-GZFR`). Run
+`bin/docket verify <id>` on the branch. The run committed its record to the
+branch as `docs/worker-runs/<branch>-<started>.json`. Record the review in it:
+`python3 tools/worker_runs.py review <file> --outcome accepted|fixed|sent-back --note "<one line>"`.
+`make check` fails until that is done. A sent-back branch's record still
+belongs on `main`, so carry its two record commits to a branch of their own
+and open that branch's pull request instead. Once it lands, the daily branch
+sweep deletes the worker branch, and its item returns to `bin/docket next`
+(`PL-W5JR`).
+
 **The title and body go through the copy editor before the pull request is
 marked ready** (project owner, 2026-11-10 at 02:14 UTC, `PL-N2VQ`), because the
 squash merge makes them the commit message on `main`. The owner first asked

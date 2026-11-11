@@ -3,12 +3,14 @@ id: PL-56DQ
 title: docs/references/yasuda-1991-anesthesiology-desflurane-isoflurane-halothane-kinetics.md's page 494 entry, 'The pulmonary elimination clearances and the total body clearances', names a topic, not a fact: give the values with units, or the method (copy editor structure read, 2026-11-07)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: references-structure
 touches: docs/references/yasuda-1991-anesthesiology-desflurane-isoflurane-halothane-kinetics.md
 deferred-from: v0.7.0 - a new problem: the note did not exist at the freeze (817a4d88); 0d8ad8f9 (PL-4QCJ, 2026-10-25) created it with the page 494 entry as written
 added: 2026-11-07
+closed: 2026-11-11
+pr: 2106
 payoff: the clearances docs/MODEL.md argues from are recorded beside their page and checked against it, so a reader can verify the dead-space argument at its source
 verify: grep -qiF 'l/min' docs/references/yasuda-1991-anesthesiology-desflurane-isoflurane-halothane-kinetics.md
 ---
@@ -22,3 +24,5 @@ verify: grep -qiF 'l/min' docs/references/yasuda-1991-anesthesiology-desflurane-
 **Done when.** Page 494 is read again from the private corpus. The entry gives the pulmonary elimination clearances and the total body clearances as the page prints them, with units, mean ± SD and n, or says where on the page each appears. The values are checked against those in `docs/MODEL.md`, and the reading date is recorded.
 
 **Generator check.** One-off: a finding from the `docs/references/` structure read (2026-11-07).
+
+**Done 2026-11-11.** Pages 492, 494 and 497 were read again from the private corpus, as page images rendered from the scan. The page 494 entry now gives both sets of clearances as the page prints them, with units, the spread and n. The pulmonary elimination clearances match `docs/MODEL.md` exactly (4.11 ± 0.45, 3.94 ± 0.34 and 3.94 ± 0.33 L/min), so there is no science finding. The page prints the halothane and isoflurane total body clearance spreads as "0.51/min". The note reads that as 0.5 l/min and says so. The route-and-depth paragraph now records the re-read. The close-out copy edit of the changed passages is owed. The project owner paused the copy editor on 2026-11-11 at 00:10Z ("Pausing copy editor stuff"), and the coordinator directed that these fact fixes land without it. Run it on these passages once the pause is lifted.
