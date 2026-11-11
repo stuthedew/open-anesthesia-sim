@@ -218,6 +218,18 @@ The short-instruction text wins a pair when it fails fewer of criteria 1 to 6 th
 
 The order of each pair was set by `secrets.randbelow(2)`, where 1 puts the short-instruction text first. The reply drew 1, so text 1 of the reply pair is the short-instruction text. The docstring drew 0, so text 1 of the docstring pair is the text written under today's files. The judging run and the owner see the same numbering.
 
+**The test's result, 2026-11-11: the short instructions did not win either pair.** Each text is one run, and a session did the judging, so the result gives a direction and no more. `docs/prose-review/short-instructions-test-2026-11-11.md` keeps the short file, the four texts and both verdicts.
+
+- Asked which instructions it was given, the run in the copy with today's files named the four resident files, and the run in the other copy named the short `CLAUDE.md` alone. The short file is 179 lines and 13,439 characters. The four files on `origin/main` are 1,290 lines and 92,477 characters.
+- The reply pair. The short-instruction reply is 815 words and failed criteria 1 to 5. The reply written under today's files is 991 words and failed criteria 1 to 4.
+- The docstring pair. The docstring written under today's files is 293 words and failed criteria 1, 2, 3, 4 and 6. The short-instruction docstring is 339 words and failed criteria 1, 2, 3 and 6. Under criterion 7 it leaves out one error that the other docstring states: `compared_run_notice` raises `ValueError` when the run's name is empty. So it does not win the pair.
+- One failure in each pair rests partly on a line that the run put ahead of its text: "I have read the item and checked its claims against the merged code. The reply follows." ahead of the short-instruction reply, and "Finished reading the module, its callers and its tests; here is the draft." ahead of the docstring written under today's files.
+- Criterion 7 found nothing else. This session found 17 numbers and quoted values from the two replies in the item files of `PL-RF2S`, `PL-SV2Q` and `PL-MVCF`, and checked the errors and conditions that the docstrings state against the code.
+
+Read side by side, the two texts of each pair are alike (this session's reading, not a count). Both replies report most of what the item file holds. All four texts use the words of the item and the code, such as "frame", "value", "withheld" and "acts", and the judging run quoted those words from both texts of each pair. That fits the finding about pull request bodies above: a text copies the vocabulary of what it is written from. The length of the resident instructions did not change that in this test.
+
+By the rule the owner agreed to, the resident set is not rewritten. What happens to this item is put to the owner.
+
 **Still to build.** Step 4, which moves reporting out of replies: `CLAUDE.md` has four sentences that tell a session to report something "in your reply". Cut `.claude/rules/plain-writing.md` to less than its old length and record the rule's edits in `docs/resident-instructions.md`. Write the docstring and reply examples to the guides above, and test them where the text is written. Then measure Done-when.
 
 **The build's pull requests.** Steps 3 and 5 are on #2119. The edits to tests in `subprojects/docket/tests/test_cli.py` change tests that pin `bin/docket arm`'s answers, so #2119 waits for the owner's read.
