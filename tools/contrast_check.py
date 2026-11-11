@@ -638,7 +638,7 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         AA_TEXT,
         "1.4.3",
         "the run-status word while paused, beside the transport controls "
-        "(`_status_text`, whose colour `refresh` writes for every run "
+        "(`_status_text`, whose colour `show_presentation` writes for every run "
         "state), the 'Playback' caption beside the rate selector in that row "
         "(`build_transport_row`), and the interpretation line beside the "
         "readout heading (`_interpretation_text`, PL-2K1R), and the agent's 1 "
@@ -723,7 +723,7 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "BACKGROUND",
         AA_TEXT,
         "1.4.3",
-        "the run-status word while running (`_status_text`, set by `refresh`)",
+        "the run-status word while running (`_status_text`, set by `show_presentation`)",
     ),
     Requirement(
         "ACCENT_TEXT",
@@ -732,7 +732,7 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "1.4.3",
         "the agent-accounting status word when conservation holds "
         "(`_agent_accounting_status_text`, in each `AccountingPanel`, written "
-        "by `RunView.refresh`). Rendered at 20px bold, which is large text, "
+        "by `RunView.show_presentation`). Rendered at 20px bold, which is large text, "
         "so SC 1.4.3's 3:1 would suffice - the stricter bar is applied "
         "deliberately",
     ),
@@ -780,7 +780,7 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         AA_TEXT,
         "1.4.3",
         "the halted-run notice (`_notice_text`, a `NoticeLabel` written by "
-        "`refresh`), the run-status word while stopped (`_status_text`), and "
+        "`show_presentation`), the run-status word while stopped (`_status_text`), and "
         "the educational-use disclaimer, which `SimulationView` places at the "
         "foot of the page. Also why a Workspace name typed into a tab was "
         "not taken, beside the tabs (`WorkspaceTabs`, PL-2KXB)",

@@ -229,3 +229,10 @@ state `PL-1D3Z` describes. Finding 5: `clear_scroll_area_stylesheet` is
 removed, because under the palette the application declares the scroll area
 already paints the panel colour. Finding 7: the tab strip and the Areas now
 sit directly in the scrolling part of the page.
+
+**The mutation check, 2026-11-11.** Seven mutants of the changed functions,
+all caught by the unit tests, none surviving. It ran in a scratch copy with
+`PL-GP8G`'s fix to the mutation run applied there only, because without that
+fix the run stops before its first mutant. A fix of this session's to the
+same line was withdrawn when `PL-GP8G` turned up on another branch. Not
+mutated: seven changed module-level lines of `app/dashboard_frame.py`.

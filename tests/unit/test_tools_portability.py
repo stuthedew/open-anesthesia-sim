@@ -88,21 +88,21 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 BARE_ROOTS = (REPO_ROOT / "tools", REPO_ROOT / ".claude" / "hooks")
 SOURCES = sorted(path for root in BARE_ROOTS for path in root.rglob("*.py"))
 
-#: Importable here despite not being in the standard library, because a bare
-#: checkout carries it too. `tools/doc_check.py` reads the release-train
-#: grammar and the tag list from `docket`, in-tree under
-#: `subprojects/docket/src` and itself standard-library-only, by inserting that
-#: path rather than by installing anything. Anything else added to this set
-#: has to meet the same bar: present in a fresh clone, and no dependencies of
-#: its own outside the standard library. `hook_input` meets it too:
-#: `tools/hook_blocks.py` reads where the guards log their refusals from it, in
-#: `.claude/hooks/`, by inserting that path, so the log has one home
-#: (`PL-SG93`). `open_pull_requests` meets it the other way round:
-#: `.claude/hooks/direct_merge_guard.py` asks GitHub through
-#: `tools/open_pull_requests.py`, the repository's one GitHub client, by
-#: inserting that path (`PL-S3TF`). `branch_id_check` too:
+#: The tools and hooks may import these modules, though none is in the standard
+#: library, because a fresh clone contains them. A module added to this set must
+#: be present in a fresh clone and depend on nothing outside the standard
+#: library. `docket` is in the tree under `subprojects/docket/src` and uses
+#: only the standard library. The documentation check (`tools/doc_check.py`)
+#: reads the release-train grammar and the tag list from it by inserting that
+#: path, without installing anything. `hook_input` meets both conditions too.
+#: It is in `.claude/hooks/` and names where the guards log their refusals. A
+#: tool, `tools/hook_blocks.py`, reads that location from it by inserting
+#: `.claude/hooks/`, so the log has one home (`PL-SG93`). `open_pull_requests`
+#: is the repository's one GitHub client (`tools/open_pull_requests.py`), and
+#: every tool that queries GitHub imports it (`PL-S3TF`). `branch_id_check`
+#: meets both conditions too, and a guard imports it. The guard in
 #: `.claude/hooks/docket_branch_guard.py` reads its `NOT_ASKED` exit status
-#: from there, on the path `.claude/hooks/guard.py` inserts (`PL-9KSJ`).
+#: from it, on the path that `.claude/hooks/guard.py` inserts (`PL-9KSJ`).
 VENDORED = frozenset({"branch_id_check", "docket", "hook_input", "open_pull_requests"})
 
 

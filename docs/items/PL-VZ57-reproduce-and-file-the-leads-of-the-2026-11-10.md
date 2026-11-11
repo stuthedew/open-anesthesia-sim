@@ -27,7 +27,7 @@ sweep: the leads of the 2026-11-10 root-cause audit that its session did not con
 **Guards.**
 
 - `CLAUDECODE= git fetch --prune`, `bash -c 'gh pr merge ...'` and a `curl` that carries the GitHub token each pass the guards that read a command's text. A force push has no hook.
-- Arming auto-merge through the GitHub tool is not compared with what `bin/docket arm` answered (`.claude/hooks/direct_merge_guard.py` skips `enable_pr_auto_merge`), so the hold for the owner's read on a simulator change rests on the session. `PL-HDRN` recorded five of six simulator branches skipping a close-out step.
+- Arming auto-merge through the GitHub tool is not compared with what `bin/docket arm` answered (the session's merge guard, since removed by `PL-39Y1`, skipped `enable_pr_auto_merge`), so the hold for the owner's read on a simulator change rests on the session. `PL-HDRN` recorded five of six simulator branches skipping a close-out step.
 - `CLAUDE.md` and `docs/maintainer.md` say the repository's hooks do not run in project threads. `thread_hooks.py` has copied them into threads since 2026-10-26.
 - `PL-5HQY`'s answer that the wording guard on asks owed no successor rested on no refusals being logged while the hook was wired to tool names that had been renamed (`PL-YN60`). `bin/docket inflow` still prints the line as answered.
 - `PL-61FT` (guards that judge a shell command by its text) was closed on a header and a policy and has been re-entered 12 times.
@@ -82,3 +82,5 @@ sweep: the leads of the 2026-11-10 root-cause audit that its session did not con
 **Done when.** Each lead above is reproduced against the tree and then filed, linked to the open item that holds it, or struck here with the reason. A paragraph that opens "**Leads reproduced,**" with its date says which was which.
 
 **Generator check.** Work the owner asked for: the audit of 2026-11-10 looked for root causes that are unrecorded or whose fix did not hold. The leads above are its unconfirmed findings, and each owes its own check when it is filed.
+
+**Checked 2026-11-11:** `PL-39Y1` takes the guard leads above: the pruning fetch, the merge inside `bash -c`, the request that carries the token, the force push and the arming that `bin/docket arm` is not asked about. It removed the merge guard that the arming lead names, and it moves each refusal to GitHub's rules.

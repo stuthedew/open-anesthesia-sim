@@ -39,8 +39,8 @@ late.** The copy runs at `bin/docket record`, before the closure push, the arm
 and the merge. A refusal after it reaches the repository only when a later
 record on the same machine copies it. That happens on the owner's Mac and in a
 long-running thread's container, but not in a container that ends after one
-pull request. So `push-check-guard`, `gate-status-guard` and
-`direct-merge-guard` are undercounted most.
+pull request. So `push-check-guard` and `gate-status-guard` are undercounted
+most.
 
 Standard library only and floor-parseable, like every tool under `tools/`.
 """
