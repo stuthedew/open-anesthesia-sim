@@ -1421,3 +1421,21 @@ def test_the_mutation_run_copies_each_root_path_a_simulator_unit_test_reads() ->
         if unread:
             missing[path.name] = sorted(unread)
     assert missing == {}
+
+
+def test_the_mutation_run_leaves_out_each_test_that_lists_the_models_functions() -> None:
+    """A test that lists the model's functions fails on mutmut's copies of them.
+
+    mutmut adds a copy of each function for each mutant. A test that reads
+    every function of a module reads those copies too, fails before any mutant
+    is tried, and so stops the run. `test_every_bare_number_in_core_is_listed_
+    with_its_reason` did that from the day it landed, 2026-11-11, until
+    `PL-CTXZ` left it out.
+    """
+    root = Path(__file__).resolve().parents[2]
+    table = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["tool"]["mutmut"]
+    assert deselected(table) >= {
+        "tests/unit/test_supported_range_edges.py::"
+        "test_each_guard_admits_only_what_its_functions_compute",
+        "tests/unit/test_bare_numbers.py::test_every_bare_number_in_core_is_listed_with_its_reason",
+    }
