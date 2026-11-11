@@ -1078,6 +1078,13 @@ review covers (`PL-W04Z`): the package appends the commit carrying the newest
 `Prose-review: read N, rewrote M, rejected K` trailer, where one does, and the
 command prints one whole number or exits non-zero. A count above zero holds the
 pull request, and so does a count that could not be read.
+`body_prose_command` is how `arm` checks a simulator change's pull request
+body (`PL-HNNH`, `PL-TG6P`): the package appends the open pull request's
+number, where one is open, and the command prints one line opening `grown `
+for each grown passage that the body does not name, and one line
+`body DIGEST`. An unnamed passage holds the pull request. So does a digest
+other than the one in the newest `Body-review:` trailer, and so does a body
+that could not be read.
 `blind_count_command` is how `arm` counts the blind review passes a simulator
 change owes (`PL-HDRN`): the package appends nothing, and the command prints
 one whole number or exits non-zero. The pull request holds until the newest

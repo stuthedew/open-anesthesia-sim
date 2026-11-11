@@ -317,6 +317,16 @@ class Config:
     #: the hold off: docket names no repository tool, so the project supplies
     #: the count.
     prose_count_command: str = ""
+    #: A command checking a pull request's body against the branch's prose,
+    #: which `docket arm` reads so that a simulator branch waits until the body
+    #: names what each grown passage adds and is the text the copy editor last
+    #: read (`PL-HNNH`, `PL-TG6P`). The package appends the number of the
+    #: branch's open pull request, where one is open. The command must exit 0
+    #: and print one line opening `grown ` for each grown passage that the body
+    #: does not name, and one line `body DIGEST` where it read a body, or exit
+    #: non-zero where it could not check, which holds the pull request. Empty
+    #: by default, which turns both holds off.
+    body_prose_command: str = ""
     #: A command counting the blind generalist review passes that the branch's
     #: simulator change owes, which `docket arm` reads so that a simulator
     #: branch waits until a `Blind-review` record says that many ran
@@ -711,6 +721,9 @@ def load(root: Path) -> Config:
         ),
         blind_count_command=_str(
             section.get("blind_count_command"), defaults.blind_count_command, "blind_count_command"
+        ),
+        body_prose_command=_str(
+            section.get("body_prose_command"), defaults.body_prose_command, "body_prose_command"
         ),
         record_command=_str(
             section.get("record_command"), defaults.record_command, "record_command"

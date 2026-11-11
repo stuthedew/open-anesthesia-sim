@@ -5467,6 +5467,52 @@ def _blind_count(root: Path, config: Config) -> Callable[[], arming.CommandCount
     return lambda: _command_count(command, root)
 
 
+#: How each line that `body_prose_command` prints opens: a grown passage the
+#: body does not name, or the published body's digest.
+BODY_GROWN = "grown "
+BODY_DIGEST = "body "
+
+
+def _body_prose(root: Path, config: Config) -> Callable[[int], arming.BodyProse] | None:
+    """A way to check a pull request's body against the branch's prose, or None if there is none.
+
+    `body_prose_command` answers it, with the pull request's number appended
+    where one is open (`PL-HNNH`, `PL-TG6P`). A command that failed, timed
+    out or printed a line of neither kind comes back `declined`, and `arm`
+    holds on it.
+    """
+    command = config.body_prose_command
+    if not command:
+        return None
+
+    def ask(number: int) -> arming.BodyProse:
+        done = _run_forge_command(
+            command, root, *((str(number),) if number else ()), timeout=COUNT_TIMEOUT
+        )
+        if isinstance(done, str):
+            return arming.BodyProse(declined=f"`{command}` was not answered: {done}")
+        if done.returncode != 0:
+            err = " ".join(done.stderr.split())
+            return arming.BodyProse(
+                declined=f"`{command}` exited {done.returncode}" + (f": {err}" if err else "")
+            )
+        unnamed: list[str] = []
+        digest = ""
+        for line in done.stdout.split("\n"):
+            if line.startswith(BODY_GROWN):
+                unnamed.append(line.removeprefix(BODY_GROWN))
+            elif line.startswith(BODY_DIGEST):
+                digest = line.removeprefix(BODY_DIGEST).strip()
+            elif line.strip():
+                return arming.BodyProse(
+                    declined=f"`{command}` answered {line!r}, which names neither a grown "
+                    "passage nor a body's digest"
+                )
+        return arming.BodyProse(tuple(unnamed), digest)
+
+    return ask
+
+
 def cmd_flight(args: argparse.Namespace) -> int:
     """Which items are being worked on a branch, and how long since each moved.
 
@@ -5792,6 +5838,7 @@ def cmd_arm(args: argparse.Namespace) -> int:
         auto_merge=_auto_merge(inv.root, inv.config),
         prose_count=_prose_count(inv.root, inv.config),
         blind_count=_blind_count(inv.root, inv.config),
+        body_prose=_body_prose(inv.root, inv.config),
     )
     for line in verdict.lines:
         print(line)

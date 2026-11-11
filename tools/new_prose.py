@@ -121,13 +121,36 @@ nothing. A fact that the file lost and the branch added to an item file is
 marked `moved`. On `PL-ZDZ0` a passage grew from 163 words to about 210 and no
 review round said so, and a trial copy editor rewrote a "no test yet"
 declaration as "untested" (`PL-J1ZM`). This mode reads the working tree, and
-exits as the default mode does.
+exits as the default mode does. Below the passages it prints one list item
+for each passage that grew, for the session to complete in the pull request
+body, as `ADDED_RE` reads it.
+
+**`--body-check NUMBER` answers `bin/docket arm`'s two questions about a pull
+request body** (`PL-HNNH`, `PL-TG6P`), through `docket.toml`'s
+`body_prose_command`. It reads the committed branch, as `--count` does, and
+the body of pull request NUMBER from GitHub. It prints one line that opens
+with `grown` for each grown passage that no list item in the body names, and
+one line `body DIGEST`, where DIGEST is `body_digest` of the published body.
+A passage grew when it held prose at the fork and holds more words now.
+Sessions skipped naming the facts that such a passage adds on two of the five
+branches measured on 2026-11-04, because only close-out step 8's prose asked
+for them (`PL-J1ZM`). With no NUMBER, every grown passage is unnamed and no
+`body` line is printed. It exits 1 where GitHub gave no body, and 2 where a
+changed file will not parse.
+
+**`--body-record FILE` prints the `Body-review` trailer for a copy-edited
+title and body.** FILE holds the title on its first line and the body below,
+as the pull-request skill writes them for the copy editor. `arm` holds a
+simulator pull request whose published body has another digest than the
+newest such trailer, so text added to the body after the copy editor's run
+goes back to the copy editor (`PL-TG6P`).
 """
 
 from __future__ import annotations
 
 import argparse
 import ast
+import hashlib
 import re
 import sys
 from collections.abc import Iterable, Iterator, Mapping, Sequence
@@ -137,6 +160,7 @@ from pathlib import Path, PurePosixPath
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
+from docket.arming import BODY_REVIEW  # noqa: E402
 from docket.digits import whole_number  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
 from docket.markdown import PARAGRAPH, TABLE, Heading, headings, tables  # noqa: E402
@@ -154,6 +178,7 @@ from docket.vcs import (  # noqa: E402
 )
 
 import doc_check  # noqa: E402
+import open_pull_requests  # noqa: E402
 from diff_mutation import changed_rows  # noqa: E402
 from model_rewrite import (  # noqa: E402
     Gone,
@@ -749,24 +774,37 @@ class Comparison:
     unread: list[str]
 
 
-def compare(root: Path, base: str, table: Sequence[Reader] | None = None) -> Comparison:
+def compare(
+    root: Path, base: str, table: Sequence[Reader] | None = None, *, committed: bool = False
+) -> Comparison:
     """The passages the branch changed and the facts it removed, from the fork to the working tree.
 
     Only a file that a row of `table` names is read, and `table` defaults to the
     reader table in the rule. A passage counts as changed when its words differ,
-    so text reflowed onto other lines is not a change.
+    so text reflowed onto other lines is not a change. With `committed`, the
+    branch is read from the fork to `HEAD`, as `branch_prose` reads it, because
+    `bin/docket arm` judges commits.
     """
     table = rule_table() if table is None else table
     fork, against = doc_check._diff_from(root, base)
     moved = added_to_items(root, fork)
     found = Comparison(base, against, [], {}, [])
-    for path in doc_check._changed_paths(root, fork):
+    to = ["HEAD"] if committed else []
+    if committed:
+        listing = changed_path_args("diff", "--name-only", fork, "HEAD", "--")
+        paths = sorted(set(listed_paths(read_git(listing, root))))
+    else:
+        paths = doc_check._changed_paths(root, fork)
+    for path in paths:
         if not may_review(path) or not readers_of(table, path):
             continue
         before = text_at(root, fork, path)
-        after = (root / path).read_text(encoding="utf-8") if (root / path).is_file() else None
+        if committed:
+            after = text_at(root, "HEAD", path)
+        else:
+            after = (root / path).read_text(encoding="utf-8") if (root / path).is_file() else None
         try:
-            patch = read_git(["diff", "-U0", fork, "--", path], root)
+            patch = read_git(["diff", "-U0", fork, *to, "--", path], root)
             passages = changed_passages(path, before, after, patch)
             if is_document(path) and before is not None and after is not None:
                 passages = paired_sections(path, before, after, passages)
@@ -784,6 +822,94 @@ def compare(root: Path, base: str, table: Sequence[Reader] | None = None) -> Com
             old_facts, new_facts, gone, added_facts(old_facts, new_facts)
         )[0]
     return found
+
+
+#: One list item of a pull request body that names the facts a grown passage's
+#: added words carry, or says why it grew with no new fact: the passage's file
+#: in a code span, then its section heading for a document, then the facts.
+#: `bin/docket arm` holds a simulator pull request until each grown passage has
+#: one (`PL-HNNH`). Whether the named facts are real is the reader's judgment.
+ADDED_WORDS = "Added words in"
+ADDED_RE = re.compile(
+    rf'^\s*[-*]\s+{ADDED_WORDS} `(?P<path>[^`]+)`(?: § "(?P<section>.*?)")?:[ \t]*\S',
+    re.MULTILINE,
+)
+
+
+def grown(passages: Iterable[Passage]) -> list[Passage]:
+    """The passages that held prose at the fork and hold more words now.
+
+    A passage that is new on the branch is left out, because it has no earlier
+    text to have grown from, and the copy editor reads it whole.
+    """
+    return [
+        passage
+        for passage in passages
+        if passage.before and passage.words_after > passage.words_before
+    ]
+
+
+def added_words_key(passage: Passage) -> str:
+    """How a body's list item opens for `passage`, as `ADDED_RE` reads it."""
+    section = f' § "{passage.section}"' if passage.section else ""
+    return f"{ADDED_WORDS} `{passage.path}`{section}"
+
+
+def unnamed(passages: Iterable[Passage], body: str) -> list[Passage]:
+    """The grown passages whose file and section no list item in `body` names.
+
+    One item names every grown passage under the same file and section, because
+    rows move with each edit and nothing else tells such passages apart.
+    """
+    named = {(found["path"], found["section"] or "") for found in ADDED_RE.finditer(body)}
+    return [
+        passage for passage in grown(passages) if (passage.path, passage.section) not in named
+    ]
+
+
+#: What the harness adds to a published pull request body, which the copy
+#: editor never saw: an HTML comment, the line that names who asked for the
+#: work, and the closing attribution from its first line to the end. A new
+#: decoration changes the digest, so `arm` holds until its pattern is added
+#: here, which fails toward checking.
+BODY_DECORATIONS = (
+    re.compile(r"<!--.*?-->", re.DOTALL),
+    re.compile(r"^_Requested by .*_[ \t]*$", re.MULTILINE),
+    re.compile(r"^(?:---\s*\n)?(?:🤖 Generated with|_Generated by) .*", re.MULTILINE | re.DOTALL),
+)
+
+
+def body_digest(body: str) -> str:
+    """A digest of the words of a pull request body, without the harness's decorations.
+
+    Only the words count, so a body that GitHub rewraps or stores with other
+    line endings keeps its digest, and a body with one word changed does not.
+    """
+    for decoration in BODY_DECORATIONS:
+        body = decoration.sub("", body)
+    return hashlib.sha256(" ".join(body.split()).encode()).hexdigest()[:16]
+
+
+def draft_body(text: str) -> str:
+    """The body of a draft whose first line is the pull request's title."""
+    return text.partition("\n")[2]
+
+
+def body_check(found: Comparison, body: str | None) -> list[str]:
+    """What `--body-check` prints: each unnamed grown passage, then the body's digest.
+
+    `body` is `None` where no pull request is open, so nothing names a passage
+    and there is no digest.
+    """
+    out = []
+    for passage in unnamed(found.passages, body or ""):
+        out.append(
+            f"grown {added_words_key(passage)}: {passage.rows()}, {passage.words_before} "
+            f"words on {found.base}, {passage.words_after} now"
+        )
+    if body is not None:
+        out.append(f"body {body_digest(body)}")
+    return out
 
 
 def passage_line(passage: Passage, base: str) -> str:
@@ -812,6 +938,16 @@ def compare_report(found: Comparison) -> str:
             "",
         ]
         out += [f"  {passage_line(passage, found.base)}" for passage in found.passages]
+        keys = list(dict.fromkeys(added_words_key(passage) for passage in grown(found.passages)))
+        if keys:
+            out += [
+                "",
+                f"{len(grown(found.passages))} of them grew. In the pull request body, name "
+                "the facts that each one's added words carry, or say why it grew with no new "
+                "fact, in one list item for each file and section:",
+                "",
+                *(f"  - {key}: " for key in keys),
+            ]
     else:
         out.append(f"No passage of the reviewed files changed its prose, against {found.against}.")
     for path, gone in found.gone.items():
@@ -1558,6 +1694,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         metavar="FILE",
         help="print the draft in FILE as one passage, for the readers that --kind names",
     )
+    modes.add_argument(
+        "--body-check",
+        nargs="?",
+        const="",
+        metavar="NUMBER",
+        help="print each committed passage that grew and that the body of pull request "
+        "NUMBER does not name, and that body's digest, for `bin/docket arm`",
+    )
+    modes.add_argument(
+        "--body-record",
+        type=Path,
+        metavar="FILE",
+        help=f"print the {BODY_REVIEW} trailer for the copy-edited title and body in FILE, "
+        "the title on its first line",
+    )
     parser.add_argument(
         "--kind",
         help="with --draft, words from the first cell of the reader rows the draft is for, "
@@ -1604,6 +1755,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                 return 1
             print(with_rule(text))
             return 0
+        if args.body_record is not None:
+            draft = args.body_record.read_text(encoding="utf-8")
+            print(f"{BODY_REVIEW}: {body_digest(draft_body(draft))}")
+            return 0
         base = args.base or default_base(root)
         if args.base is None and not resolved(base):
             print(
@@ -1611,7 +1766,31 @@ def main(argv: Sequence[str] | None = None) -> int:
                 file=sys.stderr,
             )
             return 1
-        if args.compare:
+        if args.body_check is not None:
+            compared = compare(root, base, table, committed=True)
+            if compared.unread:
+                for line in compared.unread:
+                    print(f"new_prose: not read: {line}", file=sys.stderr)
+                return 2
+            body = None
+            if args.body_check:
+                number = whole_number(args.body_check)
+                slug = open_pull_requests.repo_slug(root)
+                if number is None or not slug:
+                    print(
+                        f"new_prose: no answer: {args.body_check!r} names no pull request "
+                        "of a GitHub repository",
+                        file=sys.stderr,
+                    )
+                    return 1
+                try:
+                    body = open_pull_requests.body(slug, number)
+                except open_pull_requests.ListingFailed as failure:
+                    print(f"new_prose: no answer: {failure}", file=sys.stderr)
+                    return 1
+            for line in body_check(compared, body):
+                print(line)
+        elif args.compare:
             print(compare_report(compare(root, base, table)))
         elif args.count is not None:
             found = branch_prose(root, base, table, committed=True)

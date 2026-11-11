@@ -56,7 +56,11 @@ every later push while a pull request is open.
   covers them (`PROSE_ASK`). A prose count that could not be read holds it
   too. A simulator change holds until its newest `Blind-review` record says
   that at least as many blind review passes ran as it owes (`BLIND_ASK`). A
-  count of the passes owed that could not be read holds it too.
+  count of the passes owed that could not be read holds it too. A simulator
+  change holds until its pull request body names the facts that each grown
+  passage's added words carry (`GROWTH_ASK`), and until that body is the text
+  its newest `Body-review` record covers (`BODY_ASK`). A body that could not
+  be read holds it too.
 - `behind N` (1): nothing holds it, but the base has `N` commits the branch
   lacks, and `main` merges only an up-to-date branch while auto-merge never
   brings the base in (`PL-S5MF`). So the base is brought in first.
@@ -108,6 +112,10 @@ has already merged. What went unread is named beside it.
   (`PL-W04Z`), and the change waits for its blind review passes (`PL-HDRN`).
   A blind review record is not undone by a later change, because close-out
   step 9 says a fix made for a finding needs no further pass.
+- A simulator change waits until its pull request body names what each grown
+  passage adds (`PL-HNNH`), and until that body is the one the copy editor
+  last read (`PL-TG6P`). Both were steps that only prose asked for, and
+  sessions skipped them (`PL-J1ZM` § "Measured, 2026-11-04").
 
 The dated reasoning for each rule, as this header held it until 2026-11-03,
 is in `PL-Q28F`.
@@ -394,6 +402,44 @@ PROSE_ASK = (
 PROSE_UNCOUNTED = (
     "  A branch whose prose could not be counted is never armed as though it had none. Make "
     "the count readable, most often by fixing a file Python will not parse, and ask again."
+)
+
+#: The commit trailer in which a session records the copy edit of its pull
+#: request's title and body, with the digest that `tools/new_prose.py
+#: --body-record` prints for the copy-edited text (`PL-TG6P`). A published
+#: body with another digest was changed after the copy editor read it. Both
+#: of the owner's objections in `PL-J1ZM`'s measurement of 2026-11-04 were to
+#: text written after the copy editor's run, to answer a query it raised.
+BODY_REVIEW = "Body-review"
+BODY_FORM = re.compile(r"[0-9a-f]{16}")
+
+#: What a `hold` tells the session when the pull request body names no facts
+#: for a passage that grew (`PL-HNNH`). The lines naming the passages follow
+#: it. Whether the named facts are real stays the reader's judgment.
+GROWTH_ASK = (
+    "  In the pull request body, name the facts that each grown passage's added words "
+    "carry, or say why it grew with no new fact, in one list item for each line below, "
+    "opening as the line does up to its colon. Growth that adds no fact is how prose "
+    "over-explains, so cut the words that carry none. Then ask again."
+)
+
+#: What a `hold` tells the session when the published body is not the text a
+#: `BODY_REVIEW` record covers.
+BODY_ASK = (
+    "  Send the pull request's title and body through the copy editor, as "
+    ".claude/skills/pull-request/SKILL.md says, and publish the result. Record it as the "
+    "trailer that `python3 tools/new_prose.py --body-record FILE` prints, in the last "
+    "paragraph of a commit, where FILE holds the title on its first line and the published "
+    "body below it. A body changed after the copy editor read it needs this again. So where "
+    "the copy editor asks a question that the reader does not need answered, answer it to "
+    "yourself and leave the body as it is. Then ask again."
+)
+
+#: What a `hold` tells the session when the pull request body could not be read.
+BODY_UNCHECKED = (
+    "  A pull request body that could not be read is never armed as though it had been "
+    "checked. Make it readable, most often by fixing a file Python will not parse or "
+    "asking again once GitHub answers, and ask again."
 )
 
 #: The commit trailer a session records close-out step 9's blind generalist
@@ -947,6 +993,21 @@ class CommandCount:
 
 
 @dataclass(frozen=True)
+class BodyProse:
+    """What the command in `body_prose_command` said of a pull request's body.
+
+    `unnamed` holds one line for each passage that grew on the branch and that
+    no list item in the body names. `digest` is the published body's digest,
+    `""` where no pull request is open. `declined` says why neither could be
+    read, so that "could not read" is never treated as "nothing owed".
+    """
+
+    unnamed: tuple[str, ...] = ()
+    digest: str = ""
+    declined: str = ""
+
+
+@dataclass(frozen=True)
 class OwnerRead:
     """A session's recorded judgment of whether the owner needs to read the branch.
 
@@ -1079,6 +1140,12 @@ class Verdict:
       ran.
     - `blind_since`: the commit carrying that record.
     - `blind_declined`: why the passes owed could not be counted.
+    - `unnamed`: the grown passages that the pull request body does not name.
+    - `body_digest`: the published body's digest, `""` with no pull request
+      open.
+    - `body_recorded`: the digest in the newest `BODY_REVIEW` record.
+    - `body_since`: the commit carrying that record.
+    - `body_declined`: why the body could not be checked.
     - `behind`: how many of the base's commits the branch lacks.
     - `unpulled`: what the branch's copy on the remote holds that HEAD lacks,
       with what brings it in, or why that could not be read. The answer says
@@ -1110,6 +1177,11 @@ class Verdict:
     blind_recorded: int = 0
     blind_since: str = ""
     blind_declined: str = ""
+    unnamed: tuple[str, ...] = ()
+    body_digest: str = ""
+    body_recorded: str = ""
+    body_since: str = ""
+    body_declined: str = ""
     behind: int = 0
     unpulled: str = ""
     unread: tuple[str, ...] = ()
@@ -1161,6 +1233,16 @@ class Verdict:
     def blind_held(self) -> bool:
         """Whether missing blind review passes, or a count that failed, holds it."""
         return self.unpassed or bool(self.blind_declined)
+
+    @property
+    def body_stale(self) -> bool:
+        """Whether the published body is not the text the newest `BODY_REVIEW` record covers."""
+        return bool(self.body_digest) and self.body_digest != self.body_recorded
+
+    @property
+    def body_held(self) -> bool:
+        """Whether the pull request body holds it: unnamed growth, no review, or no reading."""
+        return bool(self.unnamed) or self.body_stale or bool(self.body_declined)
 
     @property
     def needs_owner(self) -> bool:
@@ -1300,6 +1382,15 @@ class Verdict:
             said.append(BLIND_ASK)
         if self.blind_declined:
             said.append(BLIND_UNCOUNTED)
+        # A claim keeps the pull request a draft, whose body is a placeholder.
+        if not self.claims:
+            if self.unnamed:
+                said.append(GROWTH_ASK)
+                said.extend(f"    - {line}" for line in self.unnamed)
+            if self.body_stale:
+                said.append(BODY_ASK)
+            if self.body_declined:
+                said.append(BODY_UNCHECKED)
         if read and not self.claims:
             if self.misasked:
                 said.append(f"  {self.misasked}")
@@ -1367,6 +1458,21 @@ class Verdict:
                 else f"no {BLIND_REVIEW} record says any ran"
             )
             reasons.append(f"it owes {self.blind_owed} blind review {noun}, and {ran}")
+        # A claim keeps the pull request a draft, whose body is a placeholder.
+        if self.body_held and not self.claims:
+            if self.body_declined:
+                reasons.append(f"its pull request body could not be checked - {self.body_declined}")
+            if self.unnamed:
+                count = len(self.unnamed)
+                noun = "a passage that grew" if count == 1 else f"{count} passages that grew"
+                reasons.append(f"its pull request body names no facts for {noun}")
+            if self.body_stale:
+                reasons.append(
+                    "its pull request body is not the text that the "
+                    f"{BODY_REVIEW} record on {self.body_since[:12]} covers"
+                    if self.body_since
+                    else f"no {BODY_REVIEW} record covers its pull request body"
+                )
         if self.record is not None and self.record.needed:
             reasons.append(
                 f"the {OWNER_READ} record on {self.record.commit[:12]} asks for the owner's "
@@ -1405,6 +1511,7 @@ def arm(
     auto_merge: Callable[[int], AutoMerge] | None = None,
     prose_count: Callable[[str], CommandCount] | None = None,
     blind_count: Callable[[], CommandCount] | None = None,
+    body_prose: Callable[[int], BodyProse] | None = None,
     owner_ask: bool = False,
 ) -> Verdict:
     """Whether the pull request for `HEAD`'s branch may be armed, before or after it opens.
@@ -1453,6 +1560,15 @@ def arm(
     must record at least that many, and a count that could not be read holds
     the pull request too.
 
+    **And its pull request body may leave a grown passage unnamed, or may have
+    changed since the copy editor read it** (`PL-HNNH`, `PL-TG6P`).
+    `body_prose` is given the number of the branch's open pull request, or 0
+    where none is open, and is asked only where the change touches a simulator
+    path. It names each passage that grew and that the body does not name, and
+    gives the published body's digest, which must be the one in the newest
+    `BODY_REVIEW` record. A body that could not be read holds the pull request
+    too.
+
     **With `owner_ask`, it answers only what may be sent to the owner**
     (`PL-3D2F`). A hook asks that question before every Projects message
     that names a pull request (`.claude/hooks/owner_ask_guard.py`). The full
@@ -1486,7 +1602,9 @@ def arm(
             merged=forge.merged,
         )
     change = _read_change(root, where, items_dir, record_dir)
-    reviews = _read_reviews(root, where, change, prose_count, blind_count)
+    reviews = _read_reviews(
+        root, where, change, prose_count, blind_count, body_prose, forge.number
+    )
     record, misread = _owner_read(root, where.run, where.base, change.on_list, tip=where.tip)
     ask, misasked = _owner_ask(root, where.run, where.base, change.worked, tip=where.tip)
     claims, unclaimed = _read_claims(root, where, now=now, items_dir=items_dir)
@@ -1589,6 +1707,8 @@ class _Forge:
     merged: MergedPullRequest | None = None
     switched_off: str = ""
     unread: tuple[str, ...] = ()
+    #: The number of the branch's open pull request, 0 where none is open.
+    number: int = 0
 
 
 def _read_forge(
@@ -1608,19 +1728,23 @@ def _read_forge(
     )
     if merged is not None:
         return _Forge(merged=merged, unread=unread)
-    if pull is None or pull.state != PULL_OPEN or auto_merge is None:
+    if pull is None or pull.state != PULL_OPEN:
         return _Forge(unread=unread)
+    if auto_merge is None:
+        return _Forge(unread=unread, number=pull.number)
     switch = auto_merge(pull.number)
     if switch.declined:
         said = (
             f"whether auto-merge on #{pull.number} was switched off could not be "
             f"asked - {switch.declined}"
         )
-        return _Forge(unread=(*unread, said))
+        return _Forge(unread=(*unread, said), number=pull.number)
     if switch.state != AUTO_MERGE_OFF:
-        return _Forge(unread=unread)
+        return _Forge(unread=unread, number=pull.number)
     owned, misread = _switched_off_here(root, where.run, where.base, switch.at, tip=where.tip)
-    return _Forge(switched_off="" if owned else switch.at, unread=(*unread, *misread))
+    return _Forge(
+        switched_off="" if owned else switch.at, unread=(*unread, *misread), number=pull.number
+    )
 
 
 @dataclass(frozen=True)
@@ -1699,6 +1823,11 @@ class _Reviews:
     blind_since: str = ""
     blind_declined: str = ""
     unread: tuple[str, ...] = ()
+    unnamed: tuple[str, ...] = ()
+    body_digest: str = ""
+    body_recorded: str = ""
+    body_since: str = ""
+    body_declined: str = ""
 
 
 def _read_reviews(
@@ -1707,8 +1836,13 @@ def _read_reviews(
     change: _Change,
     prose_count: Callable[[str], CommandCount] | None,
     blind_count: Callable[[], CommandCount] | None,
+    body_prose: Callable[[int], BodyProse] | None = None,
+    number: int = 0,
 ) -> _Reviews:
-    """Count the reviews owed, where the change reaches a path that waits on a read."""
+    """Count the reviews owed, where the change reaches a path that waits on a read.
+
+    `number` is the branch's open pull request, 0 where none is open.
+    """
     if not change.on_list:
         return _Reviews()
     run, span = where.run, [where.tip, f"^{where.base}"]
@@ -1745,6 +1879,16 @@ def _read_reviews(
         passes = blind_count()
         blind_declined = passes.declined
         blind_owed = 0 if blind_declined else passes.count
+    body = BodyProse() if body_prose is None else body_prose(number)
+    body_since, body_recorded = "", ""
+    if body.digest:
+        body_since, body_recorded = _newest_trailer(root, run, span, BODY_REVIEW)
+        if body_since and not BODY_FORM.fullmatch(body_recorded):
+            unread.append(
+                f"the {BODY_REVIEW} record on {body_since[:12]} is not the 16 digits that "
+                f"`tools/new_prose.py --body-record` prints, so it was not read: {body_recorded}"
+            )
+            body_since, body_recorded = "", ""
     return _Reviews(
         unreviewed,
         prose_since,
@@ -1754,6 +1898,11 @@ def _read_reviews(
         blind_since,
         blind_declined,
         tuple(unread),
+        body.unnamed,
+        body.digest,
+        body_recorded,
+        body_since,
+        body.declined,
     )
 
 
@@ -1836,6 +1985,11 @@ def _held(
         blind_recorded=reviews.blind_recorded,
         blind_since=reviews.blind_since,
         blind_declined=reviews.blind_declined,
+        unnamed=reviews.unnamed,
+        body_digest=reviews.body_digest,
+        body_recorded=reviews.body_recorded,
+        body_since=reviews.body_since,
+        body_declined=reviews.body_declined,
         behind=behind,
         unpulled=where.unpulled,
         unread=unread,
@@ -1851,6 +2005,7 @@ def _settle(found: Verdict) -> Verdict:
         or found.switched_off
         or found.prose_held
         or found.blind_held
+        or found.body_held
     ):
         return found
     if found.unpulled or found.unread:

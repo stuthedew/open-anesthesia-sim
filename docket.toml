@@ -702,6 +702,14 @@ open_draft_command = "python3 tools/open_pull_requests.py --open-draft"
 # editor back on 2026-11-05 (PL-HGZS).
 prose_count_command = "uv run python tools/new_prose.py --count"
 
+# How `bin/docket arm` checks a simulator branch's pull request body
+# (`PL-HNNH`, `PL-TG6P`). It holds the branch until the body names the facts
+# that each grown passage's added words carry, and until the body is the text
+# that the newest `Body-review` trailer records as copy-edited. Sessions
+# skipped both steps while only prose asked for them (`PL-J1ZM`). It runs
+# under `uv run python` for the reason the count above does.
+body_prose_command = "uv run python tools/new_prose.py --body-check"
+
 # How `bin/docket arm` counts the blind generalist review passes a simulator
 # branch owes (`PL-HDRN`): one, or two where it changes the model's code, its
 # parameter files or `docs/MODEL.md` (`PL-TDV9`). `arm` holds the branch until

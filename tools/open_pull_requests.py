@@ -527,6 +527,22 @@ def auto_merge(slug: str, number: int) -> tuple[str, str] | None:
     return latest
 
 
+def body(slug: str, number: int) -> str:
+    """The body of pull request `number` as GitHub holds it now, `""` where it has none.
+
+    `ListingFailed` is `fetch`'s, or an answer that is not one pull request.
+    `tools/new_prose.py --body-check` reads it for `bin/docket arm`
+    (`PL-HNNH`, `PL-TG6P`).
+    """
+    payload = _answer(slug, f"pulls/{number}", {})
+    if not isinstance(payload, dict):
+        raise ListingFailed(UNREADABLE_ANSWER, f"GitHub's answer for #{number} was not one")
+    held = payload.get("body")
+    if held is not None and not isinstance(held, str):
+        raise ListingFailed(UNREADABLE_ANSWER, f"GitHub's body for #{number} was not text")
+    return held or ""
+
+
 #: The body of a draft `open_draft` opens. The session that finishes the work
 #: writes the real title and body, as the `pull-request` skill says.
 DRAFT_BODY = (
