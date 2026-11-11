@@ -172,6 +172,13 @@ tick with `QPainter`.
    slowdown". With the style as the application's style, 20 paired runs
    measure one: 0.4 to 1.6 ms of a frame that takes 54 ms and has 200 ms.
 
+**Answer 2, test 1 counts as passed** (project owner, 2026-11-11, ratified).
+The owner replied "agree" to the reply that recommended counting the
+frame-cost test as passed. It was chosen over counting the test as failed on
+its wording, which would have built the controls as style sheets. The style
+is to be installed on the application, as Qt advises. Answer 1, what the Mac
+shows, is still open.
+
 **The owner's Mac, first run, 2026-11-11.** The owner ran the comparison
 window, recorded both appearances, and sent a picture of the window under
 Light. Both rows read "DIFFERENT PIXELS under Dark and Light": the style
