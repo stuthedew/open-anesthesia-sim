@@ -374,6 +374,38 @@ value (`PL-9GP1`):
   each organ being assumed instead and called "a close approximation". Read
   2026-09-26 for `PL-WMCJ`; `docs/MODEL.md` § "Known limitations" carries what
   the omission costs the fat compartment.
+- **Chapter 2, "Using Bookmarks", printed pp. 22-23, and Appendix E,
+  "Bookmarks", printed p. 183, describe how Gas Man's bookmarks work.** Read on
+  2026-09-20 for a question about the order of the bookmark work, and checked
+  against the corpus's text extraction on 2026-11-11 for `PL-ZYNM`. Tier 3:
+  what the reference implementation does, not a measurement.
+  1. A bookmark is a time of elapsed simulated time, entered as hour, minute
+     and second. The simulation pauses "when the elapsed time equals the
+     bookmark time" (pp. 22-23).
+  2. One dialog adds a bookmark, deletes one, or deletes them all (p. 23). It
+     opens from the Special menu (p. 22) or from a toolbar button (p. 18).
+  3. Opened in mid-experiment, the dialog offers "that moment in the
+     simulation minus one second" as the default time. The manual gives the
+     reason: "Clicking Add will cause the playback to pause before any changes
+     you make, allowing you to try different options on playback" (p. 23).
+  4. A bookmark may be set at any time earlier or later than the paused moment
+     (p. 23).
+  5. Bookmarks are saved with the experiment (pp. 22 and 183).
+  6. Fast Fwd, on the Edit menu, "Takes you immediately forward to the next
+     Bookmark or the end of the simulation" (p. 15).
+  7. Appendix E gives a bookmark two uses: "a particular point in time in the
+     evolution of a simulation where one wishes to pause, or a point to which
+     to return (pause during replay)". It says bookmarks are "most helpful
+     where issues of comparability arise", such as comparing the outcomes of
+     different settings at one point in an anesthetic (p. 183).
+
+  This repository's time bookmarks were taken from Gas Man's
+  (`src/anesthesia_sim/app/bookmarks.py`, `PL-LPLD`), and have the first use: a
+  run halts at one. A learner returns to a bookmark by taking a branch there
+  (`PL-B8MK`, `PL-W4XQ`). The second use needs a replay control, which is
+  `ROADMAP.md` planned item 10 and is not built. A branch taken at a bookmark
+  stands at the bookmark itself, where Gas Man's default pauses one second
+  before it. No stored value rests on this reading.
 
 Its bibliography's reference 45 is "Yasuda, N, Targ, AG and Eger, EI II.
 Solubility of I-653, Sevoflurane, Isoflurane and Halothane in human tissues.
@@ -385,8 +417,9 @@ that bibliography is internally inconsistent.
 Route and depth: the corpus's section PDFs, read with `pdftotext -layout` on
 2026-09-15 — the front matter, the table of contents, Appendices A–E and the
 bibliography in full, and every section's boundary pages. Chapters 1–19 were
-not read beyond those, except the pages named above: Chapter 10's
-liquid-injection section, Chapter 13's p. 127 and Chapter 14's pp. 132-141.
+not read beyond those, except the pages named above: Chapter 2's pp. 15, 18
+and 22-23, Chapter 10's liquid-injection section, Chapter 13's p. 127 and
+Chapter 14's pp. 132-141.
 
 ### Schüttler & Schwilden 2008 — *Modern Anesthetics*
 
