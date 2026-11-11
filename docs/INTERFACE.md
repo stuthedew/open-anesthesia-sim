@@ -4,7 +4,9 @@ This document states what the simulator's interface must show and do: its
 controls, what a reset and a change of agent do, the questions asked before a
 run is discarded, what a comparison of two runs of one case shows, the boundary
 between the interface and the model, and the outputs that must be displayed.
-`docs/MODEL.md` specifies the model that computes the displayed values.
+§ "Runtime controls" also gives the ranges of the settings, and the length of a
+run, over which the model is claimed to represent a patient. `docs/MODEL.md`
+specifies the model that computes the displayed values.
 
 ## Runtime controls
 
@@ -1592,7 +1594,7 @@ patient, so it does not contradict the physiological argument below.
 <!-- provenance: core/numerical_envelope.py MAXIMUM_VOLUME_L = 10000 -->
 
 The two volumes have different sources. The alveolar gas volume is a patient parameter of
-2.5 L, read from `data/patients/reference_adult.json`. The provenance table above lists it
+2.5 L, read from `data/patients/reference_adult.json`. The provenance table in `docs/MODEL.md` lists it
 with the FRC measurement it is reconciled against. The circuit volume is a *machine*
 parameter of 6.0 L, read from `data/machines/reference_circle_system.json`. That is a third
 kind of parameter file, beside the agent and patient files, because the breathing system
@@ -1626,7 +1628,7 @@ envelope that a run can be steered *within*. The four controls above each name
 an interval because a user can put the model anywhere in it. The verification
 gates are what establish that the model represents a patient across that
 interval. Neither volume moves. The single shipped value is the whole of each
-volume's domain, and every reference measurement in this document is made at
+volume's domain, and every reference measurement in `docs/MODEL.md` is made at
 that value. An interval declared around it would assert verification across a
 span that nothing has measured. That would be the same overstatement as
 widening one of the four intervals without re-running the gates. Fixing the
@@ -1799,7 +1801,7 @@ and the Workspace strip's questions.
 **A difference between two runs is real, but a comparison does not say what it
 means for a patient.** The difference does not come from rounding, from the
 order of the program's arithmetic, from the playback rate or from the computer
-(`docs/MODEL.md` § "The reproducibility guarantee", § "The canonical evaluation rule"). A
+(`docs/MODEL.md` § "The reproducibility guarantee", `docs/INTERFACE.md` § "The canonical evaluation rule"). A
 comparison can teach only the mechanism: which way a curve moves when one thing
 changes, why it moves that way, and roughly how fast, in a model whose
 structure makes the reason easy to see.
@@ -4343,7 +4345,7 @@ something upstream is wrong, and the display refuses it.
 model, and nothing in the `core/` directory reads it. The maximum simulation
 step (`MAXIMUM_SIMULATION_STEP_S`) is a tolerance in seconds, and the supported
 input ranges are intervals in L/min. Both are derived without reference to the
-readout, in `docs/MODEL.md` § "Supported simulation step" and § "Supported input ranges". A
+readout, in `docs/MODEL.md` § "Supported simulation step" and `docs/INTERFACE.md` § "Supported input ranges". A
 future change to one decimal has to answer the objection to it given under the
 lower limit above. The negative concentrations that the model cannot hold
 include minus zero (`docs/MODEL.md` § "Concentrations"). No value of the `Fraction` type can be

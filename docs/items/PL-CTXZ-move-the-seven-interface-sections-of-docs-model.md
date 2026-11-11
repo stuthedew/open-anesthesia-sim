@@ -128,3 +128,19 @@ new document's opening paragraph, the new paragraph in `docs/MODEL.md` and
 the two entries in `README.md`'s list of documents. It read none of the moved
 text, as this brief requires, and none of the passages where only a path
 changed.
+
+*What the two blind review passes found.* Twelve findings, nine of them
+new, and all were real and fixed on the branch. A test,
+`tests/reference/test_mac_awake_washout_figures.py`, still opened
+`docs/MODEL.md` to read a section that had moved, so it failed. Where one
+path stood before two section names and the move parted the sections, the
+second section kept the wrong document: in the three agent files' notes on
+`mac_percent`, and in five docstrings and comments. Two refusals named the old
+document with no quoted section. The documentation check passed a section
+mark that named the wrong one of the two documents, because each document
+holds the other's heading words in its pointers. It now refuses one, and
+`test_a_section_mark_naming_the_wrong_specification_document_is_refused`
+checks that. The opening paragraphs did not say that the supported ranges and
+the supported run length are in the new document, and now do.
+`tools/model_rewrite.py repoint` now lists each second section name for a
+person to read.

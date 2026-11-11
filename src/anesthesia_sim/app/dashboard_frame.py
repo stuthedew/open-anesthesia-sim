@@ -118,8 +118,9 @@ from anesthesia_sim.layout.run_identity import RunId
 # equals the ceiling is a fact about this configuration, not an identity. So
 # the two are named separately, and
 # `test_the_shipped_step_is_within_the_maximum_simulation_step` checks the
-# relation. `docs/MODEL.md` § "Supported simulation step" and § "Displayed
-# precision" give the two derivations separately (`PL-X9KD`).
+# relation. `docs/MODEL.md` § "Supported simulation step" and
+# `docs/INTERFACE.md` § "Displayed precision" give the two derivations
+# separately (`PL-X9KD`).
 SIMULATION_STEP_S: Final = SimulationStep(0.1)
 # How often the simulation timer fires, in *real* seconds. It is numerically
 # equal to the step but means something different. The playback multiplier is
@@ -1103,7 +1104,8 @@ class ReadoutPanel:
 # The seven panels in row order. The gloss is "end-tidal-equivalent", never
 # "end-tidal". `docs/INTERFACE.md` § "Minimum displayed outputs" requires the
 # hedge, because dead space, airway sampling delay, shunt and V/Q mismatch are
-# all listed in its "Known limitations". So this value is not end-tidal in any
+# all listed in `docs/MODEL.md` § "Known limitations". So this value is not
+# end-tidal in any
 # patient. End-tidal is the name of a *measurement*, and it is the one a
 # clinician would most readily compare this readout with. Do not shorten
 # either gloss to fit a layout.

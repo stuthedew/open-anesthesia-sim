@@ -185,7 +185,7 @@ class RunSettings(RunStatus):
     `CLAUDE.md` treats as a safety failure.
 
     `docs/INTERFACE.md` § "MAC multiples as a display unit" states what the
-    quotient asserts, and § "Delivery-limit and MAC parameters" holds the
+    quotient asserts, and `docs/MODEL.md` § "Delivery-limit and MAC parameters" holds the
     value's provenance.
     """
     fresh_gas_flow_l_min: FreshGasFlow

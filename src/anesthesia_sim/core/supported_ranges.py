@@ -193,8 +193,9 @@ run stops, and refuses the instant one step later (`PL-8H2R`).
 Widening any interval is a safety-critical change, not a convenience. Argue
 that the compartment structure still represents a patient over the wider range.
 Re-run the reference gates at the new corner. Revise
-`docs/INTERFACE.md` §§ "Supported input ranges" and "Independent-solution test"
-together. Widening no longer requires re-deriving the displayed resolution or
+`docs/INTERFACE.md` § "Supported input ranges" and `docs/MODEL.md`
+§ "Independent-solution test" together. Widening no longer requires
+re-deriving the displayed resolution or
 the supported simulation step. Both used to depend on the splitting coefficient
 measured over this envelope, and neither is now derived from anything measured
 over it.

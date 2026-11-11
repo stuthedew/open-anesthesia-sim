@@ -9,7 +9,10 @@ equations and compartment structure have not changed since v0.1.0, and every
 supported agent shares them.
 
 `docs/INTERFACE.md` states what the interface must show and do, including its
-controls and the outputs that must be displayed.
+controls and the outputs that must be displayed. It also gives the ranges of
+the settings, and the length of a run, over which the model is claimed to
+represent a patient (`docs/INTERFACE.md` § "Supported input ranges" and
+§ "Supported run length").
 
 A statement here that gives a version has been true *since* that version. The
 project's roadmap (`ROADMAP.md`) lists the current release in its version table.
@@ -526,7 +529,7 @@ shipped MACs are 1.2% to 6.0%.
 <!-- provenance: data/agents/desflurane.json mac_percent = 6 -->
 
 The rules that the fraction and percent types share with the flows are written
-once, in `core/checked_number.py` (§ "Supported input ranges"): what counts as a
+once, in `core/checked_number.py` (`docs/INTERFACE.md` § "Supported input ranges"): what counts as a
 number, that one checked quantity is never created from another, and that minus
 zero is stored as zero.
 

@@ -72,9 +72,9 @@ preferred the edited text for six of seven sections the instructions were not
 tuned on.
 
 **The model specification in plain English.** `#2040` and `#2042` rewrote the
-rest of `docs/INTERFACE.md`'s interface sections, from § "Minimum displayed
-outputs" to § "Interface boundary", and § "How this document is held to the
-tree", for a clinician reader. The history behind each value moved to the
+rest of the interface sections, which are now in `docs/INTERFACE.md`, from
+§ "Minimum displayed outputs" to § "Interface boundary", and `docs/MODEL.md`
+§ "How this document is held to the tree", for a clinician reader. The history behind each value moved to the
 items. Two stale statements were corrected on the way: the agreement between
 a branch and its trunk (`PL-4VJG`) and the clause a gate-count check applies
 (`PL-6VBY`).

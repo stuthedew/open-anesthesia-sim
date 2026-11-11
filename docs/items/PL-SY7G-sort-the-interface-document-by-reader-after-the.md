@@ -56,3 +56,18 @@ passes.
 the repository named no home but `docs/MODEL.md` for a test's description,
 an interface requirement or a value's source history, so each change added
 them there. No new head.
+
+**Left for this item by `PL-CTXZ`, 2026-11-11.** Two things the move could
+not finish, because it changed no word of the moved text beyond its section
+pointers:
+
+- The moved text still says "above", "below" and "in this document" about
+  things that are now in `docs/MODEL.md`, where no section mark stands beside
+  the words. A blind review pass found two, which `PL-CTXZ` fixed: the
+  provenance table, and the reference measurements. Read the document for the
+  rest.
+- `.claude/agents/copy-editor.md` says that in `docs/MODEL.md` a note that
+  opens "**For developers.**" serves the developer. `docs/INTERFACE.md` has
+  such notes too. Say so there when the hold on copy editor runs ends for
+  this document. A change to those instructions needs a run of the review's
+  test set, as `docs/prose-review/README.md` says.

@@ -342,6 +342,7 @@ See `docs/MODEL.md` § "Wash-in" and `docs/MODEL.md` § "Hazards".
 """
 
 MESSAGE = 'refused (docs/MODEL.md, "Equations")'
+#: See `docs/MODEL.md` § "Hazards" and § "Equations".
 STALE = 'refused (docs/MODEL.md, "A heading nobody wrote")'
 '''
 
@@ -386,7 +387,10 @@ def test_move_takes_a_section_whole_and_repoints_each_citation_of_it(
     assert "MESSAGE = 'refused (docs/INTERFACE.md, \"Equations\")'" in citing
     # A quotation that neither document holds stays, and is listed for a person to read.
     assert "STALE = 'refused (docs/MODEL.md, \"A heading nobody wrote\")'" in citing
-    assert "src/citing.py:7: A heading nobody wrote" in out
+    assert "src/citing.py:8: A heading nobody wrote" in out
+    # One path before two sections stays, and the second section is listed to be read.
+    assert '#: See `docs/MODEL.md` § "Hazards" and § "Equations".' in citing
+    assert "src/citing.py:7: after docs/MODEL.md: Equations" in out
 
 
 def test_repoint_run_twice_changes_nothing_more(tmp_path: Path) -> None:

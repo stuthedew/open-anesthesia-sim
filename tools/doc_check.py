@@ -7134,6 +7134,13 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
     failed on CI's runner, where it does not. Two red runs on 2026-10-17 were
     this split (`PL-2D1S`). `PL-H0CF` fixed the same split for path citations.
 
+    **A section mark is also held to the document's headings, among the
+    documents of the specification** (`PL-CTXZ`). Those documents name each
+    other's sections, so `docs/MODEL.md` holds the words of a heading that is
+    `docs/INTERFACE.md`'s, and containment passed a mark that named the wrong
+    one. A mark that names one of them, and quotes a heading that only
+    another of them has, is refused.
+
     **Only a claiming connective makes a miss an error** - `§` or the
     possessive, `CLAIMING_CONNECTIVE_RE`. After any other the same miss is an
     advisory: the words may be a proposal for the file or a sentence it has
@@ -7153,6 +7160,33 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
     """
     bodies: dict[str, str | None] = {}
     briefs: dict[str, list[str]] = {}
+    specification: dict[str, list[str]] = {}
+
+    def section_elsewhere(cited: str, quoted: str) -> str | None:
+        """The specification document whose section `quoted` names, where `cited` has none.
+
+        The specification is several documents since `PL-CTXZ`, and each
+        points at the others' sections by name. So a document holds the words
+        of a heading that is another document's, and containment alone passes
+        a section mark that names the wrong one of them.
+        """
+        if not specification:
+            for document in SPECIFICATION_DOCS:
+                if (root / document).is_file():
+                    specification[document] = _headings(
+                        (root / document).read_text(encoding="utf-8")
+                    )
+        own = specification.get(cited.lstrip("/"))
+        if own is None or _cites_heading(quoted, own):
+            return None
+        return next(
+            (
+                document
+                for document, titles in specification.items()
+                if document != cited.lstrip("/") and _cites_heading(quoted, titles)
+            ),
+            None,
+        )
 
     def body_of(cited: str) -> str | None:
         if cited not in bodies:
@@ -7202,6 +7236,13 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
                 finding = f"{path}:{line}: quotes {cited}, {_unresolved_place(cited)}"
             elif _comparable(_without_emphasis(quoted)).rstrip(" .,;:") not in body:
                 finding = f'{path}:{line}: quotes {cited} as "{quoted}", which is not in that file'
+            elif (match.group("connective") or "").startswith("§") and (
+                elsewhere := section_elsewhere(cited, quoted)
+            ):
+                finding = (
+                    f'{path}:{line}: cites {cited} § "{quoted}", which is a section of '
+                    f"{elsewhere} and not of {cited}"
+                )
             else:
                 continue
             if claims:

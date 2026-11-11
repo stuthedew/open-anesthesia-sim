@@ -13327,3 +13327,27 @@ def test_a_module_the_interpreter_cannot_parse_is_declined_not_failed(tmp_path: 
     assert report.errors == []
     assert len(report.declined) == 1
     assert "cannot parse this file" in report.declined[0]
+
+
+def test_a_section_mark_naming_the_wrong_specification_document_is_refused(tmp_path: Path) -> None:
+    """A section that moved to `docs/INTERFACE.md` is not cited as `docs/MODEL.md`'s.
+
+    The model document points at the moved section by name, so it holds the
+    heading's words, and containment alone passed the stale citation
+    (`PL-CTXZ`, found by a blind review pass).
+    """
+    model = MODEL + '\nThe display rules are in `docs/INTERFACE.md` § "Shown values".\n'
+    stale = README + '\nSee `docs/MODEL.md` § "Shown values".\n'
+    root = _repo(tmp_path, model=model, readme=stale)
+    (root / "docs" / "INTERFACE.md").write_text(
+        "# Interface\n\n## Shown values\n\nThe demo value is shown.\n", encoding="utf-8"
+    )
+
+    assert [error for error in _errors(root) if "is a section of" in error] == [
+        'README.md:6: cites docs/MODEL.md § "Shown values", which is a section of '
+        "docs/INTERFACE.md and not of docs/MODEL.md"
+    ]
+
+    current = README + '\nSee `docs/INTERFACE.md` § "Shown values".\n'
+    (root / "README.md").write_text(current, encoding="utf-8")
+    assert [error for error in _errors(root) if "Shown values" in error] == []

@@ -52,8 +52,10 @@ splits a document.
   gets the new document's path. Inside the two documents, a section mark with
   no document before it gets the other document's path where its section is
   now there. It prints each file it changed, and each citation whose words
-  neither document holds, which a person reads. Running it twice changes
-  nothing more.
+  neither document holds, which a person reads. It also prints each quotation
+  that follows a mention of one document and names a section only the other
+  has, because one path before two section names is right for the first
+  alone. Running it twice changes nothing more.
 
 The pull request of each section part accounts for every line `lost` prints.
 When each line is history or a kept duplicate and nothing was added, no value,
@@ -736,6 +738,55 @@ def repoint(
     return Repointed(changed, unplaced)
 
 
+#: A mention of either document of a move, and a quotation that may name a section.
+LATER_QUOTATION_RE = re.compile(
+    r"\"([\w`][^\"\n]{2,200}?(?:\n[^\"\n]{0,200}?){0,2}?)\"|(?<![\w])'([\w`][^'\n]{2,120}?)'(?![\w])"
+)
+
+
+def misattributed(
+    root: Path, source: str, destination: str, paths: Iterable[str] | None = None
+) -> list[str]:
+    """Each quotation after a mention of one document that names a heading only the other has.
+
+    `repoint` changes the path before the first quotation after it. A sentence
+    that names one document and then two sections, such as "`docs/MODEL.md`
+    § "A" and § "B"", keeps one path for both, which is wrong when the move
+    parted them (`PL-CTXZ`, found by both blind review passes). No rule says
+    where the second path belongs in the sentence, so each is listed for a
+    person to read. A mark with no document before it, inside the two
+    documents, is listed too where it follows a mention of the other one.
+    """
+    documents = (source, destination)
+    heads = {
+        name: doc_check._headings((root / name).read_text(encoding="utf-8")) for name in documents
+    }
+    mention = re.compile("|".join(re.escape(name) for name in documents))
+    found: list[str] = []
+    for path in _tracked_texts(root) if paths is None else paths:
+        try:
+            text = (root / path).read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+        mentions = list(mention.finditer(text))
+        for index, named in enumerate(mentions):
+            end = mentions[index + 1].start() if index + 1 < len(mentions) else len(text)
+            span = text[named.end() : min(end, named.end() + 500)]
+            paragraph_end = re.search(r"\n[ \t]*(?:#+:?[ \t]*)?\n", span)
+            if paragraph_end:
+                span = span[: paragraph_end.start()]
+            own = named.group()
+            other = destination if own == source else source
+            for quoted in LATER_QUOTATION_RE.finditer(span):
+                term = doc_check._normalized(WRAP_RE.sub(" ", quoted.group(1) or quoted.group(2)))
+                if doc_check._cites_heading(term, heads[other]) and not doc_check._cites_heading(
+                    term, heads[own]
+                ):
+                    row = text.count("\n", 0, named.end() + quoted.start()) + 1
+                    found.append(f"{path}:{row}: after {own}: {term[:80]}")
+    return found
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.partition("\n")[0])
     parser.add_argument("--root", type=Path, default=ROOT, help="repository to run in")
@@ -799,6 +850,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "document holds. Read each:"
             )
             print("\n".join(f"  {line}" for line in done.unplaced))
+        later = misattributed(root, args.source, args.destination)
+        if later:
+            print(
+                f"\n{len(later)} quotations follow a mention of one document and name a "
+                "section that only the other has. Read each, and name the right document "
+                "before it:"
+            )
+            print("\n".join(f"  {line}" for line in later))
         return 0
     base = args.base or default_base(root)
     if args.base is None and not resolved(base):

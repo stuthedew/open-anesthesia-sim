@@ -87,7 +87,13 @@ took, in order, and what went wrong the first time:
    `tests/unit/test_doc_check.py` keeps the fixture tree in one document.
 4. Read what `move` prints as unplaced, and re-point by hand each message in
    `src/` whose section name is split across string literals or filled in
-   from a variable. The script cannot read those.
+   from a variable. The script cannot read those. Read the second list it
+   prints too: each quotation that follows one document's path and names a
+   section only the other has, such as the second of two sections after one
+   path. Then search `src/` for a message that names the old document and a
+   moved section with no quotation marks, and for a test that opens the old
+   document to read a moved section. Both blind review passes on `PL-CTXZ`
+   found each of these.
 5. Check each open item's `verify:` command. `move` takes the quotation after
    a path for that path's own, which is wrong for `grep 'text' path`, so it
    re-pointed several to the wrong file. Point each at the document that

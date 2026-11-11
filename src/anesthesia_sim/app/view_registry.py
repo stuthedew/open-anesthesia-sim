@@ -327,7 +327,7 @@ def required_kinds(
         if kind not in registered:
             raise ValueError(
                 f"the View kind {kind!r} must stay reachable in every layout, and this build "
-                "does not register it (docs/MODEL.md, Minimum displayed outputs)"
+                "does not register it (docs/INTERFACE.md, Minimum displayed outputs)"
             )
 
         if not registered[kind].required_reachable:

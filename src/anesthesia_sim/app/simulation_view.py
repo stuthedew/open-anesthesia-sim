@@ -1159,7 +1159,7 @@ class SimulationView(QWidget):
         if misplaced:
             raise RuntimeError(
                 "the unconditional region does not hold "
-                f"{', '.join(misplaced)}, which docs/MODEL.md requires on screen in every "
+                f"{', '.join(misplaced)}, which docs/INTERFACE.md requires on screen in every "
                 "layout (app/unconditional_set.py)"
             )
 

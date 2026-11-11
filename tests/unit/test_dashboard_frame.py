@@ -1478,7 +1478,8 @@ def test_the_alveolar_readout_is_labelled_end_tidal_equivalent() -> None:
 
     `docs/INTERFACE.md` § "Minimum displayed outputs" requires "alveolar or
     end-tidal-equivalent concentration". Dead space, airway sampling delay,
-    shunt and V/Q mismatch are all listed in "Known limitations". The value
+    shunt and V/Q mismatch are all listed in `docs/MODEL.md` § "Known
+    limitations". The value
     this readout shows is therefore not end-tidal in any patient, and
     end-tidal is the name of a measurement (`PL-NV9W`). The widget draws the
     gloss smaller than the name, and that is tested with the widget.

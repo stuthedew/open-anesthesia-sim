@@ -3,8 +3,8 @@
 `docs/INTERFACE.md` § "The canonical evaluation rule" states three things. Every
 stored, exported, replayed or forked value is taken from the canonical path.
 Two evaluations of one definition at one instant are bit-identical. The display
-path may be drawn, and used for nothing else. The section "The reproducibility
-guarantee" now rests on that rule. The fixed 0.1 s step used to provide
+path may be drawn, and used for nothing else. `docs/MODEL.md` § "The
+reproducibility guarantee" now rests on that rule. The fixed 0.1 s step used to provide
 determinism by leaving no caller a choice of step width. A propagator that
 accepts an interval takes that away, because the same instant can now be
 reached by more than one route.

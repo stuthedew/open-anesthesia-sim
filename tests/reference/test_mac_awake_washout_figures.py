@@ -42,7 +42,7 @@ from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
-MODEL_PATH = Path(__file__).resolve().parents[2] / "docs" / "MODEL.md"
+INTERFACE_PATH = Path(__file__).resolve().parents[2] / "docs" / "INTERFACE.md"
 SECTION_HEADING = "### MAC-awake as a chart reference"
 
 AGENT_ID = "sevoflurane"
@@ -90,7 +90,7 @@ class PrintedFigures:
 def _section_text() -> str:
     """The section's prose, with each run of whitespace made one space."""
 
-    text = MODEL_PATH.read_text(encoding="utf-8")
+    text = INTERFACE_PATH.read_text(encoding="utf-8")
     start = text.index(SECTION_HEADING)
     end = text.find("\n### ", start + len(SECTION_HEADING))
 
