@@ -10399,9 +10399,9 @@ changes by 4 × 10⁻⁶ published SD.
 #### Desflurane's residual, and why the parameter file was not changed
 
 The obvious explanation for that residual is that desflurane's vessel-rich
-coefficient is too low. The sensitivity measured under § "Parameter provenance"
-shows that the five-minute ratio depends mostly on the vessel-rich tissue:gas
-coefficient and barely on the blood:gas coefficient. A tissue group with too
+coefficient is too low. The sensitivity table in § "What the published-data
+gate can and cannot resolve" shows that the five-minute ratio depends mostly on
+the vessel-rich tissue:gas coefficient and barely on the blood:gas coefficient. A tissue group with too
 little capacity empties too fast. That explanation fits the arithmetic, but the
 measured tissue solubility rules it out, as the next paragraphs show.
 
@@ -11285,7 +11285,9 @@ checks the result of lowering the muscle group's coefficient.
 ### Mass-balance test
 
 Long wash-in, steady-delivery, and washout simulations must satisfy either
-condition below, with the release tolerances documented above:
+condition below. These are the run-time thresholds that § "Mass-balance
+identity" gives, and the relative residual must also stay within that
+section's release gate:
 
 $$
 |\varepsilon_M|
@@ -12090,8 +12092,9 @@ well-measured parameter set, not the only set the literature supports.
 Yasuda, Targ and Eger's p. 373, Eger and Saidman's Table 1, Baker and
 Farmery's Table 2 and Hendrickx and De Wolf's p. 165 were read in full text.
 Fiserova-Bergerova and Diaz 1986 was read as its PubMed abstract only (PMID
-3721592), and the 1984 paper not at all. The Yasuda, Targ and Eger citation is
-in § "Parameter provenance".
+3721592), and the 1984 paper not at all. The full Yasuda, Targ and Eger
+citation is in § "Desflurane's residual, and why the parameter file was not
+changed".
 
 **Cardiac output does not scale with the patient, and the reference weight is
 a label, not an input.** The default cardiac output is a stored 5.0 L/min. No

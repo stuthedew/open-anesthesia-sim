@@ -3,11 +3,13 @@ id: PL-52KB
 title: docs/MODEL.md has five broken section pointers: Desflurane's residual sends the reader to a sensitivity run 'under Parameter provenance' (it is in 'What the published-data gate can and cannot resolve'); Known limitations says the Yasuda citation is in 'Parameter provenance'; two pointers name headings that do not exist ('The chart's vertical range is denominated in MAC, and fixed', 'Why the axis is fixed rather than fitted'); 'Mass-balance test' cites 'the release tolerances documented above' with no section (copy editor structure read, 2026-11-05)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: model-md-structure
 touches: docs/MODEL.md
 added: 2026-11-05
+closed: 2026-11-11
+pr: 2112
 payoff: a reader who follows a pointer to check a figure lands in the section that holds its support
 verify: ! grep -qF 'The sensitivity measured under § "Parameter provenance"' docs/MODEL.md && ! grep -qF 'with the release tolerances documented above' docs/MODEL.md
 ---
@@ -54,3 +56,31 @@ release's gate. A pointer fixed before `PL-CTXZ`, `PL-6PPZ` or `PL-FWR6`
 moves its section moves with the text. A pointer fixed afterwards is fixed
 in the document that then holds it, and may name a section of another
 document.
+
+**Done 2026-11-11.** Each of the three pointers now names the section that
+holds what it points to.
+
+1. § "Desflurane's residual, and why the parameter file was not changed" now
+   points to the sensitivity table in § "What the published-data gate can and
+   cannot resolve". That table, measured on 2026-09-06, gives each ratio's
+   movement per +10% in one coefficient: +0.45 to +0.55 SD in the
+   five-minute elimination ratio for the vessel-rich tissue:gas coefficient,
+   and +0.09 to +0.17 SD for blood:gas. It is the measurement the sentence
+   describes. `git log -S` shows that § "Parameter provenance" never held it:
+   the pointer was wrong from the day `PL-73G7` wrote it.
+2. § "Known limitations" now says the full Yasuda, Targ and Eger citation is in
+   § "Desflurane's residual, and why the parameter file was not changed",
+   the only place in the document that gives it in full.
+3. § "Mass-balance test" now names § "Mass-balance identity". It also says
+   which of that section's two bounds is which. The "either condition"
+   formulas are the run-time thresholds, and the relative residual must also
+   stay within the release gate. The old wording called both "the release
+   tolerances", which contradicted § "Mass-balance identity"'s statement that
+   the release gate is the relative residual alone. The two tests named in the
+   section's note for developers assert both bounds.
+
+None of the three edits lies in, or points into, the seven interface sections
+that `PL-CTXZ` (#2109) is moving. No copy editor run was made on these
+passages: the project owner's hold of 2026-11-11 keeps copy editor runs off
+`docs/MODEL.md` until `PL-48MX` closes, and his separate pause of the copy
+editor still applies.
