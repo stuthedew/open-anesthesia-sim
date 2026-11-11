@@ -1563,6 +1563,8 @@ no longer deferred.
   delivered agent in millilitres of liquid equivalent or in litres of vapour,
   with the unit named on the value. Once they set a price, the View shows the
   cost with the price's currency and date.
+- The View says on its face that its amount and its cost are modelled, as the
+  schematic does.
 - An end-to-end test checks the liquid figure against an independently
   computed conversion. It checks the cost against that figure times the price.
 - The price and the unit survive a restart, in a preferences file separate

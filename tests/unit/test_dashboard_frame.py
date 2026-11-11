@@ -2440,10 +2440,13 @@ def test_the_withheld_accounting_panel_states_no_verdict_and_no_amount() -> None
     ]
 
 
-def test_the_accounting_unit_caption_names_litres_of_agent_gas() -> None:
-    """Litres of agent *gas* is not the unit anyone consumes agent in (`PL-TG60`)."""
+def test_the_accounting_unit_caption_names_litres_of_agent_gas_and_its_condition() -> None:
+    """Litres of agent *gas* is not the unit anyone consumes agent in (`PL-TG60`).
 
-    assert ACCOUNTING_UNIT_CAPTION == "Litres of equivalent pure agent gas"
+    A volume of gas also needs its temperature and pressure (`PL-HQPF`).
+    """
+
+    assert ACCOUNTING_UNIT_CAPTION == "Litres of equivalent pure agent gas, at 20 °C and 1 atm"
 
 
 # --- the control-change panel ----------------------------------------------------

@@ -24,11 +24,37 @@ The units live in `app/`, not in `core/units.py`, because a label is
 presentation, and `CLAUDE.md` keeps presentation out of the calculation code.
 Other repeated strings, such as message fragments, are left to code review. A
 check that read strings would have to guess which of them are units.
+
+An amount of agent is a volume of vapour, and a volume of gas means nothing
+without the temperature and pressure it is stated at. The model states every
+amount at one condition, 20 °C and 1 atm (`docs/MODEL.md` § "Agent amount").
+`REFERENCE_CONDITION_LABEL` names that condition, and every place that shows an
+agent amount names it from there (`PL-HQPF`). The label is built from the
+constants that the conversion from vapour to liquid uses, so a change to either
+constant changes the label with it (`PL-RJN9`).
 """
 
 from enum import Enum
+from typing import Final
 
-__all__ = ["DisplayUnit"]
+from anesthesia_sim.core.liquid_agent import (
+    REFERENCE_PRESSURE_PA,
+    REFERENCE_TEMPERATURE_CELSIUS,
+    STANDARD_ATMOSPHERE_PA,
+)
+
+__all__ = ["REFERENCE_CONDITION_LABEL", "REFERENCE_TEMPERATURE_LABEL", "DisplayUnit"]
+
+#: The temperature at which the model states every amount of agent, as a label.
+#: A liquid volume needs only the temperature, because a liquid's volume barely
+#: changes with pressure.
+REFERENCE_TEMPERATURE_LABEL: Final = f"{REFERENCE_TEMPERATURE_CELSIUS:g} °C"
+
+#: The temperature and pressure at which the model states every amount of
+#: agent vapour, as a label. The pressure is written in standard atmospheres.
+REFERENCE_CONDITION_LABEL: Final = (
+    f"{REFERENCE_TEMPERATURE_LABEL} and {REFERENCE_PRESSURE_PA / STANDARD_ATMOSPHERE_PA:g} atm"
+)
 
 
 class DisplayUnit(Enum):

@@ -33,7 +33,7 @@ from anesthesia_sim.app.dashboard_frame import (
     above_the_axis_top,
     compartment_fraction,
 )
-from anesthesia_sim.app.display_units import DisplayUnit
+from anesthesia_sim.app.display_units import REFERENCE_CONDITION_LABEL, DisplayUnit
 from anesthesia_sim.app.formatting import (
     CHART_AXIS_TOP_MAC,
     MAC_UNIT_SUFFIX,
@@ -84,8 +84,13 @@ CONTAINER_ORDER: Final[tuple[RecordedQuantity, ...]] = tuple(
 INSTANT_LINE_TEMPLATE: Final = "At {instant} of simulated time"
 COMPARED_INSTANT_LINE_TEMPLATE: Final = "{run}, at {instant} of simulated time"
 
-#: The schematic's heading. The wording is a placeholder.
-SCHEMATIC_HEADING: Final = "Where the agent is: each compartment's tension and amount"
+#: The schematic's heading. It names the unit of the amounts and the temperature
+#: and pressure they are stated at, once for every container (`PL-HQPF`). The
+#: wording is a placeholder, but the condition must be on screen.
+SCHEMATIC_HEADING: Final = (
+    "Where the agent is: each compartment's tension, and its amount in "
+    f"{DisplayUnit.AGENT_VAPOUR_MILLILITRES.recorded} at {REFERENCE_CONDITION_LABEL}"
+)
 
 #: The caption that says what a container's height means. A height is a
 #: tension on the concentration chart's scale. So the caption names that scale

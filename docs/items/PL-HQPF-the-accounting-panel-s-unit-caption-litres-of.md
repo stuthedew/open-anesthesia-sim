@@ -3,10 +3,12 @@ id: PL-HQPF
 title: The accounting panel's unit caption ('Litres of equivalent pure agent gas') and the schematic's unit ('mL vapour') do not name the condition an agent amount is stated at, 20 °C and 1 atm, so a learner cannot tell that an amount held in the body is stated at room temperature and reads 5.8% high
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect, safety
-touches: src/anesthesia_sim/app/display_units.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/agent_cost.py, src/anesthesia_sim/app/qt_schematic.py, tests/unit/test_display_units.py, docs/MODEL.md
+touches: src/anesthesia_sim/app/display_units.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/agent_cost.py, src/anesthesia_sim/app/compartment_schematic.py, src/anesthesia_sim/core/liquid_agent.py, tests/unit/test_display_units.py, tests/unit/test_dashboard_frame.py, docs/MODEL.md
 added: 2026-11-10
+closed: 2026-11-11
+pr: 2136
 payoff: every agent amount on screen says it is stated at 20 °C and 1 atm, so a learner can tell an amount held in the body from one at body temperature
 verify: grep -q 'def test_every_agent_amount_unit_names_the_reference_condition' tests/unit/test_display_units.py
 ---
@@ -26,3 +28,5 @@ verify: grep -q 'def test_every_agent_amount_unit_names_the_reference_condition'
 **Answered 2026-11-10 (project owner, ratified, over deferring it to the next gate).** v0.7.0 takes this item, together with `PL-RJN9` (the cost captions type the temperature as text). `PL-LMJ8` made the roadmap edit on 2026-11-10: `ROADMAP.md` § "v0.7.0 - the schematic" names both items in Required scope entry 13 and in the frozen list's first group, and neither item carries `deferred-from` now.
 
 **Generator check.** A one-off as a display gap. Its second half is `PL-RJN9`, which already records the typed copy as an instance of `PL-40SJ`'s fact.
+
+**Built 2026-11-11, with `PL-RJN9` and `PL-11Z9`.** One label, `REFERENCE_CONDITION_LABEL` in `display_units.py`, is built from the conversion's constants (`PL-RJN9` says how). The accounting panel's caption reads "Litres of equivalent pure agent gas, at 20 °C and 1 atm". The schematic names the condition once, in its heading: "Where the agent is: each compartment's tension, and its amount in millilitres of vapour at 20 °C and 1 atm". It is not added to each container's amount label, because six repeats of the condition would widen every column without telling the reader more (placeholder placement, recorded under the owner's 2026-10-18 rule on look and placement). The cost View's vapour caption names both, and its liquid caption names the temperature only, since a liquid's volume barely changes with pressure. `docs/MODEL.md` § "Known limitations" ("It does not touch a concentration, and the screen names the condition beside every amount") now says where the condition is shown, and replaces the stale sentence that nothing on screen showed a converted amount. § "The compartment schematic: what its heights, amounts and share bar assert" quotes the new caption, and § "The agent-accounting panel" says the panel names the condition. `test_every_agent_amount_unit_names_the_reference_condition` checks all four places against the typed text "20 °C and 1 atm". On the code before the fix, `test_the_accounting_unit_caption_names_litres_of_agent_gas_and_its_condition` fails against the old caption "Litres of equivalent pure agent gas".
