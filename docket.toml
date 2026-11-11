@@ -474,7 +474,6 @@ workflow_paths = [
   "tests/unit/test_core_vocabulary_check.py",
   "tests/unit/test_dead_ends.py",
   "tests/unit/test_diff_mutation.py",
-  "tests/unit/test_direct_merge_guard.py",
   "tests/unit/test_doc_check.py",
   "tests/unit/test_doc_quote_check.py",
   "tests/unit/test_duplicate_code_check.py",

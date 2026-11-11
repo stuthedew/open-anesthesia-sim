@@ -1,7 +1,7 @@
 """Tests for `.claude/hooks/gh_write_guard.py`, which keeps `gh` in Bash to reads (`PL-3986`).
 
-`direct-merge-guard.sh` and `pr-body-email-guard.sh` read MCP calls only, so a
-merge or a published body sent through `gh` in Bash met neither. What is
+The email guard reads MCP calls only, so a pull request body published
+through `gh` in Bash never met it. What is
 pinned: the three spellings `PL-3986` names are refused, the search the
 harness hands a session `gh` for is not, each refusal names the MCP route,
 and the hook is wired on Bash and refuses from its own script.

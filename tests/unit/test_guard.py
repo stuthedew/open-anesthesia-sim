@@ -10,9 +10,9 @@ tests hold the replacement to its promise:
   past its deadline lets the call through with a note naming the guard;
 - a `python3` that is missing or dies before deciding gets the same note
   from `guard.sh`;
-- a call that mentions a merge is refused on every one of those paths when the
-  merge guard could not judge it, and `guard.sh` and `guard.py` agree on which
-  calls those are (`PL-NXRJ`);
+- a call that mentions a merge is let through on those paths like any other,
+  since GitHub refuses a merge past `main`'s checks and no guard here judges
+  one (`PL-39Y1`);
 - each wiring's `timeout` covers the deadlines of its guards, and each
   guard's deadline covers the waits the guard sets for itself.
 """
@@ -27,7 +27,6 @@ import sys
 from importlib import import_module
 from pathlib import Path
 
-import direct_merge_guard
 import guard as entry_point
 import hook_input
 import owner_ask_guard
@@ -74,8 +73,7 @@ QUIET_CALL = json.dumps(
     }
 )
 
-#: A merge, which the merge guard must judge. It names no session, so a
-#: refusal of it is not logged.
+#: A merge, which no guard judges: GitHub refuses one past `main`'s checks.
 MERGE_CALL = json.dumps(
     {
         "hook_event_name": "PreToolUse",
@@ -193,7 +191,6 @@ def test_each_deadline_covers_the_waits_its_guard_sets() -> None:
     deadline = {guard.name: guard.deadline_s for guard in EVERY_GUARD}
     assert deadline["push-check-guard"] > push_check_guard.DEADLINE
     assert deadline["owner_ask_guard"] > owner_ask_guard.ARM_TIMEOUT_S
-    assert deadline["direct-merge-guard"] > 2 * direct_merge_guard.MERGE_READ_TIMEOUT_S
 
 
 @pytest.mark.parametrize("guard", EVERY_GUARD, ids=lambda guard: guard.name)
@@ -212,16 +209,6 @@ def test_a_crashing_guard_says_it_did_not_check(
     (note,) = notes
     assert f"The {guard.name} hook could not check this call" in note
     assert "the rule has a bug in it" in note
-
-
-def test_a_crashing_merge_guard_refuses_a_merge(monkeypatch: pytest.MonkeyPatch) -> None:
-    (merge_guard,) = entry_point.selected("direct-merge-guard") or ()
-    _crash(monkeypatch, merge_guard)
-    refusals, notes, _ = entry_point.judged((merge_guard,), MERGE_CALL)
-    assert notes == []
-    (refusal,) = refusals
-    assert refusal.startswith("Refused: the direct-merge-guard hook could not judge")
-    assert "the rule has a bug in it" in refusal
 
 
 @pytest.mark.parametrize(("command", "refused"), [("gh pr merge 1", True), ("git status", False)])
@@ -320,39 +307,17 @@ def test_the_failure_note_keeps_the_event_it_answers(tmp_path: Path) -> None:
     assert decided["hookEventName"] == "PostToolUse"
 
 
-#: Calls the `pre-mcp` group can be handed, and whether each mentions a merge.
-MCP_CALLS = [
-    (MERGE_CALL, True),
-    (QUIET_CALL, False),
-    (
-        json.dumps(
-            {
-                "tool_name": "mcp__hearthbot__post_message",
-                "tool_input": {"text": "Merged: the pull request is in."},
-            }
-        ),
-        True,
-    ),
-    ('{\n  "tool_name":\n    "mcp__github__merge_pull_request"\n}', True),
-    ("", False),
-    ("not json", False),
-    ("not json, but it says MERGE", True),
-    ('{"tool_input": {"body": "merge it"}}', True),
-]
-
-
-@pytest.mark.parametrize(("payload", "merge"), MCP_CALLS)
-def test_the_launcher_and_the_entry_point_refuse_the_same_unjudged_merges(
-    payload: str, merge: bool, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize(
+    "payload", [MERGE_CALL, '{"tool_input": {"body": "merge it"}}', "not json, but it says MERGE"]
+)
+def test_a_call_that_mentions_a_merge_is_let_through_when_no_guard_could_check_it(
+    payload: str, tmp_path: Path
 ) -> None:
-    """Whether Python crashed or never started, an unjudged merge is refused (`PL-NXRJ`)."""
-    (merge_guard,) = entry_point.selected("direct-merge-guard") or ()
-    _crash(monkeypatch, merge_guard)
-    refusals, _notes, _ = entry_point.judged((merge_guard,), payload)
-    assert bool(refusals) is merge
+    """The launcher once refused these for the merge guard, which `PL-39Y1` removed."""
+    assert not entry_point.judged(entry_point.GROUPS["pre-mcp"], payload).refusals
     decided = _launch("pre-mcp", payload, _failing_python(tmp_path))
     assert decided is not None
-    assert ("permissionDecision" in decided) is merge
+    assert "permissionDecision" not in decided
 
 
 def test_a_bash_merge_is_let_through_when_no_guard_could_check_it(tmp_path: Path) -> None:

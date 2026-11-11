@@ -97,10 +97,9 @@ SOURCES = sorted(path for root in BARE_ROOTS for path in root.rglob("*.py"))
 #: its own outside the standard library. `hook_input` meets it too:
 #: `tools/hook_blocks.py` reads where the guards log their refusals from it, in
 #: `.claude/hooks/`, by inserting that path, so the log has one home
-#: (`PL-SG93`). `open_pull_requests` meets it the other way round:
-#: `.claude/hooks/direct_merge_guard.py` asks GitHub through
-#: `tools/open_pull_requests.py`, the repository's one GitHub client, by
-#: inserting that path (`PL-S3TF`). `branch_id_check` too:
+#: (`PL-SG93`). `open_pull_requests` is `tools/open_pull_requests.py`, the
+#: repository's one GitHub client, which the tools that ask GitHub import
+#: (`PL-S3TF`). `branch_id_check` meets it the other way round:
 #: `.claude/hooks/docket_branch_guard.py` reads its `NOT_ASKED` exit status
 #: from there, on the path `.claude/hooks/guard.py` inserts (`PL-9KSJ`).
 VENDORED = frozenset({"branch_id_check", "docket", "hook_input", "open_pull_requests"})

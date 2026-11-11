@@ -727,9 +727,9 @@ Every other check on a tool call starts at `guard.sh` (`PL-9KSJ`).
 group: `pre-edit`, `pre-bash`, `pre-mcp` or `post-bash`. `guard.sh` starts
 `guard.py` with the call on standard input, and `guard.py` runs every guard of
 the group on it from one Python start. `GROUPS` in `guard.py` lists each
-group's guards and the module that holds each rule. Seven of those modules
+group's guards and the module that holds each rule. Six of those modules
 sit beside it: `floor_interpreter_guard.py`, `gate_status_guard.py`,
-`gh_write_guard.py`, `push_check_guard.py`, `direct_merge_guard.py`,
+`gh_write_guard.py`, `push_check_guard.py`,
 `docket_branch_guard.py` and `owner_ask_guard.py`. The other two are `tools/regex_check.py` and
 `tools/email_screen.py`. The linter, the type checker and the
 one-source-of-truth check read all of them (`PL-S3TF`). The call arrives on
