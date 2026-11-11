@@ -224,3 +224,72 @@ capability of its own.
 The second mock-up's script is not in the repository. It patched
 `AreaLayout._content_for` and `_view_need` and the two chart Views'
 constructors, as steps 1, 2 and 4 describe.
+
+**Built so far, 2026-11-11 (commit `cb76d6cb1`), and where the build left the
+plan.** Steps 1, 2, 4, 5 and 6 are built. Step 3 was not built, and steps 7 and
+8 are still to do.
+
+1. **Step 3 is dropped: the page can still grow.** `AreaLayout` still reports
+   the sum of the Areas' needs to the page, as `PL-K285` Q2 decided. The needs
+   are now small, so the page does not grow at 1366 by 768 or 1920 by 1080.
+   Reporting only the floors would have shown a too-small notice in place of a
+   View in a small window. `docs/MODEL.md` § "Minimum displayed outputs" says
+   that a reader who chooses a View "sees the view itself, never only a notice
+   that the area is too small", and the agent accounting must stay reachable
+   that way. So `PL-K285` Q2's answer is not changed, and step 8 needs no note
+   in `PL-K285`.
+2. **An Area's least width comes from its View's content** (step 1 changed).
+   The need is the declared height, and the larger of the declared width and
+   the least width of the View's widget plus the scroll bar's width. With the
+   declared width alone, the Parameters row of four controls scrolled sideways
+   in a 331 px Area. A declared number for that row would also be a second
+   copy of a width that depends on the font. `PL-4JCC` (the Parameters row
+   wraps) then narrows the Area with no change to the registry.
+3. **The chart Views** (step 4). `views._KeyScroll` holds the statement of the
+   window, the reference values and the legend, and scrolls them above the
+   plot. Its least height is `theme.CHART_KEY_LEAST_HEIGHT`, 36 px, which
+   shows the first two rows. The advisories stay outside the box: no traces
+   shown, traces capped, traces above the axis, unmarked control changes and
+   the wash-in state lines. The mock-up had the first two inside it. They are
+   conditional text, and a reader must see one as soon as it applies.
+4. **Placeholders chosen** (steps 5 and 6): least plot heights 160 px and
+   120 px; least View height 120 px, except the concentration chart at 280 px
+   (its content measured 275 px offscreen) and Parameters at 160 px (one run's
+   row of controls); Maintenance's right column 0.52, 0.2, 0.28, so the
+   schematic has its 358 px at 1920 by 1080. Induction's 0.6 and 0.4 are
+   kept, because the concentration plot needs the height to separate six
+   traces and the wash-in plot has one trace.
+5. **Measured offscreen at 300 s of one run, 2026-11-11.** The page's scroll
+   range is 0 in all three Workspaces at both sizes, and no View scrolls
+   sideways.
+
+   | Window | Workspace | Views that scroll inside their Area |
+   | --- | --- | --- |
+   | 1366 by 768 | Default | Bookmarks, by 24 px |
+   | 1366 by 768 | Induction | Wash-in by 85 px, Bookmarks by 24 px |
+   | 1366 by 768 | Maintenance | Schematic by 228 px, Bookmarks by 29 px |
+   | 1920 by 1080 | Default, Induction, Maintenance | none |
+
+**Still to do.**
+
+- Step 7, tests. The whole suite was started after `cb76d6cb1` and its result
+  is not yet read. Expect failures where a test gives a View its need through
+  the widget's minimum height, where a test reads `scroll_area` on the
+  Bookmarks or Branch View (removed), and where a test expects a plot of 360
+  or 200 px. New tests: the plan's list, with "the page grows only where the
+  window is too small for the needs" in place of the notice test.
+- Step 8, documents. `docs/MODEL.md`: the sentence "The page grows to give the
+  view the space it needs" in § "Minimum displayed outputs" (add that a View
+  taller than its Area scrolls inside it), and "the 360 px plot" in the
+  paragraph on the linear percent axis (say it is the plot's preferred height,
+  and that the plot is 160 px at its least). `README.md` § "The window",
+  `docs/ARCHITECTURE.md`, `docs/interface-provenance.md`,
+  `.claude/rules/ui-areas.md` answer 4, and `layout/sizing.py`'s module
+  docstring (its sentence "never clipped" still holds; say the View scrolls).
+- `tools/contrast_check.py` and the dark-appearance test have not been run
+  against `stylesheets.clear_scroll_area_stylesheet`.
+- The scratch script that measures the table above is not in the repository.
+  It opens the dashboard with `main.open_dashboard`, switches Workspaces with
+  `view._tabs.activate(index)`, and reads
+  `view._page_scroll.verticalScrollBar().maximum()` and each
+  `AreaFrame.view_scroll`'s scroll bars.
