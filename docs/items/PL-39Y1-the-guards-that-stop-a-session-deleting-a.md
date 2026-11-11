@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: defect, infra
 feature: irreversible-actions-refused-at-github
-touches: .github/workflows/quality.yml, .claude/hooks/push_check_guard.py, .claude/hooks/git/pre-push, subprojects/docket/src/docket/arming.py, .claude/hooks/guard.py, .claude/hooks/guard.sh, .claude/hooks/gh_write_guard.py, .claude/hooks/git/reference-transaction, tools/github_refusals_check.py, tests/unit/test_github_refusals_check.py, tests/unit/test_guard.py, subprojects/docket/src/docket/render.py, docs/maintainer.md, docs/apparatus.md, docs/worker.md
+touches: .github/workflows/quality.yml, .claude/hooks/push_check_guard.py, .claude/hooks/git/pre-push, subprojects/docket/src/docket/arming.py, .claude/hooks/guard.py, .claude/hooks/guard.sh, .claude/hooks/gh_write_guard.py, .claude/hooks/git/reference-transaction, tools/github_refusals_check.py, tools/required_checks_check.py, tools/doc_check.py, tests/unit/test_github_refusals_check.py, tests/unit/test_guard.py, subprojects/docket/src/docket/render.py, docs/maintainer.md, docs/apparatus.md, docs/worker.md, docs/items/PL-VZ57-reproduce-and-file-the-leads-of-the-2026-11-10.md
 deferred-from: v0.7.0 - a guard of the workflow, which nothing in the schematic's gate depends on
 added: 2026-11-11
 payoff: a forced push, a moved release tag and a merge past the checks are refused by GitHub however a session spells them, so no fifth guard has to be written
@@ -31,7 +31,7 @@ reenters: PL-1ZZ0
    - `bash -c 'gh pr merge ...'`: the header of `gh_write_guard.py` lists `gh` run by `bash -c` or a script as unread.
    - `curl` or Python's `urllib` sending a REST request: no hook reads it. `GH_TOKEN` holds the placeholder `proxy-injected`, and Anthropic's proxy substitutes the real credential on the way out, so any client can merge (`PUT .../pulls/N/merge`), delete a branch (`DELETE .../git/refs/heads/<branch>`) or force a branch (`PATCH .../git/refs/heads/<branch>` with `force`).
    - A force push: neither `push_check_guard.py` nor `pre-push` contains the word "force".
-   - `.claude/hooks/direct_merge_guard.py` names `enable_pr_auto_merge` in `NOT_A_MERGE` and returns before judging it, so arming is never compared with what `bin/docket arm` answered. No CI job runs `bin/docket arm`.
+   - The session's merge guard, which this item has since removed, named `enable_pr_auto_merge` in `NOT_A_MERGE` and returned before judging it, so arming is never compared with what `bin/docket arm` answered. No CI job runs `bin/docket arm`.
 3. `PL-TLPH` and `PL-ZCF9` (a guard on the wording of asks to the owner, 2026-10-19 and 2026-11-03). Built: lists of phrasings, then four context rules. Got past it: `PL-3D2F` measured 14 of 18 new phrasings refused wrongly and 20 of 33 unlisted asks passed. `PL-X4MD` then removed the wording match: `.claude/hooks/owner_ask_guard.py` now reads `bin/docket arm --owner-ask` and appends the recorded question, and refuses nothing. That is the one fix in this family that reads the recorded state, and it has not been re-entered.
 
 **What a session is, to GitHub.** Measured 2026-11-11.
@@ -66,12 +66,16 @@ GitHub's documentation for the rules, read 2026-11-11: "Block force pushes" and 
 4. "Restrict deletions" on all branches is not recommended yet. It closes only the REST route, since the proxy refuses the git one. It stops GitHub deleting a merged branch and stops the sweep, so it needs a bypass actor that is not the owner's account. The documentation read does not say whether a personal repository's ruleset accepts a deploy key or GitHub Actions on its bypass list.
 5. Session side, after the settings: one check that reads GitHub's rules for a `claude/` branch and for `main` and fails where a rule above is missing, which is each past escape replayed against the place that refuses it; `direct_merge_guard.py` and the merge wording in `guard.sh` and `guard.py` removed; the git hooks and `gh_write_guard.py` kept as early warnings and for the email screen, with headers that say GitHub is what refuses; `PL-95BJ` closed on the proxy's refusal, with no new spelling taught to `push_targets`.
 
+<!-- absent: direct_merge_guard.py -->
+
 **Answered 2026-11-11.** The owner replied "build here" to the design above, which named two questions with a recommendation each. The session read that as agreement with both: forced pushes blocked on every branch, and the owner's go-ahead on a held pull request recorded by the session in a commit (project owner, 2026-11-11, ratified, over leaving forced pushes open on work branches and over an approval the owner clicks on GitHub). The owner has not yet created the two rulesets.
 
 **Built 2026-11-11, on `claude/gracious-hopper-dnb6a3`.**
 
 - `tools/github_refusals_check.py` reads GitHub's rules for `main`, for a branch no ruleset names and for release tags, and fails where a rule in its `REFUSALS` table is missing. It runs as a step of the `checks` job in `.github/workflows/quality.yml`. Its `ESCAPES` table names each spelling above with the rule that refuses it, the proxy, or the reason nothing does. `tests/unit/test_github_refusals_check.py` replays each escape against the settings GitHub held on 2026-11-11 and against the settings asked for. Run against GitHub on 2026-11-11 the check exits 1 and names two missing rules: a forced push to a branch other than `main`, and a deleted or moved release tag. So `checks` is red on this branch until the owner creates both rulesets.
 - `.claude/hooks/direct_merge_guard.py` and its tests are removed, with the merge wording in `guard.sh` and `guard.py`. The check reads the setting the guard read, `enforcement_level`, and fails where it is not `everyone`.
+
+<!-- absent: .claude/hooks/direct_merge_guard.py -->
 
 **Correction to recommendation 1, found while building.** A forced restart cannot become `git merge origin/main`. `vcs.carried_merge` reads a branch that still descends from its merged head as landed, and the merged commits would lead the new pull request with their old item ids. Under the block, a branch whose merged history the remote still holds needs the old remote branch gone before the restart is pushed. A session cannot delete it. The route chosen: the owner archives and deletes it with the sweep's push that `.claude/skills/docket/modes/capture.md` already gives for a branch that should go, and the session then pushes plainly. That costs the owner one command in a case that arises only when a commit was pushed after its pull request merged. A sweep the session starts through `workflow_dispatch` for one named branch would remove that cost, and is not built.
 
