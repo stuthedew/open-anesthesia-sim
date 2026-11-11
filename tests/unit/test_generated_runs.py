@@ -39,7 +39,7 @@ import sys
 from decimal import Context, Decimal
 from typing import NamedTuple
 
-from hypothesis import given, settings, target
+from hypothesis import example, given, settings, target
 from hypothesis import strategies as st
 from test_numerical_envelope import _decimal_exponential, _squarings
 from test_numerical_envelope_sweep import (
@@ -651,6 +651,50 @@ def _execute(plan: Plan, residuals: Residuals | None) -> tuple[str, ...]:
     return tuple(value.hex() for value in run.state())
 
 
+SMALLEST_CORNER = Corner(
+    circuit_l=MINIMUM_VOLUME_L,
+    alveolar_l=MINIMUM_VOLUME_L,
+    venous_l=MINIMUM_VOLUME_L,
+    tissue_l=MINIMUM_VOLUME_L,
+    blood_gas=1e-3,
+    tissue_blood=1.0,
+)
+"""Every volume at the envelope's 0.01 L floor, with the lowest blood:gas coefficient."""
+
+STIFFEST_CORNER = SMALLEST_CORNER._replace(blood_gas=1e4, tissue_blood=1e-3)
+"""Every volume at 0.01 L with a blood:gas coefficient of 1e4, where a step needs squarings."""
+
+ONE_STEP = (Action(setting="hold", position=0.0, steps=1),)
+
+
+# The three plans below are conditions that the drawn plans reach only after
+# 300 to 1 000 draws (measured 2026-11-11, `PL-GJ1W`). They are listed so that
+# every run of the suite covers them.
+@example(
+    # `PL-N559`: with no flow at all, one step moves the alveolar fraction one
+    # rounding above the inspired fraction.
+    Plan(None, SMALLEST_CORNER, 0.5 * CEILING, (0.0, 0.0, 0.0), 1.0, 0.1, ONE_STEP, 0.0, 2)
+)
+@example(
+    # `PL-9B1M`: every compartment at the input ceiling, at the corner where
+    # one step with blood flow alone rounded a fraction upward.
+    Plan(None, SMALLEST_CORNER, CEILING, (0.0, 0.0, 1.0), 0.0, 0.1, ONE_STEP, 0.0, 2)
+)
+@example(
+    # `PL-D88N`: the same opening at the stiffest corner, which halts on the
+    # agent balance within about 24 steps.
+    Plan(
+        None,
+        STIFFEST_CORNER,
+        CEILING,
+        (0.0, 0.0, 1.0),
+        0.0,
+        0.1,
+        (Action(setting="hold", position=0.0, steps=50),),
+        0.0,
+        2,
+    )
+)
 @settings(derandomize=True, database=None, deadline=None, max_examples=EXAMPLES)
 @given(_plans())
 def test_a_generated_run_keeps_what_must_hold_after_every_action(plan: Plan) -> None:
