@@ -200,7 +200,23 @@ The owner agreed to one test (project owner, 2026-11-11, ratified, over continui
 3. The owner reads the two pairs without labels, each pair in an order set by a coin flip that is recorded here before sending.
 4. Rewriting the resident set goes to the owner as a decision only if the short-instruction text wins on the criteria in both pairs and the owner prefers the other text in neither. Otherwise the resident set stays as it is, and building for prose stops at the bar the owner called "the minimum bar".
 
-Not yet run. The removals on #2119 continue either way.
+The removals on #2119 continue either way.
+
+**The test's material, criteria and order, recorded 2026-11-11 before any text was written.** The material is the work of `PL-RF2S` (each run's panel is written from one value), which merged as #2094 at 04:20 UTC on 2026-11-11. The reply is the one its session would send the owner after the merge. The docstring is for `halted_run` in `src/anesthesia_sim/app/run_presentation.py`, and its present docstring is removed from both copies of the tree first. A separate `claude -p` run at high effort writes each text. It can read and search files and can run nothing. One copy of the tree has the four resident files as `origin/main` has them. The other has one short `CLAUDE.md` in their place, written by a run that was given the four files to read and did not have them loaded as its own instructions.
+
+A judging run checks each text against the criteria below. It has no file of this repository loaded, and it is not told which copy of the tree a text came from. For each criterion it says whether the text passes, and it quotes the sentence that decides it.
+
+1. Both texts, the federal plain language guide: the text's reader can follow every sentence with what they already know ("write for your audience"). The reader of the reply is the project owner, an anesthesiologist and intensive-care physician who does not know the internal names of tests, checks and tools. The reader of the docstring is a Python developer who knows the basics of anesthesia and does not know this repository's names or history.
+2. Both texts, the same guide: each technical term or project name that the reader would not know is explained where it first appears ("make sure to define your terms").
+3. Both texts, the same guide: each word is the familiar one, used in its everyday sense ("pick the familiar or commonly used word over the unusual or obscure").
+4. Both texts, Anthropic's prompting guide for Claude Fable 5, the first source listed above: the text includes no detail that would not change what its reader does next ("be selective about what you include").
+5. The reply, Google's "Writing good CL descriptions": it opens with a short statement of specifically what was done, and it gives the further information that the reader needs to understand the change as a whole.
+6. The docstring, Google Python Style Guide § 3.8: it gives enough to write a call to the function without reading its code, and no sentence only repeats what the signature shows ("Docstrings that do not provide any new information should not be used").
+7. Both texts, the owner's fixed constraint and not a published guide: no unit, value, condition or citation that the safety-critical standard requires is missing or wrong. This session checks that against the code and the item, because the judging run does not read the repository.
+
+The short-instruction text wins a pair when it fails fewer of criteria 1 to 6 than the other text, and criterion 7 finds no fault in it that the other text does not have. An equal count is not a win.
+
+The order of each pair was set by `secrets.randbelow(2)`, where 1 puts the short-instruction text first. The reply drew 1, so text 1 of the reply pair is the short-instruction text. The docstring drew 0, so text 1 of the docstring pair is the text written under today's files. The judging run and the owner see the same numbering.
 
 **Still to build.** Step 4, which moves reporting out of replies: `CLAUDE.md` has four sentences that tell a session to report something "in your reply". Cut `.claude/rules/plain-writing.md` to less than its old length and record the rule's edits in `docs/resident-instructions.md`. Write the docstring and reply examples to the guides above, and test them where the text is written. Then measure Done-when.
 
