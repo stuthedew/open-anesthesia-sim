@@ -1289,7 +1289,12 @@ def test_a_value_not_built_as_the_type_is_refused_whatever_it_holds() -> None:
 
         assert f"it is {type(unbuilt).__name__}" in str(raised.value)
         assert "build it as CaseInstant(...)" in str(raised.value)
-        assert "Supported run length" in str(raised.value)
+        # The refusal ends by naming the section that gives the run length,
+        # which is in `docs/INTERFACE.md` since `PL-CTXZ` moved it there.
+        assert str(raised.value).endswith(
+            "which checks it against the supported run length once "
+            '(docs/INTERFACE.md, "Supported run length")'
+        )
 
     for unbuilt in (6_000, 6_000.0, True, None):
         with pytest.raises(TypeError, match="was not built as StepCount") as raised:

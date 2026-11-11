@@ -1778,10 +1778,20 @@ def test_a_unit_with_no_derived_precision_is_refused() -> None:
         (AgentAmount.DELIVERED, AgentAmountUnit.MILLILITRES_OF_VAPOUR),
     ]
 
+    # The refusal sends a developer to the section that derives each precision.
+    # That section is in `docs/INTERFACE.md` since `PL-CTXZ` moved it there.
+    remedy = (
+        "Derive one in the section 'Displayed precision' of docs/INTERFACE.md "
+        "and add it to app/formatting.py before showing this amount in this unit."
+    )
+    interface_document = Path(__file__).resolve().parents[2] / "docs" / "INTERFACE.md"
+    assert "\n### Displayed precision\n" in interface_document.read_text(encoding="utf-8")
+
     for amount, unit in refused:
         message = f"No displayed precision is derived for a {amount.value} in {unit.value}"
-        with pytest.raises(ValueError, match=message):
+        with pytest.raises(ValueError, match=message) as raised:
             agent_amount_display_precision(amount, unit)
+        assert str(raised.value).endswith(remedy)
         with pytest.raises(ValueError, match=message):
             AgentAmountPrecision(amount, unit, 0)
 
