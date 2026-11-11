@@ -1,7 +1,7 @@
 ---
 id: PL-8Q1P
 title: Run the heuristic evaluation of the current interface: four learner tasks against the 14 heuristics in Zhang et al. 2005, by a session and by the owner independently
-priority: P2
+priority: P3
 effort: M
 status: blocked
 classes: planning, ux

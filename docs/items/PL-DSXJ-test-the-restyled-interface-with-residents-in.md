@@ -1,7 +1,7 @@
 ---
 id: PL-DSXJ
 title: Test the restyled interface with residents in rounds of five, scored by tasks completed and values misread
-priority: P2
+priority: P3
 effort: L
 status: blocked
 classes: planning, ux

@@ -3,12 +3,15 @@ id: PL-6590
 title: ROADMAP.md's Gate 3 row and v0.7.0's frozen-list heading say the list clears before v0.7.0's implementation begins, but v0.7.0's Required scope closed in v0.6.16 while Gate 3 was still open
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: defect, docs
 touches: ROADMAP.md
 deferred-from: v0.7.0 - the answer decides how a gate orders its work from Gate 4 on, and no displayed value depends on it
 added: 2026-11-10
+closed: 2026-11-11
+pr: 2133
 payoff: a reader of the roadmap can tell whether debt must clear before a milestone's features are built, and the record matches what was done
+verify: grep -qF 'with no decision recorded to set the rule aside' ROADMAP.md
 ---
 
 **Problem.** ROADMAP.md's Gate 3 row and v0.7.0's frozen-list heading say the list clears before v0.7.0's implementation begins, but v0.7.0's Required scope closed in v0.6.16 while Gate 3 was still open.
@@ -29,3 +32,5 @@ payoff: a reader of the roadmap can tell whether debt must clear before a milest
 **Recommendation: 1.** The gate exists so that new work does not outrun the debt already owed. A search of `ROADMAP.md` and the item store on 2026-11-11 found no decision that set the rule aside, so the record shows the rule was not applied, not that it was changed. Writing answer 2 would turn an omission into policy. The choice is the owner's because it sets the order in which debt and new features are worked.
 
 **Generator check.** A one-off: the rule and the work disagreed once. No head's `misread:` states which order a debt gate imposes.
+
+**Answered 2026-11-11: answer 1, keep the rule** (project owner, 2026-11-11, ratified, over rewriting the rule as "debt and features are worked side by side"). The owner replied "Agree with recs" at 23:49 CST on 2026-11-10 to a session whose recommendation was answer 1. The Gate 3 row in `ROADMAP.md` § "The timeline" now records that v0.7.0's Required scope was worked before the gate's second group cleared, with no decision recorded, so the rule in § "The cadence" binds again from Gate 4. `PL-JF22` covers the tooling that offered the build work while the gate was open.

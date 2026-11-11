@@ -1,7 +1,7 @@
 ---
 id: PL-2V6V
 title: Draw grey-box layouts of the Default Workspace for each of the four learner tasks, with no colour or styling
-priority: P2
+priority: P3
 effort: M
 status: blocked
 classes: planning, ux

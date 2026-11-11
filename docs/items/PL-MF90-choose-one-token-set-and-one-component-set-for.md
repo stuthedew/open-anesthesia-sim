@@ -1,7 +1,7 @@
 ---
 id: PL-MF90
 title: Choose one token set and one component set for the interface pass, in the NCSA style the owner picked
-priority: P2
+priority: P3
 effort: L
 status: blocked
 classes: planning, ux
