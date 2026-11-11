@@ -66,6 +66,7 @@ from docket.vcs import (
     _landed_since,
     _landing_split,
     _Landings,
+    _LandingSplit,
     _pathspec_chunks,
     _run_git,
     _standing,
@@ -2794,6 +2795,9 @@ def _cut_runner(
             return "fork\n"
         if args[0] == "rev-list":
             return "onbase some/path\n"
+        if args[0] == "diff" and "--diff-filter=D" in args:
+            # `_Landings.landing` asks which paths a ref deleted: none here.
+            return ""
         if args[0] == "diff" and "--name-only" in args:
             ref = next(arg for arg in args if "..." in arg).split("...")[-1]
             return _name_only(tuple(notes.get(ref, [])), args)
@@ -4268,16 +4272,14 @@ def test_every_landed_reader_answers_from_the_branch_s_own_history(
             tuple(edit.identifier for edit in stranded(repo.root, set(), runner=_run_git).edits),
         )
 
-    real = _Landings.split
+    real = _Landings.landing
 
-    def everything_landed(
-        self: _Landings, ref: str
-    ) -> tuple[tuple[str, ...], tuple[str, ...]] | None:
-        split = real(self, ref)
-        return None if split is None else (split[0] + split[1], ())
+    def everything_landed(self: _Landings, ref: str) -> _LandingSplit | None:
+        found = real(self, ref)
+        return None if found is None else _LandingSplit(landed=found.landed + found.outstanding)
 
     before = verdicts()
-    monkeypatch.setattr(_Landings, "split", everything_landed)
+    monkeypatch.setattr(_Landings, "landing", everything_landed)
     patched = verdicts()
     monkeypatch.undo()
     repo.git("merge", "-q", "--squash", restore)
@@ -5738,3 +5740,80 @@ def test_orphaned_reports_a_post_merge_commit_that_only_deletes_a_file(tmp_path:
     [branch] = report.branches
     assert [commit.commit for commit in branch.commits] == [lost]
     assert set(branch.outstanding) == {"old.txt"}
+
+
+def _branch_that_adds_and_deletes(tmp_path: Path) -> _Repo:
+    """A base holding `old.txt`, and `claude/work`, which adds `a.txt` and deletes `old.txt`."""
+    repo = _Repo(tmp_path / "repo")
+    repo.commit("seed", old_txt="old\n", b_txt="b\n")
+    repo.git("checkout", "-qb", "claude/work")
+    repo.commit("PL-0001: the work", a_txt="a\n")
+    repo.git("rm", "-q", "old.txt")
+    repo.git("commit", "-qm", "PL-0001: retire old.txt")
+    repo.git("checkout", "-q", "main")
+    return repo
+
+
+def test_a_ref_whose_deletion_the_base_never_took_is_not_taken_whole(tmp_path: Path) -> None:
+    """`PL-80SM`: an edit the base holds does not carry a deletion the base never took.
+
+    The base writes the branch's `a.txt` by another route and keeps `old.txt`.
+    `taken_whole`, which `claims` asks of a claim's commits, read the content
+    split alone and called the branch taken. `_unlanded_refs` called the same
+    branch unlanded.
+    """
+    repo = _branch_that_adds_and_deletes(tmp_path)
+    repo.commit("PL-0002: the same a.txt, by another route (#2)", a_txt="a\n")
+
+    landings = _Landings("main", repo.root, _run_git)
+    refs = _unlanded_refs("main", repo.root, _run_git, include_remote=False)
+
+    assert landings.landing("claude/work") == _LandingSplit(landed=("a.txt",), kept=("old.txt",))
+    assert not landings.taken_whole("claude/work")
+    assert (refs.unlanded, refs.taken) == (["claude/work"], [])
+
+
+def test_a_deletion_the_base_took_stays_landed_after_the_path_is_written_again(
+    tmp_path: Path,
+) -> None:
+    """`PL-HXYJ`: a merged deletion is read from what the base did since the fork.
+
+    The base squash-merges the branch and later writes a new `old.txt`. Read
+    from the base's tip, the deletion was outstanding again. The merged branch
+    then read as unlanded, and `orphaned` reported the deletion as work left
+    behind.
+    """
+    repo = _branch_that_adds_and_deletes(tmp_path)
+    repo.git("merge", "-q", "--squash", "claude/work")
+    repo.git("commit", "-qm", "PL-0001: the work (#1)")
+    repo.commit("PL-0002: a new old.txt (#2)", old_txt="new\n")
+
+    found = _Landings("main", repo.root, _run_git).landing("claude/work")
+    report = orphaned(repo.root)
+
+    assert found == _LandingSplit(landed=("a.txt",), dropped=("old.txt",))
+    assert found.whole
+    assert report.known, report.declined
+    assert not report.branches
+
+
+def test_a_branch_that_only_deletes_is_taken_once_the_base_deletes_the_path(tmp_path: Path) -> None:
+    """A deletion the base took is the branch's change landed, with no content beside it.
+
+    While only content counted, a merged branch that deleted a file and wrote
+    nothing read as unlanded for as long as its ref lasted.
+    """
+    repo = _Repo(tmp_path / "repo")
+    repo.commit("seed", old_txt="old\n", b_txt="b\n")
+    repo.git("checkout", "-qb", "claude/work")
+    repo.git("rm", "-q", "old.txt")
+    repo.git("commit", "-qm", "PL-0001: retire old.txt")
+    repo.git("checkout", "-q", "main")
+
+    before = _unlanded_refs("main", repo.root, _run_git, include_remote=False)
+    repo.git("merge", "-q", "--squash", "claude/work")
+    repo.git("commit", "-qm", "PL-0001: retire old.txt (#1)")
+    after = _unlanded_refs("main", repo.root, _run_git, include_remote=False)
+
+    assert (before.unlanded, before.taken) == (["claude/work"], [])
+    assert (after.unlanded, after.taken) == ([], ["claude/work"])

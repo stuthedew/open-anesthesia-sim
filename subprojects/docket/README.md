@@ -1774,15 +1774,20 @@ Re-entry is read from its record instead: `re-entry` counts the filings whose
 `reenters:` names a `done` item, closed by the filing's `added:` date, whose fix
 should have covered them, as triage's generator check judged it, and any closed
 item three filings re-enter is named under the table as a generator whose fix
-did not hold. Where a head's own `reenters:` names that item, the head is its
-successor (`PL-4097`), and the line is listed apart under a heading of its own,
+did not hold. The three are counted per fact. A filing that re-enters a head
+counts against the first head that stated the same `misread:` fact, so the
+filings against one fact's successive heads are counted together, and the line
+says how many heads the fact has had and when the first was filed (`PL-YSV3`).
+An item that is no head keeps a line of its own. A later head of the same fact
+is the line's successor, and so is a head whose own `reenters:` names the item
+or one of the fact's heads (`PL-4097`). The line is then listed apart under a heading of its own,
 naming the successor and its status, so a settled line does not read as an open
 one (`PL-0WT0`). The successor answers the line while any successor is open.
 Once every successor has closed, three filings that re-enter the line after the
 last one closed list it as open again (`PL-SFW9`). A line answered with no successor owed is listed apart under a
 third heading. The item that records that answer names the line in its own
-`no-successor:` field, and the list names that item and its status
-(`PL-C4F0`). Three filings that re-enter the line after the answer's date,
+`no-successor:` field, or names any head of the line's fact there, and the
+list names that item and its status (`PL-C4F0`). Three filings that re-enter the line after the answer's date,
 which is the answering item's `added:`, list the line as open again. Closing
 the answering item does not move that date. Like `trend`, it decides nothing and prints no score.
 
@@ -2804,7 +2809,12 @@ of the five shared records `PL-T7Y1` verified, but it missed the other two,
 whose members were disjoint.
 `docket generators --misread` prints only the lines, one per head, sorted by the
 fact so heads stating one sit together, with the heads that state none last and
-the overlap block after — the list triage and grooming compare a capture
+the overlap block after. The heads of one fact are in the order they were
+filed. Under a fact that more than one head states in the same words, a line
+says how many heads have stated it and when the first was filed, so a fact on
+its third or fifth root-cause item is seen as one returning cause (`PL-YSV3`).
+`plan.facts` is the one grouping of heads by fact, and `docket inflow` counts
+re-entries against it. It is the list triage and grooming compare a capture
 against. `docket show` prints a head's line beside its verdict, and on a member
 beside each head that explains it.
 
@@ -2934,11 +2944,14 @@ where a recurrence is the same defect filed again. Neither `recurrences` nor
 `root-cause-of:` could carry it: the first is a title match against an item
 that may still be open, and the second records members filed while their head
 was open, two in the whole store after it closed. `docket inflow` counts it
-per period and names any closed item three filings re-enter (`PL-WXKD`).
+per period and names any closed item three filings re-enter (`PL-WXKD`). Where
+the item named is a head, the filing counts against the fact that head states,
+together with the filings that name the fact's other heads (`PL-YSV3`).
 
 `no-successor` records the answer to such a line when no successor head is
 owed. It goes on the item that gives the answer, through `docket set
---no-successor`, and names the closed item whose line it answers. The reason
+--no-successor`, and names the closed item whose line it answers, or any head
+of the fact that line is listed under. The reason
 is written in that item's brief. The record carries the answering item's own
 date, so the answer stops applying once three more filings re-enter the line
 after it (`PL-C4F0`).

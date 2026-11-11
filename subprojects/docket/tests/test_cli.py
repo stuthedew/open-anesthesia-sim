@@ -10212,6 +10212,41 @@ def test_generators_misread_sorts_by_the_fact_and_puts_missing_lines_last(
     assert "    PL-4040 and PL-5050 share PL-D3D3" in output
 
 
+def test_generators_misread_counts_the_heads_of_one_fact_and_dates_the_first(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-YSV3`: a fact with several heads says how many, in the order they were filed.
+
+    Each head was one line among ninety, so a fact on its third root-cause
+    item read as three causes. A fact with one head gets no count.
+    """
+    store = _overlapping_heads(tmp_path, misread="A fact one head states")
+    for identifier, added in (("PL-3030", "2026-08-09"), ("PL-7070", "2026-08-05")):
+        (store / f"{identifier}-a-later-head-of-one-fact.md").write_text(
+            _clustered(
+                identifier,
+                "A later head of one fact",
+                names=_MEMBERS,
+                generator=_LIVE,
+                misread=_MISREAD.lower(),
+                added=added,
+            ),
+            encoding="utf-8",
+        )
+
+    assert _run("generators", "--misread", "--items", str(store)) == 0
+
+    output = capsys.readouterr().out
+    assert (
+        "  PL-6060 (done)   A fact one head states\n"
+        f"  PL-4040 (ready)  {_MISREAD}\n"
+        f"  PL-7070 (ready)  {_MISREAD.lower()}\n"
+        f"  PL-3030 (ready)  {_MISREAD.lower()}\n"
+        "                   3 heads have stated this fact, the first filed 2026-08-01\n"
+    ) in output
+    assert output.count("heads have stated this fact") == 1
+
+
 def test_generators_on_a_head_prints_its_misread(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
