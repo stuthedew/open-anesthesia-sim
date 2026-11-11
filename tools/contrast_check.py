@@ -732,7 +732,7 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "1.4.3",
         "the agent-accounting status word when conservation holds "
         "(`_agent_accounting_status_text`, in each `AccountingPanel`, written "
-        "by `RunView.refresh`). Rendered at 20px bold, which is large text, "
+        "by `RunView.show_presentation`). Rendered at 20px bold, which is large text, "
         "so SC 1.4.3's 3:1 would suffice - the stricter bar is applied "
         "deliberately",
     ),

@@ -245,7 +245,7 @@ REJECTED_ACCOUNTING_NOTICE_TEMPLATE: Final = (
     "Simulation stopped — {failure_reason}. The values shown are the last completed step, "
     "except the agent accounting panel, which shows the rejected step. {exit}"
 )
-# The failure banner that `RunView.present_halt` writes before any frame of the
+# The failure banner that `run_presentation.halted_run` gives before any frame of the
 # stopped run has been drawn. At that point the chart and the readouts still show
 # the frame drawn before the stop, which is not the step the run stopped at. So
 # "the values shown are the last completed step" would be the stale-state
@@ -260,7 +260,7 @@ UNDRAWN_FAILURE_NOTICE_TEMPLATE: Final = (
 )
 # The failure banner for a halt when no frame has been drawn since the run started
 # over after a Reset or an agent change. The last frame then belongs to the run
-# before the restart. So `RunView.present_halt` withholds the readouts and their
+# before the restart. So `run_presentation.halted_run` withholds the readouts and their
 # clock, and the banner says so rather than calling them the last frame drawn.
 # Only a frame writes the chart, so the chart is not withheld, and the banner says
 # whose frame it still shows (adversarial review of `PL-J5GC`). The wording is a
@@ -1048,7 +1048,7 @@ def status_word(status: RunStatus, *, stopped_on_mark: bool) -> StatusWord:
 
     Args:
         status: The run's status this tick, either a `RunStatus` or the
-            snapshot carrying one. `RunView.present_halt` passes a
+            snapshot carrying one. `run_presentation.halted_run` passes a
             `RunStatus`, which is read without building any compartment
             value. So a halt is worded from facts that cannot fail
             (`PL-7DJK`).
@@ -1261,6 +1261,36 @@ READOUT_RESERVATIONS: Final[tuple[tuple[str, str], ...]] = tuple(
     else (WIDEST_COMPARTMENT_VALUE, WIDEST_COMPARTMENT_SECONDARY)
     for panel in READOUT_PANELS
 )
+
+
+def withheld_readouts(playback_rate: PlaybackRate) -> tuple[Readout, ...]:
+    """Build the seven readouts with every value withheld, in `READOUT_PANELS` order.
+
+    A halt shows these when the run has started over and no frame has been
+    drawn since. `WITHHELD_CONCENTRATION_TEXT` says why. Each panel keeps its
+    name and its gloss, so the row still says which values are missing. The
+    clock keeps its playback line, because the rate is a setting of the view
+    and does not belong to the run that was discarded.
+
+    Args:
+        playback_rate: The rate at which the run is played, as `readouts`
+            takes it.
+
+    Returns:
+        One `Readout` per panel.
+    """
+
+    return tuple(
+        Readout(
+            panel.name,
+            panel.qualifier if panel.qualifier is not None else EMPTY_METRIC_QUALIFIER,
+            WITHHELD_ELAPSED_TIME_TEXT if panel.quantity is None else WITHHELD_CONCENTRATION_TEXT,
+            format_playback_rate(playback_rate.multiplier)
+            if panel.quantity is None
+            else WITHHELD_MAC_MULTIPLE_TEXT,
+        )
+        for panel in READOUT_PANELS
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -1807,7 +1837,7 @@ def notice(
     a stopped run is stated inside the stopped run's banner, in place of its
     exit (`_stopped_run_exit`, `PL-3B34`).
 
-    `RunView.refresh` writes this banner while the frame for which the status
+    `RunView.show_presentation` writes this banner while the frame for which the status
     was read is on screen. That is what lets the failure wording say that the
     values shown are the last completed step. `halt_notice` gives the banner
     for a halt for which no frame has been drawn.
@@ -1873,7 +1903,7 @@ def halt_notice(
 ) -> str | None:
     """Return the banner for a halt with no frame drawn yet: a stopped run, or nothing.
 
-    `RunView.present_halt` writes this banner from the run's status alone,
+    `RunView.show_presentation` writes this banner from the run's status alone,
     before it attempts any frame. A failure uses
     `UNDRAWN_FAILURE_NOTICE_TEMPLATE` rather than `notice`'s wording, because
     with no frame drawn the values on screen are not the step the run stopped
@@ -2084,7 +2114,7 @@ def rejected_step_accounting(rejected: AgentSimulationValidationResult) -> Accou
     """The agent-accounting panel for a step whose accounting check failed and was rolled back.
 
     `accounting` returns it for a frame that drew after the failure.
-    `RunView.present_halt` writes it when no frame can be drawn, from the
+    `RunView.show_presentation` writes it when no frame can be drawn, from the
     `rejected_accounting` that the run's record carries. Until the adversarial
     review of `PL-J5GC`, the panel kept the last frame's "Valid" in that case,
     under a banner reporting the failed check.
@@ -2743,18 +2773,19 @@ def substance_heading(settings: RunSettings) -> str:
 class RunStatement:
     """What a run's screen states without a compartment value: every run-state widget but the dials.
 
-    `RunView._write_statement` is the only code that writes these widgets.
-    `refresh` calls it with the snapshot that a frame drew from. `present_halt`
-    calls it with `SimulationController.record()` when no frame can draw. So a
-    widget listed here shows the same thing on a drawn run and on a halted run
-    in the same state. Before this class existed, the halt wrote a list of
+    `RunView.show_presentation` is the only code that writes these widgets.
+    `run_presentation.drawn_run` builds the statement from the snapshot that
+    a frame drew from. `run_presentation.halted_run` builds it from
+    `SimulationController.record()` when no frame can draw. So a widget
+    listed here shows the same thing on a drawn run and on a halted run in
+    the same state. Before this class existed, the halt wrote a list of
     widgets chosen by hand, and each widget the list missed went on showing
     the last frame's run (`PL-X7D5`, `PL-1YDD`, `PL-DTJQ`).
 
-    The four dials are written next to this statement from the same record,
+    The four dials are built next to this statement from the same record,
     rather than carried in it. `setting_readouts` can raise for a control that
     can offer no setting, and everything here has to be on screen before that
-    happens (`PL-85LJ`).
+    refusal is raised (`PL-85LJ`, `run_presentation.DialsNotOffered`).
 
     Attributes:
         agent_id: The running agent. `RunView._apply_agent_color_scheme`
@@ -2792,7 +2823,7 @@ def run_statement(
     banner: str | None,
     stopped_on_mark: bool,
 ) -> RunStatement:
-    """Return what a run's screen shows from its record alone, for `RunView._write_statement`.
+    """Return what a run's screen shows from its record alone, for `RunView.show_presentation`.
 
     This function builds no compartment value. So when a run halts because of
     a compartment value, stating that halt cannot raise the same error again
@@ -3214,8 +3245,8 @@ def compared_run_notice(notice_text: str | None, run_name: str | None) -> str | 
     use to limit what follows to one subject.
 
     It takes the run's name rather than the frame and an index, unlike
-    `compared_run_line`, which takes the frame. `RunView.present_halt` also
-    writes the banner, and it states a halt from the snapshot alone, because
+    `compared_run_line`, which takes the frame. `run_presentation.halted_run`
+    also words the banner, and it states a halt from the run's record alone, because
     the frame is what may have failed (`PL-25KS`). Reading the run count from
     the frame there would drop the attribution in exactly the case it exists
     for. The name that the dashboard has already given the run through

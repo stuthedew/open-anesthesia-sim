@@ -62,6 +62,7 @@ from PySide6.QtWidgets import (
 )
 
 from anesthesia_sim.app import control_timeline as control_timeline_module
+from anesthesia_sim.app import run_presentation as run_presentation_module
 from anesthesia_sim.app import run_view as run_view_module
 from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app import theme
@@ -168,6 +169,7 @@ from anesthesia_sim.app.playback import (
 )
 from anesthesia_sim.app.qt_chart import TraceLegend
 from anesthesia_sim.app.qt_widgets import BookmarkDialog, MarkListingLabel, ParameterSlider
+from anesthesia_sim.app.run_presentation import RunPresentation
 from anesthesia_sim.app.run_series import (
     COMPARTMENT_QUANTITIES,
     COMPARTMENT_STATE_INDEX,
@@ -1885,10 +1887,12 @@ def test_a_halt_whose_frame_cannot_be_drawn_is_still_shown_on_every_run(
     """The frame is the shared render path, so a halt caused by its exception cannot wait for it.
 
     Every controller is failed. A reader has to see the status word and the
-    banner that say so, and neither needs a frame. When one run's refresh
-    raises on every attempt, the halt's own presentation raises too, and the
-    exception is swallowed. Before `present_halt`, both status words went on
-    showing the state from before the exception, with no banner under either.
+    banner that say so, and neither needs a frame. Here one run's frame cannot
+    be built on any attempt. The halt is still written, from each run's record,
+    and the frame that the halt path tries afterwards fails again and is
+    swallowed. Before a halt was written from the record alone, both status
+    words went on showing the state from before the exception, with no banner
+    under either.
     """
 
     first = SimulationController()
@@ -1897,10 +1901,15 @@ def test_a_halt_whose_frame_cannot_be_drawn_is_still_shown_on_every_run(
     second.start()
     view = _shown_view(application, first, second)
 
-    def failing_refresh(snapshot: object) -> None:
-        raise RuntimeError("this run's widgets could not be written")
+    build = view.runs[0].presentation
 
-    view.runs[0].refresh = failing_refresh  # type: ignore[method-assign]
+    def failing_frame(drawn: SimulationSnapshot | None = None) -> RunPresentation:
+        if drawn is not None:
+            raise RuntimeError("this run's frame could not be built")
+
+        return build()
+
+    view.runs[0].presentation = failing_frame  # type: ignore[method-assign]
 
     view.render_tick()
 
@@ -1912,7 +1921,7 @@ def test_a_halt_whose_frame_cannot_be_drawn_is_still_shown_on_every_run(
         assert run._status_text.text() == "Stopped — simulation error"
         notice = run._notice_text.notice()
         assert notice is not None
-        assert "RuntimeError: this run's widgets could not be written" in notice
+        assert "RuntimeError: this run's frame could not be built" in notice
         assert run._pause_button.isEnabled() is False
         assert run._start_button.isEnabled() is False
 
@@ -2167,7 +2176,7 @@ def test_a_halt_is_shown_when_the_snapshot_itself_is_refused(
     that quotient by replacing what the compartment returns. No supported
     setting produces one (`core/concentration.py`), and since `PL-544D` a
     write larger than the capacity is refused. Before `PL-7DJK`,
-    `present_halt` read a fresh snapshot for the status word, the transport
+    `show_presentation` read a fresh snapshot for the status word, the transport
     and the banner. So the same refusal escaped the render tick, with the
     controller failed and the screen showing "Running", Pause offered and no
     banner. The three are now written from `SimulationController.record()`,
@@ -2338,7 +2347,7 @@ def test_a_halt_is_stated_before_its_dials_are_written(
 ) -> None:
     """The status word, the transport and the banner are on screen before a dial is written.
 
-    `present_halt` writes the dials through `dashboard_frame.setting_readouts`.
+    `show_presentation` writes the dials through `dashboard_frame.setting_readouts`.
     That function raises for a control that can offer no setting, such as a
     fresh gas flow range narrower than the dial's 0.1 L/min step. No shipped
     machine declares such a range. The circuit does not refuse one when it is
@@ -2363,7 +2372,7 @@ def test_a_halt_is_stated_before_its_dials_are_written(
     controller.fail("RuntimeError: step exploded")
 
     with pytest.raises(ValueError, match="can offer no setting"):
-        run.present_halt()
+        run.show_presentation(run.presentation())
 
     assert run._status_text.text() == "Stopped — simulation error"
     assert run._start_button.isEnabled() is False
@@ -2387,10 +2396,10 @@ def test_a_halt_after_an_agent_change_names_one_agent(
 
     A run that has recorded nothing switches agent at once on a pick, so the
     frame that follows is the first to show the new agent. When that frame
-    fails, `present_halt` is the only writer. It used to write the dials but
+    fails, `show_presentation` is the only writer. It used to write the dials but
     nothing of the agent's identity. The screen showed "Delivered desflurane"
     under a subtitle, a chip and a heading that still named sevoflurane, in
-    sevoflurane's colours (`PL-1YDD`). `present_halt` now writes every
+    sevoflurane's colours (`PL-1YDD`). `show_presentation` now writes every
     identity widget from the controller's record.
     """
 
@@ -2466,7 +2475,7 @@ def test_a_halt_after_an_agent_change_shows_no_mac_multiple_beside_another_agent
 
     monkeypatch.undo()
     view_frame = run._readout_row.panels
-    run.refresh(controller.snapshot())
+    run.show_presentation(run.presentation(controller.snapshot()))
 
     assert all(panel.secondary_label.text() != "\u2014 \u00d7MAC" for panel in view_frame), (
         "the first frame that draws writes every card's multiple again"
@@ -2487,7 +2496,7 @@ def test_a_halt_on_the_first_frame_still_states_the_1_mac_line(
     run._one_mac_text.setText("")
     monkeypatch.setattr(controller, "_failure_reason", "the first frame failed")
 
-    run.present_halt()
+    run.show_presentation(run.presentation())
 
     record = controller.record()
     assert run._one_mac_text.text() == format_mac_reference(
@@ -2530,9 +2539,9 @@ def test_a_drag_that_halts_the_run_lists_the_record_the_run_holds(
 #: run drawn by a frame and on the same run halted with every frame failing.
 #: Each is mapped to the reason it may differ. The test below requires every
 #: other widget attribute, including one added later, to show the same content
-#: on both runs. That requirement makes `RunView._write_statement` the one
+#: on both runs. That requirement makes `RunView.show_presentation` the one
 #: writer of a run's state, rather than a list that somebody has to maintain.
-#: A widget left out of `_write_statement` still shows the last frame's run on
+#: A widget left out of `show_presentation` still shows the last frame's run on
 #: a halt, and the test fails there (`PL-X7D5`).
 #:
 #: The list is checked in both directions, as `FOREGROUND_NOT_DECLARED` is. An
@@ -2562,7 +2571,7 @@ FRAME_WIDGETS: dict[str, str] = {
         "the sentence under the verdict, which a halt withholds with it."
     ),
     "_notice_text": (
-        "the banner. `_write_statement` writes it on both paths, worded for "
+        "the banner. `show_presentation` writes it on both paths, worded for "
         "whether a frame drew: `halt_notice` says no frame has been drawn, and "
         "`notice` says the values shown are the last completed step. "
         "The test below holds each to its own wording."
@@ -2649,9 +2658,9 @@ def test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one(
     the screen says. The changes are a new agent, which is a new case with no
     control changes, the delivered dial renamed, and the run failed by the
     frame. That screen is compared, widget attribute by widget attribute, with
-    the same run once a frame draws it. It is one state, written once by
-    `present_halt` and once by `refresh`. Before `_write_statement`, the halt
-    wrote four widgets and a dial row. The agent identity and the
+    the same run once a frame draws it. It is one state, written once from
+    the halt's presentation and once from the frame's. Before both went through
+    one writer, the halt wrote four widgets and a dial row. The agent identity and the
     control-change panel went on showing the run that the last frame drew
     (`PL-1YDD`, `PL-DTJQ`, `PL-X7D5`).
 
@@ -2698,7 +2707,7 @@ def test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one(
     )
     assert sorted(differing - set(FRAME_WIDGETS)) == [], (
         "these widgets read differently on a halted run and on the same run drawn: write "
-        "them in RunView._write_statement, or name them in FRAME_WIDGETS with the reason "
+        "them in RunView.show_presentation, or name them in FRAME_WIDGETS with the reason "
         "only a frame can state them"
     )
     assert sorted(set(FRAME_WIDGETS) - differing) == [], (
@@ -2742,7 +2751,7 @@ VALUE_GROUPS: dict[str, tuple[str, ...]] = {
 }
 
 _NAMES_THE_AGENT = (
-    "names the run's agent. `_write_statement` writes it from the same record as "
+    "names the run's agent. `show_presentation` writes it from the same record as "
     "`_compartment_substance_text`, and the test above holds it to that record"
 )
 _HOLDS_OTHER_WIDGETS = "holds other widgets, and each of them is listed under its own name"
@@ -3076,7 +3085,7 @@ def _a_halt_after_an_agent_change_whose_dials_cannot_be_written(
 ) -> tuple[RunView, _GroupReadings]:
     """An agent change after which no frame can be drawn, on a run whose dials cannot be written.
 
-    `present_halt` writes the new agent's heading and 1 MAC line, then raises from
+    `show_presentation` writes the new agent's heading and 1 MAC line, then raises from
     `setting_readouts` when it writes the dials. Until the blind review of
     `PL-J5GC`, the old agent's values were withheld only after that, so the
     exception left every card showing the old agent's percent and ×MAC number
@@ -3091,7 +3100,7 @@ def _a_halt_after_an_agent_change_whose_dials_cannot_be_written(
     controller.pause()
     run = _shown_view(application, controller).runs[0]
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
-    monkeypatch.setattr(run_view_module, "setting_readouts", _no_setting)
+    monkeypatch.setattr(run_presentation_module, "setting_readouts", _no_setting)
 
     _select_agent(run, "desflurane")
     dialog = run._new_case_dialog
@@ -3113,17 +3122,17 @@ def _a_dial_write_refused_after_the_cards(
 ) -> tuple[RunView, _GroupReadings]:
     """A frame that wrote the cards for a new agent, then could not write the dials.
 
-    `refresh` writes the cards before `_write_statement`, and `setting_readouts`
-    raises last, from `_write_settings`. Before `PL-6RJ0`, the 1 MAC line was also
-    written in `_write_settings`, so it went on naming the old agent above the new
-    agent's cards. The settings group is not checked here. `setting_readouts`
-    refuses every state in this scenario, so no dial can be written from any
-    state, and the banner names the refusal.
+    `show_presentation` writes the cards first, and raises the refusal from
+    `setting_readouts` last. Before `PL-6RJ0`, the 1 MAC line was written with the
+    dials, so it went on naming the old agent above the new agent's cards. The
+    settings group is not checked here. `setting_readouts` refuses every state in
+    this scenario, so no dial can be written from any state, and the banner names
+    the refusal.
     """
 
     controller = SimulationController()
     run = _shown_view(application, controller).runs[0]
-    monkeypatch.setattr(run_view_module, "setting_readouts", _no_setting)
+    monkeypatch.setattr(run_presentation_module, "setting_readouts", _no_setting)
 
     _select_agent(run, "desflurane")
 
@@ -3526,7 +3535,7 @@ def test_a_setting_changed_on_a_halted_run_is_not_shown_as_the_setting_its_value
     way out. Each scenario builds its run. It takes the dial settings that the run
     should show from a run that never stopped.
 
-    The halt that the run shows when no frame can be drawn (`present_halt`) gives
+    The halt that the run shows when no frame can be drawn (`show_presentation`) gives
     the same refusal and the same way out. Until the test-strength pass of
     `PL-J5GC`, no test checked that banner after a refused dial.
     """
@@ -3539,7 +3548,7 @@ def test_a_setting_changed_on_a_halted_run_is_not_shown_as_the_setting_its_value
     assert notice is not None
     assert notice.endswith(f"{_CARDIAC_OUTPUT_REFUSED_ON_A_STOPPED_RUN}. {way_out}")
 
-    run.present_halt()
+    run.show_presentation(run.presentation())
 
     halted = run._notice_text.notice()
     assert halted is not None
@@ -7700,7 +7709,7 @@ def test_the_halt_and_refusal_banners_name_their_run(application: QApplication) 
 def test_a_halt_stated_without_a_frame_still_names_the_run_it_stopped(
     application: QApplication,
 ) -> None:
-    """`present_halt` has no frame by design, so the name cannot be read off one.
+    """`show_presentation` has no frame by design, so the name cannot be read off one.
 
     It shows a halt from the snapshot alone, because the frame is what may
     have failed (`PL-25KS`). `_halt_every_run` swallows the redraw that
@@ -7736,7 +7745,7 @@ def test_a_banner_standing_when_a_branch_opens_is_named_from_that_frame(
     branch appears on, not on some later tick (`PL-TSZM`).
 
     The presentation that `_handle_fork` drives delivers the name. It
-    rewrites every run's banner through `_write_notice` after `_rename_runs`
+    rewrites every run's banner through `show_presentation` after `_rename_runs`
     has named the runs. A rewrite attached to `set_run_name` would not be the
     mechanism. Such a rewrite was written and then removed. The fork's own
     presentation and the Reset that drops a branch both already rewrite the
@@ -9639,7 +9648,7 @@ def test_a_halt_whose_dials_cannot_be_written_still_withdraws_branch_here(
 ) -> None:
     """A halt asks for a frame even if the dials cannot be written, so "Branch here" is withdrawn.
 
-    `present_halt` raises once it has shown the halt, when a fresh gas flow range is narrower
+    `show_presentation` raises once it has shown the halt, when a fresh gas flow range is narrower
     than the dial's step (`PL-M3M2`). `_halt_run` used to ask for no frame then, and the
     dashboard restates its branch panel only when it draws. So "Branch here" kept offering
     the halted trunk. Every slot of a run reaches this path through the halt gate, including
@@ -10067,7 +10076,7 @@ def test_a_dial_write_that_refuses_on_a_halt_still_restates_every_panel(
 ) -> None:
     """A run whose dials cannot be written on a halt still lets the halt restate every panel.
 
-    `present_halt` writes the dials last and raises when `setting_readouts`
+    `show_presentation` writes the dials last and raises when `setting_readouts`
     cannot build them, as `test_a_halt_is_stated_before_its_dials_are_written`
     shows for one run. `_halt_every_run` used to call it in a bare loop. So the
     exception left the halt path before the branch panel and the bookmark panel
@@ -10280,7 +10289,7 @@ def test_a_drag_whose_readouts_refuse_halts_the_run(
     def no_setting(settings: object) -> NoReturn:
         raise ValueError("this control can offer no setting")
 
-    monkeypatch.setattr(run_view_module, "setting_readouts", no_setting)
+    monkeypatch.setattr(run_presentation_module, "setting_readouts", no_setting)
     capfd.readouterr()
 
     _set_fresh_gas_flow(run, 4.0)

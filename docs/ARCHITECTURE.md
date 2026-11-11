@@ -125,7 +125,8 @@ src/anesthesia_sim/
 │   ├── view_contract.py            # the View contract every View implements: the View protocol, the ViewContext it is built from, the FrameRequest naming the window and width it draws, the ViewTick it is drawn from, the RunSurfaces a View may show, ViewRequests for a change to shared state or a frame, including the agent cost View's unit and the reader's price for an agent (PL-B396, PL-1P15), PreferencesInForce, the reader's preferences each tick shows every View (PL-B396), and the saved-state version check (PL-TH35)
 │   ├── views.py                    # the shipped Views, each a QWidget satisfying view_contract.View: ConcentrationView, WashInView, ParameterControlsView, AccountingView (PL-TH35) and CompartmentSchematicView, which shows one RunSchematic per displayed run, each a run surface its run writes, withholds and names (PL-RNYV), and AgentCostView, which shows one RunAgentCost per displayed run in the unit the reader's preferences hold, with a selector that asks the dashboard to change it (PL-B396), the cost at the reader's price, and the form that sets that price (PL-1P15); each chart View holds and saves its own time window and writes the lines that depend on it from its own frame (PL-L59K)
 │   ├── view_registry.py            # the View registry: each View kind's tag, written once as a literal, its RegisteredView entry with the factory that builds it, and RETIRED_TAGS for a tag renamed or removed; REQUIRED_REACHABLE, the kinds a build fails on import without (PL-50PZ); the text of the missing-kind and failed-build notices (PL-R1WQ)
-│   ├── run_view.py                 # one run's widgets, controller, handlers, refresh and halt; RunView, instantiated once per run (the seam PL-B9PY drew)
+│   ├── run_view.py                 # one run's widgets, controller and handlers, and show_presentation, the one writer of those widgets; RunView, instantiated once per run (the seam PL-B9PY drew)
+│   ├── run_presentation.py         # everything one run's panel shows at one moment, as one value: RunPresentation, built by drawn_run for a frame and by halted_run for a halt, with the compartment values kept or withheld together (PL-RF2S); toolkit-independent
 │   ├── halt_gate.py                # halt_gate: every slot of RunView and SimulationView is called through it (§ "Failures and halts", PL-HJKN); toolkit-independent
 │   ├── run_surfaces.py             # the parts of a run that may sit in an Area, each built any number of times from the values it draws: ParameterControls, AccountingPanel, and keep_until_destroyed, which keeps the list of live copies RunView writes (PL-9LNF); the third such part, RunSchematic, is in qt_schematic.py, and the fourth, RunAgentCost, in qt_agent_cost.py
 │   ├── qt_widgets.py               # PySide6 leaf widgets that decide nothing: MetricPanel, ReadoutRow, ParameterSlider, NoticeLabel, NewCaseDialog, BookmarksPanel, ForkPanel, initial_window_geometry
@@ -881,9 +882,9 @@ and the dashboard renders it as "Stopped — simulation error" with a banner ove
 the values. A halted run must never look like a pause, because a pause is a run
 that continues when asked and a halt is a run that cannot continue. `RunStatus`
 carries both halts, and the snapshot extends `RunStatus`.
-`RunView.present_halt` states a halt from the `RunRecord` that
+`run_presentation.halted_run` states a halt from the `RunRecord` that
 `SimulationController.record()` returns, and `RunRecord` also extends
-`RunStatus`. `present_halt` does this without building any compartment value,
+`RunStatus`. `halted_run` does this without building any compartment value,
 because the snapshot's own `Fraction`s are among the values that can cause a
 halt. The banner it writes (`dashboard_frame.halt_notice`) says that no frame of
 the stopped run has been drawn. `refresh` replaces that banner on the first
@@ -915,11 +916,13 @@ were left without one, each found by a separate review (`PL-HJKN`). So
 `test_every_slot_that_touches_a_run_passes_the_halt_gate` now fails on a
 connected slot that does not pass the gate.
 
-Every widget that states what the run holds is written by one writer.
-`RunView._write_statement` writes the status word, the transport, the agent
-identity, the four dials, the control-change panel and the banner from
-`dashboard_frame.run_statement`. Both `refresh` and `present_halt` call it, so
-on each of these widgets a halted run shows what a frame would show. A dial
+Every widget of a run is written by one writer, from one value.
+`RunView.show_presentation` writes the status word, the transport, the agent
+identity, the four dials, the control-change panel, the banner and every
+compartment value from one `RunPresentation` (`app/run_presentation.py`).
+`drawn_run` builds that value from the snapshot a frame drew from, and
+`halted_run` builds it from the run's record when no frame can draw. So on
+each of these widgets a halted run shows what a frame would show. A dial
 dragged into the halt shows the value the run holds, rather than the value from
 before the drag (`PL-85LJ`). An agent changed just before the halt is named on
 every identity widget (`PL-1YDD`). The control-change panel lists the record
@@ -961,7 +964,7 @@ supported run length. Such a run asks for no frame, and nothing else needs to
 ask for one. The render tick draws whenever a displayed run's `record()`
 differs from the one its view last wrote (`RunView.owes_a_frame`). It also
 draws when the set of runs differs from the set it last drew over. Each view
-stores the record at the moment it writes it, `present_halt` included. So a
+stores the record at the moment it writes it, on a halt as on a frame. So a
 frame that keeps failing is attempted once rather than on every tick
 (`PL-X7D5`, `PL-T995`). Neither timer stops on either halt. Both timers are
 started once, when the window opens. A halted run leaves them firing and
@@ -1166,7 +1169,9 @@ specialist standard in `CLAUDE.md` that applies to this document (`PL-KRGY`).
 - **`tests/unit/`** — tests of one module's behavior in isolation, such as a
   compartment, a validator, a parameter loader, the controller and the
   displayed-value formatters. One test checks what the dashboard would show on
-  each tick, with no toolkit loaded (`test_dashboard_frame.py`). Every
+  each tick, with no toolkit loaded (`test_dashboard_frame.py`). Another
+  checks the one value a run's panel is written from, on a frame and on a
+  halt (`test_run_presentation.py`). Every
   operation and refusal of the area layout is tested in `test_layout_model.py`,
   `test_layout_serialization.py`, `test_layout_workspace.py`,
   `test_layout_migrations.py` and `test_layout_store.py`, which runs against

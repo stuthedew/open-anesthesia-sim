@@ -6,7 +6,7 @@ effort: L
 status: ready
 classes: safety, refactor
 feature: every-view-in-run-state-tests
-touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/views.py, src/anesthesia_sim/app/view_contract.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/run_surfaces.py, tests/integration, docs/ARCHITECTURE.md
+touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/views.py, src/anesthesia_sim/app/view_contract.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/run_surfaces.py, src/anesthesia_sim/app/run_presentation.py, src/anesthesia_sim/app/controller.py, tests/integration, tests/unit, tools/contrast_check.py, docs/ARCHITECTURE.md
 deferred-from: v0.7.0 - a new problem, not present at the freeze (817a4d88, 2026-10-25): its three members were filed on 2026-11-10; not live: checked 2026-11-10, the audit found no wrong value on screen behind any member, and the gap is in the tests
 added: 2026-11-11
 payoff: a value from an earlier run, or from the other compared run, has no widget to stay in, because every View and panel is drawn whole from one value on every path
@@ -57,7 +57,7 @@ Martin Fowler's "GUI Architectures" and "Passive View" could not be fetched, so 
 
 **Done when.** The design below is built in four pull requests, each leaving the application working:
 
-1. The frozen value and its pure builder, and `RunView.show` in place of `refresh` and `present_halt`. What a learner sees does not change.
+1. The frozen value and its pure builder, and `RunView.show_presentation` in place of `refresh` and `present_halt`. What a learner sees does not change. The design calls the method `show`. `RunView` is a Qt widget, which already has a `show`, so the build names it `show_presentation`.
 2. Every View is drawn from the tick alone, on a halt as on a drawn frame, and `RunSurfaces` is gone.
 3. Each run's name travels with its values, and no reader takes `snapshots[0]`.
 4. `test_every_registered_view_draws_a_state_alike_whatever_it_drew_before` is in `tests/integration/test_view_contract.py`, over every kind in `view_registry.REGISTERED` and the whole dashboard. The tables and layouts named under "What it replaces" are removed, and `docs/ARCHITECTURE.md` describes the new shape.
@@ -95,7 +95,7 @@ Each replay listed below fails against the code before its fix. `PL-B8DL`, `PL-0
 
 **Replays, each written to fail first.** The three open escapes are gaps in tests, and the audit of 2026-11-10 found no wrong value on screen behind them. So each replay plants the escaped defect in the code as it stands, shows that today's tests pass, and shows that the new test fails:
 
-- `PL-B8DL`: the schematic is left out of the withhold after a Reset that no frame draws.
+- `PL-B8DL`: the schematic is left out of the withhold after a Reset that no frame draws. [superseded 2026-11-11: this replay shows no gap, see "First pull request" below.]
 - `PL-0G2P`: the same, read from the painted amounts.
 - `PL-G2WC`: two compared runs' agent cost panels are written from each other's delivered amount.
 - `PL-VZ57`'s lead: after an agent change that no frame draws, the price form names the agent the run no longer holds. Whether that one is on screen today is not yet checked.
@@ -109,6 +109,14 @@ Each replay listed below fails against the code before its fix. `PL-B8DL`, `PL-0
 - **Where the value is defined.** Beside `RunStatement` and `run_statement` in `app/dashboard_frame.py`, which loads no toolkit, so the builder is tested in `tests/unit/test_dashboard_frame.py` with no widget.
 - **Tests that change.** `present_halt` is named 19 times under `tests/`. Those tests call `show` with a value built for a halt. The tests for `PL-25KS`, `PL-7DJK`, `PL-85LJ`, `PL-1YDD`, `PL-DTJQ` and `PL-6RJ0` keep their assertions.
 - **The first replay.** Plant the defect in the code before the change: leave the schematic out of `_withhold_the_discarded_run_s_values`. Record that today's suite passes with it, then show that a unit test of the builder fails when the withheld values leave the schematic out.
+
+**First pull request, built 2026-11-11: what was built, and what the replay showed.**
+
+- **Built.** `app/run_presentation.py` holds `RunPresentation`, `RunValues`, `drawn_run` and `halted_run`, and loads no toolkit. It is a module of its own, not part of `app/dashboard_frame.py`, because `app/compartment_schematic.py` and `app/agent_cost.py` import `dashboard_frame` and the value holds their types. `RunView.presentation` gathers what the panel holds and calls one of the two builders. `RunView.show_presentation` writes every widget from the value. `refresh`, `present_halt`, `_write_statement`, `_write_notice`, `_write_settings`, `_withhold_the_discarded_run_s_values`, `_restate_new_case_question` and `_started_over_since_the_cards` are gone. A count of start-overs (`_case`) and the last frame's `KeptValues` replace the flag. Dials that cannot be built travel in the value as `DialsNotOffered`, and `show_presentation` raises their refusal after it has written everything else, so every caller sees the exception it saw before.
+- **The planned replay showed no gap.** With the schematic left out of the withhold, today's suite fails: `test_a_reset_that_no_frame_draws_withholds_the_schematic_with_the_readouts` in `tests/integration/test_compartment_schematic_view.py` catches it (1 failed, 8,483 passed). `PL-B8DL`'s own brief says each of the two newer Views has one halt test written by hand. The claim in this item that the suite would pass was wrong.
+- **The replay that does show the gap.** That hand-written test names each value it checks, and it does not name the instant in the schematic's heading. Planted in the code before the change: on a withhold, `_show_schematic(replace(WITHHELD_SCHEMATIC, instant=self._schematic_shown.instant))`. Today's unit and integration tests pass with it (8,484 passed, 1 skipped). A learner would read "At 1m30s of simulated time" over empty containers of a run standing at its opening.
+- **Two tests fail on that defect and name no value.** `test_a_schematic_reset_with_no_frame_is_drawn_like_one_that_never_showed_a_run` compares everything the schematic draws with the schematic of a run that never drew a frame. Against the code before the change it passes, and with the planted defect it fails with `'At 1m30s of simulated time' != 'At — of simulated time'`. `test_a_halt_after_a_start_over_withholds_every_value_of_the_discarded_run` in `tests/unit/test_run_presentation.py` walks the fields of `RunValues`. With the same defect planted in `halted_run` it fails on `schematic`. Both runs used `PYTHONPATH` to point one test file at a copy of `src/` with the defect.
+- **Found for the second pull request.** (a) A View is given its runs only by a tick. On a dashboard whose first frame fails, the schematic View holds no copy of the run's schematic at all. (b) Pixels cannot be compared between two dashboards as they stand: one whose first frame failed lays the schematic's Area out 480 px wide, and one that drew a frame 706 px. The history test needs both instances laid out at one size, or it compares text, painted strings and frames. (c) When the dials cannot be built, the delivered line beside the 1 MAC line keeps its last text, as it did before this change. (d) The Reset question is still restated by a dashboard callback inside `show_presentation`, on a drawn frame only. It belongs in the whole-screen value of the third pull request. (e) A dashboard that never drew a frame shows the opening's own readouts, 0.00%, beside a withheld schematic. The readouts are true of the opening. The history test's fresh instance must take this into account.
 
 **Generator check.** This item is the head for the three open members of `every-view-in-run-state-tests`, and states the cause beneath the four closed heads it names.
 

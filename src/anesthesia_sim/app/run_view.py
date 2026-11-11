@@ -9,12 +9,12 @@ do share. `RunView` can be instantiated twice, and nothing in one instance
 refers to another run.
 
 `app/dashboard_frame.py` decides every claim that this class displays, and
-does so without a GUI toolkit. This class calls that module's functions once
-per tick, in the order that `refresh` sets. It writes the results into widgets
-that decide nothing (`PL-25KS`, decision D2). No number is formatted here and
-no colour is declared here. Colours come from `app/theme.py`, and they reach a
-widget through the functions in `app/stylesheets.py` that compose stylesheets
-(decision D10, `PL-Y4YX`).
+does so without a GUI toolkit. `app/run_presentation.py` calls that module's
+functions once per tick and gathers the results into one value. `show_presentation` writes
+that value into widgets that decide nothing (`PL-25KS`, decision D2). No
+number is formatted here and no colour is declared here. Colours come from
+`app/theme.py`, and they reach a widget through the functions in
+`app/stylesheets.py` that compose stylesheets (decision D10, `PL-Y4YX`).
 
 **Agent colour has one writer.** `_apply_agent_color_scheme` is the only
 method under `app/` that writes the ISO 5360 identity pair. It writes the pair
@@ -38,26 +38,28 @@ the toolkit and leave the run still showing "Paused" (`PL-HJKN`).
 `dashboard_frame.halt_disposition` decides how the stop is reported. A
 `SimulationDomainLimitError` is reported as reaching the supported run length,
 and anything else as a failure (`PL-V6M0`, `PL-Y5WR`, `PL-YK2V`).
-`present_halt` shows a halted run before any attempt to draw a frame. It works
-from the controller's record, and reading that record builds no compartment
-value. There are two reasons for this. First, the frame is drawn by a render
+A halted run is shown before any attempt to draw a frame, by `show_presentation` with the
+presentation that `presentation` builds when it is given no snapshot. That
+presentation is built from the controller's record, and reading that record
+builds no compartment value. There are two reasons for this. First, the frame is drawn by a render
 path that all runs share, and that path may be what raised. A halt reported
 only through the frame would then leave every status word showing "Paused" for
 a failed controller (`PL-25KS`). Second, building a fresh snapshot builds
 compartment values. When building one of those values was what raised, a halt
 reported from the snapshot was never shown at all (`PL-7DJK`).
 
-**The run-state widgets have one writer.** Every widget that a run shows is
-written from one of two sources. The run-state widgets show what the run
-holds: the status word, the transport, the agent identity, the dials, the
-control-change panel and the banner. The snapshot widgets show the snapshot
-that the frames were drawn from: the readouts, their clock and the accounting
-panel. `_write_statement` writes the run-state widgets from
-`dashboard_frame.run_statement`. Both `refresh` and `present_halt` call it, so
-a halted run looks the same as a drawn run in the same state. An earlier
-version of the halt code wrote to a list of widgets chosen by hand. Each widget
-that the list missed went on showing the run as it was at the last frame
-(`PL-X7D5`).
+**Every widget of a run has one writer, and it writes one value.** `show_presentation`
+writes all of a run's widgets from one `RunPresentation`
+(`app/run_presentation.py`). The run-state widgets show what the run holds:
+the status word, the transport, the agent identity, the dials, the
+control-change panel and the banner. The value widgets show compartment
+values: the readouts, their clock, the schematic, the delivered agent and the
+accounting panel. A drawn frame and a halt each build a presentation, and
+`show_presentation` writes the same widgets for both. On a halt the compartment values are
+the last frame's, or are withheld together when the run has started over since
+that frame. An earlier version of the halt code wrote to a list of widgets
+chosen by hand. Each widget that the list missed went on showing the run as it
+was at the last frame (`PL-X7D5`, `PL-RF2S`).
 
 **Timers move the run and nothing else** (decision D7). Each run has one
 `QTimer`, which drives `step_tick`. `step_tick` advances the controller by the
@@ -88,13 +90,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from anesthesia_sim.app.agent_cost import WITHHELD_DELIVERED, DeliveredShown, delivered_shown
+from anesthesia_sim.app.agent_cost import WITHHELD_DELIVERED, DeliveredShown
 from anesthesia_sim.app.chart_frame import PreviewRequest
-from anesthesia_sim.app.compartment_schematic import (
-    WITHHELD_SCHEMATIC,
-    SchematicShown,
-    schematic_shown,
-)
+from anesthesia_sim.app.compartment_schematic import WITHHELD_SCHEMATIC, SchematicShown
 from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.control_timeline import (
     AdjustmentGrouping,
@@ -103,7 +101,6 @@ from anesthesia_sim.app.control_timeline import (
 )
 from anesthesia_sim.app.controller import (
     RunRecord,
-    RunSettings,
     RunStatus,
     SettingPreview,
     SimulationController,
@@ -126,39 +123,26 @@ from anesthesia_sim.app.dashboard_frame import (
     SIMULATION_STEP_S,
     SIMULATION_TICK_INTERVAL_S,
     START_LABEL,
-    WITHHELD_ACCOUNTING,
-    WITHHELD_CONCENTRATION_TEXT,
-    WITHHELD_ELAPSED_TIME_TEXT,
-    WITHHELD_MAC_MULTIPLE_TEXT,
     Accounting,
     HaltDisposition,
     NewCaseQuestion,
+    SettingReadout,
     Transport,
     accounting,
     compared_panel_heading,
-    compared_run_notice,
-    delivered_line,
     halt_disposition,
-    halt_notice,
     new_case_question,
-    notice,
     preview_label,
     readouts,
     refused_reset_exit,
     refused_setting_notice,
-    rejected_step_accounting,
-    run_statement,
     setting_readouts,
     status_word,
     substance_heading,
     timeline_panel,
     transport,
 )
-from anesthesia_sim.app.formatting import (
-    format_mac_reference,
-    format_playback_rate,
-    format_subtitle,
-)
+from anesthesia_sim.app.formatting import format_playback_rate, format_subtitle
 from anesthesia_sim.app.halt_gate import halt_gate
 from anesthesia_sim.app.playback import (
     DEFAULT_PLAYBACK_RATE,
@@ -169,6 +153,16 @@ from anesthesia_sim.app.playback import (
 from anesthesia_sim.app.qt_agent_cost import RunAgentCost
 from anesthesia_sim.app.qt_schematic import RunSchematic
 from anesthesia_sim.app.qt_widgets import NewCaseDialog, NoticeLabel, ReadoutRow, styled_label
+from anesthesia_sim.app.run_presentation import (
+    DialsNotOffered,
+    KeptValues,
+    RunPanelState,
+    RunPresentation,
+    RunValues,
+    ValuesStanding,
+    drawn_run,
+    halted_run,
+)
 from anesthesia_sim.app.run_surfaces import (
     AccountingPanel,
     ParameterControls,
@@ -389,10 +383,9 @@ class RunView(QWidget):
         # rewrites this run's own labels at once, but only after the first
         # frame has written everything.
         self._presented = False
-        # The run's record as this view last wrote it, through `refresh` or
-        # `present_halt`. It is `None` until the first write. The dashboard
-        # draws a frame whenever the controller's record differs from it
-        # (`owes_a_frame`).
+        # The run's record as this view last wrote it, through `show_presentation`. It is
+        # `None` until the first write. The dashboard draws a frame whenever
+        # the controller's record differs from it (`owes_a_frame`).
         self._written_record: RunRecord | None = None
         # Whether a second run is on the chart. The dashboard writes it
         # through `set_comparing`, because how many runs are displayed is the
@@ -422,7 +415,7 @@ class RunView(QWidget):
         self._run_name_text.setHidden(True)
         # The name is stored beside the label because the banner needs it too.
         # The banner is written on a path that has no frame to read the name
-        # from (`_write_notice`). Reading the name back from the widget would
+        # from (`run_presentation.halted_run`). Reading the name back from the widget would
         # make the banner's attribution depend on a label's text, which is a
         # display detail.
         self._run_name: str | None = None
@@ -531,19 +524,30 @@ class RunView(QWidget):
         # setting in both units. The other shows the 1 MAC value that divides every
         # ×MAC number in the row. Both values are in `docs/MODEL.md`'s per-substance
         # tier. The dial and the chart's caption cannot carry them, because each is now
-        # a View that a reader can close (`PL-NWTM`). `_write_statement` writes both
+        # a View that a reader can close (`PL-NWTM`). `show_presentation` writes both
         # from one record on every path, so the two cannot disagree.
         self._delivered_text = styled_label("", color=INK)
         self._one_mac_text = styled_label("", color=MUTED)
         self._readout_row = ReadoutRow(
             readouts(snapshot, self._playback_rate), reservations=READOUT_RESERVATIONS
         )
-        # Whether the run has started over, by a Reset or an agent change, since
-        # the readout cards were last written. Only a frame writes the cards, the
-        # clock and the accounting panel. So until one draws, they describe the run
-        # that was discarded, and a halt withholds them (`present_halt`, `PL-6RJ0`,
-        # adversarial review of `PL-J5GC`).
-        self._started_over_since_the_cards = False
+        # How many times the run has started over, by a Reset or an agent
+        # change, and the compartment values of the last frame that drew, with
+        # the count at that frame. Only a frame computes those values. When the
+        # two counts differ, the kept values describe the run that was
+        # discarded, and a halt withholds them (`run_presentation.halted_run`,
+        # `PL-6RJ0`, adversarial review of `PL-J5GC`). Before any frame, the
+        # kept values are the ones the widgets are built with.
+        self._case = 0
+        self._kept = KeptValues(
+            self._case,
+            RunValues(
+                readouts=readouts(snapshot, self._playback_rate),
+                schematic=WITHHELD_SCHEMATIC,
+                delivered=WITHHELD_DELIVERED,
+                accounting=replace(accounting(snapshot), detail=ACCOUNTING_INITIAL_DETAIL_TEXT),
+            ),
+        )
 
         # The values last shown by this run's two surfaces that may sit in an
         # Area, and the copies of each surface that Qt has not destroyed. A
@@ -551,17 +555,15 @@ class RunView(QWidget):
         # already on screen. Every writer writes every copy (`PL-9LNF`).
         self._settings_shown = setting_readouts(snapshot)
         self._setting_controls: list[ParameterControls] = []
-        self._accounting_shown = replace(
-            accounting(snapshot), detail=ACCOUNTING_INITIAL_DETAIL_TEXT
-        )
+        self._accounting_shown = self._kept.values.accounting
         self._accounting_panels: list[AccountingPanel] = []
         # The compartment schematic is written where the readouts are, so it
         # starts withheld, as nothing has been drawn yet (`PL-RNYV`).
-        self._schematic_shown = WITHHELD_SCHEMATIC
+        self._schematic_shown = self._kept.values.schematic
         self._schematics: list[RunSchematic] = []
         # The agent cost panel is written where the readouts are too, for the
         # same reason (`PL-B396`).
-        self._delivered_shown = WITHHELD_DELIVERED
+        self._delivered_shown = self._kept.values.delivered
         self._agent_costs: list[RunAgentCost] = []
 
         # The control-change panel's heading. It is an instance label rather
@@ -605,7 +607,7 @@ class RunView(QWidget):
     def snapshot(self) -> SimulationSnapshot:
         """Return this run's state at this instant.
 
-        The dashboard reads it once per frame and hands it back to `refresh`.
+        The dashboard reads it once per frame and hands it back to `presentation`.
         So the readouts and the traces of a frame show one instant of one run.
         """
 
@@ -694,106 +696,111 @@ class RunView(QWidget):
 
     # ---------------------------------------------------------- refreshing
 
-    def refresh(self, snapshot: SimulationSnapshot) -> None:
-        """Write every widget of this run from the snapshot the tick's frames were drawn from.
+    def presentation(self, drawn: SimulationSnapshot | None = None) -> RunPresentation:
+        """Build everything this run's panel shows now, for `show_presentation` to write.
 
-        The snapshot widgets are written first: the readouts, their clock and
-        the accounting panel. The run-state widgets follow, through
-        `_write_statement`, which `present_halt` also calls. On this path the
-        banner shows the text that `dashboard_frame.notice` gives for a frame
-        that was drawn.
+        With a snapshot, the values are computed from it, and the banner is
+        the one `dashboard_frame.notice` gives for a frame that drew. With
+        none, the run is stated from `SimulationController.record()` alone,
+        which builds no compartment value. A snapshot builds every
+        compartment's fraction, and one of the halts stated this way is the
+        refusal of one of those fractions (`PL-7DJK`). The values are then
+        the last frame's, or withheld if the run has started over since
+        that frame (`run_presentation.halted_run`).
+
+        Args:
+            drawn: The snapshot that this tick's frames were drawn from, read
+                once by the caller. None when no frame can be drawn.
+
+        Returns:
+            The presentation. Building it writes nothing.
+
+        Raises:
+            TypeError: As `run_presentation.drawn_run` raises it.
+            ValueError: As `run_presentation.drawn_run` raises it. Neither
+                is raised when `drawn` is None.
+        """
+
+        state = RunPanelState(
+            run_id=self.run_id,
+            name=self._run_name,
+            case=self._case,
+            playback_rate=self._playback_rate,
+            is_branch=self._is_branch,
+            comparing=self._comparing,
+            branch_offered=self._branch_offered,
+            rejected_setting_notice=self._rejected_setting_notice,
+            refused_reset_notice=self._refused_reset_notice,
+            pending_agent_name=(
+                None
+                if self._new_case_dialog is None or self._pending_agent_id is None
+                else AGENT_DISPLAY_NAMES[self._pending_agent_id]
+            ),
+        )
+
+        if drawn is None:
+            record = self.controller.record()
+
+            return halted_run(record, self.adjustments(record), state, self._kept)
+
+        return drawn_run(drawn, self.adjustments(drawn), state)
+
+    def show_presentation(self, presentation: RunPresentation) -> None:
+        """Write every widget of this run from one presentation, as their only writer.
+
+        A drawn frame and a halt both come here, each with a
+        `RunPresentation`, and this method writes the same widgets for both
+        (`PL-X7D5`, `PL-RF2S`). A halt can follow a change that no frame has
+        shown: a dial dragged into the halt (`PL-85LJ`), an agent changed
+        just before it (`PL-1YDD`), or a drag that took a change off the
+        record (`PL-DTJQ`). So a halt is written as fully as a frame is. A
+        widget added here is written on both paths.
+
+        The writes keep one order. The compartment values come first. The
+        agent colour is written before anything that shows it. The dials
+        come last, and a presentation whose dials could not be built raises
+        their refusal only then. So the status word, the transport and the
+        banner are on screen before the refusal leaves this method
+        (`PL-25KS`, `PL-7DJK`, `PL-85LJ`).
+
+        Before writing anything, the method stores the presentation's record
+        as the one this view last wrote. The render tick draws whenever a
+        run's record differs from the stored one (`owes_a_frame`). So when a
+        frame fails for a cause that is still there, the render tick does
+        not retry it on every tick.
+
         Each chart writes the lines that depend on its window, such as which
         traces are above the axis, from its own frame (`PL-L59K`).
 
         Args:
-            snapshot: The run's state this tick, read once by the caller.
+            presentation: What `presentation` built for this run.
 
         Raises:
-            ValueError: If `setting_readouts` rejects the snapshot. That
-                happens for a control with no step of its resolution inside
-                the range the run accepts (`PL-7CRY`).
+            ValueError: If the presentation's dials could not be built
+                (`DialsNotOffered`). That happens for a control with no step
+                of its resolution inside the range the run accepts
+                (`PL-7CRY`). Every other widget has been written by then.
         """
 
-        self._presented = True
-        # Every value is computed before any is written. So a value that cannot
-        # be computed leaves every surface on the same earlier state, rather than
-        # some on this snapshot and some on the last (`PL-B396`'s review).
-        shown_readouts = readouts(snapshot, self._playback_rate)
-        shown_schematic = schematic_shown(snapshot)
-        shown_delivered = delivered_shown(snapshot)
-        self._readout_row.set_readouts(shown_readouts)
-        self._show_schematic(shown_schematic)
-        self._show_delivered(shown_delivered)
-        self._started_over_since_the_cards = False
-        self._restate_new_case_question(snapshot)
-        self._restate_reset_question()
-        self._show_accounting(accounting(snapshot))
-        self._write_statement(
-            snapshot,
-            banner=notice(
-                snapshot,
-                self._rejected_setting_notice,
-                refused_reset=self._refused_reset_notice,
-                branch_offered=self._branch_offered,
-            ),
-            stopped_on_mark=snapshot.stopped_on_mark,
-        )
+        self._written_record = presentation.record
 
-    def _write_statement(
-        self, record: RunRecord, *, banner: str | None, stopped_on_mark: bool
-    ) -> None:
-        """Write every run-state widget from one record, as their only writer (`PL-X7D5`).
+        if presentation.standing is ValuesStanding.DRAWN:
+            self._presented = True
+            self._kept = KeptValues(presentation.case, presentation.values)
 
-        `refresh` calls it with the snapshot that a frame drew from.
-        `present_halt` calls it with the controller's record. So a halt shows
-        the run on every widget that a frame would. A widget added to the
-        statement is written on both paths or on neither.
+        values = presentation.values
+        self._readout_row.set_readouts(values.readouts)
+        self._show_schematic(values.schematic)
+        self._show_delivered(values.delivered)
+        self._show_accounting(values.accounting)
 
-        This method also writes the playback line under the clock. That line
-        sits in the readout row, which `refresh` writes from the snapshot and
-        a halt does not write. But the line states the run's playback rate,
-        not a compartment value. Before `PL-P58M`, only the readout row wrote
-        it, so a rate chosen on a halted run reached the dropdown but not the
-        clock. On `refresh`, the readout row first writes the same text from
-        the same rate.
+        if presentation.new_case is not None and self._new_case_dialog is not None:
+            self._new_case_dialog.show_question(presentation.new_case)
 
-        Both paths write in one order. The agent colour comes first, before
-        anything that shows it. The dials come last, because
-        `setting_readouts` can raise for a control that can offer no setting.
-        The status word, the transport and the banner must be on screen
-        before that can happen (`PL-25KS`, `PL-7DJK`, `PL-85LJ`).
+        if presentation.standing is ValuesStanding.DRAWN:
+            self._restate_reset_question()
 
-        Before writing anything, the method stores the record as the one this
-        view last wrote. The render tick draws whenever a run's record differs
-        from the stored one (`owes_a_frame`). So when a frame fails for a
-        cause that is still there, the render tick does not retry it on every
-        tick.
-
-        Args:
-            record: The snapshot a frame drew from, or
-                `SimulationController.record()` when no frame draws.
-            banner: The banner text for the caller's path. It comes from
-                `notice` for a frame that drew, and from `halt_notice` for a
-                halt that no frame has been drawn for.
-            stopped_on_mark: Whether a mark stopped the run, as
-                `dashboard_frame.status_word` takes it. `refresh` reads it
-                from `SimulationSnapshot.stopped_on_mark`.
-
-        Raises:
-            ValueError: If `setting_readouts` rejects the record, as
-                described under `refresh`.
-        """
-
-        self._written_record = record.run_record()
-        statement = run_statement(
-            record,
-            self.adjustments(record),
-            is_branch=self._is_branch,
-            comparing=self._comparing,
-            banner=banner,
-            stopped_on_mark=stopped_on_mark,
-        )
-
+        statement = presentation.statement
         self._apply_agent_color_scheme(statement.agent_id)
         self._write_transport(statement.transport)
 
@@ -807,35 +814,19 @@ class RunView(QWidget):
         self._control_timeline_text.setText(wrapping_between_parts(statement.timeline.entries))
         self._control_timeline_overflow_text.setText(statement.timeline.overflow)
         self._control_timeline_overflow_text.setHidden(not statement.timeline.overflow)
-        self._playback_rate_text.setText(format_playback_rate(self._playback_rate.multiplier))
         # The 1 MAC line states the divisor of the delivered line beside it and of the
-        # cards' ×MAC numbers. It is written on both the frame path and the halt path,
-        # and before the dials. So an exception raised in `setting_readouts` cannot
-        # leave another agent's 1 MAC on screen. When a halt finds cards that were
-        # divided by another agent's MAC, it withholds their values (`present_halt`,
-        # `PL-6RJ0`).
-        self._one_mac_text.setText(
-            format_mac_reference(record.agent_display_name, record.agent_mac_percent)
-        )
-        self._write_notice(statement.banner)
-        self._write_settings(record)
+        # cards' ×MAC numbers. It is written before the dials. So a refusal raised for
+        # the dials cannot leave another agent's 1 MAC on screen (`PL-6RJ0`).
+        self._one_mac_text.setText(presentation.one_mac)
+        self._notice_text.set_notice(presentation.notice)
 
-    def _write_notice(self, banner: str | None) -> None:
-        """Write the banner for this run, naming the run while a second run is drawn.
+        if isinstance(presentation.dials, DialsNotOffered):
+            raise presentation.dials.error
 
-        This method is kept apart from `_write_statement`, its one caller,
-        because naming the run in the banner follows a rule of its own.
-        `refresh` has a frame and words the banner with
-        `dashboard_frame.notice`. `present_halt` deliberately has no frame and
-        words the banner with `dashboard_frame.halt_notice`. On both paths, the
-        run's name comes from `set_run_name` rather than from the frame.
-        `dashboard_frame.compared_run_notice` gives the full argument.
+        self._show_settings(presentation.dials)
 
-        Args:
-            banner: The banner's text, or None to show none.
-        """
-
-        self._notice_text.set_notice(compared_run_notice(banner, self._run_name))
+        if presentation.delivered_line is not None:
+            self._delivered_text.setText(presentation.delivered_line)
 
     def _refresh_against_last_frame(self, snapshot: SimulationSnapshot) -> None:
         """Rewrite this run's own widgets now, from `snapshot`, while the charts wait.
@@ -851,108 +842,7 @@ class RunView(QWidget):
         """
 
         if self._presented:
-            self.refresh(snapshot)
-
-    def present_halt(self) -> None:
-        """Say this run has stopped, from its controller's record alone, with no frame drawn.
-
-        This method writes every run-state widget, through `_write_statement`,
-        before any frame is attempted, because the frame may be what is
-        failing. Suppose the shared render path raised, and the halt were shown
-        only through that path. Every status word would then read "Paused"
-        over a failed controller, and no banner would name the exception
-        (`PL-25KS`). The frame widgets keep what the last frame drew. They show
-        compartment values, and the first frame that draws rewrites them.
-        Two cases are handled differently, so that each value stays beside what
-        qualifies it. After a step whose accounting failed its check, the
-        accounting panel shows that step's check, which the record carries.
-        And when the run has started over since the last frame, the readout
-        cards, their clock and the accounting panel are withheld, because they
-        describe the run that was discarded
-        (`_withhold_the_discarded_run_s_values`).
-
-        It writes every widget that a frame would write, because a halt can
-        follow a change that no frame has shown. A dial dragged into a halt
-        has changed what the run holds (`PL-85LJ`). An agent changed just
-        before a halt has changed what every identity widget names
-        (`PL-1YDD`). A drag that returns a dial to where it started has taken
-        a change off the record (`PL-DTJQ`). When a halt wrote only a
-        hand-picked set of widgets, each of these widgets went on showing the
-        run as it was before the change, and no frame followed to correct it.
-
-        Everything is read once, from `SimulationController.record()` and not
-        from a snapshot. A snapshot builds every compartment's fraction, and
-        one of the halts shown here is the rejection of one of those
-        fractions. When this method used to read a fresh snapshot, that
-        rejection raised out of the method, and the halt was never shown. The
-        screen went on reading "Running", with Pause offered, over a failed
-        controller (`PL-7DJK`). The banner comes from
-        `dashboard_frame.halt_notice`. It says that no frame of the stopped
-        run has been drawn, and the first frame that draws replaces it.
-
-        Raises:
-            ValueError: If `setting_readouts` rejects the record. By then
-                `_write_statement` has put everything else on screen, and the
-                discarded run's values are withheld.
-        """
-
-        record = self.controller.record()
-        started_over = self._started_over_since_the_cards
-
-        # The frame-only values are withheld or restated before the statement is
-        # written, because `_write_statement` can raise after it has named the
-        # new agent (blind review of `PL-J5GC`).
-        if started_over:
-            self._withhold_the_discarded_run_s_values()
-
-        if record.rejected_accounting is not None:
-            self._show_accounting(rejected_step_accounting(record.rejected_accounting))
-
-        self._write_statement(
-            record,
-            banner=halt_notice(
-                record,
-                self._rejected_setting_notice,
-                refused_reset=self._refused_reset_notice,
-                branch_offered=self._branch_offered,
-                started_over=started_over,
-            ),
-            # Every halt shown here has failed the run or stopped it at the
-            # supported run length (`halt`), and both of those status words
-            # outrank a mark's. The halt record is worked out from the canonical
-            # states, which this path does not build.
-            stopped_on_mark=False,
-        )
-
-    def _withhold_the_discarded_run_s_values(self) -> None:
-        """Replace the values that the last frame wrote for a discarded run with withheld texts.
-
-        `present_halt` calls this when the run has started over, by a Reset or
-        an agent change, and no frame has been drawn since. Each compartment
-        card then holds the discarded run's concentration, and the clock holds
-        its instant. After an agent change, each ×MAC number was also divided
-        by the old agent's MAC. The accounting panel holds the discarded run's
-        verdict and amounts. The heading, the 1 MAC line and the delivered line
-        name the run that replaced it. Showing any of those values would put
-        that value on screen under a substance, a divisor or a run that did not
-        produce it. `PL-6RJ0` withheld the multiples. `PL-J5GC`'s guard test found
-        the percents, its blind review found the accounting panel, and its
-        adversarial review found the clock and the same problem after a Reset.
-        The playback line under the clock is a setting of this view, so
-        `_write_statement` writes it. The next frame writes every card and the
-        panel again.
-        """
-
-        for index, panel in enumerate(self._readout_row.panels):
-            if index == _CLOCK_PANEL_INDEX:
-                panel.value_label.setText(WITHHELD_ELAPSED_TIME_TEXT)
-            else:
-                panel.value_label.setText(WITHHELD_CONCENTRATION_TEXT)
-                panel.secondary_label.setText(WITHHELD_MAC_MULTIPLE_TEXT)
-
-        self._show_accounting(WITHHELD_ACCOUNTING)
-        self._show_schematic(WITHHELD_SCHEMATIC)
-        self._show_delivered(WITHHELD_DELIVERED)
+            self.show_presentation(self.presentation(snapshot))
 
     def _show_schematic(self, shown: SchematicShown) -> None:
         """Show `shown` on every copy of the schematic, and keep it for copies built later.
@@ -988,28 +878,19 @@ class RunView(QWidget):
         for accounting_panel in self._accounting_panels:
             accounting_panel.show_accounting(shown)
 
-    def _write_settings(self, settings: RunSettings) -> None:
-        """Write the four setting controls from the settings in force.
+    def _show_settings(self, shown: tuple[SettingReadout, ...]) -> None:
+        """Write the four setting controls on every copy, and keep them for a copy built later.
 
-        `_write_statement` calls this method last. It passes either the
-        snapshot that a frame drew from, or `SimulationController.record()`
-        when no frame draws. Both carry the agent and the four settings, and
-        `dashboard_frame.setting_readouts` builds the same readouts from
-        either. So a dial shows the same text whichever path wrote it
+        A frame and a halt both pass the readouts that
+        `dashboard_frame.setting_readouts` built from the run's settings in
+        force. So a dial shows the same text whichever path wrote it
         (`PL-85LJ`).
-
-        Args:
-            settings: The agent and the settings in force on the run.
         """
 
-        self._settings_shown = setting_readouts(settings)
+        self._settings_shown = shown
 
         for controls in self._setting_controls:
-            controls.show_settings(self._settings_shown)
-
-        for setting in self._settings_shown:
-            if setting.control is ControlInput.DELIVERED:
-                self._delivered_text.setText(delivered_line(setting))
+            controls.show_settings(shown)
 
     def _transport_lock(self, status: RunStatus) -> Transport:
         """Return this run's transport enablement, adding two facts `dashboard_frame` cannot read.
@@ -1533,7 +1414,7 @@ class RunView(QWidget):
 
         When reading the run's snapshot raises, the response to the selection is to
         show the halt for that exception again. The gate halts the run. Then
-        `present_halt` puts the selector back to the agent that the controller's
+        `show_presentation` puts the selector back to the agent that the controller's
         record names, because the snapshot that would name it is what raised
         (`PL-V2HC`). Reset is the way out that the halt banner names, unless a
         refused Reset has left its own way out in effect.
@@ -1567,7 +1448,7 @@ class RunView(QWidget):
         that the run is not using, until the selector is put back. This
         method puts back a pick made while a question is open. On a run whose
         snapshot raises, the halt puts the selector back instead, through
-        `present_halt`. Signals are blocked while the selector is put back, so
+        `show_presentation`. Signals are blocked while the selector is put back, so
         that the change is not treated as a second pick.
         """
 
@@ -1607,16 +1488,16 @@ class RunView(QWidget):
         self._apply_setting(switch)
 
     def _announce_the_start_over(self) -> None:
-        """Record that the run has started over since the cards were written, then say so.
+        """Record that the run has started over since the last frame drew, then say so.
 
         `_reset_now` and an accepted agent change call this method. Until a
-        frame draws, the cards, the clock and the accounting panel describe the
-        run that was discarded, so a halt withholds them (`present_halt`).
-        After recording the start-over, this method emits `case_restarted` for
-        the dashboard.
+        frame draws, every compartment value on screen describes the run that
+        was discarded, so a halt withholds them
+        (`run_presentation.halted_run`). After recording the start-over, this
+        method emits `case_restarted` for the dashboard.
         """
 
-        self._started_over_since_the_cards = True
+        self._case += 1
         self.case_restarted.emit()
 
     def _confirm_new_case(self, snapshot: SimulationSnapshot, agent_id: str) -> None:
@@ -1649,34 +1530,6 @@ class RunView(QWidget):
         dialog.finished.connect(dialog.deleteLater)
         self._new_case_dialog = dialog
         dialog.open()
-
-    def _restate_new_case_question(self, snapshot: SimulationSnapshot) -> None:
-        """Rewrite an open new-case question from the frame's snapshot.
-
-        The question states how much run time and how many control changes
-        the new case discards. Before `PL-TPBH`, a running run went on
-        stepping while the question was open. A question written only once,
-        when it opened, therefore understated what the reader was about to
-        lose (`PL-WM5P`). The run now holds while the question is open
-        (`hold_while`), so the figures do not change. The question is still
-        rewritten on each frame, for the reason `_restate_reset_question`
-        gives. A halt does not rewrite the question. A halted run does not
-        step, so the figure from the last frame is still correct.
-
-        Args:
-            snapshot: The snapshot the frame drew from.
-        """
-
-        if self._new_case_dialog is None or self._pending_agent_id is None:
-            return
-
-        self._new_case_dialog.show_question(
-            new_case_question(
-                snapshot,
-                AGENT_DISPLAY_NAMES[self._pending_agent_id],
-                len(self.adjustments(snapshot)),
-            )
-        )
 
     @halt_gate
     def _handle_new_case_finished(self, result: int) -> None:
@@ -1715,8 +1568,8 @@ class RunView(QWidget):
         """Stop the run for an exception, and record the disposition that it calls for.
 
         This method draws nothing and writes nothing on screen. To show the
-        halt, `_halt_run` and `SimulationView._halt_every_run` call
-        `present_halt` after they call this method.
+        halt, `_halt_run` and `SimulationView._halt_every_run` call `show_presentation`
+        after they call this method.
 
         Args:
             error: The exception that was raised.
@@ -1766,7 +1619,7 @@ class RunView(QWidget):
         banner are written before the frame is asked for. So a run whose
         frame cannot be drawn still says that it stopped.
 
-        `present_halt` can raise an exception after it has written the halt,
+        `show_presentation` can raise an exception after it has written the halt,
         when a dial cannot be written (`PL-M3M2`). The frame is still asked
         for, because the dashboard restates its own panels, such as "Branch
         here", only when it draws a frame. Before this change, no frame was
@@ -1777,13 +1630,13 @@ class RunView(QWidget):
             error: The exception that was raised.
 
         Raises:
-            ValueError: What `present_halt` raised, once the frame has been asked for.
+            ValueError: What `show_presentation` raised, once the frame has been asked for.
         """
 
         self.halt(error)
 
         try:
-            self.present_halt()
+            self.show_presentation(self.presentation())
         finally:
             self.presentation_requested.emit(False)
 
@@ -1889,7 +1742,7 @@ class RunView(QWidget):
         something that holds that run's settings also says "Run 2".
 
         **This method is the one writer of this run's name.** That is why the
-        two sidebar headings are written here rather than in `refresh`. What
+        two sidebar headings are written here rather than in `show_presentation`. What
         a run is called changes when the dashboard's set of runs changes, and
         at no other time. `SimulationView._place_run` renames every run the
         moment a branch is placed. So the headings name the run on the frame
@@ -1897,11 +1750,11 @@ class RunView(QWidget):
         (`PL-C3GS`).
 
         The name is also *stored* here, as well as drawn, because the notice
-        banner is named from it too (`_write_notice`). That banner also sits
+        banner is named from it too (`presentation`). That banner also sits
         in a column that the runs share. It is written on a path that has no
         frame to read a run count from (`PL-TSZM`). Unlike the headings, the
         banner is not written here, because something else already writes
-        it. `refresh` rewrites every banner on the presentation that a fork
+        it. `show_presentation` rewrites every banner on the presentation that a fork
         triggers, and the Reset that drops a branch clears the notice
         outright. So a write here would make no difference that any scenario
         could detect. Nothing else writes the headings.
