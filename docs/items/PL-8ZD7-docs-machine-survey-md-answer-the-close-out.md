@@ -143,4 +143,6 @@ Each query above, and each chapter query of the structure read, was read against
 
 **Filed and moved.** The 2006 start of the inclusion window has no recorded reason. The survey now says so, and `PL-VJNQ` holds it. Two of this item's Passage 42 queries concern `docs/machine-abstraction.md` and were missing from `PL-37N4`, so they were added there; the rest of Passage 42 is already in `PL-37N4`, or no longer applies ("Hendrickx et al. measured it for both device classes" is no longer in that file).
 
+**After the blind review.** Both passes found that the survey had withdrawn "no machine publishes" a default fresh gas flow while `docs/MODEL.md` and the reference circle system's data file still say it; `PL-Z843` holds both copies, and the survey's paragraph on adopted claims now names it. Pass 1 found that (b3)'s opening still called the Zeus's fresh gas mode the equation the model already has, against Shin et al.'s times; the opening now says so.
+
 **Not done.** The page in Meyer et al. for each quotation, which an outline query asked for and which is outside this item's list. The Meyer entry says that the page of each passage can be recovered from the corpus dump.

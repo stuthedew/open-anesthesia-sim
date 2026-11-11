@@ -178,7 +178,10 @@ neither. Shin et al.'s reasons for the difference between the Perseus and the
 Zeus had been listed with two features that do not differ between them.
 `docs/MODEL.md` and `docs/machine-abstraction.md` still repeat the Fukuda
 claim, and `docs/machine-abstraction.md` also repeats the old list of Shin et
-al.'s reasons. `PL-4G3N` corrects both.
+al.'s reasons. `PL-4G3N` corrects both. The same day, `PL-8ZD7` narrowed a
+third adopted claim that the check had missed: that no machine publishes a
+default fresh gas flow. `docs/MODEL.md` and the reference circle system's data
+file still repeat it, and `PL-Z843` corrects both.
 
 ## The variables
 
@@ -381,7 +384,7 @@ $`\dot V_F F_D`$. A direct-injection machine can put agent into the breathing
 system itself, downstream of the fresh gas inlet. There is then no $`F_D`$ at
 the inlet, and the model needs a different term for agent that arrives this way.
 No stored value for a machine can express that difference, so delivery mode is
-the survey's clearest case of machines that differ in **behavior rather than data**. It is also the tidiest, because the same machine's fresh gas mode is the equation this model already has. A design that gets the mode boundary right gets one half of the Zeus with no new equation.
+the survey's clearest case of machines that differ in **behavior rather than data**. On the manufacturer's account it is also the tidiest case, because the Zeus's fresh gas mode performs like a conventional vaporizer, which is the term this model already has. Shin et al.'s times to target do not bear that out: at nearly the same circuit volume, the Zeus in fresh gas mode reached target much more slowly than the Perseus. So a design that gets the mode boundary right does not yet get that half of the Zeus for free, as the fresh gas mode below says.
 
 **The Zeus IE machine offers both kinds of delivery, as separate modes.** Meyer
 et al. describe its injector as a reservoir, a dosing chamber and a heating

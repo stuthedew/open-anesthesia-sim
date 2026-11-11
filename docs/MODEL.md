@@ -10400,8 +10400,9 @@ changes by 4 × 10⁻⁶ published SD.
 #### Desflurane's residual, and why the parameter file was not changed
 
 The obvious explanation for that residual is that desflurane's vessel-rich
-coefficient is too low. The sensitivity table in § "What the published-data
-gate can and cannot resolve" shows that the five-minute ratio depends mostly on
+coefficient is too low. § "What the published-data gate can and cannot
+resolve" has a table of how far each ratio moves when one coefficient is raised
+by 10%. It shows that the five-minute ratio depends mostly on
 the vessel-rich tissue:gas coefficient and barely on the blood:gas coefficient. A tissue group with too
 little capacity empties too fast. That explanation fits the arithmetic, but the
 measured tissue solubility rules it out, as the next paragraphs show.

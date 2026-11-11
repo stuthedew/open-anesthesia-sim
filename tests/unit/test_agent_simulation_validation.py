@@ -38,12 +38,13 @@ from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 # the model's supported input ranges and for the interface's displayed
 # resolution.
 #
-# `docs/MODEL.md` § "Mass-balance identity" documents all three. It calls the
-# first two the run-time halt thresholds, and keeps them apart from its release
-# gate, which bounds the relative residual alone. It states the third inline,
-# in the denominator
-# `max(initial + delivered, 1e-15 L)`, which keeps the relative error finite
-# before any agent has been delivered.
+# `docs/MODEL.md` § "Mass-balance identity" lists all three as the run-time
+# halt thresholds, and keeps them apart from its release gate, which bounds the
+# relative residual alone. The third is a minimum scale: the relative error
+# divides by the starting plus delivered amount, or by 1e-15 L if that is
+# larger, so it stays finite before any agent has been delivered. The test that
+# checks these values keeps its older name, "release tolerances", because a closed
+# item's verification searches for that name (`PL-B7ZV`).
 DOCUMENTED_ABSOLUTE_TOLERANCE_L = 1e-12
 DOCUMENTED_RELATIVE_TOLERANCE = 1e-9
 DOCUMENTED_MINIMUM_RELATIVE_SCALE_L = 1e-15
