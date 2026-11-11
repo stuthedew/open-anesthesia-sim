@@ -520,6 +520,8 @@ def test_a_tab_switches_the_layout_and_leaves_the_run(
         "ConcentrationView",
         "WashInView",
         "ParameterControlsView",
+        "BookmarksView",
+        "BranchView",
     ]
     # The same run, at the same instant, with the same readouts in the region.
     assert view.runs == (run,)

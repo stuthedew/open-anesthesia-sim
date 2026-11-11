@@ -312,7 +312,7 @@ class RunView(QWidget):
         parent: QWidget | None = None,
         *,
         run_id: RunId,
-        branch_control: bool,
+        branch_control: Callable[[], bool],
     ) -> None:
         """Build one run's controls and readouts from its first snapshot.
 
@@ -320,9 +320,11 @@ class RunView(QWidget):
             controller: The run this view drives and displays.
             parent: The Qt parent.
             run_id: The run's identity, minted by the dashboard that places it.
-            branch_control: Whether the dashboard that places this run has a
-                branch control. A dashboard with no case has none, so the
-                banner never names a branch there (`_branch_offered`).
+            branch_control: Returns whether the dashboard that places this
+                run has a branch control on screen now. A dashboard with no
+                case never has one, and a dashboard with a case has one only
+                while an Area shows it. The banner names a branch only then
+                (`_branch_offered`).
 
         Raises:
             TypeError: If `run_id` is not a `RunId`.
@@ -895,15 +897,19 @@ class RunView(QWidget):
     def _branch_offered(self) -> bool:
         """Whether a branch can be taken from this run now, for the stopped run's banner.
 
-        None can be taken on a dashboard with no branch control, which is one
-        built with no case. None can be taken while two runs are compared,
+        None can be taken while the dashboard has no branch control on screen:
+        it was built with no case, or no Area shows the branch View. The
+        banner must not send a learner to a control that the screen does not
+        show. None can be taken while two runs are compared,
         because `fork_offer` locks the branch control then. None can be taken
         from a run whose `fork_refusal` gives a reason: a branch, or a trunk
         whose dashboard failed. Otherwise the control offers at least the
         run's opening.
         """
 
-        return self._branch_control and not self._comparing and self.controller.fork_refusal is None
+        return (
+            self._branch_control() and not self._comparing and self.controller.fork_refusal is None
+        )
 
     def set_comparing(self, comparing: bool) -> None:
         """Record whether a second run is on the chart, and rewrite the transport at once.

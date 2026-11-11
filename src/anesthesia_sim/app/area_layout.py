@@ -173,6 +173,7 @@ from anesthesia_sim.app.theme import (
     WARNING,
 )
 from anesthesia_sim.app.view_contract import (
+    CaseSurfaces,
     PreferencesInForce,
     SavedState,
     View,
@@ -520,6 +521,7 @@ class AreaLayout(QWidget):
         runs: tuple[RunPresentation, ...],
         selection: CompartmentSelection,
         preferences: PreferencesInForce,
+        case: CaseSurfaces,
     ) -> None:
         """Hand every View one tick, in the reading order of their Areas.
 
@@ -534,6 +536,7 @@ class AreaLayout(QWidget):
             runs: As `ViewTick` carries them.
             selection: As `ViewTick` carries it.
             preferences: As `ViewTick` carries them.
+            case: As `ViewTick` carries it.
 
         Raises:
             ValueError: `frames` is None and `snapshots` is not empty. No
@@ -552,7 +555,7 @@ class AreaLayout(QWidget):
         for _, view in tuple(self._views.values()):
             request = view.frame_request()
             frame = None if request is None or frames is None else frames[request.time_base]
-            view.refresh(ViewTick(frame, snapshots, runs, selection, preferences))
+            view.refresh(ViewTick(frame, snapshots, runs, selection, preferences, case))
 
         self.follow_needs()
 

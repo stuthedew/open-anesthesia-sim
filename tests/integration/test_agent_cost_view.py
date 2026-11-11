@@ -36,9 +36,10 @@ from anesthesia_sim.app.dashboard_frame import (
 from anesthesia_sim.app.formatting import AgentAmountUnit
 from anesthesia_sim.app.main import open_dashboard, open_preferences
 from anesthesia_sim.app.preferences import PREFERENCES_FILE_NAME, AgentPrice, PreferencesStore
+from anesthesia_sim.app.qt_widgets import ForkPanel
 from anesthesia_sim.app.simulation_view import SimulationView
-from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING, AGENT_COST, REGISTERED
-from anesthesia_sim.app.views import AgentCostView
+from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING, AGENT_COST, BRANCH, REGISTERED
+from anesthesia_sim.app.views import AgentCostView, BranchView
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
 from anesthesia_sim.layout.model import LayoutModel
@@ -88,6 +89,7 @@ def _workspaces(*areas: Area) -> WorkspaceSet:
 
 _COST_ONLY = _workspaces(Area(AreaId(1), AGENT_COST))
 _TWO_COST_VIEWS = _workspaces(Area(AreaId(1), AGENT_COST), Area(AreaId(2), AGENT_COST))
+_COST_AND_BRANCH = _workspaces(Area(AreaId(1), AGENT_COST), Area(AreaId(2), BRANCH))
 
 
 @pytest.fixture(scope="module")
@@ -154,6 +156,15 @@ def _settle(application: QApplication) -> None:
 
 def _cost_views(view: SimulationView) -> tuple[AgentCostView, ...]:
     return tuple(v for v in view.layout_container.views() if isinstance(v, AgentCostView))
+
+
+def _branch_control(view: SimulationView) -> ForkPanel:
+    """The branch control in the one Area that shows it."""
+
+    (branch,) = (v for v in view.layout_container.views() if isinstance(v, BranchView))
+    assert branch.panel is not None
+
+    return branch.panel
 
 
 def _advance(controller: SimulationController, seconds: float) -> None:
@@ -554,12 +565,12 @@ def test_the_panel_follows_its_run_through_an_agent_change_and_a_comparison(
     _advance(trunk, _SECONDS_PER_MINUTE)
     trunk.pause()
     case = BranchedCase(trunk)
-    view = _dashboard(application, shown, trunk, case=case)
+    view = _dashboard(application, shown, trunk, case=case, workspaces=_COST_AND_BRANCH)
     (cost_view,) = _cost_views(view)
 
     # A branch at 1 min opens a comparison: two panels, each named and each
     # showing its own run's delivered agent.
-    panel = view._fork_panel
+    panel = _branch_control(view)
     panel.point_selector.setCurrentIndex(panel.point_selector.findData(60.0))
     panel.take_button.click()
     _settle(application)
