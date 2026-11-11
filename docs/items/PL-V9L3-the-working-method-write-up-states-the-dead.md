@@ -46,3 +46,27 @@ published and is true now is repaired by a silent edit or wants a line saying
 so, given that the piece's stated position is that its numbers are attached to
 be checked.
 <!-- absent: .claude/hooks/item_read_log.py -->
+
+**Re-checked 2026-11-11: the artifact can be edited from a session, and its
+closing paragraph is now out of date in three ways.** It is the project owner's
+own artifact, "Coordinating Agents Through Git"
+(https://claude.ai/artifact/WXRgVEHTqSj9JiV4oQxGAd), last updated 2026-09-13
+and private. It is not among the Projects trial's artifacts, but a session's
+Artifact tool lists it as his and can read and republish it, so the edit does
+not need him to make it by hand. A read on 2026-11-11 found the closing
+paragraph unchanged since publication:
+
+1. "The instrumentation went in last week and has no data yet." The
+   instrumentation merged on 2026-09-13 in `#527`, the day the page was
+   published.
+2. The same instrumentation was removed on 2026-11-03 by `PL-3HQ6` (`#1989`),
+   which found that it served no open decision. So the question the paragraph
+   leaves open, whether the record is ever read, was never answered by it.
+3. "nine lines, about 2 KB": the dead-ends record printed at session start now
+   holds five entries.
+
+What is left is the project owner's call, because the page is his own writing:
+whether to edit it, and whether an edit carries a dated line saying what
+changed. **Recommended:** a visible dated correction, because the page's own
+position is that its numbers are attached to be checked. The item stays open
+until he decides.
