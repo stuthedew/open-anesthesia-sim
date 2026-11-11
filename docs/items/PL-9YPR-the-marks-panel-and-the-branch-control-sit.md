@@ -193,3 +193,31 @@ gone hides both case Views) and finding 4 is `PL-G3N1` (a View built after a
 failing halt stays blank). Both need a change to what a View is told, which
 is more than a fix on this branch. Finding 8, the branch View's declared
 minimum width, is recorded in `PL-CBYS`, which sets the room each Area gets.
+
+**The tests-and-dead-code pass, 2026-11-11.** It mutated the change in a
+scratch copy and reported eight findings. One is fixed here: commit
+`44939bde6` handed `RunView` the method `_branch_control_shown` without the
+halt gate, and the test that every handed-out callback passes the gate failed
+on it. The method returns whether an Area shows a branch control and reads no
+run, so it is now on that test's list of callbacks that need no gate, with
+that reason. The seven still to act on before close-out:
+
+1. `_CasePanelView`'s no-case sentence can be shown beside a working branch
+   control and no test fails. The test of the shipped dashboard over a case
+   must also check that the sentence is hidden. The loose-runs test takes its
+   expected words from the constant under test.
+2. `_branch_control_shown` reduced to "a copy exists" passes every test. A
+   copy that exists and is not drawn needs a test.
+3. The titles and minimum sizes of the `BOOKMARKS` and `BRANCH` registry
+   entries are not pinned by a test.
+4. Nothing tests that a bookmarks copy built between frames shows the marks
+   listed now. The branch control has that test.
+5. `clear_scroll_area_stylesheet` changes no pixel under the declared
+   palette. Give it a test of what it prevents, or remove it.
+6. `test_the_bookmark_panel_sits_outside_the_region_between_the_two_plots`
+   can no longer fail on what its name says.
+7. `SimulationView._build_page` keeps a `middle_column` wrapper that now
+   holds one widget.
+
+The reviewer's scripts and logs are under `review-c/` in the session's
+scratchpad.

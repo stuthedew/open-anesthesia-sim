@@ -8873,6 +8873,10 @@ _HANDED_OUT_WITHOUT_THE_HALT_GATE: Final[dict[tuple[str, str], str]] = {
     ("SimulationView", "self._a_question_is_open"): (
         "it returns whether a question is open, and each run's own gated step_tick calls it"
     ),
+    ("SimulationView", "self._branch_control_shown"): (
+        "it returns whether an Area shows a branch control, for the banner of a stopped run, "
+        "and it reads widget visibility and no run"
+    ),
     ("SimulationView", "self._open_runs"): (
         "it returns the open runs' identities to the tab strip, and it reads no snapshot"
     ),
