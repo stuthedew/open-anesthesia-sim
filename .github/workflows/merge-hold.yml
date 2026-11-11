@@ -54,8 +54,8 @@ permissions:
 jobs:
   # **This job's name is load-bearing outside the tree**, as `checks` and
   # `pr-title` are: branch protection matches a required status check by name.
-  #
-  # not-required: `main` cannot require it before it has run there once, and it first runs when this file is on `main`; the item that follows `PL-39Y1` removes this line with the owner's change to the setting
+  # `main` requires this check, and `tools/github_refusals_check.py` fails
+  # where it does not (`PL-KH7Y`).
   merge-hold:
     runs-on: ubuntu-latest
     # One checkout and one standard-library command.
