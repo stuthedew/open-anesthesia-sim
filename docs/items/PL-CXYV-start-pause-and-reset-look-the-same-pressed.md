@@ -67,6 +67,31 @@ agrees (2026-11-10): the interface pass defines every state of every control
 itself, so the result of the check does not change what is built. The owner
 had not answered when this was written.
 
+**The owner's answer, 2026-11-11: Tab never reaches Start.** The owner ran
+`make run` on `main` on their Mac and told the session working `PL-RF2S`:
+"tab never reaches start. Cycles through tabs "overview, induction,
+maintenance" then drop downs "concentration, parameters."" So Tab stops on
+the Workspace tabs and the two drop-downs, and on no button.
+
+The link that the pages above left open is in Qt's source. Its Cocoa theme
+returns `Qt::TabFocusAllControls` only when
+`[NSApplication isFullKeyboardAccessEnabled]` is true, and otherwise
+`Qt::TabFocusTextControls | Qt::TabFocusListControls`
+(`case TabFocusBehavior` in
+https://raw.githubusercontent.com/qt/qtbase/dev/src/plugins/platforms/cocoa/qcocoatheme.mm,
+read 2026-11-11). Apple's list of keyboard shortcuts gives the switch:
+"Control-F7 or Fn-Control-F7: Change the way Tab moves focus—between
+navigation of all controls on the screen, or only text boxes and lists"
+(https://support.apple.com/en-us/102650, read 2026-11-11). Apple's page on
+keyboard settings names the setting "Keyboard navigation"
+(https://support.apple.com/guide/mac-help/keyboard-settings-kbdm162/mac, read
+on 2026-11-11 as a search result's extract, because the page's body is not in
+its HTML).
+
+So on the owner's Mac that setting is off, and a button takes Tab only when a
+reader turns it on. Whether Start shows a focus mark with the setting on is
+still not observed.
+
 **Relation to the interface pass.** The pass will define every state of every
 control (`PL-HS9M`, `PL-BVC5`). This finding does not wait for it: a focus
 mark and a pressed state on these three buttons can land alone.
