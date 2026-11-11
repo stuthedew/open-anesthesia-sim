@@ -134,6 +134,7 @@ from anesthesia_sim.app.theme import (
     BAND_SWATCH_WIDTH,
     BRANCH_POINT_STROKE_WIDTH,
     CHART_HEIGHT,
+    CHART_LEAST_HEIGHT,
     COMPARED_RUN_WIDTH_STEP,
     CONTROL_MARK_COLOR,
     CONTROL_MARK_DASH_PATTERN,
@@ -163,6 +164,7 @@ from anesthesia_sim.app.theme import (
     PREVIEW_REGION_FILL_OPACITY,
     TIME_BASE_SELECTOR_WIDTH,
     WASH_IN_CHART_HEIGHT,
+    WASH_IN_CHART_LEAST_HEIGHT,
     WASH_IN_COLOR,
     WASH_IN_STROKE_WIDTH,
 )
@@ -974,7 +976,7 @@ class ConcentrationChart(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._plot = _plot(PANEL)
-        self._plot.setMinimumHeight(CHART_HEIGHT)
+        self._plot.setMinimumHeight(CHART_LEAST_HEIGHT)
         self._plot.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -1143,7 +1145,11 @@ class ConcentrationChart(QWidget):
         return self._runs[run].preview.shown_label()
 
     def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
-        """As wide as the plot asks and `theme.CHART_HEIGHT` tall. It grows into spare height."""
+        """As wide as the plot asks and `theme.CHART_HEIGHT` tall.
+
+        The chart grows into spare height, and shrinks to
+        `theme.CHART_LEAST_HEIGHT` in a View too short for this height.
+        """
 
         return _preferred_size(self._plot, CHART_HEIGHT)
 
@@ -1409,7 +1415,7 @@ class WashInChart(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._plot = _plot(PANEL)
-        self._plot.setMinimumHeight(WASH_IN_CHART_HEIGHT)
+        self._plot.setMinimumHeight(WASH_IN_CHART_LEAST_HEIGHT)
         self._plot.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -1515,7 +1521,11 @@ class WashInChart(QWidget):
         return self._frame
 
     def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
-        """As wide as the plot asks, and `theme.WASH_IN_CHART_HEIGHT` tall."""
+        """As wide as the plot asks, and `theme.WASH_IN_CHART_HEIGHT` tall.
+
+        The chart shrinks to `theme.WASH_IN_CHART_LEAST_HEIGHT` in a View too
+        short for this height.
+        """
 
         return _preferred_size(self._plot, WASH_IN_CHART_HEIGHT)
 
@@ -1741,8 +1751,8 @@ def _preferred_size(plot: Any, height_px: int) -> QSize:
     asks for 480 px on its own, which is no chart's height. That request made
     the page a quarter of a screen taller than the page it replaced. The plot still
     grows past this height, because it expands in both directions, so a
-    taller window lengthens the traces. The plot's minimum height is the same
-    theme height, set on the plot.
+    taller window lengthens the traces. The plot's minimum height is a smaller
+    theme height, such as `CHART_LEAST_HEIGHT`, set on the plot.
     """
 
     return QSize(plot.sizeHint().width(), height_px)

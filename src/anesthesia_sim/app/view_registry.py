@@ -42,16 +42,17 @@ Each shipped entry names a View class from `app/views.py`, and that class is
 its own factory. So this module imports the GUI toolkit through
 `app/views.py`.
 
-**Each entry declares the least size its View is drawn at** (`PL-K285` Q1,
+**Each entry declares the least size its View is shown at** (`PL-K285` Q1,
 project owner, 2026-09-27, ratified). The size is in logical pixels, and it
 is a constraint. The layout keeps an Area at least that size where it can.
 An Area that the layout cannot give that size shows the size it needs
-instead of drawing the View (`layout/sizing.py`). What a View needs is the
-larger, on each axis, of this declared size and the View widget's own
-minimum size hint. The hint grows with what the View contains, such as one
-row per displayed run. The declared size sets a lower limit on that need,
-and it keeps a View that contains nothing yet at a size a reader can see.
-The shipped sizes are placeholders.
+instead of showing the View (`layout/sizing.py`). The declared height is the
+least height in which the View is worth showing, and it may be less than the
+View's content needs. In an Area shorter than the content, the reader scrolls
+the View up and down inside the Area (`area_layout.ViewScroll`, `PL-CBYS`).
+The width a View needs is the larger of the declared width and the least
+width of the View's widget, so no View is scrolled sideways. The shipped
+sizes are placeholders.
 """
 
 from __future__ import annotations
@@ -151,10 +152,11 @@ class RegisteredView:
         required_reachable: Whether `docs/MODEL.md` requires the View to stay
             reachable in every layout. `required_kinds` checks this field
             against `REQUIRED_REACHABLE`.
-        minimum: The least size the View is drawn at, in logical pixels,
-            below the Area's header. The adapter gives the View the larger
-            of this size and the minimum size Qt allows its widget
-            (`PL-K285`).
+        minimum: The least size the View is shown at, in logical pixels,
+            below the Area's header. The adapter never shows the View in a
+            shorter Area, and never in an Area narrower than the larger of
+            this width and the least width of the View's widget (`PL-K285`,
+            `PL-CBYS`).
 
     Raises:
         TypeError: `kind` is not a `ViewKind`, `title` is not a `str`,
@@ -354,32 +356,57 @@ def required_kinds(
     return tuple(required)
 
 
+# The least height at which most Views are shown, below the Area's header. It
+# holds a View's heading and a few rows under it, and the reader scrolls to
+# the rest. It is a placeholder that `PL-CBYS` chose. A larger value makes the
+# dashboard's page scroll in a larger window.
+_LEAST_HEIGHT_PX: Final = 120
+
+# The concentration chart's least height. It is the height of the View's
+# heading, the first two rows above the plot and the plot at
+# `theme.CHART_LEAST_HEIGHT`, measured at 275 px with the offscreen font and
+# rounded up. So the chart's Area keeps the plot whole, and a neighbour gives
+# up the room (`PL-CBYS`, project owner, 2026-11-11: the long plot is kept).
+_CHART_LEAST_HEIGHT_PX: Final = 280
+
+# The Parameters View's least height, which is one run's row of controls. A
+# row of sliders cut off at the Area's edge reads as a row with no values.
+_CONTROLS_LEAST_HEIGHT_PX: Final = 160
+
 #: Every View kind this build can draw, in the order the View chooser lists
 #: them. The titles and the minimum sizes are placeholders.
 REGISTERED: Final = registry(
     RegisteredView(
-        CONCENTRATION_CHART, "Concentrations", ConcentrationView, minimum=PixelSize(420, 300)
+        CONCENTRATION_CHART,
+        "Concentrations",
+        ConcentrationView,
+        minimum=PixelSize(420, _CHART_LEAST_HEIGHT_PX),
     ),
-    RegisteredView(WASH_IN, "Wash-in", WashInView, minimum=PixelSize(300, 220)),
+    RegisteredView(WASH_IN, "Wash-in", WashInView, minimum=PixelSize(300, _LEAST_HEIGHT_PX)),
     RegisteredView(
-        PARAMETER_CONTROLS, "Parameters", ParameterControlsView, minimum=PixelSize(220, 160)
+        PARAMETER_CONTROLS,
+        "Parameters",
+        ParameterControlsView,
+        minimum=PixelSize(220, _CONTROLS_LEAST_HEIGHT_PX),
     ),
     RegisteredView(
         AGENT_ACCOUNTING,
         "Agent accounting",
         AccountingView,
         required_reachable=True,
-        minimum=PixelSize(220, 160),
+        minimum=PixelSize(220, _LEAST_HEIGHT_PX),
     ),
     RegisteredView(
         COMPARTMENT_SCHEMATIC,
         "Compartment schematic",
         CompartmentSchematicView,
-        minimum=PixelSize(480, 260),
+        minimum=PixelSize(480, _LEAST_HEIGHT_PX),
     ),
-    RegisteredView(AGENT_COST, "Agent cost", AgentCostView, minimum=PixelSize(320, 200)),
-    RegisteredView(BOOKMARKS, "Bookmarks", BookmarksView, minimum=PixelSize(220, 120)),
-    RegisteredView(BRANCH, FORK_HEADING, BranchView, minimum=PixelSize(220, 120)),
+    RegisteredView(
+        AGENT_COST, "Agent cost", AgentCostView, minimum=PixelSize(320, _LEAST_HEIGHT_PX)
+    ),
+    RegisteredView(BOOKMARKS, "Bookmarks", BookmarksView, minimum=PixelSize(220, _LEAST_HEIGHT_PX)),
+    RegisteredView(BRANCH, FORK_HEADING, BranchView, minimum=PixelSize(220, _LEAST_HEIGHT_PX)),
 )
 
 #: The View kinds `docs/MODEL.md` § "Minimum displayed outputs" requires to
