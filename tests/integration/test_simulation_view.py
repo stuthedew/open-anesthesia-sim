@@ -2278,31 +2278,25 @@ def test_a_halt_that_cannot_be_stated_is_not_tried_again_on_every_tick(
 ) -> None:
     """A halt whose statement cannot be built is attempted once, not on every render tick.
 
-    Every frame fails, and so does the statement of the halt that follows.
-    Before the halt is built, the run's record is stored as the one last
-    written. So the render ticks that follow find the run's record unchanged,
-    build nothing and raise nothing. When the record was stored only by a
-    halt that could be built, each tick tried the frame again and printed
-    the same exception (adversarial review of `PL-RF2S`). A frame builds each
-    run's statement before it assembles anything, so the attempts are counted
-    there, and no frame gets as far as its assembly.
+    The run cannot be stated. A frame builds each run's statement before it
+    assembles anything, so every frame fails there, and so does the
+    statement of the halt that follows. Before the halt is built, the run's
+    record is stored as the one last written. So the render ticks that
+    follow find the run's record unchanged, build nothing and raise nothing.
+    When the record was stored only by a halt that could be built, each tick
+    tried the frame again and printed the same exception (adversarial review
+    of `PL-RF2S`). The attempts are counted where the statement is built.
     """
 
     controller = SimulationController()
     view = _shown_view(application, controller)
     run = view.runs[0]
-    assemblies: list[None] = []
     statements: list[None] = []
-
-    def failing_assembly(*args: object, **kwargs: object) -> NoReturn:
-        assemblies.append(None)
-        raise RuntimeError("this frame could not be assembled")
 
     def no_statement(*args: object, **kwargs: object) -> NoReturn:
         statements.append(None)
         raise ValueError("this run could not be stated")
 
-    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", failing_assembly)
     monkeypatch.setattr(run_presentation_module, "run_statement", no_statement)
 
     with pytest.raises(ValueError, match="this run could not be stated"):
@@ -2316,7 +2310,6 @@ def test_a_halt_that_cannot_be_stated_is_not_tried_again_on_every_tick(
         view.render_tick()
 
     assert len(statements) == attempted
-    assert assemblies == []
     assert run.owes_a_frame is False
 
 
@@ -2345,6 +2338,38 @@ def test_a_run_s_panel_refuses_a_presentation_built_for_another_run(
 
     assert trunk._status_text.text() == own_status
     assert trunk._start_button.isEnabled() is True
+
+
+def test_a_run_s_dials_refuse_a_presentation_built_for_another_run(
+    application: QApplication,
+) -> None:
+    """One run's settings cannot be written into the dials that change the other run.
+
+    A row of dials asks for a change to the run it was built for. The second
+    run's fresh gas flow is 2.0 L/min and the first run's is 4.0 L/min. The
+    second run's presentation is refused by the first run's row before
+    anything is written, so the first run's dials still show its own
+    settings. Dials that showed 2.0 L/min here would change the run that
+    holds 4.0 L/min.
+    """
+
+    first = SimulationController()
+    second = SimulationController()
+    second.set_fresh_gas_flow(FreshGasFlow(2.0))
+    view = _shown_view(application, first, second)
+    trunk, branch = view.runs
+    row = _setting_row(trunk)
+    own = _dial_readings(row)
+    assert own[0][0] == "4.0 L/min"
+    assert _dial_readings(_setting_row(branch))[0][0] == "2.0 L/min"
+
+    with pytest.raises(
+        ValueError, match="a presentation built for Run 2 was given to the dials of Run 1"
+    ):
+        row.show_dials(branch.presentation(second.snapshot()))
+
+    assert _dial_readings(row) == own
+    assert row.not_shown_text.isHidden() is True
 
 
 # ------------------------------------------ a run that stops itself (PL-T995)
@@ -2998,9 +3023,10 @@ FRAME_WIDGETS: dict[str, str] = {
 }
 
 
-#: The names `_widget_attributes` gives a run's dials and its accounting panel,
-#: which the Views of the run's dashboard hold.
+#: The names `_widget_attributes` gives a run's dials, the line shown in their
+#: place and its accounting panel, which the Views of the run's dashboard hold.
 _SETTING_CONTROLS: Final = "<setting controls>"
+_NO_SETTING_CONTROLS_LINE: Final = "<setting row>.not_shown_text"
 _ACCOUNTING_PANEL: Final = "<accounting panel>"
 
 
@@ -3012,7 +3038,8 @@ def _widget_attributes(run: RunView) -> dict[str, QWidget]:
     controls View and the first accounting View of the run's dashboard build
     them (`PL-RF2S`). They are named `<setting controls>` and
     `<accounting panel>`, so the lists below keep checking them. The dials
-    are left out while the View shows none for the run.
+    are left out while the View shows none for the run. The line that the
+    View shows in their place is always included, hidden or not.
     """
 
     widgets: dict[str, QWidget] = {}
@@ -3027,6 +3054,8 @@ def _widget_attributes(run: RunView) -> dict[str, QWidget]:
         _SETTING_CONTROLS: _setting_row(run).controls,
         _ACCOUNTING_PANEL: _accounting_panel(run),
     }
+
+    widgets[_NO_SETTING_CONTROLS_LINE] = _setting_row(run).not_shown_text
 
     for name, panel in panels.items():
         if panel is None:
@@ -3178,6 +3207,7 @@ VALUE_GROUPS: dict[str, tuple[str, ...]] = {
         "<setting controls>._delivered_concentration_slider",
         "<setting controls>._alveolar_ventilation_slider",
         "<setting controls>._cardiac_output_slider",
+        "<setting row>.not_shown_text",
         "_delivered_text",
     ),
     "accounting": (
@@ -4033,6 +4063,10 @@ def test_a_halt_whose_dials_cannot_be_built_shows_no_setting_of_the_discarded_ru
     1 MAC line that named desflurane (`PL-SV2Q`). The dashboard now holds no
     dial for the run, one line says so in the dials' place, and the delivered
     line withholds both of its values. Both texts are written out by hand.
+
+    The dials can then be built again, and a frame draws. The four dials are
+    back, showing the settings of a desflurane run built directly, and the
+    line in their place is gone.
     """
 
     run, _ = _a_halt_after_an_agent_change_whose_dials_cannot_be_written(application, monkeypatch)
@@ -4054,6 +4088,20 @@ def test_a_halt_whose_dials_cannot_be_built_shows_no_setting_of_the_discarded_ru
     assert row.not_shown_text.text() in dashboard.visible_strings()
     assert run._delivered_text.text() != "Delivered 8.00% (4.00 \u00d7MAC)"
     assert run._delivered_text.text() == "Delivered \u2014% (\u2014 \u00d7MAC)"
+
+    monkeypatch.undo()
+    dashboard.present(False)
+    _settle(application)
+    in_force = setting_readouts(SimulationController("desflurane").record())
+
+    assert _setting_row(run) is row
+    assert row.controls is not None, "the dials were not built again"
+    assert [
+        (dial.name_label.text(), dial.value_label.text(), dial.secondary_label.text())
+        for dial in dashboard.findChildren(ParameterSlider)
+    ] == [(setting.name, setting.value_text, setting.secondary) for setting in in_force]
+    assert row.not_shown_text.isHidden() is True
+    assert "This run's setting controls cannot be shown." not in dashboard.visible_strings()
 
 
 # How a stopped run states a dial that it refused (`PL-3B34`). This is written as
@@ -10232,7 +10280,7 @@ def test_a_halt_whose_dials_cannot_be_written_still_withdraws_branch_here(
     than the dial's step (`PL-M3M2`). `_halt_run` used to ask for no frame then, and the
     dashboard rewrites its branch panel only when it draws. So "Branch here" kept offering
     the halted trunk. Every slot of a run reaches this path through the halt gate, including
-    `_handle_adjustment_start`, which no `try` guarded before (blind review of `PL-HJKN`).
+    `start_adjustment`, which no `try` guarded before (blind review of `PL-HJKN`).
     """
 
     case = _branched_case()
@@ -12646,6 +12694,46 @@ def test_a_view_that_raises_on_a_halt_leaves_no_dropped_branch_in_the_views_afte
     assert len(view.findChildren(AccountingPanel)) == 1
 
 
+def test_a_view_that_raises_on_a_halt_hides_neither_a_run_s_halt_nor_the_first_exception(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A View that raises on a halt's tick comes after each run's halt, and after its exception.
+
+    Every frame fails, and neither of two runs can build its dials. Each
+    run shows its halt and then raises, because its dials could not be
+    built. The concentration chart then raises on the halt's tick. Each run
+    must still show its halt. The exception that reaches the caller must be
+    the first one, the first run's, so that the console names the earliest
+    cause (`PL-TLH4`). The View after the chart is still handed the tick, so
+    it shows the line that stands in place of each run's dials.
+    """
+
+    first, second = SimulationController(), SimulationController()
+    view = _shown_view(application, first, second)
+    view.layout_container.choose_view(AreaId(3), PARAMETER_CONTROLS)
+    _settle(application)
+    _, after_the_chart = (
+        shown for shown in view.layout_container.views() if isinstance(shown, ParameterControlsView)
+    )
+    assert [row.controls is None for row in after_the_chart.rows] == [False, False]
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+    monkeypatch.setattr(run_presentation_module, "setting_readouts", _no_setting)
+    monkeypatch.setattr(_concentration(view), "refresh", _no_tick_without_a_frame)
+
+    with pytest.raises(ValueError, match="this control can offer no setting"):
+        view.present(False)
+
+    for run, controller in zip(view.runs, (first, second), strict=True):
+        assert controller.has_failed is True
+        assert run._status_text.text() == STATUS_FAILED_TEXT
+        notice = run._notice_text.notice()
+        assert notice is not None
+        assert "RuntimeError: this frame could not be assembled" in notice
+
+    assert [row.controls is None for row in after_the_chart.rows] == [True, True]
+    assert [row.not_shown_text.isHidden() for row in after_the_chart.rows] == [False, False]
+
+
 def test_a_view_that_raises_on_a_halt_leaves_no_dial_on_a_setting_the_run_refused(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -12689,16 +12777,32 @@ def test_a_view_that_raises_on_a_halt_leaves_no_dial_on_a_setting_the_run_refuse
     assert _dial_readings(before_the_chart.rows[0]) == in_force
 
 
+#: Each request with which a View names a run, as a call on the dashboard
+#: for the run it is given.
+_REQUESTS_THAT_NAME_A_RUN: Final[Mapping[str, Callable[[SimulationView, RunId], None]]] = {
+    "a dial pressed": lambda view, run_id: view._handle_adjustment_start_request(run_id),
+    "a setting": lambda view, run_id: view._handle_setting_request(
+        run_id, ControlInput.FRESH_GAS_FLOW, 7.0
+    ),
+    "a preview": lambda view, run_id: view._handle_preview_request(
+        run_id, ControlInput.FRESH_GAS_FLOW, 7.0
+    ),
+    "a preview ended": lambda view, run_id: view._handle_preview_end_request(run_id),
+}
+
+
+@pytest.mark.parametrize("request_made", list(_REQUESTS_THAT_NAME_A_RUN))
 def test_a_request_that_names_a_run_the_dashboard_does_not_hold_halts_every_run(
-    application: QApplication,
+    application: QApplication, request_made: str
 ) -> None:
     """A View that asks to change a run that is gone is refused by name, and nothing is changed.
 
-    A View names the run whose setting it asks to change. The dashboard
-    holds Run 1 alone here, and the request names Run 2. No run takes the
-    setting. The refusal halts every run, as any exception in one of the
-    dashboard's own slots does, and the banner names the run that was asked
-    for and the runs that are held.
+    A View names the run that it asks about, in each of its four requests:
+    a dial pressed, a setting, a preview and a preview ended. The dashboard
+    holds Run 1 alone here, and the request names Run 2. No run takes a
+    setting or a preview. The refusal halts every run, as any exception in
+    one of the dashboard's own slots does, and the banner names the run that
+    was asked for and the runs that are held.
     """
 
     controller = SimulationController()
@@ -12711,14 +12815,87 @@ def test_a_request_that_names_a_run_the_dashboard_does_not_hold_halts_every_run(
     with pytest.raises(ValueError, match=refusal):
         view._run_with(absent)
 
-    view._handle_setting_request(absent, ControlInput.FRESH_GAS_FLOW, 7.0)
+    _REQUESTS_THAT_NAME_A_RUN[request_made](view, absent)
 
     assert controller.settings().fresh_gas_flow_l_min == 4.0
     assert controller.record().control_timeline == ()
+    assert view.runs[0].preview is None
     assert controller.has_failed is True
     notice = view.runs[0]._notice_text.notice()
     assert notice is not None
     assert f"ValueError: {refusal}" in notice
+
+
+def _refusing(*args: object, **kwargs: object) -> NoReturn:
+    """Stand in for a controller method in a test where the controller raises inside a request."""
+
+    raise RuntimeError("the controller could not do this")
+
+
+def _a_setting_the_controller_raises_on(view: SimulationView, patch: pytest.MonkeyPatch) -> None:
+    second = view.runs[1]
+    patch.setattr(second.controller, "set_fresh_gas_flow", _refusing)
+    _drag(_dials(second)._fresh_gas_flow_slider, 7.0, FLOW_DISPLAY_DECIMALS)
+
+
+def _a_preview_the_controller_raises_on(view: SimulationView, patch: pytest.MonkeyPatch) -> None:
+    second = view.runs[1]
+    patch.setattr(second.controller, "preview_settings", _refusing)
+    _hold_thumb(_dials(second)._fresh_gas_flow_slider, 7.0, FLOW_DISPLAY_DECIMALS)
+
+
+def _a_setting_for_a_control_the_run_does_not_have(
+    view: SimulationView, patch: pytest.MonkeyPatch
+) -> None:
+    view._handle_setting_request(
+        view.runs[1].run_id,
+        "tidal volume",  # type: ignore[arg-type]
+        7.0,
+    )
+
+
+@pytest.mark.parametrize(
+    ("request_made", "error"),
+    [
+        (_a_setting_the_controller_raises_on, "RuntimeError: the controller could not do this"),
+        (_a_preview_the_controller_raises_on, "RuntimeError: the controller could not do this"),
+        (_a_setting_for_a_control_the_run_does_not_have, "KeyError: 'tidal volume'"),
+    ],
+    ids=["a setting", "a preview", "a setting for no control"],
+)
+def test_a_request_that_one_run_cannot_carry_out_halts_that_run_alone_and_shows_its_halt(
+    application: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+    request_made: Callable[[SimulationView, pytest.MonkeyPatch], None],
+    error: str,
+) -> None:
+    """A View's request that fails inside one run stops that run, and the other run goes on.
+
+    A dial in a View asks the dashboard, and the dashboard passes the
+    request to the run that the dial names (`RunView.request_setting`,
+    `RunView.request_preview`). The second of two runs fails to carry the
+    request out: its controller raises, or the request names a control that
+    the run does not have. That run shows its halt, with the error in its
+    banner. The first run has not failed and shows no halt. If the run's
+    method let the exception out, the dashboard would halt every run.
+    """
+
+    first, second = SimulationController(), SimulationController()
+    view = _shown_view(application, first, second)
+
+    request_made(view, monkeypatch)
+    _settle(application)
+
+    halted, untouched = view.runs[1], view.runs[0]
+    assert second.has_failed is True
+    assert halted._status_text.text() == STATUS_FAILED_TEXT
+    notice = halted._notice_text.notice()
+    assert notice is not None
+    assert error in notice
+    assert first.has_failed is False, "the run that was not asked was halted too"
+    assert untouched._status_text.text() != STATUS_FAILED_TEXT
+    assert second.settings().fresh_gas_flow_l_min == 4.0
+    assert halted.preview is None
 
 
 def test_a_view_chosen_while_frames_fail_does_not_ask_again_every_tick(

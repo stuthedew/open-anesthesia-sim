@@ -1,15 +1,19 @@
-"""Everything one run's panel shows at one moment, as one value that one call writes.
+"""Everything on screen that belongs to one run at one moment, as one value.
 
-`RunView.show_presentation` is the only code that writes a run's widgets, and
-it writes all of them from one `RunPresentation`. Two functions here build
-that value, and neither loads a GUI toolkit. `drawn_run` builds it from the
-snapshot that a frame drew from. `halted_run` builds it from the run's record
-when no frame can be drawn. `tests/unit/test_run_presentation.py` tests both
-with no widget.
+Every widget that shows one run is written from one `RunPresentation`.
+`RunView.show_presentation` writes the run's own panel from it: the status
+word, the transport, the agent identity, the delivered line, the
+control-change panel, the banner and the readouts. The Views in
+`app/views.py` write the run's panels in the Areas from the same value: the
+four dials, the accounting panel, the compartment schematic and the agent
+cost panel. Two functions here build that value, and neither loads a GUI
+toolkit. `drawn_run` builds it from the snapshot that a frame drew from.
+`halted_run` builds it from the run's record when no frame is drawn.
+`tests/unit/test_run_presentation.py` tests both with no widget.
 
 A halt is not a second writer. It is a `RunPresentation` whose values are kept
-or withheld, and `RunView.show_presentation` writes it exactly as it writes a
-drawn one (`PL-RF2S`). Before this module, a frame and a halt each wrote the
+or withheld, and each writer writes it exactly as it writes a drawn one
+(`PL-RF2S`). Before this module, a frame and a halt each wrote the
 widgets themselves, and each wrote a different part of them. A value that the
 halt left out stayed on screen from the run before, under a heading that named
 the run after it. Four fixes each added the missed widget to the halt, and to a
@@ -309,7 +313,17 @@ def halted_run(
     state: RunPanelState,
     kept: KeptValues,
 ) -> RunPresentation:
-    """Return what a run's panel shows for a stopped run when no frame can be drawn.
+    """Return what is shown for a run when no frame is drawn for it.
+
+    Two callers need this. A halt states a stopped run, on the run's own
+    panel and in every View. The dashboard also hands every View the runs
+    with no frame at once after a dial is dragged (`SimulationView.present`),
+    and that run has not stopped. The Views write only the run's name, its
+    agent, its dials and its values, and all four are right for either run.
+    The status word here never says that a mark stopped the run, and the
+    banner is the one for a halt, which is empty for a run that has not
+    stopped. Only the run's own panel writes those two, and it is given
+    this value only on a halt (`RunView.show_halt`).
 
     Nothing here builds a compartment value. One of the halts this function
     states is the refusal of a compartment value, and stating that halt must
@@ -361,7 +375,10 @@ def halted_run(
         # Every halt stated here has failed the run or stopped it at the
         # supported run length, and both of those status words outrank a
         # mark's. Whether a mark stopped the run is worked out from the
-        # compartment states, which this function does not build.
+        # compartment states, which this function does not build. A run
+        # that has not stopped can be standing on a mark. No writer shows
+        # the status word of such a run from this value, as the docstring
+        # says.
         stopped_on_mark=False,
         standing=standing,
         values=values,

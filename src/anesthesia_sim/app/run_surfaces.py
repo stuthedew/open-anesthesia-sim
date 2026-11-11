@@ -108,20 +108,19 @@ class ParameterControls(QWidget):
     preview_requested = Signal(object, float)
     preview_ended = Signal()
 
-    def __init__(self, settings: Sequence[SettingReadout], parent: QWidget | None = None) -> None:
+    def __init__(self, settings: Sequence[SettingReadout]) -> None:
         """Build the four controls from the settings in force.
 
         Args:
             settings: `dashboard_frame.setting_readouts` for the run, one per
                 control in `PARAMETER_CONTROLS` order.
-            parent: The Qt parent.
 
         Raises:
             ValueError: If `settings` does not hold one readout per control in
                 `PARAMETER_CONTROLS`.
         """
 
-        super().__init__(parent)
+        super().__init__()
 
         if len(settings) != len(PARAMETER_CONTROLS):
             raise ValueError(
@@ -179,17 +178,16 @@ class ParameterControls(QWidget):
 class AccountingPanel(QFrame):
     """One run's mass-balance panel: its heading, the status, what it means, and the amounts."""
 
-    def __init__(self, shown: Accounting, heading: str, parent: QWidget | None = None) -> None:
+    def __init__(self, shown: Accounting, heading: str) -> None:
         """Build the panel showing one accounting.
 
         Args:
             shown: The accounting to draw.
             heading: The panel's heading, which names the run while more
                 than one is drawn (`dashboard_frame.compared_panel_heading`).
-            parent: The Qt parent.
         """
 
-        super().__init__(parent)
+        super().__init__()
         self.setObjectName("accountingPanel")
         self.setStyleSheet(panel_stylesheet("accountingPanel"))
         self._accounting_heading_text = styled_label(heading, color=INK, bold=True)

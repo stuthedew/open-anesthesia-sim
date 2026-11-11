@@ -396,13 +396,10 @@ class RunSchematic(QWidget):
     Args:
         shown: The schematic to draw first.
         name: The run's name while runs are compared, or None.
-        parent: The Qt parent.
     """
 
-    def __init__(
-        self, shown: SchematicShown, name: str | None, parent: QWidget | None = None
-    ) -> None:
-        super().__init__(parent)
+    def __init__(self, shown: SchematicShown, name: str | None) -> None:
+        super().__init__()
         self.name_text = styled_label("", color=INK, bold=True)
         self.canvas = SchematicCanvas()
         self.scale_text = styled_label("", color=MUTED, size_px=METRIC_QUALIFIER_SIZE)

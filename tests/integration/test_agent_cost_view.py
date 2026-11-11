@@ -326,7 +326,10 @@ _REFUSED_PRICE = {
 def test_a_refused_price_s_notice_stays_after_a_unit_is_picked_and_saved(
     application: QApplication, shown: list[SimulationView], tmp_path: Path
 ) -> None:
-    """Picking a unit replaces no price, so the notice of the refused price still applies."""
+    """Picking a unit replaces no price, so the notice of the refused price still applies.
+
+    The notice also stays when the Views are handed the runs with no frame.
+    """
 
     (tmp_path / PREFERENCES_FILE_NAME).write_text(
         json.dumps(
@@ -345,6 +348,11 @@ def test_a_refused_price_s_notice_stays_after_a_unit_is_picked_and_saved(
     _pick(cost_view, AgentAmountUnit.LITRES_OF_VAPOUR)
 
     assert "agent_prices[0]" in before
+    assert cost_view.preferences_notice.text() == before
+    assert not cost_view.preferences_notice.isHidden()
+
+    view.present(True)
+
     assert cost_view.preferences_notice.text() == before
     assert not cost_view.preferences_notice.isHidden()
 

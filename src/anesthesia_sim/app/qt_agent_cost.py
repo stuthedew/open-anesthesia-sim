@@ -49,13 +49,10 @@ class RunAgentCost(QWidget):
     Args:
         shown: The delivered agent to show first.
         name: The run's name while runs are compared, or None.
-        parent: The Qt parent.
     """
 
-    def __init__(
-        self, shown: DeliveredShown, name: str | None, parent: QWidget | None = None
-    ) -> None:
-        super().__init__(parent)
+    def __init__(self, shown: DeliveredShown, name: str | None) -> None:
+        super().__init__()
         self.name_text = styled_label("", color=INK, bold=True)
         self.label_text = styled_label("", color=INK, size_px=METRIC_NAME_SIZE)
         self.amount_text = styled_label("", color=INK, size_px=METRIC_VALUE_SIZE, bold=True)

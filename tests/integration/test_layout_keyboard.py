@@ -778,7 +778,7 @@ def test_the_controls_area_has_its_least_width_from_the_first_frame(
 ) -> None:
     """`PL-4L8B`: the first frame settles the Areas, so a border's first keyboard step is one step.
 
-    The setting controls build their per-run copies on their first frame,
+    The setting controls View builds each run's dials on its first frame,
     which raises the minimum width of the Area that holds them. Before the fix,
     the root splitter kept the widths it had before that frame until the next
     pass of the event loop. At this size those widths were 1010 and 336 px, and

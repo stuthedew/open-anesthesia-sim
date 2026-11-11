@@ -24,10 +24,11 @@ from PySide6.QtWidgets import QApplication
 from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app.chart_time_base import time_base_for_span
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
-from anesthesia_sim.app.dashboard_frame import SIMULATION_STEP_S
+from anesthesia_sim.app.dashboard_frame import SIMULATION_STEP_S, slider_position
+from anesthesia_sim.app.formatting import FLOW_DISPLAY_DECIMALS
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.view_registry import WASH_IN
-from anesthesia_sim.app.views import ConcentrationView
+from anesthesia_sim.app.views import ConcentrationView, ParameterControlsView
 from anesthesia_sim.app.workspace_tabs import (
     DELETE_LABEL,
     DUPLICATE_LABEL,
@@ -614,6 +615,47 @@ def test_a_pinned_workspace_draws_its_run_alone_and_names_it_on_every_area(
 
     assert _concentration(view).legend._run_names == ("Run 1", "Run 2")
     assert not view.layout_container.frame(AreaId(1)).pin_label.isVisible()
+
+
+def test_a_dial_moved_in_a_workspace_pinned_to_the_second_run_sets_that_run_alone(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """A pinned Workspace shows its run's dials alone, and they change that run.
+
+    The Workspace is pinned to Run 2, so the setting controls View shows one
+    row of dials. Both runs hold a fresh gas flow of 4.0 L/min. The learner
+    moves the dial to 7.0 L/min with the keyboard, which holds no thumb.
+    Run 2 takes the setting and Run 1 keeps its own. A View that found a
+    run's dials by their place in the list would hand Run 2 the dials built
+    for Run 1, and the move would set Run 1 (`PL-RF2S`).
+
+    The dashboard hands the Views the runs at once after the move, with no
+    frame. That tick follows the pin too, so the View still shows one row,
+    and the row shows 7.0 L/min.
+    """
+
+    first, second = SimulationController(), SimulationController()
+    view = _dashboard(application, shown, first, second)
+    view.tab_strip.choose(_named(view.tab_strip.operations(0), "Pin Run 2"))
+    controls = next(
+        v for v in view.layout_container.views() if isinstance(v, ParameterControlsView)
+    )
+    assert len(controls.rows) == 1
+    dials = controls.rows[0].controls
+    assert dials is not None
+    dial = dials._fresh_gas_flow_slider
+    frames = view.presented_frames
+
+    dial.slider.setValue(slider_position(7.0, FLOW_DISPLAY_DECIMALS))
+
+    assert float(second.settings().fresh_gas_flow_l_min) == 7.0
+    assert float(first.settings().fresh_gas_flow_l_min) == 4.0
+    assert second.has_failed is False
+    assert first.has_failed is False
+    assert view.presented_frames == frames, "a frame drew, so the tick with no frame was not seen"
+    assert len(controls.rows) == 1, "the tick with no frame showed a run the pin leaves out"
+    assert controls.rows[0].controls is dials
+    assert dial.value_label.text() == "7.0 L/min"
 
 
 def test_a_pinned_run_dropped_while_every_frame_fails_is_stated_as_not_open(

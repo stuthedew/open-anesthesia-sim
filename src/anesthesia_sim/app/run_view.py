@@ -691,7 +691,10 @@ class RunView(QWidget):
 
         Args:
             drawn: The snapshot that this tick's frames were drawn from, read
-                once by the caller. None when no frame can be drawn.
+                once by the caller. None when no frame is drawn: on a halt,
+                and when the dashboard hands the Views the runs at once
+                after a dial is dragged. This run has not stopped then, and
+                the Views write only its name, agent, dials and values.
 
         Returns:
             The presentation. Building it writes nothing.

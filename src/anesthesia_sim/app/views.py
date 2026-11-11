@@ -76,6 +76,7 @@ from anesthesia_sim.app.dashboard_frame import (
     mac_reference_caption,
     no_traces_shown,
     off_scale_lines,
+    run_label,
     time_axis_caption,
     unmarked_changes_lines,
     wash_in_state_lines,
@@ -195,7 +196,7 @@ class _RunWidgets[W: QWidget]:
 
         for run in runs:
             held = next((widget for owner, widget in self._widgets if owner == run.run_id), None)
-            kept.append((run.run_id, self._built_for(run) if held is None else held))
+            kept.append((run.run_id, self._build(run) if held is None else held))
 
         for _, widget in self._widgets:
             self._column.removeWidget(widget)
@@ -222,17 +223,6 @@ class _RunWidgets[W: QWidget]:
                 widget.deleteLater()
 
         self._widgets = [(run_id, widget) for run_id, widget in self._widgets if run_id in named]
-
-    def _built_for(self, run: RunPresentation) -> W:
-        """Build a new widget for `run`, forgotten once Qt destroys it."""
-
-        widget = self._build(run)
-        widget.destroyed.connect(partial(self._forget, widget))
-
-        return widget
-
-    def _forget(self, widget: W, *_destroyed: object) -> None:
-        self._widgets = [(run_id, kept) for run_id, kept in self._widgets if kept is not widget]
 
 
 class _RunLines:
@@ -641,10 +631,17 @@ class _RunPanelsView[W: QWidget](QWidget):
     Args:
         context: What the View is built from.
         build: Builds one run's widget from the run's presentation.
+        write: Writes one run's widget whole from the run's presentation.
     """
 
-    def __init__(self, context: ViewContext, build: Callable[[RunPresentation], W]) -> None:
+    def __init__(
+        self,
+        context: ViewContext,
+        build: Callable[[RunPresentation], W],
+        write: Callable[[W, RunPresentation], None],
+    ) -> None:
         super().__init__()
+        self._write = write
         self._drawn = False
         self.state_notice = _state_notice_for(context)
         self._run_widgets = _RunWidgets(build, PAGE_SPACING)
@@ -662,11 +659,6 @@ class _RunPanelsView[W: QWidget](QWidget):
             self._write(widget, run)
 
         self._drawn = True
-
-    def _write(self, widget: W, run: RunPresentation) -> None:
-        """Write one run's widget whole from the run's presentation."""
-
-        raise NotImplementedError
 
     @property
     def owes_a_frame(self) -> bool:
@@ -688,6 +680,13 @@ def _accounting_heading(run: RunPresentation) -> str:
     return compared_panel_heading(ACCOUNTING_HEADING, run.name)
 
 
+def _write_accounting(panel: AccountingPanel, run: RunPresentation) -> None:
+    """Write one run's accounting panel whole: its heading, then its verdict and amounts."""
+
+    panel.show_heading(_accounting_heading(run))
+    panel.show_accounting(run.values.accounting)
+
+
 class AccountingView(_RunPanelsView[AccountingPanel]):
     """Every displayed run's mass-balance panel, one above the next.
 
@@ -702,7 +701,9 @@ class AccountingView(_RunPanelsView[AccountingPanel]):
 
     def __init__(self, context: ViewContext) -> None:
         super().__init__(
-            context, lambda run: AccountingPanel(run.values.accounting, _accounting_heading(run))
+            context,
+            lambda run: AccountingPanel(run.values.accounting, _accounting_heading(run)),
+            _write_accounting,
         )
 
     @property
@@ -710,10 +711,6 @@ class AccountingView(_RunPanelsView[AccountingPanel]):
         """The panel shown for each displayed run, in drawing order."""
 
         return self._run_widgets.widgets
-
-    def _write(self, widget: AccountingPanel, run: RunPresentation) -> None:
-        widget.show_heading(_accounting_heading(run))
-        widget.show_accounting(run.values.accounting)
 
 
 class RunDials(QWidget):
@@ -727,7 +724,9 @@ class RunDials(QWidget):
     dials are built again on the first tick whose presentation holds them.
 
     A moved dial asks the dashboard for the change through the View's
-    requests, naming this run by its `run_id`.
+    requests, naming this run by its `run_id`. So the row refuses to show
+    another run's presentation. Its dials would then show one run's settings
+    and change another's.
 
     Args:
         run_id: The run whose settings the dials show and ask to change.
@@ -755,8 +754,24 @@ class RunDials(QWidget):
         self._column.setContentsMargins(0, 0, 0, 0)
         self._column.addWidget(self.not_shown_text)
 
-    def show_dials(self, dials: tuple[SettingReadout, ...] | NotBuilt) -> None:
-        """Write the four dials from `dials`, or delete them and show the line in their place."""
+    def show_dials(self, run: RunPresentation) -> None:
+        """Write the four dials from `run.dials`, or delete them and show the line in their place.
+
+        Args:
+            run: The presentation of the run that this row was built for.
+
+        Raises:
+            ValueError: If `run` is another run's presentation. Nothing is
+                written.
+        """
+
+        if run.run_id != self._run_id:
+            raise ValueError(
+                f"a presentation built for {run_label(run.run_id)} was given to the dials of "
+                f"{run_label(self._run_id)}: each row of dials shows the run it was built for"
+            )
+
+        dials = run.dials
 
         if isinstance(dials, NotBuilt):
             if self.controls is not None:
@@ -807,16 +822,13 @@ class ParameterControlsView(_RunPanelsView[RunDials]):
 
     def __init__(self, context: ViewContext) -> None:
         requests = context.requests
-        super().__init__(context, lambda run: RunDials(run.run_id, requests))
+        super().__init__(context, lambda run: RunDials(run.run_id, requests), RunDials.show_dials)
 
     @property
     def rows(self) -> tuple[RunDials, ...]:
         """Each displayed run's dials, or the line in their place, in drawing order."""
 
         return self._run_widgets.widgets
-
-    def _write(self, widget: RunDials, run: RunPresentation) -> None:
-        widget.show_dials(run.dials)
 
 
 class _CasePanelView[W: QWidget](QWidget):
