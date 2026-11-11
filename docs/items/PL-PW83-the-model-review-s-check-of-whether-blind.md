@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: model-review
+milestone: v0.6.18
 touches: .claude/skills/model-review/SKILL.md
 added: 2026-11-11
 closed: 2026-11-11
