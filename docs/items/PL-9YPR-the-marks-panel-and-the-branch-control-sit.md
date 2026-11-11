@@ -70,6 +70,31 @@ the reader chooses one in an Area or uses "Reset this Workspace".
 
 Still to do before this item closes:
 
+0. Move eight more tests that pin the shipped Workspaces' old shape. The
+   full check on commit `0eecaba84` ran 12,227 tests: 8 failed and 12,216
+   passed (2026-11-11). Seven expect the shipped files as they were, and one
+   still reads the removed attribute:
+   - `tests/unit/test_layout_shipped.py`:
+     `test_the_default_gives_the_chart_the_full_height_beside_the_parameter_controls`
+     and `test_induction_shows_the_wash_in_chart` list each Workspace's kinds.
+   - `tests/unit/test_layout_sizing.py`:
+     `test_a_shipped_workspace_on_a_small_extent_names_its_too_small_areas_and_none_has_no_size`
+     expects three Areas' sizes, and the file now has five.
+   - `tests/integration/test_workspace_tabs.py`:
+     `test_a_tab_switches_the_layout_and_leaves_the_run` lists the View
+     classes shown.
+   - `tests/integration/test_dark_appearance.py`:
+     `test_a_selector_popup_draws_the_theme_rather_than_the_host_palette`
+     counts four popups and finds three. Find out which selector it no longer
+     reaches before changing the count, because the branch control's selector
+     now sits in a scroll area.
+   - `tests/integration/test_layout_safety.py`:
+     `test_every_layout_operation_leaves_the_unconditional_set_on_screen` and
+     `test_a_halted_run_keeps_its_halt_reason_on_screen` count three Areas
+     after a split and find five.
+     `test_a_branched_case_keeps_both_runs_drawn_and_named` reads
+     `view._fork_panel`.
+
 1. Triage this item: `**Why it matters.**`, `**Done when.**` and a
    `**Generator check.**` line in this brief, then priority, effort, classes,
    touches, `verify:` and `payoff:` with `bin/docket set`. A `verify:` that
