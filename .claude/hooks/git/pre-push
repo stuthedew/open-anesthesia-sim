@@ -37,6 +37,15 @@
 # work-in-progress push that skips its checks is written
 # `PUSH_CHECKS=skip git push`, which this hook still screens (`PL-5R11`).
 #
+# **This hook warns early, and something else refuses the action** (`PL-39Y1`).
+# A push that skips the hook, by `--no-verify`, by `-c core.hooksPath=` or with
+# `CLAUDECODE` unset, is never read here. Anthropic's proxy refuses a session's
+# `git push` that deletes a branch, whatever its spelling, with an HTTP 403
+# (`docs/worker.md` § "Ref operations a session cannot perform"). GitHub's
+# rulesets refuse a forced push, and `tools/github_refusals_check.py` fails CI
+# where one of those rules is missing. Nothing but this hook screens a push for
+# an email address.
+#
 # Edit the copy in `.claude/hooks/git/`. The installed copy is overwritten at
 # the next session start.
 
