@@ -144,3 +144,26 @@ checks that. The opening paragraphs did not say that the supported ranges and
 the supported run length are in the new document, and now do.
 `tools/model_rewrite.py repoint` now lists each second section name for a
 person to read.
+
+**The mutation check, 2026-11-11.** It ran 21 mutants on the lines this
+branch changed, and the unit tests caught 17. The 4 that survived changed
+only the wording of two refusals that this branch re-pointed: the refusal of
+an amount with no derived precision, in `app/formatting.py`, and the refusal
+of an instant not built as `CaseInstant`, in `core/supported_ranges.py`.
+`test_a_unit_with_no_derived_precision_is_refused` and
+`test_a_value_not_built_as_the_type_is_refused_whatever_it_holds` now compare
+the end of each message with the sentence written out in the test. Each
+failed with its mutant applied by hand: the sentence wrapped in `XX`, in
+lower case and in upper case for the first, and wrapped in `XX` for the
+second.
+
+The check gave no answer at first, for two causes that were on `main`. This
+branch fixed both in `pyproject.toml`, and `PL-GP8G` fixed both on `main`
+while the branch was open, so the merge took `main`'s settings. The two
+regression tests this branch wrote stay in `tests/unit/test_diff_mutation.py`.
+
+**The copy edit of the last two comments was skipped.** The two tests above
+each gained a two-line comment after the last copy edit. The project owner
+said "skip copy edit" on 2026-11-11, while the copy editor was reading them,
+so the trailer on the commit that records this says it read none.
+

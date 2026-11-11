@@ -20,3 +20,13 @@ added: 2026-11-11
 
 **Done when.** Either a check refuses a pull request whose unit tests fail inside the mutation copy, or the item records a decision that the cost is not worth it, with the count of instances since 2026-11-11.
 
+**Checked 2026-11-11, from `PL-CTXZ`.** A unit test now covers the first of
+the two instances' kinds. `test_the_mutation_run_copies_each_root_path_a_simulator_unit_test_reads`,
+in `tests/unit/test_diff_mutation.py`, fails when a simulator unit test reads
+a path at the repository root that the mutation run does not copy. It reads
+each test's source for `Path(__file__).parents[2] / "name"`, so it runs in
+under a second and misses a path built any other way. It does not cover the
+second kind, a test that fails on the mutant copies of functions, except that
+`test_the_mutation_run_leaves_out_each_test_that_lists_the_models_functions`
+fails if either of the two known tests is put back into the run.
+
