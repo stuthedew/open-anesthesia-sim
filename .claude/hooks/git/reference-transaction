@@ -30,6 +30,11 @@
 # settings before it moves any ref, so a refused rename leaves the settings
 # renamed and every ref where it was.
 #
+# **Nothing else refuses these deletions** (`PL-39Y1`). The refs are in the
+# session's own clone, which GitHub never sees, so no rule on GitHub's side can
+# stand behind this hook. `tools/github_refusals_check.py` lists a prune that
+# skips the hook among the actions nothing refuses.
+#
 # Edit the copy in `.claude/hooks/git/`. The installed copy is overwritten at
 # the next session start.
 
@@ -73,7 +78,11 @@ Run \`bin/docket stranded\` to see what such refs hold.
       git push -u origin <branch>
 
   Where the remote still holds the old branch, git rejects that push as
-  behind it. Push with \`--force-with-lease\` then, which replaces it.
+  behind it. Never force that push: GitHub refuses a forced push on every
+  branch (PL-39Y1). Read what the old branch holds, carry across any commit
+  that is not here, then ask the project owner to archive and delete the old
+  branch, and push again once it is gone. \`bin/docket branch\` prints the
+  steps.
 
 - To point a remote somewhere else, keep it and its refs:
   \`git remote set-url <name> <url>\`.

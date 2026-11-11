@@ -126,7 +126,11 @@ quotes it. Workflow items need no merge confirmation (project owner, 2026-10-12,
   push that brings the hold, or green CI merges half the work. While the hold
   is a claim, keep the pull request a draft. Once no claim holds it, record the
   judgment or ask the owner, as `arm` says. A pull request held for the owner
-  merges on their word alone. The ask quotes the text the owner is to judge,
+  waits for their answer. Record that answer on a commit that changes nothing
+  else, as `Owner-read: given - <date>, "<their words>"`, and push it. `arm`
+  then answers `arm`, and the `merge-hold` check on the pull request passes
+  (`PL-39Y1`). Record only what the owner said, and never a go-ahead they did
+  not give. The ask quotes the text the owner is to judge,
   before and after and with its surrounding paragraph, in the reply itself,
   and never sends them into a file to find it (project owner, 2026-11-02,
   `PL-77QB`, `PL-BGN1`).

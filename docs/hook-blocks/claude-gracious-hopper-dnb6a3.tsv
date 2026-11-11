@@ -1,0 +1,4 @@
+time	session	guard	rule
+2026-11-11T00:28:14.505943+00:00	e47ab1b0-6cf1-50ea-98b7-baa6239f6150	gate-status-guard	status-swallowed:bin/docket check
+2026-11-11T00:47:05.629965+00:00	e47ab1b0-6cf1-50ea-98b7-baa6239f6150	gate-status-guard	status-swallowed:ruff
+2026-11-11T00:49:36.183556+00:00	e47ab1b0-6cf1-50ea-98b7-baa6239f6150	push-check-guard	checks-failed
