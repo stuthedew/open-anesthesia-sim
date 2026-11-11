@@ -3,7 +3,7 @@ id: PL-J1ZM
 title: Sessions write prose that over-explains, in every kind of text they write: each writing rule adds something a text must carry (a reason for each value, what changing it would do, the test that holds it, its provenance) and none says what the reader can do without, so docs, docstrings, the interface, item briefs, pull requests and replies each need rewrites, and each later change grows them again
 priority: P1
 effort: M
-status: blocked
+status: ready
 classes: defect
 feature: copy-editor
 touches: .claude/rules/plain-writing.md, .claude/rules/instruction-writing.md, .claude/agents/copy-editor.md, docs/prose-review/gold, tools/new_prose.py, .claude/skills/docket/modes/close-out.md, docs/dead-ends.md, docs/items/PL-9331-make-docs-model-md-assumptions-known.md, docs/items/PL-BSYT-apply-the-prose-review-s-rewrites-of-four-docs.md, docs/items/PL-J37P-make-docs-model-md-displayed-precision-readable.md, docs/items/PL-PS5H-make-docs-model-md-minimum-displayed-outputs-up.md, docs/items/PL-XBJ3-make-docs-model-md-the-chart-s-hover-readout.md, docs/items/PL-XT53-make-docs-model-md-the-control-input-timeline.md, docs/items/PL-YVL0-make-docs-model-md-reset-behavior-through.md
@@ -14,7 +14,7 @@ payoff: every reader, from a clinician in docs/MODEL.md to the owner reading a r
 verify: grep -qE '^[*][*]Measured again, 20' docs/items/PL-J1ZM-*.md
 not-delegable: the approach changes how every session writes and needs a design round with the owner
 root-cause-of: PL-BSYT, PL-J37P, PL-9331, PL-PS5H, PL-XBJ3, PL-XT53, PL-YVL0, PL-QS9H, PL-TPS7, PL-1K5X, PL-FDMJ, PL-VGDX, PL-K7N7, PL-2K0K, PL-HRPK
-generator: live - the fix is built (PL-43GT, PL-22T5, PL-JP8X), but the 2026-11-04 measurement found text published after the copy editor's run, long replies sent without it, and grown passages left unnamed (PL-TG6P, PL-DH17, PL-HNNH)
+generator: live - the fix is built (PL-43GT, PL-22T5, PL-JP8X), but the 2026-11-04 measurement found text published after the copy editor's run, long replies sent without it, and grown passages left unnamed (PL-TG6P, PL-DH17, PL-HNNH); PL-TG6P and PL-HNNH put the last two behind holds in bin/docket arm on 2026-11-11 and PL-DH17 was dropped, so it stays live until the measurement over the three simulator branches that merge after #2115
 misread: what a reader can do without, which no rule states for any kind of text, so each writer adds
 ---
 
@@ -81,3 +81,5 @@ misread: what a reader can do without, which no rule states for any kind of text
 **What the failures share.** Both of the owner's objections landed on text that no review saw, written after the copy editor had run, to answer a question it raised (`PL-TG6P`). The other failures are steps of the procedure that no check reaches: the copy edit of a reply (`PL-DH17`) and naming the facts a grown passage adds (`PL-HNNH`). Those four items block this one. When they close, measure again over the three branches after the last of them merges, in a paragraph that opens "**Measured again, ". `PL-BS6N` holds the owner's other point, which is the owner's decision: when a model limitation earns a sentence.
 
 **Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. It stays deferred to the next gate on the terms of § "Deferring to the next gate", because it waits on four untriaged findings that no release schedules. Seven of its fifteen root-cause items were filed before the freeze, and `.claude/rules/plain-writing.md` existed (`8f9d20f3`, 2026-10-17). One rule it cites came later (`dde5efbf`, 2026-11-02).
+
+**Ready to measure again, 2026-11-11.** The four items this one waited on have closed: `PL-TTBF` and, in #2115, `PL-HNNH` and `PL-TG6P` are done, and `PL-DH17` was dropped. `bin/docket arm` now holds a pull request that changes a simulator path until its body has a list item for each passage that grew, and until the published body is the text its `Body-review:` trailer records. The generator stays live until the measurement. Run it over the first three pull requests that change a simulator path and merge after #2115. For each one, check three things. Its body has an `Added words in` item for each passage that `python3 tools/new_prose.py --compare` shows growing, and each item names facts. Its newest `Body-review:` trailer matches the merged body, and its changed files hold no prose newer than the newest `Prose-review:` trailer. The owner accepted its text on the first reading. Record the result in a paragraph that opens "**Measured again, ". A reply is still outside every check (`PL-DH17`, dropped).

@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: copy-editor
-touches: .claude/skills/docket/modes/close-out.md, .claude/skills/pull-request/SKILL.md, tools/new_prose.py, tests/unit/test_new_prose.py, subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_arming.py
+touches: .claude/skills/docket/modes/close-out.md, .claude/skills/pull-request/SKILL.md, tools/new_prose.py, tests/unit/test_new_prose.py, subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_arming.py, docs/items/PL-J1ZM-sessions-write-prose-that-over-explains-in.md
 deferred-from: v0.7.0 - a new problem, not present at the freeze: the copy editor arrived in efc1dc3f (PL-22T5); deferred with PL-J1ZM, which waits on it
 added: 2026-11-04
 closed: 2026-11-11
