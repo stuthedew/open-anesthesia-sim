@@ -160,7 +160,7 @@ from pathlib import Path, PurePosixPath
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.arming import BODY_REVIEW  # noqa: E402
+from docket.arming import BODY_DIGEST, BODY_GROWN, BODY_REVIEW  # noqa: E402
 from docket.digits import whole_number  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
 from docket.markdown import PARAGRAPH, TABLE, Heading, headings, tables  # noqa: E402
@@ -905,11 +905,11 @@ def body_check(found: Comparison, body: str | None) -> list[str]:
     out = []
     for passage in unnamed(found.passages, body or ""):
         out.append(
-            f"grown {added_words_key(passage)}: {passage.rows()}, {passage.words_before} "
+            f"{BODY_GROWN}{added_words_key(passage)}: {passage.rows()}, {passage.words_before} "
             f"words on {found.base}, {passage.words_after} now"
         )
     if body is not None:
-        out.append(f"body {body_digest(body)}")
+        out.append(f"{BODY_DIGEST}{body_digest(body)}")
     return out
 
 

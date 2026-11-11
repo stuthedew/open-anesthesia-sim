@@ -5467,12 +5467,6 @@ def _blind_count(root: Path, config: Config) -> Callable[[], arming.CommandCount
     return lambda: _command_count(command, root)
 
 
-#: How each line that `body_prose_command` prints opens: a grown passage the
-#: body does not name, or the published body's digest.
-BODY_GROWN = "grown "
-BODY_DIGEST = "body "
-
-
 def _body_prose(root: Path, config: Config) -> Callable[[int], arming.BodyProse] | None:
     """A way to check a pull request's body against the branch's prose, or None if there is none.
 
@@ -5499,10 +5493,10 @@ def _body_prose(root: Path, config: Config) -> Callable[[int], arming.BodyProse]
         unnamed: list[str] = []
         digest = ""
         for line in done.stdout.split("\n"):
-            if line.startswith(BODY_GROWN):
-                unnamed.append(line.removeprefix(BODY_GROWN))
-            elif line.startswith(BODY_DIGEST):
-                digest = line.removeprefix(BODY_DIGEST).strip()
+            if line.startswith(arming.BODY_GROWN):
+                unnamed.append(line.removeprefix(arming.BODY_GROWN))
+            elif line.startswith(arming.BODY_DIGEST):
+                digest = line.removeprefix(arming.BODY_DIGEST).strip()
             elif line.strip():
                 return arming.BodyProse(
                     declined=f"`{command}` answered {line!r}, which names neither a grown "

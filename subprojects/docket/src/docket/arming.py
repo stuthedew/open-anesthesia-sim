@@ -992,6 +992,12 @@ class CommandCount:
     declined: str = ""
 
 
+#: How each line that the command in `body_prose_command` prints opens: a
+#: grown passage that the body does not name, or the published body's digest.
+BODY_GROWN = "grown "
+BODY_DIGEST = "body "
+
+
 @dataclass(frozen=True)
 class BodyProse:
     """What the command in `body_prose_command` said of a pull request's body.
