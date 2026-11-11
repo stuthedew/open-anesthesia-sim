@@ -1254,9 +1254,9 @@ WITHHELD_MAC_MULTIPLE_TEXT: Final = f"\u2014{MAC_UNIT_SUFFIX}"
 #: at its opening.
 WITHHELD_ELAPSED_TIME_TEXT: Final = "\u2014"
 #: The delivered line while a run's setting controls cannot be built. Without it,
-#: the line kept the setting of the run before a Reset or an agent change, beside
-#: a 1 MAC line that already named the new agent (`PL-SV2Q`). Each value keeps
-#: its unit, so the line still says which values are missing.
+#: the line would keep the setting of the run before a Reset or an agent change,
+#: beside a 1 MAC line that already names the new agent (`PL-SV2Q`). Each value
+#: keeps its unit, so the line still says which values are missing.
 WITHHELD_DELIVERED_LINE_TEXT: Final = DELIVERED_LINE_TEMPLATE.format(
     value=WITHHELD_CONCENTRATION_TEXT, secondary=WITHHELD_MAC_MULTIPLE_TEXT
 )

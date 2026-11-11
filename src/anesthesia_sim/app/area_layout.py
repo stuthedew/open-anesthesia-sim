@@ -582,7 +582,7 @@ class AreaLayout(QWidget):
             raise first_error
 
     def follow_needs(self) -> None:
-        """Settle the Areas again if what was just drawn changed what a View needs.
+        """Settle the Areas again if what was just drawn changed the size a View needs.
 
         `refresh` calls this method once the Views have drawn. After `refresh`, a
         host may write widgets of its own, and those writes can change the room
@@ -594,16 +594,17 @@ class AreaLayout(QWidget):
         shows and hides its per-run lines. These changes post layout requests.
         Qt updates a widget's minimum size only when it handles those requests.
         Left alone, Qt would handle them on the next passes of the event loop. So
-        this method handles the requests first (`_handle_layout_requests`). The
-        needs that it reads afterwards are then the ones those passes would read.
+        this method handles the requests first (`_handle_layout_requests`). When
+        it then reads the size that each View needs, it reads what those passes
+        would read.
 
-        If a need changed, this method settles the Areas again and tells the
-        host that this widget's size hint changed. As a result, the splitters
-        have the sizes that the next pass would give them as soon as the frame
-        is drawn (`PL-4L8B`). A host that sized this widget from its earlier hint
-        also lays it out again (`PL-PHPZ`). This method then handles the requests
-        that follow too, so the page and every View in it have their final sizes
-        before the caller sees the frame (`PL-MXMG`).
+        If the size that a View needs changed, this method settles the Areas
+        again and tells the host that this widget's size hint changed. As a
+        result, the splitters have the sizes that the next pass would give them
+        as soon as the frame is drawn (`PL-4L8B`). A host that sized this widget
+        from its earlier hint also lays it out again (`PL-PHPZ`). This method
+        then handles the requests that follow too, so the page and every View in
+        it have their final sizes before the caller sees the frame (`PL-MXMG`).
         """
 
         _handle_layout_requests()

@@ -190,8 +190,8 @@ def _dials(view: SimulationView) -> list[ParameterControls]:
 def test_two_accounting_views_of_one_run_both_draw(application: QApplication) -> None:
     """A second accounting View shows the run at once, and both update on the next frame.
 
-    Before `PL-9LNF`, the run held one accounting panel. A second Area that
-    held that panel would have taken it out of the first Area.
+    The run used to hold a single accounting panel (`PL-9LNF`). A second Area
+    that held that panel would have taken it out of the first Area.
     """
 
     controller = SimulationController()

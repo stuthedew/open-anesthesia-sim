@@ -1101,8 +1101,8 @@ def test_a_tick_with_no_frame_reaches_every_view_and_carries_no_frame_and_no_sna
     """Every View is handed a tick when no frame was drawn, even a View that asks for a frame.
 
     The dashboard hands such a tick on a halt, when no frame can be
-    assembled (`PL-RF2S`). A View that asks for a window is not refused for
-    want of its frame, as it is on a tick that has frames.
+    assembled (`PL-RF2S`). A View that asks for a window still gets this
+    tick, although a tick with frames refuses a View whose frame it lacks.
     """
 
     model = _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)

@@ -776,16 +776,16 @@ def test_a_focused_border_goes_past_its_last_whole_step_to_the_least_size(
 def test_the_controls_area_has_its_least_width_from_the_first_frame(
     application: QApplication, shown: list[QWidget]
 ) -> None:
-    """`PL-4L8B`: the first frame settles the Areas, so a border's first keyboard step is one step.
+    """The first frame settles the Areas, so a border's first keyboard step is one step.
 
     The setting controls View builds each run's dials on its first frame,
-    which raises the minimum width of the Area that holds them. Before the fix,
-    the root splitter kept the widths it had before that frame until the next
-    pass of the event loop. At this size those widths were 1010 and 336 px, and
-    that pass gave the controls their 590 px. A border moved between the frame
-    and that pass moved by about 250 px. The test reads the width that the Area
-    needs from Qt's own size hint for the Area's frame, not from the sizes that
-    the adapter worked out.
+    which raises the minimum width of the Area that holds them. Before the
+    fix (`PL-4L8B`), the root splitter kept the widths it had before that
+    frame until the next pass of the event loop. At this size those widths
+    were 1010 and 336 px, and that pass gave the controls their 590 px. A
+    border moved between the frame and that pass moved by about 250 px. The
+    test reads the width that the Area needs from Qt's own size hint for the
+    Area's frame, not from the sizes that the adapter worked out.
     """
 
     view = _dashboard(application, shown)

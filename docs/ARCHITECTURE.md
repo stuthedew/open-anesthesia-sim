@@ -911,16 +911,17 @@ status (`RunStatus`), which carries both halts. The banner that this function
 writes (`dashboard_frame.halt_notice`) says that no frame of the stopped run has
 been drawn. The first frame that draws replaces that banner (`PL-7DJK`).
 
-A control used on a run whose snapshot refuses meets the same halt, rather than
-an exception that the toolkit prints, because its slot passes the halt gate. A
-`RunView` slot halts its own run and shows the halt from the run's record
-(`_halt_run`, `record()`). So on a run whose snapshot refused, the agent
-selector goes back to the agent that the record names. The snapshot cannot name
-it, because the snapshot is what refused (`PL-V2HC`). A `SimulationView` slot
-halts every run, because it acts on the case. When each slot was given its own
-`try` by hand, six slots were left without one, each found by a separate review
-(`PL-HJKN`). So a test now fails on any connected slot that does not pass the
-gate (`test_every_slot_that_touches_a_run_passes_the_halt_gate`).
+A control used on a run whose snapshot cannot be built causes a halt, because
+the control's slot passes the halt gate. Without the gate, the toolkit would
+only print the exception. A slot of the run's own panel (`RunView`) halts that
+run and shows the halt from the run's record (`_halt_run`, `record()`). So on
+such a run, the agent selector goes back to the agent that the record names.
+The snapshot cannot name that agent, because building the snapshot is what
+failed (`PL-V2HC`). A slot of the dashboard's shared part (`SimulationView`)
+halts every run, because it acts on the case. Wrapping each slot in its own
+`try` by hand left six slots without one, each found by a separate review
+(`PL-HJKN`). So a test fails on any connected slot that does not pass the gate
+(`test_every_slot_that_touches_a_run_passes_the_halt_gate`).
 
 Everything on screen that belongs to one run is written from one value, a
 `RunPresentation` (`app/run_presentation.py`). One method
@@ -939,13 +940,14 @@ that the run holds (`PL-DTJQ`).
 
 Every View is handed the runs on a halt, as it is on a drawn frame
 (`SimulationView._halt_every_run`, `PL-RF2S`). The tick it is handed then
-carries no frame. A View that shows a run's values writes them from the tick's
-presentations all the same. So a View never shows a halted run differently from
-the run's own panel, a run removed while frames fail leaves every View, and a
-View that a reader chooses while frames fail shows the runs. A chart draws
-nothing from a tick with no frame. A tick with no frame carries the case's
-panels too. A bookmarks View or a branch View whose first tick has no frame
-takes its copy from that tick, and the copy shows what the halt restated.
+carries no frame. A View that shows a run's values still writes them from the
+tick's presentations. So a View never shows a halted run differently from the
+run's own panel, a run removed while frames fail is dropped from every View,
+and a View that a reader chooses while frames fail shows the runs. A chart
+draws nothing from a tick with no frame. A tick with no frame still carries
+the case's panels. A bookmarks View or a branch View whose first tick has no
+frame takes its copy from that tick, and the copy shows the panels as the halt
+rewrote them.
 
 A View that raises on a tick with no frame does not keep the tick from the
 Views after it. The adapter hands the tick to every View, and then raises the
@@ -963,12 +965,12 @@ together still describe one step. When the run has started over, by a Reset or
 an agent change, and no frame has drawn since, a halt withholds all four
 together. Each readout card and the clock withhold their values, the schematic
 and the delivered agent show no amount, and the accounting panel withholds its
-verdict and amounts. The off-scale and wash-in lines and both legends belong to
-the charts, which only a frame draws, and they stay as the last frame drew
-them. After an accounting halt, the accounting panel shows the rejected step's
-check, whether or not a frame draws. A stopped run refuses a dial, so the dials
-keep the settings the run holds (`PL-3B34`). Where a run's dials cannot be
-built, the setting controls View shows no dial for that run and says so in
+verdict and amounts. After an accounting halt, the accounting panel shows the
+rejected step's check, whether or not a frame draws. On a halt, the charts'
+off-scale and wash-in lines and both legends stay as the last frame drew them,
+because only a frame draws the charts. A stopped run refuses a dial, so the
+dials keep the settings the run holds (`PL-3B34`). Where a run's dials cannot
+be built, the setting controls View shows no dial for that run and says so in
 their place, and the delivered line withholds its values (`PL-SV2Q`).
 
 One test checks that each value on screen and what qualifies it come from one
@@ -1325,32 +1327,34 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
   during the run. Each run gets its own `RunView`, and the dashboard places
   the panel by looping over its runs. A panel of one run that a reader may
   place in an Area belongs to a View instead, as the setting controls and the
-  accounting panel do. The View builds it for each run and writes it from the
-  run's `RunPresentation`. A panel about
-  the chart that both runs are drawn on belongs to `SimulationView` or to the
-  chart View that draws it. Such panels include an axis, a legend, a
-  reference, and the compartment selection. A chart's time window belongs to
-  that chart View alone (`PL-L59K`). A control that asks one question of the
-  whole case, rather than of either run, also belongs to `SimulationView`. The
-  bookmark editor is the worked example (`PL-LPLD`). It writes each mark to
-  every displayed run, so that the copies the controllers hold stay equal. The
-  branch control is the second example (`PL-VKJW`). The instants it offers are
-  the trunk's keyframes and the marks the trunk has passed. A copy of it in
-  each run would give a branch a control that could only refuse. The bookmarks
-  and the branch control are shown in Views. `SimulationView` builds a copy
-  for each View that shows one, through `view_contract.CaseSurfaces`, and
-  writes every copy (`PL-9YPR`). Getting this the wrong way round is not a
-  matter of tidiness. A run's panel put on the dashboard would state one
-  branch's numbers over both runs. A shared control duplicated into each run
-  would let a reader interpret a comparison under two different settings.
+  accounting panel do.
 
-  In either place, read only what `SimulationSnapshot` already carries and
-  what a `DrawnWindow` already returns. A window holds its states per
-  substance. A trace addresses one value in those states as a
-  `RecordedSeries`, not as a named field. A `RecordedSeries` is a pair of a
-  substance and a `RecordedQuantity`. If the UI needs a value that does not
-  exist yet, add it in `app/controller.py`, and compute it in `core/`, never
-  in the view. A panel that needs the run, rather than the instant, asks
+  A panel about the chart that both runs are drawn on belongs to
+  `SimulationView` or to the chart View that draws it. Such panels include an
+  axis, a legend, a reference, and the compartment selection. A chart's time
+  window belongs to that chart View alone (`PL-L59K`). A control that asks one
+  question of the whole case, rather than of either run, also belongs to
+  `SimulationView`. The bookmark editor is the worked example (`PL-LPLD`). It
+  writes each mark to every displayed run, so that the copies the controllers
+  hold stay equal. The branch control is the second example (`PL-VKJW`). The
+  instants it offers are the trunk's keyframes and the marks the trunk has
+  passed. A copy of it in each run would give a branch a control that could
+  only refuse. The bookmarks and the branch control are shown in Views. The
+  dashboard's shared part (`SimulationView`) builds a copy for each View that
+  shows one, through `view_contract.CaseSurfaces`, and writes every copy
+  (`PL-9YPR`). Getting this routing wrong misleads the reader. A run's panel
+  put on the dashboard would state one branch's numbers over both runs. A
+  shared control duplicated into each run would let a reader interpret a
+  comparison under two different settings.
+
+  In `app/run_view.py` or `app/simulation_view.py`, read only what
+  `SimulationSnapshot` already carries and what a `DrawnWindow` already
+  returns. A window holds its states per substance. A trace addresses one
+  value in those states as a `RecordedSeries`, not as a named field. A
+  `RecordedSeries` is a pair of a substance and a `RecordedQuantity`. If the
+  UI needs a value that does not exist yet, add it in `app/controller.py`,
+  and compute it in `core/`, never in the view. A panel that needs the run,
+  rather than the instant, asks
   `SimulationController.drawn_window(start_s, stop_s, columns)` for the span
   it draws. It never asks for the whole run. § "Data flow" says why.
 

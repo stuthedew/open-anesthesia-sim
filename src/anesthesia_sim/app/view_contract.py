@@ -4,9 +4,10 @@ An Area holds one View, and any View can occupy any Area (`ROADMAP.md`
 § "v0.6.0 - the layout is the reader's", Required scope entry 5). That works
 only if every View presents the same small contract. The adapter,
 `app/area_layout.py`, can then build, draw and save any View without knowing
-which kind it holds. This module is that contract. `PL-TH35` designed it, and
-the project owner ratified each answer on 2026-09-27. The question numbers
-below refer to that item's questions.
+which kind it holds. This module is that contract. It was designed in an item
+(`PL-TH35`) as answers to numbered questions, and the project owner ratified
+each answer on 2026-09-27. The question numbers below, such as Q2, refer to
+those questions.
 
 **What a View is.** A View is a `QWidget` that satisfies the `View` protocol
 below. Its registry entry's factory builds it from a `ViewContext`
@@ -27,7 +28,8 @@ built any number of times against the same runs (Q8). A View may hold state
 of its own, such as how it draws. State that the rest of the dashboard draws
 from, such as the compartment selection, is shown to the View in each tick.
 The View asks for a change to it through `ViewContext.requests`, and never
-holds the value itself.
+holds the value itself. A request to change a run's setting names the run by
+its `run_id` (`ViewRequests`).
 
 **A tick names every displayed run, with a frame or without one** (`PL-RF2S`).
 `ViewTick.runs` holds one `RunPresentation` for each displayed run
@@ -35,18 +37,19 @@ holds the value itself.
 that moment. A View that shows a run's values builds its own widget for each
 run and writes the whole widget from that run's presentation on every tick. It
 finds a run's widget by `RunPresentation.run_id`, and it deletes the widget of
-a run that the tick no longer names. The dashboard also hands every View a
-tick when no frame can be drawn: on a halt, and at once after a dial is
-dragged. That tick carries no frame and no snapshots. Its presentations hold
-the values of the last frame that drew, or withhold them when the run has
-started over since that frame. A chart draws nothing from such a tick, and
-only drops its lines for the runs that the tick no longer names. Every View
-is handed a tick with no frame, even when a View before it in reading order
-raises on that tick. The first exception is raised once the last View has
-been handed the tick. A tick with a frame stops at the first View that
-raises, and the halt that follows hands every View a tick with no frame. A
-View asks for a change to a run's setting through `ViewRequests`, naming the
-run by its `run_id`.
+a run that the tick no longer names.
+
+The dashboard also hands every View a tick when no frame can be drawn: on a
+halt, and at once after a dial is dragged. That tick carries no frame and no
+snapshots. Its presentations hold the values of the last frame that drew, or
+withhold them when the run has started over since that frame. A chart draws
+nothing from such a tick, and only drops its lines for the runs that the tick
+no longer names.
+
+Every View is handed a tick with no frame, even when a View before it in
+reading order raises on that tick. The first exception is raised once the last
+View has been handed the tick. A tick with a frame stops at the first View that
+raises, and the halt that follows hands every View a tick with no frame.
 
 **A chart's time window is its own** (project owner, 2026-10-19, ratified,
 over one shared window saved per Workspace; `PL-L59K`). Q2 and Q7 made the
@@ -78,11 +81,12 @@ and neither View holds the case.
 through `View.frame_request`. The request gives the window and the plot width
 that the frame must be sampled for. The dashboard assembles one `ChartFrame`
 per distinct window on each tick, sampled for the widest plot that asks for
-that window. So no plot draws a chord, the straight line between two samples,
-wider than a pixel (`PL-GS3R`). Two charts at the same window also draw the
-same instants (`PL-9LNF`). The adapter hands each View the frame for its own
-window in its `ViewTick`. A View that draws no frame returns None from
-`frame_request`, and its tick carries no frame.
+that window. A chord is the straight line between two samples. Sampling for
+the widest plot means that no plot draws a chord wider than a pixel
+(`PL-GS3R`). Two charts at the same window also draw the same instants
+(`PL-9LNF`). The adapter hands each View the frame for its own window in its
+`ViewTick`. A View that draws no frame returns None from `frame_request`, and
+its tick carries no frame.
 
 **What a View saves** (Q4). `View.save_state` returns the View's own drawing
 settings as a JSON-shaped mapping that carries `STATE_VERSION_KEY`. The View

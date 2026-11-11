@@ -184,7 +184,8 @@ class RunPresentation:
     Attributes:
         run_id: The run the values belong to.
         name: What the run is called while a second run is drawn, or None.
-        case: `RunPanelState.case` when this presentation was built.
+        case: How many times the run had started over, by a Reset or an agent
+            change, when this presentation was built (`RunPanelState.case`).
         record: The run's record that this presentation states.
             `RunView.owes_a_frame` compares it with the controller's record.
         statement: The run-state widgets: the agent, the status word, the
@@ -315,25 +316,26 @@ def halted_run(
 ) -> RunPresentation:
     """Return what is shown for a run when no frame is drawn for it.
 
-    Two callers need this. A halt states a stopped run, on the run's own
-    panel and in every View. The dashboard also hands every View the runs
-    with no frame at once after a dial is dragged (`SimulationView.present`),
-    and that run has not stopped. The Views write only the run's name, its
-    agent, its dials and its values, and all four are right for either run.
-    The status word here never says that a mark stopped the run, and the
-    banner is the one for a halt, which is empty for a run that has not
-    stopped. Only the run's own panel writes those two, and it is given
-    this value only on a halt (`RunView.show_halt`).
+    This is called in two cases. On a halt, it gives what the run's own
+    panel and every View show for the stopped run. Just after a run's dial
+    is dragged, the dashboard also hands every View the runs with no frame
+    (`SimulationView.present`), and that run has not stopped. The Views
+    write only the run's name, its agent, its dials and its values, and all
+    four are right in either case. The status word here never says that a
+    mark stopped the run, and the banner is the one for a halt, which is
+    empty for a run that has not stopped. Only the run's own panel writes
+    those two, and it is given this value only on a halt
+    (`RunView.show_halt`).
 
     Nothing here builds a compartment value. One of the halts this function
-    states is the refusal of a compartment value, and stating that halt must
+    shows is the refusal of a compartment value, and showing that halt must
     not raise the same refusal again (`PL-7DJK`).
 
     The values are `kept.values`, the ones the last frame drew, while the
     run is still the one that frame drew. When the run has started over
     since, they are withheld. After a step whose accounting failed its
     check, the accounting panel shows that step's check, which the record
-    carries. The clock's playback line is restated from `state` whether the
+    carries. The clock's playback line is taken from `state` whether the
     values are kept or withheld, because a reader can change the rate on a
     halted run (`PL-P58M`).
 
@@ -372,13 +374,12 @@ def halted_run(
             branch_offered=state.branch_offered,
             started_over=started_over,
         ),
-        # Every halt stated here has failed the run or stopped it at the
-        # supported run length, and both of those status words outrank a
+        # Every halt shown from this value has failed the run or stopped it at
+        # the supported run length, and both of those status words outrank a
         # mark's. Whether a mark stopped the run is worked out from the
-        # compartment states, which this function does not build. A run
-        # that has not stopped can be standing on a mark. No writer shows
-        # the status word of such a run from this value, as the docstring
-        # says.
+        # compartment states, which this function does not build. A run that
+        # has not stopped can be standing on a mark, but only the run's own
+        # panel shows the status word from this value, and only on a halt.
         stopped_on_mark=False,
         standing=standing,
         values=values,
@@ -413,9 +414,10 @@ def _presentation(
     """Build the presentation's run-state parts from `record`, around `values`.
 
     An exception raised while building the dials, the delivered line or
-    the 1 MAC line is returned in that part. So a halt whose record refuses
-    one of them is still stated. The delivered line is then the withheld
-    one, so that no earlier run's setting stays on screen (`PL-SV2Q`).
+    the 1 MAC line is returned in that part. So a halt is still shown when
+    one of them cannot be built from the record. The delivered line is then
+    the withheld one, so that no earlier run's setting stays on screen
+    (`PL-SV2Q`).
     """
 
     statement = run_statement(

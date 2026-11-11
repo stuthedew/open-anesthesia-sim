@@ -31,11 +31,11 @@ closing a View takes nothing with it. A widget belongs to the run whose
 longer names that run.
 
 Each chart View holds its own time window, set from its own control and
-saved in its state (project owner, 2026-10-19, `PL-L59K`). So a chart writes
-the lines that depend on its window, such as which traces are above the axis,
-from its own frame, one line per run. A tick with no frame gives a chart
-nothing to draw. The chart then leaves its plot, legend and captions as they
-are, and only deletes the lines of the runs that the tick no longer names.
+saved in its state (`PL-L59K`). So a chart writes the lines that depend on its
+window, such as which traces are above the axis, from its own frame, one line
+per run. A tick with no frame gives a chart nothing to draw. The chart then
+leaves its plot, legend and captions as they are, and only deletes the lines
+of the runs that the tick no longer names.
 
 These classes compute nothing that a reader interprets. Every caption comes
 from `app/dashboard_frame.py`, or for the schematic from
@@ -228,13 +228,13 @@ class _RunWidgets[W: QWidget]:
 class _RunLines:
     """One conditional line per displayed run, written from a chart's own frame.
 
-    These are the lines that a chart writes from its frame, such as which
-    traces are above the axis. `show` takes a frame's runs and one entry for
-    each run, and an entry of None hides that run's line. `drop_absent` takes
-    the runs of a tick that has no frame. It deletes the line of each run
-    that the tick does not name, and it leaves every other line as the last
-    frame wrote it. So a dropped run's line never stays beside the runs still
-    displayed, even while no frame can be drawn.
+    One such line says which traces are above the axis. `show` takes a
+    frame's runs and one entry for each run, and an entry of None hides that
+    run's line. `drop_absent` takes the runs of a tick that has no frame. It
+    deletes the line of each run that the tick does not name, and it leaves
+    every other line as the last frame wrote it. So a dropped run's line
+    never stays beside the runs still displayed, even while no frame can be
+    drawn.
     """
 
     def __init__(self, color: str, *, italic: bool) -> None:
@@ -624,9 +624,9 @@ class WashInView(QWidget):
 class _RunPanelsView[W: QWidget](QWidget):
     """A View that shows one widget per displayed run, one above the next, with no frame.
 
-    Each tick, with a frame or without one, shows one widget for each run
-    that the tick names and writes each widget whole from that run's
-    presentation. The View counts as drawn after either kind of tick.
+    On every tick, with a frame or without one, the View shows one widget
+    for each run that the tick names, and writes each widget whole from
+    that run's presentation. It counts as drawn after either kind of tick.
 
     Args:
         context: What the View is built from.

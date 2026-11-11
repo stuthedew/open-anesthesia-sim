@@ -7,14 +7,14 @@ playback controls), the agent identity, the notices and the control-change
 panel. `SimulationView` holds what the runs do share. `RunView` can be
 instantiated twice, and nothing in one instance refers to another run.
 
-**A run's panel is the unconditional region's part of the run.** The setting
-controls, the accounting panel, the compartment schematic and the agent cost
-panel sit in Areas. The Views in `app/views.py` build and write them, from the
-same `RunPresentation` that this class writes its own widgets from
-(`PL-RF2S`). This class builds none of them and holds none of them. A View
-asks for a change to a run's setting through the dashboard, which calls
-`start_adjustment`, `request_setting`, `request_preview` or `end_preview` on
-the run that the View named.
+**A run's panel is the run's part of the unconditional region, the part of the
+page that is always on screen.** The run's setting controls, accounting panel,
+compartment schematic and agent cost panel sit in Areas instead. The Views in
+`app/views.py` build and write them, from the same `RunPresentation` that this
+class writes its own widgets from (`PL-RF2S`). This class builds none of them
+and holds none of them. A View asks for a change to a run's setting through
+the dashboard, which calls `start_adjustment`, `request_setting`,
+`request_preview` or `end_preview` on the run that the View named.
 
 `app/dashboard_frame.py` decides every claim that this class displays, and
 does so without a GUI toolkit. `app/run_presentation.py` calls that module's
@@ -274,9 +274,9 @@ class RunView(QWidget):
     always on screen, and there is one of each per run. The build methods
     return the same widgets on every call, laid out once when the run was
     built. Adding a widget to a Qt layout removes it from wherever it sat
-    before. So an earlier version, which built a new container on each call,
-    took the run's live widgets off the screen. It then deleted them when the
-    container was dropped (`PL-N67T`, `PL-KZR1`).
+    before. So a build method that made a new container on each call would
+    take the run's live widgets off the screen, and then delete them when
+    the container was dropped (`PL-N67T`, `PL-KZR1`).
 
     `dashboard_frame` decides what is rejected on each tick. Which setting
     values the core rejects, and how a raise is reported, are read from the
@@ -682,9 +682,9 @@ class RunView(QWidget):
 
         With a snapshot, the values are computed from it, and the banner is
         the one `dashboard_frame.notice` gives for a frame that drew. With
-        none, the run is stated from `SimulationController.record()` alone,
-        which builds no compartment value. A snapshot builds every
-        compartment's fraction, and one of the halts stated this way is the
+        none, the presentation is built from `SimulationController.record()`
+        alone, which builds no compartment value. A snapshot builds every
+        compartment's fraction, and one of the halts shown this way is the
         refusal of one of those fractions (`PL-7DJK`). The values are then
         the last frame's, or withheld if the run has started over since
         that frame (`run_presentation.halted_run`).
@@ -693,8 +693,9 @@ class RunView(QWidget):
             drawn: The snapshot that this tick's frames were drawn from, read
                 once by the caller. None when no frame is drawn: on a halt,
                 and when the dashboard hands the Views the runs at once
-                after a dial is dragged. This run has not stopped then, and
-                the Views write only its name, agent, dials and values.
+                after a dial is dragged. After a drag, this run has not
+                stopped, and the Views write only its name, agent, dials and
+                values.
 
         Returns:
             The presentation. Building it writes nothing.
@@ -743,7 +744,7 @@ class RunView(QWidget):
         The writes keep one order. The run-state widgets come first: the
         agent colour, which is written before anything that shows it, then
         the status word, the transport, the 1 MAC line, the delivered line
-        and the banner. The readouts follow. So a halt is stated before any
+        and the banner. The readouts follow. So a halt is shown before any
         write that can fail. A frame whose readouts cannot be written halts
         the run, and that halt is then on screen even if the same write
         fails again (`PL-25KS`, `PL-7DJK`, `PL-85LJ`).
@@ -759,8 +760,7 @@ class RunView(QWidget):
         that it cannot state another agent's MAC above this run's values
         (`PL-6RJ0`). Where the dials could not be built, the delivered line
         withholds its values (`PL-SV2Q`), and the setting controls View
-        shows no dial for this run. Either refusal is raised once every
-        widget has been written.
+        shows no dial for this run.
 
         Before writing anything, the method stores the presentation's record
         as the one this view last wrote. The render tick draws whenever a
@@ -1057,33 +1057,35 @@ class RunView(QWidget):
         A `SimulationConfigurationError` is a refusal. It means that the core rejected
         the value and changed nothing, so the run goes on and the banner says which
         setting was refused. Any other exception halts the run, because this method
-        is wrapped in the halt gate (`PL-HJKN`).
-        That includes an exception from outside the project's own exception classes,
-        because the run still cannot continue (`PL-YK2V`). An accepted setting clears
-        a refusal that is in effect. It also clears the way out that a refused Reset
-        left on the banner (`PL-M4M0`). A refused Reset leaves the run failed, and a
-        failed run refuses every dial (`PL-3B34`), so the setting that clears that
-        way out is an agent switch, which starts a new case. On a stopped run the
-        refusal is stated inside the stopped run's banner, and the dial springs back
-        to the setting the run holds.
+        is wrapped in the halt gate (`PL-HJKN`). That includes an exception from
+        outside the project's own exception classes, because the run still cannot
+        continue (`PL-YK2V`). On a stopped run the refusal is stated inside the
+        stopped run's banner, and the dial springs back to the setting the run holds.
+
+        An accepted setting clears a refusal that is in effect. It also clears the way
+        out that a refused Reset left on the banner (`PL-M4M0`). A refused Reset leaves
+        the run failed, and a failed run refuses every dial (`PL-3B34`), so the setting
+        that clears that way out is an agent switch, which starts a new case.
 
         The method leaves the frame for the render tick to draw only when two things
         are true: `coalesce` is set, and no refusal was in effect before the call or
         is in effect after it. When a setting is refused, or a refusal is cleared, the
-        dial on screen and the simulation disagree, so neither may wait for a tick
-        (`PL-R2YM`). A coalesced change still rewrites this run's own labels at once,
-        from a snapshot read after the change. The dashboard then shows every View the
-        runs at once, with no frame, so the dials and the other panels of the run move
-        with its readouts (`SimulationView.present`). If reading that snapshot raises,
-        the gate halts the run and shows the halt. Before `PL-V2HC`, the exception
-        escaped the slot after the setting had been applied. After the halt, the
-        dashboard draws a frame or halts every run, and either one hands every View the
-        runs. So the halted run's dials show the settings it holds (`PL-85LJ`). The
-        rewrite of the labels can raise too, as it does for a control that can offer no
-        setting, whose dials cannot be built. The gate halts the run for that as well.
-        So the status word, the transport controls and the banner show the halt first.
-        Showing the halt then raises the same refusal again, and the exception escapes
-        (`PL-M3M2`).
+        dial on screen and the simulation disagree, so the frame for either must not
+        wait for a tick (`PL-R2YM`).
+
+        A coalesced change still rewrites this run's own labels at once, from a
+        snapshot read after the change. The dashboard then shows every View the runs
+        at once, with no frame, so the dials and the other panels of the run move with
+        its readouts (`SimulationView.present`). If reading that snapshot raises, the
+        gate halts the run and shows the halt (`PL-V2HC`). After the halt, the
+        dashboard draws a frame or halts every run, and either one hands every View
+        the runs. So the halted run's dials show the settings it holds (`PL-85LJ`).
+
+        The rewrite of the labels can raise too, as it does for a control that can
+        offer no setting, whose dials cannot be built. The gate halts the run for that
+        as well, so the status word, the transport controls and the banner show the
+        halt first. Showing the halt then raises the same refusal again, and the
+        exception escapes (`PL-M3M2`).
 
         Args:
             apply: The controller call that applies the setting.
@@ -1110,7 +1112,7 @@ class RunView(QWidget):
 
     @halt_gate
     def start_adjustment(self) -> None:
-        """Close any open adjustment, so the changes that follow are a new act.
+        """Close any open adjustment, so that the changes that follow start a new one.
 
         The dashboard calls this method when a View says that the reader
         pressed one of this run's dials. It does not go through
@@ -1747,7 +1749,7 @@ class RunView(QWidget):
         written on a path that has no frame to read a run count from
         (`PL-TSZM`). The Views name the accounting panel, the schematic and
         the agent cost panel from it too, on the tick that follows the
-        change to the run set. Neither is written here, because
+        change to the run set. None of these is written here, because
         `show_presentation` and the Views write them from the presentation
         that the change to the run set brings.
 

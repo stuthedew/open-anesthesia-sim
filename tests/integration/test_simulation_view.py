@@ -2061,17 +2061,16 @@ def test_a_halt_shows_the_last_frame_whose_readouts_were_written_on_every_panel(
 
     The first frame draws the run at 60 s. On the frame at 120 s the
     accounting View writes its panel, and then the readout row refuses its
-    values. The halt that follows writes the readouts, and hands every View
-    the values, of one frame. That frame is the one at 60 s, the last whose
-    readouts were written. So the cards and the accounting panel again show
-    one state of the run (`PL-RNYV`, `PL-RF2S`). The expected cards and
-    amounts are those of a second run built directly and stepped to 60 s.
+    values. The halt that follows writes the readouts and hands every View
+    the values from one frame: the one at 60 s, the last whose readouts
+    were written. So the cards and the accounting panel again show one
+    state of the run (`PL-RNYV`, `PL-RF2S`). The expected cards and amounts
+    are those of a second run built directly and stepped to 60 s.
 
     The readout row is where a frame fails after every View has drawn it.
     A frame can also fail in a View, after the Views before it have drawn
-    it. `test_a_schematic_that_refuses_a_frame_leaves_every_view_on_the_frame_the_readouts_show`
-    covers that with the schematic, which is where this test put its
-    refusal while the run wrote its own schematic.
+    it. The test of a schematic that refuses a frame covers that case
+    (`test_a_schematic_that_refuses_a_frame_leaves_every_view_on_the_frame_the_readouts_show`).
     """
 
     controller = _fresh_run(60.0)
@@ -2118,9 +2117,9 @@ def test_a_schematic_that_refuses_a_frame_leaves_every_view_on_the_frame_the_rea
     the agent cost View after it. The first frame draws the run at 60 s. The
     schematic then refuses the value of any later frame. On the frame at
     120 s the accounting View writes its panel, and then the schematic
-    refuses. The halt tries the frame again, and the same happens. The
-    accounting panel then showed the amounts at 120 s, beside readouts and
-    a clock at 1m (blind review of `PL-RF2S`).
+    refuses. The halt tries the frame again, and the same happens. Before
+    the fix, the accounting panel was left showing the amounts at 120 s,
+    beside readouts and a clock at 1m (blind review of `PL-RF2S`).
 
     After the halt, the readouts, the accounting panel, the schematic and
     the cost panel must show the frame at 60 s, the last whose readouts
@@ -2177,15 +2176,16 @@ def test_a_schematic_that_refuses_a_frame_leaves_every_view_on_the_frame_the_rea
 def test_a_view_that_cannot_draw_the_frame_a_halt_tries_again_leaves_every_view_on_one_frame(
     application: QApplication,
 ) -> None:
-    """A View placed before one that raises is not left on a frame the run's readouts never took.
+    """A View placed before one that raises is not left on a frame the readouts never showed.
 
     An accounting View sits before the concentration chart in reading order,
     and a second one sits after it. The first frame draws the run at 60 s.
     From then on the chart raises on every frame it is handed. On the frame
     at 120 s the first accounting View writes its panel, and then the chart
-    raises. The halt tries the frame again, and the same happens. The first
-    accounting View then showed the amounts at 120 s, beside readouts and a
-    second accounting View that showed 60 s (blind review of `PL-RF2S`).
+    raises. The halt tries the frame again, and the same happens. Before the
+    fix, the first accounting View was left showing the amounts at 120 s,
+    beside readouts and a second accounting View that showed 60 s (blind
+    review of `PL-RF2S`).
 
     After the halt, the readouts and both accounting Views must show the
     frame at 60 s, the last whose readouts were written. The expected cards
@@ -2278,7 +2278,9 @@ def test_a_halt_that_cannot_be_stated_is_not_tried_again_on_every_tick(
 ) -> None:
     """A halt whose statement cannot be built is attempted once, not on every render tick.
 
-    The run cannot be stated. A frame builds each run's statement before it
+    Here the run's statement cannot be built. That is the part of its
+    presentation that shows the agent, the status word, the transport and
+    the control-change panel. A frame builds each run's statement before it
     assembles anything, so every frame fails there, and so does the
     statement of the halt that follows. Before the halt is built, the run's
     record is stored as the one last written. So the render ticks that
@@ -6914,13 +6916,12 @@ def test_a_second_build_of_the_record_panels_leaves_the_run_labels_on_screen(
     must be on screen and in its shared column before the call as well as
     after it, so the test cannot pass on a column that never showed them. The
     overflow line is hidden while nothing overflows, so the test checks only
-    that it is in its column. Since `PL-NWTM`, the accounting panel is in the
-    sidebar and the control-change panel is in the unconditional region's
-    record column. Since `PL-9LNF`, the accounting panel may sit in an Area,
-    and since `PL-RF2S` the accounting View builds it. So a second accounting
-    View builds a panel of its own for another Area and leaves the first
-    where it is. The control-change panel stays in the region, so the placed
-    one is returned.
+    that it is in its column. The accounting View builds the accounting panel,
+    in the sidebar or any other Area that shows the View, so a second
+    accounting View builds a panel of its own and leaves the first where it
+    is (`PL-NWTM`, `PL-9LNF`, `PL-RF2S`). The control-change panel stays in
+    the unconditional region's record column, so a second ask returns the
+    placed one.
     """
 
     view = _shown_view(application, SimulationController())
@@ -7061,7 +7062,7 @@ def test_spare_height_goes_to_the_plots_and_not_to_the_readouts(application: QAp
 def test_the_page_takes_the_height_the_areas_ask_for_after_the_views_draw(
     application: QApplication,
 ) -> None:
-    """`PL-PHPZ`: the Areas are as tall as their size hint straight after the first frame.
+    """The Areas are as tall as their size hint straight after the first frame (`PL-PHPZ`).
 
     The setting controls sit in an Area above the charts. They build each
     run's dials on their first frame, which changes the Areas' size hint.
@@ -12538,7 +12539,7 @@ def _run_widgets_by_view(view: SimulationView) -> dict[str, tuple[QWidget, tuple
 
 
 def test_each_view_places_one_widget_per_run_inside_itself(application: QApplication) -> None:
-    """`PL-TH35`: a View shows its widget for each run in its own rectangle.
+    """A View shows its widget for each run in its own rectangle (`PL-TH35`).
 
     Each run's panel names the run (`PL-C3GS`). A widget built for a run and
     never placed would not be seen, so this test checks that each one is
@@ -12697,7 +12698,7 @@ def test_a_view_that_raises_on_a_halt_leaves_no_dropped_branch_in_the_views_afte
 def test_a_view_that_raises_on_a_halt_hides_neither_a_run_s_halt_nor_the_first_exception(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A View that raises on a halt's tick comes after each run's halt, and after its exception.
+    """A View that raises on a halt's tick hides neither a run's halt nor the first exception.
 
     Every frame fails, and neither of two runs can build its dials. Each
     run shows its halt and then raises, because its dials could not be
@@ -13408,9 +13409,9 @@ def test_a_case_view_chosen_while_every_frame_fails_shows_what_the_copy_on_scree
     """A bookmarks or branch View whose first tick has no frame still takes its copy (`PL-RF2S`).
 
     Each View takes its copy of the case's panel on its first tick. While
-    every frame fails, the only tick that a View chosen then is handed is the
-    one a halt sends, which has no frame. Before every View was handed that
-    tick, a View chosen then stayed an empty rectangle (`PL-G3N1`).
+    every frame fails, a View chosen then is handed only the halt's tick,
+    which has no frame. Before every View was handed that tick, a View
+    chosen then stayed an empty rectangle (`PL-G3N1`).
 
     The copies in Areas 5 and 6 were on screen when the frames began to
     fail, and the halt restated them: the mark is listed, and the failed

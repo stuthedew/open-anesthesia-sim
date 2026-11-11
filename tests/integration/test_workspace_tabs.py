@@ -666,8 +666,8 @@ def test_a_pinned_run_dropped_while_every_frame_fails_is_stated_as_not_open(
     The Workspace is pinned to the branch. While every frame fails, the
     trunk's Reset drops the branch. No View is handed anything for a pinned
     run that is not open, so each View still holds the branch's panels. The
-    halt therefore names the pin on every Area, and each Area shows its
-    notice in place of its View (`PL-RF2S`).
+    halt therefore names the pinned run on every Area, and each Area shows
+    its notice in place of its View (`PL-RF2S`).
     """
 
     def failing(*args: object, **kwargs: object) -> NoReturn:

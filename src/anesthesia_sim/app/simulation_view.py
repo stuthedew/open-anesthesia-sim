@@ -35,7 +35,7 @@ Areas. A switch changes which Views are drawn and never touches a run
 run's name on every Area's header. If the pinned run is not open, every Area
 says so in place of its Views.
 
-**One snapshot per run feeds every View, and then every run.**
+**One snapshot per run feeds every View, and then each run's own panel.**
 `_refresh_view` reads one snapshot per run, and builds each run's
 `RunPresentation` from it before anything is drawn. For each time window that
 a View asks for, it assembles one `ChartFrame` through `app/chart_frame.py`.
@@ -70,7 +70,7 @@ a View calls back, here and in `RunView`, is wrapped in `halt_gate` from
 every run, as a frame that cannot be drawn does, because these slots act on
 the case. A test fails on a connected slot that is not wrapped in the gate.
 
-**The legend is a frame widget** (`PL-G3K7`). The legend's View hands it the
+**The legend follows the plot** (`PL-G3K7`). The legend's View hands it the
 selection that a frame was assembled from, but only after the plot has drawn
 that frame. So the legend's boxes name the curves on the plot, even when the
 frame that a click asked for fails.
@@ -349,12 +349,12 @@ class HaltRestatement:
     A `RunView` restates its own widgets on a halt (`RunView.show_presentation`), and every
     View is handed the runs with no frame. The panels that belong to the dashboard itself
     are inside neither a run nor a View. So a halt restates them only through this list
-    (`SimulationView.halt_restatements`). A panel that holds a
-    control and is missing from the list keeps offering its action over a run that every
-    other control says has failed. That happened to the branch panel (`PL-MMNX`) and to
-    the bookmark panel (`PL-YHR3`). `test_every_dashboard_control_is_restated_on_a_halt`
-    fails on a control that is in no `RunView`, in no panel listed here, and in no
-    container that the test exempts by name (`PL-5JTH`).
+    (`SimulationView.halt_restatements`). A panel that holds a control and is missing from
+    the list keeps offering its action over a run that every other control says has failed.
+    That happened to the branch panel (`PL-MMNX`) and to the bookmark panel (`PL-YHR3`). A
+    test fails on a control that is in no `RunView`, in no panel listed here, and in no
+    container that the test exempts by name
+    (`test_every_dashboard_control_is_restated_on_a_halt`, `PL-5JTH`).
 
     Attributes:
         panels: The widgets this restatement writes. A control inside one of them counts
@@ -1170,15 +1170,18 @@ class SimulationView(QWidget):
         call it. `docs/MODEL.md` requires a value's run to be named whenever
         another run is drawn anywhere. Until a run can be drawn outside this
         dashboard, every run is drawn in it. So another run is drawn somewhere
-        exactly when this dashboard holds more than one run (`PL-7Z84`). The
-        same count decides whether an agent selector may be used at all,
-        because two runs share one MAC axis. It also decides whether the compartment selection is
-        limited to the cap (`CompartmentSelection.with_run_count`). Neither
-        legend is told here. Each legend names the curves that a drawn frame
-        drew, so each learns of the new run set from the frame that the
-        change requires (`PL-G3K7`, `PL-0LG6`). No View is told here either.
-        Each View names a run from the run's presentation, so it learns the
-        new names from the tick that the change requires.
+        exactly when this dashboard holds more than one run (`PL-7Z84`).
+
+        The run count decides whether an agent selector may be used at all,
+        because two runs share one MAC axis. It also decides whether the
+        compartment selection is limited to the cap on how many compartments
+        are drawn while runs are compared (`CompartmentSelection.with_run_count`).
+
+        Neither legend is told here. Each legend names the curves that a
+        drawn frame drew, so each learns of the new run set from the frame
+        that the change requires (`PL-G3K7`, `PL-0LG6`). No View is told here
+        either. Each View names a run from the run's presentation, so it
+        learns the new names from the tick that the change requires.
 
         **This method draws nothing, and nothing it calls may draw**
         (`PL-B1R9`). A frame assembled before the last run has been told
@@ -1631,10 +1634,11 @@ class SimulationView(QWidget):
         application-window width measured. So a frame for each plot would mean
         two assemblies on every tick, and two plots at the same window would
         not draw the same instants (`PL-9LNF`). The adapter hands each View the
-        frame for its window in its `ViewTick` (`PL-TH35`). Each legend is told
-        what its plot drew only after the plot has drawn it. So where the frame
-        fails, the legend goes on naming the curves still on the plot
-        (`PL-G3K7`).
+        frame for its window in its `ViewTick` (`PL-TH35`).
+
+        Each legend is told what its plot drew only after the plot has drawn
+        it. So where the frame fails, the legend goes on naming the curves
+        still on the plot (`PL-G3K7`).
 
         **A pinned Workspace draws its run alone** (`PL-WV9K` Q6). Its Views
         are handed frames assembled from the pinned run only, and the run's
@@ -1726,7 +1730,7 @@ class SimulationView(QWidget):
         self.presented_frames += 1
 
     def _runs_the_views_show(self) -> tuple[int, ...] | None:
-        """Name the Workspace's pin on every Area, and say which runs its Views show.
+        """Name the pinned run on every Area, and say which runs the Views show.
 
         A frame and a tick with no frame both come here, so a pinned
         Workspace is read in one place.
@@ -1765,7 +1769,8 @@ class SimulationView(QWidget):
         The tick carries the case's panels, as a tick with a frame does. A
         bookmarks View or a branch View whose first tick is this one takes
         its copy from it. A halt restates the case's panels before it calls
-        this method, so the copy shows the restated marks and offer.
+        this method, so the copy shows the marks and the branch control as
+        the halt restated them.
 
         Raises:
             Exception: The first exception that a View raises while it writes
@@ -2228,7 +2233,7 @@ class SimulationView(QWidget):
 
     @halt_gate
     def _handle_adjustment_start_request(self, run_id: RunId) -> None:
-        """Tell the run that a View named that the reader pressed one of its dials.
+        """Tell the run named by a View that the reader pressed one of its dials.
 
         The run's own method passes the run's halt gate, so an exception
         raised there halts that run alone.
@@ -2253,7 +2258,7 @@ class SimulationView(QWidget):
 
     @halt_gate
     def _handle_preview_request(self, run_id: RunId, control: ControlInput, value: float) -> None:
-        """Tell the run that a View named where a held dial of its own stands.
+        """Tell the run named by a View where its held dial stands.
 
         Raises:
             ValueError: If the dashboard holds no such run (`_run_with`). The
@@ -2264,7 +2269,7 @@ class SimulationView(QWidget):
 
     @halt_gate
     def _handle_preview_end_request(self, run_id: RunId) -> None:
-        """Tell the run that a View named that its held dial was released.
+        """Tell the run named by a View that its held dial was released.
 
         Raises:
             ValueError: If the dashboard holds no such run (`_run_with`). The
@@ -2346,8 +2351,8 @@ class SimulationView(QWidget):
                 self._refresh_view()
             except Exception:
                 # The frame failed again. Any View that drew it before it
-                # failed shows values that no run's own panel took, so every
-                # View is handed the runs once more.
+                # failed shows a later frame than the runs' own panels, so
+                # every View is handed the runs once more.
                 try:
                     self._show_views_the_runs()
                 except Exception as raised:
