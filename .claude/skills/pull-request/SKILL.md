@@ -64,6 +64,15 @@ leave out each detail that does not change what the owner does next. The item
 file holds the record of the work, and the diff shows each edit, so the body
 repeats neither. Two bodies show how much one holds.
 
+**Write it in the owner's words, not in the words of the files the branch
+changes.** A body tends to copy the vocabulary of its diff, and the owner has
+not read the diff. For each thing a sentence names, ask what the owner would
+call it. Name a file by its path. Name a paper by its first author, journal
+and year the first time, such as "Yasuda et al., Anesthesiology 1991". Say
+that a rule is written in a file, and who reads that file. Do not say that it
+"stood", "lives" or "sits" there. When a phrase in your draft also appears in
+the diff, say it again in plain words.
+
 For a branch that added a test and changed no simulator code:
 
 > A new test fails when a public parameter, field or return value in `core/`
