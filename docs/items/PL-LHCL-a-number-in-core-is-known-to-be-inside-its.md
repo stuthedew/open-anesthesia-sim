@@ -175,15 +175,43 @@ result there, as it is at zero flow, or whether the flow has a smallest
 positive value. Each of (b) and (c) removes its entries from `LISTED` and
 lowers `MOST_BARE_NUMBERS`.
 
-**Where step (a) stands, 2026-11-11 00:40 UTC.** The test is committed on
-`claude/festive-cori-it7vs1` and its draft pull request is `#2099`. The
-session stopped for length before close-out, at 143,000 tokens of spend. Still
-owed before `#2099` is marked ready, as `bin/docket arm` lists them: the prose
-review of the test file's 11 docstrings and comments; one blind review pass;
-an `Owner-read:` record (the change adds a test and no behaviour, so the
-judgment to record is whether the owner reads the list's reasons); the copy
-edit of the title and body; and `bin/docket yield PL-LHCL`, because the item
-stays open for steps (b) to (e). `main` was brought in after `#2095` merged, so the
-branch differs from `main` only by the test and this record. `docs/MODEL.md` was left unchanged for (a):
-its paragraph on `tests/unit/test_record_writes.py` under the mass-balance
-identity is where (b) or (c) adds one on this test.
+**The blind review of step (a), 2026-11-11, and what it changed.** One pass
+gave four findings, each checked by a run and each fixed in the test. The
+list now holds 173 entries, not the 164 above.
+
+1. The walk matched only the names `float` and `int`, so it missed nine
+   boundaries behind `Matrix = tuple[tuple[float, ...], ...]` and
+   `MacMultiple`, a `NewType` that checks nothing. It now collects each
+   module-level alias of a bare type across `core/`, and treats an annotation
+   that names one as bare. Seven matrix entries have their own reason, and
+   `MacAwakeReference`'s two fields are stored parameters. Failed first: five
+   alias cases run against the walk as it stood (`bare_numbers_in` from the
+   commit before the fix) gave `5 failed`, each
+   `AssertionError: assert set() == {...}`, for a subscript alias, a
+   `NewType`, an alias of an alias, a `type` statement and a `TypeAlias`.
+2. Thirteen entries sat under the permanent reason "the check itself" though
+   their guards compare two numbers and never check either:
+   `require_within_the_capacity`, `require_room_for_the_agent_held`,
+   `require_a_capacity_with_room_for_the_agent`,
+   `require_held_within_input_ceiling`, `require_within_input_ceiling` and
+   `require_perfusion_fractions_sum_to_one`. Each returns for NaN, and the
+   first five for a negative number. They are now under a reason of their own
+   that step (e) removes, so 25 entries stay bare, not 38.
+3. Two reasons said "checked by the record that holds it", which is false
+   for 21 entries. `TissueGroupState(nan)`, `FreshGasExchange(nan, -1.0)`,
+   `AgentSimulationValidatorState`, `AgentSimulationValidationResult` and
+   `UptakeStepResult` build with NaN, `ReferenceAdultParameters` checks only
+   its five volumes, and `MacAwakeReference(MacMultiple(nan),
+   MacMultiple(-3.0), "x")` builds. The 18 amounts on records that check
+   nothing have their own reason. Every other reason now says that something
+   checks the number only where a run showed it. Steps (c) and (e) should
+   read this before deciding that agent amounts can go last: the result and
+   state records are the unguarded ones.
+4. The count test asserted `<=`, so entries removed without lowering the
+   count left room for new ones. It now asserts equality.
+
+By reason, after the review: the check itself 22, a checked type's plain
+number 2, a count shown in a refusal 1 (these 25 stay bare); compared by a
+guard 13, blood flow 7, perfusion fraction 6, compartment step 4, instant or
+window 11, state vector 8, matrix 7, stored parameter 27, closed form 9,
+agent amount 20, unchecked amount on a record 18, derived value 18 (148).

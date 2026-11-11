@@ -8,20 +8,23 @@ check. Four items found more after it closed (`PL-LHCL`).
 These tests read the source of every module in `core/`. They collect each
 public parameter, dataclass field and return value whose annotation names
 `float` or `int`, alone or inside another type such as `tuple[float, ...]`.
+An alias such as `Matrix = tuple[tuple[float, ...], ...]`, or a `NewType` over
+`float`, checks nothing, so an annotation that names one counts as bare too.
 Each one must appear in `BARE_NUMBERS` below with the reason it is bare. A
 name is public unless it starts with one underscore. A method such as
 `__new__` is public, because it is how a caller builds the type.
 
-A new bare number fails the first test until it is typed or listed. The list
-may only shrink: `MOST_BARE_NUMBERS` is the count on the day the list was
-written, and a longer list fails. `PL-LHCL` types the listed numbers, one
-quantity at a time, and removes each entry as it does.
+A new bare number fails the first test until it is typed or listed.
+`MOST_BARE_NUMBERS` must equal the length of the list, so adding an entry also
+means raising that count, where a reviewer sees it. `PL-LHCL` types the listed
+numbers, one quantity at a time, and removes each entry and lowers the count
+as it does.
 """
 
 from __future__ import annotations
 
 import ast
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from pathlib import Path
 
 import pytest
@@ -46,44 +49,54 @@ PLAIN_NUMBER = (
 SHOWN_IN_A_REFUSAL = "A count that a refusal message shows, which may be the value refused."
 
 # The other reasons each name a quantity that `PL-LHCL` has still to type. An
-# entry goes when its quantity is typed.
+# entry goes when its quantity is typed. A reason says that something checks
+# the number only where a run on 2026-11-11 showed that it does.
+COMPARED_BY_A_GUARD = (
+    "A number that a guard compares with another number or with a limit. The guard "
+    "leaves the number's own check to its caller, so it accepts NaN. PL-LHCL types the "
+    "amounts, capacities and concentrations that these guards take."
+)
 BLOOD_FLOW = (
     "A blood flow, checked by hand as finite and not negative at three places. PL-GKG4 "
     "gives it a type built only from a cardiac output and a perfusion fraction."
 )
 PERFUSION_FRACTION = (
-    "A perfusion fraction or a sum of them, checked by the record that holds it. It is "
-    "typed with the blood flow built from it (PL-GKG4)."
+    "A perfusion fraction or a sum of them. TissueGroup checks the one it holds, and "
+    "ReferenceAdultParameters does not check its three. It is typed with the blood flow "
+    "built from it (PL-GKG4)."
 )
-COMPARTMENT_STEP = (
-    "A compartment's own step for its closed form, checked by require_compartment_step. "
-    "PL-LHCL types it."
-)
+COMPARTMENT_STEP = "A compartment's own step for its closed form. PL-LHCL types it."
 INSTANT_OR_WINDOW = (
-    "An instant, an interval, or a window's bound, spacing or column count, checked by "
-    "hand where it is read. PL-LHCL types it."
+    "An instant, an interval, or a window's bound, spacing or column count. PL-LHCL types it."
 )
-STATE_VECTOR = (
-    "A state vector of amounts and fractions, checked by the run definition that holds "
-    "it. PL-LHCL types it with the agent amounts."
+STATE_VECTOR = "A state vector of amounts and fractions. PL-LHCL types it with the agent amounts."
+MATRIX = (
+    "A matrix of plain floats: the system matrix, or a propagator built from it. Nothing "
+    "checks its entries, so multiply returns NaN for a NaN operand. PL-LHCL types it with "
+    "the state vectors."
 )
 STORED_PARAMETER = (
-    "A stored parameter, a bound of a stored range, or a conversion of one, checked by "
-    "its record when the data file is loaded. PL-LHCL types it."
+    "A stored parameter, a bound of a stored range, or a conversion of one. The loader "
+    "checks a value read from a data file, and some records built directly do not: "
+    "MacAwakeReference accepts NaN. PL-LHCL types it."
 )
 CLOSED_FORM = (
     "An argument or result of the exponential closed form, which states its own valid "
     "inputs. PL-LHCL types it with the amounts and steps it is called with."
 )
 AGENT_AMOUNT = (
-    "An agent amount in litres, or a total or error of amounts, checked by the record "
-    "that holds it. PL-LHCL types it last, after measuring what a checked type costs at "
-    "each step."
+    "An agent amount in litres, or a total or error of amounts, on a compartment, the "
+    "validator or a method. PL-LHCL types it last, after measuring what a checked type "
+    "costs at each step."
+)
+UNCHECKED_AMOUNT = (
+    "An agent amount on a state or result record that checks nothing, so the record can "
+    "be built with NaN or a negative amount. PL-LHCL types it with the other agent amounts."
 )
 DERIVED = (
-    "A value computed from checked values. Arithmetic on a checked type returns a plain "
-    "float, so the result carries no proof. PL-LHCL gives it a type that only its "
-    "derivation builds."
+    "A value that the code computes from other values. Arithmetic on a checked type "
+    "returns a plain float, so the result carries no proof. PL-LHCL gives it a type that "
+    "only its derivation builds."
 )
 
 LISTED: dict[str, dict[str, tuple[str, ...]]] = {
@@ -101,7 +114,6 @@ LISTED: dict[str, dict[str, tuple[str, ...]]] = {
             "CompartmentVolume.__new__(volume_l)",
             "PartitionCoefficient.__new__(coefficient)",
         ),
-        "parameters": ("require_perfusion_fractions_sum_to_one(total_perfusion_fraction)",),
         "simulation_step": (
             "SimulationStep.__new__(seconds)",
             "require_at_least_the_smallest_step(simulation_step_s)",
@@ -114,12 +126,18 @@ LISTED: dict[str, dict[str, tuple[str, ...]]] = {
             "FreshGasFlow.__new__(fresh_gas_flow_l_min)",
             "StepCount.__new__(step_count)",
             "require_compartment_step(simulation_step_s)",
-            "require_held_within_input_ceiling(capacity_l)",
-            "require_held_within_input_ceiling(held_l)",
             "require_supported_alveolar_ventilation(alveolar_ventilation_l_min)",
             "require_supported_cardiac_output(cardiac_output_l_min)",
             "require_supported_case_instant(instant_s)",
             "require_supported_fresh_gas_flow(fresh_gas_flow_l_min)",
+        ),
+        "validation": ("require_nonnegative_finite(value)", "require_positive_finite(value)"),
+    },
+    COMPARED_BY_A_GUARD: {
+        "parameters": ("require_perfusion_fractions_sum_to_one(total_perfusion_fraction)",),
+        "supported_ranges": (
+            "require_held_within_input_ceiling(capacity_l)",
+            "require_held_within_input_ceiling(held_l)",
             "require_within_input_ceiling(concentration)",
         ),
         "validation": (
@@ -127,8 +145,6 @@ LISTED: dict[str, dict[str, tuple[str, ...]]] = {
             "require_a_capacity_with_room_for_the_agent(capacity_per_litre)",
             "require_a_capacity_with_room_for_the_agent(value)",
             "require_a_capacity_with_room_for_the_agent(volume_l)",
-            "require_nonnegative_finite(value)",
-            "require_positive_finite(value)",
             "require_room_for_the_agent_held(agent_amount_l)",
             "require_room_for_the_agent_held(capacity_l)",
             "require_room_for_the_agent_held(value)",
@@ -204,6 +220,17 @@ LISTED: dict[str, dict[str, tuple[str, ...]]] = {
             "AgentUptakeSystem.state_vector -> return",
         ),
     },
+    MATRIX: {
+        "governing_equations": ("build_system_matrix -> return",),
+        "matrix_exponential": (
+            "matrix_exponential -> return",
+            "matrix_exponential(matrix)",
+            "multiply -> return",
+            "multiply(left)",
+            "multiply(right)",
+            "propagate(propagator)",
+        ),
+    },
     STORED_PARAMETER: {
         "circuit": (
             "BreathingCircuit.accepted_fresh_gas_flow_range_l_min -> return",
@@ -226,6 +253,8 @@ LISTED: dict[str, dict[str, tuple[str, ...]]] = {
             "AgentParameters.vapour_volume_per_liquid_volume -> return",
             "BreathingCircuitParameters.default_fresh_gas_flow_l_min",
             "BreathingCircuitParameters.schema_version",
+            "MacAwakeReference.fraction_of_mac",
+            "MacAwakeReference.standard_deviation_fraction_of_mac",
             "ReferenceAdultParameters.default_alveolar_ventilation_l_min",
             "ReferenceAdultParameters.default_cardiac_output_l_min",
             "ReferenceAdultParameters.schema_version",
@@ -252,12 +281,6 @@ LISTED: dict[str, dict[str, tuple[str, ...]]] = {
     },
     AGENT_AMOUNT: {
         "agent_simulation_validation": (
-            "AgentSimulationValidationResult.absolute_error_l",
-            "AgentSimulationValidationResult.currently_stored_agent_l",
-            "AgentSimulationValidationResult.delivered_agent_l",
-            "AgentSimulationValidationResult.exhausted_agent_l",
-            "AgentSimulationValidationResult.initial_agent_l",
-            "AgentSimulationValidationResult.unaccounted_agent_l",
             "AgentSimulationValidator.check_agent_accounting(currently_stored_agent_l)",
             "AgentSimulationValidator.delivered_agent_l",
             "AgentSimulationValidator.delivered_compensation_l",
@@ -267,37 +290,43 @@ LISTED: dict[str, dict[str, tuple[str, ...]]] = {
             "AgentSimulationValidator.record_external_agent_transfer(delivered_agent_l)",
             "AgentSimulationValidator.record_external_agent_transfer(exhausted_agent_l)",
             "AgentSimulationValidator.reset(initial_agent_l)",
+        ),
+        "alveolar": ("AlveolarCompartment.agent_amount_l",),
+        "blood": (
+            "VenousBloodCompartment.advance -> return",
+            "VenousBloodCompartment.agent_amount_l",
+        ),
+        "circuit": (
+            "BreathingCircuit.agent_amount_l -> return",
+            "BreathingCircuit.set_agent_amount(agent_amount_l)",
+            "BreathingCircuitState.agent_amount_l -> return",
+        ),
+        "patient": ("PatientCompartments.total_agent_amount_l -> return",),
+        "tissue": ("TissueGroup.advance -> return", "TissueGroup.agent_amount_l"),
+        "uptake_system": (
+            "AgentUptakeSystem.resume_at(initial_agent_l)",
+            "AgentUptakeSystem.total_stored_agent_l -> return",
+        ),
+    },
+    UNCHECKED_AMOUNT: {
+        "agent_simulation_validation": (
+            "AgentSimulationValidationResult.absolute_error_l",
+            "AgentSimulationValidationResult.currently_stored_agent_l",
+            "AgentSimulationValidationResult.delivered_agent_l",
+            "AgentSimulationValidationResult.exhausted_agent_l",
+            "AgentSimulationValidationResult.initial_agent_l",
+            "AgentSimulationValidationResult.unaccounted_agent_l",
             "AgentSimulationValidatorState.delivered_agent_l",
             "AgentSimulationValidatorState.delivered_compensation_l",
             "AgentSimulationValidatorState.exhausted_agent_l",
             "AgentSimulationValidatorState.exhausted_compensation_l",
             "AgentSimulationValidatorState.initial_agent_l",
         ),
-        "alveolar": (
-            "AlveolarCompartment.agent_amount_l",
-            "AlveolarCompartmentState.agent_amount_l",
-        ),
-        "blood": (
-            "VenousBloodCompartment.advance -> return",
-            "VenousBloodCompartment.agent_amount_l",
-            "VenousBloodCompartmentState.agent_amount_l",
-        ),
-        "circuit": (
-            "BreathingCircuit.agent_amount_l -> return",
-            "BreathingCircuit.set_agent_amount(agent_amount_l)",
-            "BreathingCircuitState.agent_amount_l -> return",
-            "FreshGasExchange.delivered_agent_l",
-            "FreshGasExchange.exhausted_agent_l",
-        ),
-        "patient": ("PatientCompartments.total_agent_amount_l -> return",),
-        "tissue": (
-            "TissueGroup.advance -> return",
-            "TissueGroup.agent_amount_l",
-            "TissueGroupState.agent_amount_l",
-        ),
+        "alveolar": ("AlveolarCompartmentState.agent_amount_l",),
+        "blood": ("VenousBloodCompartmentState.agent_amount_l",),
+        "circuit": ("FreshGasExchange.delivered_agent_l", "FreshGasExchange.exhausted_agent_l"),
+        "tissue": ("TissueGroupState.agent_amount_l",),
         "uptake_system": (
-            "AgentUptakeSystem.resume_at(initial_agent_l)",
-            "AgentUptakeSystem.total_stored_agent_l -> return",
             "UptakeStepResult.circuit_to_alveolar_agent_l",
             "UptakeStepResult.patient_agent_change_l",
         ),
@@ -340,22 +369,29 @@ BARE_NUMBERS: dict[str, str] = {
     for name in names
 }
 
-# The length of `BARE_NUMBERS` on 2026-11-11, when the list was written.
-MOST_BARE_NUMBERS = 164
+# The length of `BARE_NUMBERS`. It was 173 on 2026-11-11, when the list was
+# written, and it only goes down.
+MOST_BARE_NUMBERS = 173
 
 
-def _names_a_bare_number(annotation: ast.expr | None) -> bool:
-    """Whether an annotation names `float` or `int` anywhere in it.
+def _names_a_bare_number(
+    annotation: ast.expr | None, bare_names: frozenset[str] = BARE_TYPES
+) -> bool:
+    """Whether an annotation names `float`, `int` or an alias of one anywhere in it.
 
-    A quoted annotation is parsed and read the same way. One that does not
-    parse is treated as bare, so that it is looked at instead of passed.
+    `bare_names` holds `float`, `int` and each alias that `_bare_type_names`
+    found. A quoted annotation is parsed and read the same way. One that does
+    not parse is treated as bare, so that it is looked at instead of passed.
     """
 
     if annotation is None:
         return False
 
     for node in ast.walk(annotation):
-        if isinstance(node, ast.Name) and node.id in BARE_TYPES:
+        if isinstance(node, ast.Name) and node.id in bare_names:
+            return True
+
+        if isinstance(node, ast.Attribute) and node.attr in bare_names:
             return True
 
         if isinstance(node, ast.Constant) and isinstance(node.value, str):
@@ -364,10 +400,87 @@ def _names_a_bare_number(annotation: ast.expr | None) -> bool:
             except SyntaxError:
                 return True
 
-            if _names_a_bare_number(quoted):
+            if _names_a_bare_number(quoted, bare_names):
                 return True
 
     return False
+
+
+def _is_a_type_expression(value: ast.expr) -> bool:
+    """Whether a module-level value is written as a type.
+
+    A type is a name, a subscript, a union or a `NewType`. A call such as
+    `float("inf")` builds a number, so it is not one.
+    """
+
+    if isinstance(value, (ast.Name, ast.Attribute, ast.Subscript)):
+        return True
+
+    if isinstance(value, ast.BinOp) and isinstance(value.op, ast.BitOr):
+        return True
+
+    if isinstance(value, ast.Call):
+        called = value.func
+        name = called.attr if isinstance(called, ast.Attribute) else getattr(called, "id", "")
+        return name == "NewType"
+
+    return False
+
+
+def _aliases_in(source: str, bare_names: frozenset[str]) -> set[str]:
+    """Return each module-level name that one module assigns to a type naming a bare number.
+
+    `Matrix = tuple[tuple[float, ...], ...]` and
+    `MacMultiple = NewType("MacMultiple", float)` are two. Neither checks
+    anything, so a parameter annotated with one is as bare as a `float`. A
+    class is not an alias, because a checked type is a class whose constructor
+    runs the check.
+    """
+
+    aliases: set[str] = set()
+
+    for statement in _statements(ast.parse(source).body):
+        if isinstance(statement, ast.TypeAlias):
+            name, value = statement.name.id, statement.value
+        elif (
+            isinstance(statement, ast.Assign)
+            and len(statement.targets) == 1
+            and isinstance(statement.targets[0], ast.Name)
+        ):
+            name, value = statement.targets[0].id, statement.value
+        elif (
+            isinstance(statement, ast.AnnAssign)
+            and isinstance(statement.target, ast.Name)
+            and statement.value is not None
+        ):
+            name, value = statement.target.id, statement.value
+        else:
+            continue
+
+        if _is_a_type_expression(value) and _names_a_bare_number(value, bare_names):
+            aliases.add(name)
+
+    return aliases
+
+
+def _bare_type_names(sources: Iterable[str]) -> frozenset[str]:
+    """Return `float`, `int` and every alias of them that the given modules define.
+
+    An alias may be written in terms of another alias, so the search repeats
+    until it finds no new name. A name found in one module counts in all of
+    them, because one module imports another's alias.
+    """
+
+    sources = tuple(sources)
+    names = BARE_TYPES
+
+    while True:
+        wider = names.union(*(_aliases_in(source, names) for source in sources))
+
+        if wider == names:
+            return names
+
+        names = wider
 
 
 def _is_public(name: str) -> bool:
@@ -391,7 +504,9 @@ def _statements(body: list[ast.stmt]) -> Iterator[ast.stmt]:
             yield statement
 
 
-def _in_function(owner: str, function: ast.FunctionDef | ast.AsyncFunctionDef) -> Iterator[str]:
+def _in_function(
+    owner: str, function: ast.FunctionDef | ast.AsyncFunctionDef, bare_names: frozenset[str]
+) -> Iterator[str]:
     """Yield a key for each bare parameter of a function, and one for a bare return."""
 
     arguments = function.args
@@ -404,39 +519,44 @@ def _in_function(owner: str, function: ast.FunctionDef | ast.AsyncFunctionDef) -
         parameters.append(arguments.kwarg)
 
     for parameter in parameters:
-        if _names_a_bare_number(parameter.annotation):
+        if _names_a_bare_number(parameter.annotation, bare_names):
             yield f"{owner}{function.name}({parameter.arg})"
 
-    if _names_a_bare_number(function.returns):
+    if _names_a_bare_number(function.returns, bare_names):
         yield f"{owner}{function.name} -> return"
 
 
-def bare_numbers_in(module: str, source: str) -> set[str]:
+def bare_numbers_in(module: str, source: str, bare_names: frozenset[str] | None = None) -> set[str]:
     """Return a key for each bare number at a public boundary in one module's source.
 
     The keys take three forms: `module.Class.method(parameter)` for a
     parameter, `module.Class.field` for a field, and
-    `module.function -> return` for a return value.
+    `module.function -> return` for a return value. `bare_names` holds the
+    aliases that other modules define. Without it, the walk uses the aliases
+    that this source defines.
     """
+
+    if bare_names is None:
+        bare_names = _bare_type_names([source])
 
     found: set[str] = set()
 
     for statement in _statements(ast.parse(source).body):
         if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef)):
             if _is_public(statement.name):
-                found.update(_in_function(f"{module}.", statement))
+                found.update(_in_function(f"{module}.", statement, bare_names))
         elif isinstance(statement, ast.ClassDef) and _is_public(statement.name):
             owner = f"{module}.{statement.name}."
 
             for member in _statements(statement.body):
                 if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     if _is_public(member.name):
-                        found.update(_in_function(owner, member))
+                        found.update(_in_function(owner, member, bare_names))
                 elif (
                     isinstance(member, ast.AnnAssign)
                     and isinstance(member.target, ast.Name)
                     and _is_public(member.target.id)
-                    and _names_a_bare_number(member.annotation)
+                    and _names_a_bare_number(member.annotation, bare_names)
                 ):
                     found.add(f"{owner}{member.target.id}")
 
@@ -444,10 +564,12 @@ def bare_numbers_in(module: str, source: str) -> set[str]:
 
 
 def _bare_numbers_in_core() -> set[str]:
+    sources = {path.stem: path.read_text(encoding="utf-8") for path in sorted(CORE.glob("*.py"))}
+    bare_names = _bare_type_names(sources.values())
     found: set[str] = set()
 
-    for path in sorted(CORE.glob("*.py")):
-        found |= bare_numbers_in(path.stem, path.read_text(encoding="utf-8"))
+    for module, source in sources.items():
+        found |= bare_numbers_in(module, source, bare_names)
 
     return found
 
@@ -471,10 +593,12 @@ def test_the_list_names_no_number_that_is_gone_or_typed() -> None:
     )
 
 
-def test_the_list_only_shrinks() -> None:
-    assert len(BARE_NUMBERS) <= MOST_BARE_NUMBERS, (
-        f"BARE_NUMBERS has {len(BARE_NUMBERS)} entries, more than the {MOST_BARE_NUMBERS} it "
-        "may hold. A new number in core/ takes a checked type, not a new entry."
+def test_the_count_is_the_length_of_the_list() -> None:
+    assert len(BARE_NUMBERS) == MOST_BARE_NUMBERS, (
+        f"BARE_NUMBERS has {len(BARE_NUMBERS)} entries and MOST_BARE_NUMBERS is "
+        f"{MOST_BARE_NUMBERS}. After removing entries, lower MOST_BARE_NUMBERS to the new "
+        "length. A new number in core/ takes a checked type, not a new entry, so the count "
+        "is never raised."
     )
 
 
@@ -561,9 +685,36 @@ def test_the_walk_names_each_bare_number_that_a_past_item_reported() -> None:
             "class Shown:\n    if not TYPE_CHECKING:\n        def __new__(cls, value: float): ...",
             {"m.Shown.__new__(value)"},
         ),
+        (
+            "Matrix = tuple[tuple[float, ...], ...]\ndef multiply(left: Matrix) -> None: ...",
+            {"m.multiply(left)"},
+        ),
+        (
+            'Amount = NewType("Amount", float)\nclass Shown:\n    amount_l: Amount',
+            {"m.Shown.amount_l"},
+        ),
+        (
+            "Litres = float\nAmounts = tuple[Litres, ...]\ndef total(held: Amounts) -> None: ...",
+            {"m.total(held)"},
+        ),
+        ("type Litres = float\ndef read() -> Litres: ...", {"m.read -> return"}),
+        ("Count: TypeAlias = int\ndef read() -> Count | None: ...", {"m.read -> return"}),
+        ("class Litres(float): ...\ndef read() -> Litres: ...", set()),
+        ('Dose = NewType("Dose", Fraction)\ndef read() -> Dose: ...', set()),
+        ('CEILING = float("inf")\ndef read() -> CEILING: ...', set()),
     ],
 )
 def test_the_walk_reads_each_form_of_parameter_and_skips_private_names(
     source: str, expected: set[str]
 ) -> None:
     assert bare_numbers_in("m", source) == expected
+
+
+def test_the_walk_follows_an_alias_that_another_module_defines() -> None:
+    bare_names = _bare_type_names(["Litres = float", "from units import Litres"])
+
+    assert bare_numbers_in("m", "def read() -> Litres: ...", bare_names) == {"m.read -> return"}
+    assert bare_numbers_in("m", "def read() -> units.Litres: ...", bare_names) == {
+        "m.read -> return"
+    }
+    assert bare_numbers_in("m", "def read() -> Litres: ...") == set()
