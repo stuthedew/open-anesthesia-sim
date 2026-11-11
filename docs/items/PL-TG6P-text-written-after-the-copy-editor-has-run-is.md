@@ -3,7 +3,7 @@ id: PL-TG6P
 title: Text written after the copy editor has run is published without review, and both of the owner's objections in PL-J1ZM's measurement landed on such text: PL-9331's wrong reason for a rewording, in its reply and pull request body, and PL-J37P's warning sentence in docs/MODEL.md, each written to answer a question the copy editor raised
 priority: P1
 effort: M
-status: ready
+status: needs-decision
 classes: defect
 feature: copy-editor
 touches: .claude/skills/docket/modes/close-out.md, .claude/skills/pull-request/SKILL.md, tools/new_prose.py, tests/unit/test_new_prose.py, subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_arming.py

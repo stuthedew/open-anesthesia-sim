@@ -3,7 +3,7 @@ id: PL-HNNH
 title: Sessions skip naming, in the pull request body, the facts a grown passage adds: PL-W6JM's two docstrings grew by 44 and 46 words and PL-J37P's subsections grew, and neither body says what the added words carry, though tools/new_prose.py --compare printed the growth
 priority: P1
 effort: M
-status: ready
+status: needs-decision
 classes: defect
 feature: copy-editor
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_arming.py, subprojects/docket/README.md, docket.toml, tools/new_prose.py, tools/open_pull_requests.py, tests/unit/test_new_prose.py, .claude/skills/docket/modes/close-out.md
