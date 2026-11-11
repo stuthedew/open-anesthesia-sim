@@ -207,6 +207,53 @@ def test_a_count_that_is_not_an_int_is_refused(not_a_count: object) -> None:
         run_rounding(0, not_a_count)  # type: ignore[arg-type]
 
 
+@pytest.mark.parametrize(
+    ("squarings", "message"),
+    [
+        (-1, "squarings must be at least zero, and -1 is not"),
+        (
+            33,
+            "squarings must be at most 32, and 33 is not; core/matrix_exponential.py refuses "
+            "a propagator that needs more, so its rounding has no stated bound",
+        ),
+    ],
+)
+def test_a_refused_number_of_squarings_is_named_with_its_limit(
+    squarings: int, message: str
+) -> None:
+    """The refusal gives the condition, the value that failed it and where the cap is set."""
+
+    with pytest.raises(SimulationConfigurationError) as refusal:
+        propagator_rounding(squarings)
+
+    assert str(refusal.value) == message
+
+
+def test_a_count_of_the_wrong_type_is_named_by_its_type() -> None:
+    with pytest.raises(TypeError) as refusal:
+        propagator_rounding(2.5)  # type: ignore[arg-type]
+
+    assert str(refusal.value) == "squarings must be an int, not a float"
+
+
+@pytest.mark.parametrize(
+    ("instant_s", "interval_s", "message"),
+    [
+        (-1.0, 1.0, "instant_s must be finite and at least zero, and -1.0 is not"),
+        (math.inf, 1.0, "instant_s must be finite and at least zero, and inf is not"),
+        (1.0, 0.0, "interval_s must be finite and above zero, and 0.0 is not"),
+        (1.0, math.inf, "interval_s must be finite and above zero, and inf is not"),
+    ],
+)
+def test_a_refused_instant_or_interval_is_named_with_its_value(
+    instant_s: float, interval_s: float, message: str
+) -> None:
+    with pytest.raises(SimulationConfigurationError) as refusal:
+        clock_rounding(instant_s, interval_s)
+
+    assert str(refusal.value) == message
+
+
 def test_a_number_of_steps_not_built_as_a_step_count_is_refused() -> None:
     """A bare `int` carries no proof that it is whole and nonnegative, so it is refused."""
 
