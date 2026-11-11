@@ -3,13 +3,15 @@ id: PL-P3GZ
 title: Decide whether to split docs/MODEL.md by reader: the reverse outline puts 13% of its words in a model description and 72% with a developer
 priority: P2
 effort: L
-status: blocked
+status: needs-decision
 classes: docs, planning
 feature: model-md-structure
 touches: docs/MODEL.md
 blocked-by: PL-B07T
+deferred-from: v0.7.0 - a decision about how docs/MODEL.md is divided between readers; the schematic release does not depend on it
 added: 2026-11-10
 payoff: a clinician finds the model, its values and its limits without reading past tests, interface rules and decision history
+verify: grep -qE '^[*][*]Decision [(]project owner' docs/items/PL-P3GZ-*.md
 ---
 
 **Problem.** Decide whether to split docs/MODEL.md by reader: the reverse outline puts 13% of its words in a model description and 72% with a developer
@@ -73,9 +75,18 @@ Diataxis, which separates documentation by what its reader needs to do
 so it cites the framework from memory. This is the owner's decision because
 it is a major refactor that changes what the project's specification is.
 
-**Blocked on `PL-B07T`.** The owner agreed on 2026-11-10 to read a draft of
-the clinician's model description first (ratified, over deciding from the
-outline's totals alone). Decide this item on that reading.
+**The draft came first.** The owner agreed on 2026-11-10 to read a draft of
+the clinician's model description before deciding this (ratified, over
+deciding from the outline's totals alone). `PL-B07T` wrote that draft and
+closed on 2026-11-11.
+
+**The owner's answer on the draft, 2026-11-11.** The owner read
+`docs/prose-review/model-description-draft.md` and answered "Yes with
+references": it is the document a clinician should get. It now carries a
+reference list. `PL-B07T` records what the draft takes, what it leaves out
+with the home of each fact, and the two things a split must add before the
+draft could replace any part of `docs/MODEL.md`: the stored-value markers,
+and its path among the documents `tools/doc_check.py` checks them in.
 
 **What waits on this.** The owner asked the Projects trial's coordinator on
 2026-11-10 to hold all copy editor runs, line edits and within-section
@@ -85,6 +96,11 @@ section pointers) and `PL-HTB9` (the copy editor fails on a whole-document
 request). A split would cut or move most of the text they would edit, and
 the owner ruled on 2026-11-07 that no document is line edited ahead of its
 restructure.
+
+**Done when.** The owner has decided whether to split `docs/MODEL.md` by
+reader, and this item records the decision in a paragraph that opens
+"**Decision (project owner". Where the decision is to split, the work it
+needs is filed as items.
 
 **Generator check.** An instance of the fact that `PL-J1ZM` (sessions
 over-explain in every kind of text) states: no rule says what a reader can

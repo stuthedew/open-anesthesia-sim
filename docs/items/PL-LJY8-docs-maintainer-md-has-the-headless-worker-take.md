@@ -3,12 +3,14 @@ id: PL-LJY8
 title: docs/maintainer.md has the headless worker take its model from the [models] table, but gives a fixed Sonnet model through --model for PL-6FX6's trial; record whether that override is an agreed exception to the table (copy editor structure read, 2026-11-07)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: maintainer-guide-structure
 touches: docs/maintainer.md
 deferred-from: v0.7.0 - a new problem, not present at the freeze: the runner's model was first said to come from the [models] table in 65c3a41f (PL-KDG0)
 added: 2026-11-07
+closed: 2026-11-11
+pr: 2097
 payoff: the owner can tell that --model is a one-run override the model trial uses by design, not a second way of choosing the worker's model
 verify: ! grep -qF "the form used for \`PL-6FX6\`'s trial" docs/maintainer.md
 ---
@@ -24,3 +26,5 @@ verify: ! grep -qF "the form used for \`PL-6FX6\`'s trial" docs/maintainer.md
 **Generator check.** One-off: a finding from the `docs/maintainer.md` structure-read sweep. The fact is which model a headless worker runs, which the `[models]` table records; no head states it.
 
 **Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** Not present. At 817a4d88, `docs/maintainer.md` said that each run "works one item on Opus 5.5", and gave a `--no-push --model` command naming a Sonnet model as `PL-6FX6`'s trial form. The statement that the runner takes its model from the `[models]` table arrived in 65c3a41f (`PL-KDG0`, #2047, 2026-11-07), so this is a new problem and is deferred.
+
+**Done 2026-11-11.** `docs/maintainer.md` § "Spend the monthly API credit on delegable items" now says that `--model <id>` overrides the `[models]` table's model for one batch, that an ordinary run leaves it off and takes the table's model, and that `PL-6FX6`'s trial passes `--model claude-sonnet-5-5` and `--model claude-haiku-5-5`, each with `--no-push`, before the table's own run on Opus 5.5. Sources: the docstring of `tools/headless_worker.py` ("`--model` still overrides the model for one batch, as a trial needs"), its `--model` option's help text, and steps 1 to 3 of "The owner's steps" in `PL-6FX6`. So the override is the trial's designed exception, and the table stays the source for every other run.

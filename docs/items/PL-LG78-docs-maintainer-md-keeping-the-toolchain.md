@@ -3,11 +3,13 @@ id: PL-LG78
 title: docs/maintainer.md § "Keeping the toolchain current", moved from ROADMAP.md, still carries its structure read's findings: its main point comes last in its first paragraph, two sentences repeat its lead, how each drift.yml job works and the decision history belong elsewhere, the shuffled-order check fits neither its heading nor its lead, and its heading promises upgrades it says do not happen
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: maintainer-guide-structure
-touches: docs/maintainer.md, .github/workflows/drift.yml
+touches: docs/maintainer.md
 added: 2026-11-07
+closed: 2026-11-11
+pr: 2097
 payoff: the owner learns from the section's first lines what happens when a dependency or Python moves and what a red scheduled run means
 verify: ! grep -qF 'The current pins are correct today' docs/maintainer.md
 ---
@@ -38,3 +40,16 @@ verify: ! grep -qF 'The current pins are correct today' docs/maintainer.md
 **Generator check.** One-off: a finding from the `ROADMAP.md` structure-read sweep (chapter read 43), carried into `docs/maintainer.md` word for word by `PL-G6DP`.
 
 **Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** Present. At 817a4d88 the section's text was in `ROADMAP.md` ("The current pins are correct today; the point is knowing ..."), with the same order and repeats that the structure read found. `PL-G6DP` moved it to `docs/maintainer.md` later without changing it, so the problem was present. The item is classed `docs` only, which is not debt, so v0.7.0's gate does not take it and it stays off the frozen list.
+
+**Done 2026-11-11.** The section is now § "Noticing when dependencies or Python change". Each finding, in the order above:
+
+1. Applied. The first body paragraph opens with the failure it guards against, and the version limits follow as the reason it will happen.
+2. Applied. "The current pins are correct today ..." and "not to raise numbers on a schedule" are cut.
+3. Applied without a change to `.github/workflows/drift.yml`, because its comments already hold the mechanics: the `dependencies` job's comment explains `uv sync --upgrade`, the `interpreter` job's step "relax the interpreter pin for this run only" explains the relaxed upper limit, and the `order` job's comment gives pytest-randomly, the date as seed and the seed in the run's header. The section keeps what each check tests, how often it runs, what a failure means, and that the interpreter check leaves the declared range unchanged.
+4. Applied. `order` moved to a short list of the workflow's other report-only checks, with `doc-quotes` and `restated-constants` added, each with its cadence and what a failure means, and a pointer to the job comments in `drift.yml`.
+5. Applied. The section states what `quality.yml` tests (the versions locked in `uv.lock`, on the Python `.python-version` names) instead of pointing ahead.
+6. Applied. The decision-history sentence is cut, `PL-QSWS` is named as holding the decision, and the `PL-ZBJ0` sentence stays.
+7. Applied, with the heading the read proposed. Only closed items and `docs/pr-bodies/239.md` cite the old heading, and those record their own time, so they are unchanged.
+8. Applied. The section addresses the owner as "you".
+
+From "Queries the tree answers", the section also says that the session-start digest names each failed `drift.yml` job (`PL-JTWV`), because that is how a red run reaches a session. No statement of the old section is lost: "monthly and on demand" became "on the first of each month, and whenever you start it by hand", and the job mechanics moved to the comments that already held them.
