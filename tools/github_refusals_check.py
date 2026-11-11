@@ -27,6 +27,10 @@ same way, and this runs beside it as a step of the `checks` job.
 
 - `GET /repos/{repo}/branches/{branch}` for whether the default branch's
   required checks bind an admin (`enforcement_level: everyone`).
+- The default branch's required status checks, through
+  `required_checks_check.required_contexts`, which reads both places GitHub
+  keeps them. The `default-merge-hold` rule fails where `MERGE_HOLD_CHECK` is
+  not among them (`PL-KH7Y`).
 - `GET /repos/{repo}/rules/branches/{branch}` for the active rules on the
   default branch and on `PROBE`, a branch name no ruleset names. The rules on
   `PROBE` are the rules every other branch gets.
@@ -74,6 +78,10 @@ from open_pull_requests import GITHUB_API, repo_slug
 PROBE = "claude/a-branch-no-ruleset-names"
 #: A release tag as `tools/tag_release.py` names one.
 RELEASE_TAG = "refs/tags/v0.0.0"
+#: The check that `.github/workflows/merge-hold.yml` reports on every pull
+#: request. It fails on a pull request that `bin/docket arm` holds. Branch
+#: protection matches a required check by this name.
+MERGE_HOLD_CHECK = "merge-hold"
 #: The bypass actors a session holds, because it acts as the owner's account.
 ROLES = frozenset({"RepositoryRole", "OrganizationAdmin", "Team"})
 
@@ -88,6 +96,8 @@ class Settings:
     default_rules: frozenset[str]
     #: Whom the default branch's required checks bind: `everyone` includes an admin.
     enforcement: str | None
+    #: The names of the status checks the default branch requires.
+    required_checks: frozenset[str]
     #: The types of the active rules on a branch no ruleset names.
     other_rules: frozenset[str]
     #: The types of the active rules on a release tag.
@@ -137,6 +147,14 @@ GITHUB_RULES = (
         lambda found: found.enforcement == "everyone",
         'Settings > Branches > the rule for `main`: tick "Do not allow bypassing the above '
         'settings".',
+    ),
+    Refusal(
+        "default-merge-hold",
+        "a pull request that `bin/docket arm` holds can merge into `main`, because `main` does "
+        f"not require the `{MERGE_HOLD_CHECK}` check",
+        lambda found: MERGE_HOLD_CHECK in found.required_checks,
+        'Settings > Branches > the rule for `main` > Edit: under "Require status checks to pass '
+        f'before merging", search for `{MERGE_HOLD_CHECK}`, select it, and click "Save changes".',
     ),
     Refusal(
         "branch-history",
@@ -218,8 +236,7 @@ GUARD_ESCAPES = (
     Escape(
         "enable_pr_auto_merge on a pull request that `bin/docket arm` holds",
         "PL-VZ57",
-        open="the `merge-hold` check fails on such a pull request, and `main` does not "
-        "require that check yet (`PL-KH7Y`)",
+        rules=("default-merge-hold",),
     ),
 )
 
@@ -270,6 +287,7 @@ def read(repo: str, branch: str, token: str | None) -> Settings:
     protection = branch_doc.get("protection") if isinstance(branch_doc, dict) else None
     checks = protection.get("required_status_checks") if isinstance(protection, dict) else None
     enforcement = checks.get("enforcement_level") if isinstance(checks, dict) else None
+    required, _ = required_checks_check.required_contexts(repo, branch, token)
 
     on_default, on_other = rules_on(branch), rules_on(PROBE)
     relied: dict[int, dict[str, object]] = {}
@@ -307,6 +325,7 @@ def read(repo: str, branch: str, token: str | None) -> Settings:
     return Settings(
         default_rules=_types(on_default),
         enforcement=enforcement if isinstance(enforcement, str) else None,
+        required_checks=frozenset(required),
         other_rules=_types(on_other),
         tag_rules=frozenset(tag_rules),
         bypass=tuple(bypass),
