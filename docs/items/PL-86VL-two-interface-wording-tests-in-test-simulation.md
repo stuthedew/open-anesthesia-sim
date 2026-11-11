@@ -79,3 +79,19 @@ hold wording to a list of forbidden phrases, and no head records that shape.
 In `tests/integration/test_simulation_view.py`, `_UNHEDGED_END_TIDAL` now also refuses "ET" and "FET" as whole words, and "Et" alone or joined to an agent's name, matched with their capitals so that "Reset" and "Settings" pass. The wake-up check reads the negation from the clause that holds the phrase, with "not", "never", "no" or "cannot" counting, instead of the 12 characters before it. `test_the_end_tidal_check_refuses_each_spelling_and_abbreviation` names "ET sevo 2.1 %" among the labels it refuses. Against the code before the fix, the old pattern finds none of "ET sevo 2.1 %", "Et 1.8", "EtSevo" and "FET", so those four cases fail; the old 12-character window passes "not shown; predicted wake time" and refuses "this is never a time to wake", so `test_the_wake_up_check_reads_the_hedge_from_the_phrase_s_own_clause` fails on both (checked by running the old expressions on the same inputs).
 
 **Every branch that changes interface text now updates the approved list.** Two open branches change text on screen: the agent-amount captions (`PL-HQPF`, #2136) and the start-over work (`PL-MVCF`, #2138, whose withheld-value strings show only on a halt and so are not recorded here). Whichever merges second reruns the approval and commits the file.
+
+**Blind review, pass 1 (2026-11-11).** Four should-fix findings, all fixed.
+(1) The wake-up check took a negation anywhere earlier in the clause, and only
+sentence marks ended a clause, so "Modelled, not measured, predicted wake"
+passed. A comma or a dash now ends a clause too, and the negation must stand
+among the four words before the phrase. (2) The abbreviation pattern needed a
+word boundary after the abbreviation, so "ET2.1%", "Et1.8 %", "EtSevo2.1",
+"ETsevo", "EtSEV", "EtAA" and "etSev" passed. The pattern now says which letter
+may not follow each form, and the refused list names all seven. (3) Only the
+default sevoflurane run was recorded. Desflurane and isoflurane are now
+recorded at 2 min, and the test module and `docs/ARCHITECTURE.md` say that a
+string shown only after a setting change, or in a halt or failure notice, is
+not on the list. `PL-4G79` holds the rest. (4) The list held every model value,
+so a correct model change would fail with dozens of numbers and bury a wording
+change. Each digit is now masked as `#`, which keeps the count of digits and
+the decimal point, so a change of displayed precision still fails.

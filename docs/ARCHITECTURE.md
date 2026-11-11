@@ -1216,11 +1216,14 @@ specialist standard in `CLAUDE.md` that applies to this document (`PL-KRGY`).
     appearance (`test_dark_appearance.py`). It sets a dark host's palette on
     the `QApplication`, whereas the other tests set a palette on one widget.
     It does so because the code under test declares palettes (`PL-RKRY`).
-  - A test holds every string the dashboard shows, at three fixed points of
-    one run, to a list a person has approved (`test_interface_wording.py`,
-    with the list in `approved_interface_strings.json` beside it). A change to
-    any wording fails until the list is rewritten and committed, and the test
-    module says how (`PL-86VL`).
+  - A test holds every string the dashboard shows, at fixed points of a run
+    of each agent with the default settings, to a list a person has approved
+    (`test_interface_wording.py`, with the list in
+    `approved_interface_strings.json` beside it). Digits are masked, so the
+    test holds wording and not the model's values. A change to that wording
+    fails until the list is rewritten and committed, and the test module says
+    how. A string that appears only after a setting change, or in a halt or
+    failure notice, is not on the list (`PL-86VL`).
 - **`tests/reference/`** — analytic or independent reference cases that the
   implementation must reproduce. Examples are the closed-form circuit wash-in
   solution, the sevoflurane patient reference scenario, and the from-scratch

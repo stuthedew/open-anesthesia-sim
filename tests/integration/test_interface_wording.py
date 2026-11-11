@@ -4,11 +4,23 @@ The interface's wording tests in `test_simulation_view.py` refuse phrases
 somebody thought of, such as an unhedged "end-tidal". A list of forbidden
 phrases misses the wording nobody listed, so this test holds the text to an
 allowed list instead (`PL-86VL`). It builds a dashboard that holds every
-registered View, records every string it holds at three fixed points of one
-sevoflurane run, and compares them with `approved_interface_strings.json`
-beside this file. The simulation is deterministic, so the strings at a fixed
+registered View, records every string it holds at fixed points of a run of
+each agent, and compares them with `approved_interface_strings.json` beside
+this file. The simulation is deterministic, so the strings at a fixed
 simulated time are too. Hidden strings are included, because a hidden string
 can be shown at any moment.
+
+Each digit is replaced by `#` before the comparison. The test is about
+wording, and the numbers are the model's, which other tests check. A changed
+model value would otherwise fail here with dozens of changed numbers, and a
+real change of wording would be lost among them. The number of digits and the
+place of the decimal point are kept, so a change in how many decimals a value
+shows still fails here.
+
+The recorded points use the default settings with no change by the learner.
+A string that appears only after a setting changes, with a bookmark or a
+price, or in a halt or failure notice, is not recorded, and this test does
+not hold it.
 
 A change to any text on screen therefore fails here until a person approves
 it. To approve, check the new wording, run
@@ -20,11 +32,12 @@ every changed string in its diff. This is approval testing, in the sense of
 a stored, human-approved output that a test compares against.
 
 The application's version is written into one string, and changes with every
-commit. It is replaced by `{version}` before the comparison.
+commit. It is replaced by `{version}` before its digits are masked.
 """
 
 import json
 import os
+import re
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -44,10 +57,20 @@ from anesthesia_sim.layout.workspace import Origin, Workspace, WorkspaceName, Wo
 APPROVED_FILE = Path(__file__).with_name("approved_interface_strings.json")
 APPROVE_VARIABLE = "APPROVE_INTERFACE_WORDING"
 VERSION_PLACEHOLDER = "{version}"
+_DIGIT = re.compile(r"[0-9]")
 
-#: The points of the run at which the strings are recorded: before Start,
-#: during wash-in, and later in the case. `None` is a run that has not started.
-RECORDED_POINTS: dict[str, float | None] = {"not started": None, "2 min": 120.0, "10 min": 600.0}
+#: The points at which the strings are recorded, each an agent and a simulated
+#: time. Sevoflurane, the default agent, is recorded before Start, during
+#: wash-in and later in the case. Desflurane and isoflurane are recorded during
+#: wash-in, because some strings name the agent or its own values. A time of
+#: `None` is a run that has not started.
+RECORDED_POINTS: dict[str, tuple[str, float | None]] = {
+    "not started": ("sevoflurane", None),
+    "2 min": ("sevoflurane", 120.0),
+    "10 min": ("sevoflurane", 600.0),
+    "desflurane, 2 min": ("desflurane", 120.0),
+    "isoflurane, 2 min": ("isoflurane", 120.0),
+}
 
 #: The window size. Changing it changed no string on 2026-11-11 (1000, 1400
 #: and 1900 px wide gave the same strings), but a fixed size keeps the test
@@ -83,10 +106,16 @@ def application() -> Iterator[QApplication]:
     yield existing if isinstance(existing, QApplication) else QApplication([])
 
 
-def _strings_at(application: QApplication, elapsed_s: float | None) -> list[str]:
-    """Every string the dashboard holds over a sevoflurane run at `elapsed_s`, sorted."""
+def _masked(text: str) -> str:
+    """`text` with the version replaced and each digit replaced by `#`."""
 
-    controller = SimulationController()
+    return _DIGIT.sub("#", text.replace(APP_BUILD_VERSION, VERSION_PLACEHOLDER))
+
+
+def _strings_at(application: QApplication, agent_id: str, elapsed_s: float | None) -> list[str]:
+    """Every string the dashboard holds in a run of `agent_id` at `elapsed_s`, masked, sorted."""
+
+    controller = SimulationController(agent_id=agent_id)
 
     if elapsed_s is not None:
         controller.start()
@@ -104,10 +133,7 @@ def _strings_at(application: QApplication, elapsed_s: float | None) -> list[str]
         application.processEvents()
         view.present(False)
         application.processEvents()
-        strings = {
-            text.replace(APP_BUILD_VERSION, VERSION_PLACEHOLDER)
-            for text in view.interface_strings()
-        }
+        strings = {_masked(text) for text in view.interface_strings()}
     finally:
         view.stop_timers()
         view.close()
@@ -135,7 +161,10 @@ def _differences(approved: dict[str, list[str]], shown: dict[str, list[str]]) ->
 def test_every_string_the_view_shows_is_on_the_approved_list(application: QApplication) -> None:
     """A string added, changed or removed fails until the approved list is updated."""
 
-    shown = {point: _strings_at(application, seconds) for point, seconds in RECORDED_POINTS.items()}
+    shown = {
+        point: _strings_at(application, agent_id, seconds)
+        for point, (agent_id, seconds) in RECORDED_POINTS.items()
+    }
 
     if os.environ.get(APPROVE_VARIABLE) == "1":
         APPROVED_FILE.write_text(

@@ -338,22 +338,32 @@ _WINDOW_HEIGHT_PX = 1000
 #: application cannot move both sides of the assertion at once.
 _ALVEOLAR_METRIC_QUALIFIER = "end-tidal-equivalent"
 #: Any spelling of end-tidal not followed by the hedge, anywhere on screen,
-#: and the abbreviations that clinicians and anesthesia monitors use for it:
-#: "ET" and "FET" as whole words, and "Et" alone or joined to an agent's name,
-#: as in "Et 1.8" or "EtSevo" (`PL-86VL`). The abbreviations are matched with
-#: their capitals, so that "et" inside a word such as "Reset" is not one.
+#: and the abbreviations that clinicians and anesthesia monitors use for it
+#: (`PL-86VL`). "ET" and "FET" count at the start of a word unless another
+#: capital follows, so "ET2.1%" and "ETsevo" count and "FETCH" does not. "Et"
+#: counts unless a small letter follows, so "Et1.8", "EtSevo" and "EtAA" count
+#: and "Etc" does not. A small "et" counts only when a capital or a digit
+#: follows, as in "etSev", so that "et" inside a word such as "Reset" is not one.
 _UNHEDGED_END_TIDAL = re.compile(
-    r"(?i:end[\s-]?tidal)(?!-equivalent)|\b(?:F?ET|Et)(?:[A-Z][a-z]*)?\b"
+    r"(?i:end[\s-]?tidal)(?!-equivalent)|\bF?ET(?![A-Z])|\bEt(?![a-z])|\bet(?=[A-Z0-9])"
 )
 
-#: A word that negates the phrase after it in the same clause. The hedge on a
-#: wake-up phrase is read from the clause that holds the phrase, because a
-#: negation's reach ends at the end of its clause, as NegEx ends it at the end
-#: of the sentence (`PL-86VL`).
+#: A word that negates a wake-up phrase. It hedges the phrase only when it
+#: stands in the phrase's own clause and among the few words just before it,
+#: because a negation's reach is short and ends at the end of its clause, as
+#: NegEx ends it at the end of the sentence (`PL-86VL`). "Modelled, not
+#: measured, predicted wake" is therefore not hedged: the "not" belongs to
+#: "measured".
 _NEGATION = re.compile(r"\b(?:not|never|no|cannot)\b")
 
-#: Where a clause ends: a sentence's end, a semicolon, a colon or a new line.
-_CLAUSE_END = re.compile(r"[.;:!?\n]")
+#: How many words before a wake-up phrase a negation may stand and still
+#: govern it. "does not predict a time to wake" puts "not" three words before
+#: the phrase. Four allows one more word, such as an adverb, and no more.
+_NEGATION_REACH_WORDS = 4
+
+#: Where a clause ends: a sentence's end, a semicolon, a colon, a comma, a dash
+#: or a new line.
+_CLAUSE_END = re.compile(r"[.;:!?,\n\u2014\u2013]|\s-\s")
 
 #: Phrases that would state a time to wake up as a prediction for this patient.
 _WAKE_PREDICTIONS = (
@@ -369,14 +379,15 @@ _WAKE_PREDICTIONS = (
 
 
 def _unhedged_wake_predictions(text: str) -> list[str]:
-    """Each wake-up prediction in `text` whose own clause holds no negation before it."""
+    """Each wake-up prediction in `text` with no negation just before it in its own clause."""
 
     found: list[str] = []
 
     for clause in _CLAUSE_END.split(text.lower()):
         for phrase in _WAKE_PREDICTIONS:
             for match in re.finditer(re.escape(phrase), clause):
-                if _NEGATION.search(clause[: match.start()]) is None:
+                words_before = " ".join(clause[: match.start()].split()[-_NEGATION_REACH_WORDS:])
+                if _NEGATION.search(words_before) is None:
                     found.append(phrase)
 
     return found
@@ -6192,7 +6203,22 @@ def test_the_screen_says_a_control_mark_is_an_input_not_a_measurement(
 
 
 @pytest.mark.parametrize(
-    "label", ["end-tidal sevoflurane", "End tidal 1.8%", "ET sevo 2.1 %", "Et 1.8", "EtSevo", "FET"]
+    "label",
+    [
+        "end-tidal sevoflurane",
+        "End tidal 1.8%",
+        "ET sevo 2.1 %",
+        "Et 1.8",
+        "EtSevo",
+        "FET",
+        "ET2.1%",
+        "Et1.8 %",
+        "EtSevo2.1",
+        "ETsevo",
+        "EtSEV",
+        "EtAA",
+        "etSev",
+    ],
 )
 def test_the_end_tidal_check_refuses_each_spelling_and_abbreviation(label: str) -> None:
     """A readout labelled "ET sevo", or with any other end-tidal spelling, fails (`PL-86VL`)."""
@@ -6201,25 +6227,39 @@ def test_the_end_tidal_check_refuses_each_spelling_and_abbreviation(label: str) 
 
 
 @pytest.mark.parametrize(
-    "label", ["Alveolar (end-tidal-equivalent)", "Reset", "Settings", "FETCH", "Delivered"]
+    "label",
+    ["Alveolar (end-tidal-equivalent)", "Reset", "Settings", "FETCH", "Delivered", "Etc", "ETA"],
 )
 def test_the_end_tidal_check_passes_the_hedge_and_words_that_contain_et(label: str) -> None:
     assert _UNHEDGED_END_TIDAL.search(label) is None
 
 
 def test_the_wake_up_check_reads_the_hedge_from_the_phrase_s_own_clause() -> None:
-    """A negation earlier in the same clause hedges the phrase, and one in another clause does not.
+    """A negation just before the phrase in its clause hedges it, and any other negation does not.
 
     The check used to look at the 12 characters before the phrase. It passed
     "not shown; predicted wake time", where the negation belongs to another
     clause, and failed "this is never a time to wake", which is hedged
-    (`PL-86VL`).
+    (`PL-86VL`). A comma or a dash also ends a clause, and a negation more
+    than four words back belongs to something else.
     """
 
     assert _unhedged_wake_predictions("not shown; predicted wake time") == ["predicted wake"]
     assert _unhedged_wake_predictions("this is never a time to wake") == []
     assert _unhedged_wake_predictions("This model does not predict a time to wake.") == []
     assert _unhedged_wake_predictions("Band shown. Time to wake: 14 min") == ["time to wake"]
+    assert _unhedged_wake_predictions("Not a clinical tool \u2014 predicted wake at 0.68%") == [
+        "predicted wake"
+    ]
+    assert _unhedged_wake_predictions("Modelled, not measured, predicted wake at 0.34") == [
+        "predicted wake"
+    ]
+    assert _unhedged_wake_predictions("No agent in the circuit, so the patient will wake soon") == [
+        "will wake"
+    ]
+    assert _unhedged_wake_predictions("No figure here is a reading or a time to wake") == [
+        "time to wake"
+    ]
 
 
 def test_the_interface_never_predicts_a_time_to_wake_up(application: QApplication) -> None:
