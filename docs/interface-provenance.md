@@ -940,7 +940,7 @@ the previous layout (Blender Manual, "Areas", sections "Maximize Area" and
 that the Areas share. The unconditional region stays above it and the use
 disclaimer stays below it, because no Workspace may remove either. Blender's
 Focus Mode also hides the Topbar and the Status Bar. This project has no
-equivalent, for the same reason.
+equivalent, for the same reason. This project has no code yet (`PL-VJD2`).
 
 ### Diverged, and each divergence has a specific cause
 

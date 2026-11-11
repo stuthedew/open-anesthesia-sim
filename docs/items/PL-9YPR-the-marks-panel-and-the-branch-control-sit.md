@@ -111,3 +111,40 @@ Still to do before this item closes:
    owner's read and its trailer, the pull request's title and body through
    the copy editor, then mark `#2103` ready and arm it only when
    `bin/docket arm` says so.
+
+**Review findings to act on before close-out, 2026-11-11.** Both blind review
+passes ran on commit `c996a328e`. Their findings, with what is decided so far:
+
+1. Both passes, should-fix, real: a branch View's selected instant lives only
+   in that copy's `ForkPanel`, and `BranchView.save_state` saves only the
+   version. A Workspace switch, or choosing another View and then Branch again,
+   builds a new copy whose first fill selects induction at 0 s, so the next
+   press of Branch opens the branch there. To fix: save the selected point in
+   the View's state, restore it only where the offer still holds it, and leave
+   nothing selected otherwise (`ForkPanel.set_offer`'s rule, `PL-J12Z`). Add
+   the regression test.
+2. Both passes, should-fix, real: `RunView._branch_offered` is true whenever
+   the dashboard holds a case (`SimulationView._place_run` passes
+   `branch_control=self._case is not None`), so a run stopped at the supported
+   length tells the learner to branch while no Area shows the Branch View. To
+   fix: offer the branch in the banner only while a branch control is on
+   screen, and update `docs/MODEL.md`'s sentence if its wording changes.
+3. Pass 2, should-fix, rejected: layouts saved before this change show
+   neither new View. Not migrated: adding Areas to a layout a reader arranged
+   changes what they saved, both Views are in every Area's chooser, and
+   "Reset this Workspace" restores the shipped arrangement. The owner is told
+   in the reply, because a layout saved on the owner's machine is the one
+   known case.
+4. Pass 1, optional, not yet checked: a bookmarks or branch View chosen while
+   every frame fails gets no tick, so it stays empty (`_CasePanelView.refresh`
+   builds its copy on the first tick).
+5. Pass 1, optional, not yet checked: one refusal ("Select an instant to
+   branch at") is written into every copy of the branch control, including a
+   copy that shows an instant selected (`SimulationView._show_fork_offer`).
+
+Still running when this was written: three focused review passes (lifecycle
+and state; what a learner sees; tests and dead code), whose reports arrive as
+messages, and the copy edit of the branch's 70 changed passages, whose output
+is `copy.txt` in the session's scratchpad. `PL-5XVQ` (Maximize Area's two
+document entries) closed on this branch, so its two paragraphs need the copy
+editor too.
