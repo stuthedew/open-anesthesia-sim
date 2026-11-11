@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: maintainer-guide-structure
+milestone: v0.6.17
 touches: docs/maintainer.md
 deferred-from: v0.7.0 - a new problem, not present at the freeze: the runner's model was first said to come from the [models] table in 65c3a41f (PL-KDG0)
 added: 2026-11-07

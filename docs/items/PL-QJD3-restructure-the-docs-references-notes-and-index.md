@@ -3,6 +3,7 @@ id: PL-QJD3
 title: Restructure the docs/references/ notes and index as the copy editor's structure read proposes, so a clinician checking a stored value meets what the paper backs first and each fact once
 status: done
 feature: repo-copy-edit
+milestone: v0.6.17
 touches: docs/references/
 added: 2026-11-07
 closed: 2026-11-07

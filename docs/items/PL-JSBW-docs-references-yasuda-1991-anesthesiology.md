@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: references-structure
+milestone: v0.6.17
 touches: docs/references/yasuda-1991-anesthesiology-desflurane-isoflurane-halothane-kinetics.md
 deferred-from: v0.7.0 - a new problem: the note did not exist at the freeze (817a4d88); 0d8ad8f9 (PL-4QCJ, 2026-10-25) created it with its list of uses as written
 added: 2026-11-07

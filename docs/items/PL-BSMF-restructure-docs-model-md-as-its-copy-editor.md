@@ -6,6 +6,7 @@ effort: L
 status: done
 classes: docs
 feature: model-md-structure
+milestone: v0.6.17
 touches: docs/MODEL.md, docs/items/PL-7R8S-docs-model-md-displayed-precision-judges-the.md
 added: 2026-11-05
 closed: 2026-11-07

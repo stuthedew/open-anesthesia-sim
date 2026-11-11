@@ -3,6 +3,7 @@ id: PL-95SW
 title: Copy edit docs/MODEL.md with the fixed copy editor, section by section, outside the sections already rewritten for clinicians, keeping every value, marker and citation
 status: done
 feature: repo-copy-edit
+milestone: v0.6.17
 touches: docs/MODEL.md
 added: 2026-11-07
 closed: 2026-11-07

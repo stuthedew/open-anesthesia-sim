@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, docs
 feature: roadmap-structure
+milestone: v0.6.17
 touches: ROADMAP.md, subprojects/docket/README.md, docs/apparatus.md, .claude/skills/docket/modes/close-out.md, .claude/skills/docket/modes/release.md
 added: 2026-11-07
 closed: 2026-11-07
