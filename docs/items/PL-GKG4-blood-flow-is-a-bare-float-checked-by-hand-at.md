@@ -11,6 +11,7 @@ added: 2026-11-10
 payoff: a blood flow is checked once where it is built, so a new function that takes one cannot skip the check
 verify: grep -rq 'class BloodFlow' src/anesthesia_sim/core
 reenters: PL-ZGYX
+recurrences: 2026-11-11 PL-LHCL
 ---
 
 **Problem.** Blood flow is a bare float checked by hand at three places in core (blood.py, tissue.py, governing_equations.py) and is not a checked type as cardiac output is, so the next function that takes one can skip the check
