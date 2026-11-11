@@ -1487,12 +1487,16 @@ class ForkPanel(QWidget):
         controls.addWidget(self.lock_text)
         controls.addStretch(1)
         column.addLayout(controls)
+        # The refusal sits directly under the selector's row and above the here
+        # button. A review of `PL-9YPR` found it below the fold of a short
+        # Area as the panel's last row, so a refused press changed nothing a
+        # learner could see.
+        column.addWidget(self.notice)
         here_row = QHBoxLayout()
         here_row.setSpacing(CONTROL_ROW_SPACING)
         here_row.addWidget(self.here_button)
         here_row.addStretch(1)
         column.addLayout(here_row)
-        column.addWidget(self.notice)
 
     def selected_point(self) -> ForkPoint | None:
         """Return the point currently selected, or None while nothing is selected.

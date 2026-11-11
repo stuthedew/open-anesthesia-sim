@@ -10456,6 +10456,31 @@ def test_a_branch_control_with_nothing_selected_says_so(application: QApplicatio
     assert _fork_panel(view).notice.notice() == FORK_NOTHING_SELECTED_TEXT
 
 
+def test_a_refused_branch_shows_its_reason_between_the_selector_and_the_here_button(
+    application: QApplication,
+) -> None:
+    """The reason for a refused press is the row under the button that was pressed (`PL-9YPR`).
+
+    As the panel's last row, the reason fell below the fold of a short Area,
+    under the "Branch here" row. A refused press then changed nothing that a
+    learner could see.
+    """
+
+    view = _case_view(application, _branched_case())
+    panel = _fork_panel(view)
+    panel.point_selector.setCurrentIndex(-1)
+    panel.take_button.click()
+    _settle(application)
+
+    assert panel.notice.notice() == FORK_NOTHING_SELECTED_TEXT
+    assert panel.here_button.isHidden() is False
+
+    def top(widget: QWidget) -> int:
+        return widget.mapTo(panel, QPoint(0, 0)).y()
+
+    assert top(panel.take_button) < top(panel.notice) < top(panel.here_button)
+
+
 def test_an_agent_change_clears_the_fork_refusal_notice(application: QApplication) -> None:
     """`PL-BM6X`: an agent change clears a branch-panel notice about the case it ended.
 

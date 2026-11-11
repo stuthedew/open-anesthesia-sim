@@ -185,3 +185,11 @@ were added and each fails against the code without the fixes. The test
 checked, so the item's `verify:` now names
 `test_the_selected_branch_point_survives_the_branch_view_being_rebuilt`.
 Findings 4, 6, 7 and 8 are still to check.
+
+**The other findings, 2026-11-11.** Finding 6 is fixed: the refusal's reason
+is now the row directly under the selector and above "Branch here", with a
+test of that order. Finding 7 is `PL-1D3Z` (a pinned Workspace whose run is
+gone hides both case Views) and finding 4 is `PL-G3N1` (a View built after a
+failing halt stays blank). Both need a change to what a View is told, which
+is more than a fix on this branch. Finding 8, the branch View's declared
+minimum width, is recorded in `PL-CBYS`, which sets the room each Area gets.

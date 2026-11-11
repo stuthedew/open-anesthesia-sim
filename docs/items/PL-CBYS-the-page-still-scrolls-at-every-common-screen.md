@@ -129,3 +129,9 @@ learner with a large monitor can drag the charts into a stack and save that
 layout; a learner on a laptop cannot make room that is not there. Either
 answer gets the plot-stays-in-view rule for both charts, which the session
 decides as a placeholder.
+
+**From the review of `PL-9YPR`, 2026-11-11.** The branch View declares a
+minimum width of 220 px in `view_registry.py`, and its row of selector and
+button needs about 308 px. At the narrowest Area a border drag reaches, the
+Branch button is behind a sideways scroll. Set the declared minimum from what
+the row needs when this item decides the room each Area gets.
