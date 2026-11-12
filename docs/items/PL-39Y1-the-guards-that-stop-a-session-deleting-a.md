@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, infra
 feature: irreversible-actions-refused-at-github
+milestone: v0.6.18
 touches: .github/workflows/quality.yml, .claude/hooks/push_check_guard.py, .claude/hooks/git/pre-push, subprojects/docket/src/docket/arming.py, .claude/hooks/guard.py, .claude/hooks/guard.sh, .claude/hooks/gh_write_guard.py, .claude/hooks/git/reference-transaction, tools/github_refusals_check.py, tools/required_checks_check.py, tools/doc_check.py, tests/unit/test_github_refusals_check.py, tests/unit/test_guard.py, subprojects/docket/src/docket/render.py, docs/maintainer.md, docs/apparatus.md, docs/worker.md, docs/items/PL-VZ57-reproduce-and-file-the-leads-of-the-2026-11-10.md, .github/workflows/merge-hold.yml, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_vcs.py, tests/unit/test_git_hooks.py, tests/unit/test_required_checks_check.py, .claude/skills/docket/modes/capture.md, .claude/skills/pull-request/SKILL.md, subprojects/docket/README.md, tools/hook_blocks.py, tools/regex_baseline.py, docket.toml, tests/unit/test_gh_write_guard.py, tests/unit/test_tools_portability.py, docs/hook-blocks/README.md, tests/unit/test_direct_merge_guard.py, .claude/hooks/direct_merge_guard.py
 deferred-from: v0.7.0 - a guard of the workflow, which nothing in the schematic's gate depends on
 added: 2026-11-11

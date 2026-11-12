@@ -244,7 +244,7 @@ _FRACTIONS = st.one_of(
 )
 
 
-@settings(derandomize=True, database=None, deadline=None, max_examples=2_000)
+@settings(max_examples=2_000)
 @given(_FRACTIONS, _FRACTIONS)
 @example(0.0, 1e-12)
 @example(4.9e-5, 5.1e-5)
