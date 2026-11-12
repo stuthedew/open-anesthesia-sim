@@ -1,9 +1,15 @@
 ---
 id: PL-SV2Q
 title: When a run's dials cannot be built after a Reset or an agent change, the dial row and the delivered line keep the discarded run's setting: 'Delivered 8.00% (4.00 ×MAC)' beside '1 MAC desflurane = 6.0%'
-status: untriaged
+priority: P1
+effort: S
+status: ready
+classes: safety, defect
 feature: every-view-in-run-state-tests
+touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/run_presentation.py, tests/integration
 added: 2026-11-11
+payoff: the delivered concentration on screen is always the current run's, never a discarded run's setting under another agent's name
+verify: grep -rq 'def test_a_halt_whose_dials_cannot_be_built_shows_no_earlier_setting' tests/
 ---
 
 **Problem.** When a run's dials cannot be built after a Reset or an agent change, the dial row and the delivered line keep the discarded run's setting: 'Delivered 8.00% (4.00 ×MAC)' beside '1 MAC desflurane = 6.0%'
@@ -29,3 +35,7 @@ The 8.00% is the discarded run's setting, and 4.00 ×MAC was divided by sevoflur
 **Suggested fix.** Give the dials and the delivered line a withheld form, and write it whenever the dials cannot be built. `PL-RF2S`'s second pull request draws every View from one value, and is the natural place.
 
 **Done when** a halt whose dials cannot be built shows no setting of any earlier run on the dial row or the delivered line, and the scenario above is a test that fails first.
+
+**Why it matters.** The delivered concentration is one of the values that must always be on screen. Here it shows the discarded sevoflurane run's 8.00% and a MAC multiple divided by sevoflurane's MAC, beside a desflurane heading, so a learner reads another agent's setting as the current one.
+
+**Generator check.** An instance of the fact that `PL-RF2S` states, and `PL-RF2S` is still open: a value from an earlier run stays wherever a write path does not reach. Here the path is a halt whose dials cannot be built. `PL-RF2S` is in flight on another branch, so adding this item to its `root-cause-of:` is left to that branch.

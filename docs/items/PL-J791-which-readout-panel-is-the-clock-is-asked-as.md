@@ -1,9 +1,16 @@
 ---
 id: PL-J791
 title: Which readout panel is the clock is asked as 'quantity is None' in six places under app/, and the clock's playback line is built in three
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect
 feature: one-source-of-truth
+touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/compartment_schematic.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/run_presentation.py, tests/unit/test_dashboard_frame.py
+deferred-from: v0.7.0 - captured after the freeze; every displayed value is correct, and one of the six copies came with PL-RF2S after it
 added: 2026-11-11
+payoff: adding or changing a readout panel cannot put the clock's playback line under the wrong panel
+verify: grep -q 'def test_the_clock_panel_is_found_in_one_place' tests/unit/test_dashboard_frame.py
 ---
 
 **Problem.** Which readout panel is the clock is asked as 'quantity is None' in six places under app/, and the clock's playback line is built in three
@@ -16,3 +23,6 @@ added: 2026-11-11
 
 **Done when.** `quantity is None` is asked in one place under `src/anesthesia_sim/app/`, and the clock's playback line is built by one function.
 
+**Reproduced 2026-11-11.** `grep -rn 'quantity is None' src/anesthesia_sim/app/` finds 7 lines, and `format_playback_rate(` is called on 5 lines outside its definition.
+
+**Generator check.** A one-off, filed under the `one-source-of-truth` feature. No head's `misread:` states which readout panel is the clock. `PL-RF2S`, in flight on another branch, changes the same files, so this lands after it.
