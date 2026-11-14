@@ -112,8 +112,9 @@ simulation step's type (`SimulationStep`, `core/simulation_step.py`): a
 record would put a field access into every equation. In the arithmetic, each
 flow is the number itself. Arithmetic on a flow returns a plain `float`, so a
 quantity derived from a flow does not claim a range check that it never
-passed. A tissue's share of cardiac output and the litres per second that the
-equations use are examples.
+passed. The litres per second that the equations use is an example. A tissue
+group's share of the cardiac output is not one: it is built as a `BloodFlow`,
+a checked type of its own (`core/blood_flow.py`).
 
 A record whose fields take the types cannot be built holding a flow
 outside its interval. When the three flows were checked by hand at each entry
@@ -588,11 +589,12 @@ class CardiacOutput(float, CheckedQuantity):
 
     It compares and computes as the `float` it was built from, and it stores
     minus zero as zero, as `FreshGasFlow` explains. Every tissue's blood flow
-    is a perfusion fraction of it, and the venous pool's blood flow is all of
-    it. Each of those flows is a plain `float` that no supported-range guard
-    bounds. None needs one: a tissue cannot receive more than a checked
-    cardiac output, and `UptakeEquationSettings` enforces that the three
-    tissue flows sum to it.
+    is a perfusion fraction of it, built as a `BloodFlow` from a value of this
+    type and a `PerfusionFraction` (`core/blood_flow.py`). The venous pool's
+    blood flow is all of it, so the pool takes a value of this type. Neither
+    flow has a supported-range guard of its own. None is needed: a tissue
+    cannot receive more than a checked cardiac output, and
+    `UptakeEquationSettings` enforces that the three tissue flows sum to it.
 
     Raises:
         TypeError: the output was built as another checked quantity, or is

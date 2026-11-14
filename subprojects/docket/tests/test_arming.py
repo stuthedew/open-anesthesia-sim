@@ -1,9 +1,8 @@
 """Tests for what `bin/docket arm` prints, read from `arming.Verdict.lines`.
 
 The branch-reading half of `arm` is tested through the command in
-`test_cli.py`'s `test_arm_` tests. These pin the printed advice on its own,
-the hold on long simulator prose that no review has covered (`PL-W04Z`), and
-the hold on blind review passes that no record says ran (`PL-HDRN`).
+`test_cli.py`'s `test_arm_` tests. These pin the printed advice on its own
+and the hold on blind review passes that no record says ran (`PL-HDRN`).
 """
 
 from __future__ import annotations
@@ -68,9 +67,8 @@ def test_an_arm_answer_names_no_repair() -> None:
     assert arming.REPAIR_EXCEPTION not in verdict.lines
 
 
-# How `arm` holds a simulator change whose long prose has no recorded review
-# (`PL-W04Z`). These call `arming.arm` with the count stubbed, because what
-# `tools/new_prose.py --count` counts is pinned by its own tests.
+# A repository for the tests of the blind review hold, which call `arming.arm`
+# with the count stubbed.
 
 SIMULATOR = "src/anesthesia_sim/core/uptake.py"
 NOW = datetime(2026, 10, 19, 12, 0, tzinfo=UTC)
@@ -115,147 +113,11 @@ def _record(git: Callable[..., str], *trailers: str) -> str:
     return git("rev-parse", "HEAD").strip()
 
 
-def _arm(
-    root: Path,
-    count: Callable[[str], arming.CommandCount] | None,
-    blind: Callable[[], arming.CommandCount] | None = None,
-) -> arming.Verdict:
-    return arming.arm(
-        root, items_dir="docs/items", now=NOW, fetch=False, prose_count=count, blind_count=blind
-    )
+def _arm(root: Path, blind: Callable[[], arming.CommandCount] | None = None) -> arming.Verdict:
+    return arming.arm(root, items_dir="docs/items", now=NOW, fetch=False, blind_count=blind)
 
 
 NOT_NEEDED = "Owner-read: not needed - a refactor with its outputs pinned"
-
-
-def test_arm_holds_without_prose_review(tmp_path: Path) -> None:
-    """New long prose holds until a `Prose-review` record covers it, and again after a later one."""
-    root, git = _repo(tmp_path)
-    _change(root, git, SIMULATOR, "X = 1\n")
-    _record(git, NOT_NEEDED)
-    counts = {"": 1}
-    asked: list[str] = []
-
-    def count(since: str) -> arming.CommandCount:
-        asked.append(since)
-        return arming.CommandCount(count=counts[since])
-
-    held = _arm(root, count)
-
-    assert held.answer == arming.HOLD
-    assert held.lines[0] == (
-        "hold - claude/prose: it adds 1 docstring or comment in the simulator since it "
-        "forked, and no Prose-review record covers it"
-    )
-    assert arming.PROSE_ASK in held.lines
-    assert asked == [""]
-
-    review = _record(git, "Prose-review: read 1, rewrote 1, rejected 0")
-    counts[review] = 0
-
-    assert _arm(root, count).answer == arming.ARM
-    assert asked[-1] == review
-
-    _change(root, git, SIMULATOR, '"""A new long docstring."""\nX = 1\n')
-    _record(git, NOT_NEEDED)
-    counts[review] = 2
-
-    again = _arm(root, count)
-
-    assert again.answer == arming.HOLD
-    assert again.lines[0].endswith(
-        f"it adds 2 docstrings and comments in the simulator since the Prose-review record "
-        f"on {review[:12]}, and no Prose-review record covers them"
-    )
-
-
-def test_arm_holds_when_prose_count_fails(tmp_path: Path) -> None:
-    """A count that could not be read holds, so unreadable prose is never armed as none."""
-    root, git = _repo(tmp_path)
-    _change(root, git, SIMULATOR, "X = 1\n")
-    _record(git, NOT_NEEDED)
-
-    def count(since: str) -> arming.CommandCount:
-        return arming.CommandCount(declined="`new_prose --count` exited 2")
-
-    held = _arm(root, count)
-
-    assert held.answer == arming.HOLD
-    assert held.lines[0] == (
-        "hold - claude/prose: how many docstrings and comments it adds since it forked "
-        "could not be counted - `new_prose --count` exited 2"
-    )
-    assert arming.PROSE_UNCOUNTED in held.lines
-    assert arming.PROSE_ASK not in held.lines
-
-
-def test_one_hold_names_both_missing_records(tmp_path: Path) -> None:
-    """With neither record, one answer asks for both, so one commit can carry both trailers."""
-    root, git = _repo(tmp_path)
-    _change(root, git, SIMULATOR, "X = 1\n")
-
-    held = _arm(root, lambda since: arming.CommandCount(count=1))
-
-    assert "no Owner-read record" in held.lines[0]
-    assert "no Prose-review record covers it" in held.lines[0]
-    assert arming.JUDGE_ASK in held.lines
-    assert arming.PROSE_ASK in held.lines
-
-
-def test_a_change_outside_the_simulator_asks_for_no_count(tmp_path: Path) -> None:
-    root, git = _repo(tmp_path)
-    _change(root, git, "tools/script.py", '"""A tool."""\n')
-
-    def count(since: str) -> arming.CommandCount:
-        raise AssertionError("the prose of a change outside the simulator was counted")
-
-    assert _arm(root, count).answer == arming.ARM
-
-
-def test_a_malformed_prose_record_is_said_and_covers_nothing(tmp_path: Path) -> None:
-    root, git = _repo(tmp_path)
-    _change(root, git, SIMULATOR, "X = 1\n")
-    _record(git, NOT_NEEDED, "Prose-review: done")
-    asked: list[str] = []
-
-    def count(since: str) -> arming.CommandCount:
-        asked.append(since)
-        return arming.CommandCount(count=1)
-
-    held = _arm(root, count)
-
-    assert held.answer == arming.HOLD
-    assert asked == [""]
-    assert any("is not 'read N, rewrote M, rejected K'" in line for line in held.lines)
-
-
-@pytest.mark.parametrize(
-    ("script", "expected"),
-    [
-        ("print(3)", arming.CommandCount(count=3)),
-        ("print('three')", None),
-        ("import sys; sys.exit(2)", None),
-    ],
-)
-def test_the_prose_count_command_is_read_as_one_whole_number(
-    tmp_path: Path, script: str, expected: arming.CommandCount | None
-) -> None:
-    """`prose_count_command` is handed the record's commit, and only a whole number is a count."""
-    program = tmp_path / "count.py"
-    program.write_text(
-        f"import sys\nopen(sys.argv[0] + '.args', 'w').write(' '.join(sys.argv[1:]))\n{script}\n"
-    )
-    ask = cli._prose_count(tmp_path, Config(prose_count_command=f"{sys.executable} {program}"))
-    assert ask is not None
-
-    answered = ask("abc123")
-
-    assert (tmp_path / "count.py.args").read_text() == "abc123"
-    if expected is None:
-        assert answered.count == 0
-        assert answered.declined
-    else:
-        assert answered == expected
 
 
 # How `arm` holds a simulator change whose blind generalist review passes have
@@ -278,7 +140,7 @@ def test_arm_holds_without_blind_review(tmp_path: Path) -> None:
     _record(git, NOT_NEEDED)
     owed = arming.CommandCount(count=2)
 
-    held = _arm(root, None, lambda: owed)
+    held = _arm(root, lambda: owed)
 
     assert held.answer == arming.HOLD
     assert held.lines[0] == (
@@ -289,7 +151,7 @@ def test_arm_holds_without_blind_review(tmp_path: Path) -> None:
 
     short = _record(git, PASS_ONE)
 
-    again = _arm(root, None, lambda: owed)
+    again = _arm(root, lambda: owed)
 
     assert again.answer == arming.HOLD
     assert again.lines[0].endswith(
@@ -298,12 +160,12 @@ def test_arm_holds_without_blind_review(tmp_path: Path) -> None:
 
     _record(git, PASSES_TWO)
 
-    assert _arm(root, None, lambda: owed).answer == arming.ARM
+    assert _arm(root, lambda: owed).answer == arming.ARM
 
     _change(root, git, SIMULATOR, "X = 2\n")
     _record(git, NOT_NEEDED)
 
-    assert _arm(root, None, lambda: owed).answer == arming.ARM
+    assert _arm(root, lambda: owed).answer == arming.ARM
 
 
 def test_arm_holds_again_when_the_passes_owed_rise(tmp_path: Path) -> None:
@@ -312,9 +174,9 @@ def test_arm_holds_again_when_the_passes_owed_rise(tmp_path: Path) -> None:
     _change(root, git, "src/anesthesia_sim/app/panel.py", "X = 1\n")
     _record(git, NOT_NEEDED, PASS_ONE)
 
-    assert _arm(root, None, lambda: arming.CommandCount(count=1)).answer == arming.ARM
+    assert _arm(root, lambda: arming.CommandCount(count=1)).answer == arming.ARM
 
-    held = _arm(root, None, lambda: arming.CommandCount(count=2))
+    held = _arm(root, lambda: arming.CommandCount(count=2))
 
     assert held.answer == arming.HOLD
     assert "it owes 2 blind review passes" in held.lines[0]
@@ -326,7 +188,7 @@ def test_arm_holds_when_blind_count_fails(tmp_path: Path) -> None:
     _change(root, git, SIMULATOR, "X = 1\n")
     _record(git, NOT_NEEDED, PASSES_TWO)
 
-    held = _arm(root, None, lambda: arming.CommandCount(declined="`blind_review --count` exited 1"))
+    held = _arm(root, lambda: arming.CommandCount(declined="`blind_review --count` exited 1"))
 
     assert held.answer == arming.HOLD
     assert held.lines[0] == (
@@ -342,7 +204,7 @@ def test_a_malformed_blind_record_is_said_and_covers_nothing(tmp_path: Path) -> 
     _change(root, git, SIMULATOR, "X = 1\n")
     _record(git, NOT_NEEDED, "Blind-review: pass 1: blocking fixed; pass 2: blocking fixed rpeat")
 
-    held = _arm(root, None, lambda: arming.CommandCount(count=2))
+    held = _arm(root, lambda: arming.CommandCount(count=2))
 
     assert held.answer == arming.HOLD
     assert "no Blind-review record says any ran" in held.lines[0]
@@ -359,7 +221,7 @@ def test_an_older_blind_record_still_counts_its_passes(tmp_path: Path) -> None:
     _change(root, git, SIMULATOR, "X = 1\n")
     _record(git, NOT_NEEDED, OLDER_TWO)
 
-    assert _arm(root, None, lambda: arming.CommandCount(count=2)).answer == arming.ARM
+    assert _arm(root, lambda: arming.CommandCount(count=2)).answer == arming.ARM
 
 
 def test_a_change_outside_the_simulator_asks_for_no_blind_count(tmp_path: Path) -> None:
@@ -369,7 +231,7 @@ def test_a_change_outside_the_simulator_asks_for_no_blind_count(tmp_path: Path) 
     def blind() -> arming.CommandCount:
         raise AssertionError("the passes of a change outside the simulator were counted")
 
-    assert _arm(root, None, blind).answer == arming.ARM
+    assert _arm(root, blind).answer == arming.ARM
 
 
 def test_the_blind_count_command_is_handed_nothing(tmp_path: Path) -> None:

@@ -308,7 +308,7 @@ otherwise:
   `.claude/rules/plain-writing.md`.
 - **Branch** — `claude/pl-k7qx-short-slug` where the session creates it. A
   branch generated before the session started cannot be renamed; that is
-  expected, and the commits carry the id instead. Say so in the reply. Leading
+  expected, and the commits carry the id instead. Leading
   every commit subject with the id is what attributes such a branch's work -
   `tools/branch_id_check.py` and `flight`'s unattributed line read the
   subjects, and an id buried mid-sentence does not count - but it holds

@@ -5411,10 +5411,9 @@ def _auto_merge(root: Path, config: Config) -> Callable[[int], arming.AutoMerge]
     return ask
 
 
-#: How long `prose_count_command` and `blind_count_command` are each given.
-#: Longer than the forge's limit, because the prose count parses every
-#: simulator file the branch changes, and a count that timed out holds the
-#: pull request rather than arming it.
+#: How long `blind_count_command` is given. Longer than the forge's limit,
+#: because the count parses each test file the branch changes, and a count
+#: that timed out holds the pull request rather than arming it.
 COUNT_TIMEOUT = 60.0
 
 
@@ -5438,22 +5437,6 @@ def _command_count(command: str, root: Path, *extra: str) -> arming.CommandCount
     return arming.CommandCount(
         declined=f"`{command}` answered {done.stdout.strip()!r}, which is not a whole number"
     )
-
-
-def _prose_count(root: Path, config: Config) -> Callable[[str], arming.CommandCount] | None:
-    """A way to count a branch's unreviewed long prose, or None if there is none.
-
-    `prose_count_command` answers it, with the commit carrying the newest
-    `Prose-review` record appended where there is one (`PL-W04Z`).
-    """
-    command = config.prose_count_command
-    if not command:
-        return None
-
-    def ask(since: str) -> arming.CommandCount:
-        return _command_count(command, root, *((since,) if since else ()))
-
-    return ask
 
 
 def _blind_count(root: Path, config: Config) -> Callable[[], arming.CommandCount] | None:
@@ -5784,8 +5767,8 @@ def cmd_arm(args: argparse.Namespace) -> int:
                 "its merge"
             )
             print(
-                "  Not read here: whether its new prose had a prose review and whether its blind "
-                "review passes ran. `bin/docket arm` counts both in the session."
+                "  Not read here: whether its blind review passes ran. `bin/docket arm` counts "
+                "them in the session."
             )
             return 0
         for said in verdict.lines:
@@ -5818,7 +5801,6 @@ def cmd_arm(args: argparse.Namespace) -> int:
         runner=inv.git,
         newest=_newest_pull_request(inv.root, inv.config),
         auto_merge=_auto_merge(inv.root, inv.config),
-        prose_count=_prose_count(inv.root, inv.config),
         blind_count=_blind_count(inv.root, inv.config),
     )
     for line in verdict.lines:

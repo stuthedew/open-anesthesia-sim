@@ -3,12 +3,14 @@ id: PL-5L84
 title: docs/MODEL.md states the 20 °C reference condition in 29 paragraphs with no marker tying them to core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS, so the numeric-paragraph check cannot read °C as a unit until each is tied
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect, safety
 feature: model-claims-held-by-tests
-touches: docs/MODEL.md, tools/doc_check.py
+touches: docs/MODEL.md, tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.7.0 - not live: checked 2026-11-07 (PL-8C8W): REFERENCE_TEMPERATURE_CELSIUS, the three agent files' 20.0 and the caption "at 20 degrees C" all agree with docs/MODEL.md's 20 °C, so no learner can see a wrong value now
 added: 2026-11-03
+closed: 2026-11-11
+pr: 2142
 payoff: a change to the 20 °C reference temperature behind the displayed millilitres of liquid agent cannot land while docs/MODEL.md still states the old value
 verify: grep -qF '("_celsius", "°C")' tools/doc_check.py && grep -qF 'provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS' docs/MODEL.md
 ---
@@ -26,3 +28,15 @@ verify: grep -qF '("_celsius", "°C")' tools/doc_check.py && grep -qF 'provenanc
 **Generator check.** Instance of the fact `PL-4FBP` and `PL-G424` state (the link between a document sentence and the tree fact it restates), filed after both closed; the feature model-claims-held-by-tests already works it. Not a new head.
 
 **Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The stored value it must agree with began after Gate 3 froze at `817a4d88`. The item is classed `safety`, so it joins v0.7.0's frozen list whatever that answer, and it stays deferred to the next gate: its `deferred-from:` records the check that no learner can see a wrong value now (`PL-8C8W`). At `817a4d88` nothing in `src/` stored the reference temperature, and `docs/MODEL.md` said that nothing the model computes reads it. `REFERENCE_TEMPERATURE_CELSIUS` and `measured_at_celsius` came with `c95177a6` (2026-10-26). 20 of the 31 lines it names predate the freeze.
+
+## Outcome, 2026-11-11
+
+`tools/doc_check.py` reads `_celsius` as °C and lists °C among the units prose writes. Each paragraph stating 20 °C now carries a marker, chosen by what the figure means:
+
+- Where it states the model's reference condition, or a conversion the model makes at it, the marker names `core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20`.
+- Where it states the temperature Laster, Fang and Eger measured the densities at (the first table's header, the paragraph under it, and § "Parameter provenance" entry 5), the markers name each agent file's `liquid_density.measured_at_celsius = 20`, because that stored field is the home of that fact.
+- Where it states a third party's condition (Biro's constants, and isoflurane's vapour pressure at 20 °C in the altitude note), the marker is `not-restated:`.
+
+The three numbered reasons for choosing 20 °C sit in one list, and the check does not accept a marker inside a list item. Their markers therefore stand in the block under the list, beside the density and molar-mass markers already there, and they speak for the whole list. Gas Man's "20 °C constants" in reason 3 is tied by that block's reference-condition marker as a result.
+
+**One knock-on fixed in the check.** In § "Displayed precision", the paragraph saying the simulator refuses a density measured at any temperature other than 20 °C became a numeric paragraph, held by its marker. The rule for a developer note stopped the note's reach at any paragraph that holds itself, so the note below stopped holding the five paragraphs above, which name no test themselves. A paragraph held only because markers tie its figures now leaves the note's reach open: a marker says which stored value a figure restates, not where a passage ends. A paragraph that names its own test, a date or a source still stops it. `test_a_paragraph_held_only_by_its_markers_does_not_stop_a_developer_note` covers it, and it fails on the check before the fix with `assert {5} == {3, 5}`.

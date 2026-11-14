@@ -3,12 +3,14 @@ id: PL-TG6P
 title: Text written after the copy editor has run is published without review, and both of the owner's objections in PL-J1ZM's measurement landed on such text: PL-9331's wrong reason for a rewording, in its reply and pull request body, and PL-J37P's warning sentence in docs/MODEL.md, each written to answer a question the copy editor raised
 priority: P1
 effort: M
-status: ready
+status: dropped
 classes: defect
 feature: copy-editor
 touches: .claude/skills/docket/modes/close-out.md, tools/new_prose.py, subprojects/docket/src/docket/arming.py
 deferred-from: v0.7.0 - a new problem, not present at the freeze: the copy editor arrived in efc1dc3f (PL-22T5); deferred with PL-J1ZM, which waits on it
 added: 2026-11-04
+closed: 2026-11-11
+reason: moot: PL-J1ZM's re-diagnosis of 2026-11-11 removes the per-branch copy edit, so no text can be published after its run; the build on #2115 was closed unmerged (project owner, 2026-11-11, ratified, over merging it)
 payoff: the text the owner reads is the text the copy editor last saw, so a reason written to answer the copy editor's query cannot reach main unreviewed
 not-delegable: which moment a check can reach (close-out step 8, the pull request body, or bin/docket arm) is chosen while the item is worked, so no command can name its test beforehand
 ---
@@ -28,3 +30,5 @@ not-delegable: which moment a check can reach (close-out step 8, the pull reques
 **Generator check.** Part of the fix for the live head `PL-J1ZM`, which is blocked on it; the 2026-11-04 measurement traced both of the owner's objections to this gap. Not a member of its `root-cause-of`. The pause on new workflow mechanisms does not hold it, because it fixes that generator.
 
 **Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** Not present. The copy editor did not exist at 817a4d88. It arrived in efc1dc3f (`PL-22T5`, 2026-11-04), so this is a new problem. It is deferred with `PL-J1ZM`, which waits on it.
+
+**Re-diagnosed, 2026-11-11.** Dropped (project owner, 2026-11-11, ratified, over merging the build on #2115). `PL-J1ZM`'s re-diagnosis found that the copy editor lengthened the text in all three of its runs on the ten most recent merged branches, and the owner approved removing it from every branch's close-out. This item's check would guard a step that no longer runs. The build was finished on branch `claude/peaceful-noether-5bvpno` and its pull request, #2115, was closed unmerged.
