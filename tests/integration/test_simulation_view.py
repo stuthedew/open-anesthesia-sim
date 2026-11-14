@@ -4054,7 +4054,7 @@ def test_an_accounting_view_chosen_after_each_scenario_shows_the_same_step(
     assert [_accounting_reading(panel) for panel in first.panels] == [expected["accounting"]]
 
 
-def test_a_halt_whose_dials_cannot_be_built_shows_no_setting_of_the_discarded_run(
+def test_a_halt_whose_dials_cannot_be_built_shows_no_earlier_setting(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """After an agent change whose dials cannot be built, no earlier setting stays on screen.
@@ -13403,7 +13403,7 @@ def _words_read_in(panel: QWidget) -> list[str]:
     return words
 
 
-def test_a_case_view_chosen_while_every_frame_fails_shows_what_the_copy_on_screen_shows(
+def test_a_case_view_chosen_after_a_failing_halt_shows_the_halted_words(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A bookmarks or branch View whose first tick has no frame still takes its copy (`PL-RF2S`).

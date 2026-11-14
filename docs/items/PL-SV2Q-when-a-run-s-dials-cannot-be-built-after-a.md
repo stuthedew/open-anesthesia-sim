@@ -3,11 +3,13 @@ id: PL-SV2Q
 title: When a run's dials cannot be built after a Reset or an agent change, the dial row and the delivered line keep the discarded run's setting: 'Delivered 8.00% (4.00 ×MAC)' beside '1 MAC desflurane = 6.0%'
 priority: P1
 effort: S
-status: ready
+status: done
 classes: safety, defect
 feature: every-view-in-run-state-tests
 touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/run_presentation.py, tests/integration
 added: 2026-11-11
+closed: 2026-11-14
+pr: 2125
 payoff: the delivered concentration on screen is always the current run's, never a discarded run's setting under another agent's name
 verify: grep -rq 'def test_a_halt_whose_dials_cannot_be_built_shows_no_earlier_setting' tests/
 ---
