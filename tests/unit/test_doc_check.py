@@ -134,6 +134,11 @@ MODEL = "\n".join(
         "",
         "Nothing yet.",
         "",
+        # A numeric paragraph that names its test, because "Known limitations"
+        # is a bound family held by its numeric paragraphs, and the family
+        # errors on a section with no members.
+        f"The demo store holds at most 0.1 L, as `{FAMILY_TEST}` computes.",
+        "",
         # A marked prose value, so the clean fixture is clean by the prose
         # check too - and so that every test overriding `model=` starts from
         # documentation that satisfies it.
@@ -10234,7 +10239,7 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     "bound family, a lazy continuation is refused": (
         _lazy_family_member,
         [
-            'docs/MODEL.md:29: § "Minimum displayed outputs" is a bound family, and its '
+            'docs/MODEL.md:31: § "Minimum displayed outputs" is a bound family, and its '
             "members were not read: this line carries on the entry above it without an "
             "indent, which CommonMark reads as part of that entry and the list walker does "
             "not; indent it to keep it in the entry, or put a blank line before it"

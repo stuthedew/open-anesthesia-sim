@@ -4706,9 +4706,9 @@ run's own path bit-identical. Between the two versions, a branch's residual chan
 by a factor of up to 5.9. Of 2,511 branch samples, the two versions' residuals read
 differently at four significant digits on 1,975, at two on 634, at one on 154, and
 at the power of ten on 22. Those 22 are the samples where the two residuals fell on
-either side of a power of ten. Every residual was below 2.1 × 10⁻¹¹ L, every check
-passed in both versions, and each run's own path read identically in every form.
-<!-- not-restated: 2.1 -->
+either side of a power of ten. The largest residual was 2.13 × 10⁻¹¹ L in both
+versions, every check passed in both, and each run's own path read identically in
+every form.
 
 The residual line's power of ten is computed from the residual's exact
 floating-point value. A function formats the line (`format_agent_residual`), and
