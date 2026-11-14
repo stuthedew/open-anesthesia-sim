@@ -153,6 +153,10 @@ number because the next minor number was not free.
 
 ### Version table
 
+The item that cuts a release ships in no release. It carries no milestone, and
+the release procedure keeps it out of every later release's count and notes,
+so no release's notes name it (`PL-KRS6`).
+
 | Version | Status | What the release holds | Items | Details |
 | --- | --- | --- | --- | --- |
 | v0.0.1 | Completed | Initial runnable prototype: deterministic simulation clock, controller/view separation, basic charting and controls, and project quality tooling. | | |
@@ -347,7 +351,8 @@ own account of what it was for is untouched. The section is written after the
 tag. That is the one time a notes file is edited, and it is safe because a
 tagged release is never re-cut. Two kinds of span are exempt. The first is a
 release's own cut pull request. It is inside its own span by construction, and
-the next release stamps it every time. The second is the newest tag's span,
+no release's notes name it, because the item that cuts a release ships in no
+release (§ "Version table"). The second is the newest tag's span,
 until the next release's notes exist. Before then, its pointer would have to
 name a release that nobody has cut. The cut that writes those notes is asked
 for the pointer on its own branch (`PL-JLYG`).
@@ -2355,7 +2360,7 @@ different ways within a single chapter. That is why the naming rule for
 ratios is worth enforcing mechanically rather than leaving to a reader's
 recall (`PL-212V`).
 
-### Items added later (items 30-43)
+### Items added later (items 30-44)
 
 #### 30. Patient factors
 
@@ -3150,6 +3155,20 @@ items filed under the feature, plus the baselines of the four check items.
 The inventory did not count the numbers that `docs/MODEL.md` and
 `README.md` restate, so the item for copied values (`PL-JS6P`) sizes that
 part when it builds its baseline.
+
+#### 44. Switches that turn a mechanism off, for teaching
+
+Let a learner switch off one mechanism, such as venous return or tissue
+uptake, and watch what the run does without it. Gas Man's control panel
+has "Disable Uptake" and "Disable Return" switches that do this. Each
+switch removes one term from the equations, and the system stays linear,
+so the exact per-step solution still applies. Turning off venous return
+discards the agent that blood carries back to the lung, so the
+mass-balance check would have to count that agent as removed. A run with
+a switch off no longer models a patient, so the display must say which
+mechanisms are off wherever it shows a value.
+Wanted after v0.7.0 (project owner, 2026-11-14, ratified, from the Gas
+Man comparison). `PL-84CV` has the source.
 
 ## Completed: v0.1.0 - first patient sevo model
 

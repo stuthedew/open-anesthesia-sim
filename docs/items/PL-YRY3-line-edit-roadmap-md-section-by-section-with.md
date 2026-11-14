@@ -3,11 +3,13 @@ id: PL-YRY3
 title: Line edit ROADMAP.md section by section with the fixed copy editor once its restructure has landed
 priority: P3
 effort: L
-status: ready
+status: dropped
 classes: docs
 feature: roadmap-structure
 touches: ROADMAP.md
 added: 2026-11-07
+closed: 2026-11-11
+reason: the project owner dropped it on 2026-11-11 when the copy editor's per-branch use was removed
 payoff: ROADMAP.md reads in plain sentences that state each fact once, so the owner can decide what a release holds in one read.
 not-delegable: A line edit is proven by an audit of each edited section against the text before it, which no grep can show, and the copy editor run itself calls a model.
 ---
@@ -205,3 +207,13 @@ the sentence now quoted in `PL-J3ZK`.
 9. Answer the copy editor's queries on text that `PL-VM1Q` did not write: what changed in v0.3.0's "Provenance and parallelism patch" row and in v0.3.1's row; which reading "held to the data files they restate rather than only its provenance table" means; the tense of the sentence in v0.4.0's note on `PL-K79K` that says it "advertised a command that does not exist"; what "three entries later" counts for `PL-NV9W`; what `RunHistory`, "the sampler", "the M4 decimation path" and `has_recorded_run` are, in words; which item of `PL-B8MK` and `PL-TYWQ` "This item" means, and whether "Both closed the same day" means the same day as each other; and what "this" refers to in "§ "The cadence" already arranges this".
 
 **Generator check.** One-off: the line edit the owner asked to follow each restructure. No mechanism produces it.
+
+**Dropped 2026-11-11** (project owner, 2026-11-11 05:17 UTC, ratified, over
+keeping it as a copy editor run on request). The owner said on 2026-11-11 at
+05:13 UTC that the copy editor function is being removed (`PL-J1ZM`, #2119).
+That removal keeps the copy editor only for a section rewrite the owner asks
+for. This line edit was a copy editor run, and the removal's own measurement
+found that the copy editor left seven `ROADMAP.md` passages slightly longer on
+#2101, at up to 32 minutes and $7.74 per run. The twelve wording points listed
+above from slice 2, and the points from `PL-DWGC`, are not done. A later item
+that rewords `ROADMAP.md` can take them from here.

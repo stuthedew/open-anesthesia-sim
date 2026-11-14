@@ -187,78 +187,6 @@ def _commit(repo: Path, message: str) -> str:
     return _git(repo, "rev-parse", "HEAD").strip()
 
 
-def _count(repo: Path, capsys: pytest.CaptureFixture[str], *extra: str) -> tuple[int, str]:
-    code = main(["--root", str(repo), "--base", "main", "--count", *extra])
-    return code, capsys.readouterr().out.strip()
-
-
-def test_counts_units_since_commit(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    """The `--count` option counts committed units, leaving out those already at a given commit.
-
-    The workflow command `bin/docket arm` reads this count (`PL-W04Z`). A code fix
-    after the review must not trigger a second review, and a new unit must.
-    """
-    _write(repo, "src/pkg/fresh.py", SOURCE)
-    _commit(repo, "add a file with four units")
-    assert _count(repo, capsys) == (0, "4")
-
-    reviewed = _commit(repo, "record the review")
-    (repo / "src/pkg/fresh.py").write_text(SOURCE.replace("x * LIMIT", "x * LIMIT * 2"), "utf-8")
-    _commit(repo, "a code fix beside a reviewed docstring")
-    assert _count(repo, capsys, reviewed) == (0, "0")
-
-    _write(repo, "src/pkg/fresh.py", SOURCE + f'\n\ndef later():\n    """{LONG} again"""\n')
-    _commit(repo, "a new docstring")
-    assert _count(repo, capsys, reviewed) == (0, "1")
-
-
-def test_count_reads_the_commits_and_not_the_working_tree(
-    repo: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    _write(repo, "src/pkg/fresh.py", SOURCE)
-
-    assert _count(repo, capsys) == (0, "0")
-
-
-def test_count_leaves_out_prose_a_merge_of_the_base_brings_in(
-    repo: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    reviewed = _commit(repo, "a review with nothing to review")
-    _git(repo, "checkout", "-q", "main")
-    _write(repo, "src/pkg/other.py", SOURCE)
-    _commit(repo, "someone else's long prose")
-    _git(repo, "checkout", "-q", "work")
-    _git(repo, "merge", "-q", "--no-edit", "main")
-
-    assert _count(repo, capsys, reviewed) == (0, "0")
-
-
-def test_count_exits_2_when_a_changed_file_will_not_parse(
-    repo: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    _write(repo, "src/pkg/broken.py", "def f(:\n")
-    _commit(repo, "a file Python refuses")
-
-    assert main(["--root", str(repo), "--base", "main", "--count"]) == 2
-    captured = capsys.readouterr()
-    assert captured.out == ""
-    assert "src/pkg/broken.py" in captured.err
-
-
-def test_arm_counts_prose_under_the_interpreter_src_targets() -> None:
-    """The workflow command `bin/docket arm` runs this tool under the project interpreter.
-
-    That interpreter parses all of `src/`, which targets 3.14. A bare `python3`
-    runs `tools/` and may be as old as 3.11. Under such an interpreter, the
-    count fails with exit status 2 on any branch that changes a file written in
-    newer syntax, such as the PEP 758 `except` in `app_metadata.py`. The
-    workflow command then blocks correct work (`PL-Q508`).
-    """
-    command = load(ROOT).prose_count_command.split()
-    assert command[:3] == ["uv", "run", "python"]
-    assert "tools/new_prose.py" in command
-
-
 DOCUMENT = f"""\
 # Model
 
@@ -319,20 +247,6 @@ def test_a_changed_long_paragraph_of_the_model_document_is_printed(documented: P
     assert [(unit.path, unit.kind, unit.first) for unit in found.units] == [
         ("docs/MODEL.md", "paragraph", 5)
     ]
-
-
-def test_count_counts_a_new_model_paragraph_and_leaves_out_a_reviewed_one(
-    documented: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    model = documented / "docs/MODEL.md"
-    model.write_text(DOCUMENT + f"\n{LONG} added\n", encoding="utf-8")
-    reviewed = _commit(documented, "a new long paragraph, then its review")
-    assert _count(documented, capsys) == (0, "1")
-    assert _count(documented, capsys, reviewed) == (0, "0")
-
-    model.write_text(DOCUMENT + f"\n{LONG} added\n\n| a | {LONG} b |\n", encoding="utf-8")
-    _commit(documented, "a table row the review did not see")
-    assert _count(documented, capsys, reviewed) == (0, "1")
 
 
 #: A reader table in the rule's form, with rows written for these tests alone.
