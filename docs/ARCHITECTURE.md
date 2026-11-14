@@ -123,13 +123,13 @@ src/anesthesia_sim/
 │   ├── simulation_view.py          # SimulationView on PySide6: what runs share - the unconditional region above the layout container, which refuses a run lacking a declared value, the compartment selection every View is shown, the chart frame a tick assembles for each window a chart View asks for (PL-L59K), the case's bookmarks and branch control, each built as a copy for every View that shows one (PL-9YPR), the render tick, and the Workspaces: the tab strip over the Areas switches among them, and a pinned Workspace's Views draw its run alone (PL-2KXB); no domain logic
 │   ├── area_layout.py              # AreaLayout: the one module that builds QSplitters, every one from a layout.LayoutModel; a drag on a border becomes LayoutModel.resize and every splitter follows the new model (PL-W9P6), stopping in WARNING at an Area's least size, moving one border alone with Shift and undone by Escape; a border in the tab order moves one step per arrow key, and the Area menu's Resize entry gives one the focus (PL-M352); a right-click on each Area's header opens an AreaMenu that splits, joins, swaps or closes it, and a corner drag splits or joins it, or with Ctrl swaps it, with a preview drawn over the Areas (PL-2KXB, PL-R5G4); each Area is an AreaFrame whose header holds a ViewChooser listing every registered kind, and a choice is LayoutModel.set_view (PL-50PZ); each Area's View is built by its registry entry's factory, saved when replaced, and drawn from each ViewTick (PL-TH35); an Area whose View kind is not registered, or whose factory fails, shows an AreaNotice instead (PL-R1WQ); no View is drawn below its need, and an Area that cannot be given it shows the size it needs (PL-K285); load draws another Workspace from its layout and View state, and a pinned Workspace's run is named in every Area's header, or stated absent in place of each View (PL-2KXB)
 │   ├── workspace_tabs.py           # WorkspaceTabs: the Workspace tab strip above the Areas, drawn from a WorkspaceSet it does not own; shipped tabs first, a rule, then the reader's own; each tab's menu entry worked out before it is shown, Delete and Reset asking first, and rename in place (PL-QW1Z, PL-2KXB); a Layout menu, opened by a right-click on the strip outside a tab, lists every Workspace and holds the current one's entries, and Ctrl+PgUp and Ctrl+PgDn step through them (PL-M352, PL-R5G4); the entries that save and restore Workspaces are in § "User state: the saved Workspaces" (PL-DWHG)
-│   ├── view_contract.py            # the View contract every View implements: the View protocol, the ViewContext it is built from, the FrameRequest naming the window and width it draws, the ViewTick it is drawn from, the RunSurfaces and the CaseSurfaces a View may show (PL-9YPR), ViewRequests for a change to shared state or a frame, including the agent cost View's unit and the reader's price for an agent (PL-B396, PL-1P15), PreferencesInForce, the reader's preferences each tick shows every View (PL-B396), and the saved-state version check (PL-TH35)
-│   ├── views.py                    # the shipped Views, each a QWidget satisfying view_contract.View: ConcentrationView, WashInView, ParameterControlsView, AccountingView (PL-TH35), BookmarksView and BranchView, which each show a copy of a panel of the case (PL-9YPR), and CompartmentSchematicView, which shows one RunSchematic per displayed run, each a run surface its run writes, withholds and names (PL-RNYV), and AgentCostView, which shows one RunAgentCost per displayed run in the unit the reader's preferences hold, with a selector that asks the dashboard to change it (PL-B396), the cost at the reader's price, and the form that sets that price (PL-1P15); each chart View holds and saves its own time window and writes the lines that depend on it from its own frame (PL-L59K)
+│   ├── view_contract.py            # the View contract every View implements: the View protocol, the ViewContext it is built from, the FrameRequest naming the window and width it draws, the ViewTick it is drawn from, which names every displayed run by its RunPresentation on a frame and on a halt alike (PL-RF2S), the CaseSurfaces a View may show (PL-9YPR), ViewRequests for a change to shared state, to a named run's setting or for a frame, including the agent cost View's unit and the reader's price for an agent (PL-B396, PL-1P15), PreferencesInForce, the reader's preferences each tick shows every View (PL-B396), and the saved-state version check (PL-TH35)
+│   ├── views.py                    # the shipped Views, each a QWidget satisfying view_contract.View: ConcentrationView, WashInView, ParameterControlsView, AccountingView (PL-TH35), BookmarksView and BranchView, which each show a copy of a panel of the case (PL-9YPR), and CompartmentSchematicView, which shows one RunSchematic per displayed run (PL-RNYV), and AgentCostView, which shows one RunAgentCost per displayed run in the unit the reader's preferences hold, with a selector that asks the dashboard to change it (PL-B396), the cost at the reader's price, and the form that sets that price (PL-1P15); the four Views of a run build their own widget for each displayed run and write it whole from the run's RunPresentation on every tick, with a frame or without one (PL-RF2S); each chart View holds and saves its own time window and writes the lines that depend on it from its own frame (PL-L59K)
 │   ├── view_registry.py            # the View registry: each View kind's tag, written once as a literal, its RegisteredView entry with the factory that builds it, and RETIRED_TAGS for a tag renamed or removed; REQUIRED_REACHABLE, the kinds a build fails on import without (PL-50PZ); the text of the missing-kind and failed-build notices (PL-R1WQ)
 │   ├── run_view.py                 # one run's widgets, controller and handlers, and show_presentation, the one writer of those widgets; RunView, instantiated once per run (the seam PL-B9PY drew)
 │   ├── run_presentation.py         # everything one run's panel shows at one moment, as one value: RunPresentation, built by drawn_run for a frame and by halted_run for a halt, with the compartment values kept or withheld together (PL-RF2S); toolkit-independent
 │   ├── halt_gate.py                # halt_gate: every slot of RunView and SimulationView is called through it (§ "Failures and halts", PL-HJKN); toolkit-independent
-│   ├── run_surfaces.py             # the parts of a run that may sit in an Area, each built any number of times from the values it draws: ParameterControls, AccountingPanel, and keep_until_destroyed, which keeps the list of live copies RunView writes (PL-9LNF); the third such part, RunSchematic, is in qt_schematic.py, and the fourth, RunAgentCost, in qt_agent_cost.py
+│   ├── run_surfaces.py             # two of the widgets that draw one run's values in an Area, each built any number of times from nothing but the values it draws: ParameterControls and AccountingPanel (PL-9LNF); the Views build and write them (PL-RF2S); the third such widget, RunSchematic, is in qt_schematic.py, and the fourth, RunAgentCost, in qt_agent_cost.py
 │   ├── qt_widgets.py               # PySide6 leaf widgets that decide nothing: MetricPanel, ReadoutRow, ParameterSlider, NoticeLabel, NewCaseDialog, BookmarksPanel, ForkPanel, initial_window_geometry
 │   ├── formatting.py               # modeled value -> displayed string: a percent, and a multiple of the running agent's 1 MAC; toolkit-independent
 │   ├── currency_code.py            # the one rule for a currency code, three capital letters, which the preferences store and the cost formatters both read (PL-1P15); toolkit-independent
@@ -142,7 +142,7 @@ src/anesthesia_sim/
 │   ├── agent_cost.py               # what the agent cost View shows for one run, from one snapshot: the delivered agent in millilitres of liquid equivalent and in litres of vapour, each with its unit named and a caption saying what it measures; converts only the delivered agent, reading the amount and the agent's ratio from one snapshot (PL-B396); the cost at the reader's price, with the figures it multiplied and where the price came from, or why no cost is shown, all from one price record, and the price form's reading of what the reader typed (PL-1P15); toolkit-independent
 │   ├── qt_agent_cost.py            # RunAgentCost on Qt: one run's instant line, delivered amount and caption, in the unit its View sets (PL-B396), and its cost readout at the reader's price (PL-1P15); computes no value
 │   ├── qt_agent_price.py           # PriceEntry on Qt: the agent cost View's form for the reader's price per agent, which asks the dashboard through ViewRequests.agent_price and shows why an entry was refused (PL-1P15)
-│   ├── qt_schematic.py             # SchematicCanvas on Qt: one run's six containers in the readout row's order, the tissue groups drawn in parallel between an arterial and a venous line, each filled in its trace colour to the reading's fill and labelled in text; ShareBar, each compartment's share of the agent the run holds as one bar (PL-S79P); and RunSchematic, the run surface that adds the instant line, the run's name while compared and the scale and off-scale captions (PL-RNYV); computes no value
+│   ├── qt_schematic.py             # SchematicCanvas on Qt: one run's six containers in the readout row's order, the tissue groups drawn in parallel between an arterial and a venous line, each filled in its trace colour to the reading's fill and labelled in text; ShareBar, each compartment's share of the agent the run holds as one bar (PL-S79P); and RunSchematic, the widget that adds the instant line, the run's name while compared and the scale and off-scale captions (PL-RNYV); computes no value
 │   ├── qt_chart.py                 # the concentration chart, the wash-in plot, the legend and the time base selector on pyqtgraph and Qt, moved per frame to match a chart_frame.ChartFrame, the legend showing a CompartmentSelection and the selector a time base it is handed; each chart says when it owes a frame at a wider width (PL-9LNF); declares no colour and formats no value
 │   ├── chart_time_base.py          # how wide the chart's window is and how it is ruled; toolkit-independent
 │   ├── control_timeline.py         # recorded control changes -> the acts a reader sees; toolkit-independent
@@ -319,7 +319,7 @@ kept the invariant. The controller calls the setter once, from `_build_state()`,
 to apply the volume the session was built with, and no live setter exists
 above it. The circuit volume is a fixed model parameter rather than a control
 (`PL-GYH2`). So the per-parameter setters named above are the four that the
-interface offers, and no fifth one exists. `docs/MODEL.md` § "What is not
+interface offers, and no fifth one exists. `docs/INTERFACE.md` § "What is not
 bounded this way" gives the argument.
 
 The snapshot is the run's state at one instant. It holds a fixed number of
@@ -379,9 +379,9 @@ definition already holds, so no drawn value depends on whether it was kept
 `run_segments` hands out the record itself as frozen segments, which can be
 read but not advanced. So nothing above the controller can move the run
 definition's reach past where the run actually got to, and then have a
-prediction drawn back on the run's own axis. `docs/MODEL.md` § "The run is that
+prediction drawn back on the run's own axis. `docs/INTERFACE.md` § "The run is that
 record, and every state is derived from it" gives the measurements, and
-`docs/MODEL.md` § "The canonical evaluation rule" states which of the two
+`docs/INTERFACE.md` § "The canonical evaluation rule" states which of the two
 evaluation paths a stored, exported, replayed or branched value may be taken
 from.
 
@@ -404,7 +404,7 @@ held the two in agreement with each other.
 Which instants `drawn_window` evaluates is a presentation-correctness concern,
 because a chart that stepped over a control change would show a curve the
 simulation never produced. So the rules that place the instants are stated in
-`docs/MODEL.md` § "What the chart draws" and are tested on their own. The
+`docs/INTERFACE.md` § "What the chart draws" and are tested on their own. The
 evaluated instants are anchored to an absolute grid measured from the case's
 zero, rather than to their position within the window. So a window that
 follows the run keeps every column it had and gains at most one
@@ -431,7 +431,7 @@ that they apply is a module of its own: `app/formatting.py`,
 `app/wash_in.py`. Each is separate because it decides presentation
 *correctness* rather than layout, and must be readable and testable with no
 toolkit loaded. § "Package map" gives each one's role. `app/formatting.py`
-uses the resolutions that `docs/MODEL.md` § "Displayed precision" derives.
+uses the resolutions that `docs/INTERFACE.md` § "Displayed precision" derives.
 
 `app/control_timeline.py` reads a control record that is faithful to the run,
 in which a drag of one slider appears as several settings. So collapsing that
@@ -441,7 +441,7 @@ rendering of what the model saw.
 In `app/wash_in.py`, the wash-in quotient has a domain. It is undefined before
 any agent reaches the circuit, and above 1 it stops being a wash-in fraction.
 So the module returns the value and the reason together, and the chart draws
-the trace in segments that break where the domain does. `docs/MODEL.md`
+the trace in segments that break where the domain does. `docs/INTERFACE.md`
 § "F_A/F_I as a displayed ratio" is the specification.
 
 In `app/playback.py`, a playback rate is realised only as a step *count*, never
@@ -476,7 +476,7 @@ without bound and offer little over branching from the trunk again.
 This section is the object map of `BranchedCase`, its runs and the
 `RunDefinition` each run carries. What a branch *guarantees* is stated and
 measured in one place only:
-`docs/MODEL.md` § "The canonical evaluation rule". That section says that a
+`docs/INTERFACE.md` § "The canonical evaluation rule". That section says that a
 branch's run definition opens at a keyframe of the case, and why. It says that
 the definition opens at that keyframe's own case instant, so no clock is
 re-based and no conversion is performed. It also says what both of these are
@@ -570,7 +570,7 @@ rule decides which stretch the branch names as its provenance: the stretch that
 the step reaching the fork ran under. After the case's opening, no later change
 on the trunk can replace that stretch. The branch runs under the stretch still
 open at the fork, which is what the dial says there
-(`docs/MODEL.md` § "The canonical evaluation rule", `PL-ZR49`).
+(`docs/INTERFACE.md` § "The canonical evaluation rule", `PL-ZR49`).
 
 A branch inherits the bookmarks but not the trunk's control timeline, and one
 test settles both. A mark is a question about what is still to come, and a
@@ -604,7 +604,7 @@ offset, and `run_segments` warned about it. The branch's drawn columns were
 anchored to its own zero, so they landed at case instants the trunk never draws
 (`PL-2R2C`). The frame was removed, with `origin_s` and both subtractions
 (`PL-ZMRT`), and that solved the problem without a separate fix.
-`docs/MODEL.md` § "The canonical evaluation rule" measures what the removal is
+`docs/INTERFACE.md` § "The canonical evaluation rule" measures what the removal is
 worth.
 
 **Where a branch may be taken.** There are three places: at a keyframe, where
@@ -643,7 +643,7 @@ it element-wise. The obvious route was measured and refused. Recording a
 keyframe where the run halts makes the branch exact against the trunk it forked
 from, but it also moves that trunk's own later results away from what the case
 would have given unmarked, so marking a run would change it. Both measurements
-are in `PL-B8MK`. `docs/MODEL.md` § "What this requires of a branch" records
+are in `PL-B8MK`. `docs/INTERFACE.md` § "What this requires of a branch" records
 which of that section's two conditions the chosen route relaxes, and what the
 relaxation costs.
 
@@ -780,7 +780,7 @@ to Pause for a lock that Pause cannot lift.
 
 ### What a branch comparison asserts, and which part of it is structural
 
-**The full statement is in `docs/MODEL.md` § "What a branch comparison asserts,
+**The full statement is in `docs/INTERFACE.md` § "What a branch comparison asserts,
 and what it does not".** It is stated there because it is a claim about the
 model, not about how the code is arranged. This section covers only the part of
 that claim that the structure of `BranchedCase` decides, which is three things.
@@ -806,14 +806,14 @@ audit of that claim, not a convenience.
 **The shared history is the same object, not a reproduction of one.** A branch's
 `RunDefinition` carries the trunk's own `Keyframe`, and both runs sit in the case's
 single time frame. So the runs agree before the fork by construction, not
-because they meet a tolerance. `docs/MODEL.md` § "What this requires of a
+because they meet a tolerance. `docs/INTERFACE.md` § "What this requires of a
 branch" is where that is stated and measured, and the residual it leaves is
 zero. The structure does *not* supply any bound on what happens after the fork.
 Neither run is a prediction for a patient at any point, because the model
 contains one reference adult and no variability around it. So a difference
 between the two runs is a property of the model, not an expected clinical
 difference. That last point is the one that a reader of a drawn comparison is
-most likely to need. `docs/MODEL.md` § "What a branch comparison asserts, and
+most likely to need. `docs/INTERFACE.md` § "What a branch comparison asserts, and
 what it does not" is where it is argued.
 
 ## Failures and halts
@@ -913,28 +913,51 @@ status (`RunStatus`), which carries both halts. The banner that this function
 writes (`dashboard_frame.halt_notice`) says that no frame of the stopped run has
 been drawn. The first frame that draws replaces that banner (`PL-7DJK`).
 
-A control used on a run whose snapshot refuses meets the same halt, rather than
-an exception that the toolkit prints, because its slot passes the halt gate. A
-`RunView` slot halts its own run and shows the halt from the run's record
-(`_halt_run`, `record()`). So on a run whose snapshot refused, the agent
-selector goes back to the agent that the record names. The snapshot cannot name
-it, because the snapshot is what refused (`PL-V2HC`). A `SimulationView` slot
-halts every run, because it acts on the case. When each slot was given its own
-`try` by hand, six slots were left without one, each found by a separate review
-(`PL-HJKN`). So a test now fails on any connected slot that does not pass the
-gate (`test_every_slot_that_touches_a_run_passes_the_halt_gate`).
+A control used on a run whose snapshot cannot be built causes a halt, because
+the control's slot passes the halt gate. Without the gate, the toolkit would
+only print the exception. A slot of the run's own panel (`RunView`) halts that
+run and shows the halt from the run's record (`_halt_run`, `record()`). So on
+such a run, the agent selector goes back to the agent that the record names.
+The snapshot cannot name that agent, because building the snapshot is what
+failed (`PL-V2HC`). A slot of the dashboard's shared part (`SimulationView`)
+halts every run, because it acts on the case. Wrapping each slot in its own
+`try` by hand left six slots without one, each found by a separate review
+(`PL-HJKN`). So a test fails on any connected slot that does not pass the gate
+(`test_every_slot_that_touches_a_run_passes_the_halt_gate`).
 
-One method (`RunView.show_presentation`) writes every widget of a run from one
-value, a `RunPresentation` (`app/run_presentation.py`). Those widgets include the
-status word, the transport, the agent identity, the four dials, the control-change
-panel, the banner and every compartment value. The `RunPresentation` is built
-from the snapshot a frame drew from (`drawn_run`) or, when no frame can draw,
-from the run's record (`halted_run`). On the widgets that the record fills, a
-halted run shows what a frame would show. A dial dragged into the halt shows the
-value the run holds, rather than the value from before the drag (`PL-85LJ`). An
-agent changed just before the halt is named on every identity widget
-(`PL-1YDD`). The control-change panel lists the record that the run holds
-(`PL-DTJQ`).
+Everything on screen that belongs to one run is written from one value, a
+`RunPresentation` (`app/run_presentation.py`). One method
+(`RunView.show_presentation`) writes the run's own panel from it: the status
+word, the transport, the agent identity, the delivered line, the control-change
+panel, the banner and the readouts. The Views write the run's panels in the
+Areas from the same value: the four dials, the accounting panel, the
+compartment schematic and the agent cost panel (`app/views.py`). The
+`RunPresentation` is built from the snapshot a frame drew from (`drawn_run`) or,
+when no frame can draw, from the run's record (`halted_run`). On the widgets
+that the record fills, a halted run shows what a frame would show. A dial
+dragged into the halt shows the value the run holds, rather than the value from
+before the drag (`PL-85LJ`). An agent changed just before the halt is named on
+every identity widget (`PL-1YDD`). The control-change panel lists the record
+that the run holds (`PL-DTJQ`).
+
+Every View is handed the runs on a halt, as it is on a drawn frame
+(`SimulationView._halt_every_run`, `PL-RF2S`). The tick it is handed then
+carries no frame. A View that shows a run's values still writes them from the
+tick's presentations. So a View never shows a halted run differently from the
+run's own panel, a run removed while frames fail is dropped from every View,
+and a View that a reader chooses while frames fail shows the runs. A chart
+draws nothing from a tick with no frame. A tick with no frame still carries
+the case's panels. A bookmarks View or a branch View whose first tick has no
+frame takes its copy from that tick, and the copy shows the panels as the halt
+rewrote them.
+
+A View that raises on a tick with no frame does not keep the tick from the
+Views after it. The adapter hands the tick to every View, and then raises the
+first exception (`AreaLayout.refresh`). On a tick with a frame, the adapter
+stops at the first View that raises, and the halt that follows hands every
+View the runs. The halt then tries the frame once more. When that attempt
+fails too, a View may already have drawn it, so the halt hands every View the
+runs again. Every View then shows the frame that each run's own panel shows.
 
 Four parts of a `RunPresentation` can be computed only for a frame, and are held
 together in `RunValues`: the readouts and the clock read with them, the
@@ -944,11 +967,13 @@ together still describe one step. When the run has started over, by a Reset or
 an agent change, and no frame has drawn since, a halt withholds all four
 together. Each readout card and the clock withhold their values, the schematic
 and the delivered agent show no amount, and the accounting panel withholds its
-verdict and amounts. The off-scale and wash-in lines and both legends belong to
-Views, which only a frame draws, and they stay as the last frame drew them.
-After an accounting halt, the accounting panel shows the rejected step's check,
-whether or not a frame draws. A stopped run refuses a dial, so the dials keep
-the settings the run holds (`PL-3B34`).
+verdict and amounts. After an accounting halt, the accounting panel shows the
+rejected step's check, whether or not a frame draws. On a halt, the charts'
+off-scale and wash-in lines and both legends stay as the last frame drew them,
+because only a frame draws the charts. A stopped run refuses a dial, so the
+dials keep the settings the run holds (`PL-3B34`). Where a run's dials cannot
+be built, the setting controls View shows no dial for that run and says so in
+their place, and the delivered line withholds its values (`PL-SV2Q`).
 
 One test checks that each value on screen and what qualifies it come from one
 step (`test_every_value_and_its_qualifiers_on_screen_come_from_one_state`,
@@ -1085,7 +1110,7 @@ reads and writes the file. That module imports no Qt.
 
 The file holds at most one price for each shipped agent (`AgentPrice`), and the
 unit in which the agent cost View shows the delivered agent: millilitres of
-liquid or litres of vapour. `docs/MODEL.md` § "A cost at the reader's price"
+liquid or litres of vapour. `docs/INTERFACE.md` § "A cost at the reader's price"
 specifies what a price carries and what is refused. The project ships no price.
 
 - **What a launch does with the file.** Startup code in `app/main.py` opens the
@@ -1208,7 +1233,7 @@ specialist standard in `CLAUDE.md` that applies to this document (`PL-KRGY`).
     plotted items and the painted pixels (`test_qt_chart.py`).
   - A test covers the dashboard's leaf widgets (`test_qt_widgets.py`).
   - A test drives the whole dashboard against real controllers, and reads back
-    every widget's text, enablement and visibility (`test_simulation_view.py`).
+    every widget's text, enablement and visibility (`tests/integration/simulation_view/`).
   - A test renders the whole dashboard headless at one fixed size, and reads
     back the painted pixels and the laid-out geometry (`test_qt_rendering.py`).
     It also writes the kind of screenshot that the instructions for running
@@ -1282,10 +1307,13 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
   which stays the reader's call (`PL-40SJ`).
 - A new View → a class in `app/views.py`. The class is a `QWidget`, satisfies
   the `View` protocol in `app/view_contract.py`, and is built from a
-  `ViewContext` alone. It is drawn from each `ViewTick`. It asks for a
-  change to shared state through the context's requests, and it never holds
+  `ViewContext` alone. It is drawn from each `ViewTick`, which it is handed
+  on a drawn frame and on a halt. A View that shows a run's values builds its
+  own widget for each run that the tick names, and writes it whole from that
+  run's `RunPresentation` on every tick. It asks for a change to shared state
+  or to a run's setting through the context's requests, and it never holds
   that state itself. A View never shows a value from the unconditional set, the
-  values that `docs/MODEL.md` § "Minimum displayed outputs" requires on screen
+  values that `docs/INTERFACE.md` § "Minimum displayed outputs" requires on screen
   at all times. The module docstring of `app/view_contract.py` states the
   contract, and `ConcentrationView` is the example to read from end to end.
   Then give the View a tag, written as a literal in `app/view_registry.py`.
@@ -1309,34 +1337,40 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
   started over.
 
   To choose between `app/run_view.py` and `app/simulation_view.py`, first ask
-  *whose* panel it is. A panel that states a particular run's numbers belongs
-  to `RunView`. Such panels include readouts, settings, transport, and the
-  record of what was changed during the run. Each run gets its own `RunView`,
-  and the dashboard places the panel by looping over its runs. A panel about
-  the chart that both runs are drawn on belongs to `SimulationView` or to the
-  chart View that draws it. Such panels include an axis, a legend, a
-  reference, and the compartment selection. A chart's time window belongs to
-  that chart View alone (`PL-L59K`). A control that asks one question of the
-  whole case, rather than of either run, also belongs to `SimulationView`. The
-  bookmark editor is the worked example (`PL-LPLD`). It writes each mark to
-  every displayed run, so that the copies the controllers hold stay equal. The
-  branch control is the second example (`PL-VKJW`). The instants it offers are
-  the trunk's keyframes and the marks the trunk has passed. A copy of it in
-  each run would give a branch a control that could only refuse. The bookmarks
-  and the branch control are shown in Views. `SimulationView` builds a copy
-  for each View that shows one, through `view_contract.CaseSurfaces`, as a run
-  builds its copies through `RunSurfaces` (`PL-9YPR`). Getting this the wrong way round is not a
-  matter of tidiness. A run's panel put on the dashboard would state one
-  branch's numbers over both runs. A shared control duplicated into each run
-  would let a reader interpret a comparison under two different settings.
+  *whose* panel it is. A panel that states a particular run's numbers, and
+  that must stay on screen in every layout, belongs to `RunView`. Such panels
+  include the readouts, the transport, and the record of what was changed
+  during the run. Each run gets its own `RunView`, and the dashboard places
+  the panel by looping over its runs. A panel of one run that a reader may
+  place in an Area belongs to a View instead, as the setting controls and the
+  accounting panel do.
 
-  In either place, read only what `SimulationSnapshot` already carries and
-  what a `DrawnWindow` already returns. A window holds its states per
-  substance. A trace addresses one value in those states as a
-  `RecordedSeries`, not as a named field. A `RecordedSeries` is a pair of a
-  substance and a `RecordedQuantity`. If the UI needs a value that does not
-  exist yet, add it in `app/controller.py`, and compute it in `core/`, never
-  in the view. A panel that needs the run, rather than the instant, asks
+  A panel about the chart that both runs are drawn on belongs to
+  `SimulationView` or to the chart View that draws it. Such panels include an
+  axis, a legend, a reference, and the compartment selection. A chart's time
+  window belongs to that chart View alone (`PL-L59K`). A control that asks one
+  question of the whole case, rather than of either run, also belongs to
+  `SimulationView`. The bookmark editor is the worked example (`PL-LPLD`). It
+  writes each mark to every displayed run, so that the copies the controllers
+  hold stay equal. The branch control is the second example (`PL-VKJW`). The
+  instants it offers are the trunk's keyframes and the marks the trunk has
+  passed. A copy of it in each run would give a branch a control that could
+  only refuse. The bookmarks and the branch control are shown in Views. The
+  dashboard's shared part (`SimulationView`) builds a copy for each View that
+  shows one, through `view_contract.CaseSurfaces`, and writes every copy
+  (`PL-9YPR`). Getting this routing wrong misleads the reader. A run's panel
+  put on the dashboard would state one branch's numbers over both runs. A
+  shared control duplicated into each run would let a reader interpret a
+  comparison under two different settings.
+
+  In `app/run_view.py` or `app/simulation_view.py`, read only what
+  `SimulationSnapshot` already carries and what a `DrawnWindow` already
+  returns. A window holds its states per substance. A trace addresses one
+  value in those states as a `RecordedSeries`, not as a named field. A
+  `RecordedSeries` is a pair of a substance and a `RecordedQuantity`. If the
+  UI needs a value that does not exist yet, add it in `app/controller.py`,
+  and compute it in `core/`, never in the view. A panel that needs the run,
+  rather than the instant, asks
   `SimulationController.drawn_window(start_s, stop_s, columns)` for the span
   it draws. It never asks for the whole run. § "Data flow" says why.
 
@@ -1363,12 +1397,12 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
   scheduled. `ROADMAP.md` § "Explicitly out of scope for v0.6.0" says where it
   stands. Once it is built, the routing question gains a second half: *which
   window* a surface is instantiated in. Until then, `app/area_layout.py` builds
-  every Area in the main window. `docs/MODEL.md` § "Minimum displayed
+  every Area in the main window. `docs/INTERFACE.md` § "Minimum displayed
   outputs" answers the *which window* half, not this entry.
 - A new way of *rendering* a value that a reader interprets →
   `app/formatting.py`. Examples are a unit, a decimal count, or a marker for
   what the display cannot resolve. Write it as a pure function with its own
-  test, and record the reason in `docs/MODEL.md` § "Displayed precision".
+  test, and record the reason in `docs/INTERFACE.md` § "Displayed precision".
 - A new stylesheet, or a change to how a widget is styled → a function in
   `app/stylesheets.py` that returns the stylesheet string. The function
   composes the string from the values in `app/theme.py`, and it is called
@@ -1405,7 +1439,7 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
   for a stronger version of the same reason: it draws no value at all, only a
   simulated time.
   A series outside the table must meet a labelling requirement instead.
-  `docs/MODEL.md` § "Interface boundary" sets that requirement in place of the
+  `docs/INTERFACE.md` § "Interface boundary" sets that requirement in place of the
   drawn-point rule. A trace of a *derived* quantity with a domain, such as the
   wash-in ratio, also stays out of the table. The table binds a line to one
   `RecordedSeries`, and a value that is sometimes absent has no such series to

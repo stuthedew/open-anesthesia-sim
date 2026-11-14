@@ -496,9 +496,7 @@ workflow_paths = [
   "tests/unit/test_model_doc_review.py",
   "tests/unit/test_model_home_check.py",
   "tests/unit/test_model_rewrite.py",
-  "tests/unit/test_copy_edit.py",
   "tests/unit/test_new_prose.py",
-  "tests/unit/test_prose_judge.py",
   "tests/unit/test_blind_review.py",
   "tests/unit/test_blind_review_report.py",
   "tests/unit/test_import_boundary_check.py",
@@ -515,7 +513,6 @@ workflow_paths = [
   "tests/unit/test_open_pull_requests.py",
   "tests/unit/test_owner_ask_guard.py",
   "tests/unit/test_pr_title_check.py",
-  "tests/unit/test_rejected_prose.py",
   "tests/unit/test_quality_step_order.py",
   "tests/unit/test_regex_check.py",
   "tests/unit/test_regex_guard.py",
@@ -578,8 +575,8 @@ workflow_paths = [
 # declaring the path that pair it only with apparatus paths, against only with
 # product paths.
 #
-# - `src`, `docs/MODEL.md` and `README.md` are CLAUDE.md's own enumeration of
-#   the simulator, recorded as data.
+# - `src`, `docs/MODEL.md`, `docs/INTERFACE.md` and `README.md` are CLAUDE.md's
+#   own enumeration of the simulator, recorded as data.
 # - `ROADMAP.md` and `docs/releases` are product direction. They name
 #   simulator milestones and what shipped in them, so a session scoping the
 #   next release is doing product work even though no `src/` file moves.
@@ -620,6 +617,7 @@ product_paths = [
   "assets",
   "ROADMAP.md",
   "docs/ARCHITECTURE.md",
+  "docs/INTERFACE.md",
   "docs/MODEL.md",
   "docs/consultant-brief.md",
   "docs/interface-provenance.md",
@@ -689,7 +687,7 @@ open_draft_command = "python3 tools/open_pull_requests.py --open-draft"
 
 # How `bin/docket arm` counts the blind generalist review passes a simulator
 # branch owes (`PL-HDRN`): one, or two where it changes the model's code, its
-# parameter files or `docs/MODEL.md` (`PL-TDV9`). `arm` holds the branch until
+# parameter files, `docs/MODEL.md` or `docs/INTERFACE.md` (`PL-TDV9`). `arm` holds the branch until
 # its newest `Blind-review:` trailer records at least that many passes, and
 # holds where the script exits non-zero. It runs under `uv run python` and not
 # the bare `python3`, because it parses each changed test under `tests/` to
@@ -778,6 +776,7 @@ protected_paths = [
   "src/anesthesia_sim/core",
   "src/anesthesia_sim/data",
   "docs/MODEL.md",
+  "docs/INTERFACE.md",
 ]
 
 # Paths holding the machinery that identifies and ranks *generators*. An item
@@ -904,7 +903,12 @@ default = { model = "claude-opus-5-5", effort = "high" }
 "claude-sonnet-5-5" = { input = 2.0, output = 10.0 }
 
 [models.areas]
-simulator = ["src/anesthesia_sim/core/", "src/anesthesia_sim/data/", "docs/MODEL.md"]
+simulator = [
+  "src/anesthesia_sim/core/",
+  "src/anesthesia_sim/data/",
+  "docs/MODEL.md",
+  "docs/INTERFACE.md",
+]
 interface = ["src/anesthesia_sim/app/"]
 
 # The items a cheaper model may take go to Sonnet 5.5, not Haiku 5.5 (project
@@ -919,15 +923,3 @@ model = "claude-sonnet-5-5"
 match = { role = "exploration" }
 model = "opus"
 
-# The copy editor runs at extra high effort (project owner, 2026-11-04,
-# ratified, over the default high, `PL-HGZS`): its misses while it was being
-# debugged were reading misses that the extra high session caught.
-[[models.rule]]
-match = { role = "copy-editor" }
-effort = "xhigh"
-
-# The meaning check runs at the copy editor's effort, because it reads the same
-# passages for statements that the copy editor's own reads missed (`PL-F0Q2`).
-[[models.rule]]
-match = { role = "meaning-check" }
-effort = "xhigh"

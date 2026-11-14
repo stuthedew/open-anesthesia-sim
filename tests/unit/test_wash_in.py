@@ -1,9 +1,9 @@
 """Unit tests for `app/wash_in.py`, which computes the F_A/F_I ratio and decides its domain.
 
-`docs/MODEL.md` § "F_A/F_I as a displayed ratio" makes claims about this
+`docs/INTERFACE.md` § "F_A/F_I as a displayed ratio" makes claims about this
 module. These tests check each claim against the function that implements
 it, without building the Qt interface. The end-to-end path is tested in
-`tests/integration/test_simulation_view.py`: a real controller, real steps,
+`tests/integration/simulation_view/`: a real controller, real steps,
 the trace, and the sentence beside the trace.
 
 These tests compare against the published values that
@@ -296,7 +296,7 @@ def test_the_rounding_allowance_hides_no_clinical_change_over_a_whole_run(agent:
     assert hidden_loss_fraction < HIDDEN_LOSS_LIMIT_FRACTION_OF_FAST_POOL, (
         "Lower WASH_IN_ROUNDING_ALLOWANCE in src/anesthesia_sim/app/wash_in.py to "
         f"{suggested_allowance:.0e} (anything up to {largest_allowance:.2g} passes), and "
-        'update its note in docs/MODEL.md § "F_A/F_I as a displayed ratio".\n'
+        'update its note in docs/INTERFACE.md § "F_A/F_I as a displayed ratio".\n'
         f"Why: a {run_length_min / 60:g} h run at {MAXIMUM_ALVEOLAR_VENTILATION_L_MIN:g} L/min "
         f"alveolar ventilation could hide a loss of {hidden_loss_fraction:.1%} of the {agent} from "
         f"the wash-in plot, and the limit is {HIDDEN_LOSS_LIMIT_FRACTION_OF_FAST_POOL:.0%}. "

@@ -23,13 +23,13 @@ way.**
   `test_the_accounting_anchor_is_carried_rather_than_derived` shows why the
   anchor is not derived instead.
 - *A state that the equations cannot be evaluated against is refused, before
-  anything is written.* `docs/MODEL.md` § "The canonical evaluation rule" says
+  anything is written.* `docs/INTERFACE.md` § "The canonical evaluation rule" says
   that a drawn value may be drawn and used for nothing else. A partially
   seeded system would be the "partial state" that `AgentUptakeSystem.advance()`
   already exists to make unrepresentable, arriving by a second route.
 
 This file does not test the clock a branch runs on. That clock belongs to the
-controller, and `tests/integration/test_controller.py` tests it. Everything
+controller, and `tests/integration/controller/` tests it. Everything
 here is true whichever clock a branch keeps.
 """
 
@@ -83,7 +83,7 @@ STEPPED_AGREEMENT = 5e-15
 
 The value was measured on the run below, not assumed. The worst departure
 over every compartment at the instants probed is less than 1e-15 of one
-atmosphere. The display resolves 1e-4, as `docs/MODEL.md` § "Displayed
+atmosphere. The display resolves 1e-4, as `docs/INTERFACE.md` § "Displayed
 precision" states. The tolerance is absolute, in fractions of one atmosphere,
 for the reason that `docs/MODEL.md` § "Closed-form agreement test" gives. A
 relative tolerance would tighten without limit on the near-zero tissue
@@ -176,7 +176,7 @@ def test_a_resumed_system_holds_the_state_it_was_given() -> None:
     (`PL-2MD9`). That is why a branch's definition opens from the parent's
     `Keyframe` and never from this system's `state_vector()`. A branch's
     exactness comes from that definition, and
-    `tests/integration/test_controller.py` checks a branch against its parent
+    `tests/integration/controller/test_controller_branching.py` checks a branch against its parent
     element for element on the canonical path.
 
     What this system can promise is that `resume_at` writes the state it was
@@ -371,7 +371,7 @@ def test_a_carried_anchor_reaches_the_branch_s_own_accounting_period() -> None:
 
 
 def test_a_drawn_value_cannot_resume_a_system() -> None:
-    """`resume_at` also enforces `docs/MODEL.md` § "The canonical evaluation rule".
+    """`resume_at` also enforces `docs/INTERFACE.md` § "The canonical evaluation rule".
 
     A drawn column and a fork's opening state are the same nine numbers in the
     same order, so their contents cannot tell them apart. What separates them

@@ -1509,9 +1509,11 @@ asked for the fifth pattern in the same day's thread.
 moment is any write of prose, and an item brief, a commit message and a reply
 follow no read. No check can carry it, for the same reason as the rest of the
 rule. A count of "rather than" or ", not " cannot tell a needed contrast from
-a reflexive one. `tools/new_prose.py` now prints changed paragraphs of
-`docs/MODEL.md` and `README.md`, so the close-out reviewer, which loads the
-resident rules, applies the patterns there too.
+a reflexive one. Until 2026-11-11 `tools/new_prose.py` printed changed
+paragraphs of `docs/MODEL.md` and `README.md` for the close-out reviewer, which
+loaded the resident rules and applied the patterns there too. The owner removed
+that review on 2026-11-11 (`PL-J1ZM`) and the copy editor on 2026-11-14
+(`PL-GL45`).
 
 **Why nothing is cut.** The existing points name compressed wording only, so
 no sentence said any of this. The addition is text the owner asked for.
@@ -1527,9 +1529,10 @@ reader might know it, and that no step named the developer who wants to change
 a value.
 
 **The carrier test.** The moment is any write of prose, the same as the rest
-of the rule, so the table stays resident. `tools/new_prose.py` reads the table
-and prints each unit's readers for the close-out prose review, so the review
-gets the same readers without a second copy.
+of the rule, so the table stays resident. `tools/new_prose.py --compare` reads
+the table to choose the files it compares, so it uses the same readers without
+a second copy. Until the copy editor was removed on 2026-11-14 (`PL-GL45`), the
+tool also printed each unit's readers for it.
 
 **What was replaced, and the cost.** The newcomer sentence went. The rule grew
 from 7,925 to 10,211 characters, because no shorter form names two readers of
@@ -1593,3 +1596,22 @@ shows the edit, and each commit subject starts with the id.
 
 **What was replaced, and the cost.** One clause replaced the four sentences.
 `CLAUDE.md` fell from 47,389 to 47,271 bytes.
+
+## The five patterns, restored as instructions, and the bad examples removed, 2026-11-14
+
+`PL-J1ZM` deleted the five machine-writing patterns on 2026-11-14. `PL-BFHK`
+restored them the same day as points 7 to 11 of the resident
+`.claude/rules/plain-writing.md`, each written as what to do, with no bad
+example. The project owner asked for that form (project owner, 2026-11-14),
+and Anthropic's and OpenAI's prompting guides recommend it. `PL-Q89B` then
+removed the rule's other bad examples: point 2's stacked clause, the "Before"
+text of each example, and two of the three pull request titles (project
+owner, 2026-11-14, ratified, over keeping the before-and-after pairs).
+
+**The carrier test.** Unchanged from the 2026-11-02 section above: the moment
+is any write of prose, and no check can tell a needed contrast from a
+reflexive one.
+
+**What was replaced, and the cost.** The rule went from 16,404 to 15,333
+characters. The five points added 1,013, and the bad examples removed about
+2,100.

@@ -6,15 +6,15 @@ effort: M
 status: ready
 classes: defect, science
 feature: model-claims-held-by-tests
-touches: docs/MODEL.md, tests/reference
+touches: docs/INTERFACE.md, tests/reference
 added: 2026-11-04
 payoff: the accounting panel's 0.1 L step is derived at every setting the supported span allows, so no long high-dial run shows a last digit finer than the band
 verify: grep -rqF 'def test_the_run_totals_litre_step_at_each_agent_s_dial_maximum' tests/
 ---
 
-**Problem.** The accounting panel's 0.1 L step for the agent totals is derived from the shifts that one SD of a partition coefficient causes in the exhausted total, measured only at 1 MAC with the reference flows. The model is linear in the dial, so at each agent's dial maximum and 10 L/min the 24 h shift is 3 to 4.6 times larger. One step of 0.1 L then falls to about an eighth of an SD, at or past the seventh of an SD that `docs/MODEL.md` § "Displayed precision" allows.
+**Problem.** The accounting panel's 0.1 L step for the agent totals is derived from the shifts that one SD of a partition coefficient causes in the exhausted total, measured only at 1 MAC with the reference flows. The model is linear in the dial, so at each agent's dial maximum and 10 L/min the 24 h shift is 3 to 4.6 times larger. One step of 0.1 L then falls to about an eighth of an SD, at or past the seventh of an SD that `docs/INTERFACE.md` § "Displayed precision" allows.
 
-**Checked 2026-11-04**, while building `PL-SP6H`. The second blind review pass on `#2024` perturbed the blood:gas coefficient by one SD in the model's system matrix and ran each agent for 24 h at its dial maximum and 10 L/min. The exhausted-total shift came out about 4.2 times the 1 MAC figure for sevoflurane, 4.6 times for isoflurane and 3.1 times for desflurane. The ratios of dial maximum to 1 MAC are 8/2.0, 5/1.2 and 18/6.0, or 4.0, 4.2 and 3.0, so the measurement agrees with linearity in the dial, to within the smaller effect of the higher flow. That run was a reviewer's and is not yet a test. At sevoflurane's figure the 24 h shift is about 0.8 L, so one step of 0.1 L is about an eighth of an SD, and a step of 0.01 L about an eightieth. The readouts' band runs down to "about a seventh" of an SD, so 0.1 L sits at or just past its fine end in the longest runs at the dial maximum. `PL-SP6H` narrowed the litre paragraph, in `docs/MODEL.md` § "The agent-accounting panel", to claim only the settings at which the shifts were measured.
+**Checked 2026-11-04**, while building `PL-SP6H`. The second blind review pass on `#2024` perturbed the blood:gas coefficient by one SD in the model's system matrix and ran each agent for 24 h at its dial maximum and 10 L/min. The exhausted-total shift came out about 4.2 times the 1 MAC figure for sevoflurane, 4.6 times for isoflurane and 3.1 times for desflurane. The ratios of dial maximum to 1 MAC are 8/2.0, 5/1.2 and 18/6.0, or 4.0, 4.2 and 3.0, so the measurement agrees with linearity in the dial, to within the smaller effect of the higher flow. That run was a reviewer's and is not yet a test. At sevoflurane's figure the 24 h shift is about 0.8 L, so one step of 0.1 L is about an eighth of an SD, and a step of 0.01 L about an eightieth. The readouts' band runs down to "about a seventh" of an SD, so 0.1 L sits at or just past its fine end in the longest runs at the dial maximum. `PL-SP6H` narrowed the litre paragraph, in `docs/INTERFACE.md` § "The agent-accounting panel", to claim only the settings at which the shifts were measured.
 
 **Why it matters.** The accounting panel shows the delivered, exhausted and stored totals at 0.1 L for every setting. A long run at a high dial setting may show a last digit finer than the band that § "Displayed precision" derives.
 

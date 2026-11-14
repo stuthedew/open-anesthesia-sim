@@ -58,7 +58,7 @@ which propagators are kept. Only the last window's propagators are kept, so the 
 record of the run (`.claude/rules/run-is-its-definition.md` says why that is
 where the line falls). `state_at` reads none of the store.
 
-`docs/MODEL.md` § "The canonical evaluation rule" states that separation as a
+`docs/INTERFACE.md` § "The canonical evaluation rule" states that separation as a
 guarantee. Every stored, exported, replayed or forked value is taken
 canonically. A display value may be drawn and used for nothing else. **This
 module enforces the rule rather than describing it.** `evaluate` returns its
@@ -197,7 +197,7 @@ class DisplayState:
     """A state produced by the display path, which the canonical path refuses to accept.
 
     It is a wrapper rather than a bare tuple, and deliberately not a tuple
-    subclass. The separation that `docs/MODEL.md` § "The canonical evaluation
+    subclass. The separation that `docs/INTERFACE.md` § "The canonical evaluation
     rule" states has to hold at sinks that have never heard of this class,
     such as an exporter, a save format or a fork. Only a value that is
     structurally not a state vector is refused by all of them. A subclass
@@ -380,7 +380,7 @@ class RunDefinition:
                 display path, is not `STATE_SIZE` long, holds a non-finite
                 value, or does not carry exactly one in `UNIT_STATE`. The
                 display-path case is a fork opening from a value meant for
-                drawing, which `docs/MODEL.md` § "The canonical evaluation
+                drawing, which `docs/INTERFACE.md` § "The canonical evaluation
                 rule" refuses. Requiring exactly one in `UNIT_STATE` is what
                 makes every forcing term in `build_system_matrix` mean what it says.
                 A state that carried any other value there would scale the
@@ -533,7 +533,7 @@ class RunDefinition:
         Two calls with the same argument on the same definition perform the
         identical sequence of operations, so they return bit-identical values.
         A keyframe, an export or a fork's starting state is taken from this
-        path. `docs/MODEL.md` § "The canonical evaluation rule" states the
+        path. `docs/INTERFACE.md` § "The canonical evaluation rule" states the
         guarantee that the path provides.
 
         Its result is a function of the run definition and of nothing else. It
@@ -564,7 +564,7 @@ class RunDefinition:
         including a change made at `instant_s`. The step that reached
         `instant_s` ran under the stretch before it, which
         `reaching_segment_at` returns. The two differ only at a keyframe.
-        `docs/MODEL.md` § "The canonical evaluation rule" says which of the
+        `docs/INTERFACE.md` § "The canonical evaluation rule" says which of the
         two a branch opens from (`PL-ZR49`).
 
         This method returns the segment rather than its index. An index is
@@ -730,7 +730,7 @@ class RunDefinition:
         anchored to its own opening, and 8 of 8 when anchored here. Two traces
         on one axis can be read against each other only at matched instants.
         So a difference trace or a shared tooltip built over per-run grids
-        would be wrong, not merely coarse. `docs/MODEL.md` § "What the chart
+        would be wrong, not merely coarse. `docs/INTERFACE.md` § "What the chart
         draws" states the same rule.
 
         **Every control event inside the window gets its own column, at no
@@ -740,7 +740,7 @@ class RunDefinition:
         draws a straight line through a kink. Each event is a segment opening,
         and a segment's opening state is already stored as its keyframe. So
         these columns are read rather than computed. They are exact, and no
-        propagator is formed for them. `docs/MODEL.md` § "What the chart
+        propagator is formed for them. `docs/INTERFACE.md` § "What the chart
         draws" states the guarantee that these event columns provide.
 
         Both bounds are always columns. In particular, the numeric readouts
@@ -769,7 +769,7 @@ class RunDefinition:
         the run forms the propagators for its two bounds. It forms the third
         only on a frame whose left edge has passed a column, and it forms
         those of any segment newly in view. A new spacing, from a new time
-        base or plot width, forms them all once more. `docs/MODEL.md` § "The
+        base or plot width, forms them all once more. `docs/INTERFACE.md` § "The
         run is that record, and every state is derived from it" says how often
         that happens and what it costs (`PL-CNCF`).
 

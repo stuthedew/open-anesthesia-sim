@@ -5,7 +5,7 @@ paths:
 
 # Picking a color in this interface
 
-The target is **WCAG 2.2 Level AA**. `docs/MODEL.md` § "Color contrast, and the
+The target is **WCAG 2.2 Level AA**. `docs/INTERFACE.md` § "Color contrast, and the
 standard this interface is held to" is the full statement — version, level, the
 two places this project holds itself higher, and the criteria deliberately
 deferred. Read it before changing a color; this file is only what a session
@@ -20,7 +20,7 @@ declared pair. What follows is only the half it cannot decide.
 the pairs somebody wrote down, so a control with no colour of its own is absent
 from its count rather than reported by it — which is how `PL-DHBX`'s three
 invisible transport buttons reached a release.
-`tests/integration/test_simulation_view.py` is what holds the built dashboard
+`tests/integration/simulation_view/test_simulation_view_foreground.py` is what holds the built dashboard
 to declaring one, control by control, so a widget added here either declares a
 foreground or is named in that module's `FOREGROUND_NOT_DECLARED` against the
 reason it draws no text. Naming it is a judgment worth making deliberately: the
@@ -163,7 +163,7 @@ rather than reaching a screen.
    the lesson rather than an accident. So the bar is an exceedance that the
    standard's own condition supports here, rather than either a requirement or
    an arbitrary strictness — do not relax it by citing the criterion, and do not
-   defend it by misquoting the criterion. `docs/MODEL.md` § "Color contrast, and
+   defend it by misquoting the criterion. `docs/INTERFACE.md` § "Color contrast, and
    the standard this interface is held to" carries it, in the list of bars this
    interface holds itself to above AA.
 

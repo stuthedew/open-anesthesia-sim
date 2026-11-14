@@ -6,9 +6,9 @@ effort: M
 status: ready
 classes: ux
 feature: presentation-safety
-touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/controller.py, tests/unit/test_dashboard_frame.py, tests/integration/test_simulation_view.py, tests/integration/test_controller.py
+touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/controller.py, tests/unit/test_dashboard_frame.py, tests/integration/simulation_view, tests/integration/controller
 added: 2026-09-07
-verify: grep -q 'def test_the_interface_says_the_run_is_approaching_its_supported_length' tests/unit/test_dashboard_frame.py && uv run pytest -q tests/unit/test_dashboard_frame.py tests/integration/test_controller.py
+verify: grep -q 'def test_the_interface_says_the_run_is_approaching_its_supported_length' tests/unit/test_dashboard_frame.py
 ---
 
 **Problem.** Nothing signals a run approaching the supported run length; it
@@ -20,7 +20,7 @@ made the run stop rather than extrapolate, which is the right behaviour — but 
 reaches the reader only as a refusal, at the moment it fires. A reader at 23 h
 50 min sees a run advancing normally and has no way to tell it is about to stop,
 so the halt is as likely to read as a fault as as the model declining to
-represent a patient past its declared envelope. `docs/MODEL.md` § "Supported run
+represent a patient past its declared envelope. `docs/INTERFACE.md` § "Supported run
 length" already requires that those two not be presented alike, and
 `require_supported_run_length`'s docstring gives the same reason for raising a
 distinct exception type: nothing was miscalculated, and every displayed value is

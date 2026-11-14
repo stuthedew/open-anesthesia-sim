@@ -61,6 +61,9 @@ from anesthesia_sim.layout.run_identity import RunIdentities
 _RUN_ID = RunIdentities().mint()
 _AGENT_NAMES = ("sevoflurane", "desflurane", "isoflurane")
 _CLOCK_INDEX = next(index for index, panel in enumerate(READOUT_PANELS) if panel.quantity is None)
+#: The delivered line of a run whose dials cannot be built, written out by hand.
+#: Both values are withheld and each keeps its unit (`PL-SV2Q`).
+_WITHHELD_DELIVERED_LINE = "Delivered \u2014% (\u2014 \u00d7MAC)"
 
 
 def _state(**changes: object) -> RunPanelState:
@@ -145,7 +148,7 @@ def test_a_drawn_run_states_the_snapshot_it_was_given_on_every_part() -> None:
 
     The expected texts are worked out from the run, not from the builders. The run
     delivers 2% sevoflurane and has run for 90 s, and 1 MAC of sevoflurane is 2.0%
-    (`docs/MODEL.md` § "MAC multiples as a display unit").
+    (`docs/INTERFACE.md` § "MAC multiples as a display unit").
     """
 
     controller = _run_at(90.0)
@@ -162,7 +165,6 @@ def test_a_drawn_run_states_the_snapshot_it_was_given_on_every_part() -> None:
     assert shown.values.accounting.status.text == "Valid"
     assert shown.one_mac == "1 MAC sevoflurane = 2.0%"
     assert shown.statement.agent_id == "sevoflurane"
-    assert shown.delivered_line is not None
     assert shown.delivered_line == "Delivered 2.00% (1.00 ×MAC)"
     assert not isinstance(shown.dials, NotBuilt)
     assert shown.new_case is None
@@ -566,7 +568,7 @@ def test_dials_that_cannot_be_built_are_carried_and_everything_else_is_still_sta
 
     assert isinstance(shown.dials, NotBuilt)
     assert isinstance(shown.dials.error, ValueError)
-    assert shown.delivered_line is None
+    assert shown.delivered_line == _WITHHELD_DELIVERED_LINE
     assert shown.notice is not None
     assert shown.statement.transport.start_enabled is False
     assert shown.one_mac == "1 MAC sevoflurane = 2.0%"
@@ -615,7 +617,7 @@ def test_a_halt_is_stated_for_a_record_whose_dials_or_1_mac_line_cannot_be_built
 
     assert isinstance(shown.dials, NotBuilt)
     assert type(shown.dials.error) is dials_error
-    assert shown.delivered_line is None
+    assert shown.delivered_line == _WITHHELD_DELIVERED_LINE
 
     if isinstance(one_mac, str):
         assert shown.one_mac == one_mac
@@ -653,6 +655,6 @@ def test_dials_refused_by_the_core_are_carried_like_any_other_refusal(
 
     assert isinstance(shown.dials, NotBuilt)
     assert type(shown.dials.error) is SimulationConfigurationError
-    assert shown.delivered_line is None
+    assert shown.delivered_line == _WITHHELD_DELIVERED_LINE
     assert shown.one_mac == "1 MAC sevoflurane = 2.0%"
     assert shown.statement.transport.start_enabled is False

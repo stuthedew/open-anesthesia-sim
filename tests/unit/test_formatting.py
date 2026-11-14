@@ -2,11 +2,11 @@
 
 The functions in that module are the last step between a modeled number and
 what a reader sees. They are therefore tested here directly, not only through
-the dashboard. `docs/MODEL.md` § "Displayed precision" reasons about that
+the dashboard. `docs/INTERFACE.md` § "Displayed precision" reasons about that
 module. Each claim that section makes should be checkable against the function
 it describes, without constructing the Qt interface.
 
-The end-to-end tests stay in `tests/integration/test_simulation_view.py`, where
+The end-to-end tests stay in `tests/integration/simulation_view/`, where
 a displayed value can be read off the control that shows it. They run the real
 controller, a real step and the real formatter, and check the string on the
 panel.
@@ -91,7 +91,7 @@ from anesthesia_sim.core.supported_ranges import (
 def test_format_percent_uses_the_documented_display_resolution() -> None:
     """Pin the PL-040 decision to show every concentration to 0.01 percentage points.
 
-    `docs/MODEL.md` § "Displayed precision" derives the resolution from the
+    `docs/INTERFACE.md` § "Displayed precision" derives the resolution from the
     measured spread of the partition coefficients. This test exists so that a
     change to the resolution is made deliberately.
     `test_concentration_decimals_are_a_choice_within_a_recorded_band` is the
@@ -111,7 +111,7 @@ def test_format_percent_uses_the_documented_display_resolution() -> None:
 def test_concentration_decimals_are_a_choice_within_a_recorded_band() -> None:
     """Two decimals is the owner's pick inside a one-to-two decimal band.
 
-    `docs/MODEL.md` § "Displayed precision" derives the band. The count of
+    `docs/INTERFACE.md` § "Displayed precision" derives the band. The count of
     decimals inside the band is a presentation decision (`PL-88GQ`). The two
     halves fail differently on purpose, and that is the reason to pin the band
     separately from the value:
@@ -150,7 +150,7 @@ def test_concentration_decimals_are_a_choice_within_a_recorded_band() -> None:
     # "every claim docs/MODEL.md makes about the last displayed digit". That
     # sentence states the reasoning without naming the constant. No check can
     # catch that phrasing without guessing at the judgment, and `CLAUDE.md`
-    # says not to script the judgment. docs/MODEL.md § "Displayed precision"
+    # says not to script the judgment. docs/INTERFACE.md § "Displayed precision"
     # states the reasoning in prose, and a reviewer is the guard.
     core_modules = (Path(__file__).resolve().parents[2] / "src" / "anesthesia_sim" / "core").rglob(
         "*.py"
@@ -158,7 +158,7 @@ def test_concentration_decimals_are_a_choice_within_a_recorded_band() -> None:
     for module in core_modules:
         assert "CONCENTRATION_DISPLAY_DECIMALS" not in module.read_text(), (
             f"{module.name} references the displayed decimal count. The display "
-            f"must not bound the model: see docs/MODEL.md § 'Displayed precision'."
+            f"must not bound the model: see docs/INTERFACE.md § 'Displayed precision'."
         )
 
 
@@ -253,7 +253,7 @@ def test_format_percent_preserves_order(first: float, second: float) -> None:
     """A higher fraction is never displayed as a lower percent.
 
     The dashboard shows six concentrations side by side, to be compared in
-    order. `docs/MODEL.md` § "Displayed precision" relies on the display not
+    order. `docs/INTERFACE.md` § "Displayed precision" relies on the display not
     reordering them. Rounding preserves order, but `format_percent` also has a
     below-resolution branch. The property is therefore checked on the shipped
     function rather than assumed (`PL-0M7K`). Each reading is parsed back to a
@@ -360,7 +360,7 @@ def test_the_mac_resolution_is_derived_from_the_percent_resolution() -> None:
 
     A MAC multiple is a percent divided by the agent's own `mac_percent`.
     The percent resolution therefore already fixes how finely the quotient is
-    known. For that reason `docs/MODEL.md` § "Displayed precision" *derives*
+    known. For that reason `docs/INTERFACE.md` § "Displayed precision" *derives*
     `MAC_DISPLAY_DECIMALS` rather than choosing it. The MAC resolution is the
     finest power of ten that is nowhere finer than the percent resolution
     converted into MAC. Deriving it independently would mean re-deriving two
@@ -410,7 +410,7 @@ def test_no_mac_readout_claims_more_than_the_percent_beside_it() -> None:
 def test_the_mac_digit_can_move_alone_at_a_rounding_boundary() -> None:
     """Show the MAC readout changing while the percent readout beside it does not.
 
-    `docs/MODEL.md` § "Displayed precision" says this can happen. Each pair sits
+    `docs/INTERFACE.md` § "Displayed precision" says this can happen. Each pair sits
     0.001 percentage points below and above 0.015 MAC, where the MAC readout
     changes from 0.01 to 0.02. The expected strings were worked by hand from the
     stored MAC:
@@ -465,7 +465,7 @@ def test_one_mac_of_every_agent_reads_as_one() -> None:
 def test_format_mac_multiple_carries_the_multiplication_sign() -> None:
     """`0.80 MAC` looks like a depth, and `0.80 ×MAC` looks like a ratio.
 
-    The sign is the display side of `docs/MODEL.md` § "MAC multiples as a
+    The sign is the display side of `docs/INTERFACE.md` § "MAC multiples as a
     display unit". On the four non-alveolar compartments, the number is a
     partial-pressure ratio and claims nothing about anesthetic depth. The two
     meanings cannot be told apart if the unit is written as a bare "MAC".
@@ -694,7 +694,7 @@ def test_the_mac_awake_band_uses_the_fraction_rather_than_a_published_percent() 
     the band at 2.60%, where the fraction places it at 2.16%. That is 20% too
     high. A falling trace crosses a reference drawn too high too soon, so the
     chart would teach an earlier wake-up than the literature supports.
-    `docs/MODEL.md` § "MAC-awake as a chart reference" gives the reasoning.
+    `docs/INTERFACE.md` § "MAC-awake as a chart reference" gives the reasoning.
 
     This trap is why the fraction is the stored form, rather than a schema
     preference. The test therefore treats the wrong band as a value that the
@@ -1601,7 +1601,7 @@ def test_agent_amounts_precision() -> None:
     The earlier Flet panel printed six decimals of an exhausted total whose
     parameter uncertainty is 0.016-0.23 L at 1 MAC with the reference adult's
     flows, and larger at a higher dial setting (`PL-0P3F`). One step of 0.1 L
-    lies inside the band that `docs/MODEL.md` § "Displayed precision" derives
+    lies inside the band that `docs/INTERFACE.md` § "Displayed precision" derives
     for the concentration readouts, and 0.01 L does not. The three totals
     share the count, so the accounting panel shows them on one scale. A
     positive amount that rounds to zero is shown as below the resolution,
@@ -1680,11 +1680,11 @@ def test_the_delivered_total_in_millilitres_of_liquid_is_shown_in_whole_millilit
     test computes that total and its SD from the stored data, not from the
     formatter. A step of 1 mL is then about 0.3 SD for sevoflurane and
     desflurane and 0.7 SD for isoflurane, never finer than the seventh of an SD
-    that `docs/MODEL.md` § "Displayed precision" allows (`PL-SP6H`).
+    that `docs/INTERFACE.md` § "Displayed precision" allows (`PL-SP6H`).
     """
 
     # The fine end of the readouts' band, "about a seventh of one parameter SD"
-    # (docs/MODEL.md § "Displayed precision").
+    # (docs/INTERFACE.md § "Displayed precision").
     finest_step_in_sds = 1.0 / 7.0
     liquid = agent_amount_display_precision(
         AgentAmount.DELIVERED, AgentAmountUnit.MILLILITRES_OF_LIQUID
@@ -1778,10 +1778,20 @@ def test_a_unit_with_no_derived_precision_is_refused() -> None:
         (AgentAmount.DELIVERED, AgentAmountUnit.MILLILITRES_OF_VAPOUR),
     ]
 
+    # The refusal sends a developer to the section that derives each precision.
+    # That section is in `docs/INTERFACE.md` since `PL-CTXZ` moved it there.
+    remedy = (
+        "Derive one in the section 'Displayed precision' of docs/INTERFACE.md "
+        "and add it to app/formatting.py before showing this amount in this unit."
+    )
+    interface_document = Path(__file__).resolve().parents[2] / "docs" / "INTERFACE.md"
+    assert "\n### Displayed precision\n" in interface_document.read_text(encoding="utf-8")
+
     for amount, unit in refused:
         message = f"No displayed precision is derived for a {amount.value} in {unit.value}"
-        with pytest.raises(ValueError, match=message):
+        with pytest.raises(ValueError, match=message) as raised:
             agent_amount_display_precision(amount, unit)
+        assert str(raised.value).endswith(remedy)
         with pytest.raises(ValueError, match=message):
             AgentAmountPrecision(amount, unit, 0)
 
@@ -1902,7 +1912,7 @@ def test_format_agent_residual_leaves_a_non_finite_value_visible(litres: float) 
 def test_the_model_keeps_precision_the_display_throws_away() -> None:
     """The 0.01% resolution is a property of the display alone.
 
-    `docs/MODEL.md` § "Displayed precision" argues at length for two decimal
+    `docs/INTERFACE.md` § "Displayed precision" argues at length for two decimal
     places. A reader could reasonably take that as a statement about the
     model, but it is not one. Every compartment state and every integration
     step keeps full binary64 precision throughout, and the rounding happens
@@ -1973,7 +1983,7 @@ def test_the_model_keeps_precision_the_display_throws_away() -> None:
 def test_a_compartment_s_amount_is_shown_to_two_figures_and_no_finer_than_0_01_ml(
     litres: float, expected: str
 ) -> None:
-    """The expected strings are worked out by hand from `docs/MODEL.md` § "Displayed precision".
+    """The expected strings are worked out by hand from `docs/INTERFACE.md` § "Displayed precision".
 
     An amount is shown to two significant figures, never finer than 0.01 mL.
     A positive amount below that floor is shown as `<0.01`, and only zero is
@@ -2030,7 +2040,7 @@ def test_a_compartment_amount_that_is_not_a_number_is_refused(litres: object) ->
     ],
 )
 def test_a_compartment_s_share_is_shown_in_whole_percent(share: float, expected: str) -> None:
-    """The expected strings are worked out by hand from `docs/MODEL.md` § "Displayed precision".
+    """The expected strings are worked out by hand from `docs/INTERFACE.md` § "Displayed precision".
 
     A share is shown in whole percent. A positive share less than 0.5% is
     shown as `<1%`, and a share of 99.5% or more that is not the whole is
@@ -2184,7 +2194,7 @@ def test_a_cost_that_is_not_a_number_is_refused() -> None:
 def test_the_cost_s_and_the_price_s_precisions_follow_from_the_density_and_the_cost() -> None:
     """Derive both precisions from the stored densities, independently of the formatter.
 
-    `docs/MODEL.md` § "Displayed precision" gives the derivation (`PL-1P15`).
+    `docs/INTERFACE.md` § "Displayed precision" gives the derivation (`PL-1P15`).
     The price is the reader's own figure, so the cost's only modelled
     uncertainty is the liquid figure's, which comes from the measured density
     alone. The largest relative SD of a stored density is sevoflurane's,

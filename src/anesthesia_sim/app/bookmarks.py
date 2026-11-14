@@ -82,7 +82,7 @@ reading comes from the stepped system, which propagates the state one step at a
 time. The canonical reading comes from `RunDefinition.state_at`. It makes one
 propagation from the keyframe that starts the stretch, the span of constant
 settings that holds the instant. Every branch opens from the canonical
-reading. `docs/MODEL.md` § "The canonical evaluation rule" makes the canonical
+reading. `docs/INTERFACE.md` § "The canonical evaluation rule" makes the canonical
 reading the authority. The two readings can lie about 1e-14 apart, on opposite
 sides of a height. Suppose each reading were compared with the exact height. A
 trunk that halted on its live readings could then stop on a target, while a branch
@@ -153,7 +153,7 @@ class MarkStanding(StrEnum):
 
     `NOT_REACHED_WITHIN_CAP` is separate from `STILL_RUNNING` because a threshold
     above a compartment's asymptote is never reached. The run stops at
-    `docs/MODEL.md` § "Supported run length", and by then the question is
+    `docs/INTERFACE.md` § "Supported run length", and by then the question is
     settled. A row that still said "still running" would invite a learner to wait
     for something that cannot arrive.
 
@@ -351,7 +351,7 @@ class MacTarget:
 
     **Stored as a multiple of the agent's 1 MAC rather than as a percent of
     it.** The interface already shows every compartment in that unit
-    (`docs/MODEL.md` § "MAC multiples as a display unit"). `core/concentration.py`
+    (`docs/INTERFACE.md` § "MAC multiples as a display unit"). `core/concentration.py`
     states the hazard that a second unit would add. The forms of one
     concentration differ by factors of a hundred, and each conversion between
     them is a place where a correct number can take on the wrong meaning. A
@@ -535,7 +535,7 @@ class BookmarkCrossing:
             the case's own seconds. It is the completed step's own instant, so
             it lies on the run's `simulation_step_s` grid rather than on the
             coarser `multiplier ×` grid that a tick boundary can reach.
-            `docs/MODEL.md` § "Halting on a marked crossing" states why that
+            `docs/INTERFACE.md` § "Halting on a marked crossing" states why that
             matters.
         time_bookmarks: The marked instants the step reached, in the order the
             set lists them.
