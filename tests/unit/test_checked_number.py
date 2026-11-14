@@ -2,9 +2,12 @@
 
 `core/checked_number.py` sets the rule for every checked type: `Fraction`,
 `Percent`, `MacPercent`, `SimulationStep`, the three flows, `CaseInstant`,
-`StepCount`, `CompartmentVolume` and `PartitionCoefficient`. The rule says what
-a checked type may be built from, that none is built from another, and how a
-zero is stored. Each type's own tests check that the type follows the rule.
+`StepCount`, `CompartmentVolume`, `PartitionCoefficient`, `PerfusionFraction`
+and `BloodFlow`. The rule says what a checked type may be built from, that none
+is built from another, and how a zero is stored. `BloodFlow` is built from a
+cardiac output and a perfusion fraction, where every other type is built from
+one number, so `tests/unit/test_blood_flow.py` checks what it is built from.
+Each type's own tests check that the type follows the rule.
 These tests check the rule itself, so that a change to it fails here before any
 type's tests fail (`PL-LLMN`, `PL-979Z`).
 """
@@ -25,6 +28,7 @@ import numpy
 import pytest
 
 import anesthesia_sim.core
+from anesthesia_sim.core.blood_flow import BloodFlow, PerfusionFraction
 from anesthesia_sim.core.checked_number import (
     CheckedQuantity,
     negative_zero_as_zero,
@@ -67,14 +71,15 @@ INSIDE_EVERY_RANGE: dict[type[Any], float] = {
     StepCount: 1,
     CompartmentVolume: 0.05,
     PartitionCoefficient: 0.05,
+    PerfusionFraction: 0.05,
 }
 """For each checked type, a number that every other type's range accepts, with one exception.
 
 0.05 is a supported step, a flow of 0.05 L/min, an instant of 0.05 s, a
-fraction of 0.05, a dial at 0.05%, a volume of 0.05 L and a partition
-coefficient of 0.05. A count of one step is an instant of 1 s, a flow of
-1 L/min, a fraction of 1.0, a dial at 1%, a volume of 1 L and a coefficient
-of 1. So when one of
+fraction of 0.05, a dial at 0.05%, a volume of 0.05 L, a partition
+coefficient of 0.05 and a perfusion fraction of 0.05. A count of one step is
+an instant of 1 s, a flow of 1 L/min, a fraction of 1.0, a dial at 1%, a
+volume of 1 L, a coefficient of 1 and a perfusion fraction of 1. So when one of
 these values, built as one type, is refused by another type, the refusal
 comes from the type and not from the number. The one exception is the step
 built from the count, because no whole number of seconds is a supported
@@ -96,19 +101,48 @@ NAMED_AS: dict[type[Any], str] = {
     StepCount: "step_count",
     CompartmentVolume: "volume_l",
     PartitionCoefficient: "partition_coefficient",
+    PerfusionFraction: "perfusion_fraction",
 }
 """The name that each constructor gives its value in a refusal.
 
 The name is the constructor's parameter, with two exceptions. The step uses
 the run's `simulation_step_s`, although its parameter is `seconds`. A
-concentration, a volume and a partition coefficient use their default `name`."""
+concentration, a volume, a partition coefficient and a perfusion fraction use
+their default `name`."""
+
+BUILT_FROM_TWO_QUANTITIES: frozenset[type[Any]] = frozenset({BloodFlow})
+"""The checked types that are built from other checked quantities, not from one number.
+
+A `BloodFlow` is a perfusion fraction of a cardiac output. It has no number
+of its own to build it from, so it is not a key of `INSIDE_EVERY_RANGE`. The
+tests here still hand one to every other type, which must refuse it.
+`tests/unit/test_blood_flow.py` checks what a `BloodFlow` is built from."""
+
+
+def _built(checked: type[Any]) -> Any:
+    """Return a value of `checked` whose number is the one in `INSIDE_EVERY_RANGE`.
+
+    A `BloodFlow` is built as the whole of a cardiac output of 0.05 L/min,
+    which is 0.05 L/min.
+    """
+
+    if checked is BloodFlow:
+        return BloodFlow(CardiacOutput(INSIDE_EVERY_RANGE[CardiacOutput]), PerfusionFraction(1.0))
+
+    return checked(INSIDE_EVERY_RANGE[checked])
+
 
 ORDERED_PAIRS = [
     (built_as, building)
-    for built_as, building in itertools.product(INSIDE_EVERY_RANGE, repeat=2)
+    for built_as, building in itertools.product(
+        [*INSIDE_EVERY_RANGE, *BUILT_FROM_TWO_QUANTITIES], INSIDE_EVERY_RANGE
+    )
     if built_as is not building and not issubclass(built_as, building)
 ]
 """Every ordered pair of two checked types, except a type built from its own subtype.
+
+The type being built is one that is built from one number. The value handed
+to it is built as any other checked type, a `BloodFlow` included.
 
 `MacPercent` is a `Percent` that is above zero. So a `Percent` is rebuilt from a
 `MacPercent` as from its own kind, because a MAC is a percent of one
@@ -306,7 +340,7 @@ def test_no_checked_type_is_built_from_another_checked_quantity(
     that the range checked the number first.
     """
 
-    value = built_as(INSIDE_EVERY_RANGE[built_as])
+    value = _built(built_as)
 
     with pytest.raises(TypeError) as raised:
         building(value)
@@ -341,7 +375,11 @@ def test_a_checked_type_is_rebuilt_from_its_own_kind(checked: type[Any]) -> None
     assert rebuilt == built
 
 
-@pytest.mark.parametrize("checked", list(INSIDE_EVERY_RANGE), ids=lambda checked: checked.__name__)
+@pytest.mark.parametrize(
+    "checked",
+    [*INSIDE_EVERY_RANGE, *BUILT_FROM_TWO_QUANTITIES],
+    ids=lambda checked: checked.__name__,
+)
 def test_the_number_comes_before_the_base_in_every_checked_type(checked: type[Any]) -> None:
     """`float` or `int` comes before `CheckedQuantity` in the bases, as `CheckedQuantity` says.
 
@@ -382,7 +420,7 @@ def test_every_checked_type_in_core_is_one_the_pairs_above_run() -> None:
         if subclass.__module__.startswith("anesthesia_sim.")
     }
 
-    assert shipped == set(INSIDE_EVERY_RANGE)
+    assert shipped == set(INSIDE_EVERY_RANGE) | BUILT_FROM_TWO_QUANTITIES
 
 
 def test_negative_zero_is_held_as_zero_and_every_other_number_as_itself() -> None:
@@ -408,6 +446,7 @@ OUTSIDE_ITS_RANGE: dict[type[Any], float] = {
     StepCount: -5,
     CompartmentVolume: 1e-5,
     PartitionCoefficient: 1e5,
+    PerfusionFraction: 1.5,
 }
 """For each checked type, a number that its own range refuses, written into a pickle by hand."""
 
@@ -465,3 +504,39 @@ def test_every_checked_type_unpickled_at_any_protocol_is_rebuilt_through_its_che
         type(built_directly.value), match=f"^{re.escape(str(built_directly.value))}$"
     ):
         pickle.loads(_tampered(pickled, held, written, protocol))
+
+
+@pytest.mark.parametrize("protocol", range(pickle.HIGHEST_PROTOCOL + 1))
+def test_a_blood_flow_unpickled_at_any_protocol_is_rebuilt_through_its_checks(
+    protocol: int,
+) -> None:
+    """A saved blood flow edited to 1000 L/min is refused on load, at every protocol (`PL-GKG4`).
+
+    A `BloodFlow` is saved as its number and restored as the whole of a
+    cardiac output equal to it (`core/blood_flow.py`). So the edited number
+    meets the cardiac output's check. The refusal names the saved blood flow
+    first and then gives the reason that `CardiacOutput` gives when it is
+    built directly from the edited number. The refusal used to name only a
+    cardiac output, which the saved record still held unchanged.
+    """
+
+    held = INSIDE_EVERY_RANGE[CardiacOutput]
+    pickled = pickle.dumps(_built(BloodFlow), protocol=protocol)
+    loaded = pickle.loads(pickled)
+
+    assert type(loaded) is BloodFlow
+    assert loaded == held
+
+    written = OUTSIDE_ITS_RANGE[CardiacOutput]
+
+    with pytest.raises(AnesthesiaSimulationError) as built_directly:
+        CardiacOutput(written)
+
+    with pytest.raises(type(built_directly.value)) as refused:
+        pickle.loads(_tampered(pickled, held, written, protocol))
+
+    assert str(refused.value) == (
+        "a saved blood_flow_l_min of 1000.0 cannot be restored. A blood flow is a perfusion "
+        "fraction of a cardiac output, so it is restored as the whole of a cardiac output "
+        f"equal to it, and that is refused: {built_directly.value}"
+    )
