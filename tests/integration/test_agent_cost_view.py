@@ -23,7 +23,7 @@ from typing import NoReturn
 import pytest
 from PySide6.QtCore import QDate, QEvent, QPoint, QPointF, Qt
 from PySide6.QtGui import QWheelEvent
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QLabel
 
 from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app.agent_cost import NO_PRICE_TEXT
@@ -234,6 +234,38 @@ def test_patient_inputs_reach_the_drawn_liquid_figure_through_the_model(
         label.text() for label in cost_view.findChildren(type(panel.amount_text))
     }
     assert cost_view.preferences_notice.isHidden()
+
+
+def test_the_cost_view_says_its_amount_and_cost_are_modelled(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """The View's heading row says, in words, that its figures are model outputs (`PL-11Z9`).
+
+    A learner could otherwise read "Liquid used by the vaporizer" as the liquid a
+    real vaporizer used, and the cost beside it as a real cost. The statement is
+    on the heading row, which stays on screen whatever unit or price is set, so
+    it covers the amount and the cost alike. The expected text is typed here
+    from what a reader sees.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 10 * _SECONDS_PER_MINUTE)
+    controller.pause()
+    view = _dashboard(application, shown, controller)
+    (cost_view,) = _cost_views(view)
+    labels = cost_view.findChildren(QLabel)
+    (heading,) = [label for label in labels if label.text() == "Vaporizer output"]
+    (statement,) = [
+        label for label in labels if label.text() == "Model outputs \u2014 not measurements."
+    ]
+
+    assert statement.isVisible()
+    assert heading.isVisible()
+    assert statement.parentWidget() is heading.parentWidget()
+    assert abs(statement.geometry().center().y() - heading.geometry().center().y()) <= max(
+        heading.height(), statement.height()
+    )
 
 
 def test_a_unit_picked_in_one_view_reaches_every_view_and_survives_a_restart(
