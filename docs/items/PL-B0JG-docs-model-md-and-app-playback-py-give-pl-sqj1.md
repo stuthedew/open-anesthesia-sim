@@ -6,10 +6,10 @@ effort: S
 status: ready
 classes: docs
 feature: presentation-safety
-touches: docs/MODEL.md, src/anesthesia_sim/app/playback.py
+touches: docs/MODEL.md, src/anesthesia_sim/app/playback.py, docs/INTERFACE.md
 added: 2026-09-27
 payoff: the authoritative spec states the playback measurement it cites, not a floor a tenth of a point above it
-verify: ! grep -qF '99.0 to 99.9' docs/MODEL.md && ! grep -qF '99.0 to 99.9' src/anesthesia_sim/app/playback.py
+verify: ! grep -qF '99.0 to 99.9' docs/INTERFACE.md && ! grep -qF '99.0 to 99.9' src/anesthesia_sim/app/playback.py
 ---
 
 **Problem.** `docs/MODEL.md`'s passage under **What the rate label is a

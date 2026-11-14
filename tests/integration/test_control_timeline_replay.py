@@ -1,6 +1,6 @@
 """The control-input timeline, applied again to a fresh run, reproduces the run it records.
 
-`docs/MODEL.md` § "The control-input timeline" rests the chart marks and the
+`docs/INTERFACE.md` § "The control-input timeline" rests the chart marks and the
 change list on one claim: "Given the recorded settings at the recorded times,
 a fresh run must reproduce the run that the timeline describes." A setting
 that reached the model by a path that does not record it would change the

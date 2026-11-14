@@ -1,6 +1,6 @@
 """The agent accounting can be brought on screen from every Workspace, through the interface.
 
-`docs/MODEL.md` § "Minimum displayed outputs" lets a Workspace leave the agent
+`docs/INTERFACE.md` § "Minimum displayed outputs" lets a Workspace leave the agent
 accounting out, and requires it to "stay reachable in every layout". The
 document defines reachable: a reader can bring the View on screen from the
 Workspace through the interface alone, in a bounded number of steps, without

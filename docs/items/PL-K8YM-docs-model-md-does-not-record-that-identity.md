@@ -6,9 +6,9 @@ effort: S
 status: ready
 classes: docs, ux
 feature: presentation-safety
-touches: docs/MODEL.md
+touches: docs/MODEL.md, docs/INTERFACE.md
 added: 2026-09-07
-verify: grep -q '_running_agent_display' docs/MODEL.md && python3 tools/doc_check.py check
+verify: grep -q '_running_agent_display' docs/INTERFACE.md
 ---
 
 **Problem.** docs/MODEL.md does not record that identity-carrying controls are never rendered disabled, nor the running-agent chip beside the selector and header
@@ -31,8 +31,10 @@ time.
   exactly why declining to claim it is worth recording as a bar rather than
   left as an accident of the current widget tree.
 
-**Where.** `docs/MODEL.md:3350` for the first; the bullet list under
-"Color contrast..." (near `docs/MODEL.md:4060`) for the second.
+**Where.** In `docs/INTERFACE.md`, the paragraph that opens "The agent
+selector and the header back the written name" for the first; the bullet
+list under `docs/INTERFACE.md` § "Color contrast, and the standard this
+interface is held to" for the second.
 
 **Why it matters.** Both statements are incomplete rather than wrong, which is
 what has let them survive two passes. The first names two carriers of the ISO

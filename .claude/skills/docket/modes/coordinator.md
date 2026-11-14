@@ -131,7 +131,8 @@ once a plugin carries the hooks and skills (`PL-XFDQ`).
   paragraph, and never only points into a file. When a thread's ask does not,
   the coordinator adds the quote or sends the ask back (project owner,
   2026-11-02, `PL-77QB`).
-- **A `docs/MODEL.md` rewrite that changes no value, equation, code span or
+- **A rewrite of `docs/MODEL.md` or `docs/INTERFACE.md` that changes no value,
+  equation, code span or
   citation does not reach the owner.** It merges on green. Only a sentence
   whose meaning needs a clinician's judgment is put to them, quoted (project
   owner, 2026-11-02, ratified, `PL-ZTZF`).

@@ -24,7 +24,7 @@ from anesthesia_sim.core.exceptions import SimulationConfigurationError
 
 # Gas Man's default isoflurane price is US$20.47 for a 100 mL bottle, "as of March 5,
 # 2008" (Philip JH, *Workbook for Gas Man*, Appendix C, printed p. 171, and
-# printed p. 105). `docs/MODEL.md` § "A cost at the reader's price" quotes it.
+# printed p. 105). `docs/INTERFACE.md` § "A cost at the reader's price" quotes it.
 ISOFLURANE_PRICE = AgentPrice(
     agent_id="isoflurane",
     bottle_price=20.47,

@@ -1,6 +1,6 @@
 """Tests for the compartment schematic's readings: each container's fill and its labels.
 
-`docs/MODEL.md` § "The compartment schematic: what its heights, amounts and
+`docs/INTERFACE.md` § "The compartment schematic: what its heights, amounts and
 share bar assert" is the specification (`PL-2881`). The expected values come
 from a closed form, not from the snapshot under test. With no alveolar
 ventilation, nothing leaves the circuit for the patient. The circuit then
@@ -38,7 +38,7 @@ FRESH_GAS_FLOW_L_MIN = 8.0
 SECONDS_PER_MINUTE = 60.0
 SEVOFLURANE_MAC_PERCENT = load_agent_parameters("sevoflurane").mac_percent
 # The concentration chart's axis is 3 MAC of the running agent for every agent
-# (`docs/MODEL.md` § "The compartment schematic: what its heights, amounts and
+# (`docs/INTERFACE.md` § "The compartment schematic: what its heights, amounts and
 # share bar assert").
 AXIS_TOP_PERCENT = 3 * SEVOFLURANE_MAC_PERCENT
 
@@ -126,7 +126,7 @@ def test_a_container_s_height_is_its_tension_and_not_its_amount() -> None:
 
     Fat then holds about a fifth of all the agent in the run, which is more than
     the alveoli hold. Yet the alveolar container is filled to nearly a third of
-    its height (`docs/MODEL.md` § "The compartment schematic: what its heights,
+    its height (`docs/INTERFACE.md` § "The compartment schematic: what its heights,
     amounts and share bar assert"). So a reader who took the heights for amounts
     would rank fat and the alveoli the wrong way round. That is why the labels
     must give the amounts.
@@ -178,7 +178,7 @@ def test_the_share_bar_shares_add_up_to_the_whole(agent_id: str) -> None:
 
     The test sums the six amounts itself, independently of the snapshot's own
     total. So the test also checks that the bar divides by all the agent the
-    run holds, circuit included (`docs/MODEL.md` § "The compartment schematic:
+    run holds, circuit included (`docs/INTERFACE.md` § "The compartment schematic:
     what its heights, amounts and share bar assert").
     """
 
@@ -260,7 +260,7 @@ def test_fat_s_share_grows_through_the_first_hour_while_its_container_stays_near
     """The bar shows fat's share growing while fat's tension stays near zero.
 
     The containers' heights are tensions, so the heights cannot show this
-    growth. `docs/MODEL.md` § "The compartment schematic: what its heights,
+    growth. `docs/INTERFACE.md` § "The compartment schematic: what its heights,
     amounts and share bar assert" gives fat about a fifth of the stored agent
     after one hour with the sevoflurane dial at 1 MAC (`PL-H5DV`).
     """
@@ -285,7 +285,7 @@ def test_fat_s_share_grows_through_the_first_hour_while_its_container_stays_near
 def test_each_container_is_marked_at_the_chart_s_gridlines(agent_id: str) -> None:
     """`PL-8W1B`: the marks stand at every 0.5 MAC below the 3 MAC top, for every agent.
 
-    The chart rules its axis every 0.5 MAC from 0 to 3 MAC (`docs/MODEL.md`
+    The chart rules its axis every 0.5 MAC from 0 to 3 MAC (`docs/INTERFACE.md`
     § "The compartment schematic: what its heights, amounts and share bar
     assert"). So a container is marked at five sixths of its height and below,
     in sixths. The caption names the spacing in percent and in MAC. The percent

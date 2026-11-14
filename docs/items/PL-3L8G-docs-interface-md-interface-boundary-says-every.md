@@ -1,19 +1,19 @@
 ---
 id: PL-3L8G
-title: docs/MODEL.md § 'Interface boundary' says every drawn instant is a whole number of hundredths so the hover prints the exact instant, but the hover note says instants are given at the run's step (copy editor structure read, 2026-11-05)
+title: docs/INTERFACE.md § 'Interface boundary' says every drawn instant is a whole number of hundredths so the hover prints the exact instant, but the hover note says instants are given at the run's step (copy editor structure read, 2026-11-05)
 priority: P2
 effort: S
 status: ready
 classes: defect, docs
 feature: model-md-structure
-touches: docs/MODEL.md
+touches: docs/MODEL.md, docs/INTERFACE.md
 deferred-from: v0.7.0 - a new problem: the whole-hundredths claim was written by PL-T5NJ's work clearing Gate 3 (#1840, 2026-10-25), after the freeze, and not safety or science
 added: 2026-11-05
 payoff: the hover's claim to print the exact instant names the step length it depends on, so a change to the step cannot make it silently false
-verify: ! grep -qF 'instant falls on a whole hundredth of a second, so the hover readout can give' docs/MODEL.md
+verify: ! grep -qF 'instant falls on a whole hundredth of a second, so the hover readout can give' docs/INTERFACE.md
 ---
 
-**Problem.** docs/MODEL.md § 'Interface boundary' says every drawn instant is a whole number of hundredths so the hover prints the exact instant, but the hover note says instants are given at the run's step (copy editor structure read, 2026-11-05)
+**Problem.** docs/INTERFACE.md § 'Interface boundary' says every drawn instant is a whole number of hundredths so the hover prints the exact instant, but the hover note says instants are given at the run's step (copy editor structure read, 2026-11-05)
 
 **Checked 2026-11-09:** § "Interface boundary" says "Each drawn instant falls
 on a whole hundredth of a second, so the hover readout can give the exact time

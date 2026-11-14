@@ -1,9 +1,11 @@
-"""Have a strong model read `docs/MODEL.md` against the stored data once, as one message batch.
+"""Have a strong model read the specification against the stored data once, as one message batch.
 
-`docs/MODEL.md` is the specification of the clinical model, and every value
-under `src/anesthesia_sim/data/` is cited from it. A statement there that
+The specification is `docs/MODEL.md`, which specifies the clinical model, and
+the documents split from it, such as `docs/INTERFACE.md`
+(`product_paths.SPECIFICATION_DOCS`). Every value under
+`src/anesthesia_sim/data/` is cited from it. A statement there that
 contradicts a stored value, another statement or its own units could mislead a
-learner, and no session has read the whole document against the data in one
+learner, and no session has read the whole of it against the data in one
 pass, because it does not fit in one session's budget (`PL-5S71`). This tool
 buys that reading on the owner's API credit.
 
@@ -75,7 +77,7 @@ from docket.model_choice import Choice  # noqa: E402
 from docket.vcs import tracked_under  # noqa: E402
 
 from headless_worker import STATE_DIR, Refused, role_choice  # noqa: E402
-from product_paths import DATA_DIR, MODEL_DOC  # noqa: E402
+from product_paths import DATA_DIR, SPECIFICATION_DOCS  # noqa: E402
 
 #: The role this reading asks `docket.toml`'s `[models]` table for.
 REVIEW_ROLE = "review"
@@ -131,10 +133,13 @@ FINDINGS_SCHEMA: dict[str, object] = {
     "additionalProperties": False,
 }
 
-SYSTEM_PROMPT = """\
+#: The specification's documents as a sentence names them.
+SPECIFICATION = " and ".join(SPECIFICATION_DOCS)
+
+SYSTEM_PROMPT = f"""\
 You are reviewing the specification of an educational simulator of \
 inhaled-anesthetic uptake and distribution. The specification is \
-docs/MODEL.md. The parameter values the simulator stores are the JSON files \
+{SPECIFICATION}. The parameter values the simulator stores are the JSON files \
 under src/anesthesia_sim/data/. Both are given in full below.
 
 A clinician could act on what the simulator displays, so a statement in the \
@@ -166,7 +171,7 @@ stored value. Explain the conflict in one or two plain sentences.\
 
 @dataclass(frozen=True)
 class Section:
-    """One `##` section of the model document, with the request that reviews it."""
+    """One `##` section of the specification, with the request that reviews it."""
 
     custom_id: str
     heading: str
@@ -177,17 +182,24 @@ def sections(document: str) -> list[Section]:
     """Each `##` section of `document`, in order, outside any fenced code block.
 
     The text before the first `##` heading is the document's title and is not a
-    section. Each section's id leads with its position, so ids stay unique and
-    sort in document order.
+    section. `document` may hold several documents one after another, so a
+    level-1 heading, which opens the next document's title, ends the section
+    before it. Each section's id leads with its position, so ids stay unique
+    and sort in document order.
     """
     found: list[tuple[str, list[str]]] = []
     fenced = False
+    # Whether the last heading read was a document's title.
+    titled = False
     for line in split_lines(document, keepends=True):
         if line.startswith(("```", "~~~")):
             fenced = not fenced
-        if not fenced and line.startswith("## "):
+        if not fenced and line.startswith("# "):
+            titled = True
+        elif not fenced and line.startswith("## "):
+            titled = False
             found.append((line[3:].strip(), [line]))
-        elif found:
+        elif found and not titled:
             found[-1][1].append(line)
     out = []
     for index, (heading, lines) in enumerate(found, 1):
@@ -205,7 +217,7 @@ def shared_prefix(document: str, data: Mapping[str, str]) -> list[dict[str, obje
     batch, where requests can be processed more than five minutes apart.
     """
     blocks: list[dict[str, object]] = [
-        {"type": "text", "text": f"<file path={MODEL_DOC!r}>\n{document}\n</file>"}
+        {"type": "text", "text": f"<file path={SPECIFICATION!r}>\n{document}\n</file>"}
     ]
     for path, text in data.items():
         blocks.append({"type": "text", "text": f"<file path={path!r}>\n{text}\n</file>"})
@@ -216,7 +228,7 @@ def shared_prefix(document: str, data: Mapping[str, str]) -> list[dict[str, obje
 def instruction(section: Section) -> str:
     """The part of a request that names the one section it reviews."""
     return (
-        f"Review the section of docs/MODEL.md headed {section.heading!r}. Report "
+        f"Review the section of the specification headed {section.heading!r}. Report "
         "findings only for statements inside that section, checked against the "
         "whole specification and every data file above."
     )
@@ -294,8 +306,8 @@ def cost_bound_usd(requests: Sequence[Mapping[str, object]], model: ReviewModel)
 
 
 def read_inputs(root: Path = ROOT) -> tuple[str, dict[str, str]]:
-    """The model document, and each data file the repository tracks, by path."""
-    document = (root / MODEL_DOC).read_text(encoding="utf-8")
+    """The specification's documents as one text, and each tracked data file by path."""
+    document = "".join((root / path).read_text(encoding="utf-8") for path in SPECIFICATION_DOCS)
     data = {
         path.relative_to(root).as_posix(): path.read_text(encoding="utf-8")
         for path in tracked_under(root, DATA_DIR, ".json")
@@ -423,7 +435,9 @@ def estimate(args: argparse.Namespace) -> int:
     if args.write:
         args.write.write_text(json.dumps({"requests": requests}, indent=1), encoding="utf-8")
         print(f"wrote the batch body to {args.write}")
-    print(f"{len(requests)} requests, one per section of {MODEL_DOC}, over {len(data)} data files")
+    print(
+        f"{len(requests)} requests, one per section of {SPECIFICATION}, over {len(data)} data files"
+    )
     print(f"on {model.choice.describe()}")
     print(
         f"at most ${cost_bound_usd(requests, model):.2f}, "

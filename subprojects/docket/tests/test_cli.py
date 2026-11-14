@@ -11206,6 +11206,7 @@ def test_arm_arms_a_pull_request_body_record_on_green(
         "src/anesthesia_sim/data/agents/sevoflurane.json",
         "tests/unit/test_uptake.py",
         "docs/MODEL.md",
+        "docs/INTERFACE.md",
         "README.md",
     ],
 )
@@ -11325,7 +11326,11 @@ def test_a_change_outside_the_owners_read_list_arms_on_green(
 
 
 def test_the_owners_read_list_is_spelt_as_the_owner_spelt_it() -> None:
-    """The list holds the owner's five simulator paths and the gate.
+    """The list holds the owner's simulator paths and the gate.
+
+    `docs/INTERFACE.md` joined on 2026-11-11, when `PL-CTXZ` moved the interface
+    sections out of `docs/MODEL.md` (project owner, 2026-11-11, ratified,
+    `PL-P3GZ`). The text was on the list before the move, as part of that file.
 
     `tests/` outside `subprojects/` was the owner's wording: the docket
     package's own tests arm with the tooling. The workflows, the hooks and
@@ -11337,6 +11342,7 @@ def test_the_owners_read_list_is_spelt_as_the_owner_spelt_it() -> None:
         "src/",
         "tests/",
         "docs/MODEL.md",
+        "docs/INTERFACE.md",
         "src/anesthesia_sim/data/",
         "README.md",
     )
@@ -11346,6 +11352,7 @@ def test_the_owners_read_list_is_spelt_as_the_owner_spelt_it() -> None:
         "tests/unit/test_uptake.py",
         "tests/conftest.py",
         "docs/MODEL.md",
+        "docs/INTERFACE.md",
         "README.md",
     ):
         assert arming.waits_on_read(path), path

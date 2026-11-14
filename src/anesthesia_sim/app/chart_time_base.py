@@ -385,7 +385,7 @@ def tick_times(start_s: float, stop_s: float, interval_s: float) -> tuple[float,
     The ticks are multiples of the interval measured from the case's zero,
     never from the window's left edge. They are measured from the case's
     zero rather than from any one run's opening, so a trunk and a branch
-    drawn on one axis are ruled by the same gridlines. `docs/MODEL.md`
+    drawn on one axis are ruled by the same gridlines. `docs/INTERFACE.md`
     § "Minimum displayed outputs" states the same rule. Measuring from zero
     keeps each gridline at the same simulated time as the window slides
     underneath it. Ticks derived from the edge would drift with the edge, so
@@ -430,7 +430,7 @@ def grid_spacing_s(raw_spacing_s: float) -> float:
 
     The spacing is rounded down, never up, so each column is still no more than one
     pixel's width of time from the next. That is the chart's guarantee in
-    `docs/MODEL.md` § "What the chart draws". The one exception is a spacing of less
+    `docs/INTERFACE.md` § "What the chart draws". The one exception is a spacing of less
     than a hundredth of a second, which needs a one-minute axis more than 6000 px wide.
     That spacing is raised to a hundredth, so there the line segment between two
     columns spans more than a pixel.
