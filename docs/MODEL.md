@@ -297,6 +297,7 @@ Every value the model computes rests on these assumptions.
   condition that § "Agent amount" states: 20 °C and 760 mmHg, dry (with no water
   vapour). No equation converts between ambient and body conditions.
   § "Known limitations" gives the size of the resulting error.
+  <!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 - Inspired gas reaches the alveoli undiluted by water vapour, because the
   modeled alveoli hold no water. "Dry" in the reference condition above means
   this same absence of water vapour. Real alveolar gas is saturated with water
@@ -551,6 +552,7 @@ condition the ideal-gas molar volume is 24.055 L/mol. The condition defines the
 unit only. It does not mean that any of the agent is physically at 20 °C and
 760 mmHg. $`M_x`$ is the equivalent gas volume of the agent stored in
 compartment $`x`$.
+<!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 **The reference condition matters only when an amount is converted out of the
 unit**, into moles, mass, or the millilitres of liquid that a vaporizer is filled
@@ -565,8 +567,10 @@ factor of 1.058.
 **Converting an alveolar, venous or tissue amount at 20 °C overstates it by
 5.8 %** (§ "Known limitations", under § "One reference condition, where the
 model physically has two").
+<!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 **Three reasons favour a 20 °C reference condition.**
+<!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 1. **The published vapour-to-liquid constants are 20 °C constants.** The
    consumption literature quotes one number per agent, the vapour volume
@@ -638,6 +642,10 @@ model physically has two").
 <!-- provenance: data/agents/sevoflurane.json molar_mass_g_mol = 200.05 -->
 <!-- provenance: data/agents/isoflurane.json molar_mass_g_mol = 184.49 -->
 <!-- provenance: data/agents/desflurane.json molar_mass_g_mol = 168.04 -->
+<!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
+<!-- provenance: data/agents/sevoflurane.json liquid_density.measured_at_celsius = 20 -->
+<!-- provenance: data/agents/isoflurane.json liquid_density.measured_at_celsius = 20 -->
+<!-- provenance: data/agents/desflurane.json liquid_density.measured_at_celsius = 20 -->
 <!-- derived: 182.8 from data/agents/sevoflurane.json liquid_density.g_ml = 1.5203, molar_mass_g_mol = 200.05 -->
 <!-- derived: 195.8 from data/agents/isoflurane.json liquid_density.g_ml = 1.5019, molar_mass_g_mol = 184.49 -->
 <!-- derived: 209.7 from data/agents/desflurane.json liquid_density.g_ml = 1.4651, molar_mass_g_mol = 168.04 -->
@@ -669,6 +677,7 @@ was read.
   PubMed and verified against the abstract on 2026-09-17. The abstract gives
   the four constants but does not state their temperature, so the
   reproduction above is what shows they are 20 °C constants.
+  <!-- not-restated: 20 °C -->
 - Philip JH. *Workbook for Gas Man*. Appendix C's `GASMAN.INI` listing is the
   source for the `Volatility` setting. Chapter 10's closed-circuit
   liquid-injection section (printed pp. 103-105) is the source for the five
@@ -2748,6 +2757,9 @@ the age-related iso-MAC charts built on it.
 5. **Nine liquid-density rows**, a density, its standard deviation and its
    measurement temperature for each agent. They are Laster, Fang and Eger
    1994's primary measurements at 20 °C, adopted on 2026-10-26.
+   <!-- provenance: data/agents/sevoflurane.json liquid_density.measured_at_celsius = 20 -->
+   <!-- provenance: data/agents/isoflurane.json liquid_density.measured_at_celsius = 20 -->
+   <!-- provenance: data/agents/desflurane.json liquid_density.measured_at_celsius = 20 -->
 6. **Three molar masses**, ChEMBL's formula masses, adopted the same day. They
    are tier 2 because a molar mass is computed from the molecular formula and the
    standard atomic weights, not measured on the agent, so no tier-1 source exists
@@ -8540,6 +8552,7 @@ at 24 h are 0.19 L of sevoflurane vapour, 0.18 L of isoflurane and 0.23 L of
 desflurane, which are 1.04, 0.92 and 1.10 mL of liquid. So at those settings one
 step of 1 mL is about one SD, and a step of 0.1 mL would be a tenth of one.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 **The delivered total in millilitres of liquid is shown in whole millilitres.**
 The delivered agent is the dial times the flow times the time, and its
@@ -8552,6 +8565,7 @@ thirtieth.
 <!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 **A cost is shown to three significant figures.** The agent cost display gives
 the cost as the delivered agent in liquid times the reader's price per
@@ -8604,6 +8618,7 @@ refuses to load a density measured at any temperature other than 20 °C, because
 it has no temperature correction. It computes the molar volume from the gas
 constant, 20 °C and one standard atmosphere. Neither the molar volume nor the
 published constants are stored.
+<!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 A test checks the derived ratios against Biro's within 1 % and against Gas
 Man's within 0.5 %. It also computes the cost of the isoflurane delivered in
@@ -9551,6 +9566,7 @@ expresses an amount of agent, not gas present in the body. This subsection's
 rules for an agent amount also apply to every other View that shows one,
 including the share bar (`PL-S79P`) and the agent cost View (`PL-B396`).
 § "Displayed precision" derives the precision at which amounts are shown.
+<!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 **An agent amount's unit always names vapour or liquid, and is never a bare
 "mL".** Millilitres of vapour and millilitres of liquid differ by a factor of
@@ -12154,6 +12170,7 @@ natively 37 °C quantities carried under a 20 °C label. The two conditions meet
 in the ventilation term, which moves $`\dot V_A`$ litres out of the circuit and
 the same $`\dot V_A`$ litres into the alveoli. In the alveoli, warming ambient
 gas to body temperature would expand it by the molar-volume ratio.
+<!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 **The size is 5.8 %, and it applies to the stores, not to conservation.**
 Every term is exact in the model's own arithmetic, and the mass balance closes
@@ -12163,6 +12180,7 @@ the unit names. So no agent goes missing, and the question is what the litres
 hold 5.5 % fewer moles than their 20 °C label implies, so the label overstates
 them by 5.8 %. The ratio behind both figures is 25.450/24.055, the molar
 volumes in litres at 37 °C and at 20 °C. The fresh-gas terms are unaffected.
+<!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 **It does not touch a concentration, and it does touch every amount held in
 the body.** A partial-pressure fraction has no unit and carries no condition.
@@ -12180,6 +12198,7 @@ exact. A stored total in millilitres of liquid is refused for this reason
 (§ "Agent amounts in millilitres, and the cost"). Removing this limitation would need a gas-phase model that carries
 explicit conditions per compartment, which is well outside the current
 milestone.
+<!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 **The modeled alveoli are dry, and real ones are saturated at 47 mmHg.** This
 is the third gas-phase condition, beside temperature and pressure. "Agent
@@ -12193,6 +12212,7 @@ atmosphere, before any uptake has occurred. Equivalently, the undiluted figure
 is 6.6 % above the humidified one, which is 47/713. The alveolar equation
 carries $`\dot V_A(F_I - F_A)`$ with no such factor, so $`F_I`$ arrives
 undiluted.
+<!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 **The 47 mmHg is computed.** The saturation pressure of water at 37.0 °C is
 47.12 mmHg on the IAPWS-95 formulation (Wagner W, Pruß A. *The IAPWS
@@ -12320,6 +12340,7 @@ variable-bypass compensation is approximate, so no number is stored for it. An i
 derive the variable-bypass case from each agent's saturated vapour pressure
 rather than from the $`1/P`$ shortcut, and would owe each agent's SVP a source
 of its own. None is stored today.
+<!-- not-restated: 20 °C -->
 
 **Sources for the notes above.** None of them is the authority for a stored
 value:
