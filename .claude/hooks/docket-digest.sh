@@ -58,8 +58,7 @@ root=$(python3 "$(dirname "${BASH_SOURCE[0]}")/hook_input.py") || exit 0
 # write it as the effort cap, and print the line that names it (`PL-8MZ9`).
 # The draw and the line are one command because Claude Code runs a session's
 # hooks in parallel, so a separate reader could run before the cap is written.
-# Early, because the session repeats the line to the owner in its first reply.
-# The line in the transcript is also the trial's record of the arm, which the
+# The line in the transcript is the trial's record of the arm, which the
 # model review reads (`PL-HYRM`). Silent outside a cloud session. In a Projects
 # thread it writes no cap and says the thread is in neither arm, and a level a
 # session was moved to by hand survives the rerun at a compaction (`PL-6LVZ`).

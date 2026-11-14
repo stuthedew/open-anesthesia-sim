@@ -1576,3 +1576,20 @@ it too specific for a file every session loads, and it read as requiring every
 larger limitation to be stated. The rule's closing paragraph still says that
 the safety-critical standard decides which facts a text must give, and that
 this rule never cuts one.
+
+## Four reporting sentences removed from `CLAUDE.md`, 2026-11-11
+
+`PL-J1ZM` removed four sentences that told a session to report its
+record-keeping in a reply: that it filed an item, that it made both the record
+and the edit for a behavior change, where it put the item's id, and which
+files it checked for stale documentation. The fourth now tells the session to
+list those files in the item. The project owner approved the removal on
+2026-11-11 (ratified, over keeping the lines in replies), because the owner
+does not act on them.
+
+**The carrier test.** Nothing new is resident. The repository already holds
+the first three facts. An item's file shows that it was filed, the commit
+shows the edit, and each commit subject starts with the id.
+
+**What was replaced, and the cost.** One clause replaced the four sentences.
+`CLAUDE.md` fell from 47,389 to 47,271 bytes.

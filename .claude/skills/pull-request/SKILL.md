@@ -54,28 +54,51 @@ and open that branch's pull request instead. Once it lands, the daily branch
 sweep deletes the worker branch, and its item returns to `bin/docket next`
 (`PL-W5JR`).
 
-**The title and body go through the copy editor before the pull request is
-marked ready** (project owner, 2026-11-10 at 02:14 UTC, `PL-N2VQ`), because the
-squash merge makes them the commit message on `main`. The owner first asked
-for this on 2026-11-04 (`PL-J1ZM`), took it out an hour earlier on 2026-11-10
-(`PL-JYWB`), and then put it back. Write them to a file in the scratchpad, the
-title on the first line, and leave out the `🤖 Generated with` lines. Run
-`python3 tools/new_prose.py --draft FILE --kind "pull request"`, where FILE is
-that file, and save its output to a second file. Run `python3
-tools/copy_edit.py` on the second file. Revert an edit only where it lost or
-changed a value, a unit, a condition, an identifier or a citation. Then
-publish the copy editor's rewrite with the `🤖 Generated with` lines added
-back.
+## Write the title and body
 
-**A branch that changes no simulator path skips that copy edit, until
-`PL-BF6K` has measured the copy editor's audit reads** (project owner,
-2026-11-11 at 00:06 UTC, ratified, over keeping the edit on every pull
-request, `PL-WBT6`). `python3 tools/blind_review.py --count` prints 0 for
-such a branch. Write its title and body as `.claude/rules/plain-writing.md`
-says and publish them unedited. On `#2088`, which changed item files and two
-workflow files, the edit of a 381-word title and body took 12 model runs, 15
-minutes and $2.75, and it kept three changes of wording. A pull request that
-changes a simulator path keeps the edit.
+**Write the body for the project owner, who reads it to decide whether the
+change can merge.** Say in one short paragraph what changes and why. Then say
+what the owner should look at, or that nothing needs a review. Then give the
+result of the checks in a sentence. Keep the body short by being selective:
+leave out each detail that does not change what the owner does next. The item
+file holds the record of the work, and the diff shows each edit, so the body
+repeats neither. Two bodies show how much one holds.
+
+**Write it in the owner's words, not in the words of the files the branch
+changes.** A body tends to copy the vocabulary of its diff, and the owner has
+not read the diff. For each thing a sentence names, ask what the owner would
+call it. Name a file by its path. Name a paper by its first author, journal
+and year the first time, such as "Yasuda et al., Anesthesiology 1991". Say
+that a rule is written in a file, and who reads that file. Do not say that it
+"stood", "lives" or "sits" there. When a phrase in your draft also appears in
+the diff, say it again in plain words.
+
+For a branch that added a test and changed no simulator code:
+
+> A new test fails when a public parameter, field or return value in `core/`
+> is a plain `float` or `int`, unless the test's list names it. The list has
+> 173 entries, grouped by the reason each one is not yet a checked type. This
+> is step (a) of `PL-LHCL` (give every number in `core/` a checked type),
+> which stays open. No file under `src/` changes, so every simulated and
+> displayed value is the same.
+>
+> The blind review found two things worth knowing. Thirteen checks compare
+> two numbers in a way that accepts NaN. Twenty-one of the listed numbers
+> belong to records that check nothing. `PL-LHCL` records both, for the later
+> steps that give those numbers checked types.
+>
+> Nothing needs your review. The full test suite passes, and the new test
+> failed first when its list was emptied.
+
+For a branch that added item files only:
+
+> This branch adds four item files and changes nothing else. Three record the
+> design round on the interface's look, so that a later session can pick it
+> up. The fourth records your question about the sessions' network allowlist.
+>
+> Nothing needs your review before it merges. The questions for you are in
+> `PL-HS9M` (the order of work for the interface), `PL-BVC5` (how the
+> controls are drawn) and `PL-6VZF` (the network allowlist).
 
 ## Run the blind review passes before a simulator pull request is ready
 
