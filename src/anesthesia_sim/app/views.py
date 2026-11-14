@@ -450,6 +450,20 @@ class _KeyScroll(QScrollArea):
         self.setWidget(self._body)
         self._body.setAutoFillBackground(False)
 
+    def minimumSizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        """The widest row's least width with the scroll bar beside it, and the box's least height.
+
+        The box never scrolls sideways, so a View narrower than its widest row
+        would cut that row off at the right. A `QScrollArea`'s own least width
+        counts only its scroll bar, and the View's least width, which sets the
+        Area's, would then leave out every row in the box (`PL-CBYS`).
+        """
+
+        least = super().minimumSizeHint()
+        width = self._body.minimumSizeHint().width() + self.verticalScrollBar().sizeHint().width()
+
+        return QSize(max(least.width(), width), least.height())
+
     def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
         """The rows' width, and the height the rows need at the width the box has."""
 
@@ -600,7 +614,8 @@ class WashInView(QWidget):
     In an Area too short for all of it, the plot shrinks to
     `theme.WASH_IN_CHART_LEAST_HEIGHT`, and the rows from the statement of the
     window to the legend scroll in a box above the plot, as the concentration
-    chart's do (`_KeyScroll`).
+    chart's do (`_KeyScroll`). "Modelled, not measured" is a row of its own
+    under the heading, outside the box, so it stays in view with the plot.
 
     Its time window is its own, as the concentration chart's is (`PL-L59K`).
     Where both show the same window, the dashboard hands both the same frame,
@@ -635,12 +650,14 @@ class WashInView(QWidget):
         heading.addWidget(self.time_base_selector)
         column.addLayout(heading)
         column.addWidget(self.state_notice)
+        # The safety standard requires these three words beside the plot
+        # (`PL-F9TQ`), so they stay outside the box that scrolls (`PL-CBYS`).
+        column.addWidget(styled_label(WASH_IN_MODELLED_TEXT, color=MUTED))
         column.addWidget(
             _KeyScroll(
                 (
                     self.time_axis_caption,
                     styled_label(WASH_IN_DENOMINATOR_TEXT, color=MUTED, wrap=True),
-                    styled_label(WASH_IN_MODELLED_TEXT, color=MUTED),
                     self.legend,
                 )
             )

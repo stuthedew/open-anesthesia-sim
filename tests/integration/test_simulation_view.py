@@ -127,6 +127,7 @@ from anesthesia_sim.app.dashboard_frame import (
     STATUS_MARK_HALT_TEXT,
     STATUS_SUPPORTED_LIMIT_TEXT,
     TRUNK_RUN_INDEX,
+    WASH_IN_MODELLED_TEXT,
     WITHHELD_ACCOUNTING,
     WITHHELD_CONCENTRATION_TEXT,
     WITHHELD_ELAPSED_TIME_TEXT,
@@ -6865,6 +6866,67 @@ def test_a_view_taller_than_its_area_scrolls_inside_the_area(application: QAppli
         top = chart.mapTo(area.viewport(), QPoint(0, 0)).y()
         assert 0 <= top, f"the plot's top is {-top} px above a scroll box"
         assert top + chart.height() <= area.viewport().height(), "the plot runs below a scroll box"
+
+
+@pytest.mark.parametrize("workspace", ("Default", "Induction"))
+def test_a_chart_views_least_width_holds_every_row_above_its_plot(
+    application: QApplication, workspace: str
+) -> None:
+    """`PL-CBYS`: no row above a chart's plot is cut off at the right in a narrow Area.
+
+    The window statement, the reference values and the legend sit in a box
+    that scrolls up and down and never sideways. An Area is never made
+    narrower than its View's least width. So that width must hold the widest
+    of those rows, with room for the box's scroll bar. Before the fix the box
+    reported a least width of its own scroll bar alone. The concentration
+    View's least width was then 357 px, and its MAC-awake line needs 410 px.
+    In an Area dragged to its narrowest, that line lost the end of its band
+    and its unit.
+    """
+
+    view = _shipped_view_at(application, workspace, 1366, 768)
+
+    for chart_view in (*view.findChildren(ConcentrationView), *view.findChildren(WashInView)):
+        if not chart_view.isVisible():
+            continue
+
+        (key,) = chart_view.findChildren(QScrollArea)
+        rows = key.widget()
+        assert rows is not None
+        needed = rows.minimumSizeHint().width() + key.verticalScrollBar().sizeHint().width()
+
+        assert key.minimumSizeHint().width() >= needed, type(chart_view).__name__
+        assert chart_view.minimumSizeHint().width() >= needed, type(chart_view).__name__
+
+
+def test_the_wash_in_view_says_modelled_wherever_its_plot_is_shown(
+    application: QApplication,
+) -> None:
+    """`PL-CBYS`: "Modelled, not measured" stays in view with the F_A/F_I plot.
+
+    The safety standard requires those three words beside the plot
+    (`PL-F9TQ`). In the Induction Workspace at 1366 by 768 the wash-in View
+    is at its least height, and the box of rows above its plot shows only
+    its first two rows. With the line inside that box, it was scrolled out
+    of the box's view while the plot was drawn. It is now a row of its own
+    outside the box, under the heading.
+    """
+
+    view = _shipped_view_at(application, "Induction", 1366, 768)
+    wash_in = _wash_in(view)
+    (line,) = (
+        label for label in wash_in.findChildren(QLabel) if label.text() == WASH_IN_MODELLED_TEXT
+    )
+
+    assert line.isVisible()
+
+    for box in view.findChildren(QScrollArea):
+        if not box.isAncestorOf(line):
+            continue
+
+        top = line.mapTo(box.viewport(), QPoint(0, 0)).y()
+        assert 0 <= top, f"the line is {-top} px above a scroll box's view"
+        assert top + line.height() <= box.viewport().height(), "the line is below a box's view"
 
 
 def test_the_page_scrolls_only_where_the_window_is_too_small_for_every_view(
