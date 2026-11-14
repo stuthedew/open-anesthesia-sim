@@ -22,7 +22,7 @@ the sources it records. The same sources apply to these.
 verbosity", read 2026-11-14: "Positive examples showing how Claude can
 communicate with the appropriate level of concision tend to be more effective
 than negative examples or instructions that tell the model what not to do."
-https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-sonnet-5
+`PL-BFHK` gives the page's address.
 
 **Question for the owner.** Keep only the good text of each example, and drop
 each "Before" and point 2's bad sentence?
