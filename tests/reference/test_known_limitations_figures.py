@@ -59,6 +59,8 @@ def _section_text() -> str:
 def _one(pattern: str) -> tuple[str, ...]:
     """The groups of the one match of `pattern` in the section, or a failure naming it."""
 
+    # regex: a search for one sentence's figures through free prose, which no
+    # parser reads; the caller's pattern names the sentence's fixed words.
     matches = re.findall(pattern, _section_text())
     assert len(matches) == 1, (
         f"docs/MODEL.md § 'Known limitations' should state this once, as {pattern!r}, and it "
@@ -264,9 +266,10 @@ def test_baker_and_farmerys_set_differs_by_the_percents_printed() -> None:
         assert _as_printed((ratio - 1.0) * 100.0, printed) == printed
 
 
-def test_yasudas_muscle_and_fat_spreads_are_the_percents_printed() -> None:
+def test_yasudas_muscle_spreads_are_the_percents_printed() -> None:
     """Each muscle SD over its mean is the percent printed beside it."""
 
+    # regex: a search for each "N% for agent (mean ± SD)" figure through free prose.
     rows = re.findall(
         r"(\d+)% (?:of the mean )?for \w+ \((\d+\.\d+) ± (\d+\.\d+)\)", _section_text()
     )

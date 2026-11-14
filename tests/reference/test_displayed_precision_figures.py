@@ -87,6 +87,8 @@ def _section_text() -> str:
 def _one(pattern: str) -> tuple[str, ...]:
     """The groups of the one match of `pattern` in the section, or a failure naming it."""
 
+    # regex: a search for one sentence's figures through free prose, which no
+    # parser reads; the caller's pattern names the sentence's fixed words.
     matches = re.findall(pattern, _section_text())
     assert len(matches) == 1, (
         f"docs/INTERFACE.md § 'Displayed precision' should state this once, as {pattern!r}, "
