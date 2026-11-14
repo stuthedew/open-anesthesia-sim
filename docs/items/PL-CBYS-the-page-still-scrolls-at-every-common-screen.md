@@ -3,12 +3,14 @@ id: PL-CBYS
 title: The page still scrolls at every common screen size, though PL-JG82's brief says v0.6.0 removes the page scroll: the Areas and the marks and branch section sit in one scrolling page, which measured offscreen on 2026-11-11 scrolls 414 px (Default) and 832 px (Induction) at 1366 by 768, and 102 px and 520 px at 1920 by 1080, so the Induction Workspace's wash-in chart opens below the fold; decide whether the Areas fill exactly the space between the unconditional region and the disclaimer, as a Blender window's Areas fill the window
 priority: P2
 effort: M
-status: ready
+status: done
 classes: feature, ux
 feature: window-is-the-frame
-touches: src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/views.py, docs/MODEL.md
+touches: src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/views.py, docs/INTERFACE.md, src/anesthesia_sim/app/view_registry.py, src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/layout/sizing.py, src/anesthesia_sim/data/workspaces, README.md, docs/ARCHITECTURE.md, docs/interface-provenance.md, .claude/rules/ui-areas.md, src/anesthesia_sim/app/stylesheets.py, tests/integration, tests/benchmarks
 deferred-from: v0.7.0 - the gate's frozen list does not name it, and it is built after PL-9YPR's pull request merges
 added: 2026-11-11
+closed: 2026-11-14
+pr: 2134
 payoff: every shipped Workspace fits the window on a laptop, so the Induction wash-in chart opens on screen and not below the fold
 verify: grep -rq 'def test_no_shipped_workspace_scrolls_the_page' tests/integration/simulation_view/
 ---
@@ -157,3 +159,237 @@ minimum width of 220 px in `view_registry.py`, and its row of selector and
 button needs about 308 px. At the narrowest Area a border drag reaches, the
 Branch button is behind a sideways scroll. Set the declared minimum from what
 the row needs when this item decides the room each Area gets.
+
+**Build plan, 2026-11-11, from reading the code before any edit.** Nothing is
+built yet. The plan keeps one rule for every View, so no View gets a
+capability of its own.
+
+1. **What an Area's need means.** `AreaLayout._view_need` in
+   `app/area_layout.py` returns the larger of the registry's declared minimum
+   and the widget's Qt minimum. Change it to return the declared minimum
+   alone. The declared minimum becomes the least room in which a View is
+   shown at all. In a smaller Area the too-small notice still shows. Between
+   the declared minimum and the widget's Qt minimum, the View scrolls inside
+   its Area. `layout/sizing.py` needs no change to its logic, only to the
+   sentences of its module docstring that say a View is never clipped and
+   that a host grows to hold every need.
+2. **The scroll inside each Area.** `AreaFrame` wraps a View, and not an
+   `AreaNotice`, in a scroll area of its own. Keep `frame.content` as the
+   View, because 44 test lines read it, and show or hide the wrapper where
+   the frame now shows or hides `content`. The wrapper must size the View to
+   the larger of its viewport and the View's `minimumSizeHint`. A plain
+   `QScrollArea` with `setWidgetResizable(True)` gives a height-for-width
+   layout its preferred height, so the wash-in View scrolled more than it
+   needed in the mock-up. The mock-up's `Fit` class in the scratch script
+   overrode `resizeEvent` to do the sizing, and the build does the same.
+   Remove the scroll area inside `views._CasePanelView`.
+3. **What the Areas tell the page.** `AreaLayout._settle` reports
+   `minimum_extent` of the needs through `minimumSizeHint`, and the page's
+   scroll area grows to it. Report the `minimum_extent` of each Area's floor
+   at the floor's own width instead. The page then never grows past the
+   window while the floors fit, and `settle` shows the too-small notice in an
+   Area that cannot have its need, as it already does in a host that cannot
+   grow. The page's scroll area stays as the fallback for a window smaller
+   than the floors, so `SimulationView`'s code that keeps the chart in view
+   stays as it is.
+4. **The two charts.** In `views.ConcentrationView` and `views.WashInView`,
+   move the time-axis caption, the reference lines, the legend and the
+   hidden-trace and capped-trace lines into one box that scrolls above the
+   plot (least height 34 px in the mock-up, vertical policy Maximum, stretch
+   2 against the plot's 3). Add a least plot height to `app/theme.py`, 160 px
+   for the concentration plot and 120 px for the wash-in plot, and use it in
+   `qt_chart.py` where the plot's minimum height is now `CHART_HEIGHT` and
+   `WASH_IN_CHART_HEIGHT`. The preferred heights stay.
+5. **Declared minimums in `app/view_registry.py`, as placeholders.** The
+   concentration chart's height is what its folded layout needs with one run,
+   about 300 px, to be measured. Every other View is 120 px high. The Branch
+   View's width is what its row needs, about 308 px. Rewrite the module
+   docstring's paragraph on the declared size and `RegisteredView.minimum`.
+6. **Shipped Workspaces in `data/workspaces/`.** Induction's left column is
+   0.6 and 0.4 now. Give the wash-in a larger share so its plot is not short
+   at 1920 by 1080, and check that at 1366 by 768 the chart is held at its
+   need and the wash-in scrolls inside its Area. Give Maintenance's schematic
+   a taller Area (it needs 358 px). Measure all three Workspaces at both
+   sizes and put the table here.
+7. **Tests.** The page's scroll bar has no range in any shipped Workspace at
+   1366 by 768 and 1920 by 1080. A View taller than its Area scrolls inside
+   the Area and stays shown. An Area below its declared minimum still shows
+   the notice. The concentration plot is on screen in Induction at 1366 by
+   768. A View kept across a split is still shown in its new frame. Tests
+   that give a View its need through the widget's minimum size, and not
+   through the registry, change to declare it.
+8. **Documents.** `docs/MODEL.md`, `README.md` § "The window",
+   `docs/ARCHITECTURE.md`, `docs/interface-provenance.md`,
+   `.claude/rules/ui-areas.md` answer 4, and a dated note in `PL-K285` that
+   its Q2 answer changed here.
+
+The second mock-up's script is not in the repository. It patched
+`AreaLayout._content_for` and `_view_need` and the two chart Views'
+constructors, as steps 1, 2 and 4 describe.
+
+**Built so far, 2026-11-11 (commit `cb76d6cb1`), and where the build left the
+plan.** Steps 1, 2, 4, 5 and 6 are built. Step 3 was not built, and steps 7 and
+8 are still to do.
+
+1. **Step 3 is dropped: the page can still grow.** `AreaLayout` still reports
+   the sum of the Areas' needs to the page, as `PL-K285` Q2 decided. The needs
+   are now small, so the page does not grow at 1366 by 768 or 1920 by 1080.
+   Reporting only the floors would have shown a too-small notice in place of a
+   View in a small window. `docs/MODEL.md` § "Minimum displayed outputs" says
+   that a reader who chooses a View "sees the view itself, never only a notice
+   that the area is too small", and the agent accounting must stay reachable
+   that way. So `PL-K285` Q2's answer is not changed, and step 8 needs no note
+   in `PL-K285`.
+2. **An Area's least width comes from its View's content** (step 1 changed).
+   The need is the declared height, and the larger of the declared width and
+   the least width of the View's widget plus the scroll bar's width. With the
+   declared width alone, the Parameters row of four controls scrolled sideways
+   in a 331 px Area. A declared number for that row would also be a second
+   copy of a width that depends on the font. `PL-4JCC` (the Parameters row
+   wraps) then narrows the Area with no change to the registry.
+3. **The chart Views** (step 4). `views._KeyScroll` holds the statement of the
+   window, the reference values and the legend, and scrolls them above the
+   plot. Its least height is `theme.CHART_KEY_LEAST_HEIGHT`, 36 px, which
+   shows the first two rows. The advisories stay outside the box: no traces
+   shown, traces capped, traces above the axis, unmarked control changes and
+   the wash-in state lines. The mock-up had the first two inside it. They are
+   conditional text, and a reader must see one as soon as it applies.
+4. **Placeholders chosen** (steps 5 and 6): least plot heights 160 px and
+   120 px; least View height 120 px, except the concentration chart at 280 px
+   (its content measured 275 px offscreen) and Parameters at 160 px (one run's
+   row of controls); Maintenance's right column 0.52, 0.2, 0.28, so the
+   schematic has its 358 px at 1920 by 1080. Induction's 0.6 and 0.4 are
+   kept, because the concentration plot needs the height to separate six
+   traces and the wash-in plot has one trace.
+5. **Measured offscreen at 300 s of one run, 2026-11-11.** The page's scroll
+   range is 0 in all three Workspaces at both sizes, and no View scrolls
+   sideways.
+
+   | Window | Workspace | Views that scroll inside their Area |
+   | --- | --- | --- |
+   | 1366 by 768 | Default | Bookmarks, by 24 px |
+   | 1366 by 768 | Induction | Wash-in by 85 px, Bookmarks by 24 px |
+   | 1366 by 768 | Maintenance | Schematic by 228 px, Bookmarks by 29 px |
+   | 1920 by 1080 | Default, Induction, Maintenance | none |
+
+**Still to do.**
+
+- Step 7, tests. The whole suite was started after `cb76d6cb1` and its result
+  is not yet read. Expect failures where a test gives a View its need through
+  the widget's minimum height, where a test reads `scroll_area` on the
+  Bookmarks or Branch View (removed), and where a test expects a plot of 360
+  or 200 px. New tests: the plan's list, with "the page grows only where the
+  window is too small for the needs" in place of the notice test.
+- Step 8, documents. `docs/MODEL.md`: the sentence "The page grows to give the
+  view the space it needs" in § "Minimum displayed outputs" (add that a View
+  taller than its Area scrolls inside it), and "the 360 px plot" in the
+  paragraph on the linear percent axis (say it is the plot's preferred height,
+  and that the plot is 160 px at its least). `README.md` § "The window",
+  `docs/ARCHITECTURE.md`, `docs/interface-provenance.md`,
+  `.claude/rules/ui-areas.md` answer 4, and `layout/sizing.py`'s module
+  docstring (its sentence "never clipped" still holds; say the View scrolls).
+- `tools/contrast_check.py` and the dark-appearance test have not been run
+  against `stylesheets.clear_scroll_area_stylesheet`.
+- The scratch script that measures the table above is not in the repository.
+  It opens the dashboard with `main.open_dashboard`, switches Workspaces with
+  `view._tabs.activate(index)`, and reads
+  `view._page_scroll.verticalScrollBar().maximum()` and each
+  `AreaFrame.view_scroll`'s scroll bars.
+
+**The whole suite at `cb76d6cb1`, 2026-11-11:** 12,281 passed, 12 failed and
+8 errored. Each needs reading before it is changed: a test may be right and
+the build wrong.
+
+- `tests/integration/test_layout_adapter.py`:
+  `test_a_layout_of_one_area_is_its_view_alone`,
+  `test_a_view_the_new_layout_does_not_hold_leaves_the_container`,
+  `test_every_area_has_a_header_whose_chooser_names_its_view`,
+  `test_the_header_and_the_rule_are_the_chrome_these_tests_allow_for`.
+- `tests/integration/test_layout_keyboard.py`:
+  `test_the_controls_area_has_its_least_width_from_the_first_frame`.
+- `tests/integration/test_qt_rendering.py`:
+  `test_the_hover_reports_the_drawn_state_on_the_shipped_chart`,
+  `test_the_hover_box_stays_inside_a_plot_at_its_least_height`.
+- `tests/integration/test_simulation_view.py`:
+  `test_the_page_stops_holding_the_chart_once_the_reader_scrolls`,
+  `test_the_hover_readout_states_the_agent_compartment_and_both_units`,
+  `test_every_control_that_paints_its_own_content_declares_a_foreground`,
+  `test_spare_height_goes_to_the_plots_and_not_to_the_readouts`,
+  `test_the_page_takes_the_height_the_areas_ask_for_after_the_views_draw`.
+- All eight tests in `tests/benchmarks/test_frame_cost.py` errored. Whether
+  they also error on `main` is not checked.
+
+**Steps 7 and 8, 2026-11-14, taken over on another model after the first
+session stopped at its usage limit.** What each of the twelve failures and
+eight errors was, and what changed:
+
+- The four `test_layout_adapter.py` failures and the `test_layout_keyboard.py`
+  one read the View straight from its frame's layout. The View now sits in
+  the frame's `ViewScroll`, so they read it there. No behaviour changed.
+- `test_the_hover_box_stays_inside_a_plot_at_its_least_height` was a real
+  fault. On a plot at its least height of 160 px, the hover readout opened
+  above the cursor and ran off the plot's top. `_HoverReadout.show` in
+  `app/qt_chart.py` now opens it below the cursor where there is no room
+  above, and pins it to the plot's top where there is room on neither side.
+  The two hover tests that read a value at a set position now open a window
+  tall enough for the plot's preferred 360 px.
+- `test_every_control_that_paints_its_own_content_declares_a_foreground` named
+  two new widgets, `ViewScroll` and `_KeyScroll`. Both paint nothing of their
+  own, and the test's list now says so.
+- The three page-height tests assumed a page that grows to the Areas' size
+  hint. They now expect the Areas at their least height in a window too small
+  for them, the page's scroll range at zero once the window is tall enough,
+  and every extra pixel after that going to the Areas.
+- The eight frame-cost benchmarks found two scroll areas around the chart and
+  refused to guess. `_bring_chart_into_view` now scrolls each, inner first.
+
+New tests: `test_no_shipped_workspace_scrolls_the_page` (every shipped
+Workspace at 1366 by 768 and 1920 by 1080),
+`test_a_view_taller_than_its_area_scrolls_inside_the_area` (the Induction
+wash-in View scrolls in its Area, and the concentration plot is wholly in
+view), and `test_the_page_scrolls_only_where_the_window_is_too_small_for_every_view`.
+
+**The first new test failed on the branch as built.** At 1366 by 768 the page
+scrolled 9 px in all three Workspaces. The shipped right-hand column holds
+Parameters (160 px) over two Views at the general least height (120 px). With
+the Area headers and spacing that is 497 px, and that window gives the Areas
+488 px. The table above recorded 0 px; its scratch script is not in the
+repository, so why it differed is not known. The general least height in
+`app/view_registry.py` is now 110 px, a placeholder, and the column needs
+477 px. Parameters keeps 160 px, because a row of sliders cut off at the
+Area's edge reads as a row with no values. The failing run on 120 px is the
+regression record: `assert 9 == 0` for `[Default-1366-768]`,
+`[Induction-1366-768]` and `[Maintenance-1366-768]`.
+
+Documents changed: `docs/MODEL.md` § "Minimum displayed outputs" (a view
+scrolls inside its area, and the page grows only in a window too small for
+every view) and the paragraph on the linear percent axis (the plot is 360 px
+at its preferred height and as short as 160 px, with the spans at that
+height); `README.md` § "The window"; `docs/ARCHITECTURE.md`'s line for
+`area_layout.py`; `docs/interface-provenance.md`; `.claude/rules/ui-areas.md`
+answer 4; and `layout/sizing.py`'s module docstring. The contrast check
+passes: 27 of 27 declared requirements meet WCAG 2.2 AA.
+
+**Closed, 2026-11-14, on `#2134`.** Two blind review passes ran on the
+branch. Two findings were fixed in `91b166b0`: the key box above a chart's
+plot no longer lets a narrow Area cut off its widest row, such as the
+MAC-awake line, and "Modelled, not measured" is now a row of its own under the
+wash-in heading, so it stays in view with the plot. One finding is filed as
+`PL-S6CP`: the concentration chart's least height of 280 px does not cover a
+warning above the plot or a taller font. Two were rejected on measurement: the
+plot shrinks to its least height before the key box does, and the hover box
+sits beside the hovered point and fits a plot at its least height. The whole
+suite passed: 12,331 tests, 3 skipped. No function that mutmut mutates
+changed. Closing this item made `PL-4JCC` (the Parameters Area, now 266 px at
+1920 by 1080 for 86 px of controls) and `PL-VJD2` (Maximize Area) ready.
+`touches` now also names `app/stylesheets.py`, `tests/integration` and
+`tests/benchmarks`, which the work changed.
+
+**The adversarial review, 2026-11-14, after the closure.** The branch changes
+over 200 lines in the simulator, so three more passes ran: state across
+rebuilds, what a learner could misread, and whether each test fails with its
+behaviour broken. `9b4b31aa` fixed two faults (a kept View lost its scroll
+position on a rebuild, and the frame-cost benchmark scrolled the page before
+the Area's box) and strengthened two tests. `PL-26BZ`, `PL-YJ7N` and `PL-2NNM`
+are filed, and `PL-S6CP` has a second case. `bin/docket verify --self PL-CBYS`
+returned ACCEPT on `9b4b31aa`.
