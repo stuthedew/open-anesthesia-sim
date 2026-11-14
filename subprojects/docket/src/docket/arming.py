@@ -55,10 +55,7 @@ every later push while a pull request is open.
   there is one (`READ_ASK`), opens its first line with "send the owner
   nothing" and exits 3 (`NO_ASK`) rather than 1, so that a session reading
   only the first line, or only the exit status, still learns it (`PL-TLPH`).
-  Long docstrings and comments that a simulator change adds hold it until the
-  session records close-out step 8's review in a `Prose-review` record that
-  covers them (`PROSE_ASK`). A prose count that could not be read holds it
-  too. A simulator change holds until its newest `Blind-review` record says
+  A simulator change holds until its newest `Blind-review` record says
   that at least as many blind review passes ran as it owes (`BLIND_ASK`). A
   count of the passes owed that could not be read holds it too.
 - `behind N` (1): nothing holds it, but the base has `N` commits the branch
@@ -108,9 +105,9 @@ has already merged. What went unread is named beside it.
   loosening that no test pins merges unread, and so would one that also
   rewrote the check that reads the pins, since this module judges its own
   change.
-- A simulator change's new prose waits for a recorded review
-  (`PL-W04Z`), and the change waits for its blind review passes (`PL-HDRN`).
-  A blind review record is not undone by a later change, because close-out
+- A simulator change waits for its blind review passes (`PL-HDRN`). Its new
+  prose held it too until 2026-11-11, when the owner removed the copy edit of
+  each branch (`PL-J1ZM`). A blind review record is not undone by a later change, because close-out
   step 9 says a fix made for a finding needs no further pass.
 
 The dated reasoning for each rule, as this header held it until 2026-11-03,
@@ -396,30 +393,6 @@ OWNER_OFF = (
     "the switch, and ask again."
 )
 
-#: The commit trailer in which a session records close-out step 8's prose
-#: review, with the value `read N, rewrote M, rejected K` (`PL-W04Z`). A
-#: docstring or comment that a simulator change adds after the newest such
-#: record holds the pull request. A code fix after the review therefore needs
-#: no second review, while a new docstring does.
-PROSE_REVIEW = "Prose-review"
-PROSE_FORM = re.compile(r"read \d+, rewrote \d+, rejected \d+")
-
-#: What a `hold` on unreviewed prose tells the session. It points to the
-#: close-out mode for the step's instructions instead of restating them.
-PROSE_ASK = (
-    "  Run close-out step 8's prose review (.claude/skills/docket/modes/close-out.md) on "
-    "the docstrings and comments the branch adds, apply the rewrites you accept, and "
-    "record the review as a trailer in the last paragraph of a commit made after it, beside "
-    f"its Co-authored-by line: `{PROSE_REVIEW}: read N, rewrote M, rejected K`. One commit can "
-    f"carry this and an {OWNER_READ} record together. Then ask again."
-)
-
-#: What a `hold` tells the session when the count of unreviewed prose could not be read.
-PROSE_UNCOUNTED = (
-    "  A branch whose prose could not be counted is never armed as though it had none. Make "
-    "the count readable, most often by fixing a file Python will not parse, and ask again."
-)
-
 #: The commit trailer a session records close-out step 9's blind generalist
 #: review passes in (`PL-HDRN`). Its value lists every finding by pass, as
 #: `parse_blind_review` reads it (`PL-0BRY`). The newest such record covers the
@@ -603,7 +576,7 @@ BLIND_ASK = (
     "each finding as the step says. Then record the passes as a trailer in the last paragraph "
     "of a commit made after them, beside its Co-authored-by line, with one entry per "
     f"finding by pass: `{BLIND_REVIEW}: {BLIND_EXAMPLE}`. One commit can "
-    f"carry this, a {PROSE_REVIEW} record and an {OWNER_READ} record together. Then ask again."
+    f"carry this and an {OWNER_READ} record together. Then ask again."
 )
 
 #: What a `hold` tells the session when the passes owed could not be counted.
@@ -959,9 +932,8 @@ AUTO_MERGE_ON = "on"
 class CommandCount:
     """A count that a configured command printed, or why it could not be read.
 
-    The command in `prose_count_command` counts the docstrings and comments
-    that need a review, and the one in `blind_count_command` counts the blind
-    review passes a branch owes. `count` is the number the command printed.
+    The command in `blind_count_command` counts the blind review passes a
+    branch owes. `count` is the number the command printed.
     `declined` says why it could not be read, so that "could not count" is
     never treated as "nothing owed".
     """
@@ -1120,10 +1092,6 @@ class Verdict:
       and that the branch would change or delete.
     - `switched_off`: when the owner switched the pull request's auto-merge
       off.
-    - `unreviewed`: how many docstrings and comments the branch adds that no
-      `PROSE_REVIEW` record covers.
-    - `prose_since`: the commit carrying the newest such record.
-    - `prose_declined`: why that count could not be read.
     - `blind_owed`: how many blind review passes the branch owes.
     - `blind_recorded`: how many passes the newest `BLIND_REVIEW` record says
       ran.
@@ -1153,9 +1121,6 @@ class Verdict:
     moved: bool = False
     pinned: tuple[str, ...] = ()
     switched_off: str = ""
-    unreviewed: int = 0
-    prose_since: str = ""
-    prose_declined: str = ""
     blind_owed: int = 0
     blind_recorded: int = 0
     blind_since: str = ""
@@ -1196,11 +1161,6 @@ class Verdict:
     def unjudged(self) -> bool:
         """Whether simulator paths change and no record says whether the owner must read them."""
         return bool(self.read) and self.record is None
-
-    @property
-    def prose_held(self) -> bool:
-        """Whether prose with no recorded review, or a count that failed, holds the pull request."""
-        return self.unreviewed > 0 or bool(self.prose_declined)
 
     @property
     def unpassed(self) -> bool:
@@ -1352,10 +1312,6 @@ class Verdict:
         # A claim keeps the pull request a draft, which nobody is asked to read.
         if self.unjudged and not self.claims:
             said.append(JUDGE_ASK)
-        if self.unreviewed:
-            said.append(PROSE_ASK)
-        if self.prose_declined:
-            said.append(PROSE_UNCOUNTED)
         if self.unpassed:
             said.append(BLIND_ASK)
         if self.blind_declined:
@@ -1398,23 +1354,6 @@ class Verdict:
                 f"it changes {count} simulator {noun} and no {OWNER_READ} record on a commit "
                 "since its newest change there says whether the owner must read it"
             )
-        if self.prose_held:
-            since = (
-                f"the {PROSE_REVIEW} record on {self.prose_since[:12]}"
-                if self.prose_since
-                else "it forked"
-            )
-            if self.prose_declined:
-                reasons.append(
-                    f"how many docstrings and comments it adds since {since} could not be "
-                    f"counted - {self.prose_declined}"
-                )
-            else:
-                noun = "docstring or comment" if self.unreviewed == 1 else "docstrings and comments"
-                reasons.append(
-                    f"it adds {self.unreviewed} {noun} in the simulator since {since}, and "
-                    f"no {PROSE_REVIEW} record covers {'it' if self.unreviewed == 1 else 'them'}"
-                )
         if self.blind_declined:
             reasons.append(
                 f"how many blind review passes it owes could not be counted - {self.blind_declined}"
@@ -1464,7 +1403,6 @@ def arm(
     runner: Runner | None = None,
     newest: Callable[[str, str], PullRequestLookup] | None = None,
     auto_merge: Callable[[int], AutoMerge] | None = None,
-    prose_count: Callable[[str], CommandCount] | None = None,
     blind_count: Callable[[], CommandCount] | None = None,
     owner_ask: bool = False,
 ) -> Verdict:
@@ -1500,13 +1438,6 @@ def arm(
     given its number. A switch off holds the pull request unless an
     `AUTO_MERGE` record on a commit made since covers it. A forge that could
     not be asked counts as unread.
-
-    **And a simulator change's new prose may have had no review**
-    (`PL-W04Z`). `prose_count` counts the docstrings and comments the branch
-    adds. It is given the commit carrying the newest `PROSE_REVIEW` record,
-    or `""` where none does, and is asked only where the change touches a
-    simulator path. A count above zero holds the pull request, and so does a
-    count that could not be read.
 
     **And its blind review passes may never have run** (`PL-HDRN`).
     `blind_count` counts the passes the branch owes, and is asked only where
@@ -1547,7 +1478,7 @@ def arm(
             merged=forge.merged,
         )
     change = _read_change(root, where, items_dir, record_dir)
-    reviews = _read_reviews(root, where, change, prose_count, blind_count)
+    reviews = _read_reviews(root, where, change, blind_count)
     record, misread = _owner_read(
         root, where.run, where.base, change.on_list, worked=change.worked, tip=where.tip
     )
@@ -1752,11 +1683,8 @@ def _read_change(root: Path, where: _Branch, items_dir: str, record_dir: str = "
 
 @dataclass(frozen=True)
 class _Reviews:
-    """The prose and blind reviews a simulator change owes, and what the records say ran."""
+    """The blind review passes a simulator change owes, and what the record says ran."""
 
-    unreviewed: int = 0
-    prose_since: str = ""
-    prose_declined: str = ""
     blind_owed: int = 0
     blind_recorded: int = 0
     blind_since: str = ""
@@ -1765,31 +1693,13 @@ class _Reviews:
 
 
 def _read_reviews(
-    root: Path,
-    where: _Branch,
-    change: _Change,
-    prose_count: Callable[[str], CommandCount] | None,
-    blind_count: Callable[[], CommandCount] | None,
+    root: Path, where: _Branch, change: _Change, blind_count: Callable[[], CommandCount] | None
 ) -> _Reviews:
     """Count the reviews owed, where the change reaches a path that waits on a read."""
     if not change.on_list:
         return _Reviews()
     run, span = where.run, [where.tip, f"^{where.base}"]
     unread: list[str] = []
-    unreviewed = 0
-    prose_since = ""
-    prose_declined = ""
-    if prose_count is not None:
-        prose_since, value = _newest_trailer(root, run, span, PROSE_REVIEW)
-        if prose_since and not PROSE_FORM.fullmatch(value):
-            unread.append(
-                f"the {PROSE_REVIEW} record on {prose_since[:12]} is not 'read N, rewrote M, "
-                f"rejected K', so it was not read: {value}"
-            )
-            prose_since = ""
-        prose = prose_count(prose_since)
-        prose_declined = prose.declined
-        unreviewed = 0 if prose_declined else prose.count
     blind_owed = 0
     blind_recorded = 0
     blind_since = ""
@@ -1808,16 +1718,7 @@ def _read_reviews(
         passes = blind_count()
         blind_declined = passes.declined
         blind_owed = 0 if blind_declined else passes.count
-    return _Reviews(
-        unreviewed,
-        prose_since,
-        prose_declined,
-        blind_owed,
-        blind_recorded,
-        blind_since,
-        blind_declined,
-        tuple(unread),
-    )
+    return _Reviews(blind_owed, blind_recorded, blind_since, blind_declined, tuple(unread))
 
 
 def _read_claims(
@@ -1892,9 +1793,6 @@ def _held(
         moved=change.moved,
         pinned=change.pinned,
         switched_off=switched_off,
-        unreviewed=reviews.unreviewed,
-        prose_since=reviews.prose_since,
-        prose_declined=reviews.prose_declined,
         blind_owed=reviews.blind_owed,
         blind_recorded=reviews.blind_recorded,
         blind_since=reviews.blind_since,
@@ -1912,7 +1810,6 @@ def _settle(found: Verdict) -> Verdict:
         or found.unjudged
         or found.needs_owner
         or found.switched_off
-        or found.prose_held
         or found.blind_held
     ):
         return found
@@ -2062,12 +1959,12 @@ def merge_hold(
     the stages `arm` runs, through the remote's copy of `branch` as
     `owner_ask_on` reads it, so the two cannot disagree.
 
-    Three things `arm` reads are left out. The forge is not asked, because
+    Two things `arm` reads are left out. The forge is not asked, because
     whether the pull request already merged and whether its auto-merge was
-    switched off are about arming. The prose review and the blind review
-    passes are not counted, because both counts run the project's own
-    commands on the branch's files, and a check that runs with the default
-    branch's rights must not run what a pull request brought. The caller says
+    switched off are about arming. The blind review passes are not counted,
+    because that count runs the project's own command on the branch's files,
+    and a check that runs with the default branch's rights must not run what
+    a pull request brought. The caller says
     so beside a pass. A `behind` answer is returned as it is: GitHub's own
     rule keeps a branch behind its base from merging.
     """
