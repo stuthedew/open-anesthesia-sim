@@ -3157,9 +3157,9 @@ The 3 ×MAC ceiling (`CHART_AXIS_TOP_MAC` in `app/formatting.py`) is exactly
 desflurane's dial maximum divided by its 1 MAC, so it rests on a real device
 limit. Desflurane's vaporizer is the most limited, and the ceiling leaves no
 empty band above the range that vaporizer can reach. The ceiling puts the 1 MAC
-line at a third of the plot height, inside the plot rather than on its frame,
-which a ceiling of 2 could not do. It also keeps on the plot the 2-3 ×MAC range
-that overpressure induction works in. A ceiling at each agent's own dial maximum
+line at a third of the plot height, inside the plot rather than on its frame.
+Unlike a ceiling of 2, it also keeps on the plot the 2-3 ×MAC range that
+overpressure induction works in. A ceiling at each agent's own dial maximum
 could never be exceeded, but the chart would then draw the same MAC multiple at
 different heights for different agents, because the dial maxima run from
 3.00 ×MAC for desflurane to 4.17 ×MAC for isoflurane (`PL-CC23`).
