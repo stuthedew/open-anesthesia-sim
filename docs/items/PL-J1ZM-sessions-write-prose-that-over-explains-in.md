@@ -3,17 +3,19 @@ id: PL-J1ZM
 title: Sessions write prose that over-explains, in every kind of text they write: each writing rule adds something a text must carry (a reason for each value, what changing it would do, the test that holds it, its provenance) and none says what the reader can do without, so docs, docstrings, the interface, item briefs, pull requests and replies each need rewrites, and each later change grows them again
 priority: P1
 effort: M
-status: ready
+status: dropped
 classes: defect
 feature: copy-editor
-touches: .claude/rules/plain-writing.md, .claude/rules/instruction-writing.md, .claude/agents/copy-editor.md, docs/prose-review/gold, tools/new_prose.py, .claude/skills/docket/modes/close-out.md, docs/dead-ends.md, docs/items/PL-9331-make-docs-model-md-assumptions-known.md, docs/items/PL-BSYT-apply-the-prose-review-s-rewrites-of-four-docs.md, docs/items/PL-J37P-make-docs-model-md-displayed-precision-readable.md, docs/items/PL-PS5H-make-docs-model-md-minimum-displayed-outputs-up.md, docs/items/PL-XBJ3-make-docs-model-md-the-chart-s-hover-readout.md, docs/items/PL-XT53-make-docs-model-md-the-control-input-timeline.md, docs/items/PL-YVL0-make-docs-model-md-reset-behavior-through.md, .claude/skills/pull-request/SKILL.md, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_arming.py, docket.toml, CLAUDE.md, .claude/skills/docket/modes/start.md, tools/effort_trial.py, docs/prose-review/README.md, docs/resident-instructions.md, docs/items/PL-HNNH-sessions-skip-naming-in-the-pull-request-body.md, docs/items/PL-TG6P-text-written-after-the-copy-editor-has-run-is.md
+touches: .claude/rules/plain-writing.md, .claude/rules/instruction-writing.md, .claude/agents/copy-editor.md, docs/prose-review/gold, tools/new_prose.py, .claude/skills/docket/modes/close-out.md, docs/dead-ends.md, docs/items/PL-9331-make-docs-model-md-assumptions-known.md, docs/items/PL-BSYT-apply-the-prose-review-s-rewrites-of-four-docs.md, docs/items/PL-J37P-make-docs-model-md-displayed-precision-readable.md, docs/items/PL-PS5H-make-docs-model-md-minimum-displayed-outputs-up.md, docs/items/PL-XBJ3-make-docs-model-md-the-chart-s-hover-readout.md, docs/items/PL-XT53-make-docs-model-md-the-control-input-timeline.md, docs/items/PL-YVL0-make-docs-model-md-reset-behavior-through.md, .claude/skills/pull-request/SKILL.md, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_arming.py, docket.toml, CLAUDE.md, .claude/skills/docket/modes/start.md, tools/effort_trial.py, docs/prose-review/README.md, docs/resident-instructions.md, docs/items/PL-HNNH-sessions-skip-naming-in-the-pull-request-body.md, docs/items/PL-TG6P-text-written-after-the-copy-editor-has-run-is.md, docs/items/PL-K3QM-mark-the-earlier-deliberate-sweeps-with-sweep.md, docs/items/PL-KQBM-no-check-refuses-a-tracked-third-party-full.md
 deferred-from: v0.7.0 - its problem is new since the freeze and no release schedules it, so it is deferred on the terms of § "Deferring to the next gate"; not safety or science
 added: 2026-11-03
+closed: 2026-11-14
+reason: stopped by the owner on 2026-11-14 after four tests did not change how sessions write; the copy-edit removal lands on #2119
 payoff: every reader, from a clinician in docs/MODEL.md to the owner reading a reply, gets the point in a few sentences, and changes stop growing text that then needs its own rewrite
 verify: grep -qE '^[*][*]Measured again, 20' docs/items/PL-J1ZM-*.md
 not-delegable: the approach changes how every session writes and needs a design round with the owner
 root-cause-of: PL-BSYT, PL-J37P, PL-9331, PL-PS5H, PL-XBJ3, PL-XT53, PL-YVL0, PL-QS9H, PL-TPS7, PL-1K5X, PL-FDMJ, PL-VGDX, PL-K7N7, PL-2K0K, PL-HRPK
-generator: live - the 2026-11-11 re-diagnosis found that every instruction saying what a text must carry lengthens it and that the copy editor lengthened text in all three of its recent runs; the approved design shapes the first draft with a selection sentence and examples, and is being built
+generator: spent - the owner stopped the work on 2026-11-14 without a fix, so no session works this mechanism further
 misread: what a reader can do without, which no rule states for any kind of text, so each writer adds
 ---
 
@@ -245,3 +247,15 @@ The sources, each read on 2026-11-11 by a research subagent and not opened by th
 **Still to build.** Step 4, which moves reporting out of replies: `CLAUDE.md` has four sentences that tell a session to report something "in your reply". Cut `.claude/rules/plain-writing.md` to less than its old length and record the rule's edits in `docs/resident-instructions.md`. Write the docstring and reply examples to the guides above, and test them where the text is written. Then measure Done-when.
 
 **The build's pull requests.** Steps 3 and 5 are on #2119. The edits to tests in `subprojects/docket/tests/test_cli.py` change tests that pin `bin/docket arm`'s answers, so #2119 waits for the owner's read.
+
+**Stopped, not fixed, 2026-11-14** (project owner, 2026-11-14, "Agree to
+1,2,4", answering "Should we stop trying to fix the over-explaining prose and
+remove the copy-editor step (PR 2119)? This frees six held PRs.", ratified, over
+testing more ways to change how a session writes). Four tests on 2026-11-11
+changed neither the length nor the vocabulary of what a session writes, and
+the owner chose to stop testing. What #2119 lands is the removal the owner
+asked for on 2026-11-11: the copy edit of each branch, its `Prose-review:`
+trailer and the hold in `bin/docket arm` that enforced it (steps 3 and 5), and
+the line that asked a session to report its record-keeping in a reply. Step 4
+is not built, and is not filed, because the owner stopped the work it belongs
+to. The record of the four tests above stays as the reason.
