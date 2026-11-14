@@ -596,6 +596,16 @@ available as the thing that makes personal use lawful.
 **This directory currently holds no full texts.** The Jugel et al. 2014 entry
 in § "The documents" records the one it once held.
 
+**The list of document files this repository may hold.** `make check` refuses
+any tracked file with a document extension, such as `.pdf`, `.epub` or
+`.djvu`, that the list below does not name (`tools/full_text_check.py`). To add
+a file, first record its licence in its entry in § "The documents". Then add a
+line between the markers: the file's path in backticks, a colon, and the
+licence. The list is empty, because the repository holds no such file.
+
+<!-- full-text-check: licensed files begin -->
+<!-- full-text-check: licensed files end -->
+
 **Two publisher-copyright full texts were removed on 2026-09-06**: Baker &
 Farmery 2011 and Schüttler & Schwilden 2008. They went by the
 `git filter-repo` pass and force-push this section used to name as a

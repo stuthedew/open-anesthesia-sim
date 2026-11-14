@@ -301,6 +301,10 @@ jobs:
       # Bare: it reads tracked files as text. It refuses a model id written
       # outside `docket.toml`'s `[models]` table (`PL-0XDM`).
       - run: python3 tools/model_home_check.py
+      # Bare: it reads the tracked file list and one Markdown file. It refuses
+      # a tracked document file, such as a PDF, whose licence the references
+      # README does not record (`PL-KQBM`).
+      - run: python3 tools/full_text_check.py
       # Bare, unlike the `--verify` line further down: nothing has installed
       # `uv` at this point in the job, so every `verify:` command would be "not
       # found" and the replay would decline rather than answer. What is being

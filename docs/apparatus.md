@@ -690,7 +690,8 @@ then <!-- floor-commands -->
 `python3 tools/worker_runs.py check`,
 `python3 tools/pr_body_check.py --anchors`, `python3 tools/dead_ends.py check`,
 `python3 tools/fact_home_check.py`, `python3 tools/config_home_check.py`,
-`python3 tools/model_home_check.py` and `bin/docket check` under it. On a pull request, `bin/docket ci-scope` runs
+`python3 tools/model_home_check.py`, `python3 tools/full_text_check.py`
+and `bin/docket check` under it. On a pull request, `bin/docket ci-scope` runs
 under it first. It decides whether the run takes the item-only fast path
 (`PL-DXD4`) or skips the costly tests (`PL-STM6`). <!-- /floor-commands -->
 `check_floor_list` in `tools/doc_check.py` checks the commands between those
