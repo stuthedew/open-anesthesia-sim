@@ -421,13 +421,100 @@ def test_the_wash_in_view_never_scrolls_modelled_away_from_a_whole_plot(
 
     view = _shipped_view_at(application, "Induction", 1366, 768)
     wash_in = _wash_in(view)
-    (line,) = (
-        label for label in wash_in.findChildren(QLabel) if label.text() == WASH_IN_MODELLED_TEXT
+    line = _modelled_line(view)
+    areas = view.layout_container
+    (frame,) = (
+        areas.frame(area.id)
+        for area in areas.model.areas()
+        if areas.frame(area.id).content is wash_in
     )
-    inside = [box for box in wash_in.findChildren(QScrollArea) if box.isAncestorOf(line)]
+    inside = [box for box in frame.findChildren(QScrollArea) if box.isAncestorOf(line)]
 
     assert line.isVisible()
-    assert inside == [], "the line is in a box that scrolls inside the View"
+    assert inside == [], "the line is in a box that scrolls inside the Area"
+
+
+@pytest.mark.parametrize(("width_px", "height_px"), _COMMON_SCREENS_PX)
+@pytest.mark.parametrize("workspace", _shipped_workspace_names())
+def test_the_wash_in_curve_is_never_on_screen_without_modelled(
+    application: QApplication, workspace: str, width_px: int, height_px: int
+) -> None:
+    """`PL-26BZ`: wherever the wash-in plot is in view, "Modelled, not measured" is too.
+
+    The safety standard requires a predicted value to be told apart from a
+    measurement on screen, and the F_A/F_I curve is a prediction
+    (`PL-F9TQ`). In the Induction Workspace at 1366 by 768 the wash-in View is
+    taller than its Area and scrolls inside it. Before the fix, the line sat
+    under the heading, so a reader who scrolled down to the curve scrolled
+    the line out of the Area. The test scrolls the View through its whole
+    range, a few pixels at a time, and at each position checks the line
+    wherever any part of the plot is in view.
+    """
+
+    view = _shipped_view_at(application, workspace, width_px, height_px)
+    shown = [wash_in for wash_in in view.findChildren(WashInView) if wash_in.isVisible()]
+
+    for wash_in in shown:
+        line = _modelled_line(view)
+        areas = view.layout_container
+        (frame,) = (
+            areas.frame(area.id)
+            for area in areas.model.areas()
+            if areas.frame(area.id).content is wash_in
+        )
+        assert frame.view_scroll is not None
+        bar = frame.view_scroll.verticalScrollBar()
+
+        for position in range(0, bar.maximum() + 1, 4):
+            bar.setValue(position)
+            application.processEvents()
+
+            if not _partly_in_view(view, wash_in.chart):
+                continue
+
+            assert _wholly_in_view(view, line), (
+                f"at scroll {position} of {bar.maximum()} the plot is in view and the line is not"
+            )
+
+
+def _modelled_line(view: SimulationView) -> QLabel:
+    """The one "Modelled, not measured" line on the dashboard, which a wash-in View's Area shows."""
+
+    (line,) = (
+        label for label in view.findChildren(QLabel) if label.text() == WASH_IN_MODELLED_TEXT
+    )
+
+    return line
+
+
+def _partly_in_view(view: SimulationView, widget: QWidget) -> bool:
+    """Whether any of `widget` is inside the view of every scroll area around it."""
+
+    for box in view.findChildren(QScrollArea):
+        if not box.isAncestorOf(widget):
+            continue
+
+        top = widget.mapTo(box.viewport(), QPoint(0, 0)).y()
+
+        if top + widget.height() <= 0 or top >= box.viewport().height():
+            return False
+
+    return True
+
+
+def _wholly_in_view(view: SimulationView, widget: QWidget) -> bool:
+    """Whether all of `widget` is inside the view of every scroll area around it."""
+
+    for box in view.findChildren(QScrollArea):
+        if not box.isAncestorOf(widget):
+            continue
+
+        top = widget.mapTo(box.viewport(), QPoint(0, 0)).y()
+
+        if top < 0 or top + widget.height() > box.viewport().height():
+            return False
+
+    return widget.isVisible()
 
 
 def test_a_view_kept_across_a_rebuild_keeps_its_scroll_position(application: QApplication) -> None:

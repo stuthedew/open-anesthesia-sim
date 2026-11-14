@@ -637,8 +637,9 @@ class WashInView(QWidget):
     In an Area too short for all of it, the plot shrinks to
     `theme.WASH_IN_CHART_LEAST_HEIGHT`, and the rows from the statement of the
     window to the legend scroll in a box above the plot, as the concentration
-    chart's do (`_KeyScroll`). "Modelled, not measured" is a row of its own
-    under the heading, outside the box, so it stays in view with the plot.
+    chart's do (`_KeyScroll`). "Modelled, not measured" is the View's
+    `pinned_row`: its Area shows it above the box that scrolls the View, so
+    the words are on screen wherever any part of the plot is (`PL-26BZ`).
 
     Its time window is its own, as the concentration chart's is (`PL-L59K`).
     Where both show the same window, the dashboard hands both the same frame,
@@ -650,6 +651,8 @@ class WashInView(QWidget):
     Attributes:
         chart: The plot.
         legend: The plot's legend.
+        pinned_row: "Modelled, not measured", which the View's Area keeps on
+            screen above the View's scroll box.
         time_base_selector: The control that sets the window's width.
     """
 
@@ -674,8 +677,10 @@ class WashInView(QWidget):
         column.addLayout(heading)
         column.addWidget(self.state_notice)
         # The safety standard requires these three words beside the plot
-        # (`PL-F9TQ`), so they stay outside the box that scrolls (`PL-CBYS`).
-        column.addWidget(styled_label(WASH_IN_MODELLED_TEXT, color=MUTED))
+        # (`PL-F9TQ`). The View's Area keeps the row above the box that
+        # scrolls the View, so the words are on screen wherever any part of
+        # the plot is (`PL-26BZ`).
+        self.pinned_row = styled_label(WASH_IN_MODELLED_TEXT, color=MUTED)
         column.addWidget(
             _KeyScroll(
                 (
