@@ -542,8 +542,9 @@ def test_a_reading_exactly_on_the_lower_edge_of_the_band_is_inside_it() -> None:
 
     The target is at 1.00 ×MAC, so the band around it has a half-width of
     `HEIGHT_BAND`, which is 1e-5, times 1.0. Multiplying by 1.0 adds no rounding,
-    which leaves the lower edge at exactly `1.0 - 1e-5`. A step that lands on the edge from below therefore
-    crosses the target, and a step from the edge to 1.00 ×MAC crosses nothing.
+    which leaves the lower edge at exactly `1.0 - 1e-5`. A step that lands on
+    the edge from below therefore crosses the target, and a step from the edge
+    to 1.00 ×MAC crosses nothing.
     """
 
     target = _target(multiple=1.0)
