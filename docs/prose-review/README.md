@@ -1,8 +1,15 @@
 # The copy editor's test set and examples
 
-Close-out step 8 in `.claude/skills/docket/modes/close-out.md` has the copy
-editor edit each passage that a branch changed, whatever its length, for the
-readers that `.claude/rules/plain-writing.md` names. The copy editor's prompt is
+**The copy editor runs only when the project owner asks for it**, to rewrite
+a section of a document or a whole document (project owner, 2026-11-11,
+ratified, over a copy edit of each branch's text at close-out, `PL-J1ZM`).
+It edits the text for the readers that `.claude/rules/plain-writing.md`
+names. Until 2026-11-11 close-out step 8 ran it on each passage that a branch
+changed, and `bin/docket arm` held a simulator branch until a `Prose-review:`
+trailer recorded the edit. Both were removed: the copy editor edits sentences
+after they are written, and it did not remove an account that the reader does
+not need. A blind judge preferred its edit for six of seven document sections
+(`PL-HGZS`), so it stays for that work. The copy editor's prompt is
 `.claude/agents/copy-editor.md`, and `tools/copy_edit.py` runs it. Where the
 first read rewrites a passage, the tool starts a fresh run of the copy editor
 to audit that edit, because experienced technical editors make at least two
@@ -18,8 +25,7 @@ runs on one edit find different losses. The tool keeps a passage as it was
 where a statement is still lost after the last of `MAX_CHECK_ROUNDS` rounds
 (`PL-F0Q2`). The tool merges the replies. The copy editor does not edit text
 written only for a later session or the project owner, such as an item brief
-or a reply, so `tools/new_prose.py` prints none. It does edit a pull request's
-title and body (project owner, 2026-11-10).
+or a reply, so `tools/new_prose.py` prints none (project owner, 2026-11-10).
 
 This folder holds the paragraphs the copy editor must never pass again
 (`PL-FYGJ`, from `PL-H76S`) and the gold-standard paragraphs it must keep
@@ -154,8 +160,8 @@ Run it whenever `.claude/agents/copy-editor.md` or
 file that the set holds, or a gold-standard paragraph is added:
 
 1. Run `python3 tools/rejected_prose.py show > show.txt`.
-2. Run `python3 tools/copy_edit.py show.txt`, as close-out step 8 does, and
-   save its whole reply to a file.
+2. Run `python3 tools/copy_edit.py show.txt` and save its whole reply to a
+   file.
 3. Run `python3 tools/rejected_prose.py record REPLY`, with that file's path.
 
 The copy editor must flag every rejected entry and keep every gold standard.
@@ -194,8 +200,8 @@ structure. Two part review"):
    line-edits each section alone, from its heading to the next heading of any
    level, with the audits that every run has.
 
-The fresh prose that a branch changes is reviewed by close-out step 8 instead,
-one passage at a time inside its section.
+The copy editor does not edit the prose that a branch changes. The writing
+session checks that text itself, at close-out step 8.
 
 ## Judging edits blind
 

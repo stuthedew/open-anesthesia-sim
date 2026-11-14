@@ -3,11 +3,13 @@ id: PL-V82M
 title: ROADMAP.md says the next release stamps a release's own cut pull request every time, but since PL-KRS6 a cut item ships in no release, and the version rows that stated that rule are now one sentence each
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: roadmap-structure
 touches: ROADMAP.md, tools/doc_check.py
 added: 2026-11-07
+closed: 2026-11-11
+pr: 2112
 payoff: A session checking a release's span stops waiting for a stamp that never comes, and the roadmap again states that a cut item ships in no release.
 verify: ! grep -qF 'the next release stamps it every time' ROADMAP.md && ! grep -qF 'stamped by the *next* release' tools/doc_check.py
 ---
@@ -44,3 +46,16 @@ that no rule a reader needs left the roadmap with the rows.
 **Checked 2026-11-09:** § "Release tags and release notes" still says "the next release stamps it every time", and the docstring of `check_tag_span_covers_its_notes` in `tools/doc_check.py` still says the cut "is stamped by the *next* release, every time".
 
 **Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** The problem was present when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. `ROADMAP.md` there already said a release's own cut pull request is "inside its own span by construction and stamped by the" next release, and `tools/doc_check.py` said the same. `PL-KRS6` had changed the rule on 2026-09-26.
+
+**Done 2026-11-11.** `ROADMAP.md` § "Version table" now opens with the rule,
+once: the item that cuts a release ships in no release, carries no milestone,
+and is kept out of every later release's count and notes, so no release's notes
+name it (`PL-KRS6`). The exemption sentence in § "What a tag ships that its
+notes may not name" now gives that as the reason the cut's own pull request is
+exempt, and points to the table's rule rather than restating it. The docstring
+of `check_tag_span_covers_its_notes` in `tools/doc_check.py` says the same: a
+pointer to the notes that describe the cut's pull request could never be
+written. The check's code is unchanged, because it already takes the exemption
+from the commit that added the notes file and never relied on a later stamp.
+`grep` finds no other copy of the stale claim outside closed items and release
+notes.

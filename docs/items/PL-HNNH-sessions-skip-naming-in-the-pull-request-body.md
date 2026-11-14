@@ -3,13 +3,15 @@ id: PL-HNNH
 title: Sessions skip naming, in the pull request body, the facts a grown passage adds: PL-W6JM's two docstrings grew by 44 and 46 words and PL-J37P's subsections grew, and neither body says what the added words carry, though tools/new_prose.py --compare printed the growth
 priority: P1
 effort: M
-status: ready
+status: dropped
 classes: defect
 feature: copy-editor
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_arming.py, tools/new_prose.py, .claude/skills/docket/modes/close-out.md
 blocked-by: PL-TTBF
 deferred-from: v0.7.0 - a new problem, not present at the freeze: the request to name a grown passage's facts arrived in efc1dc3f (PL-22T5); deferred with PL-J1ZM, which waits on it
 added: 2026-11-04
+closed: 2026-11-11
+reason: moot: PL-J1ZM's re-diagnosis of 2026-11-11 removes the per-branch copy edit, so no grown passage is left to name; the build on #2115 was closed unmerged (project owner, 2026-11-11, ratified, over merging it)
 payoff: every grown passage on a branch has its added facts named before merge, so growth with no new fact, the mark of over-explaining, is caught on the branch that adds it
 verify: grep -q 'def test_a_grown_passage_the_body_does_not_name_holds_the_arm' subprojects/docket/tests/test_arming.py
 ---
@@ -31,3 +33,5 @@ verify: grep -q 'def test_a_grown_passage_the_body_does_not_name_holds_the_arm' 
 **Generator check.** Part of the fix for the live head `PL-J1ZM`, which is blocked on it; one of the three failures its 2026-11-04 measurement found, and not a member of its `root-cause-of`. The pause on new workflow mechanisms does not hold it, because it fixes that generator.
 
 **Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** Not present. At 817a4d88, close-out step 8 did not ask for the facts a grown passage adds. That request arrived in efc1dc3f (`PL-22T5`, 2026-11-04), so this is a new problem. It is deferred with `PL-J1ZM`, which waits on it.
+
+**Re-diagnosed, 2026-11-11.** Dropped (project owner, 2026-11-11, ratified, over merging the build on #2115). `PL-J1ZM`'s re-diagnosis found that the copy editor lengthened the text in all three of its runs on the ten most recent merged branches, and the owner approved removing it from every branch's close-out. This item's check would guard a step that no longer runs. The build was finished on branch `claude/peaceful-noether-5bvpno` and its pull request, #2115, was closed unmerged.

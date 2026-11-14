@@ -3,11 +3,13 @@ id: PL-PKP4
 title: src/anesthesia_sim/user_files.py's module docstring says the atomic-write steps, including os.replace, live there once, but each store (layout/store.py, app/preferences.py) calls os.replace itself and user_files.py holds only write_synced, sync_directory_quietly and remove_quietly; correct the docstring, or move the replace into user_files.py so the claim holds (found by the PL-SVGH restructure audit)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 touches: src/anesthesia_sim/user_files.py
 deferred-from: v0.7.0 - a new problem, not present at the freeze: user_files.py and its docstring arrived in 2076f542 (PL-93B3)
 added: 2026-11-07
+closed: 2026-11-11
+pr: 2112
 payoff: a developer changing how a reader's file is saved knows which steps are shared and which each store does itself, so neither store drifts unnoticed
 verify: ! grep -qF 'The steps live here once' src/anesthesia_sim/user_files.py
 ---
@@ -25,3 +27,13 @@ verify: ! grep -qF 'The steps live here once' src/anesthesia_sim/user_files.py
 **Generator check.** One-off. The docstring was wrong from the commit that created it, and the `PL-SVGH` restructure audit found it. No head states the fact.
 
 **Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** Not present. `src/anesthesia_sim/user_files.py` did not exist at 817a4d88. Its docstring arrived in 2076f542 (`PL-93B3`, #1920, 2026-11-01), which built v0.7.0's preferences file, so this is a new problem and is deferred.
+
+**Done 2026-11-11.** The module docstring of `src/anesthesia_sim/user_files.py`
+now names the three steps that live there (`write_synced`,
+`sync_directory_quietly` and `remove_quietly`) and says that each store calls
+`os.replace` itself. It gives the reason from the recommendation above: the
+Workspaces store copies its previous generation between the write and the
+replace and reports each step's failure by name. So it also says that a change
+to how the file is replaced is made in both stores. No code moved. The
+docstrings of `layout/store.py` and `app/preferences.py` were checked and make
+no claim that the replace is shared.
