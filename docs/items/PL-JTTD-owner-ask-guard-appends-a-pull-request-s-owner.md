@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/
 deferred-from: v0.7.0 - a new problem: owner_ask_guard began appending to every thread message with a4f1c1f5 (2026-11-04), after the freeze
 added: 2026-11-04
 closed: 2026-11-14
+pr: 2164
 payoff: after the owner says merge, thread messages stop repeating the read or merge ask he has already answered
 verify: grep -q 'def test_arm_owner_ask_sends_nothing_once_the_owner_has_answered' subprojects/docket/tests/test_cli.py
 reenters: PL-X4MD

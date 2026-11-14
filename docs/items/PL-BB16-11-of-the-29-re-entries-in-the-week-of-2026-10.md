@@ -9,6 +9,7 @@ feature: convergence-visibility
 touches: docs/items/PL-BB16-11-of-the-29-re-entries-in-the-week-of-2026-10.md
 added: 2026-11-03
 closed: 2026-11-14
+pr: 2164
 payoff: the re-entry count that releases print is known to count failed fixes rather than findings made while the work was done, or a follow-up says how to separate them
 verify: grep -qE '^[*][*]Same-day re-entries, read' docs/items/PL-BB16*.md
 ---

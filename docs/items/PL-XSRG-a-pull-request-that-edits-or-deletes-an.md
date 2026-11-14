@@ -9,6 +9,7 @@ touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_
 deferred-from: v0.7.0 - found by the 2026-11-10 audit after the freeze; apparatus, and it changes no displayed value, so the release does not wait on it
 added: 2026-11-10
 closed: 2026-11-14
+pr: 2164
 payoff: a widened tolerance or a changed expected value in a published-data test reaches the owner before it merges
 verify: grep -q 'def test_an_edited_reference_test_holds_for_the_owner' subprojects/docket/tests/test_arming.py
 reenters: PL-4W2L
