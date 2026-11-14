@@ -307,16 +307,6 @@ class Config:
     #: Empty by default, for `open_pull_requests_command`'s reason: `claim`
     #: then says that no draft was opened and what the session does instead.
     open_draft_command: str = ""
-    #: A command that counts the docstrings and comments that the branch's
-    #: simulator change adds and that no review has covered. `docket arm` reads
-    #: the count, so that a simulator branch waits for close-out step 8's review
-    #: (`PL-W04Z`). The package appends the commit carrying the newest
-    #: `Prose-review` record, where one exists. The command must exit 0 and
-    #: print one line holding a whole number, or exit non-zero where it could
-    #: not count, which holds the pull request. Empty by default, which turns
-    #: the hold off: docket names no repository tool, so the project supplies
-    #: the count.
-    prose_count_command: str = ""
     #: A command counting the blind generalist review passes that the branch's
     #: simulator change owes, which `docket arm` reads so that a simulator
     #: branch waits until a `Blind-review` record says that many ran
@@ -705,9 +695,6 @@ def load(root: Path) -> Config:
         ),
         open_draft_command=_str(
             section.get("open_draft_command"), defaults.open_draft_command, "open_draft_command"
-        ),
-        prose_count_command=_str(
-            section.get("prose_count_command"), defaults.prose_count_command, "prose_count_command"
         ),
         blind_count_command=_str(
             section.get("blind_count_command"), defaults.blind_count_command, "blind_count_command"

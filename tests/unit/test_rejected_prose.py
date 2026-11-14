@@ -279,12 +279,15 @@ def test_show_gives_the_reviewer_the_rule_and_the_paragraph_only() -> None:
 
     shown = show([entry], TABLE)
 
-    assert shown.startswith(new_prose.RULE.read_text(encoding="utf-8").rstrip("\n"))
+    rule = new_prose.RULE.read_text(encoding="utf-8").rstrip("\n")
+    assert shown.startswith(rule)
     assert "Readers of docs/MODEL.md:\n  - A clinician.\n" in shown
     assert f"[1] docs/MODEL.md, rows 1-1, paragraph, {MIN_WORDS} words, for: A clinician" in shown
     assert f"    1 > {PARAGRAPH}" in shown
-    assert "jargon" not in shown
-    assert "Unintelligible" not in shown
+    # The entry's kind and meaning stay hidden. The rule itself uses the word "jargon".
+    after_rule = shown[len(rule) :]
+    assert "jargon" not in after_rule
+    assert "Unintelligible" not in after_rule
 
 
 def test_check_refuses_a_set_that_no_run_of_the_current_prompt_has_read(tmp_path: Path) -> None:
