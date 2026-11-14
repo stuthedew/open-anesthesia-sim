@@ -213,7 +213,14 @@ def test_the_muscle_group_equilibrates_in_the_minutes_printed() -> None:
 
 
 def test_baker_and_farmerys_set_differs_by_the_percents_printed() -> None:
-    """The gaps between Baker and Farmery's set and the stored coefficients, on both scales."""
+    """The gaps between Baker and Farmery's set and the stored coefficients, on both scales.
+
+    The fat and muscle gaps are computed from the coefficients the section
+    prints. The section prints no vessel-rich coefficient, only that the set's
+    are 28% above this model's on the tissue:blood scale. So the test checks
+    that the tissue:gas gaps of 18% and 38% follow from that printed 28%, and
+    it does not check the 28% itself, which rests on the citation alone.
+    """
 
     fat, fat_above, model_fat = _one(
         r"puts sevoflurane's fat coefficient at (\d+\.\d), (\d+)% above this model's (\d+\.\d)"
@@ -279,3 +286,76 @@ def test_yasudas_muscle_spreads_are_the_percents_printed() -> None:
         assert _as_printed(float(sd) / float(mean) * 100.0, printed) == printed, (
             f"{sd} over {mean} is not {printed}%"
         )
+
+
+#: The agent rows of § "Parameter provenance"'s table of Yasuda, Targ and
+#: Eger's Table 1, and its columns in order, each named for the stored field.
+YASUDA_TABLE_AGENTS = ("sevoflurane", "isoflurane", "desflurane")
+YASUDA_TABLE_TISSUES = ("vessel_rich", "muscle", "fat")
+
+
+def _yasuda_table() -> dict[tuple[str, str], tuple[float, float, float]]:
+    """Each cell of § "Parameter provenance"'s Yasuda table, as (stored, mean, SD).
+
+    The table restates the paper's Table 1 beside its citation, so it is the
+    published input this module reads, as it reads Baker and Farmery's figures.
+    """
+
+    cells: dict[tuple[str, str], tuple[float, float, float]] = {}
+    for line in MODEL_PATH.read_text(encoding="utf-8").splitlines():
+        agent = line.split("|")[1].strip() if line.startswith("| ") else ""
+        # regex: each "stored vs mean ± SD" cell of one markdown table row.
+        found = re.findall(r"(\d+\.\d+) vs (\d+\.\d+) ± (\d+\.\d+)", line)
+        if agent not in YASUDA_TABLE_AGENTS or not found:
+            continue
+        assert len(found) == len(YASUDA_TABLE_TISSUES), f"{agent}'s row has {found}"
+        for tissue, (stored, mean, sd) in zip(YASUDA_TABLE_TISSUES, found, strict=True):
+            cells[agent, tissue] = (float(stored), float(mean), float(sd))
+    assert len(cells) == len(YASUDA_TABLE_AGENTS) * len(YASUDA_TABLE_TISSUES), (
+        f"expected one row per agent in § 'Parameter provenance''s Yasuda table, found {cells}"
+    )
+
+    return cells
+
+
+def test_the_yasuda_table_holds_the_stored_coefficients() -> None:
+    """The table's stored column is each agent file's tissue:gas coefficient."""
+
+    for (agent_id, tissue), (stored, _mean, _sd) in _yasuda_table().items():
+        value = float(getattr(_agent(agent_id), f"{tissue}_tissue_gas_partition_coefficient"))
+        assert value == stored, f"{agent_id} {tissue} stores {value}; the table says {stored}"
+
+
+def test_yasudas_fat_spreads_are_the_percents_printed() -> None:
+    """Fat's SD is 17% to 19% of its mean across the three agents, as the section prints."""
+
+    low, high = _one(r"against (\d+)% to (\d+)% for fat")
+    spreads = [
+        sd / mean * 100.0
+        for (_agent_id, tissue), (_stored, mean, sd) in _yasuda_table().items()
+        if tissue == "fat"
+    ]
+
+    assert _as_printed(min(spreads), low) == low, f"the smallest fat spread is {min(spreads)}%"
+    assert _as_printed(max(spreads), high) == high, f"the largest fat spread is {max(spreads)}%"
+
+
+def test_the_stored_set_differs_from_yasudas_means_by_the_percents_printed() -> None:
+    """Seven of nine stored values differ from the means, by at most 9%, in isoflurane's fat."""
+
+    (bullet,) = _one(r"Gas Man's, which differ by up to (\d+)% from the means")
+    cells_differing, largest, stored_fat, mean_fat = _one(
+        r"means in (\w+) of the nine cells, by up to (\d+)% in isoflurane's fat coefficient, "
+        r"(\d+\.\d) against (\d+\.\d)"
+    )
+    table = _yasuda_table()
+    gaps = {cell: abs(stored / mean - 1.0) * 100.0 for cell, (stored, mean, _sd) in table.items()}
+    widest = max(gaps, key=gaps.__getitem__)
+
+    assert widest == ("isoflurane", "fat")
+    assert (float(stored_fat), float(mean_fat)) == table[widest][:2]
+    assert _as_printed(gaps[widest], largest) == largest == bullet
+    differing = sum(stored != mean for stored, mean, _sd in table.values())
+    assert cells_differing == ("seven" if differing == 7 else str(differing)), (
+        f"{differing} of the nine stored values differ from Yasuda's means"
+    )

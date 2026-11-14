@@ -6227,7 +6227,8 @@ for a stored value:
 laboratories disagree with them by up to 150% in some tissues.** The stored
 values are Gas Man's. They differ from Yasuda, Targ and Eger's means in seven
 of the nine cells, by up to 9% in isoflurane's fat coefficient, 70.0 against
-64.2 (§ "Parameter provenance" has the table). Hendrickx and De Wolf state the
+64.2 (§ "Parameter provenance" has the table;
+`test_the_stored_set_differs_from_yasudas_means_by_the_percents_printed`). Hendrickx and De Wolf state the
 general case: "Tissue solubilities vary up to 150% between authors (Yasuda et
 al. 1989), and the tissue homogenates used to determine these coefficients may
 not represent in vivo conditions" (p. 165). The 150% is not spread evenly
@@ -6273,7 +6274,8 @@ and Lowe's isoflurane values were higher by a margin that Yasuda does not
 break down by tissue. And Yasuda's own muscle measurements spread the most.
 Their standard deviation is 43% of the mean for sevoflurane (2.38 ± 1.03),
 45% for isoflurane (4.40 ± 1.97) and 37% for desflurane (0.94 ± 0.35),
-against 17% to 19% for fat. Eger and Saidman's Table 1 makes the same point
+against 17% to 19% for fat
+(`test_yasudas_fat_spreads_are_the_percents_printed`). Eger and Saidman's Table 1 makes the same point
 from the literature as a whole. Their best figure for sevoflurane muscle is
 1.7, with 1.1 to 2.4 as the range across the studies they cite (*Anesth Analg* 2005;100:1022),
 where the agent file stores 2.4. A muscle group's time constant is
@@ -6438,11 +6440,12 @@ against the published means and standard deviations.
 twice.** In those studies, $`F_A/F_I`$ is a ratio of two analyser readings
 taken from real airways. So whatever humidification does to alveolar agent is
 already inside the measured 0.850, and a model that reproduces that number has
-already absorbed it. The stored coefficients raise the same problem. They are
-tissue:gas and blood:gas ratios equilibrated at 37 °C (*Anesth Analg*
-1989;69:370–373), and how much water the
-gas phase held in those determinations is recorded nowhere that this project
-has read. Applied to $`F_I`$ alone, against coefficients whose own gas-phase
+already absorbed it. The stored coefficients raise the same problem. The
+tissue:gas ratios were equilibrated at 37 °C (*Anesth Analg*
+1989;69:370–373). The blood:gas ratios are Gas Man's set as De Wolf et al.
+print it (*BMC Anesthesiol* 2012;12:22), and no measurement behind them has
+been adopted. How much water the gas phase held in either set's
+determinations is recorded nowhere that this project has read. Applied to $`F_I`$ alone, against coefficients whose own gas-phase
 basis is unknown here, a factor could not be shown to move the model toward
 the real behaviour rather than away from it. A proper correction puts the
 coefficients and the inspired term on the same gas-phase basis together. That
