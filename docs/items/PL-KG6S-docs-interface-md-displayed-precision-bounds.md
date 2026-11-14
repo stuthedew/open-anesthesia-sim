@@ -3,11 +3,13 @@ id: PL-KG6S
 title: docs/INTERFACE.md § "Displayed precision" bounds the last displayed digit at 'between about a seventh of one parameter SD and seven times it' and calls one SD 'one to seven counts', but its own table's fat tissue:gas row, 8.7e-4 to 6.7e-3 pp, is 0.09 to 0.67 counts, which puts the digit at 1.5 to 11.5 SDs; no row gives the 'seven times' end, so the bound should be restated from the table or limited to the rows it comes from (found by PL-J37P's blind review)
 priority: P1
 effort: S
-status: ready
+status: done
 classes: defect, science
 feature: model-claims-held-by-tests
-touches: docs/MODEL.md, docs/INTERFACE.md
+touches: docs/INTERFACE.md
 added: 2026-11-04
+closed: 2026-11-14
+pr: 2150
 payoff: a clinician checking why the readouts stop at two decimals finds every ratio in the argument matching the table it cites
 verify: ! grep -q -F 'a seventh of one' docs/INTERFACE.md && ! grep -q -F 'a fiftieth' docs/INTERFACE.md
 reenters: PL-B6YV
@@ -50,3 +52,19 @@ section's figures to `PL-19W8`'s tests. Those tests hold the table, not the
 ratios derived from it.
 
 **Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. The fat row, "one to seven counts" and the seventh-to-seven-times bound were all in `docs/MODEL.md` at `817a4d88`. Only the recap and the schematic's repeats came later (`1f4717f2`). It is not deferred. A first reading deferred it as not live, because the two-decimal count still follows from the table's three larger rows. A review the same day found that premise unsafe. Those rows are the table that `PL-TDX0` says used the wrong SDs, and the tissue:gas SDs the agent files store are much wider: muscle 37% for desflurane (0.94 ± 0.35), 45% for isoflurane (4.40 ± 1.97) and 43% for sevoflurane (2.38 ± 1.03), and fat 17% to 19%. With those SDs, one SD of the muscle row could move the readout by tens of counts, so one count of the second decimal would fall below a seventh of an SD. That is finer than the band the section allows. So the check cannot find the hazard not live, and the item stays on the list beside `PL-TDX0`, whose fix restates the same table.
+
+**Built 2026-11-14, with `PL-TDX0`.** The ratios were restated from the
+re-measured table rather than from the old one, because `PL-TDX0` found that
+the old table rested on the wrong SDs. One SD now moves a readout by a third of
+one count to ninety counts. The bound is given per row: for the blood:gas,
+vessel-rich and fat rows the last digit lies between about an eighth of one SD
+and three SDs, and for the muscle row between a fifteenth and a ninetieth. The
+"one to seven counts" heading, the third-decimal sentence and the "seventh to
+seven times" bound now appear only as what the section said on the old SDs.
+Both "a fiftieth" statements were already gone (`PL-SP6H` fixed one, and the
+schematic's comparison was rewritten here). The accounting panel's one-count
+range, which `PL-SP6H` held, is restated from new shifts: about four SDs at 1 h
+to a seventh at 24 h at 1 MAC. `test_one_sd_is_a_third_of_a_count_to_ninety_counts_of_the_last_digit`
+holds the counts. As this item's brief foresaw, restating them changes the
+argument for two decimals: the muscle row is finer than the band the section
+allows, and `PL-W51N` holds that decision.
