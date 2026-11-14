@@ -92,8 +92,24 @@ text what the trace found. Never state a reason that no record holds.
 6. **Say who does what.** Make each "it", "this" and "that" point at a noun the
    reader can find.
 7. **Say each thing once**, where the reader needs it, and cut words that add
-   nothing.
-8. **Check every sentence before the text goes to its reader.** Go through
+   nothing. Give each clause a fact that the rest of its sentence does not
+   already state.
+8. **State the claim directly.** Name an alternative only where a reader would
+   otherwise assume it, and then say why it does not apply.
+9. **Write about the subject.** A sentence in a document describes the model,
+   the code or the clinical fact. A citation gives the source and its pages.
+   Who supplied a source and how a choice was reached go in the item.
+10. **Say what the text relies on.** Name a source the text does not use only
+    where a reader would otherwise assume it does, and then say it once, as a
+    limitation.
+11. **Give separate points their own structure.** When a table cell or a
+    paragraph holds several separate points, make them a numbered list or a
+    short section, and keep the cell to one sentence and a pointer.
+
+    Points 7 to 11 keep out padding that sounds careful and adds nothing. The
+    project owner judged `docs/MODEL.md` to read as machine-written because of
+    it (`PL-ZT47`).
+12. **Check every sentence before the text goes to its reader.** Go through
    the finished text one sentence at a time. Is each word used in its everyday
    sense? Does the text say which one each paper, file, rule or item is? Does
    each value, unit, condition and count match its source? Is any phrase

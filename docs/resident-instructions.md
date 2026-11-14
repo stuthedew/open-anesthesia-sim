@@ -1593,3 +1593,20 @@ shows the edit, and each commit subject starts with the id.
 
 **What was replaced, and the cost.** One clause replaced the four sentences.
 `CLAUDE.md` fell from 47,389 to 47,271 bytes.
+
+## The five patterns, restored as instructions, 2026-11-14
+
+`PL-J1ZM` deleted the five machine-writing patterns on 2026-11-14. `PL-BFHK`
+restored them the same day as points 7 to 11 of the resident
+`.claude/rules/plain-writing.md`, each written as what to do, with no bad
+example. The project owner asked for that form (project owner, 2026-11-14),
+and Anthropic's and OpenAI's prompting guides recommend it.
+
+**The carrier test.** Unchanged from the 2026-11-02 section above: the moment
+is any write of prose, and no check can tell a needed contrast from a
+reflexive one.
+
+**What was replaced, and the cost.** The rule grew from 16,404 to 17,417
+characters. Nothing was cut, because the points restore text the owner asked
+for. At 1,013 characters they are less than half the length of the list that
+`PL-J1ZM` deleted.

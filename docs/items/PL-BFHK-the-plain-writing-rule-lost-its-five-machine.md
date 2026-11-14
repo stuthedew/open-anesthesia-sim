@@ -3,12 +3,14 @@ id: PL-BFHK
 title: The plain-writing rule lost its five machine-writing patterns in PL-J1ZM; restore them as positive instructions with no bad examples, as Anthropic's and OpenAI's prompting guides recommend
 priority: P2
 effort: S
-status: untriaged
+status: done
 classes: defect
 feature: prose-quality
 touches: .claude/rules/plain-writing.md, docs/resident-instructions.md
 deferred-from: v0.7.0 - its problem is new since the freeze and no release schedules it, so it is deferred on the terms of § "Deferring to the next gate"; not safety or science
 added: 2026-11-14
+closed: 2026-11-14
+pr: 2148
 payoff: a session writing prose is told what to write in place of each of the five kinds of padding, in the form the prompting guides say works best
 verify: grep -q 'State the claim directly' .claude/rules/plain-writing.md && grep -q 'Give separate points their own structure' .claude/rules/plain-writing.md && ! grep -q 'A contrast nobody claimed' .claude/rules/plain-writing.md
 ---
@@ -98,3 +100,6 @@ guidance above is about instructions to a writer.
 
 The rule's other bad examples are a separate question for the owner,
 recorded in `PL-Q89B` with a recommendation.
+
+**Generator check.** One-off. It restores text that `PL-J1ZM` deleted, at the
+owner's request, and `PL-J1ZM`'s generator is recorded spent.
