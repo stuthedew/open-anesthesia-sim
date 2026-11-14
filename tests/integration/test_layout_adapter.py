@@ -319,7 +319,10 @@ def test_a_layout_of_one_area_is_its_view_alone(
 
     assert _splitters(container) == {}
     (view,) = _BUILT
-    assert view.parentWidget() is container.frame(AreaId(1))
+    # An Area holds its View in a scroll box under the header (`PL-CBYS`).
+    scroll = container.frame(AreaId(1)).view_scroll
+    assert scroll is not None and scroll.widget() is view
+    assert scroll.parentWidget() is container.frame(AreaId(1))
     assert container.frame(AreaId(1)).parentWidget() is container
     assert view.isVisible()
 
@@ -653,7 +656,8 @@ def test_a_view_the_new_layout_does_not_hold_leaves_the_container(
     application.processEvents()
 
     assert _splitters(container) == {}
-    assert kept.parentWidget() is container.frame(AreaId(1))
+    scroll = container.frame(AreaId(1)).view_scroll
+    assert scroll is not None and scroll.widget() is kept
     assert removed.parentWidget() is None
     assert container.views() == (kept,)
 
@@ -860,7 +864,8 @@ def test_every_area_has_a_header_whose_chooser_names_its_view(
         assert frame.chooser.text() == title
         assert frame.header.layout().itemAt(0).widget() is frame.chooser
         assert frame.header.isVisible() and frame.chooser.isVisible()
-        assert frame.header.geometry().bottom() < frame.content.geometry().top()
+        assert frame.view_scroll is not None
+        assert frame.header.geometry().bottom() < frame.view_scroll.geometry().top()
         assert frame.chooser.focusPolicy() == Qt.FocusPolicy.StrongFocus
 
 
@@ -1900,9 +1905,13 @@ def test_the_header_and_the_rule_are_the_chrome_these_tests_allow_for(
 ) -> None:
     container = _show_sized(application, shown, LayoutModel.single_area(_BIG), (608, 600))
     frame = container.frame(AreaId(1))
+    scroll = frame.view_scroll
 
-    assert frame.content.geometry().top() == _CHROME_PX
-    assert frame.content.height() == 600 - _CHROME_PX
+    # The View fills the scroll box that holds it under the header (`PL-CBYS`).
+    assert scroll is not None
+    assert scroll.geometry().top() == _CHROME_PX
+    assert scroll.height() == 600 - _CHROME_PX
+    assert frame.content.height() == scroll.viewport().height() == 600 - _CHROME_PX
 
 
 def test_a_split_whose_new_half_cannot_be_given_its_need_shows_the_size_the_view_needs(

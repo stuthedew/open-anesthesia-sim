@@ -192,6 +192,7 @@ from anesthesia_sim.app.theme import (
     ACCENT_TEXT,
     AGENT_COLOR_SCHEMES,
     AGENT_SELECTOR_WIDTH,
+    CHART_HEIGHT,
     INK,
     MARK_ROW_BULLET,
     MUTED,
@@ -333,6 +334,9 @@ COMPARED = ComparedRuns(run_label(FIRST_RUN), run_label(SECOND_RUN))
 # measure hover distances in.
 _WINDOW_WIDTH_PX = 1400
 _WINDOW_HEIGHT_PX = 1000
+# A window tall enough that the concentration plot has its preferred height,
+# `theme.CHART_HEIGHT`, in the test Workspace (`PL-CBYS`).
+_TALL_WINDOW_HEIGHT_PX = 2200
 
 #: The two required glosses, restated rather than imported so an edit to the
 #: application cannot move both sides of the assertion at once.
@@ -438,6 +442,7 @@ def _shown_view(
     *controllers: SimulationController,
     width_px: int = _WINDOW_WIDTH_PX,
     case: BranchedCase | None = None,
+    height_px: int = _WINDOW_HEIGHT_PX,
 ) -> SimulationView:
     """A dashboard over these runs, shown at the fixed size and presented once.
 
@@ -448,7 +453,7 @@ def _shown_view(
     _delete_shown_views(application)
     view = SimulationView(controllers, case=case, workspaces=_EVERY_VIEW)
     _SHOWN_VIEWS.append(view)
-    view.resize(width_px, _WINDOW_HEIGHT_PX)
+    view.resize(width_px, height_px)
     view.show()
     application.processEvents()
     view.present(False)
@@ -655,11 +660,14 @@ def _branched_case(elapsed_s: float = 60.0) -> BranchedCase:
 
 
 def _case_view(
-    application: QApplication, case: BranchedCase, width_px: int = _WINDOW_WIDTH_PX
+    application: QApplication,
+    case: BranchedCase,
+    width_px: int = _WINDOW_WIDTH_PX,
+    height_px: int = _WINDOW_HEIGHT_PX,
 ) -> SimulationView:
     """A dashboard opened over a case's trunk, the way `main()` opens one."""
 
-    return _shown_view(application, case.trunk, width_px=width_px, case=case)
+    return _shown_view(application, case.trunk, width_px=width_px, height_px=height_px, case=case)
 
 
 def _offered_fork_instants(view: SimulationView) -> tuple[float, ...]:
@@ -5338,13 +5346,19 @@ def test_the_hover_readout_states_the_agent_compartment_and_both_units(
     a grid column rather than to a step. So the time the readout states is
     the instant rounded to the hover's own resolution, not the column's raw
     time.
+
+    The window is tall enough for the plot's preferred height. At the fixed
+    test size the plot is at its least height, where the circuit trace lies
+    inside the hover's radius of the alveolar point too, and the readout then
+    names both (`PL-CBYS`).
     """
 
     controller = SimulationController()
     controller.start()
     _advance(controller, 300.0)
-    view = _shown_view(application, controller)
+    view = _shown_view(application, controller, height_px=_TALL_WINDOW_HEIGHT_PX)
     chart = _concentration(view).chart
+    assert chart.height() >= CHART_HEIGHT
     frame = chart.frame
     assert frame is not None
     run = frame.runs[0]
@@ -6214,6 +6228,18 @@ FOREGROUND_NOT_DECLARED: dict[str, str] = {
         "declared and contrast_check measures it as MUTED on PANEL; it is "
         "only unreachable through the palette this test reads."
     ),
+    "ViewScroll": (
+        "the scroll box that holds an Area's View under its header "
+        "(`area_layout.ViewScroll`, `PL-CBYS`). Its viewport fills no background, "
+        "so the Area's surface shows through, and it draws no text: every string "
+        "inside it belongs to the View's own widgets."
+    ),
+    "_KeyScroll": (
+        "the box that scrolls a chart View's window statement, reference values "
+        "and legend above the plot (`views._KeyScroll`, `PL-CBYS`). It paints no "
+        "surface, through `stylesheets.clear_scroll_area_stylesheet`, and draws no "
+        "text: every row inside it is a widget of its own."
+    ),
     "QScrollArea": (
         "the page's scroll area. It paints the viewport surface, which "
         "`SimulationView` declares as BACKGROUND in a stylesheet, and no text: "
@@ -6684,39 +6710,39 @@ def test_a_second_build_call_leaves_each_run_widget_on_screen(application: QAppl
 def test_spare_height_goes_to_the_plots_and_not_to_the_readouts(application: QApplication) -> None:
     """The unconditional region keeps its own height, and the Areas take the rest.
 
-    At the fixed test size, the page is taller than the window, so there is no
-    spare height. From the first frame on, the Areas then have the height they
-    ask for, which is their size hint. Before `PL-PHPZ`, the page laid out the
-    Areas from a hint read before the Views had drawn. So the Areas' height
-    depended on when the page was laid out.
+    At the fixed test size, the Areas' least heights add up to more than the
+    room between the region and the disclaimer. So the Areas are at their least
+    height and the page scrolls by the difference. Since `PL-CBYS`, the page
+    grows past its window only where the window is too small for those least
+    heights, and a View taller than its Area scrolls inside the Area.
 
-    A window has spare height once it is tall enough for the scrolling middle to
-    show all of its content. Every extra pixel of height makes the Areas taller,
-    while the region that holds the readouts keeps its height. The test measures
-    the readout section inside the region, where the section has been since
-    `PL-NWTM`. The setting controls have been a View in an Area since `PL-2KXB`,
-    so they take their share of the Areas' height.
+    Once the window is tall enough for the page to stop scrolling, every extra
+    pixel of height makes the Areas taller, while the region that holds the
+    readouts keeps its height. The test measures the readout section inside the
+    region, where the section has been since `PL-NWTM`. The setting controls
+    have been a View in an Area since `PL-2KXB`, so they take their share of
+    the Areas' height.
     """
 
     controller = SimulationController()
     view = _shown_view(application, controller)
     chart_row = view.layout_container
     readout_section = view.unconditional_region
-    scroll, middle = _middle_of(view)
+    scroll, _ = _middle_of(view)
+    bar = scroll.verticalScrollBar()
 
     assert abs(readout_section.height() - readout_section.sizeHint().height()) <= 2
-    assert chart_row.height() >= chart_row.minimumSizeHint().height()
-    assert chart_row.height() == chart_row.sizeHint().height()
+    assert chart_row.height() == chart_row.minimumSizeHint().height()
 
     settled_chart_row_height = chart_row.height()
     spare = 400
-    hidden = max(0, middle.sizeHint().height() - scroll.viewport().height())
+    hidden = bar.maximum()
     view.resize(_WINDOW_WIDTH_PX, view.height() + hidden + spare)
     application.processEvents()
 
+    assert bar.maximum() == 0
     assert abs(readout_section.height() - readout_section.sizeHint().height()) <= 2
     assert chart_row.height() >= settled_chart_row_height + spare - 2
-    assert chart_row.height() > chart_row.sizeHint().height()
 
     view.resize(_WINDOW_WIDTH_PX, _WINDOW_HEIGHT_PX)
     application.processEvents()
@@ -6725,22 +6751,23 @@ def test_spare_height_goes_to_the_plots_and_not_to_the_readouts(application: QAp
 def test_the_page_takes_the_height_the_areas_ask_for_after_the_views_draw(
     application: QApplication,
 ) -> None:
-    """`PL-PHPZ`: the Areas are as tall as their size hint straight after the first frame.
+    """`PL-PHPZ`: the Areas have the height they ask for straight after the first frame.
 
     The setting controls sit in an Area above the charts. They build their
-    per-run copies on their first frame, which changes the Areas' size hint.
+    per-run copies on their first frame, which changes the Areas' size hints.
     Before the fix, the page kept the hint that it read before that frame. So
     after the frame the Areas were 62 px shorter than their hint, and 45 px
-    taller once the event loop had run. The expected height is the Areas' own
-    size hint, not a height that the page worked out.
+    taller once the event loop had run. At the test size the window is too
+    small for the Areas' least heights, so since `PL-CBYS` the height they ask
+    for is their own least height, not a height that the page worked out.
     """
 
     view = _shown_view(application, SimulationController())
     areas = view.layout_container
 
-    assert areas.height() == areas.sizeHint().height()
+    assert areas.height() == areas.minimumSizeHint().height()
     application.processEvents()
-    assert areas.height() == areas.sizeHint().height()
+    assert areas.height() == areas.minimumSizeHint().height()
 
 
 # ------------------------------------------------------------- two runs
@@ -11324,10 +11351,11 @@ def test_the_page_stops_holding_the_chart_once_the_reader_scrolls(
 
     After that the reader owns the page. So a later change of layout does not
     scroll the page back. Here that change is a shorter window, which moves
-    the chart.
+    the chart. Since `PL-CBYS` the page scrolls only where the window is too
+    small for the Areas' least heights, so the test opens a 700 px window.
     """
 
-    view = _case_view(application, _branched_case(), width_px=1600)
+    view = _case_view(application, _branched_case(), width_px=1600, height_px=700)
     _take_fork(view, 60.0)
     _settle(application)
     scroll = view.findChild(QScrollArea)
@@ -11336,7 +11364,7 @@ def test_the_page_stops_holding_the_chart_once_the_reader_scrolls(
     assert bar.value() > 0
 
     bar.triggerAction(QAbstractSlider.SliderAction.SliderToMinimum)
-    view.resize(1600, 800)
+    view.resize(1600, 600)
     _settle(application)
 
     assert bar.value() == 0

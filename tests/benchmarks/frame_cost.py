@@ -291,27 +291,37 @@ def _bring_chart_into_view(view: SimulationView) -> None:
     chart, so that is the frame measured. Where the chart is already in view, as
     the one-run dashboard's chart is at this size, nothing moves.
 
+    Since `PL-CBYS` the chart sits in two scroll areas: the one inside its own
+    Area, and the page's. Each is scrolled in turn, the inner one first, so the
+    chart is in view in its Area and the Area is in view on the page.
+
     Raises:
         ValueError: If the dashboard does not contain exactly one concentration
-            chart, and exactly one scroll area around it, because the area to
-            scroll would then be a guess. The control-change record also
-            scrolls within itself, but it does not contain the chart.
-        RuntimeError: If the chart is still not wholly in view, as would happen
-            in a window shorter than the chart.
+            chart, because the chart to measure would then be a guess. The
+            control-change record also scrolls within itself, but it does not
+            contain the chart, so it is not scrolled.
+        RuntimeError: If the chart is still not wholly in view in any scroll
+            area around it, as would happen in a window shorter than the chart.
     """
 
     (chart,) = view.findChildren(ConcentrationChart)
-    (page,) = (area for area in view.findChildren(QScrollArea) if area.isAncestorOf(chart))
-    page.ensureWidgetVisible(chart, 0, 0)
-    viewport = page.viewport()
-    top = chart.mapTo(viewport, QPoint(0, 0)).y()
+    around = [area for area in view.findChildren(QScrollArea) if area.isAncestorOf(chart)]
+    # The inner scroll area is the one with the most scroll areas around it.
+    around.sort(key=lambda area: -sum(other.isAncestorOf(area) for other in around))
 
-    if top < 0 or top + chart.height() > viewport.height():
-        raise RuntimeError(
-            f"the concentration chart spans y {top} to {top + chart.height()} of a "
-            f"{viewport.height()} px page, so part of it is out of view and its paint "
-            "would be measured as cheaper than it is"
-        )
+    for area in around:
+        area.ensureWidgetVisible(chart, 0, 0)
+
+    for area in around:
+        viewport = area.viewport()
+        top = chart.mapTo(viewport, QPoint(0, 0)).y()
+
+        if top < 0 or top + chart.height() > viewport.height():
+            raise RuntimeError(
+                f"the concentration chart spans y {top} to {top + chart.height()} of a "
+                f"{viewport.height()} px scroll area, so part of it is out of view and "
+                "its paint would be measured as cheaper than it is"
+            )
 
 
 def measure(

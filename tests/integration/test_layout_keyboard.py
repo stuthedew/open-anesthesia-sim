@@ -779,9 +779,10 @@ def test_the_controls_area_has_its_least_width_from_the_first_frame(
     the root splitter kept the widths it had before that frame until the next
     pass of the event loop. At this size those widths were 1010 and 336 px, and
     that pass gave the controls their 590 px. A border moved between the frame
-    and that pass moved by about 250 px. The test reads the width that the Area
-    needs from Qt's own size hint for the Area's frame, not from the sizes that
-    the adapter worked out.
+    and that pass moved by about 250 px. The test reads the width that the View
+    needs from Qt's own size hint for the View's widget, not from the sizes
+    that the adapter worked out. The Area's frame holds the View in a scroll
+    box, whose own size hint does not grow with the View (`PL-CBYS`).
     """
 
     view = _dashboard(application, shown)
@@ -793,7 +794,7 @@ def test_the_controls_area_has_its_least_width_from_the_first_frame(
     first_frame = root.sizes()
     controls_px = frame.width()
 
-    assert controls_px >= frame.minimumSizeHint().width() > 336
+    assert controls_px >= frame.content.minimumSizeHint().width() > 336
     application.processEvents()
     assert root.sizes() == first_frame
 
