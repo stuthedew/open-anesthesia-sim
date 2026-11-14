@@ -29,7 +29,7 @@ way.**
   already exists to make unrepresentable, arriving by a second route.
 
 This file does not test the clock a branch runs on. That clock belongs to the
-controller, and `tests/integration/test_controller.py` tests it. Everything
+controller, and `tests/integration/controller/` tests it. Everything
 here is true whichever clock a branch keeps.
 """
 
@@ -176,7 +176,7 @@ def test_a_resumed_system_holds_the_state_it_was_given() -> None:
     (`PL-2MD9`). That is why a branch's definition opens from the parent's
     `Keyframe` and never from this system's `state_vector()`. A branch's
     exactness comes from that definition, and
-    `tests/integration/test_controller.py` checks a branch against its parent
+    `tests/integration/controller/test_controller_branching.py` checks a branch against its parent
     element for element on the canonical path.
 
     What this system can promise is that `resume_at` writes the state it was
