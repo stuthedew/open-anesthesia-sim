@@ -68,8 +68,9 @@ Nothing else may compute `inf`, and nothing at all may compute `-inf` or
 `nan`.
 
 **Drawn, and the edges every time.** Hypothesis draws each value across and
-beyond every bound that the two modules declare. The draw is derandomized, so
-a failing run reproduces exactly and the suite stays deterministic. Some
+beyond every bound that the two modules declare. Every ordinary run draws the
+same values, so a failing run reproduces exactly, and a weekly run draws new
+ones (`tests/hypothesis_profiles.py`). Some
 edges are checked on every run, whatever Hypothesis draws. They are the IEEE
 754 edges (the infinities, NaN, signed zero, the subnormals and the largest
 float), each bound and its two neighbours, and an integer one digit longer
@@ -786,7 +787,7 @@ def test_each_guard_admits_only_what_its_functions_compute(guard: Function) -> N
         for values in product(*edges):
             _check(guard, dict(zip(annotations, values, strict=True)), step)
 
-    @settings(derandomize=True, database=None, deadline=None, max_examples=50)
+    @settings(max_examples=50)
     @given(st.data())
     def drawn(data: st.DataObject) -> None:
         step = data.draw(STEPS, label="step")

@@ -25,7 +25,9 @@ reading:
   recipe alone. `SHELL=/bin/true` keeps a `+` line, which make runs even under
   `-n`, from running anything.
 
-Hypothesis draws the Makefiles, derandomized, so a red run reproduces exactly.
+Hypothesis draws the Makefiles. Every ordinary run draws the same ones, so a
+red run reproduces exactly, and a weekly run draws new ones
+(`tests/hypothesis_profiles.py`).
 Each is built from the forms the closed items name: several targets on one
 rule, a prerequisite list a backslash continues, a recipe after the rule's
 `;`, recipe lines with make's `@`, `-` and `+` prefixes, a command a backslash
@@ -283,7 +285,7 @@ def _held_to_make(text: str, commands_compared: bool = True) -> None:
     assert _printed(commands) == "".join(output for _, output in sorted(by_line.items())), text
 
 
-@settings(derandomize=True, database=None, deadline=None, max_examples=300)
+@settings(max_examples=300)
 @given(makefiles())
 def test_the_makefile_readers_read_generated_makefiles_as_make_does(text: str) -> None:
     _held_to_make(text)
