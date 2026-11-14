@@ -6654,8 +6654,9 @@ def _absent_paths(
 ) -> dict[int, set[str]]:
     """The paths each line may name as absent, by 1-based line, from `absent:` markers.
 
-    Each marker covers the paragraph it sits under, as a `provenance:` marker
-    does, and is held to its own claim: every path it names must be absent -
+    Each marker covers what `_marked_scope` gives it, as a `provenance:` marker
+    does: the paragraph it sits under, or the whole list or quote that
+    paragraph ends (`PL-HXF0`). It is held to its own claim: every path it names must be absent -
     so a planned tool that gets built, or a deleted file that comes back, fails
     until the sentence and the marker are updated with it - and cited in that
     paragraph, so a marker left behind by a reworded sentence fails rather than
@@ -6676,6 +6677,7 @@ def _absent_paths(
         if kind == "absent":
             report.errors.append(_misplaced_marker(path, index + 1, kind))
     declared: dict[int, set[str]] = {}
+    blocks = read_blocks(lines).blocks
     for index, line in enumerate(lines):
         if split.get(index) == "absent":
             report.errors.append(_split_marker(path, index + 1, "absent"))
@@ -6684,8 +6686,15 @@ def _absent_paths(
         marker = ABSENT_MARKER_RE.match(line.strip())
         if marker is None:
             continue
-        start, end = _marked_span(lines, index)
-        cited = {span["content"] for span in code_spans("\n".join(lines[start:end]))}
+        start, end = _marked_scope(lines, index)
+        # Spans are read one block at a time, so a stray backtick in one list
+        # item cannot pair with a backtick in the next.
+        cited = {
+            span["content"]
+            for block in blocks
+            if block.kind in PROSE and start <= block.start and block.end <= end
+            for span in code_spans("\n".join(lines[block.start : block.end]))
+        }
         for token in marker.group("paths").split():
             if token not in cited:
                 report.errors.append(

@@ -6,7 +6,7 @@ effort: M
 status: blocked
 classes: docs, science
 feature: model-claims-held-by-tests
-touches: docs/MODEL.md, tools/doc_check.py, tests, docs/items
+touches: docs/MODEL.md, docs/INTERFACE.md, tools/doc_check.py, tests, docs/items
 blocked-by: PL-19W8
 deferred-from: v0.7.0 - not live: checked 2026-11-07 (PL-8C8W): the paragraphs it would hold are docs/MODEL.md prose that no displayed string carries, so no learner can see a wrong value now
 added: 2026-11-02

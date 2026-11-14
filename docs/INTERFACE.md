@@ -3153,9 +3153,9 @@ The 3 ×MAC ceiling (`CHART_AXIS_TOP_MAC` in `app/formatting.py`) is exactly
 desflurane's dial maximum divided by its 1 MAC, so it rests on a real device
 limit. Desflurane's vaporizer is the most limited, and the ceiling leaves no
 empty band above the range that vaporizer can reach. The ceiling puts the 1 MAC
-line at a third of the plot height, inside the plot rather than on its frame,
-which a ceiling of 2 could not do. It also keeps on the plot the 2-3 ×MAC range
-that overpressure induction works in. A ceiling at each agent's own dial maximum
+line at a third of the plot height, inside the plot rather than on its frame.
+Unlike a ceiling of 2, it also keeps on the plot the 2-3 ×MAC range that
+overpressure induction works in. A ceiling at each agent's own dial maximum
 could never be exceeded, but the chart would then draw the same MAC multiple at
 different heights for different agents, because the dial maxima run from
 3.00 ×MAC for desflurane to 4.17 ×MAC for isoflurane (`PL-CC23`).
@@ -3490,7 +3490,9 @@ Katoh's fractions, 0.05 of MAC. Katoh's slow-washout patients themselves woke
 at a mean end-tidal 0.63 ± 0.11% sevoflurane and 0.36 ± 0.08% isoflurane
 (Table 1, p. 1014). Those figures are lower than the band mostly because the
 patients were older, with mean ages of 45.9 and 45.1 years, so they are not a
-like-for-like check of a band drawn for age 40.
+like-for-like check of the band. The band is drawn on a single adult MAC whose
+source states no age, and which lies close to Katoh's MAC at the age the
+paragraph above uses.
 <!-- not-restated: 0.36 -->
 <!-- provenance: data/agents/sevoflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.05 -->
 <!-- provenance: data/agents/isoflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.05 -->
