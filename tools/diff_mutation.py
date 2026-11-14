@@ -35,13 +35,18 @@ version. A mutant that only the base version catches goes into the same
 `uncaught` list (project owner, 2026-10-24, ratified, over leaving those tests
 unmeasured, `PL-7FPD` and `PL-H57W`). `compare_tests` says what it leaves out.
 
+`--first-step` runs no mutant. It builds mutmut's copy of the tree and runs
+the selected tests there once, as mutmut's first step does, so that CI fails
+the pull request that adds a test which would stop every mutation run there
+(`PL-PG0S`). `first_step` says what it leaves out.
+
 `--all` runs every mutant instead and prints the kill rate of each module.
 `docs/mutation-testing.md` records the baseline that such a run measured, and
 says how to read a survivor. mutmut is in the `mutation` dependency group, so
 `make mutate` runs this tool through `uv run --group mutation`.
 
 **mutmut takes its settings from `pyproject.toml`'s `[tool.mutmut]` table,**
-which says why each one is set. This tool decides three things that the table
+which says why each one is set. This tool decides four things that the table
 cannot.
 
 - **Which tests run.** The table names an `@` file as the test selection, and
@@ -58,6 +63,21 @@ cannot.
   it, decorators included. mutmut mutates top-level functions and the methods
   of top-level classes, so a change elsewhere, such as to a constant, is
   reported as a change outside any function.
+- **Which files mutmut mutates, and which mutants it is asked for.** mutmut
+  puts a wrapper around every function of a file it mutates. Before its first
+  mutant it runs the tests twice through those wrappers. The first pass,
+  "Running stats", runs every selected test and records which tests call
+  which function. The second, "Running clean tests", runs the tests of the
+  mutants it was asked for, with no mutant applied. On 2026-11-11 the selected
+  tests made 218 million calls through a wrapper, and the two passes took 15
+  minutes 40 seconds and 8 minutes 14 seconds. So a run of the changed
+  functions tells mutmut to mutate only the files that hold one, and a call
+  into any other file runs at its ordinary speed. It also asks for each mutant
+  by name, because mutmut finds the tests of a glob only where the glob
+  matches a function's name. `run` and `names_to_run` say how, and
+  `docs/mutation-testing.md` § "Pitfalls" has the measurements (`PL-R8HY`).
+  `--all` mutates every file that the table names and pays both passes in
+  full.
 - **What a "timeout" was.** mutmut runs a mutant's tests by their node ids,
   and pytest refuses the run when it cannot collect one of them. A mutant
   causes that when it raises while a test module is imported, or when it
@@ -70,9 +90,10 @@ cannot.
 verdict until the source of the mutated function changes. A test added since
 the last run would therefore never run against a mutant that it now kills, and
 the old "survived" verdict would be reported again (mutmut 3.8.0,
-`collect_or_load_stats` in `mutmut/__main__.py`). A fresh run costs about two
-and a half minutes of coverage collection before the first mutant, which is
-the price of an answer that is true.
+`collect_or_load_stats` in `mutmut/__main__.py`). So every run pays the two
+passes above before its first mutant, which is the price of an answer that is
+true. On 2026-11-11, on four cores, they took 4 minutes for one changed
+function in `app/wash_in.py`.
 
 Exits 0 when the run finished and its results were read, and 1 when they
 could not be read: the base branch is unknown, mutmut failed, or the table is
@@ -189,23 +210,17 @@ CORE_PACKAGE = f"{PACKAGE}.core"
 #: How long a run of a changed test's base version, with no mutant applied,
 #: may take before the file is reported as not compared.
 CLEAN_TIMEOUT_S = 900
-#: The script `listing` runs to generate mutants without running any test, and
-#: to print each listed mutant's diff, as JSON keyed by name. It calls the
-#: steps mutmut 3.8.0's `run` takes before it collects coverage, which is the
-#: slow part, and the function `mutmut show` prints from. They are mutmut's
-#: internals rather than its command line, so the pinned version in
-#: `pyproject.toml` is what keeps them. `listing` falls back to running every
-#: mutant when the script fails.
-LIST_SCRIPT = """
-import fnmatch, json, shutil, sys
+#: The script that builds `mutants/` and generates the mutants without running
+#: any test. It calls the steps mutmut 3.8.0's `run` takes before it collects
+#: coverage, which is the slow part. They are mutmut's internals rather than its
+#: command line, so the pinned version in `pyproject.toml` is what keeps them.
+#: `first_step` runs it alone, and `listing` runs it inside `LIST_SCRIPT`.
+COPY_SCRIPT = """
+import shutil
 from pathlib import Path
 from mutmut.__main__ import create_mutants
-from mutmut.mutation.data import SourceFileMutationData
-from mutmut.mutation.diff_apply import get_diff_for_mutant
 from mutmut.mutation.trampoline import set_mutant_under_test
-from mutmut.utils.file_utils import (
-    copy_also_copy_files, copy_src_dir, setup_source_paths, walk_mutatable_files,
-)
+from mutmut.utils.file_utils import copy_also_copy_files, copy_src_dir, setup_source_paths
 shutil.rmtree("mutants", ignore_errors=True)
 Path("mutants").mkdir()
 set_mutant_under_test("mutant_generation")
@@ -213,6 +228,18 @@ copy_src_dir()
 copy_also_copy_files()
 setup_source_paths()
 create_mutants(1)
+"""
+#: The script `listing` runs: `COPY_SCRIPT`, then a print of the diff of each
+#: mutant whose name matches one of the script's arguments, as JSON keyed by
+#: name. It prints with the function `mutmut show` prints from. `listing` falls
+#: back to running every mutant when the script fails.
+LIST_SCRIPT = (
+    COPY_SCRIPT
+    + """
+import fnmatch, json, sys
+from mutmut.mutation.data import SourceFileMutationData
+from mutmut.mutation.diff_apply import get_diff_for_mutant
+from mutmut.utils.file_utils import walk_mutatable_files
 patterns = sys.argv[1:]
 shown = {}
 for path in walk_mutatable_files():
@@ -222,6 +249,24 @@ for path in walk_mutatable_files():
         if any(fnmatch.fnmatch(name, pattern) for pattern in patterns):
             shown[name] = get_diff_for_mutant(name, path=path)
 print(json.dumps(shown))
+"""
+)
+#: The script `run` starts mutmut with. Its first argument is a JSON list of
+#: the files mutmut may mutate, or `null` for every file that `only_mutate`
+#: names. The rest are the arguments of `mutmut run`. mutmut 3.8.0 reads
+#: `only_mutate` from `pyproject.toml` alone, so the script replaces the list
+#: in mutmut's loaded settings and then calls the command line's entry point.
+#: mutmut starts its helper processes with `fork`, so they keep the replaced
+#: list. `Config.only_mutate` is one of mutmut's internals, so the pinned
+#: version in `pyproject.toml` is what keeps it.
+RUN_SCRIPT = """
+import json, sys
+from mutmut.__main__ import cli
+from mutmut.configuration import config
+only = json.loads(sys.argv[1])
+if only is not None:
+    config().only_mutate = only
+cli(["run", *sys.argv[2:]])
 """
 #: One hunk header of the diff `mutmut show` prints. Its old side numbers the
 #: lines of the function's own text, from 1.
@@ -440,10 +485,10 @@ def simulator_unit_tests(root: Path) -> list[str]:
     ]
 
 
-def _mutmut(root: Path, *args: str, log: Path | None = None) -> subprocess.CompletedProcess[str]:
-    """Run one mutmut command in `root`, its output to `log` where one is given."""
+def _python(root: Path, *args: str, log: Path | None = None) -> subprocess.CompletedProcess[str]:
+    """Run this interpreter in `root` with `args`, its output to `log` where one is given."""
     environment = {**os.environ, "PYTHONIOENCODING": "utf-8"}
-    command = [sys.executable, "-m", "mutmut", *args]
+    command = [sys.executable, *args]
     if log is None:
         return subprocess.run(
             command, cwd=root, capture_output=True, encoding="utf-8", env=environment, check=False
@@ -458,6 +503,11 @@ def _mutmut(root: Path, *args: str, log: Path | None = None) -> subprocess.Compl
             env=environment,
             check=False,
         )
+
+
+def _mutmut(root: Path, *args: str, log: Path | None = None) -> subprocess.CompletedProcess[str]:
+    """Run one mutmut command in `root`, its output to `log` where one is given."""
+    return _python(root, "-m", "mutmut", *args, log=log)
 
 
 @dataclass(frozen=True)
@@ -507,17 +557,39 @@ def listing(root: Path, change: Change) -> Listing | None:
     return Listing(shown, frozenset(selected))
 
 
+def names_to_run(listed: Listing, *, verdict: bool) -> list[str]:
+    """The mutants that a run of the changed functions asks mutmut for, by name.
+
+    Under `--verdict` they are the ones that can change the verdict. Otherwise
+    they are every mutant of each changed function. The run passes names
+    rather than one glob for each function. Before its first mutant, mutmut
+    3.8.0 runs the tests of the mutants it was asked for once more, with no
+    mutant applied. It finds those tests by looking a name up, and it matches
+    a glob against the names of functions, which do not end in `__mutmut_N`.
+    A glob that ends there matches none, and mutmut then runs every selected
+    test (`tests_for_mutant_names` in `mutmut/__main__.py`, `PL-R8HY`).
+    """
+    return sorted(listed.run if verdict else listed.shown)
+
+
 def run(
     root: Path,
     patterns: Sequence[str],
     table: Mapping[str, object],
     tests: Sequence[str] | None = None,
+    only: Sequence[str] | None = None,
 ) -> tuple[int, Path]:
     """Empty `mutants/`, write the test selection into it, and run mutmut on `patterns`.
 
     The selection is `tests`, as files or test ids, and every simulator unit
     test file where it is `None`. An empty selection would make pytest run all
     of `testpaths`, so the caller never passes one.
+
+    `only` names the files whose mutants `patterns` can match, and mutmut then
+    mutates those files alone. It is `None` where every file that
+    `only_mutate` names must be mutated. mutmut puts a wrapper around each
+    function of a file it mutates, and every call through a wrapper is slow.
+    A call into any other file then runs at its ordinary speed (`PL-R8HY`).
     """
     mutants = root / MUTANTS
     shutil.rmtree(mutants, ignore_errors=True)
@@ -535,7 +607,9 @@ def run(
         file=sys.stderr,
         flush=True,
     )
-    return _mutmut(root, "run", *patterns, log=log).returncode, log
+    files = None if only is None else sorted(only)
+    done = _python(root, "-c", RUN_SCRIPT, json.dumps(files), *patterns, log=log)
+    return done.returncode, log
 
 
 def statuses(root: Path) -> dict[str, str]:
@@ -559,6 +633,73 @@ def recorded_exit_codes(root: Path, paths: Iterable[str]) -> dict[str, int]:
         if meta.is_file():
             codes.update(json.loads(meta.read_text(encoding="utf-8"))["exit_code_by_key"])
     return codes
+
+
+def first_step(root: Path, table: Mapping[str, object]) -> int:
+    """Run mutmut's first step without its coverage collection, and print what failed.
+
+    mutmut's first run of the selected tests, in its copy of the tree, stops
+    the whole run when one test fails there (`PL-PG0S`). A test fails there and
+    nowhere else when it reads a file that the copy does not hold, or when it
+    lists a module's functions and meets the mutant copies that mutmut adds.
+    So this builds the copy as mutmut does, generates every mutant, and runs
+    the same tests with the same arguments, with no mutant applied.
+
+    It leaves out mutmut's record of which functions each test calls, which
+    made the step take about 19 minutes in one process on 2026-11-11
+    (`PL-R8HY`), and it spreads the tests over every core. So a test that
+    fails only while that record is kept, or only when every test shares one
+    process, would pass here and still stop mutmut. None such is known.
+
+    Returns pytest's exit status: 0 when every selected test passed in the
+    copy. `Refusal` where the copy could not be built.
+    """
+    built = subprocess.run(
+        [sys.executable, "-c", COPY_SCRIPT],
+        cwd=root,
+        capture_output=True,
+        env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+        check=False,
+    )
+    if built.returncode:
+        error = built.stderr.decode("utf-8", errors="replace")[-2000:]
+        raise Refusal(f"mutmut could not build {MUTANTS}/ (exit {built.returncode}):\n{error}")
+    tests = simulator_unit_tests(root)
+    (root / MUTANTS / selection_file(table)).write_text("".join(f"{t}\n" for t in tests), "utf-8")
+    command = [
+        sys.executable,
+        "-m",
+        "pytest",
+        "--rootdir=.",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "-n",
+        "auto",
+        "--dist",
+        "worksteal",
+        *_strings(table, "pytest_add_cli_args_test_selection"),
+    ]
+    print(
+        f"Running the {len(tests)} simulator test files under {UNIT_TESTS}/ in mutmut's "
+        f"copy of the tree, {MUTANTS}/, with no mutant applied.",
+        flush=True,
+    )
+    done = subprocess.run(
+        command,
+        cwd=root / MUTANTS,
+        env={**os.environ, "MUTANT_UNDER_TEST": "", "PYTHONPATH": "src"},
+        check=False,
+    )
+    if done.returncode:
+        print(
+            f"\nA test above fails in {MUTANTS}/, so every mutation run would stop at its "
+            "first step. Make the test pass there: copy the file it reads through "
+            "[tool.mutmut] also_copy, or, where it cannot run against mutated code, "
+            "deselect it there with the reason (pyproject.toml says how).",
+            flush=True,
+        )
+    return done.returncode
 
 
 def _test_files(root: Path, name: str) -> list[str]:
@@ -1181,7 +1322,7 @@ def _compared_statuses(
     tree holds the same source and is not a checkout. A mutant of any other
     module is left out.
     """
-    code, log = run(tree, patterns, table, tests)
+    code, log = run(tree, patterns, table, tests, only=files)
     if code:
         raise Refusal(f"mutmut exited {code} in {tree}. The end of {log}:\n{_tail(log)}")
     modules = {module_name(path) for path in files}
@@ -1384,6 +1525,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     modes = parser.add_mutually_exclusive_group()
     modes.add_argument("--all", action="store_true", help="run every mutant, not the changed ones")
     modes.add_argument(
+        "--first-step",
+        action="store_true",
+        help="run the selected tests in mutmut's copy of the tree, with no mutant, and stop",
+    )
+    modes.add_argument(
         "--verdict",
         action="store_true",
         help="print, as JSON for docket verify, the changed lines' mutants the tests missed",
@@ -1400,6 +1546,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     try:
         table = mutmut_table(root)
+        if args.first_step:
+            return first_step(root, table)
         if args.all:
             code, log = run(root, (), table)
             if code:
@@ -1429,13 +1577,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             for path, rows in change.outside.items():
                 print(f"  {path}: {len(rows)} changed lines outside any function.")
             return 0
-        listed = listing(root, change) if args.verdict else None
-        if listed is not None and not listed.run:
+        listed = listing(root, change)
+        names = None if listed is None else names_to_run(listed, verdict=args.verdict)
+        if names is not None and not names:
             print(answer(change, {}, listed))
             return 0
-        patterns = sorted(listed.run) if listed else [unit.pattern for unit in change.units]
-        code, log = run(root, patterns, table)
+        patterns = [unit.pattern for unit in change.units] if names is None else names
+        code, log = run(root, patterns, table, only=sorted({unit.path for unit in change.units}))
         if code and NOTHING_MATCHES in log.read_text(encoding="utf-8", errors="replace"):
+            if names is not None:
+                raise Refusal(
+                    f"mutmut found none of the {len(names)} mutants that the listing named, "
+                    "so the run and the listing generated different mutants."
+                )
             print(answer(change, {}, listed))
             return 0
         if code:

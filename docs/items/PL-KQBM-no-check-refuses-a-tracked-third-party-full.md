@@ -1,8 +1,14 @@
 ---
 id: PL-KQBM
 title: No check refuses a tracked third-party full text, such as a PDF, now that sessions can fetch from any host
-status: untriaged
+priority: P3
+effort: S
+status: blocked
+classes: infra
+touches: tools, Makefile
+blocked-by: PL-J1ZM
 added: 2026-11-11
+payoff: a publisher's full text cannot be committed and redistributed by accident
 ---
 
 **Problem.** No check refuses a tracked third-party full text, such as a PDF, now that sessions can fetch from any host
@@ -22,3 +28,11 @@ with the rule.
 
 **Before building it.** A new check is a new workflow mechanism, so the
 generator pause in `CLAUDE.md` applies unless the owner asks for it.
+
+**Why it matters.** A third party's full text committed here would be redistributed by every clone and fork, against `docs/references/README.md` § "Redistribution" and the condition `PL-6VZF` set when it opened the network. Prose alone did not stop it before: two publisher PDFs sat in the tree until 2026-09-06 (`PL-SHG5`).
+
+**Done when.** A check wired into `make check` fails when a tracked file has a document extension such as `.pdf`, `.epub` or `.djvu` and is not on a list of files whose licence `docs/references/README.md` records.
+
+**Blocked on the generator pause.** A new check is a new workflow mechanism, which `CLAUDE.md` holds while a workflow-lane head carries `generator: live`. `PL-J1ZM` is that head on 2026-11-11.
+
+**Generator check.** A one-off: a rule stated in prose with no check, and one earlier instance (`PL-SHG5`). No head's `misread:` states which tracked files are a third party's text.
