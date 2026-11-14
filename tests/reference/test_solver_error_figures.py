@@ -59,6 +59,8 @@ AGENT_ID = "sevoflurane"
 STEP = SimulationStep(0.1)
 STEP_TEXT = "0.1"
 RUN_S = 10
+#: The run length as the section writes it. A new `RUN_S` needs its words here.
+RUN_WORDS = {10: "ten"}
 STEPS = round(RUN_S / STEP)
 REFERENCE_DIGITS = 50
 BELOW_RESOLUTION = "<0.01%"
@@ -104,10 +106,11 @@ def _printed_bound() -> float:
     """The section's bound on the relative difference, `1e-13` for a printed `10^{-13}`."""
 
     (exponent,) = _one(
+        rf"In a {AGENT_ID} run at the default settings, "
         r"the venous blood and the three tissue groups read `<0\.01%` for the whole of the "
-        r"first ten seconds\. The simulator's values for these compartments differ from the "
-        r"same equations solved to 50 significant digits by less than "
-        r"\$`10\^\{(-\d+)\}`\$ of each value"
+        rf"first {RUN_WORDS[RUN_S]} seconds\. The simulator's values for these compartments "
+        rf"differ from the same equations solved to {REFERENCE_DIGITS} significant digits by "
+        r"less than \$`10\^\{(-\d+)\}`\$ of each value"
     )
 
     return 10.0 ** int(exponent)
@@ -126,11 +129,14 @@ def solver_error() -> float:
     anywhere = 0.0
 
     with localcontext() as context:
-        context.prec = REFERENCE_DIGITS
-        # The reference's own error is far below anything measured here: at
-        # 50 digits neither the series nor its squarings come near double
+        # `_decimal_exponential` sets the context's precision itself, and each
+        # step's product below runs at the precision it leaves. The check
+        # keeps the section's "50 significant digits" true of both. The
+        # reference's own error is far below anything measured here: at 50
+        # digits neither the series nor its squarings come near double
         # precision, as `_decimal_exponential`'s docstring says.
         propagator = _decimal_exponential(matrix, STEP_TEXT)
+        assert context.prec == REFERENCE_DIGITS
         reference = [Decimal(value) for value in system.state_vector()]
 
         for _ in range(STEPS):
@@ -184,6 +190,11 @@ def test_the_solver_error_in_the_first_ten_seconds_is_below_the_printed_bound(
     or about 4.5 times it for each of the 100 steps. That leaves room for a
     change in the order of the arithmetic, while staying far below any
     displayed digit.
+
+    The bound must also stay within 100 times the measurement. A bound that is
+    true but far too loose, such as the 2e-4 this section printed before
+    2026-11-14, would tell a reader the solver is ten orders of magnitude less
+    accurate than it is.
     """
 
     bound = _printed_bound()
@@ -192,4 +203,10 @@ def test_the_solver_error_in_the_first_ten_seconds_is_below_the_printed_bound(
         f"docs/INTERFACE.md § 'Displayed precision' says the solver's values differ from the "
         f"50-digit reference by less than {bound:.0e} of each value, and the model now gives "
         f"{solver_error!r}. Find what made the solver less accurate before changing the bound."
+    )
+    # A choice of how close a printed bound must be, not a numerical limit: a
+    # factor of 100 keeps the bound within two orders of magnitude.
+    assert bound < 100 * solver_error, (
+        f"docs/INTERFACE.md § 'Displayed precision' gives {bound:.0e} as the bound, more than "
+        f"100 times the measured {solver_error!r}. Print a bound closer to the measurement."
     )
