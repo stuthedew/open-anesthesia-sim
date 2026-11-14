@@ -101,9 +101,9 @@ def application() -> Iterator[QApplication]:
 
 #: The dashboard that the current test shows. It is deleted before the next one
 #: is shown, and at the end of the module. `_SHOWN_VIEWS` in
-#: `tests/integration/simulation_view/simulation_view_support.py` gives the reason: a view left to the garbage
-#: collector is deleted whenever a collection happens to run, which is a fatal
-#: error.
+#: `tests/integration/simulation_view/simulation_view_support.py` gives the
+#: reason: a view left to the garbage collector is deleted whenever a
+#: collection happens to run, which is a fatal error.
 _SHOWN_VIEWS: list[SimulationView] = []
 
 

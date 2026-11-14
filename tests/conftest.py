@@ -20,9 +20,10 @@ render, and nothing here should override their choice.
 compute something that takes about a sixth of the run. One kind is a 24-hour
 washout curve in `tests/reference/test_late_washout_against_published_fits.py`.
 The other is a controller stepped onto the 24-hour limit in
-`tests/integration/controller/test_controller_supported_length.py`. Each is computed once per run and
-shared between workers through the `computed_once` fixture below (`PL-F08Y`,
-`PL-ZWQS`). Before this dealing, the scheduler decided where these tests ran.
+`tests/integration/controller/test_controller_supported_length.py`. Each is
+computed once per run and shared between workers through the `computed_once`
+fixture below (`PL-F08Y`, `PL-ZWQS`). Before this dealing, the scheduler
+decided where these tests ran.
 At the start of a run, `worksteal` deals the collection out in contiguous
 slices. After that, it steals only from the tail of a queue, as other queues
 run dry. So every curve began in the last third of the run, and a slow CI
