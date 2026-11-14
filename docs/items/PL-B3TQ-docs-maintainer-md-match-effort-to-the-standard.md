@@ -3,11 +3,13 @@ id: PL-B3TQ
 title: docs/maintainer.md § 'Match effort to the standard the work is held to' says a Projects thread runs at the level the coordinator started it with (PL-6LVZ), while .claude/skills/docket/modes/triage.md says a Projects thread sets its level with its own effort setting; say which holds, in one place (found by PL-GZFR's search, 2026-11-11)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, docs
 touches: docs/maintainer.md, .claude/skills/docket/modes/triage.md
 deferred-from: v0.7.0 - workflow tooling outside the schematic release, and it changes no displayed value
 added: 2026-11-11
+closed: 2026-11-14
+pr: 2153
 payoff: a Projects thread finds one statement of the effort level it runs at
 verify: ! grep -qF 'sets its level with its own effort setting' .claude/skills/docket/modes/triage.md
 ---
@@ -21,3 +23,7 @@ verify: ! grep -qF 'sets its level with its own effort setting' .claude/skills/d
 **Done when.** `triage.md` no longer states the level a Projects thread runs at, and points to the sentence in `docs/maintainer.md` instead.
 
 **Generator check.** A one-off: a second copy of one sentence in prose. No head's `misread:` states the effort level a session runs at.
+
+**Done, 2026-11-14.** `docs/maintainer.md` keeps the one statement: a thread
+runs at the level the coordinator started it with. `triage.md` now points to
+that section instead of stating the level.
