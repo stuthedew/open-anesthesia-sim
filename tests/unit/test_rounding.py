@@ -329,8 +329,9 @@ def test_a_step_drawn_across_the_envelope_stays_inside_the_derived_bound(
     applied to the same state. The scale is the larger of the largest fraction
     in the state and the delivered fraction, which is what the bound is stated
     against. One leading term is 2**squarings times 2**-52, with the squarings
-    counted by `test_numerical_envelope._squarings`. On 2026-11-11 the largest
-    error among 240 000 such steps was 3.9 leading terms.
+    counted by `test_numerical_envelope._squarings`. On 2026-11-14 the largest
+    error among 240 000 such steps, each from four drawn states, was 3.5
+    leading terms.
     """
 
     corner, flows, dial, step_s, fractions = drawn

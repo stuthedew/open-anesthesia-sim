@@ -136,8 +136,11 @@ operation, which `SMALLEST_FULL_PRECISION_MAGNITUDE` covers.
 The measurement checks that the bound is not vacuous. On 2026-11-11, 240 000
 single steps were drawn across the numerical envelope and compared with a
 50-digit evaluation. The largest error in a fraction's row of the propagator
-was 3.5 units, and the largest error in a state after one step was 3.9 units,
-about 40% of the bound. The same error repeats on every step: the five steps
+was 3.5 units. One corner, stepped from 400 opening states, reached 3.9 units
+in the state after one step, about 40% of the bound. A second draw of 240 000
+steps on 2026-11-14, each applied to four drawn states and measured against
+the scale above, found at most 3.6 units in the propagator and 3.5 in the
+state. The same error repeats on every step: the five steps
 with the largest propagator errors were each repeated 2 000 times, and the
 state stayed 2.6 to 3.5 units per step from the 50-digit solution.
 

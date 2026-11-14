@@ -2578,8 +2578,9 @@ in the first row is derived too. It counts every rounding in one step at its lar
 size, and lets each squaring double the error it receives. The count gives at most 9.13 times
 $`2^{s} \cdot 2^{-52}`$, and 10 is that rounded up. The largest fraction in the run includes the
 fraction that the vaporizer delivers. A measurement checks that
-the bound is not far above what happens: the largest error in 240 000 steps drawn across the
-numerical envelope on 2026-11-11 was 3.9 times $`2^{s} \cdot 2^{-52}`$, about 40% of the bound.
+the bound is not far above what happens. On 2026-11-11 and 2026-11-14, 480 000 steps were drawn
+across the numerical envelope, and one corner was stepped from 400 opening states. The largest
+error was 3.9 times $`2^{s} \cdot 2^{-52}`$, at that corner, which is about 40% of the bound.
 A fixed allowance is a chosen number, far above the rounding that
 was measured and far below a displayed digit. The section named in each row gives its
 measurement.
