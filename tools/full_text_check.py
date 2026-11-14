@@ -30,7 +30,6 @@ It reads the tracked file list and one Markdown file, so it runs with bare
 
 from __future__ import annotations
 
-import argparse
 import re
 import sys
 from pathlib import Path
@@ -42,6 +41,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 from docket.lines import split_lines  # noqa: E402
 from docket.vcs import tracked_files  # noqa: E402
 
+from check_support import repository_root  # noqa: E402
 from doc_check import REFERENCES  # noqa: E402
 
 #: The extensions of formats that hold a whole document: a paper, a book or a
@@ -125,13 +125,9 @@ def problems(root: Path) -> list[str]:
     return found
 
 
-def main(argv: list[str] | None = None, root: Path = ROOT) -> int:
-    parser = argparse.ArgumentParser(description=split_lines(__doc__)[0])
-    parser.parse_args(argv)
-    found = problems(root)
-    for line in found:
-        print(line)
-    print(f"full texts: {len(found)} errors")
+def main(argv: list[str] | None = None) -> int:
+    found = problems(repository_root(argv, __doc__))
+    print("\n".join([*found, f"full texts: {len(found)} errors"]))
     return 1 if found else 0
 
 
