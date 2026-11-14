@@ -69,11 +69,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      # The floor `subprojects/docket/pyproject.toml` declares, as in
-      # `pr-title.yml`.
+      # The product's interpreter, which `.python-version` names. The command
+      # parses each changed test under `tests/` to learn whether it imports the
+      # product, and a product test may use syntax the docket floor (3.11)
+      # cannot parse, such as an f-string that reuses its own quote. The floor
+      # is still proven by `quality.yml` (`PL-RTYG`).
       - uses: actions/setup-python@v7.0.0
         with:
-          python-version: '3.11'
+          python-version-file: .python-version
 
       # The branch's name reaches the command through the environment and not
       # a `${{ }}` interpolation inside `run:`, because a pull request chooses
