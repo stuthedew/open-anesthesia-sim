@@ -109,6 +109,7 @@ from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValid
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.blood import VenousBloodCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
+from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.exceptions import AnesthesiaSimulationError
 from anesthesia_sim.core.governing_equations import UptakeEquationSettings
 from anesthesia_sim.core.patient import PatientCompartments
@@ -188,6 +189,7 @@ RECEIVERS: Mapping[type, Callable[[], object]] = {
     TimeBookmark: lambda: MARK,
     TissueGroup: lambda: AgentUptakeSystem.default().patient.fat,
     UptakeEquationSettings: lambda: AgentUptakeSystem.default().equation_settings(),
+    VenousBloodCompartment: lambda: AgentUptakeSystem.default().patient.venous_blood,
 }
 
 # How to build a record at a drawn value where the record's own check ties
@@ -201,10 +203,11 @@ TIED: Mapping[tuple[type, type], Callable[[typing.Any], object]] = {
 # A value for each parameter that the guard being drawn does not bound, where
 # a function behind the guard takes one without a default. The values are the
 # shipped tick, the count of a run that has not stepped and the state it opens
-# at, and the narrowest width that the chart's selector offers. The other
-# values give a bookmark set's view of a run that has reached no mark, has
-# crossed no height and is neither at its cap nor failed. The squarings are
-# those of a shipped agent's step, which needs none.
+# at, and the narrowest width that the chart's selector offers. The venous pool
+# stepped on its own takes a one-second step towards a tissue return of zero.
+# The other values give a bookmark set's view of a run that has reached no
+# mark, has crossed no height and is neither at its cap nor failed. The squarings
+# are those of a shipped agent's step, which needs none.
 TYPICAL: Mapping[str, object] = {
     "after": {},
     "before": {},
@@ -213,17 +216,23 @@ TYPICAL: Mapping[str, object] = {
     "reached_instants_s": frozenset(),
     "run_failed": False,
     "squarings": 0,
+    "simulation_step_s": 1.0,
     "step_count": StepCount(0),
     "stopped_at_cap": False,
     "tick_interval_s": SIMULATION_TICK_INTERVAL_S,
     "time_base": SELECTABLE_TIME_BASES[0],
+    "tissue_return_partial_pressure_fraction": Fraction(0.0),
 }
 
-# The properties that may compute `inf`: a time constant where nothing flows,
-# or where so little flows that the quotient overflows. The time constants of
-# the tissues and of the venous pool behave the same way. They are not listed
-# here because nothing drawn builds a tissue or the venous pool on its own.
-INFINITE_WHERE_NOTHING_FLOWS: frozenset[object] = frozenset({BreathingCircuit.time_constant_s})
+# These are the properties and methods that may compute `inf`. Each is a time
+# constant that is `inf` where nothing flows, or where so little flows that the
+# quotient overflows. The venous pool's time constant takes the cardiac output,
+# so it is drawn (`PL-GKG4`). A tissue's time constant behaves the same way. It
+# is not listed here because it takes a `BloodFlow`, which no guard in these
+# modules builds.
+INFINITE_WHERE_NOTHING_FLOWS: frozenset[object] = frozenset(
+    {BreathingCircuit.time_constant_s, VenousBloodCompartment.time_constant_s}
+)
 
 
 def _without_none(annotation: object) -> object:
@@ -730,7 +739,8 @@ def _computes_with(
                 except AnesthesiaSimulationError:
                     continue
 
-            _require_finite(result, function)
+            if not (function in INFINITE_WHERE_NOTHING_FLOWS and result == math.inf):
+                _require_finite(result, function)
 
             if built is not None:
                 try:

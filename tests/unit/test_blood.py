@@ -10,13 +10,14 @@ from anesthesia_sim.core.blood import VenousBloodCompartment
 from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
-from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S
+from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S, CardiacOutput
 
-BLOOD_FLOW_L_MIN = 5.0
-"""The blood flow, in L/min, at which these tests mix the pool, unless a test says otherwise.
+CARDIAC_OUTPUT_L_MIN = CardiacOutput(5.0)
+"""The cardiac output, in L/min, at which these tests mix the pool, unless a test says otherwise.
 
-The pool has stored no flow since `PL-HQF5`, so each closed form takes the flow
-as an argument.
+The pool's blood flow is the whole cardiac output. The pool stores no flow
+(`PL-HQF5`), so each closed form takes the cardiac output as an argument
+(`PL-GKG4`).
 """
 
 
@@ -229,34 +230,34 @@ def test_the_blood_gas_coefficient_is_written_once_and_a_copy_keeps_it() -> None
     assert pickle.loads(pickle.dumps(venous)) == venous
 
 
-@pytest.mark.parametrize("blood_flow_l_min", [-1.0, inf, nan])
-def test_a_refused_blood_flow_leaves_the_flow_as_it_was(blood_flow_l_min: float) -> None:
-    """A flow at which the closed form cannot be evaluated is refused, and nothing changes.
+@pytest.mark.parametrize("cardiac_output_l_min", [-1.0, inf, nan, 5.0])
+def test_a_refused_blood_flow_leaves_the_flow_as_it_was(cardiac_output_l_min: float) -> None:
+    """A flow that was not built as a `CardiacOutput` is refused, and nothing changes.
 
-    The flow was a stored field until `PL-HQF5`, and a write to that field
-    refused such a flow (`PL-19Y0`). The flow is now an argument of
-    `time_constant_s` and `advance`, which refuse it in the same words before
-    anything changes.
+    The flow was once a stored field, and a write to that field refused a flow
+    that was negative or not finite (`PL-19Y0`, `PL-HQF5`). The pool's flow is
+    the cardiac output, which is now an argument of `time_constant_s` and
+    `advance`. Both refuse any bare number, 5.0 L/min included, before anything
+    changes (`PL-GKG4`).
     """
 
     venous = _build_venous_blood()
     venous.set_partial_pressure_fraction(Fraction(0.4))
     held = astuple(venous)
 
-    with pytest.raises(
-        SimulationConfigurationError,
-        match="^venous blood_flow_l_min must be nonnegative and finite" + REFUSAL_REASON,
-    ):
-        venous.time_constant_s(blood_flow_l_min)
+    refused = (
+        f"^cardiac_output_l_min of {cardiac_output_l_min} was not built as CardiacOutput, "
+        "it is float"
+    )
 
-    with pytest.raises(
-        SimulationConfigurationError,
-        match="^venous blood_flow_l_min must be nonnegative and finite" + REFUSAL_REASON,
-    ):
+    with pytest.raises(TypeError, match=refused):
+        venous.time_constant_s(cardiac_output_l_min)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match=refused):
         venous.advance(
             tissue_return_partial_pressure_fraction=Fraction(1.0),
             simulation_step_s=1.0,
-            blood_flow_l_min=blood_flow_l_min,
+            cardiac_output_l_min=cardiac_output_l_min,  # type: ignore[arg-type]
         )
 
     assert astuple(venous) == held
@@ -297,8 +298,8 @@ def test_one_time_constant_reaches_expected_fraction() -> None:
 
     venous.advance(
         tissue_return_partial_pressure_fraction=Fraction(1.0),
-        simulation_step_s=venous.time_constant_s(BLOOD_FLOW_L_MIN),
-        blood_flow_l_min=BLOOD_FLOW_L_MIN,
+        simulation_step_s=venous.time_constant_s(CARDIAC_OUTPUT_L_MIN),
+        cardiac_output_l_min=CARDIAC_OUTPUT_L_MIN,
     )
 
     assert venous.partial_pressure_fraction == pytest.approx(1.0 - exp(-1.0))
@@ -312,10 +313,10 @@ def test_zero_blood_flow_preserves_venous_state() -> None:
     amount_change = venous.advance(
         tissue_return_partial_pressure_fraction=Fraction(1.0),
         simulation_step_s=60.0,
-        blood_flow_l_min=0.0,
+        cardiac_output_l_min=CardiacOutput(0.0),
     )
 
-    assert venous.time_constant_s(0.0) == inf
+    assert venous.time_constant_s(CardiacOutput(0.0)) == inf
     assert amount_change == 0.0
     assert venous.agent_amount_l == amount_before
 
@@ -327,7 +328,7 @@ def test_washout_returns_negative_amount_change() -> None:
     amount_change = venous.advance(
         tissue_return_partial_pressure_fraction=Fraction(0.0),
         simulation_step_s=10.0,
-        blood_flow_l_min=BLOOD_FLOW_L_MIN,
+        cardiac_output_l_min=CARDIAC_OUTPUT_L_MIN,
     )
 
     assert amount_change < 0.0
@@ -358,8 +359,8 @@ def test_the_time_constant_is_formed_from_the_flow_it_is_given() -> None:
         volume_l=CompartmentVolume(2.0), blood_gas_partition_coefficient=PartitionCoefficient(0.65)
     )
 
-    assert venous.time_constant_s(4.0) == pytest.approx(30.0, rel=1e-15)
-    assert venous.time_constant_s(6.0) == pytest.approx(20.0, rel=1e-15)
+    assert venous.time_constant_s(CardiacOutput(4.0)) == pytest.approx(30.0, rel=1e-15)
+    assert venous.time_constant_s(CardiacOutput(6.0)) == pytest.approx(20.0, rel=1e-15)
 
 
 @pytest.mark.parametrize("factor", [1e200, 1e-200])
@@ -420,12 +421,12 @@ def test_a_step_below_the_floor_is_refused_when_the_pool_is_stepped_alone(
             r'simulation step"\)$'
         ),
     ):
-        venous.advance(Fraction(0.02), simulation_step_s, BLOOD_FLOW_L_MIN)
+        venous.advance(Fraction(0.02), simulation_step_s, CARDIAC_OUTPUT_L_MIN)
 
     assert venous.agent_amount_l == held_l
 
-    venous.advance(Fraction(0.02), 0.001, BLOOD_FLOW_L_MIN)
-    venous.advance(Fraction(0.02), 1.0, BLOOD_FLOW_L_MIN)
+    venous.advance(Fraction(0.02), 0.001, CARDIAC_OUTPUT_L_MIN)
+    venous.advance(Fraction(0.02), 1.0, CARDIAC_OUTPUT_L_MIN)
 
     assert venous.agent_amount_l > held_l
 
@@ -460,11 +461,11 @@ def test_a_step_past_the_run_length_is_refused_when_the_pool_is_stepped_alone(
             r'longer \(docs/MODEL.md, "Supported simulation step"\)$'
         ),
     ):
-        venous.advance(Fraction(0.02), simulation_step_s, BLOOD_FLOW_L_MIN)
+        venous.advance(Fraction(0.02), simulation_step_s, CARDIAC_OUTPUT_L_MIN)
 
     assert venous.agent_amount_l == held_l
 
-    venous.advance(Fraction(0.02), 86_400.0, BLOOD_FLOW_L_MIN)
+    venous.advance(Fraction(0.02), 86_400.0, CARDIAC_OUTPUT_L_MIN)
 
     assert venous.agent_amount_l == pytest.approx(0.02 * venous.capacity_l, rel=1e-15, abs=0.0)
 

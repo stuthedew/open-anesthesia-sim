@@ -1,9 +1,11 @@
 from copy import deepcopy
 from dataclasses import replace
+from math import fsum
 
 import pytest
 
 from anesthesia_sim.core.blood import VenousBloodCompartment
+from anesthesia_sim.core.blood_flow import PerfusionFraction
 from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
@@ -30,7 +32,9 @@ def test_rejects_perfusion_sum_outside_tolerance() -> None:
     parameters = load_reference_adult_parameters()
     invalid_parameters = replace(
         parameters,
-        fat_perfusion_fraction=(parameters.fat_perfusion_fraction - 2.0 * FLOW_FRACTION_TOLERANCE),
+        fat_perfusion_fraction=PerfusionFraction(
+            parameters.fat_perfusion_fraction - 2.0 * FLOW_FRACTION_TOLERANCE
+        ),
     )
 
     with pytest.raises(
@@ -44,12 +48,42 @@ def test_accepts_perfusion_sum_inside_tolerance() -> None:
     parameters = load_reference_adult_parameters()
     valid_parameters = replace(
         parameters,
-        fat_perfusion_fraction=(parameters.fat_perfusion_fraction - 0.5 * FLOW_FRACTION_TOLERANCE),
+        fat_perfusion_fraction=PerfusionFraction(
+            parameters.fat_perfusion_fraction - 0.5 * FLOW_FRACTION_TOLERANCE
+        ),
     )
 
     patient = PatientCompartments.from_parameters(agent=agent, patient=valid_parameters)
 
     assert patient.total_perfusion_fraction == pytest.approx(1.0, abs=FLOW_FRACTION_TOLERANCE)
+
+
+def test_the_total_perfusion_fraction_is_a_sum_of_plain_numbers() -> None:
+    """Fractions of 0.7, 0.2 and 0.1 total exactly 1.0, as they did before they had a type.
+
+    CPython's `sum` corrects for rounding when it adds plain `float`s, and
+    does not when it adds values of a `float` subclass (`PL-5BD7`). Adding
+    0.7, 0.2 and 0.1 one after another without the correction gives
+    0.9999999999999999. With it the total is 1.0, the nearest `float` to the
+    true sum, which `math.fsum` also returns. The total was a sum of plain
+    `float`s before `PerfusionFraction` existed, and it must stay one
+    (`PL-GKG4`).
+    """
+
+    parameters = replace(
+        load_reference_adult_parameters(),
+        vessel_rich_perfusion_fraction=PerfusionFraction(0.7),
+        muscle_perfusion_fraction=PerfusionFraction(0.2),
+        fat_perfusion_fraction=PerfusionFraction(0.1),
+    )
+
+    patient = PatientCompartments.from_parameters(
+        agent=load_sevoflurane_parameters(), patient=parameters
+    )
+
+    assert 0.7 + 0.2 + 0.1 == 0.9999999999999999
+    assert fsum((0.7, 0.2, 0.1)) == 1.0
+    assert patient.total_perfusion_fraction == 1.0
 
 
 def test_builds_reference_patient_from_parameters() -> None:
@@ -228,7 +262,7 @@ def test_a_perfusion_fraction_written_on_a_built_patient_is_refused() -> None:
         match="^the vessel_rich tissue group's perfusion fraction of 0.76 cannot be written "
         "again, as 0.5, once the group is built",
     ):
-        vessel_rich.perfusion_fraction = 0.5
+        vessel_rich.perfusion_fraction = PerfusionFraction(0.5)
 
     with pytest.raises(
         SimulationConfigurationError,
@@ -247,7 +281,7 @@ def test_a_perfusion_fraction_written_on_a_built_patient_is_refused() -> None:
     with pytest.raises(
         SimulationConfigurationError, match="^tissue perfusion fractions must sum to 1$"
     ):
-        patient.vessel_rich = replace(vessel_rich, perfusion_fraction=0.5)
+        patient.vessel_rich = replace(vessel_rich, perfusion_fraction=PerfusionFraction(0.5))
 
     assert patient.vessel_rich is vessel_rich
     assert vessel_rich.perfusion_fraction == 0.76

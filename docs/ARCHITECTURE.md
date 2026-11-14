@@ -97,6 +97,7 @@ src/anesthesia_sim/
 │   ├── supported_ranges.py        # the declared domain: FreshGasFlow, AlveolarVentilation and CardiacOutput, which cannot hold a flow outside it, CaseInstant, which cannot hold an instant outside the run length, StepCount, a whole nonnegative count, and the guards that refuse a run outside it
 │   ├── simulation_step.py         # the run's step: its supported range, and SimulationStep, which cannot hold one outside it
 │   ├── numerical_envelope.py      # where core's arithmetic is shown correct: CompartmentVolume and PartitionCoefficient, which cannot hold a volume or a coefficient outside it, and the one place the tissue:blood quotient is formed
+│   ├── blood_flow.py              # a tissue group's perfusion fraction and its blood flow: PerfusionFraction, which cannot hold a fraction of 0 or less or a fraction above 1, and BloodFlow, which is built only as a PerfusionFraction of a CardiacOutput
 │   ├── rounding.py                # how far a computed value can be from the exact one: the bound for one propagator, for one step and for a run of n steps, and each fixed allowance that a comparison in core/ or app/ reads (PL-GJ1W)
 │   ├── exceptions.py              # exception hierarchy; every core failure is inside it
 │   ├── parameters.py              # load + validate agent/patient/machine JSON data
@@ -828,7 +829,8 @@ different treatment:
   changed anything. The guards in `core/validation.py` raise it. So do the
   checked types' constructors (`Fraction`, `Percent` and `MacPercent` in
   `core/concentration.py`, and those in `core/supported_ranges.py`,
-  `core/simulation_step.py` and `core/numerical_envelope.py`). Compartment
+  `core/simulation_step.py`, `core/numerical_envelope.py` and
+  `core/blood_flow.py`). Compartment
   constructors and setters raise it too. So does a compartment field written
   directly, because its record checks every write in `__setattr__` (`PL-19Y0`).
   The parameter-file loaders raise it as well. The view's `_apply_setting`
@@ -1217,6 +1219,14 @@ specialist standard in `CLAUDE.md` that applies to this document (`PL-KRGY`).
     appearance (`test_dark_appearance.py`). It sets a dark host's palette on
     the `QApplication`, whereas the other tests set a palette on one widget.
     It does so because the code under test declares palettes (`PL-RKRY`).
+  - A test holds every string the dashboard shows, at fixed points of a run
+    of each agent with the default settings, to a list a person has approved
+    (`test_interface_wording.py`, with the list in
+    `approved_interface_strings.json` beside it). Digits are masked, so the
+    test holds wording and not the model's values. A change to that wording
+    fails until the list is rewritten and committed, and the test module says
+    how. A string that appears only after a setting change, or in a halt or
+    failure notice, is not on the list (`PL-86VL`).
 - **`tests/reference/`** — analytic or independent reference cases that the
   implementation must reproduce. Examples are the closed-form circuit wash-in
   solution, the sevoflurane patient reference scenario, and the from-scratch

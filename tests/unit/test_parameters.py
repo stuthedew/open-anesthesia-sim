@@ -169,6 +169,27 @@ def test_payload_model_rejects_positive_fraction_above_one() -> None:
         parameters_module._ReferenceAdultPayload.model_validate(payload)
 
 
+@pytest.mark.parametrize(
+    "field",
+    ["vessel_rich_perfusion_fraction", "muscle_perfusion_fraction", "fat_perfusion_fraction"],
+)
+def test_the_reference_adult_refuses_a_perfusion_fraction_given_as_a_bare_number(
+    field: str,
+) -> None:
+    """Each of the record's three perfusion fractions must be built as a `PerfusionFraction`.
+
+    The loader builds each fraction as its type. A record built or replaced
+    by hand could hold a bare number, which nothing has checked against the
+    range. The record refuses it by field name. The value here, 0.06, is the
+    reference adult's own fat fraction, so only its type is wrong.
+    """
+
+    with pytest.raises(
+        TypeError, match=f"^{field} of 0.06 was not built as PerfusionFraction, it is float"
+    ):
+        replace(load_reference_adult_parameters(), **{field: 0.06})
+
+
 def test_loads_built_in_sevoflurane_parameters() -> None:
     agent = load_sevoflurane_parameters()
 

@@ -21,7 +21,7 @@ GRANDFATHERED_REGEX: dict[str, dict[tuple[str, str], int]] = {
     "src/anesthesia_sim/app/view_registry.py": {("<module>", "compile"): 1},
     "src/anesthesia_sim/layout/run_identity.py": {("<module>", "compile"): 1},
     "src/anesthesia_sim/layout/tree.py": {("<module>", "compile"): 1},
-    "subprojects/docket/src/docket/arming.py": {("<module>", "compile"): 4},
+    "subprojects/docket/src/docket/arming.py": {("<module>", "compile"): 3},
     "subprojects/docket/src/docket/checks.py": {
         ("<module>", "compile"): 12,
         ("_answered_beneath", "finditer"): 1,
@@ -94,10 +94,9 @@ GRANDFATHERED_REGEX: dict[str, dict[tuple[str, str], int]] = {
         ("touches_from", "search"): 1,
     },
     "tests/integration/test_simulation_view.py": {
-        ("<module>", "compile"): 2,
+        ("<module>", "compile"): 1,
         ("test_agent_header_badge_is_bordered_against_the_panel", "search"): 1,
         ("test_the_interface_never_predicts_a_time_to_wake_up", "compile"): 1,
-        ("test_the_interface_never_predicts_a_time_to_wake_up", "finditer"): 1,
     },
     "tests/reference/test_mac_awake_washout_figures.py": {("_one", "findall"): 1},
     "tests/unit/test_ci_concurrency.py": {("<module>", "compile"): 4, ("_concurrency", "match"): 1},

@@ -3,18 +3,19 @@ id: PL-J1ZM
 title: Sessions write prose that over-explains, in every kind of text they write: each writing rule adds something a text must carry (a reason for each value, what changing it would do, the test that holds it, its provenance) and none says what the reader can do without, so docs, docstrings, the interface, item briefs, pull requests and replies each need rewrites, and each later change grows them again
 priority: P1
 effort: M
-status: blocked
+status: dropped
 classes: defect
 feature: copy-editor
-touches: .claude/rules/plain-writing.md, .claude/rules/instruction-writing.md, .claude/agents/copy-editor.md, docs/prose-review/gold, tools/new_prose.py, .claude/skills/docket/modes/close-out.md, docs/dead-ends.md, docs/items/PL-9331-make-docs-model-md-assumptions-known.md, docs/items/PL-BSYT-apply-the-prose-review-s-rewrites-of-four-docs.md, docs/items/PL-J37P-make-docs-model-md-displayed-precision-readable.md, docs/items/PL-PS5H-make-docs-model-md-minimum-displayed-outputs-up.md, docs/items/PL-XBJ3-make-docs-model-md-the-chart-s-hover-readout.md, docs/items/PL-XT53-make-docs-model-md-the-control-input-timeline.md, docs/items/PL-YVL0-make-docs-model-md-reset-behavior-through.md
-blocked-by: PL-TG6P, PL-DH17, PL-HNNH, PL-TTBF
-deferred-from: v0.7.0 - waits on PL-TG6P, PL-DH17, PL-HNNH and PL-TTBF, four copy-editor findings whose problems are new since the freeze and which no release schedules, so it is deferred with them on the terms of § "Deferring to the next gate"; not safety or science
+touches: .claude/rules/plain-writing.md, .claude/rules/instruction-writing.md, .claude/agents/copy-editor.md, docs/prose-review/gold, tools/new_prose.py, .claude/skills/docket/modes/close-out.md, docs/dead-ends.md, docs/items/PL-9331-make-docs-model-md-assumptions-known.md, docs/items/PL-BSYT-apply-the-prose-review-s-rewrites-of-four-docs.md, docs/items/PL-J37P-make-docs-model-md-displayed-precision-readable.md, docs/items/PL-PS5H-make-docs-model-md-minimum-displayed-outputs-up.md, docs/items/PL-XBJ3-make-docs-model-md-the-chart-s-hover-readout.md, docs/items/PL-XT53-make-docs-model-md-the-control-input-timeline.md, docs/items/PL-YVL0-make-docs-model-md-reset-behavior-through.md, .claude/skills/pull-request/SKILL.md, subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_arming.py, docket.toml, CLAUDE.md, .claude/skills/docket/modes/start.md, tools/effort_trial.py, docs/prose-review/README.md, docs/resident-instructions.md, docs/items/PL-HNNH-sessions-skip-naming-in-the-pull-request-body.md, docs/items/PL-TG6P-text-written-after-the-copy-editor-has-run-is.md, docs/items/PL-K3QM-mark-the-earlier-deliberate-sweeps-with-sweep.md, docs/items/PL-KQBM-no-check-refuses-a-tracked-third-party-full.md
+deferred-from: v0.7.0 - its problem is new since the freeze and no release schedules it, so it is deferred on the terms of § "Deferring to the next gate"; not safety or science
 added: 2026-11-03
+closed: 2026-11-14
+reason: stopped by the owner on 2026-11-14 after four tests did not change how sessions write; the copy-edit removal lands on #2119
 payoff: every reader, from a clinician in docs/MODEL.md to the owner reading a reply, gets the point in a few sentences, and changes stop growing text that then needs its own rewrite
 verify: grep -qE '^[*][*]Measured again, 20' docs/items/PL-J1ZM-*.md
 not-delegable: the approach changes how every session writes and needs a design round with the owner
 root-cause-of: PL-BSYT, PL-J37P, PL-9331, PL-PS5H, PL-XBJ3, PL-XT53, PL-YVL0, PL-QS9H, PL-TPS7, PL-1K5X, PL-FDMJ, PL-VGDX, PL-K7N7, PL-2K0K, PL-HRPK
-generator: live - the fix is built (PL-43GT, PL-22T5, PL-JP8X), but the 2026-11-04 measurement found text published after the copy editor's run, long replies sent without it, and grown passages left unnamed (PL-TG6P, PL-DH17, PL-HNNH)
+generator: spent - the owner stopped the work on 2026-11-14 without a fix, so no session works this mechanism further
 misread: what a reader can do without, which no rule states for any kind of text, so each writer adds
 ---
 
@@ -81,3 +82,180 @@ misread: what a reader can do without, which no rule states for any kind of text
 **What the failures share.** Both of the owner's objections landed on text that no review saw, written after the copy editor had run, to answer a question it raised (`PL-TG6P`). The other failures are steps of the procedure that no check reaches: the copy edit of a reply (`PL-DH17`) and naming the facts a grown passage adds (`PL-HNNH`). Those four items block this one. When they close, measure again over the three branches after the last of them merges, in a paragraph that opens "**Measured again, ". `PL-BS6N` holds the owner's other point, which is the owner's decision: when a model limitation earns a sentence.
 
 **Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. It stays deferred to the next gate on the terms of § "Deferring to the next gate", because it waits on four untriaged findings that no release schedules. Seven of its fifteen root-cause items were filed before the freeze, and `.claude/rules/plain-writing.md` existed (`8f9d20f3`, 2026-10-17). One rule it cites came later (`dde5efbf`, 2026-11-02).
+
+## Re-diagnosis, 2026-11-11
+
+**Why it was done again.** The project owner asked for a fresh diagnosis with nothing protected, because the copy editor "catches a problem after it is written when I want the problem prevented" (project owner, 2026-11-10).
+
+**Cause.** With no instructions, a session writes a full account of its work. Every writing instruction in this repository says what a text must carry, and each one tested made the text longer. Rules also require reporting inside the text. The copy editor edits sentences after the writing, and it does not remove an account the reader does not need.
+
+**The writing test.** Seven sets of instructions wrote a pull request body from the diffs of #2104 and #2106, through `claude -p` at high effort, one or two runs each. The words in each body:
+
+| Instructions | #2104 | #2106 |
+| --- | --- | --- |
+| None | 459 | 468 |
+| The full resident set | 546 | 610 |
+| A 150-word brief: name the reader, write what they need, and stop | 598, 582 | 620 |
+| One sentence: be selective, and drop details that do not change what the reader would do next | 300 | 374 |
+| A three-part form with "one to three sentences" for the first part | 181 | 230 |
+| The same form with no count, plus "keep every value, unit, condition and citation" | 280, 343 | 590, 653 |
+| Two example bodies | 192 | 361 |
+| The body that merged | 308 | 316 |
+
+The runs are few, so the table shows direction only. Instructions that say what to include or keep gave bodies as long as no instruction, or longer. The selection sentence and the examples gave shorter ones. The form was short only with a sentence count, and a count is refused (`docs/dead-ends.md`). The "keep every value" clause made the session copy every clearance value from the diff into the body.
+
+**The ten most recent merged branches** (#2113, #2111, #2099, #2107, #2110, #2108, #2105, #2106, #2101, #2104; agents read the session transcripts).
+
+1. The copy editor ran on two branches, three runs in all. On #2101's seven `ROADMAP.md` passages it took up to 32 minutes and $7.74, and the passages ended about 4 words longer. On #2099's fourteen docstrings and comments it took 27 minutes and $5.39, and they went from 723 words to 842. On #2099's pull request body it took 8 to 19 minutes, and the body went from 789 words to 831.
+2. The other eight branches skipped it, because they changed no simulator path (`PL-WBT6`) or because the owner paused it on 2026-11-10.
+3. Reporting that the rules require was about 340 of the 854 words in #2099's body, and 218 of the 681 in #2101's.
+4. Replies over 150 words ran from 206 to 1,122 words. The owner sent seven messages about a text, all about replies. Five were about sources cited without being read. One asked for context that a closing block had left out ("Give me context for item 2"), and one asked what a reply's "3 skipped" meant.
+
+**The owner's objections on record.** An agent found 42 in the items and `docs/prose-review/rejected/`: 18 to documents, 13 to replies and review requests, 4 to interface text, 3 to docstrings, 3 to pull request text and 1 to a rule. Seventeen were to text that a prose review or the copy editor had passed. None was to an item brief. `PL-8ZTQ`'s own test of the plain-writing rule found that it made docstrings 40% longer.
+
+**Verdicts.**
+
+- `.claude/rules/plain-writing.md` and its reader table: change. Keep the points about sentences, and each reader with what they do. Replace the parts that say what a text must carry with the selection sentence and examples for each kind of text.
+- The five machine-writing patterns: delete the list. Two of them, a defensive scope statement and narration about the text, are in text that merged on 2026-11-10.
+- The copy editor on every branch, with its trailers, its comparison of growth and the reporting it asks for in the pull request body: delete. Keep the copy editor for rewriting an existing section of a document on request, where the blind judge preferred its edit for six of seven sections (`PL-HGZS`).
+- `PL-HNNH` and `PL-TG6P`: dropped. Each added a step and required text after the writing. Their branch, #2115, was closed unmerged. `PL-P7B3`, filed only on that branch, is moot for the same reason.
+- The list of numbers, units, citations and other facts that a change removed from a file: keep. It protects the facts the safety-critical standard requires, and no instruction is needed for it.
+- The reporting lines that rules require in a reply, such as where the id was put, which files were checked and the session's length: move to the item or the commit.
+- Replies get examples. Item briefs get nothing new.
+
+**Answer** (project owner, 2026-11-11, ratified, over keeping the copy editor on every branch and merging #2115): build the design in these verdicts. It reopens the decision of 2026-11-04 that examples go to the copy editor and not to writers, on the evidence of the writing test.
+
+**Build order.**
+
+1. Write six first drafts under the new instructions: two pull request bodies, two replies and two docstrings, each beside the text it replaces. The owner reads them. The drafts the owner accepts become the examples. If the owner does not accept them, change the instructions and add no review.
+2. Rewrite `.claude/rules/plain-writing.md` around the selection sentence and the accepted examples. `tools/new_prose.py` reads the reader table, so check what it needs before changing a row.
+3. Remove the per-branch copy edit from close-out step 8, the pull-request skill and `bin/docket arm`, with its trailers and its reporting. Keep the list of removed facts.
+4. Move the reporting lines out of replies. They are asked for in `CLAUDE.md`, `.claude/skills/docket/modes/start.md`, `.claude/skills/docket/modes/close-out.md` and `tools/effort_trial.py`.
+5. Say in `docs/prose-review/README.md` that the copy editor runs on request, for rewriting a section.
+
+**Done when** (project owner, 2026-11-10). The owner accepts the text on first reading on three branches in a row after the fix merges, and those branches include one docstring change and one long reply. Record the result in a paragraph that opens "**Measured again, ". This replaces the Done-when of 2026-11-04.
+
+**Sources, each read on 2026-11-11.** The first three were fetched as whole pages, and each quotation was checked against the saved copy.
+
+- Anthropic, prompting guide for Claude Fable 5: "be selective about what you include (drop details that don't change what the reader would do next)" and "A short brevity instruction is as effective as listing each pattern". https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5
+- Anthropic, prompting guide for Claude Sonnet 5, the section on response length: "Positive examples showing how Claude can communicate with the appropriate level of concision tend to be more effective than negative examples or instructions that tell the model what not to do". https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-sonnet-5
+- Claude Code documentation, the memory page: "target under 200 lines per CLAUDE.md file. Longer files consume more context and reduce adherence." https://code.claude.com/docs/en/memory
+- Xu et al., "Pride and Prejudice: LLM Amplifies Self-Bias in Self-Refinement", arXiv:2402.11436, abstract and introduction: self-refinement "improves the fluency and understandability of model outputs" and "further amplifies self-bias". https://arxiv.org/abs/2402.11436
+
+**From the session transcripts, 2026-11-11.** An agent read the owner's messages in 40 sessions, 17 of them in full, and found 26 that object to a text: 12 to documents, 7 to replies and decision requests, 2 to pull request titles, 2 to rules and 1 to an item brief. Three findings bear on the build.
+
+1. A "Merge" from the owner means the text met a minimum, not that it reads well: "I don't want to be the copy editor, I can help a little bit, but I don't want to have to do all that ... I will accept it when it meets the minimum bar, but doesn't necessarily mean it is optimal" (project owner, 2026-11-04 19:58Z, in the `PL-SP6H` session). So build step 1 asks the owner to read six short drafts and no more, and the measurement records the owner's words about each branch's text as well as whether it merged.
+2. The owner accepted one document paragraph in words, the 55-word `PL-ZDZ0` paragraph: "Sounds good" (2026-11-04 00:02Z). It is the first example for documents.
+3. A reply that points at an earlier reply is refused as often as a long one: "Give me complete prompt" (2026-11-04 00:35Z) and "Give me context for item 2" (2026-11-11 02:04Z). The reply examples must show each request stated in full.
+
+**First drafts under the new instructions, 2026-11-11.** This is build step 1. A fresh session wrote each text through `claude -p` at high effort, from a working copy that held the draft rule, with the whole resident set loaded. That differs from the writing test above, where each instruction ran alone. The words in each text:
+
+| Text | Current rule | Selection sentence in the rule, no example | With examples | The text that merged |
+| --- | --- | --- | --- | --- |
+| Pull request body, #2104 | 546 | 499 | 258 in the rule; 171 and 208 in the pull-request skill | 308 |
+| Pull request body, #2106 | 610 | 594 | 372 in the rule; 375 and 324 in the skill | 316 |
+| Docstring, `_names_a_bare_number` | 103 | 127, 96 | 108 | 76 |
+| Docstring, `TissueGroup.blood_flow_l_min_at` | 150 | 138, 121 | not run: it is the example | 87 |
+| Docstring, `set_delivered_concentration_percent` | not run | not run | 108 | 88 |
+| Reply recording the `PL-P3GZ` decision | not run | 609 | 547 | 563 |
+| Reply recording the interface design round | not run | 453 | not run: it is the example | 374 |
+| Reply on the clinician draft's four issues | not run | not run | 750 | 783 |
+
+1. **The selection sentence did little once the resident set was loaded.** It gave 499 and 594 words against 546 and 610. Alone it had given 300 and 374.
+2. **Examples cut the pull request bodies by about half**, wherever they sat. In the pull-request skill, which a session reads just before it writes a body, they add nothing to the resident set. The draft skill section "Write the title and body" holds the guidance and two bodies written by hand for #2099 and #2108. The owner has not read them yet.
+3. **Docstrings and replies did not get shorter with one example each.** Both tests are weak. A docstring was written alone, and in a real session it is written beside its code. A reply was written from a flat list of the facts in the original reply, so the original session had already chosen them. The reply drafts did drop the lines that report where the id was put, which checks ran and the effort trial's arm.
+4. **Not yet tried for docstrings and replies:** a second example of each, and a draft written inside a real session's work.
+
+**Where the drafts are.** `.claude/rules/plain-writing.md` and `.claude/skills/pull-request/SKILL.md` on this branch hold the draft rule and the draft skill section. They are not final. The docstring and reply examples in the rule are provisional and were written by hand. `tools/doc_check.py` reports that the resident set grew by 582 characters, so the rule must be cut to less than its old length before the pull request is ready. `.claude/agents/copy-editor.md` still lists the five patterns itself, so the copy editor keeps them when it runs on request. Its text is unchanged, because a change needs a run of the test set.
+
+**The owner rejected both draft bodies, 2026-11-11.** The owner's words: "Disappointing. Still kind of awkward language", quoting "against the places sessions do read", "Two rules stood only in your guide" and "Every other rule already stood where sessions read it, so the guide's passage now names that place. No rule's content changes." from the draft for #2104, and asking "What anesthesiology paper?" and "what paper?" of "the *Anesthesiology* paper" and "the *Anesth Analg* paper" in the draft for #2106. This session had recommended both drafts. It had compared their length and their facts with the merged bodies and had not read them sentence by sentence against the rule, which lists "stands". The owner's objection to that: "this keeps happening. Who reads them as I would? That's what I am trying to make happen", and "How do you recommend I accept something if you hadn't read it?" This session then said it would give no recommendation on how a text reads, and the owner refused that: "That's not what I want. I want you to check the whole thing" (project owner, 2026-11-11). So a session checks every sentence of a text before the text goes to the owner, and recommends it only after that check. Point 8 of the draft rule now says what the check covers; it replaces "Read it aloud".
+
+**Where the five phrases came from.** Each one is in the material the writing session was given. The diff of #2104 contains "stood only here" and has "sessions read" 11 times. A session with no repository instructions wrote "Two rules stood only in" from the same diff, and the body that merged for #2104 says "Two rules stood only in the owner's notes" (the copy editor did not run on that body). The diff of #2106 names the two papers "the Anesthesiology figure" and "Anesth Analg table". So a session that describes a change copies the words and labels of the files it changed. One paragraph added to the draft skill section, "Write it in the owner's words, not in the words of the files the branch changes", removed all five phrases in one fresh run of each body (232 and 372 words). That is one run each, and the owner has not read those two texts.
+
+**No reader tested reads as the owner does.** Two readers were given the two rejected drafts and nothing else, and each result was compared with the owner's five phrases.
+
+| Reader | What it was asked | Owner's phrases it flagged | What else it did |
+| --- | --- | --- | --- |
+| The copy editor (`.claude/agents/copy-editor.md`, with `main`'s rule) | Edit the draft for its reader | 0 of 5 | Changed no word of the #2104 draft and kept both paper labels in the #2106 draft. Its own report says "the words stand as written". |
+| A fresh session with no repository instructions, told only who the owner is | List each phrase where it had to stop or guess, and each thing named without saying which | 1 in full ("the places sessions do read"), 1 in part, 3 missed, "stood" among them | Raised about 35 other points, many of which the owner would not raise, such as what an item is. |
+
+The five phrases are two kinds of fault. A word used in this repository's private sense, such as "stood", reads as fluent to a session, so no session flags it. A thing named without saying which one, such as "the *Anesthesiology* paper", was partly found by the second reader and was removed by the instruction above. In the last 60 commit messages on `main`, "stand", "stands" or "stood" appears 7 times, 5 of them in the private sense.
+
+**The owner refused a word list checked by a script, 2026-11-11.** This session proposed keeping the words the owner rejects in a list that a script checks before a text is published. The owner's answer: "No, and add this to dead ends. We've done this before", and "we are back to the same failed approach to catch issues after the fact". `docs/dead-ends.md` has the entry. A search of the items for the earlier attempt, by "word list", "banned word" and "list of words", found only `PL-PRCS` (review new prose against the plain-writing rule), whose reviewer was given the rule's word list. So the fix stays with what a session is told where it writes the text. Not yet tested: whether the repository's own instruction files, which use these words in their private senses, are where sessions learn them.
+
+**The owner is not to be the only standard, 2026-11-11.** "I also shouldn't be the only gold standard for written text. I sometimes catch bad writing, but I am not a professional technical writer" (project owner, 2026-11-11). So an example in the instructions is written to a published guide for its kind of text, and is not required to be a text the owner accepted. The owner's first reading stays the test of done, because the owner is the reader of replies and pull request bodies, and their acceptance means a text met a minimum (finding 1 from the session transcripts, above). A subagent fetched three guides on 2026-11-11 and reported these sentences from them:
+
+- Google, "Writing good CL descriptions", read in full, https://google.github.io/eng-practices/review/developer/cl-descriptions.html: the first line is "a short summary of specifically what is being done", the body should "include any supplemental information a reader needs to understand the changelist holistically", and "The clarity and utility to the reader should be the top concern." The page sets no length limit.
+- The federal plain language guide, which moved from plainlanguage.gov to https://digital.gov/guides/plain-language (pages read: principles, write for the reader, avoid jargon, writing, familiar terms): "The first rule of plain language is: write for your audience", "When you have no way to express an idea except to use technical language, make sure to define your terms", and "pick the familiar or commonly used word over the unusual or obscure." Its pages on abbreviations and on style were not read.
+- Google Python Style Guide § 3.8, read in full for that section, https://google.github.io/styleguide/pyguide.html: "A docstring should give enough information to write a call to the function without reading the function's code", and "Docstrings that do not provide any new information should not be used."
+
+Both kinds of fault in the owner's five phrases break the plain language guide: a word in a private sense is not the familiar word, and a paper named without its author is a term left undefined. So the standard was already published, and the sessions did not meet it. Not yet done: write the docstring and reply examples to these guides.
+
+**Step 3 is built, 2026-11-11.** The copy edit of each branch is removed. Close-out step 8 now tells the writing session to check every sentence itself and then run `python3 tools/new_prose.py --compare`, which still lists the facts a change removed. `bin/docket arm` no longer holds a simulator branch for a `Prose-review:` trailer: the hold, `prose_count_command`, `tools/new_prose.py --count` and their tests are deleted. `docs/prose-review/README.md` says that the copy editor runs only when the owner asks (step 5). The copy editor, its test set and `tools/copy_edit.py` are kept for that use. A sentence check of the first example body in the pull-request skill found "21 entries sit on records", which the paragraph above it forbids, and both example bodies are reworded.
+
+**A second session's findings and a test the owner agreed to, 2026-11-11.** The owner asked another session ("Prose quality improvement impasse", session_01GnrHQs7yxitDELAXnQemiL) for a second opinion, and it sent this session three messages. Its findings: tonight's gains are on pull request bodies, which are 3 of the 42 objections this item records, while replies and documents are 31; the selection sentence gave 300 and 374 words alone and 499 and 594 once the resident instructions were loaded; the resident instructions are 92,317 characters in four files, and they use "holds" about six times and "reaches" about five times in the senses that `.claude/rules/plain-writing.md` point 3 forbids. It read the Claude Code memory page ("target under 200 lines per CLAUDE.md file. Longer files consume more context and reduce adherence", https://code.claude.com/docs/en/memory) and Anthropic's prompting best practices ("The formatting style used in your prompt might influence Claude's response style", https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices). This session has not checked those counts.
+
+The owner agreed to one test (project owner, 2026-11-11, ratified, over continuing to add instructions to the present resident set). This session read the owner's "yes" at 04:26 UTC in that session's transcript, and read the question it answers only as that session quoted it. The test, as that session amended it after the owner's statement on standards:
+
+1. Write one reply and one docstring twice from the same material: once under today's four resident files, and once under a short plain version of them. The short version is less than 200 lines in total, keeps `CLAUDE.md` § "Safety-critical clinical-output standard" word for word, is written to the published guides, and does not merge. Take the material from recent work whose text the owner has not read. Send the texts as first drafts.
+2. Record the criteria from the published guides in this item before the texts are written. A run that does not know which version is which checks each text against each criterion and quotes the sentence that meets or fails it.
+3. The owner reads the two pairs without labels, each pair in an order set by a coin flip that is recorded here before sending.
+4. Rewriting the resident set goes to the owner as a decision only if the short-instruction text wins on the criteria in both pairs and the owner prefers the other text in neither. Otherwise the resident set stays as it is, and building for prose stops at the bar the owner called "the minimum bar".
+
+The removals on #2119 continue either way.
+
+**The test's material, criteria and order, recorded 2026-11-11 before any text was written.** The material is the work of `PL-RF2S` (each run's panel is written from one value), which merged as #2094 at 04:20 UTC on 2026-11-11. The reply is the one its session would send the owner after the merge. The docstring is for `halted_run` in `src/anesthesia_sim/app/run_presentation.py`, and its present docstring is removed from both copies of the tree first. A separate `claude -p` run at high effort writes each text. It can read and search files and can run nothing. One copy of the tree has the four resident files as `origin/main` has them. The other has one short `CLAUDE.md` in their place, written by a run that was given the four files to read and did not have them loaded as its own instructions.
+
+A judging run checks each text against the criteria below. It has no file of this repository loaded, and it is not told which copy of the tree a text came from. For each criterion it says whether the text passes, and it quotes the sentence that decides it.
+
+1. Both texts, the federal plain language guide: the text's reader can follow every sentence with what they already know ("write for your audience"). The reader of the reply is the project owner, an anesthesiologist and intensive-care physician who does not know the internal names of tests, checks and tools. The reader of the docstring is a Python developer who knows the basics of anesthesia and does not know this repository's names or history.
+2. Both texts, the same guide: each technical term or project name that the reader would not know is explained where it first appears ("make sure to define your terms").
+3. Both texts, the same guide: each word is the familiar one, used in its everyday sense ("pick the familiar or commonly used word over the unusual or obscure").
+4. Both texts, Anthropic's prompting guide for Claude Fable 5, the first source listed above: the text includes no detail that would not change what its reader does next ("be selective about what you include").
+5. The reply, Google's "Writing good CL descriptions": it opens with a short statement of specifically what was done, and it gives the further information that the reader needs to understand the change as a whole.
+6. The docstring, Google Python Style Guide § 3.8: it gives enough to write a call to the function without reading its code, and no sentence only repeats what the signature shows ("Docstrings that do not provide any new information should not be used").
+7. Both texts, the owner's fixed constraint and not a published guide: no unit, value, condition or citation that the safety-critical standard requires is missing or wrong. This session checks that against the code and the item, because the judging run does not read the repository.
+
+The short-instruction text wins a pair when it fails fewer of criteria 1 to 6 than the other text, and criterion 7 finds no fault in it that the other text does not have. An equal count is not a win.
+
+The order of each pair was set by `secrets.randbelow(2)`, where 1 puts the short-instruction text first. The reply drew 1, so text 1 of the reply pair is the short-instruction text. The docstring drew 0, so text 1 of the docstring pair is the text written under today's files. The judging run and the owner see the same numbering.
+
+**The test's result, 2026-11-11: the short instructions did not win either pair.** Each text is one run, and a session did the judging, so the result gives a direction and no more. `docs/prose-review/short-instructions-test-2026-11-11.md` keeps the short file, the four texts and both verdicts.
+
+- Asked which instructions it was given, the run in the copy with today's files named the four resident files, and the run in the other copy named the short `CLAUDE.md` alone. The short file is 179 lines and 13,439 characters. The four files on `origin/main` are 1,290 lines and 92,477 characters.
+- The reply pair. The short-instruction reply is 815 words and failed criteria 1 to 5. The reply written under today's files is 991 words and failed criteria 1 to 4.
+- The docstring pair. The docstring written under today's files is 293 words and failed criteria 1, 2, 3, 4 and 6. The short-instruction docstring is 339 words and failed criteria 1, 2, 3 and 6. Under criterion 7 it leaves out one error that the other docstring states: `compared_run_notice` raises `ValueError` when the run's name is empty. So it does not win the pair.
+- One failure in each pair rests partly on a line that the run put ahead of its text: "I have read the item and checked its claims against the merged code. The reply follows." ahead of the short-instruction reply, and "Finished reading the module, its callers and its tests; here is the draft." ahead of the docstring written under today's files.
+- Criterion 7 found nothing else. This session found 17 numbers and quoted values from the two replies in the item files of `PL-RF2S`, `PL-SV2Q` and `PL-MVCF`, and checked the errors and conditions that the docstrings state against the code.
+
+Read side by side, the two texts of each pair are alike (this session's reading, not a count). Both replies report most of what the item file holds. All four texts use the words of the item and the code, such as "frame", "value", "withheld" and "acts", and the judging run quoted those words from both texts of each pair. That fits the finding about pull request bodies above: a text copies the vocabulary of what it is written from. The length of the resident instructions did not change that in this test.
+
+By the rule the owner agreed to, the resident set is not rewritten. What happens to this item is put to the owner.
+
+**Two more tests on 2026-11-11, after the owner asked why a session does not follow the writing rule. Neither fixed it.** Each is one run.
+
+- A sentence added to the resident writing rule, telling a session to write a reply in the owner's words and not in the words of the item file and the code. The reply written from the same material is 798 words. The judging run failed it on criteria 1 to 5, and failed the reply written under today's files on criteria 1 to 4.
+- The method that the published sources describe: a second run rewrites a finished draft for a named reader. The run had no file of this repository. It was given the draft, a description of the reader, and an instruction to keep every number, to say each thing in the reader's words, to leave out what the reader does not act on, and to list what it could not understand. It rewrote four texts: the reply and the docstring written under today's files, and the two pull request bodies that the owner rejected (#2104 and #2106).
+  - It kept all five phrases that the owner rejected, and listed none of them as hard to understand. "Two rules stood only in your guide" and "the *Anesthesiology* paper" are in the rewrites as they were in the drafts.
+  - Each text grew: the reply from 991 to 1,069 words, the docstring from 293 to 389, and the two bodies from 206 to 227 and from 320 to 366.
+  - It replaced some words of the code. "Frame" appears 8 times in the reply and not at all in the rewrite, which says "screen update".
+  - It kept all 31 numbers in the reply.
+  - Its lists of what it could not understand name real gaps, such as "headless worker", which item "recorded in the item" means, and what a "View" is.
+
+The sources, each read on 2026-11-11 by a research subagent and not opened by this session: Anthropic's prompting best practices, for a draft, a review and a refinement as separate calls (https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices, four sections); Claude Code's best practices, for a reviewer that has not seen the work (https://code.claude.com/docs/en/best-practices, review sections); Zaretsky et al., JAMA Netw Open 2024, where a rewrite of discharge summaries for patients lowered the reading grade from 11.0 to 6.2 and left out information (https://doi.org/10.1001/jamanetworkopen.2024.0357, full text); Blevins et al. 2025, for models that take on the style of their context (https://arxiv.org/abs/2508.03276, abstract); Hinds 1999, for experts who misjudge what a novice knows and resist correction (https://doi.org/10.1037/1076-898X.5.2.205, abstract).
+
+**Still to build.** Step 4, which moves reporting out of replies: `CLAUDE.md` has four sentences that tell a session to report something "in your reply". Cut `.claude/rules/plain-writing.md` to less than its old length and record the rule's edits in `docs/resident-instructions.md`. Write the docstring and reply examples to the guides above, and test them where the text is written. Then measure Done-when.
+
+**The build's pull requests.** Steps 3 and 5 are on #2119. The edits to tests in `subprojects/docket/tests/test_cli.py` change tests that pin `bin/docket arm`'s answers, so #2119 waits for the owner's read.
+
+**Stopped, not fixed, 2026-11-14** (project owner, 2026-11-14, "Agree to
+1,2,4", answering "Should we stop trying to fix the over-explaining prose and
+remove the copy-editor step (PR 2119)? This frees six held PRs.", ratified, over
+testing more ways to change how a session writes). Four tests on 2026-11-11
+changed neither the length nor the vocabulary of what a session writes, and
+the owner chose to stop testing. What #2119 lands is the removal the owner
+asked for on 2026-11-11: the copy edit of each branch, its `Prose-review:`
+trailer and the hold in `bin/docket arm` that enforced it (steps 3 and 5), and
+the line that asked a session to report its record-keeping in a reply. Step 4
+is not built, and is not filed, because the owner stopped the work it belongs
+to. The record of the four tests above stays as the reason.

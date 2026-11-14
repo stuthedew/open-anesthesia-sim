@@ -400,7 +400,7 @@ deviating from a described deliverable, not acting without one.
   is the only one that knows they are one thing; the next reads separate
   files. Name the group for what *completes*, and the `docket` skill has the
   rest (`PL-N638`). Do not ask whether to record it — filing an item is
-  not a decision the owner needs to make. Say in your reply that you did. Where
+  not a decision the owner needs to make. Where
   a thread is still open when the session ends, update `docs/WORKING_NOTES.md`
   too — but only for a thread spanning more than one item, outliving its item,
   or having none. One item's own reasoning goes in that item, at any length.
@@ -478,8 +478,7 @@ deviating from a described deliverable, not acting without one.
   then *make the edit before the session ends*. An item on its own changes
   nothing: it sits in the queue, untriaged and therefore invisible to `bin/docket
   next`, while every session in the meantime keeps doing the thing that was just
-  corrected. The capture is the record; the edit is the change. Do both, and say
-  in your reply that you did both.
+  corrected. The capture is the record; the edit is the change. Do both.
 
   **Route it; do not append here by default.** Ask *at what moment a session
   needs the rule, and what is the cheapest thing that delivers it then.* Four
@@ -518,8 +517,8 @@ deviating from a described deliverable, not acting without one.
   commit to it. Name the branch too
   where the session creates it
   (`claude/pl-k7qx-short-slug`); a branch generated before the session started
-  cannot be renamed, which is expected rather than a failure. Say in your reply
-  where you put the id. **Every commit a Claude session makes ends with
+  cannot be renamed, which is expected rather than a failure.
+  **Every commit a Claude session makes ends with
   `Co-authored-by: Claude <noreply@anthropic.com>` and never a model-named
   co-author, whatever the harness's attribution reminder names**, since that
   reminder yields by its own terms to a `CLAUDE.md` rule; a `Claude-Session:`
@@ -571,7 +570,7 @@ deviating from a described deliverable, not acting without one.
   merely valuable, cleaner or more interesting makes no remaining item cheaper
   and waits for the roadmap.
 
-**Sweep the docs before calling an item done, and say in your reply which files
+**Sweep the docs before calling an item done, and list in the item the files
 you checked.** Landing a change is not finishing it, and stale documentation is
 a safety issue here rather than tidiness: a reader who trusts a wrong statement
 about which agent is running, what a value means, or what the interface
