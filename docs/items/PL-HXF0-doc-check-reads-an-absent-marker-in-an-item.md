@@ -3,12 +3,14 @@ id: PL-HXF0
 title: doc_check reads an absent: marker in an item brief with _marked_span, so a marker under a list covers only the list's last item, while _marked_scope, which the provenance and derived markers use, reaches back over the whole list
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: one-source-of-truth
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
-added: 2026-11-03
 deferred-from: v0.7.0 - a new problem: at the freeze _marked_span was the only scope rule and every marker used it; the disagreement began when 5ec0ee9b (2026-10-25 06:17) added _marked_scope, after the freeze
+added: 2026-11-03
+closed: 2026-11-14
+pr: 2153
 payoff: a brief that names a deleted file in an earlier list item can be marked so the documentation check accepts it
 verify: grep -q 'def test_an_absent_marker_under_a_list_covers_its_first_item' tests/unit/test_doc_check.py
 ---
@@ -36,3 +38,9 @@ under the list and finds no error.
 **Generator check.** One-off. The fact misread is what a marker under a list covers, and `_marked_scope` already states it; `_absent_paths` is the one reader of the three that reads it another way. No head's `misread:` states it (checked with `bin/docket generators --misread`, 2026-11-04).
 
 **Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem began after Gate 3 froze at `817a4d88`, so the item stays deferred to the next gate. At `817a4d88`, `_marked_span` (`3aaeb0b2`, 2026-09-26) was the only scope rule, and every marker used it. The disagreement the item describes began when `_marked_scope` arrived in `5ec0ee9b` (2026-10-25 06:17, after the 02:27 freeze). A first reading on 2026-11-07 put the item on the list because `_marked_span` was present at the freeze. A review the same day corrected it: the problem is the two scope rules disagreeing, and at the freeze there was one.
+**Done, 2026-11-14.** `_absent_paths` now reads each marker's lines from
+`_marked_scope`, the rule the `provenance:` and `derived:` markers already
+use, so a marker under a list covers every item in it. The test
+`test_an_absent_marker_under_a_list_covers_its_first_item` puts the absent
+path in the first of two list items. Against the old `_marked_span` reading it
+failed with the error that the paragraph above does not cite `setup.py`.
