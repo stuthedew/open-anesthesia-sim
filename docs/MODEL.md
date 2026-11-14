@@ -6612,8 +6612,10 @@ alone** (`PL-50PZ`). They must be able to do it from the Workspace they are in,
 in a bounded number of steps, without dragging anything or editing a file.
 Every area's header has a view chooser, whose menu lists every kind of view the
 application has, whatever the Workspace. Choosing a view shows it in that area.
-The page grows to give the view the space it needs, so the reader sees the view
-itself, never only a notice that the area is too small (`PL-K285`). The
+A view that needs more room than its area scrolls inside the area. The page
+grows past the window only where the window is too small for every view's least
+height. So the reader sees the view itself, never only a notice that the area is
+too small (`PL-K285`, `PL-CBYS`). The
 application will not start if the accounting view is missing from the chooser's
 menu. Every layout has at least one area, so a chooser always offers the
 accounting view. None of the Workspaces supplied with the simulator includes the
@@ -6906,8 +6908,10 @@ uses sevoflurane's 8% dial setting, which is 4.00 ×MAC, above the ceiling.
 **The chart's percent axis is linear, which crowds the slow compartments
 together** (project owner, 2026-09-23, ratified, over a reader-selected logarithmic scale,
 `PL-QYBW`). Only fat stays crowded for long. At a 1 MAC dial, across
-the simulator's three agents, muscle spans 25–48 px of the 360 px plot at one
-hour, and fat spans 1.5–3.7 px. Fat's trace near zero is its true partial
+the simulator's three agents, muscle spans 25–48 px of the plot at its
+preferred height of 360 px at one hour, and fat spans 1.5–3.7 px. In a small
+area the plot can be as short as 160 px, where each span is 160/360 as tall:
+muscle 11–21 px and fat 0.7–1.6 px. Fat's trace near zero is its true partial
 pressure, and partial pressure drives effect, so one linear axis serves all six
 compartments. Because the hover readout reports every trace in reach, the
 crowding needs no change of scale. The fat trace cannot show how much agent fat

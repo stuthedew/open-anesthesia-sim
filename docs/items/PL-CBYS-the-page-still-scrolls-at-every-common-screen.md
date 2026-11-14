@@ -316,3 +316,54 @@ the build wrong.
   `test_the_page_takes_the_height_the_areas_ask_for_after_the_views_draw`.
 - All eight tests in `tests/benchmarks/test_frame_cost.py` errored. Whether
   they also error on `main` is not checked.
+
+**Steps 7 and 8, 2026-11-14, taken over on another model after the first
+session stopped at its usage limit.** What each of the twelve failures and
+eight errors was, and what changed:
+
+- The four `test_layout_adapter.py` failures and the `test_layout_keyboard.py`
+  one read the View straight from its frame's layout. The View now sits in
+  the frame's `ViewScroll`, so they read it there. No behaviour changed.
+- `test_the_hover_box_stays_inside_a_plot_at_its_least_height` was a real
+  fault. On a plot at its least height of 160 px, the hover readout opened
+  above the cursor and ran off the plot's top. `_HoverReadout.show` in
+  `app/qt_chart.py` now opens it below the cursor where there is no room
+  above, and pins it to the plot's top where there is room on neither side.
+  The two hover tests that read a value at a set position now open a window
+  tall enough for the plot's preferred 360 px.
+- `test_every_control_that_paints_its_own_content_declares_a_foreground` named
+  two new widgets, `ViewScroll` and `_KeyScroll`. Both paint nothing of their
+  own, and the test's list now says so.
+- The three page-height tests assumed a page that grows to the Areas' size
+  hint. They now expect the Areas at their least height in a window too small
+  for them, the page's scroll range at zero once the window is tall enough,
+  and every extra pixel after that going to the Areas.
+- The eight frame-cost benchmarks found two scroll areas around the chart and
+  refused to guess. `_bring_chart_into_view` now scrolls each, inner first.
+
+New tests: `test_no_shipped_workspace_scrolls_the_page` (every shipped
+Workspace at 1366 by 768 and 1920 by 1080),
+`test_a_view_taller_than_its_area_scrolls_inside_the_area` (the Induction
+wash-in View scrolls in its Area, and the concentration plot is wholly in
+view), and `test_the_page_scrolls_only_where_the_window_is_too_small_for_every_view`.
+
+**The first new test failed on the branch as built.** At 1366 by 768 the page
+scrolled 9 px in all three Workspaces. The shipped right-hand column holds
+Parameters (160 px) over two Views at the general least height (120 px). With
+the Area headers and spacing that is 497 px, and that window gives the Areas
+488 px. The table above recorded 0 px; its scratch script is not in the
+repository, so why it differed is not known. The general least height in
+`app/view_registry.py` is now 110 px, a placeholder, and the column needs
+477 px. Parameters keeps 160 px, because a row of sliders cut off at the
+Area's edge reads as a row with no values. The failing run on 120 px is the
+regression record: `assert 9 == 0` for `[Default-1366-768]`,
+`[Induction-1366-768]` and `[Maintenance-1366-768]`.
+
+Documents changed: `docs/MODEL.md` § "Minimum displayed outputs" (a view
+scrolls inside its area, and the page grows only in a window too small for
+every view) and the paragraph on the linear percent axis (the plot is 360 px
+at its preferred height and as short as 160 px, with the spans at that
+height); `README.md` § "The window"; `docs/ARCHITECTURE.md`'s line for
+`area_layout.py`; `docs/interface-provenance.md`; `.claude/rules/ui-areas.md`
+answer 4; and `layout/sizing.py`'s module docstring. The contrast check
+passes: 27 of 27 declared requirements meet WCAG 2.2 AA.

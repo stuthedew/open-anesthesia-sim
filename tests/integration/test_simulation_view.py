@@ -6770,6 +6770,127 @@ def test_the_page_takes_the_height_the_areas_ask_for_after_the_views_draw(
     assert areas.height() == areas.minimumSizeHint().height()
 
 
+_COMMON_SCREENS_PX = ((1366, 768), (1920, 1080))
+"""A laptop screen and a desktop screen, the two sizes `PL-CBYS` measured."""
+
+
+def _shipped_view_at(
+    application: QApplication, workspace: str, width_px: int, height_px: int
+) -> SimulationView:
+    """A dashboard over the shipped Workspaces, on `workspace`, at 300 s of one run."""
+
+    from anesthesia_sim.layout.shipped import shipped_workspaces
+
+    case = _branched_case()
+    case.trunk.start()
+    _advance(case.trunk, 300.0)
+    _delete_shown_views(application)
+    view = SimulationView((case.trunk,), case=case, workspaces=shipped_workspaces())
+    _SHOWN_VIEWS.append(view)
+    view.resize(width_px, height_px)
+    view.show()
+    application.processEvents()
+    view.present(False)
+    view.tab_strip.activate(view.workspaces.position_of(WorkspaceName(workspace)))
+    _settle(application)
+
+    return view
+
+
+def _shipped_workspace_names() -> tuple[str, ...]:
+    from anesthesia_sim.layout.shipped import shipped_workspaces
+
+    return tuple(str(workspace.name) for workspace in shipped_workspaces().workspaces)
+
+
+@pytest.mark.parametrize(("width_px", "height_px"), _COMMON_SCREENS_PX)
+@pytest.mark.parametrize("workspace", _shipped_workspace_names())
+def test_no_shipped_workspace_scrolls_the_page(
+    application: QApplication, workspace: str, width_px: int, height_px: int
+) -> None:
+    """`PL-CBYS`: on a laptop or a desktop screen, the Areas fit above the disclaimer.
+
+    Before the change the page grew to hold every View's content. At 1366 by
+    768 the Induction Workspace's page scrolled 832 px, and its wash-in chart
+    opened below the fold. Now a View that needs more room than its Area
+    scrolls inside the Area, so the page itself never scrolls at these sizes.
+    No View scrolls sideways either, because an Area's least width comes from
+    its View's content.
+    """
+
+    view = _shipped_view_at(application, workspace, width_px, height_px)
+    page, _ = _middle_of(view)
+    areas = view.layout_container
+
+    assert page.verticalScrollBar().maximum() == 0
+    assert page.horizontalScrollBar().maximum() == 0
+
+    for area in areas.model.areas():
+        frame = areas.frame(area.id)
+        assert frame.view_scroll is not None, f"Area {area.id} ({area.view}) shows a notice"
+        assert frame.content.isVisible(), f"Area {area.id} ({area.view}) hides its View"
+        assert frame.view_scroll.horizontalScrollBar().maximum() == 0, (
+            f"the {area.view} View scrolls sideways in its Area"
+        )
+
+
+def test_a_view_taller_than_its_area_scrolls_inside_the_area(application: QApplication) -> None:
+    """`PL-CBYS`: the wash-in chart on a laptop is shown whole, by scrolling its own Area.
+
+    In the Induction Workspace at 1366 by 768 the concentration chart takes
+    the room its plot needs, and the wash-in chart's Area is shorter than the
+    wash-in View's content. The View stays shown, with no notice in its
+    place, and its Area's scroll bar covers the height the View does not get.
+    The concentration plot is wholly on screen, so the long time axis that
+    the project owner chose for Induction is visible on opening.
+    """
+
+    view = _shipped_view_at(application, "Induction", 1366, 768)
+    areas = view.layout_container
+    (wash_in,) = (area for area in areas.model.areas() if area.view == WASH_IN)
+    frame = areas.frame(wash_in.id)
+    scroll = frame.view_scroll
+
+    assert scroll is not None
+    assert frame.content.isVisible()
+    bar = scroll.verticalScrollBar()
+    assert bar.maximum() > 0
+    assert bar.maximum() == frame.content.height() - scroll.viewport().height()
+
+    chart = _concentration(view).chart
+    around = [area for area in view.findChildren(QScrollArea) if area.isAncestorOf(chart)]
+    assert len(around) == 2, "the plot is not in its Area's scroll and the page's"
+
+    for area in around:
+        top = chart.mapTo(area.viewport(), QPoint(0, 0)).y()
+        assert 0 <= top, f"the plot's top is {-top} px above a scroll box"
+        assert top + chart.height() <= area.viewport().height(), "the plot runs below a scroll box"
+
+
+def test_the_page_scrolls_only_where_the_window_is_too_small_for_every_view(
+    application: QApplication,
+) -> None:
+    """`PL-CBYS`: in a window too small for every View, the page grows and no Area loses its View.
+
+    `docs/MODEL.md` § "Minimum displayed outputs" says that a reader who
+    chooses a View sees the View itself, never only a notice that the Area is
+    too small. So where the Areas' least heights add up to more than the
+    window has, the page grows past the window and scrolls by the difference,
+    and no Area swaps its View for the notice.
+    """
+
+    view = _shipped_view_at(application, "Induction", 1366, 500)
+    page, middle = _middle_of(view)
+    areas = view.layout_container
+
+    assert page.verticalScrollBar().maximum() > 0
+    assert areas.height() == areas.minimumSizeHint().height()
+    assert page.verticalScrollBar().maximum() == middle.height() - page.viewport().height()
+
+    for area in areas.model.areas():
+        assert areas.frame(area.id).view_scroll is not None, f"Area {area.id} shows a notice"
+
+
 # ------------------------------------------------------------- two runs
 
 

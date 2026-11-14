@@ -359,8 +359,11 @@ def required_kinds(
 # The least height at which most Views are shown, below the Area's header. It
 # holds a View's heading and a few rows under it, and the reader scrolls to
 # the rest. It is a placeholder that `PL-CBYS` chose. A larger value makes the
-# dashboard's page scroll in a larger window.
-_LEAST_HEIGHT_PX: Final = 120
+# dashboard's page scroll in a larger window. At 120 px the shipped right-hand
+# column, which holds Parameters over two such Views, needed 497 px, and a
+# 1366 by 768 window gives the Areas 488 px, so the page scrolled 9 px. At
+# 110 px the column needs 477 px.
+_LEAST_HEIGHT_PX: Final = 110
 
 # The concentration chart's least height. It is the height of the View's
 # heading, the first two rows above the plot and the plot at
