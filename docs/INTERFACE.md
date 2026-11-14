@@ -4356,10 +4356,9 @@ percent would print six decimals. The equation solver is not the limit here.
 In a sevoflurane run at the default settings, the venous blood and the three
 tissue groups read `<0.01%` for the whole of the first ten seconds. The
 simulator's values for these compartments differ from the same equations solved
-to 50 significant digits by at most $`9\times10^{-15}`$ of each value. The
-difference builds up over the steps, so it is at its largest near ten seconds.
-`tests/reference/test_solver_error_figures.py` checks the figure and where it
-falls.
+to 50 significant digits by less than $`10^{-13}`$ of each value. That
+difference is the rounding of double-precision arithmetic, which builds up over
+the steps. `tests/reference/test_solver_error_figures.py` checks the bound.
 
 **Why a value below the resolution is shown as `<0.01%` rather than as zero.**
 Even at two decimals, muscle and fat start below the last digit, for the times

@@ -1,11 +1,10 @@
-"""The solver's error figure that `docs/INTERFACE.md` prints matches the model.
+"""The solver error bound that `docs/INTERFACE.md` prints holds for the model.
 
 `docs/INTERFACE.md` § "Displayed precision" argues that the equation solver
 does not limit how many decimals a readout can show. It backs that with one
-figure: how far the simulator's values for the compartments that hold little
-agent lie from the same equations solved with far more digits, over the first
-ten seconds of a run. It also says where in those ten seconds the largest
-difference falls. Before `PL-19W8`, no test computed the figure.
+bound: how far the simulator's values for the compartments that hold little
+agent may lie from the same equations solved with far more digits, over the
+first ten seconds of a run. Before `PL-19W8`, no test computed it.
 
 The reference uses no solver from `core/`. It is the run's own system
 matrix, built from the same settings and raised to the 0.1 s step at 50
@@ -16,16 +15,14 @@ reference and the simulator solve the same linear equations from the same
 start, and the difference between them is the simulator's own arithmetic
 error: the rounding in its 0.1 s propagator and in each step's product.
 
-The figure is read from the section as printed and compared with the
-measurement at the precision the section prints it with, as
-`test_mac_awake_washout_figures.py` does. So a change to the solver that moves
-the figure fails here, and so does an edit that changes the figure without
-changing the solver.
+The bound is read from the section as printed, as
+`test_mac_awake_washout_figures.py` reads its figures. So a change to the
+solver that breaks the bound fails here, and so does an edit that tightens the
+bound below what the solver achieves.
 """
 
 import re
 import sys
-from dataclasses import dataclass
 from decimal import Decimal, localcontext
 from functools import cache
 from pathlib import Path
@@ -76,14 +73,6 @@ SPARSE_STATES = (
 FILLED_STATES = (INSPIRED_FRACTION, ALVEOLAR_FRACTION)
 
 
-@dataclass(frozen=True)
-class SolverError:
-    """The largest relative difference from the reference, over the sparse compartments."""
-
-    anywhere: float
-    at_end: float
-
-
 def _section_text() -> str:
     """The section's prose, with each run of whitespace made one space."""
 
@@ -97,13 +86,13 @@ def _section_text() -> str:
 def _one(pattern: str) -> tuple[str, ...]:
     """The groups of the one match of `pattern` in the section, or a failure naming it."""
 
-    # regex: a search for one sentence's figure through free prose, which no
+    # regex: a search for one sentence's bound through free prose, which no
     # parser reads; the pattern names the sentence's fixed words.
     matches = re.findall(pattern, _section_text())
     assert len(matches) == 1, (
         f"docs/INTERFACE.md § 'Displayed precision' should state this once, as {pattern!r}, "
         f"and it states it {len(matches)} times. If the sentence was reworded, update the "
-        f"pattern here so the figure stays checked."
+        f"pattern here so the bound stays checked."
     )
     found = matches[0]
 
@@ -111,35 +100,30 @@ def _one(pattern: str) -> tuple[str, ...]:
 
 
 @cache
-def _printed_error() -> str:
-    """The section's figure, as `9e-15` would be written for a printed `9\\times10^{-15}`."""
+def _printed_bound() -> float:
+    """The section's bound on the relative difference, `1e-13` for a printed `10^{-13}`."""
 
-    mantissa, exponent = _one(
+    (exponent,) = _one(
         r"the venous blood and the three tissue groups read `<0\.01%` for the whole of the "
         r"first ten seconds\. The simulator's values for these compartments differ from the "
-        r"same equations solved to 50 significant digits by at most "
-        r"\$`(\d)\\times10\^\{(-\d+)\}`\$ of each value"
+        r"same equations solved to 50 significant digits by less than "
+        r"\$`10\^\{(-\d+)\}`\$ of each value"
     )
 
-    return f"{mantissa}e{exponent}"
-
-
-def _as_printed(value: float) -> str:
-    """`value` to the one significant figure that the section prints, in the same form."""
-
-    mantissa, exponent = f"{value:.0e}".split("e")
-
-    return f"{mantissa}e{int(exponent)}"
+    return 10.0 ** int(exponent)
 
 
 @pytest.fixture(scope="module")
-def solver_error() -> SolverError:
-    """Run ten seconds of the default sevoflurane run beside its 50-digit reference."""
+def solver_error() -> float:
+    """The largest relative difference from the reference, over the sparse compartments.
+
+    It runs ten seconds of the default sevoflurane run beside its 50-digit
+    reference, and takes the largest difference at any step.
+    """
 
     system = AgentUptakeSystem.for_agent(AGENT_ID)
     matrix = build_system_matrix(system.equation_settings())
     anywhere = 0.0
-    relative = 0.0
 
     with localcontext() as context:
         context.prec = REFERENCE_DIGITS
@@ -165,11 +149,13 @@ def solver_error() -> SolverError:
             reference[EXHAUSTED_AGENT_L] = Decimal(0)
             simulated = system.state_vector()
 
-            relative = max(
-                float(abs(Decimal(simulated[state]) - reference[state]) / reference[state])
-                for state in SPARSE_STATES
+            anywhere = max(
+                anywhere,
+                *(
+                    float(abs(Decimal(simulated[state]) - reference[state]) / reference[state])
+                    for state in SPARSE_STATES
+                ),
             )
-            anywhere = max(anywhere, relative)
 
             for state in SPARSE_STATES:
                 assert format_percent(Fraction(simulated[state])) == BELOW_RESOLUTION, (
@@ -183,44 +169,27 @@ def solver_error() -> SolverError:
             f"compartments that hold little agent should include it"
         )
 
-    return SolverError(anywhere=anywhere, at_end=relative)
+    return anywhere
 
 
-def test_the_largest_solver_error_in_the_first_ten_seconds_is_the_printed_figure(
-    solver_error: SolverError,
+def test_the_solver_error_in_the_first_ten_seconds_is_below_the_printed_bound(
+    solver_error: float,
 ) -> None:
-    """The largest relative difference anywhere in the ten seconds is the section's figure.
+    """The largest relative difference anywhere in the ten seconds is below the section's bound.
 
-    The comparison is at one significant figure, as the section prints it. This
-    is a numerical limit from the rounding of the printed figure: the
-    measurement may lie anywhere that rounds to it, half a unit of its one
-    digit either way.
+    The bound is a numerical limit from the rounding of double-precision
+    arithmetic, whose spacing relative to a value is about 2.2e-16. On
+    2026-11-14 the largest difference was 9.5e-15, about 43 times that spacing,
+    in fat at 9.9 s. A printed bound of 1e-13 is about 450 times the spacing,
+    or about 4.5 times it for each of the 100 steps. That leaves room for a
+    change in the order of the arithmetic, while staying far below any
+    displayed digit.
     """
 
-    printed = _printed_error()
+    bound = _printed_bound()
 
-    assert _as_printed(solver_error.anywhere) == printed, (
-        f"docs/INTERFACE.md § 'Displayed precision' prints the solver's largest relative error "
-        f"as {printed}, and the model now gives {solver_error.anywhere!r}. Update the section's "
-        f"figure, and check that the sentence around it is still true."
-    )
-
-
-def test_the_largest_solver_error_falls_near_ten_seconds(solver_error: SolverError) -> None:
-    """The difference at ten seconds itself rounds to the section's figure too.
-
-    The section says the difference is at its largest near ten seconds. On
-    2026-11-14 the largest, 9.479e-15 in fat, fell at 9.9 s, and the value at
-    10 s was 9.476e-15. The comparison is at the same one significant figure,
-    so it carries the same numerical limit as the test above: the rounding of
-    the printed figure.
-    """
-
-    printed = _printed_error()
-
-    assert _one(r"so it is at its largest near ten seconds")
-    assert _as_printed(solver_error.at_end) == printed, (
-        f"docs/INTERFACE.md § 'Displayed precision' says the solver's error is at its largest "
-        f"near ten seconds, at {printed}, and the model gives {solver_error.at_end!r} there. "
-        f"Update the sentence."
+    assert solver_error < bound, (
+        f"docs/INTERFACE.md § 'Displayed precision' says the solver's values differ from the "
+        f"50-digit reference by less than {bound:.0e} of each value, and the model now gives "
+        f"{solver_error!r}. Find what made the solver less accurate before changing the bound."
     )
