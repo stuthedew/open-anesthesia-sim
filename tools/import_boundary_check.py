@@ -577,7 +577,7 @@ def format_report(report: Report, boundaries: Sequence[Boundary] = BOUNDARIES) -
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    return run_report(argv, __doc__, analyze, format_report)
+    return run_report(argv, __doc__, analyze, format_report, parses_source=True)
 
 
 if __name__ == "__main__":
