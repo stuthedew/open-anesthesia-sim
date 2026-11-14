@@ -67,8 +67,12 @@ pointers:
   the words. A blind review pass found two, which `PL-CTXZ` fixed: the
   provenance table, and the reference measurements. Read the document for the
   rest.
-- `.claude/agents/copy-editor.md` says that in `docs/MODEL.md` a note that
-  opens "**For developers.**" serves the developer. `docs/INTERFACE.md` has
-  such notes too. Say so there when the hold on copy editor runs ends for
-  this document. A change to those instructions needs a run of the review's
-  test set, as `docs/prose-review/README.md` says.
+- [superseded 2026-11-14: `PL-GL45` removed the copy editor and its
+  instructions, so nothing is left to change] `.claude/agents/copy-editor.md`
+  says that in `docs/MODEL.md` a note that opens "**For developers.**" serves
+  the developer. `docs/INTERFACE.md` has such notes too. Say so there when the
+  hold on copy editor runs ends for this document. A change to those
+  instructions needs a run of the review's test set, as
+  `docs/prose-review/README.md` says.
+
+<!-- absent: .claude/agents/copy-editor.md -->
