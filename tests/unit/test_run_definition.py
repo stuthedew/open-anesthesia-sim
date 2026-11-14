@@ -1394,7 +1394,7 @@ def test_a_record_handed_out_is_not_changed_by_later_changes() -> None:
     """`segments` returns the run as it stood, whatever the run records next.
 
     This lets a caller read the run without being able to advance it.
-    `tests/integration/test_simulation_view.py` relies on it when it compares
+    `tests/integration/simulation_view/` relies on it when it compares
     `run_segments` before and after an action. A view that followed the run would make that
     comparison pass whatever the action did. The test exercises every kind of change that
     `record_change` can make, because each one changes the record differently. A change can

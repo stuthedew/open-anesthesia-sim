@@ -2,7 +2,7 @@
 
 These tests check the ladder of widths, the two window rules and the tick
 placement without constructing the Qt interface. What the *interface* does with
-them is tested in `tests/integration/test_simulation_view.py`: which control
+them is tested in `tests/integration/simulation_view/test_simulation_view_charts.py`: which control
 selects a width, what the axis labels show, and what the caption claims.
 
 `PL-012` decided the window's design, and `PL-SSBP` built it. Three of the
