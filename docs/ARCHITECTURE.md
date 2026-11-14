@@ -1233,7 +1233,7 @@ specialist standard in `CLAUDE.md` that applies to this document (`PL-KRGY`).
     plotted items and the painted pixels (`test_qt_chart.py`).
   - A test covers the dashboard's leaf widgets (`test_qt_widgets.py`).
   - A test drives the whole dashboard against real controllers, and reads back
-    every widget's text, enablement and visibility (`test_simulation_view.py`).
+    every widget's text, enablement and visibility (`tests/integration/simulation_view/`).
   - A test renders the whole dashboard headless at one fixed size, and reads
     back the painted pixels and the laid-out geometry (`test_qt_rendering.py`).
     It also writes the kind of screenshot that the instructions for running

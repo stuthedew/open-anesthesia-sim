@@ -6,10 +6,10 @@ effort: S
 status: ready
 classes: defect
 feature: interface-areas
-touches: docs/MODEL.md, tests/integration/test_simulation_view.py, src/anesthesia_sim/app/simulation_view.py
+touches: docs/INTERFACE.md, tests/integration/simulation_view, src/anesthesia_sim/app/simulation_view.py
 added: 2026-11-04
 payoff: a reader on a 1280 px laptop sees all seven readouts in one row, or the model specification says plainly that the row opens on four there
-verify: grep -q 'def test_a_maximized_1280_px_screen' tests/integration/test_simulation_view.py
+verify: grep -rq 'def test_a_maximized_1280_px_screen' tests/integration/simulation_view/
 reenters: PL-4FBP
 ---
 
