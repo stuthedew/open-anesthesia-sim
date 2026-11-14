@@ -3,11 +3,13 @@ id: PL-2BG1
 title: MODEL.md calls each stored MAC '1 MAC for a 40-year-old adult' (Delivery-limit and MAC parameters, and three provenance table rows), but its adopted source, De Wolf et al. 2012, gives a flat adult MAC with no age, and the same section's table shows the stored values 2.6% to 11.1% off Mapleson's age-40 figures
 priority: P1
 effort: S
-status: ready
+status: done
 classes: safety, defect, docs
 feature: model-md-structure
-touches: docs/MODEL.md
+touches: docs/MODEL.md, docs/items/PL-48MX-replace-what-is-left-of-docs-model-md-with-the.md
 added: 2026-11-07
+closed: 2026-11-14
+pr: 2155
 payoff: a clinician reading what the MAC divisor is learns it is a flat adult value, so each displayed MAC multiple is not taken as relative to an age-40 MAC it differs from by up to 10%
 verify: ! grep -qF '40-year-old adult' docs/MODEL.md
 ---
@@ -60,3 +62,27 @@ and no head states it.
 fixes was already in its file at `817a4d88`, the commit that froze Gate 3, so
 under ROADMAP.md § "The gate is a snapshot, not a moving target" the item
 joins v0.7.0's frozen list rather than being deferred by its capture date.
+
+**Done 2026-11-14.** The agent files were read again first: each adopted De
+Wolf entry quotes the paper, "MAC values that we used in our Gas Man
+simulations are: desflurane 6%, sevoflurane 2%, isoflurane 1.2%", with no age,
+and no recorded source places the stored values at age 40. So `docs/MODEL.md`
+now says the stored MAC is a single adult value whose source states no age, in
+§ "Delivery-limit and MAC parameters", in the three provenance table rows, and
+in the $`\mathrm{MAC}_\%`$ row of § "Symbols", which the brief did not list
+and had the same "at age 40". The 22% sentence now compares with "the
+confidence limits of Mapleson's values", and so does the matching sentence in
+the MAC-divisor limitation under § "Known limitations", which also said
+"either source's own confidence limits"; that limitation's "measures its gap"
+became "gives its gap". The release-gate bullet drops "(none remain as of this
+revision)": the condition stays, and `grep -n TBD docs/MODEL.md` finds no
+marker. `docs/INTERFACE.md`'s sentence defining MAC "in a nominal 40-year-old"
+describes MAC in general and stays, as does `app/formatting.py`'s matching
+docstring. No stored value changed. The draft that `PL-48MX` will make
+`docs/MODEL.md` still has the old label in four places; `PL-48MX` now lists
+them.
+
+Files checked in the docs sweep: `docs/MODEL.md`, `docs/INTERFACE.md`,
+`README.md`, `src/anesthesia_sim/app/formatting.py`,
+`src/anesthesia_sim/data/agents/sevoflurane.json`, `isoflurane.json`,
+`desflurane.json`, `docs/prose-review/model-description-draft.md`.

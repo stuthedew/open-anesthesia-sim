@@ -66,3 +66,23 @@ passes.
 the repository named no home but `docs/MODEL.md` for a test's description,
 an interface requirement or a value's source history, so each change added
 them there. No new head.
+
+**Two fact fixes landed in `docs/MODEL.md` after the draft was written, and the
+draft still carries one of them (2026-11-14).** `PL-2BG1` and `PL-G0R3` merged
+together, and step 1's `git log` picks both up. Neither is a restructure.
+
+1. `PL-2BG1`: the stored MAC is a single adult value whose source, De Wolf et
+   al. 2012, states no age for it. `docs/MODEL.md` no longer calls it "1 MAC
+   for a 40-year-old adult" or "at age 40", and its 22% comparison is now
+   against Mapleson's confidence limits only. The draft still has the old
+   wording in four places: the symbol row for $`\mathrm{MAC}_\%`$ ("at age
+   40"), the parameter table row "1 MAC, 40-year-old adult (percent)", the
+   paragraph that opens "**MAC.** The stored MAC is 1 MAC for a 40-year-old
+   adult", and "larger than either source's confidence limits". Change all
+   four when the draft is brought up to date. The sentence that compares the
+   stored MAC with Katoh's MAC "at age 40" is a comparison and stays.
+2. `PL-G0R3`: `docs/MODEL.md` now says "simulated", "computed" or "come from
+   runs on" where it reported a result of this simulator, and keeps
+   "measured" for patients, tissue and equipment. The draft's own uses of
+   "measured" were read on 2026-11-14 and all describe real measurements, so
+   nothing in the draft changes for this one.
