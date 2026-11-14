@@ -162,11 +162,6 @@ GRANDFATHERED_REGEX: dict[str, dict[tuple[str, str], int]] = {
     "tools/model_rewrite.py": {("<module>", "compile"): 9},
     "tools/possessive_section_check.py": {("<module>", "compile"): 1},
     "tools/pr_body_check.py": {("<module>", "compile"): 3},
-    "tools/rejected_prose.py": {
-        ("<module>", "compile"): 1,
-        ("rewrites", "sub"): 1,
-        ("verdicts", "sub"): 1,
-    },
     "tools/required_checks_check.py": {
         ("<module>", "compile"): 1,
         ("_branch_pattern", "compile"): 1,
