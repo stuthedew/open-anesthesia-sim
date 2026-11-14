@@ -11948,14 +11948,15 @@ def test_a_read_hold_puts_a_decision_or_a_case_in_the_closing_block_line() -> No
     """
     parts = (
         "Send the owner nothing about this pull request yet",
-        "only with something to decide or to review",
+        "only with something to decide",
         "A question whose answer is obvious is wrong",
         "#1516",
-        "For a decision, with at least two options",
         "what it changes for the owner or a learner",
-        "recommend <option> - <why>",
-        "For a high-risk change",
-        "changed - <what changed, in one plain sentence>",
+        "recommend <option> - <why its gain is worth its cost>",
+        "context - <what changed, or what the choice is about>",
+        "why - <why the choice is the owner's rather than the session's>",
+        "Give at least two options",
+        "the options are the change and what it was chosen over",
         "nothing needs the owner",
         "Owner-read: not needed - <why>",
         "merges on green",
@@ -11979,35 +11980,46 @@ def test_arm_ask_quotes_the_text_to_judge_rather_than_pointing_at_a_file() -> No
     assert "before and after" in arming.ASK_LINE
     assert "Never send the owner into a file" in arming.ASK_LINE
     assert "enough of its surroundings, such as the whole paragraph" in arming.ASK_LINE
-    assert "Please look at" not in arming.ASK_REVIEW_SHOWN
+    assert "Please look at" not in arming.READ_ASK
     assert "the reply quotes the text to judge, before and after" in arming.READ_ASK
 
 
 def test_arm_ask_is_written_in_plain_words_for_the_owner() -> None:
-    """A review ask says what changed, asks one question and says what to reply (`PL-BGN1`).
+    """A question to the owner is written in plain words, and asks what they can decide.
 
     On `#1946` and `#1947` the owner could not tell what a "Risk to review ...
     Checked ... Please look at" ask wanted from them. The old form is refused
     rather than rendered, the fields are asked for in plain words, and the
     question is one the owner can decide, never a re-check of what the tests
-    and reviews covered.
+    and reviews covered (`PL-BGN1`).
     """
     line, why = arming.parse_owner_ask(
-        "changed - the hazard table is reworded | question - should the table keep the "
-        "1 MAC figure? | checked - every figure still matches its source. | reply - Merge it"
+        "Should the table keep the 1 MAC figure? | Keep: learners still see 1 MAC; cost: the "
+        "row is longer | Drop: the row shows only the age-adjusted value; cost: learners lose "
+        "the figure they are taught first | recommend Keep - it is the value "
+        "learners are taught first | context - the hazard table is reworded. | why - the "
+        "figure is a clinical value | checked - every figure still matches its source."
     )
     assert why == ""
     assert line == (
-        "What changed: the hazard table is reworded. Question for you: should the table keep "
-        "the 1 MAC figure? Already checked: every figure still matches its source. "
-        "What to reply: Merge it."
+        "**Should the table keep the 1 MAC figure?**\n"
+        '- **I recommend "Keep":** it is the value learners are taught first.\n'
+        "- **Context:** the hazard table is reworded.\n"
+        '- **Option "Keep":** learners still see 1 MAC. **Costs and risks:** the row is longer.\n'
+        '- **Option "Drop":** the row shows only the age-adjusted value. '
+        "**Costs and risks:** learners lose the "
+        "figure they are taught first.\n"
+        "- **Why it is yours:** the figure is a clinical value.\n"
+        "- **Already checked:** every figure still matches its source."
     )
     old, why = arming.parse_owner_ask("risk - r | checked - c | look - l")
     assert old == ""
-    assert "old risk, checked and look form" in why
+    assert "it is in a review form" in why
     assert "Write every field in plain words for a clinician" in arming.READ_ASK
     assert "never name a test, check, file or tool by its internal name" in arming.READ_ASK
-    assert "can decide as the owner or as a clinician, saying why it is theirs" in (arming.READ_ASK)
+    assert "can decide as the owner or as a clinician" in arming.READ_ASK
+    assert "in one clause" in arming.READ_ASK
+    assert "why the choice is the owner's rather than the session's" in arming.READ_ASK
     assert "Never ask the owner to re-check what the tests or reviews already checked" in (
         arming.READ_ASK
     )
@@ -12017,18 +12029,18 @@ def test_arm_read_ask_asks_in_learner_terms_with_screenshots() -> None:
     """The ask text asks for what the owner judges in plain terms, and for screenshots.
 
     On `#1650` the owner had to ask twice what they were judging: the ask named
-    the change in the code's terms and showed nothing (`PL-KYTY`). The parts sit
-    between the decision form and the risk form, because they shape a decision.
+    the change in the code's terms and showed nothing (`PL-KYTY`). The parts
+    follow the form they describe, and come before how the lines are printed.
     """
     parts = (
-        "recommend <option> - <why>",
+        "recommend <option> - <why its gain is worth its cost>",
+        "why the choice is the owner's",
         "clinical or learner terms",
         "what they are judging",
         "what a learner sees",
-        "why the choice is the owner's",
         "one annotated screenshot per option",
         ".claude/skills/run-the-app/SKILL.md",
-        "For a high-risk change",
+        "the question first and the recommendation second",
     )
     places = [arming.READ_ASK.index(part) for part in parts]
 
@@ -12049,8 +12061,10 @@ def _record_ask(git: Callable[..., str], value: str, when: str) -> None:
 
 
 ARM_DECISION = (
-    "Which view opens first? | Chooser: the learner picks a view each run | "
-    "Last used: it opens where they left off | recommend Chooser - it names every view"
+    "Which view opens first? | Chooser: the learner picks a view each run; cost: one more "
+    "click before every case | Last used: it opens where they left off; cost: it hides the "
+    "views a learner has not opened | recommend Chooser - it names every view | "
+    "context - the simulator now has three views | why - it decides what a learner sees first"
 )
 
 
@@ -12079,11 +12093,18 @@ def test_arm_holds_for_the_owner_only_with_a_recorded_ask(
     lines = capsys.readouterr().out.splitlines()
     assert arming.READ_ASK not in lines
     at = lines.index(arming.ASK_LINE)
-    assert lines[at + 1] == (
-        '  Which view opens first? Option "Chooser": the learner picks a view each run. '
-        'Option "Last used": it opens where they left off. I recommend "Chooser": it names '
-        "every view."
-    )
+    assert lines[at + 1 : at + 7] == [
+        "  **Which view opens first?**",
+        '  - **I recommend "Chooser":** it names every view.',
+        "  - **Context:** the simulator now has three views.",
+        '  - **Option "Chooser":** the learner picks a view each run. '
+        "**Costs and risks:** one more "
+        "click before every case.",
+        '  - **Option "Last used":** it opens where they left off. '
+        "**Costs and risks:** it hides the "
+        "views a learner has not opened.",
+        "  - **Why it is yours:** it decides what a learner sees first.",
+    ]
 
     closed = _item_document("PL-B1B1", "done")
     _commit_file(git, root, "docs/items/PL-B1B1-held.md", closed, "2026-09-01T12:00:30+00:00")
@@ -12106,8 +12127,7 @@ def test_arm_holds_for_the_owner_only_with_a_recorded_ask(
     assert any(
         line.startswith("  The Owner-ask record on ")
         and line.endswith(
-            " was not read: it is "
-            "neither a review nor a decision whose first field is a question, and '|' "
+            " was not read: its first field is not a question ending in '?', and '|' "
             "with a space either side separates its fields."
         )
         for line in lines
@@ -12260,9 +12280,14 @@ def test_arm_owner_ask_prints_only_what_may_be_sent_to_the_owner(
 
     assert _arm(root, "--owner-ask") == 0
     assert capsys.readouterr().out == (
-        'Which view opens first? Option "Chooser": the learner picks a view each run. '
-        'Option "Last used": it opens where they left off. I recommend "Chooser": it names '
-        "every view.\n"
+        "**Which view opens first?**\n"
+        '- **I recommend "Chooser":** it names every view.\n'
+        "- **Context:** the simulator now has three views.\n"
+        '- **Option "Chooser":** the learner picks a view each run. **Costs and risks:** one more '
+        "click before every case.\n"
+        '- **Option "Last used":** it opens where they left off. **Costs and risks:** it hides the '
+        "views a learner has not opened.\n"
+        "- **Why it is yours:** it decides what a learner sees first.\n"
     )
 
     _claim_by_hand(git, "PL-B1B1", ARM_BRANCH, "2026-09-01T12:00:30+00:00")
@@ -12390,48 +12415,85 @@ def test_arm_owner_ask_sends_nothing_once_the_owner_has_answered(
     )
 
 
+#: What a record lacking its named fields, or holding them out of order, is told.
+ARM_NAMED = (
+    "after its recommendation come context - <what changed, or what the choice is about> and "
+    "why - <why the choice is the owner's>, then checked - <what was already checked> if "
+    "anything was"
+)
+
+#: What a record in any review form is told.
+ARM_REVIEW = (
+    "it is in a review form, which gave the owner no options and no recommendation; ask "
+    "it as a choice between the change and what it was chosen over, each with what it "
+    "gains and gives up"
+)
+
+
 @pytest.mark.parametrize(
     ("value", "line", "why"),
     [
         (
             ARM_DECISION,
-            'Which view opens first? Option "Chooser": the learner picks a view each run. '
-            'Option "Last used": it opens where they left off. I recommend "Chooser": it '
-            "names every view.",
+            "**Which view opens first?**\n"
+            '- **I recommend "Chooser":** it names every view.\n'
+            "- **Context:** the simulator now has three views.\n"
+            '- **Option "Chooser":** the learner picks a view each run. '
+            "**Costs and risks:** one more "
+            "click before every case.\n"
+            '- **Option "Last used":** it opens where they left off. '
+            "**Costs and risks:** it hides the "
+            "views a learner has not opened.\n"
+            "- **Why it is yours:** it decides what a learner sees first.",
             "",
         ),
         (
-            "Changed - the dose label reads mcg | question - should it show mcg/kg/min? | "
-            "checked - the label matches the unit stored. | reply - Merge it",
-            "What changed: the dose label reads mcg. Question for you: should it show "
-            "mcg/kg/min? Already checked: the label matches the unit stored. What to reply: "
-            "Merge it.",
+            "Should the infusion label show the rate per kilogram? | Per kilogram: the label "
+            "reads mcg/kg/min; cost: the total rate needs a second look | Total: the label "
+            "reads mcg/min; cost: a learner divides by weight to compare it with a dosing "
+            "table | recommend Per kilogram - it matches the dosing tables learners use. | "
+            "context - the infusion label now reads mcg/kg/min. | why - a dose unit is a "
+            "clinical value. | checked - the label matches the unit stored.",
+            "**Should the infusion label show the rate per kilogram?**\n"
+            '- **I recommend "Per kilogram":** it matches the dosing tables learners use.\n'
+            "- **Context:** the infusion label now reads mcg/kg/min.\n"
+            '- **Option "Per kilogram":** the label reads mcg/kg/min. '
+            "**Costs and risks:** the total rate needs "
+            "a second look.\n"
+            '- **Option "Total":** the label reads mcg/min. '
+            "**Costs and risks:** a learner divides by weight to "
+            "compare it with a dosing table.\n"
+            "- **Why it is yours:** a dose unit is a clinical value.\n"
+            "- **Already checked:** the label matches the unit stored.",
             "",
         ),
+        ("Q? | A: x; cost: c | B: y; cost: d | recommend A - z", "", ARM_NAMED),
         (
-            "changed - x | question -  | checked - y | reply - z",
+            "Q? | A: x; cost: c | B: y; cost: d | recommend A - z | context - c | why - ",
             "",
-            "a review needs a value after each of changed, question, checked and reply",
+            ARM_NAMED,
         ),
         (
-            "changed - x | question - is it right | checked - y | reply - z",
+            "Q? | A: x; cost: c | B: y; cost: d | recommend A - z | context - c | why - w | "
+            "reply - r",
             "",
-            "a review's question ends in '?', so the owner can answer it yes or no",
+            ARM_NAMED,
         ),
+        ("changed - x | question - y? | why - w | checked - z | reply - v", "", ARM_REVIEW),
+        ("Changed - x | question - y? | checked - z | reply - v", "", ARM_REVIEW),
+        ("risk - x | checked - y | look - z", "", ARM_REVIEW),
         (
-            "risk - x | checked - y | look - z",
-            "",
-            "it is in the old risk, checked and look form, which the owner could not follow; "
-            "record it as changed, question, checked and reply",
-        ),
-        (
-            "changed - x | question - y? | checked - verify --self ACCEPTs | reply - Merge it",
+            "Q? | A: x; cost: c | B: y; cost: d | recommend A - z | context - c | "
+            "why - w | "
+            "checked - verify --self ACCEPTs",
             "",
             "it names '--self', which the owner cannot read in a reply; say in plain words "
             "what it checked or changed",
         ),
         (
-            "changed - x | question - y? | checked - tools/model_rewrite.py lost | reply - z",
+            "Q? | A: x; cost: c | B: y; cost: d | recommend A - z | context - c | "
+            "why - w | "
+            "checked - tools/model_rewrite.py lost",
             "",
             "it names 'tools/model_rewrite.py', which the owner cannot read in a reply; say in "
             "plain words what it checked or changed",
@@ -12445,26 +12507,39 @@ def test_arm_owner_ask_sends_nothing_once_the_owner_has_answered(
         (
             "none - held by rule",
             "",
-            "it is neither a review nor a decision whose first field is a question, and "
-            "'|' with a space either side separates its fields",
+            "its first field is not a question ending in '?', and '|' with a space either side "
+            "separates its fields",
         ),
-        ("Merge it?", "", "its last field is not 'recommend <option> - <why>'"),
-        ("Q? | A: x | recommend A - y", "", "a decision needs at least two options"),
-        ("Q? | A: x | B | recommend A - y", "", "each option needs '<option>: <what it changes>'"),
-        ("Q? | A: x | a: y | recommend A - z", "", "two options share a label"),
+        ("Merge it?", "", "it has no 'recommend <option> - <why>' field after its options"),
+        ("Q? | A: x | recommend A - y", "", "a question needs at least two options"),
         (
-            "Q? | A: x | B: y | recommend C - z",
+            "Q? | A: x; cost: c | B | recommend A - y",
+            "",
+            "each option needs '<option>: <what it gets>; cost: <what it gives up>', so that "
+            "the owner sees what every option costs, the recommended one included",
+        ),
+        (
+            "Q? | A: x | B: y; cost: d | recommend A - y",
+            "",
+            "each option needs '<option>: <what it gets>; cost: <what it gives up>', so that "
+            "the owner sees what every option costs, the recommended one included",
+        ),
+        ("Q? | A: x; cost: c | a: y; cost: d | recommend A - z", "", "two options share a label"),
+        (
+            "Q? | A: x; cost: c | B: y; cost: d | recommend C - z",
             "",
             "it recommends 'C', which is not one of its options",
         ),
         (
-            "Q? | A: x | B: y | recommend A",
+            "Q? | A: x; cost: c | B: y; cost: d | recommend A",
             "",
-            "its last field is not 'recommend <option> - <why>'",
+            "its recommendation is not 'recommend <option> - <why>'",
         ),
     ],
 )
-def test_parse_owner_ask_takes_a_decision_or_a_risk_review(value: str, line: str, why: str) -> None:
+def test_parse_owner_ask_takes_one_form_with_every_part_of_a_question(
+    value: str, line: str, why: str
+) -> None:
     assert arming.parse_owner_ask(value) == (line, why)
 
 
@@ -13696,7 +13771,7 @@ def test_owner_ask_on_answers_for_a_branch_that_is_not_checked_out(tmp_path: Pat
     assert unasked.code == arming.NO_ASK
     assert not asked.unasked
     assert asked.sendable is not None
-    assert asked.sendable.startswith("Which view opens first?")
+    assert asked.sendable.startswith("**Which view opens first?**")
     assert base.answer == arming.NOT_HELD
     assert gone.answer == arming.UNKNOWN
     assert "refs/remotes/origin/claude/never-pushed is not in this checkout" in gone.unread[0]

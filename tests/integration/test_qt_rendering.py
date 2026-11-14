@@ -50,7 +50,14 @@ from anesthesia_sim.app.qt_widgets import MetricPanel
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.run_surfaces import AccountingPanel
 from anesthesia_sim.app.simulation_view import SimulationView
-from anesthesia_sim.app.theme import AGENT_COLOR_SCHEMES, INK, MUTED, ONE_MAC_LINE_COLOR, PANEL
+from anesthesia_sim.app.theme import (
+    AGENT_COLOR_SCHEMES,
+    CHART_HEIGHT,
+    INK,
+    MUTED,
+    ONE_MAC_LINE_COLOR,
+    PANEL,
+)
 from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING, CONCENTRATION_CHART, WASH_IN
 from anesthesia_sim.app.views import AccountingView, ConcentrationView, WashInView
 from anesthesia_sim.core.concentration import Percent
@@ -104,6 +111,9 @@ _EVERY_VIEW = WorkspaceSet(
 #: than this and scrolls, and the grab shows its top.
 _WINDOW_WIDTH_PX = 1600
 _WINDOW_HEIGHT_PX = 1000
+# A window tall enough that the concentration plot has its preferred height,
+# `theme.CHART_HEIGHT`, in the test Workspace (`PL-CBYS`).
+_TALL_WINDOW_HEIGHT_PX = 2200
 
 #: How far inside the badge's left edge the fill is sampled: past the
 #: one-pixel border and before the padding ends and the text begins.
@@ -558,15 +568,32 @@ def test_the_readout_row_and_the_sidebar_are_inside_the_page(dashboard: Simulati
 # ------------------------------------------------------------- the hover
 
 
-def test_the_hover_reports_the_drawn_state_on_the_shipped_chart(dashboard: SimulationView) -> None:
-    """A hover on the shipped chart gives the agent, the compartment, its gloss and both units."""
+def test_the_hover_reports_the_drawn_state_on_the_shipped_chart(
+    application: QApplication, dashboard: SimulationView
+) -> None:
+    """A hover on the shipped chart gives the agent, the compartment, its gloss and both units.
+
+    The window is made tall enough for the plot's preferred height. At the
+    fixture's size the plot is at its least height, where the circuit trace
+    lies inside the hover's radius of the alveolar point too, and the readout
+    then names both (`PL-CBYS`).
+    """
 
     chart = _concentration(dashboard).chart
-    frame = _drawn_frame(dashboard)
-    run = frame.runs[0]
-    index = len(run.times_s) // 3
+    dashboard.resize(_WINDOW_WIDTH_PX, _TALL_WINDOW_HEIGHT_PX)
+    application.processEvents()
 
-    readout = chart.readout_at(run.times_s[index], run.percents(RecordedQuantity.ALVEOLAR)[index])
+    try:
+        assert chart.height() >= CHART_HEIGHT
+        frame = _drawn_frame(dashboard)
+        run = frame.runs[0]
+        index = len(run.times_s) // 3
+        readout = chart.readout_at(
+            run.times_s[index], run.percents(RecordedQuantity.ALVEOLAR)[index]
+        )
+    finally:
+        dashboard.resize(_WINDOW_WIDTH_PX, _WINDOW_HEIGHT_PX)
+        application.processEvents()
 
     assert readout == format_trace_hover(run, RecordedQuantity.ALVEOLAR, index, len(frame.runs))
     assert readout is not None

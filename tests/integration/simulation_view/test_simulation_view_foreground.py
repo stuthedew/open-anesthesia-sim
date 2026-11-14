@@ -55,6 +55,18 @@ FOREGROUND_NOT_DECLARED: dict[str, str] = {
         "declared and contrast_check measures it as MUTED on PANEL; it is "
         "only unreachable through the palette this test reads."
     ),
+    "ViewScroll": (
+        "the scroll box that holds an Area's View under its header "
+        "(`area_layout.ViewScroll`, `PL-CBYS`). Its viewport fills no background, "
+        "so the Area's surface shows through, and it draws no text: every string "
+        "inside it belongs to the View's own widgets."
+    ),
+    "_KeyScroll": (
+        "the box that scrolls a chart View's window statement, reference values "
+        "and legend above the plot (`views._KeyScroll`, `PL-CBYS`). It paints no "
+        "surface, through `stylesheets.clear_scroll_area_stylesheet`, and draws no "
+        "text: every row inside it is a widget of its own."
+    ),
     "QScrollArea": (
         "the page's scroll area. It paints the viewport surface, which "
         "`SimulationView` declares as BACKGROUND in a stylesheet, and no text: "
