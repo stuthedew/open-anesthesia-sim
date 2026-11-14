@@ -3,11 +3,13 @@ id: PL-19M4
 title: Mutation testing covers eight display modules that pyproject.toml names by hand, and no Qt-free module added or left out since: app/agent_cost.py, app/compartment_schematic.py, app/bookmarks.py, app/playback.py and app/controller.py build values a learner sees and are in no mutation run, and a hand probe of 14 one-line changes on 2026-11-11 left three uncaught
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect, safety, test
 feature: one-source-of-truth
 touches: pyproject.toml, tools/diff_mutation.py, tests/unit/test_diff_mutation.py, docs/mutation-testing.md, tests/unit/test_bookmarks.py, tests/unit/test_chart_frame.py, docs/apparatus.md, ROADMAP.md, .claude/skills/docket/modes/close-out.md, subprojects/docket/README.md
 added: 2026-11-11
+closed: 2026-11-14
+pr: 2129
 payoff: a change to any display module that imports no Qt is measured by the mutation check when its item closes, and a new such module is covered without anyone adding it to a list
 verify: grep -q 'def test_every_module_outside_the_mutation_run_imports_qt_or_is_named_with_its_reason' tests/unit/test_diff_mutation.py && grep -q 'first step under the rule' docs/mutation-testing.md
 ---

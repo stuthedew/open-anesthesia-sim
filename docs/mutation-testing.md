@@ -76,7 +76,11 @@ rule took the run from 5,486 mutants to 11,702.
   a four-core container, a run for one changed function in `app/wash_in.py`
   took 4 minutes 58 seconds. Finding which tests call which function took 3
   minutes 41 seconds of that. A change to a file that the tests call more
-  often takes longer, as § "Pitfalls" explains.
+  often takes longer, as § "Pitfalls" explains. The first step under the rule
+  in § "Which modules are mutated", with every module that imports no Qt
+  wrapped, ran all 65 simulator unit test files in 951 seconds on four idle
+  cores on 2026-11-11, and passed. A whole run of the 31 mutants of
+  `anesthesia_sim.app_metadata` took 970 seconds.
 - `make mutate ARGS=--all` mutates every function and prints the kill rate of
   each module. Use it to measure a new baseline. It is slow: on 2026-10-17 it
   reached 1,058 of 2,498 mutants in about 75 minutes on a four-core container,
