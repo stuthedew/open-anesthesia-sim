@@ -92,6 +92,7 @@ src/anesthesia_sim/
 ├── core/                # scientific simulation — no toolkit dependency
 │   ├── validation.py              # shared input-validation guards (raise SimulationConfigurationError; a value that is not a number at all is a TypeError, as for every checked type)
 │   ├── checked_number.py          # what a checked type, and the two sign-and-finiteness guards in validation.py, are built from: an int or a float and nothing else, never a value built as another checked quantity, with minus zero held as zero; the base every checked type shares; and how a refusal names a value
+│   ├── checked_record.py          # how a checked record, a frozen dataclass that checks its fields in __post_init__, is rebuilt by a pickle or a copy: through its constructor's checks, from restore_through_checks
 │   ├── concentration.py           # fraction vs percent: the two forms, and the only crossing
 │   ├── units.py                   # seconds, minutes, hours, milliseconds, and litres to millilitres and cubic metres: the factors between them, each written once
 │   ├── supported_ranges.py        # the declared domain: FreshGasFlow, AlveolarVentilation and CardiacOutput, which cannot hold a flow outside it, CaseInstant, which cannot hold an instant outside the run length, StepCount, a whole nonnegative count, and the guards that refuse a run outside it
