@@ -66,3 +66,40 @@ decision.
 **Alternative.** Keep De Wolf's values and label them "a single adult MAC
 with no age", as `#2155` does. Nothing a learner sees changes, but the
 age-adjustment feature would then need a new divisor anyway.
+
+**Decided** (project owner, 2026-11-14, answering the card that put the
+recommendation above): "so we can use MAC age 40 as the default, but age
+adjusted MAC (setting arbitrary age) will be core feature. So that can be
+default for now, but there will be no single "simulator MAC" value once that
+is implemented so take that into account". Chosen over keeping De Wolf et
+al.'s 2.0%, 1.2% and 6.0% and over Gas Man's `gasman.ini` 2.1%, 1.1% and 6.0%.
+This reopens the decision of 2026-09-04 (ratified), which kept De Wolf's
+values over Mapleson's.
+
+**What to build.**
+
+1. Store each agent's MAC at age 40 from Mapleson 1996: 1.80% sevoflurane,
+   1.17% isoflurane, 6.6% desflurane. Name the data key for the age it holds,
+   `mac_at_age_40_percent`, and add a Mapleson 1996 source entry to each
+   agent file, tier 2, adopted on this decision. The De Wolf entry stops being
+   the authority for MAC and stays cited.
+2. Keep the agent's MAC at age 40 apart from the MAC a run divides by. The
+   agent record holds the MAC at 40. The run's MAC is built in one function
+   from the agent and the patient, and returns the MAC at 40 for the
+   reference adult today. `PL-8F9D` puts Mapleson's age equation in that one
+   function when age becomes an input, so no other reader changes then.
+3. Show the age beside every 1 MAC the interface states, for example
+   "1 MAC sevoflurane (age 40) = 1.80%", so a learner sees which patient the
+   divisor belongs to.
+4. Update `docs/MODEL.md` and `docs/INTERFACE.md`: the stored-value tables
+   and provenance markers, the comparison table with Mapleson (the gap goes
+   to zero), the 22% limitation (it no longer applies), the MAC-awake band's
+   drawn centres and its comparison with Katoh, the MAC readout's step in
+   percentage points, and the dial's starting positions. Describe the divisor
+   as the MAC for the patient's age, 40 for the reference adult.
+5. Update every test that pins 2.0, 1.2 or 6.0 as a MAC, or a value derived
+   from one, with the expected value worked out from Mapleson's figures
+   rather than read back from the code.
+
+**Collision to check first.** `PL-19W8` (in flight on 2026-11-14) adds a test
+for the MAC readout's step in percentage points, which this change moves.
