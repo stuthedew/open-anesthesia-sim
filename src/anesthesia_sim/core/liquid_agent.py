@@ -80,10 +80,17 @@ CELSIUS_ZERO_K: Final = 273.15
 REFERENCE_TEMPERATURE_CELSIUS: Final = 20.0
 """The temperature at which every amount of agent is stated (`docs/MODEL.md` § "Agent amount")."""
 
+REFERENCE_PRESSURE_PA: Final = STANDARD_ATMOSPHERE_PA
+"""The pressure at which every amount of agent is stated, which is one standard atmosphere.
+
+The interface names this pressure beside every agent amount it shows, and reads
+it from here, so that the label and the conversion state one condition (`PL-HQPF`).
+"""
+
 REFERENCE_MOLAR_VOLUME_L_MOL: Final = (
     MOLAR_GAS_CONSTANT_J_MOL_K
     * (REFERENCE_TEMPERATURE_CELSIUS + CELSIUS_ZERO_K)
-    / STANDARD_ATMOSPHERE_PA
+    / REFERENCE_PRESSURE_PA
     * LITRES_PER_CUBIC_METRE
 )
 """V_m = R T / p at 20 °C and one standard atmosphere, in litres per mole: about 24.055."""
