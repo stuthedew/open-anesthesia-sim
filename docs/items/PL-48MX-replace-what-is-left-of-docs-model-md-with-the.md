@@ -78,11 +78,18 @@ together, and step 1's `git log` picks both up. Neither is a restructure.
    wording in four places: the symbol row for $`\mathrm{MAC}_\%`$ ("at age
    40"), the parameter table row "1 MAC, 40-year-old adult (percent)", the
    paragraph that opens "**MAC.** The stored MAC is 1 MAC for a 40-year-old
-   adult", and "larger than either source's confidence limits". Change all
-   four when the draft is brought up to date. The sentence that compares the
+   adult", and the 22% paragraph's "That is larger than either source's
+   confidence limits, so by the primary literature", which `docs/MODEL.md`
+   now gives as Mapleson's confidence limits and "by Mapleson's meta-analysis".
+   Change all four when the draft is brought up to date. The draft has no
+   "band drawn for age 40": its MAC-awake band paragraph already compares
+   only with Mapleson's and Katoh's age-40 figures. Checked again on
+   2026-11-14 with a search for "40", "forty", "either source" and "primary
+   literature". The sentence that compares the
    stored MAC with Katoh's MAC "at age 40" is a comparison and stays.
 2. `PL-G0R3`: `docs/MODEL.md` now says "simulated", "computed" or "come from
    runs on" where it reported a result of this simulator, and keeps
    "measured" for patients, tissue and equipment. The draft's own uses of
-   "measured" were read on 2026-11-14 and all describe real measurements, so
-   nothing in the draft changes for this one.
+   "measured" were read on 2026-11-14 and all describe real measurements. One
+   use of the verb does not: "This comparison measures an omission and claims
+   no agreement", which `docs/MODEL.md` now words as "shows an omission".
