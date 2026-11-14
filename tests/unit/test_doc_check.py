@@ -7778,6 +7778,7 @@ def test_a_numeric_family_reads_each_paragraph_that_states_a_number_with_a_unit(
         ("That blood holds about 0.18 mL.", "mL"),
         ("Davis and Mapleson's 1222 ml is the same object.", "ml"),
         ("The cardiac output is 6480 ml/min.", "ml/min"),
+        ("The amount is stated at 20 °C.", "°C"),
     ],
     ids=[
         "pixels",
@@ -7793,6 +7794,7 @@ def test_a_numeric_family_reads_each_paragraph_that_states_a_number_with_a_unit(
         "millilitres",
         "lower-case-millilitres",
         "millilitres-per-minute",
+        "celsius",
     ],
 )
 def test_a_figure_in_each_unit_the_documents_write_is_read_with_that_unit(
@@ -7864,8 +7866,9 @@ def test_a_volume_restated_in_millilitres_with_no_marker_is_refused(tmp_path: Pa
     [
         ("The liquid weighs 1.5203 g/mL.", "DENSITY_G_ML", "1.5203 g/mL"),
         ("The molar mass is 184.49 g/mol.", "MOLAR_MASS_G_MOL", "184.49 g/mol"),
+        ("The density was measured at 20 °C.", "REFERENCE_TEMPERATURE_CELSIUS", "20 °C"),
     ],
-    ids=["density", "molar-mass"],
+    ids=["density", "molar-mass", "celsius"],
 )
 def test_a_density_or_molar_mass_restated_with_its_unit_and_no_marker_is_refused(
     tmp_path: Path, sentence: str, constant: str, expected: str
@@ -7873,7 +7876,8 @@ def test_a_density_or_molar_mass_restated_with_its_unit_and_no_marker_is_refused
     """An agent file stores its liquid density in g/mL and its molar mass in g/mol.
 
     Reading "g" alone, as a unit no value is stored in, let a restated density
-    go stale with nothing asking.
+    go stale with nothing asking. The reference temperature is stored in °C,
+    and "20 °C" read as a bare number let it go stale the same way (`PL-5L84`).
     """
     value = expected.split()[0]
     root = _repo(tmp_path, model=_model_with(sentence))
@@ -8104,6 +8108,40 @@ def test_a_developer_note_holds_the_passage_directly_above_it_and_none_below() -
 
     assert sorted(members) == [3, 5, 7, 9, 11, 15, 17, 19, 23, 25]
     assert held == {7, 9, 11, 17}
+
+
+def test_a_paragraph_held_only_by_its_markers_does_not_stop_a_developer_note() -> None:
+    """Regression for `PL-5L84`: a marker under a paragraph cut off the note below it.
+
+    Line 3 carries no form, and the note on line 8 names a test. Line 5
+    states 10 L/min, and its marker ties that figure to a stored value. Before
+    the fix, line 5 held itself through its marker, so the note's reach
+    stopped there and nothing held line 3. Line 5 is passed over, as a
+    paragraph with no figure is, so it does not take the note's test either.
+    A paragraph that declares its own test still stops the note, as line 5
+    of `NOTE_HELD_DOCUMENT` shows.
+    """
+    document = "\n".join(
+        [
+            "### Displayed precision",
+            "",
+            "One step of the display is 0.1 L of vapour.",  # line 3
+            "",
+            "The largest fresh gas flow is 10 L/min.",  # line 5
+            "<!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->",
+            "",
+            "**For developers.** `test_the_step_is_derived` repeats it.",  # line 8
+            "",
+        ]
+    )
+
+    members = dict(doc_check._numeric_paragraph_members(document, _numeric_family()))
+    held = {line for line, member in members.items() if doc_check._holds_its_figures(member)}
+
+    assert sorted(members) == [3, 5]
+    assert held == {3, 5}
+    assert "test_the_step_is_derived" in members[3]
+    assert "test_the_step_is_derived" not in members[5]
 
 
 @pytest.mark.parametrize(
