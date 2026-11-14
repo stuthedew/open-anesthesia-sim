@@ -1,8 +1,15 @@
 ---
 id: PL-SRR7
 title: No test checks v0.5.0's definition-of-done claim that the memory a run holds is bounded by its number of control events; only the rule file run-is-its-definition.md guards it
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: test, perf
+touches: tests/unit/test_run_definition.py
+deferred-from: v0.7.0 - captured after the freeze, and not safety or science; the bound holds today and only a later change could break it
 added: 2026-11-10
+payoff: a change that makes a long case grow memory without limit fails a test instead of shipping
+verify: grep -q 'def test_the_memory_a_run_holds_grows_with_its_control_events_not_its_length' tests/unit/test_run_definition.py
 ---
 
 **Problem.** No test checks v0.5.0's definition-of-done claim that the memory a run holds is bounded by its number of control events; only the rule file run-is-its-definition.md guards it
@@ -15,3 +22,4 @@ added: 2026-11-10
 
 **Found by.** `PL-VM1Q`'s question 39, 2026-11-10.
 
+**Generator check.** A one-off: a release's definition of done claims a bound that no test asserts. No head's `misread:` states which claims in a release's definition of done a test guards.
