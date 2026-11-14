@@ -3739,7 +3739,9 @@ the circle, is not bound by it.
 comes from,** because the three maxima come from two classes of vaporizer that it would need to
 tell apart only away from sea level (§ "Assumptions", § "Known limitations").
 
-The stored MAC (`mac_percent`) is a single adult MAC, and its source states no age for it. It has two uses, and both are
+The stored MAC (`mac_percent`) is a single adult MAC. Its source, De Wolf et al. 2012, gives no age
+for it. The age-referenced values are Mapleson's MACs at age 40, which the table below compares
+with the stored ones. The stored MAC has two uses, and both are
 presentation. First, it sets the dial's starting position, so that each new run begins at a
 recognizable clinical anchor. Second, it is the divisor for the display in MAC multiples: every
 displayed compartment value and the chart's second axis are divided by it. The simulator refuses

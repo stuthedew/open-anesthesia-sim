@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: safety, defect, docs
 feature: model-md-structure
-touches: docs/MODEL.md, docs/INTERFACE.md, docs/items/PL-48MX-replace-what-is-left-of-docs-model-md-with-the.md
+touches: docs/MODEL.md, docs/INTERFACE.md, docs/items/PL-48MX-replace-what-is-left-of-docs-model-md-with-the.md, docs/items/PL-LBVN-gas-man-s-released-settings-file-holds-mac-2-1.md
 added: 2026-11-07
 closed: 2026-11-14
 pr: 2155
