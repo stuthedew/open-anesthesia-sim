@@ -6677,6 +6677,7 @@ def _absent_paths(
         if kind == "absent":
             report.errors.append(_misplaced_marker(path, index + 1, kind))
     declared: dict[int, set[str]] = {}
+    blocks = read_blocks(lines).blocks
     for index, line in enumerate(lines):
         if split.get(index) == "absent":
             report.errors.append(_split_marker(path, index + 1, "absent"))
@@ -6686,7 +6687,14 @@ def _absent_paths(
         if marker is None:
             continue
         start, end = _marked_scope(lines, index)
-        cited = {span["content"] for span in code_spans("\n".join(lines[start:end]))}
+        # Spans are read one block at a time, so a stray backtick in one list
+        # item cannot pair with a backtick in the next.
+        cited = {
+            span["content"]
+            for block in blocks
+            if block.kind in PROSE and start <= block.start and block.end <= end
+            for span in code_spans("\n".join(lines[block.start : block.end]))
+        }
         for token in marker.group("paths").split():
             if token not in cited:
                 report.errors.append(
