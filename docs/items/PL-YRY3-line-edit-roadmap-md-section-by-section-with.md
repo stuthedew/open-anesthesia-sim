@@ -3,11 +3,13 @@ id: PL-YRY3
 title: Line edit ROADMAP.md section by section with the fixed copy editor once its restructure has landed
 priority: P3
 effort: L
-status: ready
+status: dropped
 classes: docs
 feature: roadmap-structure
 touches: ROADMAP.md
 added: 2026-11-07
+closed: 2026-11-11
+reason: the project owner dropped it on 2026-11-11 when the copy editor's per-branch use was removed
 payoff: ROADMAP.md reads in plain sentences that state each fact once, so the owner can decide what a release holds in one read.
 not-delegable: A line edit is proven by an audit of each edited section against the text before it, which no grep can show, and the copy editor run itself calls a model.
 ---
@@ -150,7 +152,7 @@ the sentence now quoted in `PL-J3ZK`.
 5. Item 30 states the sourcing standard four times and the refusal of a plausible but unexplained value twice. State each once, at the head of item 30's decisions, and let each paragraph keep only its own source.
 6. Item 33's palette constraints name `tools/contrast_check.py`, `ast`, `REQUIREMENTS`, judgments 1 and 4 of `.claude/rules/ui-color.md` and `PL-BXB2`. Keep the three constraints in words: every declared colour pair meets WCAG 2.2 AA under four vision models, and the declared list is rewritten in the same change; the three ISO 5360:2016 agent colours are fixed; traces are told apart by dash pattern.
 7. Item 33's prerequisites label ("Two hard prerequisites, and they are the reason this cannot simply be started") should name the two prerequisites, once `PL-NTHF` question 14 is answered.
-8. Item 34's occlusion paragraphs repeat `docs/MODEL.md` § "Minimum displayed outputs": the three-part division and the tier detail. Keep the rule that nothing may cover a required value, that v0.6.0 builds the unconditional set outside the area system in the per-window shape, the second-window decision with its tag, and that the division is a stepping stone.
+8. Item 34's occlusion paragraphs repeat `docs/INTERFACE.md` § "Minimum displayed outputs": the three-part division and the tier detail. Keep the rule that nothing may cover a required value, that v0.6.0 builds the unconditional set outside the area system in the per-window shape, the second-window decision with its tag, and that the division is a stepping stone.
 9. Item 34 names `PL-NWTM` and `PL-9LNF` only by id and calls them "pre-loaded" without saying what that means. Say what each failure is.
 10. "Catalogue" names both this list of entries and item 36's catalogue of views. Use one word for each.
 11. Item 34's 2026-09-17 count uses the effort sizes L, M and S without explaining them.
@@ -176,7 +178,7 @@ the sentence now quoted in `PL-J3ZK`.
 12. Gate 1: "a value must be marked as modelled" is argued in five places and the paused-tooltip point in three; `PL-4KZD` is said three times; presence answers are given for entries the exception admits whatever the answer. Keep each once.
 13. Gate 1's entries have grown into essays (`PL-GS3R`, `PL-ZX12`, `PL-C4PH`, `PL-LHBY`, `PL-S6WW`, `PL-JVHL`, `PL-0RZ0`, `PL-3K9B`, `PL-4KZD`, `PL-N3N5`) and name code; cut each to a line and move the measurements and code names to the items. Its prose names tool workings (`tools/doc_check.py` counts, `docket.toml`, `workflow_paths`, `PL-VRMK`'s tiering).
 14. Gate 1: "The two statements do not conflict ... Silence is the third option" (at `PL-YVHK`) and the rule paragraph after the 2026-09-17 list are rules for the whole gate; they belong in § "The gate is a snapshot, not a moving target", reworded to stand without the entry. The "not live" paragraph belongs before its list. Dates are given in both the group headings and the entries.
-15. v0.5.0's Required scope: the channel-reversal paragraph under `PL-8PSW` is history (`PL-HLD5`, `PL-GVXP`), but the cap paragraph after it opens "That leaves no channel free", so moving it needs the next paragraph reworded; the contrast reasoning belongs in `docs/MODEL.md` § "The six compartment traces". Branch-equals-parent is stated four times; the agent rule twice; `PL-1XPX` and `PL-MN4J` both say they are owner decisions, and `PL-MN4J` keeps two rules for sessions. Several entries use "First ... Second"; give each pair a short list. Positional pointers ("two bullets down", "the entry below") should name the entry. Bold openings that do not say what their paragraph holds: see chapter read 24's table. Method names (`resumed_at_halt`, `fork_at_halt`) are for a developer.
+15. v0.5.0's Required scope: the channel-reversal paragraph under `PL-8PSW` is history (`PL-HLD5`, `PL-GVXP`), but the cap paragraph after it opens "That leaves no channel free", so moving it needs the next paragraph reworded; the contrast reasoning belongs in `docs/INTERFACE.md` § "The six compartment traces". Branch-equals-parent is stated four times; the agent rule twice; `PL-1XPX` and `PL-MN4J` both say they are owner decisions, and `PL-MN4J` keeps two rules for sessions. Several entries use "First ... Second"; give each pair a short list. Positional pointers ("two bullets down", "the entry below") should name the entry. Bold openings that do not say what their paragraph holds: see chapter read 24's table. Method names (`resumed_at_halt`, `fork_at_halt`) are for a developer.
 16. v0.5.0's definition of done points to beat 3 of § "The cadence" for a deferral's terms; state them and keep the pointer. Say in words what `docket check` and `tools/doc_check.py` cover.
 17. v0.5.0's out-of-scope list describes `PL-ZW0J` twice (add "after a confirmation" to the first); its first bullet should run exclusion, the five deferred items, Gate 2, the reason, then the four kept; the deferral date belongs in `PL-ZW0J`; code names (`has_recorded_run`, `BranchedCase.branches`) should be described in words.
 
@@ -205,3 +207,13 @@ the sentence now quoted in `PL-J3ZK`.
 9. Answer the copy editor's queries on text that `PL-VM1Q` did not write: what changed in v0.3.0's "Provenance and parallelism patch" row and in v0.3.1's row; which reading "held to the data files they restate rather than only its provenance table" means; the tense of the sentence in v0.4.0's note on `PL-K79K` that says it "advertised a command that does not exist"; what "three entries later" counts for `PL-NV9W`; what `RunHistory`, "the sampler", "the M4 decimation path" and `has_recorded_run` are, in words; which item of `PL-B8MK` and `PL-TYWQ` "This item" means, and whether "Both closed the same day" means the same day as each other; and what "this" refers to in "§ "The cadence" already arranges this".
 
 **Generator check.** One-off: the line edit the owner asked to follow each restructure. No mechanism produces it.
+
+**Dropped 2026-11-11** (project owner, 2026-11-11 05:17 UTC, ratified, over
+keeping it as a copy editor run on request). The owner said on 2026-11-11 at
+05:13 UTC that the copy editor function is being removed (`PL-J1ZM`, #2119).
+That removal keeps the copy editor only for a section rewrite the owner asks
+for. This line edit was a copy editor run, and the removal's own measurement
+found that the copy editor left seven `ROADMAP.md` passages slightly longer on
+#2101, at up to 32 minutes and $7.74 per run. The twelve wording points listed
+above from slice 2, and the points from `PL-DWGC`, are not done. A later item
+that rewords `ROADMAP.md` can take them from here.

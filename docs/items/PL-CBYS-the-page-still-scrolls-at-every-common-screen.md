@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: feature, ux
 feature: window-is-the-frame
-touches: src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/views.py, docs/MODEL.md, src/anesthesia_sim/app/view_registry.py, src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/layout/sizing.py, src/anesthesia_sim/data/workspaces, README.md, docs/ARCHITECTURE.md, docs/interface-provenance.md, .claude/rules/ui-areas.md, src/anesthesia_sim/app/stylesheets.py, tests/integration, tests/benchmarks
+touches: src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/views.py, docs/INTERFACE.md, src/anesthesia_sim/app/view_registry.py, src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/layout/sizing.py, src/anesthesia_sim/data/workspaces, README.md, docs/ARCHITECTURE.md, docs/interface-provenance.md, .claude/rules/ui-areas.md, src/anesthesia_sim/app/stylesheets.py, tests/integration, tests/benchmarks
 deferred-from: v0.7.0 - the gate's frozen list does not name it, and it is built after PL-9YPR's pull request merges
 added: 2026-11-11
 closed: 2026-11-14

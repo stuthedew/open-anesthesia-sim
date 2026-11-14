@@ -1,6 +1,6 @@
 """The compartment schematic View in a real dashboard, from patient inputs to its drawn labels.
 
-`docs/MODEL.md` § "The compartment schematic: what its heights, amounts and
+`docs/INTERFACE.md` § "The compartment schematic: what its heights, amounts and
 share bar assert" is the specification (`PL-2881`), and `PL-RNYV` built the
 View. These tests check two things. First, they check that a run's inputs reach
 the drawn labels through the model. The expected labels come from a closed form
@@ -40,7 +40,7 @@ from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import MUTED, PANEL, WARNING
 from anesthesia_sim.app.view_registry import BRANCH, COMPARTMENT_SCHEMATIC, REGISTERED
-from anesthesia_sim.app.views import BranchView, CompartmentSchematicView
+from anesthesia_sim.app.views import BranchView, CompartmentSchematicView, ConcentrationView
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.parameters import load_agent_parameters
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CaseInstant, FreshGasFlow
@@ -200,7 +200,7 @@ def _two_figures(millilitres: float) -> str:
     """An amount written to two significant figures, never finer than 0.01 mL.
 
     It is written here apart from the formatter, from the rule in
-    `docs/MODEL.md` § "Displayed precision".
+    `docs/INTERFACE.md` § "Displayed precision".
     """
 
     if millilitres == 0.0:
@@ -556,11 +556,11 @@ def test_a_schematic_reset_with_no_frame_is_drawn_like_one_that_never_showed_a_r
 
     assert run.controller.has_failed is True
     assert fresh.runs[0].controller.has_failed is True
-    # The fresh dashboard's View holds no copy of the schematic. A View is given
-    # its runs by a tick, and a dashboard whose first frame fails gives none
-    # (`PL-RF2S`, second pull request). So the fresh run builds its copy here.
+    # Both schematics are read from the View. A halt hands every View the runs
+    # with no frame, so the fresh dashboard's View holds a schematic although
+    # its first frame failed (`PL-RF2S`).
     on_screen = _schematic(used).schematics[0]
-    never_used = fresh.runs[0].build_compartment_schematic()
+    never_used = _schematic(fresh).schematics[0]
     assert _everything_drawn(on_screen) == _everything_drawn(never_used)
 
 
@@ -580,6 +580,60 @@ def _column_centre(canvas: SchematicCanvas, index: int) -> int:
 _CONTAINER_TOP_PX = 14
 _CONTAINER_HEIGHT_PX = 96
 _CONTAINER_WIDTH_PX = 44
+
+
+def test_a_container_cannot_be_read_against_the_chart(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """`PL-8W1B`: beside the chart, each container carries the chart's gridlines as marks.
+
+    The Maintenance Workspace shows the concentration chart and the schematic
+    side by side. A container is much shorter than the chart's plot, so one
+    tension stands at different screen heights in the two. A learner who read a
+    fill level across to the chart's gridlines would read the wrong tension. So
+    each container is marked inside both sides at the chart's gridlines, and the
+    caption says what the marks stand for.
+
+    The chart rules its axis every 0.5 MAC up to 3 MAC, so the expected marks
+    stand at sixths of the container's height. The test finds each painted mark
+    as a row of `MUTED` pixels just inside the container's left side.
+    """
+
+    workspaces = shipped_workspaces()
+    maintenance = next(
+        index
+        for index, workspace in enumerate(workspaces.workspaces)
+        if workspace.name == WorkspaceName("Maintenance")
+    )
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 600.0)
+    view = _dashboard(
+        application, shown, controller, workspaces=WorkspaceSet(workspaces.workspaces, maintenance)
+    )
+    (chart,) = (v for v in view.layout_container.views() if isinstance(v, ConcentrationView))
+    (schematic,) = _schematic(view).schematics
+    caption = schematic.scale_text.text()
+    canvas = schematic.canvas
+    image = _painted(canvas)
+    muted = QColor(MUTED).rgb()
+    sixths = [sixth / 6 for sixth in range(1, 6)]
+
+    assert chart.chart.plot_area().height() > 2 * _CONTAINER_HEIGHT_PX
+    assert canvas.marks == pytest.approx(sixths)
+    assert "Marks stand at the chart's gridlines" in caption
+    assert not schematic.scale_text.isHidden()
+
+    for index in range(len(canvas.readings)):
+        x = _column_centre(canvas, index) - _CONTAINER_WIDTH_PX // 2 + 3
+        inside = range(_CONTAINER_TOP_PX + 1, _CONTAINER_TOP_PX + _CONTAINER_HEIGHT_PX)
+        rows = [y for y in inside if image.pixelColor(x, y).rgb() == muted]
+        expected = [_CONTAINER_TOP_PX + _CONTAINER_HEIGHT_PX * (1 - sixth) for sixth in sixths]
+        assert len(rows) == len(expected), canvas.readings[index].name
+        assert all(
+            abs(row - mark) <= 1
+            for row, mark in zip(sorted(rows, reverse=True), expected, strict=True)
+        ), canvas.readings[index].name
 
 
 def test_each_container_is_painted_to_its_tension_and_an_off_scale_one_is_marked(

@@ -510,7 +510,7 @@ BRANCH_POINT_STROKE_WIDTH = 1.5
 
 # The thinnest any trace is drawn, in display pixels. A 1 px antialiased line
 # renders lighter than its declared colour, and its contrast against the panel
-# falls below the 3:1 minimum (`docs/MODEL.md` § "The six compartment traces").
+# falls below the 3:1 minimum (`docs/INTERFACE.md` § "The six compartment traces").
 # So no trace, and no preview of a trace, is drawn thinner than this.
 MINIMUM_TRACE_STROKE_WIDTH = 2
 
@@ -706,7 +706,7 @@ WASH_IN_STROKE_WIDTH = 3
 # line* looks as if it has arrived somewhere. The asymptote is a definitional
 # anchor rather than a measured value with spread: by definition, F_A = F_I is
 # where net uptake stops. So it is a line and not a band, on the distinction
-# that `docs/MODEL.md` § "MAC-awake as a chart reference" draws between the
+# that `docs/INTERFACE.md` § "MAC-awake as a chart reference" draws between the
 # two. It uses MUTED and a wide dash, matching the 1 MAC line on the chart
 # above. It is furniture rather than a second compartment, and it declares no
 # new pair for `tools/contrast_check.py`.

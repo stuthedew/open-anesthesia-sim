@@ -24,11 +24,55 @@ The units live in `app/`, not in `core/units.py`, because a label is
 presentation, and `CLAUDE.md` keeps presentation out of the calculation code.
 Other repeated strings, such as message fragments, are left to code review. A
 check that read strings would have to guess which of them are units.
+
+An amount of agent is a volume of vapour, and a volume of gas means nothing
+without the temperature and pressure it is stated at. The model states every
+amount at one condition, 20 °C and 1 atm (`docs/MODEL.md` § "Agent amount").
+`REFERENCE_CONDITION_LABEL` names that condition, and every place that shows an
+agent amount names it from there (`PL-HQPF`). The label is built from the
+constants that the conversion from vapour to liquid uses, so a change to either
+constant changes the label with it (`PL-RJN9`).
 """
 
 from enum import Enum
+from typing import Final
 
-__all__ = ["DisplayUnit"]
+from anesthesia_sim.core.liquid_agent import (
+    REFERENCE_PRESSURE_PA,
+    REFERENCE_TEMPERATURE_CELSIUS,
+    STANDARD_ATMOSPHERE_PA,
+)
+
+__all__ = [
+    "BODY_STORES_CONDITION_LINES",
+    "REFERENCE_CONDITION_LABEL",
+    "REFERENCE_TEMPERATURE_LABEL",
+    "DisplayUnit",
+]
+
+#: The temperature at which the model states every amount of agent, as a label.
+#: A liquid volume needs only the temperature, because a liquid's volume barely
+#: changes with pressure.
+REFERENCE_TEMPERATURE_LABEL: Final = f"{REFERENCE_TEMPERATURE_CELSIUS:g} °C"
+
+#: The temperature and pressure at which the model states every amount of
+#: agent vapour, as a label. The pressure is written in standard atmospheres.
+REFERENCE_CONDITION_LABEL: Final = (
+    f"{REFERENCE_TEMPERATURE_LABEL} and {REFERENCE_PRESSURE_PA / STANDARD_ATMOSPHERE_PA:g} atm"
+)
+
+#: What the reference condition means for the agent held in the body. The
+#: alveolar, venous and tissue amounts are body-temperature gas carried under
+#: the 20 °C label, so read at that label they overstate the agent held
+#: (`docs/MODEL.md` § "Known limitations", "One reference condition, where the
+#: model physically has two"). The line says which way the amounts are off. The
+#: size of the error is in that section. The wording is a placeholder, but what
+#: it must say is not. It is two short lines because the captions it ends are
+#: never set to wrap. A line wider than about 214 px widens the accounting
+#: panel's column, which takes that width from the concentration plot beside it.
+BODY_STORES_CONDITION_LINES: Final = (
+    "Amounts in the body read high,\nas they are gas at body temperature."
+)
 
 
 class DisplayUnit(Enum):
@@ -46,12 +90,12 @@ class DisplayUnit(Enum):
     # The multiplication sign is there for safety, not for typography. A reader
     # takes "0.80 MAC" as a depth of anesthesia. "0.80 ×MAC" says what the number
     # actually is: a partial pressure expressed as a multiple of the concentration
-    # that would be 1 MAC. `docs/MODEL.md` § "MAC multiples as a display unit"
+    # that would be 1 MAC. `docs/INTERFACE.md` § "MAC multiples as a display unit"
     # states the convention.
     MAC_MULTIPLE = ("multiple of MAC", "×MAC", "×MAC")
     # An agent amount's unit always says whether it counts vapour or liquid. A
     # millilitre of liquid gives about 180 to 210 mL of vapour, depending on the
-    # agent, so a bare "mL" could be misread by that factor. `docs/MODEL.md`
+    # agent, so a bare "mL" could be misread by that factor. `docs/INTERFACE.md`
     # § "The compartment schematic: what its heights, amounts and share bar
     # assert" sets the spelling. The wording is a placeholder, but the rule is not.
     AGENT_VAPOUR_MILLILITRES = ("millilitres of vapour", "mL vapour", "mL vapour")
@@ -63,7 +107,7 @@ class DisplayUnit(Enum):
     # the price per millilitre worked out from it, are in this unit too
     # (`PL-1P15`). The field for the bottle volume names this unit, so the reader
     # is less likely to type a volume in litres or as a count of bottles
-    # (`docs/MODEL.md` § "A cost at the reader's price").
+    # (`docs/INTERFACE.md` § "A cost at the reader's price").
     AGENT_LIQUID_MILLILITRES = ("millilitres of liquid", "mL of liquid", "mL of liquid")
 
     recorded: str

@@ -24,7 +24,7 @@ sourced when it is not, or goes looking for a list that was never written.
 where a claim comes from is the failure `CLAUDE.md`'s provenance requirement
 exists to stop.
 
-**Reproduced 2026-09-20.** `docs/MODEL.md:8175` carries `**Sources for the notes
+**Reproduced 2026-09-20.** `docs/MODEL.md` § "Known limitations" carries `**Sources for the notes
 above**, none of which is the authority for any`, and the block under it lists
 the five vaporizer and altitude sources only.
 

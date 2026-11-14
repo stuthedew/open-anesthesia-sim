@@ -19,7 +19,7 @@ or the display path, `evaluate`. Each path was compared with the stepped run:
 Both are about ten orders of magnitude below 1e-4, the smallest change that the
 two-decimal percent readout can show, so neither path can change a displayed digit. The
 two paths differ because they compose the same operations in a different order, not
-because of method error. `docs/MODEL.md` § "The canonical evaluation rule" states which of
+because of method error. `docs/INTERFACE.md` § "The canonical evaluation rule" states which of
 the two paths a stored value may come from. `tests/reference/test_canonical_evaluation.py`
 tests that rule. The tests here check that the display path is rejected wherever the rule
 forbids it.
@@ -413,16 +413,11 @@ def test_a_run_cannot_open_or_change_under_a_flow_outside_the_supported_ranges(
     held = system.equation_settings()
 
     def rebuilt(value: float) -> UptakeEquationSettings:
+        # The reproduction scaled the tissue flows to sum to the cardiac output. A tissue
+        # flow is now built only as a fraction of a supported cardiac output (`PL-GKG4`), so
+        # those scaled flows cannot be built either. The record refuses the cardiac output
+        # before it compares the flows with it.
         changed: dict[str, object] = {field: value}
-
-        if field == "cardiac_output_l_min":
-            changed["tissues"] = tuple(
-                replace(
-                    tissue,
-                    blood_flow_l_min=tissue.blood_flow_l_min / held.cardiac_output_l_min * value,
-                )
-                for tissue in held.tissues
-            )
 
         return replace(held, **changed)
 
@@ -1941,7 +1936,7 @@ def test_a_canonical_answer_reads_nothing_the_chart_kept(monkeypatch: pytest.Mon
 
 """Why a branch's definition opens at a keyframe, measured rather than asserted (`PL-TFX5`).
 
-No way of opening a fork restarts a definition at the fork, and `docs/MODEL.md` § "The canonical
+No way of opening a fork restarts a definition at the fork, and `docs/INTERFACE.md` § "The canonical
 evaluation rule" says why. Restarting from the canonical state, at an instant for which the run
 holds no keyframe, replaces one propagation over an interval with two propagations over its halves.
 A fork between two keyframes opens its definition at the earlier keyframe instead
@@ -1963,7 +1958,7 @@ a restart, on the grounds that the difference is too small to matter.
 # `PL-HWNG` moved that change to a 3.0% dial. Measured after
 # that, on 2026-10-26, the divergence at the six probes was 1.5e-14, 1.1e-13, 1.5e-14,
 # 1.2e-13, 1.7e-14 and 7.8e-13. Before, with one change, the largest was 5.8e-13. That size
-# is the same order of magnitude as the 5.3e-13 that `docs/MODEL.md` § "The canonical
+# is the same order of magnitude as the 5.3e-13 that `docs/INTERFACE.md` § "The canonical
 # evaluation rule" records for the same restart on a different run, in an accumulator (a
 # running total of agent volume). That section is the authority for the size, and this
 # constant is not a second claim about it. The ceiling was 1e-12, only 1.3 times the

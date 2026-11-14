@@ -335,10 +335,11 @@ the app's effort picker. A cap only lowers a level, though. A session in the
 `xhigh` arm whose picker sent `high` runs at `high`. So keep the picker at
 `xhigh` for the length of the trial.
 
-Each session's start-of-session digest names its arm, and the session tells
-you the arm in its first reply. The digest line stays in the session's
-transcript. That line is the trial's record of the arm, and the model review
-reads it from the transcript by session id. Sessions on your own computer are
+Each session's start-of-session digest names its arm. The digest line stays
+in the session's transcript. That line is the trial's record of the arm, and
+the model review reads it from the transcript by session id. A session no
+longer repeats the arm in its first reply, because you do not act on it
+(`PL-J1ZM`). Sessions on your own computer are
 not in the trial, and the script writes nothing there.
 
 The trial runs whatever model you start a session on, and changing the model
@@ -487,15 +488,15 @@ and housekeeping merges on green** (project owner, 2026-10-17, `PL-DKBG`). A
 real decision is one that `.claude/skills/docket/modes/design.md` step 4
 already makes yours. A high-risk change is any of three kinds. It changes a
 clinical value that the simulator computes or displays, or what
-`docs/MODEL.md` says such a value means. It is a rule that sessions run under
+`docs/MODEL.md` or `docs/INTERFACE.md` says such a value means. It is a rule that sessions run under
 and that you did not ask for in your own words. Or CI would not show its
 breakage, or a revert would not undo it. For a high-risk change, the ask gives
 the case for the change, its risks, and what was checked. `#1516` set this
 rule. The path list held that pull request for you, although nothing in it
 needed a decision.
 
-**A rewrite of `docs/MODEL.md` that changes no value, equation, code span or
-citation merges on green** (project owner, 2026-11-02, ratified, over holding
+**A rewrite of `docs/MODEL.md` or `docs/INTERFACE.md` that changes no value,
+equation, code span or citation merges on green** (project owner, 2026-11-02, ratified, over holding
 each section rewrite of `PL-ZT47` for your read, `PL-ZTZF`). The session runs
 `python3 tools/model_rewrite.py lost`. It lists every equation, code span,
 citation, number and "no test yet" declaration that the rewrite dropped or
@@ -505,7 +506,7 @@ to an item or a duplicate that the document still holds. A number rewritten in
 the reader's form with the same value, such as 4e-4 as 0.04%, counts as kept.
 The tool checks that the two values are equal and stand in the same section
 (`PL-TZ7R`). The blind review
-passes and the prose review still run. A sentence whose meaning needs a
+passes still run. A sentence whose meaning needs a
 clinician's judgment, such as what a hazard row or a limitation promises,
 still comes to you, and the ask quotes it before and after.
 
@@ -514,7 +515,7 @@ commit as `Owner-read: needed - <why>` or `Owner-read: not needed - <why>`.
 `bin/docket arm` reads that record. Some changes wait until a record made
 after their newest change covers them. These are changes to `src/`, to a test
 under `tests/` that imports the simulator, to `docs/MODEL.md`, to
-`src/anesthesia_sim/data/` or to `README.md`. So if a session never makes the
+`docs/INTERFACE.md`, to `src/anesthesia_sim/data/` or to `README.md`. So if a session never makes the
 decision, the pull request waits, rather than merging a clinical change that
 nobody reviewed. `not needed` arms the pull request to merge on green, with
 the reason in the pull request body. `needed` holds it for you, whatever paths
@@ -990,7 +991,8 @@ now, so you can delete it.
 
 ## Have a strong model read the model document against the data, once
 
-A script, `tools/model_doc_review.py`, sends `docs/MODEL.md` and every data file
+A script, `tools/model_doc_review.py`, sends `docs/MODEL.md`, `docs/INTERFACE.md`
+and every data file
 under `src/anesthesia_sim/data/` through the Message Batches API, on the same
 API credit as the headless workers (`PL-5S71`). It sends one request per `##`
 section, 25 on 2026-10-25, and each request carries the whole document and the

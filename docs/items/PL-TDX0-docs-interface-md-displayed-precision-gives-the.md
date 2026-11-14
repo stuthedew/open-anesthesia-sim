@@ -1,19 +1,19 @@
 ---
 id: PL-TDX0
-title: docs/MODEL.md § "Displayed precision" gives the partition coefficients' measured SDs as 3.9% to 6.4% of the mean, which are Yasuda, Targ and Eger's brain:blood SDs, while the fat tissue:gas SDs the agent files record are 17% to 19%, so the section understates the fat fraction's uncertainty about 3.5 times and its one-SD displacement table may rest on the wrong SDs
+title: docs/INTERFACE.md § "Displayed precision" gives the partition coefficients' measured SDs as 3.9% to 6.4% of the mean, which are Yasuda, Targ and Eger's brain:blood SDs, while the fat tissue:gas SDs the agent files record are 17% to 19%, so the section understates the fat fraction's uncertainty about 3.5 times and its one-SD displacement table may rest on the wrong SDs
 priority: P1
 effort: M
 status: ready
 classes: docs, science
 feature: model-claims-held-by-tests
-touches: docs/MODEL.md, tests/reference, docs/items
+touches: docs/MODEL.md, tests/reference, docs/items, docs/INTERFACE.md
 added: 2026-11-02
 payoff: the uncertainty Displayed precision states for each compartment's parameters is the uncertainty its own source measured, so the precision argument a learner reads rests on the right SD
-verify: ! grep -q '3.9% of the mean for desflurane' docs/MODEL.md
+verify: ! grep -q '3.9% of the mean for desflurane' docs/INTERFACE.md
 recurrences: 2026-11-04 PL-KG6S, 2026-11-04 PL-7R8S
 ---
 
-**Problem.** `docs/MODEL.md` § "Displayed precision" says the stored
+**Problem.** `docs/INTERFACE.md` § "Displayed precision" says the stored
 partition coefficients' measured SDs are 3.9% of the mean for desflurane, 5.3%
 for sevoflurane and 6.4% for isoflurane. It says they are the SDs of Yasuda,
 Targ and Eger's human tissue coefficients. "Why not a significant-figures

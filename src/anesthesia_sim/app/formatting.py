@@ -12,7 +12,7 @@ standard and requires a displayed value to be traceable to the transformations
 that produced it. This rounding is the last of those transformations.
 `tests/unit/test_formatting.py` tests it.
 
-`docs/MODEL.md` § "Displayed precision" derives how many digits of a
+`docs/INTERFACE.md` § "Displayed precision" derives how many digits of a
 concentration are worth showing, starting from what the model's parameters can
 support. This module applies the result and deliberately does not restate the
 derivation's figures. They were once restated at four places in this package,
@@ -45,7 +45,7 @@ the only one that means the same thing when the agent changes. It is the percent
 divided by a per-agent constant, so `MAC_DISPLAY_DECIMALS` is *derived* from
 `CONCENTRATION_DISPLAY_RESOLUTION_PERCENT` rather than chosen separately. A
 re-derived percent resolution therefore carries through to the MAC readout
-without a second derivation. `docs/MODEL.md` § "MAC multiples as a display
+without a second derivation. `docs/INTERFACE.md` § "MAC multiples as a display
 unit" states what that division does and does not assert. A MAC multiple is a
 statement about a partial pressure, never about a depth of anesthesia. The divisor is a tier-3
 parameter, and the interface displays its provenance.
@@ -136,7 +136,7 @@ DECIMAL_BASE: Final = 10.0
 # Displayed resolution for every modeled concentration and relative partial
 # pressure, and for the delivered-agent setting shown beside its slider.
 #
-# **A choice, inside a band the model imposes.** `docs/MODEL.md` § "Displayed
+# **A choice, inside a band the model imposes.** `docs/INTERFACE.md` § "Displayed
 # precision" derives the band as one to two decimals. The upper end of the band
 # is set by what the measured spread of the partition coefficients supports.
 # The lower end is set by the fat and muscle compartments. At one decimal they
@@ -198,7 +198,7 @@ class AgentAmount(Enum):
         STORED: The agent a run holds in the circuit and the body. The
             accounting panel shows it.
         COMPARTMENT: One compartment's amount, which the compartment schematic
-            labels. `docs/MODEL.md` § "Displayed precision" derives a precision
+            labels. `docs/INTERFACE.md` § "Displayed precision" derives a precision
             of two significant figures for it (`PL-2881`). A count of decimals
             cannot express that precision, so this amount has no entry in the
             table of decimal counts. `format_compartment_amount` shows it in
@@ -216,7 +216,7 @@ class AgentAmountUnit(Enum):
     """The unit that an agent amount is shown in, used as a key of the precision table.
 
     A member identifies a unit but does not say how the unit is written.
-    `docs/MODEL.md` § "The compartment schematic: what its heights, amounts
+    `docs/INTERFACE.md` § "The compartment schematic: what its heights, amounts
     and share bar assert" sets the spellings "mL vapour" and
     "mL of liquid". A spelling is added to `DisplayUnit` by the first View
     that prints it. Each member's name says whether it measures vapour or
@@ -237,7 +237,7 @@ class AgentAmountUnit(Enum):
     MILLILITRES_OF_VAPOUR = "millilitres of vapour"
 
 
-# Each entry below is the finest number of decimals that `docs/MODEL.md`
+# Each entry below is the finest number of decimals that `docs/INTERFACE.md`
 # § "Displayed precision" derives for one agent amount in one unit. That section
 # holds the figures behind each count.
 #
@@ -288,7 +288,7 @@ def _finest_derived_decimals(amount: AgentAmount, unit: AgentAmountUnit) -> int:
     except KeyError:
         raise ValueError(
             f"No displayed precision is derived for a {amount.value} in {unit.value}. "
-            "Derive one in the section 'Displayed precision' of docs/MODEL.md and add it to "
+            "Derive one in the section 'Displayed precision' of docs/INTERFACE.md and add it to "
             "app/formatting.py before showing this amount in this unit."
         ) from None
 
@@ -336,7 +336,7 @@ class AgentAmountPrecision:
 
         if self.decimals > finest:
             raise ValueError(
-                f"{self.decimals} decimals is finer than the {finest} that docs/MODEL.md "
+                f"{self.decimals} decimals is finer than the {finest} that docs/INTERFACE.md "
                 f"section 'Displayed precision' derives for a {self.amount.value} in "
                 f"{self.unit.value}. A finer count would claim a resolution the model does "
                 "not support, so it is refused."
@@ -377,7 +377,7 @@ def agent_amount_display_precision(
         unit: The unit it is shown in.
 
     Returns:
-        The precision that `docs/MODEL.md` § "Displayed precision" derives
+        The precision that `docs/INTERFACE.md` § "Displayed precision" derives
         for that amount in that unit.
 
     Raises:
@@ -401,7 +401,7 @@ _RUN_TOTAL_LITRES: Final = agent_amount_display_precision(
 # the agent's own `mac_percent`, so the percent resolution above already fixes
 # how finely the quotient is known. Stating a second, independent resolution
 # would mean re-deriving two numbers whenever the first is re-derived
-# (`docs/MODEL.md` § "Displayed precision" gives the reason). The rule fits in
+# (`docs/INTERFACE.md` § "Displayed precision" gives the reason). The rule fits in
 # one line: use the finest power of ten that is nowhere finer than the percent
 # resolution converted into MAC. That conversion depends on the agent. A step
 # of 0.01 percentage points is 0.005 MAC for sevoflurane, 0.0083 for isoflurane
@@ -457,9 +457,10 @@ MAX_MAC_AXIS_INTERVALS: Final = 10
 # **Fixed, and fixed for the whole session rather than only within a run.**
 # An axis that grew to fit an excursion would redraw a rising curve at a
 # smaller height partway through a lesson. A reader would then attribute that
-# change of shape to the model rather than to the axis. The section "Why the
-# axis is fixed rather than fitted" in `docs/MODEL.md` settled the same
-# question for the wash-in plot, and its reasoning applies here too. Because
+# change of shape to the model rather than to the axis. The paragraph "The
+# axis is fixed rather than fitted" in `docs/MODEL.md` § "F_A/F_I as a
+# displayed ratio" settled the same question for the wash-in plot, and its
+# reasoning applies here too. Because
 # the axis is also fixed across the session, two consecutive runs can be
 # compared as well.
 #
@@ -498,7 +499,7 @@ def format_percent(partial_pressure_fraction: Fraction) -> str:
     """Convert a partial-pressure-equivalent fraction to display percent.
 
     The value is rendered at `CONCENTRATION_DISPLAY_RESOLUTION_PERCENT`, the
-    resolution that `docs/MODEL.md` § "Displayed precision" derives.
+    resolution that `docs/INTERFACE.md` § "Displayed precision" derives.
 
     A value that is positive but rounds to zero is rendered as below the
     resolution, not as zero. That distinction matters. Muscle and fat stay
@@ -550,7 +551,7 @@ def mac_multiple(partial_pressure_fraction: Fraction, mac_percent: MacPercent) -
     """Convert a partial-pressure-equivalent fraction to multiples of 1 MAC.
 
     This function holds all the arithmetic of the second display unit, in one
-    place. So the transformation that `docs/MODEL.md` § "MAC multiples as a
+    place. So the transformation that `docs/INTERFACE.md` § "MAC multiples as a
     display unit" specifies can be read and tested without a formatter or a
     control around it.
 
@@ -702,7 +703,7 @@ def mac_awake_band_percent(
     The stored value is a fraction of the agent's own MAC. The chart plots
     percent of one atmosphere. This function makes that one multiplication,
     in one place, so the band's height on a labelled axis can be tested
-    without a chart around it. `docs/MODEL.md` § "MAC-awake as a chart
+    without a chart around it. `docs/INTERFACE.md` § "MAC-awake as a chart
     reference" states what the band asserts and which trace it is read
     against.
 
@@ -1040,7 +1041,7 @@ def format_playback_rate(multiplier: int) -> str:
 
     The string states the setting, not whether the clock is moving. A paused,
     reset or halted run still shows the rate it plays at, and the status word
-    in the transport row says whether the run is running. `docs/MODEL.md`
+    in the transport row says whether the run is running. `docs/INTERFACE.md`
     § "Interface boundary" defines the label this way (`PL-SQJ1`, `PL-X4X2`).
 
     The rate is a mode. This project's interface rules exist to prevent a mode
@@ -1053,7 +1054,7 @@ def format_playback_rate(multiplier: int) -> str:
 
     One function serves both places where the rate appears: the control
     that sets it, and the line under the clock that reports it. So the two
-    cannot state the same mode differently. `docs/MODEL.md` § "Interface
+    cannot state the same mode differently. `docs/INTERFACE.md` § "Interface
     boundary" requires the rate to be shown wherever simulated time is
     shown. The interface meets that requirement by rendering this string,
     never by writing its own.
@@ -1386,7 +1387,7 @@ def format_agent_volume(litres: float) -> str:
 
     The amount is rendered at the precision that
     `AGENT_AMOUNT_DISPLAY_PRECISION` holds for the run totals in litres of
-    vapour. `docs/MODEL.md` § "Displayed precision" derives it (`PL-TG60`).
+    vapour. `docs/INTERFACE.md` § "Displayed precision" derives it (`PL-TG60`).
     This function follows the same three rules as `format_percent`, for the
     same reasons. First, it rounds rather than truncates. Second, it marks a
     positive value that rounds to zero as below the resolution, rather than
@@ -1424,7 +1425,7 @@ def _format_run_total(amount: float, precision: AgentAmountPrecision, unit: str)
 
 # How each agent amount unit is written on screen, taken from its `DisplayUnit`
 # member. Every member names vapour or liquid, so no amount is printed with a
-# bare "mL" or "L" beside it (`docs/MODEL.md` § "The compartment schematic: what
+# bare "mL" or "L" beside it (`docs/INTERFACE.md` § "The compartment schematic: what
 # its heights, amounts and share bar assert").
 AGENT_AMOUNT_UNIT_DISPLAY: Final[Mapping[AgentAmountUnit, DisplayUnit]] = MappingProxyType(
     {
@@ -1439,7 +1440,7 @@ def format_delivered_agent(amount: float, unit: AgentAmountUnit) -> str:
     """Render the amount of agent that a run has delivered, in `unit`, followed by the unit.
 
     The agent cost View shows this text (`PL-B396`). The precision is the one
-    that `docs/MODEL.md` § "Displayed precision" derives for the delivered agent
+    that `docs/INTERFACE.md` § "Displayed precision" derives for the delivered agent
     in that unit. It is a whole millilitre of liquid, or a tenth of a litre of
     vapour as on the accounting panel. The text follows `format_agent_volume`'s
     rounding rules. A positive amount that rounds to zero is shown as less than
@@ -1493,7 +1494,7 @@ def format_agent_residual(litres: float) -> str:
     passing residual is the rounding error left over from summing four
     amounts. Its mantissa and its sign are set by the order in which the
     arithmetic ran, not by anything modelled, and a correct last-bit change
-    to the propagator changes them. `docs/MODEL.md` § "Displayed precision"
+    to the propagator changes them. `docs/INTERFACE.md` § "Displayed precision"
     has the measurement. Any finer form would print a digit that is noise.
     So both lines use the same form. The signed values are still shown when
     they mean something: a failing check halts the run, and the failure
@@ -1527,7 +1528,7 @@ def format_agent_residual(litres: float) -> str:
 
 
 # A compartment's amount is shown to two significant figures, and never finer
-# than 0.01 mL of vapour. `docs/MODEL.md` § "Displayed precision" derives the
+# than 0.01 mL of vapour. `docs/INTERFACE.md` § "Displayed precision" derives the
 # two figures and sets the floor (`PL-2881`). One SD of a partition coefficient
 # moves an amount by a fraction of the amount, not by a fixed volume. So the precision is a count of
 # significant figures rather than of decimals, and the amount has no entry in
@@ -1558,7 +1559,7 @@ def format_compartment_amount(litres: float) -> str:
     Exactly zero is shown as `0 mL vapour`, the amount before agent arrives.
     The unit is `DisplayUnit.AGENT_VAPOUR_MILLILITRES`, never a bare "mL",
     because a millilitre of liquid gives about 180 to 210 mL of vapour
-    (`docs/MODEL.md` § "The compartment schematic: what its heights, amounts
+    (`docs/INTERFACE.md` § "The compartment schematic: what its heights, amounts
     and share bar assert").
 
     Args:
@@ -1602,7 +1603,7 @@ def format_compartment_amount(litres: float) -> str:
 
 
 # A compartment's share of the agent the run holds is shown in whole percent.
-# `docs/MODEL.md` § "Displayed precision" derives that precision (`PL-2881`). A change
+# `docs/INTERFACE.md` § "Displayed precision" derives that precision (`PL-2881`). A change
 # of one standard deviation (SD) in a partition coefficient moves a share by at most
 # 1.2 percentage points. So one display step of 1 percentage point is at least 0.8 SD.
 # This constant is the only place that states the share's precision.
@@ -1615,7 +1616,7 @@ def format_compartment_share(share: float) -> str:
     The share is shown in whole percent, with `COMPARTMENT_SHARE_DECIMALS`
     decimal places. It is rounded to the nearest whole percent, and halves
     round to even. The two exceptions below keep a printed share from
-    claiming what the model does not (`docs/MODEL.md` § "Displayed
+    claiming what the model does not (`docs/INTERFACE.md` § "Displayed
     precision"). A positive share that rounds
     to 0% is shown as `<1%`, so a compartment that holds agent never appears
     to hold none. A share that rounds to 100% but is less than the whole is
@@ -1658,7 +1659,7 @@ def format_compartment_share(share: float) -> str:
 
 # A cost at the reader's price is shown to three significant figures, and never
 # finer than two decimals of its currency. A price per millilitre of liquid is
-# shown to four significant figures. `docs/MODEL.md` § "Displayed precision"
+# shown to four significant figures. `docs/INTERFACE.md` § "Displayed precision"
 # derives both (`PL-1P15`). These three constants are the only place that
 # states either precision.
 AGENT_COST_SIGNIFICANT_FIGURES: Final = 3
@@ -1709,7 +1710,7 @@ def format_agent_cost(cost: float, currency: str) -> str:
     agent never appears to have cost nothing. Exactly zero is shown as
     `USD 0`, the cost before any agent is delivered. The currency is printed
     as its ISO 4217 code, never as a sign such as "$" that several currencies
-    share (`docs/MODEL.md` § "A cost at the reader's price").
+    share (`docs/INTERFACE.md` § "A cost at the reader's price").
 
     Args:
         cost: The cost, in `currency`.
@@ -1751,7 +1752,7 @@ def format_price_per_liquid_ml(price_per_ml: float, currency: str) -> str:
     the decimals. So 0.2047 is shown as `USD 0.2047 per mL of liquid`, and
     0.961360 as `USD 0.9614 per mL of liquid`. The unit says liquid, because
     a price per millilitre of vapour would be about 180 to 210 times smaller
-    (`docs/MODEL.md` § "A cost at the reader's price").
+    (`docs/INTERFACE.md` § "A cost at the reader's price").
 
     Args:
         price_per_ml: The price of one millilitre of liquid agent, in

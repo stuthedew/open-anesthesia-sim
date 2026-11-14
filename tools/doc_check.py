@@ -353,7 +353,7 @@ except ImportError as error:  # pragma: no cover - a checkout missing the subpro
 import required_checks_check
 
 # The simulator package's location is `product_paths`'s (`PL-H5T9`).
-from product_paths import MODEL_DOC, PACKAGE_DIR
+from product_paths import INTERFACE_DOC, MODEL_DOC, PACKAGE_DIR, SPECIFICATION_DOCS
 
 # Which files the repository holds is `tracked_files`'s answer, and which of
 # them are rule files is `rules_paths_check`'s, so a checkout under
@@ -456,10 +456,13 @@ ARCHITECTURE = Path("docs/ARCHITECTURE.md")
 APPARATUS_MAP = Path("docs/apparatus.md")
 PACKAGE_MAPS = (ARCHITECTURE, APPARATUS_MAP)
 MODEL = Path(MODEL_DOC)
-# The documents whose restated numbers are held to their homes (`PL-JS6P`).
-# `docs/MODEL.md` is the specification, and `README.md` is the page a new
-# reader trusts first.
-PROVENANCE_DOCUMENTS = (MODEL, Path("README.md"))
+# What the interface must show and do, which was part of `docs/MODEL.md` until
+# `PL-CTXZ` moved it out.
+INTERFACE = Path(INTERFACE_DOC)
+# The documents whose restated numbers are held to their homes (`PL-JS6P`):
+# each document of the specification, and `README.md`, the page a new reader
+# trusts first.
+PROVENANCE_DOCUMENTS = (*(Path(document) for document in SPECIFICATION_DOCS), Path("README.md"))
 
 
 # Where the release train lives. `ROADMAP.md` calls itself the authoritative
@@ -2436,8 +2439,10 @@ def _check_prose_markers(root: Path, document: Path, text: str, report: Report) 
 #: such as `fraction_of_mac`, has no unit: prose writes it as a bare decimal,
 #: as in "0.34 of MAC", so its ending maps to `None`. An agent's liquid
 #: density is stored in g/mL and its molar mass in g/mol, so prose that writes
-#: those units is compared with them.
+#: those units is compared with them. The temperature a density was measured
+#: at is stored in °C, so "20 °C" in prose is compared with it (`PL-5L84`).
 UNIT_ENDINGS: tuple[tuple[str, str | None], ...] = (
+    ("_celsius", "°C"),
     ("_g_ml", "g/mL"),
     ("_g_mol", "g/mol"),
     ("_l_min", "L/min"),
@@ -2490,10 +2495,8 @@ UNIT_SCALES: dict[str, tuple[str, float]] = {
 #: equals a stored value. These are the units `docs/MODEL.md` and `README.md`
 #: wrote after a number on 2026-11-03, when `PL-XQXK` counted them. A
 #: percentage point is a difference between two percents, not a percent, so
-#: it is not converted to `%`. Degrees Celsius and grams are in no list, so a
-#: figure in them is read as a bare number. An agent file stores the
-#: temperature its density was measured at in °C, and `docs/MODEL.md` states
-#: 20 °C in 29 paragraphs that nothing ties to it yet (`PL-5L84`).
+#: it is not converted to `%`. Grams are in no list, so a figure in grams is
+#: read as a bare number.
 UNSTORED_UNITS = frozenset(
     {"px", "mmHg", "kPa", "atm", "mL/kg", "pp", "percentage point", "percentage points"}
 )
@@ -2512,6 +2515,7 @@ PROSE_UNITS = "|".join(
             "MAC",
             "g/mL",
             "g/mol",
+            "°C",
             *UNIT_WORDS,
             *UNIT_SCALES,
             *UNIT_CASES,
@@ -4216,7 +4220,11 @@ def _numeric_paragraph_members(text: str, family: BoundFamily) -> Iterator[tuple
     their own, and none below it. The run stops at a heading, at the
     previous note, and at a paragraph that `_holds_itself`. So a note added
     to a long section holds only the passage written with it, and not every
-    older paragraph back to the heading. The forms by which it holds them,
+    older paragraph back to the heading. A paragraph held only because
+    markers tie each of its figures is passed over, as a paragraph with no
+    figure is: it neither stops the run nor takes the note's forms. A marker
+    says which stored value a figure restates, not where a passage ends
+    (`PL-5L84`). The forms by which it holds them,
     from `_note_holding_forms`, follow the markers in each member it holds.
     A note is never held by the next one, so its own figures need its own
     forms.
@@ -4263,21 +4271,22 @@ def _numeric_paragraph_members(text: str, family: BoundFamily) -> Iterator[tuple
             marker for (start, stop), marker in scopes if start <= block.start and block.end <= stop
         ]
         paragraph = textwrap.dedent("\n".join(lines[block.start : block.end]))
-        members.append((block, "\n".join([paragraph, *held])))
+        members.append((block, paragraph, "\n".join([paragraph, *held])))
     bounds = [h.line for h in found if opening.end <= h.line < end] + [n.start for n in notes]
     from_notes: dict[int, list[str]] = {}
     for note in notes:
         forms = _note_holding_forms("\n".join(lines[note.start : note.end]), family.kind)
-        for block, member in reversed([pair for pair in members if pair[0].end <= note.start]):
+        for block, paragraph, member in reversed([m for m in members if m[0].end <= note.start]):
             if (
                 not forms
                 or block in notes
                 or any(block.end <= line < note.start for line in bounds)
-                or _holds_itself(member, family.kind)
+                or _holds_itself(paragraph, family.kind)
             ):
                 break
-            from_notes[block.start] = forms
-    for block, member in members:
+            if not _holds_itself(member, family.kind):
+                from_notes[block.start] = forms
+    for block, _, member in members:
         yield block.start + 1, "\n".join([member, *from_notes.get(block.start, [])])
 
 
@@ -4483,7 +4492,7 @@ BOUND_FAMILIES = (
         promise="every row names the test that holds it, or says plainly that it has none",
     ),
     BoundFamily(
-        document=MODEL,
+        document=INTERFACE,
         heading="Minimum displayed outputs",
         level=2,
         kind=TEST_ENTITY,
@@ -4499,7 +4508,7 @@ BOUND_FAMILIES = (
         promise="every subsection names the test that holds it",
     ),
     BoundFamily(
-        document=MODEL,
+        document=INTERFACE,
         heading="Displayed precision",
         level=3,
         kind=FIGURE_ENTITY,
@@ -5730,11 +5739,12 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
     **Two exemptions, each for a stated reason rather than for quiet.**
 
     The release's own cut is the first. Its pull request is inside its own span
-    by construction and is stamped by the *next* release, every time, which
-    `ROADMAP.md` already writes down as the one case that recurs on every
-    release; it accounted for 40 of the 63 span-crossing closures here. Taking
-    it from the commit that added the notes file makes the exemption a fact
-    about the tree rather than a reading of prose.
+    by construction, and no release's notes ever name it, because the item
+    that cuts a release ships in no release (`PL-KRS6`, `ROADMAP.md`
+    § "Version table"). So a pointer to the notes that describe it could
+    never be written. It accounted for 40 of the 63 span-crossing closures
+    here. Taking it from the commit that added the notes file makes the
+    exemption a fact about the tree rather than a reading of prose.
 
     The newest tag's span is the second, until the tree holds a newer
     release's notes. Before then its strangers are described in a release
@@ -7131,6 +7141,13 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
     failed on CI's runner, where it does not. Two red runs on 2026-10-17 were
     this split (`PL-2D1S`). `PL-H0CF` fixed the same split for path citations.
 
+    **A section mark is also held to the document's headings, among the
+    documents of the specification** (`PL-CTXZ`). Those documents name each
+    other's sections, so `docs/MODEL.md` holds the words of a heading that is
+    `docs/INTERFACE.md`'s, and containment passed a mark that named the wrong
+    one. A mark that names one of them, and quotes a heading that only
+    another of them has, is refused.
+
     **Only a claiming connective makes a miss an error** - `§` or the
     possessive, `CLAIMING_CONNECTIVE_RE`. After any other the same miss is an
     advisory: the words may be a proposal for the file or a sentence it has
@@ -7150,6 +7167,33 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
     """
     bodies: dict[str, str | None] = {}
     briefs: dict[str, list[str]] = {}
+    specification: dict[str, list[str]] = {}
+
+    def section_elsewhere(cited: str, quoted: str) -> str | None:
+        """The specification document whose section `quoted` names, where `cited` has none.
+
+        The specification is several documents since `PL-CTXZ`, and each
+        points at the others' sections by name. So a document holds the words
+        of a heading that is another document's, and containment alone passes
+        a section mark that names the wrong one of them.
+        """
+        if not specification:
+            for document in SPECIFICATION_DOCS:
+                if (root / document).is_file():
+                    specification[document] = _headings(
+                        (root / document).read_text(encoding="utf-8")
+                    )
+        own = specification.get(cited.lstrip("/"))
+        if own is None or _cites_heading(quoted, own):
+            return None
+        return next(
+            (
+                document
+                for document, titles in specification.items()
+                if document != cited.lstrip("/") and _cites_heading(quoted, titles)
+            ),
+            None,
+        )
 
     def body_of(cited: str) -> str | None:
         if cited not in bodies:
@@ -7199,6 +7243,13 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
                 finding = f"{path}:{line}: quotes {cited}, {_unresolved_place(cited)}"
             elif _comparable(_without_emphasis(quoted)).rstrip(" .,;:") not in body:
                 finding = f'{path}:{line}: quotes {cited} as "{quoted}", which is not in that file'
+            elif (match.group("connective") or "").startswith("§") and (
+                elsewhere := section_elsewhere(cited, quoted)
+            ):
+                finding = (
+                    f'{path}:{line}: cites {cited} § "{quoted}", which is a section of '
+                    f"{elsewhere} and not of {cited}"
+                )
             else:
                 continue
             if claims:

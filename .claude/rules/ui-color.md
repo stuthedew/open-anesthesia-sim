@@ -5,7 +5,7 @@ paths:
 
 # Picking a color in this interface
 
-The target is **WCAG 2.2 Level AA**. `docs/MODEL.md` § "Color contrast, and the
+The target is **WCAG 2.2 Level AA**. `docs/INTERFACE.md` § "Color contrast, and the
 standard this interface is held to" is the full statement — version, level, the
 two places this project holds itself higher, and the criteria deliberately
 deferred. Read it before changing a color; this file is only what a session
@@ -163,7 +163,7 @@ rather than reaching a screen.
    the lesson rather than an accident. So the bar is an exceedance that the
    standard's own condition supports here, rather than either a requirement or
    an arbitrary strictness — do not relax it by citing the criterion, and do not
-   defend it by misquoting the criterion. `docs/MODEL.md` § "Color contrast, and
+   defend it by misquoting the criterion. `docs/INTERFACE.md` § "Color contrast, and
    the standard this interface is held to" carries it, in the list of bars this
    interface holds itself to above AA.
 

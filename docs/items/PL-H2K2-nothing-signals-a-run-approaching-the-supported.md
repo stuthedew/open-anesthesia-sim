@@ -20,7 +20,7 @@ made the run stop rather than extrapolate, which is the right behaviour — but 
 reaches the reader only as a refusal, at the moment it fires. A reader at 23 h
 50 min sees a run advancing normally and has no way to tell it is about to stop,
 so the halt is as likely to read as a fault as as the model declining to
-represent a patient past its declared envelope. `docs/MODEL.md` § "Supported run
+represent a patient past its declared envelope. `docs/INTERFACE.md` § "Supported run
 length" already requires that those two not be presented alike, and
 `require_supported_run_length`'s docstring gives the same reason for raising a
 distinct exception type: nothing was miscalculated, and every displayed value is

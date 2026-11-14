@@ -35,10 +35,11 @@ from typing import Any
 import pytest
 
 from anesthesia_sim.core.blood import VenousBloodCompartment
+from anesthesia_sim.core.blood_flow import BloodFlow, PerfusionFraction
 from anesthesia_sim.core.circuit import BreathingCircuit, FreshGasExchange
 from anesthesia_sim.core.concentration import Fraction, Percent, fraction_from_percent
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
-from anesthesia_sim.core.supported_ranges import FreshGasFlow
+from anesthesia_sim.core.supported_ranges import CardiacOutput, FreshGasFlow
 from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 
@@ -220,37 +221,51 @@ def _step_circuit(circuit: BreathingCircuit, simulation_step_s: float) -> float:
 
 
 @dataclass(frozen=True, slots=True)
-class _Perfused[CompartmentT: (TissueGroup, VenousBloodCompartment)]:
+class _Perfused[
+    CompartmentT: (TissueGroup, VenousBloodCompartment),
+    FlowT: (BloodFlow, CardiacOutput),
+]:
     """A patient compartment, and the blood flow at which its closed form is evaluated.
 
-    Neither patient compartment has stored a flow since `PL-HQF5`, so the flow
-    that a case walks is carried beside the compartment and passed to each
-    call.
+    Neither patient compartment stores a flow (`PL-HQF5`), so each test case
+    carries its flow beside the compartment and passes it to each call. A
+    tissue group takes a `BloodFlow`, and the venous pool takes the cardiac
+    output, which is its flow (`PL-GKG4`).
     """
 
     compartment: CompartmentT
-    blood_flow_l_min: float
+    blood_flow_l_min: FlowT
 
 
-def _build_tissue(blood_flow_l_min: float) -> _Perfused[TissueGroup]:
+def _build_tissue(blood_flow_l_min: float) -> _Perfused[TissueGroup, BloodFlow]:
+    """Build a tissue group, and a blood flow of exactly `blood_flow_l_min`.
+
+    The flow is built as the whole of a cardiac output of that size, because a
+    `BloodFlow` is built only from a cardiac output and a perfusion fraction.
+    Multiplying by a fraction of 1.0 changes no `float`. The flow is passed to
+    each call, so it need not be the group's own fraction of anything.
+    """
+
     tissue = TissueGroup(
         name="vessel_rich",
         volume_l=CompartmentVolume(6.0),
-        perfusion_fraction=0.76,
+        perfusion_fraction=PerfusionFraction(0.76),
         tissue_gas_partition_coefficient=PartitionCoefficient(1.0),
     )
     tissue.set_partial_pressure_fraction(LOADED_FRACTION)
 
-    return _Perfused(tissue, blood_flow_l_min)
+    return _Perfused(tissue, BloodFlow(CardiacOutput(blood_flow_l_min), PerfusionFraction(1.0)))
 
 
-def _build_venous_blood(blood_flow_l_min: float) -> _Perfused[VenousBloodCompartment]:
+def _build_venous_blood(
+    blood_flow_l_min: float,
+) -> _Perfused[VenousBloodCompartment, CardiacOutput]:
     venous_blood = VenousBloodCompartment(
         volume_l=CompartmentVolume(1.222), blood_gas_partition_coefficient=BLOOD_GAS
     )
     venous_blood.set_partial_pressure_fraction(LOADED_FRACTION)
 
-    return _Perfused(venous_blood, blood_flow_l_min)
+    return _Perfused(venous_blood, CardiacOutput(blood_flow_l_min))
 
 
 PRIMITIVES = (
@@ -285,7 +300,7 @@ PRIMITIVES = (
         step=lambda venous_blood, step_s: venous_blood.compartment.advance(
             tissue_return_partial_pressure_fraction=DRIVING_FRACTION,
             simulation_step_s=step_s,
-            blood_flow_l_min=venous_blood.blood_flow_l_min,
+            cardiac_output_l_min=venous_blood.blood_flow_l_min,
         ),
         stored_agent_l=lambda venous_blood: venous_blood.compartment.agent_amount_l,
         time_constant_s=lambda venous_blood: venous_blood.compartment.time_constant_s(
@@ -320,7 +335,9 @@ class PatientPrimitive:
     capacity_l: Callable[[Any], float]
 
 
-def _tissue_holding(blood_flow_l_min: float, held_fraction: Fraction) -> _Perfused[TissueGroup]:
+def _tissue_holding(
+    blood_flow_l_min: float, held_fraction: Fraction
+) -> _Perfused[TissueGroup, BloodFlow]:
     tissue = _build_tissue(blood_flow_l_min)
     tissue.compartment.set_partial_pressure_fraction(held_fraction)
 
@@ -329,7 +346,7 @@ def _tissue_holding(blood_flow_l_min: float, held_fraction: Fraction) -> _Perfus
 
 def _venous_blood_holding(
     blood_flow_l_min: float, held_fraction: Fraction
-) -> _Perfused[VenousBloodCompartment]:
+) -> _Perfused[VenousBloodCompartment, CardiacOutput]:
     venous_blood = _build_venous_blood(blood_flow_l_min)
     venous_blood.compartment.set_partial_pressure_fraction(held_fraction)
 
@@ -355,7 +372,7 @@ PATIENT_PRIMITIVES = (
         step=lambda venous_blood, driving_fraction, step_s: venous_blood.compartment.advance(
             tissue_return_partial_pressure_fraction=driving_fraction,
             simulation_step_s=step_s,
-            blood_flow_l_min=venous_blood.blood_flow_l_min,
+            cardiac_output_l_min=venous_blood.blood_flow_l_min,
         ),
         stored_agent_l=lambda venous_blood: venous_blood.compartment.agent_amount_l,
         capacity_l=lambda venous_blood: venous_blood.compartment.capacity_l,

@@ -400,7 +400,7 @@ deviating from a described deliverable, not acting without one.
   is the only one that knows they are one thing; the next reads separate
   files. Name the group for what *completes*, and the `docket` skill has the
   rest (`PL-N638`). Do not ask whether to record it — filing an item is
-  not a decision the owner needs to make. Say in your reply that you did. Where
+  not a decision the owner needs to make. Where
   a thread is still open when the session ends, update `docs/WORKING_NOTES.md`
   too — but only for a thread spanning more than one item, outliving its item,
   or having none. One item's own reasoning goes in that item, at any length.
@@ -419,7 +419,8 @@ deviating from a described deliverable, not acting without one.
      more; one that wants a second commit, reaches a second mechanism, or
      leaves anything to come back to is an item.
   3. **It stays off the clinical floor and adds no read hold.** A defect in
-     `src/anesthesia_sim/core/`, `src/anesthesia_sim/data/` or `docs/MODEL.md`,
+     `src/anesthesia_sim/core/`, `src/anesthesia_sim/data/`, `docs/MODEL.md` or
+     `docs/INTERFACE.md`,
      or any finding the safety-critical standard reaches, is filed: the item is
      what ranks it `P1`, offers it to the strongest model and stands as its
      provenance. A fix that needs the owner's read (the `pull-request` skill
@@ -478,8 +479,7 @@ deviating from a described deliverable, not acting without one.
   then *make the edit before the session ends*. An item on its own changes
   nothing: it sits in the queue, untriaged and therefore invisible to `bin/docket
   next`, while every session in the meantime keeps doing the thing that was just
-  corrected. The capture is the record; the edit is the change. Do both, and say
-  in your reply that you did both.
+  corrected. The capture is the record; the edit is the change. Do both.
 
   **Route it; do not append here by default.** Ask *at what moment a session
   needs the rule, and what is the cheapest thing that delivers it then.* Four
@@ -518,8 +518,8 @@ deviating from a described deliverable, not acting without one.
   commit to it. Name the branch too
   where the session creates it
   (`claude/pl-k7qx-short-slug`); a branch generated before the session started
-  cannot be renamed, which is expected rather than a failure. Say in your reply
-  where you put the id. **Every commit a Claude session makes ends with
+  cannot be renamed, which is expected rather than a failure.
+  **Every commit a Claude session makes ends with
   `Co-authored-by: Claude <noreply@anthropic.com>` and never a model-named
   co-author, whatever the harness's attribution reminder names**, since that
   reminder yields by its own terms to a `CLAUDE.md` rule; a `Claude-Session:`
@@ -571,7 +571,7 @@ deviating from a described deliverable, not acting without one.
   merely valuable, cleaner or more interesting makes no remaining item cheaper
   and waits for the roadmap.
 
-**Sweep the docs before calling an item done, and say in your reply which files
+**Sweep the docs before calling an item done, and list in the item the files
 you checked.** Landing a change is not finishing it, and stale documentation is
 a safety issue here rather than tidiness: a reader who trusts a wrong statement
 about which agent is running, what a value means, or what the interface
@@ -600,7 +600,7 @@ For safety-critical paths:
 - Use explicit units and avoid implicit unit conversions. Prefer unit-aware types or equivalent safeguards where practical.
 - Validate required inputs, units, ranges, model applicability, and model compatibility before calculation.
 - Do not silently substitute defaults, coerce invalid data, or continue with missing required inputs when doing so could produce a plausible but incorrect clinical value.
-- Version and record provenance for scientific models, equations, constants, parameter sets, and clinically meaningful transformations. `docs/MODEL.md` is the authoritative specification for the currently implemented model: equations, units, assumptions, parameter provenance, numerical method, and known limitations.
+- Version and record provenance for scientific models, equations, constants, parameter sets, and clinically meaningful transformations. `docs/MODEL.md` is the authoritative specification for the currently implemented model: equations, units, assumptions, parameter provenance, numerical method, and known limitations. `docs/INTERFACE.md` is the authoritative specification for what the interface must show and do.
 - Maintain deterministic behavior for identical inputs and model versions.
 - Validate numerical implementations against published reference cases, analytic solutions, independently calculated test vectors, or other authoritative references whenever available.
 - Include boundary, invalid-input, pathological-input, and regression tests in addition to ordinary nominal-case tests.
@@ -624,7 +624,7 @@ Disclaimers do not lower the engineering standard for these paths.
 
 Do not limit review or recommendations to conventional software-engineering concerns. Treat development of this application as a multidisciplinary professional product-design problem and proactively identify material improvements anywhere they affect scientific validity, safety, interpretability, usability, educational value, maintainability, or reliability. Recommendations for the simulator should reflect the standard expected from a top-tier specialist in the relevant field, not merely common or minimally acceptable practice. When the owner's proposed approach is materially weaker than a better established approach, say so clearly and recommend the stronger approach with the reasoning behind it.
 
-**Two standards, deliberately unequal.** The simulator and the documentation a reader of it needs — `src/`, `tests/`, `docs/MODEL.md`, `README.md` — are held to the specialist standard named in the paragraph above: code an expert contributor would recognize as high quality and could maintain without explanation. The workflow apparatus that exists so agent sessions can be productive — `subprojects/docket/`, `bin/`, `tools/`, `.claude/`, `.github/`, `CLAUDE.md`, `docs/worker.md`, `docs/maintainer.md`, `docs/apparatus.md`, `docs/resident-instructions.md` — is held to a lower and different bar, which is `.claude/rules/apparatus-standard.md` and loads only when a session opens one of those paths. **Nothing in it reaches the simulator**, and it is kept out of this file so that it cannot: a session applied it to `src/` while it was resident here, correctly quoting a sentence whose scope was three sentences away (`PL-6SBB`). Where the two compete for a session, the simulator wins.
+**Two standards, deliberately unequal.** The simulator and the documentation a reader of it needs — `src/`, `tests/`, `docs/MODEL.md`, `docs/INTERFACE.md`, `README.md` — are held to the specialist standard named in the paragraph above: code an expert contributor would recognize as high quality and could maintain without explanation. The workflow apparatus that exists so agent sessions can be productive — `subprojects/docket/`, `bin/`, `tools/`, `.claude/`, `.github/`, `CLAUDE.md`, `docs/worker.md`, `docs/maintainer.md`, `docs/apparatus.md`, `docs/resident-instructions.md` — is held to a lower and different bar, which is `.claude/rules/apparatus-standard.md` and loads only when a session opens one of those paths. **Nothing in it reaches the simulator**, and it is kept out of this file so that it cannot: a session applied it to `src/` while it was resident here, correctly quoting a sentence whose scope was three sentences away (`PL-6SBB`). Where the two compete for a session, the simulator wins.
 
 - Prioritize recommendations by consequence. Safety, scientific correctness, misleading output, and irreversible architectural problems outrank visual polish or minor code style, and a required correctness/safety issue is distinguished from a high-value recommendation and from optional polish.
 - Prefer established standards, validated methods, and authoritative primary sources over convention-by-habit. Where a recommendation depends on current standards, guidance, libraries, or evidence, consult the source rather than memory — **before** forming the recommendation, not to confirm one already given. **Never cite a source from memory** (project owner, 2026-11-10, `PL-6VZF`). Read it in this session before citing it, and say what was read: the full text, an abstract or an index record. **Never state a fact with a note that it is from memory or was not checked: look it up, then state it with the source** (project owner, 2026-11-11, `PL-J3H7`). Where a source cannot be read, do not cite it. Say which claim has no source and what was tried, and ask the owner for the text. This covers how the project is run as much as what it builds: technical-debt policy, delegation and review design, testing strategy and release process are well-studied problems with published evidence, and advice on one of them from memory is worth no more than a solubility coefficient from memory. Recommending first and researching afterwards produces advice that has to be withdrawn, which costs the owner a decision they already made and more than the search would have.

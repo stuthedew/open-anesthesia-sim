@@ -1,11 +1,12 @@
 """Print the prose a branch changed, inside the section around it, for the copy editor.
 
-Close-out step 8 in `.claude/skills/docket/modes/close-out.md` saves this
-tool's output to a file and hands that file to the copy editor,
-`.claude/agents/copy-editor.md`, through `tools/copy_edit.py`. The copy editor
-loads none of this repository's instructions, so the output opens with the text
-of `.claude/rules/plain-writing.md`, and the copy editor reads that one file and
-nothing else. Each tool call that the copy editor makes costs another turn at
+When the owner asks for a copy edit, a session saves this tool's output to a
+file and hands that file to the copy editor, `.claude/agents/copy-editor.md`,
+through `tools/copy_edit.py` (`docs/prose-review/README.md`). Close-out step 8
+in `.claude/skills/docket/modes/close-out.md` runs only `--compare`. The copy
+editor loads none of this repository's instructions, so the output opens with
+the text of `.claude/rules/plain-writing.md`, and the copy editor reads that
+one file and nothing else. Each tool call that the copy editor makes costs another turn at
 its full context. On its first branch the copy editor read 29 passages in four
 reads of this tool's output and 179,031 tokens (`PL-PRCS`, `PL-22T5`).
 
@@ -38,7 +39,7 @@ In a Markdown file, the copy editor reads the passage's whole section, from the
 heading above it to the next heading. It may rewrite the passage and the one
 unit on each side of it inside that section, so it can fold new text into the
 paragraph beside it. It may not rewrite the rest of the section, because
-`docs/MODEL.md` § "Displayed precision" runs to about 8,000 words, and a
+`docs/INTERFACE.md` § "Displayed precision" runs to about 8,000 words, and a
 one-sentence fix there would become a rewrite of all of them. That limit is a
 placeholder for the owner to overrule (`PL-22T5`). Two passages that would
 share a unit are reviewed as one. In a Python file, each changed unit is
@@ -64,8 +65,8 @@ result is never given as a whole one.
 **`--draft FILE --kind WORDS` prepares a draft for review before it is written
 into the file it is for.** It prints the rule, the reader rows whose first cell
 contains WORDS, and the whole file as passage 1 (`PL-J1ZM` part 3). It exits 1
-when no row's first cell contains WORDS. The pull-request skill runs it with
-`--kind "pull request"` on a pull request's title and body. A reply has no row
+when no row's first cell contains WORDS. `--kind "pull request"` prepares a
+pull request's title and body. A reply has no row
 here, because the copy editor does not edit one (`UNEDITED_READERS`).
 
 **`--section FILE --heading TEXT` prints one Markdown section as passage 1,
@@ -88,22 +89,6 @@ applied, the second part line-edits each section alone, from `part_reports`.
 There a section is its own rows, from its heading to the next heading of any
 level, so no row is edited twice.
 
-**`--count` prints only how many units need a review, for `bin/docket arm`.**
-`arm` holds a branch that waits on the owner's review until step 8's review is
-recorded as a `Prose-review:` trailer, and it runs this tool through
-`docket.toml`'s `prose_count_command` (`PL-W04Z`). This mode counts the units
-that `reviewable` accepts, rather than passages. It reads the committed
-branch, from the fork to `HEAD`, because `arm` judges commits and not the
-working tree.
-`--count REV` names the commit that carries the newest `Prose-review:` trailer.
-A unit then counts only when its text is not a unit of the same file at `REV`, so
-a code fix after the review needs no second review, while a new or reworded
-unit does. Comparing texts rather than diffing from `REV` keeps out the prose
-that a merge of the default branch brings in, because that prose is not in the
-branch's own diff from the fork. The count is one line holding a whole number.
-It exits 2, printing the unread files to standard error, when a changed file
-will not parse, because a count that skipped a file is not a count.
-
 **`--compare` sets each passage the branch changed beside the text it
 replaced, and lists the facts the branch removed** (`PL-JP8X`). A passage is
 the units that one hunk of the diff touches, widened to whole paragraphs,
@@ -111,7 +96,7 @@ table rows, docstrings or comments on both sides. Hunks parted only by blank
 lines make one passage. It is printed with its word count on the default branch
 and now, whatever its length, unless only its spacing changed. A whole section is
 not the passage, because a growth of 50 words would not show in a section as
-long as `docs/MODEL.md` § "Displayed precision". Then, for each file, it
+long as `docs/INTERFACE.md` § "Displayed precision". Then, for each file, it
 lists each equation, "no test yet" declaration, code span, citation, number,
 item id and date that the file held at the fork and holds fewer times now, read
 as `tools/model_rewrite.py` reads a fact. A Python file's facts are read from
@@ -144,14 +129,7 @@ from docket.markdown import read as read_markdown  # noqa: E402
 from docket.model import FRONT_MATTER_RE  # noqa: E402
 from docket.python import UNTOKENIZABLE, docstrings, refusal  # noqa: E402
 from docket.release import code_spans  # noqa: E402
-from docket.vcs import (  # noqa: E402
-    GitUnanswered,
-    changed_path_args,
-    default_base,
-    listed_paths,
-    read_git,
-    resolved,
-)
+from docket.vcs import GitUnanswered, default_base, listed_paths, read_git, resolved  # noqa: E402
 
 import doc_check  # noqa: E402
 from diff_mutation import changed_rows  # noqa: E402
@@ -343,7 +321,7 @@ def rule_table() -> list[Reader]:
     """The rows of the plain-writing rule's reader table for the texts the copy editor edits.
 
     A row for one of `UNEDITED_READERS` is left out, so no mode of this tool
-    prints a passage for those readers alone, and `--count` does not count one.
+    prints a passage for those readers alone.
     """
     return [reader for reader in whole_rule_table() if reader.who not in UNEDITED_READERS]
 
@@ -491,37 +469,25 @@ class Found:
     unread: list[str]
 
 
-def branch_prose(
-    root: Path, base: str, table: Sequence[Reader] | None = None, *, committed: bool = False
-) -> Found:
+def branch_prose(root: Path, base: str, table: Sequence[Reader] | None = None) -> Found:
     """The units changed between the fork from `base` and the working tree.
 
     Only a file that a row of `table` names is read, and `table` defaults to the
-    reader table in the rule. With `committed`, the units are those changed
-    between the fork and `HEAD`, read from the commits alone, so an uncommitted
-    edit counts for nothing.
+    reader table in the rule.
     """
     table = rule_table() if table is None else table
     fork, against = doc_check._diff_from(root, base)
-    if committed:
-        listing = changed_path_args("diff", "--name-only", "--diff-filter=d", fork, "HEAD", "--")
-        paths = sorted(set(listed_paths(read_git(listing, root))))
-    else:
-        paths = doc_check._changed_paths(root, fork)
+    paths = doc_check._changed_paths(root, fork)
     units: list[Unit] = []
     unread: list[str] = []
     for path in paths:
         if not may_review(path) or not readers_of(table, path):
             continue
-        if not committed and not (root / path).is_file():
+        if not (root / path).is_file():
             continue
         try:
-            if committed:
-                source = read_git(["show", f"HEAD:{path}"], root)
-            else:
-                source = (root / path).read_text(encoding="utf-8")
-            to = ["HEAD"] if committed else []
-            rows = changed_rows(read_git(["diff", "-U0", fork, *to, "--", path], root))
+            source = (root / path).read_text(encoding="utf-8")
+            rows = changed_rows(read_git(["diff", "-U0", fork, "--", path], root))
             units.extend(read_by(table, changed_units(path, source, rows)))
         except UNTOKENIZABLE as error:
             unread.append(f"{path}: {refusal(error)}")
@@ -533,27 +499,6 @@ def text_at(root: Path, rev: str, path: str) -> str | None:
     if not listed_paths(read_git(["ls-tree", "-z", "--name-only", rev, "--", path], root)):
         return None
     return read_git(["show", f"{rev}:{path}"], root)
-
-
-def unreviewed(root: Path, found: Found, since: str | None) -> list[Unit]:
-    """The units in `found` whose text is not a unit of the same file at commit `since`.
-
-    With no `since`, every unit. A file that `since` does not hold, or holds in
-    a form Python refuses, has no units there, so all of its units count.
-    """
-    if since is None:
-        return list(found.units)
-    reviewed: dict[str, set[str]] = {}
-    for path in {unit.path for unit in found.units}:
-        reviewed[path] = set()
-        before = text_at(root, since, path)
-        if before is None:
-            continue
-        try:
-            reviewed[path] = {unit.text for unit in units_of(path, before)}
-        except UNTOKENIZABLE:
-            pass
-    return [unit for unit in found.units if unit.text not in reviewed[unit.path]]
 
 
 @dataclass(frozen=True)
@@ -1545,14 +1490,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         "branch removed",
     )
     modes.add_argument(
-        "--count",
-        nargs="?",
-        const="",
-        metavar="REV",
-        help="print only how many committed units need a review, for `bin/docket arm`, "
-        "leaving out units already at commit REV where one is given",
-    )
-    modes.add_argument(
         "--draft",
         type=Path,
         metavar="FILE",
@@ -1613,13 +1550,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 1
         if args.compare:
             print(compare_report(compare(root, base, table)))
-        elif args.count is not None:
-            found = branch_prose(root, base, table, committed=True)
-            if found.unread:
-                for line in found.unread:
-                    print(f"new_prose: not read: {line}", file=sys.stderr)
-                return 2
-            print(len(unreviewed(root, found, args.count or None)))
         else:
             reviewed = branch_reviews(root, base, table)
             text = report(root, reviewed, table)

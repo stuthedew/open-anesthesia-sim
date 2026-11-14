@@ -11206,6 +11206,7 @@ def test_arm_arms_a_pull_request_body_record_on_green(
         "src/anesthesia_sim/data/agents/sevoflurane.json",
         "tests/unit/test_uptake.py",
         "docs/MODEL.md",
+        "docs/INTERFACE.md",
         "README.md",
     ],
 )
@@ -11325,7 +11326,11 @@ def test_a_change_outside_the_owners_read_list_arms_on_green(
 
 
 def test_the_owners_read_list_is_spelt_as_the_owner_spelt_it() -> None:
-    """The list holds the owner's five simulator paths and the gate.
+    """The list holds the owner's simulator paths and the gate.
+
+    `docs/INTERFACE.md` joined on 2026-11-11, when `PL-CTXZ` moved the interface
+    sections out of `docs/MODEL.md` (project owner, 2026-11-11, ratified,
+    `PL-P3GZ`). The text was on the list before the move, as part of that file.
 
     `tests/` outside `subprojects/` was the owner's wording: the docket
     package's own tests arm with the tooling. The workflows, the hooks and
@@ -11337,6 +11342,7 @@ def test_the_owners_read_list_is_spelt_as_the_owner_spelt_it() -> None:
         "src/",
         "tests/",
         "docs/MODEL.md",
+        "docs/INTERFACE.md",
         "src/anesthesia_sim/data/",
         "README.md",
     )
@@ -11346,6 +11352,7 @@ def test_the_owners_read_list_is_spelt_as_the_owner_spelt_it() -> None:
         "tests/unit/test_uptake.py",
         "tests/conftest.py",
         "docs/MODEL.md",
+        "docs/INTERFACE.md",
         "README.md",
     ):
         assert arming.waits_on_read(path), path
@@ -11822,7 +11829,7 @@ def test_merge_hold_refuses_the_merge_of_a_pull_request_arm_holds(
     assert _merge_hold(root) == 0
     out = capsys.readouterr().out
     assert out.startswith(f"pass - nothing `bin/docket arm` reads from {ARM_BRANCH}'s commits")
-    assert "prose review" in out
+    assert "blind review passes" in out
 
 
 def test_merge_hold_refuses_a_branch_with_an_open_claim_and_an_unjudged_simulator_change(
@@ -12298,8 +12305,8 @@ def test_arm_owner_ask_reads_no_count_and_asks_the_forge_only_for_a_hold_for_the
 ) -> None:
     """The hook's question skips every check that can only add a hold (`PL-3D2F`).
 
-    The prose, blind review and auto-merge commands cost up to 28 s on a large
-    branch and cannot change what may be sent, so `arm` runs none of them.
+    The blind review and auto-merge commands cost up to 28 s on a large
+    branch and cannot change what may be sent, so `arm` runs neither.
     It asks the forge only where the pull request waits on the owner's read,
     since a merge already made is the one fact that changes that answer.
     """
@@ -12312,7 +12319,6 @@ def test_arm_owner_ask_reads_no_count_and_asks_the_forge_only_for_a_hold_for_the
         "[docket]\n"
         f"newest_pull_request_command = 'sh -c \"echo $0 > {asked}; echo 12 open {head}\"'\n"
         f"auto_merge_command = 'sh -c \"echo auto >> {never}; exit 1\"'\n"
-        f"prose_count_command = 'sh -c \"echo prose >> {never}; exit 1\"'\n"
         f"blind_count_command = 'sh -c \"echo blind >> {never}; exit 1\"'\n",
         encoding="utf-8",
     )
@@ -12331,10 +12337,10 @@ def test_arm_owner_ask_reads_no_count_and_asks_the_forge_only_for_a_hold_for_the
     assert asked.read_text(encoding="utf-8") == f"{ARM_BRANCH}\n"
     assert not never.exists()
 
-    # The full answer runs all three, which is what the fast path saves.
+    # The full answer runs both, which is what the fast path saves.
     assert _arm(root) == arming.NO_ASK
     capsys.readouterr()
-    assert sorted(never.read_text(encoding="utf-8").split()) == ["auto", "blind", "prose"]
+    assert sorted(never.read_text(encoding="utf-8").split()) == ["auto", "blind"]
 
 
 def test_arm_owner_ask_sends_nothing_for_a_held_pull_request_that_has_merged(

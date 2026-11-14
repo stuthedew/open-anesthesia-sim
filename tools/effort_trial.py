@@ -180,7 +180,7 @@ def arm_line(arm: str) -> str:
     return (
         f"Effort trial: this session is in the {arm} arm. The session-start hook capped "
         f"its effort at {arm}, so it runs at {arm} unless the app's effort picker is set "
-        "lower. Tell the owner this in your first reply."
+        "lower."
     )
 
 
@@ -189,7 +189,7 @@ def no_arm_line(reason: str) -> str:
     return (
         f"Effort trial: this session is in neither arm, because {reason}. The hook set "
         "no effort cap, so the session runs at the level it was started with, and the "
-        "trial's review leaves it out. Tell the owner this in your first reply."
+        "trial's review leaves it out."
     )
 
 

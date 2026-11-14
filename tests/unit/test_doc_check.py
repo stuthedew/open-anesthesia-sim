@@ -12,6 +12,7 @@ one data file, so a test names only the thing it breaks.
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import subprocess
 import sys
@@ -250,6 +251,29 @@ DATA = {
 }
 
 
+#: The bound families as `tools/doc_check.py` defines them, for the test that
+#: reads this repository's own documents.
+REPOSITORY_BOUND_FAMILIES = doc_check.BOUND_FAMILIES
+
+
+@pytest.fixture(autouse=True)
+def _bound_families_in_one_fixture_document(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Point every family of the interface document at the fixture's one model document.
+
+    `_repo` writes a single `docs/MODEL.md` that holds every bound section, as
+    the real document did until `PL-CTXZ` moved the interface sections to
+    `docs/INTERFACE.md`. The tests here are about how a family is read, not
+    about which document holds it, so they keep that one fixture document.
+    """
+    families = tuple(
+        dataclasses.replace(family, document=doc_check.MODEL)
+        if family.document == doc_check.INTERFACE
+        else family
+        for family in doc_check.BOUND_FAMILIES
+    )
+    monkeypatch.setattr(doc_check, "BOUND_FAMILIES", families)
+
+
 def _repo(
     tmp_path: Path,
     *,
@@ -343,10 +367,16 @@ def _this_repository() -> doc_check.Report:
     Three tests read the real tree, and one analysis of it took 46 to 51 s in
     an eight-worker run on four cores, so analysing it for each was about 150
     test-seconds of CI's pytest step (`PL-H9KW`). Each reads the report and
-    none changes it.
+    none changes it. It reads the families as `tools/doc_check.py` defines
+    them, not as `_bound_families_in_one_fixture_document` re-points them.
     """
 
-    return doc_check.analyze(Path(doc_check.__file__).resolve().parent.parent)
+    fixture_families = doc_check.BOUND_FAMILIES
+    doc_check.BOUND_FAMILIES = REPOSITORY_BOUND_FAMILIES
+    try:
+        return doc_check.analyze(Path(doc_check.__file__).resolve().parent.parent)
+    finally:
+        doc_check.BOUND_FAMILIES = fixture_families
 
 
 @pytest.mark.reads_item_store
@@ -7778,6 +7808,7 @@ def test_a_numeric_family_reads_each_paragraph_that_states_a_number_with_a_unit(
         ("That blood holds about 0.18 mL.", "mL"),
         ("Davis and Mapleson's 1222 ml is the same object.", "ml"),
         ("The cardiac output is 6480 ml/min.", "ml/min"),
+        ("The amount is stated at 20 °C.", "°C"),
     ],
     ids=[
         "pixels",
@@ -7793,6 +7824,7 @@ def test_a_numeric_family_reads_each_paragraph_that_states_a_number_with_a_unit(
         "millilitres",
         "lower-case-millilitres",
         "millilitres-per-minute",
+        "celsius",
     ],
 )
 def test_a_figure_in_each_unit_the_documents_write_is_read_with_that_unit(
@@ -7864,8 +7896,9 @@ def test_a_volume_restated_in_millilitres_with_no_marker_is_refused(tmp_path: Pa
     [
         ("The liquid weighs 1.5203 g/mL.", "DENSITY_G_ML", "1.5203 g/mL"),
         ("The molar mass is 184.49 g/mol.", "MOLAR_MASS_G_MOL", "184.49 g/mol"),
+        ("The density was measured at 20 °C.", "REFERENCE_TEMPERATURE_CELSIUS", "20 °C"),
     ],
-    ids=["density", "molar-mass"],
+    ids=["density", "molar-mass", "celsius"],
 )
 def test_a_density_or_molar_mass_restated_with_its_unit_and_no_marker_is_refused(
     tmp_path: Path, sentence: str, constant: str, expected: str
@@ -7873,7 +7906,8 @@ def test_a_density_or_molar_mass_restated_with_its_unit_and_no_marker_is_refused
     """An agent file stores its liquid density in g/mL and its molar mass in g/mol.
 
     Reading "g" alone, as a unit no value is stored in, let a restated density
-    go stale with nothing asking.
+    go stale with nothing asking. The reference temperature is stored in °C,
+    and "20 °C" read as a bare number let it go stale the same way (`PL-5L84`).
     """
     value = expected.split()[0]
     root = _repo(tmp_path, model=_model_with(sentence))
@@ -8106,6 +8140,40 @@ def test_a_developer_note_holds_the_passage_directly_above_it_and_none_below() -
     assert held == {7, 9, 11, 17}
 
 
+def test_a_paragraph_held_only_by_its_markers_does_not_stop_a_developer_note() -> None:
+    """Regression for `PL-5L84`: a marker under a paragraph cut off the note below it.
+
+    Line 3 carries no form, and the note on line 8 names a test. Line 5
+    states 10 L/min, and its marker ties that figure to a stored value. Before
+    the fix, line 5 held itself through its marker, so the note's reach
+    stopped there and nothing held line 3. Line 5 is passed over, as a
+    paragraph with no figure is, so it does not take the note's test either.
+    A paragraph that declares its own test still stops the note, as line 5
+    of `NOTE_HELD_DOCUMENT` shows.
+    """
+    document = "\n".join(
+        [
+            "### Displayed precision",
+            "",
+            "One step of the display is 0.1 L of vapour.",  # line 3
+            "",
+            "The largest fresh gas flow is 10 L/min.",  # line 5
+            "<!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->",
+            "",
+            "**For developers.** `test_the_step_is_derived` repeats it.",  # line 8
+            "",
+        ]
+    )
+
+    members = dict(doc_check._numeric_paragraph_members(document, _numeric_family()))
+    held = {line for line, member in members.items() if doc_check._holds_its_figures(member)}
+
+    assert sorted(members) == [3, 5]
+    assert held == {3, 5}
+    assert "test_the_step_is_derived" in members[3]
+    assert "test_the_step_is_derived" not in members[5]
+
+
 @pytest.mark.parametrize(
     ("status", "refused"), [("ready", [3, 15, 19]), ("done", [3, 5, 15, 19, 23, 25])]
 )
@@ -8129,7 +8197,9 @@ def test_a_developer_note_declaring_no_test_yet_holds_the_paragraph_above_it_whi
 
 
 @pytest.mark.reads_item_store
-def test_this_repository_holds_every_bound_family_to_its_members() -> None:
+def test_this_repository_holds_every_bound_family_to_its_members(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """The families named in `BOUND_FAMILIES` conform here, not only in fixtures.
 
     A family joins that tuple only once its annotation pass has landed, so this
@@ -8140,10 +8210,12 @@ def test_this_repository_holds_every_bound_family_to_its_members() -> None:
     declared one against `PL-1P15` since `PL-VJZK`. Closing that item in a
     pull request that changes only item files must still run this test.
     """
+    monkeypatch.setattr(doc_check, "BOUND_FAMILIES", REPOSITORY_BOUND_FAMILIES)
     report = doc_check.Report()
     doc_check.check_bound_families(Path(__file__).resolve().parents[2], report)
 
     assert report.errors == []
+    assert report.declined == []
     assert report.declined == []
 
 
@@ -13293,3 +13365,27 @@ def test_a_module_the_interpreter_cannot_parse_is_declined_not_failed(tmp_path: 
     assert report.errors == []
     assert len(report.declined) == 1
     assert "cannot parse this file" in report.declined[0]
+
+
+def test_a_section_mark_naming_the_wrong_specification_document_is_refused(tmp_path: Path) -> None:
+    """A section that moved to `docs/INTERFACE.md` is not cited as `docs/MODEL.md`'s.
+
+    The model document points at the moved section by name, so it holds the
+    heading's words, and containment alone passed the stale citation
+    (`PL-CTXZ`, found by a blind review pass).
+    """
+    model = MODEL + '\nThe display rules are in `docs/INTERFACE.md` § "Shown values".\n'
+    stale = README + '\nSee `docs/MODEL.md` § "Shown values".\n'
+    root = _repo(tmp_path, model=model, readme=stale)
+    (root / "docs" / "INTERFACE.md").write_text(
+        "# Interface\n\n## Shown values\n\nThe demo value is shown.\n", encoding="utf-8"
+    )
+
+    assert [error for error in _errors(root) if "is a section of" in error] == [
+        'README.md:6: cites docs/MODEL.md § "Shown values", which is a section of '
+        "docs/INTERFACE.md and not of docs/MODEL.md"
+    ]
+
+    current = README + '\nSee `docs/INTERFACE.md` § "Shown values".\n'
+    (root / "README.md").write_text(current, encoding="utf-8")
+    assert [error for error in _errors(root) if "Shown values" in error] == []

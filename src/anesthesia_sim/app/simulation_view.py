@@ -13,7 +13,7 @@ this class names no View, except to keep the concentration chart in view after
 a branch.
 
 **The unconditional region is outside the splitters** (`PL-NWTM`). It holds
-the values that must be on screen at all times. `docs/MODEL.md` § "Minimum
+the values that must be on screen at all times. `docs/INTERFACE.md` § "Minimum
 displayed outputs" requires them in every Workspace, and
 `app/unconditional_set.py` declares which values they are. Each run's
 transport row, its notice banner, its readouts and its control-change record
@@ -35,15 +35,25 @@ Areas. A switch changes which Views are drawn and never touches a run
 run's name on every Area's header. If the pinned run is not open, every Area
 says so in place of its Views.
 
-**One snapshot per run feeds every View, and then every run.**
-`_refresh_view` reads one snapshot per run. For each time window that a View
-asks for, it assembles one `ChartFrame` through `app/chart_frame.py`. Each
-chart has its own window (`PL-L59K`). `_refresh_view` hands each View the frame
-for its window, and only then refreshes each run from the same snapshot. So
-the readouts, the traces and the sentences beside them all show one instant of
-one run (decision D2). Every claim in a caption comes from
+**One snapshot per run feeds every View, and then each run's own panel.**
+`_refresh_view` reads one snapshot per run, and builds each run's
+`RunPresentation` from it before anything is drawn. For each time window that
+a View asks for, it assembles one `ChartFrame` through `app/chart_frame.py`.
+Each chart has its own window (`PL-L59K`). `_refresh_view` hands each View the
+frame for its window and the presentations of the displayed runs, and only
+then has each run show its own presentation. So the readouts, the traces, the
+panels in the Areas and the sentences beside them all show one instant of one
+run (decision D2). Every claim in a caption comes from
 `app/dashboard_frame.py`. This class formats nothing, and it decides nothing
 that a reader interprets.
+
+**Every View is handed the runs when no frame is drawn, too** (`PL-RF2S`).
+On a halt, and at once after a dial is dragged, the dashboard hands every View
+a tick that carries no frame. Each run's presentation in that tick is built
+from the run's controller's record, and builds no compartment value
+(`RunView.presentation`). So a View shows a halted run as the run's own panel
+shows it, drops a run that was removed while frames fail, and shows the runs
+when a reader chooses it while frames fail.
 
 **Stepping and drawing run on separate timers** (decision D7). Each run's own
 timer steps that run. This view's render timer draws, but only while a run is
@@ -60,7 +70,7 @@ a View calls back, here and in `RunView`, is wrapped in `halt_gate` from
 every run, as a frame that cannot be drawn does, because these slots act on
 the case. A test fails on a connected slot that is not wrapped in the gate.
 
-**The legend is a frame widget** (`PL-G3K7`). The legend's View hands it the
+**The legend follows the plot** (`PL-G3K7`). The legend's View hands it the
 selection that a frame was assembled from, but only after the plot has drawn
 that frame. So the legend's boxes name the curves on the plot, even when the
 frame that a click asked for fails.
@@ -99,6 +109,7 @@ from anesthesia_sim.app.compartment_selection import (
     INITIAL_COMPARTMENT_SELECTION,
     CompartmentSelection,
 )
+from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.control_timeline import group_adjustments
 from anesthesia_sim.app.controller import (
     BranchedCase,
@@ -143,7 +154,6 @@ from anesthesia_sim.app.preferences import (
 )
 from anesthesia_sim.app.qt_widgets import BookmarkDialog, BookmarksPanel, ForkPanel, styled_label
 from anesthesia_sim.app.run_series import RecordedQuantity
-from anesthesia_sim.app.run_surfaces import keep_until_destroyed
 from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.stylesheets import page_stylesheet, scroll_area_stylesheet
 from anesthesia_sim.app.theme import PAGE_PADDING, PAGE_SPACING, WARNING
@@ -238,6 +248,32 @@ def _widget_text(widget: QWidget) -> Iterator[InterfaceText]:
             yield InterfaceText(widget.itemText(index), seen and index == current)
 
 
+def _case_copy[W: QWidget](copies: list[W], copy: W) -> W:
+    """Add a new copy of a case panel to its list, and drop it when Qt destroys it.
+
+    The dashboard writes every copy on the list. A View that an Area stops
+    showing is deleted with its copy, so the dashboard never writes a deleted
+    widget.
+
+    Args:
+        copies: The copies of one case panel that Qt has not destroyed,
+            oldest first.
+        copy: The new copy.
+
+    Returns:
+        The same copy, so a builder can return the call.
+    """
+
+    copies.append(copy)
+    copy.destroyed.connect(lambda: _drop_case_copy(copies, copy))
+
+    return copy
+
+
+def _drop_case_copy[W: QWidget](copies: list[W], copy: W) -> None:
+    copies[:] = [kept for kept in copies if kept is not copy]
+
+
 def _spaced_column(widget: QWidget, spacing: int) -> QVBoxLayout:
     """A vertical layout on `widget` with no margins and the given spacing."""
 
@@ -292,9 +328,8 @@ def _holder(
 class _RunSlots:
     """Where one displayed run's widgets sit among the layouts that every run shares.
 
-    A run's setting controls are not among them. They are shown by the
-    `parameter_controls` View, which builds copies of its own in whichever
-    Areas show it (`PL-TH35`, `PL-2KXB`).
+    A run's setting controls are not among them. The `parameter_controls`
+    View builds them, in whichever Areas show it (`PL-TH35`, `PL-2KXB`).
 
     Attributes:
         placed: Every widget that this run put into a shared layout. For any
@@ -311,14 +346,15 @@ class HaltRestatement:
     """A dashboard panel that offers an action on a run, and what restates it on a halt.
 
     To restate a widget is to rewrite it from the runs' controllers, without drawing a frame.
-    A `RunView` restates its own widgets on a halt (`RunView.show_presentation`). The panels
-    that belong to the dashboard itself are not inside any run. So a halt restates them
-    only through this list (`SimulationView.halt_restatements`). A panel that holds a
-    control and is missing from the list keeps offering its action over a run that every
-    other control says has failed. That happened to the branch panel (`PL-MMNX`) and to
-    the bookmark panel (`PL-YHR3`). `test_every_dashboard_control_is_restated_on_a_halt`
-    fails on a control that is in no `RunView`, in no panel listed here, and in no
-    container that the test exempts by name (`PL-5JTH`).
+    A `RunView` restates its own widgets on a halt (`RunView.show_presentation`), and every
+    View is handed the runs with no frame. The panels that belong to the dashboard itself
+    are inside neither a run nor a View. So a halt restates them only through this list
+    (`SimulationView.halt_restatements`). A panel that holds a control and is missing from
+    the list keeps offering its action over a run that every other control says has failed.
+    That happened to the branch panel (`PL-MMNX`) and to the bookmark panel (`PL-YHR3`). A
+    test fails on a control that is in no `RunView`, in no panel listed here, and in no
+    container that the test exempts by name
+    (`test_every_dashboard_control_is_restated_on_a_halt`, `PL-5JTH`).
 
     Attributes:
         panels: The widgets this restatement writes. A control inside one of them counts
@@ -474,9 +510,10 @@ class SimulationView(QWidget):
         # How many runs the last attempted frame was drawn over. `render_tick`
         # draws when the run set has changed since then (`PL-0LG6`).
         self._drawn_run_count = 0
-        # The Views the last frame was attempted for, and whether it failed.
-        # A View owes a frame only while it has not been offered one, so a
-        # frame that failed for these Views is not retried every tick.
+        # The Views the last frame was attempted for, and whether it failed
+        # before every View had drawn it. A View owes a frame only while it
+        # has not been offered one, so a frame that failed for these Views is
+        # not retried every tick.
         self._offered_views: tuple[QWidget, ...] = ()
         self._frame_failed = False
         self.presented_frames = 0
@@ -611,10 +648,14 @@ class SimulationView(QWidget):
             notice=self._notice,
         )
         requests = ViewRequests(
-            self._handle_frame_request,
-            self._handle_compartment_request,
-            self._handle_agent_cost_unit_request,
-            self._handle_agent_price_request,
+            frame=self._handle_frame_request,
+            compartment=self._handle_compartment_request,
+            agent_cost_unit=self._handle_agent_cost_unit_request,
+            agent_price=self._handle_agent_price_request,
+            adjustment_start=self._handle_adjustment_start_request,
+            setting=self._handle_setting_request,
+            preview=self._handle_preview_request,
+            preview_end=self._handle_preview_end_request,
         )
         current = self._workspaces.current
         self._areas = AreaLayout(current.layout, requests, states=current.view_state)
@@ -1115,7 +1156,7 @@ class SimulationView(QWidget):
         if misplaced:
             raise RuntimeError(
                 "the unconditional region does not hold "
-                f"{', '.join(misplaced)}, which docs/MODEL.md requires on screen in every "
+                f"{', '.join(misplaced)}, which docs/INTERFACE.md requires on screen in every "
                 "layout (app/unconditional_set.py)"
             )
 
@@ -1129,13 +1170,18 @@ class SimulationView(QWidget):
         call it. `docs/MODEL.md` requires a value's run to be named whenever
         another run is drawn anywhere. Until a run can be drawn outside this
         dashboard, every run is drawn in it. So another run is drawn somewhere
-        exactly when this dashboard holds more than one run (`PL-7Z84`). The
-        same count decides whether an agent selector may be used at all,
-        because two runs share one MAC axis. It also decides whether the compartment selection is
-        limited to the cap (`CompartmentSelection.with_run_count`). Neither
-        legend is told here. Each legend names the curves that a drawn frame
-        drew, so each learns of the new run set from the frame that the
-        change requires (`PL-G3K7`, `PL-0LG6`).
+        exactly when this dashboard holds more than one run (`PL-7Z84`).
+
+        The run count decides whether an agent selector may be used at all,
+        because two runs share one MAC axis. It also decides whether the
+        compartment selection is limited to the cap on how many compartments
+        are drawn while runs are compared (`CompartmentSelection.with_run_count`).
+
+        Neither legend is told here. Each legend names the curves that a
+        drawn frame drew, so each learns of the new run set from the frame
+        that the change requires (`PL-G3K7`, `PL-0LG6`). No View is told here
+        either. Each View names a run from the run's presentation, so it
+        learns the new names from the tick that the change requires.
 
         **This method draws nothing, and nothing it calls may draw**
         (`PL-B1R9`). A frame assembled before the last run has been told
@@ -1145,7 +1191,9 @@ class SimulationView(QWidget):
         branch, the Reset that dropped one, `main()` after the window is
         shown, or the render tick. The render tick draws whenever the run
         count differs from the one that the last frame was drawn over
-        (`PL-0LG6`).
+        (`PL-0LG6`). Where that frame cannot be drawn, the halt that follows
+        hands every View the runs with no frame, so the Views still show the
+        new names (`_halt_every_run`).
         """
 
         comparing = len(self._runs) > 1
@@ -1455,7 +1503,7 @@ class SimulationView(QWidget):
         if self._case is None:
             return None
 
-        panel = keep_until_destroyed(self._fork_panels, ForkPanel())
+        panel = _case_copy(self._fork_panels, ForkPanel())
         panel.take_button.clicked.connect(self._handle_fork)
         panel.here_button.clicked.connect(self._handle_here_fork)
         panel.point_selector.currentIndexChanged.connect(
@@ -1491,6 +1539,13 @@ class SimulationView(QWidget):
         A frame drawn now replaces any frame that was owed. So drawing at once
         clears the pending flag first.
 
+        A coalesced frame leaves the charts to the render tick, but every
+        View is handed the runs at once, with no frame. A run that asks for
+        a coalesced frame has already rewritten its own readouts
+        (`RunView._apply_setting`). So the dials, the accounting panel, the
+        schematic and the agent cost panel in the Areas move with those
+        readouts, and do not wait for the tick (`PL-RF2S`).
+
         Args:
             coalesce: True to mark a frame as owed and let the render tick
                 draw it, as a dragged slider does. False to draw at once, as
@@ -1499,6 +1554,7 @@ class SimulationView(QWidget):
 
         if coalesce:
             self._render_pending = True
+            self._show_views_the_runs()
             return
 
         self._render_pending = False
@@ -1561,7 +1617,12 @@ class SimulationView(QWidget):
         return self._areas.owes_a_frame
 
     def _refresh_view(self) -> None:
-        """Read every run once, assemble a frame per window, draw each View, then refresh each run.
+        """Read every run once, assemble a frame per window, draw each View, then show each run.
+
+        Every run's presentation is built from its snapshot before anything
+        is drawn. So a presentation that cannot be built leaves the charts,
+        the Views and every run's panel on the earlier frame, and never some
+        of them on this frame and some on the last (`PL-RF2S`).
 
         Each chart View asks for its own window (`PL-L59K`). The dashboard
         assembles one frame for each distinct window, sampled for the widest
@@ -1573,21 +1634,24 @@ class SimulationView(QWidget):
         application-window width measured. So a frame for each plot would mean
         two assemblies on every tick, and two plots at the same window would
         not draw the same instants (`PL-9LNF`). The adapter hands each View the
-        frame for its window in its `ViewTick` (`PL-TH35`). Each legend is told
-        what its plot drew only after the plot has drawn it. So where the frame
-        fails, the legend goes on naming the curves still on the plot
-        (`PL-G3K7`).
+        frame for its window in its `ViewTick` (`PL-TH35`).
+
+        Each legend is told what its plot drew only after the plot has drawn
+        it. So where the frame fails, the legend goes on naming the curves
+        still on the plot (`PL-G3K7`).
 
         **A pinned Workspace draws its run alone** (`PL-WV9K` Q6). Its Views
         are handed frames assembled from the pinned run only, and the run's
         name is on every Area. Where the pinned run is not open, no View is
         drawn and every Area says so. Either way, a frame is still assembled
         over every open run for each window, so its checks still run. Each run
-        is refreshed from its own snapshot, so a pin never changes a readout.
+        shows its own presentation, so a pin never changes a readout.
 
         Raises:
             ValueError: If the runs have come to use different agents since
                 construction (`assemble_chart_frame`).
+            Exception: Whatever building a run's presentation, drawing a
+                View or writing a run's panel raises.
         """
 
         # These are stored before anything can raise. A frame that fails over
@@ -1598,6 +1662,9 @@ class SimulationView(QWidget):
         self._frame_failed = True
         selection = self._compartment_selection
         snapshots = tuple(run.snapshot() for run in self._runs)
+        presentations = tuple(
+            run.presentation(snapshot) for run, snapshot in zip(self._runs, snapshots, strict=True)
+        )
         inputs = tuple(
             RunInput(
                 run_label(run.run_id),
@@ -1619,14 +1686,9 @@ class SimulationView(QWidget):
             )
             for time_base, width_px in requests.items()
         }
-        shown = self._workspaces.current.shown_runs(self._open_runs())
+        drawn = self._runs_the_views_show()
 
-        if isinstance(shown, PinnedRunAbsent):
-            self._areas.show_pin(run_label(shown.pinned), absent=True)
-        else:
-            pinned = self._workspaces.current.pinned_run
-            self._areas.show_pin(None if pinned is None else run_label(pinned), absent=False)
-            drawn = [i for i, run in enumerate(self._runs) if run.run_id in shown]
+        if drawn is not None:
             view_frames = frames
 
             if len(drawn) < len(self._runs):
@@ -1643,7 +1705,7 @@ class SimulationView(QWidget):
             self._areas.refresh(
                 view_frames,
                 tuple(snapshots[i] for i in drawn),
-                tuple(self._runs[i] for i in drawn),
+                tuple(presentations[i] for i in drawn),
                 selection,
                 PreferencesInForce(self._preferences, self._preferences_notice),
                 self,
@@ -1652,8 +1714,8 @@ class SimulationView(QWidget):
         self._frame_failed = False
         self.compartment_selection_changed.emit(selection)
 
-        for run, snapshot in zip(self._runs, snapshots, strict=True):
-            run.show_presentation(run.presentation(snapshot))
+        for run, presentation in zip(self._runs, presentations, strict=True):
+            run.show_presentation(presentation)
 
         self._refresh_bookmarks(
             snapshots[0].bookmarks,
@@ -1661,10 +1723,74 @@ class SimulationView(QWidget):
             snapshots[0],
         )
         self._refresh_fork_panel()
-        # The run surfaces that some Views show are written after the Areas
-        # drew, so the Areas follow what those Views need now (`PL-MXMG`).
+        # Each run's own panel and the case's panels are written after the
+        # Areas drew. A banner shown or hidden there changes the height that
+        # the Areas are given, so the Areas are laid out again now (`PL-MXMG`).
         self._areas.follow_needs()
         self.presented_frames += 1
+
+    def _runs_the_views_show(self) -> tuple[int, ...] | None:
+        """Name the pinned run on every Area, and say which runs the Views show.
+
+        A frame and a tick with no frame both come here, so a pinned
+        Workspace is read in one place.
+
+        Returns:
+            The places in `self._runs` of the runs that the Views of the
+            current Workspace show, in drawing order. That is every run, or
+            the pinned run alone. None where the Workspace is pinned to a
+            run that is not open. Every Area then says so in place of its
+            View, and no View is handed anything.
+        """
+
+        shown = self._workspaces.current.shown_runs(self._open_runs())
+
+        if isinstance(shown, PinnedRunAbsent):
+            self._areas.show_pin(run_label(shown.pinned), absent=True)
+
+            return None
+
+        pinned = self._workspaces.current.pinned_run
+        self._areas.show_pin(None if pinned is None else run_label(pinned), absent=False)
+
+        return tuple(i for i, run in enumerate(self._runs) if run.run_id in shown)
+
+    def _show_views_the_runs(self) -> None:
+        """Hand every View the runs it shows, with no frame.
+
+        Each run's presentation is built from its controller's record, which
+        builds no compartment value (`RunView.presentation`). Its values are
+        the ones that the run's panel last wrote, or are withheld when the
+        run has started over since then. So this method can run on a halt
+        whose cause is a compartment value that cannot be built
+        (`PL-7DJK`), and for a run that has not halted it restates what the
+        run's own panel shows.
+
+        The tick carries the case's panels, as a tick with a frame does. A
+        bookmarks View or a branch View whose first tick is this one takes
+        its copy from it. A halt restates the case's panels before it calls
+        this method, so the copy shows the marks and the branch control as
+        the halt restated them.
+
+        Raises:
+            Exception: The first exception that a View raises while it writes
+                the tick. Every View is handed the tick all the same
+                (`AreaLayout.refresh`).
+        """
+
+        drawn = self._runs_the_views_show()
+
+        if drawn is None:
+            return
+
+        self._areas.refresh(
+            None,
+            (),
+            tuple(self._runs[i].presentation() for i in drawn),
+            self._compartment_selection,
+            PreferencesInForce(self._preferences, self._preferences_notice),
+            self,
+        )
 
     # -------------------------------------------------------------- bookmarks
 
@@ -1794,7 +1920,7 @@ class SimulationView(QWidget):
             marks, and while a halt could not work out their standings.
         """
 
-        panel = keep_until_destroyed(self._bookmarks_panels, BookmarksPanel())
+        panel = _case_copy(self._bookmarks_panels, BookmarksPanel())
         panel.edit_button.clicked.connect(self._open_bookmark_dialog)
 
         if self._marks_shown is None:
@@ -2021,7 +2147,7 @@ class SimulationView(QWidget):
         """Set or remove the reader's price for one agent, save it, and draw at once.
 
         Every cost at that agent's price is redrawn on the frame drawn here,
-        whether or not the run is advancing (`docs/MODEL.md` § "A cost at the
+        whether or not the run is advancing (`docs/INTERFACE.md` § "A cost at the
         reader's price", `PL-1P15`). Setting a price drops any refused entry
         for the agent. Removing a price drops both the price and any refused
         entry.
@@ -2088,6 +2214,70 @@ class SimulationView(QWidget):
         self._compartment_selection = self._compartment_selection.with_compartment(quantity, shown)
         self.present(False)
 
+    def _run_with(self, run_id: RunId) -> RunView:
+        """Return the displayed run with the identity `run_id`.
+
+        Raises:
+            ValueError: If the dashboard holds no run with that identity. A
+                View that names such a run was not told that the run is gone.
+        """
+
+        for run in self._runs:
+            if run.run_id == run_id:
+                return run
+
+        raise ValueError(
+            f"a View asked for a change to {run_label(run_id)}, which this dashboard does not "
+            f"hold; it holds {', '.join(run_label(run.run_id) for run in self._runs)}"
+        )
+
+    @halt_gate
+    def _handle_adjustment_start_request(self, run_id: RunId) -> None:
+        """Tell the run named by a View that the reader pressed one of its dials.
+
+        The run's own method passes the run's halt gate, so an exception
+        raised there halts that run alone.
+
+        Raises:
+            ValueError: If the dashboard holds no such run (`_run_with`). The
+                halt gate then halts every run.
+        """
+
+        self._run_with(run_id).start_adjustment()
+
+    @halt_gate
+    def _handle_setting_request(self, run_id: RunId, control: ControlInput, value: float) -> None:
+        """Ask the run that a View named to take `value` as its setting on `control`.
+
+        Raises:
+            ValueError: If the dashboard holds no such run (`_run_with`). The
+                halt gate then halts every run.
+        """
+
+        self._run_with(run_id).request_setting(control, value)
+
+    @halt_gate
+    def _handle_preview_request(self, run_id: RunId, control: ControlInput, value: float) -> None:
+        """Tell the run named by a View where its held dial stands.
+
+        Raises:
+            ValueError: If the dashboard holds no such run (`_run_with`). The
+                halt gate then halts every run.
+        """
+
+        self._run_with(run_id).request_preview(control, value)
+
+    @halt_gate
+    def _handle_preview_end_request(self, run_id: RunId) -> None:
+        """Tell the run named by a View that its held dial was released.
+
+        Raises:
+            ValueError: If the dashboard holds no such run (`_run_with`). The
+                halt gate then halts every run.
+        """
+
+        self._run_with(run_id).end_preview()
+
     def _halt_every_run(self, error: BaseException) -> None:
         """Halt every run on an exception in the dashboard, show each halt, then try to draw.
 
@@ -2109,15 +2299,30 @@ class SimulationView(QWidget):
         its dashboard failed, so the case then offers no branch at all. A branch opened
         now would be drawn by the same dashboard and could fail the same way (`PL-T2Q2`).
 
+        Every View is then handed the runs with no frame (`_show_views_the_runs`). So
+        the panels in the Areas show each halted run as its own panel shows it. A run that
+        was removed while frames fail is dropped from every View, and a View that a reader
+        chose while frames fail shows the runs (`PL-RF2S`). This comes after each run's halt
+        and the restatements, so a View that raises cannot hide either (`PL-25KS`). A View
+        that raises on this tick does not keep the tick from the Views after it
+        (`AreaLayout.refresh`).
+
+        The frame is then tried again. When it fails again, some Views may already have
+        drawn it: the Views placed before a View that raised, or every View when a run's
+        own panel then refused the frame. Those Views would show that frame beside a
+        run's own panel that shows the one before it. So whenever the second attempt
+        fails, the Views are handed the runs once more, and every panel of a run shows
+        the frame that the run's own panel shows.
+
         One run's `show_halt` can raise after it has shown the halt, when its dials
-        cannot be written. That exception does not stop the halt path. Every other run
-        still shows its halt, every panel is restated, and the dashboard tries to draw the
-        frame. Only then does the first exception escape, so it still reaches the console
-        rather than being hidden (`PL-TLH4`).
+        cannot be built. That exception does not stop the halt path. Every other run
+        still shows its halt, every panel is restated, every View is handed the runs, and
+        the dashboard tries to draw the frame. Only then does the first exception escape,
+        so it still reaches the console rather than being hidden (`PL-TLH4`).
 
         Raises:
-            Exception: The first exception raised by a run's `show_halt`, once
-                everything above has been done.
+            Exception: The first exception raised by a run's `show_halt` or by a View
+                that was handed the runs, once everything above has been done.
         """
 
         self._halting_every_run = True
@@ -2138,9 +2343,20 @@ class SimulationView(QWidget):
                 restatement.restate()
 
             try:
+                self._show_views_the_runs()
+            except Exception as raised:
+                presentation_error = presentation_error or raised
+
+            try:
                 self._refresh_view()
             except Exception:
-                pass
+                # The frame failed again. Any View that drew it before it
+                # failed shows a later frame than the runs' own panels, so
+                # every View is handed the runs once more.
+                try:
+                    self._show_views_the_runs()
+                except Exception as raised:
+                    presentation_error = presentation_error or raised
         finally:
             self._halting_every_run = False
 

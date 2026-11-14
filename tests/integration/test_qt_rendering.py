@@ -48,6 +48,7 @@ from anesthesia_sim.app.dashboard_frame import SIMULATION_STEP_S
 from anesthesia_sim.app.qt_chart import ConcentrationChart, WashInChart
 from anesthesia_sim.app.qt_widgets import MetricPanel
 from anesthesia_sim.app.run_series import RecordedQuantity
+from anesthesia_sim.app.run_surfaces import AccountingPanel
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import (
     AGENT_COLOR_SCHEMES,
@@ -58,7 +59,7 @@ from anesthesia_sim.app.theme import (
     PANEL,
 )
 from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING, CONCENTRATION_CHART, WASH_IN
-from anesthesia_sim.app.views import ConcentrationView, WashInView
+from anesthesia_sim.app.views import AccountingView, ConcentrationView, WashInView
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, Window
@@ -499,6 +500,17 @@ def test_no_readout_value_is_clipped_by_its_panel(dashboard: SimulationView) -> 
             assert _advance_px(label) <= label.width(), label.text()
 
 
+def _accounting_panels(dashboard: SimulationView) -> list[AccountingPanel]:
+    """Every run's accounting panel, in every Area that shows the agent accounting View."""
+
+    return [
+        panel
+        for view in dashboard.layout_container.views()
+        if isinstance(view, AccountingView)
+        for panel in view.panels
+    ]
+
+
 def test_no_readout_value_is_clipped_once_a_run_is_going(dashboard: SimulationView) -> None:
     """The agent-accounting panel gets its whole height once a run is going (`PL-TZNM`).
 
@@ -508,7 +520,7 @@ def test_no_readout_value_is_clipped_once_a_run_is_going(dashboard: SimulationVi
     readout's own size hints, not values read from the layout under test.
     """
 
-    panels = dashboard.runs[0]._accounting_panels
+    panels = _accounting_panels(dashboard)
 
     assert panels
 
@@ -539,7 +551,7 @@ def test_the_readout_row_and_the_sidebar_are_inside_the_page(dashboard: Simulati
     scroll, middle = _page(dashboard)
     page = dashboard.findChild(QWidget, "dashboardPage")
     run = dashboard.runs[0]
-    accounting_panel = run._accounting_panels[0]._agent_accounting_status_text.parentWidget()
+    accounting_panel = _accounting_panels(dashboard)[0]
     timeline_panel = run._control_timeline_text.parentWidget()
 
     assert page is not None

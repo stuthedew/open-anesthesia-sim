@@ -94,7 +94,14 @@ _REFRESHED: list[_TestView] = []
 
 # A View asks the dashboard for nothing here.
 _REQUESTS = ViewRequests(
-    lambda: None, lambda _quantity, _shown: None, lambda _unit: None, lambda _agent, _price: None
+    frame=lambda: None,
+    compartment=lambda _quantity, _shown: None,
+    agent_cost_unit=lambda _unit: None,
+    agent_price=lambda _agent, _price: None,
+    adjustment_start=lambda _run: None,
+    setting=lambda _run, _control, _value: None,
+    preview=lambda _run, _control, _value: None,
+    preview_end=lambda _run: None,
 )
 _PREFERENCES = PreferencesInForce(Preferences(), None)
 
@@ -121,6 +128,8 @@ class _TestView(QWidget):
         self.context = context
         self.ticks: list[ViewTick] = []
         self.request: FrameRequest | None = None
+        # What `refresh` raises once it has recorded the tick, or None to raise nothing.
+        self.failure: Exception | None = None
         self.setting = 0
         # Small enough that Qt's own minimum never stops a drag here.
         self.setMinimumSize(10, 10)
@@ -134,6 +143,9 @@ class _TestView(QWidget):
     def refresh(self, tick: ViewTick) -> None:
         self.ticks.append(tick)
         _REFRESHED.append(self)
+
+        if self.failure is not None:
+            raise self.failure
 
     @property
     def owes_a_frame(self) -> bool:
@@ -1086,6 +1098,93 @@ def test_a_view_asking_for_a_window_with_no_frame_is_refused(
 
     with pytest.raises(KeyError):
         container.refresh(frames, (snapshot,), (), selection, _PREFERENCES, _NoCase())
+
+
+def test_a_tick_with_no_frame_reaches_every_view_and_carries_no_frame_and_no_snapshots(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """Every View is handed a tick when no frame was drawn, even a View that asks for a frame.
+
+    The dashboard hands such a tick on a halt, when no frame can be
+    assembled (`PL-RF2S`). A View that asks for a window still gets this
+    tick, although a tick with frames refuses a View whose frame it lacks.
+    """
+
+    model = _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)
+    container = _show_with(application, shown, model)
+    _, _, selection = _frames((None,))
+    _BUILT[1].request = FrameRequest(time_base_for_span(900.0), 300.0)
+
+    case = _NoCase()
+
+    container.refresh(None, (), (), selection, _PREFERENCES, case)
+
+    assert [len(view.ticks) for view in _BUILT] == [1, 1]
+    assert [view.ticks[0].frame for view in _BUILT] == [None, None]
+    assert [view.ticks[0].snapshots for view in _BUILT] == [(), ()]
+    assert all(view.ticks[0].selection is selection for view in _BUILT)
+    assert all(view.ticks[0].preferences is _PREFERENCES for view in _BUILT)
+    assert all(view.ticks[0].case is case for view in _BUILT)
+
+
+def test_a_tick_with_no_frame_reaches_every_view_though_one_raises(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """A View that raises on a tick with no frame does not keep that tick from the Views after it.
+
+    On a halt, the tick with no frame is the only thing that tells a View
+    which runs are left and what each one shows. So every View is handed it,
+    and the first exception is raised once the last View has been handed it
+    (`PL-RF2S`). Two of the three Views raise here, so the test tells the
+    first exception from the last.
+    """
+
+    model = _layout(_row((0.25, 0.5, 0.25), _area(1), _area(2), _area(3)), 4)
+    container = _show_with(application, shown, model)
+    _, _, selection = _frames((None,))
+    _BUILT[0].failure = RuntimeError("the first View could not show the tick")
+    _BUILT[1].failure = RuntimeError("the second View could not show the tick")
+
+    with pytest.raises(RuntimeError, match="the first View could not show the tick"):
+        container.refresh(None, (), (), selection, _PREFERENCES, _NoCase())
+
+    assert [len(view.ticks) for view in _BUILT] == [1, 1, 1]
+    assert _REFRESHED == _BUILT
+
+
+def test_a_tick_with_a_frame_stops_at_the_first_view_that_raises(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """A View that raises while it draws a frame keeps that frame from the Views after it.
+
+    The dashboard halts every run on that exception, and the halt then hands
+    every View a tick with no frame.
+    """
+
+    model = _layout(_row((0.25, 0.5, 0.25), _area(1), _area(2), _area(3)), 4)
+    container = _show_with(application, shown, model)
+    frames, snapshot, selection = _frames((None,))
+    _BUILT[1].failure = RuntimeError("the second View could not draw the frame")
+
+    with pytest.raises(RuntimeError, match="the second View could not draw the frame"):
+        container.refresh(frames, (snapshot,), (), selection, _PREFERENCES, _NoCase())
+
+    assert [len(view.ticks) for view in _BUILT] == [1, 1, 0]
+
+
+def test_a_tick_with_no_frame_is_refused_snapshots(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """A tick with no frame that is given snapshots is refused, and no View is handed anything."""
+
+    model = _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)
+    container = _show_with(application, shown, model)
+    _, snapshot, selection = _frames((None,))
+
+    with pytest.raises(ValueError, match="carries no snapshots, and 1 were given"):
+        container.refresh(None, (snapshot,), (), selection, _PREFERENCES, _NoCase())
+
+    assert [len(view.ticks) for view in _BUILT] == [0, 0]
 
 
 def test_each_window_is_sampled_for_the_widest_view_that_asks_for_it(

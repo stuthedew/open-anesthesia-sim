@@ -2,24 +2,35 @@
 
 **Resident, with no `paths:`.** It applies whenever a session writes prose. A
 path scope would miss item briefs, commit messages, pull request bodies and
-replies, because no read comes before them. The project owner asked for this
-rule on 2026-10-17, and `PL-8ZTQ` has the measurement and the sources behind
-each point.
+replies, because no read comes before them. `PL-8ZTQ` has the sources behind
+the points about sentences, and `PL-J1ZM` has the measurements behind choosing
+what goes in.
 
 Write all prose that a person will read in plain English: docstrings, comments,
 error messages, documents, rules, item briefs, commit messages, pull request
 titles and bodies, replies, and every question or review request sent to the
 project owner, including each field of the line `bin/docket arm` prints. In
-those, say what changes for the owner or a learner, and never name a test,
-check or tool by its internal name (project owner, 2026-11-02, `PL-BGN1`).
-Write for the readers that the table below names for that kind of text. They
-should understand each sentence the first time they read it (project owner,
-2026-11-02, ratified, `PL-H76S`).
+a question or a review request, say what changes for the owner or a learner,
+and never name a test, check or tool by its internal name (project owner,
+2026-11-02, `PL-BGN1`). Write for the readers that the table below names for
+that kind of text. They should understand each sentence the first time they
+read it (project owner, 2026-11-02, ratified, `PL-H76S`).
+
+**Choose what goes in before you write.** Keep a text short by being selective
+about what it includes: leave out each detail that does not change what its
+reader does next. The last column of the table says what each reader does. Do
+not shorten a text by writing fragments, abbreviations or jargon. What the
+session did, tried, measured and checked is the record of the work, and it
+goes in the item file. A text for any other reader takes from that record only
+what its reader acts on. § "Examples" shows how much each kind of text holds
+(project owner, 2026-11-11, ratified, over a copy edit of each branch's text
+after it is written, `PL-J1ZM`).
 
 | Kind of text | Reader | What they know | What they do not know | What they will do with it |
 | --- | --- | --- | --- | --- |
 | `docs/MODEL.md` | A clinician or educator | Anesthesia pharmacology and physiology. | Numerical-methods terms such as "operator split", software terms, e-notation such as "4e-4", and this repository's own names. | Decide whether to trust a displayed value, or learn how the simulation works. |
 | `docs/MODEL.md` | A developer, or someone who forked the project | Python, and the basics of anesthesia. | Numerical-methods terms such as "first-order method", and this repository's own names. | Change a value or an equation for a goal of their own. |
+| `docs/INTERFACE.md` | A contributor who changes the interface | Anesthesia, Python and software development. | This repository's own names and history, and decisions taken in sessions they did not see. | Find what the interface must show and do before changing it, and the test that checks each requirement. |
 | `README.md` | An educator or trainee in anesthesiology or critical care | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Decide whether to use the simulator, then install it and run a case. |
 | `README.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history. | Decide whether to work on the simulator, then set it up. |
 | `docs/ARCHITECTURE.md`, `docs/interface-provenance.md`, `docs/machine-abstraction.md` and `docs/machine-survey.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history, and the outside designs and machines it studied. | Find where a change belongs, and what it must keep. |
@@ -36,45 +47,34 @@ should understand each sentence the first time they read it (project owner,
 The two `README.md` rows are the readers that `README.md` § "What it is for"
 names. `docs/releases/` has no row, because `bin/docket release` writes each
 note from item titles, and an edit there would make a note disagree with its
-item. `tools/new_prose.py` reads this table. It prints a changed file's passages
-for the copy editor only when a row names that file, and it gives each passage
-that row's readers. A new row therefore brings the files it names into the
-review with no other change. The copy editor does not edit text whose only
-reader is a later session or the project owner: item briefs, the workflow's
-files, commit messages and replies. It does edit pull request titles and
-bodies (project owner, 2026-11-10). The unedited texts still follow this
-rule.
+item. `tools/new_prose.py` reads this table when the copy editor is asked to
+rewrite a section of a document, so the table keeps its five columns
+(`docs/prose-review/README.md`).
 
-**Write what the reader needs to act on, and stop.** Find the reader and what
-they will do with the text in the table above. Put what they see first, then
-what it means for them, then why. Move each reason, derivation, test name and
-piece of history that they do not act on to where its own reader looks, or cut
-it. Decision history goes in the item. In `docs/MODEL.md`, the rest goes in a
-note for developers at the end of the section it came from, a paragraph that
-opens with "**For developers.**" That note may name the tests for the paragraphs
-directly above it (`PL-W8FL`). That detail stays in `docs/MODEL.md`, because the
-document must specify the numerical method (`PL-TZ7R`). State a model limitation
-only where it could change what a clinician concludes from a displayed value
-(`PL-BS6N`).
+**Where the rest goes.** Decision history goes in the item. In `docs/MODEL.md`,
+detail of the numerical method goes in a note for developers at the end of its
+section, a paragraph that opens with "**For developers.**", because the
+document must specify the numerical method (`PL-TZ7R`). That note may name the
+tests for the paragraphs directly above it (`PL-W8FL`). State a model
+limitation only where it could change what a clinician concludes from a
+displayed value (`PL-BS6N`). `docs/INTERFACE.md` ends a section with the same
+note for developers, for the tests and code behind its requirements.
 
-**Give a chosen value its reason from a record.** Where a docstring or a
-comment gives a chosen value, such as a tolerance or a limit, say what the
-value does, why it is this number, and what changing it would do. In
-`docs/MODEL.md`, say it in the note for developers. Take each answer from the
-code or test that uses the value, or from a cited record. When the reason is
-not at hand, trace the value's history first, with `git log -S` and the items.
-Search for the value as the code writes it. The step-size test's 0.5% tolerance,
-removed in `PL-VXM0`, was `5e-3` in `tests/reference/test_sevo_patient.py`, and
-`git log -S 5e-3` finds the commit that first set it. When the trace finds no
-reason, file an item for the missing record, and say in the text what the trace
-found. Never state a reason that no record holds.
+**Take the reason for a chosen value from a record.** Where a docstring, a
+comment or a note for developers explains a chosen value, such as a tolerance
+or a limit, take the reason from the code or test that uses the value, or from
+a cited record. When the reason is not at hand, trace the value's history
+first, with `git log -S` and the items. Search for the value as the code
+writes it: a 0.5% tolerance was `5e-3` in the test that used it. When the
+trace finds no reason, file an item for the missing record, and say in the
+text what the trace found. Never state a reason that no record holds.
 
 1. **Write whole sentences.** Keep the small words that show how a sentence
    fits together: "a" and "the", "that", "which" and "who", and the verb.
    Start a docstring or a paragraph with a sentence, not a phrase and a colon.
-2. **Do not stack clauses.** "Each entry the plan was not read whole at" makes
-   the reader work out where each clause ends. Write "Each entry at which the
-   plan was not read in full."
+2. **Show where each clause begins.** Keep the word that opens a clause, such
+   as "which", "that" or "at which", so the reader can see where it ends:
+   "Each entry at which the plan was not read in full."
 3. **Use words in their everyday sense.** Prose here has drifted into private
    senses that a newcomer cannot guess. Write "returns" and "result", not
    "answers" and "answer"; "review", not "read" as a noun; "treats as", not
@@ -93,50 +93,31 @@ found. Never state a reason that no record holds.
    without it.
 6. **Say who does what.** Make each "it", "this" and "that" point at a noun the
    reader can find.
-7. **Plain is not longer.** Say each thing once, where the reader needs it.
-   Cut words that add nothing. Keep every fact where its own reader will look
-   for it: in the paragraph, in the note for developers of a `docs/MODEL.md`
-   section, or in the item. A unit, a value, an equation, a condition, an
-   exception and a citation are facts. Moving or restating one never changes
-   its value.
-8. **Read it aloud.** If you would not say it that way to a colleague, rewrite
-   it.
+7. **Say each thing once**, where the reader needs it, and cut words that add
+   nothing. Give each clause a fact that the rest of its sentence does not
+   already state.
+8. **State the claim directly.** Name an alternative only where a reader would
+   otherwise assume it, and then say why it does not apply.
+9. **Write about the subject.** A sentence in a document describes the model,
+   the code or the clinical fact. A citation gives the source and its pages.
+   Who supplied a source and how a choice was reached go in the item.
+10. **Say what the text relies on.** Name a source the text does not use only
+    where a reader would otherwise assume it does, and then say it once, as a
+    limitation.
+11. **Give separate points their own structure.** When a table cell or a
+    paragraph holds several separate points, make them a numbered list or a
+    short section, and keep the cell to one sentence and a pointer.
 
-**Five patterns that make prose read as machine-written.** The points above
-catch prose that is too compressed. These five catch the opposite failure:
-padding that sounds careful and adds nothing. The project owner judged
-`docs/MODEL.md` to read "like the worst kind of AI slop" on 2026-11-02 because
-of them (`PL-ZT47`).
-
-1. **A tautological aside.** A clause restates what its sentence already
-   says: "The naming is Hendrickx and De Wolf's, which is the field's naming."
-   Delete it. Where it carries a real fact, make that fact a sentence.
-2. **A contrast nobody claimed.** "X, not Y" and "rather than Y" reject an
-   option no reader proposed. State the positive claim. Keep a contrast only
-   where a reader would otherwise assume Y.
-3. **Narration about the text itself.** The sentence describes how the
-   document records, sources or decides something, instead of the subject:
-   "it is recorded at that depth", "the pages above are what the citation is
-   being used for". Give the citation with its page numbers and stop. Who
-   supplied a source, and how a choice was reached, belong in the item file.
-4. **A defensive scope statement.** The sentence says what is not relied on,
-   against an objection nobody raised: "no page beyond them is relied on
-   here". Delete it. Where a reader would plausibly assume a source was used,
-   say once that it was not, as a limitation.
-5. **A table cell or paragraph that has grown into an essay.** Prose ordinals
-   ("First", "Second" through "Sixth") or several separate points inside one
-   table cell mean the content wanted to be a list. Move it to a numbered list
-   or a short section, and leave the cell one sentence and a pointer.
-
-Before, from `docs/MODEL.md` on 2026-11-02: "The naming is Hendrickx and De
-Wolf's, which is the field's naming. They set out the gas-phase cascade and the
-symbols F_D, F_I and F_A on pp. 161-162. [...] The project owner supplied this
-source, and it is recorded at that depth. The pages above are what the
-citation is being used for, and no page beyond them is relied on here."
-
-After: "Symbols and the gas-phase cascade (F_D, F_I, F_A) follow Hendrickx and
-De Wolf (pp. 161-162)." The full citation follows unchanged, and the last two
-sentences go.
+    Points 7 to 11 keep out padding that sounds careful and adds nothing. The
+    project owner judged `docs/MODEL.md` to read as machine-written because of
+    it (`PL-ZT47`).
+12. **Check every sentence before the text goes to its reader.** Go through
+   the finished text one sentence at a time. Is each word used in its everyday
+   sense? Does the text say which one each paper, file, rule or item is? Does
+   each value, unit, condition and count match its source? Is any phrase
+   copied from the files the text describes? Would you say the sentence that
+   way to a colleague? Fix what fails, and recommend a text to the project
+   owner only after this check (project owner, 2026-11-11, `PL-J1ZM`).
 
 **A pull request title names the change plainly and briefly.** The title
 becomes the squash commit's subject, the one line of `main`'s history that a
@@ -144,8 +125,7 @@ reader sees for the change. After the item ids that the `pr-title` check
 requires, write a short phrase rather than a whole sentence: what the change
 does, to what, and the reason when it fits. Use names a reader of the
 repository already knows, such as a CI job, a check or a panel, not a term
-coined while building the change. Give each number the thing it counts. Do not
-describe the hoped-for effect in loose words instead of the change. When a
+coined while building the change. Give each number the thing it counts. When a
 branch closes several items, name what they change together.
 
 **Match the code around you, not its prose.** Copy the structure, naming and
@@ -153,41 +133,71 @@ idiom of the code you are working in. Much of the existing prose here breaks
 the points above, so do not copy its sentences. Write each sentence you add or
 change plainly, even when the text around it is dense. Rewriting sentences you
 did not need to touch is work for its own item, in the `prose-quality`
-feature. The exception is the copy editor at close-out, which may also rewrite
-the paragraph or table row on each side of a passage you changed (`PL-22T5`).
+feature.
 
 This rule decides how a text is worded and ordered, and what it leaves out. The
 safety-critical standard in `CLAUDE.md` and `.claude/rules/sources-and-docstrings.md`
 decides which facts a docstring, an error message or a displayed value must give,
-and this rule never cuts one. `.claude/rules/instruction-writing.md` decides the
-shape of a reply. Code, commands, paths and quoted output stay exactly as they are.
+and this rule never cuts one of those: a unit, a value, a condition or a citation.
+`.claude/rules/instruction-writing.md` decides the shape of a reply. Code,
+commands, paths and quoted output stay exactly as they are.
 
-## Three examples from this repository
+## Examples
 
-Before: "Refuse a volume or tissue:gas coefficient whose capacity is under the
-agent held."
+**A paragraph of `docs/MODEL.md`**, for a clinician. The project owner accepted
+it on 2026-11-04 (`PL-ZDZ0`).
 
-After: "Reject a volume or tissue:gas partition coefficient that would make the
+"The smallest change the MAC readout can show is therefore 0.02
+percentage points of sevoflurane, 0.012 of isoflurane and 0.06 of desflurane,
+never less than the percent readout's. The two readouts round separately, so
+the MAC value can occasionally change while the percent stays the same."
+
+**A docstring**, for a developer. Say what the function returns or does, with
+its unit, then what it refuses, then anything a developer would get wrong
+without being told. Leave out what the signature, the body or a named type
+already shows.
+
+"Return this group's blood flow $`Q_i = f_iQ`$ at a cardiac output, in
+L/min. `docs/MODEL.md` § "Tissue groups" defines it. The group stores no flow
+of its own, so no write can leave its flow out of step with the cardiac output
+(`PL-HQF5`). Raises: TypeError: `cardiac_output_l_min` was not built as a
+`CardiacOutput` (`core/supported_ranges.py`)."
+
+Write each part in whole sentences:
+
+"Reject a volume or tissue:gas partition coefficient that would make the
 tissue's capacity less than the amount of agent it already holds."
 
-Before: "The fresh gas admitted over the step, and as much circuit gas
-exhausted. In circuit volumes it is the step in time constants, dt/tau, formed
-without the time constant, which overflows to `inf` below about 2e-306 L/min in
-a 6 L circuit."
+**A reply**, for the project owner. Lead with the result. Then give what
+differs from what the owner was told or expects. Then the closing block, with
+each request stated in full, so that the owner can act without opening a file
+or an earlier reply. Leave out the record of the work: which checks ran, where
+an id was put and what each new item holds are in the item.
 
-After: "`admitted_gas_l` is the volume of fresh gas that enters the circuit
-during the step. The same volume of circuit gas leaves through the exhaust.
-Dividing `admitted_gas_l` by the circuit volume gives the step's length in time
-constants, dt/tau. The code does not compute tau first, because tau overflows
-to `inf` when the fresh gas flow is below about 2e-306 L/min in a 6 L circuit."
+> The design round is recorded in three new items, and pull request #2108
+> carries them. It merges by itself when its checks pass.
+>
+> Two things differ from what I told you. About half of the app's style sheet
+> calls style a control, where I said a third. The mock-up scripts are not
+> saved, and PL-HS9M (the design round's record) describes their colours,
+> sizes and layout instead.
+>
+> **What needs you**, in any order:
+>
+> 1. Answer the three questions in PL-HS9M (the design round's record). Is
+>    the order of work agreed: tasks, evaluation, wireframes, style, then
+>    residents? I recommend it. Who is the first-pass learner, and are the
+>    four candidate tasks right? Can you supply the full text of Zhang et al.
+>    2003?
+> 2. Approve or decline the one-control trial in PL-BVC5 (how the controls
+>    are drawn). I recommend approving it.
+> 3. Press Tab in the app on your Mac and tell me whether Start shows a focus
+>    mark. That settles PL-CXYV (the run buttons' missing pressed and focus
+>    states).
 
-The project owner judged three versions of one pull request title, on
-`#1523`, on 2026-10-17:
+**A pull request body.** `.claude/skills/pull-request/SKILL.md` § "Write the
+title and body" has two.
 
-- Too cryptic: "PL-ZWQS: give the first CI part 2 of every 5 ordinary tests".
-  A reader cannot tell what a "CI part" or an "ordinary test" is, or what the
-  2 and the 5 count.
-- Too conversational: "PL-ZWQS: make CI's two test jobs finish at about the
-  same time". It describes a hoped-for effect and does not say what changed.
-- Plain: "PL-ZWQS: rebalance the CI test split to offset part 1's lint steps".
-  It names the change, what it changes and why.
+**A pull request title.** The project owner chose this one, on `#1523`, on
+2026-10-17: "PL-ZWQS: rebalance the CI test split to offset part 1's lint
+steps". It names the change, what it changes and why.

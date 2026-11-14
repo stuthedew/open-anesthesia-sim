@@ -2,11 +2,19 @@
 
 The dashboard has a part that all runs share and a part for each run
 (`PL-B9PY`). `RunView` is the part for each run. It holds what two displayed
-runs cannot share: a controller, seven readouts, four settings, the
-transport (the run's playback controls), the agent identity, the notices, and
-the accounting and control-change panels. `SimulationView` holds what the runs
-do share. `RunView` can be instantiated twice, and nothing in one instance
-refers to another run.
+runs cannot share: a controller, seven readouts, the transport (the run's
+playback controls), the agent identity, the notices and the control-change
+panel. `SimulationView` holds what the runs do share. `RunView` can be
+instantiated twice, and nothing in one instance refers to another run.
+
+**A run's panel is the run's part of the unconditional region, the part of the
+page that is always on screen.** The run's setting controls, accounting panel,
+compartment schematic and agent cost panel sit in Areas instead. The Views in
+`app/views.py` build and write them, from the same `RunPresentation` that this
+class writes its own widgets from (`PL-RF2S`). This class builds none of them
+and holds none of them. A View asks for a change to a run's setting through
+the dashboard, which calls `start_adjustment`, `request_setting`,
+`request_preview` or `end_preview` on the run that the View named.
 
 `app/dashboard_frame.py` decides every claim that this class displays, and
 does so without a GUI toolkit. `app/run_presentation.py` calls that module's
@@ -52,18 +60,18 @@ building a fresh snapshot builds compartment values. When building one of
 those values was what raised, a halt reported from the snapshot was never
 shown at all (`PL-7DJK`).
 
-**Every widget of a run is written by one method, from one value.**
-`show_presentation` writes all of a run's widgets from one `RunPresentation`
-(`app/run_presentation.py`). The run-state widgets show what the run holds:
-the status word, the transport, the agent identity, the dials, the
-control-change panel and the banner. The value widgets show compartment
-values: the readouts, their clock, the schematic, the delivered agent and the
-accounting panel. A drawn frame and a halt each build a presentation, and
-`show_presentation` writes the same widgets for both. On a halt the
-compartment values are the last frame's, or are withheld together when the run
-has started over since that frame. An earlier version of the halt code wrote
-to a list of widgets chosen by hand. Each widget that the list missed went on
-showing the run as it was at the last frame (`PL-X7D5`, `PL-RF2S`).
+**Every widget of a run's panel is written by one method, from one value.**
+`show_presentation` writes all of this class's widgets from one
+`RunPresentation` (`app/run_presentation.py`). The run-state widgets show what
+the run holds: the status word, the transport, the agent identity, the
+delivered line, the control-change panel and the banner. The value widgets
+show compartment values: the readouts and their clock. A drawn frame and a
+halt each build a presentation, and `show_presentation` writes the same
+widgets for both. On a halt the compartment values are the last frame's, or
+are withheld together when the run has started over since that frame. An
+earlier version of the halt code wrote to a list of widgets chosen by hand.
+Each widget that the list missed went on showing the run as it was at the last
+frame (`PL-X7D5`, `PL-RF2S`).
 
 **Timers move the run and nothing else** (decision D7). Each run has one
 `QTimer`, which drives `step_tick`. `step_tick` advances the controller by the
@@ -94,9 +102,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from anesthesia_sim.app.agent_cost import WITHHELD_DELIVERED, DeliveredShown
+from anesthesia_sim.app.agent_cost import WITHHELD_DELIVERED
 from anesthesia_sim.app.chart_frame import PreviewRequest
-from anesthesia_sim.app.compartment_schematic import WITHHELD_SCHEMATIC, SchematicShown
+from anesthesia_sim.app.compartment_schematic import WITHHELD_SCHEMATIC
 from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.control_timeline import (
     AdjustmentGrouping,
@@ -111,7 +119,6 @@ from anesthesia_sim.app.controller import (
     SimulationSnapshot,
 )
 from anesthesia_sim.app.dashboard_frame import (
-    ACCOUNTING_HEADING,
     ACCOUNTING_INITIAL_DETAIL_TEXT,
     BRANCH_AGENT_LOCK_TEXT,
     COMPARING_AGENT_LOCK_TEXT,
@@ -127,10 +134,8 @@ from anesthesia_sim.app.dashboard_frame import (
     SIMULATION_STEP_S,
     SIMULATION_TICK_INTERVAL_S,
     START_LABEL,
-    Accounting,
     HaltDisposition,
     NewCaseQuestion,
-    SettingReadout,
     Transport,
     accounting,
     compared_panel_heading,
@@ -141,7 +146,6 @@ from anesthesia_sim.app.dashboard_frame import (
     refused_reset_exit,
     refused_setting_notice,
     run_label,
-    setting_readouts,
     status_word,
     substance_heading,
     timeline_panel,
@@ -155,8 +159,6 @@ from anesthesia_sim.app.playback import (
     PlaybackRate,
     playback_rate_for,
 )
-from anesthesia_sim.app.qt_agent_cost import RunAgentCost
-from anesthesia_sim.app.qt_schematic import RunSchematic
 from anesthesia_sim.app.qt_widgets import NewCaseDialog, NoticeLabel, ReadoutRow, styled_label
 from anesthesia_sim.app.run_presentation import (
     KeptValues,
@@ -168,13 +170,7 @@ from anesthesia_sim.app.run_presentation import (
     drawn_run,
     halted_run,
 )
-from anesthesia_sim.app.run_surfaces import (
-    AccountingPanel,
-    ParameterControls,
-    emphasised,
-    keep_until_destroyed,
-    panel_frame,
-)
+from anesthesia_sim.app.run_surfaces import emphasised, panel_frame
 from anesthesia_sim.app.stylesheets import (
     agent_selector_stylesheet,
     agent_surface_stylesheet,
@@ -274,26 +270,18 @@ class RunView(QWidget):
     build methods return widgets for `SimulationView` to place, because the
     dashboard decides where one run's parts sit relative to another run's.
 
-    Four surfaces may sit in an Area: the setting controls, the accounting
-    panel, the compartment schematic and the agent cost panel. Their build
-    methods build a new copy on every call, and the new copy starts from what
-    the existing copies show. Each copy is an instance of a class in
-    `app/run_surfaces.py`, `app/qt_schematic.py` or `app/qt_agent_cost.py`.
-    Every writer here writes every copy that Qt has not destroyed, so two
-    Areas can show one run (`PL-9LNF`). The other parts belong to the
-    unconditional region, which is always on screen, and stay one per run.
-    Their build methods return the same widgets on every call, laid out once
-    when the run was built. Adding a widget to a Qt layout removes it from
-    wherever it sat before. So an earlier version, which built a new container
-    on each call, took the run's live widgets off the screen. It then deleted
-    them when the container was dropped (`PL-N67T`, `PL-KZR1`).
+    Every part built here belongs to the unconditional region, which is
+    always on screen, and there is one of each per run. The build methods
+    return the same widgets on every call, laid out once when the run was
+    built. Adding a widget to a Qt layout removes it from wherever it sat
+    before. So a build method that made a new container on each call would
+    take the run's live widgets off the screen, and then delete them when
+    the container was dropped (`PL-N67T`, `PL-KZR1`).
 
-    At construction, it rejects only a first snapshot that `setting_readouts`
-    cannot draw controls for, by raising that function's `ValueError`. No
-    shipped profile produces such a snapshot (`PL-7CRY`). `dashboard_frame`
-    decides what is rejected on each tick. Which setting values the core
-    rejects, and how a raise is reported, are read from the exception and
-    never guessed (`PL-V6M0`, `PL-Y5WR`, `PL-YK2V`; see the module docstring).
+    `dashboard_frame` decides what is rejected on each tick. Which setting
+    values the core rejects, and how a raise is reported, are read from the
+    exception and never guessed (`PL-V6M0`, `PL-Y5WR`, `PL-YK2V`; see the
+    module docstring).
 
     Attributes:
         controller: The run.
@@ -545,7 +533,9 @@ class RunView(QWidget):
         # two counts differ, the kept values describe the run that was
         # discarded, and a halt withholds them (`run_presentation.halted_run`,
         # `PL-6RJ0`, adversarial review of `PL-J5GC`). Before any frame, the
-        # kept values are the ones the widgets are built with.
+        # kept readouts are the ones the readout row is built with. The
+        # schematic and the delivered agent start withheld, because nothing
+        # has been drawn yet (`PL-RNYV`, `PL-B396`).
         self._case = 0
         self._kept = KeptValues(
             self._case,
@@ -556,23 +546,6 @@ class RunView(QWidget):
                 accounting=replace(accounting(snapshot), detail=ACCOUNTING_INITIAL_DETAIL_TEXT),
             ),
         )
-
-        # The values last shown by this run's two surfaces that may sit in an
-        # Area, and the copies of each surface that Qt has not destroyed. A
-        # copy built later starts from these values, so it matches the copies
-        # already on screen. Every writer writes every copy (`PL-9LNF`).
-        self._settings_shown = setting_readouts(snapshot)
-        self._setting_controls: list[ParameterControls] = []
-        self._accounting_shown = self._kept.values.accounting
-        self._accounting_panels: list[AccountingPanel] = []
-        # The compartment schematic is written where the readouts are, so it
-        # starts withheld, as nothing has been drawn yet (`PL-RNYV`).
-        self._schematic_shown = self._kept.values.schematic
-        self._schematics: list[RunSchematic] = []
-        # The agent cost panel is written where the readouts are too, for the
-        # same reason (`PL-B396`).
-        self._delivered_shown = self._kept.values.delivered
-        self._agent_costs: list[RunAgentCost] = []
 
         # The control-change panel's heading. It is an instance label rather
         # than a widget built inside `_lay_out_control_record`, because it has
@@ -709,16 +682,20 @@ class RunView(QWidget):
 
         With a snapshot, the values are computed from it, and the banner is
         the one `dashboard_frame.notice` gives for a frame that drew. With
-        none, the run is stated from `SimulationController.record()` alone,
-        which builds no compartment value. A snapshot builds every
-        compartment's fraction, and one of the halts stated this way is the
+        none, the presentation is built from `SimulationController.record()`
+        alone, which builds no compartment value. A snapshot builds every
+        compartment's fraction, and one of the halts shown this way is the
         refusal of one of those fractions (`PL-7DJK`). The values are then
         the last frame's, or withheld if the run has started over since
         that frame (`run_presentation.halted_run`).
 
         Args:
             drawn: The snapshot that this tick's frames were drawn from, read
-                once by the caller. None when no frame can be drawn.
+                once by the caller. None when no frame is drawn: on a halt,
+                and when the dashboard hands the Views the runs at once
+                after a dial is dragged. After a drag, this run has not
+                stopped, and the Views write only its name, agent, dials and
+                values.
 
         Returns:
             The presentation. Building it writes nothing.
@@ -766,21 +743,24 @@ class RunView(QWidget):
 
         The writes keep one order. The run-state widgets come first: the
         agent colour, which is written before anything that shows it, then
-        the status word, the transport, the 1 MAC line and the banner. The
-        compartment values follow, and the dials come last. So a halt is
-        stated before any write that can fail. A frame whose compartment
-        values cannot be written halts the run, and that halt is then on
-        screen even if the same write fails again (`PL-25KS`, `PL-7DJK`,
-        `PL-85LJ`).
+        the status word, the transport, the 1 MAC line, the delivered line
+        and the banner. The readouts follow. So a halt is shown before any
+        write that can fail. A frame whose readouts cannot be written halts
+        the run, and that halt is then on screen even if the same write
+        fails again (`PL-25KS`, `PL-7DJK`, `PL-85LJ`).
 
-        The compartment values of a drawn frame are kept for a later halt
-        only once all four have been written. So a halt rewrites the last
-        frame that the panel showed in full.
+        Of the four compartment values, this panel writes only the readouts.
+        The Views write the schematic, the delivered agent and the
+        accounting panel from the same presentation (`app/views.py`). All
+        four values of a drawn frame are kept for a later halt once the
+        readouts have been written. So a halt rewrites the last frame that
+        the panel showed.
 
-        A part that could not be built (`NotBuilt`) is not written. The 1
-        MAC line is cleared in its place, so that it cannot state another
-        agent's MAC above this run's values (`PL-6RJ0`). The refusal is
-        raised once every other widget has been written.
+        A 1 MAC line that could not be built (`NotBuilt`) is cleared, so
+        that it cannot state another agent's MAC above this run's values
+        (`PL-6RJ0`). Where the dials could not be built, the delivered line
+        withholds its values (`PL-SV2Q`), and the setting controls View
+        shows no dial for this run.
 
         Before writing anything, the method stores the presentation's record
         as the one this view last wrote. The render tick draws whenever a
@@ -799,11 +779,11 @@ class RunView(QWidget):
                 nothing is written. Also if the presentation's dials could
                 not be built (`NotBuilt`), for a control with no step of
                 its resolution inside the range the run accepts (`PL-7CRY`).
-                Every other widget has been written by then.
+                Every widget has been written by then.
             Exception: Whatever else building the 1 MAC line or the dials
                 raised, such as a `TypeError` for a record whose MAC was not
-                built as `MacPercent`. Every other widget has been written
-                by then.
+                built as `MacPercent`. Every widget has been written by
+                then.
         """
 
         if presentation.run_id != self.run_id:
@@ -833,18 +813,16 @@ class RunView(QWidget):
         self._control_timeline_overflow_text.setText(statement.timeline.overflow)
         self._control_timeline_overflow_text.setHidden(not statement.timeline.overflow)
         # The 1 MAC line states the divisor of the delivered line beside it and of the
-        # cards' ×MAC numbers. It is written before the cards and the dials. So a
-        # refusal raised for either cannot leave another agent's 1 MAC on screen
-        # (`PL-6RJ0`).
+        # cards' ×MAC numbers. Both lines are written before the cards. So a refusal
+        # raised for the cards cannot leave another agent's 1 MAC on screen, or
+        # another run's delivered setting (`PL-6RJ0`, `PL-SV2Q`).
         one_mac = presentation.one_mac
         self._one_mac_text.setText("" if isinstance(one_mac, NotBuilt) else one_mac)
+        self._delivered_text.setText(presentation.delivered_line)
         self._notice_text.set_notice(presentation.notice)
 
         values = presentation.values
         self._readout_row.set_readouts(values.readouts)
-        self._show_schematic(values.schematic)
-        self._show_delivered(values.delivered)
-        self._show_accounting(values.accounting)
 
         if drawn:
             self._kept = KeptValues(presentation.case, values)
@@ -855,15 +833,7 @@ class RunView(QWidget):
         if drawn:
             self._restate_reset_question()
 
-        dials = presentation.dials
-
-        if not isinstance(dials, NotBuilt):
-            self._show_settings(dials)
-
-        if presentation.delivered_line is not None:
-            self._delivered_text.setText(presentation.delivered_line)
-
-        for part in (one_mac, dials):
+        for part in (one_mac, presentation.dials):
             if isinstance(part, NotBuilt):
                 raise part.error
 
@@ -888,8 +858,10 @@ class RunView(QWidget):
         After a coalesced slider change, what is shown beside the dial must
         be updated at once. It has to agree with the snapshot from the moment
         the setting is applied (`PL-018`). The frame itself waits for the
-        render tick (`PL-R2YM`). Before the first presentation this method
-        rewrites nothing, because the first presentation writes everything.
+        render tick (`PL-R2YM`). The values written here are kept, and the
+        dashboard hands them to every View when this run then asks for a
+        coalesced frame. Before the first presentation this method rewrites
+        nothing, because the first presentation writes everything.
 
         Args:
             snapshot: This run's state, read by `_apply_setting` after the change.
@@ -897,54 +869,6 @@ class RunView(QWidget):
 
         if self._presented:
             self.show_presentation(self.presentation(snapshot))
-
-    def _show_schematic(self, shown: SchematicShown) -> None:
-        """Show `shown` on every copy of the schematic, and keep it for copies built later.
-
-        The schematic is written at the same moment as the readouts, from the
-        same snapshot, and it is withheld whenever they are. So the schematic
-        and the readouts never show two different states of the run (`PL-RNYV`).
-        """
-
-        self._schematic_shown = shown
-
-        for schematic in self._schematics:
-            schematic.show_schematic(shown)
-
-    def _show_delivered(self, shown: DeliveredShown) -> None:
-        """Show `shown` on every copy of the agent cost panel, and keep it for copies built later.
-
-        The panel is written and withheld with the schematic, so the delivered
-        agent always comes from the same state of the run as the readouts
-        (`PL-B396`).
-        """
-
-        self._delivered_shown = shown
-
-        for agent_cost in self._agent_costs:
-            agent_cost.show_delivered(shown)
-
-    def _show_accounting(self, shown: Accounting) -> None:
-        """Write the accounting panel on every copy of it, and keep it for a copy built later."""
-
-        self._accounting_shown = shown
-
-        for accounting_panel in self._accounting_panels:
-            accounting_panel.show_accounting(shown)
-
-    def _show_settings(self, shown: tuple[SettingReadout, ...]) -> None:
-        """Write the four setting controls on every copy, and keep them for a copy built later.
-
-        A frame and a halt both pass the readouts that
-        `dashboard_frame.setting_readouts` built from the run's settings in
-        force. So a dial shows the same text whichever path wrote it
-        (`PL-85LJ`).
-        """
-
-        self._settings_shown = shown
-
-        for controls in self._setting_controls:
-            controls.show_settings(shown)
 
     def _transport_lock(self, status: RunStatus) -> Transport:
         """Return this run's transport enablement, adding two facts `dashboard_frame` cannot read.
@@ -1133,30 +1057,35 @@ class RunView(QWidget):
         A `SimulationConfigurationError` is a refusal. It means that the core rejected
         the value and changed nothing, so the run goes on and the banner says which
         setting was refused. Any other exception halts the run, because this method
-        is wrapped in the halt gate (`PL-HJKN`).
-        That includes an exception from outside the project's own exception classes,
-        because the run still cannot continue (`PL-YK2V`). An accepted setting clears
-        a refusal that is in effect. It also clears the way out that a refused Reset
-        left on the banner (`PL-M4M0`). A refused Reset leaves the run failed, and a
-        failed run refuses every dial (`PL-3B34`), so the setting that clears that
-        way out is an agent switch, which starts a new case. On a stopped run the
-        refusal is stated inside the stopped run's banner, and the dial springs back
-        to the setting the run holds.
+        is wrapped in the halt gate (`PL-HJKN`). That includes an exception from
+        outside the project's own exception classes, because the run still cannot
+        continue (`PL-YK2V`). On a stopped run the refusal is stated inside the
+        stopped run's banner, and the dial springs back to the setting the run holds.
+
+        An accepted setting clears a refusal that is in effect. It also clears the way
+        out that a refused Reset left on the banner (`PL-M4M0`). A refused Reset leaves
+        the run failed, and a failed run refuses every dial (`PL-3B34`), so the setting
+        that clears that way out is an agent switch, which starts a new case.
 
         The method leaves the frame for the render tick to draw only when two things
         are true: `coalesce` is set, and no refusal was in effect before the call or
         is in effect after it. When a setting is refused, or a refusal is cleared, the
-        dial on screen and the simulation disagree, so neither may wait for a tick
-        (`PL-R2YM`). A coalesced change still rewrites this run's own labels at once,
-        from a snapshot read after the change. If reading that snapshot raises, the
-        gate halts the run and shows the halt. Before `PL-V2HC`, the exception escaped
-        the slot after the setting had been applied. The halted run also has its dials
-        written from the settings it holds, because no frame follows to write them
-        (`PL-85LJ`). The rewrite of the labels can raise too, as `setting_readouts`
-        does for a control that can offer no setting. The gate halts the run for that
-        as well. So the status word, the transport controls and the banner show the
-        halt first. Writing the dials then raises again, and the exception escapes
-        (`PL-M3M2`).
+        dial on screen and the simulation disagree, so the frame for either must not
+        wait for a tick (`PL-R2YM`).
+
+        A coalesced change still rewrites this run's own labels at once, from a
+        snapshot read after the change. The dashboard then shows every View the runs
+        at once, with no frame, so the dials and the other panels of the run move with
+        its readouts (`SimulationView.present`). If reading that snapshot raises, the
+        gate halts the run and shows the halt (`PL-V2HC`). After the halt, the
+        dashboard draws a frame or halts every run, and either one hands every View
+        the runs. So the halted run's dials show the settings it holds (`PL-85LJ`).
+
+        The rewrite of the labels can raise too, as it does for a control that can
+        offer no setting, whose dials cannot be built. The gate halts the run for that
+        as well, so the status word, the transport controls and the banner show the
+        halt first. Showing the halt then raises the same refusal again, and the
+        exception escapes (`PL-M3M2`).
 
         Args:
             apply: The controller call that applies the setting.
@@ -1182,21 +1111,24 @@ class RunView(QWidget):
         self.presentation_requested.emit(deferred)
 
     @halt_gate
-    def _handle_adjustment_start(self) -> None:
-        """Close any open adjustment, so the changes that follow are a new act.
+    def start_adjustment(self) -> None:
+        """Close any open adjustment, so that the changes that follow start a new one.
 
-        This handler does not go through `_apply_setting`, because it records
-        nothing and changes no state. Without it, two drags of one dial would
-        be one adjustment on the record.
+        The dashboard calls this method when a View says that the reader
+        pressed one of this run's dials. It does not go through
+        `_apply_setting`, because it records nothing and changes no state.
+        Without it, two drags of one dial would be one adjustment on the
+        record.
         """
 
         self.controller.begin_control_adjustment()
 
     @halt_gate
-    def _handle_preview_request(self, control: ControlInput, value: float) -> None:
+    def request_preview(self, control: ControlInput, value: float) -> None:
         """Preview the value a held thumb stands at, or drop the preview if the run would refuse it.
 
-        During the drag, the run keeps its current setting (`ParameterSlider`).
+        The dashboard calls this method when a View says where a held dial
+        of this run stands. During the drag, the run keeps its current setting (`ParameterSlider`).
         The value is checked by building the settings it would give
         (`SimulationController.preview_settings`). The run refuses a value when
         the run has stopped or the value is outside the core's range. A value
@@ -1224,10 +1156,11 @@ class RunView(QWidget):
         self.presentation_requested.emit(True)
 
     @halt_gate
-    def _handle_preview_end(self) -> None:
+    def end_preview(self) -> None:
         """Drop the preview when the held thumb is released, and redraw at once.
 
-        A preview that outlived the drag could be mistaken for a run that
+        The dashboard calls this method when a View says that a held dial of
+        this run was released. A preview that outlived the drag could be mistaken for a run that
         happened, so it is gone from the frame drawn at the release. The slider
         has applied the released value by then (`ParameterSlider`), so that
         frame shows the run under its new setting (`PL-5B1N`).
@@ -1237,8 +1170,11 @@ class RunView(QWidget):
         self.presentation_requested.emit(False)
 
     @halt_gate
-    def _handle_setting_request(self, control: ControlInput, value: float) -> None:
-        """Apply the value a slider in any copy of the setting controls was moved to."""
+    def request_setting(self, control: ControlInput, value: float) -> None:
+        """Apply the value that one of this run's dials was moved to, in whichever View holds it.
+
+        The dashboard calls this method when a View asks for the change.
+        """
 
         handlers: Mapping[ControlInput, Callable[[float], None]] = {
             ControlInput.FRESH_GAS_FLOW: self._handle_fresh_gas_flow_change,
@@ -1313,7 +1249,7 @@ class RunView(QWidget):
         It asks only when the dashboard says that this Reset would discard
         work in another run (`ask_before_reset`). Starting this run over needs
         no question, because pressing its own Reset is the request to discard
-        it (`docs/MODEL.md` § "Agent-change behavior").
+        it (`docs/INTERFACE.md` § "Agent-change behavior").
         """
 
         question = None if self._reset_question is None else self._reset_question()
@@ -1418,17 +1354,35 @@ class RunView(QWidget):
         the new exception and halted the run a second time (blind review of
         `PL-HJKN`).
 
+        **A Reset that raises after it has begun to clear the run still starts
+        the run over** (`PL-MVCF`). The run on screen is then gone, so the
+        start-over is recorded before the exception reaches the halt gate,
+        `case_restarted` is emitted, and the halt withholds every compartment
+        value. The controller's `runs_discarded` count says whether clearing
+        began. That halt is a failure, not the refusal above, so the banner
+        names the failure and Reset as the way out, as it does after a failed
+        step. A refused-setting sentence about the discarded run is cleared
+        with it (blind review of `PL-MVCF`).
+
         Raises:
             Exception: What `SimulationController.reset()` raised, once the exit
                 text is chosen.
         """
 
+        discarded = self.controller.runs_discarded
+
         try:
             self.controller.reset()
         except Exception as error:
-            self._refused_reset_notice = refused_reset_exit(
-                error, recorded_failure_reason=self.controller.status().failure_reason
-            )
+            if self.controller.runs_discarded == discarded:
+                self._refused_reset_notice = refused_reset_exit(
+                    error, recorded_failure_reason=self.controller.status().failure_reason
+                )
+            else:
+                self._rejected_setting_notice = None
+                self._refused_reset_notice = None
+                self._announce_the_start_over()
+
             raise
 
         self._rejected_setting_notice = None
@@ -1534,14 +1488,23 @@ class RunView(QWidget):
         call, after `set_agent` returns and before the frame is requested.
         So the dashboard drops everything that belonged to the old case
         before it draws, including a refusal on the branch panel
-        (`PL-BM6X`). A refused switch changes nothing and emits nothing.
+        (`PL-BM6X`). A refused switch changes nothing and emits nothing. A
+        switch that raised after it began to replace the run has discarded
+        the run on screen, so it emits `case_restarted` too (`PL-MVCF`).
         """
 
         self.snapshot()
 
         def switch() -> None:
-            self.controller.set_agent(agent_id)
-            self._announce_the_start_over()
+            discarded = self.controller.runs_discarded
+
+            try:
+                self.controller.set_agent(agent_id)
+            finally:
+                # A switch that raised after it began to rebuild the run has
+                # still discarded the run on screen (`PL-MVCF`).
+                if self.controller.runs_discarded != discarded:
+                    self._announce_the_start_over()
 
         self._apply_setting(switch)
 
@@ -1792,30 +1755,30 @@ class RunView(QWidget):
         return row
 
     def set_run_name(self, name: str | None) -> None:
-        """Name this view in its own header, its readouts and both its record panels, or not at all.
+        """Name this view in its own header, its readouts and its control-change panel, or not.
 
         The dashboard decides the name by applying `dashboard_frame.run_label`
         to `run_id`. So this panel and the chart's legend call one run by the
         same name. A legend entry reading "Run 2" identifies a curve only if
         something that holds that run's settings also says "Run 2".
 
-        **This method is the one writer of this run's name.** That is why the
-        two sidebar headings are written here rather than in `show_presentation`. What
-        a run is called changes when the dashboard's set of runs changes, and
-        at no other time. `SimulationView._place_run` renames every run the
-        moment a branch is placed. So the headings name the run on the frame
-        on which the branch appears, before any chart frame is drawn
-        (`PL-C3GS`).
+        **This method is the one writer of this run's name on its own
+        panel.** That is why the control-change heading is written here
+        rather than in `show_presentation`. What a run is called changes
+        when the dashboard's set of runs changes, and at no other time.
+        `SimulationView._place_run` renames every run the moment a branch is
+        placed. So the heading names the run on the frame on which the
+        branch appears, before any chart frame is drawn (`PL-C3GS`).
 
-        The name is *stored* here as well as drawn, because the notice
-        banner is named from it too (`presentation`). That banner also sits
-        in a column that the runs share. It is written on a path that has no
-        frame to read a run count from (`PL-TSZM`). Unlike the headings, the
-        banner is not written here, because something else already writes
-        it. `show_presentation` rewrites every banner on the presentation that a fork
-        triggers, and the Reset that drops a branch clears the notice
-        outright. So a write here would make no difference that any scenario
-        could detect. Nothing else writes the headings.
+        The name is *stored* here as well as drawn, because every
+        presentation carries it (`presentation`). The notice banner is named
+        from it. That banner sits in a column that the runs share, and it is
+        written on a path that has no frame to read a run count from
+        (`PL-TSZM`). The Views name the accounting panel, the schematic and
+        the agent cost panel from it too, on the tick that follows the
+        change to the run set. None of these is written here, because
+        `show_presentation` and the Views write them from the presentation
+        that the change to the run set brings.
 
         Args:
             name: What to call the view, or `None` for no name. A lone run
@@ -1827,16 +1790,6 @@ class RunView(QWidget):
         self._run_name_text.setText(name or "")
         self._run_name_text.setHidden(name is None)
         self._readout_row.set_run_name(name)
-
-        for accounting_panel in self._accounting_panels:
-            accounting_panel.show_heading(compared_panel_heading(ACCOUNTING_HEADING, name))
-
-        for schematic in self._schematics:
-            schematic.show_name(name)
-
-        for agent_cost in self._agent_costs:
-            agent_cost.show_name(name)
-
         self._control_timeline_heading_text.setText(
             compared_panel_heading(CONTROL_TIMELINE_HEADING, name)
         )
@@ -1860,7 +1813,7 @@ class RunView(QWidget):
     def show_readings_of(self, other: RunView) -> tuple[QWidget, ...]:
         """Show `other`'s readouts in this run's panels, as one block for both runs.
 
-        `docs/MODEL.md` § "Minimum displayed outputs" pairs two runs' values
+        `docs/INTERFACE.md` § "Minimum displayed outputs" pairs two runs' values
         under one compartment name. So comparing them means reading one row
         rather than two (`PL-F2YS`). `other` keeps writing its own values, and
         only the place where they are drawn changes. The other run's own row
@@ -1907,68 +1860,11 @@ class RunView(QWidget):
 
         return section
 
-    def build_parameter_controls(self) -> ParameterControls:
-        """A new copy of the four setting controls in a row, in `PARAMETER_CONTROLS` order.
-
-        Every call builds another copy showing the settings in force, and
-        every copy forwards a moved slider to this run (`PL-9LNF`).
-        """
-
-        controls = ParameterControls(self._settings_shown, parent=self)
-        controls.adjustment_started.connect(self._handle_adjustment_start)
-        controls.setting_requested.connect(self._handle_setting_request)
-        controls.preview_requested.connect(self._handle_preview_request)
-        controls.preview_ended.connect(self._handle_preview_end)
-
-        return keep_until_destroyed(self._setting_controls, controls)
-
-    def build_accounting_panel(self) -> AccountingPanel:
-        """A new copy of this run's mass-balance panel, for the sidebar beside the charts.
-
-        `docs/MODEL.md` requires it to be reachable rather than always
-        visible, so it is the one record of a run that may sit in a surface a
-        reader can close (`PL-50PZ`). Every call builds another copy showing
-        what the copies already built show (`PL-9LNF`).
-        """
-
-        return keep_until_destroyed(
-            self._accounting_panels,
-            AccountingPanel(
-                self._accounting_shown,
-                compared_panel_heading(ACCOUNTING_HEADING, self._run_name),
-                parent=self,
-            ),
-        )
-
-    def build_compartment_schematic(self) -> RunSchematic:
-        """Return a new copy of this run's compartment schematic, for any Area that shows the View.
-
-        Each call builds another copy. The new copy shows what the copies built
-        earlier show, and it is named the same way as this run's own panels
-        (`PL-9LNF`, `PL-RNYV`).
-        """
-
-        return keep_until_destroyed(
-            self._schematics, RunSchematic(self._schematic_shown, self._run_name, parent=self)
-        )
-
-    def build_agent_cost(self) -> RunAgentCost:
-        """Return a new copy of this run's agent cost panel, for any Area that shows the View.
-
-        Each call builds another copy. The new copy shows what the copies built
-        earlier show, and it is named the same way as this run's own panels
-        (`PL-9LNF`, `PL-B396`). The View that holds the copy sets its unit.
-        """
-
-        return keep_until_destroyed(
-            self._agent_costs, RunAgentCost(self._delivered_shown, self._run_name, parent=self)
-        )
-
     def build_control_record(self) -> QWidget:
         """This run's control-change panel, for the unconditional region.
 
         The record of what was changed during the run is unconditional
-        (`docs/MODEL.md` § "Minimum displayed outputs"), so it is never
+        (`docs/INTERFACE.md` § "Minimum displayed outputs"), so it is never
         placed in a surface a reader can close (`PL-NWTM`).
         """
 

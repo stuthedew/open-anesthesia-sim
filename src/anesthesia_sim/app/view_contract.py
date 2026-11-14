@@ -4,9 +4,10 @@ An Area holds one View, and any View can occupy any Area (`ROADMAP.md`
 § "v0.6.0 - the layout is the reader's", Required scope entry 5). That works
 only if every View presents the same small contract. The adapter,
 `app/area_layout.py`, can then build, draw and save any View without knowing
-which kind it holds. This module is that contract. `PL-TH35` designed it, and
-the project owner ratified each answer on 2026-09-27. The question numbers
-below refer to that item's questions.
+which kind it holds. This module is that contract. It was designed in an item
+(`PL-TH35`) as answers to numbered questions, and the project owner ratified
+each answer on 2026-09-27. The question numbers below, such as Q2, refer to
+those questions.
 
 **What a View is.** A View is a `QWidget` that satisfies the `View` protocol
 below. Its registry entry's factory builds it from a `ViewContext`
@@ -27,7 +28,28 @@ built any number of times against the same runs (Q8). A View may hold state
 of its own, such as how it draws. State that the rest of the dashboard draws
 from, such as the compartment selection, is shown to the View in each tick.
 The View asks for a change to it through `ViewContext.requests`, and never
-holds the value itself.
+holds the value itself. A request to change a run's setting names the run by
+its `run_id` (`ViewRequests`).
+
+**A tick names every displayed run, with a frame or without one** (`PL-RF2S`).
+`ViewTick.runs` holds one `RunPresentation` for each displayed run
+(`app/run_presentation.py`). It is everything that the run's panel shows at
+that moment. A View that shows a run's values builds its own widget for each
+run and writes the whole widget from that run's presentation on every tick. It
+finds a run's widget by `RunPresentation.run_id`, and it deletes the widget of
+a run that the tick no longer names.
+
+The dashboard also hands every View a tick when no frame can be drawn: on a
+halt, and at once after a dial is dragged. That tick carries no frame and no
+snapshots. Its presentations hold the values of the last frame that drew, or
+withhold them when the run has started over since that frame. A chart draws
+nothing from such a tick, and only drops its lines for the runs that the tick
+no longer names.
+
+Every View is handed a tick with no frame, even when a View before it in
+reading order raises on that tick. The first exception is raised once the last
+View has been handed the tick. A tick with a frame stops at the first View that
+raises, and the halt that follows hands every View a tick with no frame.
 
 **A chart's time window is its own** (project owner, 2026-10-19, ratified,
 over one shared window saved per Workspace; `PL-L59K`). Q2 and Q7 made the
@@ -50,19 +72,21 @@ every View in `ViewTick.preferences`, and a View asks for a change through
 **Each View that shows a panel of the case gets a copy of its own**
 (`PL-9YPR`). The bookmarks and the branch control belong to the case, and no
 run owns them. A View that shows one asks `ViewTick.case` for its copy on its
-first tick. The dashboard then writes every live copy on each frame, as a run
-writes the copies of its own surfaces. So two Areas can show the bookmarks at
-once, and neither View holds the case.
+first tick. That tick can be one with no frame, which carries the case as a
+tick with a frame does. The dashboard then writes every live copy on each
+frame, and restates it on a halt. So two Areas can show the bookmarks at once,
+and neither View holds the case.
 
 **What a View is drawn from** (Q3). Each View states which frame it draws,
 through `View.frame_request`. The request gives the window and the plot width
 that the frame must be sampled for. The dashboard assembles one `ChartFrame`
 per distinct window on each tick, sampled for the widest plot that asks for
-that window. So no plot draws a chord, the straight line between two samples,
-wider than a pixel (`PL-GS3R`). Two charts at the same window also draw the
-same instants (`PL-9LNF`). The adapter hands each View the frame for its own
-window in its `ViewTick`. A View that draws no frame returns None from
-`frame_request`, and its tick carries no frame.
+that window. A chord is the straight line between two samples. Sampling for
+the widest plot means that no plot draws a chord wider than a pixel
+(`PL-GS3R`). Two charts at the same window also draw the same instants
+(`PL-9LNF`). The adapter hands each View the frame for its own window in its
+`ViewTick`. A View that draws no frame returns None from `frame_request`, and
+its tick carries no frame.
 
 **What a View saves** (Q4). `View.save_state` returns the View's own drawing
 settings as a JSON-shaped mapping that carries `STATE_VERSION_KEY`. The View
@@ -112,14 +136,14 @@ from typing import Final, Protocol, runtime_checkable
 from anesthesia_sim.app.chart_frame import ChartFrame
 from anesthesia_sim.app.chart_time_base import ChartTimeBase
 from anesthesia_sim.app.compartment_selection import CompartmentSelection
+from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.controller import SimulationSnapshot
 from anesthesia_sim.app.formatting import AgentAmountUnit
 from anesthesia_sim.app.preferences import AgentPrice, Preferences
-from anesthesia_sim.app.qt_agent_cost import RunAgentCost
-from anesthesia_sim.app.qt_schematic import RunSchematic
 from anesthesia_sim.app.qt_widgets import BookmarksPanel, ForkPanel
+from anesthesia_sim.app.run_presentation import RunPresentation
 from anesthesia_sim.app.run_series import RecordedQuantity
-from anesthesia_sim.app.run_surfaces import AccountingPanel, ParameterControls
+from anesthesia_sim.layout.run_identity import RunId
 
 __all__ = [
     "STATE_VERSION_KEY",
@@ -127,7 +151,6 @@ __all__ = [
     "CaseSurfaces",
     "FrameRequest",
     "PreferencesInForce",
-    "RunSurfaces",
     "SavedState",
     "View",
     "ViewContext",
@@ -149,24 +172,6 @@ STATE_VERSION_KEY: Final = "state_version"
 UNREADABLE_STATE_TEXT: Final = (
     "This View's saved settings could not be read, so it shows its default settings."
 )
-
-
-class RunSurfaces(Protocol):
-    """The parts of one displayed run that a View may show, each built as a new copy.
-
-    `RunView` satisfies this protocol. Each method builds a new copy that
-    shows what the run shows now. From then on, the run updates every live
-    copy (`app/run_surfaces.py`, `PL-9LNF`). A View holds the copies and
-    never the run's controller.
-    """
-
-    def build_parameter_controls(self) -> ParameterControls: ...
-
-    def build_accounting_panel(self) -> AccountingPanel: ...
-
-    def build_compartment_schematic(self) -> RunSchematic: ...
-
-    def build_agent_cost(self) -> RunAgentCost: ...
 
 
 class CaseSurfaces(Protocol):
@@ -206,12 +211,24 @@ class ViewRequests:
             given one, in the reader's preferences.
         agent_price: Asks for the reader's price for the given agent to become
             the given one, or to be removed when it is None.
+        adjustment_start: Says that the reader pressed a dial of the given
+            run, so the changes that follow are one new adjustment.
+        setting: Asks for the given run's setting on the given control to
+            become the given value. The run applies it or refuses it, and
+            the next tick shows the setting in force.
+        preview: Says where a held dial of the given run stands, so the
+            charts can preview that value (`PL-5B1N`).
+        preview_end: Says that the held dial of the given run was released.
     """
 
     frame: Callable[[], None]
     compartment: Callable[[RecordedQuantity, bool], None]
     agent_cost_unit: Callable[[AgentAmountUnit], None]
     agent_price: Callable[[str, AgentPrice | None], None]
+    adjustment_start: Callable[[RunId], None]
+    setting: Callable[[RunId, ControlInput, float], None]
+    preview: Callable[[RunId, ControlInput, float], None]
+    preview_end: Callable[[RunId], None]
 
 
 @dataclass(frozen=True, slots=True)
@@ -257,15 +274,19 @@ class PreferencesInForce:
 
 @dataclass(frozen=True, slots=True)
 class ViewTick:
-    """What one View is shown on one frame.
+    """What one View is shown on one tick, whether or not a frame was drawn for it.
 
     Attributes:
         frame: The chart frame assembled for the window this View asked for
             through `View.frame_request`, over every displayed run. None for
-            a View that asked for none.
+            a View that asked for none, and for every View on a tick that no
+            frame was drawn for.
         snapshots: Each displayed run's snapshot, in drawing order. Every
-            frame of the tick was assembled from these same snapshots.
-        runs: Each displayed run's surfaces, in the same order.
+            frame of the tick was assembled from these same snapshots. Empty
+            on a tick that no frame was drawn for.
+        runs: What each displayed run's panel shows on this tick, in drawing
+            order. On a tick with a frame, each was built from that run's
+            snapshot in `snapshots`.
         selection: The compartment selection every frame was assembled from.
         preferences: The reader's preferences, and any notice about them.
         case: The displayed case's panels, which no run owns.
@@ -273,7 +294,7 @@ class ViewTick:
 
     frame: ChartFrame | None
     snapshots: tuple[SimulationSnapshot, ...]
-    runs: tuple[RunSurfaces, ...]
+    runs: tuple[RunPresentation, ...]
     selection: CompartmentSelection
     preferences: PreferencesInForce
     case: CaseSurfaces
@@ -288,12 +309,16 @@ class View(Protocol):
     """
 
     def refresh(self, tick: ViewTick) -> None:
-        """Draw `tick`. The adapter calls this method on every frame the dashboard draws.
+        """Draw `tick`.
+
+        The adapter calls this method on every frame the dashboard draws. It
+        also calls it with a tick that carries no frame, when the dashboard
+        shows the runs without drawing one.
 
         Raises:
-            Exception: Whatever drawing the frame raises. The dashboard then
-                halts every run, because a failure in the shared drawing path
-                belongs to no single run.
+            Exception: Whatever drawing the tick raises. On a tick with a
+                frame, the dashboard then halts every run, because a failure
+                in the shared drawing path belongs to no single run.
         """
         ...
 
@@ -301,10 +326,10 @@ class View(Protocol):
     def owes_a_frame(self) -> bool:
         """Whether this View needs a frame although nothing in the runs changed.
 
-        It is True before the View's first frame. It is also True for a chart
-        that is now wider than the width its last frame was sampled for
-        (`PL-9LNF`), and for a chart whose window has changed since it last
-        drew (`PL-L59K`).
+        It is True before the View's first tick, or for a chart before its
+        first frame. It is also True for a chart that is now wider than the
+        width its last frame was sampled for (`PL-9LNF`), and for a chart
+        whose window has changed since it last drew (`PL-L59K`).
         """
         ...
 

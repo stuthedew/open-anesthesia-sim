@@ -72,7 +72,7 @@ from anesthesia_sim.core.validation import require_positive_finite
 # displayed compartment by at most 6.7e-3 pp, with desflurane the worst agent.
 # That manoeuvre is dialling from off to 1 MAC at the reference adult's own
 # flows. One standard deviation of a single measured partition coefficient
-# displaces a compartment by 9e-4 to 6.8e-2 pp (Yasuda 1989; see docs/MODEL.md
+# displaces a compartment by 9e-4 to 6.8e-2 pp (Yasuda 1989; see docs/INTERFACE.md
 # "Displayed precision"). So an ordinary control action is timed well inside
 # the model's own parameter uncertainty. That is the criterion, and no count
 # of display decimals enters it.

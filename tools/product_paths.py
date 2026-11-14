@@ -10,8 +10,9 @@ typing the path again.
 The package's import name already has a home, `docket.arming.PRODUCT_PACKAGE`,
 which the merge gate reads to tell a simulator test from a tooling test. This
 module reads it from there rather than typing it a second time. The same holds
-for the source tree, the test tree and `docs/MODEL.md`, whose paths the gate's
-read lists spell: `doc_check`, `import_boundary_check`, `new_prose`,
+for the source tree, the test tree, `docs/MODEL.md` and the other documents of
+the specification (`SPECIFICATION_DOCS`), whose paths the gate's read lists
+spell: `doc_check`, `import_boundary_check`, `new_prose`,
 `restated_constants` and `workflow_paths_check` each typed one of them again
 under a name of their own, which `fact_home_check` now refuses (`PL-S08Z`). `docket`
 cannot import `tools/`, so the gate's own path tuples spell the data tree in
@@ -28,8 +29,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "subprojects" / "docket" / "src"))
 
+from docket.arming import INTERFACE_DOC as INTERFACE_DOC
 from docket.arming import MODEL_DOC as MODEL_DOC
 from docket.arming import PRODUCT_PACKAGE, SOURCE
+from docket.arming import SPECIFICATION_DOCS as SPECIFICATION_DOCS
 from docket.arming import TESTS as TESTS
 
 #: The simulator package's import name.

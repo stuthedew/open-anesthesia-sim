@@ -63,7 +63,11 @@ from anesthesia_sim.app.controller import (
     RunStatus,
     SimulationSnapshot,
 )
-from anesthesia_sim.app.display_units import DisplayUnit
+from anesthesia_sim.app.display_units import (
+    BODY_STORES_CONDITION_LINES,
+    REFERENCE_CONDITION_LABEL,
+    DisplayUnit,
+)
 from anesthesia_sim.app.formatting import (
     CONCENTRATION_DISPLAY_DECIMALS,
     CONCENTRATION_DISPLAY_RESOLUTION_PERCENT,
@@ -118,8 +122,9 @@ from anesthesia_sim.layout.run_identity import RunId
 # equals the ceiling is a fact about this configuration, not an identity. So
 # the two are named separately, and
 # `test_the_shipped_step_is_within_the_maximum_simulation_step` checks the
-# relation. `docs/MODEL.md` § "Supported simulation step" and § "Displayed
-# precision" give the two derivations separately (`PL-X9KD`).
+# relation. `docs/MODEL.md` § "Supported simulation step" and
+# `docs/INTERFACE.md` § "Displayed precision" give the two derivations
+# separately (`PL-X9KD`).
 SIMULATION_STEP_S: Final = SimulationStep(0.1)
 # How often the simulation timer fires, in *real* seconds. It is numerically
 # equal to the step but means something different. The playback multiplier is
@@ -198,7 +203,7 @@ STATUS_PAUSED_TEXT: Final = "Paused"
 # row reads "reached" from its first crossing, so it does not change on a later
 # one either. Without this word, a run that a mark stopped during a comparison
 # looked like a pause that nobody made. The word starts with "Paused", because
-# the run is paused and Start resumes it (`docs/MODEL.md` § "Halting on a marked
+# the run is paused and Start resumes it (`docs/INTERFACE.md` § "Halting on a marked
 # crossing"). It reuses the fork label's ratified "stopped on your mark", which
 # names no mark and no instant. A mark inside a step halts the run at the step's
 # end, so a named instant could be wrong, and one step can cross several marks
@@ -435,7 +440,7 @@ MARK_LABEL_JOINER: Final = " – "
 # `CLAUDE.md`'s safety-critical standard is what rules out that
 # plausible-looking answer. `NOT_REACHED_WITHIN_CAP` names the run length
 # rather than a number of hours, so the figure is written in one place only:
-# `core/supported_ranges.py` and `docs/MODEL.md` § "Supported run length".
+# `core/supported_ranges.py` and `docs/INTERFACE.md` § "Supported run length".
 #
 # **The failed run's words name the failure, for the same reason that the
 # cap's words name the cap** (`PL-N3N5`). Each says what the mark went
@@ -517,7 +522,7 @@ MARK_ATTRIBUTION_TEMPLATE: Final = "{run} {said}"
 # sentences, which is the form in which `.claude/rules/ui-reader.md` asks a
 # specialist reader's screen to carry its meaning. "Compartment" and "Height"
 # say what the control sets. What a height on a given compartment does and
-# does not assert is stated in `docs/MODEL.md` § "MAC multiples as a display
+# does not assert is stated in `docs/INTERFACE.md` § "MAC multiples as a display
 # unit", not in a paragraph in a dialog.
 # The branch control's words follow the marks' words, for the same reason.
 # Both offer instants of the *case* rather than of either run, so both are
@@ -840,7 +845,20 @@ ACCOUNTING_REJECTED_DETAIL_TEXT: Final = (
 # during a halt when no frame has been drawn since the run started over
 # (`WITHHELD_ACCOUNTING`). The wording is a placeholder.
 ACCOUNTING_WITHHELD_DETAIL_TEXT: Final = "No frame has been drawn since the run started over."
-ACCOUNTING_UNIT_CAPTION: Final = "Litres of equivalent pure agent gas"
+# The unit of every amount on the accounting panel, with the temperature and
+# pressure the amounts are stated at (`PL-HQPF`). The amounts held in the body
+# are at body temperature, and are stated at this condition so that the panel's
+# amounts add up (`docs/MODEL.md` § "Known limitations"). So the last two lines
+# say that the stored amount reads high. The caption is four short lines rather
+# than wrapped text, because Qt leaves a wrapped label's extra lines out of the
+# panel's minimum size. Each line fits in the width the panel had before the
+# condition was added, so the panel's column, and the plot beside it, keep
+# their width. The wording is a placeholder, but the condition
+# and its effect on the stored amount must be on screen.
+ACCOUNTING_UNIT_CAPTION: Final = (
+    f"Litres of equivalent pure agent gas,\nat {REFERENCE_CONDITION_LABEL}.\n"
+    f"{BODY_STORES_CONDITION_LINES}"
+)
 #: The names of the panel's five amount lines, in the order the panel shows them.
 ACCOUNTING_AMOUNT_NAMES: Final = (
     "Delivered",
@@ -895,12 +913,12 @@ MAC_AWAKE_BAND_LEGEND_LABEL: Final = "MAC-awake (population, ±1 SD; read agains
 #: legend's semantics label, so the port loses nothing a screen reader had.
 TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE: Final = "Draw the {label} compartment on the chart"
 #: A compartment's legend words: its name and its line style, so the style can
-#: be read without looking at the plot (`docs/MODEL.md` § "The six
+#: be read without looking at the plot (`docs/INTERFACE.md` § "The six
 #: compartment traces"). It is one template rather than an f-string at each
 #: legend row. The compare-mode row has to say the same words as the checkbox
 #: above it, or the two would describe one curve differently.
 TRACE_LEGEND_LABEL_TEMPLATE: Final = "{label} ({line_style})"
-#: What a run is called in text. `docs/MODEL.md` § "Minimum displayed outputs"
+#: What a run is called in text. `docs/INTERFACE.md` § "Minimum displayed outputs"
 #: requires the run to be named in text, not shown only by colour or by
 #: position. Colour is already used for the compartment, and position alone
 #: fails a reader who has looked away and back.
@@ -972,7 +990,7 @@ PREVIEW_LABEL_SUBJECT: Final = "Preview"
 #: Shown while the two-compartment cap is keeping traces off the chart. It
 #: names the limit, what the limit removed, and where those values can still
 #: be read. The last part matters because
-#: `docs/MODEL.md` § "Minimum displayed outputs" makes the readouts what keeps
+#: `docs/INTERFACE.md` § "Minimum displayed outputs" makes the readouts what keeps
 #: a capped compartment on the display.
 #: A reader told only that a trace is gone has been told half of the story.
 COMPARED_CAP_NOTICE_TEMPLATE: Final = (
@@ -1105,9 +1123,10 @@ class ReadoutPanel:
 
 
 # The seven panels in row order. The gloss is "end-tidal-equivalent", never
-# "end-tidal". `docs/MODEL.md` § "Minimum displayed outputs" requires the
+# "end-tidal". `docs/INTERFACE.md` § "Minimum displayed outputs" requires the
 # hedge, because dead space, airway sampling delay, shunt and V/Q mismatch are
-# all listed in its "Known limitations". So this value is not end-tidal in any
+# all listed in `docs/MODEL.md` § "Known limitations". So this value is not
+# end-tidal in any
 # patient. End-tidal is the name of a *measurement*, and it is the one a
 # clinician would most readily compare this readout with. Do not shorten
 # either gloss to fit a layout.
@@ -1253,6 +1272,17 @@ WITHHELD_MAC_MULTIPLE_TEXT: Final = f"\u2014{MAC_UNIT_SUFFIX}"
 #: of `PL-J5GC`, the clock showed the discarded run's instant beside a run standing
 #: at its opening.
 WITHHELD_ELAPSED_TIME_TEXT: Final = "\u2014"
+#: The delivered line while a run's setting controls cannot be built. Without it,
+#: the line would keep the setting of the run before a Reset or an agent change,
+#: beside a 1 MAC line that already names the new agent (`PL-SV2Q`). Each value
+#: keeps its unit, so the line still says which values are missing.
+WITHHELD_DELIVERED_LINE_TEXT: Final = DELIVERED_LINE_TEMPLATE.format(
+    value=WITHHELD_CONCENTRATION_TEXT, secondary=WITHHELD_MAC_MULTIPLE_TEXT
+)
+#: What the setting controls View shows for a run whose setting controls cannot
+#: be built, in place of that run's four dials (`PL-SV2Q`). The wording is a
+#: placeholder.
+SETTING_CONTROLS_NOT_SHOWN_TEXT: Final = "This run's setting controls cannot be shown."
 #: The strings whose width each readout column reserves, in `READOUT_PANELS`
 #: order. The clock column reserves its widest elapsed form and its playback
 #: line. Every compartment column reserves the two strings above. Each column
@@ -1469,7 +1499,7 @@ class SettingReadout:
 
 
 # The three flows whose opening value a profile states. Each entry gives the
-# profile that states it and the `docs/MODEL.md` section that gives its range.
+# profile that states it and the `docs/INTERFACE.md` section that gives its range.
 # Every flow that a slider sets is one of the slider's steps. So only an
 # opening value can fall off the slider's grid, and `setting_readouts` rejects
 # one that does (`PL-1KQ9`, `PL-96SQ`). The delivered dial is not listed here.
@@ -1559,7 +1589,7 @@ def setting_readouts(settings: RunSettings) -> tuple[SettingReadout, ...]:
             raise ValueError(
                 f"{name} can offer no setting: no {slider_value(1, control.decimals)} "
                 f"{control.unit} step lies inside {accepted_minimum} to {accepted_maximum} "
-                f'{control.unit}, the range the run accepts (docs/MODEL.md, "Supported '
+                f'{control.unit}, the range the run accepts (docs/INTERFACE.md, "Supported '
                 'input ranges")'
             )
 
@@ -1573,7 +1603,7 @@ def setting_readouts(settings: RunSettings) -> tuple[SettingReadout, ...]:
                 f"{name} is {value} {control.unit}, which the slider cannot show: it offers "
                 f"{slider_value(1, control.decimals)} {control.unit} steps from {minimum} to "
                 f"{maximum} {control.unit}, so a {profile} must open the run on one of "
-                f'those steps (docs/MODEL.md, "{section}")'
+                f'those steps (docs/INTERFACE.md, "{section}")'
             )
 
         readouts.append(
@@ -2397,7 +2427,7 @@ def _stated_mac_target(target: MacTarget) -> str:
     Every drawn row gives the compartment, then the height, then the name,
     because `bookmark_panel` builds every row from this function. The
     compartment is on the row rather than in a heading above it, because a
-    target means something different on each compartment. `docs/MODEL.md`
+    target means something different on each compartment. `docs/INTERFACE.md`
     § "MAC multiples as a display unit" states that a multiple of 1 MAC has its
     conventional meaning only on the alveolar compartment, and is a
     partial-pressure ratio everywhere else. So a row naming the height alone
@@ -3540,7 +3570,7 @@ def branch_at_stake(
 def trunk_reset_question(trunk_name: str, branches: Sequence[BranchAtStake]) -> NewCaseQuestion:
     """Return the confirmation asked before the trunk's Reset discards branches holding work.
 
-    `docs/MODEL.md` § "Agent-change behavior" requires it. That section exempts
+    `docs/INTERFACE.md` § "Agent-change behavior" requires it. That section exempts
     Reset from its confirmation only for the run whose button was pressed, and
     a branch is another run (`PL-W5WX`).
 

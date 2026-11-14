@@ -19,7 +19,7 @@ repository into two standards and names the paths on each side. This is the
 apparatus half, and it loads only on those paths.
 
 That scoping is the point rather than a convenience. Applied to `src/`,
-`tests/`, `docs/MODEL.md` or `README.md`, every sentence below is wrong — they
+`tests/`, `docs/MODEL.md`, `docs/INTERFACE.md` or `README.md`, every sentence below is wrong — they
 are held to the opposite standard, and one that argues for *more* investment,
 not less. While this text was resident a session quoted it as the bar for
 comment quality in `src/` and reached the wrong answer confidently, citing the
