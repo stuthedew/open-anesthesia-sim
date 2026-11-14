@@ -4,8 +4,8 @@ These files reach every session at launch, before a prompt has been read and
 before any tool has run: `CLAUDE.md`, `.claude/rules/instruction-writing.md`,
 `.claude/rules/expert-review.md` and `.claude/rules/plain-writing.md`, the
 three rules carrying no `paths:` frontmatter and so loading unconditionally. `make check` prints what they
-total. Claude Code documents both facts — "Rules without a `paths` field are loaded unconditionally
-and apply to all files", and "target under 200 lines per CLAUDE.md file. Longer
+total. Claude Code documents both facts — "Rules without `paths` frontmatter are loaded at
+launch with the same priority as `.claude/CLAUDE.md`", and "target under 200 lines per CLAUDE.md file. Longer
 files consume more context and reduce adherence"
 ([memory](https://code.claude.com/docs/en/memory)).
 
