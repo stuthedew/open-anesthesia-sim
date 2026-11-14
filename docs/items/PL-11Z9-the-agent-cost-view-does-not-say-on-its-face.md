@@ -3,12 +3,14 @@ id: PL-11Z9
 title: The agent cost View does not say on its face that its figures are modelled: 'Liquid used by the vaporizer' can read as a measured volume, and v0.7.0's definition of done asks the modelled label only of the schematic
 priority: P1
 effort: S
-status: ready
+status: done
 classes: safety, defect
-touches: src/anesthesia_sim/app/agent_cost.py, src/anesthesia_sim/app/qt_agent_cost.py, tests/unit/test_agent_cost.py, ROADMAP.md
+touches: src/anesthesia_sim/app/agent_cost.py, tests/integration/test_agent_cost_view.py, ROADMAP.md
 added: 2026-11-07
+closed: 2026-11-11
+pr: 2136
 payoff: a learner reading the agent cost View is told on its face that the amount and the cost are modelled, so a prediction is not read as what a real vaporizer used
-verify: grep -q 'def test_the_cost_view_says_its_amount_and_cost_are_modelled' tests/unit/test_agent_cost.py
+verify: grep -q 'def test_the_cost_view_says_its_amount_and_cost_are_modelled' tests/integration/test_agent_cost_view.py
 reenters: PL-B396
 ---
 
@@ -29,3 +31,5 @@ reenters: PL-B396
 **Generator check.** A re-entry of `PL-B396`, closed 2026-11-02, within 30 days, whose Done-when named this label. The fact is which displayed values say on their face that they are modelled; no head states it. Work it with `PL-RJN9`, which changes the same captions.
 
 **Gate, 2026-11-09.** The problem is new: `src/anesthesia_sim/app/agent_cost.py` did not exist at `817a4d88`, the commit that froze Gate 3, and arrived with `PL-B396` on 2026-11-02. The hazard is live: the View shows the unlabelled figure today, so the item cannot be deferred and joins v0.7.0's frozen list under § "Captures after the cut". `bin/docket set` refuses a `safety` class until `ROADMAP.md` places the item, so `classes: safety, defect` and `status: ready` were written in the commit that added the entry.
+
+**Built 2026-11-11.** The View already said it on its face. Since `PL-B396` (#1932), `AgentCostView` puts `INTERPRETATION_DISCLAIMER_TEXT`, "Model outputs — not measurements.", on its heading row beside "Vaporizer output" (`views.py`). The 2026-11-09 check grepped `agent_cost.py` and `qt_agent_cost.py`, which do not hold that row. What was missing was the definition of done and a test that names the statement's place. `ROADMAP.md`'s v0.7.0 definition of done now asks the cost View, as it asks the schematic, to say on its face that its amount and cost are modelled. `test_the_cost_view_says_its_amount_and_cost_are_modelled` in `tests/integration/test_agent_cost_view.py` checks that the statement is visible on the heading's row. It fails with "not enough values to unpack" when the row's statement is removed (checked by commenting out the `addWidget` line). The `verify:` command was rewritten to point at that file, because the statement is drawn by the Qt View and a test in `tests/unit/` builds no widget.

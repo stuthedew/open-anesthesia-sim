@@ -3,12 +3,14 @@ id: PL-N3SK
 title: docs/MODEL.md § 'Known limitations' says nothing on screen shows the liquid-agent figure, but the hazard rows, § 'Agent amounts in millilitres, and the cost' and § 'A cost at the reader's price' describe a cost View that shows delivered agent in mL of liquid (copy editor structure read, 2026-11-05)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: model-md-structure
 touches: docs/MODEL.md
 deferred-from: v0.7.0 - not present at the freeze (817a4d88): the sentence became false with 26eb4e39 (#1932), the milestone's own agent cost View
 added: 2026-11-05
+closed: 2026-11-11
+pr: 2136
 payoff: the reference-condition limitation says which liquid figures are on screen and why none carries its 5.8% error, so a change that would show a converted store meets the reason it is refused
 verify: ! grep -qF 'invisible in everything the simulator shows today' docs/MODEL.md
 reenters: PL-4FBP
@@ -33,3 +35,16 @@ paragraph of `docs/ARCHITECTURE.md` and of the last chapter of
 prose of `docs/MODEL.md` outside that binding, for the reason its brief gives.
 This item's sentence is in that free prose, so it stays its own documentation
 fix.
+
+**Built 2026-11-11 (#2136).** The note in § "Known limitations" now says that
+a concentration is untouched and every amount held in the body is touched,
+that every agent amount on screen names 20 °C and 1 atm, and that the
+accounting panel and the schematic say the body's amounts read high. It says
+that the agent cost View converts only the delivered amount, which converts
+exactly, and that a stored total in millilitres of liquid is refused, with a
+pointer to § "Agent amounts in millilitres, and the cost". The brief's
+"delivered and exhausted" was checked against `app/agent_cost.py`: the View
+converts the delivered total only, so the note says that. The sentence the
+`verify:` searches for is gone. The rewrite came from `PL-HQPF`'s blind review
+on the same branch, and the full check run then found this item open with its
+`verify:` passing.
