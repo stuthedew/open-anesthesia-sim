@@ -3,10 +3,12 @@ id: PL-84CV
 title: Record Gas Man-style teaching switches as planned-milestone item 44 in ROADMAP.md, beside filing PL-64NJ and PL-LBVN
 priority: P3
 effort: S
-status: ready
+status: done
 classes: housekeeping
-touches: ROADMAP.md
+touches: ROADMAP.md, docs/items/PL-2FZ9-load-a-machine-profile-by-id-and-carry-a.md
 added: 2026-11-14
+closed: 2026-11-14
+pr: 2144
 payoff: The teaching-switch idea from the Gas Man comparison is kept where milestone scoping reads it
 verify: grep -q '^#### 44\. ' ROADMAP.md
 ---

@@ -2353,7 +2353,7 @@ different ways within a single chapter. That is why the naming rule for
 ratios is worth enforcing mechanically rather than leaving to a reader's
 recall (`PL-212V`).
 
-### Items added later (items 30-43)
+### Items added later (items 30-44)
 
 #### 30. Patient factors
 
@@ -3148,6 +3148,20 @@ items filed under the feature, plus the baselines of the four check items.
 The inventory did not count the numbers that `docs/MODEL.md` and
 `README.md` restate, so the item for copied values (`PL-JS6P`) sizes that
 part when it builds its baseline.
+
+#### 44. Switches that turn a mechanism off, for teaching
+
+Let a learner switch off one mechanism, such as venous return or tissue
+uptake, and watch what the run does without it. Gas Man's control panel
+has "Disable Uptake" and "Disable Return" switches that do this. Each
+switch removes one term from the equations, and the system stays linear,
+so the exact per-step solution still applies. Turning off venous return
+discards the agent that blood carries back to the lung, so the
+mass-balance check would have to count that agent as removed. A run with
+a switch off no longer models a patient, so the display must say which
+mechanisms are off wherever it shows a value.
+Wanted after v0.7.0 (project owner, 2026-11-14, ratified, from the Gas
+Man comparison). `PL-84CV` has the source.
 
 ## Completed: v0.1.0 - first patient sevo model
 
