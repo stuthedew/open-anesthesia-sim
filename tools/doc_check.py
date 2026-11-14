@@ -6654,8 +6654,9 @@ def _absent_paths(
 ) -> dict[int, set[str]]:
     """The paths each line may name as absent, by 1-based line, from `absent:` markers.
 
-    Each marker covers the paragraph it sits under, as a `provenance:` marker
-    does, and is held to its own claim: every path it names must be absent -
+    Each marker covers what `_marked_scope` gives it, as a `provenance:` marker
+    does: the paragraph it sits under, or the whole list or quote that
+    paragraph ends (`PL-HXF0`). It is held to its own claim: every path it names must be absent -
     so a planned tool that gets built, or a deleted file that comes back, fails
     until the sentence and the marker are updated with it - and cited in that
     paragraph, so a marker left behind by a reworded sentence fails rather than
@@ -6684,7 +6685,7 @@ def _absent_paths(
         marker = ABSENT_MARKER_RE.match(line.strip())
         if marker is None:
             continue
-        start, end = _marked_span(lines, index)
+        start, end = _marked_scope(lines, index)
         cited = {span["content"] for span in code_spans("\n".join(lines[start:end]))}
         for token in marker.group("paths").split():
             if token not in cited:
