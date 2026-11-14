@@ -50,15 +50,19 @@ def test_every_copy_of_every_fact_is_found_in_the_repository() -> None:
 
 
 def test_a_changed_python_release_names_each_file_still_giving_the_old_one(tmp_path: Path) -> None:
+    # The pinned minor is read from the tree and the next one written over it,
+    # so the test still asks its question after the pin moves (`PL-GLFS`).
+    major, minor = (REPO_ROOT / ".python-version").read_text(encoding="utf-8").split(".")[:2]
+    old, new = f"{major}.{minor}", f"{major}.{int(minor) + 1}"
     _copy_of_the_tree(tmp_path)
-    (tmp_path / ".python-version").write_text("3.15.2\n", encoding="utf-8")
+    (tmp_path / ".python-version").write_text(f"{new}.0\n", encoding="utf-8")
 
     findings, _ = check(tmp_path)
 
     assert sorted((finding.path, finding.found, finding.expected) for finding in findings) == [
-        ("README.md", "3.14", "3.15"),
-        ("pyproject.toml", "3.14", "3.15"),
-        ("pyproject.toml", "3.14", "3.15"),
+        ("README.md", old, new),
+        ("pyproject.toml", old, new),
+        ("pyproject.toml", old, new),
     ]
 
 

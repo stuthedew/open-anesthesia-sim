@@ -82,14 +82,7 @@ from docket.config import load  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
 from docket.markdown import PROSE, Heading, headings  # noqa: E402
 from docket.store import CITED_ID_RE  # noqa: E402
-from docket.vcs import (  # noqa: E402
-    RECORDS,
-    GitUnanswered,
-    default_base,
-    listed_paths,
-    read_git,
-    resolved,
-)
+from docket.vcs import RECORDS, GitUnanswered, default_base, listed_paths, read_git, resolved  # noqa: E402
 
 import doc_check  # noqa: E402
 from product_paths import MODEL_DOC, SPECIFICATION_DOCS  # noqa: E402
