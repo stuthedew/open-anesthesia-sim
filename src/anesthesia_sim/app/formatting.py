@@ -441,18 +441,18 @@ MAX_MAC_AXIS_INTERVALS: Final = 10
 # and that is its whole purpose. Until PL-CC23 the top was the agent's
 # vaporizer dial maximum: 3.00 MAC of desflurane, 4.00 of sevoflurane and 4.17
 # of isoflurane. So the same case plotted under two agents was drawn at two
-# scales differing by 1.39x. A learner comparing desflurane's wash-in with
-# sevoflurane's was comparing shapes that had been silently rescaled. No label
-# prevents that misreading.
+# scales: sevoflurane's was 1.33x desflurane's (4.00 / 3.00). A learner
+# comparing desflurane's wash-in with sevoflurane's was comparing shapes that
+# had been silently rescaled. No label prevents that misreading.
 #
 # Three is not a round number chosen for tidiness. It is exactly
 # desflurane's dial maximum (18 % / 6 % = 3.00). So the shared ceiling is
 # anchored to a real device limit rather than to a preference, and the agent
 # whose vaporizer is most limited has no empty band at the top of its plot.
 # A ceiling of three also puts 1 MAC at one third of the plot height,
-# comfortably inside the plot rather than on its frame, which a 2 MAC ceiling
-# could not do. And it keeps on the plot the 2-3x MAC range in which
-# overpressure induction works.
+# comfortably inside the plot rather than on its frame. Unlike a 2 MAC
+# ceiling, it also keeps on the plot the 2-3x MAC range in which overpressure
+# induction works.
 #
 # **Fixed, and fixed for the whole session rather than only within a run.**
 # An axis that grew to fit an excursion would redraw a rising curve at a
