@@ -80,3 +80,11 @@ it as a recurrence (`PL-92XM`). The readout row seats seven in both states.
 **Docs swept.** `docs/INTERFACE.md` (this section and the note for developers),
 `docs/MODEL.md` (no 1280 px sentence remains since `PL-CTXZ` moved the
 interface sections), `README.md` (no window-width figures).
+
+**Blind review, 2026-11-14.** Both passes named the same three findings. The
+1280 px sentence promised seven across on any 1280 px screen, while the margin
+is about 10 px of window width; it now names the frame, a side dock and a wider
+font. It said every record line wraps, while `PL-92XM` measured a clipped line;
+it now points at `PL-6XPZ`. "With one run or two" had a test only at 1366 px;
+`test_a_1280_px_window_opens_two_compared_runs_readout_row_on_seven_columns`
+now covers 1280 px.
