@@ -112,7 +112,7 @@ COMPARTMENT_QUANTITIES: Final = (
 #: order that `AgentUptakeSystem.state_vector` writes them in. This table
 #: assumes that order from another module. So
 #: `tests/integration/controller/test_controller_running.py`'s
-#: `test_each_recorded_quantity_carries_the_compartment_it_names` checks the
+#: `test_each_drawn_quantity_reads_the_state_of_the_compartment_it_names` checks the
 #: order against the core's own attributes rather than restating it.
 #:
 #: `WASH_IN_RATIO` is deliberately absent. It is not a state but the quotient
