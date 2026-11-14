@@ -313,3 +313,16 @@ def test_every_concrete_workflow_pin_is_the_declared_floor() -> None:
     assert not offenders, (
         f"every concrete python-version pin must be the declared floor {floor}; found {offenders}"
     )
+
+
+def test_the_merge_hold_job_runs_on_the_product_interpreter() -> None:
+    """`PL-RTYG`: the merge gate parses product tests, so it needs the product's Python.
+
+    On the docket floor (3.11) the job could not parse a product test that
+    reuses an f-string's own quote, valid from Python 3.12, and held a pull
+    request the owner had approved.
+    """
+    workflow = (REPO_ROOT / ".github" / "workflows" / "merge-hold.yml").read_text(encoding="utf-8")
+
+    assert "python-version-file: .python-version" in workflow
+    assert _concrete_pins(REPO_ROOT / ".github" / "workflows" / "merge-hold.yml") == []
