@@ -2102,6 +2102,8 @@ class AreaFrame(QFrame):
         content: The View or the notice under the header.
         view_scroll: The scroll box that holds the View, or None where `content`
             is a notice.
+        pinned_row: The row that the View keeps above its scroll box, or None
+            where the View declares none (`pinned_row`).
         too_small_notice: The notice shown in place of the View while the
             Area is too small for it, or None if the Area has never been too
             small.
@@ -2159,6 +2161,15 @@ class AreaFrame(QFrame):
         self._column.addWidget(self.header)
         self._column.addWidget(rule)
         self.view_scroll = None if isinstance(content, AreaNotice) else ViewScroll(content)
+        # A row that the View must keep on screen wherever any of the View is,
+        # such as the wash-in plot's "Modelled, not measured", sits above the
+        # scroll box rather than in it (`PL-26BZ`).
+        self.pinned_row = None if self.view_scroll is None else pinned_row(content)
+
+        if self.pinned_row is not None:
+            self._column.addWidget(self.pinned_row)
+            self.pinned_row.show()
+
         self._column.addWidget(self.view_scroll or content, 1)
         # A View handed back unparented by an earlier layout was hidden when
         # it lost its parent, and a layout does not show it again by itself.
@@ -2253,6 +2264,9 @@ class AreaFrame(QFrame):
         if self.view_scroll is not None:
             self.view_scroll.setHidden(hidden)
 
+        if self.pinned_row is not None:
+            self.pinned_row.setHidden(hidden)
+
     def resizeEvent(self, event: QResizeEvent) -> None:
         super().resizeEvent(event)
         self._restate()
@@ -2294,6 +2308,19 @@ class AreaFrame(QFrame):
 
         for zone in self.corners:
             zone.set_grip_shown(shown)
+
+
+def pinned_row(view: QWidget) -> QWidget | None:
+    """Return the row that `view` asks its Area to keep above its scroll box, or None.
+
+    A View declares one as a `pinned_row` attribute holding a widget. The Area
+    shows that row outside the box that scrolls the View, so it is on screen
+    whenever any part of the View is (`PL-26BZ`).
+    """
+
+    row = getattr(view, "pinned_row", None)
+
+    return row if isinstance(row, QWidget) else None
 
 
 class ViewScroll(QScrollArea):

@@ -11,6 +11,7 @@ import pytest
 from PySide6.QtWidgets import QApplication
 
 from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.dashboard_frame import WASH_IN_MODELLED_TEXT
 from anesthesia_sim.app.formatting import format_mac_awake_reference, format_mac_reference
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
@@ -157,8 +158,12 @@ def test_nothing_between_the_wash_in_heading_and_its_plot_is_a_sentence(
 
     joined = " ".join(sorted(strings))
     assert "not the vaporizer dial" in joined
-    assert "Modelled, not measured" in joined
     assert "dimensionless ratio" not in joined
+    # Since `PL-26BZ` the line is the row that the View's Area keeps above the
+    # View's scroll box, so it is on screen wherever any of the plot is.
+    line = _wash_in(view).pinned_row
+    assert line.text() == WASH_IN_MODELLED_TEXT
+    assert line.isVisible()
 
 
 def test_the_wash_in_plot_says_what_its_denominator_is(application: QApplication) -> None:
