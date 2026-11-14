@@ -556,9 +556,14 @@ opening lines of the ask. Every ask has one form, which carries what
 6. what was already checked, where anything was.
 
 Each part is printed on its own line, in that order (project owner,
-2026-11-10, `PL-M2JP`, and 2026-11-14, `PL-GG4V`). A merge review is a
-choice like any other, whose options are merging and holding for changes. The
-question is one you can decide as the owner or as a clinician. It never asks
+2026-11-10, `PL-M2JP`, and 2026-11-14, `PL-GG4V`). For a held pull request,
+the options are the change and what it was chosen over: what you asked for,
+the behavior it replaces, a smaller version, or the larger rework it would
+need. A question of merging against holding for changes is never sent,
+because holding gains you nothing you can name: "either you shouldn't be
+asking me in the first place because it's not a real question, or you need to
+tell me what I need to make an informed decision" (project owner,
+2026-11-14). The question is one you can decide as the owner or as a clinician. It never asks
 you to re-check what the tests or reviews already covered, such as whether a
 rewording kept its meaning. A choice between approaches to the interface
 comes with one annotated screenshot per option (project owner, 2026-10-19,

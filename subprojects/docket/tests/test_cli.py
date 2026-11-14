@@ -11956,7 +11956,7 @@ def test_a_read_hold_puts_a_decision_or_a_case_in_the_closing_block_line() -> No
         "context - <what changed, or what the choice is about>",
         "why - <why the choice is the owner's rather than the session's>",
         "Give at least two options",
-        "A merge review is a choice too",
+        "the options are the change and what it was chosen over",
         "nothing needs the owner",
         "Owner-read: not needed - <why>",
         "merges on green",
@@ -12395,7 +12395,8 @@ ARM_NAMED = (
 #: What a record in any review form is told.
 ARM_REVIEW = (
     "it is in a review form, which gave the owner no options and no recommendation; ask "
-    "whether it may merge, with merging and holding for changes as its options"
+    "it as a choice between the change and what it was chosen over, each with what it "
+    "gains and gives up"
 )
 
 
@@ -12415,19 +12416,19 @@ ARM_REVIEW = (
             "",
         ),
         (
-            "May it merge? | Merge: the dose label reads mcg; cost: you lose the chance to "
-            "change it first | Hold for changes: you can change it first; cost: the label "
-            "stays as it was until then | recommend Merge - the label matches the unit stored. | "
-            "context - "
-            "the dose label reads mcg. | why - a dose unit is a clinical value. | checked - "
-            "the label matches the unit stored.",
-            "May it merge?\n"
-            '- I recommend "Merge": the label matches the unit stored.\n'
-            "- Context: the dose label reads mcg.\n"
-            '- Option "Merge": the dose label reads mcg. Cost: you lose the chance to change '
-            "it first.\n"
-            '- Option "Hold for changes": you can change it first. Cost: the label stays as it '
-            "was until then.\n"
+            "Should the infusion label show the rate per kilogram? | Per kilogram: the label "
+            "reads mcg/kg/min; cost: the total rate needs a second look | Total: the label "
+            "reads mcg/min; cost: a learner divides by weight to compare it with a dosing "
+            "table | recommend Per kilogram - it matches the dosing tables learners use. | "
+            "context - the infusion label now reads mcg/kg/min. | why - a dose unit is a "
+            "clinical value. | checked - the label matches the unit stored.",
+            "Should the infusion label show the rate per kilogram?\n"
+            '- I recommend "Per kilogram": it matches the dosing tables learners use.\n'
+            "- Context: the infusion label now reads mcg/kg/min.\n"
+            '- Option "Per kilogram": the label reads mcg/kg/min. Cost: the total rate needs '
+            "a second look.\n"
+            '- Option "Total": the label reads mcg/min. Cost: a learner divides by weight to '
+            "compare it with a dosing table.\n"
             "- Why it is yours: a dose unit is a clinical value.\n"
             "- Already checked: the label matches the unit stored.",
             "",
@@ -12448,7 +12449,7 @@ ARM_REVIEW = (
         ("Changed - x | question - y? | checked - z | reply - v", "", ARM_REVIEW),
         ("risk - x | checked - y | look - z", "", ARM_REVIEW),
         (
-            "May it merge? | A: x; cost: c | B: y; cost: d | recommend A - z | context - c | "
+            "Q? | A: x; cost: c | B: y; cost: d | recommend A - z | context - c | "
             "why - w | "
             "checked - verify --self ACCEPTs",
             "",
@@ -12456,7 +12457,7 @@ ARM_REVIEW = (
             "what it checked or changed",
         ),
         (
-            "May it merge? | A: x; cost: c | B: y; cost: d | recommend A - z | context - c | "
+            "Q? | A: x; cost: c | B: y; cost: d | recommend A - z | context - c | "
             "why - w | "
             "checked - tools/model_rewrite.py lost",
             "",

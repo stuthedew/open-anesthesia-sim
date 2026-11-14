@@ -295,12 +295,12 @@ def test_a_blind_record_that_cannot_be_read_says_why(value: str, reason: str) ->
 
 
 ASK_VALUE = (
-    "May it merge? | Merge: learners see the reworded uptake step; cost: you lose the chance "
-    "to reword it first | Hold for changes: you can reword it first; cost: learners keep the "
-    "old wording until then | recommend Merge - every figure is unchanged, and holding it "
-    "delays nothing else | context - the uptake step is reworded | why - it "
-    "changes the uptake model, which only you approve | checked - every figure still "
-    "matches its source"
+    "Should learners read the shorter uptake step? | Shorter: the step is one paragraph; "
+    "cost: it drops the worked example | As it was: learners keep the worked example; cost: "
+    "the step stays three paragraphs long | recommend Shorter - every figure is unchanged, "
+    "and the example repeats the figure above it | context - the uptake step is reworded | "
+    "why - it changes what learners read about the uptake model, which only you approve | "
+    "checked - every figure still matches its source"
 )
 
 
@@ -316,16 +316,38 @@ def test_a_review_question_prints_each_part_on_its_own_line() -> None:
 
     assert why == ""
     assert shown.splitlines() == [
-        "May it merge?",
-        '- I recommend "Merge": every figure is unchanged, and holding it delays nothing else.',
+        "Should learners read the shorter uptake step?",
+        '- I recommend "Shorter": every figure is unchanged, and the example repeats the '
+        "figure above it.",
         "- Context: the uptake step is reworded.",
-        '- Option "Merge": learners see the reworded uptake step. Cost: you lose the chance '
-        "to reword it first.",
-        '- Option "Hold for changes": you can reword it first. Cost: learners keep the old '
-        "wording until then.",
-        "- Why it is yours: it changes the uptake model, which only you approve.",
+        '- Option "Shorter": the step is one paragraph. Cost: it drops the worked example.',
+        '- Option "As it was": learners keep the worked example. Cost: the step stays three '
+        "paragraphs long.",
+        "- Why it is yours: it changes what learners read about the uptake model, which only "
+        "you approve.",
         "- Already checked: every figure still matches its source.",
     ]
+
+
+def test_a_held_pull_request_is_asked_between_the_change_and_what_it_replaced() -> None:
+    """A held pull request offers the change and its alternative, never merge or hold.
+
+    Asked whether a pull request might merge, with holding for changes as the
+    other option, the owner found no gain in holding and wrote "either you
+    shouldn't be asking me in the first place because it's not a real
+    question, or you need to tell me what I need to make an informed
+    decision" (project owner, 2026-11-14, `PL-GG4V`). So the instructions name
+    what a held change is weighed against, and a record in the old review form
+    is told to ask that choice.
+    """
+    assert "what it was chosen over" in arming.READ_ASK
+    assert "the gate as changed and the gate as it was" in arming.READ_ASK
+    assert "holding gains the owner nothing they can name" in arming.READ_ASK
+
+    _, why = arming.parse_owner_ask("changed - x | why - w | checked - z")
+
+    assert "a choice between the change and what it was chosen over" in why
+    assert "holding for changes as its options" not in why
 
 
 def test_every_question_to_the_owner_leads_with_its_recommendation() -> None:
@@ -367,7 +389,8 @@ def test_every_question_to_the_owner_leads_with_its_recommendation() -> None:
     )
     review = (
         "it is in a review form, which gave the owner no options and no recommendation; ask "
-        "whether it may merge, with merging and holding for changes as its options"
+        "it as a choice between the change and what it was chosen over, each with what it "
+        "gains and gives up"
     )
     assert arming.parse_owner_ask("Q? | A: x; cost: c | B: y; cost: d | recommend A - z") == (
         "",

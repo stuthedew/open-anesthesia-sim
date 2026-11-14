@@ -230,11 +230,15 @@ READ_GIVEN = "given"
 #: It has at least two options, and `checked` may be left out. Every option
 #: names its cost, the recommended one included. With only what each option
 #: does, a session wrote one good option and one bad one, and the owner asked
-#: "why would I ever choose the bad" (project owner, 2026-11-14, `PL-GG4V`). A merge review
-#: is a choice like any other, whose options are merging and holding for
-#: changes. The reply quotes the text to judge, before and after, under the
-#: ask, because a pointer into a file sent the owner to dig for it (project
-#: owner, 2026-11-02, `PL-77QB`).
+#: "why would I ever choose the bad" (project owner, 2026-11-14, `PL-GG4V`). A held
+#: pull request is asked as a choice between the change and what it was chosen
+#: over, never as merging against holding, because holding gains the owner
+#: nothing they can name: "either you shouldn't be asking me in the first place
+#: because it's not a real question, or you need to tell me what I need to make
+#: an informed decision" (project owner, 2026-11-14, `PL-GG4V`). The reply
+#: quotes the text to judge, before and after, under the ask, because a
+#: pointer into a file sent the owner to dig for it (project owner,
+#: 2026-11-02, `PL-77QB`).
 #:
 #: Until 2026-11-14 there were two forms, and each carried only part of what
 #: `.claude/rules/instruction-writing.md` rule 10 asks of a question. The
@@ -324,15 +328,18 @@ READ_ASK = (
     f"{ASK_CONTEXT} - <what changed, or what the choice is about> | "
     f"{ASK_WHY} - <why the choice is the owner's rather than the session's> | {ASK_CHECKED} - "
     f"<what was already checked>`. Give at least two options a careful person could each "
-    f"pick, and leave out {ASK_CHECKED} only when nothing was checked. A merge review is a "
-    "choice too: its options are merging and holding for changes, and its question is one "
-    "the owner can decide as the owner or as a clinician, such as 'May it merge?'. Word the "
+    f"pick, and leave out {ASK_CHECKED} only when nothing was checked. For a held pull "
+    "request, the options are the change and what it was chosen over: what the owner asked "
+    "for, the behavior it replaces, a smaller version, or the larger rework it would need. "
+    "Merging against holding for changes is not a choice, because holding gains the owner "
+    "nothing they can name. The question is one the owner can decide as the owner or as a "
+    "clinician. Word the "
     "question in clinical or learner terms and in one clause, so that the owner sees on "
     "first reading what they are judging, and put its background in the context field. "
     "Under each option, say what a learner sees or what changes for the owner, and what "
     "that option gives up, the recommended one included: a choice between one good option "
-    "and one bad one is not a choice. For a merge, holding gives the owner time to change "
-    "the work, and merging gives up that chance. A choice "
+    "and one bad one is not a choice. If you cannot say what the option you do not recommend "
+    "gains, there is no choice, and the owner is not asked. A choice "
     "between approaches to the interface goes with one annotated screenshot per option, "
     "attached to the reply that carries the lines (.claude/skills/run-the-app/SKILL.md). "
     "Each field is printed on its own line, the question first and the recommendation "
@@ -344,7 +351,8 @@ READ_ASK = (
     "never name a test, check, file or tool by its internal name. If no question can be "
     f"filled honestly, nothing needs the owner: record `{OWNER_READ}: {READ_NOT_NEEDED} - "
     "<why>` instead, and the change merges on green. A change to a test pinning the gate's "
-    "answers holds whatever that record says, so for one of those ask whether it may merge."
+    "answers holds whatever that record says. For one of those, the options are the gate as "
+    "changed and the gate as it was, each with what it refuses that the other accepts."
 )
 
 #: What a hold for the owner's read prints before the line its `OWNER_ASK`
@@ -1080,7 +1088,8 @@ def parse_owner_ask(value: str) -> tuple[str, str]:
     if question.partition(" -")[0].strip().lower() in ASK_OLD_REVIEW_WORDS:
         return "", (
             "it is in a review form, which gave the owner no options and no recommendation; "
-            "ask whether it may merge, with merging and holding for changes as its options"
+            "ask it as a choice between the change and what it was chosen over, each with what it "
+            "gains and gives up"
         )
     if not question.endswith("?"):
         return "", (

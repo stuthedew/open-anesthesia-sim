@@ -3,14 +3,15 @@ id: PL-GG4V
 title: Every question to the owner about a held pull request lacks part of what the asking rule requires: the review form has no recommendation, no trade-off and no options, and the decision form has no context and no reason the choice is the owner's (2026-11-14): make one form that carries all of them, question and recommendation first
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, ux
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_arming.py, subprojects/docket/tests/test_cli.py, tests/unit/test_owner_ask_guard.py, docs/maintainer.md, .claude/skills/docket/modes/coordinator.md
 deferred-from: v0.7.0 - workflow tooling outside the schematic release, and it changes no displayed value
 added: 2026-11-14
 closed: 2026-11-14
+pr: 2146
 payoff: every question the owner is sent about a held pull request carries its options, a recommendation with the cost of the alternative, its context and why it is theirs, so they can answer it in one read
-verify: grep -q 'def test_a_merge_approval_names_its_risk_and_offers_no_invented_option' subprojects/docket/tests/test_arming.py
+verify: grep -q 'def test_a_held_pull_request_is_asked_between_the_change_and_what_it_replaced' subprojects/docket/tests/test_arming.py
 ---
 
 **Problem.** Every question to the owner about a held pull request lacks part of what the asking rule requires: the review form has no recommendation, no trade-off and no options, and the decision form has no context and no reason the choice is the owner's (2026-11-14): make one form that carries all of them, question and recommendation first
@@ -123,26 +124,36 @@ unless the owner already has a change in mind, so a form that requires two
 options with a gain each makes a session invent one for every merge approval.
 That is the straw man the second round tried to rule out.
 
-**Decision (session's, 2026-11-14).** Two kinds of question, each honest
-about what it is:
+**Proposed (session's, 2026-11-14), and refused.** A separate approval form
+for a held pull request: no options, and a line saying what the owner accepts
+by approving.
 
-1. **A choice**, only where a real trade-off exists: unchanged from the
-   second round. Each option says what it gets and what it gives up, and the
-   recommendation says why its gain is worth its cost.
-2. **An approval**, for a pull request held for the owner's sign-off with
-   nothing to choose between. It has no options. It is recorded as
-   `May it merge? | recommend merge - <why> | context - <what changed> |
-   risk - <what merging could break or cost, and how likely> | why - <why it
-   is the owner's> | checked - <what was checked>`, and printed in that order,
-   one line each: "I recommend merging", "Context", "Risk if it merges",
-   "Why it is yours", "Already checked". The owner replies "Merge" or names
-   the change. The risk line carries the trade-off: what the owner accepts by
-   saying yes.
+## Fourth round (2026-11-14): every question is a choice
 
-The order, recommendation first, stays (project owner, 2026-11-14,
-ratified, over the context first). Work left: the approval form in the
-parser, renderer and instructions; its tests; `docs/maintainer.md`; and a
-re-recorded question for #2146 in the approval form.
+The owner refused the approval form: "I don't like that distinction An
+approval is a choice with trade offs otherwise you wouldn't be asking me to
+decide. [...] I don't find "approval" questions useful. because it seems like
+you are asking me for a rubber stamp. So either you shouldn't be asking me in
+the first place because it's not a real question, or you need to tell me what
+I need to make an informed decision." Their examples of a real trade-off were
+a session recommending a deviation from what they asked for, and a requested
+feature that needs a large refactor.
+
+**Decision (project owner, 2026-11-14).** No approval form. Every question
+is a choice, and each option has a gain the owner can name. For a held pull
+request, the options are the change and what it was chosen over: what the
+owner asked for, the behavior it replaces, a smaller version, or the larger
+rework it would need. Merging against holding for changes is never offered. A
+session that cannot say what the option it does not recommend gains does not
+ask. For a change to a test that pins the gate's answers, the options are the
+gate as changed and the gate as it was.
+
+What was built: the printed instructions, the refusal of an old review form,
+`docs/maintainer.md` and the coordinator mode say this, and the examples in
+the tests offer real alternatives in place of merging and holding. The record
+form from the second round is unchanged. One case is left: a change to the
+merge gate that has nothing to weigh still waits on the owner. Whether that
+hold stays is filed as `PL-TQHT`, with options and a recommendation.
 
 **Generator check.** The mechanism is that the `Owner-ask` grammar enforces only part of rule 10, so each missing element is left out until the owner notices it. It caused `PL-9KHK`, `PL-DKBG`, `PL-KYTY`, `PL-BGN1`, `PL-77QB` and `PL-M2JP`, all closed. This item removes the mechanism by making the grammar require every element rule 10 names, and no open item remains under it.
 
