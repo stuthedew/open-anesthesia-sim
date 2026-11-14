@@ -281,7 +281,7 @@ UNSPELLED = "\0"
 #: widget tree - which widget a stylesheet reached is settled by Qt, not by the
 #: source - so it cannot be decided here, and a tool that reported only what it
 #: could measure would read identically either way (PL-4L49).
-CONTROL_COVERAGE_TEST = Path("tests/integration/test_simulation_view.py")
+CONTROL_COVERAGE_TEST = Path("tests/integration/simulation_view/test_simulation_view_foreground.py")
 
 #: The mapping in that module naming every control kind that declares no
 #: foreground, against the reason it may not. Read rather than duplicated: the

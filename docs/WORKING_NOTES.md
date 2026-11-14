@@ -2483,3 +2483,4 @@ rebuilds of two module-scoped 24-hour fixtures from `PL-5291`, `tests/unit/test_
 share the 24-hour trunk once per run as `PL-F08Y` did, then order the whole
 collection longest-first from a durations record (Graham, SIAM J. Appl. Math.
 1969;17:416-429, bound 4/3 - 1/(3m) against 2 - 1/m for list order).
+<!-- absent: tests/integration/test_controller.py -->
