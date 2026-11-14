@@ -9539,6 +9539,7 @@ at one hour and a third at three hours, which the chart's fat trace cannot show.
 Every container is drawn at one width, so its filled area is not an amount
 either.
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
+<!-- provenance: app/formatting.py CHART_GRID_INTERVAL_MAC = 0.5 -->
 
 A tension above the top of the scale fills its container to the top, and the
 schematic marks the container as off the scale. The concentration chart does
