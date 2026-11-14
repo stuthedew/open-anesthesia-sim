@@ -4,7 +4,7 @@ title: The plain-writing rule still shows bad examples (point 2's stacked clause
 priority: P3
 effort: S
 status: done
-classes: decision
+classes: docs
 feature: prose-quality
 touches: .claude/rules/plain-writing.md
 deferred-from: v0.7.0 - its problem is new since the freeze and no release schedules it, so it is deferred on the terms of § "Deferring to the next gate"; not safety or science
