@@ -67,14 +67,7 @@ from docket.release import code_spans  # noqa: E402
 from docket.vcs import GitUnanswered, default_base, listed_paths, read_git, resolved  # noqa: E402
 
 import doc_check  # noqa: E402
-from model_rewrite import (  # noqa: E402
-    Gone,
-    added_facts,
-    added_to_items,
-    gone_facts,
-    pair_restated,
-    report_gone,
-)
+from model_rewrite import Gone, added_facts, added_to_items, gone_facts, pair_restated, report_gone  # noqa: E402
 
 #: The kind of a unit that is a string literal in code, other than a docstring.
 STRING_KIND = "string"

@@ -3,13 +3,15 @@ id: PL-LKX7
 title: docs/INTERFACE.md § "Displayed precision" says a maximized 1280 px screen opens the readout row on seven columns (measured 2026-09-27), but that predates the region's 0.82/0.18 split: at 1366 px the region's 1320 px leaves the readouts 1073 px, so a 1280 px screen's 1234 px likely leaves about 1000 px, below the 1005 px that seven across needs
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: interface-areas
-touches: docs/INTERFACE.md, tests/integration/simulation_view, src/anesthesia_sim/app/simulation_view.py
+touches: docs/INTERFACE.md, tests/integration/simulation_view/test_simulation_view_readouts.py, docs/items/PL-92XM-at-a-1280-px-window-the-control-change-record.md, docs/items/PL-6XPZ-below-about-1366-px-of-window-width-the-control.md
 added: 2026-11-04
+closed: 2026-11-14
+pr: 2156
 payoff: a reader on a 1280 px laptop sees all seven readouts in one row, or the model specification says plainly that the row opens on four there
-verify: grep -rq 'def test_a_maximized_1280_px_screen' tests/integration/simulation_view/
+verify: grep -rq 'def test_a_1280_px_window_opens_one_run_s_readout_row_on_seven_or_four_columns' tests/integration
 reenters: PL-4FBP
 ---
 
@@ -52,3 +54,49 @@ paragraph of `docs/ARCHITECTURE.md` and of the last chapter of
 prose of `docs/MODEL.md` outside that binding, for the reason its brief gives.
 This item's sentence is in that free prose, and correcting it also needs a new
 measurement in the running app, so it stays its own item.
+
+**Built 2026-11-14.** The row already opens seven across on a 1280 px window,
+so nothing in the layout changed. Measured with `_shown_view` on `main` at
+`26dba5d`: a 1280 px window gives the region 1248 px, not the 1234 px of
+2026-09-27, and the readout column at least 1014 px, 9 px more than the 1005 px
+that seven across needs. Compare mode gives the same. A 1366 px window now
+gives the region 1334 px, where `PL-F2YS` measured 1320 px on 2026-10-18. Both
+older figures are 14 px narrower than today's, which matches a vertical scroll
+bar beside the region. Which change removed it was not traced. The
+recommendation to restore seven across therefore needed no lever.
+
+`test_a_1280_px_window_opens_one_run_s_readout_row_on_seven_columns` pins the
+outcome, beside the 1366 px test. `docs/INTERFACE.md` § "The readout row's width
+condition" states it for the reader and updates both windows' figures in the
+note for developers.
+
+**Found while measuring.** The readout column's width at 1280 px moved between
+runs: 1014 px with a clean checkout and 1028 px with uncommitted changes. The
+transport row's minimum width includes the version badge, whose text gains
+".dirty", and the run rows cannot narrow below it, so the record column loses
+the difference. That is `PL-6XPZ`'s mechanism, and `bin/docket new` recorded
+it as a recurrence (`PL-92XM`). The readout row seats seven in both states.
+
+**Docs swept.** `docs/INTERFACE.md` (this section and the note for developers),
+`docs/MODEL.md` (no 1280 px sentence remains since `PL-CTXZ` moved the
+interface sections), `README.md` (no window-width figures).
+
+**Blind review, 2026-11-14.** Both passes named the same three findings. The
+1280 px sentence promised seven across on any 1280 px screen, while the margin
+is about 10 px of window width; it now names the frame, a side dock and a wider
+font. It said every record line wraps, while `PL-92XM` measured a clipped line;
+it now points at `PL-6XPZ`. "With one run or two" had a test only at 1366 px;
+`test_a_1280_px_window_opens_two_compared_runs_readout_row_on_seven_columns`
+now covers 1280 px.
+
+**CI disagreed, 2026-11-14.** On the CI runner's offscreen font, seven across
+needs 1068 px and a 1280 px window gives the row 1060 px, so the row opens on
+four there (`checks-part-1` on #2156). The container where this was written
+needs 1005 px and gives 1014 px. So the 1280 px outcome depends on the font, and
+seven cannot be made to hold on both without narrowing the record below its
+longest line part (184 px), which the brief's recommendation rules out. The two
+tests now check the rule at 1280 px instead: seven across where seven fit, four
+otherwise, and never fewer than four, with one run and with two. The section
+says the font decides. The Done-when's "states that outcome" is met by stating
+both, and the payoff's second branch ("says plainly that the row opens on four
+there") applies on fonts as wide as CI's.

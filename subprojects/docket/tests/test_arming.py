@@ -294,11 +294,133 @@ def test_a_blind_record_that_cannot_be_read_says_why(value: str, reason: str) ->
         arming.parse_blind_review(value)
 
 
-ASK_REVIEW_VALUE = (
-    "changed - the uptake step is reworded | question - should this merge, since it "
-    "touches the uptake model? | checked - every figure still matches its source | "
-    "reply - Merge it"
+ASK_VALUE = (
+    "Should learners read the shorter uptake step? | Shorter: the step is one paragraph; "
+    "cost: it drops the worked example | As it was: learners keep the worked example; cost: "
+    "the step stays three paragraphs long | recommend Shorter - every figure is unchanged, "
+    "and the example repeats the figure above it | context - the uptake step is reworded | "
+    "why - it changes what learners read about the uptake model, which only you approve | "
+    "checked - every figure still matches its source"
 )
+
+
+def test_a_review_question_prints_each_part_on_its_own_line() -> None:
+    """Each part of a question to the owner is a line of its own (`PL-M2JP`).
+
+    On #2096 the owner was sent a review's four parts as one paragraph, its
+    question also saying why it was theirs and that nothing needed deciding,
+    and found it "a little dense and hard to follow" (project owner,
+    2026-11-10). So the reason the question is theirs is a field of its own.
+    """
+    shown, why = arming.parse_owner_ask(ASK_VALUE)
+
+    assert why == ""
+    assert shown.splitlines() == [
+        "**Should learners read the shorter uptake step?**",
+        '- **I recommend "Shorter":** every figure is unchanged, and the example repeats the '
+        "figure above it.",
+        "- **Context:** the uptake step is reworded.",
+        '- **Option "Shorter":** the step is one paragraph. '
+        "**Costs and risks:** it drops the worked example.",
+        '- **Option "As it was":** learners keep the worked example. '
+        "**Costs and risks:** the step stays three "
+        "paragraphs long.",
+        "- **Why it is yours:** it changes what learners read about the uptake model, which only "
+        "you approve.",
+        "- **Already checked:** every figure still matches its source.",
+    ]
+
+
+def test_a_held_pull_request_is_asked_between_the_change_and_what_it_replaced() -> None:
+    """A held pull request offers the change and its alternative, never merge or hold.
+
+    Asked whether a pull request might merge, with holding for changes as the
+    other option, the owner found no gain in holding and wrote "either you
+    shouldn't be asking me in the first place because it's not a real
+    question, or you need to tell me what I need to make an informed
+    decision" (project owner, 2026-11-14, `PL-GG4V`). So the instructions name
+    what a held change is weighed against, and a record in the old review form
+    is told to ask that choice.
+    """
+    assert "what it was chosen over" in arming.READ_ASK
+    assert "the gate as changed and the gate as it was" in arming.READ_ASK
+    assert "holding gains the owner nothing they can name" in arming.READ_ASK
+
+    _, why = arming.parse_owner_ask("changed - x | why - w | checked - z")
+
+    assert "a choice between the change and what it was chosen over" in why
+    assert "holding for changes as its options" not in why
+
+
+def test_every_question_to_the_owner_leads_with_its_recommendation() -> None:
+    """A question to the owner carries every part the asking rule names, or is refused.
+
+    The review form had no options and no recommendation, and the decision
+    form had no context and no reason the choice was the owner's. Sessions
+    left out what the form did not ask for, and the owner wrote "you are
+    still asking me to make decisions without any context, recommendations,
+    trade offs etc" (project owner, 2026-11-14, `PL-GG4V`). So there is one
+    form, printed question first and recommendation second. Each option
+    names its cost, because options that say only what they do let a session
+    offer one good and one bad: "why would I ever choose the bad".
+    """
+    shown, why = arming.parse_owner_ask(
+        "Which view opens first? | Chooser: the learner picks a view each run; cost: one "
+        "more click before every case | Last used: it opens where they left off; cost: it "
+        "hides the views a learner has not opened | recommend Chooser - one click is worth "
+        "showing every view | context - the simulator "
+        "now has three views | why - it decides what a learner sees first"
+    )
+
+    assert why == ""
+    assert shown.splitlines() == [
+        "**Which view opens first?**",
+        '- **I recommend "Chooser":** one click is worth showing every view.',
+        "- **Context:** the simulator now has three views.",
+        '- **Option "Chooser":** the learner picks a view each run. '
+        "**Costs and risks:** one more click before "
+        "every case.",
+        '- **Option "Last used":** it opens where they left off. '
+        "**Costs and risks:** it hides the views a "
+        "learner has not opened.",
+        "- **Why it is yours:** it decides what a learner sees first.",
+    ]
+
+    missing = (
+        "after its recommendation come context - <what changed, or what the choice is about> "
+        "and why - <why the choice is the owner's>, then checked - <what was already checked> "
+        "if anything was"
+    )
+    review = (
+        "it is in a review form, which gave the owner no options and no recommendation; ask "
+        "it as a choice between the change and what it was chosen over, each with what it "
+        "gains and gives up"
+    )
+    assert arming.parse_owner_ask("Q? | A: x; cost: c | B: y; cost: d | recommend A - z") == (
+        "",
+        missing,
+    )
+    assert arming.parse_owner_ask(
+        "Q? | A: x; cost: c | B: y; cost: d | recommend A - z | context - c"
+    ) == ("", missing)
+    assert arming.parse_owner_ask(
+        "Q? | A: x; cost: c | B: y; cost: d | recommend A - z | why - w | context - c"
+    ) == ("", missing)
+    assert arming.parse_owner_ask(
+        "changed - x | question - y? | why - w | checked - z | reply - v"
+    ) == ("", review)
+    assert arming.parse_owner_ask("changed - x | question - y? | checked - z | reply - v") == (
+        "",
+        review,
+    )
+    assert arming.parse_owner_ask("risk - x | checked - y | look - z") == ("", review)
+    assert arming.parse_owner_ask(
+        "Q? | A: x | B: y; cost: d | recommend A - z | context - c | why - w"
+    ) == (
+        "",
+        "each option needs '<option>: <what it gets>; cost: <what it gives up>', so that the "
+        "owner sees what every option costs, the recommended one included",
+    )
 
 
 def test_a_copied_refusal_log_leaves_the_recorded_ask_in_force(tmp_path: Path) -> None:
@@ -311,9 +433,7 @@ def test_a_copied_refusal_log_leaves_the_recorded_ask_in_force(tmp_path: Path) -
     """
     root, git = _repo(tmp_path)
     _change(root, git, SIMULATOR, "X = 1\n")
-    _record(
-        git, "Owner-read: needed - a change to the uptake model", f"Owner-ask: {ASK_REVIEW_VALUE}"
-    )
+    _record(git, "Owner-read: needed - a change to the uptake model", f"Owner-ask: {ASK_VALUE}")
     _change(root, git, "docs/hook-blocks/claude-prose.tsv", "refused\n")
 
     def ask(record_dir: str) -> arming.Verdict:

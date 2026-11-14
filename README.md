@@ -79,7 +79,9 @@ concentration chart, the wash-in plot, the parameter controls, the bookmarks,
 the branch control, the agent accounting, the compartment schematic and the
 agent cost. An arrangement is kept as a Workspace, and you switch between
 Workspaces by their tabs. Three come with the simulator: Default, Induction and
-Maintenance.
+Maintenance. The Areas share the window's height below the region described
+next. A View that needs more room than its Area scrolls inside the Area, so on
+a 1366 by 768 laptop screen the window itself does not scroll.
 
 A region outside the Areas shows the simulated time, the playback speed, whether
 the simulation is running or halted and why, the agent and its 1 MAC, the
@@ -233,7 +235,7 @@ Building from source needs:
 - **[uv](https://docs.astral.sh/uv/) 0.12.5 or newer.** An older uv stops with a
   message, because the project's settings require this minimum
   (`required-version` in `pyproject.toml`).
-- **Python 3.14**, which uv installs for you. The file `.python-version` names
+- **Python 3.15**, which uv installs for you. The file `.python-version` names
   the exact patch release.
 - **On Linux, `libegl1`** (`apt install libegl1`). The Qt interface requires it,
   and the PySide6 wheels do not carry it. An ordinary desktop needs nothing

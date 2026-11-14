@@ -1015,7 +1015,10 @@ honours no minimum size that an editor states
 all"). Here, an Area that cannot be given the size its View needs says so rather
 than collapsing it, and a border drag stops where an Area beside the moved line
 reaches its minimum size (`PL-K285`; `border_range` in
-`src/anesthesia_sim/layout/sizing.py`).
+`src/anesthesia_sim/layout/sizing.py`). As in Blender, the Areas share the
+window's room, and a View whose content needs more scrolls inside its own Area,
+as a Blender editor scrolls its own regions (`PL-CBYS`; `ViewScroll` in
+`src/anesthesia_sim/app/area_layout.py`).
 
 **Each View's isolation has to be built, not inherited from Blender.** Blender
 hands each editor a context through which it can reach the window, the screen
