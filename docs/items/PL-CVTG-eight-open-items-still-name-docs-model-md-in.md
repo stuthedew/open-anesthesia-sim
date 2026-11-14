@@ -1,9 +1,15 @@
 ---
 id: PL-CVTG
 title: Seven open items still name docs/MODEL.md in their touches or verify for sections that PL-CTXZ moved to docs/INTERFACE.md; PL-4DDW's verify greps MODEL.md for a value now in INTERFACE.md, so it fails even after a correct fix
-status: untriaged
+priority: P3
+effort: S
+status: done
 touches: docs/items/
 added: 2026-11-14
+closed: 2026-11-14
+pr: 2160
+payoff: an item's touches name the document its change edits, so a lane check sees two sessions editing docs/INTERFACE.md
+verify: grep -q "verify: grep -q '0.25%' docs/INTERFACE.md" docs/items/PL-4DDW-docs-model-md-s-mac-awake-section-says-song-et.md
 ---
 
 **Problem.** Seven open items still name docs/MODEL.md in their touches or verify for sections that PL-CTXZ moved to docs/INTERFACE.md; PL-4DDW's verify greps MODEL.md for a value now in INTERFACE.md, so it fails even after a correct fix
@@ -18,3 +24,5 @@ added: 2026-11-14
 `touches:` derives an item's lane and feeds `bin/docket concurrent`, so a stale path lets two sessions edit `docs/INTERFACE.md` at once without either seeing the overlap.
 
 **Done when** each of the seven items names the document its change edits, and `PL-4DDW`'s `verify:` greps `docs/INTERFACE.md`.
+
+**Generator check.** The cause is one move, `PL-CTXZ`, re-pointing the briefs it moved text out of but not their `touches:` and `verify:` lines. `PL-10BC` holds the same move's missed pointers in code and documents. That is two items from one finished move, not a mechanism still producing them, so it is not recorded as a generator.
