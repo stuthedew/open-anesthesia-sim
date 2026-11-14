@@ -1,8 +1,8 @@
 """Show, record and check the prose review's test set: rejected and gold-standard paragraphs.
 
-At close-out step 8 in `.claude/skills/docket/modes/close-out.md`, the copy
-editor reads each passage that a branch changed and judges it for its
-named reader. The copy editor's prompt is `.claude/agents/copy-editor.md`.
+When the owner asks for a copy edit, the copy editor reads each passage it
+is given and judges it for its named reader (`docs/prose-review/README.md`).
+The copy editor's prompt is `.claude/agents/copy-editor.md`.
 
 The owner is the only clinician who reads this project's prose. When the owner
 rejects a paragraph that the review passed, the paragraph becomes an entry in
