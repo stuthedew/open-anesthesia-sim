@@ -12409,6 +12409,28 @@ def test_a_1280_px_window_opens_one_run_s_readout_row_on_seven_columns(
     assert row.columns() == len(READOUT_PANELS)
 
 
+def test_a_1280_px_window_opens_two_compared_runs_readout_row_on_seven_columns(
+    application: QApplication,
+) -> None:
+    """Two compared runs at 1280 px still share one readout row of seven panels.
+
+    In compare mode each run's transport row also carries its delivered
+    concentration, which can widen the column the readouts sit in. The row
+    must still seat seven across at this width, as `docs/INTERFACE.md`
+    § "The readout row's width condition" states (`PL-LKX7`).
+    """
+
+    view = _case_view(application, _branched_case(), width_px=_SMALL_LAPTOP_WIDTH_PX)
+    _take_fork(view, 60.0)
+    _settle(application)
+    trunk, branch = view.runs
+    row = trunk._readout_row
+
+    assert branch._readout_row.isHidden()
+    assert row.width() >= row.width_for(len(READOUT_PANELS))
+    assert row.columns() == len(READOUT_PANELS)
+
+
 def test_two_runs_share_one_readout_block_whose_values_name_their_runs(
     application: QApplication,
 ) -> None:

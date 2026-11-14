@@ -17,5 +17,8 @@ with uncommitted changes the badge reads "Version 0.6.18+g0e0aa1cd.dirty",
 the transport row needs 1028 px, the record shrinks to 208 px and its text to
 180 px. The widest part of a record line that cannot break is "Alveolar
 ventilation 12.0 L/min ->" at 184 px, so in that state its arrow is clipped.
-A release build's shorter version string avoids it. The readout row seats
-seven across in both states.
+A release build's shorter version string avoids it, but a build without
+package metadata shows "Version unavailable (this build is not traceable)",
+which is longer than either, and the agent's name in the same badge changes
+its width too (both found by the blind review of `PL-LKX7`). The readout row
+seats seven across in both measured states.
