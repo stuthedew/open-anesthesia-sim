@@ -1569,6 +1569,8 @@ list does not yet name.
     stress-tested first. Then the five `docs/MODEL.md` rewrites it blocks are
     made, so that the sections a learner reads beside the schematic, the agent
     cost View and the other displays are written for a clinician.
+    All six items are done. The project owner then removed the copy editor on
+    2026-11-14 (`PL-GL45`), so this entry is now a record of finished work.
 
 #### The condition an agent amount is stated at
 
@@ -1641,9 +1643,8 @@ list does not yet name.
 
 **The copy editor**
 
-- The copy editor cuts text that its reader does not need and keeps good
-  text as it is, as `PL-HGZS`'s stress test judges. The five `docs/MODEL.md`
-  rewrites that waited on it have merged.
+- The five `docs/MODEL.md` rewrites that waited on the copy editor have
+  merged.
 
 **The whole release**
 
