@@ -42,9 +42,11 @@ every later push while a pull request is open.
   (`JUDGE_ASK`), so a judgment nobody made fails safe rather than merging a
   clinical change unread. A record saying `needed` holds it for the owner's
   read, and so does a change to an existing test that pins this module's
-  answers (`PINS`). The pull request then waits for the owner's answer,
-  which the session records as `Owner-read: given` with the date and their
-  words (`READ_GIVEN`). `merge_hold` gives this same answer for a branch's
+  answers (`PINS`), and so does an edit or a deletion of an existing line of
+  a test that compares the model with published data (`REFERENCE_TESTS`),
+  whatever the session's own record says. The pull request then waits for
+  the owner's answer, which the session records as `Owner-read: given` with
+  the date and their words (`READ_GIVEN`). `merge_hold` gives this same answer for a branch's
   copy on the remote, so that a required check on GitHub refuses the merge
   of a held pull request whoever arms it (`PL-39Y1`).
   A change to this module that edits no such test arms, and the answer names
@@ -105,6 +107,10 @@ has already merged. What went unread is named beside it.
   loosening that no test pins merges unread, and so would one that also
   rewrote the check that reads the pins, since this module judges its own
   change.
+- An edit or a deletion of an existing line under `REFERENCE_TESTS` waits on
+  the owner whatever the session records, because a widened tolerance or a
+  changed expected value there is the one place a weakened test hides a wrong
+  clinical value. A branch that only adds lines there does not (`PL-XSRG`).
 - A simulator change waits for its blind review passes (`PL-HDRN`). Its new
   prose held it too until 2026-11-11, when the owner removed the copy edit of
   each branch (`PL-J1ZM`). A blind review record is not undone by a later change, because close-out
@@ -686,6 +692,13 @@ INTERFACE_DOC = "docs/INTERFACE.md"
 #: that joins the specification is added here and nowhere else (`PL-CTXZ`).
 SPECIFICATION_DOCS = (MODEL_DOC, INTERFACE_DOC)
 
+#: The tests that compare the model with published data. An edit or a
+#: deletion of an existing line of one waits on the owner's read whatever the
+#: session's `OWNER_READ` record says, until the record is the owner's own
+#: go-ahead (`PL-XSRG`). Only adding lines does not, since a new comparison
+#: weakens none that was there.
+REFERENCE_TESTS = TESTS + "reference/"
+
 #: Importing this is what makes a test file the simulator's. It is the rule
 #: `tools/workflow_paths_check.py` holds `docket.toml`'s `workflow_paths` to
 #: (`PL-JBZK`), and since 2026-10-05 the one that lets a test under `TESTS`
@@ -933,6 +946,21 @@ def changed_pins(before: str, after: str) -> tuple[str, ...]:
     return tuple(sorted(name for name, said in old.items() if new.get(name) != said))
 
 
+def lines_taken(numstat: str) -> tuple[str, ...]:
+    """The paths of a `-z --numstat` listing that lose at least one existing line, sorted.
+
+    Git counts an edited line as one taken and one added, so a count of
+    lines taken above zero is an edit or a deletion. A binary file, which git
+    counts as `-`, is among them, since what it changed cannot be counted.
+    """
+    taken = []
+    for field in numstat.split("\0"):
+        counts = field.split("\t", 2)
+        if len(counts) == 3 and counts[1] != "0":
+            taken.append(counts[2])
+    return tuple(sorted(taken))
+
+
 @dataclass(frozen=True)
 class AutoMerge:
     """What the forge says of a pull request's auto-merge: its latest switch, and when.
@@ -1114,6 +1142,8 @@ class Verdict:
       does not hold it at.
     - `pinned`: the existing tests in `PINS` that pin this module's answers
       and that the branch would change or delete.
+    - `references`: the tests under `REFERENCE_TESTS` an existing line of
+      which the branch would edit or delete.
     - `switched_off`: when the owner switched the pull request's auto-merge
       off.
     - `blind_owed`: how many blind review passes the branch owes.
@@ -1144,6 +1174,7 @@ class Verdict:
     gate: bool = False
     moved: bool = False
     pinned: tuple[str, ...] = ()
+    references: tuple[str, ...] = ()
     switched_off: str = ""
     blind_owed: int = 0
     blind_recorded: int = 0
@@ -1201,17 +1232,24 @@ class Verdict:
         """Whether the pull request waits on the owner's read.
 
         It does for a change to a test pinning the gate's answers, for a move
-        of the gate, and for a record saying needed. Any other change to the
+        of the gate, for an edit to an existing line under `REFERENCE_TESTS`,
+        whatever the session recorded (`PL-XSRG`), and for a record saying
+        needed. Any other change to the
         gate itself does not, since 2026-10-19 (`PL-9JHM`). A move does,
         because `PINS` is found from where the module is, so a module moved to
         another depth reads a test file that does not exist and finds no pin.
 
-        A record of the owner's go-ahead releases all three, because each
+        A record of the owner's go-ahead releases each of them, because each
         waits on the owner and they have answered (`PL-39Y1`).
         """
         if self.record is not None and self.record.given:
             return False
-        return self.moved or bool(self.pinned) or (self.record is not None and self.record.needed)
+        return (
+            self.moved
+            or bool(self.pinned)
+            or bool(self.references)
+            or (self.record is not None and self.record.needed)
+        )
 
     @property
     def lines(self) -> tuple[str, ...]:
@@ -1413,6 +1451,15 @@ class Verdict:
             reasons.append(
                 f"{gate}changes or deletes {count} {tests} in {PINS} pinning the gate's answers: "
                 f"{self._shown(self.pinned)}"
+            )
+        if self.references:
+            count = len(self.references)
+            tests = "test" if count == 1 else "tests"
+            reasons.append(
+                f"it edits or deletes an existing line of {count} {tests} under "
+                f"{REFERENCE_TESTS} comparing the model with published data, which waits on the "
+                f"owner's read whatever the {OWNER_READ} record says: "
+                f"{self._shown(self.references)}"
             )
         return reasons
 
@@ -1647,8 +1694,9 @@ class _Change:
 
     `on_list` waits on a read, `outside` arms on green beside the store, and
     `worked` is every path outside the store and the body records. `gate` says
-    whether this module changed, `moved` whether it moved, and `pinned` names
-    the existing tests of its answers that changed.
+    whether this module changed, `moved` whether it moved, `pinned` names
+    the existing tests of its answers that changed, and `references` the tests
+    under `REFERENCE_TESTS` that lose an existing line.
     """
 
     prefix: str
@@ -1658,6 +1706,7 @@ class _Change:
     gate: bool = False
     moved: bool = False
     pinned: tuple[str, ...] = ()
+    references: tuple[str, ...] = ()
     unread: tuple[str, ...] = ()
 
 
@@ -1694,6 +1743,19 @@ def _read_change(root: Path, where: _Branch, items_dir: str, record_dir: str = "
     if PINS is not None and PINS in paths:
         pinned, unpinned = _pins_changed(base, root, run, tip=tip)
         unread = (*unread, *unpinned)
+    references: tuple[str, ...] = ()
+    if any(path.startswith(REFERENCE_TESTS) for path in paths):
+        counted = run(
+            changed_path_args("diff", "--numstat", f"{base}...{tip}", "--", REFERENCE_TESTS), root
+        )
+        if answered(counted):
+            references = lines_taken(counted)
+        else:
+            unread = (
+                *unread,
+                f"git would not count the lines {where.name} changes under {REFERENCE_TESTS}, "
+                "so whether it edits a test comparing the model with published data was not read",
+            )
     on_list = tuple(sorted(path for path in rest if not arms_on_green(path, tooling)))
     outside = tuple(
         sorted(
@@ -1702,7 +1764,7 @@ def _read_change(root: Path, where: _Branch, items_dir: str, record_dir: str = "
             if arms_on_green(path, tooling) and outside_the_store(path, prefix)
         )
     )
-    return _Change(prefix, on_list, outside, worked, gate, moved, pinned, tuple(unread))
+    return _Change(prefix, on_list, outside, worked, gate, moved, pinned, references, tuple(unread))
 
 
 @dataclass(frozen=True)
@@ -1816,6 +1878,7 @@ def _held(
         gate=change.gate,
         moved=change.moved,
         pinned=change.pinned,
+        references=change.references,
         switched_off=switched_off,
         blind_owed=reviews.blind_owed,
         blind_recorded=reviews.blind_recorded,
@@ -1888,7 +1951,10 @@ def _owner_ask_answer(
     record, misread = _owner_read(
         root, where.run, where.base, change.on_list, worked=change.worked, tip=where.tip
     )
-    if not Verdict(HOLD, moved=change.moved, pinned=change.pinned, record=record).needs_owner:
+    held = Verdict(
+        HOLD, moved=change.moved, pinned=change.pinned, references=change.references, record=record
+    )
+    if not held.needs_owner:
         unread = (*where.unread, *change.unread, *misread, *_silenced(where))
         if where.unpulled or unread:
             return Verdict(
