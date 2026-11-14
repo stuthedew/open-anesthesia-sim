@@ -50,8 +50,8 @@ every later push while a pull request is open.
   A change to this module that edits no such test arms, and the answer names
   it. A switch of auto-merge off that no commit records as the session's also
   holds it (`AUTO_MERGE`). Once no claim holds it, a hold for the owner's
-  read prints the ask's opening line from the session's `Owner-ask` record
-  (`ASK_LINE`). With no record, it says that nothing goes to the owner until
+  read prints the ask from the session's `Owner-ask` record, one line for
+  each of its parts (`ASK_LINE`). With no record, it says that nothing goes to the owner until
   there is one (`READ_ASK`), opens its first line with "send the owner
   nothing" and exits 3 (`NO_ASK`) rather than 1, so that a session reading
   only the first line, or only the exit status, still learns it (`PL-TLPH`).
@@ -229,10 +229,10 @@ READ_GIVEN = "given"
 #:   it changes> | recommend <option> - <why>`, with at least two options;
 #: - a review, for a high-risk change with no choice in it: `changed - <what
 #:   changed, in one plain sentence> | question - <one yes-or-no question>? |
-#:   checked - <what was already checked> | reply - <what to reply>`. The
-#:   reply quotes the text to judge, before and after, under the line,
-#:   because a pointer into a file sent the owner to dig for it (project
-#:   owner, 2026-11-02, `PL-77QB`).
+#:   why - <why the question is the owner's> | checked - <what was already
+#:   checked> | reply - <what to reply>`. The reply quotes the text to judge,
+#:   before and after, under the ask, because a pointer into a file sent the
+#:   owner to dig for it (project owner, 2026-11-02, `PL-77QB`).
 #:
 #: The review form had three fields until 2026-11-02: `risk`, `checked` and
 #: `look`, rendered as "Risk to review: ... Checked: ... Please look at:
@@ -243,10 +243,18 @@ READ_GIVEN = "given"
 #: what to reply. A record in the old form is refused rather than rendered,
 #: so a branch that still carries one asks the owner nothing until its
 #: session records the new form (`ASK_OLD_REVIEW`).
+#:
+#: The review form gained its `why` field on 2026-11-14. Until then the
+#: question had to say why it was the owner's, and whether anything needed
+#: deciding at all, so sessions wrote all three into one sentence. On #2096
+#: the owner asked of the result: "It's a little dense and hard to follow"
+#: (project owner, 2026-11-10, `PL-M2JP`). A four-field review is refused for
+#: the same reason as the old form (`ASK_FOUR_FIELD_REVIEW`).
 OWNER_ASK = "Owner-ask"
 ASK_SEPARATOR = " | "
 ASK_RECOMMEND = "recommend"
-ASK_REVIEW = ("changed", "question", "checked", "reply")
+ASK_REVIEW = ("changed", "question", "why", "checked", "reply")
+ASK_FOUR_FIELD_REVIEW = ("changed", "question", "checked", "reply")
 ASK_OLD_REVIEW = ("risk", "checked", "look")
 
 #: What no field of an `OWNER_ASK` record may hold, because the owner reads it
@@ -265,18 +273,27 @@ ASK_JARGON = re.compile(
     rf"|\b(?:{ID_PATTERN})"
 )
 
-#: How `parse_owner_ask` renders an `OWNER_ASK` record as the line the owner
+#: How `parse_owner_ask` renders an `OWNER_ASK` record as the lines the owner
 #: is sent. A review is one template. A decision is `ASK_DECISION_SHOWN`, whose
 #: `options` are two or more `ASK_OPTION_SHOWN` joined by
 #: `ASK_OPTIONS_JOIN`, and whose `recommend` is `ASK_RECOMMEND_SHOWN`.
+#:
+#: Each part is a line of its own. All the parts on one line read as a dense
+#: paragraph that the owner found hard to follow (project owner, 2026-11-10,
+#: `PL-M2JP`). Each part after a decision's question starts with "- ", so
+#: that a reply rendered as Markdown keeps the parts on separate lines rather
+#: than joining them back into one paragraph.
 ASK_REVIEW_SHOWN = (
-    "What changed: {changed}. Question for you: {question} Already checked: {checked}. "
-    "What to reply: {reply}."
+    "- What changed: {changed}.\n"
+    "- Question for you: {question}\n"
+    "- Why it is yours: {why}.\n"
+    "- Already checked: {checked}.\n"
+    "- What to reply: {reply}."
 )
-ASK_DECISION_SHOWN = "{question} {options} {recommend}"
-ASK_OPTION_SHOWN = 'Option "{label}": {change}.'
-ASK_OPTIONS_JOIN = " "
-ASK_RECOMMEND_SHOWN = 'I recommend "{pick}": {why}.'
+ASK_DECISION_SHOWN = "{question}\n{options}\n{recommend}"
+ASK_OPTION_SHOWN = '- Option "{label}": {change}.'
+ASK_OPTIONS_JOIN = "\n"
+ASK_RECOMMEND_SHOWN = '- I recommend "{pick}": {why}.'
 
 #: What a hold for the owner's read prints when no `OWNER_ASK` record covers
 #: the change. The ask was prose until 2026-10-18, and sessions skipped it:
@@ -311,13 +328,15 @@ READ_ASK = (
     "(.claude/skills/run-the-app/SKILL.md). "
     f"For a high-risk change with no choice in it: `{OWNER_ASK}: {ASK_REVIEW[0]} - <what "
     f"changed, in one plain sentence> | {ASK_REVIEW[1]} - <one yes-or-no question the owner "
-    f"can decide as the owner or as a clinician, saying why it is theirs>? | "
-    f"{ASK_REVIEW[2]} - <what was already "
-    f"checked> | {ASK_REVIEW[3]} - <what to reply, such as Merge it, or what to change>`. "
+    f"can decide as the owner or as a clinician, in one clause>? | {ASK_REVIEW[2]} - <why "
+    f"the question is the owner's rather than the session's> | {ASK_REVIEW[3]} - <what was "
+    f"already checked> | {ASK_REVIEW[4]} - <what to reply, such as Merge it, or what to "
+    "change>`. Each field is printed on its own line, so put each fact in its own field: "
+    "the question asks only the question, and its context goes in what changed. "
     "Never ask the owner to re-check what the tests or reviews already checked, such as "
     "whether a rewording kept its meaning: they cannot judge that from a reply. If no such "
-    "question exists, the question says so, asks whether to merge, and recommends it. Under "
-    "the line, the reply quotes the text to judge, before and after. "
+    "question exists, the question is only whether to merge, such as 'May it merge?'. Under "
+    "the ask, the reply quotes the text to judge, before and after. "
     "Write every field in plain words for a clinician who has not read this repository "
     "(.claude/rules/plain-writing.md): say what the owner or a learner would notice, and "
     "never name a test, check, file or tool by its internal name. If neither form can be "
@@ -337,8 +356,9 @@ READ_ASK = (
 #: was still hard to judge: "it's hard to judge an isolated sentence change"
 #: without the surrounding context (project owner, 2026-11-02, `PL-BGN1`).
 ASK_LINE = (
-    "  Open the ask with this line, word for word, as the closing block's own line, never "
-    "as 'read #N', and repeat it whole in every later reply that still waits on it. Under "
+    "  Open the ask with these lines, word for word and each on its own line, as one item of "
+    "the closing block, never as 'read #N', and repeat them whole in every later reply that "
+    "still waits on it. Under "
     "it, quote the text the owner is to judge in the reply itself: the changed sentences, "
     "rows or values, before and after, each with enough of its surroundings, such as the "
     "whole paragraph, for the change to make sense. Never send the owner into a file to "
@@ -1026,24 +1046,31 @@ def parse_owner_given(value: str) -> str | None:
 class OwnerAsk:
     """What a hold for the owner's read asks him, from a session's `OWNER_ASK` record.
 
-    `commit` carries the trailer, and `line` is the ask's opening line as
-    `parse_owner_ask` renders it.
+    `commit` carries the trailer, and `shown` is the ask as `parse_owner_ask`
+    renders it: one line for each of its parts, joined by newlines.
     """
 
     commit: str
-    line: str
+    shown: str
+
+
+def _listed(words: Sequence[str]) -> str:
+    """`words` as an English list: "a, b and c"."""
+    return f"{', '.join(words[:-1])} and {words[-1]}"
 
 
 def parse_owner_ask(value: str) -> tuple[str, str]:
-    """`(line, "")` from an `OWNER_ASK` value in one of its forms, or `("", why)` otherwise.
+    """`(shown, "")` from an `OWNER_ASK` value in one of its forms, or `("", why)` otherwise.
 
-    A decision needs a question ending in "?", at least two options that each
-    say what they change, distinct labels, and a recommendation naming one of
-    them with its reason. A review needs its four fields in order, each with
-    a value, and its question ends in "?". A review in the old `risk`,
-    `checked` and `look` form is refused (`ASK_OLD_REVIEW`). Whether a
-    question's answer is obvious is judgment, so the printed instructions say
-    it and this does not try.
+    `shown` has one line for each part of the ask. A decision needs a
+    question ending in "?", at least two options that each say what they
+    change, distinct labels, and a recommendation naming one of them with its
+    reason. A review needs its five fields in order, each with a value, and
+    its question ends in "?". A review in the old `risk`, `checked` and
+    `look` form, or in the four-field form with no `why`, is refused
+    (`ASK_OLD_REVIEW`, `ASK_FOUR_FIELD_REVIEW`). Whether a question's answer
+    is obvious, and whether it is one clause, is judgment, so the printed
+    instructions say it and this does not try.
     """
     fields = [field.strip() for field in value.split(ASK_SEPARATOR)]
     named = [field.partition(" -") for field in fields]
@@ -1057,17 +1084,23 @@ def parse_owner_ask(value: str) -> tuple[str, str]:
     if words == list(ASK_OLD_REVIEW):
         return "", (
             "it is in the old risk, checked and look form, which the owner could not follow; "
-            "record it as changed, question, checked and reply"
+            f"record it as {_listed(ASK_REVIEW)}"
+        )
+    if words == list(ASK_FOUR_FIELD_REVIEW):
+        return "", (
+            "it has no why field, so its question had to say why it is the owner's as well; "
+            f"record it as {_listed(ASK_REVIEW)}, with the question in one clause"
         )
     if words == list(ASK_REVIEW):
         if not all(dash and said.strip() for _, dash, said in named):
-            return "", "a review needs a value after each of changed, question, checked and reply"
-        changed, question, checked, reply = (said.strip() for _, _, said in named)
+            return "", f"a review needs a value after each of {_listed(ASK_REVIEW)}"
+        changed, question, why, checked, reply = (said.strip() for _, _, said in named)
         if not question.endswith("?"):
             return "", "a review's question ends in '?', so the owner can answer it yes or no"
         return ASK_REVIEW_SHOWN.format(
             changed=changed.rstrip("."),
             question=question,
+            why=why.rstrip("."),
             checked=checked.rstrip("."),
             reply=reply.rstrip("."),
         ), ""
@@ -1184,13 +1217,13 @@ class Verdict:
 
     @property
     def sendable(self) -> str | None:
-        """The ask's opening line, where something may be sent to the owner; None otherwise.
+        """The ask, one line per part, where something may be sent to the owner; None otherwise.
 
         This is what `bin/docket arm --owner-ask` prints, and what
         `.claude/hooks/owner_ask_guard.py` attaches to a thread's message that
         names the pull request (`PL-TLPH`, `PL-X4MD`).
         """
-        return self.ask.line if self.asks_owner and self.ask is not None else None
+        return self.ask.shown if self.asks_owner and self.ask is not None else None
 
     @property
     def unjudged(self) -> bool:
@@ -1366,7 +1399,8 @@ class Verdict:
             if self.ask is None:
                 said.append(READ_ASK)
             else:
-                said.extend((ASK_LINE, f"  {self.ask.line}"))
+                said.append(ASK_LINE)
+                said.extend(f"  {line}" for line in split_lines(self.ask.shown))
             said.append(GIVEN_ASK)
         return (*said, *notes)
 
@@ -2319,10 +2353,10 @@ def _owner_ask(
     commit, value = _newest_trailer(root, run, span, OWNER_ASK)
     if not commit:
         return None, ""
-    line, why = parse_owner_ask(value)
+    shown, why = parse_owner_ask(value)
     if why:
         return None, f"The {OWNER_ASK} record on {commit[:12]} was not read: {why}."
-    return OwnerAsk(commit=commit, line=line), ""
+    return OwnerAsk(commit=commit, shown=shown), ""
 
 
 def _owner_read(

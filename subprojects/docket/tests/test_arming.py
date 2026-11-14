@@ -433,10 +433,54 @@ def test_a_blind_record_that_cannot_be_read_says_why(value: str, reason: str) ->
 
 
 ASK_REVIEW_VALUE = (
-    "changed - the uptake step is reworded | question - should this merge, since it "
-    "touches the uptake model? | checked - every figure still matches its source | "
-    "reply - Merge it"
+    "changed - the uptake step is reworded | question - May it merge? | why - it changes "
+    "the uptake model, which only you approve | checked - every figure still matches its "
+    "source | reply - Merge it"
 )
+
+
+def test_a_review_question_prints_each_part_on_its_own_line() -> None:
+    """Each part of a question to the owner is a line of its own (`PL-M2JP`).
+
+    On #2096 the owner was sent a review's four parts as one paragraph, its
+    question also saying why it was theirs and that nothing needed deciding,
+    and found it "a little dense and hard to follow" (project owner,
+    2026-11-10). So the reason the question is theirs is a field of its own,
+    and a review recorded without it is refused rather than printed.
+    """
+    shown, why = arming.parse_owner_ask(ASK_REVIEW_VALUE)
+
+    assert why == ""
+    assert shown.splitlines() == [
+        "- What changed: the uptake step is reworded.",
+        "- Question for you: May it merge?",
+        "- Why it is yours: it changes the uptake model, which only you approve.",
+        "- Already checked: every figure still matches its source.",
+        "- What to reply: Merge it.",
+    ]
+
+    decision, why = arming.parse_owner_ask(
+        "Which view opens first? | Chooser: the learner picks a view each run | "
+        "Last used: it opens where they left off | recommend Chooser - it names every view"
+    )
+
+    assert why == ""
+    assert decision.splitlines() == [
+        "Which view opens first?",
+        '- Option "Chooser": the learner picks a view each run.',
+        '- Option "Last used": it opens where they left off.',
+        '- I recommend "Chooser": it names every view.',
+    ]
+
+    four, why = arming.parse_owner_ask(
+        "changed - x | question - May it merge, since it changes y? | checked - z | reply - w"
+    )
+
+    assert four == ""
+    assert why == (
+        "it has no why field, so its question had to say why it is the owner's as well; "
+        "record it as changed, question, why, checked and reply, with the question in one clause"
+    )
 
 
 def test_a_copied_refusal_log_leaves_the_recorded_ask_in_force(tmp_path: Path) -> None:

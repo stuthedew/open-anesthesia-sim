@@ -5744,7 +5744,7 @@ def cmd_arm(args: argparse.Namespace) -> int:
 
     With `--owner-ask` it answers one question for `.claude/hooks/owner_ask_guard.py`:
     what may be sent to the owner about this pull request. It prints the
-    recorded ask's opening line and exits 0. Where the pull request waits on
+    recorded ask, one line for each of its parts, and exits 0. Where the pull request waits on
     the owner's read and no `Owner-ask` record says what to ask, it prints why
     nothing may be sent, led by "send the owner nothing", and exits 3. Every
     other answer prints its first line and exits with its own status: 2 where
@@ -6327,7 +6327,7 @@ def build_parser() -> argparse.ArgumentParser:
     arm_cmd.add_argument(
         "--owner-ask",
         action="store_true",
-        help="print only the line the owner may be sent about this pull request and exit 0; "
+        help="print only the ask the owner may be sent about this pull request and exit 0; "
         "exit 3 where it waits on the owner's read with no Owner-ask recorded, 2 where it "
         "cannot answer, and 1 otherwise",
     )

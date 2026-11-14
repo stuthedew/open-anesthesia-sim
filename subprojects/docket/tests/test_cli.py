@@ -11987,20 +11987,24 @@ def test_arm_ask_is_written_in_plain_words_for_the_owner() -> None:
     """
     line, why = arming.parse_owner_ask(
         "changed - the hazard table is reworded | question - should the table keep the "
-        "1 MAC figure? | checked - every figure still matches its source. | reply - Merge it"
+        "1 MAC figure? | why - the figure is a clinical value | checked - every figure still "
+        "matches its source. | reply - Merge it"
     )
     assert why == ""
     assert line == (
-        "What changed: the hazard table is reworded. Question for you: should the table keep "
-        "the 1 MAC figure? Already checked: every figure still matches its source. "
-        "What to reply: Merge it."
+        "- What changed: the hazard table is reworded.\n"
+        "- Question for you: should the table keep the 1 MAC figure?\n"
+        "- Why it is yours: the figure is a clinical value.\n"
+        "- Already checked: every figure still matches its source.\n"
+        "- What to reply: Merge it."
     )
     old, why = arming.parse_owner_ask("risk - r | checked - c | look - l")
     assert old == ""
     assert "old risk, checked and look form" in why
     assert "Write every field in plain words for a clinician" in arming.READ_ASK
     assert "never name a test, check, file or tool by its internal name" in arming.READ_ASK
-    assert "can decide as the owner or as a clinician, saying why it is theirs" in (arming.READ_ASK)
+    assert "can decide as the owner or as a clinician, in one clause" in arming.READ_ASK
+    assert "why the question is the owner's rather than the session's" in arming.READ_ASK
     assert "Never ask the owner to re-check what the tests or reviews already checked" in (
         arming.READ_ASK
     )
@@ -12072,11 +12076,12 @@ def test_arm_holds_for_the_owner_only_with_a_recorded_ask(
     lines = capsys.readouterr().out.splitlines()
     assert arming.READ_ASK not in lines
     at = lines.index(arming.ASK_LINE)
-    assert lines[at + 1] == (
-        '  Which view opens first? Option "Chooser": the learner picks a view each run. '
-        'Option "Last used": it opens where they left off. I recommend "Chooser": it names '
-        "every view."
-    )
+    assert lines[at + 1 : at + 5] == [
+        "  Which view opens first?",
+        '  - Option "Chooser": the learner picks a view each run.',
+        '  - Option "Last used": it opens where they left off.',
+        '  - I recommend "Chooser": it names every view.',
+    ]
 
     closed = _item_document("PL-B1B1", "done")
     _commit_file(git, root, "docs/items/PL-B1B1-held.md", closed, "2026-09-01T12:00:30+00:00")
@@ -12253,9 +12258,10 @@ def test_arm_owner_ask_prints_only_what_may_be_sent_to_the_owner(
 
     assert _arm(root, "--owner-ask") == 0
     assert capsys.readouterr().out == (
-        'Which view opens first? Option "Chooser": the learner picks a view each run. '
-        'Option "Last used": it opens where they left off. I recommend "Chooser": it names '
-        "every view.\n"
+        "Which view opens first?\n"
+        '- Option "Chooser": the learner picks a view each run.\n'
+        '- Option "Last used": it opens where they left off.\n'
+        '- I recommend "Chooser": it names every view.\n'
     )
 
     _claim_by_hand(git, "PL-B1B1", ARM_BRANCH, "2026-09-01T12:00:30+00:00")
@@ -12362,26 +12368,30 @@ def test_arm_owner_ask_sends_nothing_for_a_held_pull_request_that_has_merged(
     [
         (
             ARM_DECISION,
-            'Which view opens first? Option "Chooser": the learner picks a view each run. '
-            'Option "Last used": it opens where they left off. I recommend "Chooser": it '
-            "names every view.",
+            "Which view opens first?\n"
+            '- Option "Chooser": the learner picks a view each run.\n'
+            '- Option "Last used": it opens where they left off.\n'
+            '- I recommend "Chooser": it names every view.',
             "",
         ),
         (
             "Changed - the dose label reads mcg | question - should it show mcg/kg/min? | "
-            "checked - the label matches the unit stored. | reply - Merge it",
-            "What changed: the dose label reads mcg. Question for you: should it show "
-            "mcg/kg/min? Already checked: the label matches the unit stored. What to reply: "
-            "Merge it.",
+            "why - a dose unit is a clinical value. | checked - the label matches the unit "
+            "stored. | reply - Merge it",
+            "- What changed: the dose label reads mcg.\n"
+            "- Question for you: should it show mcg/kg/min?\n"
+            "- Why it is yours: a dose unit is a clinical value.\n"
+            "- Already checked: the label matches the unit stored.\n"
+            "- What to reply: Merge it.",
             "",
         ),
         (
-            "changed - x | question -  | checked - y | reply - z",
+            "changed - x | question -  | why - w | checked - y | reply - z",
             "",
-            "a review needs a value after each of changed, question, checked and reply",
+            "a review needs a value after each of changed, question, why, checked and reply",
         ),
         (
-            "changed - x | question - is it right | checked - y | reply - z",
+            "changed - x | question - is it right | why - w | checked - y | reply - z",
             "",
             "a review's question ends in '?', so the owner can answer it yes or no",
         ),
@@ -12389,16 +12399,25 @@ def test_arm_owner_ask_sends_nothing_for_a_held_pull_request_that_has_merged(
             "risk - x | checked - y | look - z",
             "",
             "it is in the old risk, checked and look form, which the owner could not follow; "
-            "record it as changed, question, checked and reply",
+            "record it as changed, question, why, checked and reply",
         ),
         (
-            "changed - x | question - y? | checked - verify --self ACCEPTs | reply - Merge it",
+            "changed - x | question - y? | checked - z | reply - w",
+            "",
+            "it has no why field, so its question had to say why it is the owner's as well; "
+            "record it as changed, question, why, checked and reply, with the question in one "
+            "clause",
+        ),
+        (
+            "changed - x | question - y? | why - w | checked - verify --self ACCEPTs | "
+            "reply - Merge it",
             "",
             "it names '--self', which the owner cannot read in a reply; say in plain words "
             "what it checked or changed",
         ),
         (
-            "changed - x | question - y? | checked - tools/model_rewrite.py lost | reply - z",
+            "changed - x | question - y? | why - w | checked - tools/model_rewrite.py lost | "
+            "reply - z",
             "",
             "it names 'tools/model_rewrite.py', which the owner cannot read in a reply; say in "
             "plain words what it checked or changed",

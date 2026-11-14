@@ -548,11 +548,14 @@ at least two options and a recommendation. Each option says what it changes
 for you or for a learner. The decision is worded in clinical or learner terms.
 A choice between approaches to the interface comes with one annotated
 screenshot per option (project owner, 2026-10-19, `PL-KYTY`). A review says
-what changed in one plain sentence, asks you one yes-or-no question, says what
-was already checked, and says what to reply. The question is one you can
-decide as the owner or as a clinician. It never asks you to re-check what the
-tests or reviews already covered, such as whether a rewording kept its
-meaning. Where there is no such question, it says so and recommends merging.
+what changed in one plain sentence, asks you one yes-or-no question, says why
+the question is yours, says what was already checked, and says what to reply.
+The question is one clause, and is one you can decide as the owner or as a
+clinician. It never asks you to re-check what the tests or reviews already
+covered, such as whether a rewording kept its meaning. Where there is no such
+question, it asks only whether to merge. Each part of either form is printed
+on its own line, because the parts run together as one paragraph were hard to
+follow (project owner, 2026-11-10, `PL-M2JP`).
 No part of the ask names a tool, file, command or item id, and `arm` refuses a
 record that does (project owner, 2026-11-02, `PL-BGN1`). Either way, the reply
 quotes the text you are to judge, before and after, with enough of the
@@ -565,10 +568,10 @@ puts the record into the thread's message itself (`PL-X4MD`). It runs in a
 Projects thread through the setup script in § "Give Projects threads the
 repository's hooks with one setup script". When a thread's message to you in
 Projects names a pull request, and that thread's own pull
-request waits for your read, the hook adds a line at the end of the message:
+request waits for your read, the hook adds to the end of the message:
 
-- **A question for you is recorded.** The line is that question, unless the
-  message already quotes it word for word.
+- **A question for you is recorded.** The addition is that question, unless
+  the message already quotes it word for word.
 - **No question is recorded yet.** The line is "No question is recorded on
   this pull request yet, so there is nothing to decide."
 
