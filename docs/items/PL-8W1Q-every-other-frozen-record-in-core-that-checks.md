@@ -3,11 +3,13 @@ id: PL-8W1Q
 title: Every other frozen record in core/ that checks its fields in __post_init__ still restores from a pickle or a copy without running the check: a saved Keyframe with instant_s as a bare -50.0, a RunDefinition's slots and cache, BreathingCircuitState, SampledWindow, DeliverableFreshGasFlowRange, LiquidDensity and the parameter records all load unchecked, and nothing makes the next such record fail; the restore is also positional, so a record saved before a field reorder loads into the wrong fields (found at review of PL-S11T)
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: replay-findings
-touches: src/anesthesia_sim/core, tests/unit/test_record_restores.py
+touches: src/anesthesia_sim/core, tests/unit/test_record_restores.py, docs/ARCHITECTURE.md, docs/INTERFACE.md
 added: 2026-10-27
+closed: 2026-11-14
+pr: 2166
 payoff: a record restored by a pickle or a copy is checked as the constructor checks it, and the next checked record cannot skip that
 verify: grep -q 'def test_every_checked_record_restores_through_its_checks' tests/unit/test_record_restores.py
 reenters: PL-S11T
@@ -72,3 +74,68 @@ constructor's checks. It is an instance of `PL-ZGYX`'s family fact, which
 other re-entries already name.
 
 **Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. `Keyframe`, `RunDefinition`, `SampledWindow`, `BreathingCircuitState` and `DeliverableFreshGasFlowRange` were frozen, checked records at `817a4d88`, and `CheckedQuantity.__reduce__` was the only restore guard. `LiquidDensity` came later (`c95177a6`).
+
+**Built 2026-11-14 (step (c) of `PL-LHCL`).** The helper moved from
+`core/governing_equations.py` to a new module, `core/checked_record.py`, as
+`restore_through_checks`. It now builds the record by field name rather than
+by position, so a record with a keyword-only field restores too, and it
+refuses a state with the wrong number of values by name. Nine more records
+gained a `__setstate__` that calls it: `Keyframe` and `SampledWindow`
+(`core/run_definition.py`), `BreathingCircuitState` and
+`DeliverableFreshGasFlowRange` (`core/circuit.py`), `LiquidDensity`
+(`core/liquid_agent.py`), and `AgentParameters`,
+`BreathingCircuitParameters`, `ReferenceAdultParameters` and
+`SupportedSchemaVersions` (`core/parameters.py`). With the two settings
+records from `PL-S11T`, that is all eleven frozen dataclasses in `core/` that
+check their fields in `__post_init__`.
+
+`tests/unit/test_record_restores.py` holds
+`test_every_checked_record_restores_through_its_checks`. It walks every module
+in `core/` the way `tests/unit/test_record_writes.py` does, takes each frozen
+dataclass with a `__post_init__`, hands an empty instance a state that is not
+a list, and requires the helper's own refusal. The `__setstate__` that
+`dataclass` writes gives a different error, so a new checked record without
+the helper fails. A second test requires the walk to find the eleven named
+records, so the walk cannot pass by finding nothing. The others replay the
+escape: a `Keyframe` saved holding a bare -50.0 as `instant_s` is refused
+through every pickle protocol, `copy.copy` and `copy.deepcopy`; a valid one
+round-trips equal with its `CaseInstant` type kept; a `SampledWindow` saved
+with three instants and two states is refused, which shows that a check across
+two fields runs too.
+
+**Failed first.** With the `src/` changes stashed and the new helper module
+left in place, `uv run pytest -q -p no:randomly
+tests/unit/test_record_restores.py` gave 10 failures:
+`test_every_checked_record_restores_through_its_checks` with `AssertionError:
+these checked records restore from a pickle or a copy without their checks`,
+naming the nine records above, the eight Keyframe rebuilds with `Failed: DID
+NOT RAISE TypeError`, and the `SampledWindow` test with `Failed: DID NOT RAISE
+SimulationConfigurationError`.
+
+**What this leaves.** Three kinds of record still restore without their
+checks, and none is a frozen dataclass with `__post_init__`, so the Done-when
+does not reach them. `RunDefinition` is a plain class with `__slots__`; a
+restore sets its segments, its reached instant and its propagator cache
+directly. `PatientCompartments` and `AgentUptakeSystem` are mutable
+dataclasses whose writes `tests/unit/test_record_writes.py` already governs.
+The Pydantic payloads in `core/parameters.py` restore their `__dict__`
+without validation. Nothing in `src/` loads a pickle yet, so none is live; the
+first saved-run loader's file format (plain data, rebuilt through each
+constructor, as the triage above recommends) closes all three and the
+positional restore together.
+
+**Blind review, 2026-11-14.** Both passes named one finding: the helper could
+not rebuild a record whose saved state is not its constructor's arguments, and
+the walk would still have pushed such a record onto it. Three shapes do that: a
+frozen dataclass without `slots=True`, whose state is a dict; a field with
+`init=False`; and an `InitVar`. No current record has one. The helper now
+refuses an `init=False` field by name, and
+`test_every_checked_record_has_the_shape_that_restore_through_checks_reads`
+requires each checked record to be slotted and its constructor to take exactly
+its fields, so a misshapen record fails that test rather than every copy.
+
+**Docs swept, 2026-11-14.** `docs/INTERFACE.md` § on how a saved record is
+checked said that `Keyframe` did not yet check its values on load; it now says
+which records do and points the rest at `PL-HXNL`. `docs/ARCHITECTURE.md` has
+the new module's line. `docs/MODEL.md`, `README.md` and `.claude/` name neither
+the old helper nor `__setstate__`, so nothing there changed.
