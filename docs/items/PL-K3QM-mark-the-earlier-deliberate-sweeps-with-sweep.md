@@ -3,12 +3,11 @@ id: PL-K3QM
 title: Mark the earlier deliberate sweeps with sweep:, so docket inflow's history rows count their filings apart: only PL-K88Z carries it, and candidates include PL-BNYF's queue audit among the items whose work filed three or more apparatus items
 priority: P3
 effort: M
-status: done
+status: ready
 classes: housekeeping
 feature: convergence-visibility
 touches: docs/items
 added: 2026-11-03
-closed: 2026-11-14
 payoff: docket inflow's history rows count the filings of deliberate sweeps apart from ordinary inflow
 verify: grep -q '^sweep:' docs/items/PL-BNYF-*.md
 ---
@@ -47,3 +46,7 @@ Most of the other candidates are ordinary fixes that captured findings as they w
 3. `PL-2D1S` traced one cause, the rise in red CI runs, rather than searching a surface.
 4. `PL-CMCB` audited the ten `type: ignore` directives, but only one of its three filings came from that audit.
 5. `PL-5MYR` was found by a sweep, but its own work was a fix.
+
+**Left open, 2026-11-14.** The done-when asks for each candidate's brief to be
+read. The screen above read about 20 of 163 in full, so the item stays ready
+for the remaining 143. The three marks stand.
