@@ -166,6 +166,7 @@ from docket.python import without_docstrings  # noqa: E402
 from docket.shell import joined_text  # noqa: E402
 from docket.store import ID_RE  # noqa: E402
 
+from check_support import source_python_refusal  # noqa: E402
 from workflow_paths_check import tracked_under  # noqa: E402
 
 #: A token written the way an id is written, to be judged against `ID_RE`: the
@@ -633,6 +634,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--root", type=Path, default=ROOT, help="repository root to scan")
     args = parser.parse_args(argv)
+    if (refusal := source_python_refusal(sys.argv[0])) is not None:
+        print(refusal)
+        return 2
 
     offenders = collect(args.root)
     if not offenders:

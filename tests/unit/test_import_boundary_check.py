@@ -629,3 +629,26 @@ class TestMain:
         assert f"{tissue}:3: from ..app import formatting" in out
         assert "anesthesia_sim.app is permitted in no module under src/anesthesia_sim/core/" in out
         assert "3 errors" in out
+
+
+def test_an_older_interpreter_is_named(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Under a Python older than `requires-python`, the check names the one to use, not a crash.
+
+    `ast` parses `src/` with the running interpreter's grammar, so the
+    container's bare `python3` 3.13 raised a `SyntaxError` on 3.14 syntax that
+    read as a failing check (`PL-62PF`).
+    """
+
+    monkeypatch.setattr("sys.argv", ["tools/import_boundary_check.py"])
+    monkeypatch.setattr("sys.version_info", (3, 13, 18, "final", 0))
+
+    status = main([])
+
+    monkeypatch.undo()
+    assert status == 2
+    assert capsys.readouterr().out == (
+        "import_boundary_check.py: this check parses src/, which needs Python 3.14 or newer, "
+        "and this is Python 3.13. Run it as: uv run python tools/import_boundary_check.py\n"
+    )
