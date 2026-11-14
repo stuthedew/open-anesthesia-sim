@@ -305,9 +305,9 @@ def _bring_chart_into_view(view: SimulationView) -> None:
     """
 
     (chart,) = view.findChildren(ConcentrationChart)
-    around = [area for area in view.findChildren(QScrollArea) if area.isAncestorOf(chart)]
-    # The inner scroll area is the one with the most scroll areas around it.
-    around.sort(key=lambda area: -sum(other.isAncestorOf(area) for other in around))
+    around = innermost_first(
+        [area for area in view.findChildren(QScrollArea) if area.isAncestorOf(chart)]
+    )
 
     for area in around:
         area.ensureWidgetVisible(chart, 0, 0)
@@ -322,6 +322,16 @@ def _bring_chart_into_view(view: SimulationView) -> None:
                 f"{viewport.height()} px scroll area, so part of it is out of view and "
                 "its paint would be measured as cheaper than it is"
             )
+
+
+def innermost_first(areas: list[QScrollArea]) -> list[QScrollArea]:
+    """Return `areas` with the innermost first: the one with the most of the others around it."""
+
+    # The count reads a copy. A list being sorted reads as empty while
+    # Python sorts it, so counting in `areas` itself would count nothing.
+    others = tuple(areas)
+
+    return sorted(areas, key=lambda area: -sum(other.isAncestorOf(area) for other in others))
 
 
 def measure(

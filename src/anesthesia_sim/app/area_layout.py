@@ -2272,6 +2272,11 @@ class ViewScroll(QScrollArea):
     Qt's own `setWidgetResizable(True)` is not used. It gives a widget whose
     text wraps its preferred height, so a View with room to spare for its plot
     would scroll before it needed to.
+
+    A View kept across a rebuild of the layout keeps its scroll position. The
+    new box takes the old box's position and applies it once the box is shown
+    at its size. Before then the scroll range is not yet known, and Qt would
+    clamp the position to 0.
     """
 
     def __init__(self, view: QWidget) -> None:
@@ -2282,11 +2287,16 @@ class ViewScroll(QScrollArea):
         self.viewport().setAutoFillBackground(False)
         previous = view.parentWidget()
         holder = None if previous is None else previous.parentWidget()
+        self._kept_position: tuple[int, int] | None = None
 
         if isinstance(holder, ViewScroll) and holder.widget() is view:
             # A View kept across a rebuild is still in the box of the frame
             # that is being replaced. That box must let go of the View, or it
             # would move the View again when its own scroll bars change.
+            self._kept_position = (
+                holder.horizontalScrollBar().value(),
+                holder.verticalScrollBar().value(),
+            )
             holder.takeWidget()
 
         filled = view.autoFillBackground()
@@ -2333,6 +2343,13 @@ class ViewScroll(QScrollArea):
             least_height = max(least_height, layout.totalMinimumHeightForWidth(width))
 
         view.resize(width, max(room.height(), least_height))
+
+        if self._kept_position is not None and self.isVisible():
+            # The View's resize above has set the scroll range for this size.
+            horizontal, vertical = self._kept_position
+            self._kept_position = None
+            self.horizontalScrollBar().setValue(horizontal)
+            self.verticalScrollBar().setValue(vertical)
 
 
 class AreaNotice(QFrame):

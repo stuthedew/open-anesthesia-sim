@@ -38,10 +38,12 @@ from frame_cost import (
     DEFAULT_MULTIPLIER,
     FrameSample,
     Measurement,
+    innermost_first,
     measure,
     report,
     steps_per_frame,
 )
+from PySide6.QtWidgets import QApplication, QScrollArea, QVBoxLayout, QWidget
 
 from anesthesia_sim.app.dashboard_frame import (
     MAX_DISPLAYED_RUNS,
@@ -238,3 +240,27 @@ def test_a_run_count_the_dashboard_cannot_draw_is_refused(runs: int) -> None:
 
     with pytest.raises(ValueError, match="a dashboard draws between 1 and"):
         measure(multiplier=1, frames=1, warm_up_s=1.0, runs=runs)
+
+
+# ------------------------------------------- scrolling the chart into view
+
+
+def test_the_chart_is_scrolled_into_view_in_its_area_before_the_page() -> None:
+    """`PL-CBYS`: of two nested scroll areas, the inner one comes first, in any given order.
+
+    The chart sits in its Area's scroll box, which sits in the page's. The
+    harness scrolls the inner box first, so the chart is in view in its Area
+    before the page brings the Area into the window. An earlier sort counted
+    each box's ancestors in the list being sorted, which Python shows as empty
+    during the sort, so the given order was kept.
+    """
+
+    _ = QApplication.instance() or QApplication([])
+    outer = QScrollArea()
+    holder = QWidget()
+    inner = QScrollArea()
+    QVBoxLayout(holder).addWidget(inner)
+    outer.setWidget(holder)
+
+    assert innermost_first([outer, inner]) == [inner, outer]
+    assert innermost_first([inner, outer]) == [inner, outer]

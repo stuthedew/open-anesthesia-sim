@@ -24,3 +24,9 @@ height, the plot always stays whole, but the Areas move each time an advisory
 appears or clears, and the wash-in Area below gives up the room. If the need
 stays a fixed number, the layout is stable, but the plot's bottom scrolls out
 of view while an advisory is shown.
+
+**A second case, from the adversarial review on 2026-11-14.** Taking a fork in
+Induction at 1366 by 768 adds a second run, and the advisory that the chart
+draws at most two compartments per run appears outside the key box (30 px).
+The View's content becomes 311 px in the same 280 px Area, the plot sits at
+y 137 to 297, and its bottom 17 px are scrolled out of view.

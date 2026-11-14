@@ -6899,17 +6899,20 @@ def test_a_chart_views_least_width_holds_every_row_above_its_plot(
         assert chart_view.minimumSizeHint().width() >= needed, type(chart_view).__name__
 
 
-def test_the_wash_in_view_says_modelled_wherever_its_plot_is_shown(
+def test_the_wash_in_view_never_scrolls_modelled_away_from_a_whole_plot(
     application: QApplication,
 ) -> None:
-    """`PL-CBYS`: "Modelled, not measured" stays in view with the F_A/F_I plot.
+    """`PL-CBYS`: "Modelled, not measured" is never in the box that scrolls above the plot.
 
     The safety standard requires those three words beside the plot
-    (`PL-F9TQ`). In the Induction Workspace at 1366 by 768 the wash-in View
-    is at its least height, and the box of rows above its plot shows only
-    its first two rows. With the line inside that box, it was scrolled out
-    of the box's view while the plot was drawn. It is now a row of its own
-    outside the box, under the heading.
+    (`PL-F9TQ`). The box above a chart's plot is squeezed before the plot is,
+    so it can show its first two rows while the plot is whole. With the line
+    as the box's third row, the Induction Workspace at 1366 by 948 to 1366 by
+    1028 showed the whole wash-in plot with the line scrolled out of the box's
+    view. It is now a row of its own under the heading, so wherever the View
+    fits its Area, the line is on screen. Where the View is taller than its
+    Area, as at 1366 by 768, the line and the plot cannot both be on screen;
+    `PL-26BZ` holds that question.
     """
 
     view = _shipped_view_at(application, "Induction", 1366, 768)
@@ -6917,16 +6920,57 @@ def test_the_wash_in_view_says_modelled_wherever_its_plot_is_shown(
     (line,) = (
         label for label in wash_in.findChildren(QLabel) if label.text() == WASH_IN_MODELLED_TEXT
     )
+    inside = [box for box in wash_in.findChildren(QScrollArea) if box.isAncestorOf(line)]
 
     assert line.isVisible()
+    assert inside == [], "the line is in a box that scrolls inside the View"
 
-    for box in view.findChildren(QScrollArea):
-        if not box.isAncestorOf(line):
-            continue
 
-        top = line.mapTo(box.viewport(), QPoint(0, 0)).y()
-        assert 0 <= top, f"the line is {-top} px above a scroll box's view"
-        assert top + line.height() <= box.viewport().height(), "the line is below a box's view"
+def test_a_view_kept_across_a_rebuild_keeps_its_scroll_position(application: QApplication) -> None:
+    """`PL-CBYS`: splitting one Area does not scroll a View in another Area back to its top.
+
+    Each rebuild of the layout gives every View a new frame and a new scroll
+    box. In the Default Workspace at 1366 by 768 the Bookmarks View scrolls
+    inside its Area. Before the fix, a reader who had scrolled it to the end
+    found it back at the top after splitting a different Area, though the
+    same View was kept. Before `PL-CBYS` the scroll sat inside the View and
+    moved with it.
+    """
+
+    from anesthesia_sim.app.area_layout import SPLIT_SIDE_BY_SIDE_LABEL
+
+    view = _shipped_view_at(application, "Default", 1366, 768)
+    areas = view.layout_container
+    (bookmarks,) = (area for area in areas.model.areas() if area.view == BOOKMARKS)
+    kept = areas.frame(bookmarks.id).content
+    scroll = areas.frame(bookmarks.id).view_scroll
+    assert scroll is not None
+    bar = scroll.verticalScrollBar()
+    assert bar.maximum() > 0, "the Bookmarks View does not scroll at this size"
+    bar.setValue(bar.maximum())
+    scrolled_to = bar.value()
+    other = next(
+        area
+        for area in areas.model.areas()
+        if area.id != bookmarks.id
+        and any(
+            operation.label == SPLIT_SIDE_BY_SIDE_LABEL and operation.available
+            for operation in areas.operations(area.id)
+        )
+    )
+    (split,) = (
+        operation
+        for operation in areas.operations(other.id)
+        if operation.label == SPLIT_SIDE_BY_SIDE_LABEL
+    )
+
+    areas.perform(split)
+    _settle(application)
+
+    frame = areas.frame(bookmarks.id)
+    assert frame.content is kept
+    assert frame.view_scroll is not None
+    assert frame.view_scroll.verticalScrollBar().value() == scrolled_to
 
 
 def test_the_page_scrolls_only_where_the_window_is_too_small_for_every_view(
@@ -6950,7 +6994,9 @@ def test_the_page_scrolls_only_where_the_window_is_too_small_for_every_view(
     assert page.verticalScrollBar().maximum() == middle.height() - page.viewport().height()
 
     for area in areas.model.areas():
-        assert areas.frame(area.id).view_scroll is not None, f"Area {area.id} shows a notice"
+        frame = areas.frame(area.id)
+        assert frame.view_scroll is not None, f"Area {area.id} shows a notice"
+        assert frame.content.isVisible(), f"Area {area.id} hides its View behind a notice"
 
 
 # ------------------------------------------------------------- two runs
