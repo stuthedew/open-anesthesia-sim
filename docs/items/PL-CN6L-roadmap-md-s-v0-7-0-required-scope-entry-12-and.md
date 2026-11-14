@@ -1,9 +1,15 @@
 ---
 id: PL-CN6L
 title: ROADMAP.md's v0.7.0 required scope entry 12 and its definition of done still require fixing the copy editor, which PL-GL45 removed on 2026-11-14; the release cannot meet a done line about a tool that no longer exists
-status: untriaged
+priority: P3
+effort: S
+status: done
 touches: docs/items/
 added: 2026-11-14
+closed: 2026-11-14
+pr: 2163
+payoff: v0.7.0's definition of done names nothing the tree no longer holds
+verify: ! grep -qF 'The copy editor cuts text that its reader does not need' ROADMAP.md
 ---
 
 **Problem.** ROADMAP.md's v0.7.0 required scope entry 12 and its definition of done still require fixing the copy editor, which PL-GL45 removed on 2026-11-14; the release cannot meet a done line about a tool that no longer exists
@@ -15,3 +21,7 @@ Every item entry 12 names (`PL-HGZS`, `PL-HRPK`, `PL-PS5H`, `PL-XBJ3`, `PL-XT53`
 **Recommendation.** Keep entry 12 as history with one sentence saying the owner removed the copy editor on 2026-11-14 (`PL-GL45`) after its rewrites merged, and replace the done line with "The five `docs/MODEL.md` rewrites that waited on the copy editor have merged", which is true today.
 
 **Done when** `ROADMAP.md`'s v0.7.0 definition of done names nothing the tree no longer holds.
+
+**Decided** (project owner, 2026-11-14, ratified, over leaving the done line as written): the owner answered "merge" to the recommendation above. Entry 12 keeps its text and gains a sentence saying the copy editor was removed after its work finished, and the done line now says only that the five rewrites have merged.
+
+**Generator check.** One stale line left by one removal (`PL-GL45`), not a mechanism producing items.
