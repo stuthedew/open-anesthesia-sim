@@ -53,7 +53,7 @@ def restore_through_checks(record: object, state: object) -> None:
     saved before that change would then load its values into the wrong fields,
     wherever those values still pass the checks. A saved-run file format that
     stores each value with its field name would close that gap; the first
-    loader of saved runs chooses the format (`PL-8W1Q`).
+    loader of saved runs chooses the format (`PL-HXNL`).
 
     Args:
         record: The empty record that `pickle` or `copy` created. Its type is

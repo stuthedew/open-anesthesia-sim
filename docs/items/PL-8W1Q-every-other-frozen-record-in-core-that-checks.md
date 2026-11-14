@@ -77,9 +77,12 @@ other re-entries already name.
 
 **Built 2026-11-14 (step (c) of `PL-LHCL`).** The helper moved from
 `core/governing_equations.py` to a new module, `core/checked_record.py`, as
-`restore_through_checks`. It now builds the record by field name rather than
-by position, so a record with a keyword-only field restores too, and it
-refuses a state with the wrong number of values by name. Nine more records
+`restore_through_checks`. It now passes the saved values to the constructor as
+keyword arguments, so a record with a keyword-only field restores too, and it
+refuses a state with the wrong number of values by name. The saved state still
+holds the values in field order without their names, so the positional restore
+that pass 1 of `PL-S11T`'s review named is not closed here; `PL-HXNL` carries
+it. Nine more records
 gained a `__setstate__` that calls it: `Keyframe` and `SampledWindow`
 (`core/run_definition.py`), `BreathingCircuitState` and
 `DeliverableFreshGasFlowRange` (`core/circuit.py`), `LiquidDensity`
@@ -139,3 +142,11 @@ checked said that `Keyframe` did not yet check its values on load; it now says
 which records do and points the rest at `PL-HXNL`. `docs/ARCHITECTURE.md` has
 the new module's line. `docs/MODEL.md`, `README.md` and `.claude/` name neither
 the old helper nor `__setstate__`, so nothing there changed.
+
+**Second blind review, 2026-11-14,** on the final diff with `docs/INTERFACE.md`.
+Both passes named one finding: the commit message, this item and
+`docs/INTERFACE.md` said the helper restores "by field name", but the saved
+state holds no names, so a reorder of two same-typed fields would still load
+them swapped and pass every check. `docs/INTERFACE.md` and this item now say
+the restore is positional, and the hazard moved into `PL-HXNL`'s title and
+brief, where the saved-run file format closes it, as the triage above decided.
