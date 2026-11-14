@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: feature
 feature: presentation-safety
-touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_formatting.py, tests/integration/test_qt_widgets.py, docs/MODEL.md
+touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_formatting.py, tests/integration/test_qt_widgets.py, docs/INTERFACE.md, docs/MODEL.md
 added: 2026-09-27
 payoff: a learner on a host that cannot keep the 100 ms tick sees the rate the clock actually runs at, not a label it is not meeting
 verify: grep -q 'def test_the_rate_text_names_the_delivered_rate_below_95_percent_of_ticks' tests/unit/test_formatting.py
