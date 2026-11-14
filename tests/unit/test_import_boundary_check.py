@@ -631,8 +631,10 @@ class TestMain:
         assert "3 errors" in out
 
 
-def test_an_older_interpreter_is_named(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
-    """Under a Python older than `requires-python`, the check names the one to use instead of crashing.
+def test_an_older_interpreter_is_named(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Under a Python older than `requires-python`, the check names the one to use, not a crash.
 
     `ast` parses `src/` with the running interpreter's grammar, so the
     container's bare `python3` 3.13 raised a `SyntaxError` on 3.14 syntax that
