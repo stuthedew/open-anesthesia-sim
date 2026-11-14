@@ -201,6 +201,7 @@ def project_python_floor() -> tuple[int, int]:
     pyproject = Path(__file__).resolve().parent.parent / "pyproject.toml"
     with pyproject.open("rb") as handle:
         spec = tomllib.load(handle)["project"]["requires-python"]
+    # regex: the ">=X.Y" lower bound of a PEP 440 version specifier.
     bound = re.search(r">=\s*(\d+)\.(\d+)", spec)
     if bound is None:
         raise ValueError(f"requires-python {spec!r} in {pyproject} has no >=X.Y lower bound")
