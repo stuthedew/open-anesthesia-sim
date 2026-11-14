@@ -5738,9 +5738,13 @@ holds, and its share bar gives each compartment's part of all the agent.
 **A container's fill height is the compartment's modelled tension, not an
 amount.** All containers of one run fill against one scale: the concentration
 chart's percent axis, from zero at the bottom to 3 MAC of the running agent at
-the top. So a height on the schematic and a height on the chart show the same
-tension. A container that holds more agent can stand lower than one that holds
-less. At 60 min in a run with sevoflurane at a 1 MAC dial, fat holds a fifth of
+the top. So a container filled to some share of its height shows the same
+tension as a trace standing at that share of the chart's axis. A container is
+much shorter than the chart's plot, so its fill level does not line up with the
+chart's gridlines on screen. Each container therefore carries short marks at the
+chart's gridlines, every 0.5 MAC, and the caption names that spacing
+(`PL-8W1B`). A container that holds more agent can stand lower than one that
+holds less. At 60 min in a run with sevoflurane at a 1 MAC dial, fat holds a fifth of
 all the agent in the run, but its tension of 0.03% atm fills less than 1% of
 its container's height (`ROADMAP.md` § "v0.7.0 - the schematic"). At a 1 MAC
 dial, across the simulator's three agents, fat holds a fifth of the stored agent
@@ -5748,6 +5752,7 @@ at one hour and a third at three hours, which the chart's fat trace cannot show.
 Every container is drawn at one width, so its filled area is not an amount
 either.
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
+<!-- provenance: app/formatting.py CHART_GRID_INTERVAL_MAC = 0.5 -->
 
 A tension above the top of the scale fills its container to the top, and the
 schematic marks the container as off the scale. The concentration chart does

@@ -10,7 +10,9 @@ computed and tested apart from the drawing.
 A container's fill is the compartment's tension, on the concentration chart's
 own scale, from zero to `chart_axis_top_percent`. The fill is not an amount. A
 tension above the top of that scale fills the container, and the container is
-marked as off the scale. Its label still prints the tension. Each label gives
+marked as off the scale. Its label still prints the tension. Each container
+carries a mark at each of the chart's gridlines, so a fill level is read
+against the container's own marks. Each label gives
 the compartment's name, its tension as its readout prints it, and its amount.
 The amount comes from the snapshot's record of the agent in each compartment
 (`PL-KFTM`). So a label cannot disagree with its readout, and the schematic
@@ -40,6 +42,7 @@ from anesthesia_sim.app.display_units import (
 )
 from anesthesia_sim.app.formatting import (
     CHART_AXIS_TOP_MAC,
+    CHART_GRID_INTERVAL_MAC,
     MAC_UNIT_SUFFIX,
     chart_axis_top_percent,
     chart_grid_interval_percent,
@@ -73,6 +76,7 @@ __all__ = [
     "schematic_shown",
     "off_scale_line",
     "scale_caption",
+    "scale_marks",
     "share_line",
     "share_segments",
 ]
@@ -93,15 +97,21 @@ COMPARED_INSTANT_LINE_TEMPLATE: Final = "{run}, at {instant} of simulated time"
 SCHEMATIC_HEADING: Final = "Where the agent is: each compartment's tension and amount"
 
 #: The caption that says what a container's height means. A height is a
-#: tension on the concentration chart's scale. So the caption names that scale
-#: and says that a height is not an amount (`docs/INTERFACE.md` § "The compartment
-#: schematic: what its heights, amounts and share bar assert"). The caption is
-#: two lines rather than one wrapped line. Qt leaves a wrapped label's extra
-#: lines out of the minimum size that a View declares, so the containers'
+#: tension, as a share of the concentration chart's range. So the caption names
+#: that range, says what the marks stand for, and says that a height is not an
+#: amount (`docs/INTERFACE.md` § "The compartment schematic: what its
+#: heights, amounts and share bar assert"). The containers are 96 px tall and the
+#: chart's plot is several hundred, and a Workspace can show the two side by
+#: side. A fill level read across to the chart's gridlines would give the wrong
+#: tension. So each container carries a mark at each of the chart's gridlines
+#: (`scale_marks`), and is read against its own marks (`PL-8W1B`). The caption
+#: is separate lines rather than one wrapped line. Qt leaves a wrapped label's
+#: extra lines out of the minimum size that a View declares, so the containers'
 #: labels would lose the room in which their amounts are printed. The wording
 #: is a placeholder, but what the caption must say is not.
 SCALE_CAPTION_TEMPLATE: Final = (
     "Fill height is tension, on the concentration chart's scale: 0 to {top}{unit} ({top_mac}).\n"
+    "Marks stand at the chart's gridlines, every {step}{unit} ({step_mac}).\n"
     "A container's height is its tension, not its amount of agent."
 )
 
@@ -216,12 +226,12 @@ def container_readings(snapshot: SimulationSnapshot) -> tuple[ContainerReading, 
     return tuple(readings)
 
 
-def scale_caption(snapshot: SimulationSnapshot) -> str:
-    """Return the caption naming the scale that every container of this run fills against.
+def _chart_ticks(snapshot: SimulationSnapshot) -> tuple[tuple[float, str], ...]:
+    """Return the concentration chart's percent ticks for this snapshot's agent.
 
-    The caption writes the top of the scale in the same way as the concentration
-    chart labels its own top gridline, through `percent_axis_ticks`. So the
-    caption and the chart's axis cannot print the same scale in two ways.
+    The ticks come from `percent_axis_ticks`, as the chart's own axis takes them.
+    So the schematic's marks, its caption and the chart's gridlines are one
+    scale.
 
     Raises:
         TypeError: If the snapshot's `agent_mac_percent` was not built as a
@@ -229,14 +239,57 @@ def scale_caption(snapshot: SimulationSnapshot) -> str:
     """
 
     mac_percent = snapshot.agent_mac_percent
-    ticks = percent_axis_ticks(
+
+    return percent_axis_ticks(
         chart_axis_top_percent(mac_percent), chart_grid_interval_percent(mac_percent)
     )
+
+
+def scale_marks(snapshot: SimulationSnapshot) -> tuple[float, ...]:
+    """Return the height of each mark on a container, as a share of the container's height.
+
+    A mark stands at each of the concentration chart's gridlines between the
+    bottom and the top of its axis. The bottom and the top are the container's
+    own edges, so they carry no mark. A container filled to a mark shows the
+    tension at which the chart draws that gridline (`PL-8W1B`).
+
+    Returns:
+        The heights from the lowest mark upward, each greater than 0 and less
+        than 1.
+
+    Raises:
+        TypeError: As `_chart_ticks` raises it.
+    """
+
+    top_percent = chart_axis_top_percent(snapshot.agent_mac_percent)
+
+    return tuple(
+        position / top_percent
+        for position, _ in _chart_ticks(snapshot)
+        if 0.0 < position < top_percent
+    )
+
+
+def scale_caption(snapshot: SimulationSnapshot) -> str:
+    """Return the caption naming the scale that every container of this run fills against.
+
+    The caption writes the top of the scale and the spacing of the marks in the
+    same way as the concentration chart labels its gridlines, through
+    `percent_axis_ticks`. So the caption and the chart's axis cannot print the
+    same scale in two ways.
+
+    Raises:
+        TypeError: As `_chart_ticks` raises it.
+    """
+
+    ticks = _chart_ticks(snapshot)
 
     scale = SCALE_CAPTION_TEMPLATE.format(
         top=ticks[-1][1],
         unit=DisplayUnit.CONCENTRATION.axis_title,
         top_mac=f"{CHART_AXIS_TOP_MAC:g}{MAC_UNIT_SUFFIX}",
+        step=ticks[1][1],
+        step_mac=f"{CHART_GRID_INTERVAL_MAC:g}{MAC_UNIT_SUFFIX}",
     )
 
     return f"{scale}\n{AMOUNT_CONDITION_LINES}"
@@ -354,6 +407,10 @@ class SchematicShown:
             readouts' clock prints it. Two runs that are compared can be at
             different times, so each schematic says which instant it shows.
         readings: One reading per container, in `CONTAINER_ORDER`.
+        marks: The height of each mark on every container, as a share of the
+            container's height (`scale_marks`). It is empty while the values
+            are withheld, because the marks may belong to the agent that was
+            discarded.
         scale_caption: The caption naming the scale that the containers fill
             against, or None while the values are withheld.
         off_scale_line: The lines naming each container that is above the
@@ -367,6 +424,7 @@ class SchematicShown:
 
     instant: str
     readings: tuple[ContainerReading, ...]
+    marks: tuple[float, ...]
     scale_caption: str | None
     off_scale_line: str | None
     shares: tuple[ShareSegment, ...] | None
@@ -377,7 +435,7 @@ def schematic_shown(snapshot: SimulationSnapshot) -> SchematicShown:
     """Return what one run's schematic shows for `snapshot`.
 
     Raises:
-        TypeError: As `container_readings` and `scale_caption` raise it.
+        TypeError: As `container_readings`, `scale_marks` and `scale_caption` raise it.
         ValueError: As `container_readings` and `share_segments` raise it.
     """
 
@@ -387,6 +445,7 @@ def schematic_shown(snapshot: SimulationSnapshot) -> SchematicShown:
     return SchematicShown(
         format_elapsed(snapshot.elapsed_s),
         readings,
+        scale_marks(snapshot),
         scale_caption(snapshot),
         off_scale_line(readings),
         segments,
@@ -400,8 +459,8 @@ WITHHELD_AMOUNT_TEXT: Final = f"\u2014 {DisplayUnit.AGENT_VAPOUR_MILLILITRES.lab
 #: What a run's schematic shows while its values are withheld. They are withheld
 #: after a Reset or an agent change, until a frame has been drawn. The readouts
 #: are withheld at the same moments, with the same mark (`RunView`). Every
-#: container is drawn empty and no caption is shown, because the caption's scale
-#: may belong to the agent that was discarded. The share bar is drawn empty with
+#: container is drawn empty, with no marks and no caption, because the marks and
+#: the caption's scale may belong to the agent that was discarded. The share bar is drawn empty with
 #: no line under it, because its shares would be the discarded run's.
 WITHHELD_SCHEMATIC: Final = SchematicShown(
     WITHHELD_ELAPSED_TIME_TEXT,
@@ -417,6 +476,7 @@ WITHHELD_SCHEMATIC: Final = SchematicShown(
         for panel in READOUT_PANELS
         if panel.quantity is not None
     ),
+    (),
     None,
     None,
     None,
