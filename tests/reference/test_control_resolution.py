@@ -76,7 +76,7 @@ SHIPPED_STEP_S = SimulationStep(0.1)
 
 #: The interface's run-loop tick. It is restated here rather than imported from
 #: `app/simulation_view.py`, because that module needs Flet.
-#: `test_simulation_view.py` checks that the shipped constant equals this value,
+#: `tests/integration/simulation_view/` checks that the shipped constant equals this value,
 #: so a change there fails there. `tests/unit/test_playback.py` restates the
 #: value for the same reason.
 TICK_INTERVAL_S = 0.1

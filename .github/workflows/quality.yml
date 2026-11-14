@@ -301,11 +301,6 @@ jobs:
       # Bare: it reads tracked files as text. It refuses a model id written
       # outside `docket.toml`'s `[models]` table (`PL-0XDM`).
       - run: python3 tools/model_home_check.py
-      # Bare: it reads Markdown and JSON and parses no Python of the
-      # simulator's. It refuses a change to the prose review's prompt, or to the
-      # reader rows for a file in its test set, that no run of the review on the
-      # owner's rejected paragraphs has tested (`PL-FYGJ`).
-      - run: python3 tools/rejected_prose.py check
       # Bare, unlike the `--verify` line further down: nothing has installed
       # `uv` at this point in the job, so every `verify:` command would be "not
       # found" and the replay would decline rather than answer. What is being

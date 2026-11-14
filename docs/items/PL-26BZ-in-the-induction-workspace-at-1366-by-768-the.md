@@ -6,13 +6,13 @@ effort: M
 status: done
 classes: safety, ux
 feature: window-is-the-frame
-touches: src/anesthesia_sim/app/views.py, src/anesthesia_sim/app/qt_chart.py, tests/integration/test_simulation_view.py, docs/INTERFACE.md
+touches: src/anesthesia_sim/app/views.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/area_layout.py, tests/integration/simulation_view, docs/INTERFACE.md
 deferred-from: v0.7.0 - the gate's frozen list does not name it; it is a defect of #2134's unmerged branch, and is built on its own branch from that head
 added: 2026-11-14
 closed: 2026-11-14
 pr: 2157
 payoff: a learner never sees the predicted wash-in curve without the words that say it is modelled
-verify: grep -q 'def test_the_wash_in_curve_is_never_on_screen_without_modelled' tests/integration/test_simulation_view.py
+verify: grep -q 'def test_the_wash_in_curve_is_never_on_screen_without_modelled' tests/integration/simulation_view/test_simulation_view_page.py
 ---
 
 **Problem.** In the Induction Workspace at 1366 by 768 the wash-in View is 271 px of content in a 146 px Area, so 'Modelled, not measured' and the F_A/F_I plot are never on screen together: with the View at its top the plot shows 8 of its 80 px, and scrolled to the plot the line is above the Area; decide whether the plot carries the words itself, such as in its axis title, or the wash-in Area gets room for its whole View

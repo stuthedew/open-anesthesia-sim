@@ -3,11 +3,13 @@ id: PL-HLQK
 title: The prose review's test reports only pass or fail, so nothing shows how often a run agrees with the owner's verdicts on the paragraphs he rejected and on those he named gold standards
 priority: P3
 effort: S
-status: ready
+status: dropped
 classes: feature
 feature: copy-editor
 touches: tools/rejected_prose.py, tests/unit/test_rejected_prose.py
 added: 2026-11-03
+closed: 2026-11-14
+reason: The project owner chose on 2026-11-14 to remove the copy editor completely, and PL-GL45 removed it with its agents, the blind judge and their tests, so this work on the copy editor has nothing left to act on.
 payoff: a change to the prose review's prompt shows whether it moved the review closer to the owner's verdicts or further from them
 verify: grep -q 'def test_check_prints_agreement_for_each_run' tests/unit/test_rejected_prose.py
 ---

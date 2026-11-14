@@ -1,6 +1,6 @@
 """Render the whole dashboard headless at one fixed size, and read it back as pixels.
 
-`tests/integration/test_simulation_view.py` tests what the dashboard's
+`tests/integration/simulation_view/` tests what the dashboard's
 widgets say. These tests check what the dashboard *paints*, for a real run
 advanced several simulated minutes, under the `offscreen` platform that
 `tests/conftest.py` selects. Without them, a session in the web container

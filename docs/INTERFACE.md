@@ -946,11 +946,11 @@ These are the figures behind the statements above:
   (`tests/reference/test_canonical_evaluation.py`) checks that a fork at a
   stretch boundary reproduces the parent bit for bit. It checks forks on and
   between keyframes over 207 instants, against a restart at the fork, which
-  does not agree. The controller's test (`tests/integration/test_controller.py`)
-  checks the same over 201, 301 and 601 case instants, and over the 240 drawn
-  columns that a trunk and a bookmark branch share. Its run marked at 60 s after
-  the clock reached 180 s is the return-to-a-mark example. The controller's test
-  also checks the 45.3 s case, where the canonical values agree and the drawn
+  does not agree. The controller's tests (`tests/integration/controller/`)
+  check the same over 201, 301 and 601 case instants, and over the 240 drawn
+  columns that a trunk and a bookmark branch share. Their run marked at 60 s after
+  the clock reached 180 s is the return-to-a-mark example. The controller's tests
+  also check the 45.3 s case, where the canonical values agree and the drawn
   values differ. Both files test the two results of 2026-09-14: the reproduction
   at 601 instants and the 8 shared columns.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
@@ -1795,7 +1795,7 @@ question asked when nothing is at stake teaches the user to answer it without
 reading it. By the time something is at stake, the question would go unread.
 
 In the code, the entry that a branch was opened with is `RunRecord.opened_with`.
-Four tests in `tests/integration/test_simulation_view.py` enforce the rule for
+Four tests in `tests/integration/simulation_view/test_simulation_view_comparison.py` enforce the rule for
 branches: `test_resetting_the_trunk_asks_before_dropping_a_branch_that_holds_work`,
 `test_resetting_the_trunk_asks_before_dropping_a_branch_set_back_to_the_earlier_flow`,
 `test_declining_the_trunks_reset_leaves_every_run_as_it_was` and
@@ -4019,7 +4019,7 @@ chrome and the untouched `Disabled` group against the same host. Under that
 host palette, 94.3% of the page scroll bar's pixels are darker than mid-grey
 without the interface's own palette, and none are with it.
 
-A second test (`tests/integration/test_simulation_view.py`) catches any control
+A second test (`tests/integration/simulation_view/test_simulation_view_foreground.py`) catches any control
 that declares no color, including one added later. It builds the whole
 dashboard under a foreground color that this interface never uses, and fails
 on any control that paints its own content and resolves to that color. It

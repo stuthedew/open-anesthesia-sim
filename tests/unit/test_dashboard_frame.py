@@ -8,7 +8,7 @@ that module exists.
 
 These tests are the Flet suite's tests rewritten against the functions in
 `app/dashboard_frame.py`. That suite's Qt port is now
-`tests/integration/test_simulation_view.py`. Where a claim survived the port,
+`tests/integration/simulation_view/`. Where a claim survived the port,
 its test keeps the same name. The verify lines and `docs/MODEL.md` citations
 that name those tests therefore still point at a test that checks the same
 thing (`PL-25KS`).
