@@ -556,11 +556,11 @@ def test_a_schematic_reset_with_no_frame_is_drawn_like_one_that_never_showed_a_r
 
     assert run.controller.has_failed is True
     assert fresh.runs[0].controller.has_failed is True
-    # The fresh dashboard's View holds no copy of the schematic. A View is given
-    # its runs by a tick, and a dashboard whose first frame fails gives none
-    # (`PL-RF2S`, second pull request). So the fresh run builds its copy here.
+    # Both schematics are read from the View. A halt hands every View the runs
+    # with no frame, so the fresh dashboard's View holds a schematic although
+    # its first frame failed (`PL-RF2S`).
     on_screen = _schematic(used).schematics[0]
-    never_used = fresh.runs[0].build_compartment_schematic()
+    never_used = _schematic(fresh).schematics[0]
     assert _everything_drawn(on_screen) == _everything_drawn(never_used)
 
 

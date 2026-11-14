@@ -3,12 +3,14 @@ id: PL-G3N1
 title: A View built after a halt whose frames keep failing gets no tick, so a Bookmarks or Branch View chosen then stays blank with no words, where the fixed panels on main showed the restated marks (_CasePanelView.refresh builds its copy on the first tick; SimulationView._refresh_view never reaches AreaLayout.refresh on a failed frame)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, ux
 feature: window-is-the-frame
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/views.py
 deferred-from: v0.7.0 - found after the gate's list was frozen, and it shows only when a View is chosen after a simulation error
 added: 2026-11-11
+closed: 2026-11-14
+pr: 2125
 payoff: a learner who opens the bookmarks or the branch control after a simulation error reads why the lists are withdrawn
 verify: grep -q 'def test_a_case_view_chosen_after_a_failing_halt_shows_the_halted_words' tests/integration/test_simulation_view.py
 ---

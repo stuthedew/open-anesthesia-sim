@@ -38,7 +38,7 @@ from anesthesia_sim.app.main import open_dashboard, open_preferences
 from anesthesia_sim.app.preferences import PREFERENCES_FILE_NAME, AgentPrice, PreferencesStore
 from anesthesia_sim.app.qt_widgets import ForkPanel
 from anesthesia_sim.app.simulation_view import SimulationView
-from anesthesia_sim.app.view_registry import AGENT_COST, BRANCH, REGISTERED
+from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING, AGENT_COST, BRANCH, REGISTERED
 from anesthesia_sim.app.views import AgentCostView, BranchView
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
@@ -358,7 +358,10 @@ _REFUSED_PRICE = {
 def test_a_refused_price_s_notice_stays_after_a_unit_is_picked_and_saved(
     application: QApplication, shown: list[SimulationView], tmp_path: Path
 ) -> None:
-    """Picking a unit replaces no price, so the notice of the refused price still applies."""
+    """Picking a unit replaces no price, so the notice of the refused price still applies.
+
+    The notice also stays when the Views are handed the runs with no frame.
+    """
 
     (tmp_path / PREFERENCES_FILE_NAME).write_text(
         json.dumps(
@@ -377,6 +380,11 @@ def test_a_refused_price_s_notice_stays_after_a_unit_is_picked_and_saved(
     _pick(cost_view, AgentAmountUnit.LITRES_OF_VAPOUR)
 
     assert "agent_prices[0]" in before
+    assert cost_view.preferences_notice.text() == before
+    assert not cost_view.preferences_notice.isHidden()
+
+    view.present(True)
+
     assert cost_view.preferences_notice.text() == before
     assert not cost_view.preferences_notice.isHidden()
 
@@ -410,15 +418,18 @@ def test_a_failed_save_says_so_and_still_names_the_refused_price(
     assert "agent_prices[0]" in notice
 
 
-def test_while_every_frame_fails_a_pick_leaves_the_selector_on_the_unit_drawn(
+def test_a_pick_made_while_every_frame_fails_reaches_the_selector_and_the_amounts_together(
     application: QApplication, shown: list[SimulationView], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The selector never names a unit that no value on screen is shown in.
 
     The blind and adversarial reviews of `PL-B396` both found the selector
     showing litres of vapour while the panels still showed millilitres of
-    liquid, after a pick made while frames were failing. Once a frame draws
-    again, every View shows the pick.
+    liquid, after a pick made while frames were failing. The frame that the
+    pick asks for fails, and the halt that follows hands every View the runs
+    and the preferences in force (`PL-RF2S`). So both Views show the pick on
+    the selector and on the amount together. The halted run still stands at
+    5 minutes, so the amount is the same once a frame draws again.
     """
 
     controller = SimulationController()
@@ -427,13 +438,20 @@ def test_while_every_frame_fails_a_pick_leaves_the_selector_on_the_unit_drawn(
     controller.pause()
     view = _dashboard(application, shown, controller, workspaces=_TWO_COST_VIEWS)
     first, second = _cost_views(view)
-    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
-
-    _pick(first, AgentAmountUnit.LITRES_OF_VAPOUR)
 
     for cost_view in (first, second):
         assert cost_view.unit_selector.currentData() is AgentAmountUnit.MILLILITRES_OF_LIQUID
         assert cost_view.panels[0].amount_text.text() == "2 mL of liquid"
+
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+
+    _pick(first, AgentAmountUnit.LITRES_OF_VAPOUR)
+
+    assert controller.has_failed is True
+
+    for cost_view in (first, second):
+        assert cost_view.unit_selector.currentData() is AgentAmountUnit.LITRES_OF_VAPOUR
+        assert cost_view.panels[0].amount_text.text() == "0.4 L vapour"
 
     monkeypatch.undo()
     view.present(False)
@@ -441,6 +459,30 @@ def test_while_every_frame_fails_a_pick_leaves_the_selector_on_the_unit_drawn(
     for cost_view in (first, second):
         assert cost_view.unit_selector.currentData() is AgentAmountUnit.LITRES_OF_VAPOUR
         assert cost_view.panels[0].amount_text.text() == "0.4 L vapour"
+
+
+def test_a_pick_that_no_tick_follows_leaves_the_selector_on_the_unit_drawn(
+    application: QApplication, shown: list[SimulationView], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A pick moves the selector only when a tick draws the panels in the picked unit.
+
+    Here the dashboard takes the request and hands the Views no tick. The
+    selector goes back to millilitres of liquid, the unit the amount beside
+    it is shown in.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 5 * _SECONDS_PER_MINUTE)
+    controller.pause()
+    view = _dashboard(application, shown, controller)
+    (cost_view,) = _cost_views(view)
+    monkeypatch.setattr(view, "_change_preferences", lambda preferences: None)
+
+    _pick(cost_view, AgentAmountUnit.LITRES_OF_VAPOUR)
+
+    assert cost_view.unit_selector.currentData() is AgentAmountUnit.MILLILITRES_OF_LIQUID
+    assert cost_view.panels[0].amount_text.text() == "2 mL of liquid"
 
 
 def test_a_mouse_wheel_over_the_selector_changes_nothing_until_it_has_focus(
@@ -518,6 +560,38 @@ def test_a_reset_that_no_frame_draws_withholds_the_delivered_agent_with_the_read
     assert panel.cost_text.text() == "—"
     assert panel.working_text.isHidden()
     assert "sevoflurane" not in panel.cost_label_text.text()
+
+
+def test_a_price_form_opened_after_an_agent_change_that_no_frame_draws_names_the_new_agent(
+    application: QApplication, shown: list[SimulationView], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The price form starts on the agent the run holds, although no frame has drawn it.
+
+    The run opens on sevoflurane. While every frame fails, the learner changes
+    it to desflurane, and then chooses the agent cost View for an Area. The
+    form's selector lists sevoflurane first. A form that no tick has told of
+    the run's agent would therefore name sevoflurane, which the run no longer
+    holds (`PL-VZ57`'s lead, `PL-RF2S`).
+    """
+
+    view = _dashboard(
+        application,
+        shown,
+        SimulationController(),
+        workspaces=_workspaces(Area(AreaId(1), AGENT_ACCOUNTING)),
+    )
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+    run = view.runs[0]
+    combo = run._agent_dropdown
+    combo.setCurrentIndex(combo.findData("desflurane"))
+    assert run.controller.agent_id == "desflurane"
+    assert run.controller.has_failed is True
+
+    view.layout_container.choose_view(AreaId(1), AGENT_COST)
+    _settle(application)
+    (cost_view,) = _cost_views(view)
+
+    assert cost_view.price_entry.agent_id == "desflurane"
 
 
 def test_the_panel_follows_its_run_through_an_agent_change_and_a_comparison(
