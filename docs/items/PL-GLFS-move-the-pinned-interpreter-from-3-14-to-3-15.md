@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: infra
-touches: .python-version, pyproject.toml, uv.lock, README.md, .github/workflows/drift.yml, tools/blind_review.py, tools/blind_review_report.py, tools/ci_runs.py, tools/generator_check.py, tools/model_rewrite.py, tools/new_prose.py, tools/required_checks_check.py, tools/tag_release.py
+touches: .python-version, pyproject.toml, uv.lock, README.md, .github/workflows/drift.yml, tests/unit/test_config_home_check.py, tools/blind_review.py, tools/blind_review_report.py, tools/ci_runs.py, tools/generator_check.py, tools/model_rewrite.py, tools/new_prose.py, tools/required_checks_check.py, tools/tag_release.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-18 triage pass
 added: 2026-10-18
 closed: 2026-11-14
@@ -68,3 +68,7 @@ in `touches`. `README.md`'s requirements list and the comment above
 `drift.yml`'s `interpreter` job named 3.14 as the pin and now name 3.15.
 `tools/ruff.toml` and `subprojects/docket/ruff.toml` are unchanged, as the
 recommendation required.
+`tests/unit/test_config_home_check.py` wrote 3.15.2 over a 3.14 pin to
+see the check name each stale copy, so after this move it changed nothing and
+failed. It now reads the pinned minor from `.python-version` and writes the
+next one, so it keeps working after later moves.
