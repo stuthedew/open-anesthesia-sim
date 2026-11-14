@@ -55,6 +55,7 @@ from anesthesia_sim.core.numerical_envelope import (
     require_compartment_volume,
     tissue_blood_partition_coefficient,
 )
+from anesthesia_sim.core.rounding import FLOW_FRACTION_TOLERANCE
 from anesthesia_sim.core.validation import require_positive_finite
 
 
@@ -127,19 +128,12 @@ MACHINE_SCHEMA_VERSIONS = SupportedSchemaVersions(
     data_files="machine profiles (data/machines/)", minimum=3, current=3
 )
 
-#: How far the sum of the tissue perfusion fractions may be from 1 before the
-#: sum is rejected. Two places enforce that rule, and both should keep doing
-#: so, because defence in depth is the point. This module checks the data
-#: file. `PatientCompartments` checks direct construction and each write of a
-#: fraction. Both call `require_perfusion_fractions_sum_to_one` below, so the
-#: number and the error it raises are each written once. Unlike
-#: `SECONDS_PER_MINUTE`, the number is a policy value that could reasonably be
-#: retuned. Two copies could let the two checks disagree about what "sums to
-#: 1" means, and nothing would report it (`PL-TCW5`, `PL-YHWH`).
-#: `core/patient.py` imports both the number and the function from here. It
-#: already imports `AgentParameters` from here, so the single definition adds
-#: no new import between the two modules.
-FLOW_FRACTION_TOLERANCE = 1e-12
+# Two places enforce the rule that the tissue perfusion fractions sum to 1, and
+# both should keep doing so, because defence in depth is the point. This module
+# checks the data file. `PatientCompartments` checks direct construction and
+# each write of a fraction. Both call `require_perfusion_fractions_sum_to_one`
+# below, so the error it raises is written once (`PL-TCW5`, `PL-YHWH`). The
+# allowance, `FLOW_FRACTION_TOLERANCE`, is defined in `core/rounding.py`.
 
 
 def require_perfusion_fractions_sum_to_one(total_perfusion_fraction: float) -> None:

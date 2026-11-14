@@ -98,6 +98,7 @@ src/anesthesia_sim/
 │   ├── simulation_step.py         # the run's step: its supported range, and SimulationStep, which cannot hold one outside it
 │   ├── numerical_envelope.py      # where core's arithmetic is shown correct: CompartmentVolume and PartitionCoefficient, which cannot hold a volume or a coefficient outside it, and the one place the tissue:blood quotient is formed
 │   ├── blood_flow.py              # a tissue group's perfusion fraction and its blood flow: PerfusionFraction, which cannot hold a fraction of 0 or less or a fraction above 1, and BloodFlow, which is built only as a PerfusionFraction of a CardiacOutput
+│   ├── rounding.py                # how far a computed value can be from the exact one: the bound for one propagator, for one step and for a run of n steps, and each fixed allowance that a comparison in core/ or app/ reads (PL-GJ1W)
 │   ├── exceptions.py              # exception hierarchy; every core failure is inside it
 │   ├── parameters.py              # load + validate agent/patient/machine JSON data
 │   ├── liquid_agent.py            # the 20 °C reference condition's molar volume, LiquidDensity, and the conversion of an amount of vapour into the millilitres of liquid agent it came from (PL-KZ99)

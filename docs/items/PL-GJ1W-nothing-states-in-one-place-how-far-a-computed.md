@@ -238,6 +238,316 @@ definition reads as a difference of two rounded instants; a floor of about
 1e-292 below which a float no longer carries 53 bits; and twice Kahan's bound
 for a running total.
 
+**Part (b) built, 2026-11-11: `src/anesthesia_sim/core/rounding.py`.** The
+module has two parts. The first holds the bounds that follow from the
+arithmetic: `propagator_rounding` for one propagator, which is also the bound
+for one step; `run_rounding` for n steps, which is n times that, as the owner
+decided; `clock_rounding`; `RUNNING_TOTAL_ROUNDING`, twice Kahan's bound; and
+`SMALLEST_FULL_PRECISION_MAGNITUDE`, the floor of about 1e-292. The last three
+are the allowances that the test stated for itself after part (a). The second
+part holds each fixed allowance, with what it is measured against, what the
+rounding measured and the test that measures it again. The agent balance keeps
+its fixed 1e-9 there.
+
+**What moved, and what did not.** Ten constants moved with their values
+unchanged: the two agent-balance tolerances, `FLOW_FRACTION_TOLERANCE`, the two
+cardiac-output tolerances, `WASH_IN_ROUNDING_ALLOWANCE`, `LIVE_READING_GAP`,
+`HEIGHT_BAND`, and the three constants of 1e-9 that read a quotient as a whole
+count. Those three became one, `WHOLE_COUNT_TOLERANCE`, read by
+`app/playback.py`, `app/chart_frame.py` and `app/chart_time_base.py`. No
+comparison changed its allowance. Three things stayed, each decided by the
+session:
+
+- `BORDER_ALIGNMENT_TOLERANCE` and `LAYOUT_SIZE_SUM_TOLERANCE` stay in
+  `layout/`. The design names `core/` and `app/`, and these two allow for
+  rounding in the shares of a window, which no computed clinical value reads.
+- `MINIMUM_RELATIVE_SCALE_L` stays in `core/agent_simulation_validation.py`.
+  It keeps the relative error from being 0/0 and allows for no rounding.
+- The names of the moved constants are unchanged, so every mention in
+  `docs/MODEL.md`, the data files and the release notes still names them.
+
+The problem statement counts 13 tolerance constants, six of them 1e-9. The
+count of 13 is right and includes the two in `layout/`. Seven of them were
+1e-9.
+
+**A bound is stated only up to 32 squarings.** `propagator_rounding` refuses a
+number of squarings above `MAXIMUM_SQUARINGS`, because the matrix exponential
+module never builds such a propagator. The test used to compute an allowance
+for one and then discard it when the run definition refused. It now requires
+that refusal.
+
+**The steps of `run_rounding` are a `StepCount`,** the existing checked count.
+`squarings`, the three results and the two arguments of `clock_rounding` are
+plain numbers. They are listed in `tests/unit/test_bare_numbers.py` with the
+reason, and its count rose from 173 to 180. `PL-LHCL` is the item that gives
+such values checked types.
+
+**Sources read again for the module and `docs/MODEL.md`, 2026-11-11.** Higham
+and Mary 2019 (sections 4.2 and 5) and Connolly, Higham and Mary 2021
+(section 7) were read as their MIMS EPrints, in the text extracted from each
+downloaded PDF. Croci et al. 2022 section 6.1 was read by a background reader
+in the full text at PubMed Central. Goldberg 1991, Theorem 8, was read in the
+Oracle reprint: each term is perturbed by at most twice his machine epsilon,
+which is 2**-53 for a 64-bit float. Croci et al. state the two assumptions as
+"zero mean and mean independence", for round to nearest.
+
+**A wrong example found and corrected.** The comment on the chart's grid
+tolerance said that 0.9 s over 0.01 s can come out just below 90. In 64-bit
+floats that quotient is exactly 90. The module and its test use 0.7 / 0.1,
+which is 6.999999999999999.
+
+**Blind review of (b), 2026-11-11: two passes, five findings, all fixed.**
+Each was checked against the code before it was fixed.
+
+1. Pass 1, blocking, and pass 2, should-fix: a step inside the numerical
+   envelope exceeds the bound with its margin of 3. Reproduced: the plan that
+   pass 1 gave fails the generated test with "a difference of 1.277e-14 is
+   1.13 times its rounding allowance". Fixed by the margin of 8, below.
+2. Pass 1, optional: no drawn or listed plan needed more than 32 squarings
+   over one segment, so the branch that requires the run definition's refusal
+   never ran. A listed plan now holds the stiffest corner for 1 700 s, which
+   needs 33. The window check also asked the module for the squarings of the
+   window's spacing under a short segment's matrix, which could pass the cap
+   once a longer plan existed. It is now capped at 32.
+3. Pass 2, optional: an interval between two rounded instants can be wrong by
+   more than one unit in the last place of the later instant. Reproduced: 1.25
+   units from step 2 356 to step 6 244 at 0.01 s, and 1.17 units from step
+   82 188 to step 326 590 at 0.1 s. Each instant carries half a unit and the
+   subtraction half more, so `clock_rounding` now returns 1.5 units over the
+   interval.
+4. Pass 2, optional: two property tests in `tests/unit/test_rounding.py` had
+   no `derandomize` setting. `b76478c0` gave it to them. `PL-V067` then
+   landed on `main` and moved that setting into a profile that every property
+   test runs under, so the merge at `d12dcab7` removed it from the two
+   decorators again. Both tests draw the same inputs on every ordinary run.
+
+**Decided in the session, 2026-11-11: the margin on one propagator's bound is
+8, not 3.** The design's part 1 allows "a measurement with its margin and a
+test that measures it again", and the margin of 3 was that. It was set from a
+shipped agent's sweep (0.6 to 2.7, 2026-10-03) and the envelope's corners
+(2.5, 2026-10-26), and neither covers the inside of the envelope. No simulator
+code reads the bound, so the change moves no learner-visible comparison. It
+moves the allowances of `tests/unit/test_generated_runs.py`,
+`tests/unit/test_numerical_envelope_sweep.py` and `tests/unit/test_rounding.py`,
+and the figures in `docs/MODEL.md`. What was measured, all in leading terms,
+2**s times 2**-52:
+
+- 240 000 propagators drawn across the envelope, four seeds of 60 000, each
+  compared with a 50-digit exponential. The largest error in a fraction's row
+  was 3.47, at 7 squarings. The largest at each number of squarings from none
+  to 19 was 3.23, 3.29, 3.30, 3.23, 3.33, 3.18, 3.08, 3.47, 2.94, 3.24, 2.87,
+  3.08, 3.08, 3.27, 3.08, 3.00, 2.81, 2.75, 2.69 and 1.18.
+- 120 000 states after one step, with the opening fraction drawn as well:
+  3.63 at most, and 18 above 3.
+- The corner that pass 2 reported, with 400 opening fractions: 3.91 at most.
+- The five worst propagators, each stepped 1, 30, 300 and 2 000 times: the
+  state stayed 2.6 to 3.5 per step from the 50-digit solution at every length.
+  So the error of one step repeats, and the summed bound is the right shape.
+
+The margin is about twice the largest of these, and a power of two so that the
+bound is exact in binary. Routes weighed and refused: a margin of 4 or 5,
+which leaves 2% to 28% above 3.91 and would fail again on correct code in the
+weekly run's thousands of draws; and a bound proved from a count of the
+rounded operations. A first-order count by this session put that near 8.5
+with no squarings, but the session did not check the count against a published
+analysis, so the module does not state it (inferred, not verified). With the
+margin of 8 the summed bound for 24 h at the 1 ms step is 1.5e-7, which is 154
+times the agent balance's 1e-9 and 6.5 times below `LIVE_READING_GAP`. The
+test that held `LIVE_READING_GAP` to ten times the bound now holds it to five
+times, as a warning distance. At the interface's 0.1 s step the summed bound
+for 24 h is 1.5e-9, above the agent balance's limit. The balance does not rest
+on the bound: a correct 24-hour run of a shipped agent left a residual below
+4e-11.
+
+**Replays after the review's fixes, 2026-11-11.** Each row reverts one fix on
+a clean tree, runs `uv run pytest
+tests/unit/test_generated_runs.py -q -x`, and restores the tree. The reverts
+are the ones in the table of part (a), made where the code now is:
+`PL-N559`'s is `WASH_IN_ROUNDING_ALLOWANCE = 0.0` in `core/rounding.py`, and
+`PL-81Q2`'s passes zero squarings to `propagator_rounding` and `run_rounding`
+for the canonical state and the window. The seven were run at `b76478c0`, and
+again at `d12dcab7` after `main` changed how the test's runs are drawn
+(`PL-V067`). Both gave the table below. The run at 1 000 drawn plans was made
+at `b76478c0` only.
+
+| Item | Fails in the suite's run | Failure |
+| --- | --- | --- |
+| `PL-XST1` | Yes | "a running total against the exact sum of its step amounts: a difference of 3.33e-16 is 1.4 times its rounding allowance", after 34 steps. |
+| `PL-D88N` | Yes, on a listed plan | `AgentSimulationValidationError` with a relative error of 1.04e-9. |
+| `PL-9B1M` | Yes, on a listed plan | "alveolar partial_pressure_fraction of 1.000000000000001 is outside 0 to 1". |
+| `PL-81Q2` | No. It also passes at 1 000 drawn plans. | None. |
+| `PL-N559` | Yes, on a listed plan | "a run that only washes in is described as elimination", after 1 step with every flow at zero. |
+| `PL-9SL5` | Yes | "the last column is at 0.08099999999999999 and not at the 0.081 asked for", after 81 steps. |
+| `PL-QVBR` | No | None. The reverse of #1917 applied to `app/bookmarks.py` and left a conflict in `app/controller.py`. The test imports neither module, so it passes whatever they hold. |
+
+Five of the seven fail. Before the margin changed, at `d05f089d`, the same
+replays gave six: `PL-81Q2` passed the suite's run and failed at 1 000 drawn
+plans, with "the stepped state against the canonical state: a difference of
+4.21e-12 is 1.03 times its rounding allowance" after 97 steps. That failure
+was 3% past an allowance that correct code also exceeds, by up to 30%. With
+the margin at 8, the allowance for the steps taken covers what removing the
+squarings from the canonical state and the window takes away. The weekly run
+in (c) should replay `PL-81Q2` at its several thousand draws.
+
+**Mutation check of (b), 2026-11-11.** `make mutate` on the whole branch was
+stopped at a one-hour limit after 157 mutants (`PL-33CG`, the mutation check
+that did not finish in an hour). Of its 12 survivors, five were refusal
+messages in `core/rounding.py`, which the tests matched on one word. Each
+message is now compared in full. The other seven are in `grid_spacing_s`
+and `percent_axis_ticks`, on lines the branch did not change. A run on the
+module alone, `mutmut run "anesthesia_sim.core.rounding.x_*"`, then caught
+all 35 of its mutants. The mutants of the other functions the branch touched
+were not run.
+
+**Checks after the review's fixes.** `make check` passed at `ce6b6737`, with
+12 321 tests, and again at `d12dcab7` with `main` merged in: 12 360 tests
+passed and 3 were skipped, with every line and branch of `core/` covered.
+
+**The bound on one step is derived, 2026-11-14 (project owner, ratified, over
+the measured margin of 8).** The project owner asked whether a measured factor
+is best practice for a published bound. It is not. The standard is a bound
+derived in advance from the standard model of floating-point arithmetic, with
+the measurement kept as a check that the bound is not vacuous. The owner agreed,
+and `PROPAGATOR_MARGIN = 8.0` became `PROPAGATOR_ROUNDING_UNITS = 10.0`.
+
+The derivation. Write u = 2**-53. Every rounded operation returns the exact
+result times (1 + d) with |d| <= u, and a product of m such factors lies within
+gamma_m = m u / (1 - m u) of 1. After the shift every number in the
+computation is nonnegative, so a relative bound on each number carries through
+sums and products without cancellation. Errors are measured in the row sums of
+the propagator's fraction block (the six fraction rows and the unit state),
+with the forcing column divided by the delivered fraction F_D. In that weighted
+norm the scaled argument X = (A + mu I) dt / 2**s has rows summing to
+mu dt / 2**s plus the agent the rows create, so it is at most 0.065. The unit
+state's row of A + mu I is mu on the diagonal, so mu dt / 2**s is at most the
+norm that the module scales to 1/16. Zeros stay exact: no fraction row of any
+computed matrix has a nonzero entry in the two accumulator columns. Stage by
+stage, in units of u:
+
+1. Each term of the series. Term k carries 5k roundings of its own: for each
+   order, the shift's addition on the diagonal, the scaling by the interval,
+   the product of each entry and the division by k, each at most u, and one
+   compensated sum, at most u + gamma_8**2. It then passes through 13 - k
+   plain additions.
+   The identity term passes through all 12. The rows of term k sum to at most
+   0.065**k / k!. The sum over k gives 13.15.
+2. Truncation after 12 terms: 0.065**13 / 13! / (1 - 0.065/14), which is
+   5.4e-10.
+3. The decay factor e^(-mu dt / 2**s): the product mu times the interval
+   rounds once (relative error at most 0.065 u in the exponential), glibc's
+   `exp` adds at most one unit in the last place (2u), and the product with
+   the series rounds once. That gives 3.07, over a series whose rows,
+   multiplied by the exact decay, sum to at most 1.002.
+4. The scaled propagator therefore carries e_0 = 16.22.
+5. Squaring: P'^2 - P^2 = (P' - P) P' + P (P' - P), so
+   e_(k+1) <= e_k (2 g_k + e_k) + sigma (g_k + e_k)**2, where g_k bounds the
+   exact propagator's row sums over 2**k scaled intervals and
+   sigma = (1 + u)(1 + u + gamma_8**2) - 1 is one product entry's rounding,
+   2.0000000000000072.
+6. Applying the propagator to the state adds sigma (g + e_s).
+
+For s = 0 the total is 18.23 u, or 9.113 times `MACHINE_EPSILON`, and at every
+s up to 32 it stays below 9.129 times 2**s `MACHINE_EPSILON`. The constant is
+that rounded up to 10. `tests/unit/test_rounding.py` recomputes the derivation
+from `SERIES_TERMS`, `MAXIMUM_SERIES_ARGUMENT_NORM` and `STATE_SIZE` in decimal
+arithmetic that rounds every step upward, and requires 10 to be its ceiling.
+Most of the bound is the twelve plain additions that build the series: 12 of
+the 18.2 units of u.
+
+The derivation's three conditions:
+
+- `sum` is CPython's Neumaier sum. Read in CPython 3.14's
+  `Python/bltinmodule.c` (`cs_add`, `cs_to_double` and the float path of
+  `builtin_sum`): with the default start of 0, the first float becomes the
+  running sum, each later term is added with Dekker's correction (the larger
+  operand first), and the corrections are summed plainly and added at the end.
+  That is the operation sequence of Ogita, Rump and Oishi's Sum2, so their
+  Proposition 4.5 applies: |res - s| <= u |s| + gamma_(n-1)**2 S.
+- The C library's `exp` is within one unit in the last place. `math.exp` calls
+  the C library's `exp` (`FUNC1(exp, exp, ...)` in CPython 3.14's
+  `Modules/mathmodule.c`). glibc's `e_exp_data.c` states "ulp error: 0.509
+  (0.511 without fma)" for its table size and polynomial order, and `e_exp.c`
+  states the worst case as below 0.5 + 1.11/N ulp plus the polynomial's error,
+  with 0.25/N more without fused multiply-add. Other C libraries are assumed,
+  not shown, to meet one unit.
+- The fraction rows create agent at a rate r with r dt <= 2**-9. Each
+  equation's row sums to zero with F_D as a fraction. The stored rows depart
+  from that by the rounding of their entries, at most about 4 u mu, which is
+  1.2e-7 over the interval at 32 squarings, and by tissue flows above the
+  cardiac output. `UptakeEquationSettings` refuses an excess above 1e-12 L/s
+  plus 1e-9 of the cardiac output. At 10 L/min into a 0.01 L venous pool for
+  86 400 s that is 1.45e-3, below 2**-9 = 1.95e-3. The exact propagator's
+  rows then sum to at most e^(r dt) over the interval, and the derivation
+  carries that factor.
+
+Underflow adds at most 2**-1074 at each operation, which the scale floor
+`SMALLEST_FULL_PRECISION_MAGNITUDE` covers by more than 40 binary orders of
+magnitude.
+
+Sources read in this session, 2026-11-14:
+
+- Higham NJ, Mary T. A new approach to probabilistic rounding error analysis.
+  MIMS EPrint 2018.33, https://eprints.maths.manchester.ac.uk/2673/1/paper.pdf,
+  full text: eq. 1.1 (gamma_n) on p. 2, eq. 1.2 (the standard model) on p. 3,
+  Lemma 2.2 (the deterministic bound |theta_n| <= gamma_n) on p. 4.
+- Ogita T, Rump SM, Oishi S. Accurate sum and dot product. SIAM J Sci Comput
+  2005;26(6):1955-1988, authors' copy
+  https://www.tuhh.de/ti3/paper/rump/OgRuOi05.pdf, full text: eq. 1.1
+  (Dekker's FastTwoSum exact when |a| >= |b|) and eq. 1.3 (Neumaier's bound)
+  on p. 2, eps = 2**-53 for double on p. 5, Algorithm 4.4 (Sum2) on p. 11 and
+  Proposition 4.5, eq. 4.8, on p. 12.
+- CPython 3.14 source,
+  https://raw.githubusercontent.com/python/cpython/3.14/Python/bltinmodule.c
+  and .../Modules/mathmodule.c.
+- glibc source, `sysdeps/ieee754/dbl-64/e_exp.c` and `e_exp_data.c` at the
+  head of https://sourceware.org/git/?p=glibc.git (this machine runs glibc
+  2.39, whose `exp` is the same 2018 implementation).
+
+Not sourced, and derived in place instead: the bound on a product of
+nonnegative matrices (Higham's *Accuracy and Stability of Numerical
+Algorithms*, chapter 3, is refused by this environment's proxy, so the product
+bound was derived from the standard model and Proposition 4.5 rather than
+cited); the series tail bound, which is the module's own; e^x <= 1/(1 - x) for
+0 <= x < 1; and the row sums of exp(A t) being at most e^(r t) when A is
+Metzler with row sums at most r. The glibc manual's table of known errors was
+refused (HTTP 403 and robots), so the 1-ulp figure rests on the source comment.
+The claim that glibc 2.39 has the same `exp` as the head was not checked
+against the 2.39 tag (inferred, not verified).
+
+The measurement, kept as the check. The 2026-11-11 figures above still apply:
+3.47 units at most in a fraction's row of 240 000 drawn propagators, 3.63 in
+120 000 states, and 3.91 at the corner that pass 2 reported. On 2026-11-14 a
+second draw of 240 000 one-step propagators (four seeds of 60 000, the same
+distributions as `_plans` in `tests/unit/test_generated_runs.py`, each fraction
+of the state drawn on its own from 0 to the input ceiling, four states per
+propagator) was compared with `_decimal_exponential`. The scale was the
+derivation's: the larger of the largest fraction in the state and F_D, and the
+propagator's error was taken in the weighted row sums as well. Largest per
+seed, in units of 2**s 2**-52: propagator 3.60, 3.23, 3.55 and 3.08; state 3.34,
+3.21, 3.54 and 3.08. The weighted and unweighted propagator errors agreed to
+three figures in every seed. The script was a scratch file and is not in the
+tree. `tests/unit/test_rounding.py` keeps a 200-step draw of the same kind in
+the suite, steered toward the largest error, and the four worst steps of
+2026-11-11, which must pass 3 units.
+
+The stop rule set for this change held: the 24-hour bound at the 1 ms step is
+8.64e7 times 10 times 2**-52, which is 1.92e-7 of the largest fraction, about
+500 times below the 1e-4 that a percentage shown to two decimals resolves, and
+the derived bound is 2.6 times the measured worst case of 3.91, far below a
+factor of 1 000. Figures that moved: 1.8e-15 to 2.2e-15 with no squarings,
+7.6e-6 to 9.5e-6 at 32, 1.5e-7 to 1.9e-7 for 24 h at 1 ms (1.5e-9 and 1.5e-8 to
+1.9e-9 and 1.9e-8 at 0.1 s and 0.01 s), the agent balance's ratio from 154 to
+192, and `LIVE_READING_GAP` from 6.5 to 5.2 times the bound. The test holding
+`LIVE_READING_GAP` to five times the bound still passes, with 4% to spare.
+
+**Left for (b).** The project owner's review of the change to `core/` and
+`docs/MODEL.md`. The pull request is #2121.
+
+**Prose review skipped.** The project owner said "skip copy edit" on
+2026-11-11, so the copy editor read none of the branch's docstrings and
+comments, and did not edit the pull request's title and body. The
+`Prose-review:` record says read 0.
+
 **Done when.** The module in 1 exists and each rounding allowance reads it.
 The generated test in 2 exists, and each of the seven members is replayed
 against it with its fix reverted, with the result recorded here per member.

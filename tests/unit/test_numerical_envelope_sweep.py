@@ -62,6 +62,11 @@ from anesthesia_sim.core.numerical_envelope import (
 )
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES
 from anesthesia_sim.core.patient import PatientCompartments
+from anesthesia_sim.core.rounding import (
+    MACHINE_EPSILON,
+    PROPAGATOR_ROUNDING_UNITS,
+    propagator_rounding,
+)
 from anesthesia_sim.core.run_definition import RunDefinition
 from anesthesia_sim.core.simulation_step import (
     MAXIMUM_SIMULATION_STEP_S,
@@ -85,19 +90,6 @@ from anesthesia_sim.core.supported_ranges import (
 from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
-MACHINE_EPSILON = 2.0**-52
-"""The spacing of doubles just above 1, the unit in which a rounding error is counted."""
-
-PROPAGATOR_MARGIN = 3.0
-"""The largest multiple of the stated bound that one propagator's error may reach here.
-
-`core/matrix_exponential.py` states that after `s` squarings, a propagator's
-entries carry an error of up to about `2**s` times `MACHINE_EPSILON`. It also
-states that the worst entry measured stayed within 2.7 times that bound, so
-this margin rounds 2.7 up to 3. On 2026-10-26 the worst result in this sweep
-reached 2.5 times the bound for the squarings it used.
-"""
-
 
 def _propagator_error(matrix: Matrix, interval_s: float) -> float:
     """Return the relative error that one propagator over `interval_s` may carry.
@@ -108,7 +100,7 @@ def _propagator_error(matrix: Matrix, interval_s: float) -> float:
     bound, so a cancellation that loses digits there fails the sweep.
     """
 
-    return PROPAGATOR_MARGIN * 2.0 ** _squarings(matrix, interval_s) * MACHINE_EPSILON
+    return propagator_rounding(_squarings(matrix, interval_s))
 
 
 SMALLEST_SUBNORMAL = 5e-324
@@ -479,7 +471,7 @@ def _require_the_system(corner: Corner) -> None:
     at the largest number of squarings that any corner's step needs.
     """
 
-    largest_fraction = CEILING * (1.0 + PROPAGATOR_MARGIN * 2.0**MOST_SQUARINGS * MACHINE_EPSILON)
+    largest_fraction = CEILING * (1.0 + propagator_rounding(MOST_SQUARINGS))
 
     for flows, (fraction, dial_percent), step_s, perfusion_fractions in itertools.product(
         FLOW_CORNERS,
@@ -970,6 +962,6 @@ def test_every_shipped_agent_steps_without_squarings_at_any_supported_setting(
             f"{step_s} s step needs {squarings} squarings. The mass-balance check's fixed "
             "tolerance of 1e-9 assumes none, so it would halt a correct long run. Choose a "
             "tolerance that widens only by what the squarings add, about "
-            "3 * (2**s - 1) * 2**-52 per step summed over the accounting period, as PL-D88N "
-            "records."
+            f"{PROPAGATOR_ROUNDING_UNITS:g} * (2**s - 1) * 2**-52 per step summed over the "
+            "accounting period, as PL-D88N records."
         )

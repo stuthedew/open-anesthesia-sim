@@ -54,12 +54,11 @@ from types import MappingProxyType
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.core.concentration import MacMultiple
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.rounding import HEIGHT_BAND, LIVE_READING_GAP
 from anesthesia_sim.core.simulation_step import SimulationStep, require_simulation_step
 from anesthesia_sim.core.supported_ranges import CaseInstant, StepCount, require_case_instant
 
 __all__ = [
-    "HEIGHT_BAND",
-    "LIVE_READING_GAP",
     "BookmarkCrossing",
     "BookmarkSet",
     "BookmarkStandings",
@@ -67,55 +66,6 @@ __all__ = [
     "MarkStanding",
     "TimeBookmark",
 ]
-
-HEIGHT_BAND = 1e-5
-"""A reading within this fraction of a MAC target's height counts as at the height.
-
-The readings within that distance on either side of the height form the target's band.
-A crossing is a reading moving from below the band to inside it or above it,
-or from above the band to inside it or below it (`MacTarget.crossed_between`).
-`PL-QVBR` added the band. Without it, two kinds of reading of one step could
-disagree, and a steady reading could cross a height again and again.
-
-A running case holds two readings of each compartment at every step. The live
-reading comes from the stepped system, which propagates the state one step at a
-time. The canonical reading comes from `RunDefinition.state_at`. It makes one
-propagation from the keyframe that starts the stretch, the span of constant
-settings that holds the instant. Every branch opens from the canonical
-reading. `docs/MODEL.md` § "The canonical evaluation rule" makes the canonical
-reading the authority. The two readings can lie about 1e-14 apart, on opposite
-sides of a height. Suppose each reading were compared with the exact height. A
-trunk that halted on its live readings could then stop on a target, while a branch
-opened on the same step showed that target as still running.
-
-Comparing the canonical readings with the exact height fails in a different way. A
-reading that settles on the height crosses it again and again. Each canonical
-reading is propagated over a different interval, so a steady compartment's reading
-moves by one unit in the last place from step to step. A measurement on 2026-11-01
-used a run with no ventilation, a 1 MAC dial and a target on the circuit at
-1.00 ×MAC. The run halted at the target 965 times in its tenth minute.
-
-The band is far finer than anything displayed. A percentage shown to two decimals
-resolves 0.01 percentage points, which is 0.5% of 1 MAC of sevoflurane. So the band
-is about five hundred times finer than the readout of a target near 1 MAC.
-"""
-
-LIVE_READING_GAP = 1e-6
-"""A live and a canonical reading may differ by at most this fraction of the height.
-
-A canonical reading costs a matrix exponential, which takes about 2 ms. A whole step
-takes about 60 microseconds. So `SimulationController.advance` decides from the live
-readings wherever they give the same result as the canonical ones would. They do so
-wherever neither live reading lies within this gap of an edge of a target's band.
-A canonical reading then lies on the same side of each edge as the live one
-(`MacTarget.reading_is_near_a_band_edge`). `PL-QVBR` measured the gap on 2026-11-01
-for the three agents, in runs that included a setting change. Relative to the
-reading, it was at most 1.4e-10 over 24 h at the 0.1 s step, 2.9e-10 over 6 h at the
-0.01 s step, and 1.2e-9 over 2 h at the 0.001 s step. The gap grows with the number
-of steps. Scaled in proportion to 24 h, the gap at the 0.001 s step would be 1.4e-8,
-and `LIVE_READING_GAP` is about seventy times that. It is also ten times finer than
-`HEIGHT_BAND`, so the zones around the band's two edges never meet.
-"""
 
 
 class MarkStanding(StrEnum):

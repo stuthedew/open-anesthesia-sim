@@ -1606,10 +1606,10 @@ def test_the_perfusion_rule_is_defined_once_for_both_guards() -> None:
         str(path.relative_to(REPO_ROOT))
         for path in (REPO_ROOT / "src").rglob("*.py")
         for line in path.read_text(encoding="utf-8").splitlines()
-        if line.startswith("FLOW_FRACTION_TOLERANCE = ")
+        if line.startswith("FLOW_FRACTION_TOLERANCE")
     )
 
-    assert definitions == ["src/anesthesia_sim/core/parameters.py"]
+    assert definitions == ["src/anesthesia_sim/core/rounding.py"]
 
 
 def test_a_perfusion_sum_exactly_at_the_tolerance_is_accepted(
