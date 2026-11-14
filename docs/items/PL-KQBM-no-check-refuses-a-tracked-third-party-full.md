@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: infra
-touches: tools/full_text_check.py, tests/unit/test_full_text_check.py, Makefile, .github/workflows/quality.yml, docs/references/README.md, docs/apparatus.md
+touches: tools/full_text_check.py, tests/unit/test_full_text_check.py, Makefile, .github/workflows/quality.yml, docs/references/README.md, docs/apparatus.md, docket.toml
 added: 2026-11-11
 closed: 2026-11-14
 payoff: a publisher's full text cannot be committed and redistributed by accident

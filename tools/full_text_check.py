@@ -67,6 +67,7 @@ LICENSED_BEGIN = "<!-- full-text-check: licensed files begin -->"
 LICENSED_END = "<!-- full-text-check: licensed files end -->"
 
 #: One line of that list: a path in backticks, a colon, then the licence.
+# regex: one line of this tool's own list format, "- `path`: licence".
 LICENSED_LINE_RE = re.compile(r"^- `(?P<path>[^`]+)`: (?P<licence>\S.*)$")
 
 
