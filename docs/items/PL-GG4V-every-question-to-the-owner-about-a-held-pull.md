@@ -3,15 +3,14 @@ id: PL-GG4V
 title: Every question to the owner about a held pull request lacks part of what the asking rule requires: the review form has no recommendation, no trade-off and no options, and the decision form has no context and no reason the choice is the owner's (2026-11-14): make one form that carries all of them, question and recommendation first
 priority: P2
 effort: S
-status: done
+status: ready
 classes: defect, ux
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_arming.py, subprojects/docket/tests/test_cli.py, tests/unit/test_owner_ask_guard.py, docs/maintainer.md, .claude/skills/docket/modes/coordinator.md
 deferred-from: v0.7.0 - workflow tooling outside the schematic release, and it changes no displayed value
 added: 2026-11-14
 closed: 2026-11-14
-pr: 2146
 payoff: every question the owner is sent about a held pull request carries its options, a recommendation with the cost of the alternative, its context and why it is theirs, so they can answer it in one read
-verify: grep -q 'def test_every_question_to_the_owner_leads_with_its_recommendation' subprojects/docket/tests/test_arming.py
+verify: grep -q 'def test_a_merge_approval_names_its_risk_and_offers_no_invented_option' subprojects/docket/tests/test_arming.py
 ---
 
 **Problem.** Every question to the owner about a held pull request lacks part of what the asking rule requires: the review form has no recommendation, no trade-off and no options, and the decision form has no context and no reason the choice is the owner's (2026-11-14): make one form that carries all of them, question and recommendation first
@@ -113,6 +112,37 @@ gives up or what the alternative gains. Every option now carries
 its gain is worth its cost. An option without a cost is refused. Whether a
 cost is honest, rather than a straw man, stays judgment, which the printed
 instructions ask for.
+
+## Third round (2026-11-14): a merge approval is not a choice
+
+Shown the merge question with a cost on each option, the owner wrote: "I
+still don't understand the pro of the non-recommended option. I'm assuming
+that if you're asking then their is a trade off, but no pro is mentioned for
+other option". They were right. "Hold for changes" has no gain of its own
+unless the owner already has a change in mind, so a form that requires two
+options with a gain each makes a session invent one for every merge approval.
+That is the straw man the second round tried to rule out.
+
+**Decision (session's, 2026-11-14).** Two kinds of question, each honest
+about what it is:
+
+1. **A choice**, only where a real trade-off exists: unchanged from the
+   second round. Each option says what it gets and what it gives up, and the
+   recommendation says why its gain is worth its cost.
+2. **An approval**, for a pull request held for the owner's sign-off with
+   nothing to choose between. It has no options. It is recorded as
+   `May it merge? | recommend merge - <why> | context - <what changed> |
+   risk - <what merging could break or cost, and how likely> | why - <why it
+   is the owner's> | checked - <what was checked>`, and printed in that order,
+   one line each: "I recommend merging", "Context", "Risk if it merges",
+   "Why it is yours", "Already checked". The owner replies "Merge" or names
+   the change. The risk line carries the trade-off: what the owner accepts by
+   saying yes.
+
+The order, recommendation first, stays (project owner, 2026-11-14,
+ratified, over the context first). Work left: the approval form in the
+parser, renderer and instructions; its tests; `docs/maintainer.md`; and a
+re-recorded question for #2146 in the approval form.
 
 **Generator check.** The mechanism is that the `Owner-ask` grammar enforces only part of rule 10, so each missing element is left out until the owner notices it. It caused `PL-9KHK`, `PL-DKBG`, `PL-KYTY`, `PL-BGN1`, `PL-77QB` and `PL-M2JP`, all closed. This item removes the mechanism by making the grammar require every element rule 10 names, and no open item remains under it.
 
