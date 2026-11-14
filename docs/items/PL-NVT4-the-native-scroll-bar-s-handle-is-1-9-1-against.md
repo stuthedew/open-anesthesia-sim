@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: ux, docs
 feature: chrome-colour-audit
-touches: src/anesthesia_sim/app/qt_widgets.py, tests/integration/test_dark_appearance.py, docs/MODEL.md
+touches: src/anesthesia_sim/app/qt_widgets.py, tests/integration/test_dark_appearance.py, docs/INTERFACE.md
 added: 2026-09-22
 payoff: docs/MODEL.md's claim to hold SC 1.4.11 is true of the scroll bar, or says why the scroll bar is outside it
 not-delegable: the done state forks on what WCAG's Understanding text for SC 1.4.11 says, read at source, and one branch is a route choice the brief reserves for the project owner, so no command can state it in advance
