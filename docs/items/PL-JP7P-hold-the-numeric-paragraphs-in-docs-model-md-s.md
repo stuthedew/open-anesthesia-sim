@@ -3,7 +3,7 @@ id: PL-JP7P
 title: Hold the numeric paragraphs in docs/MODEL.md's interface sections (hover readout, MAC-awake, MAC multiples, time base, control-input record and five smaller sections) to named tests
 priority: P1
 effort: M
-status: blocked
+status: ready
 classes: docs, science
 feature: model-claims-held-by-tests
 touches: docs/MODEL.md, docs/INTERFACE.md, tools/doc_check.py, tests, docs/items
@@ -45,6 +45,7 @@ that is a published value is cited by a DOI, a PubMed id, an ISBN or a
 journal locator. The pass then adds its sections to `BOUND_FAMILIES` in the
 same change, so the check stays green.
 
+[superseded 2026-11-14: PL-19W8 closed and found five wrong claims, so this pass runs]
 **Blocked on `PL-19W8`, the first pass.** If that pass finds no computed
 claim wrong or missing a condition in "Known limitations" and "Displayed
 precision" together, this item is dropped and the check stays on those two
