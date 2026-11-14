@@ -33,8 +33,8 @@ ASK_LINE = (
     "Which view opens first?\n"
     '- I recommend "Chooser": it names every view.\n'
     "- Context: the simulator now has three views.\n"
-    '- Option "Chooser": the learner picks a view each run.\n'
-    '- Option "Last used": it opens where they left off.\n'
+    '- Option "Chooser": the learner picks a view each run. Cost: one more click.\n'
+    '- Option "Last used": it opens where they left off. Cost: it hides views.\n'
     "- Why it is yours: it decides what a learner sees first."
 )
 #: What `arm --owner-ask` prints, exiting 3, where the pull request waits on

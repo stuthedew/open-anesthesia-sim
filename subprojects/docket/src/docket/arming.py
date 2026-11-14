@@ -221,12 +221,16 @@ READ_GIVEN = "given"
 #: opening lines, so the ask is a recorded fact rather than prose a session
 #: may skip. It is one form, a run of fields joined by `ASK_SEPARATOR`:
 #:
-#: `<question>? | <option>: <what it changes> | <option>: <what it changes> |
-#: recommend <option> - <why, and what the others cost> | context - <what
-#: changed, or what the choice is about> | why - <why the choice is the
-#: owner's> | checked - <what was already checked>`
+#: `<question>? | <option>: <what it gets>; cost: <what it gives up> |
+#: <option>: <what it gets>; cost: <what it gives up> | recommend <option> -
+#: <why its gain is worth its cost> | context - <what changed, or what the
+#: choice is about> | why - <why the choice is the owner's> | checked - <what
+#: was already checked>`
 #:
-#: It has at least two options, and `checked` may be left out. A merge review
+#: It has at least two options, and `checked` may be left out. Every option
+#: names its cost, the recommended one included. With only what each option
+#: does, a session wrote one good option and one bad one, and the owner asked
+#: "why would I ever choose the bad" (project owner, 2026-11-14, `PL-GG4V`). A merge review
 #: is a choice like any other, whose options are merging and holding for
 #: changes. The reply quotes the text to judge, before and after, under the
 #: ask, because a pointer into a file sent the owner to dig for it (project
@@ -249,6 +253,8 @@ ASK_RECOMMEND = "recommend"
 ASK_CONTEXT = "context"
 ASK_WHY = "why"
 ASK_CHECKED = "checked"
+#: What separates an option's gain from its cost.
+ASK_COST = "; cost: "
 #: The named fields after the recommendation, in order. The last may be left out.
 ASK_NAMED = (ASK_CONTEXT, ASK_WHY, ASK_CHECKED)
 #: The first word of every review form refused since 2026-11-02 and 2026-11-14.
@@ -274,9 +280,9 @@ ASK_JARGON = re.compile(
 #: is sent, in this order: the question, the recommendation, the context, each
 #: option, why it is the owner's, and what was checked. Rule 10 of
 #: `.claude/rules/instruction-writing.md` puts the question and the
-#: recommendation first (project owner, 2026-11-14, `PL-GG4V`). That order
-#: replaced a review that led with what changed (`PL-BGN1`), and it is a
-#: placeholder: the owner may prefer the context first.
+#: recommendation first. That order replaced a review that led with what
+#: changed (`PL-BGN1`), and the owner kept it over the context first (project
+#: owner, 2026-11-14, ratified, `PL-GG4V`).
 #:
 #: Each part is a line of its own. All the parts on one line read as a dense
 #: paragraph that the owner found hard to follow (project owner, 2026-11-10,
@@ -285,7 +291,7 @@ ASK_JARGON = re.compile(
 #: them back into one paragraph.
 ASK_RECOMMEND_SHOWN = '- I recommend "{pick}": {why}.'
 ASK_CONTEXT_SHOWN = "- Context: {context}."
-ASK_OPTION_SHOWN = '- Option "{label}": {change}.'
+ASK_OPTION_SHOWN = '- Option "{label}": {gain}. Cost: {cost}.'
 ASK_WHY_SHOWN = "- Why it is yours: {why}."
 ASK_CHECKED_SHOWN = "- Already checked: {checked}."
 
@@ -313,8 +319,9 @@ READ_ASK = (
     "is obvious is wrong, as on #1516, whose ask invented two points to judge (PL-DKBG). "
     "Record one in the last paragraph of a commit, beside its Co-authored-by line, then ask "
     f"again: `{OWNER_ASK}: <question>? | <option>: <what it changes for the owner or a "
-    f"learner> | <option>: <what it changes> | {ASK_RECOMMEND} <option> - <why, and what the "
-    f"other options cost> | {ASK_CONTEXT} - <what changed, or what the choice is about> | "
+    f"learner>{ASK_COST}<what it gives up> | <option>: <what it changes>{ASK_COST}<what it "
+    f"gives up> | {ASK_RECOMMEND} <option> - <why its gain is worth its cost> | "
+    f"{ASK_CONTEXT} - <what changed, or what the choice is about> | "
     f"{ASK_WHY} - <why the choice is the owner's rather than the session's> | {ASK_CHECKED} - "
     f"<what was already checked>`. Give at least two options a careful person could each "
     f"pick, and leave out {ASK_CHECKED} only when nothing was checked. A merge review is a "
@@ -322,7 +329,10 @@ READ_ASK = (
     "the owner can decide as the owner or as a clinician, such as 'May it merge?'. Word the "
     "question in clinical or learner terms and in one clause, so that the owner sees on "
     "first reading what they are judging, and put its background in the context field. "
-    "Under each option, say what a learner sees or what changes for the owner. A choice "
+    "Under each option, say what a learner sees or what changes for the owner, and what "
+    "that option gives up, the recommended one included: a choice between one good option "
+    "and one bad one is not a choice. For a merge, holding gives the owner time to change "
+    "the work, and merging gives up that chance. A choice "
     "between approaches to the interface goes with one annotated screenshot per option, "
     "attached to the reply that carries the lines (.claude/skills/run-the-app/SKILL.md). "
     "Each field is printed on its own line, the question first and the recommendation "
@@ -1071,8 +1081,14 @@ def parse_owner_ask(value: str) -> tuple[str, str]:
     if len(options) < 2:
         return "", "a question needs at least two options"
     pairs = [option.partition(": ") for option in options]
-    if not all(label.strip() and colon and change.strip() for label, colon, change in pairs):
-        return "", "each option needs '<option>: <what it changes>'"
+    costed = [change.partition(ASK_COST) for _, _, change in pairs]
+    if not all(label.strip() and colon for label, colon, _ in pairs) or not all(
+        gain.strip() and sep and cost.strip() for gain, sep, cost in costed
+    ):
+        return "", (
+            f"each option needs '<option>: <what it gets>{ASK_COST}<what it gives up>', so "
+            "that the owner sees what every option costs, the recommended one included"
+        )
     labels = [label.strip().lower() for label, _, _ in pairs]
     if len(set(labels)) < len(labels):
         return "", "two options share a label"
@@ -1094,8 +1110,10 @@ def parse_owner_ask(value: str) -> tuple[str, str]:
         ASK_RECOMMEND_SHOWN.format(pick=pick.strip(), why=why.strip().rstrip(".")),
         ASK_CONTEXT_SHOWN.format(context=said[0]),
         *(
-            ASK_OPTION_SHOWN.format(label=label.strip(), change=change.strip().rstrip("."))
-            for label, _, change in pairs
+            ASK_OPTION_SHOWN.format(
+                label=label.strip(), gain=gain.strip().rstrip("."), cost=cost.strip().rstrip(".")
+            )
+            for (label, _, _), (gain, _, cost) in zip(pairs, costed, strict=True)
         ),
         ASK_WHY_SHOWN.format(why=said[1]),
         *(ASK_CHECKED_SHOWN.format(checked=checked) for checked in said[2:]),

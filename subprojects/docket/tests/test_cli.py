@@ -11945,7 +11945,7 @@ def test_a_read_hold_puts_a_decision_or_a_case_in_the_closing_block_line() -> No
         "A question whose answer is obvious is wrong",
         "#1516",
         "what it changes for the owner or a learner",
-        "recommend <option> - <why, and what the other options cost>",
+        "recommend <option> - <why its gain is worth its cost>",
         "context - <what changed, or what the choice is about>",
         "why - <why the choice is the owner's rather than the session's>",
         "Give at least two options",
@@ -11987,8 +11987,9 @@ def test_arm_ask_is_written_in_plain_words_for_the_owner() -> None:
     and reviews covered (`PL-BGN1`).
     """
     line, why = arming.parse_owner_ask(
-        "Should the table keep the 1 MAC figure? | Keep: learners still see 1 MAC | Drop: "
-        "the row shows only the age-adjusted value | recommend Keep - it is the value "
+        "Should the table keep the 1 MAC figure? | Keep: learners still see 1 MAC; cost: the "
+        "row is longer | Drop: the row shows only the age-adjusted value; cost: learners lose "
+        "the figure they are taught first | recommend Keep - it is the value "
         "learners are taught first | context - the hazard table is reworded. | why - the "
         "figure is a clinical value | checked - every figure still matches its source."
     )
@@ -11997,8 +11998,9 @@ def test_arm_ask_is_written_in_plain_words_for_the_owner() -> None:
         "Should the table keep the 1 MAC figure?\n"
         '- I recommend "Keep": it is the value learners are taught first.\n'
         "- Context: the hazard table is reworded.\n"
-        '- Option "Keep": learners still see 1 MAC.\n'
-        '- Option "Drop": the row shows only the age-adjusted value.\n'
+        '- Option "Keep": learners still see 1 MAC. Cost: the row is longer.\n'
+        '- Option "Drop": the row shows only the age-adjusted value. Cost: learners lose the '
+        "figure they are taught first.\n"
         "- Why it is yours: the figure is a clinical value.\n"
         "- Already checked: every figure still matches its source."
     )
@@ -12023,7 +12025,7 @@ def test_arm_read_ask_asks_in_learner_terms_with_screenshots() -> None:
     follow the form they describe, and come before how the lines are printed.
     """
     parts = (
-        "recommend <option> - <why, and what the other options cost>",
+        "recommend <option> - <why its gain is worth its cost>",
         "why the choice is the owner's",
         "clinical or learner terms",
         "what they are judging",
@@ -12051,8 +12053,9 @@ def _record_ask(git: Callable[..., str], value: str, when: str) -> None:
 
 
 ARM_DECISION = (
-    "Which view opens first? | Chooser: the learner picks a view each run | "
-    "Last used: it opens where they left off | recommend Chooser - it names every view | "
+    "Which view opens first? | Chooser: the learner picks a view each run; cost: one more "
+    "click before every case | Last used: it opens where they left off; cost: it hides the "
+    "views a learner has not opened | recommend Chooser - it names every view | "
     "context - the simulator now has three views | why - it decides what a learner sees first"
 )
 
@@ -12086,8 +12089,10 @@ def test_arm_holds_for_the_owner_only_with_a_recorded_ask(
         "  Which view opens first?",
         '  - I recommend "Chooser": it names every view.',
         "  - Context: the simulator now has three views.",
-        '  - Option "Chooser": the learner picks a view each run.',
-        '  - Option "Last used": it opens where they left off.',
+        '  - Option "Chooser": the learner picks a view each run. Cost: one more '
+        "click before every case.",
+        '  - Option "Last used": it opens where they left off. Cost: it hides the '
+        "views a learner has not opened.",
         "  - Why it is yours: it decides what a learner sees first.",
     ]
 
@@ -12268,8 +12273,10 @@ def test_arm_owner_ask_prints_only_what_may_be_sent_to_the_owner(
         "Which view opens first?\n"
         '- I recommend "Chooser": it names every view.\n'
         "- Context: the simulator now has three views.\n"
-        '- Option "Chooser": the learner picks a view each run.\n'
-        '- Option "Last used": it opens where they left off.\n'
+        '- Option "Chooser": the learner picks a view each run. Cost: one more '
+        "click before every case.\n"
+        '- Option "Last used": it opens where they left off. Cost: it hides the '
+        "views a learner has not opened.\n"
         "- Why it is yours: it decides what a learner sees first.\n"
     )
 
@@ -12393,40 +12400,57 @@ ARM_REVIEW = (
             "Which view opens first?\n"
             '- I recommend "Chooser": it names every view.\n'
             "- Context: the simulator now has three views.\n"
-            '- Option "Chooser": the learner picks a view each run.\n'
-            '- Option "Last used": it opens where they left off.\n'
+            '- Option "Chooser": the learner picks a view each run. Cost: one more '
+            "click before every case.\n"
+            '- Option "Last used": it opens where they left off. Cost: it hides the '
+            "views a learner has not opened.\n"
             "- Why it is yours: it decides what a learner sees first.",
             "",
         ),
         (
-            "May it merge? | Merge: the dose label reads mcg | Hold for changes: it waits for "
-            "your change | recommend Merge - the label matches the unit stored. | context - "
+            "May it merge? | Merge: the dose label reads mcg; cost: you lose the chance to "
+            "change it first | Hold for changes: you can change it first; cost: the label "
+            "stays as it was until then | recommend Merge - the label matches the unit stored. | "
+            "context - "
             "the dose label reads mcg. | why - a dose unit is a clinical value. | checked - "
             "the label matches the unit stored.",
             "May it merge?\n"
             '- I recommend "Merge": the label matches the unit stored.\n'
             "- Context: the dose label reads mcg.\n"
-            '- Option "Merge": the dose label reads mcg.\n'
-            '- Option "Hold for changes": it waits for your change.\n'
+            '- Option "Merge": the dose label reads mcg. Cost: you lose the chance to change '
+            "it first.\n"
+            '- Option "Hold for changes": you can change it first. Cost: the label stays as it '
+            "was until then.\n"
             "- Why it is yours: a dose unit is a clinical value.\n"
             "- Already checked: the label matches the unit stored.",
             "",
         ),
-        ("Q? | A: x | B: y | recommend A - z", "", ARM_NAMED),
-        ("Q? | A: x | B: y | recommend A - z | context - c | why - ", "", ARM_NAMED),
-        ("Q? | A: x | B: y | recommend A - z | context - c | why - w | reply - r", "", ARM_NAMED),
+        ("Q? | A: x; cost: c | B: y; cost: d | recommend A - z", "", ARM_NAMED),
+        (
+            "Q? | A: x; cost: c | B: y; cost: d | recommend A - z | context - c | why - ",
+            "",
+            ARM_NAMED,
+        ),
+        (
+            "Q? | A: x; cost: c | B: y; cost: d | recommend A - z | context - c | why - w | "
+            "reply - r",
+            "",
+            ARM_NAMED,
+        ),
         ("changed - x | question - y? | why - w | checked - z | reply - v", "", ARM_REVIEW),
         ("Changed - x | question - y? | checked - z | reply - v", "", ARM_REVIEW),
         ("risk - x | checked - y | look - z", "", ARM_REVIEW),
         (
-            "May it merge? | A: x | B: y | recommend A - z | context - c | why - w | "
+            "May it merge? | A: x; cost: c | B: y; cost: d | recommend A - z | context - c | "
+            "why - w | "
             "checked - verify --self ACCEPTs",
             "",
             "it names '--self', which the owner cannot read in a reply; say in plain words "
             "what it checked or changed",
         ),
         (
-            "May it merge? | A: x | B: y | recommend A - z | context - c | why - w | "
+            "May it merge? | A: x; cost: c | B: y; cost: d | recommend A - z | context - c | "
+            "why - w | "
             "checked - tools/model_rewrite.py lost",
             "",
             "it names 'tools/model_rewrite.py', which the owner cannot read in a reply; say in "
@@ -12446,15 +12470,26 @@ ARM_REVIEW = (
         ),
         ("Merge it?", "", "it has no 'recommend <option> - <why>' field after its options"),
         ("Q? | A: x | recommend A - y", "", "a question needs at least two options"),
-        ("Q? | A: x | B | recommend A - y", "", "each option needs '<option>: <what it changes>'"),
-        ("Q? | A: x | a: y | recommend A - z", "", "two options share a label"),
         (
-            "Q? | A: x | B: y | recommend C - z",
+            "Q? | A: x; cost: c | B | recommend A - y",
+            "",
+            "each option needs '<option>: <what it gets>; cost: <what it gives up>', so that "
+            "the owner sees what every option costs, the recommended one included",
+        ),
+        (
+            "Q? | A: x | B: y; cost: d | recommend A - y",
+            "",
+            "each option needs '<option>: <what it gets>; cost: <what it gives up>', so that "
+            "the owner sees what every option costs, the recommended one included",
+        ),
+        ("Q? | A: x; cost: c | a: y; cost: d | recommend A - z", "", "two options share a label"),
+        (
+            "Q? | A: x; cost: c | B: y; cost: d | recommend C - z",
             "",
             "it recommends 'C', which is not one of its options",
         ),
         (
-            "Q? | A: x | B: y | recommend A",
+            "Q? | A: x; cost: c | B: y; cost: d | recommend A",
             "",
             "its recommendation is not 'recommend <option> - <why>'",
         ),

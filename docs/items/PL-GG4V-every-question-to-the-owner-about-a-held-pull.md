@@ -101,6 +101,19 @@ options cost> | context - <what changed, or what the choice is about> | why -
   same template and the same pinned tests, and #2146 already waits on the
   owner's read.
 
+## Second round (2026-11-14)
+
+Shown the built form, the owner agreed to the order, recommendation first
+("Agree with recommended first"), and found the next gap: "it doens't really
+explain trade offs? Just why one is good and one is bad. So why wouod I ever
+choose the bad". Each option said only what it did, and the recommendation
+said only what the others cost, so nothing asked what the recommended option
+gives up or what the alternative gains. Every option now carries
+`<what it gets>; cost: <what it gives up>`, and the recommendation says why
+its gain is worth its cost. An option without a cost is refused. Whether a
+cost is honest, rather than a straw man, stays judgment, which the printed
+instructions ask for.
+
 **Generator check.** The mechanism is that the `Owner-ask` grammar enforces only part of rule 10, so each missing element is left out until the owner notices it. It caused `PL-9KHK`, `PL-DKBG`, `PL-KYTY`, `PL-BGN1`, `PL-77QB` and `PL-M2JP`, all closed. This item removes the mechanism by making the grammar require every element rule 10 names, and no open item remains under it.
 
 **Done when.** `bin/docket arm` refuses an `Owner-ask` record that lacks

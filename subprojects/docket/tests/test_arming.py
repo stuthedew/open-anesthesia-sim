@@ -295,9 +295,10 @@ def test_a_blind_record_that_cannot_be_read_says_why(value: str, reason: str) ->
 
 
 ASK_VALUE = (
-    "May it merge? | Merge: learners see the reworded uptake step | Hold for changes: it "
-    "waits for the change you name | recommend Merge - every figure is unchanged, and "
-    "holding it delays nothing else | context - the uptake step is reworded | why - it "
+    "May it merge? | Merge: learners see the reworded uptake step; cost: you lose the chance "
+    "to reword it first | Hold for changes: you can reword it first; cost: learners keep the "
+    "old wording until then | recommend Merge - every figure is unchanged, and holding it "
+    "delays nothing else | context - the uptake step is reworded | why - it "
     "changes the uptake model, which only you approve | checked - every figure still "
     "matches its source"
 )
@@ -318,8 +319,10 @@ def test_a_review_question_prints_each_part_on_its_own_line() -> None:
         "May it merge?",
         '- I recommend "Merge": every figure is unchanged, and holding it delays nothing else.',
         "- Context: the uptake step is reworded.",
-        '- Option "Merge": learners see the reworded uptake step.',
-        '- Option "Hold for changes": it waits for the change you name.',
+        '- Option "Merge": learners see the reworded uptake step. Cost: you lose the chance '
+        "to reword it first.",
+        '- Option "Hold for changes": you can reword it first. Cost: learners keep the old '
+        "wording until then.",
         "- Why it is yours: it changes the uptake model, which only you approve.",
         "- Already checked: every figure still matches its source.",
     ]
@@ -333,23 +336,27 @@ def test_every_question_to_the_owner_leads_with_its_recommendation() -> None:
     left out what the form did not ask for, and the owner wrote "you are
     still asking me to make decisions without any context, recommendations,
     trade offs etc" (project owner, 2026-11-14, `PL-GG4V`). So there is one
-    form, printed question first and recommendation second.
+    form, printed question first and recommendation second. Each option
+    names its cost, because options that say only what they do let a session
+    offer one good and one bad: "why would I ever choose the bad".
     """
     shown, why = arming.parse_owner_ask(
-        "Which view opens first? | Chooser: the learner picks a view each run | "
-        "Last used: it opens where they left off | recommend Chooser - it names every view, "
-        "and last used hides the views a learner has not opened | context - the simulator "
+        "Which view opens first? | Chooser: the learner picks a view each run; cost: one "
+        "more click before every case | Last used: it opens where they left off; cost: it "
+        "hides the views a learner has not opened | recommend Chooser - one click is worth "
+        "showing every view | context - the simulator "
         "now has three views | why - it decides what a learner sees first"
     )
 
     assert why == ""
     assert shown.splitlines() == [
         "Which view opens first?",
-        '- I recommend "Chooser": it names every view, and last used hides the views a '
-        "learner has not opened.",
+        '- I recommend "Chooser": one click is worth showing every view.',
         "- Context: the simulator now has three views.",
-        '- Option "Chooser": the learner picks a view each run.',
-        '- Option "Last used": it opens where they left off.',
+        '- Option "Chooser": the learner picks a view each run. Cost: one more click before '
+        "every case.",
+        '- Option "Last used": it opens where they left off. Cost: it hides the views a '
+        "learner has not opened.",
         "- Why it is yours: it decides what a learner sees first.",
     ]
 
@@ -362,15 +369,16 @@ def test_every_question_to_the_owner_leads_with_its_recommendation() -> None:
         "it is in a review form, which gave the owner no options and no recommendation; ask "
         "whether it may merge, with merging and holding for changes as its options"
     )
-    assert arming.parse_owner_ask("Q? | A: x | B: y | recommend A - z") == ("", missing)
-    assert arming.parse_owner_ask("Q? | A: x | B: y | recommend A - z | context - c") == (
+    assert arming.parse_owner_ask("Q? | A: x; cost: c | B: y; cost: d | recommend A - z") == (
         "",
         missing,
     )
-    assert arming.parse_owner_ask("Q? | A: x | B: y | recommend A - z | why - w | context - c") == (
-        "",
-        missing,
-    )
+    assert arming.parse_owner_ask(
+        "Q? | A: x; cost: c | B: y; cost: d | recommend A - z | context - c"
+    ) == ("", missing)
+    assert arming.parse_owner_ask(
+        "Q? | A: x; cost: c | B: y; cost: d | recommend A - z | why - w | context - c"
+    ) == ("", missing)
     assert arming.parse_owner_ask(
         "changed - x | question - y? | why - w | checked - z | reply - v"
     ) == ("", review)
@@ -379,6 +387,13 @@ def test_every_question_to_the_owner_leads_with_its_recommendation() -> None:
         review,
     )
     assert arming.parse_owner_ask("risk - x | checked - y | look - z") == ("", review)
+    assert arming.parse_owner_ask(
+        "Q? | A: x | B: y; cost: d | recommend A - z | context - c | why - w"
+    ) == (
+        "",
+        "each option needs '<option>: <what it gets>; cost: <what it gives up>', so that the "
+        "owner sees what every option costs, the recommended one included",
+    )
 
 
 def test_a_copied_refusal_log_leaves_the_recorded_ask_in_force(tmp_path: Path) -> None:

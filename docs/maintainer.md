@@ -548,10 +548,10 @@ opening lines of the ask. Every ask has one form, which carries what
 `.claude/rules/instruction-writing.md` rule 10 requires:
 
 1. the question, in clinical or learner terms and in one clause;
-2. the recommendation, with its reason and what the other options cost;
+2. the recommendation, and why its gain is worth its cost;
 3. the context: what changed, or what the choice is about;
 4. at least two options, each saying what it changes for you or for a
-   learner;
+   learner and what it gives up, the recommended one included;
 5. why the choice is yours rather than the session's;
 6. what was already checked, where anything was.
 
@@ -564,9 +564,10 @@ rewording kept its meaning. A choice between approaches to the interface
 comes with one annotated screenshot per option (project owner, 2026-10-19,
 `PL-KYTY`). `arm` refuses a record that leaves out a required part, or that
 is in one of the older review or decision forms, which each lacked some of
-them. Putting the question and the recommendation before the context is a
-placeholder order, and one template changes it if you would rather read the
-context first.
+them. The question and the recommendation come before the context (project
+owner, 2026-11-14, ratified, over the context first). Every option names its
+cost, because options that said only what they did let a session offer one
+good option and one bad one (project owner, 2026-11-14, `PL-GG4V`).
 No part of the ask names a tool, file, command or item id, and `arm` refuses a
 record that does (project owner, 2026-11-02, `PL-BGN1`). The reply
 quotes the text you are to judge, before and after, with enough of the
