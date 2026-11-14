@@ -110,7 +110,7 @@ slow-washout MAC-awake (page 1014 and Table 3, page 1016).
   § "Source hierarchy: what may be cited as the authority for a value".
 - Both agent files name the age-adjusted MAC equations as the denominator of
   the stored fraction (`mac_awake.mac_reference_basis`).
-- `docs/MODEL.md` § "MAC-awake as a chart reference" uses the equations, the
+- `docs/INTERFACE.md` § "MAC-awake as a chart reference" uses the equations, the
   slow-washout percents and ages, the fast-washout ratios and the two sets of
   calculated cerebral concentrations, none of them stored values. It compares
   the MAC-awake band drawn on the chart with Katoh's patients, and explains why

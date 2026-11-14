@@ -6,13 +6,13 @@ effort: S
 status: ready
 classes: defect, docs
 feature: model-md-structure
-touches: docs/MODEL.md
+touches: docs/MODEL.md, docs/INTERFACE.md
 added: 2026-11-05
 payoff: a clinician who asks why each agent keeps its own MAC-awake fraction reads the reason the sources support, not one that argues the other way
-verify: ! grep -qF 'narrow range, so each agent carries' docs/MODEL.md
+verify: ! grep -qF 'narrow range, so each agent carries' docs/INTERFACE.md
 ---
 
-**Problem.** `docs/MODEL.md` § "MAC-awake as a chart reference" says the three fractions "sit in a narrow range, so each agent carries its own value". A narrow range argues for one shared fraction, so the stated reason does not support the choice.
+**Problem.** `docs/INTERFACE.md` § "MAC-awake as a chart reference" says the three fractions "sit in a narrow range, so each agent carries its own value". A narrow range argues for one shared fraction, so the stated reason does not support the choice.
 
 **Checked 2026-11-09:** `grep -n 'narrow range' docs/MODEL.md` still finds the
 sentence after the restructure, in § "MAC-awake as a chart reference" (line

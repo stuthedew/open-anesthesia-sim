@@ -319,7 +319,7 @@ kept the invariant. The controller calls the setter once, from `_build_state()`,
 to apply the volume the session was built with, and no live setter exists
 above it. The circuit volume is a fixed model parameter rather than a control
 (`PL-GYH2`). So the per-parameter setters named above are the four that the
-interface offers, and no fifth one exists. `docs/MODEL.md` § "What is not
+interface offers, and no fifth one exists. `docs/INTERFACE.md` § "What is not
 bounded this way" gives the argument.
 
 The snapshot is the run's state at one instant. It holds a fixed number of
@@ -379,9 +379,9 @@ definition already holds, so no drawn value depends on whether it was kept
 `run_segments` hands out the record itself as frozen segments, which can be
 read but not advanced. So nothing above the controller can move the run
 definition's reach past where the run actually got to, and then have a
-prediction drawn back on the run's own axis. `docs/MODEL.md` § "The run is that
+prediction drawn back on the run's own axis. `docs/INTERFACE.md` § "The run is that
 record, and every state is derived from it" gives the measurements, and
-`docs/MODEL.md` § "The canonical evaluation rule" states which of the two
+`docs/INTERFACE.md` § "The canonical evaluation rule" states which of the two
 evaluation paths a stored, exported, replayed or branched value may be taken
 from.
 
@@ -404,7 +404,7 @@ held the two in agreement with each other.
 Which instants `drawn_window` evaluates is a presentation-correctness concern,
 because a chart that stepped over a control change would show a curve the
 simulation never produced. So the rules that place the instants are stated in
-`docs/MODEL.md` § "What the chart draws" and are tested on their own. The
+`docs/INTERFACE.md` § "What the chart draws" and are tested on their own. The
 evaluated instants are anchored to an absolute grid measured from the case's
 zero, rather than to their position within the window. So a window that
 follows the run keeps every column it had and gains at most one
@@ -431,7 +431,7 @@ that they apply is a module of its own: `app/formatting.py`,
 `app/wash_in.py`. Each is separate because it decides presentation
 *correctness* rather than layout, and must be readable and testable with no
 toolkit loaded. § "Package map" gives each one's role. `app/formatting.py`
-uses the resolutions that `docs/MODEL.md` § "Displayed precision" derives.
+uses the resolutions that `docs/INTERFACE.md` § "Displayed precision" derives.
 
 `app/control_timeline.py` reads a control record that is faithful to the run,
 in which a drag of one slider appears as several settings. So collapsing that
@@ -441,7 +441,7 @@ rendering of what the model saw.
 In `app/wash_in.py`, the wash-in quotient has a domain. It is undefined before
 any agent reaches the circuit, and above 1 it stops being a wash-in fraction.
 So the module returns the value and the reason together, and the chart draws
-the trace in segments that break where the domain does. `docs/MODEL.md`
+the trace in segments that break where the domain does. `docs/INTERFACE.md`
 § "F_A/F_I as a displayed ratio" is the specification.
 
 In `app/playback.py`, a playback rate is realised only as a step *count*, never
@@ -476,7 +476,7 @@ without bound and offer little over branching from the trunk again.
 This section is the object map of `BranchedCase`, its runs and the
 `RunDefinition` each run carries. What a branch *guarantees* is stated and
 measured in one place only:
-`docs/MODEL.md` § "The canonical evaluation rule". That section says that a
+`docs/INTERFACE.md` § "The canonical evaluation rule". That section says that a
 branch's run definition opens at a keyframe of the case, and why. It says that
 the definition opens at that keyframe's own case instant, so no clock is
 re-based and no conversion is performed. It also says what both of these are
@@ -570,7 +570,7 @@ rule decides which stretch the branch names as its provenance: the stretch that
 the step reaching the fork ran under. After the case's opening, no later change
 on the trunk can replace that stretch. The branch runs under the stretch still
 open at the fork, which is what the dial says there
-(`docs/MODEL.md` § "The canonical evaluation rule", `PL-ZR49`).
+(`docs/INTERFACE.md` § "The canonical evaluation rule", `PL-ZR49`).
 
 A branch inherits the bookmarks but not the trunk's control timeline, and one
 test settles both. A mark is a question about what is still to come, and a
@@ -604,7 +604,7 @@ offset, and `run_segments` warned about it. The branch's drawn columns were
 anchored to its own zero, so they landed at case instants the trunk never draws
 (`PL-2R2C`). The frame was removed, with `origin_s` and both subtractions
 (`PL-ZMRT`), and that solved the problem without a separate fix.
-`docs/MODEL.md` § "The canonical evaluation rule" measures what the removal is
+`docs/INTERFACE.md` § "The canonical evaluation rule" measures what the removal is
 worth.
 
 **Where a branch may be taken.** There are three places: at a keyframe, where
@@ -643,7 +643,7 @@ it element-wise. The obvious route was measured and refused. Recording a
 keyframe where the run halts makes the branch exact against the trunk it forked
 from, but it also moves that trunk's own later results away from what the case
 would have given unmarked, so marking a run would change it. Both measurements
-are in `PL-B8MK`. `docs/MODEL.md` § "What this requires of a branch" records
+are in `PL-B8MK`. `docs/INTERFACE.md` § "What this requires of a branch" records
 which of that section's two conditions the chosen route relaxes, and what the
 relaxation costs.
 
@@ -780,7 +780,7 @@ to Pause for a lock that Pause cannot lift.
 
 ### What a branch comparison asserts, and which part of it is structural
 
-**The full statement is in `docs/MODEL.md` § "What a branch comparison asserts,
+**The full statement is in `docs/INTERFACE.md` § "What a branch comparison asserts,
 and what it does not".** It is stated there because it is a claim about the
 model, not about how the code is arranged. This section covers only the part of
 that claim that the structure of `BranchedCase` decides, which is three things.
@@ -806,14 +806,14 @@ audit of that claim, not a convenience.
 **The shared history is the same object, not a reproduction of one.** A branch's
 `RunDefinition` carries the trunk's own `Keyframe`, and both runs sit in the case's
 single time frame. So the runs agree before the fork by construction, not
-because they meet a tolerance. `docs/MODEL.md` § "What this requires of a
+because they meet a tolerance. `docs/INTERFACE.md` § "What this requires of a
 branch" is where that is stated and measured, and the residual it leaves is
 zero. The structure does *not* supply any bound on what happens after the fork.
 Neither run is a prediction for a patient at any point, because the model
 contains one reference adult and no variability around it. So a difference
 between the two runs is a property of the model, not an expected clinical
 difference. That last point is the one that a reader of a drawn comparison is
-most likely to need. `docs/MODEL.md` § "What a branch comparison asserts, and
+most likely to need. `docs/INTERFACE.md` § "What a branch comparison asserts, and
 what it does not" is where it is argued.
 
 ## Failures and halts
@@ -1110,7 +1110,7 @@ reads and writes the file. That module imports no Qt.
 
 The file holds at most one price for each shipped agent (`AgentPrice`), and the
 unit in which the agent cost View shows the delivered agent: millilitres of
-liquid or litres of vapour. `docs/MODEL.md` § "A cost at the reader's price"
+liquid or litres of vapour. `docs/INTERFACE.md` § "A cost at the reader's price"
 specifies what a price carries and what is refused. The project ships no price.
 
 - **What a launch does with the file.** Startup code in `app/main.py` opens the
@@ -1243,6 +1243,14 @@ specialist standard in `CLAUDE.md` that applies to this document (`PL-KRGY`).
     appearance (`test_dark_appearance.py`). It sets a dark host's palette on
     the `QApplication`, whereas the other tests set a palette on one widget.
     It does so because the code under test declares palettes (`PL-RKRY`).
+  - A test holds every string the dashboard shows, at fixed points of a run
+    of each agent with the default settings, to a list a person has approved
+    (`test_interface_wording.py`, with the list in
+    `approved_interface_strings.json` beside it). Digits are masked, so the
+    test holds wording and not the model's values. A change to that wording
+    fails until the list is rewritten and committed, and the test module says
+    how. A string that appears only after a setting change, or in a halt or
+    failure notice, is not on the list (`PL-86VL`).
 - **`tests/reference/`** — analytic or independent reference cases that the
   implementation must reproduce. Examples are the closed-form circuit wash-in
   solution, the sevoflurane patient reference scenario, and the from-scratch
@@ -1305,7 +1313,7 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
   run's `RunPresentation` on every tick. It asks for a change to shared state
   or to a run's setting through the context's requests, and it never holds
   that state itself. A View never shows a value from the unconditional set, the
-  values that `docs/MODEL.md` § "Minimum displayed outputs" requires on screen
+  values that `docs/INTERFACE.md` § "Minimum displayed outputs" requires on screen
   at all times. The module docstring of `app/view_contract.py` states the
   contract, and `ConcentrationView` is the example to read from end to end.
   Then give the View a tag, written as a literal in `app/view_registry.py`.
@@ -1389,12 +1397,12 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
   scheduled. `ROADMAP.md` § "Explicitly out of scope for v0.6.0" says where it
   stands. Once it is built, the routing question gains a second half: *which
   window* a surface is instantiated in. Until then, `app/area_layout.py` builds
-  every Area in the main window. `docs/MODEL.md` § "Minimum displayed
+  every Area in the main window. `docs/INTERFACE.md` § "Minimum displayed
   outputs" answers the *which window* half, not this entry.
 - A new way of *rendering* a value that a reader interprets →
   `app/formatting.py`. Examples are a unit, a decimal count, or a marker for
   what the display cannot resolve. Write it as a pure function with its own
-  test, and record the reason in `docs/MODEL.md` § "Displayed precision".
+  test, and record the reason in `docs/INTERFACE.md` § "Displayed precision".
 - A new stylesheet, or a change to how a widget is styled → a function in
   `app/stylesheets.py` that returns the stylesheet string. The function
   composes the string from the values in `app/theme.py`, and it is called
@@ -1431,7 +1439,7 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
   for a stronger version of the same reason: it draws no value at all, only a
   simulated time.
   A series outside the table must meet a labelling requirement instead.
-  `docs/MODEL.md` § "Interface boundary" sets that requirement in place of the
+  `docs/INTERFACE.md` § "Interface boundary" sets that requirement in place of the
   drawn-point rule. A trace of a *derived* quantity with a domain, such as the
   wash-in ratio, also stays out of the table. The table binds a line to one
   `RecordedSeries`, and a value that is sometimes absent has no such series to

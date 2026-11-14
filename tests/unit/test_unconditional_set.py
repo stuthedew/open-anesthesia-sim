@@ -1,6 +1,6 @@
 """Tests of the declaration of `docs/MODEL.md`'s unconditional set, without a widget toolkit.
 
-Each expected value below is transcribed from `docs/MODEL.md` § "Minimum
+Each expected value below is transcribed from `docs/INTERFACE.md` § "Minimum
 displayed outputs" -> "What this list requires once the layout is the
 reader's", not read back from `app/unconditional_set.py`, so a value dropped
 from or added to the declaration fails here (`PL-NWTM`).
@@ -158,7 +158,7 @@ _WINDOW_COUNTS = (1, 2, 3, 4)
 def test_every_window_region_carries_the_invariant_tier_and_its_run_name(window_count: int) -> None:
     """Every window shows the five invariant values, and names its run once it is not alone.
 
-    `docs/MODEL.md` § "A separate window shows the invariant tier, not the whole
+    `docs/INTERFACE.md` § "A separate window shows the invariant tier, not the whole
     set": "Every window of the application carries the invariant tier and the
     name of the run it shows". A lone main window has no other window whose run must be told
     apart from its own, so it needs no name (`PL-W54S`).
@@ -179,7 +179,7 @@ def test_the_per_substance_tier_and_the_record_live_only_in_the_main_window(
 ) -> None:
     """The concentrations, the 1 MAC and the control-input record have one home.
 
-    `docs/MODEL.md`: "The per-substance tier appears once, in the main window".
+    `docs/INTERFACE.md`: "The per-substance tier appears once, in the main window".
     The record goes with it, because the record is a statement about the
     whole run rather than about one surface. A broken-out window shows only
     the invariant tier and the run's name, so a small window does not have to

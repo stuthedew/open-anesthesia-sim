@@ -36,7 +36,7 @@ paragraph of explanation sits beside them.
 
 When you find yourself writing a sentence to satisfy the standard, the
 question is which label, unit, axis title or reference value would carry it
-instead. If none can, the statement belongs in `docs/MODEL.md`, which already
+instead. If none can, the statement belongs in `docs/INTERFACE.md`, which already
 holds the full form of every one — §§ "MAC multiples as a display unit",
 "MAC-awake as a chart reference", "F_A/F_I as a displayed ratio", "Minimum
 displayed outputs", "Displayed precision".

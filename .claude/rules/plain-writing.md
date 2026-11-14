@@ -30,6 +30,7 @@ after it is written, `PL-J1ZM`).
 | --- | --- | --- | --- | --- |
 | `docs/MODEL.md` | A clinician or educator | Anesthesia pharmacology and physiology. | Numerical-methods terms such as "operator split", software terms, e-notation such as "4e-4", and this repository's own names. | Decide whether to trust a displayed value, or learn how the simulation works. |
 | `docs/MODEL.md` | A developer, or someone who forked the project | Python, and the basics of anesthesia. | Numerical-methods terms such as "first-order method", and this repository's own names. | Change a value or an equation for a goal of their own. |
+| `docs/INTERFACE.md` | A contributor who changes the interface | Anesthesia, Python and software development. | This repository's own names and history, and decisions taken in sessions they did not see. | Find what the interface must show and do before changing it, and the test that checks each requirement. |
 | `README.md` | An educator or trainee in anesthesiology or critical care | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Decide whether to use the simulator, then install it and run a case. |
 | `README.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history. | Decide whether to work on the simulator, then set it up. |
 | `docs/ARCHITECTURE.md`, `docs/interface-provenance.md`, `docs/machine-abstraction.md` and `docs/machine-survey.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history, and the outside designs and machines it studied. | Find where a change belongs, and what it must keep. |
@@ -56,7 +57,8 @@ section, a paragraph that opens with "**For developers.**", because the
 document must specify the numerical method (`PL-TZ7R`). That note may name the
 tests for the paragraphs directly above it (`PL-W8FL`). State a model
 limitation only where it could change what a clinician concludes from a
-displayed value (`PL-BS6N`).
+displayed value (`PL-BS6N`). `docs/INTERFACE.md` ends a section with the same
+note for developers, for the tests and code behind its requirements.
 
 **Take the reason for a chosen value from a record.** Where a docstring, a
 comment or a note for developers explains a chosen value, such as a tolerance
@@ -70,9 +72,9 @@ text what the trace found. Never state a reason that no record holds.
 1. **Write whole sentences.** Keep the small words that show how a sentence
    fits together: "a" and "the", "that", "which" and "who", and the verb.
    Start a docstring or a paragraph with a sentence, not a phrase and a colon.
-2. **Do not stack clauses.** "Each entry the plan was not read whole at" makes
-   the reader work out where each clause ends. Write "Each entry at which the
-   plan was not read in full."
+2. **Show where each clause begins.** Keep the word that opens a clause, such
+   as "which", "that" or "at which", so the reader can see where it ends:
+   "Each entry at which the plan was not read in full."
 3. **Use words in their everyday sense.** Prose here has drifted into private
    senses that a newcomer cannot guess. Write "returns" and "result", not
    "answers" and "answer"; "review", not "read" as a noun; "treats as", not
@@ -92,8 +94,24 @@ text what the trace found. Never state a reason that no record holds.
 6. **Say who does what.** Make each "it", "this" and "that" point at a noun the
    reader can find.
 7. **Say each thing once**, where the reader needs it, and cut words that add
-   nothing.
-8. **Check every sentence before the text goes to its reader.** Go through
+   nothing. Give each clause a fact that the rest of its sentence does not
+   already state.
+8. **State the claim directly.** Name an alternative only where a reader would
+   otherwise assume it, and then say why it does not apply.
+9. **Write about the subject.** A sentence in a document describes the model,
+   the code or the clinical fact. A citation gives the source and its pages.
+   Who supplied a source and how a choice was reached go in the item.
+10. **Say what the text relies on.** Name a source the text does not use only
+    where a reader would otherwise assume it does, and then say it once, as a
+    limitation.
+11. **Give separate points their own structure.** When a table cell or a
+    paragraph holds several separate points, make them a numbered list or a
+    short section, and keep the cell to one sentence and a pointer.
+
+    Points 7 to 11 keep out padding that sounds careful and adds nothing. The
+    project owner judged `docs/MODEL.md` to read as machine-written because of
+    it (`PL-ZT47`).
+12. **Check every sentence before the text goes to its reader.** Go through
    the finished text one sentence at a time. Is each word used in its everyday
    sense? Does the text say which one each paper, file, rule or item is? Does
    each value, unit, condition and count match its source? Is any phrase
@@ -127,19 +145,9 @@ commands, paths and quoted output stay exactly as they are.
 ## Examples
 
 **A paragraph of `docs/MODEL.md`**, for a clinician. The project owner accepted
-the second version on 2026-11-04 (`PL-ZDZ0`).
+it on 2026-11-04 (`PL-ZDZ0`).
 
-Before: "One count of the MAC line is therefore 0.02 percentage points of
-sevoflurane, 0.012 of isoflurane and 0.06 of desflurane. That is coarser than
-the percent readout beside it for every agent. This property keeps the two
-units from contradicting each other. A reader must never be able to watch the
-MAC digit move while the percent digit stays still. That would assert that the
-model resolved something it does not. [...] A per-agent MAC resolution would
-put different magnitudes at the same glyph position. That is the failure that
-'Why the resolution is uniform rather than per-compartment' rejects below,
-arriving across agents instead of across compartments."
-
-After: "The smallest change the MAC readout can show is therefore 0.02
+"The smallest change the MAC readout can show is therefore 0.02
 percentage points of sevoflurane, 0.012 of isoflurane and 0.06 of desflurane,
 never less than the percent readout's. The two readouts round separately, so
 the MAC value can occasionally change while the percent stays the same."
@@ -149,32 +157,15 @@ its unit, then what it refuses, then anything a developer would get wrong
 without being told. Leave out what the signature, the body or a named type
 already shows.
 
-Before: "Return this group's blood flow $`Q_i`$ in L/min, at the given cardiac
-output. The flow is the group's perfusion fraction of the cardiac output. The
-group stores no flow, so this method computes it wherever the flow is read
-(`PL-HQF5`). The cardiac output is an argument because the patient holds it.
-For a group in a patient, it is `PatientCompartments.cardiac_output_l_min`.
-The result is a plain `float`, and no supported-range check applies to it. It
-needs none. The perfusion fraction is above 0 and at most 1, so the flow is
-never negative and never more than the checked cardiac output. A cardiac
-output of zero, which is circulatory arrest, gives a flow of zero. Raises:
-TypeError: `cardiac_output_l_min` was not built as a `CardiacOutput`. A bare
-`float` is refused whatever its value, and a value built as another checked
-quantity is refused as a swapped argument."
-
-After: "Return this group's blood flow $`Q_i = f_iQ`$ at a cardiac output, in
+"Return this group's blood flow $`Q_i = f_iQ`$ at a cardiac output, in
 L/min. `docs/MODEL.md` § "Tissue groups" defines it. The group stores no flow
 of its own, so no write can leave its flow out of step with the cardiac output
 (`PL-HQF5`). Raises: TypeError: `cardiac_output_l_min` was not built as a
 `CardiacOutput` (`core/supported_ranges.py`)."
 
-A docstring that is too compressed is the opposite failure, and the fix is
-whole sentences.
+Write each part in whole sentences:
 
-Before: "Refuse a volume or tissue:gas coefficient whose capacity is under the
-agent held."
-
-After: "Reject a volume or tissue:gas partition coefficient that would make the
+"Reject a volume or tissue:gas partition coefficient that would make the
 tissue's capacity less than the amount of agent it already holds."
 
 **A reply**, for the project owner. Lead with the result. Then give what
@@ -207,13 +198,6 @@ an id was put and what each new item holds are in the item.
 **A pull request body.** `.claude/skills/pull-request/SKILL.md` § "Write the
 title and body" has two.
 
-**A pull request title.** The project owner judged three versions of one
-title, on `#1523`, on 2026-10-17:
-
-- Too cryptic: "PL-ZWQS: give the first CI part 2 of every 5 ordinary tests".
-  A reader cannot tell what a "CI part" or an "ordinary test" is, or what the
-  2 and the 5 count.
-- Too conversational: "PL-ZWQS: make CI's two test jobs finish at about the
-  same time". It describes a hoped-for effect and does not say what changed.
-- Plain: "PL-ZWQS: rebalance the CI test split to offset part 1's lint steps".
-  It names the change, what it changes and why.
+**A pull request title.** The project owner chose this one, on `#1523`, on
+2026-10-17: "PL-ZWQS: rebalance the CI test split to offset part 1's lint
+steps". It names the change, what it changes and why.

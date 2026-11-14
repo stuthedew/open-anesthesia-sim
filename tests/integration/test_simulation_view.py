@@ -346,8 +346,68 @@ _WINDOW_HEIGHT_PX = 1000
 #: The two required glosses, restated rather than imported so an edit to the
 #: application cannot move both sides of the assertion at once.
 _ALVEOLAR_METRIC_QUALIFIER = "end-tidal-equivalent"
-#: Any spelling of end-tidal not followed by the hedge, anywhere on screen.
-_UNHEDGED_END_TIDAL = re.compile(r"end[\s-]?tidal(?!-equivalent)", re.IGNORECASE)
+#: Any spelling of end-tidal not followed by the hedge, anywhere on screen,
+#: and the abbreviations that clinicians and anesthesia monitors use for it
+#: (`PL-86VL`). "ET" and "FET" count at the start of a word unless another
+#: capital follows, so "ET2.1%" and "ETsevo" count and "FETCH" does not. "Et"
+#: counts unless a small letter follows, so "Et1.8", "EtSevo" and "EtAA" count
+#: and "Etc" does not. A small "et" counts only when a capital or a digit
+#: follows, as in "etSev", so that "et" inside a word such as "Reset" is not one.
+# regex: a search through free interface text for a word and its capitalised
+# abbreviations, where whether a letter follows decides the match. No parser
+# reads this text, and a string method cannot test the following letter.
+_UNHEDGED_END_TIDAL = re.compile(
+    r"(?i:end[\s-]?tidal)(?!-equivalent)|\bF?ET(?![A-Z])|\bEt(?![a-z])|\bet(?=[A-Z0-9])"
+)
+
+#: A word that negates a wake-up phrase. It hedges the phrase only when it
+#: stands in the phrase's own clause and among the few words just before it,
+#: because a negation's reach is short and ends at the end of its clause, as
+#: NegEx ends it at the end of the sentence (`PL-86VL`). "Modelled, not
+#: measured, predicted wake" is therefore not hedged: the "not" belongs to
+#: "measured".
+_NEGATIONS = frozenset({"not", "never", "no", "cannot"})
+
+#: How many words before a wake-up phrase a negation may stand and still
+#: govern it. "does not predict a time to wake" puts "not" three words before
+#: the phrase. Four allows one more word, such as an adverb, and no more.
+_NEGATION_REACH_WORDS = 4
+
+#: Where a clause ends: a sentence's end, a semicolon, a colon, a comma, a dash
+#: or a new line. Each is turned into a new line, and the text is split there.
+_CLAUSE_ENDS_TO_NEW_LINE = str.maketrans(dict.fromkeys(".;:!?,\u2014\u2013", "\n"))
+
+#: Phrases that would state a time to wake up as a prediction for this patient.
+_WAKE_PREDICTIONS = (
+    "time to wake",
+    "time to awaken",
+    "wake-up time",
+    "wakeup time",
+    "emergence time",
+    "time to emergence",
+    "predicted wake",
+    "will wake",
+)
+
+
+def _unhedged_wake_predictions(text: str) -> list[str]:
+    """Each wake-up prediction in `text` with no negation just before it in its own clause."""
+
+    found: list[str] = []
+
+    clauses = text.lower().replace(" - ", "\n").translate(_CLAUSE_ENDS_TO_NEW_LINE).split("\n")
+
+    for clause in clauses:
+        for phrase in _WAKE_PREDICTIONS:
+            start = clause.find(phrase)
+            while start != -1:
+                words_before = clause[:start].split()[-_NEGATION_REACH_WORDS:]
+                if _NEGATIONS.isdisjoint(word.strip("'\"()") for word in words_before):
+                    found.append(phrase)
+                start = clause.find(phrase, start + 1)
+
+    return found
+
 
 #: The index of each readout panel in the row, from the table the widgets are
 #: built from, so a test names a compartment rather than a column number.
@@ -6482,6 +6542,66 @@ def test_the_screen_says_a_control_mark_is_an_input_not_a_measurement(
     assert "Run record:" in prose
 
 
+@pytest.mark.parametrize(
+    "label",
+    [
+        "end-tidal sevoflurane",
+        "End tidal 1.8%",
+        "ET sevo 2.1 %",
+        "Et 1.8",
+        "EtSevo",
+        "FET",
+        "ET2.1%",
+        "Et1.8 %",
+        "EtSevo2.1",
+        "ETsevo",
+        "EtSEV",
+        "EtAA",
+        "etSev",
+    ],
+)
+def test_the_end_tidal_check_refuses_each_spelling_and_abbreviation(label: str) -> None:
+    """A readout labelled "ET sevo", or with any other end-tidal spelling, fails (`PL-86VL`)."""
+
+    assert _UNHEDGED_END_TIDAL.search(label) is not None
+
+
+@pytest.mark.parametrize(
+    "label",
+    ["Alveolar (end-tidal-equivalent)", "Reset", "Settings", "FETCH", "Delivered", "Etc", "ETA"],
+)
+def test_the_end_tidal_check_passes_the_hedge_and_words_that_contain_et(label: str) -> None:
+    assert _UNHEDGED_END_TIDAL.search(label) is None
+
+
+def test_the_wake_up_check_reads_the_hedge_from_the_phrase_s_own_clause() -> None:
+    """A negation just before the phrase in its clause hedges it, and any other negation does not.
+
+    The check used to look at the 12 characters before the phrase. It passed
+    "not shown; predicted wake time", where the negation belongs to another
+    clause, and failed "this is never a time to wake", which is hedged
+    (`PL-86VL`). A comma or a dash also ends a clause, and a negation more
+    than four words back belongs to something else.
+    """
+
+    assert _unhedged_wake_predictions("not shown; predicted wake time") == ["predicted wake"]
+    assert _unhedged_wake_predictions("this is never a time to wake") == []
+    assert _unhedged_wake_predictions("This model does not predict a time to wake.") == []
+    assert _unhedged_wake_predictions("Band shown. Time to wake: 14 min") == ["time to wake"]
+    assert _unhedged_wake_predictions("Not a clinical tool \u2014 predicted wake at 0.68%") == [
+        "predicted wake"
+    ]
+    assert _unhedged_wake_predictions("Modelled, not measured, predicted wake at 0.34") == [
+        "predicted wake"
+    ]
+    assert _unhedged_wake_predictions("No agent in the circuit, so the patient will wake soon") == [
+        "will wake"
+    ]
+    assert _unhedged_wake_predictions("No figure here is a reading or a time to wake") == [
+        "time to wake"
+    ]
+
+
 def test_the_interface_never_predicts_a_time_to_wake_up(application: QApplication) -> None:
     """`PL-F52R`: the claim the band exists *instead of*, checked against the whole tree.
 
@@ -6505,19 +6625,8 @@ def test_the_interface_never_predicts_a_time_to_wake_up(application: QApplicatio
         if any(word in lowered for word in ("wake", "awaken", "arousal", "emergence")):
             assert duration.search(lowered) is None, value
 
-    for forbidden in (
-        "time to wake",
-        "time to awaken",
-        "wake-up time",
-        "wakeup time",
-        "emergence time",
-        "time to emergence",
-        "predicted wake",
-        "will wake",
-    ):
-        for match in re.finditer(re.escape(forbidden), prose):
-            preceding = prose[max(0, match.start() - 12) : match.start()]
-            assert "not " in preceding, (forbidden, preceding)
+    for value in strings:
+        assert _unhedged_wake_predictions(value) == [], value
 
     assert "population" in prose
     assert "±1 sd" in prose
@@ -12283,7 +12392,7 @@ def test_two_runs_share_one_readout_block_whose_values_name_their_runs(
 ) -> None:
     """Each compartment's panel carries both runs' values, and each value says whose.
 
-    `docs/MODEL.md` § "Minimum displayed outputs" pairs the two values under
+    `docs/INTERFACE.md` § "Minimum displayed outputs" pairs the two values under
     one compartment name, so a second run adds lines to the block rather
     than a second row of seven panels. The names are restated as literals
     rather than read from `run_label`, which the legend also reads.

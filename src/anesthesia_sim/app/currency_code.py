@@ -1,6 +1,6 @@
 """State the one rule for what a currency code must look like (`PL-93B3`, `PL-1P15`).
 
-`docs/MODEL.md` § "A cost at the reader's price" says that a price's currency
+`docs/INTERFACE.md` § "A cost at the reader's price" says that a price's currency
 is stored and shown as its ISO 4217 alphabetic code. It is never shown as a
 sign such as "$" that several currencies share. The store refuses a code that
 is not three capital letters, and the formatters refuse to print one. Both

@@ -10,7 +10,7 @@ hands it on every frame (`PL-TH35`).
   captions, reference values, legend and advisories.
 - `WashInView` is the F_A/F_I plot with its time-base control, captions,
   legend, per-run state lines and advisories.
-- `AccountingView` is every displayed run's mass-balance panel. `docs/MODEL.md`
+- `AccountingView` is every displayed run's mass-balance panel. `docs/INTERFACE.md`
   § "Minimum displayed outputs" requires it to stay reachable in every layout,
   which the registry enforces.
 - `ParameterControlsView` is every displayed run's setting controls.

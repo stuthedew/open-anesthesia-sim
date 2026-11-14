@@ -1760,7 +1760,7 @@ narrower than the mechanism it sits under.
   `Decided` section records the general case as closed - *"Recorded, and not to
   be revisited by tooling: whether a documented statement is still true stays
   human"* - and its `Done when` implements one link, fifteen bullets under
-  `docs/MODEL.md` "Minimum displayed outputs". Marking it would have recorded a
+  `docs/INTERFACE.md` "Minimum displayed outputs". Marking it would have recorded a
   claim its own brief refuses.
 - **`PL-6P9Y`** (the roadmap is prose the tooling parses) says in its own triage
   note that it is `P3` "because it moves exactly one id today".

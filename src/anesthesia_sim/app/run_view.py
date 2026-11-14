@@ -1249,7 +1249,7 @@ class RunView(QWidget):
         It asks only when the dashboard says that this Reset would discard
         work in another run (`ask_before_reset`). Starting this run over needs
         no question, because pressing its own Reset is the request to discard
-        it (`docs/MODEL.md` § "Agent-change behavior").
+        it (`docs/INTERFACE.md` § "Agent-change behavior").
         """
 
         question = None if self._reset_question is None else self._reset_question()
@@ -1354,17 +1354,35 @@ class RunView(QWidget):
         the new exception and halted the run a second time (blind review of
         `PL-HJKN`).
 
+        **A Reset that raises after it has begun to clear the run still starts
+        the run over** (`PL-MVCF`). The run on screen is then gone, so the
+        start-over is recorded before the exception reaches the halt gate,
+        `case_restarted` is emitted, and the halt withholds every compartment
+        value. The controller's `runs_discarded` count says whether clearing
+        began. That halt is a failure, not the refusal above, so the banner
+        names the failure and Reset as the way out, as it does after a failed
+        step. A refused-setting sentence about the discarded run is cleared
+        with it (blind review of `PL-MVCF`).
+
         Raises:
             Exception: What `SimulationController.reset()` raised, once the exit
                 text is chosen.
         """
 
+        discarded = self.controller.runs_discarded
+
         try:
             self.controller.reset()
         except Exception as error:
-            self._refused_reset_notice = refused_reset_exit(
-                error, recorded_failure_reason=self.controller.status().failure_reason
-            )
+            if self.controller.runs_discarded == discarded:
+                self._refused_reset_notice = refused_reset_exit(
+                    error, recorded_failure_reason=self.controller.status().failure_reason
+                )
+            else:
+                self._rejected_setting_notice = None
+                self._refused_reset_notice = None
+                self._announce_the_start_over()
+
             raise
 
         self._rejected_setting_notice = None
@@ -1470,14 +1488,23 @@ class RunView(QWidget):
         call, after `set_agent` returns and before the frame is requested.
         So the dashboard drops everything that belonged to the old case
         before it draws, including a refusal on the branch panel
-        (`PL-BM6X`). A refused switch changes nothing and emits nothing.
+        (`PL-BM6X`). A refused switch changes nothing and emits nothing. A
+        switch that raised after it began to replace the run has discarded
+        the run on screen, so it emits `case_restarted` too (`PL-MVCF`).
         """
 
         self.snapshot()
 
         def switch() -> None:
-            self.controller.set_agent(agent_id)
-            self._announce_the_start_over()
+            discarded = self.controller.runs_discarded
+
+            try:
+                self.controller.set_agent(agent_id)
+            finally:
+                # A switch that raised after it began to rebuild the run has
+                # still discarded the run on screen (`PL-MVCF`).
+                if self.controller.runs_discarded != discarded:
+                    self._announce_the_start_over()
 
         self._apply_setting(switch)
 
@@ -1786,7 +1813,7 @@ class RunView(QWidget):
     def show_readings_of(self, other: RunView) -> tuple[QWidget, ...]:
         """Show `other`'s readouts in this run's panels, as one block for both runs.
 
-        `docs/MODEL.md` § "Minimum displayed outputs" pairs two runs' values
+        `docs/INTERFACE.md` § "Minimum displayed outputs" pairs two runs' values
         under one compartment name. So comparing them means reading one row
         rather than two (`PL-F2YS`). `other` keeps writing its own values, and
         only the place where they are drawn changes. The other run's own row
@@ -1837,7 +1864,7 @@ class RunView(QWidget):
         """This run's control-change panel, for the unconditional region.
 
         The record of what was changed during the run is unconditional
-        (`docs/MODEL.md` § "Minimum displayed outputs"), so it is never
+        (`docs/INTERFACE.md` § "Minimum displayed outputs"), so it is never
         placed in a surface a reader can close (`PL-NWTM`).
         """
 
