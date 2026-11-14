@@ -11,7 +11,7 @@ added: 2026-11-04
 closed: 2026-11-14
 pr: 2156
 payoff: a reader on a 1280 px laptop sees all seven readouts in one row, or the model specification says plainly that the row opens on four there
-verify: grep -rq 'def test_a_1280_px_window_opens_one_run_s_readout_row_on_seven_columns' tests/integration
+verify: grep -rq 'def test_a_1280_px_window_opens_one_run_s_readout_row_on_seven_or_four_columns' tests/integration
 reenters: PL-4FBP
 ---
 
@@ -88,3 +88,15 @@ font. It said every record line wraps, while `PL-92XM` measured a clipped line;
 it now points at `PL-6XPZ`. "With one run or two" had a test only at 1366 px;
 `test_a_1280_px_window_opens_two_compared_runs_readout_row_on_seven_columns`
 now covers 1280 px.
+
+**CI disagreed, 2026-11-14.** On the CI runner's offscreen font, seven across
+needs 1068 px and a 1280 px window gives the row 1060 px, so the row opens on
+four there (`checks-part-1` on #2156). The container where this was written
+needs 1005 px and gives 1014 px. So the 1280 px outcome depends on the font, and
+seven cannot be made to hold on both without narrowing the record below its
+longest line part (184 px), which the brief's recommendation rules out. The two
+tests now check the rule at 1280 px instead: seven across where seven fit, four
+otherwise, and never fewer than four, with one run and with two. The section
+says the font decides. The Done-when's "states that outcome" is met by stating
+both, and the payoff's second branch ("says plainly that the row opens on four
+there") applies on fonts as wide as CI's.

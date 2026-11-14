@@ -4532,14 +4532,14 @@ runs share one readout row. On that screen the longest control-change lines do
 not fit the record's column, so the record wraps them. It breaks them only after
 the time or after the arrow, so every value stays beside its unit.
 
-**In a window 1280 px wide the row also opens seven across, with one run or
-two** (measured 2026-11-14, with the font that the project's tests use). The
-margin there is about 10 px of window width. So on a 1280 px screen, a window
-frame, a dock at the side of the screen or a slightly wider font can put the
-row on four. The record wraps its lines at this width too. It narrows further
-when the row of run controls above the readouts needs more room, for example
-for a long version label, and it can then cut off the end of its longest lines
-(`PL-6XPZ`).
+**In a window 1280 px wide the row opens seven across with some fonts and four
+across with others, with one run or two** (measured 2026-11-14). At that width
+the row is within a few pixels of what seven across needs, so the font decides.
+With four across, the readouts take two lines. A window frame or a dock at the
+side of the screen narrows the row further. The record wraps its lines at this
+width too. It narrows further when the row of run controls above the readouts
+needs more room, for example for a long version label, and it can then cut off
+the end of its longest lines (`PL-6XPZ`).
 
 **For developers.** A function sets the row's column count from its width
 (`readout_columns` in `src/anesthesia_sim/app/dashboard_frame.py`). A constant
@@ -4577,11 +4577,14 @@ With the tests' font, a 1366 px window gives the region 1334 px (measured
 (`test_a_1366_px_window_opens_one_run_s_readout_row_on_seven_columns` and
 `test_two_runs_share_one_readout_block_whose_values_name_their_runs`). A 1280 px
 window gives the region 1248 px. The left column takes at least its share,
-1014 px, which is 9 px more than seven across needs (measured 2026-11-14). A
-test checks that a 1280 px window opens the row seven across with one run, and
-another with two
-(`test_a_1280_px_window_opens_one_run_s_readout_row_on_seven_columns` and
-`test_a_1280_px_window_opens_two_compared_runs_readout_row_on_seven_columns`).
+1014 px. With the font in the container where the tests were written, that is
+9 px more than seven across needs. With the font on the CI runner, seven across
+needs 1068 px and the row gets 1060 px, so it opens on four (both measured
+2026-11-14). Two tests check that a 1280 px window opens the row seven across
+where seven fit and four across otherwise, with one run and with two
+(`test_a_1280_px_window_opens_one_run_s_readout_row_on_seven_or_four_columns`
+and
+`test_a_1280_px_window_opens_two_compared_runs_readout_row_on_seven_or_four_columns`).
 The left
 column cannot narrow below the transport row's minimum width, which includes
 the version label. So below about 1366 px a longer version string widens the
