@@ -1,9 +1,15 @@
 ---
 id: PL-8Q1P
 title: Run the heuristic evaluation of the current interface: four learner tasks against the 14 heuristics in Zhang et al. 2005, by a session and by the owner independently
-status: untriaged
+priority: P3
+effort: M
+status: blocked
+classes: planning, ux
 feature: interface-pass-design-round
+blocked-by: PL-4JCC, PL-9YPR, PL-CBYS
 added: 2026-11-11
+payoff: the interface pass starts from a ranked list of what stops a resident completing the four tasks, rather than from taste
+not-delegable: the owner is one of the two evaluators
 ---
 
 **Problem.** Run the heuristic evaluation of the current interface: four learner tasks against the 14 heuristics in Zhang et al. 2005, by a session and by the owner independently
@@ -91,3 +97,7 @@ or heuristics, and the severity. One problem can violate several heuristics.
 interface does well, and it does not reveal a missing function. Two
 evaluators are fewer than the three to five the chapter asks for, so the
 resident rounds in `PL-DSXJ` are the check on what this misses.
+
+**Why it matters.** This is the second step of the interface pass that the owner agreed on 2026-11-10 (`PL-HS9M`). Its findings say what the grey-box layouts (`PL-2V6V`) must fix, so every later step of the pass waits on it.
+
+**Done when.** The merged list of violations, sorted by severity with both evaluators' ratings averaged, is recorded in this item beside the commit evaluated. Each violation rated 3 or higher is an item, or names the open item that holds it.
