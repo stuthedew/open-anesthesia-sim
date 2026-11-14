@@ -12006,7 +12006,8 @@ def test_arm_ask_is_written_in_plain_words_for_the_owner() -> None:
         '- **I recommend "Keep":** it is the value learners are taught first.\n'
         "- **Context:** the hazard table is reworded.\n"
         '- **Option "Keep":** learners still see 1 MAC. **Costs and risks:** the row is longer.\n'
-        '- **Option "Drop":** the row shows only the age-adjusted value. **Costs and risks:** learners lose the '
+        '- **Option "Drop":** the row shows only the age-adjusted value. '
+        "**Costs and risks:** learners lose the "
         "figure they are taught first.\n"
         "- **Why it is yours:** the figure is a clinical value.\n"
         "- **Already checked:** every figure still matches its source."
@@ -12096,9 +12097,11 @@ def test_arm_holds_for_the_owner_only_with_a_recorded_ask(
         "  **Which view opens first?**",
         '  - **I recommend "Chooser":** it names every view.',
         "  - **Context:** the simulator now has three views.",
-        '  - **Option "Chooser":** the learner picks a view each run. **Costs and risks:** one more '
+        '  - **Option "Chooser":** the learner picks a view each run. '
+        "**Costs and risks:** one more "
         "click before every case.",
-        '  - **Option "Last used":** it opens where they left off. **Costs and risks:** it hides the '
+        '  - **Option "Last used":** it opens where they left off. '
+        "**Costs and risks:** it hides the "
         "views a learner has not opened.",
         "  - **Why it is yours:** it decides what a learner sees first.",
     ]
@@ -12408,9 +12411,11 @@ ARM_REVIEW = (
             "**Which view opens first?**\n"
             '- **I recommend "Chooser":** it names every view.\n'
             "- **Context:** the simulator now has three views.\n"
-            '- **Option "Chooser":** the learner picks a view each run. **Costs and risks:** one more '
+            '- **Option "Chooser":** the learner picks a view each run. '
+            "**Costs and risks:** one more "
             "click before every case.\n"
-            '- **Option "Last used":** it opens where they left off. **Costs and risks:** it hides the '
+            '- **Option "Last used":** it opens where they left off. '
+            "**Costs and risks:** it hides the "
             "views a learner has not opened.\n"
             "- **Why it is yours:** it decides what a learner sees first.",
             "",
@@ -12425,9 +12430,11 @@ ARM_REVIEW = (
             "**Should the infusion label show the rate per kilogram?**\n"
             '- **I recommend "Per kilogram":** it matches the dosing tables learners use.\n'
             "- **Context:** the infusion label now reads mcg/kg/min.\n"
-            '- **Option "Per kilogram":** the label reads mcg/kg/min. **Costs and risks:** the total rate needs '
+            '- **Option "Per kilogram":** the label reads mcg/kg/min. '
+            "**Costs and risks:** the total rate needs "
             "a second look.\n"
-            '- **Option "Total":** the label reads mcg/min. **Costs and risks:** a learner divides by weight to '
+            '- **Option "Total":** the label reads mcg/min. '
+            "**Costs and risks:** a learner divides by weight to "
             "compare it with a dosing table.\n"
             "- **Why it is yours:** a dose unit is a clinical value.\n"
             "- **Already checked:** the label matches the unit stored.",
