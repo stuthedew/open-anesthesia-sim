@@ -103,3 +103,12 @@ values over Mapleson's.
 
 **Collision to check first.** `PL-19W8` (in flight on 2026-11-14) adds a test
 for the MAC readout's step in percentage points, which this change moves.
+
+**From the `PL-19W8` thread (2026-11-14).** `#2154` merges first. After the
+MAC changes, rerun `tests/reference/test_displayed_precision_figures.py` and
+update the printed figures in `docs/INTERFACE.md` § "Displayed precision"
+(desflurane's MAC step prints 0.07 there). A test asserts that the dial opens
+at the stored MAC. The dial keeps opening at 1 MAC, now the age-40 value:
+1.80% sevoflurane, 1.17% isoflurane and 6.60% desflurane, all on the dial's
+0.01-point steps. Decided here because it keeps the existing rule that every
+run starts at a recognizable clinical anchor.
