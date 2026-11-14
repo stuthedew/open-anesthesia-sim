@@ -1308,6 +1308,15 @@ Q_i = 0
 \frac{dM_i}{dt}=0
 $$
 
+**For developers.** A blood flow can be above zero and still so small that $`\tau_i`$ is larger
+than any number the computer can hold. Then the method that computes $`\tau_i`$
+(`TissueGroup.time_constant_s`) returns infinity, as it does at zero flow, and a tissue group
+stepped on its own is left unchanged. The exact change in the agent it holds is far smaller than
+any amount the simulator displays. A test in `tests/unit/test_blood_flow.py` checks this at the
+smallest flow that can be created. The venous pool's time constant
+(`VenousBloodCompartment.time_constant_s`) is infinite in the same way at a cardiac output that
+small, and a second test there checks it.
+
 ### Venous blood
 
 Blood from the tissue groups enters the venous pool. Venous blood leaves
@@ -2119,7 +2128,8 @@ outside it.
 | Fresh gas flow | 0 to 10 L/min | `FreshGasFlow` |
 | Alveolar ventilation | 0 to 12 L/min | `AlveolarVentilation` |
 | Cardiac output | 0 to 10 L/min | `CardiacOutput` |
-| A tissue group's perfusion fraction | above 0, up to 1, the three summing to 1 | `TissueGroup` and `PatientCompartments` |
+| A tissue group's perfusion fraction | above 0, up to 1, the three summing to 1 | `PerfusionFraction` and `PatientCompartments` |
+| A tissue group's blood flow | its perfusion fraction of the cardiac output, so 0 to 10 L/min | `BloodFlow` |
 | The whole model's time step | 0.001 to 0.1 s | `SimulationStep` |
 | The time step of a compartment stepped on its own | 0.001 s to 86 400 s | `require_compartment_step` |
 | A time in the case | 0 to 86 400 s (24 hours) | `CaseInstant` |
@@ -2137,7 +2147,7 @@ outside it.
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10 -->
-<!-- provenance: core/tissue.py PERFUSION_FRACTION_UPPER_BOUND = 1 -->
+<!-- provenance: core/blood_flow.py MAXIMUM_PERFUSION_FRACTION = 1 -->
 <!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
 <!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
@@ -2180,9 +2190,11 @@ again whenever either of an agent's coefficients changes, and whenever a patient
 tissue group is replaced. A group's tissue:gas coefficient cannot be changed after the group is
 built.
 
-A tissue group or the venous pool stepped on its own accepts any blood flow that is finite and
-not negative, with no upper limit. A run computes that flow from a cardiac output that has a
-limit, so a limit here would refuse nothing a run can produce.
+A tissue group's blood flow has no range of its own. It can only be created as a perfusion
+fraction of a cardiac output, so it lies between zero and that cardiac output. A tissue group
+stepped on its own takes only a flow created that way, and the venous pool takes the cardiac
+output, which is its flow. So neither can be stepped at a flow above the largest supported
+cardiac output, or at a flow that is negative or not a finite number.
 
 The input limit of 0.99 is `MAXIMUM_INPUT_FRACTION` in `core/supported_ranges.py`. The model
 applies it to the amount of agent each compartment holds, because reading a fraction back from
@@ -2215,9 +2227,9 @@ flow is set to zero, to the smallest positive number a computer can hold and to 
 test steps the whole model once at the smallest and largest step, steps each compartment alone
 at its own limits, and computes a run over 24 hours by both the chart's method and the canonical
 one (§ "The canonical evaluation rule"). Each run washes in to the 0.99 limit, washes out from
-it, or sits at it. The sweep also steps a tissue group and the venous pool on their own at the
-largest blood flow a computer can hold, and each result stays finite and between its start and
-its equilibrium.
+it, or sits at it. Stepped alone, a tissue group and the venous pool run at zero flow, at the
+smallest positive flow and at the largest supported cardiac output, and each result stays
+finite and between its start and its equilibrium.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 Each result of the first test must be finite. Each fraction must lie from 0 through 1, with no
@@ -4863,6 +4875,13 @@ the type to build. So no way in has to remember the check. The control timeline 
 returns a plain `float`, so a value calculated from a flow is never taken as checked. The
 simulation step is a checked type in the same way (`SimulationStep`).
 
+A tissue group's perfusion fraction and its blood flow have checked types too, in
+`core/blood_flow.py`. The perfusion fraction (`PerfusionFraction`) is checked as above 0 and at
+most 1 when it is created. The blood flow (`BloodFlow`) is created only by multiplying a
+`CardiacOutput` by a `PerfusionFraction`, and it has no check of its own. Until these types
+existed, three places each checked a blood flow by hand as finite and not negative, and each
+accepted a flow that no supported cardiac output can give.
+
 **A settings record loaded from a saved file runs its constructor's checks.** Python restores a
 pickled or copied frozen dataclass through `__setstate__`, which by default writes each saved
 value straight into its field without running `__post_init__`. Instead, the settings records for
@@ -4890,11 +4909,13 @@ compartments' constructors run no check of their own. A copy and a pickle write 
 because each compartment is a `slots=True` dataclass, which they restore one field at a time. A
 `__dict__` would be updated without calling `__setattr__`.
 
-**Every checked type is built from an `int` or a `float` and nothing else, with no sign at
-zero.** One file states what every checked type is built from (`core/checked_number.py`), and
-`FreshGasFlow`, `AlveolarVentilation`, `CardiacOutput`, `Fraction`, `Percent` and `CaseInstant`
-all build through it. They accept an `int` or a `float`, subclasses included, so a NumPy double
-passes. A `bool`, a `Decimal` or a string is refused with a `TypeError` that names the value and
+**Every checked type but `BloodFlow` is built from an `int` or a `float` and nothing else, with
+no sign at zero.** `BloodFlow` is built from a `CardiacOutput` and a `PerfusionFraction`, and it
+refuses a number. One file states what every other checked type is built from
+(`core/checked_number.py`), and `FreshGasFlow`, `AlveolarVentilation`, `CardiacOutput`,
+`PerfusionFraction`, `Fraction`, `Percent` and `CaseInstant` all build through it. They accept
+an `int` or a `float`, subclasses included, so a NumPy double passes. A `bool`, a `Decimal` or a
+string is refused with a `TypeError` that names the value and
 its type, before any comparison reads it. So is a value already built as another checked type,
 such as a `StepCount` or a `CaseInstant` passed to a flow's constructor, because such a value is
 a swapped argument. Minus zero is stored as zero, so a readout never shows `-0.0 L/min`. The
@@ -4926,20 +4947,23 @@ dial was set under. The propagator cache key carries the maximum with the rest o
 although the matrix never reads the maximum.
 
 A tissue group's blood flow is computed in one place (`TissueGroup.blood_flow_l_min_at`). Each
-compartment is given the flow, rather than storing it, when it computes its time constant or
-takes a step (`time_constant_s`, `advance()`), as $`Q_i`$ is given to
-$`\tau_i = V_i\lambda_{i:b}/Q_i`$. A tissue group is given the blood:gas coefficient too, so that
-it keeps no copy that could disagree with the coefficient (§ "Blood compartments"). So every flow
-follows the cardiac output through `set_cardiac_output`, a copy, `dataclasses.replace` and a
-pickle. A copy made at another output leaves the original's flows unchanged. A new cardiac output
-written onto the field of a built patient is refused, and the refusal names `set_cardiac_output`,
-so that cardiac output has one way in. Writing the value that the field already holds is accepted.
+compartment is given its blood flow, rather than storing it, when it computes its time constant
+or takes a step (`time_constant_s`, `advance()`), as $`Q_i`$ is given to
+$`\tau_i = V_i\lambda_{i:b}/Q_i`$. So every flow follows the cardiac output through
+`set_cardiac_output`, a copy, `dataclasses.replace` and a pickle, and a copy made at another
+output leaves the original's flows unchanged. A tissue group is given a `BloodFlow`, and the
+venous pool is given the cardiac output. Each refuses a plain `float`, whatever its value, with
+a `TypeError` that names the type to build. A tissue group is given the blood:gas coefficient as
+well as its flow, so that it keeps no copy that could disagree with the coefficient
+(§ "Blood compartments"). A new cardiac output written onto the field of a built patient is
+refused, and the refusal names `set_cardiac_output`, so that cardiac output has one way in.
+Writing the value that the field already holds is accepted.
 
-A tissue group refuses a second write of its fraction (`TissueGroup`), and the refusal says to
-build a new patient with the new fractions. A tissue group written onto a built patient is
-refused unless the fractions, with the replacement in place, still sum to 1. A copy or a pickle
-writes the fraction once, onto a new object, so it is accepted. Neither a tissue group nor the
-patient lets a field be deleted, because a write after the deletion would bypass both checks.
+A tissue group refuses a second write of its perfusion fraction (`TissueGroup`), and the refusal
+says to build a new patient with the new fractions. A tissue group written onto a built patient
+is refused unless the fractions, with the replacement in place, still sum to 1. A copy or a
+pickle writes the fraction once, onto a new object, so it is accepted. Neither a tissue group nor
+the patient lets a field be deleted, because a write after the deletion would bypass both checks.
 
 The settings record also refuses tissue flows that do not sum to the cardiac output. Only a
 fraction forced past its check, with `object.__setattr__`, can reach that refusal. At the next

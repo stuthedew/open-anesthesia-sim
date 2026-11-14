@@ -52,6 +52,7 @@ from pydantic import BaseModel
 from anesthesia_sim import core
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.blood import VenousBloodCompartment
+from anesthesia_sim.core.blood_flow import PerfusionFraction
 from anesthesia_sim.core.circuit import BreathingCircuit, DeliverableFreshGasFlowRange
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
@@ -111,7 +112,7 @@ def _tissue_group() -> TissueGroup:
     return TissueGroup(
         name="muscle",
         volume_l=CompartmentVolume(10.0),
-        perfusion_fraction=0.2,
+        perfusion_fraction=PerfusionFraction(0.2),
         tissue_gas_partition_coefficient=PartitionCoefficient(2.0),
         agent_amount_l=4.0,
     )
@@ -163,7 +164,7 @@ def _halved_fraction(field: str) -> Callable[[PatientCompartments], TissueGroup]
     def breaking(patient: PatientCompartments) -> TissueGroup:
         group: TissueGroup = getattr(patient, field)
 
-        return replace(group, perfusion_fraction=group.perfusion_fraction / 2)
+        return replace(group, perfusion_fraction=PerfusionFraction(group.perfusion_fraction / 2))
 
     return breaking
 

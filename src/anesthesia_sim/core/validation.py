@@ -116,9 +116,8 @@ def require_nonnegative_finite(name: str, value: float) -> None:
     This guard makes the same three checks as `require_positive_finite`, for
     the same reasons. It requires a number, refuses by name an `int` too
     large for a `float`, and then checks the value itself. It accepts zero,
-    because zero is a supported value here: the fresh gas turned off, an
-    unperfused tissue, or no agent yet. It accepts minus zero too, which
-    equals zero.
+    because zero is a supported value here: the fresh gas turned off, or no
+    agent yet. It accepts minus zero too, which equals zero.
 
     Raises:
         TypeError: `value` is not an `int` or a `float`, or is a `bool`, as
