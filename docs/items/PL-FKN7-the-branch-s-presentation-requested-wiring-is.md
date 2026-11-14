@@ -6,10 +6,10 @@ effort: S
 status: ready
 classes: test
 feature: branch-display-tests
-touches: tests/integration/test_simulation_view.py
+touches: tests/integration/simulation_view
 added: 2026-09-20
 payoff: puts the only path a run's state reaches the display by under test, so a branch that freezes on screen while its controller advances is caught
-verify: grep -q 'def test_a_runs_presentation_request_reaches_the_display' tests/integration/test_simulation_view.py
+verify: grep -rq 'def test_a_runs_presentation_request_reaches_the_display' tests/integration/simulation_view/
 ---
 
 **Problem.** The branch's presentation_requested wiring is untested: every branch test reads the controller, none reads the display
