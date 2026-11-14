@@ -384,3 +384,12 @@ changed. Closing this item made `PL-4JCC` (the Parameters Area, now 266 px at
 1920 by 1080 for 86 px of controls) and `PL-VJD2` (Maximize Area) ready.
 `touches` now also names `app/stylesheets.py`, `tests/integration` and
 `tests/benchmarks`, which the work changed.
+
+**The adversarial review, 2026-11-14, after the closure.** The branch changes
+over 200 lines in the simulator, so three more passes ran: state across
+rebuilds, what a learner could misread, and whether each test fails with its
+behaviour broken. `9b4b31aa` fixed two faults (a kept View lost its scroll
+position on a rebuild, and the frame-cost benchmark scrolled the page before
+the Area's box) and strengthened two tests. `PL-26BZ`, `PL-YJ7N` and `PL-2NNM`
+are filed, and `PL-S6CP` has a second case. `bin/docket verify --self PL-CBYS`
+returned ACCEPT on `9b4b31aa`.
