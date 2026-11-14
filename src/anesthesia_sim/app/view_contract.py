@@ -47,6 +47,13 @@ preferences and saves them (`app/preferences.py`). Each tick shows them to
 every View in `ViewTick.preferences`, and a View asks for a change through
 `ViewRequests.agent_cost_unit` or `ViewRequests.agent_price` (`PL-1P15`).
 
+**Each View that shows a panel of the case gets a copy of its own**
+(`PL-9YPR`). The bookmarks and the branch control belong to the case, and no
+run owns them. A View that shows one asks `ViewTick.case` for its copy on its
+first tick. The dashboard then writes every live copy on each frame, as a run
+writes the copies of its own surfaces. So two Areas can show the bookmarks at
+once, and neither View holds the case.
+
 **What a View is drawn from** (Q3). Each View states which frame it draws,
 through `View.frame_request`. The request gives the window and the plot width
 that the frame must be sampled for. The dashboard assembles one `ChartFrame`
@@ -73,8 +80,8 @@ the saved state again. A split gives the new Area a copy of the source View's
 state, and a swap moves each instance with its state. Splitting and swapping
 are left to `PL-2KXB`, and they build on `save_state` as it stands here.
 
-**What a View owes when there is nothing to draw** (Q6). The View shows text
-in its rectangle that states what is absent, and never leaves it blank. The
+**What a View must do when there is nothing to draw** (Q6). It must show text
+in its rectangle that states what is absent, and never leave it blank. The
 charts' advisories, such as `dashboard_frame.NO_TRACES_SHOWN_TEXT`, are the
 pattern.
 
@@ -110,12 +117,14 @@ from anesthesia_sim.app.formatting import AgentAmountUnit
 from anesthesia_sim.app.preferences import AgentPrice, Preferences
 from anesthesia_sim.app.qt_agent_cost import RunAgentCost
 from anesthesia_sim.app.qt_schematic import RunSchematic
+from anesthesia_sim.app.qt_widgets import BookmarksPanel, ForkPanel
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.run_surfaces import AccountingPanel, ParameterControls
 
 __all__ = [
     "STATE_VERSION_KEY",
     "UNREADABLE_STATE_TEXT",
+    "CaseSurfaces",
     "FrameRequest",
     "PreferencesInForce",
     "RunSurfaces",
@@ -158,6 +167,28 @@ class RunSurfaces(Protocol):
     def build_compartment_schematic(self) -> RunSchematic: ...
 
     def build_agent_cost(self) -> RunAgentCost: ...
+
+
+class CaseSurfaces(Protocol):
+    """The panels of the displayed case that a View may show, each built as a new copy.
+
+    `SimulationView` satisfies this protocol. Each method builds a new copy
+    that shows what the case shows now. From then on, the dashboard writes
+    every live copy on each frame, and restates it on a halt (`PL-9YPR`). A
+    View holds the copy and never the case.
+    """
+
+    def build_bookmarks_panel(self) -> BookmarksPanel:
+        """Build a copy of the two lists of marks, with the button that opens their editor."""
+        ...
+
+    def build_branch_control(self) -> ForkPanel | None:
+        """Build a copy of the branch control, or None where the dashboard holds no case.
+
+        A dashboard that was handed loose runs has no case to branch, so a
+        control there could only refuse.
+        """
+        ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -237,6 +268,7 @@ class ViewTick:
         runs: Each displayed run's surfaces, in the same order.
         selection: The compartment selection every frame was assembled from.
         preferences: The reader's preferences, and any notice about them.
+        case: The displayed case's panels, which no run owns.
     """
 
     frame: ChartFrame | None
@@ -244,6 +276,7 @@ class ViewTick:
     runs: tuple[RunSurfaces, ...]
     selection: CompartmentSelection
     preferences: PreferencesInForce
+    case: CaseSurfaces
 
 
 @runtime_checkable

@@ -27,19 +27,16 @@ explicit out-of-scope list.
   the cause produced point back to it. A head is live while the cause still
   produces items, and spent once it no longer does.
 
-## Current baseline: v0.6.17
+## Current baseline: v0.6.18
 
-In v0.6.17 the agent cost View shows the delivered agent in whole millilitres
-of liquid, and `docs/MODEL.md` is restructured so that each fact has one home
-and then line edited section by section. The contributor documents are
-restructured and copy edited too: `docs/ARCHITECTURE.md`,
-`docs/interface-provenance.md`, the two machine documents, `docs/maintainer.md`
-and `docs/references/`. The release has 96 items. It is a patch on both halves
-of the patch test in § "Versioning decision": it crosses no capability
-boundary, and v0.7.0 is given to a milestone section, so no patch release may
-take that number. v0.6.17 finishes five features: `landing-deletions`,
-`maintainer-guide-structure`, `prose-quality`, `references-structure` and
-`release-roadmap-seam`.
+In v0.6.18 GitHub's own settings refuse a forced push, the deletion of `main`
+and the merge of a pull request that the project holds, and CI fails when one
+of those settings is missing. The release also records the agreed order of
+work, learner and tasks for the interface pass. The release has 6 items. It is
+a patch on both halves of the patch test in § "Versioning decision": it
+crosses no capability boundary, and v0.7.0 is given to a milestone section, so
+no patch release may take that number. v0.6.18 finishes one feature,
+`model-review`.
 
 v0.7.0 is cut only after its Required scope has closed, Gate 3's frozen list
 has cleared and the project owner has test-driven `main`. Two ids in the
@@ -47,50 +44,75 @@ Required scope are open. The project owner added both as entry 13 on
 2026-11-10: `PL-HQPF`, which makes the accounting panel and the schematic name
 the 20 °C and 1 atm at which an agent amount is stated, and `PL-RJN9`, which
 makes the agent cost View read that temperature from the model instead of
-writing it as text. When v0.6.17 was cut, 119 of the gate's 168 entries had
-cleared, 36 were open for this gate to clear, and 11 were deferred to the next
-gate.
+writing it as text. When v0.6.18 was cut, 119 of the gate's 168 entries had
+cleared, 36 were open for this gate to clear, those 2 were open for the
+milestone to clear, and 11 were deferred to the next gate.
 
-**One displayed precision changed. No model code, equation, parameter or
-stored value changed, and no run can differ:**
+**No model code, equation or parameter changed, and no run can differ. The
+tag also ships two interface changes that these notes do not name, because
+they merged after the cut:**
 
-| Tree | v0.6.16 tag | This cut | What moved |
+| Tree | v0.6.17 tag | This cut | What moved |
 | --- | --- | --- | --- |
-| `src/` | `a66313e` | `a110105` | the delivered-liquid precision in `app/formatting.py`; docstrings and comments elsewhere |
-| `src/anesthesia_sim/core/` | `8186a8c` | `a72bd99` | docstrings and comments only |
-| `src/anesthesia_sim/data/` | `c3fbdbc` | `c3fbdbc` | nothing |
+| `src/` | `a110105` | `6da93f5` | modules under `app/`: each run's panel is written from one value (`#2094`), and the bookmarks and branch control are Views (`#2103`) |
+| `src/anesthesia_sim/core/` | `a72bd99` | `a72bd99` | nothing |
+| `src/anesthesia_sim/data/` | `c3fbdbc` | `9f4943e` | the three shipped Workspace layouts, which now place the Bookmarks and Branch Views (`#2103`); no model parameter |
 | `tests/reference/` | `545a009` | `545a009` | nothing |
-| `docs/MODEL.md` | `6bb0708` | `93505d9` | the restructure and the line edit |
-| `README.md` | `6644ce2` | `a8f2abf` | a window image, and the elimination result |
-| `.github/` | `fefd203` | `fefd203` | nothing |
+| `docs/MODEL.md` | `93505d9` | `aa0b791` | two paragraphs on the banner and the Area header line (`#2103`) |
+| `README.md` | `a8f2abf` | `c2632c1` | the layout description (`#2103`) |
+| `.github/` | `fefd203` | `b7b61e1` | the `merge-hold` workflow, and a step in `quality.yml` that reads GitHub's rules |
 
-`tools/ast_identity.py` finds only docstrings and comments changed in `core/`,
-and the numbers and units in them are unchanged. The `core/` docstrings and
-comments about arterial blood now say that the model has no shunt and one
-alveolar compartment, and that the lung's exchange with blood is
-perfusion-limited, so arterial blood leaves the lung at the alveolar partial
-pressure. They had called that simplification flow-limited (`PL-Z6FR`,
-`#2076`). Because `core/` and `data/` compute as they
-did, the trajectories were not re-measured.
+Because `core/` and the model's parameter files are unchanged, the
+trajectories were not re-measured.
 
-**The delivered agent in whole millilitres** (`PL-SP6H`, `#2024`). The agent
-cost View shows the delivered agent in liquid to the whole millilitre, where it
-showed a tenth. The figure's only uncertainty is the measured liquid density.
-At the largest supported total, one step of 0.1 mL is about a thirtieth of one
-SD of that uncertainty, so the tenth implied more precision than the density
-supports. The same change corrected `docs/MODEL.md`'s litre-precision figures.
+**The bookmarks and the branch control as Views** (`#2103`). The two fixed
+sections under the Areas are now Views named "Bookmarks" and "Branch", which a
+learner places, moves or removes like any other View. The three shipped
+Workspaces show both. A layout saved before this change shows neither until
+the learner chooses one in an Area or resets the Workspace. The banner of a run
+stopped at the supported run length names a branch only while an Area shows the
+Branch View. `PL-9YPR`, `PL-QKDV` and `PL-5XVQ` closed with it, and v0.6.19's
+notes will name them.
 
-**The model specification** (`PL-BSMF`, `PL-BZ21`, `PL-FDW6`, `#2054`;
-`PL-95SW`, `#2049`). `docs/MODEL.md` now gives each fact one home, and no
-chapter relies on a later one. The line edit that followed was audited section
-by section, and each statement it dropped was restored.
+**The run panel written from one value** (`#2094`). This is the first of four
+pull requests for `PL-RF2S`, which is still open, so the notes of the release
+that closes it will name the work. A run's panel had two writers, one for a
+drawn frame and one for a halt, and a value that the halt's writer missed
+stayed on screen from the run before. One writer now draws the whole panel on
+both paths. A learner sees no change in normal use. On a run that has already
+stopped on an internal fault, a frame that cannot be built in full leaves every
+value on the earlier frame, and a 1 MAC line that cannot be built is blank.
 
-**The README** (`PL-MBP6`, `#2078`; `PL-L9FC`, `PL-GQWP`, `#2075`).
-`README.md` shows the default case's window, and a test fails when the
-readouts in that image go stale. Its validation paragraph now reports both
-halves of the Yasuda comparison, the elimination check that fails as well as
-the wash-in check that passes. Tests hold its playback rates, chart time bases
-and agent list to the code.
+**A test of randomly drawn runs** (`#2100`). This is the first pull request
+for `PL-GJ1W`, which is also still open. It adds a unit test that steps the
+model over generated settings.
+
+**Irreversible actions refused at GitHub** (`PL-39Y1`, `#2096`; `PL-KH7Y`,
+`#2123`). Four earlier fixes tried to stop a session forcing a push, deleting
+a branch or merging by reading the command the session typed, and each time
+another spelling passed. CI now reads GitHub's rules and fails, naming the
+setting, where one is missing: forced pushes blocked on every branch, deletion
+of `main` restricted, a pull request required, `main`'s required checks
+binding admins, and release tags protected. `main` also requires a new check,
+`merge-hold`, which fails while a pull request's branch carries an open claim,
+changes the simulator with no record of whether the project owner must read
+it, or waits on that read.
+
+**The interface pass** (`PL-HS9M`, `#2116`). The project owner agreed the
+order of work on 2026-11-10: tasks, a heuristic evaluation, grey-box layouts,
+one style with one set of controls, then testing with residents. The
+first-pass learner is a resident early in training who works through a case
+alone. The next four steps are filed in the `interface-pass-design-round`
+feature.
+
+**Sources are read before they are cited** (`PL-6VZF`, `#2111`). The session
+environment's network access is open to any host, and a session reads a source
+before citing it and says what it read.
+
+**The mutation run and the model review** (`PL-GP8G`, `#2124`; `PL-PW83`,
+`#2127`). The mutation run completes its first step again, which two new unit
+tests had stopped. The model review no longer counts a finding that a blind
+review pass filed on the reviewed branch as a fault the pass missed.
 
 § "What a tag ships that its notes may not name" says how work ships that
 merges on `main` after a release is cut and before its pull request lands.
@@ -255,7 +277,8 @@ number because the next minor number was not free.
 | v0.6.14 | Completed | **The release where the halted-dashboard guard reads a scroll bar's Qt container as part of the bar, so the drift run's upgraded dependencies, PySide6 6.12.0 among them, no longer fail it on a scroll bar that the layout shows on only one of the two dashboards it compares, and where four documents stop claiming more than their sources or the code support: the stored tissue:gas coefficients are Gas Man's figures for Yasuda, Targ and Eger's measurements rather than roundings of them, `docs/MODEL.md` names the held runs' own rounding bound, `control_timeline.py` says where the delivered dial's units change, and a textbook is tier 2 everywhere.** | 5 items | `PL-T343` |
 | v0.6.15 | Completed | **The release where the agent cost View shows what the delivered agent cost in money, at a bottle price the reader sets for each agent, with the price's currency and date beside the cost; where most sections of `docs/MODEL.md` are rewritten in plain English for a clinician reader, with the history behind each value moved to the items; where every guard hook runs through one module that records a crash instead of passing silently, and judges the action a command performs rather than how it is spelled; where the owner-ask guard flags a pull request waiting on the owner by its state rather than by its wording; and where the step-size test's 0.5% limit, which never decided a result, is removed.** | 98 items | `PL-8B6Z` |
 | v0.6.16 | Completed | **The release where the copy editor cuts a repeated fact, words a fact does not need and a fact meant for another reader, and is back in use; where the rest of `docs/MODEL.md`'s interface sections, and its section on how the document is held to the tree, are rewritten for a clinician reader; where `README.md` is copy edited with the fixed copy editor; and where the writing rule says a model limitation earns a sentence only where it could change what a clinician concludes from a displayed value.** | 11 items | `PL-80PZ` |
-| v0.6.17 | Completed / current baseline | **The release where the agent cost View shows the delivered agent in whole millilitres of liquid, because a tenth implied more precision than the measured density supports, and where `docs/MODEL.md` gives each fact one home and is line edited with every dropped statement restored.** | 96 items | `PL-FNJ3` |
+| v0.6.17 | Completed | **The release where the agent cost View shows the delivered agent in whole millilitres of liquid, because a tenth implied more precision than the measured density supports, and where `docs/MODEL.md` gives each fact one home and is line edited with every dropped statement restored.** | 96 items | `PL-FNJ3` |
+| v0.6.18 | Completed / current baseline | **The release where GitHub's own settings refuse a forced push, the deletion of `main` and the merge of a pull request that the project holds, and where the order of work, the learner and the tasks for the interface pass are agreed.** | 6 items | `PL-MH1H` |
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
@@ -447,7 +470,7 @@ to clear the ground that the feature releases are built on:
 | 7 | **v0.6.0 — the layout is the reader's** | **Shipped 2026-10-20**, all 40 Required-scope ids closed (`PL-9CS6`). Planned-milestone item 34's tiled half: the layout model, the View contract, the view registry, workspaces, persistence, the unconditional display region, and every layout operation. **Scoped 2026-09-16** (project owner, ratified on `PL-NMTF` - chosen over inserting item 34 ahead of v0.5.0, and over one undivided milestone with break-out inside it). The serialized layout format carries a multi-window root from v1; nothing in this release creates a second window. Break-out, item 34's second half, is on no row: it is wanted eventually and not soon (project owner, 2026-09-26), and came off the timeline that day, having been the next release, "the second screen", since 2026-09-16 (`PL-V1Y7`) — see that section's "Explicitly out of scope" for why the split costs nothing structural, and why v0.6.0 keeps what break-out needs. **The placement was reopened and re-affirmed on 2026-09-17** (project owner, ratified - chosen over moving item 34 ahead of v0.5.0, on the argument that every interface question settled before the area model is settled against a layout that is going away). Planned-milestone item 34's entry carries the count, and the rule that round produced, which ended when this release shipped item 34's View contract and view registry. | 4 L, 16 M, 3 S |
 | — | **v0.6.x — one source of truth** | Planned-milestone item 43: every second copy of a shared fact replaced by a read of its one home, with a check per shape whose baseline can only shrink and is burned down to zero. **Placed 2026-10-19** (project owner, 2026-10-19, ratified on `PL-2LB5`, over folding the fixes into v0.6.0 and over leaving them unplaced): it is built after v0.6.0 ships, and its inventory (`PL-K88Z`) runs before then, because the inventory decides how large the row is. Patch-track work like item 40: it crosses no capability boundary, so it takes no version of its own and freezes no gate. **Inventoried 2026-10-19** by `PL-K88Z`, whose brief records the count. | — |
 | — | **v0.6.x — the interface pass** | Planned-milestone item 33: one deliberate visual design pass over the whole interface - palette, type scale, spacing rhythm, density and the visual composition of each surface - rather than the per-defect corrections the queue has been making one at a time. **Arrangement is item 34's and not this row's** (`PL-BNYF`, 2026-09-16); the entry for item 33 carries why. A patch track rather than a numbered milestone, because it crosses no capability boundary. **Restored here 2026-09-16**, having been absorbed into v0.4.26 on 2026-09-10 and un-absorbed when that port turned out not to have redecided the visuals; the row that release's own entry reversed is this one. **Moved here from between MVP and Gate 2 on 2026-09-16** (project owner, 2026-09-16, ratified - chosen over leaving it ahead of item 34, on the argument that item 34 and break-out introduce an area header, a workspace tab strip, a live splitter handle and a drag affordance, none of which exists to be styled today; what the other side bought was a styled interface two releases sooner, and `PL-BNYF`'s separation of arrangement from appearance means the composition of each surface would mostly have survived the move). It renumbers from `v0.5.x` to `v0.7.x` as a consequence: a patch track takes the number of the release it follows, which is mechanical rather than a second decision. `PL-PHKP` carries it. **Renumbered `v0.6.x` on 2026-09-26** by the same rule, when break-out came off the timeline and this row came to follow v0.6.0 (`PL-V1Y7`); the entry for item 33 records why the argument that placed it still holds. It is a design round with the project owner before it is items: the owner framed it as "a decent size overhaul (theme, style, overall polish)" and as not urgent, wanted after the simulator works. | — |
-| 8 | **Gate 3** | **Frozen 2026-10-25**, the day v0.7.0 was scoped, five days after v0.6.0 shipped, and recorded in that milestone's own section below. Its work ships in `v0.6.x` patches as it clears, before v0.7.0's implementation begins. The current baseline above says how many of its entries had cleared when v0.6.16 was cut, and where its current size is given. | — |
+| 8 | **Gate 3** | **Frozen 2026-10-25**, the day v0.7.0 was scoped, five days after v0.6.0 shipped, and recorded in that milestone's own section below. Its work ships in `v0.6.x` patches as it clears, before v0.7.0's implementation begins. That rule was not followed for v0.7.0: its Required scope was worked and closed in v0.6.16 while the second group was still open, with no decision recorded to set the rule aside. The rule in § "The cadence" still applies, and binds again from Gate 4 (project owner, 2026-11-11, ratified, `PL-6590`). The current baseline above says how many of its entries had cleared when v0.6.16 was cut, and where its current size is given. | — |
 | 9 | **v0.7.0 — the schematic** | Planned-milestone items 27 and 28: a compartment schematic whose containers fill to tension, as Gas Man's Picture does, labelled with their amounts and with a bar showing where the agent *is*, and the agent cost View. **Scoped 2026-10-25** by `PL-LF0P` (project owner, 2026-10-25, ratified, over containers drawn to scale, over Gas Man's Picture as it is, and over leaving item 28 unscheduled), and it has its own section below. (Written `v0.6.0` until 2026-09-16, when item 34 took that number and this moved down two, and `v0.8.0` from then until 2026-09-26, when break-out came off the timeline and this moved up one.) **Its Required scope closed in v0.6.16, except entry 13, which the project owner added on 2026-11-10** (`PL-HQPF`, `PL-RJN9`). That entry requires every agent amount on screen to name the condition it is stated at. The cut waits on entry 13, on Gate 3 and on the project owner's test drive. | 1 L, 9 M, 3 S |
 | 10 | **Gate 4** | Frozen when v0.7.0 ships. Its work ships in `v0.7.x` patches as it clears, before v0.8.0's implementation begins. | — |
 | 11 | **v0.8.0 — the next milestone** | What it holds is the project owner's pick, made when it is scoped. It was the substance generalization and nitrous oxide until 2026-09-26, when those came off the timeline (Beyond row). | — |
@@ -1102,7 +1125,7 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-HQPF (M) The accounting panel's unit caption ('Litres of equivalent pure agent gas') and the schematic's unit ('mL vapour') do not name the condition an agent amount is stated at, 20 °C and 1 atm, so a learner cannot tell that an amount held in the body is stated at room temperature and reads 5.8% high
 - PL-RJN9 (S) The agent cost View's two captions in src/anesthesia_sim/app/agent_cost.py write '20 degrees C' as text, a second copy of core/liquid_agent.py's REFERENCE_TEMPERATURE_CELSIUS, so a change to the reference temperature would leave the captions naming the old one
 
-**Cleared before v0.7.0's implementation begins, unless deferred - 157 entries**
+**Cleared before v0.7.0's implementation begins, unless deferred - 164 entries**
 
 - PL-H57W (L) Since PL-CZXN no check measures whether a branch that changes no core function weakens a core unit test, because PL-7FPD's route compares only the display modules' mutants; the same comparison over core's mutants took 538 to 968 s for one changed test file
 - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
@@ -1261,6 +1284,13 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-11Z9 (S) The agent cost View does not say on its face that its figures are modelled: 'Liquid used by the vaporizer' can read as a measured volume, and v0.7.0's definition of done asks the modelled label only of the schematic
 - PL-FCYQ (M) No test replays a recorded control-input timeline into a fresh run and compares the two, though docs/MODEL.md § The control-input timeline requires that the replay reproduces the run
 - PL-BLN0 (L) Sentences in docs/MODEL.md, docs/ARCHITECTURE.md and docs/interface-provenance.md that restate how the code or the interface behaves go stale when the code changes, because nothing ties a free-prose sentence to the code it describes
+- PL-V067 (S) The 12 property tests draw the same inputs on every run, the weekly shuffled run included, because each sets derandomize=True on its own decorator: no scheduled run gives them new inputs
+- PL-8YCC (S) docs/ARCHITECTURE.md § Tests says tests/unit/ tests the controller in isolation, but the controller's tests are in tests/integration/test_controller.py, and the section does not say that 78 of the 146 test files in tests/unit/ test repository tooling
+- PL-PG0S (S) No check or CI job runs the mutation tool's first step, so a new unit test that cannot run inside the mutation copy of the tree stops every mutation run until a session next needs one: PL-GP8G's two tests and PL-CTXZ's deselected test, in the week of 2026-11-09
+- PL-1FPR (M) tests/integration/test_simulation_view.py holds 12,232 lines and 307 tests for a 2,193-line module, and tests/integration/test_controller.py holds 6,443 lines: split each by the behaviour it tests
+- PL-MVCF (S) A Reset that raises after it has cleared the run is not counted as a start-over, so a halt keeps the discarded run's cards under a clock of 10 min for a run at 0 s
+- PL-SV2Q (S) When a run's dials cannot be built after a Reset or an agent change, the dial row and the delivered line keep the discarded run's setting: 'Delivered 8.00% (4.00 ×MAC)' beside '1 MAC desflurane = 6.0%'
+- PL-CT4K (S) Six open safety items filed on 2026-11-10 (PL-0G2P, PL-B8DL, PL-G2WC, PL-GJ1W, PL-GKG4, PL-LHCL) are not on v0.7.0's frozen list, though a safety item re-enters the gate whether or not its problem was present at the freeze
 
 ### Captures after the cut
 
@@ -1375,6 +1405,25 @@ freeze. The project owner chose to put both items in this milestone (project
 owner, 2026-11-10, ratified, over deferring them to the next gate). Required
 scope entry 13 names both, so they are in the first group, and `PL-RJN9` is
 no longer deferred.
+
+**Four captures joined the frozen list on 2026-11-11, after the freeze.** A
+review of the unit-testing scheme filed them that day (#2128). Checked against
+`817a4d88`, each problem was already present at the freeze. The property tests
+already fixed their inputs on their own decorators, and
+`docs/ARCHITECTURE.md` already said that `tests/unit/` tests the controller.
+Nothing ran the mutation tool's first step outside a mutation run, and the two
+test files were already long, at 8,933 and 5,114 lines. They are `PL-V067`,
+`PL-8YCC`, `PL-PG0S` and `PL-1FPR`. A fifth, `PL-19M4`, is placed by the
+branch that holds it. `PL-1FPR` stays on the list but is deferred to the next
+gate, because it waits on `PL-RF2S`, which this list does not hold, and it
+changes no value a learner sees.
+
+**`PL-MVCF`, `PL-SV2Q` and `PL-CT4K` joined the frozen list on 2026-11-11,
+after the freeze.** `PL-MVCF` and `PL-SV2Q` are classed `safety`, so they
+re-enter whether or not their problem was present. Each leaves a discarded
+run's values on screen after a halt, and each is on `main`. `PL-CT4K` is not
+`safety`, but it completes this list: it places six `safety` items that the
+list does not yet name.
 
 ### Required scope
 
@@ -2829,6 +2878,13 @@ into its own model rather than inherited:
 A layout is serialized to versioned JSON.
 § "Completed: v0.6.0 - the layout is the reader's" → "Required scope"
 entries 1 and 2 hold the layout model and its adapter as built.
+
+*Maximize Area is wanted and not yet built* (project owner, 2026-11-11,
+ratified, over leaving a learner to rearrange a Workspace in order to study
+one View). Maximize Area makes one Area fill the room that the Areas share,
+and the same command puts the layout back as it was. The unconditional region
+and the use disclaimer stay on screen. Maximize Area is to be built after the
+Areas fill the window exactly, so that the page no longer scrolls (`PL-CBYS`).
 
 #### 35. Optional model of anaesthesia's effect on cardiac output and regional perfusion
 

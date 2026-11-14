@@ -59,6 +59,7 @@ from anesthesia_sim.app.compartment_selection import CompartmentSelection
 from anesthesia_sim.app.controller import SimulationController, SimulationSnapshot
 from anesthesia_sim.app.dashboard_frame import run_label
 from anesthesia_sim.app.preferences import Preferences
+from anesthesia_sim.app.qt_widgets import BookmarksPanel, ForkPanel
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES
 from anesthesia_sim.app.theme import (
     AREA_HANDLE_LINE_WIDTH,
@@ -96,6 +97,16 @@ _REQUESTS = ViewRequests(
     lambda: None, lambda _quantity, _shown: None, lambda _unit: None, lambda _agent, _price: None
 )
 _PREFERENCES = PreferencesInForce(Preferences(), None)
+
+
+class _NoCase:
+    """The case's panels for a tick here. No View under test asks for one, so each build fails."""
+
+    def build_bookmarks_panel(self) -> BookmarksPanel:
+        raise AssertionError("no View under test shows the bookmarks")
+
+    def build_branch_control(self) -> ForkPanel | None:
+        raise AssertionError("no View under test shows the branch control")
 
 
 class _TestView(QWidget):
@@ -1039,7 +1050,7 @@ def test_every_view_is_drawn_in_reading_order_with_the_frame_for_its_window(
 
     assert container.owes_a_frame
 
-    container.refresh(frames, (snapshot,), (), selection, _PREFERENCES)
+    container.refresh(frames, (snapshot,), (), selection, _PREFERENCES, _NoCase())
 
     assert [len(view.ticks) for view in _BUILT] == [1, 1, 1]
     assert [view.ticks[0].frame for view in _BUILT] == [frames[None], None, frames[zoomed]]
@@ -1069,7 +1080,7 @@ def test_a_view_asking_for_a_window_with_no_frame_is_refused(
     _BUILT[1].request = FrameRequest(time_base_for_span(900.0), 300.0)
 
     with pytest.raises(KeyError):
-        container.refresh(frames, (snapshot,), (), selection, _PREFERENCES)
+        container.refresh(frames, (snapshot,), (), selection, _PREFERENCES, _NoCase())
 
 
 def test_each_window_is_sampled_for_the_widest_view_that_asks_for_it(

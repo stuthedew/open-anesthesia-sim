@@ -342,6 +342,10 @@ longer repeats the arm in its first reply, because you do not act on it
 (`PL-J1ZM`). Sessions on your own computer are
 not in the trial, and the script writes nothing there.
 
+The trial runs whatever model you start a session on, and changing the model
+does not end it (project owner, 2026-11-11, `PL-7KF5`). The review compares
+`high` with `xhigh` only between sessions on the same model.
+
 Projects threads are not in the trial either. A thread does not read
 `.claude/settings.local.json`, so a cap written there would do nothing, and
 the digest says the thread is in neither arm. A thread runs at the level the
