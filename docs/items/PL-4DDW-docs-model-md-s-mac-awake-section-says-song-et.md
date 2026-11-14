@@ -5,10 +5,10 @@ priority: P3
 effort: S
 status: ready
 classes: docs
-touches: docs/MODEL.md
+touches: docs/INTERFACE.md
 added: 2026-10-17
 payoff: the MAC-awake section says how much the Song comparison can see, so a reader does not take a two-digit agreement for a tight validation
-verify: grep -q '0.25%' docs/MODEL.md
+verify: grep -q '0.25%' docs/INTERFACE.md
 ---
 
 **Problem.** docs/MODEL.md's MAC-awake section says Song et al.'s 2.17% corroborates desflurane's 2.16% band centre without saying that Song's standard deviation of 0.25% leaves the comparison blind to an error of less than about 11% in the stored fraction
