@@ -3,11 +3,13 @@ id: PL-RTYG
 title: The merge-hold check runs on Python 3.11 and cannot parse a product test written for the project's Python 3.14, so it refuses a pull request the owner has approved: #2119 is held because tests/unit/test_new_prose.py uses a nested-quote f-string
 priority: P1
 effort: S
-status: ready
+status: done
 classes: defect
-touches: .github/workflows/merge-hold.yml
+touches: .github/workflows/merge-hold.yml, tests/unit/test_tools_portability.py
 deferred-from: v0.7.0 - a workflow defect found 2026-11-14, after the freeze; not safety or science
 added: 2026-11-14
+closed: 2026-11-14
+pr: 2147
 payoff: a pull request the owner approved is not held because the check cannot parse a product test
 verify: grep -q 'python-version-file: .python-version' .github/workflows/merge-hold.yml
 ---
@@ -41,3 +43,8 @@ names, and a re-run of the check on `#2119` passes.
 **Generator check.** One-off: one job running the floor interpreter on files
 written for a newer one. `branch-sweep.yml` and `pr-title.yml` also run 3.11
 but parse no product file.
+
+**Fixed, 2026-11-14.** The job installs the interpreter `.python-version`
+names. `test_the_merge_hold_job_runs_on_the_product_interpreter` in
+`tests/unit/test_tools_portability.py` failed on the old workflow
+(`assert 'python-version-file: .python-version' in ...`) and passes now.
