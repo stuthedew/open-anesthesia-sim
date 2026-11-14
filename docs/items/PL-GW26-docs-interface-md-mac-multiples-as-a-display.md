@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: model-md-structure
-touches: docs/MODEL.md, docs/INTERFACE.md
+touches: docs/MODEL.md, docs/INTERFACE.md, src/anesthesia_sim/app/formatting.py
 added: 2026-11-04
 closed: 2026-11-14
 pr: 2158
