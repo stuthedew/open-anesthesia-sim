@@ -5781,6 +5781,11 @@ def test_hiding_a_trace_changes_only_what_is_drawn(application: QApplication) ->
     controller.start()
     _advance(controller, 120.0)
     view = _shown_view(application, controller)
+    # The first frame is drawn before the plot, at its least height in this
+    # Workspace, has its settled width: 979 px, against 990 px from the next
+    # frame on. So the curves are compared from the second frame (`PL-2NNM`).
+    application.processEvents()
+    view.present(False)
     run = view.runs[0]
     chart = _concentration(view).chart
     snapshot = controller.snapshot()

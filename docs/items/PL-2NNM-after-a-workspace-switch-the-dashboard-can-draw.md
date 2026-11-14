@@ -16,3 +16,10 @@ frame.content.minimumSizeHint().width()` to a copy of
 lag exists on `main`, where an Area's need also followed its View's least
 width, is not measured. A View's least width can grow when its first frame is
 drawn, which would make the Areas settle again.
+
+**A second case, 2026-11-14, after `#2134` brought `main` in.** In the test
+Workspace with every View, the concentration plot sits at its least height,
+and the first frame is drawn at a plot width of 979 px. Every later frame is
+drawn at 990 px, so the first frame's curves have 1,092 points and the next
+frame's 1,001. `test_hiding_a_trace_changes_only_what_is_drawn` now compares
+from the second frame.
