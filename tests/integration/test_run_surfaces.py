@@ -1,12 +1,13 @@
-"""Integration tests for the run surfaces a reader may place in more than one Area.
+"""Integration tests for one run's panels shown in more than one Area.
 
-`app/run_surfaces.py` holds two of a run's surfaces that sit in an Area: the
-setting controls and the accounting panel (`PL-9LNF`). An Area can be split,
-so a second Area can show the same surface of the same run. These tests build
-a second copy of each through `RunView`'s own build methods, and check that
-both copies draw the run. Each expected value is built from
-`app/dashboard_frame.py` or `app/formatting.py` and the controller, never read
-off a copy.
+`app/run_surfaces.py` holds two of the widgets that draw one run's values in
+an Area: the setting controls and the accounting panel (`PL-9LNF`). An Area
+can be split, so a second Area can show the same View of the same run. Each
+View builds its own widget for the run and writes it from the run's
+presentation on every tick (`PL-RF2S`). These tests choose the same View for
+a second Area, and check that both draw the run. Each expected value is built
+from `app/dashboard_frame.py` or `app/formatting.py` and the controller, never
+read off a panel.
 
 The lines that depend on a chart's window belong to each chart (`PL-L59K`).
 The last test checks that two charts at different windows each show their own
@@ -29,7 +30,7 @@ from anesthesia_sim.app.dashboard_frame import (
     slider_position,
 )
 from anesthesia_sim.app.formatting import FLOW_DISPLAY_DECIMALS, format_flow
-from anesthesia_sim.app.run_surfaces import AccountingPanel
+from anesthesia_sim.app.run_surfaces import AccountingPanel, ParameterControls
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.view_registry import (
     AGENT_ACCOUNTING,
@@ -37,7 +38,7 @@ from anesthesia_sim.app.view_registry import (
     PARAMETER_CONTROLS,
     WASH_IN,
 )
-from anesthesia_sim.app.views import ConcentrationView
+from anesthesia_sim.app.views import AccountingView, ConcentrationView, ParameterControlsView
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, Window
@@ -164,24 +165,45 @@ def _expected(controller: SimulationController) -> tuple[str, str, str, str]:
     return (ACCOUNTING_HEADING, shown.status.text, shown.detail, shown.amounts)
 
 
-def test_two_accounting_panels_of_one_run_both_draw(application: QApplication) -> None:
-    """A second accounting panel shows the run at once, and both panels update on the next frame.
+def _accounting_panels(view: SimulationView) -> list[AccountingPanel]:
+    """The first run's accounting panel in each Area that shows the accounting View."""
 
-    Before `PL-9LNF`, the build method returned the panel that was already
-    placed. A second Area that held that panel would have taken it out of
-    the first Area.
+    return [
+        shown.panels[0]
+        for shown in view.layout_container.views()
+        if isinstance(shown, AccountingView)
+    ]
+
+
+def _dials(view: SimulationView) -> list[ParameterControls]:
+    """The first run's four dials in each Area that shows the setting controls View."""
+
+    rows = [
+        shown.rows[0]
+        for shown in view.layout_container.views()
+        if isinstance(shown, ParameterControlsView)
+    ]
+
+    return [row.controls for row in rows if row.controls is not None]
+
+
+def test_two_accounting_views_of_one_run_both_draw(application: QApplication) -> None:
+    """A second accounting View shows the run at once, and both update on the next frame.
+
+    The run used to hold a single accounting panel (`PL-9LNF`). A second Area
+    that held that panel would have taken it out of the first Area.
     """
 
     controller = SimulationController()
     controller.start()
     _advance(controller, 300.0)
     view = _shown_view(application, controller)
-    run = view.runs[0]
-    first = run._accounting_panels[0]
 
-    second = run.build_accounting_panel()
+    view.layout_container.choose_view(AreaId(3), AGENT_ACCOUNTING)
+    _settle(application)
+    first, second = _accounting_panels(view)
 
-    assert second is not first, "the second call handed back the placed panel"
+    assert second is not first
     assert _drawn(second) == _expected(controller)
     assert _drawn(first) == _expected(controller)
 
@@ -192,50 +214,61 @@ def test_two_accounting_panels_of_one_run_both_draw(application: QApplication) -
     assert _drawn(second) == _expected(controller)
 
 
-def test_a_drag_on_one_copy_of_the_setting_controls_moves_the_other(
+def test_a_dial_moved_in_one_view_sets_the_run_and_moves_the_dial_in_the_other(
     application: QApplication,
 ) -> None:
-    """A slider moved in a second copy sets the run, and the first copy shows the new value."""
+    """A slider moved in a second setting controls View sets the run, and both Views show it.
+
+    The second View asks the dashboard for the change and names the run. The
+    run applies it and rewrites its own readouts at once, and the dashboard
+    hands every View the runs at once too, with no frame. So the first View's
+    dial shows the new value before the render tick draws the frame
+    (`PL-RF2S`). The frame that follows leaves both dials on that value.
+    """
 
     controller = SimulationController()
     view = _shown_view(application, controller)
-    run = view.runs[0]
-    first = run._setting_controls[0]
-    second = run.build_parameter_controls()
+    view.layout_container.choose_view(AreaId(3), PARAMETER_CONTROLS)
+    _settle(application)
+    first, second = _dials(view)
+    frames = view.presented_frames
 
     assert second is not first
-    assert len(run._setting_controls) == 2
 
     second._fresh_gas_flow_slider.slider.setValue(slider_position(7.0, FLOW_DISPLAY_DECIMALS))
-    view.present(False)
 
+    assert view.presented_frames == frames, "the change drew a frame at once"
     assert float(controller.snapshot().fresh_gas_flow_l_min) == pytest.approx(7.0)
     assert first._fresh_gas_flow_slider.value_label.text() == format_flow(7.0)
     assert second._fresh_gas_flow_slider.value_label.text() == format_flow(7.0)
 
+    view.present(False)
 
-def test_deleting_one_copy_leaves_the_other_drawing(application: QApplication) -> None:
-    """A copy that Qt has destroyed is dropped, so the next frame updates only the copies left."""
+    assert first._fresh_gas_flow_slider.value_label.text() == format_flow(7.0)
+    assert second._fresh_gas_flow_slider.value_label.text() == format_flow(7.0)
+
+
+def test_replacing_one_of_two_views_leaves_the_other_drawing(application: QApplication) -> None:
+    """A View that a reader replaces takes its panels with it, and the other goes on drawing."""
 
     controller = SimulationController()
     controller.start()
     _advance(controller, 300.0)
     view = _shown_view(application, controller)
-    run = view.runs[0]
-    second = run.build_accounting_panel()
-    controls = run.build_parameter_controls()
+    view.layout_container.choose_view(AreaId(3), AGENT_ACCOUNTING)
+    _settle(application)
+    # Area 3 comes before the sidebar's Area in reading order.
+    _, kept = _accounting_panels(view)
 
-    run._accounting_panels[0].deleteLater()
-    controls.deleteLater()
+    view.layout_container.choose_view(AreaId(3), WASH_IN)
     _settle(application)
 
-    assert list(run._accounting_panels) == [second]
-    assert len(run._setting_controls) == 1
+    assert _accounting_panels(view) == [kept]
 
     _advance(controller, 300.0)
     view.present(False)
 
-    assert _drawn(second) == _expected(controller)
+    assert _drawn(kept) == _expected(controller)
 
 
 def test_each_chart_names_only_the_clipped_traces_its_own_window_shows(

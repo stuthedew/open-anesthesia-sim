@@ -99,7 +99,14 @@ _EVERY_VIEW = WorkspaceSet(
 _NOTICE = "This View's saved settings could not be read, so it shows its default settings."
 
 _REQUESTS = ViewRequests(
-    lambda: None, lambda _quantity, _shown: None, lambda _unit: None, lambda _agent, _price: None
+    frame=lambda: None,
+    compartment=lambda _quantity, _shown: None,
+    agent_cost_unit=lambda _unit: None,
+    agent_price=lambda _agent, _price: None,
+    adjustment_start=lambda _run: None,
+    setting=lambda _run, _control, _value: None,
+    preview=lambda _run, _control, _value: None,
+    preview_end=lambda _run: None,
 )
 
 _ENTRIES = list(REGISTERED.values())

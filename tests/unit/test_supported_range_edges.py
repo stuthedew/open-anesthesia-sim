@@ -248,7 +248,7 @@ def _without_none(annotation: object) -> object:
 def _parameters(function: Function) -> dict[str, object]:
     """Return each annotated parameter's type, in signature order, excluding `self`.
 
-    A method of a generic class, such as `class _RunCopies[W: QWidget]`, names
+    A method of a generic class, such as `class _RunWidgets[W: QWidget]`, names
     the class's type parameters in its annotations. Those parameters are not
     module globals, so they are passed in from the class the method is on.
     """
