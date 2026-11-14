@@ -1056,16 +1056,21 @@ most 1 when it is created. The blood flow (`BloodFlow`) is created only by multi
 existed, three places each checked a blood flow by hand as finite and not negative, and each
 accepted a flow that no supported cardiac output can give.
 
-**A settings record loaded from a saved file runs its constructor's checks.** Python restores a
+**A checked record loaded from a saved file runs its constructor's checks.** Python restores a
 pickled or copied frozen dataclass through `__setstate__`, which by default writes each saved
-value straight into its field without running `__post_init__`. Instead, the settings records for
-the uptake equations and for a tissue group's equations rebuild themselves from the saved values
-(`UptakeEquationSettings`, `TissueGroupEquationSettings`). A saved value that the constructor
-would refuse is therefore refused on load, at every pickle protocol, with the constructor's own
-exception. The rebuild catches a wrong saved value. It does not protect against a pickle made to
-attack, because a pickle can call any importable function. Nothing in `src/` loads a pickle yet.
-The other records that a saved run holds, such as `RunDefinition` and `Keyframe`, do not yet
-check their values on load.
+value straight into its field without running `__post_init__`. Instead, each frozen record in
+`core/` that checks its fields when it is built rebuilds itself from the saved values through
+`restore_through_checks` in `core/checked_record.py`. These include the settings
+records for the uptake equations and for a tissue group's equations, a run's keyframes
+(`Keyframe`), the breathing circuit's state and the parameter records. A saved value that the
+constructor would refuse is therefore refused on load, at every pickle protocol and by
+`copy.copy` and `copy.deepcopy`, with the constructor's own exception. The rebuild catches a wrong
+saved value. It does not protect against a pickle made to attack, because a pickle can call any
+importable function. Nothing in `src/` loads a pickle yet. A run definition (`RunDefinition`), the
+patient's compartments and the parameter payloads that the data files load into do not yet check
+their values on load. A saved record also holds its values in field order, without their names, so
+a record saved before its fields were reordered would load each value into the wrong field wherever
+the value still passes that field's checks (`PL-HXNL`).
 
 **A value assigned straight onto a flow field is refused at the assignment.** In `src/`, the
 type checker (`mypy`) refuses `circuit.fresh_gas_flow_l_min = 1000.0`, and the compartments' own

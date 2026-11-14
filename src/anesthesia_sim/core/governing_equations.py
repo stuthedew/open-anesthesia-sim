@@ -84,10 +84,11 @@ way.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, fields
+from dataclasses import dataclass
 from math import isfinite
 
 from anesthesia_sim.core.blood_flow import BloodFlow, require_blood_flow
+from anesthesia_sim.core.checked_record import restore_through_checks
 from anesthesia_sim.core.concentration import (
     Fraction,
     Percent,
@@ -313,60 +314,6 @@ def require_canonical_state(state: object) -> None:
         )
 
 
-def _restore_through_checks(record: object, state: object) -> None:
-    """Restore an unpickled settings record by building it again through its constructor.
-
-    Unpickling a frozen settings record creates an empty object and passes the
-    saved field values to `__setstate__`. The `__setstate__` that `dataclass`
-    generates writes each value straight into its slot, so `__post_init__`
-    never runs. A saved record whose state held a cardiac output of 1000.0 as
-    a bare `float` loaded without error, and a `RunDefinition` opened under it
-    advanced. A saved fresh gas flow of NaN also loaded (`PL-S11T`, measured
-    2026-10-25). `CheckedQuantity.__reduce__` (`core/checked_number.py`)
-    protects a flow that was pickled as its checked type. It does not protect
-    a field whose saved state holds a bare number.
-
-    So each record's `__setstate__` calls this function. The function builds a
-    new record from the saved values, which runs every check that the
-    constructor runs. It then copies the checked fields into the restored
-    object. A state that the constructor would reject is rejected on load,
-    with the constructor's own exception.
-
-    The check sits in `__setstate__` rather than in `__reduce__` for this
-    reason. Every pickle protocol, `copy.copy` and `copy.deepcopy` restore the
-    record through `__setstate__`, and so does a pickle written before this
-    function existed. A `__reduce__` that called the constructor would change
-    only how a record is written from now on. A saved or edited state in the
-    form that `dataclass` writes would still load through `__setstate__`.
-
-    This function protects against a saved value that is wrong, not against a
-    pickle crafted as an attack. A pickle can call any function that can be
-    imported, so a crafted pickle can still write a record's slots directly.
-    A pickle is trusted input.
-
-    The state holds the field values in field order, without their names, as
-    `dataclass` writes it. Suppose the order of the fields changes. A record
-    saved before that change would then load its values into the wrong fields,
-    wherever those values still pass the checks.
-
-    Raises:
-        TypeError: the state is not a sequence of the record's field values,
-            or a value is not of its field's checked type.
-        SimulationConfigurationError: the constructor rejects a value.
-    """
-
-    if not isinstance(state, (list, tuple)):
-        raise TypeError(
-            f"{type(record).__name__} is restored from a list of its field values, "
-            f"not a {type(state).__name__}"
-        )
-
-    checked = type(record)(*state)
-
-    for field in fields(checked):  # type: ignore[arg-type]
-        object.__setattr__(record, field.name, getattr(checked, field.name))
-
-
 @dataclass(frozen=True, slots=True)
 class TissueGroupEquationSettings:
     """One tissue group's parameters, as its balance equation needs them.
@@ -420,7 +367,7 @@ class TissueGroupEquationSettings:
     def __setstate__(self, state: object) -> None:
         """Restore an unpickled or copied record through the constructor's checks (`PL-S11T`)."""
 
-        _restore_through_checks(self, state)
+        restore_through_checks(self, state)
 
     @property
     def blood_flow_l_s(self) -> float:
@@ -638,7 +585,7 @@ class UptakeEquationSettings:
     def __setstate__(self, state: object) -> None:
         """Restore an unpickled or copied record through the constructor's checks (`PL-S11T`)."""
 
-        _restore_through_checks(self, state)
+        restore_through_checks(self, state)
 
     @property
     def delivered_partial_pressure_fraction(self) -> Fraction:
