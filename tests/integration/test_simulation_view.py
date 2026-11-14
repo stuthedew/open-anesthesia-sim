@@ -12387,6 +12387,28 @@ def test_a_1366_px_window_opens_one_run_s_readout_row_on_seven_columns(
     assert row.columns() == len(READOUT_PANELS)
 
 
+_SMALL_LAPTOP_WIDTH_PX = 1280
+
+
+def test_a_1280_px_window_opens_one_run_s_readout_row_on_seven_columns(
+    application: QApplication,
+) -> None:
+    """A maximized window on a 1280 px screen also seats one run's seven readouts in one row.
+
+    `docs/INTERFACE.md` § "The readout row's width condition" states this
+    outcome. As in the 1366 px test, the check reads the width that the row
+    itself reserves, so it holds for whatever font draws the panels. With the
+    tests' font the row has at least 9 px to spare at this width (`PL-LKX7`).
+    """
+
+    view = _shown_view(application, SimulationController(), width_px=_SMALL_LAPTOP_WIDTH_PX)
+    _settle(application)
+    row = view.runs[0]._readout_row
+
+    assert row.width() >= row.width_for(len(READOUT_PANELS))
+    assert row.columns() == len(READOUT_PANELS)
+
+
 def test_two_runs_share_one_readout_block_whose_values_name_their_runs(
     application: QApplication,
 ) -> None:

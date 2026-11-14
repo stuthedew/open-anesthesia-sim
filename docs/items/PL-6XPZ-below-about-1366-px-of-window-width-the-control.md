@@ -10,6 +10,7 @@ touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_v
 added: 2026-10-25
 payoff: the unconditional control-change record stays readable on windows narrower than 1366 px
 verify: grep -q 'def test_the_control_change_record_is_readable_at_the_minimum_window_width' tests/integration/test_simulation_view.py
+recurrences: 2026-11-14 PL-92XM
 ---
 
 **Problem.** The region's row gives the run rows and the record column stretch shares. The run rows' minimum width is 1115 px, and that comes from the transport row (`app/run_view.py`). So all of the window's shortfall comes out of the record column (`app/simulation_view.py`). The reviewer blamed the heading row, but that row now needs only 786 px. The behaviour they described is unchanged.
