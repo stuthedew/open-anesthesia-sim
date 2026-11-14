@@ -155,6 +155,18 @@ form from the second round is unchanged. One case is left: a change to the
 merge gate that has nothing to weigh still waits on the owner. Whether that
 hold stays is filed as `PL-TQHT`, with options and a recommendation.
 
+## Fifth round (2026-11-14): risks, and bold labels
+
+The owner asked of the recommended option: "would it tell me the risks or
+perhaps non-obvious consequences? That's really what we are going after
+right? Also, can these question formats add some formatting like bolding or
+whatever to emphasize lables or important text". The session's decision: each
+option's cost now prints as "Costs and risks", and the instructions ask it to
+carry the consequences the owner would not see from the option alone (what
+else it changes or breaks, the follow-on work it opens, whether it can be
+undone). The question and every label print in bold. Wording and look are
+placeholders, the session's to choose (project owner, 2026-10-18).
+
 **Generator check.** The mechanism is that the `Owner-ask` grammar enforces only part of rule 10, so each missing element is left out until the owner notices it. It caused `PL-9KHK`, `PL-DKBG`, `PL-KYTY`, `PL-BGN1`, `PL-77QB` and `PL-M2JP`, all closed. This item removes the mechanism by making the grammar require every element rule 10 names, and no open item remains under it.
 
 **Done when.** `bin/docket arm` refuses an `Owner-ask` record that lacks

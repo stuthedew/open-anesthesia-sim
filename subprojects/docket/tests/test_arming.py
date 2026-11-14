@@ -316,16 +316,16 @@ def test_a_review_question_prints_each_part_on_its_own_line() -> None:
 
     assert why == ""
     assert shown.splitlines() == [
-        "Should learners read the shorter uptake step?",
-        '- I recommend "Shorter": every figure is unchanged, and the example repeats the '
+        "**Should learners read the shorter uptake step?**",
+        '- **I recommend "Shorter":** every figure is unchanged, and the example repeats the '
         "figure above it.",
-        "- Context: the uptake step is reworded.",
-        '- Option "Shorter": the step is one paragraph. Cost: it drops the worked example.',
-        '- Option "As it was": learners keep the worked example. Cost: the step stays three '
+        "- **Context:** the uptake step is reworded.",
+        '- **Option "Shorter":** the step is one paragraph. **Costs and risks:** it drops the worked example.',
+        '- **Option "As it was":** learners keep the worked example. **Costs and risks:** the step stays three '
         "paragraphs long.",
-        "- Why it is yours: it changes what learners read about the uptake model, which only "
+        "- **Why it is yours:** it changes what learners read about the uptake model, which only "
         "you approve.",
-        "- Already checked: every figure still matches its source.",
+        "- **Already checked:** every figure still matches its source.",
     ]
 
 
@@ -372,14 +372,14 @@ def test_every_question_to_the_owner_leads_with_its_recommendation() -> None:
 
     assert why == ""
     assert shown.splitlines() == [
-        "Which view opens first?",
-        '- I recommend "Chooser": one click is worth showing every view.',
-        "- Context: the simulator now has three views.",
-        '- Option "Chooser": the learner picks a view each run. Cost: one more click before '
+        "**Which view opens first?**",
+        '- **I recommend "Chooser":** one click is worth showing every view.',
+        "- **Context:** the simulator now has three views.",
+        '- **Option "Chooser":** the learner picks a view each run. **Costs and risks:** one more click before '
         "every case.",
-        '- Option "Last used": it opens where they left off. Cost: it hides the views a '
+        '- **Option "Last used":** it opens where they left off. **Costs and risks:** it hides the views a '
         "learner has not opened.",
-        "- Why it is yours: it decides what a learner sees first.",
+        "- **Why it is yours:** it decides what a learner sees first.",
     ]
 
     missing = (

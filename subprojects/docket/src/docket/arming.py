@@ -293,11 +293,12 @@ ASK_JARGON = re.compile(
 #: `PL-M2JP`). Each part after the question starts with "- ", so that a reply
 #: rendered as Markdown keeps the parts on separate lines rather than joining
 #: them back into one paragraph.
-ASK_RECOMMEND_SHOWN = '- I recommend "{pick}": {why}.'
-ASK_CONTEXT_SHOWN = "- Context: {context}."
-ASK_OPTION_SHOWN = '- Option "{label}": {gain}. Cost: {cost}.'
-ASK_WHY_SHOWN = "- Why it is yours: {why}."
-ASK_CHECKED_SHOWN = "- Already checked: {checked}."
+ASK_QUESTION_SHOWN = "**{question}**"
+ASK_RECOMMEND_SHOWN = '- **I recommend "{pick}":** {why}.'
+ASK_CONTEXT_SHOWN = "- **Context:** {context}."
+ASK_OPTION_SHOWN = '- **Option "{label}":** {gain}. **Costs and risks:** {cost}.'
+ASK_WHY_SHOWN = "- **Why it is yours:** {why}."
+ASK_CHECKED_SHOWN = "- **Already checked:** {checked}."
 
 #: What a hold for the owner's read prints when no `OWNER_ASK` record covers
 #: the change. The ask was prose until 2026-10-18, and sessions skipped it:
@@ -338,7 +339,10 @@ READ_ASK = (
     "first reading what they are judging, and put its background in the context field. "
     "Under each option, say what a learner sees or what changes for the owner, and what "
     "that option gives up, the recommended one included: a choice between one good option "
-    "and one bad one is not a choice. If you cannot say what the option you do not recommend "
+    "and one bad one is not a choice. Put in each option's cost the consequences the owner "
+    "would not see from the option alone: what else it changes or breaks, the follow-on "
+    "work it opens, and whether it can be undone. If you cannot say what the option you do "
+    "not recommend "
     "gains, there is no choice, and the owner is not asked. A choice "
     "between approaches to the interface goes with one annotated screenshot per option, "
     "attached to the reply that carries the lines (.claude/skills/run-the-app/SKILL.md). "
@@ -1139,7 +1143,7 @@ def parse_owner_ask(value: str) -> tuple[str, str]:
         )
     said = [text.strip().rstrip(".") for _, _, text in parts]
     lines = [
-        question,
+        ASK_QUESTION_SHOWN.format(question=question),
         ASK_RECOMMEND_SHOWN.format(pick=pick.strip(), why=why.strip().rstrip(".")),
         ASK_CONTEXT_SHOWN.format(context=said[0]),
         *(

@@ -551,11 +551,14 @@ opening lines of the ask. Every ask has one form, which carries what
 2. the recommendation, and why its gain is worth its cost;
 3. the context: what changed, or what the choice is about;
 4. at least two options, each saying what it changes for you or for a
-   learner and what it gives up, the recommended one included;
+   learner, and its costs and risks: what it gives up and the consequences
+   you would not see from the option alone, such as what else it changes or
+   breaks, the follow-on work it opens, and whether it can be undone;
 5. why the choice is yours rather than the session's;
 6. what was already checked, where anything was.
 
-Each part is printed on its own line, in that order (project owner,
+Each part is printed on its own line, in that order, with the question and
+each part's label in bold (project owner,
 2026-11-10, `PL-M2JP`, and 2026-11-14, `PL-GG4V`). For a held pull request,
 the options are the change and what it was chosen over: what you asked for,
 the behavior it replaces, a smaller version, or the larger rework it would

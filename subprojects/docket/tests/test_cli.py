@@ -12002,14 +12002,14 @@ def test_arm_ask_is_written_in_plain_words_for_the_owner() -> None:
     )
     assert why == ""
     assert line == (
-        "Should the table keep the 1 MAC figure?\n"
-        '- I recommend "Keep": it is the value learners are taught first.\n'
-        "- Context: the hazard table is reworded.\n"
-        '- Option "Keep": learners still see 1 MAC. Cost: the row is longer.\n'
-        '- Option "Drop": the row shows only the age-adjusted value. Cost: learners lose the '
+        "**Should the table keep the 1 MAC figure?**\n"
+        '- **I recommend "Keep":** it is the value learners are taught first.\n'
+        "- **Context:** the hazard table is reworded.\n"
+        '- **Option "Keep":** learners still see 1 MAC. **Costs and risks:** the row is longer.\n'
+        '- **Option "Drop":** the row shows only the age-adjusted value. **Costs and risks:** learners lose the '
         "figure they are taught first.\n"
-        "- Why it is yours: the figure is a clinical value.\n"
-        "- Already checked: every figure still matches its source."
+        "- **Why it is yours:** the figure is a clinical value.\n"
+        "- **Already checked:** every figure still matches its source."
     )
     old, why = arming.parse_owner_ask("risk - r | checked - c | look - l")
     assert old == ""
@@ -12093,14 +12093,14 @@ def test_arm_holds_for_the_owner_only_with_a_recorded_ask(
     assert arming.READ_ASK not in lines
     at = lines.index(arming.ASK_LINE)
     assert lines[at + 1 : at + 7] == [
-        "  Which view opens first?",
-        '  - I recommend "Chooser": it names every view.',
-        "  - Context: the simulator now has three views.",
-        '  - Option "Chooser": the learner picks a view each run. Cost: one more '
+        "  **Which view opens first?**",
+        '  - **I recommend "Chooser":** it names every view.',
+        "  - **Context:** the simulator now has three views.",
+        '  - **Option "Chooser":** the learner picks a view each run. **Costs and risks:** one more '
         "click before every case.",
-        '  - Option "Last used": it opens where they left off. Cost: it hides the '
+        '  - **Option "Last used":** it opens where they left off. **Costs and risks:** it hides the '
         "views a learner has not opened.",
-        "  - Why it is yours: it decides what a learner sees first.",
+        "  - **Why it is yours:** it decides what a learner sees first.",
     ]
 
     closed = _item_document("PL-B1B1", "done")
@@ -12277,14 +12277,14 @@ def test_arm_owner_ask_prints_only_what_may_be_sent_to_the_owner(
 
     assert _arm(root, "--owner-ask") == 0
     assert capsys.readouterr().out == (
-        "Which view opens first?\n"
-        '- I recommend "Chooser": it names every view.\n'
-        "- Context: the simulator now has three views.\n"
-        '- Option "Chooser": the learner picks a view each run. Cost: one more '
+        "**Which view opens first?**\n"
+        '- **I recommend "Chooser":** it names every view.\n'
+        "- **Context:** the simulator now has three views.\n"
+        '- **Option "Chooser":** the learner picks a view each run. **Costs and risks:** one more '
         "click before every case.\n"
-        '- Option "Last used": it opens where they left off. Cost: it hides the '
+        '- **Option "Last used":** it opens where they left off. **Costs and risks:** it hides the '
         "views a learner has not opened.\n"
-        "- Why it is yours: it decides what a learner sees first.\n"
+        "- **Why it is yours:** it decides what a learner sees first.\n"
     )
 
     _claim_by_hand(git, "PL-B1B1", ARM_BRANCH, "2026-09-01T12:00:30+00:00")
@@ -12405,14 +12405,14 @@ ARM_REVIEW = (
     [
         (
             ARM_DECISION,
-            "Which view opens first?\n"
-            '- I recommend "Chooser": it names every view.\n'
-            "- Context: the simulator now has three views.\n"
-            '- Option "Chooser": the learner picks a view each run. Cost: one more '
+            "**Which view opens first?**\n"
+            '- **I recommend "Chooser":** it names every view.\n'
+            "- **Context:** the simulator now has three views.\n"
+            '- **Option "Chooser":** the learner picks a view each run. **Costs and risks:** one more '
             "click before every case.\n"
-            '- Option "Last used": it opens where they left off. Cost: it hides the '
+            '- **Option "Last used":** it opens where they left off. **Costs and risks:** it hides the '
             "views a learner has not opened.\n"
-            "- Why it is yours: it decides what a learner sees first.",
+            "- **Why it is yours:** it decides what a learner sees first.",
             "",
         ),
         (
@@ -12422,15 +12422,15 @@ ARM_REVIEW = (
             "table | recommend Per kilogram - it matches the dosing tables learners use. | "
             "context - the infusion label now reads mcg/kg/min. | why - a dose unit is a "
             "clinical value. | checked - the label matches the unit stored.",
-            "Should the infusion label show the rate per kilogram?\n"
-            '- I recommend "Per kilogram": it matches the dosing tables learners use.\n'
-            "- Context: the infusion label now reads mcg/kg/min.\n"
-            '- Option "Per kilogram": the label reads mcg/kg/min. Cost: the total rate needs '
+            "**Should the infusion label show the rate per kilogram?**\n"
+            '- **I recommend "Per kilogram":** it matches the dosing tables learners use.\n'
+            "- **Context:** the infusion label now reads mcg/kg/min.\n"
+            '- **Option "Per kilogram":** the label reads mcg/kg/min. **Costs and risks:** the total rate needs '
             "a second look.\n"
-            '- Option "Total": the label reads mcg/min. Cost: a learner divides by weight to '
+            '- **Option "Total":** the label reads mcg/min. **Costs and risks:** a learner divides by weight to '
             "compare it with a dosing table.\n"
-            "- Why it is yours: a dose unit is a clinical value.\n"
-            "- Already checked: the label matches the unit stored.",
+            "- **Why it is yours:** a dose unit is a clinical value.\n"
+            "- **Already checked:** the label matches the unit stored.",
             "",
         ),
         ("Q? | A: x; cost: c | B: y; cost: d | recommend A - z", "", ARM_NAMED),
@@ -13737,7 +13737,7 @@ def test_owner_ask_on_answers_for_a_branch_that_is_not_checked_out(tmp_path: Pat
     assert unasked.code == arming.NO_ASK
     assert not asked.unasked
     assert asked.sendable is not None
-    assert asked.sendable.startswith("Which view opens first?")
+    assert asked.sendable.startswith("**Which view opens first?**")
     assert base.answer == arming.NOT_HELD
     assert gone.answer == arming.UNKNOWN
     assert "refs/remotes/origin/claude/never-pushed is not in this checkout" in gone.unread[0]
