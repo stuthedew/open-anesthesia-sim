@@ -5694,7 +5694,8 @@ This model does not represent:
   the blood-to-tissue diffusion limitation above (measured below);
 - uncertainty in the tissue:gas partition coefficients. Each is carried as
   an exact value. The stored values are Gas Man's, which differ by up to 9%
-  from the means of the one laboratory they come from. Other laboratories
+  from the means of the one laboratory they come from
+  (*Anesth Analg* 1989;69:370–373). Other laboratories
   report values for the same tissue that differ by up to 150% (below, with the
   tissues each difference applies to). Within the one laboratory, one SD of
   the muscle coefficient moves a displayed reading by up to 0.90 percentage
@@ -5707,14 +5708,13 @@ This model does not represent:
 - cardiopulmonary bypass;
 - ECMO;
 - hypothermia;
-- alveolar humidification. Real alveolar gas is saturated with water vapour
-  at 47 mmHg, and the modeled alveolus holds none, so no inspired fraction is
+- alveolar humidification. Real alveolar gas is saturated with water vapour, and the modeled alveolus holds none, so no inspired fraction is
   diluted when it reaches the alveolus (sized below, with what correcting it
   would cost);
 - the difference between ambient and body conditions. Every gas volume is
   carried at the single reference condition that "Agent amount" fixes, and no
   ambient-to-body correction is applied anywhere (sized below);
-- altitude, or any ambient pressure other than the 760 mmHg fixed under
+- altitude, or any ambient pressure other than the one atmosphere fixed under
   § "Assumptions" (what that excludes is below);
 - age-dependent MAC;
 - individual variation in awakening concentration. The chart's MAC-awake band
@@ -5742,7 +5742,7 @@ formulations that lift the constraint.
 the fast pool.** On round physiologic figures, 1 kg of lung tissue with a
 tissue:blood ratio of 1.2, and 1.8 L of pulmonary and arterial blood, the store
 is worth 20.1% of desflurane's fast pool, 19.7% of sevoflurane's and 23.4% of
-isoflurane's.
+isoflurane's. These figures have no test yet (`PL-LP96`).
 
 The store takes up agent in the first minutes of wash-in, but it equilibrates
 fully within about thirty minutes. So it barely changes $`F_A/F_I`$ at 30
@@ -5750,7 +5750,8 @@ minutes, the value compared with the published wash-in data. It acts mainly
 early in an elimination, and only a run with the rebreathing circuit removed
 showed it. "Desflurane's residual, and why the parameter file was not changed"
 weighs these figures against the other explanations of desflurane's
-five-minute washout disagreement, described below.
+five-minute washout disagreement, described below. The thirty minutes has no
+test yet (`PL-LP96`).
 
 **The vessel-poor group is left out because it takes up almost no agent, and
 Eger's own model leaves it out for that reason.** Eger grouped the body's
@@ -5803,7 +5804,8 @@ partition coefficients after 6–9 weeks' equilibration:
 | endotracheal tube (PVC) | 34.7 | 68.5 | 114 | 233 |
 | mask pad (PVC) | 51.7 | 104 | 170 | 323 |
 
-The ranking held at every equilibration time from 7.5 min to 9 weeks. So
+The ranking held at every equilibration time from 7.5 min to 9 weeks
+(*Anesth Analg* 1989;69:218–225). So
 **the inert circuit is most nearly true for desflurane and least for
 halothane**, and the size of this omission depends on which agent is loaded.
 The same study measured washin and washout in a real circuit at 0.5–5 L/min
@@ -5926,8 +5928,8 @@ meta-analytic values, and how much the choice of MAC source alone shifts a
 sevoflurane-versus-desflurane comparison in MAC multiples. The shift is consistent within an agent and changes no curve's shape or
 timing. It rescales one agent's MAC axis against another's. The
 sevoflurane-versus-desflurane shift is larger than the confidence limits of
-Mapleson's values, so by Mapleson's meta-analysis two agents at "1 MAC" are not
-equipotent to that precision. The interface displays
+Mapleson's values, so by Mapleson's meta-analysis two agents at one MAC each
+are not equipotent to that precision. The interface displays
 the divisor for this reason. Moving all parameters to primary sources is
 `ROADMAP.md`'s planned-milestone item 31.
 
@@ -5968,7 +5970,7 @@ stored fraction implies. The two Yasuda 1991 papers this model is validated
 against each fit a five-compartment mammillary model to each volunteer's data,
 and read the slowest compartment as fat. Both estimate its blood flow as that
 compartment's tissue/blood partition coefficient times its fitted rate
-constant (*Anesth Analg* p. 319). For sevoflurane and isoflurane they found
+constant (*Anesth Analg* 1991;72:319). For sevoflurane and isoflurane they found
 2.4 ± 0.6 and 2.2 ± 0.5 mL per 100 mL of tissue per minute (Table 5, p. 322).
 For desflurane and isoflurane they found 2.1 ± 0.4 and 2.2 ± 0.2 (Table 5,
 p. 496). These are mean ± SD, at the fat:blood coefficients of Yasuda, Targ
@@ -5984,7 +5986,8 @@ those values, the fitted fat-group time constants of 2,120, 2,130, 1,340 and
 2,090 minutes (Table 4 of each paper) give 2.5, 2.5, 2.3 and 2.6. Read as
 evidence about the fat group's flow, the PET measurement puts the stored
 figure at about twice the truth, and the washout fits put it at or a little
-below the truth.
+below the truth. `test_the_fitted_fat_time_constants_imply_the_flows_printed`
+repeats this arithmetic.
 <!-- derived: 2.07 from data/patients/reference_adult.json tissue_groups.fat.perfusion_fraction = 0.06, default_cardiac_output_l_min = 5.0, tissue_groups.fat.volume_l = 14.5 -->
 <!-- derived: 52 for sevoflurane from data/agents/sevoflurane.json tissue_gas_partition_coefficients.fat = 34.0, blood_gas_partition_coefficient = 0.65 -->
 <!-- derived: 54 for isoflurane from data/agents/isoflurane.json tissue_gas_partition_coefficients.fat = 70.0, blood_gas_partition_coefficient = 1.3 -->
@@ -5996,7 +5999,7 @@ and the depots within such a compartment really do differ (Frayn and Karpe).
 The fitted compartment is fat only by the authors' assignment (see the
 cautions below). Its volume is a third to two fifths of the fat this model
 stores, and the analysis "only accounts for about 25 L of the body volume"
-(*Anesth Analg* p. 323). The same paper's flow estimates ran too small for the
+(*Anesth Analg* 1991;72:323). The same paper's flow estimates ran too small for the
 vessel-rich group and too large for muscle, compared with known values
 (p. 323). The volunteers breathed nitrous oxide throughout. The terminal time
 constant was fitted over days on which they had left the hospital and exceeded
@@ -6041,7 +6044,9 @@ fitted fat group's in all four cohorts: within one standard deviation in
 three, and 2.2 standard deviations above it in the fourth. It is 5.5 to 6.8
 times the fourth compartment's time constant. The muscle group equilibrates in
 85 to 135 minutes, so nothing in this model has a time constant on the fourth
-compartment's scale. Leaving that compartment out biases three things. Each
+compartment's scale
+(`test_the_muscle_group_equilibrates_in_the_minutes_printed`). Leaving that
+compartment out biases three things. Each
 bias is worked out from the compartment structure above, not from running the
 simulator:
 
@@ -6058,7 +6063,8 @@ simulator:
   constants, the partial pressure in fat lying against well-perfused tissue,
   as a fraction of arterial, is four to six and a half times the trace's
   throughout a case of that length. After an hour, that fat is at 13 to 20% of
-  arterial, against the trace's 2.3 to 3.9%. It still stays below the lean
+  arterial, against the trace's 2.3 to 3.9%, figures that have no test yet
+  (`PL-LP96`). It still stays below the lean
   tissue feeding it, because agent moves down that gradient into the fat.
 - **The late washout loses its largest measured term.** On the coefficients of
   the published mean washout curves (Tables 1 and 2 of each paper), after a
@@ -6084,7 +6090,7 @@ simulator:
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **Eger and Saidman's review draws the same compartment, and names a fourth
-bias.** Their Table 3 (p. 1024) gives intertissue diffusion a group of its
+bias.** Their Table 3 (*Anesth Analg* 2005;100:1024) gives intertissue diffusion a group of its
 own, "a subset of the FG" [fat group]. That group is 2.9 L, where the fat
 group is 14.5 L. Its time constants are 230, 412 and 396 minutes for
 desflurane, sevoflurane and isoflurane, against bulk fat's 1,226, 2,198 and
@@ -6124,7 +6130,7 @@ perirenal fat sampled against the kidney held 20 and 35 times the
 concentration of fat sampled far from it. Its tension was "comparable to the
 arterial tension instead of to the very low tension to be expected if the fat
 had received halothane only from its own blood supply" (Allott et al.,
-p. 289). Eger and Saidman cite that as the direct demonstration (their ref 8),
+*Br J Anaesth* 1976;48:289). Eger and Saidman cite that as the direct demonstration (their ref 8),
 though they call their own group's washout fits "the most convincing
 evidence" (p. 1025). The size has not been measured that way. Their
 "approximately 30% of the anesthetic taken up" and their time constants of 200
@@ -6229,13 +6235,14 @@ for a stored value:
 laboratories disagree with them by up to 150% in some tissues.** The stored
 values are Gas Man's. They differ from Yasuda, Targ and Eger's means in seven
 of the nine cells, by up to 9% in isoflurane's fat coefficient, 70.0 against
-64.2 (§ "Parameter provenance" has the table). Hendrickx and De Wolf state the
+64.2 (§ "Parameter provenance" has the table;
+`test_the_stored_set_differs_from_yasudas_means_by_the_percents_printed`). Hendrickx and De Wolf state the
 general case: "Tissue solubilities vary up to 150% between authors (Yasuda et
 al. 1989), and the tissue homogenates used to determine these coefficients may
 not represent in vivo conditions" (p. 165). The 150% is not spread evenly
 across the tissues this model uses. Yasuda, Targ and Eger, whose measurements
-the stored values rest on, compare their values with two other laboratories on
-p. 373. Fiserova-Bergerova et al.'s values for sevoflurane, isoflurane and
+the stored values rest on, compare their values with two other laboratories
+(*Anesth Analg* 1989;69:373). Fiserova-Bergerova et al.'s values for sevoflurane, isoflurane and
 halothane were similar to theirs for brain and for fat, except halothane's fat
 coefficient, which was 65% greater. They were 115% to 150% greater for kidney
 and 10% to 30% less for muscle. Those values are Fiserova-Bergerova, Tichy and
@@ -6245,14 +6252,14 @@ greater. The authors could not explain the differences.
 
 A third published set agrees less well. Baker and Farmery's 2011 review
 prints tissue:blood coefficients from Fiserova-Bergerova and Diaz 1986 beside
-the set that matches this model (Table 2, p. 572). On the tissue:blood scale,
+the set that matches this model (*Compr Physiol* 2011;1:572, Table 2). On the tissue:blood scale,
 that set puts sevoflurane's fat coefficient at 71.7, 37% above this model's
 52.3, and isoflurane's muscle coefficient at 1.71, 51% below this model's
 3.46. Its vessel-rich figures are 28% above this model's for both agents. The
 set's own blood:gas values, 0.6 for sevoflurane and 1.4 for isoflurane, move
 these gaps in opposite directions for the two agents, so the tissue:gas scale
 that this model stores gives the fairer comparison. On that scale the set's
-sevoflurane fat coefficient is 26% above this model's and its isoflurane
+sevoflurane fat coefficient is 27% above this model's and its isoflurane
 muscle coefficient 47% below. Its vessel-rich coefficient is 18% above for
 sevoflurane and 38% above for isoflurane. The set may not be a measurement.
 According to its PubMed abstract, the 1986 paper measured coefficients only
@@ -6275,9 +6282,10 @@ and Lowe's isoflurane values were higher by a margin that Yasuda does not
 break down by tissue. And Yasuda's own muscle measurements spread the most.
 Their standard deviation is 43% of the mean for sevoflurane (2.38 ± 1.03),
 45% for isoflurane (4.40 ± 1.97) and 37% for desflurane (0.94 ± 0.35),
-against 17% to 19% for fat. Eger and Saidman's Table 1 makes the same point
+against 17% to 19% for fat
+(`test_yasudas_fat_spreads_are_the_percents_printed`). Eger and Saidman's Table 1 makes the same point
 from the literature as a whole. Their best figure for sevoflurane muscle is
-1.7, with 1.1 to 2.4 as the range across the studies they cite (p. 1022),
+1.7, with 1.1 to 2.4 as the range across the studies they cite (*Anesth Analg* 2005;100:1022),
 where the agent file stores 2.4. A muscle group's time constant is
 proportional to its tissue:gas coefficient, so 1.7 in place of 2.4 would
 shorten the sevoflurane muscle time constant by 29%. That is how much a
@@ -6307,7 +6315,7 @@ names, read at the source. It gives $`0.2M^{3/4}`$ for a body mass $`M`$ in
 kg, which is 4.84 L/min at 70 kg. It is **derived, not measured**
 (§ "Parameter provenance" gives the derivation). The second is Cattermole et
 al.'s **measured** median of 5.51 L/min, from 686 subjects in the 50–75 kg
-band that this patient sits in.
+band that this patient sits in (*Physiol Rep* 2017;5(6):e13195).
 <!-- provenance: data/patients/reference_adult.json default_cardiac_output_l_min = 5 -->
 <!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
 
@@ -6381,6 +6389,11 @@ explicit conditions per compartment, which is well outside the current
 milestone.
 <!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
+**For developers.** `test_the_reference_condition_gap_is_the_ratio_of_molar_volumes`
+computes the molar volumes at 37 °C and 20 °C from the constants in
+`core/liquid_agent.py`, and the 5.8 % and 5.5 % from their ratio.
+<!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
+
 **The modeled alveoli are dry, and real ones are saturated at 47 mmHg.** This
 is the third gas-phase condition, beside temperature and pressure. "Agent
 amount" states the reference condition as 20 °C and 760 mmHg, *dry*. Alveolar
@@ -6394,6 +6407,10 @@ is 6.6 % above the humidified one, which is 47/713. The alveolar equation
 carries $`\dot V_A(F_I - F_A)`$ with no such factor, so $`F_I`$ arrives
 undiluted.
 <!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
+
+**For developers.** `test_the_humidification_dilution_follows_from_the_water_vapour_pressure`
+computes the 713 mmHg, the 6.2 % and the 6.6 % from 47 mmHg and one
+atmosphere.
 
 **The 47 mmHg is computed.** The saturation pressure of water at 37.0 °C is
 47.12 mmHg on the IAPWS-95 formulation (Wagner W, Pruß A. *The IAPWS
@@ -6431,10 +6448,12 @@ against the published means and standard deviations.
 twice.** In those studies, $`F_A/F_I`$ is a ratio of two analyser readings
 taken from real airways. So whatever humidification does to alveolar agent is
 already inside the measured 0.850, and a model that reproduces that number has
-already absorbed it. The stored coefficients raise the same problem. They are
-tissue:gas and blood:gas ratios equilibrated at 37 °C, and how much water the
-gas phase held in those determinations is recorded nowhere that this project
-has read. Applied to $`F_I`$ alone, against coefficients whose own gas-phase
+already absorbed it. The stored coefficients raise the same problem. The
+tissue:gas ratios were equilibrated at 37 °C (*Anesth Analg*
+1989;69:370–373). The blood:gas ratios are Gas Man's set as De Wolf et al.
+print it (*BMC Anesthesiol* 2012;12:22), and no measurement behind them has
+been adopted. How much water the gas phase held in either set's
+determinations is recorded nowhere that this project has read. Applied to $`F_I`$ alone, against coefficients whose own gas-phase
 basis is unknown here, a factor could not be shown to move the model toward
 the real behaviour rather than away from it. A proper correction puts the
 coefficients and the inspired term on the same gas-phase basis together. That
@@ -6459,7 +6478,8 @@ delivered-concentration dial stops meaning one partial pressure.**
 specified for sea level. Take a user in Denver (about 630 mmHg) or Mexico City
 (about 585 mmHg) who sets 6% desflurane in this simulator and 6% on the
 corresponding real device. That user is not delivering the same anesthetic,
-and nothing else in the simulator says so. The delivered-concentration control
+and nothing else in the simulator says so. The two pressures have no test yet
+(`PL-LP96`). The delivered-concentration control
 is a vaporizer dial, and this project's three agents are drawn from two
 classes of vaporizer that respond to falling ambient pressure in opposite
 directions.
@@ -6473,7 +6493,8 @@ saturated vapour pressure, which temperature sets and ambient pressure does
 not. The dial sets the splitting ratio. So as ambient pressure falls, the
 output rises in volumes percent while the delivered *partial pressure* is
 approximately preserved, and the dial needs no altitude correction. Boumphrey
-and Marshall give the approximation as
+and Marshall (*Contin Educ Anaesth Crit Care Pain* 2011;11:199–203) give the
+approximation as
 $`\%_1 = \%_\mathrm{cal} \times P_\mathrm{cal} / P_1`$. Their worked example
 is isoflurane dialled to 2% at 101.3 kPa, which delivers 4.05% at 50 kPa.
 That is 2.026 kPa of isoflurane either way.
@@ -6483,7 +6504,7 @@ That is 2.026 kPa of isoflurane either way.
 includes the Tec 6 and Tec 6 Plus. Desflurane needs it because it boils at
 22.8 °C. The sump is kept at about 39 °C, which fixes desflurane's vapour
 pressure at about 1460 mmHg, a pressure chosen to clear the vaporizer's own
-internal resistances. Pure vapour is injected into the fresh gas stream. A
+internal resistances (*Br J Anaesth* 1994;72:474–479). Pure vapour is injected into the fresh gas stream. A
 differential pressure transducer keeps the vapour circuit at the fresh-gas
 circuit's pressure, so the two flows stay in the fixed *ratio* that the dial
 sets. Andrews and Johnston describe it: "The pressure in the vapor circuit is
@@ -6501,7 +6522,7 @@ valve must be advanced to maintain the required agent partial pressure."
 **The MAC that the display divides by is a sea-level percent for the same
 reason.** 1 MAC is a partial pressure, which convention quotes as a percentage
 of one atmosphere. So at reduced ambient pressure, the percentage needed to
-reach it rises while the partial pressure does not. James and White proposed
+reach it rises while the partial pressure does not. James and White (*Anesth Analg* 1984;63:1097–1105) proposed
 MAPP, minimum alveolar *partial pressure*, in place of MAC on exactly this
 ground. So the unit described under `docs/INTERFACE.md` § "MAC multiples as a display unit" is a
 sea-level unit too.
@@ -6515,7 +6536,8 @@ $`\mathrm{SVP} \ll P`$. Isoflurane's saturated vapour pressure is about
 240 mmHg at 20 °C, which is not small against 760. Carrying the denominator
 through gives a delivered partial pressure that *overshoots* rather than holds
 steady: on that arithmetic alone, about 16% high at 585 mmHg, where the
-$`1/P`$ form predicts a flat line. The direction of each class's response is
+$`1/P`$ form predicts a flat line
+(`test_the_variable_bypass_overshoot_at_altitude_follows_from_the_fuller_form`). The direction of each class's response is
 not in doubt, and neither is the contrast between the two. The size of the
 variable-bypass compensation is approximate, so no number is stored for it. An implementation of ambient pressure should
 derive the variable-bypass case from each agent's saturated vapour pressure
@@ -6567,14 +6589,14 @@ on that reading alone: the passage quoted from Datex-Ohmeda, the 1–18% range
 beside it, and the worked example attributed to Boumphrey and Marshall.
 Nothing stored depends on any of them. A reader who wants to verify one has to
 reach the document itself.
-<!-- not-restated: 18 % -->
+<!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 
 **Gas Man's own agreement with patients depends on the phase of the case, and
 wash-in is its worst phase.** This model's parameter set and its compartment
 structure both descend from Gas Man, which § "Source hierarchy" ranks tier 3.
 Its value there is that it fixes the behaviour of a widely used teaching tool
 for this implementation to be compared against. A prospective in-patient study
-measured how closely that behaviour tracks real end-expired sevoflurane.
+(*J Clin Monit Comput* 2022;36:1881–1890) measured how closely that behaviour tracks real end-expired sevoflurane.
 Twenty-eight ASA I–II adults undergoing gynecologic or urologic surgery were
 maintained on sevoflurane in O₂/air, fourteen on a Dräger Zeus and fourteen on
 a Getinge FLOW-i. Fresh gas flow was re-randomised every fifteen minutes over
@@ -6600,7 +6622,8 @@ agreement does not hold:
 
 <!-- not-restated: 18 %, 6 %, 5 % -->
 
-The brackets are the published interquartile ranges, and they carry more of
+The brackets are the published interquartile ranges
+(*J Clin Monit Comput* 2022;36:1881), and they carry more of
 the finding than the medians do. A quarter of FLOW-i patients were tracked
 worse than 51% through the first fifteen minutes, against worse than 10% over
 the last forty-five. The two metrics are Varvel's. This project has not read
@@ -6666,7 +6689,8 @@ that fat depots differ. The default cardiac output is
 `default_cardiac_output_l_min`, and no equation reads `weight_kg`. The
 reference-condition gap leaves the release gate's relative residual untouched.
 `core/liquid_agent.py` is where an amount leaves the unit. It converts a
-delivered or exhausted amount exactly and reads a store 5.8 % high, and its
+delivered or exhausted amount exactly and reads a store 5.8 % high
+(`test_the_reference_condition_gap_is_the_ratio_of_molar_volumes`), and its
 docstring says so. The humidification table was computed with
 `_wash_in_ratio` in `tests/reference/test_published_wash_in_and_elimination.py`,
 against the published means and standard deviations that the module itself
