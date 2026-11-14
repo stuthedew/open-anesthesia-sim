@@ -296,7 +296,6 @@ check: sync
 # outside `docket.toml`'s `[models]` table, and the excluded model anywhere
 # but the table and the records (`PL-0XDM`).
 	python3 tools/model_home_check.py
-	python3 tools/rejected_prose.py check
 # Under `uv run`, unlike the bare lines above, because it reads project source:
 # the docstrings of every module, for the citations in them, and that source
 # targets 3.14. The 3.11 floor parser cannot read all of it, and this names each

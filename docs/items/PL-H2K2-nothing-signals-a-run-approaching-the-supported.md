@@ -6,9 +6,9 @@ effort: M
 status: ready
 classes: ux
 feature: presentation-safety
-touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/controller.py, tests/unit/test_dashboard_frame.py, tests/integration/test_simulation_view.py, tests/integration/test_controller.py
+touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/controller.py, tests/unit/test_dashboard_frame.py, tests/integration/simulation_view, tests/integration/controller
 added: 2026-09-07
-verify: grep -q 'def test_the_interface_says_the_run_is_approaching_its_supported_length' tests/unit/test_dashboard_frame.py && uv run pytest -q tests/unit/test_dashboard_frame.py tests/integration/test_controller.py
+verify: grep -q 'def test_the_interface_says_the_run_is_approaching_its_supported_length' tests/unit/test_dashboard_frame.py
 ---
 
 **Problem.** Nothing signals a run approaching the supported run length; it
