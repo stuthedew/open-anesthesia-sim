@@ -51,8 +51,17 @@ from functools import partial
 from types import MappingProxyType
 from typing import Final, cast
 
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QScrollArea, QVBoxLayout, QWidget
+from PySide6.QtCore import QSize, Qt
+from PySide6.QtGui import QResizeEvent
+from PySide6.QtWidgets import (
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QScrollArea,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+)
 
 from anesthesia_sim.app.agent_cost import AGENT_COST_HEADING, UNIT_CHOICE_LABEL, UNIT_CHOICES
 from anesthesia_sim.app.chart_frame import ChartFrame
@@ -96,8 +105,13 @@ from anesthesia_sim.app.qt_schematic import RunSchematic
 from anesthesia_sim.app.qt_widgets import BookmarksPanel, FocusedComboBox, ForkPanel, styled_label
 from anesthesia_sim.app.run_presentation import NotBuilt, RunPresentation
 from anesthesia_sim.app.run_surfaces import AccountingPanel, ParameterControls
-from anesthesia_sim.app.stylesheets import panel_stylesheet, selector_stylesheet
+from anesthesia_sim.app.stylesheets import (
+    clear_scroll_area_stylesheet,
+    panel_stylesheet,
+    selector_stylesheet,
+)
 from anesthesia_sim.app.theme import (
+    CHART_KEY_LEAST_HEIGHT,
     INK,
     METRIC_QUALIFIER_SIZE,
     MUTED,
@@ -416,6 +430,71 @@ def _bare_column(view: QWidget) -> QVBoxLayout:
     return column
 
 
+class _KeyScroll(QScrollArea):
+    """Holds the rows a reader reads a plot with, and scrolls them where the View is too short.
+
+    The rows are a chart View's statement of the window shown, its reference
+    values and its legend. The box asks for the height that the rows need at
+    the width the box has, and takes no more. In a View too short for the rows
+    and the plot, the box is squeezed to `theme.CHART_KEY_LEAST_HEIGHT`. The
+    reader then scrolls the rows inside the box, and the plot keeps its place
+    under them (`PL-CBYS`).
+
+    Args:
+        rows: The rows, in the order they are read.
+    """
+
+    def __init__(self, rows: Sequence[QWidget]) -> None:
+        super().__init__()
+        self._body = QWidget()
+        column = QVBoxLayout(self._body)
+        column.setContentsMargins(0, 0, 0, 0)
+        column.setSpacing(VIEW_ROW_SPACING)
+
+        for row in rows:
+            column.addWidget(row)
+
+        self.setFrameShape(QFrame.Shape.NoFrame)
+        self.setWidgetResizable(True)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setMinimumHeight(CHART_KEY_LEAST_HEIGHT)
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
+        # The box paints nothing of its own, so the View's panel shows behind
+        # the rows. `setWidget` would otherwise fill the rows' background from
+        # the palette.
+        self.setStyleSheet(clear_scroll_area_stylesheet())
+        self.viewport().setAutoFillBackground(False)
+        self.setWidget(self._body)
+        self._body.setAutoFillBackground(False)
+
+    def minimumSizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        """The widest row's least width with the scroll bar beside it, and the box's least height.
+
+        The box never scrolls sideways, so a View narrower than its widest row
+        would cut that row off at the right. A `QScrollArea`'s own least width
+        counts only its scroll bar, and the View's least width, which sets the
+        Area's, would then leave out every row in the box (`PL-CBYS`).
+        """
+
+        least = super().minimumSizeHint()
+        width = self._body.minimumSizeHint().width() + self.verticalScrollBar().sizeHint().width()
+
+        return QSize(max(least.width(), width), least.height())
+
+    def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        """The rows' width, and the height the rows need at the width the box has."""
+
+        hint = self._body.sizeHint()
+        height = self._body.heightForWidth(self.viewport().width())
+
+        return QSize(hint.width(), hint.height() if height < 0 else height)
+
+    def resizeEvent(self, event: QResizeEvent) -> None:
+        super().resizeEvent(event)
+        # The height that the rows need depends on the box's width.
+        self.updateGeometry()
+
+
 class ConcentrationView(QWidget):
     """The concentration chart, with everything a reader needs to read it.
 
@@ -427,6 +506,12 @@ class ConcentrationView(QWidget):
     could not be marked. Then comes the plot itself. Everything above the
     plot is a label, a legend entry or a reference value rather than a
     sentence (`PL-6580`, `PL-F9TQ`).
+
+    In an Area too short for all of that, the plot shrinks to
+    `theme.CHART_LEAST_HEIGHT`. The statement of the window, the reference
+    values and the legend then scroll in a box of their own above the plot
+    (`_KeyScroll`). The advisories stay outside the box, so a reader sees one
+    as soon as it applies (`PL-CBYS`).
 
     The time window is the View's own, set from its control and saved in its
     state (`PL-L59K`). The legend shows the dashboard's compartment selection
@@ -477,10 +562,16 @@ class ConcentrationView(QWidget):
         heading.addWidget(self.time_base_selector)
         column.addLayout(heading)
         column.addWidget(self.state_notice)
-        column.addWidget(self.time_axis_caption)
-        column.addWidget(self.mac_reference_text)
-        column.addWidget(self.mac_awake_reference_text)
-        column.addWidget(self.legend)
+        column.addWidget(
+            _KeyScroll(
+                (
+                    self.time_axis_caption,
+                    self.mac_reference_text,
+                    self.mac_awake_reference_text,
+                    self.legend,
+                )
+            )
+        )
         column.addWidget(self.hidden_traces_text)
         column.addWidget(self.capped_traces_text)
         column.addWidget(self.off_scale.holder)
@@ -543,6 +634,13 @@ class ConcentrationView(QWidget):
 class WashInView(QWidget):
     """The F_A/F_I plot, with its heading, its window, what it shows, its legend and lines per run.
 
+    In an Area too short for all of it, the plot shrinks to
+    `theme.WASH_IN_CHART_LEAST_HEIGHT`, and the rows from the statement of the
+    window to the legend scroll in a box above the plot, as the concentration
+    chart's do (`_KeyScroll`). "Modelled, not measured" is the View's
+    `pinned_row`: its Area shows it above the box that scrolls the View, so
+    the words are on screen wherever any part of the plot is (`PL-26BZ`).
+
     Its time window is its own, as the concentration chart's is (`PL-L59K`).
     Where both show the same window, the dashboard hands both the same frame,
     so the two plots draw the same instants (`PL-9LNF`).
@@ -553,6 +651,8 @@ class WashInView(QWidget):
     Attributes:
         chart: The plot.
         legend: The plot's legend.
+        pinned_row: "Modelled, not measured", which the View's Area keeps on
+            screen above the View's scroll box.
         time_base_selector: The control that sets the window's width.
     """
 
@@ -576,10 +676,20 @@ class WashInView(QWidget):
         heading.addWidget(self.time_base_selector)
         column.addLayout(heading)
         column.addWidget(self.state_notice)
-        column.addWidget(self.time_axis_caption)
-        column.addWidget(styled_label(WASH_IN_DENOMINATOR_TEXT, color=MUTED, wrap=True))
-        column.addWidget(styled_label(WASH_IN_MODELLED_TEXT, color=MUTED))
-        column.addWidget(self.legend)
+        # The safety standard requires these three words beside the plot
+        # (`PL-F9TQ`). The View's Area keeps the row above the box that
+        # scrolls the View, so the words are on screen wherever any part of
+        # the plot is (`PL-26BZ`).
+        self.pinned_row = styled_label(WASH_IN_MODELLED_TEXT, color=MUTED)
+        column.addWidget(
+            _KeyScroll(
+                (
+                    self.time_axis_caption,
+                    styled_label(WASH_IN_DENOMINATOR_TEXT, color=MUTED, wrap=True),
+                    self.legend,
+                )
+            )
+        )
         column.addWidget(self.states.holder)
         column.addWidget(self.unmarked_changes.holder)
         column.addWidget(self.chart, 1)
@@ -840,11 +950,10 @@ class _CasePanelView[W: QWidget](QWidget):
     Where the dashboard has no such panel to give, the View shows a line that
     says why (`PL-TH35` Q6).
 
-    The rows sit in a scroll area of the View's own. An Area may be shorter
-    than a long mark name needs once the name wraps, and narrower than the
-    branch control's row of buttons. The View then scrolls, and no row is
-    clipped. Step 2 of `PL-CBYS` is to move this scroll into the container,
-    for every View.
+    An Area may be shorter than a long mark name needs once the name wraps,
+    and narrower than the branch control's row of buttons. The Area then
+    scrolls the View, as it does every View, and no row is clipped
+    (`area_layout.ViewScroll`, `PL-CBYS`).
     """
 
     def __init__(
@@ -861,18 +970,10 @@ class _CasePanelView[W: QWidget](QWidget):
         self.state_notice = _state_notice_for(context)
         self.absent_notice = styled_label(absent_text, color=MUTED, wrap=True)
         self.absent_notice.setHidden(True)
-        body = QWidget()
-        self._column = QVBoxLayout(body)
-        self._column.setContentsMargins(0, 0, 0, 0)
-        self._column.setSpacing(VIEW_ROW_SPACING)
+        self._column = _panel_column(self, object_name)
         self._column.addWidget(self.state_notice)
         self._column.addWidget(self.absent_notice)
         self._column.addStretch(1)
-        self.scroll_area = QScrollArea()
-        self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
-        self.scroll_area.setWidget(body)
-        _panel_column(self, object_name).addWidget(self.scroll_area)
 
     @property
     def panel(self) -> W | None:

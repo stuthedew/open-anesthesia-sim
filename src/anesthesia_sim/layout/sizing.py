@@ -10,13 +10,14 @@ toolkit, so a test drives them with no `QApplication`. The adapter,
 `app/area_layout.py`, draws exactly the sizes this module gives.
 
 **A View's minimum size is a constraint, not a request** (`PL-K285` Q1). Each
-Area has a *need*: the least size at which its View can be drawn. Where the
-layout can give every Area its need, it does. An Area whose share of its split
-would be smaller than its need is *held* at its need. The other children of
-that split give up the room in proportion to their fractions. So a View is
-never drawn smaller than its need, and never clipped. The stored fractions are
-not changed. They are the reader's proportions, and they apply again once the
-extent is large enough.
+Area has a *need*: the least size of the Area in which its View is shown. A
+View whose content needs more room than that scrolls inside its Area
+(`PL-CBYS`). Where the layout can give every Area its need, it does. An Area
+whose share of its split would be smaller than its need is *held* at its need.
+The other children of that split give up the room in proportion to their
+fractions. So an Area is never drawn smaller than its need, and the View in it
+is scrolled, never clipped. The stored fractions are not changed. They are the
+reader's proportions, and they apply again once the extent is large enough.
 
 **An Area that cannot be given its need says so** (`PL-K285` Q2 and Q3,
 `PL-30L5` Q2). This happens when something the reader does asks for more room

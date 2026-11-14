@@ -32,7 +32,7 @@ from anesthesia_sim.app.formatting import format_elapsed, format_mac_multiple, f
 from anesthesia_sim.app.qt_chart import TraceLegend
 from anesthesia_sim.app.qt_widgets import ReadoutRow
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
-from anesthesia_sim.app.theme import AGENT_SELECTOR_WIDTH
+from anesthesia_sim.app.theme import AGENT_SELECTOR_WIDTH, CHART_HEIGHT
 from anesthesia_sim.app.unconditional_set import UnconditionalValue
 from anesthesia_sim.app.view_registry import CONCENTRATION_CHART, PARAMETER_CONTROLS
 from anesthesia_sim.core.concentration import Percent
@@ -41,6 +41,7 @@ from anesthesia_sim.layout.tree import AreaId
 from tests.integration.simulation_view.simulation_view_support import (
     _ALVEOLAR_METRIC_QUALIFIER,
     _LAPTOP_WIDTH_PX,
+    _TALL_WINDOW_HEIGHT_PX,
     _advance,
     _branched_case,
     _case_view,
@@ -92,13 +93,19 @@ def test_the_hover_readout_states_the_agent_compartment_and_both_units(
     a grid column rather than to a step. So the time the readout states is
     the instant rounded to the hover's own resolution, not the column's raw
     time.
+
+    The window is tall enough for the plot's preferred height. At the fixed
+    test size the plot is at its least height, where the circuit trace lies
+    inside the hover's radius of the alveolar point too, and the readout then
+    names both (`PL-CBYS`).
     """
 
     controller = SimulationController()
     controller.start()
     _advance(controller, 300.0)
-    view = _shown_view(application, controller)
+    view = _shown_view(application, controller, height_px=_TALL_WINDOW_HEIGHT_PX)
     chart = _concentration(view).chart
+    assert chart.height() >= CHART_HEIGHT
     frame = chart.frame
     assert frame is not None
     run = frame.runs[0]
@@ -127,6 +134,11 @@ def test_hiding_a_trace_changes_only_what_is_drawn(application: QApplication) ->
     controller.start()
     _advance(controller, 120.0)
     view = _shown_view(application, controller)
+    # The first frame is drawn before the plot, at its least height in this
+    # Workspace, has its settled width: 979 px, against 990 px from the next
+    # frame on. So the curves are compared from the second frame (`PL-2NNM`).
+    application.processEvents()
+    view.present(False)
     run = view.runs[0]
     chart = _concentration(view).chart
     snapshot = controller.snapshot()
