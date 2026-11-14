@@ -298,7 +298,11 @@ tolerance of the dragged coordinate, connected or not. It runs only when
 `extend` is set and a check on the edge (`screen_geom_edge_can_extend`) allows
 it. A helper lets the user turn the extended selection on or off during a drag
 (`area_move_reinit`). That helper is the clearest evidence that the extended
-selection is a mode the user enters, not the default.
+selection is a mode the user enters, not the default. This source was read
+again on 2026-11-14 from `blender/blender` `main`, where pressing or releasing
+Shift during a drag calls that helper (`area_move_modal`). The Manual's "Areas" page, in its "Resizing"
+section, says the same on the same date: Shift moves nearby aligned borders
+together while resizing.
 
 **Merging aligned edges in Blender is a separate command on a right-click menu.**
 The merge function (`screen_geom_edge_aligned_merge`) has only one caller,
@@ -1068,7 +1072,21 @@ to share, the layout model finds the dragged line from where the borders lie
 that a drag brings into line are one line from then on. Blender's border drag
 merges no vertices and removes only duplicate edges (`area_move_exit` in
 `screen_ops.cc`, `blender/blender` `main`, read 2026-10-12), so its two edges
-stay two until the user merges them on purpose.
+stay two until the user merges them on purpose. With Shift held, the dragged
+border moves alone, which is the reverse of Blender's Shift (the entry
+"**Shift**" below).
+
+**Shift moves the dragged border alone, where Blender's Shift moves more
+borders.** In Blender, Shift extends a border drag to every border aligned with
+the dragged one, connected or not (§ "How a layout is built, and how far the
+operations reach"). Here, Shift keeps the rest of the line in place and moves
+only the dragged border (`LayoutModel.resize` with `alone=True`, `PL-2KXB`).
+The keyboard does the same: an arrow key with Shift moves the focused border
+alone. The decision that chose this (`PL-RQT1` Q3, ratified 2026-10-11) meant
+to keep Blender's behaviour, and read the Manual as saying that Shift moves
+only the border under the pointer. The Manual and Blender's source both say
+otherwise (read 2026-11-14), so this divergence has no recorded cause beyond
+that reading. Whether to change it is an open decision (`PL-GJFL`).
 
 **Every border off the dragged line keeps its place in the window.** Blender moves
 only the vertices flagged as on the dragged line (`area_move_apply_do` in
