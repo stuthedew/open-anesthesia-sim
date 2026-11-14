@@ -3,11 +3,13 @@ id: PL-QVNR
 title: Test drafting reader-facing prose in a clean process from a list of facts, as a fix on the writing side of PL-J1ZM
 priority: P2
 effort: M
-status: ready
+status: dropped
 classes: infra
 feature: copy-editor
 touches: .claude/rules/plain-writing.md
 added: 2026-11-10
+closed: 2026-11-14
+reason: Its method compares a drafted passage with the copy editor's edit using the blind judge and the meaning check, which PL-GL45 removed on the owner's choice of 2026-11-14, and the owner stopped the work on PL-J1ZM, whose fix it tested, on the same day.
 payoff: the owner learns whether prose written from a fact list in a clean process needs less repair than prose a session writes itself
 verify: grep -qE '^[*][*]Measured 20' docs/items/PL-QVNR-*.md
 ---
