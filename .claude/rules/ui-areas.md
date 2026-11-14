@@ -71,6 +71,8 @@ replaced the Area holding this View, what would break?** Five answers recur.
 4. **A View does not assume its size.** An Area border is a drag away from any
    width. A View declares the minimum it needs on its registry entry, and the
    container holds the Area at that size or says why it cannot (`PL-K285`).
+   A View whose content is taller than its Area scrolls inside the Area's
+   `ViewScroll`, so a View never sizes the page (`PL-CBYS`).
    Fixed geometry is for a swatch whose size is the point (`_LineSwatch`),
    never for a layout.
 5. **A required value never moves into something closeable.** `docs/INTERFACE.md`

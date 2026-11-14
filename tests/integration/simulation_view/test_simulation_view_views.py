@@ -1113,7 +1113,7 @@ def test_the_bookmarks_and_the_branch_control_are_registered_under_their_kinds()
     """Each Area's chooser lists the two Views by these titles (`PL-9YPR`).
 
     An Area never gives a View less room than its declared minimum. Both
-    minimums are placeholders that `PL-CBYS` will set again with each Area's room.
+    minimums are placeholders, set by `PL-CBYS` from the room each Area has.
     """
 
     bookmarks, branch = REGISTERED[BOOKMARKS], REGISTERED[BRANCH]
@@ -1121,11 +1121,11 @@ def test_the_bookmarks_and_the_branch_control_are_registered_under_their_kinds()
     assert BOOKMARKS == "bookmarks"
     assert bookmarks.factory is BookmarksView
     assert bookmarks.title == "Bookmarks"
-    assert (bookmarks.minimum.width_px, bookmarks.minimum.height_px) == (220, 120)
+    assert (bookmarks.minimum.width_px, bookmarks.minimum.height_px) == (220, 110)
     assert BRANCH == "branch"
     assert branch.factory is BranchView
     assert branch.title == "Branch"
-    assert (branch.minimum.width_px, branch.minimum.height_px) == (220, 120)
+    assert (branch.minimum.width_px, branch.minimum.height_px) == (220, 110)
 
 
 def test_a_bookmarks_panel_built_between_frames_lists_the_marks_on_screen(

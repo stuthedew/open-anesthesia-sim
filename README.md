@@ -79,7 +79,9 @@ concentration chart, the wash-in plot, the parameter controls, the bookmarks,
 the branch control, the agent accounting, the compartment schematic and the
 agent cost. An arrangement is kept as a Workspace, and you switch between
 Workspaces by their tabs. Three come with the simulator: Default, Induction and
-Maintenance.
+Maintenance. The Areas share the window's height below the region described
+next. A View that needs more room than its Area scrolls inside the Area, so on
+a 1366 by 768 laptop screen the window itself does not scroll.
 
 A region outside the Areas shows the simulated time, the playback speed, whether
 the simulation is running or halted and why, the agent and its 1 MAC, the
