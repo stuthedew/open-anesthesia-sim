@@ -3,11 +3,13 @@ id: PL-GLFS
 title: Move the pinned interpreter from 3.14 to 3.15: .python-version, ruff target-version and mypy python_version together, now that requires-python admits 3.15
 priority: P3
 effort: S
-status: ready
+status: done
 classes: infra
-touches: .python-version, pyproject.toml, uv.lock
+touches: .python-version, pyproject.toml, uv.lock, README.md, .github/workflows/drift.yml, tests/unit/test_config_home_check.py, tools/blind_review.py, tools/blind_review_report.py, tools/ci_runs.py, tools/generator_check.py, tools/model_rewrite.py, tools/new_prose.py, tools/required_checks_check.py, tools/tag_release.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-18 triage pass
 added: 2026-10-18
+closed: 2026-11-14
+pr: 2159
 payoff: every pull request tests the newest interpreter the package declares, so a 3.15-only break shows up the day it lands
 verify: grep -q '^3.15' .python-version
 ---
@@ -52,3 +54,21 @@ this item checks for it and leaves the item open.
 
 **Generator check.** Not an instance of a closed head's fact. The three values
 already move together by the comment above `[tool.ruff]`.
+
+**Done 2026-11-14.** ruff 0.16.10 still printed the 3.15 warning, and 0.17.0
+was the first release that checked `--target-version py315` without it
+(`uvx ruff@0.16.10` and `uvx ruff@0.17.0` on a one-line file). So the ruff
+floor in `pyproject.toml` rose to 0.17.0, and `uv lock` moved the pin from
+0.16.4 to 0.17.5. `.python-version` names 3.15.2, the newest 3.15 release
+`uv python list` offered. ruff 0.17.5 reported 8 import-sort (`I001`)
+findings that 0.16.9 did not, all in `tools/` and all of one kind: an
+import with `# noqa: E402` written in parentheses across several lines.
+`ruff check --fix` joined each onto one line, which is why those 8 files are
+in `touches`. `README.md`'s requirements list and the comment above
+`drift.yml`'s `interpreter` job named 3.14 as the pin and now name 3.15.
+`tools/ruff.toml` and `subprojects/docket/ruff.toml` are unchanged, as the
+recommendation required.
+`tests/unit/test_config_home_check.py` wrote 3.15.2 over a 3.14 pin to
+see the check name each stale copy, so after this move it changed nothing and
+failed. It now reads the pinned minor from `.python-version` and writes the
+next one, so it keeps working after later moves.
