@@ -67,7 +67,7 @@ sweep: the leads of the 2026-11-10 root-cause audit that its session did not con
 **Prose rules.**
 
 - `PL-J1ZM` (prose over-explains) may misname its cause. Its members show decision history and item ids gathering in documents for a reader, and also the opposite defect, private compressed wording (`PL-VGDX`, `PL-2K0K`). The resident rules grew from 8,903 characters to 92,128, and `PL-H76S` records the owner asking for no further rule.
-- `docs/prose-review/gold/` is empty. 47 items name `/mnt/project-files`, which is not in the container.
+- `docs/prose-review/gold/` was empty. `PL-GL45` removed it with the copy editor on 2026-11-14. 47 items name `/mnt/project-files`, which is not in the container.
 
 **Queue and branch state.**
 

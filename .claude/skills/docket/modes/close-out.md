@@ -282,13 +282,12 @@ page and decides which file a session reads.
    5's audit.** Point 8 of `.claude/rules/plain-writing.md` says what the
    check covers. Do it on every branch, for each docstring, comment, message,
    document paragraph and item brief that the branch adds or rewords. The
-   writing session does this check itself. The copy editor no longer edits
-   each branch's text (project owner, 2026-11-11, ratified, over a copy edit
-   of each branch after its text is written). It edited sentences and did not
-   remove an account that the reader does not need, and it passed all five
-   phrases that the owner rejected in two pull request bodies (`PL-J1ZM`).
-   It still rewrites a section of a document when the owner asks, as
-   `docs/prose-review/README.md` says.
+   writing session does this check itself (project owner, 2026-11-11,
+   ratified, over a copy edit of each branch after its text is written). The
+   copy editor edited sentences and did not remove an account that the reader
+   does not need, and it passed all five phrases that the owner rejected in
+   two pull request bodies (`PL-J1ZM`). The owner removed it on 2026-11-14
+   (`PL-GL45`).
 
    **Then compare the branch with the default branch:
    `python3 tools/new_prose.py --compare`** (`PL-JP8X`). It prints each run of

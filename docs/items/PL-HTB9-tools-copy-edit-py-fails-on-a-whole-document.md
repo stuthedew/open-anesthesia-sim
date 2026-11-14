@@ -3,12 +3,14 @@ id: PL-HTB9
 title: tools/copy_edit.py fails on a whole-document request: on 2026-11-09 the first read of a 40-passage, 137 KB request from tools/new_prose.py (PL-T8RL's restructure of docs/interface-provenance.md) returned only the reply's last 16 KB, passage 40 and the end of 39, so the run stopped with 'no verdict' for passages 1-39 after 38 minutes; close-out step 8 gives no way to split a request, and the session split it by hand into eight batches of whole sections
 priority: P2
 effort: M
-status: ready
+status: dropped
 classes: defect
 feature: repo-copy-edit
 touches: tools/copy_edit.py, tools/new_prose.py, tests/unit/test_copy_edit.py, tests/unit/test_new_prose.py, .claude/skills/docket/modes/close-out.md
 deferred-from: v0.7.0 - a new problem, not present at the freeze: tools/copy_edit.py and its reply handling arrived in 7fca61f8 (PL-TQ4J)
 added: 2026-11-09
+closed: 2026-11-14
+reason: The project owner chose on 2026-11-14 to remove the copy editor completely, and PL-GL45 removed it with its agents, the blind judge and their tests, so this work on the copy editor has nothing left to act on.
 payoff: a restructured document's close-out copy edit runs in one command and returns a verdict for every passage, instead of losing the run and needing a hand split
 verify: grep -q -r --include=test_*.py 'def test_a_close_out_request_over_the_limit_is_read_in_batches' tests/unit
 ---

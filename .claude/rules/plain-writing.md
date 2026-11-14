@@ -46,9 +46,9 @@ after it is written, `PL-J1ZM`).
 The two `README.md` rows are the readers that `README.md` § "What it is for"
 names. `docs/releases/` has no row, because `bin/docket release` writes each
 note from item titles, and an edit there would make a note disagree with its
-item. `tools/new_prose.py` reads this table when the copy editor is asked to
-rewrite a section of a document, so the table keeps its five columns
-(`docs/prose-review/README.md`).
+item. `python3 tools/new_prose.py --compare`, which close-out step 8 runs,
+reads this table to choose the files it compares, so the table keeps its five
+columns.
 
 **Where the rest goes.** Decision history goes in the item. In `docs/MODEL.md`,
 detail of the numerical method goes in a note for developers at the end of its

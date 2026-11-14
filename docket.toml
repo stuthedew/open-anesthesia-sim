@@ -496,9 +496,7 @@ workflow_paths = [
   "tests/unit/test_model_doc_review.py",
   "tests/unit/test_model_home_check.py",
   "tests/unit/test_model_rewrite.py",
-  "tests/unit/test_copy_edit.py",
   "tests/unit/test_new_prose.py",
-  "tests/unit/test_prose_judge.py",
   "tests/unit/test_blind_review.py",
   "tests/unit/test_blind_review_report.py",
   "tests/unit/test_import_boundary_check.py",
@@ -515,7 +513,6 @@ workflow_paths = [
   "tests/unit/test_open_pull_requests.py",
   "tests/unit/test_owner_ask_guard.py",
   "tests/unit/test_pr_title_check.py",
-  "tests/unit/test_rejected_prose.py",
   "tests/unit/test_quality_step_order.py",
   "tests/unit/test_regex_check.py",
   "tests/unit/test_regex_guard.py",
@@ -919,15 +916,3 @@ model = "claude-sonnet-5-5"
 match = { role = "exploration" }
 model = "opus"
 
-# The copy editor runs at extra high effort (project owner, 2026-11-04,
-# ratified, over the default high, `PL-HGZS`): its misses while it was being
-# debugged were reading misses that the extra high session caught.
-[[models.rule]]
-match = { role = "copy-editor" }
-effort = "xhigh"
-
-# The meaning check runs at the copy editor's effort, because it reads the same
-# passages for statements that the copy editor's own reads missed (`PL-F0Q2`).
-[[models.rule]]
-match = { role = "meaning-check" }
-effort = "xhigh"
