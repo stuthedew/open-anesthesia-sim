@@ -3,10 +3,12 @@ id: PL-KQBM
 title: No check refuses a tracked third-party full text, such as a PDF, now that sessions can fetch from any host
 priority: P3
 effort: S
-status: ready
+status: done
 classes: infra
-touches: tools, Makefile
+touches: tools/full_text_check.py, tests/unit/test_full_text_check.py, Makefile, .github/workflows/quality.yml, docs/references/README.md, docs/apparatus.md, docket.toml
 added: 2026-11-11
+closed: 2026-11-14
+pr: 2164
 payoff: a publisher's full text cannot be committed and redistributed by accident
 verify: grep -q 'full_text_check' Makefile
 ---
@@ -36,3 +38,24 @@ generator pause in `CLAUDE.md` applies unless the owner asks for it.
 **Blocked on the generator pause.** A new check is a new workflow mechanism, which `CLAUDE.md` holds while a workflow-lane head carries `generator: live`. `PL-J1ZM` is that head on 2026-11-11. The pause lifted on 2026-11-14, when the owner stopped `PL-J1ZM` and its `generator:` became `spent`.
 
 **Generator check.** A one-off: a rule stated in prose with no check, and one earlier instance (`PL-SHG5`). No head's `misread:` states which tracked files are a third party's text.
+
+**Done, 2026-11-14.** `tools/full_text_check.py` fails when git tracks a file
+whose name ends in a document extension, such as `.pdf`, `.epub`, `.djvu`,
+`.mobi` or `.docx`, in any letter case, and the licensed-files list does not
+name it. The list sits between two comment markers in
+`docs/references/README.md` § "Redistribution". It is the only copy, so a file
+is allowed in the same edit that records its licence. Each line gives the path
+in backticks, a colon and the licence. The list is empty, because the
+repository tracks no such file. A list line of another shape, or a missing
+marker, fails the run, because the check cannot then say which files are
+allowed. The tracked file list comes from `docket.vcs.tracked_files`, and the
+README's path from `doc_check.REFERENCES`, so the tool adds no second reader of
+either. `make check` and the floor section of `.github/workflows/quality.yml`
+both run it with bare `python3`, and `docs/apparatus.md` lists it among the
+floor commands. Text pasted from a source, and a figure or screenshot of
+another party's page, cannot be told apart by extension and stay with the rule
+in prose. The tests in `tests/unit/test_full_text_check.py` cover a tracked PDF,
+a listed one, an untracked one, a malformed list line, a README without the
+markers, and the real repository. Files checked in the docs sweep:
+`docs/references/README.md`, `docs/apparatus.md`, `Makefile` and
+`.github/workflows/quality.yml`.

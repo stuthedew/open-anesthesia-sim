@@ -134,7 +134,11 @@ quotes it. Workflow items need no merge confirmation (project owner, 2026-10-12,
   each path outside the store that it armed.
 - **`hold`**: leave it unarmed. `arm` holds for a claim, for a simulator change
   that no `Owner-read:` record covers, for a record saying `needed`, and for an
-  edit to a test that pins `arm`'s answers. Disarm the pull request before the
+  edit to a test that pins `arm`'s answers. An edit or a deletion of an
+  existing line of a test under `tests/reference/`, which compares the model
+  with published data, holds for the owner's read whatever your
+  `Owner-read:` record says, and only adding lines there does not
+  (`PL-XSRG`). Disarm the pull request before the
   push that brings the hold, or green CI merges half the work. While the hold
   is a claim, keep the pull request a draft. Once no claim holds it, record the
   judgment or ask the owner, as `arm` says. A pull request held for the owner

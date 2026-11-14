@@ -448,3 +448,54 @@ def test_a_copied_refusal_log_leaves_the_recorded_ask_in_force(tmp_path: Path) -
 
     assert ask("docs/hook-blocks").sendable is not None
     assert ask("").unasked
+
+
+REFERENCE = "tests/reference/test_published.py"
+
+
+def test_an_edited_reference_test_holds_for_the_owner(tmp_path: Path) -> None:
+    """An edit to an existing line of a published-data test waits on the owner (`PL-XSRG`).
+
+    A widened tolerance there passes every check, so the session's own
+    `not needed` record does not release it, and only the owner's go-ahead
+    does. A branch that only adds lines there is answered as before.
+    """
+    root, git = _repo(tmp_path)
+    git("checkout", "-q", "main")
+    _change(root, git, REFERENCE, "import anesthesia_sim\n\nTOLERANCE = 0.01\n")
+    git("push", "-q", "origin", "main")
+    git("checkout", "-q", "claude/prose")
+    git("merge", "-q", "--ff-only", "main")
+    owed = arming.CommandCount(count=1)
+
+    _change(root, git, REFERENCE, "import anesthesia_sim\n\nTOLERANCE = 0.01\nSTEP = 1\n")
+    _record(git, NOT_NEEDED, PASS_ONE)
+
+    added = _arm(root, lambda: owed)
+
+    assert added.answer == arming.ARM
+
+    _change(root, git, REFERENCE, "import anesthesia_sim\n\nTOLERANCE = 0.05\nSTEP = 1\n")
+    _record(git, NOT_NEEDED, PASS_ONE)
+
+    edited = _arm(root, lambda: owed)
+
+    assert edited.answer == arming.HOLD, edited.lines
+    assert edited.references == (REFERENCE,)
+    assert edited.needs_owner
+    assert (
+        "it edits or deletes an existing line of 1 test under tests/reference/ comparing the "
+        f"model with published data, which waits on the owner's read whatever the Owner-read "
+        f"record says: {REFERENCE}"
+    ) in edited.lines[0]
+
+    _record(git, 'Owner-read: given - 2026-11-14, "Fine to widen it."')
+
+    assert _arm(root, lambda: owed).answer == arming.ARM
+
+
+def test_a_deleted_or_binary_reference_test_counts_as_losing_a_line() -> None:
+    """Git counts a deleted file's lines as taken and a binary file's as `-`; both hold."""
+    listing = "0\t3\ttests/reference/b.py\0" + "2\t0\ttests/reference/a.py\0" + "-\t-\tc.bin\0"
+
+    assert arming.lines_taken(listing) == ("c.bin", "tests/reference/b.py")

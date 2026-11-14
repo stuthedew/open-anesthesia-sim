@@ -14,6 +14,7 @@ closed: 2026-11-03
 pr: 1993
 payoff: the stale-state defects a learner can see get their root cause fixed once, instead of each one being found and patched separately
 verify: grep -qE '^\*\*Re-measured\.' docs/items/PL-R4Y2-*.md
+sweep: asks the generator question of every product defect in the queue, and records a root-cause item for each shared cause it finds
 ---
 
 **Problem.** Simulator defects per product item closed have stayed at about 0.7 to 0.8 a week while apparatus defects fell, and a recorded head explains only 16% of product defects: run the generator question over the open product defects, starting with stale state after a halt

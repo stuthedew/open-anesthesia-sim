@@ -12388,6 +12388,33 @@ def test_arm_owner_ask_sends_nothing_for_a_held_pull_request_that_has_merged(
     assert capsys.readouterr().out.startswith(f"landed - #12 merged {ARM_BRANCH} at {head[:12]}")
 
 
+def test_arm_owner_ask_sends_nothing_once_the_owner_has_answered(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Once the owner's go-ahead is recorded, `--owner-ask` has nothing to send (`PL-JTTD`).
+
+    `.claude/hooks/owner_ask_guard.py` sends the recorded ask with every thread
+    message while `--owner-ask` exits 0. On `#2022` it kept sending the ask
+    after the owner had said "Merge", until the merge. The `given` record is
+    the record of his answer, so after it the answer is `not held`, as for a
+    branch that never waited on him.
+    """
+    root, git = _arm_repo(tmp_path)
+    _put(git, root, "CLAUDE.md", "2026-09-01T12:00:00+00:00")
+    _record_read(git, "needed - a rule sessions run under", "2026-09-01T12:00:10+00:00")
+    _record_ask(git, ARM_DECISION, "2026-09-01T12:00:20+00:00")
+
+    assert _arm(root, "--owner-ask") == 0
+    capsys.readouterr()
+
+    _record_read(git, GO_AHEAD, "2026-09-01T12:00:30+00:00")
+
+    assert _arm(root, "--owner-ask") == 1
+    assert capsys.readouterr().out.startswith(
+        f"not held - {ARM_BRANCH} does not wait on the owner's read, so there is no ask to send"
+    )
+
+
 #: What a record lacking its named fields, or holding them out of order, is told.
 ARM_NAMED = (
     "after its recommendation come context - <what changed, or what the choice is about> and "
