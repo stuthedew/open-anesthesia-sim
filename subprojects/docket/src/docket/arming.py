@@ -218,41 +218,41 @@ READ_GIVEN = "given"
 
 #: The commit trailer that carries what a hold for the owner's read asks him
 #: (project owner, 2026-10-18, `PL-9JHM`). `arm` prints it as the ask's
-#: opening line, so the ask is a recorded fact rather than prose a session
-#: may skip. It takes one of two forms, the owner's two reasons to be asked
-#: (`PL-DKBG`), each a run of fields joined by `ASK_SEPARATOR`:
+#: opening lines, so the ask is a recorded fact rather than prose a session
+#: may skip. It is one form, a run of fields joined by `ASK_SEPARATOR`:
 #:
-#: - a decision: `<question>? | <option>: <what it changes> | <option>: <what
-#:   it changes> | recommend <option> - <why>`, with at least two options;
-#: - a review, for a high-risk change with no choice in it: `changed - <what
-#:   changed, in one plain sentence> | question - <one yes-or-no question>? |
-#:   why - <why the question is the owner's> | checked - <what was already
-#:   checked> | reply - <what to reply>`. The reply quotes the text to judge,
-#:   before and after, under the ask, because a pointer into a file sent the
-#:   owner to dig for it (project owner, 2026-11-02, `PL-77QB`).
+#: `<question>? | <option>: <what it changes> | <option>: <what it changes> |
+#: recommend <option> - <why, and what the others cost> | context - <what
+#: changed, or what the choice is about> | why - <why the choice is the
+#: owner's> | checked - <what was already checked>`
 #:
-#: The review form had three fields until 2026-11-02: `risk`, `checked` and
-#: `look`, rendered as "Risk to review: ... Checked: ... Please look at:
-#: ...". Twice that day the owner could not tell what such an ask wanted from
-#: them: "I am having a hard time understanding what this is asking from me?"
-#: (project owner, 2026-11-02, 19:39Z, `PL-BGN1`). The new form leads with
-#: what changed, asks one question they can answer yes or no, and ends with
-#: what to reply. A record in the old form is refused rather than rendered,
-#: so a branch that still carries one asks the owner nothing until its
-#: session records the new form (`ASK_OLD_REVIEW`).
+#: It has at least two options, and `checked` may be left out. A merge review
+#: is a choice like any other, whose options are merging and holding for
+#: changes. The reply quotes the text to judge, before and after, under the
+#: ask, because a pointer into a file sent the owner to dig for it (project
+#: owner, 2026-11-02, `PL-77QB`).
 #:
-#: The review form gained its `why` field on 2026-11-14. Until then the
-#: question had to say why it was the owner's, and whether anything needed
-#: deciding at all, so sessions wrote all three into one sentence. On #2096
-#: the owner asked of the result: "It's a little dense and hard to follow"
-#: (project owner, 2026-11-10, `PL-M2JP`). A four-field review is refused for
-#: the same reason as the old form (`ASK_FOUR_FIELD_REVIEW`).
+#: Until 2026-11-14 there were two forms, and each carried only part of what
+#: `.claude/rules/instruction-writing.md` rule 10 asks of a question. The
+#: review form (`changed`, `question`, `why`, `checked`, `reply`) had no
+#: options, recommendation or trade-off. The decision form ended at its
+#: recommendation, with no context and no reason the choice was the owner's.
+#: Sessions left out what the form did not ask for, and the owner corrected
+#: the asks one missing element at a time: "you are still asking me to make
+#: decisions without any context, recommendations, trade offs etc" (project
+#: owner, 2026-11-14, `PL-GG4V`). So a record in either old form is refused,
+#: as is the older `risk`, `checked` and `look` review (`PL-BGN1`), and the
+#: refusal names the fields to add.
 OWNER_ASK = "Owner-ask"
 ASK_SEPARATOR = " | "
 ASK_RECOMMEND = "recommend"
-ASK_REVIEW = ("changed", "question", "why", "checked", "reply")
-ASK_FOUR_FIELD_REVIEW = ("changed", "question", "checked", "reply")
-ASK_OLD_REVIEW = ("risk", "checked", "look")
+ASK_CONTEXT = "context"
+ASK_WHY = "why"
+ASK_CHECKED = "checked"
+#: The named fields after the recommendation, in order. The last may be left out.
+ASK_NAMED = (ASK_CONTEXT, ASK_WHY, ASK_CHECKED)
+#: The first word of every review form refused since 2026-11-02 and 2026-11-14.
+ASK_OLD_REVIEW_WORDS = frozenset({"changed", "risk"})
 
 #: What no field of an `OWNER_ASK` record may hold, because the owner reads it
 #: in a reply and cannot look it up: code in backquotes, a file name, a
@@ -271,26 +271,23 @@ ASK_JARGON = re.compile(
 )
 
 #: How `parse_owner_ask` renders an `OWNER_ASK` record as the lines the owner
-#: is sent. A review is one template. A decision is `ASK_DECISION_SHOWN`, whose
-#: `options` are two or more `ASK_OPTION_SHOWN` joined by
-#: `ASK_OPTIONS_JOIN`, and whose `recommend` is `ASK_RECOMMEND_SHOWN`.
+#: is sent, in this order: the question, the recommendation, the context, each
+#: option, why it is the owner's, and what was checked. Rule 10 of
+#: `.claude/rules/instruction-writing.md` puts the question and the
+#: recommendation first (project owner, 2026-11-14, `PL-GG4V`). That order
+#: replaced a review that led with what changed (`PL-BGN1`), and it is a
+#: placeholder: the owner may prefer the context first.
 #:
 #: Each part is a line of its own. All the parts on one line read as a dense
 #: paragraph that the owner found hard to follow (project owner, 2026-11-10,
-#: `PL-M2JP`). Each part after a decision's question starts with "- ", so
-#: that a reply rendered as Markdown keeps the parts on separate lines rather
-#: than joining them back into one paragraph.
-ASK_REVIEW_SHOWN = (
-    "- What changed: {changed}.\n"
-    "- Question for you: {question}\n"
-    "- Why it is yours: {why}.\n"
-    "- Already checked: {checked}.\n"
-    "- What to reply: {reply}."
-)
-ASK_DECISION_SHOWN = "{question}\n{options}\n{recommend}"
-ASK_OPTION_SHOWN = '- Option "{label}": {change}.'
-ASK_OPTIONS_JOIN = "\n"
+#: `PL-M2JP`). Each part after the question starts with "- ", so that a reply
+#: rendered as Markdown keeps the parts on separate lines rather than joining
+#: them back into one paragraph.
 ASK_RECOMMEND_SHOWN = '- I recommend "{pick}": {why}.'
+ASK_CONTEXT_SHOWN = "- Context: {context}."
+ASK_OPTION_SHOWN = '- Option "{label}": {change}.'
+ASK_WHY_SHOWN = "- Why it is yours: {why}."
+ASK_CHECKED_SHOWN = "- Already checked: {checked}."
 
 #: What a hold for the owner's read prints when no `OWNER_ASK` record covers
 #: the change. The ask was prose until 2026-10-18, and sessions skipped it:
@@ -304,42 +301,40 @@ ASK_RECOMMEND_SHOWN = '- I recommend "{pick}": {why}.'
 #: interface approaches, a screenshot per option (`PL-KYTY`). On `#1946` a
 #: risk ask read "a pinned test of the owner-ask guard changes, so a relayed
 #: ask in the new form could be refused", and the owner could not tell what
-#: it meant. So every field is written in plain words, and the review form
-#: asks one question (project owner, 2026-11-02, `PL-BGN1`). The question is
+#: it meant. So every field is written in plain words, and each question
+#: asks one thing (project owner, 2026-11-02, `PL-BGN1`). The question is
 #: one the owner can decide as the owner or as a clinician. On `#1947` an ask
 #: put to him whether reworded paragraphs kept their meaning, which the
 #: reviews had already checked: "How am I supposed to judge that?".
 READ_ASK = (
     "  Send the owner nothing about this pull request yet: no Owner-ask record on a commit "
     "since its newest change outside the store and the pull request bodies says what to "
-    "ask. A hold reaches the owner only with something to decide or to review. A question "
-    "whose answer is obvious is wrong, as on #1516, whose ask invented two points to judge "
-    "(PL-DKBG). Record one of two forms in the last paragraph of a commit, beside its "
-    "Co-authored-by line, then ask again. For a decision, with at least two options a "
-    f"careful person could each pick: `{OWNER_ASK}: <question>? | <option>: <what it changes "
-    f"for the owner or a learner> | <option>: <what it changes> | {ASK_RECOMMEND} <option> - "
-    f"<why>`. Word it in clinical or learner terms, so that the owner sees on first reading "
-    "what they are judging. Say under each option what a learner sees, and say why the "
-    "choice is the owner's. A choice between approaches to the interface goes with one "
-    "annotated screenshot per option, attached to the reply that carries the line "
-    "(.claude/skills/run-the-app/SKILL.md). "
-    f"For a high-risk change with no choice in it: `{OWNER_ASK}: {ASK_REVIEW[0]} - <what "
-    f"changed, in one plain sentence> | {ASK_REVIEW[1]} - <one yes-or-no question the owner "
-    f"can decide as the owner or as a clinician, in one clause>? | {ASK_REVIEW[2]} - <why "
-    f"the question is the owner's rather than the session's> | {ASK_REVIEW[3]} - <what was "
-    f"already checked> | {ASK_REVIEW[4]} - <what to reply, such as Merge it, or what to "
-    "change>`. Each field is printed on its own line, so put each fact in its own field: "
-    "the question asks only the question, and its context goes in what changed. "
-    "Never ask the owner to re-check what the tests or reviews already checked, such as "
-    "whether a rewording kept its meaning: they cannot judge that from a reply. If no such "
-    "question exists, the question is only whether to merge, such as 'May it merge?'. Under "
-    "the ask, the reply quotes the text to judge, before and after. "
+    "ask. A hold reaches the owner only with something to decide. A question whose answer "
+    "is obvious is wrong, as on #1516, whose ask invented two points to judge (PL-DKBG). "
+    "Record one in the last paragraph of a commit, beside its Co-authored-by line, then ask "
+    f"again: `{OWNER_ASK}: <question>? | <option>: <what it changes for the owner or a "
+    f"learner> | <option>: <what it changes> | {ASK_RECOMMEND} <option> - <why, and what the "
+    f"other options cost> | {ASK_CONTEXT} - <what changed, or what the choice is about> | "
+    f"{ASK_WHY} - <why the choice is the owner's rather than the session's> | {ASK_CHECKED} - "
+    f"<what was already checked>`. Give at least two options a careful person could each "
+    f"pick, and leave out {ASK_CHECKED} only when nothing was checked. A merge review is a "
+    "choice too: its options are merging and holding for changes, and its question is one "
+    "the owner can decide as the owner or as a clinician, such as 'May it merge?'. Word the "
+    "question in clinical or learner terms and in one clause, so that the owner sees on "
+    "first reading what they are judging, and put its background in the context field. "
+    "Under each option, say what a learner sees or what changes for the owner. A choice "
+    "between approaches to the interface goes with one annotated screenshot per option, "
+    "attached to the reply that carries the lines (.claude/skills/run-the-app/SKILL.md). "
+    "Each field is printed on its own line, the question first and the recommendation "
+    "second. Never ask the owner to re-check what the tests or reviews already checked, "
+    "such as whether a rewording kept its meaning: they cannot judge that from a reply. "
+    "Under the ask, the reply quotes the text to judge, before and after. "
     "Write every field in plain words for a clinician who has not read this repository "
     "(.claude/rules/plain-writing.md): say what the owner or a learner would notice, and "
-    "never name a test, check, file or tool by its internal name. If neither form can be "
+    "never name a test, check, file or tool by its internal name. If no question can be "
     f"filled honestly, nothing needs the owner: record `{OWNER_READ}: {READ_NOT_NEEDED} - "
     "<why>` instead, and the change merges on green. A change to a test pinning the gate's "
-    "answers holds whatever that record says, so for one of those use the review form."
+    "answers holds whatever that record says, so for one of those ask whether it may merge."
 )
 
 #: What a hold for the owner's read prints before the line its `OWNER_ASK`
@@ -1026,69 +1021,55 @@ class OwnerAsk:
     shown: str
 
 
-def _listed(words: Sequence[str]) -> str:
-    """`words` as an English list: "a, b and c"."""
-    return f"{', '.join(words[:-1])} and {words[-1]}"
-
-
 def parse_owner_ask(value: str) -> tuple[str, str]:
-    """`(shown, "")` from an `OWNER_ASK` value in one of its forms, or `("", why)` otherwise.
+    """`(shown, "")` from an `OWNER_ASK` value, or `("", why)` where it cannot be read.
 
-    `shown` has one line for each part of the ask. A decision needs a
+    `shown` has one line for each part of the ask, in the order
+    `ASK_RECOMMEND_SHOWN` and its neighbours describe. The value needs a
     question ending in "?", at least two options that each say what they
-    change, distinct labels, and a recommendation naming one of them with its
-    reason. A review needs its five fields in order, each with a value, and
-    its question ends in "?". A review in the old `risk`, `checked` and
-    `look` form, or in the four-field form with no `why`, is refused
-    (`ASK_OLD_REVIEW`, `ASK_FOUR_FIELD_REVIEW`). Whether a question's answer
-    is obvious, and whether it is one clause, is judgment, so the printed
+    change, distinct labels, a recommendation naming one of them with its
+    reason, and then `ASK_NAMED`'s fields in order, each with a value, of
+    which `checked` may be left out. A review form, or a decision that ends at
+    its recommendation, is refused with the fields to add (`PL-GG4V`). Whether
+    a question's answer is obvious, whether it is one clause, and whether the
+    reason names what the other options cost is judgment, so the printed
     instructions say it and this does not try.
     """
     fields = [field.strip() for field in value.split(ASK_SEPARATOR)]
-    named = [field.partition(" -") for field in fields]
-    words = [word.strip().lower() for word, _, _ in named]
     jargon = ASK_JARGON.search(value)
     if jargon:
         return "", (
             f"it names {jargon.group(0).strip()!r}, which the owner cannot read in a reply; "
             "say in plain words what it checked or changed"
         )
-    if words == list(ASK_OLD_REVIEW):
+    question = fields[0]
+    if question.partition(" -")[0].strip().lower() in ASK_OLD_REVIEW_WORDS:
         return "", (
-            "it is in the old risk, checked and look form, which the owner could not follow; "
-            f"record it as {_listed(ASK_REVIEW)}"
+            "it is in a review form, which gave the owner no options and no recommendation; "
+            "ask whether it may merge, with merging and holding for changes as its options"
         )
-    if words == list(ASK_FOUR_FIELD_REVIEW):
-        return "", (
-            "it has no why field, so its question had to say why it is the owner's as well; "
-            f"record it as {_listed(ASK_REVIEW)}, with the question in one clause"
-        )
-    if words == list(ASK_REVIEW):
-        if not all(dash and said.strip() for _, dash, said in named):
-            return "", f"a review needs a value after each of {_listed(ASK_REVIEW)}"
-        changed, question, why, checked, reply = (said.strip() for _, _, said in named)
-        if not question.endswith("?"):
-            return "", "a review's question ends in '?', so the owner can answer it yes or no"
-        return ASK_REVIEW_SHOWN.format(
-            changed=changed.rstrip("."),
-            question=question,
-            why=why.rstrip("."),
-            checked=checked.rstrip("."),
-            reply=reply.rstrip("."),
-        ), ""
-    question, options = fields[0], fields[1:-1]
-    recommend = fields[-1] if len(fields) > 1 else ""
     if not question.endswith("?"):
         return "", (
-            "it is neither a review nor a decision whose first field is a question, and "
+            "its first field is not a question ending in '?', and "
             f"{ASK_SEPARATOR.strip()!r} with a space either side separates its fields"
         )
-    word, _, rest = recommend.partition(" ")
+    at = next(
+        (
+            place
+            for place, field in enumerate(fields)
+            if place and field.partition(" ")[0].lower() == ASK_RECOMMEND
+        ),
+        None,
+    )
+    if at is None:
+        return "", f"it has no '{ASK_RECOMMEND} <option> - <why>' field after its options"
+    options, named = fields[1:at], fields[at + 1 :]
+    _, _, rest = fields[at].partition(" ")
     pick, dash, why = rest.partition(" - ")
-    if word.lower() != ASK_RECOMMEND or not dash or not pick.strip() or not why.strip():
-        return "", f"its last field is not '{ASK_RECOMMEND} <option> - <why>'"
+    if not dash or not pick.strip() or not why.strip():
+        return "", f"its recommendation is not '{ASK_RECOMMEND} <option> - <why>'"
     if len(options) < 2:
-        return "", "a decision needs at least two options"
+        return "", "a question needs at least two options"
     pairs = [option.partition(": ") for option in options]
     if not all(label.strip() and colon and change.strip() for label, colon, change in pairs):
         return "", "each option needs '<option>: <what it changes>'"
@@ -1097,12 +1078,29 @@ def parse_owner_ask(value: str) -> tuple[str, str]:
         return "", "two options share a label"
     if pick.strip().lower() not in labels:
         return "", f"it recommends {pick.strip()!r}, which is not one of its options"
-    shown = ASK_OPTIONS_JOIN.join(
-        ASK_OPTION_SHOWN.format(label=label.strip(), change=change.strip().rstrip("."))
-        for label, _, change in pairs
-    )
-    recommended = ASK_RECOMMEND_SHOWN.format(pick=pick.strip(), why=why.strip().rstrip("."))
-    return ASK_DECISION_SHOWN.format(question=question, options=shown, recommend=recommended), ""
+    parts = [field.partition(" -") for field in named]
+    words = tuple(word.strip().lower() for word, _, _ in parts)
+    if words not in (ASK_NAMED, ASK_NAMED[:-1]) or not all(
+        dash and said.strip() for _, dash, said in parts
+    ):
+        return "", (
+            f"after its recommendation come {ASK_CONTEXT} - <what changed, or what the choice "
+            f"is about> and {ASK_WHY} - <why the choice is the owner's>, then {ASK_CHECKED} - "
+            "<what was already checked> if anything was"
+        )
+    said = [text.strip().rstrip(".") for _, _, text in parts]
+    lines = [
+        question,
+        ASK_RECOMMEND_SHOWN.format(pick=pick.strip(), why=why.strip().rstrip(".")),
+        ASK_CONTEXT_SHOWN.format(context=said[0]),
+        *(
+            ASK_OPTION_SHOWN.format(label=label.strip(), change=change.strip().rstrip("."))
+            for label, _, change in pairs
+        ),
+        ASK_WHY_SHOWN.format(why=said[1]),
+        *(ASK_CHECKED_SHOWN.format(checked=checked) for checked in said[2:]),
+    ]
+    return "\n".join(lines), ""
 
 
 @dataclass(frozen=True)

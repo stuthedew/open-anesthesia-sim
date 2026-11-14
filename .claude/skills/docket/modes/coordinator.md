@@ -124,9 +124,11 @@ once a plugin carries the hooks and skills (`PL-XFDQ`).
 - **Review summaries** are posted in the project chat in full, not as a
   pointer to the thread.
 - **A held pull request reaches the owner only through the `Owner-ask:` line
-  that `bin/docket arm` prints**, in its decision or review form, never
-  as a bare "read #N". The coordinator sends a bare read ask back to its
-  thread. When a hold has nothing to judge, ask for "Merge it" alone. The
+  that `bin/docket arm` prints**, with its question, recommendation,
+  context, options and why it is the owner's, never as a bare "read #N"
+  (`PL-GG4V`). The coordinator sends a bare read ask back to its thread.
+  When a hold has nothing else to judge, the question is only whether it may
+  merge. The
   ask quotes the text to judge, before and after with its surrounding
   paragraph, and never only points into a file. When a thread's ask does not,
   the coordinator adds the quote or sends the ask back (project owner,

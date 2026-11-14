@@ -3,11 +3,13 @@ id: PL-GG4V
 title: Every question to the owner about a held pull request lacks part of what the asking rule requires: the review form has no recommendation, no trade-off and no options, and the decision form has no context and no reason the choice is the owner's (2026-11-14): make one form that carries all of them, question and recommendation first
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, ux
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_arming.py, subprojects/docket/tests/test_cli.py, tests/unit/test_owner_ask_guard.py, docs/maintainer.md, .claude/skills/docket/modes/coordinator.md
 deferred-from: v0.7.0 - workflow tooling outside the schematic release, and it changes no displayed value
 added: 2026-11-14
+closed: 2026-11-14
+pr: 2146
 payoff: every question the owner is sent about a held pull request carries its options, a recommendation with the cost of the alternative, its context and why it is theirs, so they can answer it in one read
 verify: grep -q 'def test_every_question_to_the_owner_leads_with_its_recommendation' subprojects/docket/tests/test_arming.py
 ---

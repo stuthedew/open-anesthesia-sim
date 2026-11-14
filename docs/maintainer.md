@@ -541,24 +541,34 @@ the tests that pin `arm`'s results, not to the code they test. So a new test
 arms on green. So does a loosening that no test pins, even in `arming.py`
 itself.
 
-**A hold comes to you with its question or its risk, never a bare "read #N"**
+**A hold comes to you with its question, never a bare "read #N"**
 (project owner, 2026-10-18, `PL-9JHM`). The session records what to ask you
-as an `Owner-ask:` trailer on a commit. `arm` prints that trailer as the first
-line of the ask. The ask is either a decision or a review. A decision has
-at least two options and a recommendation. Each option says what it changes
-for you or for a learner. The decision is worded in clinical or learner terms.
-A choice between approaches to the interface comes with one annotated
-screenshot per option (project owner, 2026-10-19, `PL-KYTY`). A review says
-what changed in one plain sentence, asks you one yes-or-no question, says why
-the question is yours, says what was already checked, and says what to reply.
-The question is one clause, and is one you can decide as the owner or as a
-clinician. It never asks you to re-check what the tests or reviews already
-covered, such as whether a rewording kept its meaning. Where there is no such
-question, it asks only whether to merge. Each part of either form is printed
-on its own line, because the parts run together as one paragraph were hard to
-follow (project owner, 2026-11-10, `PL-M2JP`).
+as an `Owner-ask:` trailer on a commit. `arm` prints that trailer as the
+opening lines of the ask. Every ask has one form, which carries what
+`.claude/rules/instruction-writing.md` rule 10 requires:
+
+1. the question, in clinical or learner terms and in one clause;
+2. the recommendation, with its reason and what the other options cost;
+3. the context: what changed, or what the choice is about;
+4. at least two options, each saying what it changes for you or for a
+   learner;
+5. why the choice is yours rather than the session's;
+6. what was already checked, where anything was.
+
+Each part is printed on its own line, in that order (project owner,
+2026-11-10, `PL-M2JP`, and 2026-11-14, `PL-GG4V`). A merge review is a
+choice like any other, whose options are merging and holding for changes. The
+question is one you can decide as the owner or as a clinician. It never asks
+you to re-check what the tests or reviews already covered, such as whether a
+rewording kept its meaning. A choice between approaches to the interface
+comes with one annotated screenshot per option (project owner, 2026-10-19,
+`PL-KYTY`). `arm` refuses a record that leaves out a required part, or that
+is in one of the older review or decision forms, which each lacked some of
+them. Putting the question and the recommendation before the context is a
+placeholder order, and one template changes it if you would rather read the
+context first.
 No part of the ask names a tool, file, command or item id, and `arm` refuses a
-record that does (project owner, 2026-11-02, `PL-BGN1`). Either way, the reply
+record that does (project owner, 2026-11-02, `PL-BGN1`). The reply
 quotes the text you are to judge, before and after, with enough of the
 surrounding paragraph for the change to make sense, so that you never have to
 open a file to find it (project owner, 2026-11-02, `PL-77QB`).

@@ -294,10 +294,12 @@ def test_a_blind_record_that_cannot_be_read_says_why(value: str, reason: str) ->
         arming.parse_blind_review(value)
 
 
-ASK_REVIEW_VALUE = (
-    "changed - the uptake step is reworded | question - May it merge? | why - it changes "
-    "the uptake model, which only you approve | checked - every figure still matches its "
-    "source | reply - Merge it"
+ASK_VALUE = (
+    "May it merge? | Merge: learners see the reworded uptake step | Hold for changes: it "
+    "waits for the change you name | recommend Merge - every figure is unchanged, and "
+    "holding it delays nothing else | context - the uptake step is reworded | why - it "
+    "changes the uptake model, which only you approve | checked - every figure still "
+    "matches its source"
 )
 
 
@@ -307,42 +309,76 @@ def test_a_review_question_prints_each_part_on_its_own_line() -> None:
     On #2096 the owner was sent a review's four parts as one paragraph, its
     question also saying why it was theirs and that nothing needed deciding,
     and found it "a little dense and hard to follow" (project owner,
-    2026-11-10). So the reason the question is theirs is a field of its own,
-    and a review recorded without it is refused rather than printed.
+    2026-11-10). So the reason the question is theirs is a field of its own.
     """
-    shown, why = arming.parse_owner_ask(ASK_REVIEW_VALUE)
+    shown, why = arming.parse_owner_ask(ASK_VALUE)
 
     assert why == ""
     assert shown.splitlines() == [
-        "- What changed: the uptake step is reworded.",
-        "- Question for you: May it merge?",
+        "May it merge?",
+        '- I recommend "Merge": every figure is unchanged, and holding it delays nothing else.',
+        "- Context: the uptake step is reworded.",
+        '- Option "Merge": learners see the reworded uptake step.',
+        '- Option "Hold for changes": it waits for the change you name.',
         "- Why it is yours: it changes the uptake model, which only you approve.",
         "- Already checked: every figure still matches its source.",
-        "- What to reply: Merge it.",
     ]
 
-    decision, why = arming.parse_owner_ask(
+
+def test_every_question_to_the_owner_leads_with_its_recommendation() -> None:
+    """A question to the owner carries every part the asking rule names, or is refused.
+
+    The review form had no options and no recommendation, and the decision
+    form had no context and no reason the choice was the owner's. Sessions
+    left out what the form did not ask for, and the owner wrote "you are
+    still asking me to make decisions without any context, recommendations,
+    trade offs etc" (project owner, 2026-11-14, `PL-GG4V`). So there is one
+    form, printed question first and recommendation second.
+    """
+    shown, why = arming.parse_owner_ask(
         "Which view opens first? | Chooser: the learner picks a view each run | "
-        "Last used: it opens where they left off | recommend Chooser - it names every view"
+        "Last used: it opens where they left off | recommend Chooser - it names every view, "
+        "and last used hides the views a learner has not opened | context - the simulator "
+        "now has three views | why - it decides what a learner sees first"
     )
 
     assert why == ""
-    assert decision.splitlines() == [
+    assert shown.splitlines() == [
         "Which view opens first?",
+        '- I recommend "Chooser": it names every view, and last used hides the views a '
+        "learner has not opened.",
+        "- Context: the simulator now has three views.",
         '- Option "Chooser": the learner picks a view each run.',
         '- Option "Last used": it opens where they left off.',
-        '- I recommend "Chooser": it names every view.',
+        "- Why it is yours: it decides what a learner sees first.",
     ]
 
-    four, why = arming.parse_owner_ask(
-        "changed - x | question - May it merge, since it changes y? | checked - z | reply - w"
+    missing = (
+        "after its recommendation come context - <what changed, or what the choice is about> "
+        "and why - <why the choice is the owner's>, then checked - <what was already checked> "
+        "if anything was"
     )
-
-    assert four == ""
-    assert why == (
-        "it has no why field, so its question had to say why it is the owner's as well; "
-        "record it as changed, question, why, checked and reply, with the question in one clause"
+    review = (
+        "it is in a review form, which gave the owner no options and no recommendation; ask "
+        "whether it may merge, with merging and holding for changes as its options"
     )
+    assert arming.parse_owner_ask("Q? | A: x | B: y | recommend A - z") == ("", missing)
+    assert arming.parse_owner_ask("Q? | A: x | B: y | recommend A - z | context - c") == (
+        "",
+        missing,
+    )
+    assert arming.parse_owner_ask("Q? | A: x | B: y | recommend A - z | why - w | context - c") == (
+        "",
+        missing,
+    )
+    assert arming.parse_owner_ask(
+        "changed - x | question - y? | why - w | checked - z | reply - v"
+    ) == ("", review)
+    assert arming.parse_owner_ask("changed - x | question - y? | checked - z | reply - v") == (
+        "",
+        review,
+    )
+    assert arming.parse_owner_ask("risk - x | checked - y | look - z") == ("", review)
 
 
 def test_a_copied_refusal_log_leaves_the_recorded_ask_in_force(tmp_path: Path) -> None:
@@ -355,9 +391,7 @@ def test_a_copied_refusal_log_leaves_the_recorded_ask_in_force(tmp_path: Path) -
     """
     root, git = _repo(tmp_path)
     _change(root, git, SIMULATOR, "X = 1\n")
-    _record(
-        git, "Owner-read: needed - a change to the uptake model", f"Owner-ask: {ASK_REVIEW_VALUE}"
-    )
+    _record(git, "Owner-read: needed - a change to the uptake model", f"Owner-ask: {ASK_VALUE}")
     _change(root, git, "docs/hook-blocks/claude-prose.tsv", "refused\n")
 
     def ask(record_dir: str) -> arming.Verdict:

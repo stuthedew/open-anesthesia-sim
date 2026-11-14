@@ -27,13 +27,15 @@ GUARD = "owner_ask_guard"
 SETTINGS = REPO / ".claude" / "settings.json"
 POST = "mcp__hearthbot__post_message"
 
-#: The decision form of the question `arm --owner-ask` prints, exiting 0, one
+#: The question `arm --owner-ask` prints, exiting 0, one
 #: line for each of its parts.
 ASK_LINE = (
     "Which view opens first?\n"
+    '- I recommend "Chooser": it names every view.\n'
+    "- Context: the simulator now has three views.\n"
     '- Option "Chooser": the learner picks a view each run.\n'
     '- Option "Last used": it opens where they left off.\n'
-    '- I recommend "Chooser": it names every view.'
+    "- Why it is yours: it decides what a learner sees first."
 )
 #: What `arm --owner-ask` prints, exiting 3, where the pull request waits on
 #: the owner's read with no question recorded.
