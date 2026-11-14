@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: interface-areas
-touches: docs/INTERFACE.md, tests/integration/test_simulation_view.py, docs/items/PL-92XM-at-a-1280-px-window-the-control-change-record.md, docs/items/PL-6XPZ-below-about-1366-px-of-window-width-the-control.md
+touches: docs/INTERFACE.md, tests/integration/simulation_view/test_simulation_view_readouts.py, docs/items/PL-92XM-at-a-1280-px-window-the-control-change-record.md, docs/items/PL-6XPZ-below-about-1366-px-of-window-width-the-control.md
 added: 2026-11-04
 closed: 2026-11-14
 pr: 2156

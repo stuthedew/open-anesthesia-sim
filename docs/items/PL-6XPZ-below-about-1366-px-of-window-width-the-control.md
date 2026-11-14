@@ -6,10 +6,10 @@ effort: M
 status: ready
 classes: ux
 feature: replay-findings
-touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, tests/integration/test_simulation_view.py, docs/MODEL.md
+touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, tests/integration/simulation_view, docs/MODEL.md
 added: 2026-10-25
 payoff: the unconditional control-change record stays readable on windows narrower than 1366 px
-verify: grep -q 'def test_the_control_change_record_is_readable_at_the_minimum_window_width' tests/integration/test_simulation_view.py
+verify: grep -rq 'def test_the_control_change_record_is_readable_at_the_minimum_window_width' tests/integration/simulation_view/
 recurrences: 2026-11-14 PL-92XM
 ---
 
@@ -17,6 +17,6 @@ recurrences: 2026-11-14 PL-92XM
 
 **Why it matters.** At a 1250 px window the record is 91 px wide. At the window's minimum width it is 68 px wide. Each entry needs about 165 px, so every line of an unconditional record is cut off behind a scroll bar. `docs/MODEL.md` records the 1366 px case only. No test checks a narrower window.
 
-**Done when.** At every window width the application allows, each control-change entry is readable without a horizontal scroll bar. `tests/integration/test_simulation_view.py` has `test_the_control_change_record_is_readable_at_the_minimum_window_width`, and `docs/MODEL.md` records the narrow case.
+**Done when.** At every window width the application allows, each control-change entry is readable without a horizontal scroll bar. `tests/integration/simulation_view/` has `test_the_control_change_record_is_readable_at_the_minimum_window_width`, and `docs/MODEL.md` records the narrow case.
 
 **Found by.** `PL-TBQS` reviewer replay on #1585, finding r01 F2, checked against main on 2026-10-25. Measured with `e_i_record_width.py`. The record column was 207 px at 1366 px, 141 px at 1300 px, 91 px at 1250 px and 68 px at 1093 px. At 1093 px the window held at 1227 px, and the horizontal scroll bar was visible from 1300 px down.
