@@ -3,12 +3,14 @@ id: PL-CBYS
 title: The page still scrolls at every common screen size, though PL-JG82's brief says v0.6.0 removes the page scroll: the Areas and the marks and branch section sit in one scrolling page, which measured offscreen on 2026-11-11 scrolls 414 px (Default) and 832 px (Induction) at 1366 by 768, and 102 px and 520 px at 1920 by 1080, so the Induction Workspace's wash-in chart opens below the fold; decide whether the Areas fill exactly the space between the unconditional region and the disclaimer, as a Blender window's Areas fill the window
 priority: P2
 effort: M
-status: ready
+status: done
 classes: feature, ux
 feature: window-is-the-frame
-touches: src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/views.py, docs/MODEL.md, src/anesthesia_sim/app/view_registry.py, src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/layout/sizing.py, src/anesthesia_sim/data/workspaces, README.md, docs/ARCHITECTURE.md, docs/interface-provenance.md, .claude/rules/ui-areas.md
+touches: src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/views.py, docs/MODEL.md, src/anesthesia_sim/app/view_registry.py, src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/layout/sizing.py, src/anesthesia_sim/data/workspaces, README.md, docs/ARCHITECTURE.md, docs/interface-provenance.md, .claude/rules/ui-areas.md, src/anesthesia_sim/app/stylesheets.py, tests/integration, tests/benchmarks
 deferred-from: v0.7.0 - the gate's frozen list does not name it, and it is built after PL-9YPR's pull request merges
 added: 2026-11-11
+closed: 2026-11-14
+pr: 2134
 payoff: every shipped Workspace fits the window on a laptop, so the Induction wash-in chart opens on screen and not below the fold
 verify: grep -q 'def test_no_shipped_workspace_scrolls_the_page' tests/integration/test_simulation_view.py
 ---
@@ -367,3 +369,18 @@ height); `README.md` § "The window"; `docs/ARCHITECTURE.md`'s line for
 `area_layout.py`; `docs/interface-provenance.md`; `.claude/rules/ui-areas.md`
 answer 4; and `layout/sizing.py`'s module docstring. The contrast check
 passes: 27 of 27 declared requirements meet WCAG 2.2 AA.
+
+**Closed, 2026-11-14, on `#2134`.** Two blind review passes ran on the
+branch. Two findings were fixed in `91b166b0`: the key box above a chart's
+plot no longer lets a narrow Area cut off its widest row, such as the
+MAC-awake line, and "Modelled, not measured" is now a row of its own under the
+wash-in heading, so it stays in view with the plot. One finding is filed as
+`PL-S6CP`: the concentration chart's least height of 280 px does not cover a
+warning above the plot or a taller font. Two were rejected on measurement: the
+plot shrinks to its least height before the key box does, and the hover box
+sits beside the hovered point and fits a plot at its least height. The whole
+suite passed: 12,331 tests, 3 skipped. No function that mutmut mutates
+changed. Closing this item made `PL-4JCC` (the Parameters Area, now 266 px at
+1920 by 1080 for 86 px of controls) and `PL-VJD2` (Maximize Area) ready.
+`touches` now also names `app/stylesheets.py`, `tests/integration` and
+`tests/benchmarks`, which the work changed.
