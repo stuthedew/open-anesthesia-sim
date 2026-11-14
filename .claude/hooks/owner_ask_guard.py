@@ -5,7 +5,8 @@ sent while this checkout's pull request waits on the owner's read, leaves
 carrying what `bin/docket arm --owner-ask` records for it:
 
 - **A question for the owner is recorded (exit 0).** Where the message does
-  not already hold that line word for word, the hook appends it.
+  not already hold that question word for word, the hook appends it. The
+  question is everything `arm` printed, one line for each of its parts.
 - **None is recorded (exit `NO_ASK`).** The hook appends `NONE_RECORDED`, which
   tells the owner there is nothing to decide yet.
 - **Any other answer, or none.** The message goes out untouched. That covers
@@ -129,10 +130,13 @@ def carries(text: str, line: str) -> bool:
 
 
 def owner_ask(root: Path) -> tuple[int, str] | None:
-    """The exit status and first line of `bin/docket arm --no-fetch --owner-ask`, or None.
+    """The exit status and answer of `bin/docket arm --no-fetch --owner-ask`, or None.
 
-    None where `arm` cannot be run, times out, prints nothing, or exits with a
-    status its answers do not use, which means it failed.
+    With exit 0 the answer is the recorded question, every line `arm` printed,
+    because it prints each part of the question on a line of its own
+    (`PL-M2JP`). With any other status it is the first line. None where `arm`
+    cannot be run, times out, prints nothing, or exits with a status its
+    answers do not use, which means it failed.
     """
     from docket.arming import EXIT, NO_ASK
     from docket.lines import split_lines
@@ -156,7 +160,7 @@ def owner_ask(root: Path) -> tuple[int, str] | None:
     ]
     if not lines:
         return None
-    return done.returncode, lines[0]
+    return done.returncode, "\n".join(lines) if done.returncode == 0 else lines[0]
 
 
 def recorded_line(root: Path) -> str | None:
@@ -203,8 +207,8 @@ def decide(payload: str) -> str:
             "PreToolUse",
             notes=[
                 "owner_ask_guard: this message names a pull request that waits on the owner's "
-                f"read, and `{tool_name}` has no `{TEXT_FIELD}` field to attach its line to, so "
-                f"the owner sees the message without it. The line is:\n\n    {line}"
+                f"read, and `{tool_name}` has no `{TEXT_FIELD}` field to attach its question "
+                f"to, so the owner sees the message without it. It is:\n\n{line}"
             ],
         )
     rewritten = {**tool_input, TEXT_FIELD: text.rstrip() + "\n\n" + line}
@@ -212,8 +216,8 @@ def decide(payload: str) -> str:
         "PreToolUse",
         rewrite=rewritten,
         notes=[
-            "owner_ask_guard added this line to the end of the message, because this "
+            "owner_ask_guard added this question to the end of the message, because this "
             "checkout's pull request waits on the owner's read and the message did not "
-            f"carry it (`PL-X4MD`):\n\n    {line}"
+            f"carry it (`PL-X4MD`):\n\n{line}"
         ],
     )

@@ -134,6 +134,7 @@ from anesthesia_sim.app.theme import (
     BAND_SWATCH_WIDTH,
     BRANCH_POINT_STROKE_WIDTH,
     CHART_HEIGHT,
+    CHART_LEAST_HEIGHT,
     COMPARED_RUN_WIDTH_STEP,
     CONTROL_MARK_COLOR,
     CONTROL_MARK_DASH_PATTERN,
@@ -163,6 +164,7 @@ from anesthesia_sim.app.theme import (
     PREVIEW_REGION_FILL_OPACITY,
     TIME_BASE_SELECTOR_WIDTH,
     WASH_IN_CHART_HEIGHT,
+    WASH_IN_CHART_LEAST_HEIGHT,
     WASH_IN_COLOR,
     WASH_IN_STROKE_WIDTH,
 )
@@ -680,12 +682,27 @@ class _HoverReadout:
         # decided in pixels, because the box's height is fixed in pixels while
         # the plot's height is whatever its Area leaves it. Deciding it at a
         # fraction of the axis put the box partly above a short plot
-        # (`PL-9BVQ`).
+        # (`PL-9BVQ`). A plot shorter than the box's height on both sides of
+        # the anchor, as a View at its least height can leave it, gets the box
+        # with its top at the plot's top, so the box stays inside the plot
+        # where the plot is at least as tall as the box (`PL-CBYS`).
         anchor = target.anchor
         past_middle = anchor.time_s > (x_range[0] + x_range[1]) / 2.0
-        below = self._room_above_px(anchor.time_s, anchor.value) < self._box_height_px()
-        self._text.setAnchor((1 if past_middle else 0, 0 if below else 1))
-        self._text.setPos(anchor.time_s, anchor.value)
+        box_height_px = self._box_height_px()
+        room_above_px = self._room_above_px(anchor.time_s, anchor.value)
+        room_below_px = self._plot_height_px() - room_above_px
+        horizontal = 1 if past_middle else 0
+
+        if room_above_px >= box_height_px:
+            self._text.setAnchor((horizontal, 1))
+            self._text.setPos(anchor.time_s, anchor.value)
+        elif room_below_px >= box_height_px:
+            self._text.setAnchor((horizontal, 0))
+            self._text.setPos(anchor.time_s, anchor.value)
+        else:
+            self._text.setAnchor((horizontal, 0))
+            self._text.setPos(anchor.time_s, self._top_value())
+
         self._dot.show()
         # This uses `setVisible` rather than `show`. `show` goes straight to
         # Qt's own method, and so it skips pyqtgraph's override. That override
@@ -702,6 +719,18 @@ class _HoverReadout:
         top = self._plot.viewportTransform().mapRect(view_box.sceneBoundingRect()).top()
 
         return float(anchor.y() - top)
+
+    def _plot_height_px(self) -> float:
+        """Return the plot's height in pixels, between its top and bottom axes."""
+
+        view_box = self._plot.getPlotItem().getViewBox()
+
+        return float(self._plot.viewportTransform().mapRect(view_box.sceneBoundingRect()).height())
+
+    def _top_value(self) -> float:
+        """Return the value at the top edge of the plot, in the units the box is placed in."""
+
+        return float(self._plot.getPlotItem().getViewBox().viewRange()[1][1])
 
     def _box_height_px(self) -> float:
         """Return the box's height in pixels, for the text it now holds.
@@ -974,7 +1003,7 @@ class ConcentrationChart(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._plot = _plot(PANEL)
-        self._plot.setMinimumHeight(CHART_HEIGHT)
+        self._plot.setMinimumHeight(CHART_LEAST_HEIGHT)
         self._plot.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -1143,7 +1172,11 @@ class ConcentrationChart(QWidget):
         return self._runs[run].preview.shown_label()
 
     def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
-        """As wide as the plot asks and `theme.CHART_HEIGHT` tall. It grows into spare height."""
+        """As wide as the plot asks and `theme.CHART_HEIGHT` tall.
+
+        The chart grows into spare height, and shrinks to
+        `theme.CHART_LEAST_HEIGHT` in a View too short for this height.
+        """
 
         return _preferred_size(self._plot, CHART_HEIGHT)
 
@@ -1409,7 +1442,7 @@ class WashInChart(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._plot = _plot(PANEL)
-        self._plot.setMinimumHeight(WASH_IN_CHART_HEIGHT)
+        self._plot.setMinimumHeight(WASH_IN_CHART_LEAST_HEIGHT)
         self._plot.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -1515,7 +1548,11 @@ class WashInChart(QWidget):
         return self._frame
 
     def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
-        """As wide as the plot asks, and `theme.WASH_IN_CHART_HEIGHT` tall."""
+        """As wide as the plot asks, and `theme.WASH_IN_CHART_HEIGHT` tall.
+
+        The chart shrinks to `theme.WASH_IN_CHART_LEAST_HEIGHT` in a View too
+        short for this height.
+        """
 
         return _preferred_size(self._plot, WASH_IN_CHART_HEIGHT)
 
@@ -1741,8 +1778,8 @@ def _preferred_size(plot: Any, height_px: int) -> QSize:
     asks for 480 px on its own, which is no chart's height. That request made
     the page a quarter of a screen taller than the page it replaced. The plot still
     grows past this height, because it expands in both directions, so a
-    taller window lengthens the traces. The plot's minimum height is the same
-    theme height, set on the plot.
+    taller window lengthens the traces. The plot's minimum height is a smaller
+    theme height, such as `CHART_LEAST_HEIGHT`, set on the plot.
     """
 
     return QSize(plot.sizeHint().width(), height_px)
