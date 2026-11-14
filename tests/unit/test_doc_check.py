@@ -13389,3 +13389,48 @@ def test_a_section_mark_naming_the_wrong_specification_document_is_refused(tmp_p
     current = README + '\nSee `docs/INTERFACE.md` § "Shown values".\n'
     (root / "README.md").write_text(current, encoding="utf-8")
     assert [error for error in _errors(root) if "Shown values" in error] == []
+
+
+def test_an_absent_marker_under_a_list_covers_its_first_item(tmp_path: Path) -> None:
+    """A marker under a list speaks for every item in it, as a `provenance:` marker does.
+
+    A marker cannot stand inside a list item, so under the list is the only
+    place that can tie a path in an earlier item. Read with the block above it
+    alone, the marker covered only the last item, and `PL-SG93`'s brief had no
+    placement the check accepted (`PL-HXF0`).
+    """
+    readme = (
+        f"{README}\n- This project has no `setup.py`.\n- Its build is declared elsewhere.\n"
+        "\n<!-- absent: setup.py -->\n"
+    )
+
+    assert _errors(_repo(tmp_path, readme=readme)) == []
+
+
+def test_a_bound_family_paragraph_whose_code_only_an_unparsable_file_defines_is_declined(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A paragraph naming code only an unparsable file could define is neither passed nor failed.
+
+    The parser cannot say whether the file defines the name, so the check
+    declines the paragraph and names the file, rather than reporting the
+    family as held to code it never read (`PL-1Y3L`).
+    """
+    monkeypatch.setattr(doc_check, "BOUND_FAMILIES", (_paragraph_family(),))
+    broken = tmp_path / "src" / "anesthesia_sim" / "broken.py"
+    broken.parent.mkdir(parents=True)
+    broken.write_text("def only_here(:\n    pass\n", encoding="utf-8")
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "add", "-A"], cwd=tmp_path, check=True)
+
+    report = _check_numeric_family(
+        tmp_path, "# Overview\n\nThe gauge reads `only_here`.\n", "ready"
+    )
+
+    assert report.errors == []
+    assert any(
+        d.startswith("src/anesthesia_sim/broken.py: the parser refuses it") for d in report.declined
+    )
+    assert any(
+        "names code only a file this Python cannot parse may define" in d for d in report.declined
+    )

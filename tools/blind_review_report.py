@@ -47,12 +47,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.arming import (  # noqa: E402
-    BLIND_REVIEW,
-    BLIND_SEVERITIES,
-    BlindRecord,
-    newest_blind_record,
-)
+from docket.arming import BLIND_REVIEW, BLIND_SEVERITIES, BlindRecord, newest_blind_record  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
 from docket.model import pr_number  # noqa: E402
 from docket.vcs import (  # noqa: E402

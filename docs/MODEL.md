@@ -723,7 +723,7 @@ symbol.
 | $`Q`$ | Cardiac output | L blood/min | `PatientCompartments.cardiac_output_l_min` |
 | $`Q_i`$ | Blood flow to tissue group $`i`$, formed as $`f_iQ`$ and never stored | L blood/min | `TissueGroup.blood_flow_l_min_at` |
 | $`f_i`$ | Fraction of cardiac output reaching tissue group $`i`$ | dimensionless | `TissueGroup.perfusion_fraction` |
-| $`\mathrm{MAC}_\%`$ | The agent's alveolar concentration at 1 MAC, at age 40. It is used only as a display divisor | percent | `AgentParameters.mac_percent` |
+| $`\mathrm{MAC}_\%`$ | The agent's alveolar concentration at 1 MAC, a single adult value whose source states no age. It is used only as a display divisor | percent | `AgentParameters.mac_percent` |
 | $`\lambda_{b:g}`$ | Agent blood:gas partition coefficient, read from the agent data files and stored once per patient in the venous pool | dimensionless | `PatientCompartments.blood_gas_partition_coefficient` |
 | $`\lambda_{i:g}`$ | Tissue:gas partition coefficient for group $`i`$, read from the agent data files | dimensionless | `TissueGroup.tissue_gas_partition_coefficient` |
 | $`\lambda_{i:b}`$ | Tissue:blood partition coefficient for group $`i`$, derived as $`\lambda_{i:g}/\lambda_{b:g}`$ and never stored | dimensionless | `TissueGroup.tissue_blood_partition_coefficient_for` |
@@ -1473,7 +1473,7 @@ MASS_BALANCE_RELATIVE_GATE = 1e-10
 The gate is relative because the residual is rounding error that accumulates
 once per step. The residual therefore scales with how much agent a run has
 handled. An absolute bound would measure the delivered concentration and the
-run length instead of conservation. The values below were measured on
+run length instead of conservation. The values below come from runs on
 2026-09-06 with the shipped exact step, over 600 s of wash-in followed by
 600 s of washout:
 
@@ -1490,7 +1490,7 @@ Halving the dial setting halves the absolute residual exactly. It leaves the
 relative residual unchanged to four significant figures.
 
 The gate value comes from the table below. The table gives the worst relative
-residual at any step, measured on the same day at two sets of settings. The
+residual at any step, computed on the same day at two sets of settings. The
 first set is the reference runs' own settings. The second set is the corner of
 the supported envelope: fresh gas 10 L/min, alveolar ventilation 12 L/min,
 cardiac output 10 L/min, and each agent at its calibrated dial maximum.
@@ -1525,7 +1525,7 @@ That delivers 0.00003 L per step, and 2592 L over the 86.4 million steps of a
 <!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-That run was measured four ways on 2026-10-25, each for 24 h. Two
+That run was simulated four ways on 2026-10-25, each for 24 h. Two
 settings of the patient were used. "Default" is the reference adult's alveolar
 ventilation of 4 L/min and cardiac output of 5 L/min. "No uptake" sets both to
 zero, so that nearly all the delivered agent is exhausted again. Each total's
@@ -1822,20 +1822,21 @@ digit. How many decimals the readout shows is a display choice, and it must not 
 | Ventilator start at the envelope corner | 1.4×10⁻¹ pp | desflurane |
 
 These figures are judged against the model's own parameter uncertainty, which comes before both
-the step and the display. One standard deviation (SD) of a single measured partition coefficient
-displaces a displayed compartment by at most $`6.8\times10^{-2}`$ pp. So at 0.1 s, the timing
-error of an ordinary control action is about a tenth of one parameter SD, and in that sense the
-step is fine enough. The shift for each coefficient is in `docs/INTERFACE.md` § "Why the readouts show two decimals".
+the step and the display. In the first hour at 1 MAC, one standard deviation (SD) of the
+blood:gas coefficient displaces a displayed compartment by up to $`8.2\times10^{-2}`$ pp, and one
+SD of the muscle coefficient by up to $`9.0\times10^{-1}`$ pp. So at 0.1 s, the timing error of an
+ordinary control action is about a twelfth of the blood:gas coefficient's shift, and in that sense
+the step is fine enough. The shift for each coefficient is in `docs/INTERFACE.md` § "Why the readouts show two decimals".
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
-**What 0.1 s does not buy.** An abrupt manoeuvre's timing error is not kept within one parameter
-SD. At 0.1 s, a ventilator start shifts the alveolar reading by up to 0.14 pp, about twice one
-parameter SD, while its effect settles. At 0.1 s, the timing error of an abrupt ventilation change
-is about twice one parameter SD, which makes it the one case where the step adds more error than
-the parameters do. That error, 0.14 pp, is small in absolute terms beside a 1 MAC of 6.0% for
-desflurane. Still, a reader comparing an abrupt ventilation change with a measurement should know
-that its *timing* is accurate to a tenth of a second and no better. Keeping the error within one
-SD would need a step near 0.05 s.
+**What 0.1 s does not buy.** An abrupt manoeuvre's timing error is not kept within one SD of
+every coefficient. At 0.1 s, a ventilator start shifts the alveolar reading by up to 0.14 pp while
+its effect settles. That is more than one SD of the blood:gas, vessel-rich or fat coefficient
+moves any readout in the first hour, and about a sixth of what one SD of the muscle coefficient
+moves one. So an abrupt ventilation change is the one case where the step adds more error than
+three of the four coefficients do. That error, 0.14 pp, is small in absolute terms beside a 1 MAC
+of 6.0% for desflurane. Still, a reader comparing an abrupt ventilation change with a measurement
+should know that its *timing* is accurate to a tenth of a second and no better.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 <!-- provenance: data/agents/desflurane.json mac_percent = 6 -->
 
@@ -3277,9 +3278,9 @@ division.
 | Maximum delivered concentration (sevoflurane) | 8.0 | percent | `data/agents/sevoflurane.json` · `max_delivered_concentration_percent` |
 | Maximum delivered concentration (isoflurane) | 5.0 | percent | `data/agents/isoflurane.json` · `max_delivered_concentration_percent` |
 | Maximum delivered concentration (desflurane) | 18.0 | percent | `data/agents/desflurane.json` · `max_delivered_concentration_percent` |
-| 1 MAC, 40-year-old adult (sevoflurane) | 2.0 | percent | `data/agents/sevoflurane.json` · `mac_percent` |
-| 1 MAC, 40-year-old adult (isoflurane) | 1.2 | percent | `data/agents/isoflurane.json` · `mac_percent` |
-| 1 MAC, 40-year-old adult (desflurane) | 6.0 | percent | `data/agents/desflurane.json` · `mac_percent` |
+| 1 MAC, single adult value with no age stated by its source (sevoflurane) | 2.0 | percent | `data/agents/sevoflurane.json` · `mac_percent` |
+| 1 MAC, single adult value with no age stated by its source (isoflurane) | 1.2 | percent | `data/agents/isoflurane.json` · `mac_percent` |
+| 1 MAC, single adult value with no age stated by its source (desflurane) | 6.0 | percent | `data/agents/desflurane.json` · `mac_percent` |
 | MAC-awake (sevoflurane) | 0.34 | fraction of 1 MAC | `data/agents/sevoflurane.json` · `mac_awake.fraction_of_mac` |
 | MAC-awake standard deviation (sevoflurane) | 0.05 | fraction of 1 MAC | `data/agents/sevoflurane.json` · `mac_awake.standard_deviation_fraction_of_mac` |
 | MAC-awake (isoflurane) | 0.31 | fraction of 1 MAC | `data/agents/isoflurane.json` · `mac_awake.fraction_of_mac` |
@@ -3739,7 +3740,9 @@ the circle, is not bound by it.
 comes from,** because the three maxima come from two classes of vaporizer that it would need to
 tell apart only away from sea level (§ "Assumptions", § "Known limitations").
 
-The stored MAC (`mac_percent`) is 1 MAC for a 40-year-old adult. It has two uses, and both are
+The stored MAC (`mac_percent`) is a single adult MAC. Its source, De Wolf et al. 2012, gives no age
+for it. The age-referenced values are Mapleson's MACs at age 40, which the table below compares
+with the stored ones. The stored MAC has two uses, and both are
 presentation. First, it sets the dial's starting position, so that each new run begins at a
 recognizable clinical anchor. Second, it is the divisor for the display in MAC multiples: every
 displayed compartment value and the chart's second axis are divided by it. The simulator refuses
@@ -3783,8 +3786,8 @@ stored values with them.
 
 Because the errors run in opposite directions for sevoflurane and desflurane, a comparison of the
 two in MAC multiples differs by about 22% between the stored MACs and Mapleson's. Comparing
-agents is what the MAC-multiple display exists for. The 22% is larger than either source's own
-confidence limits. It is a limitation of the display, listed in § "Known limitations".
+agents is what the MAC-multiple display exists for. The 22% is larger than the confidence limits
+of Mapleson's values. It is a limitation of the display, listed in § "Known limitations".
 
 **The stored MACs are kept** (project owner, 2026-09-04, ratified, over adopting Mapleson's
 age-40 values). Mapleson's values are not adopted, for three reasons:
@@ -4443,7 +4446,7 @@ The test checks this for both ratios across the published range.
 
 **The elimination comparison does not agree.** At the default settings, and at the same
 10 L/min that the wash-in comparison uses, the model has more alveolar agent at five minutes
-than every cohort did. These values were measured on 2026-09-07:
+than every cohort did. These values come from simulator runs on 2026-09-07:
 <!-- not-restated: 10 L/min -->
 
 | Agent | Cohort | Model | Published | Distance |
@@ -4469,7 +4472,7 @@ of the patient. This model always rebreathes. Its one circuit (§ "Model boundar
 recirculates gas, apart from the fresh gas that enters and the gas that leaves through the
 exhaust. The inspired gas *is* circuit gas. So during an elimination $`F_I`$ settles near
 $`\dot V_A/(\dot V_A + \dot V_F)`$ of $`F_A`$, where $`\dot V_F`$ is the fresh gas flow. That
-is 0.29 at the highest supported flow, and the measured value at five minutes was 0.30 to 0.32.
+is 0.29 at the highest supported flow, and the simulated value at five minutes was 0.30 to 0.32.
 The published protocols did not rebreathe. Each study gave the agents through a
 non-rebreathing circuit. At exactly 30 minutes, each exchanged it for a fresh inspiratory and
 expiratory circuit (*Anesth Analg* page 317, *Anesthesiology* page 490). Neither paper states
@@ -4485,7 +4488,7 @@ No fresh gas flow, dial position or patient setting of the simulator produces it
 non-rebreathing mode was not built, because it would change the model boundary and add one
 more mode for the interface to show (project owner, 2026-09-06). Nobody running the
 application sees the numbers below, so any restatement of them must carry this warning. They
-were measured on 2026-09-07:
+come from simulator runs on 2026-09-07:
 
 | Agent | Cohort | Shipped | Open circuit | Published |
 | --- | --- | --- | --- | --- |
@@ -4544,7 +4547,7 @@ four belong beside any statement of this result, wherever it is restated.
    agreement with patients is materially worse during wash-in than during
    maintenance (see § "Known limitations").
 3. *The breathing systems differ, and by more than the measurement's own
-   spread.* The paragraphs above measure the difference at 3.5 to 4.2
+   spread.* The simulated results above put the difference at 3.5 to 4.2
    published standard deviations per cohort. Any statement that this model
    eliminates more slowly than these volunteers did has to carry this caveat,
    because most of that difference comes from a rebreathing circuit rather than from a
@@ -4565,8 +4568,8 @@ four belong beside any statement of this result, wherever it is restated.
    the published mean coefficients, that compartment's term is the largest in the measured
    curve for most of the supported span (the intertissue-diffusion note under § "Known
    limitations" gives the hours). At five minutes, that term is about one part in twenty of what remains. A comparison over those
-   hours would measure an omission rather than a parameter. So the gap over those hours is
-   measured beside this comparison and is not part of it. § "The first 24 hours of elimination
+   hours would show an omission rather than a parameter. So the gap over those hours is
+   computed beside this comparison and is not part of it. § "The first 24 hours of elimination
    against the published mean curves" records its size and direction hour by hour, and claims
    no agreement.
 
@@ -4603,7 +4606,7 @@ the wash-in row.** Desflurane's stored vessel-rich tissue:gas coefficient is
 0.54, and its blood:gas coefficient is 0.42. Together they imply a
 tissue:blood ratio of 1.286. The table below instead solves for the
 coefficient that reproduces each cohort's published five-minute ratio. It does
-so at the shipped operating point, with the apparatus removed (measured
+so at the shipped operating point, with the apparatus removed (simulated
 2026-09-08):
 
 <!-- provenance: data/agents/desflurane.json tissue_gas_partition_coefficients.vessel_rich = 0.54, blood_gas_partition_coefficient = 0.42 -->
@@ -4654,13 +4657,13 @@ tissue data support, desflurane's elimination still misses on the same side.
 | 1.39, its own measured mean + 2 SD | 0.0998 | −2.01 SD |
 | 1.70, sevoflurane's, the highest of the three | 0.1167 | −1.17 SD |
 
-**Nine other candidates were measured or struck, and each fails in one of two ways.** Either
+**Nine other candidates were simulated or struck, and each fails in one of two ways.** Either
 it moves sevoflurane and isoflurane as much as desflurane or more, which the published rows
-have no room for, or it moves desflurane the wrong way. Rows one to six were measured on
+have no room for, or it moves desflurane the wrong way. Rows one to six were simulated on
 2026-09-08, and the seventh on 2026-09-13, using the published apparatus's real volume from
 the methods sections. Rows four to six were computed by a separate calculation of the same
 equations, which agrees with the simulator to within 0.8%. The eighth and ninth rows were not
-measured. Each is struck because a primary measurement on file rules it out, as described
+simulated. Each is struck because a primary measurement on file rules it out, as described
 below the table.
 
 | Candidate | What reaching 0.140 takes | What it costs the other rows |
@@ -4677,7 +4680,7 @@ below the table.
 
 <!-- not-restated: 2.1 -->
 
-**The sixth row measured circuit-style rebreathing at an assumed ratio, and
+**The sixth row simulated circuit-style rebreathing at an assumed ratio, and
 the apparatus turns out not to be that shape at all.** The "Materials and
 Methods" section of Yasuda 1991 *Anesthesiology* places about 50 ml of
 corrugated Teflon between the tracheal sampling port and the nonrebreathing
@@ -4704,7 +4707,7 @@ describe this model's circuit, not Yasuda's apparatus.
 as the second row. It is the second row's mechanism, at a size taken from the
 source.** The model has no respiratory rate, so the table runs the decrement
 across the conventional range of rates for a paralysed, normocapnic adult. It
-was measured on 2026-09-13. For comparison, with no dead space at all,
+was simulated on 2026-09-13. For comparison, with no dead space at all,
 desflurane sits at −2.33 SD:
 
 | $`f`$ (/min) | $`\dot V_A`$ (L/min) | Desflurane | Isoflurane n=8 | Worst wash-in row |
@@ -4949,7 +4952,7 @@ above, with what ruled each of them out.
 **For developers.**
 `test_no_measured_tissue_solubility_reaches_desflurane_s_published_elimination` checks the
 vessel-rich coefficient claim, and `test_a_larger_circuit_can_only_slow_the_elimination` checks
-the circuit-volume direction. Candidate-table rows four to six were measured on an independent,
+the circuit-volume direction. Candidate-table rows four to six were computed by an independent,
 simple fixed-step (forward-Euler) integration of these equations. With no shunt, it puts
 desflurane at −2.29 SD, against the shipped driver's −2.33. The seventh row used the shipped
 driver. `data/patients/reference_adult.json` records the 4.0 L/min alveolar ventilation as a
@@ -5201,15 +5204,15 @@ spread, not the band.
 #### The first 24 hours of elimination against the published mean curves
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-**This subsection measures the late washout alongside the gate above. It is not
+**This subsection compares the model's late washout with the published curves, alongside the gate above. It is not
 a second gate** (2026-09-27). Caveat 4 keeps the five-minute comparison out of
 the papers' multi-day curves, because over those hours a compartment that this model lacks
-carries the measured washout. So a comparison there measures an omission rather than a
+carries the measured washout. So a comparison there shows an omission rather than a
 parameter. This subsection gives the size of that omission, the hour from which it appears and
 the direction in which it points. Every check here is one of three kinds. None claims agreement
 with a human washout, and none may be restated as one.
 
-1. A regression band around what the test measured. The measurements date from
+1. A regression band around what the test computed. The runs date from
    2026-09-27, or from 2026-10-03 for the muscle group's variation and the open
    circuit's modes below.
 2. The conclusion that such a band supports.
@@ -5240,7 +5243,7 @@ and isoflurane from *Anesth Analg*, then desflurane and isoflurane from
 *Anesthesiology*.
 `test_the_first_24_hours_of_elimination_against_the_published_mean_curves`
 checks every entry to within 1%, and every crossing hour below to within
-0.1 h. The 1410-minute rows were measured on 2026-10-17, and the rest on
+0.1 h. The 1410-minute rows come from runs on 2026-10-17, and the rest from runs on
 2026-09-27:
 
 | Minutes | Sevoflurane, shipped | Isoflurane, shipped | Desflurane, shipped | Isoflurane (second study), shipped |
@@ -5454,7 +5457,7 @@ sent.
 <!-- not-restated: 6 % -->
 
 **The result does not bear on `docs/INTERFACE.md` § "Supported run length"**, which gives the full reasoning. The
-departures measured here come from the missing fourth compartment and from the fat group's own
+departures computed here come from the missing fourth compartment and from the fat group's own
 size, and both are present from the first hour to the last.
 
 **For developers.** The checks are in
@@ -5693,7 +5696,11 @@ This model does not represent:
   an exact value. The stored values are Gas Man's, which differ by up to 9%
   from the means of the one laboratory they come from. Other laboratories
   report values for the same tissue that differ by up to 150% (below, with the
-  tissues each difference applies to);
+  tissues each difference applies to). Within the one laboratory, one SD of
+  the muscle coefficient moves a displayed reading by up to 0.90 percentage
+  points in the first hour at 1 MAC, so a reading can differ between patients
+  by many times its last digit (`docs/INTERFACE.md` § "Why the readouts show
+  two decimals");
 - metabolism;
 - compound A or other degradation products;
 - renal or hepatic dysfunction;
@@ -5914,12 +5921,13 @@ its own uncertainty where a model's default behaviour cannot.
 
 **The stored MAC that the MAC-multiple display divides by limits that
 display.** Each agent's stored MAC is tier 3 under § "Source hierarchy".
-§ "Delivery-limit and MAC parameters" measures its gap from Mapleson's age-40
+§ "Delivery-limit and MAC parameters" gives its gap from Mapleson's age-40
 meta-analytic values, and how much the choice of MAC source alone shifts a
 sevoflurane-versus-desflurane comparison in MAC multiples. The shift is consistent within an agent and changes no curve's shape or
-timing. It rescales one agent's MAC axis against another's. The gap is larger
-than either source's own confidence limits, so by the primary literature two
-agents at "1 MAC" are not equipotent to that precision. The interface displays
+timing. It rescales one agent's MAC axis against another's. The
+sevoflurane-versus-desflurane shift is larger than the confidence limits of
+Mapleson's values, so by Mapleson's meta-analysis two agents at "1 MAC" are not
+equipotent to that precision. The interface displays
 the divisor for this reason. Moving all parameters to primary sources is
 `ROADMAP.md`'s planned-milestone item 31.
 
@@ -5946,7 +5954,7 @@ extent of sevoflurane's metabolism. Within those 24 hours:
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 Neither the fat flow nor the missing compartment moves the 24 hours by itself,
-and nor does the measured gap. `docs/INTERFACE.md` § "Supported run length" gives the reason that
+and nor does the gap between the modelled tail and the published curves. `docs/INTERFACE.md` § "Supported run length" gives the reason that
 leaves the number where it is.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
@@ -6416,7 +6424,7 @@ outside it:
 
 <!-- not-restated: 0.31 -->
 
-These figures were measured on 2026-09-19, at the parameters stored then,
+These figures were computed on 2026-09-19, at the parameters stored then,
 against the published means and standard deviations.
 
 **Humidification is real, and the factor fails because it would count it
@@ -6659,7 +6667,7 @@ that fat depots differ. The default cardiac output is
 reference-condition gap leaves the release gate's relative residual untouched.
 `core/liquid_agent.py` is where an amount leaves the unit. It converts a
 delivered or exhausted amount exactly and reads a store 5.8 % high, and its
-docstring says so. The humidification table was measured through
+docstring says so. The humidification table was computed with
 `_wash_in_ratio` in `tests/reference/test_published_wash_in_and_elimination.py`,
 against the published means and standard deviations that the module itself
 holds.
@@ -6671,7 +6679,7 @@ holds.
 A release is complete only when:
 
 - all parameter values and sources are present;
-- no scientific `TBD` markers remain (none remain as of this revision);
+- no scientific `TBD` markers remain;
 - simulated wash-in passes validation against published data for every agent
   and cohort;
 - mass balance closes within the documented tolerance;

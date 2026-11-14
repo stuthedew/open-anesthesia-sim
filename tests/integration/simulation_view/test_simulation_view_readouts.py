@@ -30,6 +30,7 @@ from anesthesia_sim.app.dashboard_frame import (
 )
 from anesthesia_sim.app.formatting import format_elapsed, format_mac_multiple, format_percent
 from anesthesia_sim.app.qt_chart import TraceLegend
+from anesthesia_sim.app.qt_widgets import ReadoutRow
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.app.theme import AGENT_SELECTOR_WIDTH, CHART_HEIGHT
 from anesthesia_sim.app.unconditional_set import UnconditionalValue
@@ -425,6 +426,59 @@ def test_a_1366_px_window_opens_one_run_s_readout_row_on_seven_columns(
 
     assert row.width() >= row.width_for(len(READOUT_PANELS))
     assert row.columns() == len(READOUT_PANELS)
+
+
+_SMALL_LAPTOP_WIDTH_PX = 1280
+
+
+def _seven_or_four_across(row: ReadoutRow) -> None:
+    """Check that the row seats seven across where seven fit, and four otherwise.
+
+    At 1280 px the row is within a few pixels of the width that seven across
+    needs, so the arrangement depends on the font. Seven across needed 1005 px
+    with this container's offscreen font and 1068 px with the CI runner's on
+    2026-11-14. Either way, four always fit, so all seven readouts stay on
+    screen on at most two lines (`PL-LKX7`).
+    """
+
+    assert row.width() >= row.width_for(4)
+    expected = len(READOUT_PANELS) if row.width() >= row.width_for(len(READOUT_PANELS)) else 4
+    assert row.columns() == expected
+
+
+def test_a_1280_px_window_opens_one_run_s_readout_row_on_seven_or_four_columns(
+    application: QApplication,
+) -> None:
+    """A 1280 px window shows one run's seven readouts on one line or two, never more.
+
+    `docs/INTERFACE.md` § "The readout row's width condition" states this
+    outcome. As in the 1366 px test, the check reads the width that the row
+    itself reserves, so it holds for whatever font draws the panels.
+    """
+
+    view = _shown_view(application, SimulationController(), width_px=_SMALL_LAPTOP_WIDTH_PX)
+    _settle(application)
+
+    _seven_or_four_across(view.runs[0]._readout_row)
+
+
+def test_a_1280_px_window_opens_two_compared_runs_readout_row_on_seven_or_four_columns(
+    application: QApplication,
+) -> None:
+    """Two compared runs at 1280 px share one readout row, on one line or two.
+
+    In compare mode each run's transport row also carries its delivered
+    concentration, which can widen the column the readouts sit in. The shared
+    row must still follow the same rule at this width.
+    """
+
+    view = _case_view(application, _branched_case(), width_px=_SMALL_LAPTOP_WIDTH_PX)
+    _take_fork(view, 60.0)
+    _settle(application)
+    trunk, branch = view.runs
+
+    assert branch._readout_row.isHidden()
+    _seven_or_four_across(trunk._readout_row)
 
 
 def test_two_runs_share_one_readout_block_whose_values_name_their_runs(

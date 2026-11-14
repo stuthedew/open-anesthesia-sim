@@ -474,9 +474,9 @@ to clear the ground that the feature releases are built on:
 | 6 | **Gate 2** | **Frozen 2026-09-21, the day v0.5.0 shipped, not when the milestone below was scoped** (project owner, 2026-09-16, ratified - chosen over freezing it on the scoping day as beat 1 says, and over deferring the whole scoping round until v0.5.0 ships). Row 7 was scoped two releases early, so the cadence's own trigger would have frozen this list before v0.5.0 had been implemented — leaving it holding none of v0.5.0's findings, which is the one thing a gate is defined to hold. § "The cadence" now states that as the trigger, the later of a milestone's scoping and its predecessor's ship (`PL-KKRP`); v0.6.0's own section says where the frozen list goes when the moment comes. Its work ships in `v0.5.x` patches as it clears, and it takes no release of its own (§ "The cadence", `PL-LPH9`). | — |
 | 7 | **v0.6.0 — the layout is the reader's** | **Shipped 2026-10-20**, all 40 Required-scope ids closed (`PL-9CS6`). Planned-milestone item 34's tiled half: the layout model, the View contract, the view registry, workspaces, persistence, the unconditional display region, and every layout operation. **Scoped 2026-09-16** (project owner, ratified on `PL-NMTF` - chosen over inserting item 34 ahead of v0.5.0, and over one undivided milestone with break-out inside it). The serialized layout format carries a multi-window root from v1; nothing in this release creates a second window. Break-out, item 34's second half, is on no row: it is wanted eventually and not soon (project owner, 2026-09-26), and came off the timeline that day, having been the next release, "the second screen", since 2026-09-16 (`PL-V1Y7`) — see that section's "Explicitly out of scope" for why the split costs nothing structural, and why v0.6.0 keeps what break-out needs. **The placement was reopened and re-affirmed on 2026-09-17** (project owner, ratified - chosen over moving item 34 ahead of v0.5.0, on the argument that every interface question settled before the area model is settled against a layout that is going away). Planned-milestone item 34's entry carries the count, and the rule that round produced, which ended when this release shipped item 34's View contract and view registry. | 4 L, 16 M, 3 S |
 | — | **v0.6.x — one source of truth** | Planned-milestone item 43: every second copy of a shared fact replaced by a read of its one home, with a check per shape whose baseline can only shrink and is burned down to zero. **Placed 2026-10-19** (project owner, 2026-10-19, ratified on `PL-2LB5`, over folding the fixes into v0.6.0 and over leaving them unplaced): it is built after v0.6.0 ships, and its inventory (`PL-K88Z`) runs before then, because the inventory decides how large the row is. Patch-track work like item 40: it crosses no capability boundary, so it takes no version of its own and freezes no gate. **Inventoried 2026-10-19** by `PL-K88Z`, whose brief records the count. | — |
-| — | **v0.6.x — the interface pass** | Planned-milestone item 33: one deliberate visual design pass over the whole interface - palette, type scale, spacing rhythm, density and the visual composition of each surface - rather than the per-defect corrections the queue has been making one at a time. **Arrangement is item 34's and not this row's** (`PL-BNYF`, 2026-09-16); the entry for item 33 carries why. A patch track rather than a numbered milestone, because it crosses no capability boundary. **Restored here 2026-09-16**, having been absorbed into v0.4.26 on 2026-09-10 and un-absorbed when that port turned out not to have redecided the visuals; the row that release's own entry reversed is this one. **Moved here from between MVP and Gate 2 on 2026-09-16** (project owner, 2026-09-16, ratified - chosen over leaving it ahead of item 34, on the argument that item 34 and break-out introduce an area header, a workspace tab strip, a live splitter handle and a drag affordance, none of which exists to be styled today; what the other side bought was a styled interface two releases sooner, and `PL-BNYF`'s separation of arrangement from appearance means the composition of each surface would mostly have survived the move). It renumbers from `v0.5.x` to `v0.7.x` as a consequence: a patch track takes the number of the release it follows, which is mechanical rather than a second decision. `PL-PHKP` carries it. **Renumbered `v0.6.x` on 2026-09-26** by the same rule, when break-out came off the timeline and this row came to follow v0.6.0 (`PL-V1Y7`); the entry for item 33 records why the argument that placed it still holds. It is a design round with the project owner before it is items: the owner framed it as "a decent size overhaul (theme, style, overall polish)" and as not urgent, wanted after the simulator works. | — |
 | 8 | **Gate 3** | **Frozen 2026-10-25**, the day v0.7.0 was scoped, five days after v0.6.0 shipped, and recorded in that milestone's own section below. Its work ships in `v0.6.x` patches as it clears, before v0.7.0's implementation begins. That rule was not followed for v0.7.0: its Required scope was worked and closed in v0.6.16 while the second group was still open, with no decision recorded to set the rule aside. The rule in § "The cadence" still applies, and binds again from Gate 4 (project owner, 2026-11-11, ratified, `PL-6590`). The current baseline above says how many of its entries had cleared when v0.6.16 was cut, and where its current size is given. | — |
 | 9 | **v0.7.0 — the schematic** | Planned-milestone items 27 and 28: a compartment schematic whose containers fill to tension, as Gas Man's Picture does, labelled with their amounts and with a bar showing where the agent *is*, and the agent cost View. **Scoped 2026-10-25** by `PL-LF0P` (project owner, 2026-10-25, ratified, over containers drawn to scale, over Gas Man's Picture as it is, and over leaving item 28 unscheduled), and it has its own section below. (Written `v0.6.0` until 2026-09-16, when item 34 took that number and this moved down two, and `v0.8.0` from then until 2026-09-26, when break-out came off the timeline and this moved up one.) **Its Required scope closed in v0.6.16, except entry 13, which the project owner added on 2026-11-10** (`PL-HQPF`, `PL-RJN9`). That entry requires every agent amount on screen to name the condition it is stated at. The cut waits on entry 13, on Gate 3 and on the project owner's test drive. | 1 L, 9 M, 3 S |
+| — | **v0.7.x — the interface pass** | Planned-milestone item 33: one deliberate visual design pass over the whole interface - palette, type scale, spacing rhythm, density and the visual composition of each surface - rather than the per-defect corrections the queue has been making one at a time. **Arrangement is item 34's and not this row's** (`PL-BNYF`, 2026-09-16); the entry for item 33 carries why. A patch track rather than a numbered milestone, because it crosses no capability boundary. **Restored here 2026-09-16**, having been absorbed into v0.4.26 on 2026-09-10 and un-absorbed when that port turned out not to have redecided the visuals; the row that release's own entry reversed is this one. **Moved here from between MVP and Gate 2 on 2026-09-16** (project owner, 2026-09-16, ratified - chosen over leaving it ahead of item 34, on the argument that item 34 and break-out introduce an area header, a workspace tab strip, a live splitter handle and a drag affordance, none of which exists to be styled today; what the other side bought was a styled interface two releases sooner, and `PL-BNYF`'s separation of arrangement from appearance means the composition of each surface would mostly have survived the move). It renumbers from `v0.5.x` to `v0.7.x` as a consequence: a patch track takes the number of the release it follows, which is mechanical rather than a second decision. `PL-PHKP` carries it. **Renumbered `v0.6.x` on 2026-09-26** by the same rule, when break-out came off the timeline and this row came to follow v0.6.0 (`PL-V1Y7`); the entry for item 33 records why the argument that placed it still holds. It is a design round with the project owner before it is items: the owner framed it as "a decent size overhaul (theme, style, overall polish)" and as not urgent, wanted after the simulator works. **Moved after v0.7.0 and renamed `v0.7.x` on 2026-11-10** (project owner, 2026-11-10, ratified, over keeping it before v0.7.0). The pass styles each surface once, after the surface exists, and v0.7.0 adds the schematic and the agent cost View. A learner sees the current look through v0.7.0. | — |
 | 10 | **Gate 4** | Frozen when v0.7.0 ships. Its work ships in `v0.7.x` patches as it clears, before v0.8.0's implementation begins. | — |
 | 11 | **v0.8.0 — the next milestone** | What it holds is the project owner's pick, made when it is scoped. It was the substance generalization and nitrous oxide until 2026-09-26, when those came off the timeline (Beyond row). | — |
 | 12+ | **Beyond** | In § "Development pathway" order: patient factors (item 30); the substance generalization with nitrous oxide and its effects (items 6 and 7); the machine abstraction with interlocks (item 1) and agent switching (item 2); the preferences panel (item 24); end-tidal control, override mode and direct injection (items 5, 3 and 4); item 8's scenario events and accessibility (item 20); save/load and replay (items 9 and 10); then intravenous agents (items 13-15). Item 30 comes first because the project owner placed it ahead of the substance generalization on 2026-09-02, and item 30's entry gives the reason. **The substance generalization and items 6 and 7 came off the timeline on 2026-09-26** (project owner, 2026-09-26: "Add it back once we have a really fleshed out single agent set up with workspaces all working"). Whether that condition is met is the owner's judgment, so a session placing the next row after v0.7.0 asks the owner rather than placing the generalization by pathway order (`PL-5XG1`). **Item 40, the machine-profile framework, is no longer in this row.** The project owner split it out of item 1 on 2026-09-20. It is patch-track work that may ship whenever its items finish, and it takes no version of its own and freezes no gate. What stays here is the interlock baseline, and the machine behaviors that need the solver work that item 40 defers. | — |
@@ -974,7 +974,7 @@ field that the store already records.
 This milestone is planned-milestone item 27, the compartment schematic, with
 item 28, agent cost, beside it. `PL-LF0P` scoped it on 2026-10-25. The
 schematic and the agent cost readout are each a View of their own, which any
-Area can hold. The project owner confirmed this in the scoping round. Two
+Area can hold. This was ratified in the scoping round (project owner, 2026-10-25, ratified; the scoping record does not name what it was chosen over). Two
 choices went to the project owner:
 
 1. The schematic's containers fill to tension, as in Gas Man. They are
@@ -1076,7 +1076,9 @@ is deferred as § "Deferring to the next gate" says.
 **Frozen 2026-10-25, the day this milestone was scoped.** Every open item that
 counts as debt under § "The debt gate" above is on this list. The list shows
 the store as it was at the cut: `origin/main` at `0947408`, with this
-milestone's own items added.
+milestone's own items added. Each gate is frozen when the release before it
+ships and gates the next one: Gate 2 gated v0.6.0, Gate 3 gates v0.7.0 and
+Gate 4 will gate v0.8.0.
 
 **Swept for staleness on 2026-10-25** (`PL-F2NX`). Beat 3 of the cadence
 requires this sweep before any entry on the list is worked. Each of the 24
@@ -1569,6 +1571,8 @@ list does not yet name.
     stress-tested first. Then the five `docs/MODEL.md` rewrites it blocks are
     made, so that the sections a learner reads beside the schematic, the agent
     cost View and the other displays are written for a clinician.
+    All six items are done. The project owner then removed the copy editor on
+    2026-11-14 (`PL-GL45`), so this entry is now a record of finished work.
 
 #### The condition an agent amount is stated at
 
@@ -1641,9 +1645,8 @@ list does not yet name.
 
 **The copy editor**
 
-- The copy editor cuts text that its reader does not need and keeps good
-  text as it is, as `PL-HGZS`'s stress test judges. The five `docs/MODEL.md`
-  rewrites that waited on it have merged.
+- The five `docs/MODEL.md` rewrites that waited on the copy editor have
+  merged.
 
 **The whole release**
 
@@ -1673,7 +1676,8 @@ list does not yet name.
   needs its own design round.
 - **Liquid injection and the circuit flush.** Gas Man draws a button for each
   of them on its Picture. Each one is a new input to the model, not a display.
-  Planned-milestone item 4 is direct injection.
+  Planned-milestone item 4 is direct injection only. No queue item and no
+  planned-milestone item covers the circuit flush (checked 2026-11-14).
 - **The flows drawn as gauges.** Gas Man's lower half draws fresh gas flow,
   alveolar ventilation and cardiac output as bars. The parameter controls
   View already states all three. Drawing them a second time belongs with the
@@ -1689,8 +1693,8 @@ list does not yet name.
 - **Showing a past instant.** The schematic shows the current instant of the
   run, as the readouts do. Drawing it at an instant picked on the chart first
   needs a way to scrub through a run, and no release schedules one.
-- **The visual pass** - planned-milestone item 33, on the `v0.6.x` track.
-  Until then, the schematic's look is a placeholder.
+- **The visual pass** - planned-milestone item 33, on the `v0.7.x` track,
+  after this release. Until then, the schematic's look is a placeholder.
 
 #### The agent cost View
 
@@ -1700,7 +1704,8 @@ list does not yet name.
 - **Carbon dioxide equivalent.** The unit decision behind entry 8 lists it as
   a candidate unit with the same shape as money. Like money, it needs a stored
   factor for each agent, from a source that can go stale. No source has been
-  read for it, and it waits for a decision of its own.
+  read for it, and it waits for a decision of its own. No queue item tracks it
+  (checked 2026-11-14).
 - **Uptake as a headline figure.** Gas Man pairs Uptake with Delivered.
   `PL-DWHV` records that this model computes uptake but does not show it
   anywhere. Showing it is a display of its own, not part of the cost.
@@ -2591,8 +2596,9 @@ That export implies its own rendering path, separate from the live
 chart, and it is a capability rather than a restyle.
 
 *Placement (project owner, 2026-09-08; moved 2026-09-16; renumbered
-2026-09-26).* The pass comes after v0.6.0, as the
-`v0.6.x — the interface pass` row of "The timeline". It is a patch track
+2026-09-26; moved after v0.7.0 on 2026-11-10, project owner, ratified, over
+keeping it before v0.7.0).* The pass comes after v0.7.0, as the
+`v0.7.x — the interface pass` row of "The timeline". It is a patch track
 rather than a numbered milestone, for the reason that row gives. The
 project owner requested it on 2026-09-08 as "a decent size overhaul
 (theme, style, overall polish)". The owner called it not urgent, and
