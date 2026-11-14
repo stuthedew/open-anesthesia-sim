@@ -740,9 +740,9 @@ LONG_HOLD = (Action(setting="hold", position=0.0, steps=17_000),)
 )
 @example(
     # One step that needs 5 squarings, whose state lands 3.4 leading terms from
-    # the 50-digit solution. It failed while `PROPAGATOR_MARGIN` was 3, with a
-    # difference 1.13 times its allowance (found by the blind review of the
-    # rounding module, 2026-11-11).
+    # the 50-digit solution. It failed while `PROPAGATOR_ROUNDING_UNITS` was a
+    # measured margin of 3, with a difference 1.13 times its allowance (found by
+    # the blind review of the rounding module, 2026-11-11).
     Plan(
         None,
         Corner(

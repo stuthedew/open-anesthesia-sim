@@ -2405,8 +2405,8 @@ output at 0, 0.5, 2.5, 5 and 10 L/min, at time steps of 0.1 s, 0.01 s and 0.001 
 <!-- not-restated: 4 L/min, 5 L/min -->
 
 **A mass-balance tolerance that added up the worst-case rounding of every step would be loose
-where learners run.** Even with no squarings, a 24 h run at the 1 ms step would allow 1.5 parts
-in 10⁷. That is about 150 times looser than one part in 10⁹, so a real accounting error could
+where learners run.** Even with no squarings, a 24 h run at the 1 ms step would allow 1.9 parts
+in 10⁷. That is about 190 times looser than one part in 10⁹, so a real accounting error could
 pass on a long run that a learner can reach. A tolerance widened only by what the squarings add would equal
 one part in 10⁹ wherever no step needs a squaring. It suits a profile that needs squarings, and no
 shipped profile does, so it was not built.
@@ -2531,12 +2531,12 @@ The shipped run's 24-hour propagator had an error of 3.3e-11 in its worst entry,
 0.1 s steps had errors of up to 1.3e-10. At 0.001 L, the hardest corner needed 22 squarings.
 <!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
 
-One step's rounding is bounded by $`8 \cdot 2^{s} \cdot 2^{-52}`$, where $`s`$ is the number of
-squarings the step needs and 8 is the margin that § "How far a computed value can be from the
-exact one" gives. The mass-balance check compares the whole run's residual, so a rigorous
-tolerance would sum that bound over every step. Even at $`s = 0`$, the sum is 1.5e-9 for 24 h at
-the 0.1 s step, 1.5e-8 at 0.01 s and 1.5e-7 at the 1 ms step. A tolerance widened only by what the
-squarings add would be about $`8 (2^{s} - 1) 2^{-52}`$ per step, summed over the run, which is
+One step's rounding is bounded by $`10 \cdot 2^{s} \cdot 2^{-52}`$, where $`s`$ is the number of
+squarings the step needs and 10 is the factor that § "How far a computed value can be from the
+exact one" derives. The mass-balance check compares the whole run's residual, so a rigorous
+tolerance would sum that bound over every step. Even at $`s = 0`$, the sum is 1.9e-9 for 24 h at
+the 0.1 s step, 1.9e-8 at 0.01 s and 1.9e-7 at the 1 ms step. A tolerance widened only by what the
+squarings add would be about $`10 (2^{s} - 1) 2^{-52}`$ per step, summed over the run, which is
 exactly $`10^{-9}`$ wherever $`s = 0`$.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
@@ -2555,14 +2555,14 @@ built to match (`tests/unit/test_matrix_exponential.py`).
 Every value the model computes is rounded to a 64-bit number, so it differs slightly from the
 exact value of its equation. The table gives the largest difference that the model allows in each
 comparison it makes. None of them reaches a displayed digit. Over the longest supported run, 24 h
-at the 1 ms step, the bound on a reading is 1.5 parts in 10⁷ of the reading, and the readouts
+at the 1 ms step, the bound on a reading is 1.9 parts in 10⁷ of the reading, and the readouts
 show a percentage to two decimals.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
 
 | What is compared | Allowed difference | Kind |
 | --- | --- | --- |
-| The state after one step, against the exact solution | $`8 \cdot 2^{s} \cdot 2^{-52}`$ of the largest fraction in the run, where $`s`$ is the number of squarings the step needs. With no squarings that is 1.8e-15. | Bound |
+| The state after one step, against the exact solution | $`10 \cdot 2^{s} \cdot 2^{-52}`$ of the largest fraction in the run, where $`s`$ is the number of squarings the step needs. With no squarings that is 2.2e-15. | Bound |
 | The state after $`n`$ steps, against the exact solution | $`n`$ times the allowance for one step | Bound |
 | A running total of delivered or exhausted agent, against the exact sum of its step amounts | $`2^{-51}`$ of the total, which is 4.4e-16 | Bound |
 | Agent held, delivered and exhausted (§ "Mass-balance identity") | One part in 10⁹ of the agent handled, or 1e-12 L | Fixed |
@@ -2573,11 +2573,14 @@ show a percentage to two decimals.
 | The tissue blood flows, against cardiac output | One part in 10⁹ of cardiac output, plus 1e-12 L/s | Fixed |
 | A count of steps, axis ticks or grid units, against a whole number | 1e-9 of the count | Fixed |
 
-A bound follows from the arithmetic, and a test fails when a result exceeds it. The factor of 8
-in the first row is the exception. The arithmetic gives $`2^{s} \cdot 2^{-52}`$ times a small
-number, and that number was measured: the largest error in 240 000 steps drawn across the
-numerical envelope on 2026-11-11 was 3.5 times $`2^{s} \cdot 2^{-52}`$, and 8 is twice that,
-rounded up to a power of two. A fixed allowance is a chosen number, far above the rounding that
+A bound follows from the arithmetic, and a test fails when a result exceeds it. The factor of 10
+in the first row is derived too. It counts every rounding in one step at its largest possible
+size, and lets each squaring double the error it receives. The count gives at most 9.13 times
+$`2^{s} \cdot 2^{-52}`$, and 10 is that rounded up. The largest fraction in the run includes the
+fraction that the vaporizer delivers. A measurement checks that
+the bound is not far above what happens: the largest error in 240 000 steps drawn across the
+numerical envelope on 2026-11-11 was 3.9 times $`2^{s} \cdot 2^{-52}`$, about 40% of the bound.
+A fixed allowance is a chosen number, far above the rounding that
 was measured and far below a displayed digit. The section named in each row gives its
 measurement.
 
@@ -2614,7 +2617,7 @@ the evidence for the summed bound here, and the papers are the reason it was exp
 
 **The agent balance does not use the summed bound.** It keeps its fixed limit of one part in
 10⁹, for the reason that § "The numerical envelope" gives: the summed bound for the longest run is
-about 150 times that limit, and a limit that wide would let a real accounting error pass. The
+about 190 times that limit, and a limit that wide would let a real accounting error pass. The
 bound is the most that rounding can do anywhere in the numerical envelope, and the shipped agents
 stay far inside it. A correct 24-hour run of a shipped agent left a residual below 4 parts in
 10¹¹.
@@ -2628,11 +2631,25 @@ the last place of the later instant, divided by the interval. `tests/unit/test_r
 figure and that no other module in `core/` or `app/` defines an allowance.
 `tests/unit/test_generated_runs.py` holds generated runs to the bounds after every action, and
 `tests/unit/test_numerical_envelope_sweep.py` holds one step from each corner of the envelope to
-the bound for one step. The margin of 8 is `PROPAGATOR_MARGIN`, whose docstring records the
-measurement. It was 3 until 2026-11-11, when a review found a step inside the envelope with an
-error of 3.4 times $`2^{s} \cdot 2^{-52}`$. `tests/unit/test_rounding.py` recomputes the four
-worst steps found against a 50-digit calculation, and requires them to pass 3 and stay inside 8.
+the bound for one step. The factor of 10 is `PROPAGATOR_ROUNDING_UNITS`, whose docstring gives
+the derivation. It counts the roundings with the standard model of floating-point arithmetic and
+its bound on a product of rounding factors (Higham NJ, Mary T, MIMS EPrint 2018.33, eqs. 1.1 and
+1.2, pp. 2-3, and Lemma 2.2, p. 4), and the error of Python's compensated `sum` (Ogita T, Rump SM,
+Oishi S. Accurate sum and dot product. SIAM J Sci Comput 2005;26(6):1955-1988. Proposition 4.5,
+read in the authors' copy). It assumes that the C library's `exp` is within one unit in the last
+place, which glibc states. It also assumes that the fraction rows create agent at a rate $`r`$
+with $`r\,\Delta t \le 2^{-9}`$. The equations create none, and the check that the tissue flows
+sum to cardiac output keeps $`r\,\Delta t`$ below 1.5e-3 over 24 h. The errors are measured in the row sums of the propagator's fraction
+rows, with the forcing column divided by the delivered fraction. Every number is nonnegative after
+the shift, so the relative bounds add without cancellation. The factor was a measured margin of 3
+until 2026-11-11, when a review found a step inside the envelope with an error of 3.4 times
+$`2^{s} \cdot 2^{-52}`$, and a measured margin of 8 until 2026-11-14. `tests/unit/test_rounding.py`
+derives the bound again from the matrix exponential module's constants, holds 200 steps drawn
+across the envelope to it, and recomputes the four worst steps found against a 50-digit
+calculation, requiring them to pass 3 and stay inside 10.
 Two tolerances for the shares of a window that its areas take stay in `layout/`.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- not-restated: 1.1, 4.5 -->
 
 ## Parameter provenance
 

@@ -33,13 +33,13 @@ zero. A run repeats one propagator n times, so its errors are neither. A state
 held at equilibrium in a 10 000 L tissue drifted by 1.6e-12 over 4 308 steps,
 which is 38 times the square-root rule's figure. The five worst single steps
 found on 2026-11-11 were each repeated 2 000 times, and the error after n steps
-stayed at n times the error of one (`PROPAGATOR_MARGIN` records the runs).
+stayed at n times the error of one (`PROPAGATOR_ROUNDING_UNITS` records the runs).
 `docs/MODEL.md` § "How far a computed value can be from the exact one" gives the
 sources.
 
 **The agent balance does not use the summed bound.** It keeps its fixed limit
 of one part in 10**9 (project owner, 2026-11-11, ratified, with the decision
-above). Summed over the longest run a learner can reach, the bound is about 150
+above). Summed over the longest run a learner can reach, the bound is about 190
 times that limit, so a limit set from it would let a real accounting error
 pass. `AGENT_ACCOUNTING_RELATIVE_TOLERANCE` says what this costs.
 
@@ -74,40 +74,80 @@ instead allows a difference of about 1e-307 for each step. That is some 300
 orders of magnitude below any displayed digit.
 """
 
-PROPAGATOR_MARGIN: Final = 8.0
-"""How many times the leading term 2**s times `MACHINE_EPSILON` one propagator's error may reach.
+PROPAGATOR_ROUNDING_UNITS: Final = 10.0
+"""How far one step with s squarings can move a fraction, in units of 2**s `MACHINE_EPSILON`.
 
-`core/matrix_exponential.py` derives the leading term: the shift leaves an
-error of a few units in the last place, and each of the s squarings can double
-it. The margin is a measurement with a safety factor, and not a proof.
+The number is derived from the arithmetic and is not a measurement. The
+derivation gives at most 9.13 for every s up to `MAXIMUM_SQUARINGS`, and this
+constant is that figure rounded up. The difference is measured against the
+larger of the largest fraction in the state before the step and the delivered
+fraction F_D. That scale is the largest fraction in the run.
 
-On 2026-11-11, 240 000 single steps were drawn across the numerical envelope,
-and each propagator was compared with a 50-digit evaluation of the same
-exponential. The largest error in a fraction's row was 3.5 times the leading
-term. The error passed 3 leading terms at 13 of the 15 numbers of squarings
-from none to 14. Applying a propagator to a state rounds too. At one corner,
-the state after one step lay up to 3.9 leading terms from the 50-digit
-solution, depending on the state it started from. The margin is about twice
-that, and it is a power of two so that the bound is exact in binary. The margin
-was 3 until that day. Two blind reviews of this module each found runs inside
-the envelope that exceeded it, by factors of up to 1.3 (`PL-GJ1W`).
+Each rounded operation on 64-bit floats returns the exact result times
+(1 + d), with |d| at most u = 2**-53, which is half of `MACHINE_EPSILON`
+(Higham NJ, Mary T. A new approach to probabilistic rounding error analysis.
+MIMS EPrint 2018.33, eq. 1.2, p. 3). A product of m such factors lies within
+m u / (1 - m u) of 1 (their Lemma 2.2, p. 4). The shift in
+`core/matrix_exponential.py` makes every number that the propagator is built
+from nonnegative. No subtraction cancels, so a relative bound on each number
+carries through sums and products of them. Counting the roundings in each
+stage gives these amounts, in units of u:
 
-The same error repeats on every step. The five steps with the largest
-propagator errors were each repeated 2 000 times, and the state stayed 2.6 to
-3.5 leading terms per step from the 50-digit solution.
+1. The series: 13.15. Twelve plain additions build the sum, and the identity
+   term passes through all of them, which gives 12. The later terms add 1.15,
+   because the rows of the k-th sum to at most 0.065**k / k!, and it
+   carries at most 4k + 13 roundings. Truncation after twelve terms adds 5e-10.
+2. The decay factor: 3.07. Multiplying the shift by the interval rounds once,
+   the C library's `exp` is within one unit in the last place (2 u), and
+   multiplying the series by the factor rounds once more.
+3. Each squaring doubles the error that it receives and adds 2: one rounding
+   in each product, and u in each compensated sum.
+4. Applying the propagator to the state adds 2 more.
 
-Earlier measurements covered less of the envelope. On 2026-10-03, with the
-alveolar volume of a shipped agent driven down a decade at a time, the worst
-entry stayed between 0.6 and 2.7 times the leading term from no squarings to 45
-(`MAXIMUM_SQUARINGS` in `core/matrix_exponential.py` records the runs). On
-2026-10-26, one step from each corner of the envelope reached 2.5 times
-(`tests/unit/test_numerical_envelope_sweep.py`).
+So the step's error is (16.2 + 2) 2**s u, which is 9.11 times 2**s times
+`MACHINE_EPSILON`. The second-order terms and the third condition below add
+less than 0.02.
 
-Two tests measure the margin again on every pass of the suite.
-`tests/unit/test_rounding.py` recomputes the four worst propagators found. It
-requires each to stay inside this margin and the largest to pass 3 leading
-terms.
+The derivation rests on three conditions, and each holds here:
+
+1. Python's `sum` of floats is Neumaier's compensated sum (CPython 3.12 and
+   later, `cs_add` in `Python/bltinmodule.c`). For n nonnegative terms its
+   result lies within u + (n-1)**2 u**2 / (1 - (n-1) u)**2 of the exact sum,
+   as a share of the sum. Ogita, Rump and Oishi prove that bound for their
+   Sum2 (Accurate sum and dot product. SIAM J Sci Comput 2005;26(6):1955-1988,
+   Proposition 4.5, eq. 4.8, p. 12 of the authors' copy). Sum2 makes the
+   same roundings, because Dekker's correction gives the exact error of each
+   addition when the larger operand comes first, as `cs_add` arranges (their
+   eq. 1.1, p. 2).
+2. The C library's `exp` is within one unit in the last place. glibc states
+   0.509 units, or 0.511 without fused multiply-add
+   (`sysdeps/ieee754/dbl-64/e_exp_data.c`).
+3. The fraction rows of the system matrix create agent at a rate r that keeps
+   r times the interval at most 2**-9. With F_D read as a fraction, each row
+   of the equations sums to zero, so r comes only from rounding of the
+   entries and from tissue flows that exceed the cardiac output. The
+   settings refuse an excess above 1e-12 L/s plus 1e-9 of the cardiac
+   output. At 10 L/min into a 0.01 L venous pool over 24 h that gives
+   1.5e-3, and 2**-9 is 2.0e-3.
+
+Underflow below the smallest normal float adds at most 2**-1074 at each
+operation, which `SMALLEST_FULL_PRECISION_MAGNITUDE` covers.
+
+The measurement checks that the bound is not vacuous. On 2026-11-11, 240 000
+single steps were drawn across the numerical envelope and compared with a
+50-digit evaluation. The largest error in a fraction's row of the propagator
+was 3.5 units, and the largest error in a state after one step was 3.9 units,
+about 40% of the bound. The same error repeats on every step: the five steps
+with the largest propagator errors were each repeated 2 000 times, and the
+state stayed 2.6 to 3.5 units per step from the 50-digit solution.
+
+`tests/unit/test_rounding.py` derives the bound again from `SERIES_TERMS`,
+`MAXIMUM_SERIES_ARGUMENT_NORM` and the size of the state, and requires this
+constant to be that bound rounded up. It also holds steps drawn across the
+envelope to the bound, and requires the worst steps found to pass 3 units.
 `tests/unit/test_generated_runs.py` holds generated runs to `run_rounding`.
+`PL-GJ1W` gives the derivation in full. The constant was a measured margin of
+3 until 2026-11-11 and of 8 until 2026-11-14.
 """
 
 RUNNING_TOTAL_ROUNDING: Final = 2.0 * MACHINE_EPSILON
@@ -138,10 +178,10 @@ CLOCK_ROUNDING_UNITS: Final = 1.5
 def propagator_rounding(squarings: int) -> float:
     """Return the bound on one propagator's rounding, as a share of the state's scale.
 
-    The bound is `PROPAGATOR_MARGIN` times 2**squarings times
+    The bound is `PROPAGATOR_ROUNDING_UNITS` times 2**squarings times
     `MACHINE_EPSILON`. A step applies one propagator, so this is also the bound
-    for one step. With no squarings it is 1.8e-15, and at the cap of 32
-    squarings it is 7.6e-6.
+    for one step. With no squarings it is 2.2e-15, and at the cap of 32
+    squarings it is 9.5e-6.
 
     Args:
         squarings: How many times the scaled propagator was squared. The
@@ -171,7 +211,7 @@ def propagator_rounding(squarings: int) -> float:
             "rounding has no stated bound"
         )
 
-    return PROPAGATOR_MARGIN * 2.0**squarings * MACHINE_EPSILON
+    return PROPAGATOR_ROUNDING_UNITS * 2.0**squarings * MACHINE_EPSILON
 
 
 def run_rounding(squarings: int, steps: StepCount) -> float:
@@ -248,8 +288,8 @@ this limit admits is rounding (`docs/MODEL.md` § "Mass-balance identity").
 
 The limit is fixed, and it is not the summed bound. A correct 24-hour run of a
 shipped agent left a residual below 4e-11, so the limit is at least 25 times
-the measured rounding. `run_rounding` for that run at the 1 ms step is 1.5e-7,
-about 150 times the limit. A limit that wide would let a real accounting error
+the measured rounding. `run_rounding` for that run at the 1 ms step is 1.9e-7,
+about 190 times the limit. A limit that wide would let a real accounting error
 pass (`PL-D88N`).
 
 The cost is a documented halt. At the stiffest corners of the numerical
@@ -333,7 +373,7 @@ the three agents, in runs that included a setting change. As a share of the
 reading, it was at most 1.4e-10 over 24 h at the 0.1 s step, 2.9e-10 over 6 h
 at the 0.01 s step, and 1.2e-9 over 2 h at the 0.001 s step. It grows with the
 number of steps. Scaled in proportion to 24 h at the 0.001 s step it is 1.4e-8,
-and `run_rounding` for that run is 1.5e-7. This allowance is about six times
+and `run_rounding` for that run is 1.9e-7. This allowance is about five times
 the bound and seventy times the scaled measurement.
 
 `app/bookmarks.py` uses it to decide when a MAC target can be judged from the

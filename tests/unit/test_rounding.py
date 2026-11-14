@@ -6,27 +6,46 @@ of two and from the supported ranges, and not read back from the module.
 
 import ast
 import math
-from decimal import Decimal
+from decimal import ROUND_CEILING, ROUND_FLOOR, Context, Decimal, localcontext
 from fractions import Fraction
 from pathlib import Path
 
 import pytest
-from hypothesis import given
+from hypothesis import given, settings, target
 from hypothesis import strategies as st
-from test_generated_runs import ONE_STEP, Plan, _build
+from test_generated_runs import (
+    _COEFFICIENTS,
+    _POSITIONS,
+    _STEPS_S,
+    _VOLUMES_L,
+    ONE_STEP,
+    Plan,
+    _build,
+)
 from test_numerical_envelope import _decimal_exponential, _squarings
-from test_numerical_envelope_sweep import Corner
+from test_numerical_envelope_sweep import CEILING, Corner
 
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
-from anesthesia_sim.core.governing_equations import DELIVERED_AGENT_L, build_system_matrix
-from anesthesia_sim.core.matrix_exponential import MAXIMUM_SQUARINGS, matrix_exponential
+from anesthesia_sim.core.governing_equations import (
+    DELIVERED_AGENT_L,
+    STATE_SIZE,
+    UNIT_STATE,
+    build_system_matrix,
+)
+from anesthesia_sim.core.matrix_exponential import (
+    MAXIMUM_SERIES_ARGUMENT_NORM,
+    MAXIMUM_SQUARINGS,
+    SERIES_TERMS,
+    matrix_exponential,
+    propagate,
+)
 from anesthesia_sim.core.rounding import (
     AGENT_ACCOUNTING_RELATIVE_TOLERANCE,
     FLOW_FRACTION_TOLERANCE,
     HEIGHT_BAND,
     LIVE_READING_GAP,
     MACHINE_EPSILON,
-    PROPAGATOR_MARGIN,
+    PROPAGATOR_ROUNDING_UNITS,
     RUNNING_TOTAL_ROUNDING,
     SMALLEST_FULL_PRECISION_MAGNITUDE,
     WHOLE_COUNT_TOLERANCE,
@@ -52,23 +71,117 @@ def test_the_arithmetic_constants_are_those_of_a_64_bit_float() -> None:
 
 
 @pytest.mark.parametrize("squarings", [0, 1, 16, 19, MAXIMUM_SQUARINGS])
-def test_one_propagator_is_bounded_by_eight_times_the_doubled_spacing(squarings: int) -> None:
-    """The bound is 8 times 2**squarings times 2**-52, the leading term with its margin of eight.
+def test_one_propagator_is_bounded_by_ten_times_the_doubled_spacing(squarings: int) -> None:
+    """The bound is 10 times 2**squarings times 2**-52.
 
-    Every factor is a power of two, so the product is exact and the comparison
-    needs no tolerance.
+    Ten is exact in binary and the other factors are powers of two, so the
+    product is exact and the comparison needs no tolerance.
     """
 
-    assert PROPAGATOR_MARGIN == 8.0
-    assert propagator_rounding(squarings) == 2.0 ** (squarings - 49)
+    assert PROPAGATOR_ROUNDING_UNITS == 10.0
+    assert propagator_rounding(squarings) == 10.0 * 2.0 ** (squarings - 52)
 
 
-def test_the_bound_at_the_cap_on_squarings_is_under_eight_parts_in_a_million() -> None:
-    """At 32 squarings the bound is 2**-17, which is 7.63e-6."""
+def test_the_bound_at_the_cap_on_squarings_is_under_one_part_in_100_000() -> None:
+    """At 32 squarings the bound is 10 times 2**-20, which is 9.54e-6."""
 
     assert MAXIMUM_SQUARINGS == 32
-    assert propagator_rounding(MAXIMUM_SQUARINGS) == 2.0**-17
-    assert propagator_rounding(MAXIMUM_SQUARINGS) < 8e-6
+    assert propagator_rounding(MAXIMUM_SQUARINGS) == 10.0 * 2.0**-20
+    assert propagator_rounding(MAXIMUM_SQUARINGS) < 1e-5
+
+
+_DOWNWARD = Context(prec=40, rounding=ROUND_FLOOR)
+"""Decimal arithmetic that rounds down, for a denominator under an upper bound."""
+
+
+def _exp_upper_bound(x: Decimal) -> Decimal:
+    """Return an upper bound on e**x for 0 <= x < 1: e**x <= 1 / (1 - x), because e**-x >= 1 - x."""
+
+    return 1 / _DOWNWARD.subtract(1, x)
+
+
+def _derived_step_error_in_leading_terms(squarings: int) -> Decimal:
+    """Return the derived bound on one step's error, in units of 2**squarings times 2**-52.
+
+    This is the derivation in the docstring of `PROPAGATOR_ROUNDING_UNITS`,
+    computed here from the matrix exponential module's constants and the size
+    of the state, and not read from `core/rounding.py`. Every quantity is
+    nonnegative, so a relative bound on each number carries through sums and
+    products. A product of m rounded results lies within (1 + u)**m - 1 of the
+    exact one, where u = 2**-53. Errors are measured in the row sums of the
+    fraction rows, with the forcing column divided by the delivered fraction.
+    Every operation rounds up, and each denominator rounds down, so the result
+    is an upper bound on the derivation's figure.
+    """
+
+    with localcontext(Context(prec=40, rounding=ROUND_CEILING)):
+        u = Decimal(2) ** -53
+        # The scaled argument's rows sum to at most 1/16. The fraction rows may
+        # add up to 2**-9 of agent over the step, and the squarings' rounding
+        # adds a few parts in 10**15 to the norm. 0.065 is above all three.
+        theta = Decimal("0.065")
+        assert Decimal(MAXIMUM_SERIES_ARGUMENT_NORM) + Decimal(2) ** -9 < Decimal("0.0646")
+        # Agent created at a rate r with r * dt <= 2**-9 lets the exact
+        # propagator's rows sum to e**(r * dt) over the step.
+        creation = Decimal(2) ** -9
+
+        # One compensated sum of n nonnegative terms lies within
+        # u + gamma_(n-1)**2 of the exact sum (Ogita, Rump and Oishi,
+        # Proposition 4.5). One entry of a product of nonnegative matrices
+        # rounds each product and then the sum.
+        gamma = (STATE_SIZE - 1) * u / _DOWNWARD.subtract(1, (STATE_SIZE - 1) * u)
+        compensated = u + gamma * gamma
+        product = (1 + u) * (1 + compensated) - 1
+
+        # The series. For each order, term k has four roundings of at most u
+        # (the shift, the scaling by the interval, the product and the
+        # division by k) and one compensated sum. It then passes through
+        # SERIES_TERMS - k + 1 plain additions. The identity term passes
+        # through every addition.
+        series = (1 + u) ** SERIES_TERMS - 1
+
+        for order in range(1, SERIES_TERMS + 1):
+            rounding = (1 + u) ** (3 * order + SERIES_TERMS + 1) * (1 + compensated) ** order - 1
+            series += rounding * theta**order / math.factorial(order)
+
+        truncation = (
+            theta ** (SERIES_TERMS + 1)
+            / math.factorial(SERIES_TERMS + 1)
+            / _DOWNWARD.subtract(1, _DOWNWARD.divide(theta, SERIES_TERMS + 2))
+        )
+
+        # The decay factor: the argument rounds once, `exp` is within one unit
+        # in the last place (2u), and the product with the series rounds once.
+        decay = _exp_upper_bound(theta * u) * (1 + 2 * u) * (1 + u) - 1
+        error = decay * (_exp_upper_bound(creation) + series) + series + truncation
+
+        # Squaring k multiplies two copies of the propagator over 2**k scaled
+        # intervals, whose rows sum to at most e**(r * dt * 2**(k - s)).
+        for squaring in range(squarings):
+            growth = _exp_upper_bound(creation / 2 ** (squarings - squaring))
+            error = error * (2 * growth + error) + product * (growth + error) ** 2
+
+        # Applying the propagator to the state is one more product.
+        error += product * (_exp_upper_bound(creation) + error)
+
+        leading_term: Decimal = 2**squarings * Decimal(2) ** -52
+        bound: Decimal = error / leading_term
+
+        return bound
+
+
+def test_the_bound_is_the_derivation_rounded_up_to_a_whole_number() -> None:
+    """The derivation gives at most 9.13 leading terms at any number of squarings, rounded up to 10.
+
+    A change to the series, its scaling or the size of the state changes the
+    derivation, and this test then fails until the constant is derived again.
+    """
+
+    derived = [_derived_step_error_in_leading_terms(s) for s in range(MAXIMUM_SQUARINGS + 1)]
+
+    assert Decimal("9.11") < derived[0] < Decimal("9.12")
+    assert max(derived) < Decimal("9.13")
+    assert math.ceil(max(derived)) == PROPAGATOR_ROUNDING_UNITS
 
 
 WORST_STEPS_FOUND = (
@@ -168,21 +281,85 @@ def _propagator_error_in_leading_terms(
     )
 
 
-def test_the_worst_steps_found_pass_three_leading_terms_and_stay_inside_the_margin() -> None:
-    """The margin of 8 holds at the worst steps found, and a margin of 3 does not.
+def test_the_worst_steps_found_pass_three_leading_terms_and_stay_inside_the_derived_bound() -> None:
+    """The derived bound of 10 holds at the worst steps found, which reach about a third of it.
 
-    The 8 and the 3 are literals here, so that a change to the margin fails
-    this test and is made on a new measurement. The margin was 3 until
-    2026-11-11. The largest error must pass 3 leading terms, which shows that
-    these steps still measure what they were listed for. That comparison is
-    made on the largest of the four and not on each, because another
-    computer's `exp` may round one entry differently.
+    The 10 and the 3 are literals here. The largest error must pass 3 leading
+    terms. That shows these steps still measure what they were listed for, and
+    that the derived bound is within a factor of about three of an error that
+    correct arithmetic makes. The comparison with 3 is made on the largest of
+    the four and not on each, because another computer's `exp` may round one
+    entry differently.
     """
 
     errors = [_propagator_error_in_leading_terms(*step) for step in WORST_STEPS_FOUND]
 
-    assert all(error <= 8.0 for error in errors), errors
+    assert all(error <= 10.0 for error in errors), errors
     assert max(errors) > 3.0, errors
+
+
+@st.composite
+def _one_step_from_a_drawn_state(
+    draw: st.DrawFn,
+) -> tuple[Corner, tuple[float, float, float], float, float, tuple[float, ...]]:
+    """Draw a system inside the numerical envelope, a step and a state of its fractions.
+
+    The volumes, coefficients, flows, dial and step are drawn as the generated
+    runs draw them. Each fraction is drawn on its own, from 0 to the input
+    ceiling, so the state need not be one that a run reaches.
+    """
+
+    corner = Corner(
+        draw(_VOLUMES_L), draw(_VOLUMES_L), draw(_VOLUMES_L), draw(_VOLUMES_L), *draw(_COEFFICIENTS)
+    )
+    flows = (draw(_POSITIONS), draw(_POSITIONS), draw(_POSITIONS))
+    fractions = tuple(draw(_POSITIONS) * CEILING for _ in range(DELIVERED_AGENT_L))
+
+    return corner, flows, draw(_POSITIONS), draw(_STEPS_S), fractions
+
+
+@settings(max_examples=200)
+@given(_one_step_from_a_drawn_state())
+def test_a_step_drawn_across_the_envelope_stays_inside_the_derived_bound(
+    drawn: tuple[Corner, tuple[float, float, float], float, float, tuple[float, ...]],
+) -> None:
+    """One step's error in every fraction stays within 10 leading terms of the scale.
+
+    The expected state is a 50-digit evaluation of the same exponential,
+    applied to the same state. The scale is the larger of the largest fraction
+    in the state and the delivered fraction, which is what the bound is stated
+    against. One leading term is 2**squarings times 2**-52, with the squarings
+    counted by `test_numerical_envelope._squarings`. On 2026-11-11 the largest
+    error among 240 000 such steps was 3.9 leading terms.
+    """
+
+    corner, flows, dial, step_s, fractions = drawn
+    system = _build(Plan(None, corner, 0.5, flows, dial, step_s, ONE_STEP, 0.0, 2))
+    settings_now = system.equation_settings()
+    matrix = build_system_matrix(settings_now)
+    state = (*fractions, 0.0, 0.0, 1.0)
+    assert len(state) == STATE_SIZE and state[UNIT_STATE] == 1.0
+    scale = max(*fractions, settings_now.delivered_partial_pressure_fraction)
+
+    stepped = propagate(matrix_exponential(matrix, step_s), state)
+    exact = _decimal_exponential(matrix, str(Decimal(step_s)))
+    leading_term = 2.0 ** (_squarings(matrix, step_s) - 52)
+
+    if scale == 0.0:
+        assert stepped[:DELIVERED_AGENT_L] == (0.0,) * DELIVERED_AGENT_L
+        return
+
+    error = max(
+        abs(
+            Decimal(stepped[row])
+            - sum(exact[row][column] * Decimal(state[column]) for column in range(STATE_SIZE))
+        )
+        for row in range(DELIVERED_AGENT_L)
+    )
+    in_leading_terms = float(error) / scale / leading_term
+
+    target(in_leading_terms, label="one step's error, in leading terms")
+    assert in_leading_terms <= PROPAGATOR_ROUNDING_UNITS
 
 
 @pytest.mark.parametrize("squarings", [-1, MAXIMUM_SQUARINGS + 1, 51])
@@ -265,11 +442,12 @@ def test_a_number_of_steps_not_built_as_a_step_count_is_refused() -> None:
 def test_a_run_is_bounded_by_the_sum_of_its_steps_bounds(squarings: int, steps: int) -> None:
     """The bound for n steps is n times the bound for one, and no steps carry no rounding.
 
-    The count is below 2**53 and the other factors are powers of two, so the
-    product is exact in either order and the comparison needs no tolerance.
+    Ten times the count is below 2**53 and the other factors are powers of
+    two, so the product is exact in either order and the comparison needs no
+    tolerance.
     """
 
-    expected = steps * 2.0 ** (squarings - 49)
+    expected = steps * 10.0 * 2.0 ** (squarings - 52)
 
     bound = run_rounding(squarings, StepCount(steps))
 
@@ -326,11 +504,11 @@ def test_clock_rounding_refuses_an_instant_or_an_interval_it_cannot_bound(
 
 
 def test_the_agent_balance_limit_is_below_the_summed_bound_of_the_longest_run() -> None:
-    """The fixed limit of one part in 10**9 is about a 150th of the summed bound for 8.64e7 steps.
+    """The fixed limit of one part in 10**9 is about a 190th of the summed bound for 8.64e7 steps.
 
     The limit is written here as a literal, so that a change to it fails this
     test. `docs/MODEL.md` § "Mass-balance identity" publishes it. The ratio is
-    8 times 8.64e7 times 2**-52 over 1e-9, which is 153.5. A longer run limit or
+    10 times 8.64e7 times 2**-52 over 1e-9, which is 191.8. A longer run limit or
     a shorter step floor moves it, and the statement in `core/rounding.py` that
     the balance does not use the summed bound must then be read again.
     """
@@ -340,7 +518,7 @@ def test_the_agent_balance_limit_is_below_the_summed_bound_of_the_longest_run() 
 
     ratio = run_rounding(0, StepCount(STEPS_IN_THE_LONGEST_RUN)) / 1e-9
 
-    assert 153.0 < ratio < 154.0
+    assert 191.0 < ratio < 192.0
 
 
 def test_the_reading_allowance_is_five_times_the_summed_bound_of_the_longest_run() -> None:
@@ -349,9 +527,9 @@ def test_the_reading_allowance_is_five_times_the_summed_bound_of_the_longest_run
     The bound is for steps that need no squaring, which is every shipped
     agent's step (`tests/unit/test_numerical_envelope_sweep.py` fails when one
     needs a squaring). The allowance must exceed the bound. The factor of five
-    is a warning distance and has no other source: the allowance is 6.5 times
+    is a warning distance and has no other source: the allowance is 5.2 times
     the bound today, so a run limit or a step floor that moves the bound by
-    more than 30% fails this test, and a person then chooses a new allowance.
+    more than 4% fails this test, and a person then chooses a new allowance.
     The band around a MAC target must be wider than the allowance, or the
     zones around its two edges would meet.
     """
