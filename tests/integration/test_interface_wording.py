@@ -1,6 +1,6 @@
 """Every string the dashboard shows is on a list that a person has approved.
 
-The interface's wording tests in `test_simulation_view.py` refuse phrases
+The interface's wording tests in `tests/integration/simulation_view/` refuse phrases
 somebody thought of, such as an unhedged "end-tidal". A list of forbidden
 phrases misses the wording nobody listed, so this test holds the text to an
 allowed list instead (`PL-86VL`). It builds a dashboard that holds every

@@ -6,10 +6,10 @@ effort: S
 status: ready
 classes: ux
 feature: window-is-the-frame
-touches: src/anesthesia_sim/data/workspaces/default.json, src/anesthesia_sim/data/workspaces/induction.json, tests/integration/test_simulation_view.py
+touches: src/anesthesia_sim/data/workspaces/default.json, src/anesthesia_sim/data/workspaces/induction.json, tests/integration/simulation_view/test_simulation_view_page.py
 added: 2026-11-11
 payoff: at 1920 by 1080 the chart beside the Parameters View gets the height that the controls do not use
-verify: grep -q 'def test_the_parameters_area_is_not_far_taller_than_its_controls' tests/integration/test_simulation_view.py
+verify: grep -q 'def test_the_parameters_area_is_not_far_taller_than_its_controls' tests/integration/simulation_view/test_simulation_view_page.py
 ---
 
 **Problem.** The shipped Workspaces give the Parameters View an Area far taller than its content: 590 by 665 px in Default and 590 by 1083 px in Induction for about 90 px of controls (measured offscreen at 1920 by 1080, 2026-11-11), while no shipped Workspace but Maintenance shows a third View

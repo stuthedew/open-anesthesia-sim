@@ -1836,8 +1836,9 @@ class SimulationView(QWidget):
 
         The *set* of marks is the reference run's. Reading one run for it is
         correct rather than a simplification. `_apply_to_every_run` is the only
-        thing that writes a mark, so every displayed run carries the same set,
-        and `test_every_displayed_run_carries_the_same_marks` enforces that.
+        thing that writes a mark, so every displayed run carries the same set.
+        `test_every_displayed_run_carries_the_same_marks_after_an_add_and_a_removal`
+        enforces that.
 
         **The standings of those marks are not the same on every run, so they
         are read from every run** (`PL-LHBY`, `PL-4KZD`). A standing is
