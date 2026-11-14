@@ -585,14 +585,18 @@ _CONTAINER_WIDTH_PX = 44
 def test_a_container_cannot_be_read_against_the_chart(
     application: QApplication, shown: list[SimulationView]
 ) -> None:
-    """`PL-8W1B`: beside the chart, the caption says a fill level is not on its gridlines.
+    """`PL-8W1B`: beside the chart, each container carries the chart's gridlines as marks.
 
     The Maintenance Workspace shows the concentration chart and the schematic
     side by side. A container is much shorter than the chart's plot, so one
     tension stands at different screen heights in the two. A learner who read a
-    fill level across to the chart's gridlines would read the wrong tension. The
-    caption therefore names the chart's range without calling it the chart's
-    scale, and says the heights do not line up with its gridlines.
+    fill level across to the chart's gridlines would read the wrong tension. So
+    each container is marked inside both sides at the chart's gridlines, and the
+    caption says what the marks stand for.
+
+    The chart rules its axis every 0.5 MAC up to 3 MAC, so the expected marks
+    stand at sixths of the container's height. The test finds each painted mark
+    as a row of `MUTED` pixels just inside the container's left side.
     """
 
     workspaces = shipped_workspaces()
@@ -610,12 +614,26 @@ def test_a_container_cannot_be_read_against_the_chart(
     (chart,) = (v for v in view.layout_container.views() if isinstance(v, ConcentrationView))
     (schematic,) = _schematic(view).schematics
     caption = schematic.scale_text.text()
+    canvas = schematic.canvas
+    image = _painted(canvas)
+    muted = QColor(MUTED).rgb()
+    sixths = [sixth / 6 for sixth in range(1, 6)]
 
     assert chart.chart.plot_area().height() > 2 * _CONTAINER_HEIGHT_PX
-    assert "do not line up with the chart's gridlines" in caption
-    assert "Read each tension from its label." in caption
-    assert "on the concentration chart's scale" not in caption
+    assert canvas.marks == pytest.approx(sixths)
+    assert "Marks stand at the chart's gridlines" in caption
     assert not schematic.scale_text.isHidden()
+
+    for index in range(len(canvas.readings)):
+        x = _column_centre(canvas, index) - _CONTAINER_WIDTH_PX // 2 + 3
+        inside = range(_CONTAINER_TOP_PX + 1, _CONTAINER_TOP_PX + _CONTAINER_HEIGHT_PX)
+        rows = [y for y in inside if image.pixelColor(x, y).rgb() == muted]
+        expected = [_CONTAINER_TOP_PX + _CONTAINER_HEIGHT_PX * (1 - sixth) for sixth in sixths]
+        assert len(rows) == len(expected), canvas.readings[index].name
+        assert all(
+            abs(row - mark) <= 1
+            for row, mark in zip(sorted(rows, reverse=True), expected, strict=True)
+        ), canvas.readings[index].name
 
 
 def test_each_container_is_painted_to_its_tension_and_an_off_scale_one_is_marked(

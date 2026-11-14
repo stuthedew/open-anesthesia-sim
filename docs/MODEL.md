@@ -9528,9 +9528,10 @@ chart's percent axis, from zero at the bottom to 3 MAC of the running agent at
 the top. So a container filled to some share of its height shows the same
 tension as a trace standing at that share of the chart's axis. A container is
 much shorter than the chart's plot, so its fill level does not line up with the
-chart's gridlines. The caption says so, and points to the tension printed under
-each container (`PL-8W1B`). A container that holds more agent can stand lower than one that holds
-less. At 60 min in a run with sevoflurane at a 1 MAC dial, fat holds a fifth of
+chart's gridlines on screen. Each container therefore carries short marks at the
+chart's gridlines, every 0.5 MAC, and the caption names that spacing
+(`PL-8W1B`). A container that holds more agent can stand lower than one that
+holds less. At 60 min in a run with sevoflurane at a 1 MAC dial, fat holds a fifth of
 all the agent in the run, but its tension of 0.03% atm fills less than 1% of
 its container's height (`ROADMAP.md` § "v0.7.0 - the schematic"). At a 1 MAC
 dial, across the simulator's three agents, fat holds a fifth of the stored agent

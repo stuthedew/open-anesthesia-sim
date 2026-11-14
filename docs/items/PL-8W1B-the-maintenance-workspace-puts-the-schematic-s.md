@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: defect, safety
 feature: presentation-safety
-touches: src/anesthesia_sim/app/compartment_schematic.py, tests/integration/test_compartment_schematic_view.py, docs/MODEL.md
+touches: src/anesthesia_sim/app/compartment_schematic.py, src/anesthesia_sim/app/qt_schematic.py, tests/integration/test_compartment_schematic_view.py, tests/unit/test_compartment_schematic.py, docs/MODEL.md
 added: 2026-11-02
 closed: 2026-11-14
 pr: 2145
@@ -31,18 +31,35 @@ verify: grep -rq 'def test_a_container_cannot_be_read_against_the_chart' tests/
 **Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem began after Gate 3 froze at `817a4d88`. The item is classed `safety`, so it joins v0.7.0's frozen list whatever that answer. It is not deferred, because a learner can read a wrong tension from the containers now. The schematic did not exist at `817a4d88`. It came with `489c568d`, and its place beside the chart in the Maintenance Workspace with `506c8b50`, both on 2026-11-02.
  This replaces the 2026-11-03 recommendation to release v0.7.0 with the item deferred. Under `PL-8C8W` a `safety` entry may be deferred only when no learner can see a wrong value now, and a fill level read across against the chart's gridlines is a wrong tension a learner can see. So the release waits for this item unless the owner decides otherwise.
 
-**Built 2026-11-14.** The caption route, as the claim chose: aligning the
-containers to the plot's scale would make one View read another View's
-geometry, which the View contract does not allow. `SCALE_CAPTION_TEMPLATE` in
-`app/compartment_schematic.py` now reads "Fill height is tension, as a share of
-the chart's range, 0 to {top} ({top_mac})." and adds "Heights do not line up
-with the chart's gridlines. Read each tension from its label." It no longer
-says "on the concentration chart's scale", which invited the reading across.
-`docs/MODEL.md` § "The compartment schematic: what its heights, amounts and
-share bar assert" said a height on the schematic and on the chart "show the
-same tension"; it now says a share of a container's height matches the same
-share of the chart's axis, and that the fill level does not line up with the
-gridlines. `test_a_container_cannot_be_read_against_the_chart` opens the
+**Built 2026-11-14.** Each container now carries the chart's gridlines as
+short marks inside its two sides, and the caption names their spacing.
+Aligning the containers to the plot's own height was not taken, because one
+View would have to read another View's geometry, which the View contract does
+not allow. The marks need no such read. `scale_marks` in
+`app/compartment_schematic.py` takes the chart's ticks from the same
+`percent_axis_ticks` call as the chart's axis, and returns each interior tick
+as a share of the axis top: every 0.5 MAC below 3 MAC, so sixths of the
+container. `SchematicShown.marks` carries them, empty while the values are
+withheld. `SchematicCanvas._paint_marks` in `app/qt_schematic.py` draws each as
+an 8 px rule in `MUTED` in from both sides, leaving the middle of the fill
+clear. The caption's second line reads "Marks stand at the chart's gridlines,
+every {step} ({step_mac})." `docs/MODEL.md` § "The compartment schematic: what
+its heights, amounts and share bar assert" said a height on the schematic and
+on the chart "show the same tension". It now says a share of a container's
+height matches the same share of the chart's axis, that the fill does not line
+up with the chart's gridlines on screen, and that the containers carry marks
+at them. `test_a_container_cannot_be_read_against_the_chart` opens the
 Maintenance Workspace, checks that the chart's plot is more than twice a
-container's 96 px, and checks the caption's two sentences. On the old caption
-it fails on the gridline sentence.
+container's 96 px, and finds five `MUTED` rows inside each container's left
+side at the sixths. `test_each_container_is_marked_at_the_chart_s_gridlines`
+checks the shares and the caption's spacing for all three agents, with the
+spacing taken from each agent's data file.
+
+**Blind review, 2026-11-14.** Both passes named one should-fix and one
+optional finding, the same two. The first build only added a caption sentence
+saying the heights do not line up with the chart's gridlines. Both passes said
+a warning in small type is the weaker route, and that the View can prevent the
+misreading on its own by drawing the chart's gridlines inside each container.
+That is the build above. Both also said the caption had dropped
+"concentration", so in a Workspace beside the wash-in chart "the chart" named
+the wrong one. The first line is back to "on the concentration chart's scale".
