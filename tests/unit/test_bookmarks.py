@@ -537,6 +537,43 @@ def test_a_reading_within_one_part_in_a_hundred_thousand_of_the_height_is_at_it(
     assert not target.crossed_between(MacMultiple(0.99), MacMultiple(1.0 - 1.1e-5))
 
 
+def test_a_reading_exactly_on_the_lower_edge_of_the_band_is_inside_it() -> None:
+    """The band includes its lower edge, and the next float below that edge is outside it.
+
+    The target is at 1.00 ×MAC, so the band around it has a half-width of
+    `HEIGHT_BAND`, which is 1e-5, times 1.0. Multiplying by 1.0 adds no rounding,
+    which leaves the lower edge at exactly `1.0 - 1e-5`. A step that lands on
+    the edge from below therefore crosses the target, and a step from the edge
+    to 1.00 ×MAC crosses nothing.
+    """
+
+    target = _target(multiple=1.0)
+    lower_edge = MacMultiple(1.0 - 1e-5)
+    just_below = MacMultiple(math.nextafter(1.0 - 1e-5, 0.0))
+
+    assert target.crossed_between(MacMultiple(0.99), lower_edge)
+    assert not target.crossed_between(lower_edge, MacMultiple(1.0))
+    assert not target.crossed_between(MacMultiple(0.99), just_below)
+    assert target.crossed_between(just_below, lower_edge)
+
+
+def test_a_reading_exactly_on_the_upper_edge_of_the_band_is_inside_it() -> None:
+    """The band includes its upper edge, and the next float above that edge is outside it.
+
+    This mirrors the test of the lower edge, for a reading that falls onto the
+    target from above.
+    """
+
+    target = _target(multiple=1.0)
+    upper_edge = MacMultiple(1.0 + 1e-5)
+    just_above = MacMultiple(math.nextafter(1.0 + 1e-5, 2.0))
+
+    assert target.crossed_between(MacMultiple(1.01), upper_edge)
+    assert not target.crossed_between(upper_edge, MacMultiple(1.0))
+    assert not target.crossed_between(MacMultiple(1.01), just_above)
+    assert target.crossed_between(just_above, upper_edge)
+
+
 def test_only_a_reading_near_an_edge_of_the_band_needs_a_canonical_reading() -> None:
     """The live reading decides unless it lies within one part in a million of a band edge.
 
