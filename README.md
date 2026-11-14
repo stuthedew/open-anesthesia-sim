@@ -233,7 +233,7 @@ Building from source needs:
 - **[uv](https://docs.astral.sh/uv/) 0.12.5 or newer.** An older uv stops with a
   message, because the project's settings require this minimum
   (`required-version` in `pyproject.toml`).
-- **Python 3.14**, which uv installs for you. The file `.python-version` names
+- **Python 3.15**, which uv installs for you. The file `.python-version` names
   the exact patch release.
 - **On Linux, `libegl1`** (`apt install libegl1`). The Qt interface requires it,
   and the PySide6 wheels do not carry it. An ordinary desktop needs nothing

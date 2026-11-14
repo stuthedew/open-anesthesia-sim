@@ -53,13 +53,7 @@ from pathlib import Path, PurePosixPath
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.arming import (  # noqa: E402
-    BLIND_SEVERITIES,
-    TESTS,
-    blind_passes,
-    is_test_file,
-    tests_the_tooling,
-)
+from docket.arming import BLIND_SEVERITIES, TESTS, blind_passes, is_test_file, tests_the_tooling  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
 from docket.vcs import (  # noqa: E402
     GitUnanswered,

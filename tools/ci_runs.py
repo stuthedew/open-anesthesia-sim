@@ -51,13 +51,7 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.vcs import github_token  # noqa: E402
 
-from open_pull_requests import (  # noqa: E402
-    GITHUB_API,
-    LOOKUP_TIMEOUT,
-    PAGE,
-    api_request,
-    repo_slug,
-)
+from open_pull_requests import GITHUB_API, LOOKUP_TIMEOUT, PAGE, api_request, repo_slug  # noqa: E402
 
 RUNS = ROOT / "docs" / "ci-runs.tsv"
 
