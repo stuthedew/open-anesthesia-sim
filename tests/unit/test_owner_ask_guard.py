@@ -27,11 +27,15 @@ GUARD = "owner_ask_guard"
 SETTINGS = REPO / ".claude" / "settings.json"
 POST = "mcp__hearthbot__post_message"
 
-#: The decision form of the line `arm --owner-ask` prints, exiting 0.
+#: The question `arm --owner-ask` prints, exiting 0, one
+#: line for each of its parts.
 ASK_LINE = (
-    'Which view opens first? Option "Chooser": the learner picks a view each run. '
-    'Option "Last used": it opens where they left off. I recommend "Chooser": it names '
-    "every view."
+    "Which view opens first?\n"
+    '- I recommend "Chooser": it names every view.\n'
+    "- Context: the simulator now has three views.\n"
+    '- Option "Chooser": the learner picks a view each run. Cost: one more click.\n'
+    '- Option "Last used": it opens where they left off. Cost: it hides views.\n'
+    "- Why it is yours: it decides what a learner sees first."
 )
 #: What `arm --owner-ask` prints, exiting 3, where the pull request waits on
 #: the owner's read with no question recorded.
@@ -116,8 +120,17 @@ def test_a_held_pull_request_with_no_question_says_there_is_nothing_to_decide(
 
 
 def test_a_message_already_carrying_the_question_goes_out_unchanged(tmp_path: Path) -> None:
-    text = f"Decision for **#1950**:\n\n> {ASK_LINE.upper()}"
+    quoted = "\n".join(f"> {line}" for line in ASK_LINE.upper().splitlines())
+    text = f"Decision for **#1950**:\n\n{quoted}"
     assert _output(tmp_path, text) is None
+
+
+def test_a_message_carrying_only_the_first_line_of_the_question_gets_the_whole_of_it(
+    tmp_path: Path,
+) -> None:
+    """The hook attaches every line of the question, not the first alone (`PL-M2JP`)."""
+    first = ASK_LINE.splitlines()[0]
+    assert _sent(_output(tmp_path, f"#1950: {first}")) == f"#1950: {first}\n\n" + ASK_LINE
 
 
 @pytest.mark.parametrize(
