@@ -3,12 +3,16 @@ id: PL-Q89B
 title: The plain-writing rule still shows bad examples (point 2's stacked clause and a Before text for each of its three examples), which Anthropic's Sonnet 5 guide says work less well than positive examples
 priority: P3
 effort: S
-status: needs-decision
+status: done
 classes: decision
 feature: prose-quality
 touches: .claude/rules/plain-writing.md
 deferred-from: v0.7.0 - its problem is new since the freeze and no release schedules it, so it is deferred on the terms of § "Deferring to the next gate"; not safety or science
 added: 2026-11-14
+closed: 2026-11-14
+pr: 2148
+payoff: the writing rule shows a session only the version of each example to copy
+verify: ! grep -q 'Do not stack clauses' .claude/rules/plain-writing.md && ! grep -q '^Before: ' .claude/rules/plain-writing.md && ! grep -q 'Too cryptic' .claude/rules/plain-writing.md
 ---
 
 **Problem.** `.claude/rules/plain-writing.md` still shows bad examples. Point 2
@@ -31,3 +35,12 @@ each "Before" and point 2's bad sentence?
 title example's "Plain" version with the reason it is plain. It is the
 owner's call because the owner accepted these examples in `PL-ZDZ0` and
 `PL-J1ZM`.
+
+**Answer** (project owner, 2026-11-14, ratified, over keeping the
+before-and-after pairs): drop the bad versions. Done on `PL-BFHK`'s branch.
+Point 2 now shows only the clause written well. Each example keeps its good
+text, and the pull request title example keeps only the title the owner
+chose. Point 3's word pairs ("returns", not "answers") stay: they name the
+private sense to replace, which the card did not ask about.
+
+**Generator check.** One-off, the second half of `PL-BFHK`.
