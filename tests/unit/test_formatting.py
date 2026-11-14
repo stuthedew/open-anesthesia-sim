@@ -6,7 +6,7 @@ the dashboard. `docs/INTERFACE.md` § "Displayed precision" reasons about that
 module. Each claim that section makes should be checkable against the function
 it describes, without constructing the Qt interface.
 
-The end-to-end tests stay in `tests/integration/test_simulation_view.py`, where
+The end-to-end tests stay in `tests/integration/simulation_view/`, where
 a displayed value can be read off the control that shows it. They run the real
 controller, a real step and the real formatter, and check the string on the
 panel.

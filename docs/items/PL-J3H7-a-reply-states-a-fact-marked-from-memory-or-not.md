@@ -34,3 +34,8 @@ their account-wide instructions. The session gave the steps in its reply
 (Anthropic's help page "Understanding Claude's personalization features",
 https://support.claude.com/en/articles/10185728-understanding-claude-s-personalization-features,
 read 2026-11-11). Triage decides whether this item closes on the edit above.
+
+**The owner added the sentence, 2026-11-11.** After the reply with the steps,
+the owner wrote to the same session: "added sentance". The session cannot read
+the owner's account settings, so the wording that was added is not confirmed
+from here. Nothing is left for a session to do on this item.

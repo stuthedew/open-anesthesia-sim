@@ -3,7 +3,7 @@
 `docs/INTERFACE.md` § "F_A/F_I as a displayed ratio" makes claims about this
 module. These tests check each claim against the function that implements
 it, without building the Qt interface. The end-to-end path is tested in
-`tests/integration/test_simulation_view.py`: a real controller, real steps,
+`tests/integration/simulation_view/`: a real controller, real steps,
 the trace, and the sentence beside the trace.
 
 These tests compare against the published values that

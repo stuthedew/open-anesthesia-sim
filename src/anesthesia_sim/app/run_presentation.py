@@ -1,15 +1,19 @@
-"""Everything one run's panel shows at one moment, as one value that one call writes.
+"""Everything on screen that belongs to one run at one moment, as one value.
 
-`RunView.show_presentation` is the only code that writes a run's widgets, and
-it writes all of them from one `RunPresentation`. Two functions here build
-that value, and neither loads a GUI toolkit. `drawn_run` builds it from the
-snapshot that a frame drew from. `halted_run` builds it from the run's record
-when no frame can be drawn. `tests/unit/test_run_presentation.py` tests both
-with no widget.
+Every widget that shows one run is written from one `RunPresentation`.
+`RunView.show_presentation` writes the run's own panel from it: the status
+word, the transport, the agent identity, the delivered line, the
+control-change panel, the banner and the readouts. The Views in
+`app/views.py` write the run's panels in the Areas from the same value: the
+four dials, the accounting panel, the compartment schematic and the agent
+cost panel. Two functions here build that value, and neither loads a GUI
+toolkit. `drawn_run` builds it from the snapshot that a frame drew from.
+`halted_run` builds it from the run's record when no frame is drawn.
+`tests/unit/test_run_presentation.py` tests both with no widget.
 
 A halt is not a second writer. It is a `RunPresentation` whose values are kept
-or withheld, and `RunView.show_presentation` writes it exactly as it writes a
-drawn one (`PL-RF2S`). Before this module, a frame and a halt each wrote the
+or withheld, and each writer writes it exactly as it writes a drawn one
+(`PL-RF2S`). Before this module, a frame and a halt each wrote the
 widgets themselves, and each wrote a different part of them. A value that the
 halt left out stayed on screen from the run before, under a heading that named
 the run after it. Four fixes each added the missed widget to the halt, and to a
@@ -42,6 +46,7 @@ from anesthesia_sim.app.controller import RunRecord, SimulationSnapshot
 from anesthesia_sim.app.dashboard_frame import (
     READOUT_PANELS,
     WITHHELD_ACCOUNTING,
+    WITHHELD_DELIVERED_LINE_TEXT,
     Accounting,
     NewCaseQuestion,
     Readout,
@@ -179,7 +184,8 @@ class RunPresentation:
     Attributes:
         run_id: The run the values belong to.
         name: What the run is called while a second run is drawn, or None.
-        case: `RunPanelState.case` when this presentation was built.
+        case: How many times the run had started over, by a Reset or an agent
+            change, when this presentation was built (`RunPanelState.case`).
         record: The run's record that this presentation states.
             `RunView.owes_a_frame` compares it with the controller's record.
         statement: The run-state widgets: the agent, the status word, the
@@ -194,7 +200,8 @@ class RunPresentation:
         dials: The four setting controls, or why they or the delivered line
             could not be built.
         delivered_line: The delivered concentration's line beside the 1 MAC
-            line, or None when `dials` holds no controls.
+            line. When `dials` holds no controls, the line withholds both of
+            its values and keeps their units (`PL-SV2Q`).
         new_case: The open new-case question, restated for the snapshot this
             presentation was drawn from. It is None when no such question is
             open, and on a halt. A halted run does not step, so the figures
@@ -211,7 +218,7 @@ class RunPresentation:
     standing: ValuesStanding
     values: RunValues
     dials: tuple[SettingReadout, ...] | NotBuilt
-    delivered_line: str | None
+    delivered_line: str
     new_case: NewCaseQuestion | None
 
 
@@ -307,17 +314,28 @@ def halted_run(
     state: RunPanelState,
     kept: KeptValues,
 ) -> RunPresentation:
-    """Return what a run's panel shows for a stopped run when no frame can be drawn.
+    """Return what is shown for a run when no frame is drawn for it.
+
+    This is called in two cases. On a halt, it gives what the run's own
+    panel and every View show for the stopped run. Just after a run's dial
+    is dragged, the dashboard also hands every View the runs with no frame
+    (`SimulationView.present`), and that run has not stopped. The Views
+    write only the run's name, its agent, its dials and its values, and all
+    four are right in either case. The status word here never says that a
+    mark stopped the run, and the banner is the one for a halt, which is
+    empty for a run that has not stopped. Only the run's own panel writes
+    those two, and it is given this value only on a halt
+    (`RunView.show_halt`).
 
     Nothing here builds a compartment value. One of the halts this function
-    states is the refusal of a compartment value, and stating that halt must
+    shows is the refusal of a compartment value, and showing that halt must
     not raise the same refusal again (`PL-7DJK`).
 
     The values are `kept.values`, the ones the last frame drew, while the
     run is still the one that frame drew. When the run has started over
     since, they are withheld. After a step whose accounting failed its
     check, the accounting panel shows that step's check, which the record
-    carries. The clock's playback line is restated from `state` whether the
+    carries. The clock's playback line is taken from `state` whether the
     values are kept or withheld, because a reader can change the rate on a
     halted run (`PL-P58M`).
 
@@ -356,10 +374,12 @@ def halted_run(
             branch_offered=state.branch_offered,
             started_over=started_over,
         ),
-        # Every halt stated here has failed the run or stopped it at the
-        # supported run length, and both of those status words outrank a
+        # Every halt shown from this value has failed the run or stopped it at
+        # the supported run length, and both of those status words outrank a
         # mark's. Whether a mark stopped the run is worked out from the
-        # compartment states, which this function does not build.
+        # compartment states, which this function does not build. A run that
+        # has not stopped can be standing on a mark, but only the run's own
+        # panel shows the status word from this value, and only on a halt.
         stopped_on_mark=False,
         standing=standing,
         values=values,
@@ -394,8 +414,10 @@ def _presentation(
     """Build the presentation's run-state parts from `record`, around `values`.
 
     An exception raised while building the dials, the delivered line or
-    the 1 MAC line is returned in that part. So a halt whose record refuses
-    one of them is still stated.
+    the 1 MAC line is returned in that part. So a halt is still shown when
+    one of them cannot be built from the record. The delivered line is then
+    the withheld one, so that no earlier run's setting stays on screen
+    (`PL-SV2Q`).
     """
 
     statement = run_statement(
@@ -407,7 +429,6 @@ def _presentation(
         stopped_on_mark=stopped_on_mark,
     )
     dials: tuple[SettingReadout, ...] | NotBuilt
-    line: str | None
     one_mac: str | NotBuilt
 
     try:
@@ -415,7 +436,7 @@ def _presentation(
         line = _delivered_line(dials)
     except Exception as error:
         dials = NotBuilt(error)
-        line = None
+        line = WITHHELD_DELIVERED_LINE_TEXT
 
     try:
         one_mac = format_mac_reference(record.agent_display_name, record.agent_mac_percent)
