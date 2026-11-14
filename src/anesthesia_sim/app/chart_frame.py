@@ -179,7 +179,7 @@ CHART_COLUMN_BUDGET_PER_SERIES: Final = 150
 # How many control marks the chart can show at once. The marks come from a
 # fixed pool rather than one mark per adjustment. So a run full of adjustments
 # costs no construction per frame, and the bound is stated: the display counts
-# what the pool cannot show rather than dropping it silently (`docs/MODEL.md`
+# what the pool cannot show rather than dropping it silently (`docs/INTERFACE.md`
 # § "The control-input timeline", "Bounds are displayed, not silent").
 MAX_CHART_CONTROL_MARKS: Final = 24
 
@@ -193,7 +193,7 @@ MAX_CHART_CONTROL_MARKS: Final = 24
 # four curves, and the run's two width levels have to tell those four apart.
 #
 # The cap is a colour-capacity limit on the *chart*. It never reduces what the
-# display must show. `docs/MODEL.md` § "Minimum displayed outputs" requires all
+# display must show. `docs/INTERFACE.md` § "Minimum displayed outputs" requires all
 # six compartment readouts to stay on screen for both runs while comparing, and
 # it names this cap when it says so. The cap removes four curves, and the
 # readouts keep those four values on screen.
@@ -238,7 +238,7 @@ MAX_CHART_WASH_IN_SEGMENTS: Final = 8
 # The second line of the wash-in trace's hover readout, which says what the
 # value is. The parenthesis repeats the caption that `app/wash_in.py` already
 # uses, for the reason given there: F_I is the modelled circuit, not the
-# vaporizer dial. `docs/MODEL.md` § "The chart's hover readout: what the tooltip
+# vaporizer dial. `docs/INTERFACE.md` § "The chart's hover readout: what the tooltip
 # may show" derives the three-line form. The label uses a solidus rather than a
 # division sign, because every non-ASCII character shown to a reader must first
 # have been rendered and checked by eye (`tools/glyph_check.py`).
@@ -247,7 +247,7 @@ WASH_IN_HOVER_LABEL: Final = "Wash-in F_A/F_I (alveolar / modelled circuit)"
 # The text that the wash-in hover prints, instead of a number, at a column past
 # equilibrium. The crossing column, where the trace passes equilibrium, is drawn only
 # so that the line meets the reference. Its quotient is above 1. Rule 2 of
-# `app/wash_in.py` and `docs/MODEL.md` § "F_A/F_I as a displayed ratio" do not allow
+# `app/wash_in.py` and `docs/INTERFACE.md` § "F_A/F_I as a displayed ratio" do not allow
 # such a quotient to be shown as a wash-in fraction (`PL-YH6Z`). Printed under the
 # wash-in label, it would suggest that wash-in can go past completion. It would do so
 # at the dot that a reader is most likely to point at.
@@ -273,7 +273,7 @@ HOVER_INSTANT_RESOLUTION_S: Final = CHART_GRID_RESOLUTIONS_S[-1]
 # The word that opens every hover readout. It appears on every hover, not only
 # on the two compartments that have a measured twin, because the readout is
 # separate from the heading that would otherwise carry the word.
-# `docs/MODEL.md` § "The chart's hover readout" explains why the qualifiers
+# `docs/INTERFACE.md` § "The chart's hover readout" explains why the qualifiers
 # come before the number.
 _HOVER_MODELLED_MARKER: Final = "Modelled"
 
@@ -315,7 +315,7 @@ class TraceStyle:
             (`PL-NV9W`, `PL-8M05`). What the model computes is a compartment,
             and what a clinician would compare it with on a monitor is a
             different, measured thing. The hover readout shows the gloss for
-            the reason `docs/MODEL.md` § "The chart's hover readout" gives: a
+            the reason `docs/INTERFACE.md` § "The chart's hover readout" gives: a
             floating box has no readout row beside it to supply the hedge.
         color: The colour of the trace's line and of its legend swatch, from
             `app/theme.py`.
@@ -325,7 +325,7 @@ class TraceStyle:
             separates the traces, not decoration. `theme.py` records that the
             four simulated colour-vision models put pairs of these six colours
             as close as 1.01, far less than the 3:1 that would make colour
-            sufficient. `docs/MODEL.md` § "The six compartment traces" has the
+            sufficient. `docs/INTERFACE.md` § "The six compartment traces" has the
             table that this pattern is taken from.
         line_style: The dash pattern in words, for the legend. It is kept
             beside the pattern it describes rather than in the legend's own
@@ -549,7 +549,7 @@ def preview_stroke_width(run_stroke_width: float) -> float:
     prediction never carries the visual weight of the run that happened. It is
     never thinner than `MINIMUM_TRACE_STROKE_WIDTH`. An antialiased line thinner
     than that has a contrast ratio less than the 3:1 minimum against the panel
-    (`docs/MODEL.md` § "The six compartment traces").
+    (`docs/INTERFACE.md` § "The six compartment traces").
 
     Args:
         run_stroke_width: The width of the narrowest real curve drawn for the
@@ -624,7 +624,7 @@ def compared_compartments(
     Returns:
         The compartments drawn, in table order, and the number of selected
         compartments that the cap left undrawn. The display shows the second
-        value rather than dropping it silently, per `docs/MODEL.md` § "The
+        value rather than dropping it silently, per `docs/INTERFACE.md` § "The
         control-input timeline", "Bounds are displayed, not silent".
     """
 
@@ -649,7 +649,7 @@ def chart_columns(plot_width_px: float) -> int:
     and on the run at every drawn instant. The count therefore follows the
     plot, not the span. A twelve-hour axis on a 1 000 px plot draws 1 001
     columns at a 43 s chord, and a fifteen-minute axis on the same plot draws
-    1 001 columns at 0.9 s. `docs/MODEL.md` § "What the chart draws" states
+    1 001 columns at 0.9 s. `docs/INTERFACE.md` § "What the chart draws" states
     the guarantee, what it leaves between drawn instants, and what was
     measured against it.
 
@@ -722,7 +722,7 @@ class RunPreview:
     """The trajectory one run would take under a setting the reader is trying, as drawn.
 
     **This is a prediction, a third kind of value beside a modelled state and
-    a measurement** (`docs/MODEL.md` § "A preview of an unapplied setting").
+    a measurement** (`docs/INTERFACE.md` § "A preview of an unapplied setting").
     It depends on a setting that the learner has not applied and may never
     apply. So everything that draws it marks it as a prediction. It lies in a
     region of its own, which the run that happened never enters. It is
@@ -770,7 +770,7 @@ class RunFrame:
             than this module deriving it from a position. So one run has the
             same name on the chart, in the legend and on its own panel, and a
             view that drew a different subset could not rename it
-            (`.claude/rules/ui-areas.md`). `docs/MODEL.md` § "Minimum
+            (`.claude/rules/ui-areas.md`). `docs/INTERFACE.md` § "Minimum
             displayed outputs" requires the run to be named in text. Colour
             is used for the compartment, and position alone fails a reader
             who has looked away and back.
@@ -1469,7 +1469,7 @@ def format_trace_hover(
 ) -> str:
     """Return the three-line hover readout for one drawn point of a compartment trace.
 
-    `docs/MODEL.md` § "The chart's hover readout: what the tooltip may show"
+    `docs/INTERFACE.md` § "The chart's hover readout: what the tooltip may show"
     is the specification. The first line gives the run context, the second
     says what the value is, and the third gives the value in both units the
     chart uses. Every number goes through `app/formatting.py`, never through
@@ -1561,7 +1561,7 @@ def _hover_context(run: RunFrame, time_s: float, run_count: RunCount) -> str:
     The run is named while more than one run is drawn, and omitted while only
     one is (project owner, 2026-09-17, ratified, over giving the run a fourth
     line of its own and over leaving the curve's line width to show it).
-    `docs/MODEL.md` § "The chart's hover readout" -> "The hover and the run it
+    `docs/INTERFACE.md` § "The chart's hover readout" -> "The hover and the run it
     belongs to" is the derivation. In short, this is the line that the
     specification already calls *run context*. While two runs are compared,
     the run is the only token on this line that tells them apart.
@@ -1599,7 +1599,7 @@ def format_compared_trace_hover(
 ) -> str:
     """Return what a hover shows where more than one drawn point is within the pointer's reach.
 
-    `docs/MODEL.md` § "The chart's hover readout" -> "Where more than one
+    `docs/INTERFACE.md` § "The chart's hover readout" -> "Where more than one
     trace answers" is the specification, and `PL-JVHL` is why there is one.
     With the three-line form, the run a reader was shown depended on which
     drawn point was marginally nearer, so a 2 px hand movement could swap it
@@ -1952,7 +1952,7 @@ def nearest_trace_point(
     not to the nearest of the trace's points. So every value reported is at
     that instant *and* within reach of the pointer. The cost is that a reader
     must aim more carefully beside a steep segment, but no drawn instant
-    becomes unreachable. `docs/MODEL.md` § "Where more than one trace
+    becomes unreachable. `docs/INTERFACE.md` § "Where more than one trace
     answers" has the measurement.
 
     **Distance does not decide between traces either.** Every run and every
@@ -1964,7 +1964,7 @@ def nearest_trace_point(
     Only the compartments that the frame draws are candidates, so a hidden
     trace is never reported. Only the six compartments are candidates at
     all. The clinical references and the control marks are not drawn points
-    and are never reported, for the interaction reason that `docs/MODEL.md`
+    and are never reported, for the interaction reason that `docs/INTERFACE.md`
     § "The chart's hover readout" gives. Every candidate is a point that the
     plot actually draws, so the readout reports a state of the run, never a
     position between two states.

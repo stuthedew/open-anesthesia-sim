@@ -116,7 +116,7 @@ CIRCUIT_VOLUME_L = 6.0
 # zero, the supported-range types would reject those settings, and the
 # trajectory would raise an error instead of running. The test named above
 # would also fail, and its message says which measurements to re-derive.
-# `docs/MODEL.md` § "Supported input ranges" records that zero is supported on
+# `docs/INTERFACE.md` § "Supported input ranges" records that zero is supported on
 # all four controls, and that this was deliberate (PL-629Z).
 MAX_FRESH_GAS_FLOW_L_MIN = 10.0
 MAX_ALVEOLAR_VENTILATION_L_MIN = 12.0
@@ -130,7 +130,7 @@ MIN_DELIVERED_CONCENTRATION_PERCENT = 0.0
 # same reason as the slider limits.
 # `test_displayed_resolution_and_shipped_step_match_the_interface` checks it against
 # the interface, together with the delivered-concentration minimum.
-# `docs/MODEL.md` § "Displayed precision" argues for the choice.
+# `docs/INTERFACE.md` § "Displayed precision" argues for the choice.
 CONCENTRATION_DISPLAY_DECIMALS = 2
 
 
@@ -299,7 +299,7 @@ def _unperfused_load_then_dial_off(agent_id: str) -> tuple[Phase, ...]:
     alveolar ventilation.
 
     Zero cardiac output is a supported input. That was decided and recorded,
-    not inherited, and `docs/MODEL.md` § "Supported input ranges" gives the
+    not inherited, and `docs/INTERFACE.md` § "Supported input ranges" gives the
     reasons. The main reason is that reducing cardiac output speeds up
     alveolar wash-in, and zero is the clearest case of that lesson. So this
     trajectory is inside the domain the gate must cover. It is not an edge case
@@ -1956,7 +1956,7 @@ def test_displayed_ordering_reverses_only_at_a_crossing(
     is possible there, and a zero-inversion assertion would turn a different
     libm into a failure.
 
-    `docs/MODEL.md` § "Displayed precision" quotes this test's count of pair
+    `docs/INTERFACE.md` § "Displayed precision" quotes this test's count of pair
     comparisons. It cites the absolute gate and the unit test as the support
     for its claim that the interface need not mark anything about comparing
     two compartments.
@@ -2021,7 +2021,7 @@ def test_displayed_ordering_reverses_only_at_a_crossing(
         f"exceeds twice the absolute tolerance the neighbouring gate enforces, "
         f"so either that gate is also failing or format_percent has stopped "
         f"being monotone, which test_format_percent_preserves_order checks; "
-        f"docs/MODEL.md's 'Displayed precision' quotes this test's count of "
+        f"docs/INTERFACE.md's 'Displayed precision' quotes this test's count of "
         f"pair comparisons."
     )
 

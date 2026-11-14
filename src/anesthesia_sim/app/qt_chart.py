@@ -23,7 +23,7 @@ are drawn at the same ticks that the axis is labelled at. So the gridlines and
 the labels cannot describe two different scales (`PL-Q4VH`).
 
 **The hover shows a readout whenever the pointer is over a drawn point,
-whether the run is playing or paused** (`docs/MODEL.md` § "The chart's hover
+whether the run is playing or paused** (`docs/INTERFACE.md` § "The chart's hover
 readout: what the tooltip may show"). The readout is for the plot's *drawn
 points*, which are the states at which the run was evaluated. It is never for
 a position between two of them. Its text is the text that `chart_frame`
@@ -299,7 +299,7 @@ def dashed_pen(color: str, stroke_width: float, dash_pattern: Sequence[int] | No
 
     Qt states a dash pattern in units of the pen's width. `app/theme.py` and
     `chart_frame.COMPARTMENT_TRACES` state theirs in pixels, which is the unit
-    that `docs/MODEL.md` § "The six compartment traces" tabulates. So the
+    that `docs/INTERFACE.md` § "The six compartment traces" tabulates. So the
     conversion is made once, here, rather than at each of the seven pens that
     have a pattern. A pattern copied across without the conversion draws every
     dash too long by a factor of the pen's width, which is what the spike did.
@@ -610,7 +610,7 @@ class _HoverReadout:
 
     It keeps the last pointer position, so a frame drawn under a resting
     pointer shows a fresh readout rather than going blank. At high playback
-    speed the reported value moves as the run does. `docs/MODEL.md` § "When
+    speed the reported value moves as the run does. `docs/INTERFACE.md` § "When
     it answers" says that this is correct, not a defect to design around. It
     keeps `None` once the pointer has left the plot, so a frame drawn after
     that shows no readout (`PL-LTKL`).
@@ -1418,7 +1418,7 @@ class WashInChart(QWidget):
         item.setLabel("left", "F_A/F_I", color=MUTED)
         item.setLabel("bottom", "simulated time", color=MUTED)
         # The axis is fixed rather than fitted to the data. It is labelled at
-        # its own gridlines, at its own resolution, as `docs/MODEL.md`
+        # its own gridlines, at its own resolution, as `docs/INTERFACE.md`
         # § "F_A/F_I as a displayed ratio" specifies.
         item.setYRange(0.0, WASH_IN_AXIS_MAXIMUM, padding=0)
         item.getAxis("left").setTicks([list(wash_in_axis_ticks())])
@@ -2133,7 +2133,7 @@ class TraceLegend(QWidget):
         ]
         layout.addLayout(self._compared_row)
         # Each reference names the compartment it is read against.
-        # `docs/MODEL.md` § "Interface boundary" requires that of a
+        # `docs/INTERFACE.md` § "Interface boundary" requires that of a
         # reference, in the same passage that exempts a reference from the
         # drawn-trace rule. The band names vessel-rich, not alveolar. The
         # model has no effect-site compartment, and it defines the arterial

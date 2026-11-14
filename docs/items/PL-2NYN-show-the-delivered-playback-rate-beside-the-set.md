@@ -58,5 +58,5 @@ owner's own machine, with the script kept in `PL-SQJ1`'s brief, is under 99%.
 
 **Done when.** A host that misses ticks shows the delivered rate beside the set
 one, in the terms above, and a host that does not shows the plain label, both
-held by tests with a fake clock; `docs/MODEL.md` § "Interface boundary" says
+held by tests with a fake clock; `docs/INTERFACE.md` § "Interface boundary" says
 what the disclosure means.

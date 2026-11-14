@@ -27,7 +27,7 @@ touches, widened to whole paragraphs, table rows, docstrings or comments on
 both sides. Hunks parted only by blank lines make one passage. It is printed
 with its word count on the default branch and now, whatever its length, unless
 only its spacing changed. A whole section is not the passage, because a growth
-of 50 words would not show in a section as long as `docs/MODEL.md` §
+of 50 words would not show in a section as long as `docs/INTERFACE.md` §
 "Displayed precision". Then, for each file, it lists each equation, "no test
 yet" declaration, code span, citation, number, item id and date that the file
 held at the fork and holds fewer times now, read as `tools/model_rewrite.py`

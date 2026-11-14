@@ -206,7 +206,7 @@ def _require_the_two_flow_claims_overlap(
             f"it delivers {machine_range.minimum_l_min} to "
             f"{machine_range.maximum_l_min} L/min and the model supports "
             f"{MINIMUM_FRESH_GAS_FLOW_L_MIN} to {MAXIMUM_FRESH_GAS_FLOW_L_MIN} L/min "
-            f'(docs/MODEL.md, "Supported input ranges")'
+            f'(docs/INTERFACE.md, "Supported input ranges")'
         )
 
 
@@ -250,7 +250,7 @@ def _require_deliverable_flow(
             f"{machine_range.maximum_l_min} L/min; the model's supported input range "
             f"of {MINIMUM_FRESH_GAS_FLOW_L_MIN} to {MAXIMUM_FRESH_GAS_FLOW_L_MIN} L/min "
             f"is not what refused it (the machine's range is declared in its "
-            f"data/machines/ profile, the model's in docs/MODEL.md, "
+            f"data/machines/ profile, the model's in docs/INTERFACE.md, "
             f'"Supported input ranges")'
         )
 

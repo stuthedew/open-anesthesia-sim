@@ -5,15 +5,15 @@ priority: P3
 effort: S
 status: ready
 classes: defect, docs
-touches: src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/dashboard_frame.py, docs/MODEL.md
+touches: src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/dashboard_frame.py, docs/MODEL.md, docs/INTERFACE.md
 added: 2026-11-05
 payoff: a developer can change either display limit knowing why it is that number and what a learner would gain or lose
-verify: ! grep -qF 'No record gives the' docs/MODEL.md
+verify: ! grep -qF 'No record gives the' docs/INTERFACE.md
 ---
 
 **Problem.** The chart's limit of 24 control marks (MAX_CHART_CONTROL_MARKS) and the change list's limit of 12 lines (MAX_LISTED_ADJUSTMENTS) carry no recorded reason: say why each is that number and what changing it would do
 
-**Checked 2026-11-09:** `MAX_CHART_CONTROL_MARKS: Final = 24` in `src/anesthesia_sim/app/chart_frame.py` and `MAX_LISTED_ADJUSTMENTS: Final = 12` in `src/anesthesia_sim/app/dashboard_frame.py` have comments that say what each limit does, but not why it is that number. `docs/MODEL.md` § "The control-input timeline" says "No record gives the reason for either value (`PL-N8G4`)". `git log -S` finds both values first in the PySide6 ports, `6a823696` (#578) and `ae8fc7bc` (#588), so the trace has to continue under the names they had before.
+**Checked 2026-11-09:** `MAX_CHART_CONTROL_MARKS: Final = 24` in `src/anesthesia_sim/app/chart_frame.py` and `MAX_LISTED_ADJUSTMENTS: Final = 12` in `src/anesthesia_sim/app/dashboard_frame.py` have comments that say what each limit does, but not why it is that number. `docs/INTERFACE.md` § "The control-input timeline" says "No record gives the reason for either value (`PL-N8G4`)". `git log -S` finds both values first in the PySide6 ports, `6a823696` (#578) and `ae8fc7bc` (#588), so the trace has to continue under the names they had before.
 
 **Why it matters.** `.claude/rules/plain-writing.md` asks each chosen value for its reason, taken from a record. Without one, a developer cannot tell whether raising either limit still fits the reference window, or what a learner would lose if one were lowered.
 

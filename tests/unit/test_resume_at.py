@@ -23,7 +23,7 @@ way.**
   `test_the_accounting_anchor_is_carried_rather_than_derived` shows why the
   anchor is not derived instead.
 - *A state that the equations cannot be evaluated against is refused, before
-  anything is written.* `docs/MODEL.md` § "The canonical evaluation rule" says
+  anything is written.* `docs/INTERFACE.md` § "The canonical evaluation rule" says
   that a drawn value may be drawn and used for nothing else. A partially
   seeded system would be the "partial state" that `AgentUptakeSystem.advance()`
   already exists to make unrepresentable, arriving by a second route.
@@ -83,7 +83,7 @@ STEPPED_AGREEMENT = 5e-15
 
 The value was measured on the run below, not assumed. The worst departure
 over every compartment at the instants probed is less than 1e-15 of one
-atmosphere. The display resolves 1e-4, as `docs/MODEL.md` § "Displayed
+atmosphere. The display resolves 1e-4, as `docs/INTERFACE.md` § "Displayed
 precision" states. The tolerance is absolute, in fractions of one atmosphere,
 for the reason that `docs/MODEL.md` § "Closed-form agreement test" gives. A
 relative tolerance would tighten without limit on the near-zero tissue
@@ -371,7 +371,7 @@ def test_a_carried_anchor_reaches_the_branch_s_own_accounting_period() -> None:
 
 
 def test_a_drawn_value_cannot_resume_a_system() -> None:
-    """`resume_at` also enforces `docs/MODEL.md` § "The canonical evaluation rule".
+    """`resume_at` also enforces `docs/INTERFACE.md` § "The canonical evaluation rule".
 
     A drawn column and a fork's opening state are the same nine numbers in the
     same order, so their contents cannot tell them apart. What separates them

@@ -26,7 +26,7 @@ differently from a twenty-minute one, cannot be reached at all
 safety property.** A larger step would let a *view* control alter the
 numbers. Two learners comparing the same case at different speeds would
 see different values, and the displayed digits would stop meaning what
-`docs/MODEL.md` § "Displayed precision" derives them from. The step is
+`docs/INTERFACE.md` § "Displayed precision" derives them from. The step is
 fixed for determinism rather than for accuracy. So a faster playback that
 changed the step would not give a slightly coarser answer. It would give a
 different run. Steps per tick is the only quantity here that varies.

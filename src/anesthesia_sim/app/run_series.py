@@ -195,7 +195,7 @@ class DrawnWindow:
     state here is a `DisplayState`. `core/run_definition.py` makes that type
     structurally different from a state vector. It does so precisely so that
     a drawn value cannot become a keyframe, an export or a fork's opening
-    state just by having the right shape. `docs/MODEL.md` § "The canonical
+    state just by having the right shape. `docs/INTERFACE.md` § "The canonical
     evaluation rule" states the guarantee, and this class is one of the
     places that must enforce it.
 

@@ -13,7 +13,7 @@ this class names no View, except to keep the concentration chart in view after
 a branch.
 
 **The unconditional region is outside the splitters** (`PL-NWTM`). It holds
-the values that must be on screen at all times. `docs/MODEL.md` § "Minimum
+the values that must be on screen at all times. `docs/INTERFACE.md` § "Minimum
 displayed outputs" requires them in every Workspace, and
 `app/unconditional_set.py` declares which values they are. Each run's
 transport row, its notice banner, its readouts and its control-change record
@@ -1115,7 +1115,7 @@ class SimulationView(QWidget):
         if misplaced:
             raise RuntimeError(
                 "the unconditional region does not hold "
-                f"{', '.join(misplaced)}, which docs/MODEL.md requires on screen in every "
+                f"{', '.join(misplaced)}, which docs/INTERFACE.md requires on screen in every "
                 "layout (app/unconditional_set.py)"
             )
 
@@ -2021,7 +2021,7 @@ class SimulationView(QWidget):
         """Set or remove the reader's price for one agent, save it, and draw at once.
 
         Every cost at that agent's price is redrawn on the frame drawn here,
-        whether or not the run is advancing (`docs/MODEL.md` § "A cost at the
+        whether or not the run is advancing (`docs/INTERFACE.md` § "A cost at the
         reader's price", `PL-1P15`). Setting a price drops any refused entry
         for the agent. Removing a price drops both the price and any refused
         entry.

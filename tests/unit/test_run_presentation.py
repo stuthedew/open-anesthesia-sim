@@ -145,7 +145,7 @@ def test_a_drawn_run_states_the_snapshot_it_was_given_on_every_part() -> None:
 
     The expected texts are worked out from the run, not from the builders. The run
     delivers 2% sevoflurane and has run for 90 s, and 1 MAC of sevoflurane is 2.0%
-    (`docs/MODEL.md` § "MAC multiples as a display unit").
+    (`docs/INTERFACE.md` § "MAC multiples as a display unit").
     """
 
     controller = _run_at(90.0)

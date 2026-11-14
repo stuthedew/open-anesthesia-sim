@@ -1448,7 +1448,7 @@ def test_two_runs_on_one_axis_are_told_apart_by_line_width_and_named_in_text(
     two curves coincide exactly before the fork (`PL-Z3W6`), so the narrower
     one has to be drawn on top, or one run is invisible over that stretch.
     Third, every drawn curve's legend entry names both its compartment and
-    its run, because `docs/MODEL.md` § "Minimum displayed outputs" requires
+    its run, because `docs/INTERFACE.md` § "Minimum displayed outputs" requires
     the run to be named in text, and colour is already used for the
     compartment. Fourth, the fork itself is marked, since it is the one
     instant at which the two runs stop being the same run.

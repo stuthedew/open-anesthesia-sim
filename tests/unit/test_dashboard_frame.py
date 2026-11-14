@@ -1478,9 +1478,10 @@ _FRESH_GAS_FLOW_QUALIFIER = "common gas outlet"
 def test_the_alveolar_readout_is_labelled_end_tidal_equivalent() -> None:
     """The hedge is a safety requirement, not a wording preference.
 
-    `docs/MODEL.md` § "Minimum displayed outputs" requires "alveolar or
+    `docs/INTERFACE.md` § "Minimum displayed outputs" requires "alveolar or
     end-tidal-equivalent concentration". Dead space, airway sampling delay,
-    shunt and V/Q mismatch are all listed in "Known limitations". The value
+    shunt and V/Q mismatch are all listed in `docs/MODEL.md` § "Known
+    limitations". The value
     this readout shows is therefore not end-tidal in any patient, and
     end-tidal is the name of a measurement (`PL-NV9W`). The widget draws the
     gloss smaller than the name, and that is tested with the widget.
@@ -1847,7 +1848,7 @@ def test_the_no_step_refusal_is_pinned_whole() -> None:
 
     assert str(refusal.value) == (
         "Fresh gas flow can offer no setting: no 0.1 L/min step lies inside 0.52 to 0.58 "
-        'L/min, the range the run accepts (docs/MODEL.md, "Supported input ranges")'
+        'L/min, the range the run accepts (docs/INTERFACE.md, "Supported input ranges")'
     )
 
 
@@ -1863,7 +1864,7 @@ def test_the_no_step_refusal_is_pinned_whole() -> None:
             2.25,
             "Fresh gas flow is 2.25 L/min, which the slider cannot show: it offers 0.1 L/min "
             "steps from 0.0 to 10.0 L/min, so a machine profile must open the run on one of "
-            "those steps (docs/MODEL.md, \"The model's envelope and a machine's deliverable "
+            "those steps (docs/INTERFACE.md, \"The model's envelope and a machine's deliverable "
             'range are two claims")',
         ),
         # This flow is the minimum of a range declared off the grid. The run
@@ -1875,7 +1876,7 @@ def test_the_no_step_refusal_is_pinned_whole() -> None:
             0.25,
             "Fresh gas flow is 0.25 L/min, which the slider cannot show: it offers 0.1 L/min "
             "steps from 0.3 to 8.7 L/min, so a machine profile must open the run on one of "
-            "those steps (docs/MODEL.md, \"The model's envelope and a machine's deliverable "
+            "those steps (docs/INTERFACE.md, \"The model's envelope and a machine's deliverable "
             'range are two claims")',
         ),
     ),
@@ -1957,14 +1958,14 @@ def test_an_opening_fresh_gas_flow_on_the_slider_grid_opens(
             {"alveolar_ventilation_l_min": AlveolarVentilation(5.25)},
             "Alveolar ventilation is 5.25 L/min, which the slider cannot show: it offers "
             "0.1 L/min steps from 0.0 to 12.0 L/min, so a patient profile must open the run "
-            'on one of those steps (docs/MODEL.md, "Supported input ranges")',
+            'on one of those steps (docs/INTERFACE.md, "Supported input ranges")',
         ),
         (
             ControlInput.CARDIAC_OUTPUT,
             {"cardiac_output_l_min": CardiacOutput(5.25)},
             "Cardiac output is 5.25 L/min, which the slider cannot show: it offers "
             "0.1 L/min steps from 0.0 to 10.0 L/min, so a patient profile must open the run "
-            'on one of those steps (docs/MODEL.md, "Supported input ranges")',
+            'on one of those steps (docs/INTERFACE.md, "Supported input ranges")',
         ),
     ),
 )

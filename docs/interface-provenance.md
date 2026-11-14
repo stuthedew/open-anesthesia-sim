@@ -601,7 +601,7 @@ out silently covering a value on the dashboard (`ROADMAP.md` item 34). A covered
 value is a misread value, which the safety-critical standard in `CLAUDE.md`
 treats as a safety failure. This project's argument rests on that reasoning and
 on the set of values that must always be displayed
-(`docs/MODEL.md` § "Minimum displayed outputs"). Citing Blender in support of it
+(`docs/INTERFACE.md` § "Minimum displayed outputs"). Citing Blender in support of it
 would be citing a different argument that reaches a similar-looking conclusion.
 
 The Design Paradigms page of Blender's Human Interface Guidelines bases
@@ -992,7 +992,7 @@ Blender makes it disappear (§ "An editor cannot refuse a size, and there is no
 minimum-size contract at all"). That is a defensible answer for a 3D content
 tool, where a hidden sidebar costs a user one keystroke. In this project it is
 directly unsafe. A set of displayed values is unconditional: no Workspace may
-remove them, and nothing may cover them (`docs/MODEL.md` § "Minimum displayed
+remove them, and nothing may cover them (`docs/INTERFACE.md` § "Minimum displayed
 outputs"). Silently collapsing one of those values is exactly the failure that
 the unconditional set exists to prevent. Where any other display cannot fit, the
 interface must say so rather than quietly shrink it away. `layout/sizing.py`

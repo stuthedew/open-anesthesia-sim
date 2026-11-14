@@ -1,6 +1,6 @@
 ---
 id: PL-LKX7
-title: docs/MODEL.md § "Displayed precision" says a maximized 1280 px screen opens the readout row on seven columns (measured 2026-09-27), but that predates the region's 0.82/0.18 split: at 1366 px the region's 1320 px leaves the readouts 1073 px, so a 1280 px screen's 1234 px likely leaves about 1000 px, below the 1005 px that seven across needs
+title: docs/INTERFACE.md § "Displayed precision" says a maximized 1280 px screen opens the readout row on seven columns (measured 2026-09-27), but that predates the region's 0.82/0.18 split: at 1366 px the region's 1320 px leaves the readouts 1073 px, so a 1280 px screen's 1234 px likely leaves about 1000 px, below the 1005 px that seven across needs
 priority: P2
 effort: S
 status: ready
@@ -13,7 +13,7 @@ verify: grep -q 'def test_a_maximized_1280_px_screen' tests/integration/test_sim
 reenters: PL-4FBP
 ---
 
-**Problem.** docs/MODEL.md § "Displayed precision" says a maximized 1280 px screen opens the readout row on seven columns (measured 2026-09-27), but that predates the region's 0.82/0.18 split: at 1366 px the region's 1320 px leaves the readouts 1073 px, so a 1280 px screen's 1234 px likely leaves about 1000 px, below the 1005 px that seven across needs
+**Problem.** docs/INTERFACE.md § "Displayed precision" says a maximized 1280 px screen opens the readout row on seven columns (measured 2026-09-27), but that predates the region's 0.82/0.18 split: at 1366 px the region's 1320 px leaves the readouts 1073 px, so a 1280 px screen's 1234 px likely leaves about 1000 px, below the 1005 px that seven across needs
 
 **Read at triage, 2026-11-04.** `docs/MODEL.md` now says that whether a
 maximized 1280 px screen opens on seven columns has no test yet, and names this
@@ -31,7 +31,7 @@ window fraction to 0.85, rested in part on a maximized 1280 px screen opening on
 seven. The record column added later (`PL-F2YS`) took that outcome away.
 
 **Done when.** A test pins what a maximized 1280 px screen opens on, and
-`docs/MODEL.md` states that outcome in place of "has no test yet".
+`docs/INTERFACE.md` states that outcome in place of "has no test yet".
 **Recommendation:** restore seven across. The row is 3 px short, and the
 2026-09-27 decision chose its route partly for this outcome. Where seven cannot
 be restored without making the control-change record harder to read, state the

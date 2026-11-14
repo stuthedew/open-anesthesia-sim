@@ -6,13 +6,13 @@ effort: S
 status: ready
 classes: defect, docs
 feature: model-md-structure
-touches: docs/MODEL.md
+touches: docs/MODEL.md, docs/INTERFACE.md
 added: 2026-11-05
 payoff: whoever builds break-out windows has one behaviour to build and test for keeping the per-substance values on screen
-verify: ! grep -qF 'closed while any other window is open' docs/MODEL.md
+verify: ! grep -qF 'closed while any other window is open' docs/INTERFACE.md
 ---
 
-**Problem.** `docs/MODEL.md` § "What this list requires once the layout is the reader's" says that the main window cannot be closed while another window is open, and later that closing it closes the others. A reader cannot tell which is the requirement for break-out windows.
+**Problem.** `docs/INTERFACE.md` § "What this list requires once the layout is the reader's" says that the main window cannot be closed while another window is open, and later that closing it closes the others. A reader cannot tell which is the requirement for break-out windows.
 
 **Checked 2026-11-09:** § "What this list requires once the layout is the
 reader's" still says the main window "cannot be closed while any other window

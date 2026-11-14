@@ -6,8 +6,12 @@ no value of its own. Each container fills from its bottom to the reading's
 `fill`, in the colour of its compartment's chart trace. So a learner who moves
 between the schematic and the chart finds each compartment in one colour. The
 compartment's name, tension and amount are painted under its container, in
-text, so no value is carried by colour or height alone (`docs/MODEL.md`
+text, so no value is carried by colour or height alone (`docs/INTERFACE.md`
 § "The compartment schematic: what its heights, amounts and share bar assert").
+Short marks inside each container's two sides stand at the concentration
+chart's gridlines. A container is much shorter than the chart's plot, so a
+learner reads a fill level against these marks, never across to the chart
+(`PL-8W1B`).
 
 **How the containers are joined** (`PL-RNYV`). The containers stand in one row
 in the order the readout row lists them: the circuit, the alveoli, venous
@@ -79,6 +83,9 @@ _LINE_WIDTH: Final = 2.0
 _OUTLINE_WIDTH: Final = 1.0
 _OFF_SCALE_WIDTH: Final = 4.0
 _LABEL_LINES: Final = 3
+# How far each mark reaches in from a container's side. It leaves the middle of
+# the container clear, so the fill is seen whole between the marks.
+_MARK_LENGTH: Final = 8.0
 # Where in its column a container stands: at the column's centre, half of the
 # column's width from its left edge.
 _COLUMN_CENTRE: Final = 0.5
@@ -97,6 +104,7 @@ class SchematicCanvas(QWidget):
     def __init__(self) -> None:
         super().__init__()
         self._readings: tuple[ContainerReading, ...] = ()
+        self._marks: tuple[float, ...] = ()
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
     @property
@@ -105,8 +113,16 @@ class SchematicCanvas(QWidget):
 
         return self._readings
 
-    def show_readings(self, readings: tuple[ContainerReading, ...]) -> None:
-        """Paint `readings`, one per container, in `CONTAINER_ORDER`.
+    @property
+    def marks(self) -> tuple[float, ...]:
+        """The height of each mark painted now, as a share of a container's height."""
+
+        return self._marks
+
+    def show_readings(
+        self, readings: tuple[ContainerReading, ...], marks: tuple[float, ...]
+    ) -> None:
+        """Paint `readings`, one per container, in `CONTAINER_ORDER`, each marked at `marks`.
 
         Raises:
             ValueError: If the readings are not one per container in
@@ -123,6 +139,7 @@ class SchematicCanvas(QWidget):
             )
 
         self._readings = readings
+        self._marks = marks
         self.updateGeometry()
         self.update()
 
@@ -161,6 +178,7 @@ class SchematicCanvas(QWidget):
 
         for reading, rectangle in zip(self._readings, rectangles, strict=True):
             self._paint_container(painter, reading, rectangle)
+            self._paint_marks(painter, rectangle)
             self._paint_labels(painter, metrics, reading, rectangle.center().x(), column)
 
         painter.end()
@@ -246,6 +264,28 @@ class SchematicCanvas(QWidget):
             painter.setPen(QPen(QColor(WARNING), _OFF_SCALE_WIDTH))
             painter.drawLine(rectangle.topLeft(), rectangle.topRight())
 
+    def _paint_marks(self, painter: QPainter, rectangle: QRectF) -> None:
+        """Draw a short mark inside both sides of a container at each of the chart's gridlines.
+
+        The marks are drawn without antialiasing, so each is one whole row of
+        pixels in `MUTED`, over the fill and over the empty part alike.
+        """
+
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, False)
+        painter.setPen(QPen(QColor(MUTED), _OUTLINE_WIDTH))
+
+        for mark in self._marks:
+            y = rectangle.bottom() - rectangle.height() * mark
+            painter.drawLine(
+                QPointF(rectangle.left(), y), QPointF(rectangle.left() + _MARK_LENGTH, y)
+            )
+            painter.drawLine(
+                QPointF(rectangle.right() - _MARK_LENGTH, y), QPointF(rectangle.right(), y)
+            )
+
+        painter.restore()
+
     def _paint_labels(
         self,
         painter: QPainter,
@@ -284,7 +324,7 @@ class ShareBar(QWidget):
     shows where the bar is. `RunSchematic` shows lines under the bar that name
     the segments in text, so no segment is told apart by colour alone. Readers
     judge a position along one common scale more accurately than an area
-    (`docs/MODEL.md` § "The compartment schematic: what its heights, amounts
+    (`docs/INTERFACE.md` § "The compartment schematic: what its heights, amounts
     and share bar assert"). So the bar carries the comparison of amounts that
     the containers' heights cannot.
     """
@@ -434,7 +474,7 @@ class RunSchematic(QWidget):
 
         self._shown = shown
         self.name_text.setText(instant_line(shown.instant, self._name))
-        self.canvas.show_readings(shown.readings)
+        self.canvas.show_readings(shown.readings, shown.marks)
         self.share_bar.show_segments(shown.shares)
 
         for label, text in (
