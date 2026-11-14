@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: safety, defect, docs
 feature: model-md-structure
-touches: docs/MODEL.md, docs/items/PL-48MX-replace-what-is-left-of-docs-model-md-with-the.md
+touches: docs/MODEL.md, docs/INTERFACE.md, docs/items/PL-48MX-replace-what-is-left-of-docs-model-md-with-the.md
 added: 2026-11-07
 closed: 2026-11-14
 pr: 2155
@@ -86,3 +86,14 @@ Files checked in the docs sweep: `docs/MODEL.md`, `docs/INTERFACE.md`,
 `README.md`, `src/anesthesia_sim/app/formatting.py`,
 `src/anesthesia_sim/data/agents/sevoflurane.json`, `isoflurane.json`,
 `desflurane.json`, `docs/prose-review/model-description-draft.md`.
+
+**Blind review, 2026-11-14.** Both passes found that `docs/INTERFACE.md`'s
+MAC-awake band paragraph still called the band "a band drawn for age 40". The
+band is the MAC-awake fraction times the stored MAC, so it now says the band is
+drawn on a single adult MAC whose source states no age and which lies close
+to Katoh's age-40 MAC. Pass 2 also found that the MAC-divisor limitation's
+"The gap is larger than the confidence limits of Mapleson's values" holds only
+for sevoflurane, against `docs/INTERFACE.md`'s "Only sevoflurane's gap is
+larger than its limits". It now names the sevoflurane-versus-desflurane shift,
+and says "by Mapleson's meta-analysis" where it said "by the primary
+literature", since that meta-analysis is tier 2.

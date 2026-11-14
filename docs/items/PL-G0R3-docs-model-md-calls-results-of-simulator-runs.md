@@ -45,3 +45,11 @@ measurements, and `PL-48MX` now says so.
 
 Files checked in the docs sweep: `docs/MODEL.md`,
 `docs/prose-review/model-description-draft.md`.
+
+**Blind review, 2026-11-14.** Pass 1 found four uses of the verb "measure" for
+simulator results, which the brief's "measured" did not catch: caveat 3 of the
+validation test ("The paragraphs above measure the difference"), the opening of
+§ "The first 24 hours of elimination against the published mean curves" ("This
+subsection measures the late washout"), and two "measure(s) an omission". They
+now say "put the difference at", "compares the model's late washout with the
+published curves" and "show(s) an omission".

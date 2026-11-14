@@ -4544,7 +4544,7 @@ four belong beside any statement of this result, wherever it is restated.
    agreement with patients is materially worse during wash-in than during
    maintenance (see § "Known limitations").
 3. *The breathing systems differ, and by more than the measurement's own
-   spread.* The paragraphs above measure the difference at 3.5 to 4.2
+   spread.* The simulated results above put the difference at 3.5 to 4.2
    published standard deviations per cohort. Any statement that this model
    eliminates more slowly than these volunteers did has to carry this caveat,
    because most of that difference comes from a rebreathing circuit rather than from a
@@ -4565,7 +4565,7 @@ four belong beside any statement of this result, wherever it is restated.
    the published mean coefficients, that compartment's term is the largest in the measured
    curve for most of the supported span (the intertissue-diffusion note under § "Known
    limitations" gives the hours). At five minutes, that term is about one part in twenty of what remains. A comparison over those
-   hours would measure an omission rather than a parameter. So the gap over those hours is
+   hours would show an omission rather than a parameter. So the gap over those hours is
    computed beside this comparison and is not part of it. § "The first 24 hours of elimination
    against the published mean curves" records its size and direction hour by hour, and claims
    no agreement.
@@ -5201,10 +5201,10 @@ spread, not the band.
 #### The first 24 hours of elimination against the published mean curves
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-**This subsection measures the late washout alongside the gate above. It is not
+**This subsection compares the model's late washout with the published curves, alongside the gate above. It is not
 a second gate** (2026-09-27). Caveat 4 keeps the five-minute comparison out of
 the papers' multi-day curves, because over those hours a compartment that this model lacks
-carries the measured washout. So a comparison there measures an omission rather than a
+carries the measured washout. So a comparison there shows an omission rather than a
 parameter. This subsection gives the size of that omission, the hour from which it appears and
 the direction in which it points. Every check here is one of three kinds. None claims agreement
 with a human washout, and none may be restated as one.
@@ -5917,9 +5917,10 @@ display.** Each agent's stored MAC is tier 3 under § "Source hierarchy".
 § "Delivery-limit and MAC parameters" gives its gap from Mapleson's age-40
 meta-analytic values, and how much the choice of MAC source alone shifts a
 sevoflurane-versus-desflurane comparison in MAC multiples. The shift is consistent within an agent and changes no curve's shape or
-timing. It rescales one agent's MAC axis against another's. The gap is larger
-than the confidence limits of Mapleson's values, so by the primary literature two
-agents at "1 MAC" are not equipotent to that precision. The interface displays
+timing. It rescales one agent's MAC axis against another's. The
+sevoflurane-versus-desflurane shift is larger than the confidence limits of
+Mapleson's values, so by Mapleson's meta-analysis two agents at "1 MAC" are not
+equipotent to that precision. The interface displays
 the divisor for this reason. Moving all parameters to primary sources is
 `ROADMAP.md`'s planned-milestone item 31.
 
