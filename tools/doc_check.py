@@ -4521,6 +4521,19 @@ BOUND_FAMILIES = (
         ),
     ),
     BoundFamily(
+        document=MODEL,
+        heading="Known limitations",
+        level=2,
+        kind=FIGURE_ENTITY,
+        members=_numeric_paragraph_members,
+        promise=(
+            "every paragraph stating a number with a unit names the test that computes it, "
+            "itself or in the For-developers note below it, cites its published source, "
+            "or is dated, unless a provenance: or derived: marker ties each of its numbers "
+            "with a unit"
+        ),
+    ),
+    BoundFamily(
         document=ARCHITECTURE,
         heading="Architecture overview",
         level=1,

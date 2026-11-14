@@ -4331,8 +4331,11 @@ first 19.3 minutes and reaches 0.2%. Muscle reads `0.0%` for its first 2.9
 minutes with desflurane, 8.5 minutes with sevoflurane and 14.8 minutes with
 isoflurane. At two decimals, at 1 MAC with default flows, muscle first shows a
 nonzero value at 57, 125 and 190 seconds and fat at 237, 781 and 1477 seconds,
-for desflurane, sevoflurane and isoflurane in that order. These times have no
-test yet (`PL-19W8`).
+for desflurane, sevoflurane and isoflurane in that order. Three tests check
+these figures against the model:
+`test_the_fat_fractions_at_one_hour_match_the_model`,
+`test_the_one_decimal_erasure_times_match_the_model` and
+`test_the_first_nonzero_two_decimal_readings_match_the_model`.
 
 This lower limit is the project owner's teaching judgment, not a property of the
 model: the solver supports one decimal comfortably. One
@@ -4348,9 +4351,10 @@ which settings a slider can reach, but nothing in the model's equations.
 display end-tidal and inspired concentrations to a tenth of a percentage point,
 which would suit the circuit and alveolar readouts. This simulator also displays
 compartments that no monitor shows, and at one decimal fat and muscle read `0.0%`
-for the times given under the lower limit above, which have no test yet
-(`PL-19W8`). A resolution of 0.01 percentage points is the coarsest that keeps
-every displayed compartment legible.
+for the times given under the lower limit above, which
+`test_the_one_decimal_erasure_times_match_the_model` checks. A resolution of
+0.01 percentage points is the coarsest that keeps every displayed compartment
+legible.
 
 **Why not significant figures.** A significant-figures rule would give the six
 readouts different numbers of decimal places, and the row is read by comparing
@@ -4391,7 +4395,9 @@ percentage points of sevoflurane, 0.012 of isoflurane and 0.06 of desflurane. Ea
 at least the percent readout's 0.01 percentage points, because the MAC multiple is
 calculated from the percent concentration and can be no more precise than it. The two
 readouts round separately, so the MAC readout can occasionally change while the percent
-readout stays the same. The three per-agent figures have no test yet (`PL-19W8`).
+readout stays the same.
+`test_the_mac_step_in_percentage_points_matches_each_stored_mac` checks the three
+per-agent figures against each agent's stored MAC.
 <!-- not-restated: 0.06 -->
 
 A MAC multiple above zero but below 0.01 MAC shows as `<0.01 ×MAC`. The `<` sign
@@ -4735,9 +4741,9 @@ run's own path bit-identical. Between the two versions, a branch's residual chan
 by a factor of up to 5.9. Of 2,511 branch samples, the two versions' residuals read
 differently at four significant digits on 1,975, at two on 634, at one on 154, and
 at the power of ten on 22. Those 22 are the samples where the two residuals fell on
-either side of a power of ten. Every residual was below 2.1 × 10⁻¹¹ L, every check
-passed in both versions, and each run's own path read identically in every form.
-<!-- not-restated: 2.1 -->
+either side of a power of ten. The largest residual was 2.13 × 10⁻¹¹ L in both
+versions, every check passed in both, and each run's own path read identically in
+every form.
 
 The residual line's power of ten is computed from the residual's exact
 floating-point value. A function formats the line (`format_agent_residual`), and
@@ -4932,7 +4938,8 @@ a share can differ between patients by up to 13 steps of 1 percentage point.
 run totals' 0.1 L, venous blood reads below resolution for a whole hour at 1 MAC
 with every agent the simulator offers, and so do the alveoli with sevoflurane
 and isoflurane. Desflurane's alveoli read 0.1 L from about two minutes. These
-figures have no test yet (`PL-19W8`).
+figures are checked by
+`test_the_amounts_below_the_run_totals_step_match_the_model`.
 
 The readouts' uniform resolution does not carry over to the amounts either,
 because neither of its two reasons applies to them. The uncertainty that the
