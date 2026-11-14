@@ -335,10 +335,11 @@ the app's effort picker. A cap only lowers a level, though. A session in the
 `xhigh` arm whose picker sent `high` runs at `high`. So keep the picker at
 `xhigh` for the length of the trial.
 
-Each session's start-of-session digest names its arm, and the session tells
-you the arm in its first reply. The digest line stays in the session's
-transcript. That line is the trial's record of the arm, and the model review
-reads it from the transcript by session id. Sessions on your own computer are
+Each session's start-of-session digest names its arm. The digest line stays
+in the session's transcript. That line is the trial's record of the arm, and
+the model review reads it from the transcript by session id. A session no
+longer repeats the arm in its first reply, because you do not act on it
+(`PL-J1ZM`). Sessions on your own computer are
 not in the trial, and the script writes nothing there.
 
 The trial runs whatever model you start a session on, and changing the model
@@ -505,7 +506,7 @@ to an item or a duplicate that the document still holds. A number rewritten in
 the reader's form with the same value, such as 4e-4 as 0.04%, counts as kept.
 The tool checks that the two values are equal and stand in the same section
 (`PL-TZ7R`). The blind review
-passes and the prose review still run. A sentence whose meaning needs a
+passes still run. A sentence whose meaning needs a
 clinician's judgment, such as what a hazard row or a limitation promises,
 still comes to you, and the ask quotes it before and after.
 

@@ -8445,7 +8445,9 @@ against amounts of order 1 to 100 L, which no fixed decimal count can do.
 
 The panel labels the unit as litres of equivalent pure agent gas, the unit this
 document uses, because a bare "L" beside an anaesthetic agent invites a reader
-to take it as litres of liquid.
+to take it as litres of liquid. The label also names the reference condition of
+§ "Agent amount", and says that the amounts held in the body read high at it
+(§ "Known limitations").
 
 **The amounts' 0.1 L step is set by the uncertainty in the simulator's coefficients,
 as the readouts' steps are.** Changing one of those coefficients by its published SD
@@ -9560,8 +9562,8 @@ vapour (§ "Agent amount"). A vapour amount is written "mL vapour", as in
 out from a vapour amount, as the volume of liquid agent that would give that
 much vapour. That volume is what a vaporizer uses up. A caption under a liquid
 amount says that the vaporizer used this liquid. The accounting View shows
-amounts in litres, under the caption "Litres of equivalent pure agent gas",
-which marks them as vapour. The agent cost panel writes its delivered amount
+amounts in litres, under a caption that begins "Litres of equivalent pure
+agent gas", which marks them as vapour, and names their condition. The agent cost panel writes its delivered amount
 as "mL of liquid" or "L vapour", whichever unit the reader chose, and its
 caption says what that unit measures. These spellings may change while the
 interface is being built.
@@ -10400,9 +10402,10 @@ changes by 4 × 10⁻⁶ published SD.
 #### Desflurane's residual, and why the parameter file was not changed
 
 The obvious explanation for that residual is that desflurane's vessel-rich
-coefficient is too low. The sensitivity measured under § "Parameter provenance"
-shows that the five-minute ratio depends mostly on the vessel-rich tissue:gas
-coefficient and barely on the blood:gas coefficient. A tissue group with too
+coefficient is too low. § "What the published-data gate can and cannot
+resolve" has a table of how far each ratio moves when one coefficient is raised
+by 10%. It shows that the five-minute ratio depends mostly on
+the vessel-rich tissue:gas coefficient and barely on the blood:gas coefficient. A tissue group with too
 little capacity empties too fast. That explanation fits the arithmetic, but the
 measured tissue solubility rules it out, as the next paragraphs show.
 
@@ -11286,7 +11289,9 @@ checks the result of lowering the muscle group's coefficient.
 ### Mass-balance test
 
 Long wash-in, steady-delivery, and washout simulations must satisfy either
-condition below, with the release tolerances documented above:
+condition below. These are the run-time thresholds that § "Mass-balance
+identity" gives, and the relative residual must also stay within that
+section's release gate:
 
 $$
 |\varepsilon_M|
@@ -12091,8 +12096,9 @@ well-measured parameter set, not the only set the literature supports.
 Yasuda, Targ and Eger's p. 373, Eger and Saidman's Table 1, Baker and
 Farmery's Table 2 and Hendrickx and De Wolf's p. 165 were read in full text.
 Fiserova-Bergerova and Diaz 1986 was read as its PubMed abstract only (PMID
-3721592), and the 1984 paper not at all. The Yasuda, Targ and Eger citation is
-in § "Parameter provenance".
+3721592), and the 1984 paper not at all. The full Yasuda, Targ and Eger
+citation is in § "Desflurane's residual, and why the parameter file was not
+changed".
 
 **Cardiac output does not scale with the patient, and the reference weight is
 a label, not an input.** The default cardiac output is a stored 5.0 L/min. No
@@ -12158,16 +12164,20 @@ hold 5.5 % fewer moles than their 20 °C label implies, so the label overstates
 them by 5.8 %. The ratio behind both figures is 25.450/24.055, the molar
 volumes in litres at 37 °C and at 20 °C. The fresh-gas terms are unaffected.
 
-**It is invisible in everything the simulator shows today.** A
-partial-pressure fraction has no unit and carries no condition. So $`F_A`$,
-$`F_A/F_I`$, the MAC multiple and every trace on the chart are untouched by it.
-It would matter only where an amount is converted out of the litre unit, as
-the liquid-equivalent consumption figure planned under § "Planned milestones"
-item 28 will be. The code for that conversion exists, and nothing on screen
-shows its result yet. It converts a delivered or exhausted amount exactly and
-a stored amount 5.8 % high. There it biases the split between stored and
-exhausted agent, but not the delivered total, which is the figure that means
-cost. Removing this limitation would need a gas-phase model that carries
+**It does not touch a concentration, and it does touch every amount held in
+the body.** A partial-pressure fraction has no unit and carries no condition.
+So $`F_A`$, $`F_A/F_I`$, the MAC multiple and every trace on the chart are
+untouched by it. Every agent amount on screen names the condition it is stated
+at, 20 °C and 1 atm: the accounting panel's unit caption, the compartment
+schematic's caption and the agent cost View's captions. The accounting panel and
+the schematic also say that the amounts held in the body are body-temperature
+gas under that label, so they read high. The size, 5.8 %, is stated here and
+not on screen. The circuit's amount and the delivered and exhausted totals are
+exact. The conversion to liquid converts a delivered or exhausted amount
+exactly and a stored amount 5.8 % high. The agent cost View converts only the
+delivered amount, which is the figure that means cost, so its liquid figure is
+exact. A stored total in millilitres of liquid is refused for this reason
+(§ "Agent amounts in millilitres, and the cost"). Removing this limitation would need a gas-phase model that carries
 explicit conditions per compartment, which is well outside the current
 milestone.
 

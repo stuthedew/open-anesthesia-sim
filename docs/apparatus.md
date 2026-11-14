@@ -130,9 +130,9 @@ every pull request (`PL-39Y1`). It runs on `pull_request_target`, so the job
 and the rule are `main`'s copies, and a pull request cannot edit either. It
 fails while `bin/docket arm` would hold the pull request for a claim, for an
 unrecorded simulator change or for the owner's read. It runs nothing the pull
-request brought, so it does not count the prose review or the blind review
-passes. `main` requires the check, and `tools/github_refusals_check.py` fails
-where it does not (`PL-KH7Y`).
+request brought, so it does not count the blind review passes. `main` requires
+the check, and `tools/github_refusals_check.py` fails where it does not
+(`PL-KH7Y`).
 
 The title check runs in `.github/workflows/pr-title.yml`, which takes the
 title from `PR_TITLE`. It also runs in `make check` and `make pr-title`, which
