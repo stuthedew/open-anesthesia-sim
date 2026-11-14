@@ -920,7 +920,7 @@ tenths of the screen (`PL-005`). Blender opens its window maximized. Its window
 code sets the default window state (`GHOST_WINDOW_STATE_DEFAULT`) to maximized
 (`GHOST_kWindowStateMaximized`), and sizes the default geometry to the main
 screen. This code, in `wm_window.cc`, was read through the GitHub mirror on
-2026-09-27, because the Manual's page was not reachable from the container.
+2026-09-27. The Manual describes behaviour and does not hold the source.
 
 **Ctrl+PgUp and Ctrl+PgDn step through the workspaces, and wrap round**
 (`PL-M352`). They follow the order in which the workspace tabs are drawn.

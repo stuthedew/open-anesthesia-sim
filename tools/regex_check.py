@@ -586,7 +586,7 @@ def screen(payload: str) -> str | None:
 def main(argv: Sequence[str] | None = None) -> int:
     arguments = sys.argv[1:] if argv is None else list(argv)
 
-    return run_report(arguments, __doc__ or "", analyze, format_report)
+    return run_report(arguments, __doc__ or "", analyze, format_report, parses_source=True)
 
 
 if __name__ == "__main__":

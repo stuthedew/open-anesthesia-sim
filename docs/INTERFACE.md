@@ -3153,9 +3153,9 @@ The 3 ×MAC ceiling (`CHART_AXIS_TOP_MAC` in `app/formatting.py`) is exactly
 desflurane's dial maximum divided by its 1 MAC, so it rests on a real device
 limit. Desflurane's vaporizer is the most limited, and the ceiling leaves no
 empty band above the range that vaporizer can reach. The ceiling puts the 1 MAC
-line at a third of the plot height, inside the plot rather than on its frame,
-which a ceiling of 2 could not do. It also keeps on the plot the 2-3 ×MAC range
-that overpressure induction works in. A ceiling at each agent's own dial maximum
+line at a third of the plot height, inside the plot rather than on its frame.
+Unlike a ceiling of 2, it also keeps on the plot the 2-3 ×MAC range that
+overpressure induction works in. A ceiling at each agent's own dial maximum
 could never be exceeded, but the chart would then draw the same MAC multiple at
 different heights for different agents, because the dial maxima run from
 3.00 ×MAC for desflurane to 4.17 ×MAC for isoflurane (`PL-CC23`).
@@ -3490,7 +3490,9 @@ Katoh's fractions, 0.05 of MAC. Katoh's slow-washout patients themselves woke
 at a mean end-tidal 0.63 ± 0.11% sevoflurane and 0.36 ± 0.08% isoflurane
 (Table 1, p. 1014). Those figures are lower than the band mostly because the
 patients were older, with mean ages of 45.9 and 45.1 years, so they are not a
-like-for-like check of a band drawn for age 40.
+like-for-like check of the band. The band is drawn on a single adult MAC whose
+source states no age, and which lies close to Katoh's MAC at the age the
+paragraph above uses.
 <!-- not-restated: 0.36 -->
 <!-- provenance: data/agents/sevoflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.05 -->
 <!-- provenance: data/agents/isoflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.05 -->
@@ -4245,9 +4247,11 @@ enforces the `<0.01%` form
 solution by at most $`1.6\times10^{-12}`$ percentage points anywhere in the
 reference test's runs, and by $`5.2\times10^{-12}`$ over an hour with the
 settings held constant. That is about one two-billionth of the last displayed
-digit, so **a third decimal would not be numerical noise.** Instead, what the
-model's parameters can support sets the upper limit on the number of decimals,
-and legibility sets the lower limit.
+digit, so **a third decimal would not be numerical noise.** Legibility sets the
+number of decimals instead: the readouts show the coarsest resolution that keeps
+every compartment's wash-in visible (below). How far the model's parameters vary
+between patients does not set it (project owner, 2026-11-14, `PL-W51N`). That
+spread is stated below as a limitation on reading a value as a patient's.
 
 **Two questions about resolution must be kept apart: how finely two moments
 within one run can be told apart, and how finely this model resolves a
@@ -4256,46 +4260,64 @@ simulation is deterministic, so the answer to the first is about nine decimal
 places finer than the readout shows. The second is the question that a clinician
 reading a percent sign is asking, and its answer is much coarser.
 
-**The model's parameters set the upper limit on decimals: one measured standard
-deviation of a partition coefficient is worth about one to seven counts of the
-last displayed digit.** One count is 0.01 percentage points. When a single
-stored coefficient is perturbed by one published SD and the run is repeated at
-1 MAC with the reference adult's flows, a displayed compartment's reading shifts
-by these amounts, which have no test yet (`PL-19W8`):
+**Between patients, one measured standard deviation of a partition coefficient
+moves a readout by anything from a third of one count to ninety counts of the
+last displayed digit.** One count is 0.01 percentage points. When one stored coefficient is
+changed by one published SD and the run is repeated at 1 MAC with the reference
+adult's flows, the largest shift of any displayed reading in the first hour and
+over the whole 24 h run is as follows
+(`test_one_sd_of_each_coefficient_displaces_the_readouts_as_the_table_states`):
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-| Coefficient perturbed by one SD | Displacement, worst over 3600 s |
-| --- | --- |
-| Fat tissue:gas | 8.7×10⁻⁴ to 6.7×10⁻³ pp |
-| Blood:gas | 1.5×10⁻² to 5.4×10⁻² pp |
-| Vessel-rich tissue:gas | 1.3×10⁻² to 5.0×10⁻² pp |
-| Muscle tissue:gas | 1.3×10⁻² to 6.8×10⁻² pp |
+| Coefficient changed by one SD | The SD as a share of the mean | Largest shift in the first hour | Largest shift over 24 h |
+| --- | --- | --- | --- |
+| Blood:gas | 5.7% to 8.3% | 2.0×10⁻² to 8.2×10⁻² pp | 2.4×10⁻² to 1.2×10⁻¹ pp |
+| Vessel-rich tissue:gas | 3.7% to 6.1% | 1.0×10⁻² to 4.9×10⁻² pp | 1.0×10⁻² to 4.9×10⁻² pp |
+| Muscle tissue:gas | 37% to 45% | 1.5×10⁻¹ to 9.0×10⁻¹ pp | 2.1×10⁻¹ to 9.5×10⁻¹ pp |
+| Fat tissue:gas | 17% to 19% | 3.4×10⁻³ to 3.6×10⁻² pp | 7.6×10⁻² to 4.0×10⁻¹ pp |
 
-<!-- not-restated: 1.3 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- not-restated: 2.4, 2.1 -->
 
 Each range covers the three agents that the simulator offers, and desflurane
-always gives the largest displacement, an ordering that has no test yet
-(`PL-19W8`).
+always gives the largest shift. A run of 24 h is the longest the simulator
+supports.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-The SDs are the measured ones that `docs/MODEL.md` § "Parameter provenance" records. For
-desflurane's blood:gas coefficient the SD is Eger's $`0.424 \pm 0.024`$, which is
-5.7%. The tissue SDs are those of Yasuda, Targ and Eger's human tissue
-coefficients, 3.9% of the mean for desflurane, 5.3% for sevoflurane and 6.4% for
-isoflurane. These three are the source's brain:blood SDs, and the SDs for fat are
-larger. Which SD was perturbed for each row is being checked, with no test yet
-(`PL-TDX0`).
+Each SD is the SD of the coefficient that the model stores. The tissue SDs are
+from Yasuda, Targ and Eger's Table 1 of human tissue:gas coefficients at 37 °C
+(Anesth Analg 1989;69:370-373, p. 371). The stored vessel-rich coefficient is
+that table's brain value, so it takes the brain SD. The blood:gas SDs are
+Eger's for desflurane ($`0.424 \pm 0.024`$), Strum and Eger's for sevoflurane
+($`0.686 \pm 0.047`$), and Esper and colleagues' for isoflurane
+($`1.45 \pm 0.12`$), the only adult SD for isoflurane that has been read. Each
+run changes the coefficient by its SD as a share of the mean, upward and
+downward, and keeps the larger shift.
 
-So the last digit of a two-decimal readout lies between about a seventh of one
-parameter SD and seven times it. A third decimal would put the last digit at one
-seventieth to seven tenths of one SD. It would claim a resolution one to two
-orders of magnitude finer than the spread that the measured SDs produce, in the
-readouts where a reader is least able to notice. Such false precision is why the
-display stops at two decimals.
+So a reading can differ between two patients by many times its last digit. In
+the first hour the muscle coefficient alone moves a reading by up to 90 counts.
+Over a whole run the slow compartments fill further, and the blood:gas and fat
+coefficients move a reading by up to 12 and 40 counts.
 
-A digit finer than one SD is still honest, because an SD changes where the whole
-curve sits, not how finely two points on it can be told apart. So the SD does not
-limit a reader who compares 09:14 with 09:16 of one run. A digit *far* finer than
-one SD is ruled out, because a reader cannot tell whether a printed digit
-separates two moments of one run or resolves a concentration in a patient.
+**The last digit separates two moments of one run, not two patients.** An SD
+changes where the whole curve sits, not how finely two points on it can be told
+apart. So the SD does not limit a reader who compares 09:14 with 09:16 of one
+run, and it does not set the number of decimals. No displayed value is a
+prediction for a patient (`docs/MODEL.md` § "Known limitations"), and the table
+above measures how far a patient's value could lie from the one shown.
+
+**For developers.** One test module holds every figure in this section that
+comes from changing a coefficient by one SD
+(`tests/integration/test_parameter_uncertainty.py`). The table and its ordering
+are held by
+`test_one_sd_of_each_coefficient_displaces_the_readouts_as_the_table_states`,
+the SDs by `test_the_relative_sds_are_those_the_section_states`, and the range
+of a third of a count to ninety counts by
+`test_one_sd_is_a_third_of_a_count_to_ninety_counts_of_the_last_digit`. The
+whole-run counts of 12 and 40 are the table's second column in counts.
+`test_each_tissue_coefficient_s_sd_is_the_sd_of_the_coefficient_the_model_stores`
+fails if an SD is taken from a row whose mean the stored coefficient does not
+match, as the brain:blood SDs were.
 
 **Legibility sets the lower limit on decimals: one decimal hides the slow
 compartments' wash-in, which is the reason for displaying them.** At one decimal
@@ -4309,15 +4331,14 @@ for desflurane, sevoflurane and isoflurane in that order. These times have no
 test yet (`PL-19W8`).
 
 This lower limit is the project owner's teaching judgment, not a property of the
-model: the solver and the parameters both support one decimal comfortably. One
+model: the solver supports one decimal comfortably. One
 decimal is ruled out because a simulator built to show uptake and distribution
 would then show a flat zero where the uptake is happening.
 
-**So the number of decimals lies in a band of one to two, and two is the chosen
-count.** The choice inside the band is a presentation decision, which the owner
-may revise without re-deriving anything in the model. Moving the readout to one
-decimal would change what a reader sees and which settings a slider can reach,
-but nothing in the model's equations.
+**Two decimals is the chosen count**, because it is the coarsest that keeps
+every compartment legible. The readouts show no finer resolution than that
+needs. Moving the readout to one decimal would change what a reader sees and
+which settings a slider can reach, but nothing in the model's equations.
 
 **Why not the 0.1 percentage points that agent monitors show.** Agent monitors
 display end-tidal and inspired concentrations to a tenth of a percentage point,
@@ -4325,22 +4346,16 @@ which would suit the circuit and alveolar readouts. This simulator also displays
 compartments that no monitor shows, and at one decimal fat and muscle read `0.0%`
 for the times given under the lower limit above, which have no test yet
 (`PL-19W8`). A resolution of 0.01 percentage points is the coarsest that keeps
-every displayed compartment legible. It is a coincidence that this is also close
-to what the parameters support, because the two were measured independently.
+every displayed compartment legible.
 
-**Why not significant figures.** A significant-figures rule gives the smallest
-values the most decimal places, and the small values are where this model
-supports the least. The parameters' measured SDs are *relative*, 3.9% to 6.4% of
-the mean, so they apply undiminished to a compartment holding a thousandth of a
-percent. Three significant figures on the fat fraction would imply a relative
-resolution of 0.1% on a number whose parameters are known to about 5%, which
-over-claims by a factor of fifty. The equation solver is not the limit here. With
-the exact method that the simulator uses, compartments that hold little agent
-have a relative error of at most $`2\times10^{-4}`$ anywhere in the first ten
-seconds of a run, and $`8\times10^{-11}`$ at ten seconds itself. The SDs here are
-the brain:blood ones noted above, so this paragraph is being corrected, and its
-figures have no test yet (`PL-TDX0`).
-<!-- not-restated: 5 % -->
+**Why not significant figures.** A significant-figures rule would give the six
+readouts different numbers of decimal places, and the row is read by comparing
+them (§ "One resolution for all six readouts"). It would also give the smallest
+values the most digits: three figures on a fat fraction of a thousandth of a
+percent would print six decimals. The equation solver is not the limit here. With the exact method that the simulator uses, compartments that
+hold little agent have a relative error of at most $`2\times10^{-4}`$ anywhere in
+the first ten seconds of a run, and $`8\times10^{-11}`$ at ten seconds itself.
+The solver's two figures have no test yet (`PL-19W8`).
 
 **Why a value below the resolution is shown as `<0.01%` rather than as zero.**
 Even at two decimals, muscle and fat start below the last digit, for the times
@@ -4467,21 +4482,12 @@ time step, it updates every compartment from the values at the start of that ste
 
 #### One resolution for all six readouts
 
-**All six compartment readouts show the same number of decimal places, for two
-reasons.**
-
-- **The six readouts are compared with one another.** If they showed different
-  numbers of decimal places, digits of different place value would sit in the
-  same position, and someone scanning the row would misjudge a value by a factor
-  of ten. This reason comes from how the row is read, so it applies however the
-  simulator computes the values.
-- **The effect of parameter uncertainty varies much less across the six readouts
-  than their values do.** § "Why the readouts show two decimals" tabulates the
-  one-SD displacements. Across all six compartments and all four coefficients,
-  they spread over less than two orders of magnitude, while the readouts'
-  *values* span four. One number of decimal places therefore fits all six
-  readouts. It is set by the compartments where the displacement is largest, so
-  it is conservative where the displacement is smaller.
+**All six compartment readouts show the same number of decimal places, because
+they are compared with one another.** If they showed different numbers of
+decimal places, digits of different place value would sit in the same position,
+and someone scanning the row would misjudge a value by a factor of ten. This
+reason comes from how the row is read, so it applies however the simulator
+computes the values.
 
 #### The readout row's width condition
 
@@ -4659,17 +4665,22 @@ to take it as litres of liquid. The label also names the reference condition of
 `docs/MODEL.md` § "Agent amount", and says that the amounts held in the body
 read high at it (`docs/MODEL.md` § "Known limitations").
 
-**The amounts' 0.1 L step is set by the uncertainty in the simulator's coefficients,
-as the readouts' steps are.** Changing one of those coefficients by its published SD
-shifts the exhausted total. After 1 h and at 24 h, the longest run the simulator
-supports, the shifts are 0.024 and 0.19 L for sevoflurane, 0.016 and 0.18 L for
-isoflurane, and 0.042 and 0.23 L for desflurane. The blood:gas coefficient
-dominates throughout. These shifts were simulated at 1 MAC with the reference
-adult's flows, and have no test yet (`PL-19W8`). At a higher dial setting the
-shifts are larger, and no test yet derives the step there (`PL-0P3F`). Delivered
-agent carries no parameter uncertainty, because it is the dial setting times the
-flow times the time. It is still displayed to 0.1 L, so that the three amounts
-read at one scale.
+**A run total is shown in steps of 0.1 L, and can differ between patients by
+many steps.** As with the readouts, the spread between patients does not set the
+step (project owner, 2026-11-14, `PL-W51N`). Changing one of the coefficients
+by its published SD (§ "Why the readouts show two decimals") shifts the
+exhausted total. At 1 MAC with the reference adult's flows, after 1 h and at
+24 h, the longest run the simulator supports, the largest shifts are 0.033 and
+0.61 L for sevoflurane, 0.026 and 0.62 L for isoflurane, and 0.089 and 0.68 L
+for desflurane. At each agent's dial maximum with 10 L/min they are 0.17 and
+2.5 L, 0.16 and 2.8 L, and 0.32 and 2.1 L. The muscle coefficient gives the
+largest shift in every case. So after 24 h at a dial maximum an exhausted or
+stored total could differ between patients by 21 to 28 steps. Delivered agent
+carries no parameter uncertainty,
+because it is the dial setting times the flow times the time. It is still
+displayed to 0.1 L, so that the three amounts read at one scale.
+<!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
+<!-- not-restated: 2.5 L -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **A residual line such as `<1e-13 L` means that the residual is less than
@@ -4682,14 +4693,15 @@ arithmetic, so neither line shows them. Without a sign, the two lines read alike
 The sign means something only in a check that fails. The run then halts, and the
 failure notice prints the signed values to six figures.
 
-**For developers.** At 1 MAC with the reference adult's flows, the shifts in the
-exhausted total make one 0.1 L step worth between about two-fifths of an SD and
-six SDs from 1 h to 24 h. That range is inside the band that the readouts'
-derivation allows. A step of 0.01 L would fall to about a twentieth of an SD by
-24 h. A constant stores the amounts' decimal count (`AGENT_AMOUNT_DISPLAY_PRECISION`),
+**For developers.** At 1 MAC with the reference adult's flows, one 0.1 L step is
+worth between about four SDs, for isoflurane at 1 h, and a seventh of an SD, for
+desflurane at 24 h. At each agent's dial maximum with 10 L/min it falls to a
+twenty-first to a twenty-eighth of an SD at 24 h.
+`test_the_run_totals_litre_step_at_each_agent_s_dial_maximum` computes every
+shift in this subsection. A constant stores the amounts' decimal count (`AGENT_AMOUNT_DISPLAY_PRECISION`),
 a function formats them (`format_agent_volume`), and a test checks both
 (`test_agent_amounts_precision`).
-<!-- not-restated: 0.01 L -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 The residual line's form rests on simulated runs compared on 2026-10-03. The 81
@@ -4725,17 +4737,17 @@ no derivation is refused, rather than shown at a default.
 
 The bound is one-sided. It limits only how fine an amount may be shown. A coarser
 precision loses detail but claims nothing false. A finer one claims a resolution
-that the parameters or the conversion do not support, so it is refused rather
+that the measured density or the conversion does not support, so it is refused rather
 than quietly reduced to the derived precision.
 
 | Amount | Unit | Decimals | Resolution | Derived from |
 | --- | --- | --- | --- | --- |
-| A run total: delivered, exhausted or stored | Litres of vapour | 1 | 0.1 L | One SD of a partition coefficient, above |
+| A run total: delivered, exhausted or stored | Litres of vapour | 1 | 0.1 L | Kept as shipped, `PL-W51N`, above |
 | The delivered total | Millilitres of liquid | 0 | 1 mL | One SD of the measured liquid density |
 | The exhausted total | Millilitres of liquid | 0 | 1 mL | The litre's resolution, converted |
 | The stored total | Millilitres of liquid | Refused | - | The conversion reads a store 5.8% high |
-| One compartment's amount | Millilitres of vapour | Two significant figures, none finer than 0.01 mL | 1% to 10% of the amount | One SD of a partition coefficient, as a share of the amount, below |
-| One compartment's share of the agent held | Percent of the stored total | 0 | 1 percentage point | One SD of a partition coefficient, below |
+| One compartment's amount | Millilitres of vapour | Two significant figures, none finer than 0.01 mL | 1% to 10% of the amount | The amounts' range, below |
+| One compartment's share of the agent held | Percent of the stored total | 0 | 1 percentage point | Kept as shipped, `PL-W51N`, below |
 
 **The exhausted total in millilitres of liquid is shown in whole millilitres.**
 It carries the partition coefficients' uncertainty, so it must not claim a finer
@@ -4744,11 +4756,10 @@ the unit would see the model resolve a difference in one unit that it does not
 resolve in the other. One step of the litre display, 0.1 L of vapour, is
 0.55 mL of sevoflurane liquid, 0.51 mL of isoflurane and 0.48 mL of desflurane
 at the 20 °C reference of `docs/MODEL.md` § "Agent amount". The smallest power of ten at or
-above all three is 1 mL. The partition coefficients give the same result. In the
-simulations above at 1 MAC with the reference adult's flows, the one-SD shifts
-at 24 h are 0.19 L of sevoflurane vapour, 0.18 L of isoflurane and 0.23 L of
-desflurane, which are 1.04, 0.92 and 1.10 mL of liquid. So at those settings one
-step of 1 mL is about one SD, and a step of 0.1 mL would be a tenth of one.
+above all three is 1 mL. For scale, at 1 MAC with the reference adult's flows, the one-SD shifts at 24 h given
+above, 0.61 L of sevoflurane vapour, 0.62 L of isoflurane and 0.68 L of
+desflurane, are 3.3, 3.2 and 3.2 mL of liquid. So at those settings one step of
+1 mL is about a third of an SD, and a step of 0.1 mL would be about a thirtieth.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
@@ -4757,8 +4768,9 @@ The delivered agent is the dial times the flow times the time, and its
 conversion to liquid at the 20 °C reference is exact. Its only uncertainty in
 liquid is the measured density's, which grows in proportion to the total. At
 sevoflurane's largest supported total, 8% at 10 L/min for 24 h, one SD is about
-3.3 mL. So a step of 1 mL is about 0.3 SD, and no supported setting makes it
-finer than the readouts' seventh of an SD. A step of 0.1 mL would be about a
+3.3 mL. So a step of 1 mL is about 0.3 SD. No supported setting makes it finer
+than a seventh of the density's SD, the finest step that the choice of whole
+millilitres accepted (`PL-SP6H`). A step of 0.1 mL would be about a
 thirtieth.
 <!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
@@ -4861,32 +4873,38 @@ them, its precision moves into a table like the one for agent amounts.
 #### A compartment's amount and share on the schematic
 
 **A compartment's amount is shown to two significant figures, in millilitres of
-vapour, because its uncertainty is a fraction of the amount rather than a fixed
-volume** (runs of 2026-11-01). A positive amount that would round to 0.00 mL reads `<0.01 mL vapour`,
+vapour, because the amounts span from a fraction of a millilitre to about a
+litre.** Two figures give every label the same relative step, 1% to 10% of the
+amount
+(`test_a_compartment_s_amount_is_shown_to_two_figures_and_no_finer_than_0_01_ml`). A positive amount that would round to 0.00 mL reads `<0.01 mL vapour`,
 and exactly zero reads `0 mL vapour`.
 
-**Relative to a compartment's amount, the shift from one SD of a partition
-coefficient falls in a narrow range.** Runs of the simulator on 2026-11-01
-changed each of the four stored partition coefficients in turn by one published
-SD, at 1 MAC with the reference adult's flows. In venous blood and the three
-tissue groups, one SD shifted the amount by 1.4% to 12%. In the circuit and the
-alveoli the shift was less than 3%, because the dial sets them and a coefficient
-barely moves them. With two significant figures, one step of the last digit is
-1% to 10% of the amount. In the runs, that step lay between a tenth of one SD,
-in desflurane's venous blood at 79 s when it held 0.99 mL, and many SDs in the
-circuit. These figures have no test yet (`PL-19W8`).
+**Between patients, one SD of a partition coefficient shifts a compartment's
+amount by a share of it, not by a fixed volume.** Runs that change each of the four
+stored coefficients in turn by one published SD (§ "Why the readouts show two
+decimals"), at 1 MAC with the reference adult's flows, were read every second
+for the first 20 minutes and then every minute to 24 h. The largest shift, as a
+share of the amount, is 3.4% in the circuit, 8.3% in the alveoli, 17% in venous
+blood, 8.3% in the vessel-rich group, 44% in muscle and 8.2% in fat. The circuit
+and the alveoli move least, because the dial sets them. With two significant
+figures, one step of the last digit is 1% to 10% of the amount, so an amount
+can differ between patients by many steps of its label. At most, in
+isoflurane's muscle at 3 h 34 min, which holds 993 mL, one SD is 28 steps of
+10 mL. Two tests hold these figures
+(`test_one_sd_shifts_each_compartment_s_amount_by_the_share_the_section_states`
+and `test_a_two_figure_amount_s_finest_step_is_a_twenty_eighth_of_an_sd`).
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- not-restated: 10 mL -->
 
 **A compartment's share of the agent is shown in whole percent.** A positive
 share below 0.5% reads `<1%`, so a compartment that holds agent never reads as
 holding none. A share of 99.5% or more that is not the whole reads `>99%`, so no
 compartment reads as holding all of the agent while another holds some. In a
 desflurane run, the circuit holds more than 99.5% of the agent for about the
-first second. One SD of a coefficient moves a compartment's share by at most 1.2
-percentage points, in isoflurane's muscle at 24 h. This figure has no test yet
-(`PL-19W8`). So one step of 1 percentage point lies between 0.8 SD and more than
-a hundred SDs, and a step of 0.1 percentage point would be as fine as a twelfth
-of one SD.
-<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+first second. One SD of a coefficient moves a compartment's share by at most 13
+percentage points, in isoflurane's muscle at 8 h 43 min
+(`test_one_sd_moves_a_compartment_s_share_by_at_most_thirteen_percentage_points`). So
+a share can differ between patients by up to 13 steps of 1 percentage point.
 
 **For developers.** A compartment's amount needs a precision of its own. At the
 run totals' 0.1 L, venous blood reads below resolution for a whole hour at 1 MAC
@@ -4900,29 +4918,20 @@ parameters cause in an amount is relative, not absolute. And the amounts are not
 a row read as one set. They are labels on separate containers, each followed by
 its unit, and the schematic compares them on one scale, in the share bar.
 
-No single number of decimals keeps every amount's step inside the band that the
-readouts' derivation admits. The 2026-11-01 runs repeated the run totals'
-derivation on each compartment's amount, reading it every second for the first
-20 minutes, and at 60 min, 180 min and 24 h. The shift from one SD ran from
-almost nothing, in the circuit in the first seconds, to 216 mL, in desflurane's
-fat at 24 h, because the amounts themselves span that many orders of magnitude.
-A step of 1 mL is a two-hundredth of one SD in desflurane's fat at 24 h, the
-kind of false precision that stopped the run totals at 0.1 L. A step of 10 mL is
-still a twenty-second of an SD there. It would also print sevoflurane's and
-isoflurane's venous blood as "<10 mL" for almost the whole first hour, the flat
+No single number of decimals suits every amount. The shift from one SD in the
+runs above ran from almost nothing, in the circuit in the first seconds, to
+700 mL, in isoflurane's muscle at 24 h, because the amounts themselves span that
+many orders of magnitude
+(`test_one_sd_shifts_each_compartment_s_amount_by_the_share_the_section_states`).
+A step of 10 mL would print sevoflurane's and isoflurane's venous blood as "<10 mL" for almost the whole first hour, the flat
 reading that the readouts' lower limit rules out. That blood holds about 0.18 mL
 at 1 min, 6.6 mL of sevoflurane at 10 min, and 9.7 to 10.0 mL at 60 min.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- not-restated: 10 mL, 10.0 mL -->
 
-Two significant figures were chosen because they are the finest precision that
-the parameters support. Three would put one step at a hundredth of an SD. That
-is finer than the readouts' third decimal, rejected at a seventieth of an SD,
-and the run totals' second decimal, rejected at about a twentieth. One
-significant figure would print fat's amount in steps of 1000 mL by 24 h. The
-one-sided bound allows the coarse end of a two-figure step's range, many SDs in
-the circuit. The fine end is finer than the readouts' seventh of an SD, but only
-in the first two minutes, while venous blood fills. A test checks the two-figure rule
+Two significant figures are kept as shipped (`PL-W51N`). Three would print a
+muscle amount of about a litre to the millilitre. One significant figure would
+print fat's amount in steps of 1000 mL by 24 h. A test checks the two-figure rule
 (`test_a_compartment_s_amount_is_shown_to_two_figures_and_no_finer_than_0_01_ml`).
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
