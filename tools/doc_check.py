@@ -5736,11 +5736,12 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
     **Two exemptions, each for a stated reason rather than for quiet.**
 
     The release's own cut is the first. Its pull request is inside its own span
-    by construction and is stamped by the *next* release, every time, which
-    `ROADMAP.md` already writes down as the one case that recurs on every
-    release; it accounted for 40 of the 63 span-crossing closures here. Taking
-    it from the commit that added the notes file makes the exemption a fact
-    about the tree rather than a reading of prose.
+    by construction, and no release's notes ever name it, because the item
+    that cuts a release ships in no release (`PL-KRS6`, `ROADMAP.md`
+    § "Version table"). So a pointer to the notes that describe it could
+    never be written. It accounted for 40 of the 63 span-crossing closures
+    here. Taking it from the commit that added the notes file makes the
+    exemption a fact about the tree rather than a reading of prose.
 
     The newest tag's span is the second, until the tree holds a newer
     release's notes. Before then its strangers are described in a release
