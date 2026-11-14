@@ -3,11 +3,13 @@ id: PL-GW26
 title: docs/INTERFACE.md § "MAC multiples as a display unit" has two wrong statements: the 1.39x rescale it gives for a desflurane against a sevoflurane wash-in is the isoflurane against desflurane figure (desflurane against sevoflurane is 4.00/3.00 = 1.33x), and "which a ceiling of 2 could not do" says a 2 x MAC ceiling would put the 1 MAC line on the frame, when it puts it at half height
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: model-md-structure
-touches: docs/MODEL.md, docs/INTERFACE.md
+touches: docs/MODEL.md, docs/INTERFACE.md, src/anesthesia_sim/app/formatting.py
 added: 2026-11-04
+closed: 2026-11-14
+pr: 2158
 payoff: the MAC axis's ceiling of 3 is defended by a true reason, so no later session lowers it to 2 on the strength of a false one
 verify: ! grep -qF 'which a ceiling of 2 could not do' docs/INTERFACE.md
 ---
@@ -25,3 +27,7 @@ verify: ! grep -qF 'which a ceiling of 2 could not do' docs/INTERFACE.md
 **Generator check.** One-off: a finding the copy editor raised as a query while it was being debugged. It is a wrong statement of chart arithmetic in prose, and no head's `misread:` states that fact.
 
 **Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** Present. At 817a4d88, `docs/INTERFACE.md` § "MAC multiples as a display unit" already said the 3 x MAC ceiling puts the 1 MAC line "inside the plot rather than on its frame, which a ceiling of 2" could not do, and it also carried the 1.39x rescale sentence. The problem belongs on v0.7.0's frozen list, and the deferral is removed.
+
+**Done 2026-11-14.** The clause "which a ceiling of 2 could not do" is removed from the sentence about the 1 MAC line, and the next sentence now opens "Unlike a ceiling of 2", so the reason given against a ceiling of 2 is the overpressure range, which is true. No value, test or displayed text changed. Docs swept: `docs/INTERFACE.md` (the only file that held the clause, by `grep -n 'ceiling of 2'`) and `docs/MODEL.md` (no 1.39x rescale sentence and no "ceiling of 2" clause remain).
+
+**Blind review, 2026-11-14.** Pass 1 found nothing. Pass 2 found both errors still in the comment above `CHART_AXIS_TOP_MAC` in `src/anesthesia_sim/app/formatting.py` (1.39x for desflurane against sevoflurane, and "which a 2 MAC ceiling could not do"); the first sweep's grep for "ceiling of 2" missed the "2 MAC ceiling" wording. Fixed on the branch: the comment now gives 1.33x (4.00 / 3.00) and attaches the comparison with a 2 MAC ceiling to the overpressure range. A later sweep of `src/` and `docs/` for `1.39x` and `2 MAC ceiling` found the two remaining uses (`app/theme.py` and `docs/INTERFACE.md` § on the MAC-awake band), and both state the true reason.
