@@ -566,7 +566,11 @@ need. A question of merging against holding for changes is never sent,
 because holding gains you nothing you can name: "either you shouldn't be
 asking me in the first place because it's not a real question, or you need to
 tell me what I need to make an informed decision" (project owner,
-2026-11-14). The question is one you can decide as the owner or as a clinician. It never asks
+2026-11-14). A change to the merge gate itself waits on you even when it
+has nothing else to weigh, and its question says what the gate will let
+through or refuse after the change (project owner, 2026-11-14, ratified,
+over letting the session release it and over a notice with a deadline,
+`PL-TQHT`). The question is one you can decide as the owner or as a clinician. It never asks
 you to re-check what the tests or reviews already covered, such as whether a
 rewording kept its meaning. A choice between approaches to the interface
 comes with one annotated screenshot per option (project owner, 2026-10-19,

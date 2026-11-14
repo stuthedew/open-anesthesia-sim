@@ -3,11 +3,14 @@ id: PL-TQHT
 title: A change to the merge gate with nothing for the owner to weigh still waits on the owner, who calls that a rubber stamp: decide whether such a hold stays, and how it is asked (found on PR #2146)
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: ux
 touches: subprojects/docket/src/docket/arming.py, docs/maintainer.md
 deferred-from: v0.7.0 - workflow tooling outside the schematic release, and it changes no displayed value
 added: 2026-11-14
+closed: 2026-11-14
+pr: 2146
+verify: grep -q 'PL-TQHT' docs/maintainer.md
 ---
 
 **Problem.** A change to the merge gate's code, or to the tests that fix what it prints, waits on the owner whatever else it does. That stops a session loosening the check that keeps unreviewed work off `main` (`PL-9JHM`, `PL-WW0Q`). Some such changes have nothing for the owner to weigh. `PL-GG4V`'s pull request, #2146, is one: it builds the question form the owner asked for on 2026-11-14, and it waits only because it edits the gate. The question form now requires two options with a real gain each, so a session asking about such a change has to invent one.
@@ -29,3 +32,5 @@ added: 2026-11-14
 **How often it happens is not known.** A squash merge keeps the pull request body and drops the commit trailers that record the owner's go-ahead, so `main`'s history does not show how many merges waited on the owner for this reason.
 
 **Done when.** The owner's answer is recorded here, and `bin/docket arm`'s instructions and `docs/maintainer.md` say what a session does with such a change.
+
+**Decision (project owner, 2026-11-14, ratified, over option 2 and option 3): option 1.** The owner's words: "Keep the hold". A change to the merge gate keeps waiting on the owner even with nothing else to weigh, and its question compares the gate as changed with the gate as it was. `bin/docket arm`'s printed instructions already say so, from `PL-GG4V`, and `docs/maintainer.md` now records the decision.
