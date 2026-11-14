@@ -167,6 +167,9 @@ COMPARED = ComparedRuns(run_label(FIRST_RUN), run_label(SECOND_RUN))
 # measure hover distances in.
 _WINDOW_WIDTH_PX = 1400
 _WINDOW_HEIGHT_PX = 1000
+# A window tall enough that the concentration plot has its preferred height,
+# `theme.CHART_HEIGHT`, in the test Workspace (`PL-CBYS`).
+_TALL_WINDOW_HEIGHT_PX = 2200
 
 #: The two required glosses, restated rather than imported so an edit to the
 #: application cannot move both sides of the assertion at once.
@@ -318,6 +321,7 @@ def _shown_view(
     *controllers: SimulationController,
     width_px: int = _WINDOW_WIDTH_PX,
     case: BranchedCase | None = None,
+    height_px: int = _WINDOW_HEIGHT_PX,
     workspaces: WorkspaceSet = _EVERY_VIEW,
 ) -> SimulationView:
     """A dashboard over these runs, shown at the fixed size and presented once.
@@ -329,7 +333,7 @@ def _shown_view(
     _delete_shown_views(application)
     view = SimulationView(controllers, case=case, workspaces=workspaces)
     _SHOWN_VIEWS.append(view)
-    view.resize(width_px, _WINDOW_HEIGHT_PX)
+    view.resize(width_px, height_px)
     view.show()
     application.processEvents()
     view.present(False)
@@ -573,11 +577,14 @@ def _branched_case(elapsed_s: float = 60.0) -> BranchedCase:
 
 
 def _case_view(
-    application: QApplication, case: BranchedCase, width_px: int = _WINDOW_WIDTH_PX
+    application: QApplication,
+    case: BranchedCase,
+    width_px: int = _WINDOW_WIDTH_PX,
+    height_px: int = _WINDOW_HEIGHT_PX,
 ) -> SimulationView:
     """A dashboard opened over a case's trunk, the way `main()` opens one."""
 
-    return _shown_view(application, case.trunk, width_px=width_px, case=case)
+    return _shown_view(application, case.trunk, width_px=width_px, height_px=height_px, case=case)
 
 
 def _offered_fork_instants(view: SimulationView) -> tuple[float, ...]:

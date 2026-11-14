@@ -598,10 +598,11 @@ def test_the_page_stops_holding_the_chart_once_the_reader_scrolls(
 
     After that the reader owns the page. So a later change of layout does not
     scroll the page back. Here that change is a shorter window, which moves
-    the chart.
+    the chart. Since `PL-CBYS` the page scrolls only where the window is too
+    small for the Areas' least heights, so the test opens a 700 px window.
     """
 
-    view = _case_view(application, _branched_case(), width_px=1600)
+    view = _case_view(application, _branched_case(), width_px=1600, height_px=700)
     _take_fork(view, 60.0)
     _settle(application)
     scroll = view.findChild(QScrollArea)
@@ -610,7 +611,7 @@ def test_the_page_stops_holding_the_chart_once_the_reader_scrolls(
     assert bar.value() > 0
 
     bar.triggerAction(QAbstractSlider.SliderAction.SliderToMinimum)
-    view.resize(1600, 800)
+    view.resize(1600, 600)
     _settle(application)
 
     assert bar.value() == 0

@@ -5,24 +5,34 @@ These tests cover the page and its window.
 `simulation_view_support.py` describes the whole suite.
 """
 
-from PySide6.QtWidgets import QApplication, QWidget
+import pytest
+from PySide6.QtCore import QPoint
+from PySide6.QtWidgets import QApplication, QLabel, QScrollArea, QWidget
 
 from anesthesia_sim.app.controller import SimulationController
-from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING
-from anesthesia_sim.app.views import AccountingView
+from anesthesia_sim.app.dashboard_frame import WASH_IN_MODELLED_TEXT
+from anesthesia_sim.app.simulation_view import SimulationView
+from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING, BOOKMARKS, WASH_IN
+from anesthesia_sim.app.views import AccountingView, ConcentrationView, WashInView
 from anesthesia_sim.layout.tree import AreaId
+from anesthesia_sim.layout.workspace import WorkspaceName
 from tests.integration.simulation_view.simulation_view_support import (
+    _SHOWN_VIEWS,
     _WINDOW_HEIGHT_PX,
     _WINDOW_WIDTH_PX,
     _accounting,
     _accounting_panel,
+    _advance,
+    _branched_case,
     _concentration,
+    _delete_shown_views,
     _dials,
     _middle_of,
     _page_of,
     _record_panels,
     _settle,
     _shown_view,
+    _wash_in,
 )
 
 # ---------------------------------------------------------------- the page
@@ -205,39 +215,39 @@ def test_a_second_build_call_leaves_each_run_widget_on_screen(application: QAppl
 def test_spare_height_goes_to_the_plots_and_not_to_the_readouts(application: QApplication) -> None:
     """The unconditional region keeps its own height, and the Areas take the rest.
 
-    At the fixed test size, the page is taller than the window, so there is no
-    spare height. From the first frame on, the Areas then have the height they
-    ask for, which is their size hint. Before `PL-PHPZ`, the page laid out the
-    Areas from a hint read before the Views had drawn. So the Areas' height
-    depended on when the page was laid out.
+    At the fixed test size, the Areas' least heights add up to more than the
+    room between the region and the disclaimer. So the Areas are at their least
+    height and the page scrolls by the difference. Since `PL-CBYS`, the page
+    grows past its window only where the window is too small for those least
+    heights, and a View taller than its Area scrolls inside the Area.
 
-    A window has spare height once it is tall enough for the scrolling middle to
-    show all of its content. Every extra pixel of height makes the Areas taller,
-    while the region that holds the readouts keeps its height. The test measures
-    the readout section inside the region, where the section has been since
-    `PL-NWTM`. The setting controls have been a View in an Area since `PL-2KXB`,
-    so they take their share of the Areas' height.
+    Once the window is tall enough for the page to stop scrolling, every extra
+    pixel of height makes the Areas taller, while the region that holds the
+    readouts keeps its height. The test measures the readout section inside the
+    region, where the section has been since `PL-NWTM`. The setting controls
+    have been a View in an Area since `PL-2KXB`, so they take their share of
+    the Areas' height.
     """
 
     controller = SimulationController()
     view = _shown_view(application, controller)
     chart_row = view.layout_container
     readout_section = view.unconditional_region
-    scroll, middle = _middle_of(view)
+    scroll, _ = _middle_of(view)
+    bar = scroll.verticalScrollBar()
 
     assert abs(readout_section.height() - readout_section.sizeHint().height()) <= 2
-    assert chart_row.height() >= chart_row.minimumSizeHint().height()
-    assert chart_row.height() == chart_row.sizeHint().height()
+    assert chart_row.height() == chart_row.minimumSizeHint().height()
 
     settled_chart_row_height = chart_row.height()
     spare = 400
-    hidden = max(0, middle.sizeHint().height() - scroll.viewport().height())
+    hidden = bar.maximum()
     view.resize(_WINDOW_WIDTH_PX, view.height() + hidden + spare)
     application.processEvents()
 
+    assert bar.maximum() == 0
     assert abs(readout_section.height() - readout_section.sizeHint().height()) <= 2
     assert chart_row.height() >= settled_chart_row_height + spare - 2
-    assert chart_row.height() > chart_row.sizeHint().height()
 
     view.resize(_WINDOW_WIDTH_PX, _WINDOW_HEIGHT_PX)
     application.processEvents()
@@ -252,13 +262,242 @@ def test_the_page_takes_the_height_the_areas_ask_for_after_the_views_draw(
     run's dials on their first frame, which changes the Areas' size hint.
     Before the fix, the page kept the hint that it read before that frame. So
     after the frame the Areas were 62 px shorter than their hint, and 45 px
-    taller once the event loop had run. The expected height is the Areas' own
-    size hint, not a height that the page worked out.
+    taller once the event loop had run. At the test size the window is too
+    small for the Areas' least heights, so since `PL-CBYS` the height they ask
+    for is their own least height, not a height that the page worked out.
     """
 
     view = _shown_view(application, SimulationController())
     areas = view.layout_container
 
-    assert areas.height() == areas.sizeHint().height()
+    assert areas.height() == areas.minimumSizeHint().height()
     application.processEvents()
-    assert areas.height() == areas.sizeHint().height()
+    assert areas.height() == areas.minimumSizeHint().height()
+
+
+_COMMON_SCREENS_PX = ((1366, 768), (1920, 1080))
+"""A laptop screen and a desktop screen, the two sizes `PL-CBYS` measured."""
+
+
+def _shipped_view_at(
+    application: QApplication, workspace: str, width_px: int, height_px: int
+) -> SimulationView:
+    """A dashboard over the shipped Workspaces, on `workspace`, at 300 s of one run."""
+
+    from anesthesia_sim.layout.shipped import shipped_workspaces
+
+    case = _branched_case()
+    case.trunk.start()
+    _advance(case.trunk, 300.0)
+    _delete_shown_views(application)
+    view = SimulationView((case.trunk,), case=case, workspaces=shipped_workspaces())
+    _SHOWN_VIEWS.append(view)
+    view.resize(width_px, height_px)
+    view.show()
+    application.processEvents()
+    view.present(False)
+    view.tab_strip.activate(view.workspaces.position_of(WorkspaceName(workspace)))
+    _settle(application)
+
+    return view
+
+
+def _shipped_workspace_names() -> tuple[str, ...]:
+    from anesthesia_sim.layout.shipped import shipped_workspaces
+
+    return tuple(str(workspace.name) for workspace in shipped_workspaces().workspaces)
+
+
+@pytest.mark.parametrize(("width_px", "height_px"), _COMMON_SCREENS_PX)
+@pytest.mark.parametrize("workspace", _shipped_workspace_names())
+def test_no_shipped_workspace_scrolls_the_page(
+    application: QApplication, workspace: str, width_px: int, height_px: int
+) -> None:
+    """`PL-CBYS`: on a laptop or a desktop screen, the Areas fit above the disclaimer.
+
+    Before the change the page grew to hold every View's content. At 1366 by
+    768 the Induction Workspace's page scrolled 832 px, and its wash-in chart
+    opened below the fold. Now a View that needs more room than its Area
+    scrolls inside the Area, so the page itself never scrolls at these sizes.
+    No View scrolls sideways either, because an Area's least width comes from
+    its View's content.
+    """
+
+    view = _shipped_view_at(application, workspace, width_px, height_px)
+    page, _ = _middle_of(view)
+    areas = view.layout_container
+
+    assert page.verticalScrollBar().maximum() == 0
+    assert page.horizontalScrollBar().maximum() == 0
+
+    for area in areas.model.areas():
+        frame = areas.frame(area.id)
+        assert frame.view_scroll is not None, f"Area {area.id} ({area.view}) shows a notice"
+        assert frame.content.isVisible(), f"Area {area.id} ({area.view}) hides its View"
+        assert frame.view_scroll.horizontalScrollBar().maximum() == 0, (
+            f"the {area.view} View scrolls sideways in its Area"
+        )
+
+
+def test_a_view_taller_than_its_area_scrolls_inside_the_area(application: QApplication) -> None:
+    """`PL-CBYS`: the wash-in chart on a laptop is shown whole, by scrolling its own Area.
+
+    In the Induction Workspace at 1366 by 768 the concentration chart takes
+    the room its plot needs, and the wash-in chart's Area is shorter than the
+    wash-in View's content. The View stays shown, with no notice in its
+    place, and its Area's scroll bar covers the height the View does not get.
+    The concentration plot is wholly on screen, so the long time axis that
+    the project owner chose for Induction is visible on opening.
+    """
+
+    view = _shipped_view_at(application, "Induction", 1366, 768)
+    areas = view.layout_container
+    (wash_in,) = (area for area in areas.model.areas() if area.view == WASH_IN)
+    frame = areas.frame(wash_in.id)
+    scroll = frame.view_scroll
+
+    assert scroll is not None
+    assert frame.content.isVisible()
+    bar = scroll.verticalScrollBar()
+    assert bar.maximum() > 0
+    assert bar.maximum() == frame.content.height() - scroll.viewport().height()
+
+    chart = _concentration(view).chart
+    around = [area for area in view.findChildren(QScrollArea) if area.isAncestorOf(chart)]
+    assert len(around) == 2, "the plot is not in its Area's scroll and the page's"
+
+    for area in around:
+        top = chart.mapTo(area.viewport(), QPoint(0, 0)).y()
+        assert 0 <= top, f"the plot's top is {-top} px above a scroll box"
+        assert top + chart.height() <= area.viewport().height(), "the plot runs below a scroll box"
+
+
+@pytest.mark.parametrize("workspace", ("Default", "Induction"))
+def test_a_chart_views_least_width_holds_every_row_above_its_plot(
+    application: QApplication, workspace: str
+) -> None:
+    """`PL-CBYS`: no row above a chart's plot is cut off at the right in a narrow Area.
+
+    The window statement, the reference values and the legend sit in a box
+    that scrolls up and down and never sideways. An Area is never made
+    narrower than its View's least width. So that width must hold the widest
+    of those rows, with room for the box's scroll bar. Before the fix the box
+    reported a least width of its own scroll bar alone. The concentration
+    View's least width was then 357 px, and its MAC-awake line needs 410 px.
+    In an Area dragged to its narrowest, that line lost the end of its band
+    and its unit.
+    """
+
+    view = _shipped_view_at(application, workspace, 1366, 768)
+
+    for chart_view in (*view.findChildren(ConcentrationView), *view.findChildren(WashInView)):
+        if not chart_view.isVisible():
+            continue
+
+        (key,) = chart_view.findChildren(QScrollArea)
+        rows = key.widget()
+        assert rows is not None
+        needed = rows.minimumSizeHint().width() + key.verticalScrollBar().sizeHint().width()
+
+        assert key.minimumSizeHint().width() >= needed, type(chart_view).__name__
+        assert chart_view.minimumSizeHint().width() >= needed, type(chart_view).__name__
+
+
+def test_the_wash_in_view_never_scrolls_modelled_away_from_a_whole_plot(
+    application: QApplication,
+) -> None:
+    """`PL-CBYS`: "Modelled, not measured" is never in the box that scrolls above the plot.
+
+    The safety standard requires those three words beside the plot
+    (`PL-F9TQ`). The box above a chart's plot is squeezed before the plot is,
+    so it can show its first two rows while the plot is whole. With the line
+    as the box's third row, the Induction Workspace at 1366 by 948 to 1366 by
+    1028 showed the whole wash-in plot with the line scrolled out of the box's
+    view. It is now a row of its own under the heading, so wherever the View
+    fits its Area, the line is on screen. Where the View is taller than its
+    Area, as at 1366 by 768, the line and the plot cannot both be on screen;
+    `PL-26BZ` holds that question.
+    """
+
+    view = _shipped_view_at(application, "Induction", 1366, 768)
+    wash_in = _wash_in(view)
+    (line,) = (
+        label for label in wash_in.findChildren(QLabel) if label.text() == WASH_IN_MODELLED_TEXT
+    )
+    inside = [box for box in wash_in.findChildren(QScrollArea) if box.isAncestorOf(line)]
+
+    assert line.isVisible()
+    assert inside == [], "the line is in a box that scrolls inside the View"
+
+
+def test_a_view_kept_across_a_rebuild_keeps_its_scroll_position(application: QApplication) -> None:
+    """`PL-CBYS`: splitting one Area does not scroll a View in another Area back to its top.
+
+    Each rebuild of the layout gives every View a new frame and a new scroll
+    box. In the Default Workspace at 1366 by 768 the Bookmarks View scrolls
+    inside its Area. Before the fix, a reader who had scrolled it to the end
+    found it back at the top after splitting a different Area, though the
+    same View was kept. Before `PL-CBYS` the scroll sat inside the View and
+    moved with it.
+    """
+
+    from anesthesia_sim.app.area_layout import SPLIT_SIDE_BY_SIDE_LABEL
+
+    view = _shipped_view_at(application, "Default", 1366, 768)
+    areas = view.layout_container
+    (bookmarks,) = (area for area in areas.model.areas() if area.view == BOOKMARKS)
+    kept = areas.frame(bookmarks.id).content
+    scroll = areas.frame(bookmarks.id).view_scroll
+    assert scroll is not None
+    bar = scroll.verticalScrollBar()
+    assert bar.maximum() > 0, "the Bookmarks View does not scroll at this size"
+    bar.setValue(bar.maximum())
+    scrolled_to = bar.value()
+    other = next(
+        area
+        for area in areas.model.areas()
+        if area.id != bookmarks.id
+        and any(
+            operation.label == SPLIT_SIDE_BY_SIDE_LABEL and operation.available
+            for operation in areas.operations(area.id)
+        )
+    )
+    (split,) = (
+        operation
+        for operation in areas.operations(other.id)
+        if operation.label == SPLIT_SIDE_BY_SIDE_LABEL
+    )
+
+    areas.perform(split)
+    _settle(application)
+
+    frame = areas.frame(bookmarks.id)
+    assert frame.content is kept
+    assert frame.view_scroll is not None
+    assert frame.view_scroll.verticalScrollBar().value() == scrolled_to
+
+
+def test_the_page_scrolls_only_where_the_window_is_too_small_for_every_view(
+    application: QApplication,
+) -> None:
+    """`PL-CBYS`: in a window too small for every View, the page grows and no Area loses its View.
+
+    `docs/INTERFACE.md` § "Minimum displayed outputs" says that a reader who
+    chooses a View sees the View itself, never only a notice that the Area is
+    too small. So where the Areas' least heights add up to more than the
+    window has, the page grows past the window and scrolls by the difference,
+    and no Area swaps its View for the notice.
+    """
+
+    view = _shipped_view_at(application, "Induction", 1366, 500)
+    page, middle = _middle_of(view)
+    areas = view.layout_container
+
+    assert page.verticalScrollBar().maximum() > 0
+    assert areas.height() == areas.minimumSizeHint().height()
+    assert page.verticalScrollBar().maximum() == middle.height() - page.viewport().height()
+
+    for area in areas.model.areas():
+        frame = areas.frame(area.id)
+        assert frame.view_scroll is not None, f"Area {area.id} shows a notice"
+        assert frame.content.isVisible(), f"Area {area.id} hides its View behind a notice"
