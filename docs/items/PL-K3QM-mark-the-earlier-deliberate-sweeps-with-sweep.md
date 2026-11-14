@@ -9,7 +9,7 @@ feature: convergence-visibility
 touches: docs/items
 added: 2026-11-03
 payoff: docket inflow's history rows count the filings of deliberate sweeps apart from ordinary inflow
-verify: grep -q '^sweep:' docs/items/PL-BNYF-*.md
+verify: grep -q '^\*\*Every candidate read, ' docs/items/PL-K3QM-*.md
 ---
 
 **Problem.** Mark the earlier deliberate sweeps with sweep:, so docket inflow's history rows count their filings apart: only PL-K88Z carries it, and candidates include PL-BNYF's queue audit among the items whose work filed three or more apparatus items
@@ -50,3 +50,6 @@ Most of the other candidates are ordinary fixes that captured findings as they w
 **Left open, 2026-11-14.** The done-when asks for each candidate's brief to be
 read. The screen above read about 20 of 163 in full, so the item stays ready
 for the remaining 143. The three marks stand.
+The `verify:` command now looks for a paragraph opening "**Every candidate
+read, DATE.**", which the session that reads the remaining briefs writes. The
+old command passed as soon as `PL-BNYF` was marked.
