@@ -43,6 +43,7 @@ from math import expm1, inf
 from typing import TYPE_CHECKING
 
 from anesthesia_sim.core.checked_number import shown
+from anesthesia_sim.core.checked_record import restore_through_checks
 from anesthesia_sim.core.concentration import (
     Fraction,
     Percent,
@@ -128,6 +129,11 @@ class DeliverableFreshGasFlowRange:
                 "deliverable_fresh_gas_flow_range has a minimum above its maximum "
                 f"({self.minimum_l_min} L/min minimum, {self.maximum_l_min} L/min maximum)"
             )
+
+    def __setstate__(self, state: object) -> None:
+        """Restore an unpickled or copied record through the constructor's checks (`PL-8W1Q`)."""
+
+        restore_through_checks(self, state)
 
 
 def _accepted_fresh_gas_flow_range_l_min(
@@ -309,6 +315,11 @@ class BreathingCircuitState:
             "inspired_partial_pressure_fraction", self.inspired_partial_pressure_fraction
         )
         require_compartment_volume("circuit_volume_l", self.circuit_volume_l)
+
+    def __setstate__(self, state: object) -> None:
+        """Restore an unpickled or copied record through the constructor's checks (`PL-8W1Q`)."""
+
+        restore_through_checks(self, state)
 
     @property
     def agent_amount_l(self) -> float:
