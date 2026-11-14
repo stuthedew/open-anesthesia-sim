@@ -81,6 +81,7 @@ from math import inf, isfinite
 from typing import Final
 
 from anesthesia_sim.core.checked_number import shown
+from anesthesia_sim.core.checked_record import restore_through_checks
 from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationNumericalError
 from anesthesia_sim.core.governing_equations import (
@@ -164,6 +165,11 @@ class Keyframe:
 
     def __post_init__(self) -> None:
         require_case_instant("instant_s", self.instant_s)
+
+    def __setstate__(self, state: object) -> None:
+        """Restore an unpickled or copied record through the constructor's checks (`PL-8W1Q`)."""
+
+        restore_through_checks(self, state)
 
 
 @dataclass(frozen=True, slots=True)
@@ -294,6 +300,11 @@ class SampledWindow:
                 f"a sampled window has {len(self.times_s)} instants and "
                 f"{len(self.states)} states; each state belongs to one instant"
             )
+
+    def __setstate__(self, state: object) -> None:
+        """Restore an unpickled or copied record through the constructor's checks (`PL-8W1Q`)."""
+
+        restore_through_checks(self, state)
 
 
 class RunDefinition:
