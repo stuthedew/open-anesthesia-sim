@@ -4365,10 +4365,13 @@ legible.
 readouts different numbers of decimal places, and the row is read by comparing
 them (§ "One resolution for all six readouts"). It would also give the smallest
 values the most digits: three figures on a fat fraction of a thousandth of a
-percent would print six decimals. The equation solver is not the limit here. With the exact method that the simulator uses, compartments that
-hold little agent have a relative error of at most $`2\times10^{-4}`$ anywhere in
-the first ten seconds of a run, and $`8\times10^{-11}`$ at ten seconds itself.
-The solver's two figures have no test yet (`PL-19W8`).
+percent would print six decimals. The equation solver is not the limit here.
+In a sevoflurane run at the default settings, the venous blood and the three
+tissue groups read `<0.01%` for the whole of the first ten seconds. The
+simulator's values for these compartments differ from the same equations solved
+to 50 significant digits by less than $`10^{-13}`$ of each value. That
+difference is the rounding of double-precision arithmetic, which builds up over
+the steps. `tests/reference/test_solver_error_figures.py` checks the bound.
 
 **Why a value below the resolution is shown as `<0.01%` rather than as zero.**
 Even at two decimals, muscle and fat start below the last digit, for the times

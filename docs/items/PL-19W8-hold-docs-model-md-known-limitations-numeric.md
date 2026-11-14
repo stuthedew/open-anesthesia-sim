@@ -3,12 +3,14 @@ id: PL-19W8
 title: Hold docs/MODEL.md § "Known limitations" numeric paragraphs to named tests, write the tests § "Displayed precision" declares it owes, and count the claims found wrong (the first pass, which decides whether the rest run)
 priority: P1
 effort: M
-status: ready
+status: done
 classes: docs, science
 feature: model-claims-held-by-tests
-touches: docs/MODEL.md, tools/doc_check.py, tests/reference, docs/items
+touches: docs/MODEL.md, docs/INTERFACE.md, tools/doc_check.py, tests/reference, docs/items
 deferred-from: v0.7.0 - not live: checked 2026-11-07 (PL-8C8W): the figures it would hold are docs/MODEL.md prose, no displayed string carries them, and holding them to tests changes no display step; whether the two-decimal step holds against the stored SDs is PL-TDX0's question, which is on this gate's list undeferred, so no learner can see a wrong value through this item
 added: 2026-11-02
+closed: 2026-11-14
+pr: 2165
 payoff: the numbers in Known limitations and Displayed precision are computed by a test, so a wrong one fails the build, and the count of wrong ones decides whether the other sections are worth the same work
 verify: ! grep -q 'PL-19W8' docs/INTERFACE.md && ! grep -q 'PL-19W8' docs/MODEL.md
 ---
@@ -128,4 +130,8 @@ The figures that rest on an SD are `PL-TDX0`'s branch's (`#2150`, `tests/integra
 
 **Verify rewritten, 2026-11-14.** The old command passed once the second slice put § "Known limitations" into `BOUND_FAMILIES`, so it no longer told done from not done. The new one passes only when neither `docs/INTERFACE.md` nor `docs/MODEL.md` names this item. Every mention there is a sentence saying a figure has no test yet, so the last slice removes them all. On this branch it fails, because five such sentences in `docs/INTERFACE.md` (the solver and density figures that `#2150` re-pointed here) remain.
 
-**Left for the last slice:** the solver figures in "Why not significant figures", which `#2150` re-points to this item, and then the closure, which sets `PL-JP7P`, `PL-MCQ5`, `PL-5C1H` and `PL-H94Q` ready, since this pass and `PL-TDX0`'s found wrong claims.
+**Last slice, 2026-11-14 (`#2165`).** `docs/INTERFACE.md` § "Displayed precision" said the solver's relative error in the compartments that hold little agent was at most 2 × 10⁻⁴ in the first ten seconds and 8 × 10⁻¹¹ at ten seconds. `tests/reference/test_solver_error_figures.py` runs the default sevoflurane run beside the same equations solved to 50 significant digits, and the largest difference was 9.5 × 10⁻¹⁵, in fat at 9.9 s. Both printed figures were wrong, by about ten orders of magnitude, though the paragraph's argument (the solver does not limit the decimals) was right. The sentence now gives a bound, less than 10⁻¹³, and the test checks the measurement against it from both sides: below it, and within 100 times of it. Printing 9 × 10⁻¹⁵ was rejected because the measurement sat 0.2% below where it rounds to 1 × 10⁻¹⁴. Blind review: pass 1 found two optional points and pass 2 one, all fixed (a far too loose bound would have passed; the 50-digit constant did not control the reference; the sentence's agent, run length and precision were fixed words in the test's pattern).
+
+**Wrong claims found across the item: five.** Baker and Farmery's fat gap (26% for 27%), the agent-accounting residual (2.1 for 2.13 × 10⁻¹¹ L), the humidification paragraph's source for the blood:gas ratios (found by the blind review), and the solver's two error figures. With `PL-TDX0`'s, that is enough to run the other sections' passes, so `PL-JP7P`, `PL-MCQ5`, `PL-5C1H` and `PL-H94Q` are set ready.
+
+**Closed 2026-11-14** with `#2154` and `#2165`. Files checked for statements the slices changed: `docs/MODEL.md` § "Known limitations" and § "Parameter provenance", `docs/INTERFACE.md` § "Displayed precision" and § "The agent-accounting panel", `README.md`, `docs/ARCHITECTURE.md` (its test-tree map lists `tests/reference/`, and `make doc-check` holds it to the new files), and `ROADMAP.md`'s v0.7.0 frozen list, which names this item and needs no change.
