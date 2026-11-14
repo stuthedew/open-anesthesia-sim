@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: defect, science
 feature: model-claims-held-by-tests
-touches: docs/MODEL.md, tests/reference
+touches: docs/INTERFACE.md, tests/reference
 added: 2026-11-04
 payoff: the accounting panel's 0.1 L step is derived at every setting the supported span allows, so no long high-dial run shows a last digit finer than the band
 verify: grep -rqF 'def test_the_run_totals_litre_step_at_each_agent_s_dial_maximum' tests/
