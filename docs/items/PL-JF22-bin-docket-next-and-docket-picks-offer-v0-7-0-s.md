@@ -23,10 +23,11 @@ clear beat, `next` ranks a build item by its band among the gate's entries,
 so a P1 build item comes ahead of every P2 and P3 gate entry. The rule will be
 skipped again the same way.
 
-**Done when.** Whichever answer `PL-6590` gets, the tools say the same thing as
-`ROADMAP.md`. If the rule is kept, `next` stops offering a Required-scope item
-while the beat is `clear`, or names it as off-gate work the rule holds back. If
-the rule becomes "side by side", nothing here changes except the picks note.
+**Done when.** `next` and `docket picks` stop offering a milestone's
+Required-scope item while the beat is `clear`, or offer it only as off-gate
+work that `ROADMAP.md` § "The cadence" beat 3 holds back. The project owner
+kept the rule on 2026-11-11 (ratified, over rewriting it as "debt and features
+are worked side by side"), in the `PL-6590` decision, so it applies again from
+Gate 4 and the tools must say the same thing.
 
-**Depends on** `PL-6590`'s answer. Found while reviewing that item's
-recommendation, 2026-11-11.
+Found while reviewing `PL-6590`'s recommendation, 2026-11-11.
