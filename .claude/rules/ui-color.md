@@ -20,7 +20,7 @@ declared pair. What follows is only the half it cannot decide.
 the pairs somebody wrote down, so a control with no colour of its own is absent
 from its count rather than reported by it — which is how `PL-DHBX`'s three
 invisible transport buttons reached a release.
-`tests/integration/test_simulation_view.py` is what holds the built dashboard
+`tests/integration/simulation_view/test_simulation_view_foreground.py` is what holds the built dashboard
 to declaring one, control by control, so a widget added here either declares a
 foreground or is named in that module's `FOREGROUND_NOT_DECLARED` against the
 reason it draws no text. Naming it is a judgment worth making deliberately: the

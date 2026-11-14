@@ -111,7 +111,7 @@ COMPARTMENT_QUANTITIES: Final = (
 #: They follow the order of `PatientCompartmentsState.tissues`, which is the
 #: order that `AgentUptakeSystem.state_vector` writes them in. This table
 #: assumes that order from another module. So
-#: `tests/integration/test_controller.py`'s
+#: `tests/integration/controller/test_controller_running.py`'s
 #: `test_each_recorded_quantity_carries_the_compartment_it_names` checks the
 #: order against the core's own attributes rather than restating it.
 #:

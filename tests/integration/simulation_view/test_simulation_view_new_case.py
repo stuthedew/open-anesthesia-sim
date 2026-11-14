@@ -153,7 +153,7 @@ def test_an_agent_chosen_in_the_selector_runs_as_a_fresh_run_of_that_agent(
 ) -> None:
     """A switch made through the selector computes with the new agent alone (`PL-QJXS`).
 
-    `tests/integration/test_controller.py` compares `set_agent` with a fresh
+    `tests/integration/controller/test_controller_setup.py` compares `set_agent` with a fresh
     run of the new agent for every pair of agents. This test takes the path a
     reader takes: the selector, the new-case dialog and a presented frame. So
     a view that changed agent by some route other than `set_agent`, or wrote

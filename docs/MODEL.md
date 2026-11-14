@@ -5533,7 +5533,7 @@ setting changes
 in `tests/unit/test_run_definition.py`). Other tests make the same comparison in
 two more cases: a system started at a keyframe and stepped from there, and a
 branch compared against its parent (`tests/unit/test_resume_at.py` and
-`tests/integration/test_controller.py`). Each test records the difference it
+`tests/integration/controller/test_controller_branching.py`). Each test records the difference it
 found and the headroom left below the tolerance.
 
 ### Parameter-recovery test
