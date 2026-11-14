@@ -127,6 +127,13 @@ CONFIRMED: dict[int, str] = {
         "label is one pixel shorter than one holding text in most fonts, 15 px against "
         "16 px on CI (PL-P55M)."
     ),
+    0x00B0: (
+        "DEGREE SIGN - REFERENCE_TEMPERATURE_LABEL in app/display_units.py, which names "
+        "20 °C beside every agent amount. Seen in the Qt build (PySide6 6.11.2, offscreen, "
+        "the container's Inter, 2026-11-11) in the accounting panel's unit caption and the "
+        "schematic's scale caption, as a raised small circle with no replacement box "
+        "(PL-HQPF)."
+    ),
     0x00B1: (
         "PLUS-MINUS SIGN - first seen in the Flutter client's wash-in tolerance readout "
         "(PL-8XPQ, 2026-09-04). Seen in the Qt build (PySide6 6.11.2, offscreen, the "
