@@ -94,13 +94,7 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 from docket.config import load as load_config  # noqa: E402
 from docket.model import MIN_ROOT_CAUSE_ITEMS, Item, parse_item  # noqa: E402
 from docket.store import cited_ids  # noqa: E402
-from docket.vcs import (  # noqa: E402
-    ITEM_FILE_RE,
-    LONG_GIT_TIMEOUT,
-    GitUnanswered,
-    filing_parents,
-    read_git,
-)
+from docket.vcs import ITEM_FILE_RE, LONG_GIT_TIMEOUT, GitUnanswered, filing_parents, read_git  # noqa: E402
 
 #: The floor for showing a cluster, and it is the recorded definition's own:
 #: `CLAUDE.md` calls a mechanism causing three or more items a generator, so a
