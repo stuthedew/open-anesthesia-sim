@@ -36,6 +36,7 @@ from typing import Annotated
 from pydantic import BaseModel, BeforeValidator, ConfigDict, field_validator, model_validator
 from pydantic import ValidationError as PydanticValidationError
 
+from anesthesia_sim.core.blood_flow import PerfusionFraction, require_perfusion_fraction
 from anesthesia_sim.core.checked_number import shown
 from anesthesia_sim.core.circuit import DeliverableFreshGasFlowRange
 from anesthesia_sim.core.concentration import (
@@ -509,10 +510,13 @@ class ReferenceAdultParameters:
     See `_StrictPayload` for why the pair of types exists.
 
     The five volumes are `CompartmentVolume`s, built only inside the
-    numerical envelope (`core/numerical_envelope.py`, `PL-QX2G`).
+    numerical envelope (`core/numerical_envelope.py`, `PL-QX2G`). The three
+    perfusion fractions are `PerfusionFraction`s, built only above 0 and at
+    most 1 (`core/blood_flow.py`, `PL-GKG4`).
 
     Raises:
-        TypeError: a volume was not built as a `CompartmentVolume`.
+        TypeError: a volume was not built as a `CompartmentVolume`, or a
+            perfusion fraction as a `PerfusionFraction`.
     """
 
     schema_version: int
@@ -524,11 +528,11 @@ class ReferenceAdultParameters:
     default_alveolar_ventilation_l_min: float
     default_cardiac_output_l_min: float
     vessel_rich_volume_l: CompartmentVolume
-    vessel_rich_perfusion_fraction: float
+    vessel_rich_perfusion_fraction: PerfusionFraction
     muscle_volume_l: CompartmentVolume
-    muscle_perfusion_fraction: float
+    muscle_perfusion_fraction: PerfusionFraction
     fat_volume_l: CompartmentVolume
-    fat_perfusion_fraction: float
+    fat_perfusion_fraction: PerfusionFraction
     sources: tuple[SourceReference, ...]
     # The reason no primary source is adopted, if none is, or `None` if one is.
     # See `SOURCE_TIERS` above for what the pair of fields is separating.
@@ -543,6 +547,13 @@ class ReferenceAdultParameters:
             "fat_volume_l",
         ):
             require_compartment_volume(field, getattr(self, field))
+
+        for field in (
+            "vessel_rich_perfusion_fraction",
+            "muscle_perfusion_fraction",
+            "fat_perfusion_fraction",
+        ):
+            require_perfusion_fraction(field, getattr(self, field))
 
     @property
     def total_perfusion_fraction(self) -> float:
@@ -763,7 +774,7 @@ Finite = Annotated[float, BeforeValidator(_validate_finite)]
 NonNegativeFinite = Annotated[float, BeforeValidator(_validate_nonnegative_finite)]
 PositiveFraction = Annotated[float, BeforeValidator(_validate_positive_fraction)]
 PositivePercent = Annotated[float, BeforeValidator(_validate_positive_percent)]
-"""**This note says which set of types a new field in this file uses** (`PL-KL2Q`).
+"""**A new field in this file takes its type from its layer, not from its quantity** (`PL-KL2Q`).
 
 Two overlapping sets of types meet here, and they do different halves of one
 job. The `Positive*` aliases above are Pydantic `BeforeValidator`s. They check
@@ -773,7 +784,7 @@ dimensionless conventions apart at every call site. `Fraction` and `Percent`
 are also checked when built, against the whole of their range (0 through 1,
 0 through 100, zero included). `MacMultiple` is a `NewType` that checks nothing
 at runtime (`PL-4R3W`). Which type a field takes depends on its layer, not on
-the quantity:
+its quantity:
 
 - **A `_...Payload` field takes a `Positive*` alias.** The payload's job is to
   refuse a bad file, and the payload is discarded immediately afterwards. A
@@ -791,19 +802,19 @@ the quantity:
   cannot refuse a value that `PositivePercent` accepted, because the range of
   `PositivePercent` lies inside the range of `Percent`. The payload's check is
   the stricter one, and it is the one whose error names the file.
-- **A dimensionless quantity that is neither a concentration nor a ratio to MAC
-  takes `PositiveFraction` and stays a bare `float` on the public side.**
-  `perfusion_fraction` is the case in this file. Giving each such quantity its
-  own type would mean a type per parameter, rather than a type per boundary
-  that a wrong value can cross. `core/concentration.py` states that its types
-  exist to catch a missing conversion at such a boundary.
+- **A perfusion fraction takes `PositiveFraction` in the payload and
+  `PerfusionFraction` on the public side** (`core/blood_flow.py`, `PL-GKG4`).
+  A tissue group's blood flow is built only from a cardiac output and a
+  `PerfusionFraction`, so the fraction is checked once, where it is built. It
+  has a type of its own because every number in `core/` is to get one
+  (`PL-LHCL`).
 
-**Merging the two was weighed and rejected.**
+**Merging the two sets would remove the boundary between them.**
 `Annotated[Fraction, BeforeValidator(_validate_positive_fraction)]` would
-validate and keep conventions apart in one annotation. It would also remove the
-boundary that `_StrictPayload`'s docstring calls deliberate. The payload would
+validate and keep conventions apart in one annotation. But the payload would
 then carry the public type, so nothing would distinguish a value that has
-passed through `parse_*` from one that has not.
+passed through `parse_*` from one that has not. `_StrictPayload`'s docstring
+calls that boundary deliberate.
 """
 
 
@@ -1384,6 +1395,8 @@ def parse_reference_adult_parameters(payload: object) -> ReferenceAdultParameter
 
     tissue_groups = model.tissue_groups
 
+    # The payload has already held each perfusion fraction to the range that
+    # `PerfusionFraction` checks, so none can be refused below and none is named.
     return ReferenceAdultParameters(
         schema_version=model.schema_version,
         id=model.id,
@@ -1400,15 +1413,17 @@ def parse_reference_adult_parameters(payload: object) -> ReferenceAdultParameter
         vessel_rich_volume_l=CompartmentVolume(
             tissue_groups.vessel_rich.volume_l, name="tissue_groups.vessel_rich.volume_l"
         ),
-        vessel_rich_perfusion_fraction=tissue_groups.vessel_rich.perfusion_fraction,
+        vessel_rich_perfusion_fraction=PerfusionFraction(
+            tissue_groups.vessel_rich.perfusion_fraction
+        ),
         muscle_volume_l=CompartmentVolume(
             tissue_groups.muscle.volume_l, name="tissue_groups.muscle.volume_l"
         ),
-        muscle_perfusion_fraction=tissue_groups.muscle.perfusion_fraction,
+        muscle_perfusion_fraction=PerfusionFraction(tissue_groups.muscle.perfusion_fraction),
         fat_volume_l=CompartmentVolume(
             tissue_groups.fat.volume_l, name="tissue_groups.fat.volume_l"
         ),
-        fat_perfusion_fraction=tissue_groups.fat.perfusion_fraction,
+        fat_perfusion_fraction=PerfusionFraction(tissue_groups.fat.perfusion_fraction),
         sources=_sources_to_tuple(model.sources),
         provenance_gap=model.provenance_gap,
     )

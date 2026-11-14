@@ -264,11 +264,11 @@ page and decides which file a session reads.
    problem - and say in the reply what you found and what you left.
 
 7. **Sort the survivors that step 5's audit printed, where the diff changes a
-   function that mutmut mutates.** Those functions are in the modules named by
-   the `only_mutate` globs in the `[tool.mutmut]` table of `pyproject.toml`:
-   `core/` and eight presentation modules. The audit's mutation check runs
-   `make mutate`'s tool on the functions that the branch changed, so there is
-   no second run to make. Sort each survivor as `docs/mutation-testing.md`
+   function that mutmut mutates.** mutmut mutates every module under `src/`
+   that imports no Qt, except the ones that `pyproject.toml` names in
+   `[tool.diff_mutation.left_out]` with a reason (`PL-19M4`). The audit's
+   mutation check runs `make mutate`'s tool on the functions that the branch
+   changed, so there is no second run to make. Sort each survivor as `docs/mutation-testing.md`
    § "Read a survivor" says, and list each one with its kind in the pull
    request body. While `mutants/` is left from the run,
    `uv run --group mutation mutmut show NAME` prints a survivor's diff. Where a
