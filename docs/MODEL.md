@@ -1822,20 +1822,21 @@ digit. How many decimals the readout shows is a display choice, and it must not 
 | Ventilator start at the envelope corner | 1.4×10⁻¹ pp | desflurane |
 
 These figures are judged against the model's own parameter uncertainty, which comes before both
-the step and the display. One standard deviation (SD) of a single measured partition coefficient
-displaces a displayed compartment by at most $`6.8\times10^{-2}`$ pp. So at 0.1 s, the timing
-error of an ordinary control action is about a tenth of one parameter SD, and in that sense the
-step is fine enough. The shift for each coefficient is in `docs/INTERFACE.md` § "Why the readouts show two decimals".
+the step and the display. In the first hour at 1 MAC, one standard deviation (SD) of the
+blood:gas coefficient displaces a displayed compartment by up to $`8.2\times10^{-2}`$ pp, and one
+SD of the muscle coefficient by up to $`9.0\times10^{-1}`$ pp. So at 0.1 s, the timing error of an
+ordinary control action is about a twelfth of the blood:gas coefficient's shift, and in that sense
+the step is fine enough. The shift for each coefficient is in `docs/INTERFACE.md` § "Why the readouts show two decimals".
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
-**What 0.1 s does not buy.** An abrupt manoeuvre's timing error is not kept within one parameter
-SD. At 0.1 s, a ventilator start shifts the alveolar reading by up to 0.14 pp, about twice one
-parameter SD, while its effect settles. At 0.1 s, the timing error of an abrupt ventilation change
-is about twice one parameter SD, which makes it the one case where the step adds more error than
-the parameters do. That error, 0.14 pp, is small in absolute terms beside a 1 MAC of 6.0% for
-desflurane. Still, a reader comparing an abrupt ventilation change with a measurement should know
-that its *timing* is accurate to a tenth of a second and no better. Keeping the error within one
-SD would need a step near 0.05 s.
+**What 0.1 s does not buy.** An abrupt manoeuvre's timing error is not kept within one SD of
+every coefficient. At 0.1 s, a ventilator start shifts the alveolar reading by up to 0.14 pp while
+its effect settles. That is more than one SD of the blood:gas, vessel-rich or fat coefficient
+moves any readout in the first hour, and about a sixth of what one SD of the muscle coefficient
+moves one. So an abrupt ventilation change is the one case where the step adds more error than
+three of the four coefficients do. That error, 0.14 pp, is small in absolute terms beside a 1 MAC
+of 6.0% for desflurane. Still, a reader comparing an abrupt ventilation change with a measurement
+should know that its *timing* is accurate to a tenth of a second and no better.
 <!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 <!-- provenance: data/agents/desflurane.json mac_percent = 6 -->
 
@@ -5693,7 +5694,11 @@ This model does not represent:
   an exact value. The stored values are Gas Man's, which differ by up to 9%
   from the means of the one laboratory they come from. Other laboratories
   report values for the same tissue that differ by up to 150% (below, with the
-  tissues each difference applies to);
+  tissues each difference applies to). Within the one laboratory, one SD of
+  the muscle coefficient moves a displayed reading by up to 0.90 percentage
+  points in the first hour at 1 MAC, so a reading can differ between patients
+  by many times its last digit (`docs/INTERFACE.md` § "Why the readouts show
+  two decimals");
 - metabolism;
 - compound A or other degradation products;
 - renal or hepatic dysfunction;

@@ -241,10 +241,13 @@ class AgentAmountUnit(Enum):
 # § "Displayed precision" derives for one agent amount in one unit. That section
 # holds the figures behind each count.
 #
-# - A run total in litres of vapour has one decimal, the finest that the
-#   parameters support at 1 MAC with the reference flows (`PL-TG60`; higher
-#   dial settings are `PL-0P3F`). All three totals use it, so the accounting
-#   panel shows them on one scale.
+# - A run total in litres of vapour has one decimal (`PL-TG60`). After 24 h at
+#   1 MAC with the reference flows, one step is a sixth to a seventh of the
+#   shift that one SD of the muscle coefficient causes, and at each agent's
+#   dial maximum a twenty-first to a twenty-eighth (`PL-0P3F`). That spread
+#   between patients does not set the step (project owner, 2026-11-14,
+#   `PL-W51N`). All three totals use one decimal, so the accounting panel
+#   shows them on one scale.
 # - The delivered total in millilitres of liquid has no decimals (project
 #   owner, 2026-11-04, ratified, over keeping a tenth of a millilitre and over
 #   four significant figures, `PL-SP6H`). Its only uncertainty is the measured
@@ -1528,13 +1531,13 @@ def format_agent_residual(litres: float) -> str:
 
 
 # A compartment's amount is shown to two significant figures, and never finer
-# than 0.01 mL of vapour. `docs/INTERFACE.md` § "Displayed precision" derives the
-# two figures and sets the floor (`PL-2881`). One SD of a partition coefficient
-# moves an amount by a fraction of the amount, not by a fixed volume. So the precision is a count of
+# than 0.01 mL of vapour. `docs/INTERFACE.md` § "Displayed precision" gives the
+# reasons for the two figures and the floor (`PL-2881`). The amounts span from a fraction
+# of a millilitre to about a litre, so the precision is a count of
 # significant figures rather than of decimals, and the amount has no entry in
 # `AGENT_AMOUNT_DISPLAY_PRECISION`. These two constants are the only place that
 # states its precision. The floor of two decimals is a legibility choice. It is
-# coarser than the derivation requires, which is the allowed direction.
+# coarser than two figures would show, which is the allowed direction.
 COMPARTMENT_AMOUNT_SIGNIFICANT_FIGURES: Final = 2
 COMPARTMENT_AMOUNT_FINEST_DECIMALS: Final = 2
 
@@ -1603,9 +1606,10 @@ def format_compartment_amount(litres: float) -> str:
 
 
 # A compartment's share of the agent the run holds is shown in whole percent.
-# `docs/INTERFACE.md` § "Displayed precision" derives that precision (`PL-2881`). A change
-# of one standard deviation (SD) in a partition coefficient moves a share by at most
-# 1.2 percentage points. So one display step of 1 percentage point is at least 0.8 SD.
+# `docs/INTERFACE.md` § "Displayed precision" gives the reason (`PL-2881`). A change
+# of one standard deviation (SD) in a partition coefficient moves a share by up to
+# 13 percentage points (the muscle coefficient). That spread between patients does
+# not set the step (project owner, 2026-11-14, `PL-W51N`).
 # This constant is the only place that states the share's precision.
 COMPARTMENT_SHARE_DECIMALS: Final = 0
 

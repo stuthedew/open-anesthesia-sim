@@ -1598,11 +1598,12 @@ _RUN_TOTALS = (AgentAmount.DELIVERED, AgentAmount.EXHAUSTED, AgentAmount.STORED)
 def test_agent_amounts_precision() -> None:
     """Pin the `PL-TG60` decision: one decimal of a litre, and the below-resolution form.
 
-    The earlier Flet panel printed six decimals of an exhausted total whose
-    parameter uncertainty is 0.016-0.23 L at 1 MAC with the reference adult's
-    flows, and larger at a higher dial setting (`PL-0P3F`). One step of 0.1 L
-    lies inside the band that `docs/INTERFACE.md` § "Displayed precision" derives
-    for the concentration readouts, and 0.01 L does not. The three totals
+    The earlier Flet panel printed six decimals of an exhausted total. One SD of
+    a partition coefficient moves that total by 0.026-0.089 L after an hour at
+    1 MAC with the reference adult's flows, by 0.61-0.68 L after 24 h, and by up
+    to 2.8 L at a higher dial setting (`PL-0P3F`). `docs/INTERFACE.md`
+    § "Displayed precision" states those shifts as a limitation, and they do
+    not set the step (project owner, 2026-11-14, `PL-W51N`). The three totals
     share the count, so the accounting panel shows them on one scale. A
     positive amount that rounds to zero is shown as below the resolution,
     rather than as zero, which would suggest an empty circuit. The delivered
@@ -1640,12 +1641,12 @@ def test_the_exhausted_total_in_millilitres_of_liquid_claims_no_more_than_in_lit
     0.1 mL would claim five times the resolution that the litre display claims
     for the same amount.
 
-    The parameter spread gives the same answer. One published SD of a
-    partition coefficient moves the exhausted total at 24 h by 0.19 L of
-    sevoflurane vapour, 0.18 L of isoflurane and 0.23 L of desflurane
-    (`PL-TG60`). Converted with each agent's own ratio of vapour to liquid,
-    those are 1.04, 0.92 and 1.10 mL of liquid. One step of 1 mL is then
-    about one SD, and a step of 0.1 mL would be a tenth of one SD.
+    The parameter spread does not argue for a finer step. At 1 MAC with the
+    reference adult's flows, one published SD of a partition coefficient moves
+    the exhausted total at 24 h by 0.61 L of sevoflurane vapour, 0.62 L of
+    isoflurane and 0.68 L of desflurane
+    (`tests/integration/test_parameter_uncertainty.py`). Those are about 3.3,
+    3.2 and 3.2 mL of liquid, so one step of 1 mL is about a third of an SD.
     """
 
     litres = agent_amount_display_precision(AgentAmount.EXHAUSTED, AgentAmountUnit.LITRES_OF_VAPOUR)
@@ -1680,11 +1681,11 @@ def test_the_delivered_total_in_millilitres_of_liquid_is_shown_in_whole_millilit
     test computes that total and its SD from the stored data, not from the
     formatter. A step of 1 mL is then about 0.3 SD for sevoflurane and
     desflurane and 0.7 SD for isoflurane, never finer than the seventh of an SD
-    that `docs/INTERFACE.md` § "Displayed precision" allows (`PL-SP6H`).
+    that the choice of whole millilitres accepted (`PL-SP6H`).
     """
 
-    # The fine end of the readouts' band, "about a seventh of one parameter SD"
-    # (docs/INTERFACE.md § "Displayed precision").
+    # The finest step that the choice of whole millilitres accepted, a seventh
+    # of the density's SD (PL-SP6H; docs/INTERFACE.md § "Displayed precision").
     finest_step_in_sds = 1.0 / 7.0
     liquid = agent_amount_display_precision(
         AgentAmount.DELIVERED, AgentAmountUnit.MILLILITRES_OF_LIQUID

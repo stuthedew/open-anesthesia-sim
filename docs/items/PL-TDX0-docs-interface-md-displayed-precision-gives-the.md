@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: docs, science
 feature: model-claims-held-by-tests
-touches: docs/INTERFACE.md, tests/integration/test_parameter_uncertainty.py, docs/items
+touches: docs/INTERFACE.md, docs/MODEL.md, tests/integration/test_parameter_uncertainty.py, tests/unit/test_formatting.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/core/simulation_step.py, docs/items
 added: 2026-11-02
 closed: 2026-11-14
 pr: 2150
@@ -93,7 +93,8 @@ settle it. Every row was therefore re-measured.
 from empty at 1 MAC with the reference adult's flows, changes one coefficient
 by its SD (as a share of the mean, both directions, larger shift kept), and
 propagates the model's own system matrix exactly, reading every second to
-1 h and then at 3 h and 24 h. It holds the displacement table, the SDs, the
+1 h and then every minute to 24 h. The schematic's figures use every second
+for the first 20 minutes and every minute after. It holds the displacement table, the SDs, the
 counts per SD, the accounting panel's exhausted-total shifts (`PL-0P3F`), and
 the schematic's amount and share shifts. It lives in `tests/integration/`
 because it pins documented figures to the model's own output, and
@@ -121,8 +122,17 @@ now known to 17% to 19%, so three figures over-claim by about 170 to 190
 times), the uniform-resolution bullet, the accounting panel's shifts and its
 note for developers, the exhausted total in millilitres of liquid (one SD is
 now 3.2 to 3.3 mL at 24 h, so 1 mL is about a third of an SD), and the
-schematic's amount, share and two-figure paragraphs. Checked and unchanged:
-`docs/MODEL.md` (its parameter-provenance table already gives Table 1's
-means and SDs; no sentence there uses the one-SD shifts), `README.md`,
-`docs/ARCHITECTURE.md`. `PL-19W8`'s count of claims found wrong should include
+schematic's amount, share and two-figure paragraphs, and a whole-run column
+in the table: over 24 h the blood:gas and fat rows also give a last digit
+finer than a seventh of an SD. `docs/MODEL.md` § "Supported simulation step"
+compared the step's timing error with "one parameter SD" of 6.8e-2 pp; it now
+compares the ventilator start's 0.14 pp with the blood:gas coefficient's
+8.2e-2 pp and the muscle coefficient's 0.90 pp, and the same comparison in
+`core/simulation_step.py`'s comment was restated. The conclusion, that the
+step stays at 0.1 s, only gets stronger. Comments in `app/formatting.py`
+(run totals, amount, share) and docstrings in `tests/unit/test_formatting.py`
+that quoted the old shifts were restated. Checked and unchanged: the rest of
+`docs/MODEL.md` (its parameter-provenance table already gives Table 1's means
+and SDs), `README.md`, `docs/ARCHITECTURE.md`, and `docs/WORKING_NOTES.md`,
+whose 2026-09-06 entry is a dated record. `PL-19W8`'s count of claims found wrong should include
 this one, and its test of the displacement table is now written.

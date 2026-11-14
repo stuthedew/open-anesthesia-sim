@@ -71,16 +71,18 @@ from anesthesia_sim.core.validation import require_positive_finite
 # any readout. At this step, the case-opening manoeuvre displaces every
 # displayed compartment by at most 6.7e-3 pp, with desflurane the worst agent.
 # That manoeuvre is dialling from off to 1 MAC at the reference adult's own
-# flows. One standard deviation of a single measured partition coefficient
-# displaces a compartment by 9e-4 to 6.8e-2 pp (Yasuda 1989; see docs/INTERFACE.md
-# "Displayed precision"). So an ordinary control action is timed well inside
-# the model's own parameter uncertainty. That is the criterion, and no count
-# of display decimals enters it.
+# flows. In the first hour at 1 MAC, one standard deviation of a single
+# measured partition coefficient displaces a compartment by up to 8.2e-2 pp
+# (blood:gas) to 9.0e-1 pp (muscle) (see docs/INTERFACE.md "Displayed
+# precision"). So an ordinary control action is timed well inside the model's
+# own parameter uncertainty. That is the criterion, and no count of display
+# decimals enters it.
 #
 # This tolerance does *not* cover an abrupt manoeuvre, and that is stated here
 # rather than left to be found. A ventilator start at this step displaces the
-# alveolar reading by up to 1.4e-1 pp for the duration of its transient, about
-# twice one parameter SD. Holding that inside one SD needs a step near 0.05 s.
+# alveolar reading by up to 1.4e-1 pp for the duration of its transient. That
+# is more than one SD of the blood:gas, vessel-rich or fat coefficient moves
+# any readout in the first hour, and about a sixth of the muscle coefficient's.
 #
 # That choice was put to the project owner and decided on 2026-09-06: the
 # value stays here and the timing is accepted (PL-NBCJ). Moving to 0.05 s
@@ -89,8 +91,8 @@ from anesthesia_sim.core.validation import require_positive_finite
 # narrowed what the change would buy to 1x playback alone. Above 1x, the
 # interface's own control grid is `multiplier x 0.1` s, which dominates the
 # step outright. So this is a declared tolerance that has been argued, not a
-# default that nobody revisited. Timing the ventilator start to about twice
-# one parameter SD is its accepted cost, not an oversight. docs/MODEL.md
+# default that nobody revisited. The ventilator start's timing error is its
+# accepted cost, not an oversight. docs/MODEL.md
 # "Supported simulation step" carries the measurements and the whole of the
 # decision.
 #

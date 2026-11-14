@@ -37,8 +37,9 @@ output and the reference circle system's opening fresh gas flow, which is what
 `AgentUptakeSystem.for_agent` builds. The accounting-panel test also runs at the
 agent's dial maximum and 10 L/min. The settings do not change during a run, so
 the propagator over any interval is exact (`docs/MODEL.md` § "Selected method
-(as implemented)"). The runs are therefore read every second, and then at
-3 h and 24 h, without stepping through the 0.1 s steps in between.
+(as implemented)"). The runs are therefore read every second for the first
+hour and every minute from then to 24 h, the longest run the simulator
+supports, without stepping through the 0.1 s steps in between.
 
 **What these tests hold, and what they do not.** They pin the document's
 figures to the model as shipped, so their expected values are the model's own
@@ -58,6 +59,10 @@ from functools import cache
 
 import pytest
 
+from anesthesia_sim.app.formatting import (
+    COMPARTMENT_AMOUNT_FINEST_DECIMALS,
+    COMPARTMENT_AMOUNT_SIGNIFICANT_FIGURES,
+)
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.governing_equations import (
     EXHAUSTED_AGENT_L,
@@ -131,11 +136,13 @@ PUBLISHED_SDS: dict[str, dict[str, PublishedMeasurement]] = {
 # arithmetic, which the document states for this resolution.
 ONE_COUNT_PP = 0.01
 
-# How long the readout table's runs last, and the samples of the schematic's
-# amounts: every second for the first 20 minutes, then 1 h, 3 h and 24 h.
+# The readout table's first window, the schematic's per-second samples, the run
+# length and the interval between the later samples. The schematic's amounts
+# are read every second for the first 20 minutes and every minute after that.
 READOUT_WINDOW_S = 3600
 SCHEMATIC_EVERY_SECOND_UNTIL_S = 1200
-LATER_SAMPLES_S = (3600, 10800, 86400)
+RUN_LENGTH_S = 86400
+LATER_SAMPLE_INTERVAL_S = 60
 
 
 def two_figures(value: float) -> float:
@@ -232,11 +239,12 @@ def _run(
         state = propagate(one_second, state)
         record(time_s)
 
-    previous = READOUT_WINDOW_S
-    for time_s in LATER_SAMPLES_S[1:]:
-        state = propagate(matrix_exponential(matrix, float(time_s - previous)), state)
+    one_minute = matrix_exponential(matrix, float(LATER_SAMPLE_INTERVAL_S))
+    for time_s in range(
+        READOUT_WINDOW_S + LATER_SAMPLE_INTERVAL_S, RUN_LENGTH_S + 1, LATER_SAMPLE_INTERVAL_S
+    ):
+        state = propagate(one_minute, state)
         record(time_s)
-        previous = time_s
 
     return tuple(samples)
 
@@ -247,7 +255,9 @@ def _perturbed_runs(
     return tuple(_run(agent_id, coefficient, sign, at_dial_maximum) for sign in (1, -1))
 
 
-def _worst_readout_displacement_pp(agent_id: str, coefficient: str) -> float:
+def _worst_readout_displacement_pp(
+    agent_id: str, coefficient: str, window_s: int = READOUT_WINDOW_S
+) -> float:
     """Return the largest shift of any readout in the first hour, in percentage points."""
 
     base = _run(agent_id, None, 0, False)
@@ -255,7 +265,7 @@ def _worst_readout_displacement_pp(agent_id: str, coefficient: str) -> float:
         abs(changed.fractions[i] - original.fractions[i]) * 100
         for run in _perturbed_runs(agent_id, coefficient)
         for original, changed in zip(base, run, strict=True)
-        if original.time_s <= READOUT_WINDOW_S
+        if original.time_s <= window_s
         for i in range(6)
     )
 
@@ -300,13 +310,19 @@ def test_the_relative_sds_are_those_the_section_states(
 
 # The displacement table in `docs/INTERFACE.md` § "Why the readouts show two
 # decimals": for each coefficient, the smallest and largest over the three
-# agents of the worst shift of any readout in the first hour, in percentage
-# points.
+# agents of the worst shift of any readout, in percentage points, in the first
+# hour and over the whole 24 h run.
 DISPLACEMENT_TABLE_PP = {
     BLOOD_GAS: (2.0e-2, 8.2e-2),
     VESSEL_RICH: (1.0e-2, 4.9e-2),
     MUSCLE: (1.5e-1, 9.0e-1),
     FAT: (3.4e-3, 3.6e-2),
+}
+DISPLACEMENT_TABLE_WHOLE_RUN_PP = {
+    BLOOD_GAS: (2.4e-2, 1.2e-1),
+    VESSEL_RICH: (1.0e-2, 4.9e-2),
+    MUSCLE: (2.1e-1, 9.5e-1),
+    FAT: (7.6e-2, 4.0e-1),
 }
 
 
@@ -316,14 +332,18 @@ def test_one_sd_of_each_coefficient_displaces_the_readouts_as_the_table_states(
 ) -> None:
     """Each row's range, and desflurane giving the largest shift in every row."""
 
-    shifts = {
-        agent_id: _worst_readout_displacement_pp(agent_id, coefficient) for agent_id in AGENTS
-    }
-
-    assert (two_figures(min(shifts.values())), two_figures(max(shifts.values()))) == (
-        DISPLACEMENT_TABLE_PP[coefficient]
-    )
-    assert max(shifts, key=shifts.__getitem__) == "desflurane"
+    for window_s, table in (
+        (READOUT_WINDOW_S, DISPLACEMENT_TABLE_PP),
+        (RUN_LENGTH_S, DISPLACEMENT_TABLE_WHOLE_RUN_PP),
+    ):
+        shifts = {
+            agent_id: _worst_readout_displacement_pp(agent_id, coefficient, window_s)
+            for agent_id in AGENTS
+        }
+        assert (two_figures(min(shifts.values())), two_figures(max(shifts.values()))) == (
+            table[coefficient]
+        ), window_s
+        assert max(shifts, key=shifts.__getitem__) == "desflurane", window_s
 
 
 def test_one_sd_is_a_third_of_a_count_to_ninety_counts_of_the_last_digit() -> None:
@@ -381,7 +401,9 @@ def test_the_run_totals_litre_step_at_each_agent_s_dial_maximum(
 
 def _schematic_samples(run: tuple[Sample, ...]) -> list[Sample]:
     return [
-        s for s in run if s.time_s <= SCHEMATIC_EVERY_SECOND_UNTIL_S or s.time_s in LATER_SAMPLES_S
+        s
+        for s in run
+        if s.time_s <= SCHEMATIC_EVERY_SECOND_UNTIL_S or s.time_s % LATER_SAMPLE_INTERVAL_S == 0
     ]
 
 
@@ -434,10 +456,10 @@ def _amount_shifts() -> tuple[AmountShift, ...]:
 # of the amount, over the three agents and every sample
 # (`docs/INTERFACE.md` § "A compartment's amount and share on the schematic").
 LARGEST_RELATIVE_AMOUNT_SHIFT_PERCENT = {
-    "circuit": 3.3,
-    "alveoli": 7.9,
+    "circuit": 3.4,
+    "alveoli": 8.3,
     "venous blood": 17.0,
-    "vessel-rich": 8.2,
+    "vessel-rich": 8.3,
     "muscle": 44.0,
     "fat": 8.2,
 }
@@ -466,31 +488,46 @@ def test_one_sd_shifts_each_compartment_s_amount_by_the_share_the_section_states
     )
 
 
-def test_a_two_figure_amount_s_finest_step_is_a_twenty_fourth_of_an_sd() -> None:
-    """Where two significant figures put one step finest against one SD, and how fine.
+def _displayed_step_ml(amount_ml: float) -> float:
+    """Return the step of the schematic's amount label at `amount_ml`, in millilitres.
 
-    One step of two significant figures is a tenth of the amount's leading
-    power of ten, and never less than 0.01 mL (`app/formatting.py`). Amounts
-    below 0.005 mL read `<0.01 mL vapour` and show no step.
+    The label rounds to `COMPARTMENT_AMOUNT_SIGNIFICANT_FIGURES` significant
+    figures, never finer than `COMPARTMENT_AMOUNT_FINEST_DECIMALS` decimals,
+    and an amount that rounds up into the next power of ten takes that power's
+    step (`format_compartment_amount`). The constants are read from
+    `app/formatting.py`, so a change to the label's precision changes the step
+    measured here.
     """
 
-    def step_ml(amount_ml: float) -> float:
-        return max(10.0 ** (math.floor(math.log10(amount_ml)) - 1), 0.01)
+    figures = COMPARTMENT_AMOUNT_SIGNIFICANT_FIGURES
+    leading = math.floor(math.log10(amount_ml))
+    if round(amount_ml, figures - 1 - leading) >= 10.0 ** (leading + 1):
+        leading += 1
+    return max(10.0 ** (leading - figures + 1), 10.0**-COMPARTMENT_AMOUNT_FINEST_DECIMALS)
 
+
+def test_a_two_figure_amount_s_finest_step_is_a_twenty_eighth_of_an_sd() -> None:
+    """Where the amount label's step is finest against one SD, and how fine.
+
+    Amounts below half the finest step read `<0.01 mL vapour` and show no
+    step, so they are left out.
+    """
+
+    smallest_shown = 10.0**-COMPARTMENT_AMOUNT_FINEST_DECIMALS / 2
     finest = min(
-        (s for s in _amount_shifts() if s.amount_ml >= 0.005 and s.shift_ml > 0),
-        key=lambda s: step_ml(s.amount_ml) / s.shift_ml,
+        (s for s in _amount_shifts() if s.amount_ml >= smallest_shown and s.shift_ml > 0),
+        key=lambda s: _displayed_step_ml(s.amount_ml) / s.shift_ml,
     )
     assert (finest.agent_id, finest.compartment, finest.time_s, round(finest.amount_ml)) == (
-        "sevoflurane",
+        "isoflurane",
         "muscle",
-        10800,
-        923,
+        12840,
+        993,
     )
-    assert round(finest.shift_ml / step_ml(finest.amount_ml)) == 24
+    assert round(finest.shift_ml / _displayed_step_ml(finest.amount_ml)) == 28
 
 
-def test_one_sd_moves_a_compartment_s_share_by_at_most_ten_percentage_points() -> None:
+def test_one_sd_moves_a_compartment_s_share_by_at_most_thirteen_percentage_points() -> None:
     """The largest shift of a compartment's share of the agent held, from one SD."""
 
     widest = max(_amount_shifts(), key=lambda s: s.share_shift_pp)
@@ -499,4 +536,4 @@ def test_one_sd_moves_a_compartment_s_share_by_at_most_ten_percentage_points() -
         widest.compartment,
         widest.time_s,
         two_figures(widest.share_shift_pp),
-    ) == ("isoflurane", "muscle", 86400, 9.8)
+    ) == ("isoflurane", "muscle", 31380, 13.0)
