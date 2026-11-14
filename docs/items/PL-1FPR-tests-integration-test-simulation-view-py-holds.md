@@ -3,14 +3,14 @@ id: PL-1FPR
 title: tests/integration/test_simulation_view.py holds 12,232 lines and 307 tests for a 2,193-line module, and tests/integration/test_controller.py holds 6,443 lines: split each by the behaviour it tests
 priority: P3
 effort: M
-status: blocked
+status: ready
 classes: refactor
 feature: unit-test-review
 touches: tests/integration/test_simulation_view.py, tests/integration/test_controller.py, tests/integration
-blocked-by: PL-RF2S
 deferred-from: v0.7.0 - it waits on PL-RF2S, which this gate's list does not hold, and splitting the files first would conflict with that item's open branch; it changes no value a learner sees
 added: 2026-11-11
 payoff: a contributor can find and read the tests of one behaviour of the run screen or the controller without opening a 12,000-line file
+verify: grep -q 'Shared constants and helpers for the controller' tests/integration/controller/controller_support.py && grep -q 'Shared constants and helpers for the dashboard' tests/integration/simulation_view/simulation_view_support.py
 ---
 
 **Problem.** tests/integration/test_simulation_view.py holds 12,232 lines and 307 tests for a 2,193-line module, and tests/integration/test_controller.py holds 6,443 lines: split each by the behaviour it tests
@@ -23,6 +23,6 @@ payoff: a contributor can find and read the tests of one behaviour of the run sc
 
 **Done when.** Each of the two files is split into files that each hold the tests of one behaviour, with no test changed and the same tests collected before and after, and shared fixtures in one helper module or `conftest.py`.
 
-**Blocked on `PL-RF2S` (2026-11-11).** That item rewrites how the run screen is drawn, and its open branch (#2125) changes both files. Splitting first would make that branch's rebase a rewrite. Build this once `PL-RF2S` closes.
+[superseded 2026-11-14] **Blocked on `PL-RF2S` (2026-11-11).** That item rewrites how the run screen is drawn, and its open branch (#2125) changes both files. Splitting first would make that branch's rebase a rewrite. Build this once `PL-RF2S` closes.
 
 **Generator check.** A one-off. Each test was added where the screen's other tests already were, and no rule says when a test file is long enough to split; one item is not enough to say that a rule is missing.
