@@ -6,13 +6,26 @@ from math import exp, inf, nan, nextafter
 
 import pytest
 
+from anesthesia_sim.core.blood_flow import BloodFlow, PerfusionFraction
 from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
 from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S, CardiacOutput
 from anesthesia_sim.core.tissue import TissueGroup
 
-BLOOD_FLOW_L_MIN = 1.0
+
+def _blood_flow(l_min: float) -> BloodFlow:
+    """Return a blood flow of exactly `l_min`, as the whole of a cardiac output of that size.
+
+    A `BloodFlow` is built only from a cardiac output and a perfusion fraction
+    (`PL-GKG4`). A fraction of 1 multiplies the cardiac output by 1.0, which
+    changes no `float`.
+    """
+
+    return BloodFlow(CardiacOutput(l_min), PerfusionFraction(1.0))
+
+
+BLOOD_FLOW_L_MIN = _blood_flow(1.0)
 """The flow at which these tests perfuse a tissue, in L/min, unless a test says otherwise.
 
 Since `PL-HQF5` a tissue group stores no flow, so each closed form takes the flow as an argument.
@@ -26,16 +39,11 @@ Since `PL-DQL9` a tissue group stores none. The patient's venous pool holds the 
 """
 
 
-# The end of a shared guard's refusal message, which names the refused value and the reason
-# (`PL-T137`). The guard's own tests check each reason. The tests here check the field name.
-REFUSAL_REASON = r", and [^ ]+ is (?:not finite|not greater than zero|negative)$"
-
-
 def _build_tissue() -> TissueGroup:
     return TissueGroup(
         name="test",
         volume_l=CompartmentVolume(2.0),
-        perfusion_fraction=0.2,
+        perfusion_fraction=PerfusionFraction(0.2),
         tissue_gas_partition_coefficient=PartitionCoefficient(2.0),
     )
 
@@ -45,19 +53,31 @@ def test_rejects_empty_tissue_name() -> None:
         TissueGroup(
             name=" ",
             volume_l=CompartmentVolume(2.0),
-            perfusion_fraction=0.2,
+            perfusion_fraction=PerfusionFraction(0.2),
             tissue_gas_partition_coefficient=PartitionCoefficient(2.0),
         )
 
 
-def test_rejects_perfusion_fraction_above_one() -> None:
+@pytest.mark.parametrize("perfusion_fraction", [0.2, 1.1])
+def test_rejects_a_perfusion_fraction_given_as_a_bare_number(perfusion_fraction: float) -> None:
+    """A group is built only with a `PerfusionFraction`, which checks the range once (`PL-GKG4`).
+
+    A bare 0.2 is refused as a bare 1.1 is, because the group checks the type
+    and not the number. `tests/unit/test_blood_flow.py` checks the range that
+    the type enforces.
+    """
+
     with pytest.raises(
-        SimulationConfigurationError, match="^test perfusion_fraction must not exceed 1$"
+        TypeError,
+        match=(
+            f"^test perfusion_fraction of {perfusion_fraction} was not built as "
+            "PerfusionFraction, it is float"
+        ),
     ):
         TissueGroup(
             name="test",
             volume_l=CompartmentVolume(2.0),
-            perfusion_fraction=1.1,
+            perfusion_fraction=perfusion_fraction,  # type: ignore[arg-type]
             tissue_gas_partition_coefficient=PartitionCoefficient(2.0),
         )
 
@@ -73,7 +93,7 @@ def test_rejects_agent_amount_above_tissue_capacity() -> None:
         TissueGroup(
             name="test",
             volume_l=CompartmentVolume(2.0),
-            perfusion_fraction=0.2,
+            perfusion_fraction=PerfusionFraction(0.2),
             tissue_gas_partition_coefficient=PartitionCoefficient(2.0),
             agent_amount_l=4.1,
         )
@@ -188,22 +208,22 @@ TOO_SMALL_FOR_THE_AGENT_HELD = (
         pytest.param(
             "perfusion_fraction",
             0.0,
-            SimulationConfigurationError,
-            "^test perfusion_fraction must be positive and finite" + REFUSAL_REASON,
+            TypeError,
+            "^test perfusion_fraction of 0.0 was not built as PerfusionFraction, it is float",
             id="zero-perfusion-fraction",
         ),
         pytest.param(
             "perfusion_fraction",
             7.0,
-            SimulationConfigurationError,
-            "^test perfusion_fraction must not exceed 1$",
+            TypeError,
+            "^test perfusion_fraction of 7.0 was not built as PerfusionFraction, it is float",
             id="perfusion-fraction-above-one",
         ),
         pytest.param(
             "perfusion_fraction",
             nan,
-            SimulationConfigurationError,
-            "^test perfusion_fraction must be positive and finite" + REFUSAL_REASON,
+            TypeError,
+            "^test perfusion_fraction of nan was not built as PerfusionFraction, it is float",
             id="nan-perfusion-fraction",
         ),
         pytest.param(
@@ -230,7 +250,7 @@ TOO_SMALL_FOR_THE_AGENT_HELD = (
         ),
         pytest.param(
             "perfusion_fraction",
-            0.3,
+            PerfusionFraction(0.3),
             SimulationConfigurationError,
             "^the test tissue group's perfusion fraction of 0.2 cannot be written again, "
             "as 0.3, once the group is built",
@@ -265,15 +285,16 @@ def test_a_direct_write_is_held_to_the_constructors_checks(
 ) -> None:
     """An assignment that bypasses the constructor and the setters is refused as they refuse it.
 
-    Until `PL-19Y0`, only the agent amount was checked at the write (`PL-544D`). So
+    Only the agent amount used to be checked at the write (`PL-544D`, `PL-19Y0`). So
     `perfusion_fraction = 7.0` and `volume_l = -1.0` were each accepted on a built tissue. A
-    valid perfusion fraction is refused too, because the fraction is written once
-    (`PL-Z0HN`), and a blood flow is not a field that can be written (`PL-HQF5`). A volume or
+    bare number is now refused as a perfusion fraction whatever its value (`PL-GKG4`). A
+    valid `PerfusionFraction` is refused too, because the fraction is written once
+    (`PL-Z0HN`). A blood flow is not a field that can be written (`PL-HQF5`). A volume or
     a tissue:gas coefficient is also checked against the agent that the tissue holds.
     Lowering either one shrinks the capacity, and the partial pressure is the amount held
     divided by that capacity. A value of 0.5 for either one, with 2.0 L of agent held, would
-    put this tissue at two atmospheres. A name that is not a field passes the guard to the
-    slots, which refuse it. So a misspelt write cannot leave the intended field unchanged
+    put this tissue at two atmospheres. A name that is not a field passes through the guard,
+    and the slots refuse it. So a misspelt write cannot leave the intended field unchanged
     while appearing to succeed. Nothing is written when a value is refused.
     """
 
@@ -303,18 +324,18 @@ def test_a_capacity_at_the_agent_held_is_written_and_a_copy_is_held_to_it_too() 
 
     tissue = _build_tissue()
     tissue.set_partial_pressure_fraction(Fraction(0.5))
-    refused = "^test perfusion_fraction must not exceed 1$"
+    refused = "^test perfusion_fraction of 7.0 was not built as PerfusionFraction, it is float"
 
-    with pytest.raises(SimulationConfigurationError, match=refused):
-        replace(tissue, perfusion_fraction=7.0)
+    with pytest.raises(TypeError, match=refused):
+        replace(tissue, perfusion_fraction=7.0)  # type: ignore[arg-type]
 
     smuggled = copy.copy(tissue)
     object.__setattr__(smuggled, "perfusion_fraction", 7.0)
 
-    with pytest.raises(SimulationConfigurationError, match=refused):
+    with pytest.raises(TypeError, match=refused):
         copy.copy(smuggled)
 
-    with pytest.raises(SimulationConfigurationError, match=refused):
+    with pytest.raises(TypeError, match=refused):
         pickle.loads(pickle.dumps(smuggled))
 
     tissue.volume_l = CompartmentVolume(1.0)
@@ -327,33 +348,33 @@ def test_a_capacity_at_the_agent_held_is_written_and_a_copy_is_held_to_it_too() 
     assert tissue.partial_pressure_fraction == 1.0
 
 
-@pytest.mark.parametrize("blood_flow_l_min", [-1.0, inf, nan])
+@pytest.mark.parametrize("blood_flow_l_min", [-1.0, inf, nan, 1.0])
 def test_a_refused_blood_flow_leaves_the_flow_as_it_was(blood_flow_l_min: float) -> None:
-    """A flow at which the closed form cannot be evaluated is refused, and nothing changes.
+    """A flow that was not built as a `BloodFlow` is refused, and nothing changes.
 
-    The flow was a stored field until `PL-HQF5`, and writing that field refused such a flow
-    (`PL-19Y0`). The flow is now the argument of `time_constant_s` and `advance`, which
-    refuse it in the same words before anything changes.
+    The flow was once a stored field, and writing that field refused a flow that was
+    negative or not finite (`PL-19Y0`, `PL-HQF5`). The flow is now the argument of
+    `time_constant_s` and `advance`. Both refuse any bare number, a flow of 1.0 L/min
+    included, before anything changes (`PL-GKG4`). A `BloodFlow` cannot be negative or
+    not finite, because it is a perfusion fraction of a cardiac output.
     """
 
     tissue = _build_tissue()
     tissue.set_partial_pressure_fraction(Fraction(0.4))
     held = astuple(tissue)
 
-    with pytest.raises(
-        SimulationConfigurationError,
-        match="^test blood_flow_l_min must be nonnegative and finite" + REFUSAL_REASON,
-    ):
-        tissue.time_constant_s(blood_flow_l_min, BLOOD_GAS)
+    refused = (
+        f"^test blood_flow_l_min of {blood_flow_l_min} was not built as BloodFlow, it is float"
+    )
 
-    with pytest.raises(
-        SimulationConfigurationError,
-        match="^test blood_flow_l_min must be nonnegative and finite" + REFUSAL_REASON,
-    ):
+    with pytest.raises(TypeError, match=refused):
+        tissue.time_constant_s(blood_flow_l_min, BLOOD_GAS)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match=refused):
         tissue.advance(
             arterial_partial_pressure_fraction=Fraction(1.0),
             simulation_step_s=1.0,
-            blood_flow_l_min=blood_flow_l_min,
+            blood_flow_l_min=blood_flow_l_min,  # type: ignore[arg-type]
             blood_gas_partition_coefficient=BLOOD_GAS,
         )
 
@@ -361,15 +382,18 @@ def test_a_refused_blood_flow_leaves_the_flow_as_it_was(blood_flow_l_min: float)
 
 
 def test_a_tissue_is_perfused_at_its_fraction_of_the_cardiac_output() -> None:
-    """$`Q_i = f_iQ`$: a 0.2 fraction of 6.5 L/min is 1.3 L/min, computed when it is read.
+    """At a cardiac output of 6.5 L/min, a fraction of 0.2 gives 1.3 L/min, computed when read.
 
-    The expected flow is worked by hand. A bare `float` is refused, because
-    only a `CardiacOutput` carries the supported range (`PL-HQF5`).
+    The expected flow, $`Q_i = f_iQ`$, is worked by hand. A bare `float` is
+    refused, because only a `CardiacOutput` carries the supported range
+    (`PL-HQF5`). The flow returned is a `BloodFlow`, the type that the group's
+    own closed form takes (`PL-GKG4`).
     """
 
     tissue = _build_tissue()
 
     assert tissue.blood_flow_l_min_at(CardiacOutput(6.5)) == pytest.approx(1.3, rel=1e-15)
+    assert type(tissue.blood_flow_l_min_at(CardiacOutput(6.5))) is BloodFlow
 
     with pytest.raises(TypeError, match="CardiacOutput"):
         tissue.blood_flow_l_min_at(6.5)  # type: ignore[arg-type]
@@ -418,13 +442,13 @@ def test_a_larger_or_more_soluble_tissue_has_a_longer_time_constant() -> None:
     larger = TissueGroup(
         name="larger",
         volume_l=CompartmentVolume(3.0),
-        perfusion_fraction=0.2,
+        perfusion_fraction=PerfusionFraction(0.2),
         tissue_gas_partition_coefficient=PartitionCoefficient(2.0),
     )
     more_soluble = TissueGroup(
         name="more soluble",
         volume_l=CompartmentVolume(2.0),
-        perfusion_fraction=0.2,
+        perfusion_fraction=PerfusionFraction(0.2),
         tissue_gas_partition_coefficient=PartitionCoefficient(3.0),
     )
 
@@ -454,11 +478,11 @@ def test_zero_flow_preserves_tissue_state() -> None:
     amount_change = tissue.advance(
         arterial_partial_pressure_fraction=Fraction(1.0),
         simulation_step_s=60.0,
-        blood_flow_l_min=0.0,
+        blood_flow_l_min=_blood_flow(0.0),
         blood_gas_partition_coefficient=BLOOD_GAS,
     )
 
-    assert tissue.time_constant_s(0.0, BLOOD_GAS) == inf
+    assert tissue.time_constant_s(_blood_flow(0.0), BLOOD_GAS) == inf
     assert amount_change == 0.0
     assert tissue.agent_amount_l == amount_before
     assert tissue.partial_pressure_fraction == 0.25
@@ -521,7 +545,7 @@ def test_rejects_invalid_tissue_volume(invalid_value: float) -> None:
         TissueGroup(
             name="test",
             volume_l=CompartmentVolume(invalid_value, name="volume_l"),
-            perfusion_fraction=0.2,
+            perfusion_fraction=PerfusionFraction(0.2),
             tissue_gas_partition_coefficient=PartitionCoefficient(2.0),
         )
 
@@ -549,7 +573,7 @@ def test_a_capacity_factor_that_is_not_a_number_is_refused_under_its_own_name(
     fields: dict[str, object] = dict(
         name="test",
         volume_l=CompartmentVolume(2.0),
-        perfusion_fraction=0.2,
+        perfusion_fraction=PerfusionFraction(0.2),
         tissue_gas_partition_coefficient=PartitionCoefficient(2.0),
     )
     fields[factor] = "2"
@@ -593,8 +617,8 @@ def test_the_time_constant_is_formed_from_the_flow_it_is_given() -> None:
 
     tissue = _build_tissue()
 
-    assert tissue.time_constant_s(2.0, BLOOD_GAS) == pytest.approx(240.0, rel=1e-15)
-    assert tissue.time_constant_s(5.0, BLOOD_GAS) == pytest.approx(96.0, rel=1e-15)
+    assert tissue.time_constant_s(_blood_flow(2.0), BLOOD_GAS) == pytest.approx(240.0, rel=1e-15)
+    assert tissue.time_constant_s(_blood_flow(5.0), BLOOD_GAS) == pytest.approx(96.0, rel=1e-15)
 
 
 @pytest.mark.parametrize("factor", [1e200, 1e-200])

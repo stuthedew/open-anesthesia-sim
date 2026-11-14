@@ -1049,6 +1049,13 @@ the type to build. So no way in has to remember the check. The control timeline 
 returns a plain `float`, so a value calculated from a flow is never taken as checked. The
 simulation step is a checked type in the same way (`SimulationStep`).
 
+A tissue group's perfusion fraction and its blood flow have checked types too, in
+`core/blood_flow.py`. The perfusion fraction (`PerfusionFraction`) is checked as above 0 and at
+most 1 when it is created. The blood flow (`BloodFlow`) is created only by multiplying a
+`CardiacOutput` by a `PerfusionFraction`, and it has no check of its own. Until these types
+existed, three places each checked a blood flow by hand as finite and not negative, and each
+accepted a flow that no supported cardiac output can give.
+
 **A settings record loaded from a saved file runs its constructor's checks.** Python restores a
 pickled or copied frozen dataclass through `__setstate__`, which by default writes each saved
 value straight into its field without running `__post_init__`. Instead, the settings records for
@@ -1076,11 +1083,13 @@ compartments' constructors run no check of their own. A copy and a pickle write 
 because each compartment is a `slots=True` dataclass, which they restore one field at a time. A
 `__dict__` would be updated without calling `__setattr__`.
 
-**Every checked type is built from an `int` or a `float` and nothing else, with no sign at
-zero.** One file states what every checked type is built from (`core/checked_number.py`), and
-`FreshGasFlow`, `AlveolarVentilation`, `CardiacOutput`, `Fraction`, `Percent` and `CaseInstant`
-all build through it. They accept an `int` or a `float`, subclasses included, so a NumPy double
-passes. A `bool`, a `Decimal` or a string is refused with a `TypeError` that names the value and
+**Every checked type but `BloodFlow` is built from an `int` or a `float` and nothing else, with
+no sign at zero.** `BloodFlow` is built from a `CardiacOutput` and a `PerfusionFraction`, and it
+refuses a number. One file states what every other checked type is built from
+(`core/checked_number.py`), and `FreshGasFlow`, `AlveolarVentilation`, `CardiacOutput`,
+`PerfusionFraction`, `Fraction`, `Percent` and `CaseInstant` all build through it. They accept
+an `int` or a `float`, subclasses included, so a NumPy double passes. A `bool`, a `Decimal` or a
+string is refused with a `TypeError` that names the value and
 its type, before any comparison reads it. So is a value already built as another checked type,
 such as a `StepCount` or a `CaseInstant` passed to a flow's constructor, because such a value is
 a swapped argument. Minus zero is stored as zero, so a readout never shows `-0.0 L/min`. The
@@ -1112,20 +1121,23 @@ dial was set under. The propagator cache key carries the maximum with the rest o
 although the matrix never reads the maximum.
 
 A tissue group's blood flow is computed in one place (`TissueGroup.blood_flow_l_min_at`). Each
-compartment is given the flow, rather than storing it, when it computes its time constant or
-takes a step (`time_constant_s`, `advance()`), as $`Q_i`$ is given to
-$`\tau_i = V_i\lambda_{i:b}/Q_i`$. A tissue group is given the blood:gas coefficient too, so that
-it keeps no copy that could disagree with the coefficient (`docs/MODEL.md` § "Blood compartments"). So every flow
-follows the cardiac output through `set_cardiac_output`, a copy, `dataclasses.replace` and a
-pickle. A copy made at another output leaves the original's flows unchanged. A new cardiac output
-written onto the field of a built patient is refused, and the refusal names `set_cardiac_output`,
-so that cardiac output has one way in. Writing the value that the field already holds is accepted.
+compartment is given its blood flow, rather than storing it, when it computes its time constant
+or takes a step (`time_constant_s`, `advance()`), as $`Q_i`$ is given to
+$`\tau_i = V_i\lambda_{i:b}/Q_i`$. So every flow follows the cardiac output through
+`set_cardiac_output`, a copy, `dataclasses.replace` and a pickle, and a copy made at another
+output leaves the original's flows unchanged. A tissue group is given a `BloodFlow`, and the
+venous pool is given the cardiac output. Each refuses a plain `float`, whatever its value, with
+a `TypeError` that names the type to build. A tissue group is given the blood:gas coefficient as
+well as its flow, so that it keeps no copy that could disagree with the coefficient
+(`docs/MODEL.md` § "Blood compartments"). A new cardiac output written onto the field of a built patient is
+refused, and the refusal names `set_cardiac_output`, so that cardiac output has one way in.
+Writing the value that the field already holds is accepted.
 
-A tissue group refuses a second write of its fraction (`TissueGroup`), and the refusal says to
-build a new patient with the new fractions. A tissue group written onto a built patient is
-refused unless the fractions, with the replacement in place, still sum to 1. A copy or a pickle
-writes the fraction once, onto a new object, so it is accepted. Neither a tissue group nor the
-patient lets a field be deleted, because a write after the deletion would bypass both checks.
+A tissue group refuses a second write of its perfusion fraction (`TissueGroup`), and the refusal
+says to build a new patient with the new fractions. A tissue group written onto a built patient
+is refused unless the fractions, with the replacement in place, still sum to 1. A copy or a
+pickle writes the fraction once, onto a new object, so it is accepted. Neither a tissue group nor
+the patient lets a field be deleted, because a write after the deletion would bypass both checks.
 
 The settings record also refuses tissue flows that do not sum to the cardiac output. Only a
 fraction forced past its check, with `object.__setattr__`, can reach that refusal. At the next
@@ -4738,6 +4750,7 @@ at 24 h are 0.19 L of sevoflurane vapour, 0.18 L of isoflurane and 0.23 L of
 desflurane, which are 1.04, 0.92 and 1.10 mL of liquid. So at those settings one
 step of 1 mL is about one SD, and a step of 0.1 mL would be a tenth of one.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 **The delivered total in millilitres of liquid is shown in whole millilitres.**
 The delivered agent is the dial times the flow times the time, and its
@@ -4750,6 +4763,7 @@ thirtieth.
 <!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 **A cost is shown to three significant figures.** The agent cost display gives
 the cost as the delivered agent in liquid times the reader's price per
@@ -4802,6 +4816,7 @@ refuses to load a density measured at any temperature other than 20 °C, because
 it has no temperature correction. It computes the molar volume from the gas
 constant, 20 °C and one standard atmosphere. Neither the molar volume nor the
 published constants are stored.
+<!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 A test checks the derived ratios against Biro's within 1 % and against Gas
 Man's within 0.5 %. It also computes the cost of the isoflurane delivered in
@@ -5749,6 +5764,7 @@ expresses an amount of agent, not gas present in the body. This subsection's
 rules for an agent amount also apply to every other View that shows one,
 including the share bar (`PL-S79P`) and the agent cost View (`PL-B396`).
 § "Displayed precision" derives the precision at which amounts are shown.
+<!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 **An agent amount's unit always names vapour or liquid, and is never a bare
 "mL".** Millilitres of vapour and millilitres of liquid differ by a factor of

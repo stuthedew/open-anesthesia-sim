@@ -58,15 +58,6 @@ COMPARED_BY_A_GUARD = (
     "capacities and concentrations that these guards take are still to get checked types "
     "(PL-LHCL)."
 )
-BLOOD_FLOW = (
-    "A blood flow, checked by hand as finite and not negative at three places. It is "
-    "to get a checked type built only from a cardiac output and a perfusion fraction (PL-GKG4)."
-)
-PERFUSION_FRACTION = (
-    "A perfusion fraction or a sum of them. TissueGroup checks the one it holds, and "
-    "ReferenceAdultParameters does not check its three. It is to get a checked type with "
-    "the blood flow built from it (PL-GKG4)."
-)
 COMPARTMENT_STEP = (
     "A compartment's own step for its closed form. It is still to get a checked type (PL-LHCL)."
 )
@@ -114,6 +105,7 @@ LISTED: dict[str, dict[str, tuple[str, ...]]] = {
         "agent_simulation_validation": (
             "AgentSimulationValidator.require_valid_agent_accounting(currently_stored_agent_l)",
         ),
+        "blood_flow": ("PerfusionFraction.__new__(perfusion_fraction)",),
         "checked_number": ("negative_zero_as_zero(value)",),
         "concentration": (
             "Fraction.__new__(fraction)",
@@ -163,37 +155,13 @@ LISTED: dict[str, dict[str, tuple[str, ...]]] = {
         ),
     },
     PLAIN_NUMBER: {
+        "blood_flow": ("BloodFlow.__reduce__ -> return",),
         "checked_number": (
             "CheckedQuantity.__reduce__ -> return",
             "negative_zero_as_zero -> return",
-        )
+        ),
     },
     SHOWN_IN_A_REFUSAL: {"supported_ranges": ("describe_count(count)",)},
-    BLOOD_FLOW: {
-        "blood": (
-            "VenousBloodCompartment.advance(blood_flow_l_min)",
-            "VenousBloodCompartment.time_constant_s(blood_flow_l_min)",
-        ),
-        "governing_equations": (
-            "TissueGroupEquationSettings.blood_flow_l_min",
-            "TissueGroupEquationSettings.blood_flow_l_s -> return",
-        ),
-        "tissue": (
-            "TissueGroup.advance(blood_flow_l_min)",
-            "TissueGroup.blood_flow_l_min_at -> return",
-            "TissueGroup.time_constant_s(blood_flow_l_min)",
-        ),
-    },
-    PERFUSION_FRACTION: {
-        "parameters": (
-            "ReferenceAdultParameters.fat_perfusion_fraction",
-            "ReferenceAdultParameters.muscle_perfusion_fraction",
-            "ReferenceAdultParameters.total_perfusion_fraction -> return",
-            "ReferenceAdultParameters.vessel_rich_perfusion_fraction",
-        ),
-        "patient": ("PatientCompartments.total_perfusion_fraction -> return",),
-        "tissue": ("TissueGroup.perfusion_fraction",),
-    },
     COMPARTMENT_STEP: {
         "blood": ("VenousBloodCompartment.advance(simulation_step_s)",),
         "circuit": (
@@ -351,14 +319,17 @@ LISTED: dict[str, dict[str, tuple[str, ...]]] = {
         ),
         "circuit": ("BreathingCircuit.time_constant_s -> return",),
         "governing_equations": (
+            "TissueGroupEquationSettings.blood_flow_l_s -> return",
             "TissueGroupEquationSettings.washin_rate_s -> return",
             "UptakeEquationSettings.alveolar_ventilation_l_s -> return",
             "UptakeEquationSettings.cardiac_output_l_s -> return",
             "UptakeEquationSettings.fresh_gas_flow_l_s -> return",
         ),
+        "parameters": ("ReferenceAdultParameters.total_perfusion_fraction -> return",),
         "patient": (
             "PatientCompartments.mixed_venous_partial_pressure_fraction -> return",
             "PatientCompartments.tissue_return_partial_pressure_fraction -> return",
+            "PatientCompartments.total_perfusion_fraction -> return",
         ),
         "supported_ranges": ("maximum_step_count -> return",),
         "tissue": (
@@ -379,10 +350,11 @@ BARE_NUMBERS: dict[str, str] = {
     for name in names
 }
 
-# This count equals the length of `BARE_NUMBERS`. It was 173 on 2026-11-11,
-# when the list was written. Giving a quantity a checked type lowers it. A
-# change that raises it shows a reviewer that the change adds a bare number.
-MOST_BARE_NUMBERS = 173
+# This count equals the length of `BARE_NUMBERS`. It was 173 on 2026-11-11, when the
+# list was written. Giving a quantity a checked type lowers it. A change that raises
+# it shows a reviewer that the change adds a bare number. The blood flow and the
+# perfusion fraction took it to 165 (`PL-GKG4`).
+MOST_BARE_NUMBERS = 165
 
 
 def _names_a_bare_number(

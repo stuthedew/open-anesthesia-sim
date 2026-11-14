@@ -303,6 +303,7 @@ Every value the model computes rests on these assumptions.
   condition that § "Agent amount" states: 20 °C and 760 mmHg, dry (with no water
   vapour). No equation converts between ambient and body conditions.
   § "Known limitations" gives the size of the resulting error.
+  <!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 - Inspired gas reaches the alveoli undiluted by water vapour, because the
   modeled alveoli hold no water. "Dry" in the reference condition above means
   this same absence of water vapour. Real alveolar gas is saturated with water
@@ -557,6 +558,7 @@ condition the ideal-gas molar volume is 24.055 L/mol. The condition defines the
 unit only. It does not mean that any of the agent is physically at 20 °C and
 760 mmHg. $`M_x`$ is the equivalent gas volume of the agent stored in
 compartment $`x`$.
+<!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 **The reference condition matters only when an amount is converted out of the
 unit**, into moles, mass, or the millilitres of liquid that a vaporizer is filled
@@ -571,8 +573,10 @@ factor of 1.058.
 **Converting an alveolar, venous or tissue amount at 20 °C overstates it by
 5.8 %** (§ "Known limitations", under § "One reference condition, where the
 model physically has two").
+<!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 **Three reasons favour a 20 °C reference condition.**
+<!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 1. **The published vapour-to-liquid constants are 20 °C constants.** The
    consumption literature quotes one number per agent, the vapour volume
@@ -644,6 +648,10 @@ model physically has two").
 <!-- provenance: data/agents/sevoflurane.json molar_mass_g_mol = 200.05 -->
 <!-- provenance: data/agents/isoflurane.json molar_mass_g_mol = 184.49 -->
 <!-- provenance: data/agents/desflurane.json molar_mass_g_mol = 168.04 -->
+<!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
+<!-- provenance: data/agents/sevoflurane.json liquid_density.measured_at_celsius = 20 -->
+<!-- provenance: data/agents/isoflurane.json liquid_density.measured_at_celsius = 20 -->
+<!-- provenance: data/agents/desflurane.json liquid_density.measured_at_celsius = 20 -->
 <!-- derived: 182.8 from data/agents/sevoflurane.json liquid_density.g_ml = 1.5203, molar_mass_g_mol = 200.05 -->
 <!-- derived: 195.8 from data/agents/isoflurane.json liquid_density.g_ml = 1.5019, molar_mass_g_mol = 184.49 -->
 <!-- derived: 209.7 from data/agents/desflurane.json liquid_density.g_ml = 1.4651, molar_mass_g_mol = 168.04 -->
@@ -675,6 +683,7 @@ was read.
   PubMed and verified against the abstract on 2026-09-17. The abstract gives
   the four constants but does not state their temperature, so the
   reproduction above is what shows they are 20 °C constants.
+  <!-- not-restated: 20 °C -->
 - Philip JH. *Workbook for Gas Man*. Appendix C's `GASMAN.INI` listing is the
   source for the `Volatility` setting. Chapter 10's closed-circuit
   liquid-injection section (printed pp. 103-105) is the source for the five
@@ -1304,6 +1313,15 @@ Q_i = 0
 \quad\Longrightarrow\quad
 \frac{dM_i}{dt}=0
 $$
+
+**For developers.** A blood flow can be above zero and still so small that $`\tau_i`$ is larger
+than any number the computer can hold. Then the method that computes $`\tau_i`$
+(`TissueGroup.time_constant_s`) returns infinity, as it does at zero flow, and a tissue group
+stepped on its own is left unchanged. The exact change in the agent it holds is far smaller than
+any amount the simulator displays. A test in `tests/unit/test_blood_flow.py` checks this at the
+smallest flow that can be created. The venous pool's time constant
+(`VenousBloodCompartment.time_constant_s`) is infinite in the same way at a cardiac output that
+small, and a second test there checks it.
 
 ### Venous blood
 
@@ -2116,7 +2134,8 @@ outside it.
 | Fresh gas flow | 0 to 10 L/min | `FreshGasFlow` |
 | Alveolar ventilation | 0 to 12 L/min | `AlveolarVentilation` |
 | Cardiac output | 0 to 10 L/min | `CardiacOutput` |
-| A tissue group's perfusion fraction | above 0, up to 1, the three summing to 1 | `TissueGroup` and `PatientCompartments` |
+| A tissue group's perfusion fraction | above 0, up to 1, the three summing to 1 | `PerfusionFraction` and `PatientCompartments` |
+| A tissue group's blood flow | its perfusion fraction of the cardiac output, so 0 to 10 L/min | `BloodFlow` |
 | The whole model's time step | 0.001 to 0.1 s | `SimulationStep` |
 | The time step of a compartment stepped on its own | 0.001 s to 86 400 s | `require_compartment_step` |
 | A time in the case | 0 to 86 400 s (24 hours) | `CaseInstant` |
@@ -2134,7 +2153,7 @@ outside it.
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10 -->
-<!-- provenance: core/tissue.py PERFUSION_FRACTION_UPPER_BOUND = 1 -->
+<!-- provenance: core/blood_flow.py MAXIMUM_PERFUSION_FRACTION = 1 -->
 <!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
 <!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
@@ -2177,9 +2196,11 @@ again whenever either of an agent's coefficients changes, and whenever a patient
 tissue group is replaced. A group's tissue:gas coefficient cannot be changed after the group is
 built.
 
-A tissue group or the venous pool stepped on its own accepts any blood flow that is finite and
-not negative, with no upper limit. A run computes that flow from a cardiac output that has a
-limit, so a limit here would refuse nothing a run can produce.
+A tissue group's blood flow has no range of its own. It can only be created as a perfusion
+fraction of a cardiac output, so it lies between zero and that cardiac output. A tissue group
+stepped on its own takes only a flow created that way, and the venous pool takes the cardiac
+output, which is its flow. So neither can be stepped at a flow above the largest supported
+cardiac output, or at a flow that is negative or not a finite number.
 
 The input limit of 0.99 is `MAXIMUM_INPUT_FRACTION` in `core/supported_ranges.py`. The model
 applies it to the amount of agent each compartment holds, because reading a fraction back from
@@ -2212,9 +2233,9 @@ flow is set to zero, to the smallest positive number a computer can hold and to 
 test steps the whole model once at the smallest and largest step, steps each compartment alone
 at its own limits, and computes a run over 24 hours by both the chart's method and the canonical
 one (`docs/INTERFACE.md` § "The canonical evaluation rule"). Each run washes in to the 0.99 limit, washes out from
-it, or sits at it. The sweep also steps a tissue group and the venous pool on their own at the
-largest blood flow a computer can hold, and each result stays finite and between its start and
-its equilibrium.
+it, or sits at it. Stepped alone, a tissue group and the venous pool run at zero flow, at the
+smallest positive flow and at the largest supported cardiac output, and each result stays
+finite and between its start and its equilibrium.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 Each result of the first test must be finite. Each fraction must lie from 0 through 1, with no
@@ -2754,6 +2775,9 @@ the age-related iso-MAC charts built on it.
 5. **Nine liquid-density rows**, a density, its standard deviation and its
    measurement temperature for each agent. They are Laster, Fang and Eger
    1994's primary measurements at 20 °C, adopted on 2026-10-26.
+   <!-- provenance: data/agents/sevoflurane.json liquid_density.measured_at_celsius = 20 -->
+   <!-- provenance: data/agents/isoflurane.json liquid_density.measured_at_celsius = 20 -->
+   <!-- provenance: data/agents/desflurane.json liquid_density.measured_at_celsius = 20 -->
 6. **Three molar masses**, ChEMBL's formula masses, adopted the same day. They
    are tier 2 because a molar mass is computed from the molecular formula and the
    standard atomic weights, not measured on the agent, so no tier-1 source exists
@@ -6319,6 +6343,7 @@ natively 37 °C quantities carried under a 20 °C label. The two conditions meet
 in the ventilation term, which moves $`\dot V_A`$ litres out of the circuit and
 the same $`\dot V_A`$ litres into the alveoli. In the alveoli, warming ambient
 gas to body temperature would expand it by the molar-volume ratio.
+<!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 **The size is 5.8 %, and it applies to the stores, not to conservation.**
 Every term is exact in the model's own arithmetic, and the mass balance closes
@@ -6328,6 +6353,7 @@ the unit names. So no agent goes missing, and the question is what the litres
 hold 5.5 % fewer moles than their 20 °C label implies, so the label overstates
 them by 5.8 %. The ratio behind both figures is 25.450/24.055, the molar
 volumes in litres at 37 °C and at 20 °C. The fresh-gas terms are unaffected.
+<!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 **It does not touch a concentration, and it does touch every amount held in
 the body.** A partial-pressure fraction has no unit and carries no condition.
@@ -6345,6 +6371,7 @@ exact. A stored total in millilitres of liquid is refused for this reason
 (`docs/INTERFACE.md` § "Agent amounts in millilitres, and the cost"). Removing this limitation would need a gas-phase model that carries
 explicit conditions per compartment, which is well outside the current
 milestone.
+<!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 **The modeled alveoli are dry, and real ones are saturated at 47 mmHg.** This
 is the third gas-phase condition, beside temperature and pressure. "Agent
@@ -6358,6 +6385,7 @@ atmosphere, before any uptake has occurred. Equivalently, the undiluted figure
 is 6.6 % above the humidified one, which is 47/713. The alveolar equation
 carries $`\dot V_A(F_I - F_A)`$ with no such factor, so $`F_I`$ arrives
 undiluted.
+<!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 **The 47 mmHg is computed.** The saturation pressure of water at 37.0 °C is
 47.12 mmHg on the IAPWS-95 formulation (Wagner W, Pruß A. *The IAPWS
@@ -6485,6 +6513,7 @@ variable-bypass compensation is approximate, so no number is stored for it. An i
 derive the variable-bypass case from each agent's saturated vapour pressure
 rather than from the $`1/P`$ shortcut, and would owe each agent's SVP a source
 of its own. None is stored today.
+<!-- not-restated: 20 °C -->
 
 **Sources for the notes above.** None of them is the authority for a stored
 value:

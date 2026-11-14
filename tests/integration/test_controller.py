@@ -40,6 +40,7 @@ from anesthesia_sim.app.run_series import (
 from anesthesia_sim.app.wash_in import is_wash_in
 from anesthesia_sim.core import uptake_system
 from anesthesia_sim.core.alveolar import AlveolarCompartment
+from anesthesia_sim.core.blood_flow import PerfusionFraction
 from anesthesia_sim.core.concentration import (
     Fraction,
     MacMultiple,
@@ -113,7 +114,9 @@ def _with_stale_tissue_flows(controller: SimulationController, cardiac_output_l_
     scale = cardiac_output_l_min / patient.cardiac_output_l_min
 
     for tissue in patient.tissues:
-        object.__setattr__(tissue, "perfusion_fraction", tissue.perfusion_fraction * scale)
+        object.__setattr__(
+            tissue, "perfusion_fraction", PerfusionFraction(tissue.perfusion_fraction * scale)
+        )
 
 
 def _with_the_tissue_fractions_put_back(controller: SimulationController) -> None:
@@ -126,7 +129,7 @@ def _with_the_tissue_fractions_put_back(controller: SimulationController) -> Non
     for tissue, fraction in zip(
         controller._state.uptake_system.patient.tissues, (0.76, 0.18, 0.06), strict=True
     ):
-        object.__setattr__(tissue, "perfusion_fraction", fraction)
+        object.__setattr__(tissue, "perfusion_fraction", PerfusionFraction(fraction))
 
 
 def test_default_controller_starts_with_sevoflurane() -> None:
