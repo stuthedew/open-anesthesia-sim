@@ -1,9 +1,15 @@
 ---
 id: PL-YKKC
 title: A reverse outline of docs/MODEL.md (2026-11-10) found structural problems to weigh in the next structure pass: the model's own sections are about 11% of the document, several headings do not name what they hold, terms are used before they are defined, and developer notes sit mid-section or fill half of one
-status: untriaged
+priority: P3
+effort: M
+status: blocked
+classes: docs
 feature: model-md-structure
+touches: docs/MODEL.md
+blocked-by: PL-48MX
 added: 2026-11-10
+payoff: the replaced model document is checked for the structural problems the old one had, so they are not carried over
 ---
 
 **Problem.** A reverse outline of docs/MODEL.md (2026-11-10) found structural problems to weigh in the next structure pass: the model's own sections are about 11% of the document, several headings do not name what they hold, terms are used before they are defined, and developer notes sit mid-section or fill half of one
@@ -92,3 +98,11 @@ requires of a branch" as pointing at a non-heading. That paragraph is a
 bold-led paragraph, which the doc check treats as a citable target (see
 `PL-97S1`), so it is not a defect. The stale disclaimer paragraph it found is
 already `PL-DQD8`, and the misdirected "rules below" pointer is `PL-XLDN`.
+
+**Why it matters.** Each point that is still true after `docs/MODEL.md` is replaced makes the model harder for a clinician to find and follow: the equations behind a value sit in a small share of the text, and terms appear before their definitions.
+
+**Done when.** After `PL-48MX` replaces `docs/MODEL.md`, each of the five points is checked against the new documents and against the committed outline (`docs/prose-review/model-reverse-outline.tsv`, `PL-9RLM`). Each point still true is fixed or filed as an item, and the result is recorded here.
+
+**Blocked on the replacement of `docs/MODEL.md`.** The owner decided on 2026-11-11 to split `docs/MODEL.md` by reader (`PL-P3GZ`). `PL-48MX` replaces what is left of it, so most of the text these points describe will move or go.
+
+**Generator check.** `PL-P3GZ` found the cause: an instance of the fact that `PL-J1ZM` states, that no rule says what a reader can do without.

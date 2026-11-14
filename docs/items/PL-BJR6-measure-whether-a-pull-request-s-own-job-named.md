@@ -1,10 +1,17 @@
 ---
 id: PL-BJR6
 title: Measure whether a pull request's own job named merge-hold can satisfy main's required merge-hold check, which GitHub's documentation leaves undecided
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect
 feature: irreversible-actions-refused-at-github
 touches: .github/workflows/merge-hold.yml, tools/github_refusals_check.py
+deferred-from: v0.7.0 - workflow tooling outside the schematic release, and it changes no displayed value
 added: 2026-11-11
+payoff: the owner knows whether a held pull request can be merged past the merge hold, and the hold is fixed if it can
+verify: grep -qE '^\*\*Result, measured' docs/items/PL-BJR6*.md
+not-delegable: the measurement opens and closes a pull request that adds a workflow file, which docket verify refuses as an edit to the checks
 ---
 
 **Problem.** `main` requires a status check named `merge-hold` (`PL-KH7Y`). Branch protection matches a required check by name. `.github/workflows/merge-hold.yml` runs on `pull_request_target`, so a pull request cannot edit that job. A pull request can still add a workflow of its own, on `pull_request`, with a job named `merge-hold` that passes. Its head commit would then carry two check runs with that name, one failed and one passed. Nobody has measured which of the two GitHub counts.
@@ -19,7 +26,7 @@ added: 2026-11-11
 
 Each page was read in full through the web-fetch subagent, which returned the quoted sentences.
 
-**Done when.** The result is measured and recorded here. Measure it on a pull request made for the purpose, whose branch holds an open claim so that `main`'s `merge-hold` job fails. Add a workflow on `pull_request` with one job named `merge-hold` that exits 0. Then read the pull request's merge state from `GET /repos/{repo}/pulls/{number}` and its check runs, and close the pull request unmerged. If the passing job satisfies the requirement, this item also decides the fix. One candidate is a second rule in `bin/docket arm --merge-hold` that fails a pull request whose branch adds or changes a job with that name.
+**Done when.** The result is measured and recorded here, in a paragraph that opens "**Result, measured" and gives the date. Measure it on a pull request made for the purpose, whose branch holds an open claim so that `main`'s `merge-hold` job fails. Add a workflow on `pull_request` with one job named `merge-hold` that exits 0. Then read the pull request's merge state from `GET /repos/{repo}/pulls/{number}` and its check runs, and close the pull request unmerged. If the passing job satisfies the requirement, this item also decides the fix. One candidate is a second rule in `bin/docket arm --merge-hold` that fails a pull request whose branch adds or changes a job with that name.
 
 **Found while building `PL-KH7Y`**, which asked the related question of whether the `checks` job should move to `pull_request_target`.
 
