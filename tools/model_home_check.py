@@ -71,6 +71,9 @@ COPIES = {
     "docs/items/PL-6FX6-make-the-first-month-of-api-credit-runs-the.md": (
         "the model-comparison trial's run commands, which name the models it compares"
     ),
+    "docs/items/PL-J1ZM-sessions-write-prose-that-over-explains-in.md": (
+        "the web addresses of two prompting guides it cites, which contain a model's name"
+    ),
 }
 
 

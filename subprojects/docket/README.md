@@ -1075,12 +1075,7 @@ reason on stderr. `set --status done` then reads the branch's open pull request
 through `open_pull_requests_command` and writes its number as `pr:` in the same
 write. A
 switch off that no `Auto-merge: off - <why>` trailer on a commit made since
-records as the session's holds the pull request. `prose_count_command` is how
-`arm` counts the long docstrings and comments a simulator change adds that no
-review covers (`PL-W04Z`): the package appends the commit carrying the newest
-`Prose-review: read N, rewrote M, rejected K` trailer, where one does, and the
-command prints one whole number or exits non-zero. A count above zero holds the
-pull request, and so does a count that could not be read.
+records as the session's holds the pull request.
 `blind_count_command` is how `arm` counts the blind review passes a simulator
 change owes (`PL-HDRN`): the package appends nothing, and the command prints
 one whole number or exits non-zero. The pull request holds until the newest
@@ -4440,8 +4435,8 @@ the check refuses, because "could not measure" is not "measured, and all
 caught". Empty by default, which makes the check a note saying that nothing
 measured the tests. This repository sets it to `tools/diff_mutation.py
 --verdict`, which mutates the functions the branch changed in the modules that
-`pyproject.toml`'s `[tool.mutmut]` table names, and runs the simulator's unit
-tests against each mutant:
+mutmut mutates, by the rule in `docs/mutation-testing.md` § "Which modules are
+mutated", and runs the simulator's unit tests against each mutant:
 
 - A mutant counts only where a line it changes is one the branch changed. One
   on a line the branch left alone is named in a note and not counted, since

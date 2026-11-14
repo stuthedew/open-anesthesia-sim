@@ -1,9 +1,10 @@
 """Run the copy editor on one file that `tools/new_prose.py` wrote, and print its reply.
 
-A session hands the copy editor a file of passages at close-out step 8, and
-when it rewrites a section or a whole document. The copy editor's instructions are kept
-only in the body of `.claude/agents/copy-editor.md`. A Projects thread cannot
-start that agent, because a thread does not load `.claude/agents/`. The fallback
+A session hands the copy editor a file of passages when the owner asks for a
+section or a whole document to be rewritten (`docs/prose-review/README.md`).
+The copy editor's instructions are kept only in the body of
+`.claude/agents/copy-editor.md`. A Projects thread cannot start that agent,
+because a thread does not load `.claude/agents/`. The fallback
 is a general-purpose agent given the agent file's text, but that agent loads
 every resident instruction that the copy editor is meant to run without
 (`PL-TQ4J`).

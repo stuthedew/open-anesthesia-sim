@@ -97,8 +97,8 @@ page and decides which file a session reads.
    a safety issue here rather than tidiness — a reader who trusts a wrong
    statement about which agent is running, what a value means, or what the
    interface displays can reach a wrong clinical conclusion from a correct
-   number. Say in the reply which files were checked, not merely that the docs
-   were updated.
+   number. List in the item which files were checked, not merely that the
+   docs were updated.
 3. Capture anything found but not fixed as its own item.
 4. **Report gate progress if the item is one the gate contains.** Membership is
    decidable rather than a judgment: `bin/docket wave` prints the gate's open
@@ -113,11 +113,8 @@ page and decides which file a session reads.
    in a discussion that was not about it.
 5. **Audit the branch: `bin/docket verify --self <id>`**, naming every id the
    closing commit leads with, since the diff is selected per id from the
-   commits that name it. **On a branch that changes the simulator, run step
-   8's prose review first.** Its rewrites change files that this audit reads.
-   Of five simulator branches that skipped step 8, two reported running this
-   audit, so the step's place at the end of the list was passed over
-   (`PL-W04Z`). It runs the item's own `verify:` command and `make
+   commits that name it. **Do step 8's check of the branch's text first.** Its fixes
+   change files that this audit reads. It runs the item's own `verify:` command and `make
    check`, so it *is* the close-out's proof rather than a step beside one -
    re-run it until it says `ACCEPT`. A `REJECT` that stopped early ran
    neither.
@@ -267,11 +264,11 @@ page and decides which file a session reads.
    problem - and say in the reply what you found and what you left.
 
 7. **Sort the survivors that step 5's audit printed, where the diff changes a
-   function that mutmut mutates.** Those functions are in the modules named by
-   the `only_mutate` globs in the `[tool.mutmut]` table of `pyproject.toml`:
-   `core/` and eight presentation modules. The audit's mutation check runs
-   `make mutate`'s tool on the functions that the branch changed, so there is
-   no second run to make. Sort each survivor as `docs/mutation-testing.md`
+   function that mutmut mutates.** mutmut mutates every module under `src/`
+   that imports no Qt, except the ones that `pyproject.toml` names in
+   `[tool.diff_mutation.left_out]` with a reason (`PL-19M4`). The audit's
+   mutation check runs `make mutate`'s tool on the functions that the branch
+   changed, so there is no second run to make. Sort each survivor as `docs/mutation-testing.md`
    § "Read a survivor" says, and list each one with its kind in the pull
    request body. While `mutants/` is left from the run,
    `uv run --group mutation mutmut show NAME` prints a survivor's diff. Where a
@@ -281,97 +278,30 @@ page and decides which file a session reads.
    2026-10-17, ratified, over a whole-tree mutation score as a target,
    `PL-Y1PS`).
 
-8. **Have the copy editor edit the prose that the branch changed, before step
-   5's audit.** Do this step on every branch. Save the output of
-   `python3 tools/new_prose.py` to a file in the scratchpad. That tool prints
-   each passage that the branch changed in a file that has a row in the
-   reader table of `.claude/rules/plain-writing.md`, with the readers that
-   the row names. It prints none from an item brief or a workflow file: the
-   copy editor edits the documents and code that a clinician, a learner or a
-   contributor reads, and pull request titles and bodies, which the
-   pull-request skill sends to it. It does not edit item briefs, the
-   workflow's files, commit messages or replies (project owner, 2026-11-10).
-   It prints a passage whatever its length, because short
-   passages were awkward in 25% of `PL-Y55Q`'s blind verdicts and many of the
-   messages a learner reads are short (project owner, 2026-11-04, ratified,
-   over `PL-PRCS`'s minimum of 30 words). It leaves out a string literal of one
-   word, such as a dictionary key, because that is code. A Markdown passage
-   comes inside its whole section, and a docstring or comment comes with the
-   code around it. The copy editor may rewrite the rows marked `>`: the
-   changed paragraphs, and the paragraph or table row on each side of them.
-   Where the tool prints no passage, go to the comparison at the end of this
-   step.
+8. **Check every sentence of the text that the branch changed, before step
+   5's audit.** Point 8 of `.claude/rules/plain-writing.md` says what the
+   check covers. Do it on every branch, for each docstring, comment, message,
+   document paragraph and item brief that the branch adds or rewords. The
+   writing session does this check itself. The copy editor no longer edits
+   each branch's text (project owner, 2026-11-11, ratified, over a copy edit
+   of each branch after its text is written). It edited sentences and did not
+   remove an account that the reader does not need, and it passed all five
+   phrases that the owner rejected in two pull request bodies (`PL-J1ZM`).
+   It still rewrites a section of a document when the owner asks, as
+   `docs/prose-review/README.md` says.
 
-   Otherwise run `python3 tools/copy_edit.py` on that file and save its
-   reply. That tool runs the copy editor as its own `claude -p` process,
-   which loads none of the resident instructions and opens no other file. It
-   works the same way in a Projects thread (`PL-TQ4J`). Where the first read
-   rewrites a passage, fresh audits fix what it missed until one changes
-   nothing or four reads have run, so the reads can take up to four times as
-   long as one (`PL-HGZS`). A separate meaning check then sends each statement
-   that the edit lost back to the copy editor to restore. It runs up to five
-   rounds of checks, each about as long as the first read. Where a statement
-   is still lost after the last round, the tool keeps the passage as it was
-   and lists what the edit lost under "Meaning check:" (`PL-F0Q2`). For each
-   passage the copy editor returns `[N] keep`, or `[N] rewrite` with the new
-   text and each cut with its reason, as its instructions in
-   `.claude/agents/copy-editor.md` say.
-
-   **Apply each rewrite as it stands.** Revert one edit only where it lost or
-   changed a value, a unit, a condition, an identifier or a citation, and
-   keep the original sentence there, because the safety-critical standard
-   applies to what a docstring states. Accept a restated number only after
-   checking that its value is unchanged. Put each fact that the copy editor
-   moved in the place it names.
-
-   **Record what the review did.** Say in the pull request body how many
-   passages the copy editor read, how many it rewrote and how many edits you
-   reverted. Record the same three counts as a trailer in the last paragraph
-   of the commit that applies the rewrites, or of the next commit where there
-   were none: `Prose-review: read N, rewrote M, rejected K`, where K counts
-   the reverted edits. `bin/docket arm` holds a branch that waits on the
-   owner's review where long prose was added after the newest such trailer,
-   as `python3 tools/new_prose.py --count` counts it (`PL-W04Z`).
-
-   **The step is kept because the prose review it replaced worked.** On
-   2026-10-19 `PL-J6CK` found that long prose from the branch that ran that
-   review was awkward in 22% of blind verdicts, against 58% from branches
-   that skipped it. `PL-PRCS` records what the step costs.
-
-   **Then compare the branch with the default branch, after the rewrites are
-   applied: `python3 tools/new_prose.py --compare`** (`PL-JP8X`). It prints
-   each run of paragraphs, docstrings or comments that the branch changed,
-   with its words on the default branch and now. Then it lists each number,
-   code span, item id, citation, equation, date and "no test yet" declaration
-   that a changed file held at the fork and holds fewer times now. Put back
-   each one that an edit dropped by mistake. For each passage that grew, name
-   in the pull request body the facts its added words carry, because growth
-   that adds no fact is how prose over-explains (`PL-J1ZM`).
-
-   **When the owner rejects a paragraph that this review passed, add it to
-   the review's test set in `docs/prose-review/rejected/`.** The owner is the
-   only clinician who reads this prose, so each such rejection is a failure
-   the review must not repeat. Write one entry under the kind of failure it
-   fits, or add a kind to `tools/rejected_prose.py` with its meaning, as
-   `docs/prose-review/README.md` says (project owner, 2026-11-03, `PL-FYGJ`).
-
-   **When the owner names a paragraph a gold standard, in those words, add it
-   to `docs/prose-review/gold/`**, as `docs/prose-review/README.md` says, and
-   quote the owner's words. The review must keep each gold-standard entry, so
-   a review that flags every paragraph fails the set (project owner,
-   2026-11-03, ratified, `PL-556C`).
-
-   **A change to the copy editor's instructions, or to a reader row for a file
-   that the set holds, is tested on the set before it lands**, as
-   `docs/prose-review/README.md` § "Running the set" says.
-   `python3 tools/rejected_prose.py check`, in `make check` and CI, refuses a
-   branch whose instructions or reader rows have no run, or have a run that
-   misjudged an entry. It also refuses a gold-standard entry that no run of
-   the current instructions has read, because nobody knows whether they keep
-   it until a run reads it.
+   **Then compare the branch with the default branch:
+   `python3 tools/new_prose.py --compare`** (`PL-JP8X`). It prints each run of
+   paragraphs, docstrings or comments that the branch changed, with its words
+   on the default branch and now. Then it lists each number, code span, item
+   id, citation, equation, date and "no test yet" declaration that a changed
+   file held at the fork and holds fewer times now. Put back each one that an
+   edit dropped by mistake, because the safety-critical standard requires
+   those facts. For each passage that grew, check that the added words give
+   its reader a fact they act on, and cut the words that do not.
 
 9. **Run the blind generalist review passes on a simulator branch, before step
-   6's review, step 8's prose review and step 5's audit**, because a fix for a
+   6's review, step 8's check of the text and step 5's audit**, because a fix for a
    finding changes the files those steps read. Every simulator pull request
    gets one pass before it merges. One that changes the model's code, its
    parameter files or `docs/MODEL.md` gets a second (project owner, 2026-10-24,

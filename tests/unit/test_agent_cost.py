@@ -159,8 +159,8 @@ def test_each_caption_says_what_its_unit_measures() -> None:
     liquid = shown.caption_in(AgentAmountUnit.MILLILITRES_OF_LIQUID)
     vapour = shown.caption_in(AgentAmountUnit.LITRES_OF_VAPOUR)
 
-    assert liquid == "Liquid used by the vaporizer, at 20 degrees C."
-    assert vapour == "Vapour put out by the vaporizer, at 20 degrees C and 1 atm."
+    assert liquid == "Liquid used by the vaporizer, at 20 °C."
+    assert vapour == "Vapour put out by the vaporizer, at 20 °C and 1 atm."
 
 
 def test_a_run_that_has_delivered_nothing_shows_zero_and_a_trace_shows_below_resolution() -> None:
