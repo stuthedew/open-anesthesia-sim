@@ -54,7 +54,11 @@ from typing import Final
 
 from anesthesia_sim.app.controller import SimulationSnapshot
 from anesthesia_sim.app.dashboard_frame import WITHHELD_ELAPSED_TIME_TEXT
-from anesthesia_sim.app.display_units import DisplayUnit
+from anesthesia_sim.app.display_units import (
+    REFERENCE_CONDITION_LABEL,
+    REFERENCE_TEMPERATURE_LABEL,
+    DisplayUnit,
+)
 from anesthesia_sim.app.formatting import (
     AGENT_AMOUNT_UNIT_DISPLAY,
     AgentAmountUnit,
@@ -100,12 +104,14 @@ WITHHELD_AGENT_NAME: Final = "Agent"
 DELIVERED_LABEL_TEMPLATE: Final = "{agent} delivered"
 
 #: The caption that says what the liquid figure measures. The figure comes from the liquid
-#: agent that the vaporizer used, and the caption says so. The wording is a placeholder, but
-#: what the caption must say is not (`PL-B396`).
-LIQUID_CAPTION_TEMPLATE: Final = "Liquid used by the vaporizer, at 20 degrees C."
+#: agent that the vaporizer used, and the caption says so. It names the temperature the
+#: conversion uses, read from the constant itself (`PL-RJN9`). The wording is a placeholder,
+#: but what the caption must say is not (`PL-B396`).
+LIQUID_CAPTION_TEMPLATE: Final = f"Liquid used by the vaporizer, at {REFERENCE_TEMPERATURE_LABEL}."
 
-#: What the vapour figure is. The wording is a placeholder.
-VAPOUR_CAPTION_TEMPLATE: Final = "Vapour put out by the vaporizer, at 20 degrees C and 1 atm."
+#: What the vapour figure is, and the temperature and pressure it is stated at
+#: (`PL-HQPF`). The wording is a placeholder.
+VAPOUR_CAPTION_TEMPLATE: Final = f"Vapour put out by the vaporizer, at {REFERENCE_CONDITION_LABEL}."
 
 #: What the View shows in place of a liquid figure that cannot be computed.
 #: The conversion fails only on a ratio or an amount that is not finite, which

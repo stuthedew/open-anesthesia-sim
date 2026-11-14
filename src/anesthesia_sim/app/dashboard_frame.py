@@ -63,7 +63,11 @@ from anesthesia_sim.app.controller import (
     RunStatus,
     SimulationSnapshot,
 )
-from anesthesia_sim.app.display_units import DisplayUnit
+from anesthesia_sim.app.display_units import (
+    BODY_STORES_CONDITION_LINES,
+    REFERENCE_CONDITION_LABEL,
+    DisplayUnit,
+)
 from anesthesia_sim.app.formatting import (
     CONCENTRATION_DISPLAY_DECIMALS,
     CONCENTRATION_DISPLAY_RESOLUTION_PERCENT,
@@ -841,7 +845,20 @@ ACCOUNTING_REJECTED_DETAIL_TEXT: Final = (
 # during a halt when no frame has been drawn since the run started over
 # (`WITHHELD_ACCOUNTING`). The wording is a placeholder.
 ACCOUNTING_WITHHELD_DETAIL_TEXT: Final = "No frame has been drawn since the run started over."
-ACCOUNTING_UNIT_CAPTION: Final = "Litres of equivalent pure agent gas"
+# The unit of every amount on the accounting panel, with the temperature and
+# pressure the amounts are stated at (`PL-HQPF`). The amounts held in the body
+# are at body temperature, and are stated at this condition so that the panel's
+# amounts add up (`docs/MODEL.md` § "Known limitations"). So the last two lines
+# say that the stored amount reads high. The caption is four short lines rather
+# than wrapped text, because Qt leaves a wrapped label's extra lines out of the
+# panel's minimum size. Each line fits in the width the panel had before the
+# condition was added, so the panel's column, and the plot beside it, keep
+# their width. The wording is a placeholder, but the condition
+# and its effect on the stored amount must be on screen.
+ACCOUNTING_UNIT_CAPTION: Final = (
+    f"Litres of equivalent pure agent gas,\nat {REFERENCE_CONDITION_LABEL}.\n"
+    f"{BODY_STORES_CONDITION_LINES}"
+)
 #: The names of the panel's five amount lines, in the order the panel shows them.
 ACCOUNTING_AMOUNT_NAMES: Final = (
     "Delivered",

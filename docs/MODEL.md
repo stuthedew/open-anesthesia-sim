@@ -6325,16 +6325,20 @@ hold 5.5 % fewer moles than their 20 °C label implies, so the label overstates
 them by 5.8 %. The ratio behind both figures is 25.450/24.055, the molar
 volumes in litres at 37 °C and at 20 °C. The fresh-gas terms are unaffected.
 
-**It is invisible in everything the simulator shows today.** A
-partial-pressure fraction has no unit and carries no condition. So $`F_A`$,
-$`F_A/F_I`$, the MAC multiple and every trace on the chart are untouched by it.
-It would matter only where an amount is converted out of the litre unit, as
-the liquid-equivalent consumption figure planned under § "Planned milestones"
-item 28 will be. The code for that conversion exists, and nothing on screen
-shows its result yet. It converts a delivered or exhausted amount exactly and
-a stored amount 5.8 % high. There it biases the split between stored and
-exhausted agent, but not the delivered total, which is the figure that means
-cost. Removing this limitation would need a gas-phase model that carries
+**It does not touch a concentration, and it does touch every amount held in
+the body.** A partial-pressure fraction has no unit and carries no condition.
+So $`F_A`$, $`F_A/F_I`$, the MAC multiple and every trace on the chart are
+untouched by it. Every agent amount on screen names the condition it is stated
+at, 20 °C and 1 atm: the accounting panel's unit caption, the compartment
+schematic's caption and the agent cost View's captions. The accounting panel and
+the schematic also say that the amounts held in the body are body-temperature
+gas under that label, so they read high. The size, 5.8 %, is stated here and
+not on screen. The circuit's amount and the delivered and exhausted totals are
+exact. The conversion to liquid converts a delivered or exhausted amount
+exactly and a stored amount 5.8 % high. The agent cost View converts only the
+delivered amount, which is the figure that means cost, so its liquid figure is
+exact. A stored total in millilitres of liquid is refused for this reason
+(`docs/INTERFACE.md` § "Agent amounts in millilitres, and the cost"). Removing this limitation would need a gas-phase model that carries
 explicit conditions per compartment, which is well outside the current
 milestone.
 

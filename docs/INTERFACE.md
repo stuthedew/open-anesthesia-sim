@@ -4643,7 +4643,9 @@ against amounts of order 1 to 100 L, which no fixed decimal count can do.
 
 The panel labels the unit as litres of equivalent pure agent gas, the unit this
 document uses, because a bare "L" beside an anaesthetic agent invites a reader
-to take it as litres of liquid.
+to take it as litres of liquid. The label also names the reference condition of
+`docs/MODEL.md` § "Agent amount", and says that the amounts held in the body
+read high at it (`docs/MODEL.md` § "Known limitations").
 
 **The amounts' 0.1 L step is set by the uncertainty in the simulator's coefficients,
 as the readouts' steps are.** Changing one of those coefficients by its published SD
@@ -5758,8 +5760,8 @@ vapour (`docs/MODEL.md` § "Agent amount"). A vapour amount is written "mL vapou
 out from a vapour amount, as the volume of liquid agent that would give that
 much vapour. That volume is what a vaporizer uses up. A caption under a liquid
 amount says that the vaporizer used this liquid. The accounting View shows
-amounts in litres, under the caption "Litres of equivalent pure agent gas",
-which marks them as vapour. The agent cost panel writes its delivered amount
+amounts in litres, under a caption that begins "Litres of equivalent pure
+agent gas", which marks them as vapour, and names their condition. The agent cost panel writes its delivered amount
 as "mL of liquid" or "L vapour", whichever unit the reader chose, and its
 caption says what that unit measures. These spellings may change while the
 interface is being built.
