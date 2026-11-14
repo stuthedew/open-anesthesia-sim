@@ -40,7 +40,7 @@ from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import MUTED, PANEL, WARNING
 from anesthesia_sim.app.view_registry import BRANCH, COMPARTMENT_SCHEMATIC, REGISTERED
-from anesthesia_sim.app.views import BranchView, CompartmentSchematicView
+from anesthesia_sim.app.views import BranchView, CompartmentSchematicView, ConcentrationView
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.parameters import load_agent_parameters
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CaseInstant, FreshGasFlow
@@ -580,6 +580,42 @@ def _column_centre(canvas: SchematicCanvas, index: int) -> int:
 _CONTAINER_TOP_PX = 14
 _CONTAINER_HEIGHT_PX = 96
 _CONTAINER_WIDTH_PX = 44
+
+
+def test_a_container_cannot_be_read_against_the_chart(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """`PL-8W1B`: beside the chart, the caption says a fill level is not on its gridlines.
+
+    The Maintenance Workspace shows the concentration chart and the schematic
+    side by side. A container is much shorter than the chart's plot, so one
+    tension stands at different screen heights in the two. A learner who read a
+    fill level across to the chart's gridlines would read the wrong tension. The
+    caption therefore names the chart's range without calling it the chart's
+    scale, and says the heights do not line up with its gridlines.
+    """
+
+    workspaces = shipped_workspaces()
+    maintenance = next(
+        index
+        for index, workspace in enumerate(workspaces.workspaces)
+        if workspace.name == WorkspaceName("Maintenance")
+    )
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 600.0)
+    view = _dashboard(
+        application, shown, controller, workspaces=WorkspaceSet(workspaces.workspaces, maintenance)
+    )
+    (chart,) = (v for v in view.layout_container.views() if isinstance(v, ConcentrationView))
+    (schematic,) = _schematic(view).schematics
+    caption = schematic.scale_text.text()
+
+    assert chart.chart.plot_area().height() > 2 * _CONTAINER_HEIGHT_PX
+    assert "do not line up with the chart's gridlines" in caption
+    assert "Read each tension from its label." in caption
+    assert "on the concentration chart's scale" not in caption
+    assert not schematic.scale_text.isHidden()
 
 
 def test_each_container_is_painted_to_its_tension_and_an_off_scale_one_is_marked(

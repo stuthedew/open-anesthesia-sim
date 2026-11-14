@@ -9525,8 +9525,11 @@ holds, and its share bar gives each compartment's part of all the agent.
 **A container's fill height is the compartment's modelled tension, not an
 amount.** All containers of one run fill against one scale: the concentration
 chart's percent axis, from zero at the bottom to 3 MAC of the running agent at
-the top. So a height on the schematic and a height on the chart show the same
-tension. A container that holds more agent can stand lower than one that holds
+the top. So a container filled to some share of its height shows the same
+tension as a trace standing at that share of the chart's axis. A container is
+much shorter than the chart's plot, so its fill level does not line up with the
+chart's gridlines. The caption says so, and points to the tension printed under
+each container (`PL-8W1B`). A container that holds more agent can stand lower than one that holds
 less. At 60 min in a run with sevoflurane at a 1 MAC dial, fat holds a fifth of
 all the agent in the run, but its tension of 0.03% atm fills less than 1% of
 its container's height (`ROADMAP.md` § "v0.7.0 - the schematic"). At a 1 MAC

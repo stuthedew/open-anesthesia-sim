@@ -93,15 +93,21 @@ COMPARED_INSTANT_LINE_TEMPLATE: Final = "{run}, at {instant} of simulated time"
 SCHEMATIC_HEADING: Final = "Where the agent is: each compartment's tension and amount"
 
 #: The caption that says what a container's height means. A height is a
-#: tension on the concentration chart's scale. So the caption names that scale
-#: and says that a height is not an amount (`docs/MODEL.md` § "The compartment
-#: schematic: what its heights, amounts and share bar assert"). The caption is
-#: two lines rather than one wrapped line. Qt leaves a wrapped label's extra
-#: lines out of the minimum size that a View declares, so the containers'
-#: labels would lose the room in which their amounts are printed. The wording
-#: is a placeholder, but what the caption must say is not.
+#: tension, as a share of the concentration chart's range. So the caption names
+#: that range and says that a height is not an amount (`docs/MODEL.md` § "The
+#: compartment schematic: what its heights, amounts and share bar assert"). The
+#: containers are 96 px tall and the chart's plot is several hundred, and a
+#: Workspace can show the two side by side. A fill level read across to the
+#: chart's gridlines would give the wrong tension, so the caption says the
+#: heights do not line up with them and points to the printed value
+#: (`PL-8W1B`). The caption is separate lines rather than one wrapped line. Qt
+#: leaves a wrapped label's extra lines out of the minimum size that a View
+#: declares, so the containers' labels would lose the room in which their
+#: amounts are printed. The wording is a placeholder, but what the caption must
+#: say is not.
 SCALE_CAPTION_TEMPLATE: Final = (
-    "Fill height is tension, on the concentration chart's scale: 0 to {top}{unit} ({top_mac}).\n"
+    "Fill height is tension, as a share of the chart's range, 0 to {top}{unit} ({top_mac}).\n"
+    "Heights do not line up with the chart's gridlines. Read each tension from its label.\n"
     "A container's height is its tension, not its amount of agent."
 )
 
