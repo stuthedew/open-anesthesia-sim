@@ -6,7 +6,7 @@ effort: L
 status: ready
 classes: safety
 feature: numbers-outside-their-valid-range
-touches: src/anesthesia_sim/core, tests/unit, docs/MODEL.md
+touches: src/anesthesia_sim/core, tests/unit, tests/integration, docs/MODEL.md, docs/ARCHITECTURE.md, .claude/rules/core-domain.md
 deferred-from: v0.7.0 - filed 2026-11-11, after the gate froze; a large structural change whose design waits on the owner's answer
 added: 2026-11-11
 payoff: every number that crosses a function boundary in core/ is either a checked type or on one short list that says why it is bare, so a new unchecked way in fails a test the day it is written
@@ -237,3 +237,34 @@ was reverted. It raised four queries, each answered in the file:
 The editor also noted that the reason strings used "types" as a verb with the
 item id as its subject. Each now ends "It is to get a checked type …
 (PL-LHCL)".
+
+**Built 2026-11-11, step (b): the blood-flow type, which closes `PL-GKG4`.**
+`PL-GKG4`'s item has the record: the two types in `core/blood_flow.py`, the
+failed-first run, and the four decisions taken while building. The bare list
+went from 173 to 165, and the reasons `BLOOD_FLOW` and `PERFUSION_FRACTION`
+are gone. Step (a)'s open question is answered there: `inf` is the result for
+a flow too small for a finite time constant, and the flow has no smallest
+positive value.
+
+**For steps (c) to (e), found while building (b).**
+
+- A type built from two quantities does not fit the tables in
+  `tests/unit/test_checked_number.py`, which build each type from one number.
+  `BloodFlow` is listed there in `BUILT_FROM_TWO_QUANTITIES`, and `_built`
+  builds it. The next derived type goes in the same two places.
+- `tests/unit/test_supported_range_edges.py` finds a quantity's type through
+  a `require_supported_*` guard in two modules. A function that takes a
+  `BloodFlow` or a `PerfusionFraction` is therefore not drawn. Step (d) should
+  read the edges from every `CheckedQuantity` subclass instead.
+- CPython's `sum` adds a `float` subclass without the compensation it gives a
+  plain `float`. Wherever a bare number that is summed becomes a checked type,
+  add it as `float(value)`, or the sum can change in its last digit.
+- The cost of a checked type built on every step, measured 2026-11-11 on a
+  loaded machine with `timeit` (best of 15 repeats), `main` at `e084968ac`
+  against step (b): `TissueGroup.blood_flow_l_min_at` 0.10 us against 0.28 us,
+  `AgentUptakeSystem.settings_key` 2.4 to 2.6 us against 3.4 us,
+  `equation_settings` 11.2 to 11.8 us against 10.8 to 11.3 us, and one
+  `advance` of 0.1 s 34 to 37 us on both. So one derived type built three
+  times a step costs about 0.6 us and does not move the step. Step (e) should
+  measure the agent amounts the same way before typing them, because a step
+  reads and writes those far more often.

@@ -27,7 +27,6 @@ a guard stops firing, this test fails and names the input.
 """
 
 import itertools
-import sys
 from collections.abc import Callable
 from math import inf, isfinite, nextafter
 from typing import NamedTuple
@@ -38,6 +37,7 @@ from test_numerical_envelope import MOST_SQUARINGS, _squarings
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidator
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.blood import VenousBloodCompartment
+from anesthesia_sim.core.blood_flow import BloodFlow, PerfusionFraction
 from anesthesia_sim.core.circuit import BreathingCircuit
 from anesthesia_sim.core.concentration import Fraction, Percent, percent_from_fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationNumericalError
@@ -212,13 +212,23 @@ FLOW_CORNERS = tuple(
 """Each of the three flows at zero, at the smallest float and at its supported maximum."""
 
 
-def _tissue_flows_l_min(cardiac_output_l_min: float) -> tuple[float, float, float]:
-    """Split the cardiac output so that the three shares sum to it exactly."""
+def _tissue_flows_l_min(cardiac_output_l_min: float) -> tuple[BloodFlow, BloodFlow, BloodFlow]:
+    """Split the cardiac output so that the three shares sum to it exactly.
+
+    The third share is what the first two leave, so it is not the output times
+    a fraction. Each share is built as the whole of a cardiac output of its
+    own size, which is the same number (`PL-GKG4`).
+    """
 
     vessel_rich = cardiac_output_l_min * PERFUSION_FRACTIONS[0]
     muscle = cardiac_output_l_min * PERFUSION_FRACTIONS[1]
+    fat = cardiac_output_l_min - vessel_rich - muscle
 
-    return vessel_rich, muscle, cardiac_output_l_min - vessel_rich - muscle
+    return (
+        BloodFlow(CardiacOutput(vessel_rich), PerfusionFraction(1.0)),
+        BloodFlow(CardiacOutput(muscle), PerfusionFraction(1.0)),
+        BloodFlow(CardiacOutput(fat), PerfusionFraction(1.0)),
+    )
 
 
 def _settings(
@@ -395,7 +405,7 @@ def _system(
         TissueGroup(
             name=name,
             volume_l=CompartmentVolume(corner.tissue_l),
-            perfusion_fraction=perfusion_fraction,
+            perfusion_fraction=PerfusionFraction(perfusion_fraction),
             tissue_gas_partition_coefficient=PartitionCoefficient(
                 corner.tissue_blood * corner.blood_gas
             ),
@@ -499,11 +509,13 @@ def _require_the_compartments_alone(corner: Corner) -> None:
     """Step each compartment on its own at the shortest and the longest step it accepts.
 
     A compartment stepped alone accepts a step from `MINIMUM_SIMULATION_STEP_S`
-    up to the supported run length, as `require_compartment_step` checks. A
-    tissue or the venous pool accepts any finite blood flow that is not
-    negative. So the blood flow also runs at the largest float. The circuit's
-    exchange must close its own agent balance. Every amount must lie between its
-    starting value and its equilibrium.
+    up to the supported run length, as `require_compartment_step` checks. The
+    venous pool's blood flow is the cardiac output, and a tissue's is a
+    perfusion fraction of it. So each runs at zero, at the smallest positive
+    float and at the largest supported cardiac output, the largest flow that
+    can be built (`PL-GKG4`). The circuit's exchange must close its own agent
+    balance. Every amount must lie between its starting value and its
+    equilibrium.
     """
 
     for step_s in (MINIMUM_SIMULATION_STEP_S, MAXIMUM_ELAPSED_SIMULATION_TIME_S):
@@ -533,16 +545,16 @@ def _require_the_compartments_alone(corner: Corner) -> None:
                 # its balance is held to a few roundings: 0.73 of one measured.
                 assert abs(unaccounted_l) <= 4 * MACHINE_EPSILON * max(owed_l, 1e-300)
 
-            for blood_flow_l_min in (
-                0.0,
-                SMALLEST_SUBNORMAL,
-                MAXIMUM_CARDIAC_OUTPUT_L_MIN,
-                sys.float_info.max,
+            for cardiac_output_l_min in map(
+                CardiacOutput, (0.0, SMALLEST_SUBNORMAL, MAXIMUM_CARDIAC_OUTPUT_L_MIN)
             ):
+                # The tissue takes the whole cardiac output, so its flow runs to the
+                # largest blood flow that can be built.
+                blood_flow_l_min = BloodFlow(cardiac_output_l_min, PerfusionFraction(1.0))
                 tissue = TissueGroup(
                     name="corner",
                     volume_l=CompartmentVolume(corner.tissue_l),
-                    perfusion_fraction=1.0,
+                    perfusion_fraction=PerfusionFraction(1.0),
                     tissue_gas_partition_coefficient=PartitionCoefficient(
                         corner.tissue_blood * corner.blood_gas
                     ),
@@ -559,7 +571,7 @@ def _require_the_compartments_alone(corner: Corner) -> None:
                     tissue.advance(
                         target, step_s, blood_flow_l_min, PartitionCoefficient(corner.blood_gas)
                     ),
-                    venous.advance(target, step_s, blood_flow_l_min),
+                    venous.advance(target, step_s, cardiac_output_l_min),
                 )
 
                 for compartment, held_l, change_l in zip(
@@ -614,15 +626,6 @@ def _build_compartment_step(value: float) -> float:
     return value
 
 
-def _build_perfusion_fraction(value: float) -> TissueGroup:
-    return TissueGroup(
-        name="edge",
-        volume_l=CompartmentVolume(1.0),
-        perfusion_fraction=value,
-        tissue_gas_partition_coefficient=PartitionCoefficient(1.0),
-    )
-
-
 def _build_step_count_at_the_run_step(value: float) -> int:
     count = StepCount(int(value))
     require_supported_step_count(count, SimulationStep(0.1))
@@ -675,7 +678,7 @@ EDGES = (
     ),
     Edge("the coupled system's dial", _build_dial_of_the_coupled_system, 0.0, 99.0),
     Edge("a fraction the coupled system opens from", _build_coupled_system_opening_at, 0.0, 0.99),
-    Edge("a tissue group's perfusion fraction", _build_perfusion_fraction, SMALLEST_SUBNORMAL, 1.0),
+    Edge("PerfusionFraction", PerfusionFraction, SMALLEST_SUBNORMAL, 1.0),
 )
 """Every input with an interval of its own, and the interval that `docs/MODEL.md` records for it.
 

@@ -11,6 +11,10 @@ types. They are:
   `core/supported_ranges.py`.
 - The compartment volume `CompartmentVolume` and the partition coefficient
   `PartitionCoefficient`, in `core/numerical_envelope.py`.
+- A tissue group's perfusion fraction `PerfusionFraction` and its blood flow
+  `BloodFlow`, in `core/blood_flow.py`. A `BloodFlow` is built from a cardiac
+  output and a perfusion fraction, where every other type is built from one
+  number.
 
 So a value of one of these types proves that its check ran
 (`.claude/rules/core-domain.md` § "A quantity with a check of its own is a
@@ -90,9 +94,13 @@ and `Percent` keep their own rejection of each other. Their message says to
 convert rather than to rebuild, because mixing up that pair is a missed
 conversion and not a swapped argument. The stored-value checks are
 `require_case_instant`, `require_step_count`, `require_simulation_step`, the
-flows' `require_*`, `require_fraction` and `require_percent`, and
-`require_compartment_volume` and `require_coefficient`. They all read the class
-hierarchy in the same way and reject in the same words (`PL-848D`, `PL-CX2C`).
+flows' `require_*`, `require_fraction` and `require_percent`,
+`require_compartment_volume` and `require_coefficient`, and
+`require_perfusion_fraction`. They all read the class hierarchy in the same
+way and reject in the same words (`PL-848D`, `PL-CX2C`). `require_blood_flow`
+reads the hierarchy in the same way and words its rejection differently,
+because a blood flow is built from two quantities and not from one number
+(`core/blood_flow.py`).
 
 **Minus zero is stored as zero** (`PL-LLMN`). `-0.0` equals zero and lies
 inside every closed interval here. Rejecting it would therefore reject the
@@ -123,6 +131,7 @@ names such a value as the flow it was built as.
 from __future__ import annotations
 
 import sys
+from collections.abc import Callable
 
 
 class CheckedQuantity:
@@ -145,19 +154,23 @@ class CheckedQuantity:
 
     __slots__ = ()
 
-    def __reduce__(self) -> tuple[type[CheckedQuantity], tuple[float | int]]:
+    def __reduce__(self) -> tuple[Callable[..., CheckedQuantity], tuple[float | int]]:
         """Rebuild the value through its own type's constructor, at every pickle protocol.
 
         At protocols 0 and 1, a `float` or `int` subclass is pickled through
         `copyreg._reduce_ex`. Without this method, loading it calls `float.__new__` or
-        `int.__new__` directly, so the type's own `__new__`, which runs the range check,
-        never runs. A hand-edited protocol-0 pickle loaded a `Fraction` of 1.5 and a
+        `int.__new__` directly, so the range check in the type's own `__new__` never
+        runs. A hand-edited protocol-0 pickle loaded a `Fraction` of 1.5 and a
         `StepCount` of -5 (`PL-5D1Z`, measured 2026-10-05). Protocol 2 and later,
-        `copy.copy` and `copy.deepcopy` already called the type itself. This method
+        `copy.copy` and `copy.deepcopy` already call the type itself. This method
         makes every protocol call it, so a value edited outside its range is refused on
-        load with the constructor's own exception. A `Fraction` or `Percent` is rebuilt
-        under its type's default `name`, because neither stores the name it was built
-        with.
+        load with the constructor's own exception.
+
+        A `Fraction` or `Percent` is rebuilt under its type's default `name`, because
+        neither stores the name it was built with. `BloodFlow` has its own version of
+        this method, because it is built from two values (`core/blood_flow.py`). So the
+        first member of the pair that this method returns is typed as anything that
+        rebuilds the value. For every other type, it is the type itself.
         """
 
         number: float | int = int(self) if isinstance(self, int) else float(self)  # type: ignore[arg-type]
