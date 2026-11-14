@@ -4435,8 +4435,8 @@ the check refuses, because "could not measure" is not "measured, and all
 caught". Empty by default, which makes the check a note saying that nothing
 measured the tests. This repository sets it to `tools/diff_mutation.py
 --verdict`, which mutates the functions the branch changed in the modules that
-`pyproject.toml`'s `[tool.mutmut]` table names, and runs the simulator's unit
-tests against each mutant:
+mutmut mutates, by the rule in `docs/mutation-testing.md` § "Which modules are
+mutated", and runs the simulator's unit tests against each mutant:
 
 - A mutant counts only where a line it changes is one the branch changed. One
   on a line the branch left alone is named in a note and not counted, since

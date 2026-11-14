@@ -22,7 +22,11 @@ from anesthesia_sim.core.numerical_envelope import (
     require_coefficient,
     require_compartment_volume,
 )
-from anesthesia_sim.core.supported_ranges import require_compartment_step
+from anesthesia_sim.core.supported_ranges import (
+    CardiacOutput,
+    require_cardiac_output,
+    require_compartment_step,
+)
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.validation import (
     require_a_capacity_with_room_for_the_agent,
@@ -192,8 +196,8 @@ class VenousBloodCompartment:
 
         return self.agent_amount_l / self.capacity_l
 
-    def time_constant_s(self, blood_flow_l_min: float) -> float:
-        """The venous mixing time constant $`\\tau_v = V_v/Q`$.
+    def time_constant_s(self, cardiac_output_l_min: CardiacOutput) -> float:
+        """Return the venous mixing time constant $`\\tau_v = V_v/Q`$.
 
         `docs/MODEL.md` § "Venous blood" defines it. No partition coefficient
         appears, because the pool and the blood flowing through it are the same
@@ -202,23 +206,31 @@ class VenousBloodCompartment:
         group's time constant, and it is why this one is a mixing time rather
         than an uptake time.
 
-        It is `inf` at zero flow, as the tissue group's time constant is:
-        nothing circulates, so nothing mixes.
+        It is `inf` at zero cardiac output, as the tissue group's time
+        constant is at zero flow: nothing circulates, so nothing mixes.
+        It is also `inf` where the cardiac output is above zero but so small
+        that the quotient is larger than any `float`. The largest pool the
+        numerical envelope admits needs a cardiac output below about
+        3e-303 L/min for that. A pool stepped alone at such an output is left
+        unchanged. The exact change over the longest supported step, 24
+        hours, is less than 5e-296 L (`PL-GKG4`).
 
-        The flow $`Q`$ is an argument, because the pool stores none. For the
-        pool in a patient, it is the patient's cardiac output.
+        The pool's blood flow $`Q`$ is the whole cardiac output. It is an
+        argument, because the pool stores none. For the pool in a patient, it
+        is the patient's cardiac output. Until `PL-GKG4`, this argument was a
+        bare `float` that was checked only as finite and not negative.
 
         Raises:
-            TypeError: the flow is not an `int` or a `float`.
-            SimulationConfigurationError: the flow is negative or not finite.
+            TypeError: `cardiac_output_l_min` was not built as a
+                `CardiacOutput` (`core/supported_ranges.py`).
         """
 
-        require_nonnegative_finite("venous blood_flow_l_min", blood_flow_l_min)
+        require_cardiac_output(cardiac_output_l_min)
 
-        if blood_flow_l_min == 0.0:
+        if cardiac_output_l_min == 0.0:
             return inf
 
-        return SECONDS_PER_MINUTE * self.volume_l / blood_flow_l_min
+        return SECONDS_PER_MINUTE * self.volume_l / cardiac_output_l_min
 
     def set_partial_pressure_fraction(self, partial_pressure_fraction: Fraction) -> None:
         """Set the venous state from an equilibrium fraction.
@@ -237,7 +249,7 @@ class VenousBloodCompartment:
         self,
         tissue_return_partial_pressure_fraction: Fraction,
         simulation_step_s: float,
-        blood_flow_l_min: float,
+        cardiac_output_l_min: CardiacOutput,
     ) -> float:
         """Mix tissue return into venous blood exactly, for a constant return and flow.
 
@@ -255,9 +267,9 @@ class VenousBloodCompartment:
         Raises:
             TypeError: the tissue return fraction was not built as a
                 `Fraction`, which is the type that checks it lies in the range
-                0 to 1 (`core/concentration.py`).
-            SimulationConfigurationError: `blood_flow_l_min` is negative or not
-                finite, or `simulation_step_s` is outside the range that
+                0 to 1 (`core/concentration.py`), or the cardiac output was not
+                built as a `CardiacOutput`.
+            SimulationConfigurationError: `simulation_step_s` is outside the range that
                 `require_compartment_step` accepts (`PL-WP52`, `PL-YT3T`). The
                 step must be positive and finite, no shorter than
                 `MINIMUM_SIMULATION_STEP_S`, and no longer than the supported run
@@ -275,7 +287,7 @@ class VenousBloodCompartment:
             tissue_return_partial_pressure_fraction,
         )
         require_compartment_step("venous simulation_step_s", simulation_step_s)
-        time_constant_s = self.time_constant_s(blood_flow_l_min)
+        time_constant_s = self.time_constant_s(cardiac_output_l_min)
 
         initial_amount_l = self.agent_amount_l
         self.agent_amount_l = exponential_approach(

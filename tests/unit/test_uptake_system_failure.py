@@ -52,6 +52,7 @@ from anesthesia_sim.core.agent_simulation_validation import (
     AgentSimulationValidator,
 )
 from anesthesia_sim.core.alveolar import AlveolarCompartment
+from anesthesia_sim.core.blood_flow import PerfusionFraction
 from anesthesia_sim.core.circuit import BreathingCircuit
 from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.exceptions import (
@@ -764,11 +765,15 @@ def _with_tissue_fractions_written_past_their_guard(
     cardiac output. Each flow is formed from the output (`PL-HQF5`), and a
     fraction is written once (`PL-Z0HN`). This write bypasses that guard, as
     a rollback does, so that the settings record's own refusal can still be
-    reached. Scaled by 1.2 at 5.0 L/min, the flows sum to 6.0 L/min.
+    reached. Scaled by 1.2 at 5.0 L/min, the flows sum to 6.0 L/min. Each
+    scaled fraction is built as a `PerfusionFraction`, because a blood flow is
+    built only from one (`PL-GKG4`).
     """
 
     for tissue in system.patient.tissues:
-        object.__setattr__(tissue, "perfusion_fraction", tissue.perfusion_fraction * scale)
+        object.__setattr__(
+            tissue, "perfusion_fraction", PerfusionFraction(tissue.perfusion_fraction * scale)
+        )
 
 
 def test_a_stale_record_met_at_step_time_is_a_failed_step_stated_in_litres_per_minute() -> None:
