@@ -1,9 +1,11 @@
 ---
 id: PL-QRDQ
 title: No check runs the mutation run's first step, so a unit test that cannot run inside the mutation copy of the tree merges green: two did between 2026-11-09 and 2026-11-11 (PL-GP8G), and whether a check should run that step is undecided
-status: untriaged
+status: dropped
 feature: mutation-run-first-step
 added: 2026-11-11
+closed: 2026-11-11
+reason: Duplicate of PL-PG0S, filed the same day for the same gap. PL-PG0S is claimed and being worked on origin/claude/project-thread-ihoevy. This brief's cost note and its cheaper form, running the selected tests once under MUTANT_UNDER_TEST=stats only when a pull request changes tests/unit/, are there for that item's session to read.
 ---
 
 **Problem.** No check runs the mutation run's first step, so a unit test that cannot run inside the mutation copy of the tree merges green: two did between 2026-11-09 and 2026-11-11 (PL-GP8G), and whether a check should run that step is undecided

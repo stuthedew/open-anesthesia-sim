@@ -474,13 +474,43 @@ def tabled(repo: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     unit = Unit("src/pkg/core/model.py", None, "outer", 11, 15)
     changed = Change("main", [unit], {})
     monkeypatch.setattr(diff_mutation, "branch_change", lambda root, base, table: changed)
+    # Every run lists the changed functions' mutants first. No mutmut is
+    # installed for the unit tests, so the listing fails unless a test stubs it.
+    monkeypatch.setattr(diff_mutation, "listing", lambda root, change: None)
     return repo
 
 
 def _stub_run(monkeypatch: pytest.MonkeyPatch, root: Path, code: int, log_text: str) -> None:
     log = root / "run.log"
     log.write_text(log_text, encoding="utf-8")
-    monkeypatch.setattr(diff_mutation, "run", lambda root, patterns, table: (code, log))
+    monkeypatch.setattr(diff_mutation, "run", lambda root, patterns, table, only=None: (code, log))
+
+
+def _record_runs(
+    monkeypatch: pytest.MonkeyPatch, root: Path, found: dict[str, str]
+) -> list[tuple[list[str], list[str] | None]]:
+    """Stub a mutmut run that reports `found`, and return the list that records its calls.
+
+    Each call adds the patterns it was given and the files it may mutate.
+    """
+    ran: list[tuple[list[str], list[str] | None]] = []
+    log = root / "run.log"
+    log.write_text("done\n", encoding="utf-8")
+
+    def run(
+        root: Path,
+        patterns: list[str],
+        table: object,
+        tests: object = None,
+        only: list[str] | None = None,
+    ) -> tuple[int, Path]:
+        ran.append((list(patterns), None if only is None else list(only)))
+        return 0, log
+
+    monkeypatch.setattr(diff_mutation, "run", run)
+    monkeypatch.setattr(diff_mutation, "statuses", lambda root: dict(found))
+    monkeypatch.setattr(diff_mutation, "recorded_exit_codes", lambda root, paths: {})
+    return ran
 
 
 def test_main_refuses_to_report_when_mutmut_fails(
@@ -769,19 +799,109 @@ def test_main_runs_mutmut_on_the_listed_names_alone(
     monkeypatch.setattr(diff_mutation, "listing", lambda root, change: listed)
     changed = Change("main", [OUTER], {}, {"src/pkg/core/model.py": {12}})
     monkeypatch.setattr(diff_mutation, "branch_change", lambda root, base, table: changed)
-    ran: list[list[str]] = []
-    log = tabled / "run.log"
-    log.write_text(f"{NOTHING_MATCHES}\n", encoding="utf-8")
-
-    def run(root: Path, patterns: list[str], table: object) -> tuple[int, Path]:
-        ran.append(list(patterns))
-        return 1, log
-
-    monkeypatch.setattr(diff_mutation, "run", run)
+    ran = _record_runs(monkeypatch, tabled, {"pkg.core.model.x_outer__mutmut_2": "killed"})
     monkeypatch.setattr(diff_mutation, "compare_tests", lambda root, change, table: None)
 
     assert main(["--root", str(tabled), "--base", "main", "--verdict"]) == 0
-    assert ran == [["pkg.core.model.x_outer__mutmut_2"]]
+    assert ran == [(["pkg.core.model.x_outer__mutmut_2"], ["src/pkg/core/model.py"])]
+
+
+def test_a_run_without_the_verdict_names_every_mutant_of_each_changed_function(
+    tabled: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    names = ["pkg.core.model.x_outer__mutmut_1", "pkg.core.model.x_outer__mutmut_2"]
+    listed = diff_mutation.Listing(dict.fromkeys(names, OUTER_SHOWN), frozenset({names[1]}))
+    monkeypatch.setattr(diff_mutation, "listing", lambda root, change: listed)
+    ran = _record_runs(monkeypatch, tabled, dict.fromkeys(names, "killed"))
+
+    assert main(["--root", str(tabled), "--base", "main"]) == 0
+    # The run is given the mutants' names, so that mutmut's pass with no mutant
+    # applied runs only their tests. The run may mutate only the changed file,
+    # so that no other file's functions are wrapped.
+    assert ran == [(names, ["src/pkg/core/model.py"])]
+    assert "pkg.core.model.outer: 2 mutants - 2 killed" in capsys.readouterr().out
+
+
+def test_a_run_whose_listing_failed_passes_one_glob_for_each_changed_function(
+    tabled: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ran = _record_runs(monkeypatch, tabled, {"pkg.core.model.x_outer__mutmut_1": "killed"})
+
+    assert main(["--root", str(tabled), "--base", "main"]) == 0
+    assert ran == [(["pkg.core.model.x_outer__mutmut_*"], ["src/pkg/core/model.py"])]
+
+
+def test_a_run_without_the_verdict_runs_nothing_when_the_listing_holds_no_mutant(
+    tabled: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    listed = diff_mutation.Listing({}, frozenset())
+    monkeypatch.setattr(diff_mutation, "listing", lambda root, change: listed)
+    monkeypatch.setattr(
+        diff_mutation, "run", lambda root, patterns, table, only=None: pytest.fail("ran")
+    )
+
+    assert main(["--root", str(tabled), "--base", "main"]) == 0
+    assert "  pkg.core.model.outer: no mutants." in capsys.readouterr().out
+
+
+def test_main_refuses_a_run_that_finds_none_of_the_mutants_the_listing_named(
+    tabled: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # The listing and the run each generate the mutants. When a run finds none
+    # of the listed names, it generated different mutants, and "no mutants" would
+    # be a wrong result for functions the listing shows to have some.
+    listed = diff_mutation.Listing(
+        {"pkg.core.model.x_outer__mutmut_1": OUTER_SHOWN},
+        frozenset({"pkg.core.model.x_outer__mutmut_1"}),
+    )
+    monkeypatch.setattr(diff_mutation, "listing", lambda root, change: listed)
+    _stub_run(monkeypatch, tabled, 1, f"AssertionError: {NOTHING_MATCHES}\n")
+
+    assert main(["--root", str(tabled), "--base", "main"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "found none of the 1 mutants that the listing named" in captured.err
+
+
+def test_run_starts_mutmut_with_the_files_it_may_mutate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    started: list[tuple[str, ...]] = []
+
+    def python(root: Path, *args: str, log: Path | None = None):
+        started.append(args)
+        return _completed("")
+
+    monkeypatch.setattr(diff_mutation, "_python", python)
+    table = {"pytest_add_cli_args_test_selection": ["@selected-tests.txt"]}
+    tests = ["tests/unit/test_a.py"]
+
+    diff_mutation.run(
+        tmp_path, ["pkg.b.x_f__mutmut_1"], table, tests, only=["src/b.py", "src/a.py"]
+    )
+    diff_mutation.run(tmp_path, [], table, tests)
+
+    script = diff_mutation.RUN_SCRIPT
+    assert started == [
+        ("-c", script, '["src/a.py", "src/b.py"]', "pkg.b.x_f__mutmut_1"),
+        # Under `--all`, the run is given `null`, so the files mutmut may mutate
+        # (`only_mutate`) stay as `pyproject.toml` gives them.
+        ("-c", script, "null"),
+    ]
+
+
+def test_a_compare_run_mutates_the_compared_files_alone(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ran = _record_runs(monkeypatch, tmp_path, {"pkg.app.formatting.x_f__mutmut_1": "killed"})
+    files = ["src/pkg/app/formatting.py"]
+
+    found = diff_mutation._compared_statuses(
+        tmp_path, ["pkg.app.*"], ["tests/unit/test_d.py"], TABLE, files
+    )
+
+    assert ran == [(["pkg.app.*"], files)]
+    assert found == {"pkg.app.formatting.x_f__mutmut_1": "killed"}
 
 
 def test_main_runs_nothing_when_no_listed_mutant_can_change_the_verdict(
@@ -789,7 +909,9 @@ def test_main_runs_nothing_when_no_listed_mutant_can_change_the_verdict(
 ) -> None:
     listed = diff_mutation.Listing({"pkg.core.model.x_outer__mutmut_1": OUTER_SHOWN}, frozenset())
     monkeypatch.setattr(diff_mutation, "listing", lambda root, change: listed)
-    monkeypatch.setattr(diff_mutation, "run", lambda root, patterns, table: pytest.fail("ran"))
+    monkeypatch.setattr(
+        diff_mutation, "run", lambda root, patterns, table, only=None: pytest.fail("ran")
+    )
     monkeypatch.setattr(diff_mutation, "compare_tests", lambda root, change, table: None)
 
     assert main(["--root", str(tabled), "--base", "main", "--verdict"]) == 0
@@ -1373,3 +1495,66 @@ def test_a_changed_test_the_table_deselects_is_not_compared(repo: Path, runs: Ru
 
     assert compare_tests(repo, change, table) == Compared()
     assert runs.asked == []
+
+
+#: A stand-in for `COPY_SCRIPT`, which needs mutmut: it builds `mutants/` from
+#: the source and the tests alone, as mutmut does for a file that `also_copy`
+#: does not name.
+_COPY_SOURCE_AND_TESTS = """
+import shutil
+shutil.rmtree("mutants", ignore_errors=True)
+shutil.copytree("src", "mutants/src")
+shutil.copytree("tests", "mutants/tests")
+"""
+
+#: A simulator unit test that reads a file outside the source and the tests.
+_READS_A_FILE = """\
+from pathlib import Path
+
+import anesthesia_sim
+
+
+def test_reads_the_notes() -> None:
+    assert Path("notes.txt").read_text(encoding="utf-8") == "kept"
+"""
+
+
+@pytest.fixture
+def copyable(repo: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """`repo` with a simulator unit test that reads `notes.txt`, and a copy step without mutmut."""
+    _write(repo, "pyproject.toml", TABLE_TOML)
+    _write(repo, "src/anesthesia_sim/__init__.py", "")
+    _write(repo, "tests/unit/test_notes.py", _READS_A_FILE)
+    _write(repo, "notes.txt", "kept")
+    monkeypatch.setattr(diff_mutation, "COPY_SCRIPT", _COPY_SOURCE_AND_TESTS)
+    return repo
+
+
+def test_first_step_fails_on_a_test_that_reads_a_file_the_copy_does_not_hold(
+    copyable: Path, capfd: pytest.CaptureFixture[str]
+) -> None:
+    """The case `PL-GP8G` found on `main`: the test passes in the tree and fails in the copy."""
+    assert main(["--root", str(copyable), "--first-step"]) == 1
+    assert "every mutation run would stop at its first step" in capfd.readouterr().out
+    assert (copyable / "mutants" / "selected-tests.txt").read_text(encoding="utf-8") == (
+        "tests/unit/test_notes.py\n"
+    )
+
+
+def test_first_step_passes_once_the_copy_holds_the_file(
+    copyable: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        diff_mutation,
+        "COPY_SCRIPT",
+        _COPY_SOURCE_AND_TESTS + 'shutil.copy2("notes.txt", "mutants/notes.txt")\n',
+    )
+    assert main(["--root", str(copyable), "--first-step"]) == 0
+
+
+def test_first_step_refuses_when_the_copy_cannot_be_built(
+    copyable: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(diff_mutation, "COPY_SCRIPT", "raise SystemExit(3)")
+    assert main(["--root", str(copyable), "--first-step"]) == 1
+    assert "no answer: mutmut could not build mutants/ (exit 3)" in capsys.readouterr().err
