@@ -3491,7 +3491,8 @@ at a mean end-tidal 0.63 ± 0.11% sevoflurane and 0.36 ± 0.08% isoflurane
 (Table 1, p. 1014). Those figures are lower than the band mostly because the
 patients were older, with mean ages of 45.9 and 45.1 years, so they are not a
 like-for-like check of the band. The band is drawn on a single adult MAC whose
-source states no age, and which lies close to Katoh's age-40 MAC, as above.
+source states no age, and which lies close to Katoh's MAC at the age the
+paragraph above uses.
 <!-- not-restated: 0.36 -->
 <!-- provenance: data/agents/sevoflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.05 -->
 <!-- provenance: data/agents/isoflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.05 -->
