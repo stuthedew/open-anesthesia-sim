@@ -3,11 +3,13 @@ id: PL-ZD8Y
 title: docs/interface-provenance.md says Shift moves a border alone here, the reverse of Blender, only in the keyboard entry; the border-chain entry says nothing about Shift, and no divergence is recorded (copy editor structure read, 2026-11-05)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: interface-provenance-structure
 touches: docs/interface-provenance.md
 added: 2026-11-05
+closed: 2026-11-14
+pr: 2167
 payoff: a reader learns what Shift does to a border drag here and how it compares with Blender, from one consistent record
 verify: grep -qE '^\*\*Shift' docs/interface-provenance.md
 ---
