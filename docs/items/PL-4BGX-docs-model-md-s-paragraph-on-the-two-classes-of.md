@@ -68,22 +68,25 @@ joins v0.7.0's frozen list rather than being deferred by its capture date.
 `docs/MODEL.md` § "Delivery-limit and MAC parameters" that the owner could not
 follow is replaced by a paragraph that names the two designs in Dosch and
 Tharp's terms. The sevoflurane and isoflurane vaporizers are variable-bypass
-vaporizers, and the Tec 6 is an injector, or gas–vapour blender, which
+vaporizers, and the Tec 6 is a gas–vapour blender, which
 Johnston et al. 1994's abstract calls "an electrically heated, pressurized,
 electromechanically coupled dual-circuit blender". The paragraph says the
 model need not tell them apart because it fixes ambient pressure at 760 mmHg.
 That value was checked in `docs/MODEL.md` § "Assumptions" and in
 `core/liquid_agent.py`, where the reference pressure is one standard
 atmosphere, 101 325 Pa. In § "Known limitations", "respond to falling ambient
-pressure in opposite directions", "the dial needs no altitude correction" and
-"The direction of each class's response is not in doubt, and neither is the
-contrast between the two" were removed or softened. Dosch and Tharp's
-statement that the effect of altitude is "controversial" is quoted in their
-place, with their report that Dorsch and Dorsch say to consult each model's
+pressure in opposite directions" became "respond differently", and "the dial
+needs no altitude correction" and "The direction of each class's response is
+not in doubt, and neither is the contrast between the two" were removed. The
+Tec 6's response is still stated as fact, because its manufacturer's
+instruction and Andrews and Johnston's description of its mechanism support
+it. Dosch and Tharp's statement that the effect of altitude is
+"controversial" is quoted as applying to how large the variable-bypass
+response is and whether its dial needs correcting, with their report that Dorsch and Dorsch say to consult each model's
 operator's manual. The Datex-Ohmeda and Andrews and Johnston quotations are
 kept unchanged. § "Assumptions" said the two classes "diverge in opposite
-directions" and pointed at § "Known limitations"; it now says they are said to
-respond differently, so the two sections agree. Dosch and Tharp is added to the
+directions" and pointed at § "Known limitations"; it now says they respond
+differently, so the two sections agree. Dosch and Tharp is added to the
 list of sources as tier 2, and the owner-attested count reads "two of those
 six".
 
@@ -104,3 +107,12 @@ primary source is kept. Docs sweep: `docs/MODEL.md` § "Assumptions",
 `docs/INTERFACE.md`, `README.md`, `docs/machine-survey.md`,
 `docs/machine-abstraction.md` and `docs/ARCHITECTURE.md` (no altitude
 statement); `tests/` (no test quotes the changed text).
+
+Blind review, 2026-11-16. The first pass found that the draft hedged both
+classes as "said to respond differently", which put Dosch and Tharp's
+unnamed "other sources" against the Tec 6's direction as well, although its
+manufacturer and a primary description support it. The hedge now applies only
+to the variable-bypass response. The pass also found that calling the Tec 6
+"an injector" beside the sentence saying an injector into the circle is not
+bound by the 18% maximum could reverse that sentence's meaning, so the new
+paragraph calls it a gas–vapour blender only.

@@ -328,7 +328,7 @@ divided by another.
 ambient pressure being 760 mmHg.** At 760 mmHg, both classes of vaporizer deliver the
 same partial pressure at a given dial position, so no equation, stored value
 or displayed number here is wrong at sea level. Away from 760 mmHg, the two
-classes are said to respond differently, as § "Known limitations" describes.
+classes respond differently, as § "Known limitations" describes.
 
 **For developers.** The vaporizer control is `ControlInput.DELIVERED` in
 `app/control_record.py`. Each recorded change to it carries the unit *percent
@@ -3743,11 +3743,11 @@ the circle, is not bound by it.
 **These vaporizers work in two different ways.** The sevoflurane and isoflurane vaporizers are
 variable-bypass vaporizers: the dial splits the fresh gas between a bypass and a chamber in which
 the gas flows over the liquid agent and leaves saturated with vapour. The Tec 6 is not a
-variable-bypass vaporizer. Dosch and Tharp call it an injector, or gas–vapour blender, which heats
-desflurane and injects pure vapour into the fresh gas (§ "Known limitations" gives their full
+variable-bypass vaporizer. Dosch and Tharp call it a gas–vapour blender, which heats desflurane
+and adds pure vapour to the fresh gas (§ "Known limitations" gives their full
 citation). Johnston et al. 1994, the source of desflurane's maximum, describe it in their abstract
 as "an electrically heated, pressurized, electromechanically coupled dual-circuit blender". The two
-designs are said to behave differently away from sea level (§ "Known limitations"). The model fixes
+designs behave differently away from sea level (§ "Known limitations"). The model fixes
 ambient pressure at one atmosphere, 760 mmHg (§ "Assumptions"), so it does not need to know which
 design each maximum comes from.
 
@@ -6494,8 +6494,7 @@ corresponding real device. That user is not delivering the same anesthetic,
 and nothing else in the simulator says so. The two pressures have no test yet
 (`PL-LP96`). The delivered-concentration control
 is a vaporizer dial, and this project's three agents are drawn from two
-classes of vaporizer that are said to respond differently to falling ambient
-pressure.
+classes of vaporizer that respond differently to falling ambient pressure.
 <!-- not-restated: 6 % -->
 
 **The real devices for sevoflurane and isoflurane are variable-bypass
@@ -6551,7 +6550,10 @@ through gives a delivered partial pressure that *overshoots* rather than holds
 steady: on that arithmetic alone, about 16% high at 585 mmHg, where the
 $`1/P`$ form predicts a flat line
 (`test_the_variable_bypass_overshoot_at_altitude_follows_from_the_fuller_form`).
-Dosch and Tharp call the effect of altitude on vaporizer performance
+The Tec 6's response rests on its manufacturer's instruction and on Andrews and
+Johnston's description of its mechanism, both quoted above. How large the
+variable-bypass response is, and whether its dial needs correcting, is less
+settled. Dosch and Tharp call the effect of altitude on vaporizer performance
 "controversial". They write that "Some sources state that variable bypass types
 need not be adjusted for moderate changes in barometric pressure, but the Tec 6
 must be dialed up beyond the desired dose at higher altitudes. Other sources
