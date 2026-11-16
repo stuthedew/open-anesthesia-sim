@@ -136,8 +136,12 @@ CHOOSE_A_VIEW: Final = "Choose a View from the menu above."
 #: its widget's own minimum size hint.
 NO_DECLARED_MINIMUM: Final = PixelSize(0, 0)
 
-# A release number as `pyproject.toml` writes it.
-_VERSION: Final = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+")
+# regex: a release number as `pyproject.toml` writes it, three whole numbers
+# with no leading zero, as Semantic Versioning 2.0.0 item 2 requires. The notice
+# shows this number to the reader, and "0.07.0" would name a release that was
+# never made (`PL-3WFF`). `[0-9]` matches only ASCII digits, where `\d` matches
+# any Unicode digit.
+_VERSION: Final = re.compile(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)")
 
 
 @dataclass(frozen=True)
@@ -231,7 +235,7 @@ class RetiredTag:
         if _VERSION.fullmatch(self.version) is None:
             raise ValueError(
                 f"the tag {self.kind!r} was retired in a release written as three "
-                f"dot-separated whole numbers, not {self.version!r}"
+                f"dot-separated whole numbers with no leading zero, not {self.version!r}"
             )
 
         if self.successor is not None and not isinstance(self.successor, ViewKind):

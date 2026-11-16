@@ -408,7 +408,7 @@ def cost_shown(delivered: DeliveredShown, preferences: Preferences) -> CostShown
     )
 
 
-# A figure that the reader types into the price entry may hold only digits,
+# regex: a figure that the reader types into the price entry may hold only digits,
 # with at most one decimal point. A sign, an exponent, a thousands separator
 # or a decimal comma is refused rather than guessed at, because "1,250" could
 # mean 1250 or 1.25 (`PL-1P15`).

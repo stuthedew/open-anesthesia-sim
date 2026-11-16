@@ -8,19 +8,14 @@ call or gives it a `regex:` reason. Never add one: a new call carries its
 reason beside it instead.
 
 Taken on 2026-11-03 (`PL-7JYV`): 346 calls in 73 files, under 126 keys.
-Reviewing them for a parser or string method that does the job better is
-`PL-3WFF` for the six under `src/` and `PL-8FT2` for the rest.
+`PL-3WFF` reviewed the six under `src/`, kept each one and wrote its reason
+beside it, so none is listed here. Reviewing the rest for a parser or string
+method that does the job better is `PL-8FT2`.
 """
 
 GRANDFATHERED_REGEX: dict[str, dict[tuple[str, str], int]] = {
     ".claude/hooks/shell_split.py": {("<module>", "compile"): 2},
     ".claude/hooks/thread_hooks.py": {("_matches", "fullmatch"): 1},
-    "src/anesthesia_sim/app/agent_cost.py": {("<module>", "compile"): 1},
-    "src/anesthesia_sim/app/currency_code.py": {("<module>", "compile"): 1},
-    "src/anesthesia_sim/app/preferences.py": {("<module>", "compile"): 1},
-    "src/anesthesia_sim/app/view_registry.py": {("<module>", "compile"): 1},
-    "src/anesthesia_sim/layout/run_identity.py": {("<module>", "compile"): 1},
-    "src/anesthesia_sim/layout/tree.py": {("<module>", "compile"): 1},
     "subprojects/docket/src/docket/arming.py": {("<module>", "compile"): 3},
     "subprojects/docket/src/docket/checks.py": {
         ("<module>", "compile"): 12,

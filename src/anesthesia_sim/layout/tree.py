@@ -109,7 +109,7 @@ TREE_DEPTH_MAXIMUM: Final = 32
 # can never be mistaken for prose.
 VIEW_KIND_MAXIMUM_LENGTH: Final = 40
 
-# The tag syntax from `PL-R1WQ` Q1: lowercase snake case, beginning with a
+# regex: the tag syntax from `PL-R1WQ` Q1 is lowercase snake case, beginning with a
 # letter. The pattern sets no length, because each kind of tag sets its own
 # limit. It is matched whole with `fullmatch`, because `$` also matches before a
 # trailing newline and would accept "chart\n".
