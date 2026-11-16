@@ -241,7 +241,7 @@ def test_a_registered_kind_has_no_notice() -> None:
 
 
 def test_the_agent_accounting_is_the_one_kind_that_must_stay_reachable() -> None:
-    """`docs/MODEL.md` § "Minimum displayed outputs" names the agent accounting alone."""
+    """`docs/INTERFACE.md` § "Minimum displayed outputs" names the agent accounting alone."""
 
     assert REQUIRED_REACHABLE == ("agent_accounting",)
     assert {tag for tag, entry in REGISTERED.items() if entry.required_reachable} == {

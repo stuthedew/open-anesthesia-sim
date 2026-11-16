@@ -314,3 +314,128 @@ def test_lost_reads_the_fork_and_a_new_item_file(
     assert "  gone  pp. 161-162  (fork line 21:" in out
     assert "  moved 6 L/min  (fork line 15:" in out
     assert "0 equations, declarations, code spans, citations and numbers are held more times" in out
+
+
+#: A document whose first section points at its second, which `move` takes.
+SPLIT_DOCUMENT = """\
+# Model
+
+## Hazards
+
+The readout shows 6 L/min (§ "Equations" below), as `PL-B2B2` decided.
+
+## Equations
+
+Fresh gas enters at 6 L/min, per § "Hazards" above and § "Wash-in".
+
+### Wash-in
+
+```math
+F_A = 1 - e^{-t/\\tau}
+```
+"""
+
+CITING_MODULE = '''\
+"""A module that cites both documents' sections.
+
+See `docs/MODEL.md` § "Wash-in" and `docs/MODEL.md` § "Hazards".
+"""
+
+MESSAGE = 'refused (docs/MODEL.md, "Equations")'
+#: See `docs/MODEL.md` § "Hazards" and § "Equations".
+STALE = 'refused (docs/MODEL.md, "A heading nobody wrote")'
+'''
+
+
+def _split_repository(tmp_path: Path) -> Path:
+    """A repository on a work branch, with the document, a title for its new half and a citer."""
+    _git(tmp_path, "init", "-q", "-b", "main")
+    for key, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        _git(tmp_path, "config", key, value)
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "src").mkdir()
+    (tmp_path / "docs/MODEL.md").write_text(SPLIT_DOCUMENT, encoding="utf-8")
+    (tmp_path / "src/citing.py").write_text(CITING_MODULE, encoding="utf-8")
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-qm", "seed")
+    _git(tmp_path, "checkout", "-qb", "work")
+    (tmp_path / "docs/INTERFACE.md").write_text("# Interface\n\n", encoding="utf-8")
+    return tmp_path
+
+
+def test_move_takes_a_section_whole_and_repoints_each_citation_of_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The section moves with its subsection, and only citations of what moved change."""
+    root = _split_repository(tmp_path)
+
+    assert main(["--root", str(root), "move", "--to", "docs/INTERFACE.md", "Equations"]) == 0
+
+    out = capsys.readouterr().out
+    model = (root / "docs/MODEL.md").read_text(encoding="utf-8")
+    interface = (root / "docs/INTERFACE.md").read_text(encoding="utf-8")
+    assert "## Equations" not in model and "### Wash-in" not in model
+    # The pointer to the moved section names its new document and loses "below".
+    assert 'shows 6 L/min (`docs/INTERFACE.md` § "Equations"), as' in model
+    # The moved text is unchanged but for its pointer to the section that stayed.
+    moved = SPLIT_DOCUMENT[SPLIT_DOCUMENT.index("## Equations") :]
+    assert interface == "# Interface\n\n" + moved.replace(
+        '§ "Hazards" above', '`docs/MODEL.md` § "Hazards"'
+    )
+    citing = (root / "src/citing.py").read_text(encoding="utf-8")
+    assert '`docs/INTERFACE.md` § "Wash-in" and `docs/MODEL.md` § "Hazards"' in citing
+    assert "MESSAGE = 'refused (docs/INTERFACE.md, \"Equations\")'" in citing
+    # A quotation that neither document holds stays, and is listed for a person to read.
+    assert "STALE = 'refused (docs/MODEL.md, \"A heading nobody wrote\")'" in citing
+    assert "src/citing.py:8: A heading nobody wrote" in out
+    # One path before two sections stays, and the second section is listed to be read.
+    assert '#: See `docs/MODEL.md` § "Hazards" and § "Equations".' in citing
+    assert "src/citing.py:7: after docs/MODEL.md: Equations" in out
+
+
+def test_repoint_run_twice_changes_nothing_more(tmp_path: Path) -> None:
+    root = _split_repository(tmp_path)
+    assert main(["--root", str(root), "move", "--to", "docs/INTERFACE.md", "Equations"]) == 0
+    after_move = {
+        path: (root / path).read_text(encoding="utf-8")
+        for path in ("docs/MODEL.md", "docs/INTERFACE.md", "src/citing.py")
+    }
+
+    assert main(["--root", str(root), "repoint", "--to", "docs/INTERFACE.md"]) == 0
+
+    for path, text in after_move.items():
+        assert (root / path).read_text(encoding="utf-8") == text
+
+
+def test_lost_counts_a_fact_across_both_documents_of_the_specification(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A fact moved to the other document is not lost, and a fact cut from it is."""
+    root = _split_repository(tmp_path)
+    assert main(["--root", str(root), "move", "--to", "docs/INTERFACE.md", "Equations"]) == 0
+    capsys.readouterr()
+
+    assert main(["--root", str(root), "lost", "--base", "main"]) == 0
+    out = capsys.readouterr().out
+    assert "docs/MODEL.md and docs/INTERFACE.md against" in out
+    assert ": 0 equations, declarations, code spans, citations and numbers are held fewer" in out
+
+    interface = root / "docs/INTERFACE.md"
+    interface.write_text(
+        interface.read_text(encoding="utf-8").replace("enters at 6 L/min", "enters"),
+        encoding="utf-8",
+    )
+    assert main(["--root", str(root), "lost", "--base", "main"]) == 0
+    out = capsys.readouterr().out
+    assert "  gone  6 L/min  (fork line 5: docs/MODEL.md: The readout shows" in out
+
+
+def test_move_refuses_a_heading_the_document_does_not_hold(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = _split_repository(tmp_path)
+
+    assert main(["--root", str(root), "move", "--to", "docs/INTERFACE.md", "Absent"]) == 2
+
+    assert 'docs/MODEL.md: no one section reads "Absent"' in capsys.readouterr().out
+    assert (root / "docs/MODEL.md").read_text(encoding="utf-8") == SPLIT_DOCUMENT

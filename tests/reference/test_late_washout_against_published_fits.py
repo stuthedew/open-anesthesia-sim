@@ -179,7 +179,7 @@ every fitted fat time constant.
 little, and in the wrong direction over the middle stretch.** This model has
 no metabolism. A human does metabolise the agent, and for sevoflurane the
 metabolised share is 2 to 5% of the absorbed dose (Kharasch 1995, cited under
-`docs/MODEL.md` § "Supported run length"). `_metabolise()` below is a
+`docs/INTERFACE.md` § "Supported run length"). `_metabolise()` below is a
 test-only first-order sink on the vessel-rich group. It sits where the papers'
 own mammillary model places hepatic elimination (*Anesth Analg* p. 318, "the
 second compartment (vessel-rich group; k20)"). It runs at that paper's fitted
@@ -205,7 +205,7 @@ alveolar partial pressure.
 At the gate's 1% dial setting, $`F_{A0}`$ is 0.805, 0.672 and 0.876% of an
 atmosphere for sevoflurane, isoflurane and desflurane. So the shipped alveolar
 trace falls below the readout's resolution of 0.01 percentage points
-(`docs/MODEL.md` § "Displayed precision") at 2.8, 4.2 and 1.9 hours. That is
+(`docs/INTERFACE.md` § "Displayed precision") at 2.8, 4.2 and 1.9 hours. That is
 before the stretch over which the trace runs below the measured mean. On the
 chart's linear axis, which is fixed at 3 MAC, the trace is only a few pixels
 high well before that. A higher dial setting raises $`F_{A0}`$ in proportion,
@@ -257,7 +257,7 @@ from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 # How long the elimination lasts, in minutes, the unit that the published
 # coefficients use. The run is 30 minutes of wash-in and then 1410 minutes of
 # elimination, so it ends at 86,400 s of case time. That is the supported run
-# length, which `docs/MODEL.md` § "Supported run length" argues for, so the
+# length, which `docs/INTERFACE.md` § "Supported run length" argues for, so the
 # measurement ends where the claim does
 # (`test_the_run_ends_at_the_supported_run_length`). Until 2026-10-17 the
 # elimination lasted 1440 minutes and the run went 30 minutes past that

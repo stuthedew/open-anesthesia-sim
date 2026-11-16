@@ -2,6 +2,7 @@
 paths:
   - "/src/**"
   - "/docs/MODEL.md"
+  - "/docs/INTERFACE.md"
   - "/docs/references/**"
 ---
 

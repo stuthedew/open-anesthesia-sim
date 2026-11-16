@@ -1,6 +1,6 @@
 """The compartment schematic View in a real dashboard, from patient inputs to its drawn labels.
 
-`docs/MODEL.md` § "The compartment schematic: what its heights, amounts and
+`docs/INTERFACE.md` § "The compartment schematic: what its heights, amounts and
 share bar assert" is the specification (`PL-2881`), and `PL-RNYV` built the
 View. These tests check two things. First, they check that a run's inputs reach
 the drawn labels through the model. The expected labels come from a closed form
@@ -200,7 +200,7 @@ def _two_figures(millilitres: float) -> str:
     """An amount written to two significant figures, never finer than 0.01 mL.
 
     It is written here apart from the formatter, from the rule in
-    `docs/MODEL.md` § "Displayed precision".
+    `docs/INTERFACE.md` § "Displayed precision".
     """
 
     if millilitres == 0.0:
@@ -556,11 +556,11 @@ def test_a_schematic_reset_with_no_frame_is_drawn_like_one_that_never_showed_a_r
 
     assert run.controller.has_failed is True
     assert fresh.runs[0].controller.has_failed is True
-    # The fresh dashboard's View holds no copy of the schematic. A View is given
-    # its runs by a tick, and a dashboard whose first frame fails gives none
-    # (`PL-RF2S`, second pull request). So the fresh run builds its copy here.
+    # Both schematics are read from the View. A halt hands every View the runs
+    # with no frame, so the fresh dashboard's View holds a schematic although
+    # its first frame failed (`PL-RF2S`).
     on_screen = _schematic(used).schematics[0]
-    never_used = fresh.runs[0].build_compartment_schematic()
+    never_used = _schematic(fresh).schematics[0]
     assert _everything_drawn(on_screen) == _everything_drawn(never_used)
 
 

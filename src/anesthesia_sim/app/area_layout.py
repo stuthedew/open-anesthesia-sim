@@ -81,17 +81,22 @@ again as it moves. It stops where an Area beside the moved line reaches its
 minimum size, and the stop is drawn in the `WARNING` colour. Holding Shift
 moves the dragged border alone, and Escape undoes any drag.
 
-**No View is drawn below the size it needs** (`PL-K285`). An Area needs the
-size that its View needs, plus its header. A View needs the larger of two
-sizes: the minimum that its registry entry declares, and the minimum size that
-Qt would hold the View widget to. `settle`, in `layout/sizing.py`, works out
-each Area's size from this widget's size. Each Area's frame is held at the size
-it was given, so a border drag stops before a neighbour gets less than it needs.
-This widget's minimum size hint is the sum of every Area's need. So a host that
-can grow, as the dashboard's scrolling page does, always gives every View its
-size. Where the host cannot grow, the Areas that the latest change moved or
-gave a different View give way first. The Areas that it left in place with the
-same View give way last. An Area that gives way shrinks to its header and
+**No View is shown in less room than its minimum size, and a View taller
+than its Area scrolls inside it** (`PL-K285`, `PL-CBYS`). A View's minimum
+height is the one its registry entry declares. Its minimum width is the larger
+of the declared width and the least width Qt would hold the View widget to, so
+no View is scrolled sideways. An Area needs that size plus its header.
+`settle`, in `layout/sizing.py`, works out each Area's size from this widget's
+size. Each Area's frame is held at the size it was given, so a border drag
+stops before a neighbour gets less than it needs. An Area shows its View in a
+scroll box (`ViewScroll`). Where the View's content is taller than the Area,
+the reader scrolls the View up and down inside the Area. This widget's minimum
+size hint is the sum of every Area's need. So a host that can grow, as the
+dashboard's scrolling page does, always shows every View. The needs are small,
+so the page grows past its window only where the window is too small for
+them. Where the host cannot grow, the Areas that the latest change moved or
+gave a different View give way first. The Areas that it left in place with
+the same View give way last. An Area that gives way shrinks to its header and
 shows the size its View needs beside the size it has. It stays that way until
 a later change can give it the size it needs.
 
@@ -133,6 +138,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QMenu,
     QPushButton,
+    QScrollArea,
     QSizePolicy,
     QSplitter,
     QSplitterHandle,
@@ -146,6 +152,7 @@ from anesthesia_sim.app.chart_time_base import ChartTimeBase
 from anesthesia_sim.app.compartment_selection import CompartmentSelection
 from anesthesia_sim.app.controller import SimulationSnapshot
 from anesthesia_sim.app.qt_widgets import styled_label
+from anesthesia_sim.app.run_presentation import RunPresentation
 from anesthesia_sim.app.stylesheets import (
     foreground_stylesheet,
     menu_stylesheet,
@@ -174,7 +181,6 @@ from anesthesia_sim.app.theme import (
 from anesthesia_sim.app.view_contract import (
     CaseSurfaces,
     PreferencesInForce,
-    RunSurfaces,
     SavedState,
     View,
     ViewContext,
@@ -240,6 +246,7 @@ __all__ = [
     "SplitPreview",
     "SwapPreview",
     "ViewChooser",
+    "ViewScroll",
 ]
 
 # The height of the rule under an Area's header.
@@ -516,18 +523,30 @@ class AreaLayout(QWidget):
 
     def refresh(
         self,
-        frames: Mapping[ChartTimeBase | None, ChartFrame],
+        frames: Mapping[ChartTimeBase | None, ChartFrame] | None,
         snapshots: tuple[SimulationSnapshot, ...],
-        runs: tuple[RunSurfaces, ...],
+        runs: tuple[RunPresentation, ...],
         selection: CompartmentSelection,
         preferences: PreferencesInForce,
         case: CaseSurfaces,
     ) -> None:
-        """Draw every View, in the reading order of their Areas, each with the frame it asked for.
+        """Hand every View one tick, in the reading order of their Areas.
+
+        With `frames`, each View is handed the frame for the window it asked
+        for. With None, no frame was drawn, and every View is handed a tick
+        that carries no frame and no snapshots.
+
+        A View that raises on a tick with a frame stops the tick there. The
+        caller halts every run, and the halt hands every View a tick with no
+        frame. A View that raises on a tick with no frame does not stop the
+        tick. On a halt that tick is the only thing that tells a View which
+        runs are left and what each one shows. If it stopped at the first
+        View that raised, each View after it would go on showing a run that
+        was removed, or the settings from before the halt (`PL-RF2S`).
 
         Args:
             frames: The tick's frames, one for each window that
-                `frame_requests` returned.
+                `frame_requests` returned, or None when no frame was drawn.
             snapshots: As `ViewTick` carries them.
             runs: As `ViewTick` carries them.
             selection: As `ViewTick` carries it.
@@ -535,40 +554,64 @@ class AreaLayout(QWidget):
             case: As `ViewTick` carries it.
 
         Raises:
+            ValueError: `frames` is None and `snapshots` is not empty. No
+                View is handed anything.
             KeyError: A View asks for a window that `frames` does not hold.
-            Exception: whatever a View raises while drawing. The Views after
-                it are not drawn, and the caller halts every run.
+            Exception: Whatever a View raises while it is handed the tick.
+                On a tick with a frame, the Views after it are handed
+                nothing, and the caller halts every run. On a tick with no
+                frame, every View is handed the tick and the Areas are
+                settled, and then the first exception is raised.
         """
+
+        if frames is None and snapshots:
+            raise ValueError(
+                f"a tick with no frame carries no snapshots, and {len(snapshots)} were given"
+            )
+
+        first_error: Exception | None = None
 
         for _, view in tuple(self._views.values()):
             request = view.frame_request()
-            frame = None if request is None else frames[request.time_base]
-            view.refresh(ViewTick(frame, snapshots, runs, selection, preferences, case))
+            frame = None if request is None or frames is None else frames[request.time_base]
+
+            try:
+                view.refresh(ViewTick(frame, snapshots, runs, selection, preferences, case))
+            except Exception as raised:
+                if frames is not None:
+                    raise
+
+                first_error = first_error or raised
 
         self.follow_needs()
 
+        if first_error is not None:
+            raise first_error
+
     def follow_needs(self) -> None:
-        """Settle the Areas again if what was just drawn changed what a View needs.
+        """Settle the Areas again if what was just drawn changed the size a View needs.
 
         `refresh` calls this method once the Views have drawn. After `refresh`, a
-        host may write into a widget that a View shows. That host calls this method
-        again once it has written, as the dashboard does for each run's own surfaces.
+        host may write widgets of its own, and those writes can change the room
+        that the Areas have. That host calls this method again once it has
+        written, as the dashboard does after it writes each run's own panel.
 
         A View can build, show or hide widgets while it draws. The setting
-        controls build their per-run copies on their first frame, and a chart
+        controls build each run's dials on their first tick, and a chart
         shows and hides its per-run lines. These changes post layout requests.
         Qt updates a widget's minimum size only when it handles those requests.
         Left alone, Qt would handle them on the next passes of the event loop. So
-        this method handles the requests first (`_handle_layout_requests`). The
-        needs that it reads afterwards are then the ones those passes would read.
+        this method handles the requests first (`_handle_layout_requests`). When
+        it then reads the size that each View needs, it reads what those passes
+        would read.
 
-        If a need changed, this method settles the Areas again and tells the
-        host that this widget's size hint changed. As a result, the splitters
-        have the sizes that the next pass would give them as soon as the frame
-        is drawn (`PL-4L8B`). A host that sized this widget from its earlier hint
-        also lays it out again (`PL-PHPZ`). This method then handles the requests
-        that follow too, so the page and every View in it have their final sizes
-        before the caller sees the frame (`PL-MXMG`).
+        If the size that a View needs changed, this method settles the Areas
+        again and tells the host that this widget's size hint changed. As a
+        result, the splitters have the sizes that the next pass would give them
+        as soon as the frame is drawn (`PL-4L8B`). A host that sized this widget
+        from its earlier hint also lays it out again (`PL-PHPZ`). This method
+        then handles the requests that follow too, so the page and every View in
+        it have their final sizes before the caller sees the frame (`PL-MXMG`).
         """
 
         _handle_layout_requests()
@@ -815,7 +858,7 @@ class AreaLayout(QWidget):
         self._settle(self._drawn)
 
     def minimum_extent(self) -> PixelSize:
-        """Return the least size at which every Area draws its View.
+        """Return the least size at which every Area shows its View.
 
         Each Area is counted at the larger of its View's need and its floor,
         since an Area is never drawn below its floor (`PL-C9XP`). This size is
@@ -1295,7 +1338,9 @@ class AreaLayout(QWidget):
         reports that size to the host through `minimumSizeHint`. Each Area is counted at the
         larger of its View's need and its floor (`drawn_bounds`). That is the size at which
         `settle` holds an Area that draws its View. A host that can grow, such as the
-        dashboard's scrolling page, then gives this widget room for every View.
+        dashboard's scrolling page, then gives this widget room for every View. A need is
+        only the least room in which a View is shown, so the page grows past its window only
+        where the window is too small for that (`PL-CBYS`).
         """
 
         if self._settling:
@@ -1406,18 +1451,27 @@ class AreaLayout(QWidget):
         return Floor(width, height_at)
 
     def _view_need(self, area_id: AreaId) -> PixelSize:
-        """Return the least size at which the View in `area_id` is drawn, below the Area's header.
+        """Return the least size at which the View in `area_id` is shown, below the Area's header.
 
-        It is the larger, on each axis, of the minimum the View's registry
-        entry declares and the least size Qt would hold the View widget to,
-        which grows with what the View holds (`app/view_registry.py`).
+        Its height is the minimum height that the View's registry entry
+        declares (`app/view_registry.py`). An Area with that height shows its
+        View, and the reader scrolls the View up and down where its content is
+        taller than the Area (`ViewScroll`). Its width is the larger of the
+        declared minimum width and the least width Qt would hold the View's
+        widget to, with room beside the View for the scroll bar. So a View is
+        never scrolled sideways, and a row of controls is never cut off at the
+        Area's edge.
         """
 
         kind, view = self._views[area_id]
         declared = self._registered[kind].minimum
-        width, height = _least_size(_widget(view))
+        content_width, _ = _least_size(_widget(view))
+        scroll = self._frames[area_id].view_scroll
+        assert scroll is not None, "an Area that holds a View holds it in a scroll box"
 
-        return PixelSize(max(declared.width_px, width), max(declared.height_px, height))
+        return PixelSize(
+            max(declared.width_px, content_width + scroll.bar_width()), declared.height_px
+        )
 
     def _lay_out(self, splitter: _AreaSplitter) -> None:
         """Give `splitter`'s children the sizes that the last settle worked out for its split."""
@@ -2026,6 +2080,11 @@ class AreaFrame(QFrame):
     no other run is shown in its place. When the Area is also too small for its
     View, this notice is shown rather than the too-small one.
 
+    **A View sits in a scroll box of its own** (`PL-CBYS`). The box is a
+    `ViewScroll`. Where the Area is shorter than the View's content, the
+    reader scrolls the View inside the Area, and the page does not grow. A
+    notice is not put in a scroll box.
+
     **An Area too small for its View shows a notice in its place** (`PL-K285`,
     `PL-DB5G` Q3). The View is hidden, not deleted, so it keeps its state. It
     is shown again once the Area is large enough for it. The notice states the
@@ -2041,6 +2100,10 @@ class AreaFrame(QFrame):
         menu: The Area menu that a right-click on the header opens, or None
             where the caller gave none.
         content: The View or the notice under the header.
+        view_scroll: The scroll box that holds the View, or None where `content`
+            is a notice.
+        pinned_row: The row that the View keeps above its scroll box, or None
+            where the View declares none (`pinned_row`).
         too_small_notice: The notice shown in place of the View while the
             Area is too small for it, or None if the Area has never been too
             small.
@@ -2097,7 +2160,17 @@ class AreaFrame(QFrame):
         self._column.setSpacing(0)
         self._column.addWidget(self.header)
         self._column.addWidget(rule)
-        self._column.addWidget(content, 1)
+        self.view_scroll = None if isinstance(content, AreaNotice) else ViewScroll(content)
+        # A row that the View must keep on screen wherever any of the View is,
+        # such as the wash-in plot's "Modelled, not measured", sits above the
+        # scroll box rather than in it (`PL-26BZ`).
+        self.pinned_row = None if self.view_scroll is None else pinned_row(content)
+
+        if self.pinned_row is not None:
+            self._column.addWidget(self.pinned_row)
+            self.pinned_row.show()
+
+        self._column.addWidget(self.view_scroll or content, 1)
         # A View handed back unparented by an earlier layout was hidden when
         # it lost its parent, and a layout does not show it again by itself.
         content.show()
@@ -2125,7 +2198,7 @@ class AreaFrame(QFrame):
         if self.too_small_notice is not None:
             self.too_small_notice.hide()
 
-        self.content.setHidden(self._absent)
+        self._set_content_hidden(self._absent)
 
     def show_too_small(self, title: str, needed: PixelSize) -> None:
         """Hide the View, and state that it needs `needed` below the header, more than the Area has.
@@ -2145,7 +2218,7 @@ class AreaFrame(QFrame):
             notice.title_label.setText(too_small_title(title))
 
         self._needed = needed
-        self.content.hide()
+        self._set_content_hidden(True)
         notice.setHidden(self._absent)
         self._restate()
 
@@ -2178,10 +2251,21 @@ class AreaFrame(QFrame):
         elif notice is not None:
             notice.hide()
 
-        self.content.setHidden(self._absent or self._needed is not None)
+        self._set_content_hidden(self._absent or self._needed is not None)
 
         if self.too_small_notice is not None:
             self.too_small_notice.setHidden(self._absent or self._needed is None)
+
+    def _set_content_hidden(self, hidden: bool) -> None:
+        """Hide or show the View or notice under the header, with the scroll box that holds it."""
+
+        self.content.setHidden(hidden)
+
+        if self.view_scroll is not None:
+            self.view_scroll.setHidden(hidden)
+
+        if self.pinned_row is not None:
+            self.pinned_row.setHidden(hidden)
 
     def resizeEvent(self, event: QResizeEvent) -> None:
         super().resizeEvent(event)
@@ -2224,6 +2308,111 @@ class AreaFrame(QFrame):
 
         for zone in self.corners:
             zone.set_grip_shown(shown)
+
+
+def pinned_row(view: QWidget) -> QWidget | None:
+    """Return the row that `view` asks its Area to keep above its scroll box, or None.
+
+    A View declares one as a `pinned_row` attribute holding a widget. The Area
+    shows that row outside the box that scrolls the View, so it is on screen
+    whenever any part of the View is (`PL-26BZ`).
+    """
+
+    row = getattr(view, "pinned_row", None)
+
+    return row if isinstance(row, QWidget) else None
+
+
+class ViewScroll(QScrollArea):
+    """Holds an Area's View under the header, and scrolls it where the Area is smaller than it.
+
+    The box gives the View all the room the Area has. It never draws the View
+    smaller than the View's content needs, which is the least size Qt would
+    hold the View's widget to. Where the View's text wraps, that least height
+    is measured at the width the View is drawn at. So a View in an Area
+    smaller than its content is scrolled, and is never clipped (`PL-CBYS`).
+
+    Qt's own `setWidgetResizable(True)` is not used. It gives a widget whose
+    text wraps its preferred height, so a View with room to spare for its plot
+    would scroll before it needed to.
+
+    A View kept across a rebuild of the layout keeps its scroll position. The
+    new box takes the old box's position and applies it once the box is shown
+    at its size. Before then the scroll range is not yet known, and Qt would
+    clamp the position to 0.
+    """
+
+    def __init__(self, view: QWidget) -> None:
+        super().__init__()
+        self.setFrameShape(QFrame.Shape.NoFrame)
+        # The box paints nothing of its own, so the frame's surface shows
+        # round the View as it did before the View was in a box.
+        self.viewport().setAutoFillBackground(False)
+        previous = view.parentWidget()
+        holder = None if previous is None else previous.parentWidget()
+        self._kept_position: tuple[int, int] | None = None
+
+        if isinstance(holder, ViewScroll) and holder.widget() is view:
+            # A View kept across a rebuild is still in the box of the frame
+            # that is being replaced. That box must let go of the View, or it
+            # would move the View again when its own scroll bars change.
+            self._kept_position = (
+                holder.horizontalScrollBar().value(),
+                holder.verticalScrollBar().value(),
+            )
+            holder.takeWidget()
+
+        filled = view.autoFillBackground()
+        self.setWidget(view)
+        # `setWidget` makes the View fill its background from the palette,
+        # which would paint over the corners of a View's rounded panel.
+        view.setAutoFillBackground(filled)
+        self._fit()
+
+    def bar_width(self) -> int:
+        """Return the width that the vertical scroll bar takes from the View while it is shown."""
+
+        return self.verticalScrollBar().sizeHint().width()
+
+    def resizeEvent(self, event: QResizeEvent) -> None:
+        # Qt delivers the viewport's resizes here, so this also runs when a
+        # scroll bar appears and takes room from the View.
+        super().resizeEvent(event)
+        self._fit()
+
+    def event(self, event: QEvent) -> bool:
+        handled = super().event(event)
+
+        if event.type() == QEvent.Type.LayoutRequest:
+            # The View's content changed size, such as a legend gaining a row.
+            self._fit()
+
+        return handled
+
+    def _fit(self) -> None:
+        """Size the View to the larger of the room the Area has and the room its content needs."""
+
+        view = self.widget()
+
+        if view is None:
+            return
+
+        room = self.viewport().size()
+        least_width, least_height = _least_size(view)
+        width = max(room.width(), least_width)
+        layout = view.layout()
+
+        if layout is not None and layout.hasHeightForWidth():
+            least_height = max(least_height, layout.totalMinimumHeightForWidth(width))
+
+        view.resize(width, max(room.height(), least_height))
+
+        if self._kept_position is not None and self.isVisible():
+            # The View's resize above has set the scroll range for this size.
+            horizontal, vertical = self._kept_position
+            self._kept_position = None
+            self.horizontalScrollBar().setValue(horizontal)
+            self.verticalScrollBar().setValue(vertical)
 
 
 class AreaNotice(QFrame):

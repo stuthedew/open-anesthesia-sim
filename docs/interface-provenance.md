@@ -298,7 +298,11 @@ tolerance of the dragged coordinate, connected or not. It runs only when
 `extend` is set and a check on the edge (`screen_geom_edge_can_extend`) allows
 it. A helper lets the user turn the extended selection on or off during a drag
 (`area_move_reinit`). That helper is the clearest evidence that the extended
-selection is a mode the user enters, not the default.
+selection is a mode the user enters, not the default. This source was read
+again on 2026-11-14 from `blender/blender` `main`, where pressing or releasing
+Shift during a drag calls that helper (`area_move_modal`). The Manual's "Areas" page, in its "Resizing"
+section, says the same on the same date: Shift moves nearby aligned borders
+together while resizing.
 
 **Merging aligned edges in Blender is a separate command on a right-click menu.**
 The merge function (`screen_geom_edge_aligned_merge`) has only one caller,
@@ -601,7 +605,7 @@ out silently covering a value on the dashboard (`ROADMAP.md` item 34). A covered
 value is a misread value, which the safety-critical standard in `CLAUDE.md`
 treats as a safety failure. This project's argument rests on that reasoning and
 on the set of values that must always be displayed
-(`docs/MODEL.md` § "Minimum displayed outputs"). Citing Blender in support of it
+(`docs/INTERFACE.md` § "Minimum displayed outputs"). Citing Blender in support of it
 would be citing a different argument that reaches a similar-looking conclusion.
 
 The Design Paradigms page of Blender's Human Interface Guidelines bases
@@ -920,7 +924,7 @@ tenths of the screen (`PL-005`). Blender opens its window maximized. Its window
 code sets the default window state (`GHOST_WINDOW_STATE_DEFAULT`) to maximized
 (`GHOST_kWindowStateMaximized`), and sizes the default geometry to the main
 screen. This code, in `wm_window.cc`, was read through the GitHub mirror on
-2026-09-27, because the Manual's page was not reachable from the container.
+2026-09-27. The Manual describes behaviour and does not hold the source.
 
 **Ctrl+PgUp and Ctrl+PgDn step through the workspaces, and wrap round**
 (`PL-M352`). They follow the order in which the workspace tabs are drawn.
@@ -992,7 +996,7 @@ Blender makes it disappear (§ "An editor cannot refuse a size, and there is no
 minimum-size contract at all"). That is a defensible answer for a 3D content
 tool, where a hidden sidebar costs a user one keystroke. In this project it is
 directly unsafe. A set of displayed values is unconditional: no Workspace may
-remove them, and nothing may cover them (`docs/MODEL.md` § "Minimum displayed
+remove them, and nothing may cover them (`docs/INTERFACE.md` § "Minimum displayed
 outputs"). Silently collapsing one of those values is exactly the failure that
 the unconditional set exists to prevent. Where any other display cannot fit, the
 interface must say so rather than quietly shrink it away. `layout/sizing.py`
@@ -1015,7 +1019,10 @@ honours no minimum size that an editor states
 all"). Here, an Area that cannot be given the size its View needs says so rather
 than collapsing it, and a border drag stops where an Area beside the moved line
 reaches its minimum size (`PL-K285`; `border_range` in
-`src/anesthesia_sim/layout/sizing.py`).
+`src/anesthesia_sim/layout/sizing.py`). As in Blender, the Areas share the
+window's room, and a View whose content needs more scrolls inside its own Area,
+as a Blender editor scrolls its own regions (`PL-CBYS`; `ViewScroll` in
+`src/anesthesia_sim/app/area_layout.py`).
 
 **Each View's isolation has to be built, not inherited from Blender.** Blender
 hands each editor a context through which it can reach the window, the screen
@@ -1065,7 +1072,21 @@ to share, the layout model finds the dragged line from where the borders lie
 that a drag brings into line are one line from then on. Blender's border drag
 merges no vertices and removes only duplicate edges (`area_move_exit` in
 `screen_ops.cc`, `blender/blender` `main`, read 2026-10-12), so its two edges
-stay two until the user merges them on purpose.
+stay two until the user merges them on purpose. With Shift held, the dragged
+border moves alone, which is the reverse of Blender's Shift (the entry
+"**Shift**" below).
+
+**Shift moves the dragged border alone, where Blender's Shift moves more
+borders.** In Blender, Shift extends a border drag to every border aligned with
+the dragged one, connected or not (§ "How a layout is built, and how far the
+operations reach"). Here, Shift keeps the rest of the line in place and moves
+only the dragged border (`LayoutModel.resize` with `alone=True`, `PL-2KXB`).
+The keyboard does the same: an arrow key with Shift moves the focused border
+alone. The decision that chose this (`PL-RQT1` Q3, ratified 2026-10-11) meant
+to keep Blender's behaviour, and read the Manual as saying that Shift moves
+only the border under the pointer. The Manual and Blender's source both say
+otherwise (read 2026-11-14), so this divergence has no recorded cause beyond
+that reading. Whether to change it is an open decision (`PL-GJFL`).
 
 **Every border off the dragged line keeps its place in the window.** Blender moves
 only the vertices flagged as on the dragged line (`area_move_apply_do` in

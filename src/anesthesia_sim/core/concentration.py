@@ -302,7 +302,8 @@ MacMultiple = NewType("MacMultiple", float)
 """The same quantity measured against the running agent's 1 MAC instead of an atmosphere.
 
 `docs/MODEL.md` § "Concentrations" defines it as $`100F/\\mathrm{MAC}_\\%`$, and
-§ "MAC multiples as a display unit" states what the quotient does and does not
+`docs/INTERFACE.md` § "MAC multiples as a display unit" states what the quotient
+does and does not
 assert. It is dimensionless like `Fraction`, but it is **not** a `Fraction`. A
 `Fraction` is a share of an atmosphere, and a `MacMultiple` is a multiple of a
 per-agent divisor. The two are small numbers of the same magnitude, so neither

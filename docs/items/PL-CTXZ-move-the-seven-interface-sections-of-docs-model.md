@@ -4,11 +4,13 @@ title: Move the seven interface sections of docs/MODEL.md, word for word, to a n
 priority: P1
 owner-priority: P1, 2026-11-11, ratified
 effort: L
-status: ready
+status: done
 classes: docs
 feature: model-md-structure
-touches: docs/MODEL.md, tools/doc_check.py, subprojects/docket/src/docket/arming.py, CLAUDE.md, .claude/rules/plain-writing.md, tools/model_rewrite.py, src/anesthesia_sim/, tests/
+touches: docs/, tools/, subprojects/docket/, .claude/, CLAUDE.md, docket.toml, README.md, ROADMAP.md, src/anesthesia_sim/, tests/
 added: 2026-11-11
+closed: 2026-11-11
+pr: 2109
 payoff: a contributor finds what the interface must show in one document, and a clinician no longer reads past 60,000 words of interface rules to reach the model
 verify: ! grep -qE '^## (Runtime controls|Minimum displayed outputs)$' docs/MODEL.md
 ---
@@ -27,7 +29,7 @@ two reuse.
 **What to do.**
 
 1. Create the interface document under `docs/`. The build chooses the file
-   name. Move these `##` sections of `docs/MODEL.md` into it unchanged:
+   name. Move these `##` sections of `docs/INTERFACE.md` into it unchanged:
    "Runtime controls"; "Reset behavior"; "Agent-change behavior";
    "Discarding a run, and the questions that guard it"; "What a branch
    comparison asserts, and what it does not"; "Interface boundary";
@@ -76,3 +78,110 @@ resolves, the checks that read `docs/MODEL.md` read the new file, and
 the repository named no home but `docs/MODEL.md` for a test's description,
 an interface requirement or a value's source history, so each change added
 them there. No new head.
+
+**Built 2026-11-11.** The interface document is `docs/INTERFACE.md`, named
+like `docs/MODEL.md` and `docs/ARCHITECTURE.md`.
+
+*The move.* `python3 tools/model_rewrite.py move --to docs/INTERFACE.md` cut
+lines 3814 to 9651 of `docs/MODEL.md`, the seven sections, and appended them
+to the new file under a title and one opening paragraph. `docs/MODEL.md`
+§ "Status" gained one paragraph that names the new document. The moved text
+differs from the original in two ways only, both made by the script. In 72
+places a section mark that names a section still in `docs/MODEL.md` now has
+`` `docs/MODEL.md` `` before it, and in 4 of those the word "above" or "below"
+after it is gone, because the documentation check reads those words as "in
+this file". The text left in `docs/MODEL.md` gained `` `docs/INTERFACE.md` ``
+before 39 marks in the same way. `python3 tools/model_rewrite.py lost` prints
+no equation, declaration, code span, citation or number as held fewer times,
+and prints those two paths as the only additions.
+
+*The citations.* The same command re-pointed about 380 citations in about 110 files: the
+code, the tests, the standing documents and the open briefs. It reads a
+mention of `docs/MODEL.md` and the quotation after it, and re-points the
+mention when the quotation names a heading that only the new document has, or
+words that only the new document holds. Nine citations that the script could
+not read were re-pointed by hand: messages in `core/supported_ranges.py`,
+`core/circuit.py`, `app/formatting.py` and `app/dashboard_frame.py` whose
+section name is split across two string literals or filled in from a variable.
+The script took the quotation after a path in a `verify:` command for that
+path's own, which is wrong for `grep 'text' path`. So each open item's
+`verify:` was then pointed at the document that holds its text, and the six
+items whose titles name a moved section were renamed to the file names their
+new titles give.
+
+*What reads the new file.* `docket.arming.SPECIFICATION_DOCS` lists the
+documents of the specification, and `tools/product_paths.py` passes it on.
+`tools/doc_check.py` (the stored-value markers and the two bound families
+that moved), `tools/model_rewrite.py` and `tools/model_doc_review.py` read it.
+`PL-6PPZ` and `PL-FWR6` each add their document there. Four lists restate a
+path and stay separate, because `tools/config_home_check.py` compares each
+with its home and names every copy when one differs: `protected_paths`,
+`product_paths` and the `simulator` area in `docket.toml`, and
+`SECOND_PASS_PATHS` in `docket.arming`. `CLAUDE.md`, `docs/worker.md`, the
+reader table in `.claude/rules/plain-writing.md` and the rules, skills and
+agents that named `docs/MODEL.md` as the specification name both files.
+
+*What was left.* A mention of `docs/MODEL.md` that names no section was not
+re-pointed, because no script can tell which document it means. `PL-10BC`
+holds that. The copy editor read only the three passages this item wrote: the
+new document's opening paragraph, the new paragraph in `docs/MODEL.md` and
+the two entries in `README.md`'s list of documents. It read none of the moved
+text, as this brief requires, and none of the passages where only a path
+changed.
+
+*What the two blind review passes found.* Twelve findings, nine of them
+new, and all were real and fixed on the branch. A test,
+`tests/reference/test_mac_awake_washout_figures.py`, still opened
+`docs/MODEL.md` to read a section that had moved, so it failed. Where one
+path stood before two section names and the move parted the sections, the
+second section kept the wrong document: in the three agent files' notes on
+`mac_percent`, and in five docstrings and comments. Two refusals named the old
+document with no quoted section. The documentation check passed a section
+mark that named the wrong one of the two documents, because each document
+holds the other's heading words in its pointers. It now refuses one, and
+`test_a_section_mark_naming_the_wrong_specification_document_is_refused`
+checks that. The opening paragraphs did not say that the supported ranges and
+the supported run length are in the new document, and now do.
+`tools/model_rewrite.py repoint` now lists each second section name for a
+person to read.
+
+**The mutation check, 2026-11-11.** It ran 21 mutants on the lines this
+branch changed, and the unit tests caught 17. The 4 that survived changed
+only the wording of two refusals that this branch re-pointed: the refusal of
+an amount with no derived precision, in `app/formatting.py`, and the refusal
+of an instant not built as `CaseInstant`, in `core/supported_ranges.py`.
+`test_a_unit_with_no_derived_precision_is_refused` and
+`test_a_value_not_built_as_the_type_is_refused_whatever_it_holds` now compare
+the end of each message with the sentence written out in the test. Each
+failed with its mutant applied by hand: the sentence wrapped in `XX`, in
+lower case and in upper case for the first, and wrapped in `XX` for the
+second.
+
+The check gave no answer at first, for two causes that were on `main`. This
+branch fixed both in `pyproject.toml` and wrote two regression tests. `main`
+then fixed both in `PL-GP8G` and added a CI check of the mutation run's
+first step in `PL-PG0S`, so the merges took `main`'s settings and tests, and
+nothing of this branch's two fixes remains in its difference from `main`.
+
+**Edits to the moved sections that arrived from `main`, 2026-11-11.**
+`PL-9YPR` edited four passages of the moved sections in `docs/MODEL.md`
+while this branch was open: two under "Every value and what qualifies it
+come from one step", on when the banner names Reset alone, and two under
+"Color contrast, and the standard this interface is held to", on the
+gridline grey's exemption from SC 1.4.11. The merge ported each to
+`docs/INTERFACE.md`
+word for word, and `python3 tools/model_rewrite.py lost` still lists no
+fact held fewer times.
+
+**The copy edit of the last two comments was skipped.** The two tests above
+each gained a two-line comment after the last copy edit. The project owner
+said "skip copy edit" on 2026-11-11, while the copy editor was reading them,
+so the trailer on the commit that records this says it read none.
+
+**Audited 2026-11-11.** `bin/docket verify --self PL-CTXZ` answered `ACCEPT`
+at `b1758cb0`, after the merge that ported `PL-9YPR`'s edits: `make check`
+passed, and the unit tests caught all 21 mutants on the lines this branch
+changed. The pull request waits on the owner's read, because the branch adds
+`docs/INTERFACE.md` to the list of documents that the merge gate holds for
+that read, and changes two tests that pin the gate's answers.
+

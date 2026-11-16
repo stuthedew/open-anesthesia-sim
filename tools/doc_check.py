@@ -353,7 +353,7 @@ except ImportError as error:  # pragma: no cover - a checkout missing the subpro
 import required_checks_check
 
 # The simulator package's location is `product_paths`'s (`PL-H5T9`).
-from product_paths import MODEL_DOC, PACKAGE_DIR
+from product_paths import INTERFACE_DOC, MODEL_DOC, PACKAGE_DIR, SPECIFICATION_DOCS
 
 # Which files the repository holds is `tracked_files`'s answer, and which of
 # them are rule files is `rules_paths_check`'s, so a checkout under
@@ -456,10 +456,13 @@ ARCHITECTURE = Path("docs/ARCHITECTURE.md")
 APPARATUS_MAP = Path("docs/apparatus.md")
 PACKAGE_MAPS = (ARCHITECTURE, APPARATUS_MAP)
 MODEL = Path(MODEL_DOC)
-# The documents whose restated numbers are held to their homes (`PL-JS6P`).
-# `docs/MODEL.md` is the specification, and `README.md` is the page a new
-# reader trusts first.
-PROVENANCE_DOCUMENTS = (MODEL, Path("README.md"))
+# What the interface must show and do, which was part of `docs/MODEL.md` until
+# `PL-CTXZ` moved it out.
+INTERFACE = Path(INTERFACE_DOC)
+# The documents whose restated numbers are held to their homes (`PL-JS6P`):
+# each document of the specification, and `README.md`, the page a new reader
+# trusts first.
+PROVENANCE_DOCUMENTS = (*(Path(document) for document in SPECIFICATION_DOCS), Path("README.md"))
 
 
 # Where the release train lives. `ROADMAP.md` calls itself the authoritative
@@ -4489,7 +4492,7 @@ BOUND_FAMILIES = (
         promise="every row names the test that holds it, or says plainly that it has none",
     ),
     BoundFamily(
-        document=MODEL,
+        document=INTERFACE,
         heading="Minimum displayed outputs",
         level=2,
         kind=TEST_ENTITY,
@@ -4505,9 +4508,22 @@ BOUND_FAMILIES = (
         promise="every subsection names the test that holds it",
     ),
     BoundFamily(
-        document=MODEL,
+        document=INTERFACE,
         heading="Displayed precision",
         level=3,
+        kind=FIGURE_ENTITY,
+        members=_numeric_paragraph_members,
+        promise=(
+            "every paragraph stating a number with a unit names the test that computes it, "
+            "itself or in the For-developers note below it, cites its published source, "
+            "or is dated, unless a provenance: or derived: marker ties each of its numbers "
+            "with a unit"
+        ),
+    ),
+    BoundFamily(
+        document=MODEL,
+        heading="Known limitations",
+        level=2,
         kind=FIGURE_ENTITY,
         members=_numeric_paragraph_members,
         promise=(
@@ -6651,8 +6667,9 @@ def _absent_paths(
 ) -> dict[int, set[str]]:
     """The paths each line may name as absent, by 1-based line, from `absent:` markers.
 
-    Each marker covers the paragraph it sits under, as a `provenance:` marker
-    does, and is held to its own claim: every path it names must be absent -
+    Each marker covers what `_marked_scope` gives it, as a `provenance:` marker
+    does: the paragraph it sits under, or the whole list or quote that
+    paragraph ends (`PL-HXF0`). It is held to its own claim: every path it names must be absent -
     so a planned tool that gets built, or a deleted file that comes back, fails
     until the sentence and the marker are updated with it - and cited in that
     paragraph, so a marker left behind by a reworded sentence fails rather than
@@ -6673,6 +6690,7 @@ def _absent_paths(
         if kind == "absent":
             report.errors.append(_misplaced_marker(path, index + 1, kind))
     declared: dict[int, set[str]] = {}
+    blocks = read_blocks(lines).blocks
     for index, line in enumerate(lines):
         if split.get(index) == "absent":
             report.errors.append(_split_marker(path, index + 1, "absent"))
@@ -6681,8 +6699,15 @@ def _absent_paths(
         marker = ABSENT_MARKER_RE.match(line.strip())
         if marker is None:
             continue
-        start, end = _marked_span(lines, index)
-        cited = {span["content"] for span in code_spans("\n".join(lines[start:end]))}
+        start, end = _marked_scope(lines, index)
+        # Spans are read one block at a time, so a stray backtick in one list
+        # item cannot pair with a backtick in the next.
+        cited = {
+            span["content"]
+            for block in blocks
+            if block.kind in PROSE and start <= block.start and block.end <= end
+            for span in code_spans("\n".join(lines[block.start : block.end]))
+        }
         for token in marker.group("paths").split():
             if token not in cited:
                 report.errors.append(
@@ -7138,6 +7163,13 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
     failed on CI's runner, where it does not. Two red runs on 2026-10-17 were
     this split (`PL-2D1S`). `PL-H0CF` fixed the same split for path citations.
 
+    **A section mark is also held to the document's headings, among the
+    documents of the specification** (`PL-CTXZ`). Those documents name each
+    other's sections, so `docs/MODEL.md` holds the words of a heading that is
+    `docs/INTERFACE.md`'s, and containment passed a mark that named the wrong
+    one. A mark that names one of them, and quotes a heading that only
+    another of them has, is refused.
+
     **Only a claiming connective makes a miss an error** - `§` or the
     possessive, `CLAIMING_CONNECTIVE_RE`. After any other the same miss is an
     advisory: the words may be a proposal for the file or a sentence it has
@@ -7157,6 +7189,33 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
     """
     bodies: dict[str, str | None] = {}
     briefs: dict[str, list[str]] = {}
+    specification: dict[str, list[str]] = {}
+
+    def section_elsewhere(cited: str, quoted: str) -> str | None:
+        """The specification document whose section `quoted` names, where `cited` has none.
+
+        The specification is several documents since `PL-CTXZ`, and each
+        points at the others' sections by name. So a document holds the words
+        of a heading that is another document's, and containment alone passes
+        a section mark that names the wrong one of them.
+        """
+        if not specification:
+            for document in SPECIFICATION_DOCS:
+                if (root / document).is_file():
+                    specification[document] = _headings(
+                        (root / document).read_text(encoding="utf-8")
+                    )
+        own = specification.get(cited.lstrip("/"))
+        if own is None or _cites_heading(quoted, own):
+            return None
+        return next(
+            (
+                document
+                for document, titles in specification.items()
+                if document != cited.lstrip("/") and _cites_heading(quoted, titles)
+            ),
+            None,
+        )
 
     def body_of(cited: str) -> str | None:
         if cited not in bodies:
@@ -7206,6 +7265,13 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
                 finding = f"{path}:{line}: quotes {cited}, {_unresolved_place(cited)}"
             elif _comparable(_without_emphasis(quoted)).rstrip(" .,;:") not in body:
                 finding = f'{path}:{line}: quotes {cited} as "{quoted}", which is not in that file'
+            elif (match.group("connective") or "").startswith("§") and (
+                elsewhere := section_elsewhere(cited, quoted)
+            ):
+                finding = (
+                    f'{path}:{line}: cites {cited} § "{quoted}", which is a section of '
+                    f"{elsewhere} and not of {cited}"
+                )
             else:
                 continue
             if claims:

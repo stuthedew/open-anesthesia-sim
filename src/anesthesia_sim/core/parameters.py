@@ -38,6 +38,7 @@ from pydantic import ValidationError as PydanticValidationError
 
 from anesthesia_sim.core.blood_flow import PerfusionFraction, require_perfusion_fraction
 from anesthesia_sim.core.checked_number import shown
+from anesthesia_sim.core.checked_record import restore_through_checks
 from anesthesia_sim.core.circuit import DeliverableFreshGasFlowRange
 from anesthesia_sim.core.concentration import (
     MacMultiple,
@@ -116,6 +117,11 @@ class SupportedSchemaVersions:
                 f"it still reads correctly, or raise minimum to {self.current} "
                 "(see SupportedSchemaVersions)"
             )
+
+    def __setstate__(self, state: object) -> None:
+        """Restore an unpickled or copied record through the constructor's checks (`PL-8W1Q`)."""
+
+        restore_through_checks(self, state)
 
 
 AGENT_SCHEMA_VERSIONS = SupportedSchemaVersions(
@@ -266,7 +272,7 @@ class MacAwakeReference:
     value to whichever MAC its own population was measured against.
     Desflurane's 2.60% is anchored to a MAC of 7.25%, and this project stores
     6.0%. The absolute figure divided by the stored MAC would therefore give
-    0.433, against a published 0.36. `docs/MODEL.md` § "MAC-awake as a chart
+    0.433, against a published 0.36. `docs/INTERFACE.md` § "MAC-awake as a chart
     reference" records that comparison.
 
     `mac_reference_basis` is prose rather than a number, because the two
@@ -458,6 +464,11 @@ class AgentParameters:
         # the molar mass is positive and finite.
         _ = self.vapour_volume_per_liquid_volume
 
+    def __setstate__(self, state: object) -> None:
+        """Restore an unpickled or copied record through the constructor's checks (`PL-8W1Q`)."""
+
+        restore_through_checks(self, state)
+
     @property
     def vapour_volume_per_liquid_volume(self) -> float:
         """Derive the millilitres of vapour that one millilitre of this liquid agent gives."""
@@ -549,6 +560,11 @@ class ReferenceAdultParameters:
         ):
             require_perfusion_fraction(field, getattr(self, field))
 
+    def __setstate__(self, state: object) -> None:
+        """Restore an unpickled or copied record through the constructor's checks (`PL-8W1Q`)."""
+
+        restore_through_checks(self, state)
+
     @property
     def total_perfusion_fraction(self) -> float:
         """Sum the tissue-group perfusion fractions, which must equal 1 within tolerance."""
@@ -619,6 +635,11 @@ class BreathingCircuitParameters:
         """
 
         require_compartment_volume("circuit_volume_l", self.circuit_volume_l)
+
+    def __setstate__(self, state: object) -> None:
+        """Restore an unpickled or copied record through the constructor's checks (`PL-8W1Q`)."""
+
+        restore_through_checks(self, state)
 
 
 def _validate_nonempty_string(value: object) -> str:

@@ -1,6 +1,6 @@
 """Every layout operation a reader can perform keeps the required values on screen.
 
-`docs/MODEL.md` § "Minimum displayed outputs" divides the display into an
+`docs/INTERFACE.md` § "Minimum displayed outputs" divides the display into an
 unconditional set that no Workspace may remove, an agent accounting that must
 stay reachable from every layout, and a conditional remainder. The
 unconditional set is drawn in its own region outside the Areas (`PL-NWTM`), so

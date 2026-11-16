@@ -54,7 +54,7 @@ text = "You pick a cloud session's permission mode from the mode dropdown, both 
 [[quote]]
 file = "docs/resident-instructions.md"
 page = "memory"
-text = "Rules without a paths field are loaded unconditionally and apply to all files"
+text = "Rules without paths frontmatter are loaded at launch with the same priority as .claude/CLAUDE.md"
 
 [[quote]]
 file = "docs/resident-instructions.md"

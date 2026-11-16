@@ -722,7 +722,7 @@ def test_for_agent_builds_the_circuit_at_the_machine_file_s_values() -> None:
 # may leave `default_fresh_gas_flow_l_min` out, and the run then supplies its
 # opening flow. Until `PL-2FZ9` lands, `for_agent()` reads one hardcoded
 # profile. So these tests give it a different profile the same way
-# `tests/integration/test_controller.py` gives it an edited agent: by replacing
+# `tests/integration/controller/test_controller_branching.py` gives it an edited agent: by replacing
 # the loader that it calls. Each profile is the shipped file with one thing
 # changed, parsed the way the loader parses it.
 

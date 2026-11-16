@@ -6,7 +6,7 @@ no value of its own. Each container fills from its bottom to the reading's
 `fill`, in the colour of its compartment's chart trace. So a learner who moves
 between the schematic and the chart finds each compartment in one colour. The
 compartment's name, tension and amount are painted under its container, in
-text, so no value is carried by colour or height alone (`docs/MODEL.md`
+text, so no value is carried by colour or height alone (`docs/INTERFACE.md`
 § "The compartment schematic: what its heights, amounts and share bar assert").
 Short marks inside each container's two sides stand at the concentration
 chart's gridlines. A container is much shorter than the chart's plot, so a
@@ -324,7 +324,7 @@ class ShareBar(QWidget):
     shows where the bar is. `RunSchematic` shows lines under the bar that name
     the segments in text, so no segment is told apart by colour alone. Readers
     judge a position along one common scale more accurately than an area
-    (`docs/MODEL.md` § "The compartment schematic: what its heights, amounts
+    (`docs/INTERFACE.md` § "The compartment schematic: what its heights, amounts
     and share bar assert"). So the bar carries the comparison of amounts that
     the containers' heights cannot.
     """
@@ -420,30 +420,26 @@ class ShareBar(QWidget):
 
 
 class RunSchematic(QWidget):
-    """One copy of a run's compartment schematic: its name, containers, lines and share bar.
+    """One run's compartment schematic: its name, containers, lines and share bar.
 
-    The schematic is one of the run's surfaces, the parts of a run that a reader
-    may place in an Area. `RunView.build_compartment_schematic` builds each copy.
-    The run writes every live copy at the same moments as its readouts, from the
-    same snapshot. It withholds the copies whenever it withholds the readouts, and
-    it names them whenever it names its own panels (`app/run_surfaces.py`,
-    `PL-9LNF`). So a schematic can never show a state that its run has left
-    while the readouts show another. A lone run is not named. While runs are
-    compared, each schematic is named, because the order in which the
-    schematics are stacked cannot say which run a tension belongs to
-    (`docs/MODEL.md`, the hazard table's row on reading one run's value as the
-    other's).
+    The compartment schematic View builds one for each displayed run, and
+    writes it on every tick from that run's `RunPresentation`
+    (`app/views.py`, `app/run_presentation.py`). The presentation holds the
+    schematic, the run's name and the run's readouts together. So a
+    schematic never shows a state that its run has left while the readouts
+    show another, and it is withheld whenever the readouts are (`PL-RNYV`,
+    `PL-RF2S`). A lone run is not named. While runs are compared, each
+    schematic is named, because the order in which the schematics are
+    stacked cannot say which run a tension belongs to (`docs/MODEL.md`, the
+    hazard table's row on reading one run's value as the other's).
 
     Args:
-        shown: What the copies built earlier already show.
+        shown: The schematic to draw first.
         name: The run's name while runs are compared, or None.
-        parent: The run's view, so that the copy is deleted with its run.
     """
 
-    def __init__(
-        self, shown: SchematicShown, name: str | None, parent: QWidget | None = None
-    ) -> None:
-        super().__init__(parent)
+    def __init__(self, shown: SchematicShown, name: str | None) -> None:
+        super().__init__()
         self.name_text = styled_label("", color=INK, bold=True)
         self.canvas = SchematicCanvas()
         self.scale_text = styled_label("", color=MUTED, size_px=METRIC_QUALIFIER_SIZE)

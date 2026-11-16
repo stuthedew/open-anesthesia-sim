@@ -23,7 +23,7 @@ are drawn at the same ticks that the axis is labelled at. So the gridlines and
 the labels cannot describe two different scales (`PL-Q4VH`).
 
 **The hover shows a readout whenever the pointer is over a drawn point,
-whether the run is playing or paused** (`docs/MODEL.md` § "The chart's hover
+whether the run is playing or paused** (`docs/INTERFACE.md` § "The chart's hover
 readout: what the tooltip may show"). The readout is for the plot's *drawn
 points*, which are the states at which the run was evaluated. It is never for
 a position between two of them. Its text is the text that `chart_frame`
@@ -134,6 +134,7 @@ from anesthesia_sim.app.theme import (
     BAND_SWATCH_WIDTH,
     BRANCH_POINT_STROKE_WIDTH,
     CHART_HEIGHT,
+    CHART_LEAST_HEIGHT,
     COMPARED_RUN_WIDTH_STEP,
     CONTROL_MARK_COLOR,
     CONTROL_MARK_DASH_PATTERN,
@@ -163,6 +164,7 @@ from anesthesia_sim.app.theme import (
     PREVIEW_REGION_FILL_OPACITY,
     TIME_BASE_SELECTOR_WIDTH,
     WASH_IN_CHART_HEIGHT,
+    WASH_IN_CHART_LEAST_HEIGHT,
     WASH_IN_COLOR,
     WASH_IN_STROKE_WIDTH,
 )
@@ -299,7 +301,7 @@ def dashed_pen(color: str, stroke_width: float, dash_pattern: Sequence[int] | No
 
     Qt states a dash pattern in units of the pen's width. `app/theme.py` and
     `chart_frame.COMPARTMENT_TRACES` state theirs in pixels, which is the unit
-    that `docs/MODEL.md` § "The six compartment traces" tabulates. So the
+    that `docs/INTERFACE.md` § "The six compartment traces" tabulates. So the
     conversion is made once, here, rather than at each of the seven pens that
     have a pattern. A pattern copied across without the conversion draws every
     dash too long by a factor of the pen's width, which is what the spike did.
@@ -610,7 +612,7 @@ class _HoverReadout:
 
     It keeps the last pointer position, so a frame drawn under a resting
     pointer shows a fresh readout rather than going blank. At high playback
-    speed the reported value moves as the run does. `docs/MODEL.md` § "When
+    speed the reported value moves as the run does. `docs/INTERFACE.md` § "When
     it answers" says that this is correct, not a defect to design around. It
     keeps `None` once the pointer has left the plot, so a frame drawn after
     that shows no readout (`PL-LTKL`).
@@ -680,12 +682,27 @@ class _HoverReadout:
         # decided in pixels, because the box's height is fixed in pixels while
         # the plot's height is whatever its Area leaves it. Deciding it at a
         # fraction of the axis put the box partly above a short plot
-        # (`PL-9BVQ`).
+        # (`PL-9BVQ`). A plot shorter than the box's height on both sides of
+        # the anchor, as a View at its least height can leave it, gets the box
+        # with its top at the plot's top, so the box stays inside the plot
+        # where the plot is at least as tall as the box (`PL-CBYS`).
         anchor = target.anchor
         past_middle = anchor.time_s > (x_range[0] + x_range[1]) / 2.0
-        below = self._room_above_px(anchor.time_s, anchor.value) < self._box_height_px()
-        self._text.setAnchor((1 if past_middle else 0, 0 if below else 1))
-        self._text.setPos(anchor.time_s, anchor.value)
+        box_height_px = self._box_height_px()
+        room_above_px = self._room_above_px(anchor.time_s, anchor.value)
+        room_below_px = self._plot_height_px() - room_above_px
+        horizontal = 1 if past_middle else 0
+
+        if room_above_px >= box_height_px:
+            self._text.setAnchor((horizontal, 1))
+            self._text.setPos(anchor.time_s, anchor.value)
+        elif room_below_px >= box_height_px:
+            self._text.setAnchor((horizontal, 0))
+            self._text.setPos(anchor.time_s, anchor.value)
+        else:
+            self._text.setAnchor((horizontal, 0))
+            self._text.setPos(anchor.time_s, self._top_value())
+
         self._dot.show()
         # This uses `setVisible` rather than `show`. `show` goes straight to
         # Qt's own method, and so it skips pyqtgraph's override. That override
@@ -702,6 +719,18 @@ class _HoverReadout:
         top = self._plot.viewportTransform().mapRect(view_box.sceneBoundingRect()).top()
 
         return float(anchor.y() - top)
+
+    def _plot_height_px(self) -> float:
+        """Return the plot's height in pixels, between its top and bottom axes."""
+
+        view_box = self._plot.getPlotItem().getViewBox()
+
+        return float(self._plot.viewportTransform().mapRect(view_box.sceneBoundingRect()).height())
+
+    def _top_value(self) -> float:
+        """Return the value at the top edge of the plot, in the units the box is placed in."""
+
+        return float(self._plot.getPlotItem().getViewBox().viewRange()[1][1])
 
     def _box_height_px(self) -> float:
         """Return the box's height in pixels, for the text it now holds.
@@ -974,7 +1003,7 @@ class ConcentrationChart(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._plot = _plot(PANEL)
-        self._plot.setMinimumHeight(CHART_HEIGHT)
+        self._plot.setMinimumHeight(CHART_LEAST_HEIGHT)
         self._plot.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -1143,7 +1172,11 @@ class ConcentrationChart(QWidget):
         return self._runs[run].preview.shown_label()
 
     def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
-        """As wide as the plot asks and `theme.CHART_HEIGHT` tall. It grows into spare height."""
+        """As wide as the plot asks and `theme.CHART_HEIGHT` tall.
+
+        The chart grows into spare height, and shrinks to
+        `theme.CHART_LEAST_HEIGHT` in a View too short for this height.
+        """
 
         return _preferred_size(self._plot, CHART_HEIGHT)
 
@@ -1409,7 +1442,7 @@ class WashInChart(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._plot = _plot(PANEL)
-        self._plot.setMinimumHeight(WASH_IN_CHART_HEIGHT)
+        self._plot.setMinimumHeight(WASH_IN_CHART_LEAST_HEIGHT)
         self._plot.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -1418,7 +1451,7 @@ class WashInChart(QWidget):
         item.setLabel("left", "F_A/F_I", color=MUTED)
         item.setLabel("bottom", "simulated time", color=MUTED)
         # The axis is fixed rather than fitted to the data. It is labelled at
-        # its own gridlines, at its own resolution, as `docs/MODEL.md`
+        # its own gridlines, at its own resolution, as `docs/INTERFACE.md`
         # § "F_A/F_I as a displayed ratio" specifies.
         item.setYRange(0.0, WASH_IN_AXIS_MAXIMUM, padding=0)
         item.getAxis("left").setTicks([list(wash_in_axis_ticks())])
@@ -1515,7 +1548,11 @@ class WashInChart(QWidget):
         return self._frame
 
     def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
-        """As wide as the plot asks, and `theme.WASH_IN_CHART_HEIGHT` tall."""
+        """As wide as the plot asks, and `theme.WASH_IN_CHART_HEIGHT` tall.
+
+        The chart shrinks to `theme.WASH_IN_CHART_LEAST_HEIGHT` in a View too
+        short for this height.
+        """
 
         return _preferred_size(self._plot, WASH_IN_CHART_HEIGHT)
 
@@ -1741,8 +1778,8 @@ def _preferred_size(plot: Any, height_px: int) -> QSize:
     asks for 480 px on its own, which is no chart's height. That request made
     the page a quarter of a screen taller than the page it replaced. The plot still
     grows past this height, because it expands in both directions, so a
-    taller window lengthens the traces. The plot's minimum height is the same
-    theme height, set on the plot.
+    taller window lengthens the traces. The plot's minimum height is a smaller
+    theme height, such as `CHART_LEAST_HEIGHT`, set on the plot.
     """
 
     return QSize(plot.sizeHint().width(), height_px)
@@ -2133,7 +2170,7 @@ class TraceLegend(QWidget):
         ]
         layout.addLayout(self._compared_row)
         # Each reference names the compartment it is read against.
-        # `docs/MODEL.md` § "Interface boundary" requires that of a
+        # `docs/INTERFACE.md` § "Interface boundary" requires that of a
         # reference, in the same passage that exempts a reference from the
         # drawn-trace rule. The band names vessel-rich, not alveolar. The
         # model has no effect-site compartment, and it defines the arterial

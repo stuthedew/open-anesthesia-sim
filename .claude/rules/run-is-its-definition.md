@@ -58,7 +58,7 @@ nothing in this simulator produces it.
 ## If the motivation is speed, it was measured and it is not there
 
 The instinct that a long run must be slow to draw is the usual reason a store
-gets proposed. `docs/MODEL.md` § "The run is that record, and every state is
+gets proposed. `docs/INTERFACE.md` § "The run is that record, and every state is
 derived from it" answers it with numbers: a one-hour window at 600 columns
 costs 10.6 ms on a two-hour run and 13.0 ms on a thirty-day one, against
 62.6 ms at four hours and 207.7 ms at twelve on the recorded path. Answering a

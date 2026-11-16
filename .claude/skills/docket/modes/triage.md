@@ -321,8 +321,9 @@ starts such work first runs `python3 tools/effort_trial.py move --to xhigh
 --reason "generator cause"`. That caps the session at `xhigh` for the rest of
 its life, compactions included, and records the move, so the trial's review
 leaves the session out of both arms (`PL-6LVZ`). A Projects thread is in
-neither arm already, and sets its level with its own effort setting. Work on
-the generator's downstream items stays in the trial.
+neither arm already. `docs/maintainer.md` § "Match effort to the standard the
+work is held to" says the level it runs at. Work on the generator's downstream
+items stays in the trial.
 
 **A defect in the machinery that finds and ranks generators ranks with one**
 (project owner, 2026-09-19). Same tier, below `P0` and above every band,

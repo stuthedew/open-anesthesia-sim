@@ -287,7 +287,7 @@ def test_the_delivered_agent_is_shown_at_its_derived_precision_with_its_unit_nam
 ) -> None:
     """Show whole millilitres of liquid and tenths of a litre of vapour.
 
-    These are the precisions that `docs/MODEL.md` § "Displayed precision"
+    These are the precisions that `docs/INTERFACE.md` § "Displayed precision"
     derives for the delivered agent in each unit.
     """
 

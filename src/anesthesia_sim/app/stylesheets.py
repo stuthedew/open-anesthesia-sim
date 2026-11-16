@@ -64,6 +64,17 @@ def scroll_area_stylesheet() -> str:
     return f"QScrollArea {{ background-color: {BACKGROUND}; }}"
 
 
+def clear_scroll_area_stylesheet() -> str:
+    """A scroll area that paints no surface, so the surface it sits on shows through it.
+
+    The page's scroll area declares BACKGROUND, and Qt applies that rule to
+    every scroll area inside the page. A scroll area that sits on a panel
+    declares this rule, so that the panel's own surface shows behind its rows.
+    """
+
+    return "QScrollArea { background-color: transparent; }"
+
+
 def panel_stylesheet(object_name: str) -> str:
     """The panel surface: PANEL, rounded, scoped to one widget so its children keep their own."""
 

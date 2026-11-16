@@ -163,14 +163,7 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 # opens, the key it opens, what a quoted scalar holds, and whether a node is a
 # plain scalar. This module spelt each beside it, and the two parted on
 # `don 't # x`, `"a\"b": 1` and `'it''s'`.
-from docket.frontmatter import (  # noqa: E402
-    Unread,
-    closing_quote,
-    is_item,
-    plain,
-    uncommented,
-    unquote,
-)
+from docket.frontmatter import Unread, closing_quote, is_item, plain, uncommented, unquote  # noqa: E402
 from docket.frontmatter import key as frontmatter_key  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
 from docket.vcs import REMOTE, default_branch, github_token  # noqa: E402

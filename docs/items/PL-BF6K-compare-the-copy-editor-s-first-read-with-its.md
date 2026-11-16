@@ -3,11 +3,13 @@ id: PL-BF6K
 title: Compare the copy editor's first read with its last read on saved runs, using the blind judge, before deciding whether to cut the audit reads
 priority: P2
 effort: M
-status: ready
+status: dropped
 classes: session-cost
 feature: copy-editor
 touches: tools/copy_edit.py, docs/prose-review/README.md
 added: 2026-11-10
+closed: 2026-11-14
+reason: The project owner chose on 2026-11-14 to remove the copy editor completely, and PL-GL45 removed it with its agents, the blind judge and their tests, so this work on the copy editor has nothing left to act on.
 payoff: the owner decides on a measurement whether three of the copy editor's four reads earn their time and cost
 verify: grep -qE '^[*][*]Measured 20' docs/items/PL-BF6K-*.md
 ---

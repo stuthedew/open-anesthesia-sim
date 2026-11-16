@@ -549,7 +549,7 @@ class MetricPanel(QFrame):
     widget under the name and the gloss. While two runs are compared, the
     second run's reading joins the first run's panel instead of appearing in
     a second panel of its own. So the readout block grows by a few lines
-    rather than by a second row (`docs/MODEL.md` § "Minimum displayed
+    rather than by a second row (`docs/INTERFACE.md` § "Minimum displayed
     outputs", `PL-F2YS`). Each reading then names its run on a line above its
     value.
 

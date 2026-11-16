@@ -111,8 +111,8 @@ COMPARTMENT_QUANTITIES: Final = (
 #: They follow the order of `PatientCompartmentsState.tissues`, which is the
 #: order that `AgentUptakeSystem.state_vector` writes them in. This table
 #: assumes that order from another module. So
-#: `tests/integration/test_controller.py`'s
-#: `test_each_recorded_quantity_carries_the_compartment_it_names` checks the
+#: `tests/integration/controller/test_controller_running.py`'s
+#: `test_each_drawn_quantity_reads_the_state_of_the_compartment_it_names` checks the
 #: order against the core's own attributes rather than restating it.
 #:
 #: `WASH_IN_RATIO` is deliberately absent. It is not a state but the quotient
@@ -195,7 +195,7 @@ class DrawnWindow:
     state here is a `DisplayState`. `core/run_definition.py` makes that type
     structurally different from a state vector. It does so precisely so that
     a drawn value cannot become a keyframe, an export or a fork's opening
-    state just by having the right shape. `docs/MODEL.md` § "The canonical
+    state just by having the right shape. `docs/INTERFACE.md` § "The canonical
     evaluation rule" states the guarantee, and this class is one of the
     places that must enforce it.
 

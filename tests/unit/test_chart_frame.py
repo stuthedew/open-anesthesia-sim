@@ -157,7 +157,7 @@ def test_every_compartment_has_exactly_one_trace_in_listed_order() -> None:
 
 
 def test_the_six_line_styles_are_the_ones_the_model_document_tabulates() -> None:
-    """Each trace matches its row in `docs/MODEL.md` § "The six compartment traces".
+    """Each trace matches its row in `docs/INTERFACE.md` § "The six compartment traces".
 
     The dash pattern and the width are both in px.
     """
@@ -428,7 +428,7 @@ def test_a_plot_owes_a_frame_only_when_it_needs_more_columns_than_it_drew() -> N
 
 
 def test_no_chord_is_wider_than_one_pixel_of_time() -> None:
-    """Check the guarantee in `docs/MODEL.md` § "What the chart draws" at every rung.
+    """Check the guarantee in `docs/INTERFACE.md` § "What the chart draws" at every rung.
 
     A frame drawn for a plot `_PLOT_WIDTH_PX` wide divides the axis into at
     least that many intervals. Consecutive drawn instants are therefore never
@@ -628,7 +628,7 @@ def _frame(
 
 
 def test_the_hover_reads_as_the_specification_shows() -> None:
-    """The hover matches the worked example in `docs/MODEL.md` § "The chart's hover readout"."""
+    """The hover matches the worked example in `docs/INTERFACE.md` § "The chart's hover readout"."""
 
     run = _run_frame((1208.0,), alveolar=(0.0143,))
 
@@ -796,7 +796,7 @@ def test_an_axis_top_past_one_atmosphere_is_refused_when_the_frame_is_assembled(
 def test_the_hover_names_the_run_only_while_more_than_one_is_drawn() -> None:
     """The hover names the run on line 1, and only while more than one run is drawn.
 
-    This follows `docs/MODEL.md` § "The hover and the run it belongs to". The
+    This follows `docs/INTERFACE.md` § "The hover and the run it belongs to". The
     run's name goes in the line that the specification already calls run
     context. It appears only while there is a second run to tell it apart
     from. That is the same condition that `run_trace_style` uses for its

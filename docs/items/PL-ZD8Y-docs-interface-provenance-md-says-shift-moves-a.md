@@ -3,11 +3,13 @@ id: PL-ZD8Y
 title: docs/interface-provenance.md says Shift moves a border alone here, the reverse of Blender, only in the keyboard entry; the border-chain entry says nothing about Shift, and no divergence is recorded (copy editor structure read, 2026-11-05)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: interface-provenance-structure
 touches: docs/interface-provenance.md
 added: 2026-11-05
+closed: 2026-11-14
+pr: 2167
 payoff: a reader learns what Shift does to a border drag here and how it compares with Blender, from one consistent record
 verify: grep -qE '^\*\*Shift' docs/interface-provenance.md
 ---
@@ -27,3 +29,7 @@ verify: grep -qE '^\*\*Shift' docs/interface-provenance.md
 **Generator check.** One-off: a finding from the `docs/interface-provenance.md` structure read (`PL-ZMBN`).
 
 **Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** `git show 817a4d88:docs/interface-provenance.md` already says Blender's Shift extends a drag ("Extend-drag is the Shift key", row 293) and that here "Shift moves it alone" (row 930), with no divergence recorded. So the problem was present at the freeze, commit `817a4d88` (2026-10-24), and this finding belongs on v0.7.0's frozen list rather than deferred.
+
+**Done 2026-11-14.** The Manual's "Areas" page (https://docs.blender.org/manual/en/latest/interface/window_system/areas.html, downloaded whole, page dated 2026-11-14) says, in its "Resizing" section, that holding Shift moves nearby aligned borders together while resizing. `screen_ops.cc` on `blender/blender` `main` (downloaded whole the same day) agrees: `area_move_invoke` passes `event->modifier & KM_SHIFT` to `area_move_init` as `extend`, and `area_move_modal` calls `area_move_reinit` when Shift is pressed or released during a drag. So Blender's Shift extends a drag, and `PL-RQT1` Q3 misread the Manual. `docs/interface-provenance.md` now dates that reading in § "How a layout is built, and how far the operations reach", says in the border-drag entry what Shift does here, and adds the "**Shift**" entry to § "Diverged, and each divergence has a specific cause" beside it. Whether to change what Shift does is filed as `PL-GJFL`.
+
+Files checked for statements about Shift on a border drag: `docs/interface-provenance.md`, `docs/INTERFACE.md`, `docs/ARCHITECTURE.md`, `ROADMAP.md`, `README.md`, and the module docstring of `src/anesthesia_sim/app/area_layout.py`. None but the first claimed anything about Blender's Shift.

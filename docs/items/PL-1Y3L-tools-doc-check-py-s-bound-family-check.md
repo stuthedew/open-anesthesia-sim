@@ -3,10 +3,12 @@ id: PL-1Y3L
 title: tools/doc_check.py's bound-family check declines a paragraph whose code only an unparsable file may define, and no test pins that path
 priority: P3
 effort: S
-status: ready
+status: done
 classes: test
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-11-10
+closed: 2026-11-14
+pr: 2153
 payoff: a change that lets the documentation check pass a paragraph it could not read fails a test
 verify: grep -q 'def test_a_bound_family_paragraph_whose_code_only_an_unparsable_file_defines_is_declined' tests/unit/test_doc_check.py
 ---
@@ -18,3 +20,10 @@ verify: grep -q 'def test_a_bound_family_paragraph_whose_code_only_an_unparsable
 **Done when.** A test in `tests/unit/test_doc_check.py` builds a tree whose only definition of a bound family's code name sits in a file that fails to parse, and asserts that the check declines the paragraph and names the file.
 
 **Generator check.** A one-off: a test gap on one branch of one check. The fact is which code names the tree defines, `doc_check`'s reader is its one home, and no head's `misread:` states a gap in it.
+
+**Done, 2026-11-14.** The test
+`test_a_bound_family_paragraph_whose_code_only_an_unparsable_file_defines_is_declined`
+builds a tree whose only definition of the cited name is in a file that does
+not parse. It asserts that the check reports no error, declines the paragraph,
+and names the file. With the decline branch in `_check_each_bound_family`
+removed, the test failed because the paragraph was reported as naming no code.

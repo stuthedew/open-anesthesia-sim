@@ -4,7 +4,7 @@ A run used to be named by its position in the dashboard's drawing order, so
 "the second run" meant whichever run was second at the time (`PL-7Z84`). A
 Workspace that pins a run (`PL-WV9K` Q6) would then point at whatever run took
 that place, and show it as the run it remembers. The reader would see the
-correct number under the wrong patient context, which `docs/MODEL.md` § "What
+correct number under the wrong patient context, which `docs/INTERFACE.md` § "What
 this list requires once the layout is the reader's" treats as a display
 failure.
 
@@ -20,7 +20,7 @@ the run is called on screen: `dashboard_frame.run_label` renders it.
 trunk keeps it from the dashboard's construction onward. A branch keeps it from
 the fork that opened it until the branch is dropped. A Reset of the run, or a
 change of agent, begins a new run definition in the same place, after the
-confirmation that `docs/MODEL.md` § "Agent-change behavior" requires. The run
+confirmation that `docs/INTERFACE.md` § "Agent-change behavior" requires. The run
 keeps its identity through both.
 
 `RunIdentities` is the one object in this package whose state changes, because

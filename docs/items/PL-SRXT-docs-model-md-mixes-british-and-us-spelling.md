@@ -6,10 +6,10 @@ effort: M
 status: ready
 classes: docs
 feature: model-md-structure
-touches: docs/MODEL.md
+touches: docs/MODEL.md, docs/INTERFACE.md
 added: 2026-11-08
 payoff: the specification reads as one edited document in the project's US spelling, while every quoted interface label still matches the screen
-verify: ! grep -qF 'modelled fractions with that solution' docs/MODEL.md && ! grep -qF 'The vapour-to-liquid ratio is derived' docs/MODEL.md
+verify: ! grep -qF 'modelled fractions with that solution' docs/MODEL.md && ! grep -qF 'The vapour-to-liquid ratio is derived' docs/INTERFACE.md
 ---
 
 **Problem.** docs/MODEL.md mixes British and US spelling (modelled 40 times against modeled 22, vapour 60 against vapor 90 on 2026-11-08), though PL-XF89 settled the tree on US spelling, and the copy editor leaves the British forms in place

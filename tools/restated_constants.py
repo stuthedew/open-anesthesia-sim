@@ -150,7 +150,7 @@ TRIPWIRES: Mapping[tuple[str, str], str] = {
     ),
     (
         "MAXIMUM_ELAPSED_SIMULATION_TIME_S",
-        "tests/integration/test_controller.py"
+        "tests/integration/controller/test_controller_supported_length.py"
         "::test_the_refusal_to_branch_at_the_supported_run_length_is_pinned_whole",
     ): _PINNED_MESSAGE,
     **{

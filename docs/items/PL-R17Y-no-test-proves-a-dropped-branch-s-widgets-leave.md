@@ -6,10 +6,10 @@ effort: S
 status: ready
 classes: test
 feature: branch-display-tests
-touches: tests/integration/test_simulation_view.py
+touches: tests/integration/simulation_view
 added: 2026-09-20
 payoff: catches a dropped branch whose chrome stays on screen around a run that no longer exists
-verify: grep -q 'def test_a_dropped_branchs_widgets_leave_the_dashboard' tests/integration/test_simulation_view.py
+verify: grep -rq 'def test_a_dropped_branchs_widgets_leave_the_dashboard' tests/integration/simulation_view/
 ---
 
 **Problem.** No test proves a dropped branch's widgets leave the dashboard; the trunk-Reset test asserts Python-side state only
@@ -45,7 +45,7 @@ Read the item as "no test proves the dropped branch's widgets leave", not as
 **Verified 2026-09-20** against `src/anesthesia_sim/app/simulation_view.py`'s
 `_remove_run` and `_place_run`, and the body of
 `test_resetting_the_trunk_ends_the_comparison` in
-`tests/integration/test_simulation_view.py`.
+`tests/integration/simulation_view/`.
 
 **Done when.** A test takes a fork, resets the trunk, and shows the branch's
 placed widgets are gone from the shared layouts they were put into - the

@@ -12,6 +12,7 @@ one data file, so a test names only the thing it breaks.
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import subprocess
 import sys
@@ -133,6 +134,11 @@ MODEL = "\n".join(
         "",
         "Nothing yet.",
         "",
+        # A numeric paragraph that names its test, because "Known limitations"
+        # is a bound family held by its numeric paragraphs, and the family
+        # errors on a section with no members.
+        f"The demo store holds at most 0.1 L, as `{FAMILY_TEST}` computes.",
+        "",
         # A marked prose value, so the clean fixture is clean by the prose
         # check too - and so that every test overriding `model=` starts from
         # documentation that satisfies it.
@@ -250,6 +256,29 @@ DATA = {
 }
 
 
+#: The bound families as `tools/doc_check.py` defines them, for the test that
+#: reads this repository's own documents.
+REPOSITORY_BOUND_FAMILIES = doc_check.BOUND_FAMILIES
+
+
+@pytest.fixture(autouse=True)
+def _bound_families_in_one_fixture_document(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Point every family of the interface document at the fixture's one model document.
+
+    `_repo` writes a single `docs/MODEL.md` that holds every bound section, as
+    the real document did until `PL-CTXZ` moved the interface sections to
+    `docs/INTERFACE.md`. The tests here are about how a family is read, not
+    about which document holds it, so they keep that one fixture document.
+    """
+    families = tuple(
+        dataclasses.replace(family, document=doc_check.MODEL)
+        if family.document == doc_check.INTERFACE
+        else family
+        for family in doc_check.BOUND_FAMILIES
+    )
+    monkeypatch.setattr(doc_check, "BOUND_FAMILIES", families)
+
+
 def _repo(
     tmp_path: Path,
     *,
@@ -343,10 +372,16 @@ def _this_repository() -> doc_check.Report:
     Three tests read the real tree, and one analysis of it took 46 to 51 s in
     an eight-worker run on four cores, so analysing it for each was about 150
     test-seconds of CI's pytest step (`PL-H9KW`). Each reads the report and
-    none changes it.
+    none changes it. It reads the families as `tools/doc_check.py` defines
+    them, not as `_bound_families_in_one_fixture_document` re-points them.
     """
 
-    return doc_check.analyze(Path(doc_check.__file__).resolve().parent.parent)
+    fixture_families = doc_check.BOUND_FAMILIES
+    doc_check.BOUND_FAMILIES = REPOSITORY_BOUND_FAMILIES
+    try:
+        return doc_check.analyze(Path(doc_check.__file__).resolve().parent.parent)
+    finally:
+        doc_check.BOUND_FAMILIES = fixture_families
 
 
 @pytest.mark.reads_item_store
@@ -8167,7 +8202,9 @@ def test_a_developer_note_declaring_no_test_yet_holds_the_paragraph_above_it_whi
 
 
 @pytest.mark.reads_item_store
-def test_this_repository_holds_every_bound_family_to_its_members() -> None:
+def test_this_repository_holds_every_bound_family_to_its_members(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """The families named in `BOUND_FAMILIES` conform here, not only in fixtures.
 
     A family joins that tuple only once its annotation pass has landed, so this
@@ -8178,10 +8215,12 @@ def test_this_repository_holds_every_bound_family_to_its_members() -> None:
     declared one against `PL-1P15` since `PL-VJZK`. Closing that item in a
     pull request that changes only item files must still run this test.
     """
+    monkeypatch.setattr(doc_check, "BOUND_FAMILIES", REPOSITORY_BOUND_FAMILIES)
     report = doc_check.Report()
     doc_check.check_bound_families(Path(__file__).resolve().parents[2], report)
 
     assert report.errors == []
+    assert report.declined == []
     assert report.declined == []
 
 
@@ -10200,7 +10239,7 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     "bound family, a lazy continuation is refused": (
         _lazy_family_member,
         [
-            'docs/MODEL.md:29: § "Minimum displayed outputs" is a bound family, and its '
+            'docs/MODEL.md:31: § "Minimum displayed outputs" is a bound family, and its '
             "members were not read: this line carries on the entry above it without an "
             "indent, which CommonMark reads as part of that entry and the list walker does "
             "not; indent it to keep it in the entry, or put a blank line before it"
@@ -13331,3 +13370,72 @@ def test_a_module_the_interpreter_cannot_parse_is_declined_not_failed(tmp_path: 
     assert report.errors == []
     assert len(report.declined) == 1
     assert "cannot parse this file" in report.declined[0]
+
+
+def test_a_section_mark_naming_the_wrong_specification_document_is_refused(tmp_path: Path) -> None:
+    """A section that moved to `docs/INTERFACE.md` is not cited as `docs/MODEL.md`'s.
+
+    The model document points at the moved section by name, so it holds the
+    heading's words, and containment alone passed the stale citation
+    (`PL-CTXZ`, found by a blind review pass).
+    """
+    model = MODEL + '\nThe display rules are in `docs/INTERFACE.md` § "Shown values".\n'
+    stale = README + '\nSee `docs/MODEL.md` § "Shown values".\n'
+    root = _repo(tmp_path, model=model, readme=stale)
+    (root / "docs" / "INTERFACE.md").write_text(
+        "# Interface\n\n## Shown values\n\nThe demo value is shown.\n", encoding="utf-8"
+    )
+
+    assert [error for error in _errors(root) if "is a section of" in error] == [
+        'README.md:6: cites docs/MODEL.md § "Shown values", which is a section of '
+        "docs/INTERFACE.md and not of docs/MODEL.md"
+    ]
+
+    current = README + '\nSee `docs/INTERFACE.md` § "Shown values".\n'
+    (root / "README.md").write_text(current, encoding="utf-8")
+    assert [error for error in _errors(root) if "Shown values" in error] == []
+
+
+def test_an_absent_marker_under_a_list_covers_its_first_item(tmp_path: Path) -> None:
+    """A marker under a list speaks for every item in it, as a `provenance:` marker does.
+
+    A marker cannot stand inside a list item, so under the list is the only
+    place that can tie a path in an earlier item. Read with the block above it
+    alone, the marker covered only the last item, and `PL-SG93`'s brief had no
+    placement the check accepted (`PL-HXF0`).
+    """
+    readme = (
+        f"{README}\n- This project has no `setup.py`.\n- Its build is declared elsewhere.\n"
+        "\n<!-- absent: setup.py -->\n"
+    )
+
+    assert _errors(_repo(tmp_path, readme=readme)) == []
+
+
+def test_a_bound_family_paragraph_whose_code_only_an_unparsable_file_defines_is_declined(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A paragraph naming code only an unparsable file could define is neither passed nor failed.
+
+    The parser cannot say whether the file defines the name, so the check
+    declines the paragraph and names the file, rather than reporting the
+    family as held to code it never read (`PL-1Y3L`).
+    """
+    monkeypatch.setattr(doc_check, "BOUND_FAMILIES", (_paragraph_family(),))
+    broken = tmp_path / "src" / "anesthesia_sim" / "broken.py"
+    broken.parent.mkdir(parents=True)
+    broken.write_text("def only_here(:\n    pass\n", encoding="utf-8")
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "add", "-A"], cwd=tmp_path, check=True)
+
+    report = _check_numeric_family(
+        tmp_path, "# Overview\n\nThe gauge reads `only_here`.\n", "ready"
+    )
+
+    assert report.errors == []
+    assert any(
+        d.startswith("src/anesthesia_sim/broken.py: the parser refuses it") for d in report.declined
+    )
+    assert any(
+        "names code only a file this Python cannot parse may define" in d for d in report.declined
+    )

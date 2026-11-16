@@ -15,6 +15,9 @@ from __future__ import annotations
 
 import argparse
 import ast
+import re
+import sys
+import tomllib
 from collections import Counter
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
@@ -157,13 +160,21 @@ def run_report(
     description: str,
     analyze: Callable[[Path], Report],
     format_report: Callable[[Report], str],
+    *,
+    parses_source: bool = False,
 ) -> int:
     """Run a check over the repository a `--root` names, print its report, and return its status.
 
     With no `--root`, the repository is the one holding `tools/`. The status
-    is 1 when the report counts an error and 0 otherwise.
+    is 1 when the report counts an error and 0 otherwise. A check that parses
+    `src/` passes `parses_source`, and then returns 2 with one line naming the
+    interpreter to use when this one is older than the project needs, as
+    `source_python_refusal` says.
     """
 
+    if parses_source and (refusal := source_python_refusal(sys.argv[0])) is not None:
+        print(refusal)
+        return 2
     root = repository_root(argv, description)
     report = analyze(root)
     print(format_report(report))
@@ -177,3 +188,43 @@ def repository_root(argv: Sequence[str] | None, description: str) -> Path:
     parser.add_argument("--root", type=Path, default=None, help="path to the repository")
     args = parser.parse_args(argv)
     return (args.root or Path(__file__).resolve().parent.parent).resolve()
+
+
+def project_python_floor() -> tuple[int, int]:
+    """Return the oldest Python release, as (major, minor), that this repository's code needs.
+
+    It is read from `requires-python` in the `pyproject.toml` beside `tools/`,
+    which is where the project states it. Raises: ValueError: that field has
+    no `>=X.Y` lower bound.
+    """
+
+    pyproject = Path(__file__).resolve().parent.parent / "pyproject.toml"
+    with pyproject.open("rb") as handle:
+        spec = tomllib.load(handle)["project"]["requires-python"]
+    # regex: the ">=X.Y" lower bound of a PEP 440 version specifier.
+    bound = re.search(r">=\s*(\d+)\.(\d+)", spec)
+    if bound is None:
+        raise ValueError(f"requires-python {spec!r} in {pyproject} has no >=X.Y lower bound")
+    return int(bound.group(1)), int(bound.group(2))
+
+
+def source_python_refusal(script: str) -> str | None:
+    """Return why this interpreter cannot run a check that parses `src/`, or None when it can.
+
+    `ast` parses with the running interpreter's grammar, so an interpreter
+    older than the project's `requires-python` fails on newer syntax in `src/`
+    with a `SyntaxError`, which reads as a failing check. A session running the
+    check with the container's bare `python3` gets this one line instead
+    (`PL-62PF`).
+    """
+
+    floor = project_python_floor()
+    running = (sys.version_info[0], sys.version_info[1])
+    if running >= floor:
+        return None
+    name = Path(script).name
+    return (
+        f"{name}: this check parses src/, which needs Python {floor[0]}.{floor[1]} or newer, "
+        f"and this is Python {running[0]}.{running[1]}. "
+        f"Run it as: uv run python tools/{name}"
+    )

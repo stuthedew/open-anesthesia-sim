@@ -1,6 +1,6 @@
 """Render the whole dashboard headless at one fixed size, and read it back as pixels.
 
-`tests/integration/test_simulation_view.py` tests what the dashboard's
+`tests/integration/simulation_view/` tests what the dashboard's
 widgets say. These tests check what the dashboard *paints*, for a real run
 advanced several simulated minutes, under the `offscreen` platform that
 `tests/conftest.py` selects. Without them, a session in the web container
@@ -48,10 +48,18 @@ from anesthesia_sim.app.dashboard_frame import SIMULATION_STEP_S
 from anesthesia_sim.app.qt_chart import ConcentrationChart, WashInChart
 from anesthesia_sim.app.qt_widgets import MetricPanel
 from anesthesia_sim.app.run_series import RecordedQuantity
+from anesthesia_sim.app.run_surfaces import AccountingPanel
 from anesthesia_sim.app.simulation_view import SimulationView
-from anesthesia_sim.app.theme import AGENT_COLOR_SCHEMES, INK, MUTED, ONE_MAC_LINE_COLOR, PANEL
+from anesthesia_sim.app.theme import (
+    AGENT_COLOR_SCHEMES,
+    CHART_HEIGHT,
+    INK,
+    MUTED,
+    ONE_MAC_LINE_COLOR,
+    PANEL,
+)
 from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING, CONCENTRATION_CHART, WASH_IN
-from anesthesia_sim.app.views import ConcentrationView, WashInView
+from anesthesia_sim.app.views import AccountingView, ConcentrationView, WashInView
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, Window
@@ -103,6 +111,9 @@ _EVERY_VIEW = WorkspaceSet(
 #: than this and scrolls, and the grab shows its top.
 _WINDOW_WIDTH_PX = 1600
 _WINDOW_HEIGHT_PX = 1000
+# A window tall enough that the concentration plot has its preferred height,
+# `theme.CHART_HEIGHT`, in the test Workspace (`PL-CBYS`).
+_TALL_WINDOW_HEIGHT_PX = 2200
 
 #: How far inside the badge's left edge the fill is sampled: past the
 #: one-pixel border and before the padding ends and the text begins.
@@ -489,6 +500,17 @@ def test_no_readout_value_is_clipped_by_its_panel(dashboard: SimulationView) -> 
             assert _advance_px(label) <= label.width(), label.text()
 
 
+def _accounting_panels(dashboard: SimulationView) -> list[AccountingPanel]:
+    """Every run's accounting panel, in every Area that shows the agent accounting View."""
+
+    return [
+        panel
+        for view in dashboard.layout_container.views()
+        if isinstance(view, AccountingView)
+        for panel in view.panels
+    ]
+
+
 def test_no_readout_value_is_clipped_once_a_run_is_going(dashboard: SimulationView) -> None:
     """The agent-accounting panel gets its whole height once a run is going (`PL-TZNM`).
 
@@ -498,7 +520,7 @@ def test_no_readout_value_is_clipped_once_a_run_is_going(dashboard: SimulationVi
     readout's own size hints, not values read from the layout under test.
     """
 
-    panels = dashboard.runs[0]._accounting_panels
+    panels = _accounting_panels(dashboard)
 
     assert panels
 
@@ -529,7 +551,7 @@ def test_the_readout_row_and_the_sidebar_are_inside_the_page(dashboard: Simulati
     scroll, middle = _page(dashboard)
     page = dashboard.findChild(QWidget, "dashboardPage")
     run = dashboard.runs[0]
-    accounting_panel = run._accounting_panels[0]._agent_accounting_status_text.parentWidget()
+    accounting_panel = _accounting_panels(dashboard)[0]
     timeline_panel = run._control_timeline_text.parentWidget()
 
     assert page is not None
@@ -546,15 +568,32 @@ def test_the_readout_row_and_the_sidebar_are_inside_the_page(dashboard: Simulati
 # ------------------------------------------------------------- the hover
 
 
-def test_the_hover_reports_the_drawn_state_on_the_shipped_chart(dashboard: SimulationView) -> None:
-    """A hover on the shipped chart gives the agent, the compartment, its gloss and both units."""
+def test_the_hover_reports_the_drawn_state_on_the_shipped_chart(
+    application: QApplication, dashboard: SimulationView
+) -> None:
+    """A hover on the shipped chart gives the agent, the compartment, its gloss and both units.
+
+    The window is made tall enough for the plot's preferred height. At the
+    fixture's size the plot is at its least height, where the circuit trace
+    lies inside the hover's radius of the alveolar point too, and the readout
+    then names both (`PL-CBYS`).
+    """
 
     chart = _concentration(dashboard).chart
-    frame = _drawn_frame(dashboard)
-    run = frame.runs[0]
-    index = len(run.times_s) // 3
+    dashboard.resize(_WINDOW_WIDTH_PX, _TALL_WINDOW_HEIGHT_PX)
+    application.processEvents()
 
-    readout = chart.readout_at(run.times_s[index], run.percents(RecordedQuantity.ALVEOLAR)[index])
+    try:
+        assert chart.height() >= CHART_HEIGHT
+        frame = _drawn_frame(dashboard)
+        run = frame.runs[0]
+        index = len(run.times_s) // 3
+        readout = chart.readout_at(
+            run.times_s[index], run.percents(RecordedQuantity.ALVEOLAR)[index]
+        )
+    finally:
+        dashboard.resize(_WINDOW_WIDTH_PX, _WINDOW_HEIGHT_PX)
+        application.processEvents()
 
     assert readout == format_trace_hover(run, RecordedQuantity.ALVEOLAR, index, len(frame.runs))
     assert readout is not None

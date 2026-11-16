@@ -48,14 +48,7 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 from docket.config import load as load_config  # noqa: E402
 from docket.lines import file_text, record_text, split_lines  # noqa: E402
 from docket.release import notes_path, tag_name, version_in  # noqa: E402
-from docket.vcs import (  # noqa: E402
-    LONG_GIT_TIMEOUT,
-    REMOTE,
-    call_git,
-    default_branch,
-    find_cut,
-    is_shallow,
-)
+from docket.vcs import LONG_GIT_TIMEOUT, REMOTE, call_git, default_branch, find_cut, is_shallow  # noqa: E402
 
 #: `git ls-remote --exit-code`'s status where the remote answered and holds no
 #: matching ref. Every other failure means it could not be asked, and a tag

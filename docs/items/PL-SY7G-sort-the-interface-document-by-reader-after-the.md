@@ -6,10 +6,10 @@ effort: L
 status: blocked
 classes: docs
 feature: model-md-structure
-touches: docs/MODEL.md
+touches: docs/INTERFACE.md
 blocked-by: PL-48MX
 added: 2026-11-11
-payoff: each paragraph of the document is for its reader, so the copy editor can then edit it without restating what a docstring, a test or an item already says
+payoff: each paragraph of the document is for its reader, and none restates what a docstring, a test or an item already says
 ---
 
 **Problem.** Sort the interface document by reader after the split: move or cut each paragraph the reverse outline gives another home, and apply the structure findings for its sections (stage 3 of the split PL-P3GZ decided)
@@ -43,9 +43,10 @@ generated and that requirements keep their headings and get no numbers. If
 this work finds a table that neither the provenance check nor the named-test
 check holds, reopen that call there.
 
-**What ends with it.** The owner's hold of 2026-11-10 on copy editor runs
-and within-section restructuring ends for this document when this item
-closes.
+**What ends with it.** The owner's hold of 2026-11-10 on within-section
+restructuring ends for this document when this item closes. The hold also
+covered copy editor runs, and the copy editor was removed on 2026-11-14
+(`PL-GL45`).
 
 **Done when.** Each paragraph of the interface document is for its reader or has moved to
 its home, no paragraph restates a docstring, a test or an item, the
@@ -56,3 +57,22 @@ passes.
 the repository named no home but `docs/MODEL.md` for a test's description,
 an interface requirement or a value's source history, so each change added
 them there. No new head.
+
+**Left for this item by `PL-CTXZ`, 2026-11-11.** Two things the move could
+not finish, because it changed no word of the moved text beyond its section
+pointers:
+
+- The moved text still says "above", "below" and "in this document" about
+  things that are now in `docs/MODEL.md`, where no section mark stands beside
+  the words. A blind review pass found two, which `PL-CTXZ` fixed: the
+  provenance table, and the reference measurements. Read the document for the
+  rest.
+- [superseded 2026-11-14: `PL-GL45` removed the copy editor and its
+  instructions, so nothing is left to change] `.claude/agents/copy-editor.md`
+  says that in `docs/MODEL.md` a note that opens "**For developers.**" serves
+  the developer. `docs/INTERFACE.md` has such notes too. Say so there when the
+  hold on copy editor runs ends for this document. A change to those
+  instructions needs a run of the review's test set, as
+  `docs/prose-review/README.md` says.
+
+<!-- absent: .claude/agents/copy-editor.md -->

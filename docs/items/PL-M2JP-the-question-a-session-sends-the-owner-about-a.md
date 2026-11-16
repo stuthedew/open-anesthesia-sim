@@ -3,11 +3,13 @@ id: PL-M2JP
 title: The question a session sends the owner about a held pull request prints as one unbroken paragraph of four labelled parts, and the owner found it dense and hard to follow (2026-11-10): print each part on its own line, and keep the question to one clause
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, ux
-touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_arming.py
+touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_arming.py, subprojects/docket/tests/test_cli.py, .claude/hooks/owner_ask_guard.py, tests/unit/test_owner_ask_guard.py, docs/maintainer.md
 deferred-from: v0.7.0 - workflow tooling outside the schematic release, and it changes no displayed value
 added: 2026-11-11
+closed: 2026-11-14
+pr: 2146
 payoff: the owner reads a held pull request's question once and can answer it
 verify: grep -q 'def test_a_review_question_prints_each_part_on_its_own_line' subprojects/docket/tests/test_arming.py
 ---

@@ -87,7 +87,7 @@ class SimulationDomainLimitError(SimulationExecutionError):
     safe. A caller that knows only the base classes stops the run, which is
     correct. Only a caller that catches this type specifically needs to know
     that stopping here is not a fault. A caller that presents it as a fault
-    has a defect, because `docs/MODEL.md` § "Supported run length" requires
+    has a defect, because `docs/INTERFACE.md` § "Supported run length" requires
     the screen to tell the two apart.
     """
 

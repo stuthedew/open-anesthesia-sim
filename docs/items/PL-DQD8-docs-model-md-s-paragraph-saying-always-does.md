@@ -6,13 +6,13 @@ effort: S
 status: ready
 classes: defect, docs
 feature: model-md-structure
-touches: docs/MODEL.md
+touches: docs/MODEL.md, docs/INTERFACE.md
 added: 2026-11-05
 payoff: the specification says in one voice that the educational-use statement is always on screen
-verify: ! grep -qF 'but it is not in view on' docs/MODEL.md
+verify: ! grep -qF 'but it is not in view on' docs/INTERFACE.md
 ---
 
-**Problem.** A paragraph in `docs/MODEL.md` § "What this list requires once the layout is the reader's" says that "always" does not mean the disclaimer is in view on every screen today. It has been stale since `PL-NNML` fixed the scrolling page, and it points to a gap that the paragraphs above it no longer state.
+**Problem.** A paragraph in `docs/INTERFACE.md` § "What this list requires once the layout is the reader's" says that "always" does not mean the disclaimer is in view on every screen today. It has been stale since `PL-NNML` fixed the scrolling page, and it points to a gap that the paragraphs above it no longer state.
 
 **Checked 2026-11-09:** The paragraph moved to § "Color contrast, and the
 standard this interface is held to" (lines 7678 to 7682). It reads "*The

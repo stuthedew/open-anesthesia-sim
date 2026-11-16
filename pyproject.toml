@@ -143,7 +143,7 @@ dev = [
     # waiting for a sweep to find it (`PL-R417`, `PL-YQ9G`). Tests only:
     # nothing docket, the tools or the hooks import reaches it.
     "pyyaml>=6.0.3",
-    "ruff>=0.16.4",
+    "ruff>=0.17.0",
     # PyYAML ships no types, so without its typeshed stubs the import above is
     # unresolved to `tools/type_ignore_check.py`, which then declines to judge any
     # `type: ignore` in the test trees (`PL-R417`).
@@ -262,7 +262,7 @@ no test can run. The module holds that one function, with 3 mutants \
 # formatter aimed at 3.14 rewrites their source into syntax it cannot parse.
 # Raising the number here does not reach them, and must not.
 [tool.ruff]
-target-version = "py314"
+target-version = "py315"
 line-length = 100
 [tool.ruff.format]
 skip-magic-trailing-comma = true
@@ -342,7 +342,7 @@ known-first-party = ["anesthesia_sim"]
 # `docs/worker.md` forbids a delegated worker from writing. Revisit if errors
 # appear there that are neither a UI double nor a deliberately wrong argument.
 [tool.mypy]
-python_version = "3.14"
+python_version = "3.15"
 files = ["src", "tools", ".claude/hooks", "subprojects/docket/src"]
 strict = true
 

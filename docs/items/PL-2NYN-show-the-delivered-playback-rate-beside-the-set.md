@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: feature
 feature: presentation-safety
-touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_formatting.py, tests/integration/test_qt_widgets.py, docs/MODEL.md
+touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_formatting.py, tests/integration/test_qt_widgets.py, docs/INTERFACE.md, docs/MODEL.md
 added: 2026-09-27
 payoff: a learner on a host that cannot keep the 100 ms tick sees the rate the clock actually runs at, not a label it is not meeting
 verify: grep -q 'def test_the_rate_text_names_the_delivered_rate_below_95_percent_of_ticks' tests/unit/test_formatting.py
@@ -58,5 +58,5 @@ owner's own machine, with the script kept in `PL-SQJ1`'s brief, is under 99%.
 
 **Done when.** A host that misses ticks shows the delivered rate beside the set
 one, in the terms above, and a host that does not shows the plain label, both
-held by tests with a fake clock; `docs/MODEL.md` § "Interface boundary" says
+held by tests with a fake clock; `docs/INTERFACE.md` § "Interface boundary" says
 what the disclosure means.

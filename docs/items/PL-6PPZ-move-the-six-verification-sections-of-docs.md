@@ -4,10 +4,10 @@ title: Move the six verification sections of docs/MODEL.md, word for word, to a 
 priority: P1
 owner-priority: P1, 2026-11-11, ratified
 effort: M
-status: blocked
+status: ready
 classes: docs
 feature: model-md-structure
-touches: docs/MODEL.md, tools/doc_check.py, CLAUDE.md, .claude/rules/plain-writing.md, src/anesthesia_sim/, tests/
+touches: docs/, tools/, subprojects/docket/, .claude/, CLAUDE.md, docket.toml, README.md, ROADMAP.md, src/anesthesia_sim/, tests/
 blocked-by: PL-CTXZ
 added: 2026-11-11
 payoff: a developer finds the numerical method, each required test and its limit in one document, apart from the model description a clinician reads
@@ -65,3 +65,45 @@ resolves, the named-test and bound-family checks read the new file, and
 the repository named no home but `docs/MODEL.md` for a test's description,
 an interface requirement or a value's source history, so each change added
 them there. No new head.
+
+**What `PL-CTXZ` set up for this move, 2026-11-11.** The steps that item
+took, in order, and what went wrong the first time:
+
+1. Add the new document's path to `docket.arming`: a constant beside
+   `INTERFACE_DOC`, and an entry in `SPECIFICATION_DOCS`. The documentation
+   check, `tools/model_rewrite.py` and `tools/model_doc_review.py` read that
+   tuple. Then add the path to the four lists that restate it:
+   `protected_paths`, `product_paths` and the `simulator` area in
+   `docket.toml`, and `SECOND_PASS_PATHS` in `docket.arming`.
+   `tools/config_home_check.py` names each copy that differs, in `CLAUDE.md`,
+   `docs/worker.md` and `.claude/rules/expert-review.md` too.
+2. Write the new file with its title and one opening paragraph, then run
+   `python3 tools/model_rewrite.py move --to docs/NEW.md "Heading" ...`. It
+   moves the sections and re-points the citations. `python3
+   tools/model_rewrite.py lost` then shows whether any fact was lost.
+3. Point `BOUND_FAMILIES` in `tools/doc_check.py` at the new document for each
+   family whose section moved: "Required tests" and the hazard table are two.
+   `_bound_families_in_one_fixture_document` in
+   `tests/unit/test_doc_check.py` keeps the fixture tree in one document.
+4. Read what `move` prints as unplaced, and re-point by hand each message in
+   `src/` whose section name is split across string literals or filled in
+   from a variable. The script cannot read those. Read the second list it
+   prints too: each quotation that follows one document's path and names a
+   section only the other has, such as the second of two sections after one
+   path. Then search `src/` for a message that names the old document and a
+   moved section with no quotation marks, and for a test that opens the old
+   document to read a moved section. Both blind review passes on `PL-CTXZ`
+   found each of these.
+5. Check each open item's `verify:` command. `move` takes the quotation after
+   a path for that path's own, which is wrong for `grep 'text' path`, so it
+   re-pointed several to the wrong file. Point each at the document that
+   holds its text, and add that document to the item's `touches`.
+6. Run `bin/docket check`. It names each open item whose title changed, and
+   so whose file must be renamed with `git mv`.
+7. `move` also re-points fixtures in the tests of the tools, such as
+   `tests/unit/test_new_prose.py`, which write their own `docs/MODEL.md`.
+   Restore those files.
+8. Add the document's row to the reader table in
+   `.claude/rules/plain-writing.md`, which
+   `test_every_product_document_has_a_reader_except_the_release_notes`
+   requires, and its entry to `README.md`'s list of documents.

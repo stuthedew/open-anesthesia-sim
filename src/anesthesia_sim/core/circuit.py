@@ -43,6 +43,7 @@ from math import expm1, inf
 from typing import TYPE_CHECKING
 
 from anesthesia_sim.core.checked_number import shown
+from anesthesia_sim.core.checked_record import restore_through_checks
 from anesthesia_sim.core.concentration import (
     Fraction,
     Percent,
@@ -129,6 +130,11 @@ class DeliverableFreshGasFlowRange:
                 f"({self.minimum_l_min} L/min minimum, {self.maximum_l_min} L/min maximum)"
             )
 
+    def __setstate__(self, state: object) -> None:
+        """Restore an unpickled or copied record through the constructor's checks (`PL-8W1Q`)."""
+
+        restore_through_checks(self, state)
+
 
 def _accepted_fresh_gas_flow_range_l_min(
     machine_range: DeliverableFreshGasFlowRange | None,
@@ -206,7 +212,7 @@ def _require_the_two_flow_claims_overlap(
             f"it delivers {machine_range.minimum_l_min} to "
             f"{machine_range.maximum_l_min} L/min and the model supports "
             f"{MINIMUM_FRESH_GAS_FLOW_L_MIN} to {MAXIMUM_FRESH_GAS_FLOW_L_MIN} L/min "
-            f'(docs/MODEL.md, "Supported input ranges")'
+            f'(docs/INTERFACE.md, "Supported input ranges")'
         )
 
 
@@ -250,7 +256,7 @@ def _require_deliverable_flow(
             f"{machine_range.maximum_l_min} L/min; the model's supported input range "
             f"of {MINIMUM_FRESH_GAS_FLOW_L_MIN} to {MAXIMUM_FRESH_GAS_FLOW_L_MIN} L/min "
             f"is not what refused it (the machine's range is declared in its "
-            f"data/machines/ profile, the model's in docs/MODEL.md, "
+            f"data/machines/ profile, the model's in docs/INTERFACE.md, "
             f'"Supported input ranges")'
         )
 
@@ -309,6 +315,11 @@ class BreathingCircuitState:
             "inspired_partial_pressure_fraction", self.inspired_partial_pressure_fraction
         )
         require_compartment_volume("circuit_volume_l", self.circuit_volume_l)
+
+    def __setstate__(self, state: object) -> None:
+        """Restore an unpickled or copied record through the constructor's checks (`PL-8W1Q`)."""
+
+        restore_through_checks(self, state)
 
     @property
     def agent_amount_l(self) -> float:

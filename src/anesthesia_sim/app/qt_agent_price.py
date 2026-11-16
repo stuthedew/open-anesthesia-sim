@@ -1,6 +1,6 @@
 """Let the reader set, change or remove their price for each agent, on the agent cost View.
 
-`docs/MODEL.md` § "A cost at the reader's price" specifies what a price holds
+`docs/INTERFACE.md` § "A cost at the reader's price" specifies what a price holds
 and what is refused (`PL-1P15`). The reader enters the price of one bottle
 and the bottle's volume in millilitres of liquid, the price's currency as an
 ISO 4217 code, and the date on which the price applied. The date starts at the
@@ -57,7 +57,7 @@ __all__ = ["PRICE_ENTRY_HEADING", "PriceEntry"]
 
 #: The form's heading, and the labels of its fields and buttons. Every one is
 #: a placeholder. The bottle volume's label names its unit, so the reader is less
-#: likely to type a volume in litres or as a count of bottles (`docs/MODEL.md`
+#: likely to type a volume in litres or as a count of bottles (`docs/INTERFACE.md`
 #: § "A cost at the reader's price").
 PRICE_ENTRY_HEADING: Final = "Your price per agent"
 AGENT_FIELD_LABEL: Final = "Agent"
@@ -69,7 +69,7 @@ SET_PRICE_LABEL: Final = "Set price"
 REMOVE_PRICE_LABEL: Final = "Remove price"
 
 #: The date field shows a date as ISO 8601 writes it, as the readout does, so
-#: 2008-03-05 is never mistaken for May 3 (`docs/MODEL.md` § "A cost at the
+#: 2008-03-05 is never mistaken for May 3 (`docs/INTERFACE.md` § "A cost at the
 #: reader's price").
 _DATE_FORMAT: Final = "yyyy-MM-dd"
 

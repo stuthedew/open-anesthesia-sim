@@ -86,7 +86,7 @@ def test_reaching_the_supported_domain_stops_the_run_but_is_not_a_failure() -> N
     execution errors. The interface decides from the type whether to tell a
     reader that the simulator broke. Saying so about a model that stopped
     exactly where `docs/MODEL.md` says it must would misreport a correct
-    result (`docs/MODEL.md`, "Supported run length").
+    result (`docs/INTERFACE.md`, "Supported run length").
     """
 
     assert issubclass(SimulationDomainLimitError, SimulationExecutionError)

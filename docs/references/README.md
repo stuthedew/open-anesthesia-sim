@@ -129,7 +129,7 @@ repository held it from 2026-09-04 until 2026-09-08, when it was removed with
 the code that implemented its M4 method, because nothing then rested on the
 paper (`PL-8LXM`). The project owner supplied an identical copy on 2026-09-14
 and chose to keep it in the private corpus. Since then,
-`docs/MODEL.md` § "What the chart draws" cites its result again (`PL-GS3R`).
+`docs/INTERFACE.md` § "What the chart draws" cites its result again (`PL-GS3R`).
 
 > Jugel U, Jerzak Z, Hackenbroich G, Markl V. M4: A Visualization-Oriented
 > Time Series Data Aggregation. *Proceedings of the VLDB Endowment*.
@@ -147,7 +147,7 @@ all match, and `doi.org` resolves the DOI to the ACM Digital Library. The
 venue's own site, `www.vldb.org`, was still refused at the CONNECT on
 2026-10-06, which leaves the registry route untouched.
 
-**What the chart takes from it, and what it does not.** `docs/MODEL.md`
+**What the chart takes from it, and what it does not.** `docs/INTERFACE.md`
 § "What the chart draws" holds the chord between two drawn instants to one
 pixel of time. This paper is the published form of the argument behind that,
 seen from the other side. For recorded data grouped into pixel columns,
@@ -354,7 +354,7 @@ value (`PL-9GP1`):
   bottle of isoflurane and $70.00 per 240 mL bottle of desflurane on March 5,
   2008" (printed p. 141). Appendix C prices those bottles at 20.47 and 115.13.
   The isoflurane costs that the chapter prints are reproduced at 20.47.
-  Read on 2026-10-26 for `PL-VJZK`. `docs/MODEL.md` § "A cost at the
+  Read on 2026-10-26 for `PL-VJZK`. `docs/INTERFACE.md` § "A cost at the
   reader's price" cites it for taking a price per bottle, for storing the
   currency as a code and for showing the date of a price.
 - **Appendix B's second table is mis-captioned.** Under "Tissue/Gas partition
@@ -595,6 +595,16 @@ available as the thing that makes personal use lawful.
 
 **This directory currently holds no full texts.** The Jugel et al. 2014 entry
 in § "The documents" records the one it once held.
+
+**The list of document files this repository may hold.** `make check` refuses
+any tracked file with a document extension, such as `.pdf`, `.epub` or
+`.djvu`, that the list below does not name (`tools/full_text_check.py`). To add
+a file, first record its licence in its entry in § "The documents". Then add a
+line between the markers: the file's path in backticks, a colon, and the
+licence. The list is empty, because the repository holds no such file.
+
+<!-- full-text-check: licensed files begin -->
+<!-- full-text-check: licensed files end -->
 
 **Two publisher-copyright full texts were removed on 2026-09-06**: Baker &
 Farmery 2011 and Schüttler & Schwilden 2008. They went by the

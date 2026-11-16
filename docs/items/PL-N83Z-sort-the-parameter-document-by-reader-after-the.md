@@ -9,7 +9,7 @@ feature: model-md-structure
 touches: docs/MODEL.md
 blocked-by: PL-48MX
 added: 2026-11-11
-payoff: each paragraph of the document is for its reader, so the copy editor can then edit it without restating what a docstring, a test or an item already says
+payoff: each paragraph of the document is for its reader, and none restates what a docstring, a test or an item already says
 ---
 
 **Problem.** Sort the parameter document by reader after the split: move or cut each paragraph the reverse outline gives another home, and apply the structure findings for its section (stage 3 of the split PL-P3GZ decided)
@@ -43,9 +43,10 @@ generated and that requirements keep their headings and get no numbers. If
 this work finds a table that neither the provenance check nor the named-test
 check holds, reopen that call there.
 
-**What ends with it.** The owner's hold of 2026-11-10 on copy editor runs
-and within-section restructuring ends for this document when this item
-closes.
+**What ends with it.** The owner's hold of 2026-11-10 on within-section
+restructuring ends for this document when this item closes. The hold also
+covered copy editor runs, and the copy editor was removed on 2026-11-14
+(`PL-GL45`).
 
 **Done when.** Each paragraph of the parameter document is for its reader or has moved to
 its home, no paragraph restates a docstring, a test or an item, the

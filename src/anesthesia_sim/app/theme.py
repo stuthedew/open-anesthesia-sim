@@ -229,7 +229,24 @@ AGENT_COLOR_SCHEMES: Final[dict[str, AgentColorScheme]] = {
 # alias moves above its referent, it resolves to `None` and drops out of the
 # palette, and the requirement that cites it is reported as missing.
 
+# The concentration plot's preferred height. The plot grows into spare height.
 CHART_HEIGHT = 360
+
+# The least height at which the concentration plot is drawn. In an Area too
+# short for the plot's preferred height, the plot shrinks to this height
+# before the View starts to scroll inside its Area. 160 px is a placeholder
+# that `PL-CBYS` chose: the percent axis still shows its 1 ×MAC and 2 ×MAC
+# ticks at this height. A smaller value lets the View scroll later and makes
+# the traces harder to tell apart.
+CHART_LEAST_HEIGHT = 160
+
+# The least height of the box that holds the rows above a chart View's plot:
+# the statement of the window shown, the reference values and the legend. In
+# a View too short for those rows and the plot, the box is squeezed to this
+# height and the reader scrolls the rows inside it. 36 px shows the first two
+# rows. It is a placeholder that `PL-CBYS` chose. A smaller value leaves the
+# plot more of a short Area, and shows fewer rows without scrolling.
+CHART_KEY_LEAST_HEIGHT = 36
 
 PAGE_PADDING = 16
 
@@ -493,7 +510,7 @@ BRANCH_POINT_STROKE_WIDTH = 1.5
 
 # The thinnest any trace is drawn, in display pixels. A 1 px antialiased line
 # renders lighter than its declared colour, and its contrast against the panel
-# falls below the 3:1 minimum (`docs/MODEL.md` § "The six compartment traces").
+# falls below the 3:1 minimum (`docs/INTERFACE.md` § "The six compartment traces").
 # So no trace, and no preview of a trace, is drawn thinner than this.
 MINIMUM_TRACE_STROKE_WIDTH = 2
 
@@ -673,6 +690,12 @@ WASH_IN_COLOR = ALVEOLAR_COLOR
 # have to be readable together without scrolling between them.
 WASH_IN_CHART_HEIGHT = 200
 
+# The least height at which the wash-in plot is drawn, as `CHART_LEAST_HEIGHT`
+# is for the concentration plot. 120 px is a placeholder that `PL-CBYS` chose.
+# The plot has one trace on a fixed 0-to-1 axis, so it stays readable at a
+# smaller height than the concentration plot does.
+WASH_IN_CHART_LEAST_HEIGHT = 120
+
 # The wash-in trace is drawn heavier than the reference lines around it,
 # because it is the modelled quantity and they are the ruling. It was a bare
 # literal at the call site until PL-2CS8.
@@ -683,7 +706,7 @@ WASH_IN_STROKE_WIDTH = 3
 # line* looks as if it has arrived somewhere. The asymptote is a definitional
 # anchor rather than a measured value with spread: by definition, F_A = F_I is
 # where net uptake stops. So it is a line and not a band, on the distinction
-# that `docs/MODEL.md` § "MAC-awake as a chart reference" draws between the
+# that `docs/INTERFACE.md` § "MAC-awake as a chart reference" draws between the
 # two. It uses MUTED and a wide dash, matching the 1 MAC line on the chart
 # above. It is furniture rather than a second compartment, and it declares no
 # new pair for `tools/contrast_check.py`.

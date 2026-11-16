@@ -6,10 +6,10 @@ effort: S
 status: ready
 classes: test
 feature: chrome-colour-audit
-touches: tests/integration/test_simulation_view.py, tests/integration/test_dark_appearance.py
+touches: tests/integration/simulation_view, tests/integration/test_dark_appearance.py
 added: 2026-09-22
 payoff: a control added to either dialog without a declared foreground fails a test the day it is added, as one on the dashboard already does
-verify: grep -q 'def test_every_control_in_both_dialogs_declares_a_foreground' tests/integration/test_simulation_view.py
+verify: grep -rq 'def test_every_control_in_both_dialogs_declares_a_foreground' tests/integration/simulation_view/
 ---
 
 **Problem.** PL-4L49's foreground walk builds only the main dashboard, so a control added to NewCaseDialog or BookmarkDialog declares nothing and is still measured by nothing
@@ -33,7 +33,7 @@ dialog under the same alien palette and run `_content_painters` over it, sharing
 `FOREGROUND_NOT_DECLARED`. Where it lives is the open question - the dialogs are
 constructed in `tests/integration/test_qt_widgets.py` and in
 `test_dark_appearance.py`, and the mapping is read by `tools/contrast_check.py`
-from `tests/integration/test_simulation_view.py`, so moving it costs that
+from `tests/integration/simulation_view/`, so moving it costs that
 reader a path change.
 
 **Done when** every control a reader can reach - the dashboard and both
@@ -48,5 +48,5 @@ tests while painting with the host's text colour. That is the shape of the six
 controls `PL-RKRY`, `PL-7W9N` and `PL-0NVN` found by hand.
 
 **Premise re-read 2026-09-22 (`PL-14QR`, triage).** The walk at
-`tests/integration/test_simulation_view.py:2952` calls `_content_painters(view)`
+`tests/integration/simulation_view/:2952` calls `_content_painters(view)`
 on the `SimulationView` alone.

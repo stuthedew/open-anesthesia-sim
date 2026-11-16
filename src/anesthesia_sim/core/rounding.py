@@ -328,7 +328,7 @@ CARDIAC_OUTPUT_TOLERANCE_L_S: Final = 1e-12
 
 `UptakeEquationSettings` accepts a difference of up to this amount plus
 `CARDIAC_OUTPUT_RELATIVE_TOLERANCE` times the cardiac output. This part lets a
-cardiac output of zero pass, which `docs/MODEL.md` § "Supported input ranges"
+cardiac output of zero pass, which `docs/INTERFACE.md` § "Supported input ranges"
 requires.
 """
 

@@ -6,10 +6,10 @@ effort: S
 status: ready
 classes: test
 feature: branch-display-tests
-touches: tests/integration/test_simulation_view.py
+touches: tests/integration/simulation_view
 added: 2026-09-20
 payoff: catches a branch whose readouts land below both charts instead of beside the trunk's, which a count-only assertion cannot see
-verify: grep -q 'def test_the_branchs_sections_land_beside_the_trunks_in_order' tests/integration/test_simulation_view.py
+verify: grep -rq 'def test_the_branchs_sections_land_beside_the_trunks_in_order' tests/integration/simulation_view/
 ---
 
 **Problem.** The order of a branch's splitter sections is unasserted; the test counts them without checking where they land
@@ -35,7 +35,7 @@ comparison the reader has to scroll to make, which is the failure the method was
 written to prevent.
 
 **Verified 2026-09-20**: the body of that test in
-`tests/integration/test_simulation_view.py` reads `_stacked_sections(view).count()`
+`tests/integration/simulation_view/` reads `_stacked_sections(view).count()`
 before and after the fork and compares the two; no assertion indexes the
 splitter. `test_no_handle_of_the_restacked_splitter_becomes_draggable` iterates
 the handles but asserts only that each is disabled.

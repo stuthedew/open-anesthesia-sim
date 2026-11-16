@@ -145,10 +145,11 @@ jobs:
 
   # Does the tree work on a CPython newer than the one it pins?
   #
-  # `pyproject.toml` bounds `requires-python = ">=3.14,<3.16"`, and pins 3.14
+  # `pyproject.toml` bounds `requires-python = ">=3.14,<3.16"`, and pins 3.15
   # in `[tool.ruff] target-version`, `[tool.mypy] python_version` and
   # `.python-version`. The bound was widened to take in 3.15 after this job
-  # passed on 3.15.0 (`PL-J0P8`). CPython ships a minor release a year, so the
+  # passed on 3.15.0 (`PL-J0P8`), and the pin moved to 3.15 once ruff 0.17.0
+  # supported it without preview mode (`PL-GLFS`). CPython ships a minor release a year, so the
   # bound and the pin are wrong within twelve months and several times over
   # this project's horizon.
   #

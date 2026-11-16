@@ -30,6 +30,7 @@ after it is written, `PL-J1ZM`).
 | --- | --- | --- | --- | --- |
 | `docs/MODEL.md` | A clinician or educator | Anesthesia pharmacology and physiology. | Numerical-methods terms such as "operator split", software terms, e-notation such as "4e-4", and this repository's own names. | Decide whether to trust a displayed value, or learn how the simulation works. |
 | `docs/MODEL.md` | A developer, or someone who forked the project | Python, and the basics of anesthesia. | Numerical-methods terms such as "first-order method", and this repository's own names. | Change a value or an equation for a goal of their own. |
+| `docs/INTERFACE.md` | A contributor who changes the interface | Anesthesia, Python and software development. | This repository's own names and history, and decisions taken in sessions they did not see. | Find what the interface must show and do before changing it, and the test that checks each requirement. |
 | `README.md` | An educator or trainee in anesthesiology or critical care | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Decide whether to use the simulator, then install it and run a case. |
 | `README.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history. | Decide whether to work on the simulator, then set it up. |
 | `docs/ARCHITECTURE.md`, `docs/interface-provenance.md`, `docs/machine-abstraction.md` and `docs/machine-survey.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history, and the outside designs and machines it studied. | Find where a change belongs, and what it must keep. |
@@ -46,9 +47,9 @@ after it is written, `PL-J1ZM`).
 The two `README.md` rows are the readers that `README.md` § "What it is for"
 names. `docs/releases/` has no row, because `bin/docket release` writes each
 note from item titles, and an edit there would make a note disagree with its
-item. `tools/new_prose.py` reads this table when the copy editor is asked to
-rewrite a section of a document, so the table keeps its five columns
-(`docs/prose-review/README.md`).
+item. `python3 tools/new_prose.py --compare`, which close-out step 8 runs,
+reads this table to choose the files it compares, so the table keeps its five
+columns.
 
 **Where the rest goes.** Decision history goes in the item. In `docs/MODEL.md`,
 detail of the numerical method goes in a note for developers at the end of its
@@ -56,7 +57,8 @@ section, a paragraph that opens with "**For developers.**", because the
 document must specify the numerical method (`PL-TZ7R`). That note may name the
 tests for the paragraphs directly above it (`PL-W8FL`). State a model
 limitation only where it could change what a clinician concludes from a
-displayed value (`PL-BS6N`).
+displayed value (`PL-BS6N`). `docs/INTERFACE.md` ends a section with the same
+note for developers, for the tests and code behind its requirements.
 
 **Take the reason for a chosen value from a record.** Where a docstring, a
 comment or a note for developers explains a chosen value, such as a tolerance

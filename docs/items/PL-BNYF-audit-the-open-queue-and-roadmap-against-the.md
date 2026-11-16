@@ -12,6 +12,7 @@ added: 2026-09-16
 closed: 2026-09-16
 pr: 625
 verify: bin/docket check && grep -qF '**item 34** is what turns them live' ROADMAP.md && test "$(grep -rlF 'Area-model audit (PL-BNYF)' docs/items | wc -l)" -ge 5
+sweep: audits the open queue and ROADMAP.md against the area and workspace layout model, and files each stale brief and missing prerequisite it finds
 ---
 
 **Problem.** Audit the open queue and ROADMAP against the area/workspace layout model, so items scoped before it was decided are re-briefed or dropped rather than built and undone

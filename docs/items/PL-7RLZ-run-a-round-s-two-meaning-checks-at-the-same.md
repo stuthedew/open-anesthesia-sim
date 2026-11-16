@@ -3,11 +3,13 @@ id: PL-7RLZ
 title: Run a round's two meaning checks at the same time: tools/copy_edit.py runs every read and check one after another
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: session-cost
 feature: copy-editor
 touches: tools/copy_edit.py, tests/unit/test_copy_edit.py
 added: 2026-11-10
+closed: 2026-11-14
+reason: The project owner chose on 2026-11-14 to remove the copy editor completely, and PL-GL45 removed it with its agents, the blind judge and their tests, so this work on the copy editor has nothing left to act on.
 payoff: each round of the meaning check takes half the time, at the same cost and with the same verdicts
 verify: grep -q 'def test_a_round_runs_its_meaning_checks_at_the_same_time' tests/unit/test_copy_edit.py
 ---

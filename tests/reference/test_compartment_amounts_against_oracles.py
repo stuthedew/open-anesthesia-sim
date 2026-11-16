@@ -29,7 +29,7 @@ whole capacity term: two compartments' amounts swapped, a tissue's capacity
 taken with the blood:gas coefficient instead of its own tissue:gas coefficient,
 or an amount reported in millilitres where litres are meant. An error smaller
 than one part in a billion of an amount passes, but no displayed precision is
-fine enough to show such an error (`docs/MODEL.md` § "Displayed precision").
+fine enough to show such an error (`docs/INTERFACE.md` § "Displayed precision").
 """
 
 from math import exp

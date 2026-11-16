@@ -1,6 +1,6 @@
 """Compute how each container of the compartment schematic is filled and labelled.
 
-`docs/MODEL.md` § "The compartment schematic: what its heights, amounts and
+`docs/INTERFACE.md` § "The compartment schematic: what its heights, amounts and
 share bar assert" specifies the schematic (`PL-2881`). This module turns one
 snapshot into one reading per container. A reading says how full the container
 is and what its label prints. The schematic's View draws the readings
@@ -99,8 +99,8 @@ SCHEMATIC_HEADING: Final = "Where the agent is: each compartment's tension and a
 #: The caption that says what a container's height means. A height is a
 #: tension, as a share of the concentration chart's range. So the caption names
 #: that range, says what the marks stand for, and says that a height is not an
-#: amount (`docs/MODEL.md` § "The compartment schematic: what its heights,
-#: amounts and share bar assert"). The containers are 96 px tall and the
+#: amount (`docs/INTERFACE.md` § "The compartment schematic: what its
+#: heights, amounts and share bar assert"). The containers are 96 px tall and the
 #: chart's plot is several hundred, and a Workspace can show the two side by
 #: side. A fill level read across to the chart's gridlines would give the wrong
 #: tension. So each container carries a mark at each of the chart's gridlines
@@ -352,7 +352,7 @@ def share_segments(snapshot: SimulationSnapshot) -> tuple[ShareSegment, ...] | N
     compartment's amount from the snapshot's per-compartment record
     (`PL-KFTM`), divided by the snapshot's `stored_agent_l`. The six
     amounts sum to that total exactly, so the six shares fill the bar
-    (`docs/MODEL.md` § "The compartment schematic: what its heights, amounts
+    (`docs/INTERFACE.md` § "The compartment schematic: what its heights, amounts
     and share bar assert"). When the run holds no agent, no share exists. The
     function then returns None, rather than dividing by zero or returning six
     zeros.

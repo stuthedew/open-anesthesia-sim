@@ -3,12 +3,14 @@ id: PL-6BW8
 title: The fixed copy editor turned docs/MODEL.md's 'No error is raised at any of these steps [...] and still returns normally' (Supported simulation step) into 'The model reports no fault [...] and the model still reports none', and moved no exact form to the note for developers, so a developer loses that each tiny step returns normally
 priority: P3
 effort: S
-status: ready
+status: dropped
 classes: docs
 feature: repo-copy-edit
 touches: docs/MODEL.md
 deferred-from: v0.7.0 - not present at the freeze (817a4d88) or now: the loss is from a copy-editor test run of 2026-11-09, in no commit
 added: 2026-11-09
+closed: 2026-11-14
+reason: The project owner chose on 2026-11-14 to remove the copy editor completely, and PL-GL45 removed it with its agents, the blind judge and their tests, so this work on the copy editor has nothing left to act on.
 payoff: the next line edit of docs/MODEL.md can reword the clinician's sentence about tiny steps without losing the developer's fact that the code accepts them silently
 verify: grep -qiF 'raises no exception' docs/MODEL.md
 ---

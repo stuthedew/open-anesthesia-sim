@@ -23,7 +23,7 @@ from anesthesia_sim.core.simulation_step import MINIMUM_SIMULATION_STEP_S, Simul
 
 #: The intervals that the interface ships. They are restated here rather than
 #: imported from `app/simulation_view.py`, which needs Flet.
-#: `test_simulation_view.py` checks the shipped constants against these values,
+#: `tests/integration/simulation_view/` checks the shipped constants against these values,
 #: so a change there fails there.
 TICK_INTERVAL_S = 0.1
 SIMULATION_STEP_S = SimulationStep(0.1)

@@ -1,6 +1,6 @@
 """The washout figures that `docs/MODEL.md` prints for the MAC-awake band match the model.
 
-`docs/MODEL.md` § "MAC-awake as a chart reference" gives one emergence
+`docs/INTERFACE.md` § "MAC-awake as a chart reference" gives one emergence
 measured on the model. Sevoflurane runs for 3 hours at the opening vaporizer
 dial setting of 2.0% and the default fresh gas flow of 4 L/min. Then the
 vaporizer is turned off and the fresh gas flow is raised to 10 L/min. The
@@ -42,7 +42,7 @@ from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
-MODEL_PATH = Path(__file__).resolve().parents[2] / "docs" / "MODEL.md"
+INTERFACE_PATH = Path(__file__).resolve().parents[2] / "docs" / "INTERFACE.md"
 SECTION_HEADING = "### MAC-awake as a chart reference"
 
 AGENT_ID = "sevoflurane"
@@ -90,7 +90,7 @@ class PrintedFigures:
 def _section_text() -> str:
     """The section's prose, with each run of whitespace made one space."""
 
-    text = MODEL_PATH.read_text(encoding="utf-8")
+    text = INTERFACE_PATH.read_text(encoding="utf-8")
     start = text.index(SECTION_HEADING)
     end = text.find("\n### ", start + len(SECTION_HEADING))
 
@@ -102,7 +102,7 @@ def _one(pattern: str, text: str) -> tuple[str, ...]:
 
     matches = re.findall(pattern, text)
     assert len(matches) == 1, (
-        f"docs/MODEL.md § 'MAC-awake as a chart reference' should state this once, as "
+        f"docs/INTERFACE.md § 'MAC-awake as a chart reference' should state this once, as "
         f"{pattern!r}, and it states it {len(matches)} times. If the sentence was reworded, "
         f"update the pattern here so the figure stays checked."
     )
@@ -299,7 +299,7 @@ def test_the_mac_awake_washout_figures_match_the_model(washout: Washout, figure:
     value, printed = FIGURES[figure](washout, _printed())
 
     assert _as_printed(value, printed) == printed, (
-        f"docs/MODEL.md § 'MAC-awake as a chart reference' prints the {figure} as {printed}, "
+        f"docs/INTERFACE.md § 'MAC-awake as a chart reference' prints the {figure} as {printed}, "
         f"and the model now gives {value!r}. Update the section's figure, and check that "
         f"the sentence around it is still true."
     )

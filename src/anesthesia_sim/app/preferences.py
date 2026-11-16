@@ -7,7 +7,7 @@ code that reads and writes the file. Nothing in it imports Qt.
 
 **What is stored.** Two kinds of preference are stored, and nothing else:
 
-- At most one `AgentPrice` for each shipped agent. `docs/MODEL.md` § "A cost
+- At most one `AgentPrice` for each shipped agent. `docs/INTERFACE.md` § "A cost
   at the reader's price" specifies its fields and what is refused. The reader
   enters a price per bottle, as a bottle price and a bottle volume in
   millilitres of liquid. The price per millilitre is never stored, so it
@@ -34,7 +34,7 @@ default unit.
   also limited to the sizes in which the agents are sold, because no source
   gives such a limit. A volume typed in litres or as a count of bottles,
   instead of in millilitres, makes the price per millilitre 100 to 1000 times
-  too high. The readout prints that price beside every cost (`docs/MODEL.md`
+  too high. The readout prints that price beside every cost (`docs/INTERFACE.md`
   § "A cost at the reader's price").
 
 **What a launch finds, and what it does.** `PreferencesStore.load` returns a
@@ -230,7 +230,7 @@ class AgentPrice:
         This property is the only place that computes the price per
         millilitre. The store never holds the price per millilitre, so it
         cannot disagree with the bottle price and volume that it comes from
-        (`docs/MODEL.md` § "A cost at the reader's price"). Both figures are
+        (`docs/INTERFACE.md` § "A cost at the reader's price"). Both figures are
         positive and finite, but the quotient of two such floats can still be
         infinite or zero, such as 1e308 over 0.5. The cost readout shows no
         cost in that case (`app/agent_cost.py`).

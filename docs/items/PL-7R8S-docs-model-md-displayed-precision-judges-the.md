@@ -6,14 +6,14 @@ effort: S
 status: needs-decision
 classes: defect
 feature: model-claims-held-by-tests
-touches: docs/MODEL.md, tests/unit/test_formatting.py
+touches: docs/MODEL.md, tests/unit/test_formatting.py, docs/INTERFACE.md
 deferred-from: v0.7.0 - a new problem: the cost display and its three-significant-figures paragraph came with 7baae320 (2026-11-02), after the freeze
 added: 2026-11-04
 payoff: every agent amount and the cost beside it are judged against one limit, so the section gives no reason its own rule contradicts
-verify: ! grep -qF 'At four it would be 0.010 %' docs/MODEL.md
+verify: ! grep -qF 'At four it would be 0.010 %' docs/INTERFACE.md
 ---
 
-**Problem.** `docs/MODEL.md` § "Displayed precision" judges the cost's significant figures against one SD of the density. It judges every other agent amount, the liquid volume beside the cost included, against a seventh of an SD. So the section applies two limits to figures with the same relative uncertainty.
+**Problem.** `docs/INTERFACE.md` § "Displayed precision" judges the cost's significant figures against one SD of the density. It judges every other agent amount, the liquid volume beside the cost included, against a seventh of an SD. So the section applies two limits to figures with the same relative uncertainty.
 
 **Checked 2026-11-04**, by the second blind review pass on `#2024`. The paragraph that opens "A cost is shown to three significant figures" refuses four significant figures for a cost because 0.010 % is "finer than one SD" of the density. Four figures would be about 0.19 SD (0.010 % against sevoflurane's 0.053 %), coarser than a seventh of an SD and so inside the band. `PL-SP6H` judged the whole millilitre of the volume beside the cost against the seventh. Above about 1,900 mL of sevoflurane, the whole-millilitre volume is finer than one SD, so the two figures on one line are judged by different limits.
 

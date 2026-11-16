@@ -17,7 +17,7 @@ handed in is wrong. Otherwise the run length is the same kind of statement as
 the four settings, and it lives here for that reason.
 
 **The model declares the intervals it is supported over, not the interface.**
-`docs/MODEL.md` § "Supported input ranges" is the specification, and argues
+`docs/INTERFACE.md` § "Supported input ranges" is the specification, and argues
 each interval. This module holds the numbers so that every path that can change
 a setting meets the same guard, and no path relies on the interface's sliders
 to keep the setting inside its interval. Those paths are the core, the
@@ -99,7 +99,7 @@ the same way. Take a machine with no true off position, whose minimum flow is
 0.5 L/min. It would either be impossible to represent, or it would move the
 model's lower bound for every other machine. The shipped
 `reference_circle_system` profile declares no range at all, so the model's
-interval is the only bound today. `docs/MODEL.md` § "Supported input ranges"
+interval is the only bound today. `docs/INTERFACE.md` § "Supported input ranges"
 gives both bounds and what separates them.
 
 **Each flow is a type, built only through its guard** (`PL-0YYV`, slice 1 of
@@ -194,8 +194,9 @@ run stops, and refuses the instant one step later (`PL-8H2R`).
 Widening any interval is a safety-critical change, not a convenience. Argue
 that the compartment structure still represents a patient over the wider range.
 Re-run the reference gates at the new corner. Revise
-`docs/MODEL.md` §§ "Supported input ranges" and "Independent-solution test"
-together. Widening no longer requires re-deriving the displayed resolution or
+`docs/INTERFACE.md` § "Supported input ranges" and `docs/MODEL.md`
+§ "Independent-solution test" together. Widening no longer requires
+re-deriving the displayed resolution or
 the supported simulation step. Both used to depend on the splitting coefficient
 measured over this envelope, and neither is now derived from anything measured
 over it.
@@ -338,12 +339,12 @@ refusing it would bring back the halt that this ceiling exists to remove.
 # it a run may go.
 #
 # **This is a declared envelope, not a discovered cliff**, exactly as
-# `docs/MODEL.md` § "What a setting outside the range costs" says of the three
+# `docs/INTERFACE.md` § "What a setting outside the range costs" says of the three
 # intervals above. Nothing breaks at hour 25, and the equations solve as
 # exactly there as anywhere else. What stops at the boundary is the claim that
 # the solution represents a patient. Moving the boundary is a safety-critical
 # change and takes the same work as widening those intervals: argue the wider
-# span against what the model omits, and revise `docs/MODEL.md`
+# span against what the model omits, and revise `docs/INTERFACE.md`
 # § "Supported input ranges" with it.
 #
 # Volatile sedation in intensive care runs for days and is a real teaching
@@ -357,7 +358,7 @@ MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86_400.0
 # above zero would not imply raising the ventilation minimum. Zero is
 # supported for all three flows because each zero is a real clinical state
 # that the simulator exists to teach: apnoea, circulatory arrest, and the
-# fresh gas turned off. `docs/MODEL.md` § "Supported input ranges" argues each
+# fresh gas turned off. `docs/INTERFACE.md` § "Supported input ranges" argues each
 # (PL-629Z).
 #
 # This comment used to give a different reason, which was retired with the
@@ -396,7 +397,7 @@ def _require_supported(name: str, value: float, minimum: float, maximum: float) 
             f"{name} of {shown(value)} is outside the supported input range of "
             f"{minimum} to {maximum} L/min, which is the domain this "
             f"compartment model is claimed to represent a patient over "
-            f'(docs/MODEL.md, "Supported input ranges")'
+            f'(docs/INTERFACE.md, "Supported input ranges")'
         )
 
 
@@ -546,7 +547,7 @@ class FreshGasFlow(float, CheckedQuantity):
             (`core/checked_number.py`).
         SimulationConfigurationError: the flow is not finite, or is outside
             `MINIMUM_FRESH_GAS_FLOW_L_MIN` to `MAXIMUM_FRESH_GAS_FLOW_L_MIN`,
-            the model's envelope (`docs/MODEL.md`, "Supported input ranges").
+            the model's envelope (`docs/INTERFACE.md`, "Supported input ranges").
     """
 
     __slots__ = ()
@@ -572,7 +573,7 @@ class AlveolarVentilation(float, CheckedQuantity):
         SimulationConfigurationError: the ventilation is not finite, or is
             outside `MINIMUM_ALVEOLAR_VENTILATION_L_MIN` to
             `MAXIMUM_ALVEOLAR_VENTILATION_L_MIN`, the model's envelope
-            (`docs/MODEL.md`, "Supported input ranges").
+            (`docs/INTERFACE.md`, "Supported input ranges").
     """
 
     __slots__ = ()
@@ -601,7 +602,7 @@ class CardiacOutput(float, CheckedQuantity):
             not an `int` or a `float`, or is a `bool`, as `FreshGasFlow` says.
         SimulationConfigurationError: the output is not finite, or is outside
             `MINIMUM_CARDIAC_OUTPUT_L_MIN` to `MAXIMUM_CARDIAC_OUTPUT_L_MIN`,
-            the model's envelope (`docs/MODEL.md`, "Supported input ranges").
+            the model's envelope (`docs/INTERFACE.md`, "Supported input ranges").
     """
 
     __slots__ = ()
@@ -644,7 +645,7 @@ def _require_built(name: str, value: object, flow_type: type[CheckedQuantity]) -
     raise TypeError(
         f"{name} of {shown(value)} was not built as {flow_type.__name__}, it is "
         f"{type(value).__name__}: build it as {flow_type.__name__}(...) where it is set, "
-        'which checks it against the supported range once (docs/MODEL.md, "Supported input '
+        'which checks it against the supported range once (docs/INTERFACE.md, "Supported input '
         'ranges")'
     )
 
@@ -888,7 +889,7 @@ def require_supported_run_length(step_count: StepCount, simulation_step_s: Simul
     `SimulationExecutionError` subclass, so a caller that knows only the base
     class stops the run, which is the safe default. A caller that catches
     this type specifically knows that the run stopped because the model
-    declined to extrapolate, not because a step failed. `docs/MODEL.md`
+    declined to extrapolate, not because a step failed. `docs/INTERFACE.md`
     § "Supported run length" requires that the two cases not be presented
     alike: nothing was miscalculated here, and every displayed value comes
     from a completed step.
@@ -908,7 +909,7 @@ def require_supported_run_length(step_count: StepCount, simulation_step_s: Simul
             f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_HOUR:g} h); this model "
             f"leaves out metabolism and its fat flow is uncertain, so how far the slow "
             f"part of the trace can stray from a patient grows as a run goes on, and the "
-            f"model is not claimed to represent a patient past this length (docs/MODEL.md, "
+            f"model is not claimed to represent a patient past this length (docs/INTERFACE.md, "
             f'"Supported run length")'
         )
 
@@ -954,7 +955,7 @@ def require_supported_step_count(step_count: StepCount, simulation_step_s: Simul
             f"supported run length of {MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s "
             f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_HOUR:g} h), which allows "
             f"at most {limit} steps of that size; past it this model is not claimed to "
-            f'represent a patient (docs/MODEL.md, "Supported run length")'
+            f'represent a patient (docs/INTERFACE.md, "Supported run length")'
         )
 
 
@@ -1007,7 +1008,7 @@ def require_supported_case_instant(instant_s: float) -> None:
 
     The case's axis is simulated time since induction, and a branch shares it
     with its parent. So this guard bounds where an instant falls, not how
-    long whatever holds the instant has lasted. As `docs/MODEL.md`
+    long whatever holds the instant has lasted. As `docs/INTERFACE.md`
     § "Supported run length" says, a branch spends what is left of its
     parent's span rather than a span of its own. Like every interval here,
     this one is closed at both ends. So an instant of exactly
@@ -1051,7 +1052,7 @@ def require_supported_case_instant(instant_s: float) -> None:
             f"a case instant of {shown(instant_s)} s is outside the supported run length of "
             f"0 to {MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s "
             f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_HOUR:g} h), the span this "
-            f'model is claimed to represent a patient over (docs/MODEL.md, "Supported run '
+            f'model is claimed to represent a patient over (docs/INTERFACE.md, "Supported run '
             f'length")'
         )
 
@@ -1133,5 +1134,5 @@ def require_case_instant(name: str, instant_s: object) -> None:
         f"{name} of {shown(instant_s)} was not built as CaseInstant, it is "
         f"{type(instant_s).__name__}: "
         "build it as CaseInstant(...) where the instant is chosen, which checks it against "
-        'the supported run length once (docs/MODEL.md, "Supported run length")'
+        'the supported run length once (docs/INTERFACE.md, "Supported run length")'
     )

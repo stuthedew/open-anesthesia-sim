@@ -32,6 +32,8 @@ from anesthesia_sim.app.dashboard_frame import (
 )
 from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.simulation_view import SimulationView
+from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING
+from anesthesia_sim.app.views import AccountingView
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 
 _SECONDS_PER_MINUTE = 60.0
@@ -127,6 +129,12 @@ def test_a_reset_that_raises_after_clearing_the_run_withholds_every_value(
     controller = _a_paused_run_at_10_minutes()
     run = _shown_run(application, controller)
     assert run._readout_row.panels[_CLOCK_INDEX].value_label.text() == "10m"
+    # An accounting View is chosen into the last Area, so that its panel is
+    # drawn when Reset fails (`PL-RF2S` builds the panel only where an Area
+    # shows it).
+    layout = _SHOWN_VIEWS[-1].layout_container
+    layout.choose_view(list(layout._views)[-1], AGENT_ACCOUNTING)
+    application.processEvents()
     monkeypatch.setattr(SimulationController, "_note_recorded_settings", _failing_note)
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
 
@@ -139,9 +147,15 @@ def test_a_reset_that_raises_after_clearing_the_run_withholds_every_value(
     assert [cards[index] for index in _COMPARTMENT_INDICES] == [("—%", "— ×MAC")] * len(
         _COMPARTMENT_INDICES
     )
-    assert [panel._agent_accounting_detail_text.text() for panel in run._accounting_panels] == [
+    accounting_panels = [
+        shown.panels[0]
+        for shown in _SHOWN_VIEWS[-1].layout_container.views()
+        if isinstance(shown, AccountingView)
+    ]
+    assert accounting_panels
+    assert [panel._agent_accounting_detail_text.text() for panel in accounting_panels] == [
         "No frame has been drawn since the run started over."
-    ] * len(run._accounting_panels)
+    ] * len(accounting_panels)
     # Reset ran, so the banner names the failure and does not say that Reset
     # was refused (blind review of `PL-MVCF`).
     notice = run._notice_text.notice()

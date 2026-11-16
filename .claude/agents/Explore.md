@@ -31,7 +31,8 @@ have no tool that writes and no tool that runs a command.
   English phrase in prose.
 - Where the tree is: the simulator under `src/anesthesia_sim/` (`core/` the
   model, `data/` the parameter files, `app/` the interface), its tests under
-  `tests/`, the model specification in `docs/MODEL.md`, the queue under
+  `tests/`, the model specification in `docs/MODEL.md`, the interface
+  requirements in `docs/INTERFACE.md`, the queue under
   `docs/items/` as one Markdown file per item, the workflow tooling under
   `tools/` and `subprojects/docket/`, and the session rules under `.claude/`.
 - A question that needs git history, a shell command or a `bin/docket` command

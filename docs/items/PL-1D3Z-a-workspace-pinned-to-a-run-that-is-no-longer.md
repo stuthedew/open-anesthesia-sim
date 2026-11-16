@@ -10,7 +10,7 @@ touches: src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/view_cont
 deferred-from: v0.7.0 - found after the gate's list was frozen, and it shows only in a Workspace pinned to a run that has closed
 added: 2026-11-11
 payoff: a learner who pinned a Workspace to a branch keeps the case's marks and branch control on screen after closing that branch
-verify: grep -q 'def test_the_case_views_stay_on_screen_in_a_workspace_pinned_to_a_closed_run' tests/integration/test_simulation_view.py
+verify: grep -rq 'def test_the_case_views_stay_on_screen_in_a_workspace_pinned_to_a_closed_run' tests/integration/simulation_view/
 ---
 
 **Problem.** A Workspace pinned to a run that is no longer open hides the Bookmarks and Branch Views behind the pin's notice, though both belong to the case and show no single run; and while the pinned run is open their Area headers read that run's name (AreaFrame.show_pin, SimulationView._refresh_view's PinnedRunAbsent path). On main both panels stayed on screen in that state.

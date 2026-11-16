@@ -300,7 +300,7 @@ def test_a_bare_float_is_refused_wherever_a_flow_is_stored(control: Control) -> 
     assert str(raised.value) == (
         f"{control.name} of {bare!r} was not built as {control.flow_type.__name__}, it is "
         f"float: build it as {control.flow_type.__name__}(...) where it is set, which checks "
-        'it against the supported range once (docs/MODEL.md, "Supported input ranges")'
+        'it against the supported range once (docs/INTERFACE.md, "Supported input ranges")'
     )
 
     with pytest.raises(TypeError, match=refused):
@@ -432,7 +432,7 @@ def test_the_type_refuses_what_is_not_a_number_and_holds_negative_zero_as_zero(
 
 _SUPPORTED_RANGE_SOURCE = (
     "which is the domain this compartment model is claimed to represent a patient over "
-    '(docs/MODEL.md, "Supported input ranges")'
+    '(docs/INTERFACE.md, "Supported input ranges")'
 )
 
 
@@ -469,7 +469,7 @@ def test_a_setting_s_range_refusal_is_pinned_whole(
     is what a learner reads. The other tests here match only a phrase of it,
     and such a match passes even when the name, the value or the interval is
     wrong (`PL-79PK`). The interval in each expected sentence is copied by
-    hand from `docs/MODEL.md` §
+    hand from `docs/INTERFACE.md` §
     "Supported input ranges": 0 to 10 L/min of fresh gas, 0 to 12 L/min of
     alveolar ventilation and 0 to 10 L/min of cardiac output.
     """
@@ -651,7 +651,7 @@ def test_a_cardiac_output_written_past_set_cardiac_output_is_refused_at_the_writ
 def test_the_supported_run_length_is_twenty_four_hours() -> None:
     """The declared number, pinned so a silent edit fails rather than ships.
 
-    `docs/MODEL.md` § "Supported run length" argues for this value from what
+    `docs/INTERFACE.md` § "Supported run length" argues for this value from what
     the model omits, and `core/supported_ranges.py` carries the argument and
     its source. Changing the value is a safety-critical change, and this test
     catches a change made by accident.
@@ -829,7 +829,7 @@ def test_the_run_length_refusal_is_not_a_configuration_error() -> None:
 
     The interface uses the exception's type to decide whether to tell a reader
     that the simulator broke. So the type is part of the displayed output
-    rather than an implementation detail (`docs/MODEL.md`, "Supported run
+    rather than an implementation detail (`docs/INTERFACE.md`, "Supported run
     length").
     """
 
@@ -1289,7 +1289,12 @@ def test_a_value_not_built_as_the_type_is_refused_whatever_it_holds() -> None:
 
         assert f"it is {type(unbuilt).__name__}" in str(raised.value)
         assert "build it as CaseInstant(...)" in str(raised.value)
-        assert "Supported run length" in str(raised.value)
+        # The refusal ends by naming the section that gives the run length,
+        # which is in `docs/INTERFACE.md` since `PL-CTXZ` moved it there.
+        assert str(raised.value).endswith(
+            "which checks it against the supported run length once "
+            '(docs/INTERFACE.md, "Supported run length")'
+        )
 
     for unbuilt in (6_000, 6_000.0, True, None):
         with pytest.raises(TypeError, match="was not built as StepCount") as raised:

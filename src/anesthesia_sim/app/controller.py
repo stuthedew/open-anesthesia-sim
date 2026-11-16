@@ -184,8 +184,8 @@ class RunSettings(RunStatus):
     MAC — which would be the correct number under the wrong label that
     `CLAUDE.md` treats as a safety failure.
 
-    `docs/MODEL.md` § "MAC multiples as a display unit" states what the
-    quotient asserts, and § "Delivery-limit and MAC parameters" holds the
+    `docs/INTERFACE.md` § "MAC multiples as a display unit" states what the
+    quotient asserts, and `docs/MODEL.md` § "Delivery-limit and MAC parameters" holds the
     value's provenance.
     """
     fresh_gas_flow_l_min: FreshGasFlow
@@ -421,7 +421,7 @@ class SimulationSnapshot(RunRecord):
     at the wrong height on a labelled axis.
 
     The interface reads this value, and `core/` does not. No governing
-    equation uses MAC-awake, just as none uses `mac_percent`. `docs/MODEL.md`
+    equation uses MAC-awake, just as none uses `mac_percent`. `docs/INTERFACE.md`
     § "MAC-awake as a chart reference" states what the band asserts, which
     trace it is read against, and why it is not a time to wake-up.
     """
@@ -525,7 +525,7 @@ class SimulationSnapshot(RunRecord):
     `instant_s` is the completed step's own instant. So it lies on the run's
     `simulation_step_s` grid, not on the coarser grid that a tick boundary
     can reach. That precision is the whole of what `PL-CTD7` provides, and
-    `docs/MODEL.md` § "Halting on a marked crossing" states it.
+    `docs/INTERFACE.md` § "Halting on a marked crossing" states it.
     """
     bookmark_standings: BookmarkStandings
     """Where the run stands on each mark in `bookmarks`, keyed by the mark.
@@ -673,7 +673,7 @@ class ResumePoint:
             of this instant.
         step_count: How many steps the case had completed at the fork, so
             that the branch's clock continues the case's clock rather than
-            restarting. The supported run length in `docs/MODEL.md`
+            restarting. The supported run length in `docs/INTERFACE.md`
             § "Supported run length" is measured against this count.
         simulation_step_s: The step length the case has used, or `None` for
             a fork from a run that has not stepped. A branch keeps its
@@ -1214,7 +1214,7 @@ class SimulationController:
         timeline and the simulated time the run reached are all lost, and
         nothing here or anywhere else keeps a copy. So a caller must not call
         this method in response to a gesture that looks like choosing a view.
-        `docs/MODEL.md` § "Agent-change behavior" states what the interface
+        `docs/INTERFACE.md` § "Agent-change behavior" states what the interface
         owes a user before this call. `SimulationSnapshot.has_recorded_run` tells
         the interface whether this call would lose anything.
 
@@ -1634,13 +1634,13 @@ class SimulationController:
         **The branch's run definition opens on the case's own time axis rather
         than at a zero of its own** (`PL-ZMRT`). So the branch's clock and the
         instants in its run definition are one quantity, and nothing converts
-        between them. `docs/MODEL.md` § "The canonical evaluation rule"
+        between them. `docs/INTERFACE.md` § "The canonical evaluation rule"
         requires this. When the branch evaluates a case instant, it forms the
         interval from the same two floats that its parent used. A run
         definition shifted to its own zero would depend on a subtraction that
         does not always round-trip. The branch's run definition opens at the
         keyframe that starts the stretch before `instant_s`, as every branch's
-        does. `_open_at` and `docs/MODEL.md` § "What this requires of a branch"
+        does. `_open_at` and `docs/INTERFACE.md` § "What this requires of a branch"
         explain why.
 
         **The branch runs under the change made at `instant_s`, and records
@@ -1751,7 +1751,7 @@ class SimulationController:
         **The trunk is not changed.** No keyframe is recorded where the run
         stands. The branch's run definition opens at the keyframe where the
         parent's own stretch opens, while the branch's clock and its live
-        system stand at the fork. `_open_at` does this. `docs/MODEL.md`
+        system stand at the fork. `_open_at` does this. `docs/INTERFACE.md`
         § "What this requires of a branch" says which of that section's two
         conditions this relaxes, and why the element-wise guarantee survives.
         The obvious route is to record a keyframe where the run stands. That
@@ -1839,7 +1839,7 @@ class SimulationController:
         settings as `resumed_here` taken at that moment. For a mark set behind
         the clock, it forks where a halt would have stopped the run if the
         mark had been set in time. Nothing is recorded on this run, so it stays
-        the case it would have been without the mark (`docs/MODEL.md` § "What
+        the case it would have been without the mark (`docs/INTERFACE.md` § "What
         this requires of a branch").
 
         **The branch's halt record is computed from that step**, because a
@@ -2765,7 +2765,7 @@ class SimulationController:
     # case has asked for. `BreathingCircuit.set_circuit_volume` stays, because
     # it is the only way `_build_state()` can pass the parameter to the circuit.
     # What was removed is the app-level passthrough, not the core primitive.
-    # `docs/MODEL.md` § "What is not bounded this way" gives the argument.
+    # `docs/INTERFACE.md` § "What is not bounded this way" gives the argument.
 
     def set_fresh_gas_flow(self, fresh_gas_flow_l_min: FreshGasFlow) -> None:
         self._change_setting(
@@ -2987,7 +2987,7 @@ class SimulationController:
         equations, the same model version and the same state, and it is
         deterministic. Nothing in this run is written. Its definition is only
         read, through `state_at`, which is also the canonical path that a
-        branch starts from (`docs/MODEL.md` § "The canonical evaluation rule").
+        branch starts from (`docs/INTERFACE.md` § "The canonical evaluation rule").
 
         The window is evaluated on the same grid as `drawn_window`, from the
         same axis, so the prediction is drawn at the run's own resolution. It
@@ -3561,7 +3561,7 @@ class SimulationController:
             # The clock and the run definition's reach are one quantity on one
             # time axis, on a branch as well as on a trunk. So the reach is the
             # clock, and no offset appears here or anywhere else.
-            # `docs/MODEL.md` § "The canonical evaluation rule" now requires
+            # `docs/INTERFACE.md` § "The canonical evaluation rule" now requires
             # this. When a branch is asked for an instant of the case, it
             # computes its interval from the same two floats its parent used,
             # not from a difference that may not round-trip.

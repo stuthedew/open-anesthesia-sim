@@ -13,6 +13,7 @@ closed: 2026-10-18
 pr: 1528
 payoff: instructions written for older models stop costing tool rounds and accuracy on Opus 5.5, with every change approved by the owner
 verify: grep -q 'the files under' .claude/rules/citation-drift.md
+sweep: runs Claude Code's prompt audit over the resident instructions and the docket skill against Opus 5.5, and files each contradiction it finds
 ---
 
 **Problem.** Run Claude Code's /claude-api prompt-audit over the resident instructions and the docket skill against Opus 5.5, and bring its proposed diff to the owner hunk by hunk

@@ -3,12 +3,14 @@ id: PL-WZC0
 title: tools/copy_edit.py throws away every rewrite of a request when one meaning-check reply has two verdicts for a passage, even where the checker retracted the first itself; #2056's whole 16-passage edit came back as keep after 90 minutes because reader 2 corrected its [7] verdict in the same reply. Retry that reader once instead (2026-11-09)
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: defect
 feature: repo-copy-edit
 touches: tools/copy_edit.py, tests/unit/test_copy_edit.py
 deferred-from: v0.7.0 - a new problem, not present at the freeze: meaning_findings arrived in 37c88630 (PL-F0Q2)
 added: 2026-11-09
+closed: 2026-11-14
+reason: The project owner chose on 2026-11-14 to remove the copy editor completely, and PL-GL45 removed it with its agents, the blind judge and their tests, so this work on the copy editor has nothing left to act on.
 payoff: one checker correcting its own verdict no longer discards a whole copy edit after an hour or more of reading
 verify: grep -q 'def test_a_meaning_check_reply_with_two_verdicts_is_read_again_once' tests/unit/test_copy_edit.py
 ---

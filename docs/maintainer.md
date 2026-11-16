@@ -488,15 +488,15 @@ and housekeeping merges on green** (project owner, 2026-10-17, `PL-DKBG`). A
 real decision is one that `.claude/skills/docket/modes/design.md` step 4
 already makes yours. A high-risk change is any of three kinds. It changes a
 clinical value that the simulator computes or displays, or what
-`docs/MODEL.md` says such a value means. It is a rule that sessions run under
+`docs/MODEL.md` or `docs/INTERFACE.md` says such a value means. It is a rule that sessions run under
 and that you did not ask for in your own words. Or CI would not show its
 breakage, or a revert would not undo it. For a high-risk change, the ask gives
 the case for the change, its risks, and what was checked. `#1516` set this
 rule. The path list held that pull request for you, although nothing in it
 needed a decision.
 
-**A rewrite of `docs/MODEL.md` that changes no value, equation, code span or
-citation merges on green** (project owner, 2026-11-02, ratified, over holding
+**A rewrite of `docs/MODEL.md` or `docs/INTERFACE.md` that changes no value,
+equation, code span or citation merges on green** (project owner, 2026-11-02, ratified, over holding
 each section rewrite of `PL-ZT47` for your read, `PL-ZTZF`). The session runs
 `python3 tools/model_rewrite.py lost`. It lists every equation, code span,
 citation, number and "no test yet" declaration that the rewrite dropped or
@@ -515,7 +515,7 @@ commit as `Owner-read: needed - <why>` or `Owner-read: not needed - <why>`.
 `bin/docket arm` reads that record. Some changes wait until a record made
 after their newest change covers them. These are changes to `src/`, to a test
 under `tests/` that imports the simulator, to `docs/MODEL.md`, to
-`src/anesthesia_sim/data/` or to `README.md`. So if a session never makes the
+`docs/INTERFACE.md`, to `src/anesthesia_sim/data/` or to `README.md`. So if a session never makes the
 decision, the pull request waits, rather than merging a clinical change that
 nobody reviewed. `not needed` arms the pull request to merge on green, with
 the reason in the pull request body. `needed` holds it for you, whatever paths
@@ -541,21 +541,47 @@ the tests that pin `arm`'s results, not to the code they test. So a new test
 arms on green. So does a loosening that no test pins, even in `arming.py`
 itself.
 
-**A hold comes to you with its question or its risk, never a bare "read #N"**
+**A hold comes to you with its question, never a bare "read #N"**
 (project owner, 2026-10-18, `PL-9JHM`). The session records what to ask you
-as an `Owner-ask:` trailer on a commit. `arm` prints that trailer as the first
-line of the ask. The ask is either a decision or a review. A decision has
-at least two options and a recommendation. Each option says what it changes
-for you or for a learner. The decision is worded in clinical or learner terms.
-A choice between approaches to the interface comes with one annotated
-screenshot per option (project owner, 2026-10-19, `PL-KYTY`). A review says
-what changed in one plain sentence, asks you one yes-or-no question, says what
-was already checked, and says what to reply. The question is one you can
-decide as the owner or as a clinician. It never asks you to re-check what the
-tests or reviews already covered, such as whether a rewording kept its
-meaning. Where there is no such question, it says so and recommends merging.
+as an `Owner-ask:` trailer on a commit. `arm` prints that trailer as the
+opening lines of the ask. Every ask has one form, which carries what
+`.claude/rules/instruction-writing.md` rule 10 requires:
+
+1. the question, in clinical or learner terms and in one clause;
+2. the recommendation, and why its gain is worth its cost;
+3. the context: what changed, or what the choice is about;
+4. at least two options, each saying what it changes for you or for a
+   learner, and its costs and risks: what it gives up and the consequences
+   you would not see from the option alone, such as what else it changes or
+   breaks, the follow-on work it opens, and whether it can be undone;
+5. why the choice is yours rather than the session's;
+6. what was already checked, where anything was.
+
+Each part is printed on its own line, in that order, with the question and
+each part's label in bold (project owner,
+2026-11-10, `PL-M2JP`, and 2026-11-14, `PL-GG4V`). For a held pull request,
+the options are the change and what it was chosen over: what you asked for,
+the behavior it replaces, a smaller version, or the larger rework it would
+need. A question of merging against holding for changes is never sent,
+because holding gains you nothing you can name: "either you shouldn't be
+asking me in the first place because it's not a real question, or you need to
+tell me what I need to make an informed decision" (project owner,
+2026-11-14). A change to the merge gate itself waits on you even when it
+has nothing else to weigh, and its question says what the gate will let
+through or refuse after the change (project owner, 2026-11-14, ratified,
+over letting the session release it and over a notice with a deadline,
+`PL-TQHT`). The question is one you can decide as the owner or as a clinician. It never asks
+you to re-check what the tests or reviews already covered, such as whether a
+rewording kept its meaning. A choice between approaches to the interface
+comes with one annotated screenshot per option (project owner, 2026-10-19,
+`PL-KYTY`). `arm` refuses a record that leaves out a required part, or that
+is in one of the older review or decision forms, which each lacked some of
+them. The question and the recommendation come before the context (project
+owner, 2026-11-14, ratified, over the context first). Every option names its
+cost, because options that said only what they did let a session offer one
+good option and one bad one (project owner, 2026-11-14, `PL-GG4V`).
 No part of the ask names a tool, file, command or item id, and `arm` refuses a
-record that does (project owner, 2026-11-02, `PL-BGN1`). Either way, the reply
+record that does (project owner, 2026-11-02, `PL-BGN1`). The reply
 quotes the text you are to judge, before and after, with enough of the
 surrounding paragraph for the change to make sense, so that you never have to
 open a file to find it (project owner, 2026-11-02, `PL-77QB`).
@@ -566,10 +592,10 @@ puts the record into the thread's message itself (`PL-X4MD`). It runs in a
 Projects thread through the setup script in § "Give Projects threads the
 repository's hooks with one setup script". When a thread's message to you in
 Projects names a pull request, and that thread's own pull
-request waits for your read, the hook adds a line at the end of the message:
+request waits for your read, the hook adds to the end of the message:
 
-- **A question for you is recorded.** The line is that question, unless the
-  message already quotes it word for word.
+- **A question for you is recorded.** The addition is that question, unless
+  the message already quotes it word for word.
 - **No question is recorded yet.** The line is "No question is recorded on
   this pull request yet, so there is nothing to decide."
 
@@ -991,7 +1017,8 @@ now, so you can delete it.
 
 ## Have a strong model read the model document against the data, once
 
-A script, `tools/model_doc_review.py`, sends `docs/MODEL.md` and every data file
+A script, `tools/model_doc_review.py`, sends `docs/MODEL.md`, `docs/INTERFACE.md`
+and every data file
 under `src/anesthesia_sim/data/` through the Message Batches API, on the same
 API credit as the headless workers (`PL-5S71`). It sends one request per `##`
 section, 25 on 2026-10-25, and each request carries the whole document and the

@@ -124,10 +124,11 @@ APPARATUS_LISTS = (
 #: opening one does not load the apparatus standard. Each is a record or a
 #: configuration file rather than apparatus prose or code, or it is written for
 #: contributors to both halves. `PL-1KTV` placed most of them, and `PL-21RC`
-#: placed the rest on the same test. `docs/prose-review` holds the close-out
-#: prose review's prompt and the paragraphs and runs it is tested on. That is
-#: prose and records with no code, and `.claude/rules/plain-writing.md`, which
-#: is resident, already governs the prose (`PL-FYGJ`).
+#: placed the rest on the same test. `docs/prose-review` holds a reverse
+#: outline of `docs/MODEL.md`, a draft written from it and the texts of one
+#: writing test. That is prose and records with no code, and
+#: `.claude/rules/plain-writing.md`, which is resident, already governs the
+#: prose (`PL-FYGJ`, `PL-GL45`).
 LANE_ONLY = (
     # Records of what was decided or measured, not instructions.
     "docs/items",
@@ -143,7 +144,7 @@ LANE_ONLY = (
     "model-evidence.toml",
     "docs/worker-runs",
     "docs/hook-blocks",
-    # The prose review's prompt and its test set: prose and records, no code.
+    # Prose-review records: prose, no code.
     "docs/prose-review",
     # Configuration, which carries no prose a standard could apply to.
     ".gitattributes",

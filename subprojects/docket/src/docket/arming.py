@@ -42,16 +42,18 @@ every later push while a pull request is open.
   (`JUDGE_ASK`), so a judgment nobody made fails safe rather than merging a
   clinical change unread. A record saying `needed` holds it for the owner's
   read, and so does a change to an existing test that pins this module's
-  answers (`PINS`). The pull request then waits for the owner's answer,
-  which the session records as `Owner-read: given` with the date and their
-  words (`READ_GIVEN`). `merge_hold` gives this same answer for a branch's
+  answers (`PINS`), and so does an edit or a deletion of an existing line of
+  a test that compares the model with published data (`REFERENCE_TESTS`),
+  whatever the session's own record says. The pull request then waits for
+  the owner's answer, which the session records as `Owner-read: given` with
+  the date and their words (`READ_GIVEN`). `merge_hold` gives this same answer for a branch's
   copy on the remote, so that a required check on GitHub refuses the merge
   of a held pull request whoever arms it (`PL-39Y1`).
   A change to this module that edits no such test arms, and the answer names
   it. A switch of auto-merge off that no commit records as the session's also
   holds it (`AUTO_MERGE`). Once no claim holds it, a hold for the owner's
-  read prints the ask's opening line from the session's `Owner-ask` record
-  (`ASK_LINE`). With no record, it says that nothing goes to the owner until
+  read prints the ask from the session's `Owner-ask` record, one line for
+  each of its parts (`ASK_LINE`). With no record, it says that nothing goes to the owner until
   there is one (`READ_ASK`), opens its first line with "send the owner
   nothing" and exits 3 (`NO_ASK`) rather than 1, so that a session reading
   only the first line, or only the exit status, still learns it (`PL-TLPH`).
@@ -105,6 +107,10 @@ has already merged. What went unread is named beside it.
   loosening that no test pins merges unread, and so would one that also
   rewrote the check that reads the pins, since this module judges its own
   change.
+- An edit or a deletion of an existing line under `REFERENCE_TESTS` waits on
+  the owner whatever the session records, because a widened tolerance or a
+  changed expected value there is the one place a weakened test hides a wrong
+  clinical value. A branch that only adds lines there does not (`PL-XSRG`).
 - A simulator change waits for its blind review passes (`PL-HDRN`). Its new
   prose held it too until 2026-11-11, when the owner removed the copy edit of
   each branch (`PL-J1ZM`). A blind review record is not undone by a later change, because close-out
@@ -218,33 +224,51 @@ READ_GIVEN = "given"
 
 #: The commit trailer that carries what a hold for the owner's read asks him
 #: (project owner, 2026-10-18, `PL-9JHM`). `arm` prints it as the ask's
-#: opening line, so the ask is a recorded fact rather than prose a session
-#: may skip. It takes one of two forms, the owner's two reasons to be asked
-#: (`PL-DKBG`), each a run of fields joined by `ASK_SEPARATOR`:
+#: opening lines, so the ask is a recorded fact rather than prose a session
+#: may skip. It is one form, a run of fields joined by `ASK_SEPARATOR`:
 #:
-#: - a decision: `<question>? | <option>: <what it changes> | <option>: <what
-#:   it changes> | recommend <option> - <why>`, with at least two options;
-#: - a review, for a high-risk change with no choice in it: `changed - <what
-#:   changed, in one plain sentence> | question - <one yes-or-no question>? |
-#:   checked - <what was already checked> | reply - <what to reply>`. The
-#:   reply quotes the text to judge, before and after, under the line,
-#:   because a pointer into a file sent the owner to dig for it (project
-#:   owner, 2026-11-02, `PL-77QB`).
+#: `<question>? | <option>: <what it gets>; cost: <what it gives up> |
+#: <option>: <what it gets>; cost: <what it gives up> | recommend <option> -
+#: <why its gain is worth its cost> | context - <what changed, or what the
+#: choice is about> | why - <why the choice is the owner's> | checked - <what
+#: was already checked>`
 #:
-#: The review form had three fields until 2026-11-02: `risk`, `checked` and
-#: `look`, rendered as "Risk to review: ... Checked: ... Please look at:
-#: ...". Twice that day the owner could not tell what such an ask wanted from
-#: them: "I am having a hard time understanding what this is asking from me?"
-#: (project owner, 2026-11-02, 19:39Z, `PL-BGN1`). The new form leads with
-#: what changed, asks one question they can answer yes or no, and ends with
-#: what to reply. A record in the old form is refused rather than rendered,
-#: so a branch that still carries one asks the owner nothing until its
-#: session records the new form (`ASK_OLD_REVIEW`).
+#: It has at least two options, and `checked` may be left out. Every option
+#: names its cost, the recommended one included. With only what each option
+#: does, a session wrote one good option and one bad one, and the owner asked
+#: "why would I ever choose the bad" (project owner, 2026-11-14, `PL-GG4V`). A held
+#: pull request is asked as a choice between the change and what it was chosen
+#: over, never as merging against holding, because holding gains the owner
+#: nothing they can name: "either you shouldn't be asking me in the first place
+#: because it's not a real question, or you need to tell me what I need to make
+#: an informed decision" (project owner, 2026-11-14, `PL-GG4V`). The reply
+#: quotes the text to judge, before and after, under the ask, because a
+#: pointer into a file sent the owner to dig for it (project owner,
+#: 2026-11-02, `PL-77QB`).
+#:
+#: Until 2026-11-14 there were two forms, and each carried only part of what
+#: `.claude/rules/instruction-writing.md` rule 10 asks of a question. The
+#: review form (`changed`, `question`, `why`, `checked`, `reply`) had no
+#: options, recommendation or trade-off. The decision form ended at its
+#: recommendation, with no context and no reason the choice was the owner's.
+#: Sessions left out what the form did not ask for, and the owner corrected
+#: the asks one missing element at a time: "you are still asking me to make
+#: decisions without any context, recommendations, trade offs etc" (project
+#: owner, 2026-11-14, `PL-GG4V`). So a record in either old form is refused,
+#: as is the older `risk`, `checked` and `look` review (`PL-BGN1`), and the
+#: refusal names the fields to add.
 OWNER_ASK = "Owner-ask"
 ASK_SEPARATOR = " | "
 ASK_RECOMMEND = "recommend"
-ASK_REVIEW = ("changed", "question", "checked", "reply")
-ASK_OLD_REVIEW = ("risk", "checked", "look")
+ASK_CONTEXT = "context"
+ASK_WHY = "why"
+ASK_CHECKED = "checked"
+#: What separates an option's gain from its cost.
+ASK_COST = "; cost: "
+#: The named fields after the recommendation, in order. The last may be left out.
+ASK_NAMED = (ASK_CONTEXT, ASK_WHY, ASK_CHECKED)
+#: The first word of every review form refused since 2026-11-02 and 2026-11-14.
+ASK_OLD_REVIEW_WORDS = frozenset({"changed", "risk"})
 
 #: What no field of an `OWNER_ASK` record may hold, because the owner reads it
 #: in a reply and cannot look it up: code in backquotes, a file name, a
@@ -262,18 +286,25 @@ ASK_JARGON = re.compile(
     rf"|\b(?:{ID_PATTERN})"
 )
 
-#: How `parse_owner_ask` renders an `OWNER_ASK` record as the line the owner
-#: is sent. A review is one template. A decision is `ASK_DECISION_SHOWN`, whose
-#: `options` are two or more `ASK_OPTION_SHOWN` joined by
-#: `ASK_OPTIONS_JOIN`, and whose `recommend` is `ASK_RECOMMEND_SHOWN`.
-ASK_REVIEW_SHOWN = (
-    "What changed: {changed}. Question for you: {question} Already checked: {checked}. "
-    "What to reply: {reply}."
-)
-ASK_DECISION_SHOWN = "{question} {options} {recommend}"
-ASK_OPTION_SHOWN = 'Option "{label}": {change}.'
-ASK_OPTIONS_JOIN = " "
-ASK_RECOMMEND_SHOWN = 'I recommend "{pick}": {why}.'
+#: How `parse_owner_ask` renders an `OWNER_ASK` record as the lines the owner
+#: is sent, in this order: the question, the recommendation, the context, each
+#: option, why it is the owner's, and what was checked. Rule 10 of
+#: `.claude/rules/instruction-writing.md` puts the question and the
+#: recommendation first. That order replaced a review that led with what
+#: changed (`PL-BGN1`), and the owner kept it over the context first (project
+#: owner, 2026-11-14, ratified, `PL-GG4V`).
+#:
+#: Each part is a line of its own. All the parts on one line read as a dense
+#: paragraph that the owner found hard to follow (project owner, 2026-11-10,
+#: `PL-M2JP`). Each part after the question starts with "- ", so that a reply
+#: rendered as Markdown keeps the parts on separate lines rather than joining
+#: them back into one paragraph.
+ASK_QUESTION_SHOWN = "**{question}**"
+ASK_RECOMMEND_SHOWN = '- **I recommend "{pick}":** {why}.'
+ASK_CONTEXT_SHOWN = "- **Context:** {context}."
+ASK_OPTION_SHOWN = '- **Option "{label}":** {gain}. **Costs and risks:** {cost}.'
+ASK_WHY_SHOWN = "- **Why it is yours:** {why}."
+ASK_CHECKED_SHOWN = "- **Already checked:** {checked}."
 
 #: What a hold for the owner's read prints when no `OWNER_ASK` record covers
 #: the change. The ask was prose until 2026-10-18, and sessions skipped it:
@@ -287,40 +318,51 @@ ASK_RECOMMEND_SHOWN = 'I recommend "{pick}": {why}.'
 #: interface approaches, a screenshot per option (`PL-KYTY`). On `#1946` a
 #: risk ask read "a pinned test of the owner-ask guard changes, so a relayed
 #: ask in the new form could be refused", and the owner could not tell what
-#: it meant. So every field is written in plain words, and the review form
-#: asks one question (project owner, 2026-11-02, `PL-BGN1`). The question is
+#: it meant. So every field is written in plain words, and each question
+#: asks one thing (project owner, 2026-11-02, `PL-BGN1`). The question is
 #: one the owner can decide as the owner or as a clinician. On `#1947` an ask
 #: put to him whether reworded paragraphs kept their meaning, which the
 #: reviews had already checked: "How am I supposed to judge that?".
 READ_ASK = (
     "  Send the owner nothing about this pull request yet: no Owner-ask record on a commit "
     "since its newest change outside the store and the pull request bodies says what to "
-    "ask. A hold reaches the owner only with something to decide or to review. A question "
-    "whose answer is obvious is wrong, as on #1516, whose ask invented two points to judge "
-    "(PL-DKBG). Record one of two forms in the last paragraph of a commit, beside its "
-    "Co-authored-by line, then ask again. For a decision, with at least two options a "
-    f"careful person could each pick: `{OWNER_ASK}: <question>? | <option>: <what it changes "
-    f"for the owner or a learner> | <option>: <what it changes> | {ASK_RECOMMEND} <option> - "
-    f"<why>`. Word it in clinical or learner terms, so that the owner sees on first reading "
-    "what they are judging. Say under each option what a learner sees, and say why the "
-    "choice is the owner's. A choice between approaches to the interface goes with one "
-    "annotated screenshot per option, attached to the reply that carries the line "
-    "(.claude/skills/run-the-app/SKILL.md). "
-    f"For a high-risk change with no choice in it: `{OWNER_ASK}: {ASK_REVIEW[0]} - <what "
-    f"changed, in one plain sentence> | {ASK_REVIEW[1]} - <one yes-or-no question the owner "
-    f"can decide as the owner or as a clinician, saying why it is theirs>? | "
-    f"{ASK_REVIEW[2]} - <what was already "
-    f"checked> | {ASK_REVIEW[3]} - <what to reply, such as Merge it, or what to change>`. "
-    "Never ask the owner to re-check what the tests or reviews already checked, such as "
-    "whether a rewording kept its meaning: they cannot judge that from a reply. If no such "
-    "question exists, the question says so, asks whether to merge, and recommends it. Under "
-    "the line, the reply quotes the text to judge, before and after. "
+    "ask. A hold reaches the owner only with something to decide. A question whose answer "
+    "is obvious is wrong, as on #1516, whose ask invented two points to judge (PL-DKBG). "
+    "Record one in the last paragraph of a commit, beside its Co-authored-by line, then ask "
+    f"again: `{OWNER_ASK}: <question>? | <option>: <what it changes for the owner or a "
+    f"learner>{ASK_COST}<what it gives up> | <option>: <what it changes>{ASK_COST}<what it "
+    f"gives up> | {ASK_RECOMMEND} <option> - <why its gain is worth its cost> | "
+    f"{ASK_CONTEXT} - <what changed, or what the choice is about> | "
+    f"{ASK_WHY} - <why the choice is the owner's rather than the session's> | {ASK_CHECKED} - "
+    f"<what was already checked>`. Give at least two options a careful person could each "
+    f"pick, and leave out {ASK_CHECKED} only when nothing was checked. For a held pull "
+    "request, the options are the change and what it was chosen over: what the owner asked "
+    "for, the behavior it replaces, a smaller version, or the larger rework it would need. "
+    "Merging against holding for changes is not a choice, because holding gains the owner "
+    "nothing they can name. The question is one the owner can decide as the owner or as a "
+    "clinician. Word the "
+    "question in clinical or learner terms and in one clause, so that the owner sees on "
+    "first reading what they are judging, and put its background in the context field. "
+    "Under each option, say what a learner sees or what changes for the owner, and what "
+    "that option gives up, the recommended one included: a choice between one good option "
+    "and one bad one is not a choice. Put in each option's cost the consequences the owner "
+    "would not see from the option alone: what else it changes or breaks, the follow-on "
+    "work it opens, and whether it can be undone. If you cannot say what the option you do "
+    "not recommend "
+    "gains, there is no choice, and the owner is not asked. A choice "
+    "between approaches to the interface goes with one annotated screenshot per option, "
+    "attached to the reply that carries the lines (.claude/skills/run-the-app/SKILL.md). "
+    "Each field is printed on its own line, the question first and the recommendation "
+    "second. Never ask the owner to re-check what the tests or reviews already checked, "
+    "such as whether a rewording kept its meaning: they cannot judge that from a reply. "
+    "Under the ask, the reply quotes the text to judge, before and after. "
     "Write every field in plain words for a clinician who has not read this repository "
     "(.claude/rules/plain-writing.md): say what the owner or a learner would notice, and "
-    "never name a test, check, file or tool by its internal name. If neither form can be "
+    "never name a test, check, file or tool by its internal name. If no question can be "
     f"filled honestly, nothing needs the owner: record `{OWNER_READ}: {READ_NOT_NEEDED} - "
     "<why>` instead, and the change merges on green. A change to a test pinning the gate's "
-    "answers holds whatever that record says, so for one of those use the review form."
+    "answers holds whatever that record says. For one of those, the options are the gate as "
+    "changed and the gate as it was, each with what it refuses that the other accepts."
 )
 
 #: What a hold for the owner's read prints before the line its `OWNER_ASK`
@@ -334,8 +376,9 @@ READ_ASK = (
 #: was still hard to judge: "it's hard to judge an isolated sentence change"
 #: without the surrounding context (project owner, 2026-11-02, `PL-BGN1`).
 ASK_LINE = (
-    "  Open the ask with this line, word for word, as the closing block's own line, never "
-    "as 'read #N', and repeat it whole in every later reply that still waits on it. Under "
+    "  Open the ask with these lines, word for word and each on its own line, as one item of "
+    "the closing block, never as 'read #N', and repeat them whole in every later reply that "
+    "still waits on it. Under "
     "it, quote the text the owner is to judge in the reply itself: the changed sentences, "
     "rows or values, before and after, each with enough of its surroundings, such as the "
     "whole paragraph, for the change to make sense. Never send the owner into a file to "
@@ -590,7 +633,8 @@ BLIND_UNCOUNTED = (
 #: than restated, and the high-risk cases are the ones the owner's rule names
 #: in this repository's terms. What a learner can be misled by is the first,
 #: because the safety-critical standard in `CLAUDE.md` makes it so. A rewrite
-#: of docs/MODEL.md that keeps every value, equation, code span and citation is
+#: of docs/MODEL.md or docs/INTERFACE.md that keeps every value, equation, code
+#: span and citation is
 #: housekeeping, and only a sentence whose meaning needs a clinician's judgment
 #: reaches the owner (project owner, 2026-11-02, ratified, over holding every
 #: section part of `PL-ZT47` for the owner's read, `PL-ZTZF`).
@@ -601,12 +645,14 @@ JUDGE_ASK = (
     "<why>`. It is needed for a real decision, one "
     ".claude/skills/docket/modes/design.md step 4 makes the owner's, and for a high-risk "
     "change: one that changes a clinical value the "
-    "simulator computes or displays, or what docs/MODEL.md says one means, beyond "
+    "simulator computes or displays, or what docs/MODEL.md or docs/INTERFACE.md says one "
+    "means, beyond "
     "restating what the change's own tests measure; one that changes a rule sessions run "
     "under that the owner did not ask for in their own words; or one whose breakage CI "
     "would not show or a revert would not undo. Anything else is housekeeping and not "
     "needed: a refactor with its outputs pinned, a tightened test, a figure restated from "
-    "a measurement. A docs/MODEL.md rewrite is not needed when `python3 "
+    "a measurement. A rewrite of docs/MODEL.md or docs/INTERFACE.md is not needed when "
+    "`python3 "
     "tools/model_rewrite.py lost` adds no equation, code span, citation or number, every "
     "line it prints as dropped is history or a duplicate the document still holds, and no "
     "sentence changes what a value means or what a hazard row or limitation promises. "
@@ -672,6 +718,24 @@ SOURCE = "src/"
 #: path lists and for every tool, which reads it through `product_paths`.
 MODEL_DOC = "docs/MODEL.md"
 
+#: What the interface must show and do. Its sections were part of `MODEL_DOC`
+#: until the project owner split that document by reader on 2026-11-11
+#: (`PL-P3GZ`, `PL-CTXZ`).
+INTERFACE_DOC = "docs/INTERFACE.md"
+
+#: The documents that together specify the simulator. The safety-critical
+#: standard in `CLAUDE.md` applies to each. The gate's path lists below and
+#: every tool that checks the specification read this tuple, so a document
+#: that joins the specification is added here and nowhere else (`PL-CTXZ`).
+SPECIFICATION_DOCS = (MODEL_DOC, INTERFACE_DOC)
+
+#: The tests that compare the model with published data. An edit or a
+#: deletion of an existing line of one waits on the owner's read whatever the
+#: session's `OWNER_READ` record says, until the record is the owner's own
+#: go-ahead (`PL-XSRG`). Only adding lines does not, since a new comparison
+#: weakens none that was there.
+REFERENCE_TESTS = TESTS + "reference/"
+
 #: Importing this is what makes a test file the simulator's. It is the rule
 #: `tools/workflow_paths_check.py` holds `docket.toml`'s `workflow_paths` to
 #: (`PL-JBZK`), and since 2026-10-05 the one that lets a test under `TESTS`
@@ -700,12 +764,12 @@ TEST_FILE_PATTERNS = ("test_*.py", "*_test.py")
 #: the owner's answers of 2026-10-03 and 2026-10-10, left it on his rule of
 #: 2026-10-12 that workflow items need no merge confirmation (`PL-KPM2`): what
 #: is left is the simulator's.
-READ_PATHS = (SOURCE, TESTS, MODEL_DOC, "src/anesthesia_sim/data/", "README.md")
+READ_PATHS = (SOURCE, TESTS, *SPECIFICATION_DOCS, "src/anesthesia_sim/data/", "README.md")
 
 #: The simulator's paths as the answers name them.
 READ_LIST = (
-    f"{SOURCE}, {TESTS} but a test importing no {PRODUCT_PACKAGE}, {MODEL_DOC}, "
-    "src/anesthesia_sim/data/ and README.md"
+    f"{SOURCE}, {TESTS} but a test importing no {PRODUCT_PACKAGE}, "
+    f"{', '.join(SPECIFICATION_DOCS)}, src/anesthesia_sim/data/ and README.md"
 )
 
 #: The paths whose change earns a second blind generalist review pass: the
@@ -715,7 +779,17 @@ READ_LIST = (
 #: here and not on every simulator change (project owner, 2026-10-24, ratified,
 #: over two passes on every simulator pull request and over one pass
 #: everywhere, `PL-TDV9`).
-SECOND_PASS_PATHS = ("src/anesthesia_sim/core/", "src/anesthesia_sim/data/", "docs/MODEL.md")
+#:
+#: Each path is written out, because `tools/config_home_check.py` reads this
+#: tuple as text and compares it with `docket.toml`'s `protected_paths`. So
+#: the documents of `SPECIFICATION_DOCS` are named here a second time, and
+#: that check fails when the two lists differ.
+SECOND_PASS_PATHS = (
+    "src/anesthesia_sim/core/",
+    "src/anesthesia_sim/data/",
+    "docs/MODEL.md",
+    "docs/INTERFACE.md",
+)
 
 
 def imports_product(tree: ast.Module) -> bool:
@@ -909,6 +983,21 @@ def changed_pins(before: str, after: str) -> tuple[str, ...]:
     return tuple(sorted(name for name, said in old.items() if new.get(name) != said))
 
 
+def lines_taken(numstat: str) -> tuple[str, ...]:
+    """The paths of a `-z --numstat` listing that lose at least one existing line, sorted.
+
+    Git counts an edited line as one taken and one added, so a count of
+    lines taken above zero is an edit or a deletion. A binary file, which git
+    counts as `-`, is among them, since what it changed cannot be counted.
+    """
+    taken = []
+    for field in numstat.split("\0"):
+        counts = field.split("\t", 2)
+        if len(counts) == 3 and counts[1] != "0":
+            taken.append(counts[2])
+    return tuple(sorted(taken))
+
+
 @dataclass(frozen=True)
 class AutoMerge:
     """What the forge says of a pull request's auto-merge: its latest switch, and when.
@@ -998,78 +1087,103 @@ def parse_owner_given(value: str) -> str | None:
 class OwnerAsk:
     """What a hold for the owner's read asks him, from a session's `OWNER_ASK` record.
 
-    `commit` carries the trailer, and `line` is the ask's opening line as
-    `parse_owner_ask` renders it.
+    `commit` carries the trailer, and `shown` is the ask as `parse_owner_ask`
+    renders it: one line for each of its parts, joined by newlines.
     """
 
     commit: str
-    line: str
+    shown: str
 
 
 def parse_owner_ask(value: str) -> tuple[str, str]:
-    """`(line, "")` from an `OWNER_ASK` value in one of its forms, or `("", why)` otherwise.
+    """`(shown, "")` from an `OWNER_ASK` value, or `("", why)` where it cannot be read.
 
-    A decision needs a question ending in "?", at least two options that each
-    say what they change, distinct labels, and a recommendation naming one of
-    them with its reason. A review needs its four fields in order, each with
-    a value, and its question ends in "?". A review in the old `risk`,
-    `checked` and `look` form is refused (`ASK_OLD_REVIEW`). Whether a
-    question's answer is obvious is judgment, so the printed instructions say
-    it and this does not try.
+    `shown` has one line for each part of the ask, in the order
+    `ASK_RECOMMEND_SHOWN` and its neighbours describe. The value needs a
+    question ending in "?", at least two options that each say what they
+    change, distinct labels, a recommendation naming one of them with its
+    reason, and then `ASK_NAMED`'s fields in order, each with a value, of
+    which `checked` may be left out. A review form, or a decision that ends at
+    its recommendation, is refused with the fields to add (`PL-GG4V`). Whether
+    a question's answer is obvious, whether it is one clause, and whether the
+    reason names what the other options cost is judgment, so the printed
+    instructions say it and this does not try.
     """
     fields = [field.strip() for field in value.split(ASK_SEPARATOR)]
-    named = [field.partition(" -") for field in fields]
-    words = [word.strip().lower() for word, _, _ in named]
     jargon = ASK_JARGON.search(value)
     if jargon:
         return "", (
             f"it names {jargon.group(0).strip()!r}, which the owner cannot read in a reply; "
             "say in plain words what it checked or changed"
         )
-    if words == list(ASK_OLD_REVIEW):
+    question = fields[0]
+    if question.partition(" -")[0].strip().lower() in ASK_OLD_REVIEW_WORDS:
         return "", (
-            "it is in the old risk, checked and look form, which the owner could not follow; "
-            "record it as changed, question, checked and reply"
+            "it is in a review form, which gave the owner no options and no recommendation; "
+            "ask it as a choice between the change and what it was chosen over, each with what it "
+            "gains and gives up"
         )
-    if words == list(ASK_REVIEW):
-        if not all(dash and said.strip() for _, dash, said in named):
-            return "", "a review needs a value after each of changed, question, checked and reply"
-        changed, question, checked, reply = (said.strip() for _, _, said in named)
-        if not question.endswith("?"):
-            return "", "a review's question ends in '?', so the owner can answer it yes or no"
-        return ASK_REVIEW_SHOWN.format(
-            changed=changed.rstrip("."),
-            question=question,
-            checked=checked.rstrip("."),
-            reply=reply.rstrip("."),
-        ), ""
-    question, options = fields[0], fields[1:-1]
-    recommend = fields[-1] if len(fields) > 1 else ""
     if not question.endswith("?"):
         return "", (
-            "it is neither a review nor a decision whose first field is a question, and "
+            "its first field is not a question ending in '?', and "
             f"{ASK_SEPARATOR.strip()!r} with a space either side separates its fields"
         )
-    word, _, rest = recommend.partition(" ")
+    at = next(
+        (
+            place
+            for place, field in enumerate(fields)
+            if place and field.partition(" ")[0].lower() == ASK_RECOMMEND
+        ),
+        None,
+    )
+    if at is None:
+        return "", f"it has no '{ASK_RECOMMEND} <option> - <why>' field after its options"
+    options, named = fields[1:at], fields[at + 1 :]
+    _, _, rest = fields[at].partition(" ")
     pick, dash, why = rest.partition(" - ")
-    if word.lower() != ASK_RECOMMEND or not dash or not pick.strip() or not why.strip():
-        return "", f"its last field is not '{ASK_RECOMMEND} <option> - <why>'"
+    if not dash or not pick.strip() or not why.strip():
+        return "", f"its recommendation is not '{ASK_RECOMMEND} <option> - <why>'"
     if len(options) < 2:
-        return "", "a decision needs at least two options"
+        return "", "a question needs at least two options"
     pairs = [option.partition(": ") for option in options]
-    if not all(label.strip() and colon and change.strip() for label, colon, change in pairs):
-        return "", "each option needs '<option>: <what it changes>'"
+    costed = [change.partition(ASK_COST) for _, _, change in pairs]
+    if not all(label.strip() and colon for label, colon, _ in pairs) or not all(
+        gain.strip() and sep and cost.strip() for gain, sep, cost in costed
+    ):
+        return "", (
+            f"each option needs '<option>: <what it gets>{ASK_COST}<what it gives up>', so "
+            "that the owner sees what every option costs, the recommended one included"
+        )
     labels = [label.strip().lower() for label, _, _ in pairs]
     if len(set(labels)) < len(labels):
         return "", "two options share a label"
     if pick.strip().lower() not in labels:
         return "", f"it recommends {pick.strip()!r}, which is not one of its options"
-    shown = ASK_OPTIONS_JOIN.join(
-        ASK_OPTION_SHOWN.format(label=label.strip(), change=change.strip().rstrip("."))
-        for label, _, change in pairs
-    )
-    recommended = ASK_RECOMMEND_SHOWN.format(pick=pick.strip(), why=why.strip().rstrip("."))
-    return ASK_DECISION_SHOWN.format(question=question, options=shown, recommend=recommended), ""
+    parts = [field.partition(" -") for field in named]
+    words = tuple(word.strip().lower() for word, _, _ in parts)
+    if words not in (ASK_NAMED, ASK_NAMED[:-1]) or not all(
+        dash and said.strip() for _, dash, said in parts
+    ):
+        return "", (
+            f"after its recommendation come {ASK_CONTEXT} - <what changed, or what the choice "
+            f"is about> and {ASK_WHY} - <why the choice is the owner's>, then {ASK_CHECKED} - "
+            "<what was already checked> if anything was"
+        )
+    said = [text.strip().rstrip(".") for _, _, text in parts]
+    lines = [
+        ASK_QUESTION_SHOWN.format(question=question),
+        ASK_RECOMMEND_SHOWN.format(pick=pick.strip(), why=why.strip().rstrip(".")),
+        ASK_CONTEXT_SHOWN.format(context=said[0]),
+        *(
+            ASK_OPTION_SHOWN.format(
+                label=label.strip(), gain=gain.strip().rstrip("."), cost=cost.strip().rstrip(".")
+            )
+            for (label, _, _), (gain, _, cost) in zip(pairs, costed, strict=True)
+        ),
+        ASK_WHY_SHOWN.format(why=said[1]),
+        *(ASK_CHECKED_SHOWN.format(checked=checked) for checked in said[2:]),
+    ]
+    return "\n".join(lines), ""
 
 
 @dataclass(frozen=True)
@@ -1090,6 +1204,8 @@ class Verdict:
       does not hold it at.
     - `pinned`: the existing tests in `PINS` that pin this module's answers
       and that the branch would change or delete.
+    - `references`: the tests under `REFERENCE_TESTS` an existing line of
+      which the branch would edit or delete.
     - `switched_off`: when the owner switched the pull request's auto-merge
       off.
     - `blind_owed`: how many blind review passes the branch owes.
@@ -1120,6 +1236,7 @@ class Verdict:
     gate: bool = False
     moved: bool = False
     pinned: tuple[str, ...] = ()
+    references: tuple[str, ...] = ()
     switched_off: str = ""
     blind_owed: int = 0
     blind_recorded: int = 0
@@ -1149,13 +1266,13 @@ class Verdict:
 
     @property
     def sendable(self) -> str | None:
-        """The ask's opening line, where something may be sent to the owner; None otherwise.
+        """The ask, one line per part, where something may be sent to the owner; None otherwise.
 
         This is what `bin/docket arm --owner-ask` prints, and what
         `.claude/hooks/owner_ask_guard.py` attaches to a thread's message that
         names the pull request (`PL-TLPH`, `PL-X4MD`).
         """
-        return self.ask.line if self.asks_owner and self.ask is not None else None
+        return self.ask.shown if self.asks_owner and self.ask is not None else None
 
     @property
     def unjudged(self) -> bool:
@@ -1177,17 +1294,24 @@ class Verdict:
         """Whether the pull request waits on the owner's read.
 
         It does for a change to a test pinning the gate's answers, for a move
-        of the gate, and for a record saying needed. Any other change to the
+        of the gate, for an edit to an existing line under `REFERENCE_TESTS`,
+        whatever the session recorded (`PL-XSRG`), and for a record saying
+        needed. Any other change to the
         gate itself does not, since 2026-10-19 (`PL-9JHM`). A move does,
         because `PINS` is found from where the module is, so a module moved to
         another depth reads a test file that does not exist and finds no pin.
 
-        A record of the owner's go-ahead releases all three, because each
+        A record of the owner's go-ahead releases each of them, because each
         waits on the owner and they have answered (`PL-39Y1`).
         """
         if self.record is not None and self.record.given:
             return False
-        return self.moved or bool(self.pinned) or (self.record is not None and self.record.needed)
+        return (
+            self.moved
+            or bool(self.pinned)
+            or bool(self.references)
+            or (self.record is not None and self.record.needed)
+        )
 
     @property
     def lines(self) -> tuple[str, ...]:
@@ -1322,7 +1446,8 @@ class Verdict:
             if self.ask is None:
                 said.append(READ_ASK)
             else:
-                said.extend((ASK_LINE, f"  {self.ask.line}"))
+                said.append(ASK_LINE)
+                said.extend(f"  {line}" for line in split_lines(self.ask.shown))
             said.append(GIVEN_ASK)
         return (*said, *notes)
 
@@ -1389,6 +1514,15 @@ class Verdict:
             reasons.append(
                 f"{gate}changes or deletes {count} {tests} in {PINS} pinning the gate's answers: "
                 f"{self._shown(self.pinned)}"
+            )
+        if self.references:
+            count = len(self.references)
+            tests = "test" if count == 1 else "tests"
+            reasons.append(
+                f"it edits or deletes an existing line of {count} {tests} under "
+                f"{REFERENCE_TESTS} comparing the model with published data, which waits on the "
+                f"owner's read whatever the {OWNER_READ} record says: "
+                f"{self._shown(self.references)}"
             )
         return reasons
 
@@ -1623,8 +1757,9 @@ class _Change:
 
     `on_list` waits on a read, `outside` arms on green beside the store, and
     `worked` is every path outside the store and the body records. `gate` says
-    whether this module changed, `moved` whether it moved, and `pinned` names
-    the existing tests of its answers that changed.
+    whether this module changed, `moved` whether it moved, `pinned` names
+    the existing tests of its answers that changed, and `references` the tests
+    under `REFERENCE_TESTS` that lose an existing line.
     """
 
     prefix: str
@@ -1634,6 +1769,7 @@ class _Change:
     gate: bool = False
     moved: bool = False
     pinned: tuple[str, ...] = ()
+    references: tuple[str, ...] = ()
     unread: tuple[str, ...] = ()
 
 
@@ -1670,6 +1806,19 @@ def _read_change(root: Path, where: _Branch, items_dir: str, record_dir: str = "
     if PINS is not None and PINS in paths:
         pinned, unpinned = _pins_changed(base, root, run, tip=tip)
         unread = (*unread, *unpinned)
+    references: tuple[str, ...] = ()
+    if any(path.startswith(REFERENCE_TESTS) for path in paths):
+        counted = run(
+            changed_path_args("diff", "--numstat", f"{base}...{tip}", "--", REFERENCE_TESTS), root
+        )
+        if answered(counted):
+            references = lines_taken(counted)
+        else:
+            unread = (
+                *unread,
+                f"git would not count the lines {where.name} changes under {REFERENCE_TESTS}, "
+                "so whether it edits a test comparing the model with published data was not read",
+            )
     on_list = tuple(sorted(path for path in rest if not arms_on_green(path, tooling)))
     outside = tuple(
         sorted(
@@ -1678,7 +1827,7 @@ def _read_change(root: Path, where: _Branch, items_dir: str, record_dir: str = "
             if arms_on_green(path, tooling) and outside_the_store(path, prefix)
         )
     )
-    return _Change(prefix, on_list, outside, worked, gate, moved, pinned, tuple(unread))
+    return _Change(prefix, on_list, outside, worked, gate, moved, pinned, references, tuple(unread))
 
 
 @dataclass(frozen=True)
@@ -1792,6 +1941,7 @@ def _held(
         gate=change.gate,
         moved=change.moved,
         pinned=change.pinned,
+        references=change.references,
         switched_off=switched_off,
         blind_owed=reviews.blind_owed,
         blind_recorded=reviews.blind_recorded,
@@ -1864,7 +2014,10 @@ def _owner_ask_answer(
     record, misread = _owner_read(
         root, where.run, where.base, change.on_list, worked=change.worked, tip=where.tip
     )
-    if not Verdict(HOLD, moved=change.moved, pinned=change.pinned, record=record).needs_owner:
+    held = Verdict(
+        HOLD, moved=change.moved, pinned=change.pinned, references=change.references, record=record
+    )
+    if not held.needs_owner:
         unread = (*where.unread, *change.unread, *misread, *_silenced(where))
         if where.unpulled or unread:
             return Verdict(
@@ -2216,10 +2369,10 @@ def _owner_ask(
     commit, value = _newest_trailer(root, run, span, OWNER_ASK)
     if not commit:
         return None, ""
-    line, why = parse_owner_ask(value)
+    shown, why = parse_owner_ask(value)
     if why:
         return None, f"The {OWNER_ASK} record on {commit[:12]} was not read: {why}."
-    return OwnerAsk(commit=commit, line=line), ""
+    return OwnerAsk(commit=commit, shown=shown), ""
 
 
 def _owner_read(
