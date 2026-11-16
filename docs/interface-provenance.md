@@ -868,8 +868,9 @@ built, in `app/area_layout.py`.
 2. **The header stays visible: adopted, more strictly than Blender.** Blender's
    guidelines let a default layout hide an editor's header in rare,
    well-reasoned cases. Here the container in `app/area_layout.py` draws a
-   header on every Area, because the header carries the name of the run that
-   the View is bound to, which no View may leave out (`PL-TH35`, project owner, 2026-09-27, ratified). An Area
+   header on every Area, because the header holds the View chooser and, while
+   the Workspace pins a run, that run's name (`PL-TH35`, project owner,
+   2026-09-27, ratified; `PL-7Z84`). An Area
    too short for its header is refused that size rather than given a shorter
    header (`PL-MS34`). No decision lets a header be hidden.
 3. **This project's handling of modes: open.** § "There is no mode-awareness

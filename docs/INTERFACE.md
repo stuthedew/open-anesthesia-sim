@@ -2877,8 +2877,11 @@ for different reasons, so each goes where its reason applies:
   fit, without squeezing, in a window that holds one chart.
 - **The per-substance tier appears once, in the main window**, and must be in
   view whenever any window of the application is open. Closing the main window
-  therefore closes the others. That mechanism is a placeholder until break-out
-  windows are built (`PL-DPY1`). A reader could misread the run's other displayed numbers without this
+  closes the others, so no other window is left open without it. That rule does
+  not by itself keep the tier in view: a minimized main window, or a break-out
+  window placed over it, still hides the tier. The break-out design must also
+  cover those cases. The closing rule is a placeholder until break-out windows
+  are built (`PL-DPY1`). A reader could misread the run's other displayed numbers without this
   tier, so it concerns the display as a whole rather than any one view.
 - **The agent accounting is unchanged**, because its requirement already applies
   to the application rather than to any layout or window.
@@ -3420,8 +3423,10 @@ ones, so all three fractions belong against the vessel-rich trace. But ascending
 and descending determinations are not interchangeable, and no descending-washout
 MAC-awake for desflurane was found. The three fractions (0.31 isoflurane, 0.34
 sevoflurane, 0.36 desflurane) sit in a narrow range. Each agent still carries
-its own value rather than one fraction covering all three, because the
-determinations behind them were not made by one method.
+its own value rather than one fraction covering all three. Isoflurane and
+sevoflurane were each measured in Katoh's slow-washout arm, and their fractions
+differ. Desflurane's was determined by the other method, so a shared fraction
+would mix ascending and descending determinations.
 <!-- provenance: data/agents/isoflurane.json mac_awake.fraction_of_mac = 0.31 -->
 <!-- provenance: data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34 -->
 

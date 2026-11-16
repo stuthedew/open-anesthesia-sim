@@ -1458,7 +1458,8 @@ made blood flow a checked type, and it closed on 2026-11-11 before it was
 placed. It is listed because the rule placed it while it was open. The
 seventh is `PL-RF2S`, which draws every View whole from one value. It is the
 cause under `PL-0G2P`, `PL-B8DL` and `PL-G2WC`, and it was filed on
-2026-11-11.
+2026-11-11. The six that are still open are deferred to the next gate. Each
+item's `deferred-from` field records the check that its hazard is not live.
 
 ### Required scope
 

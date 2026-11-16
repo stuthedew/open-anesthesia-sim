@@ -5229,11 +5229,12 @@ SD of every coefficient in its Tables 1 and 2 (*Anesth Analg* p. 321,
 *Anesthesiology* pp. 494-95). The curve built from the mean coefficients is compared as
 published. Its amplitudes sum to 0.912 to 0.937 rather than 1 at discontinuation, because they
 are means of per-subject fits. Scaling them to sum to 1 would raise every fitted value by 7 to
-10%, and lower every ratio below by 7 to 10%. The model runs the published-data gate's own protocol: the
+10%, and lower every ratio below by 7 to 10%. The model runs the protocol of the five-minute elimination comparison in
+§ "Published wash-in and elimination validation test": the
 shipped 30-minute wash-in at the reference settings, then the vaporizer closed for 23.5 hours.
-So the run ends at the supported run length of 24 hours. Its fifth minute matches the published-data gate's
-pinned five-minute ratios, so the tables continue the published-data gate's comparison rather than starting a
-second protocol. The comparison uses the published-data gate's two conditions and no others. *Shipped* is the
+So the run ends at the supported run length of 24 hours. Its fifth minute matches the five-minute
+ratios that the elimination regression pins hold, so the tables continue that comparison rather than starting a
+second protocol. The comparison uses the same two conditions as those pins and no others. *Shipped* is the
 rebreathing circuit at 10 L/min, which gives the tail that the chart draws. *Open circuit* is
 the test-only condition that discards the circuit's contents after every step, and no setting
 of the simulator can produce it. The table times are the papers' own sampling times within the
@@ -5300,7 +5301,7 @@ tail is a third to a half of the mean curve in every cohort (0.34 to 0.46).
 <!-- not-restated: 0.34 -->
 
 **Read in stretches.** The shipped tail sits above the fitted curve at five
-minutes. That excess is the apparatus term that the published-data gate records. The tail
+minutes. That excess is the apparatus term that the five-minute elimination comparison records. The tail
 falls below the curve from 6 to 13 minutes until 0.8 to 2.0 hours. At the
 widest, around 15 to 25 minutes, it is 15 to 44% below. It then runs above
 the curve until 3.4 hours for desflurane and 6.9 to 8.4 hours for the other
@@ -5413,8 +5414,8 @@ already falling on its fat term's.
    of two, and no better.
 3. *The published subjects breathed nitrous oxide throughout, and the
    parameters under test descend from the lineage of the data.* These are
-   caveats 1 and 2 of the published-data gate
-   (§ "Published wash-in and elimination validation test"), unchanged.
+   caveats 1 and 2 of § "Published wash-in and elimination validation test",
+   unchanged.
 
 **How much of the gap sevoflurane's missing metabolism could account for:
 little, and in the wrong direction over the middle stretch.** This model has no
@@ -5446,7 +5447,7 @@ that § "Mass-balance identity" remains true with the sink in place.
 <!-- not-restated: 5 %, 5.0 %, 1.3 -->
 
 **What a learner sees of it: nothing on screen, and the record gains the
-number.** The departures above are in $`F_A/F_{A0}`$. At the published-data gate's 1% dial,
+number.** The departures above are in $`F_A/F_{A0}`$. At the 1% dial of these runs,
 $`F_{A0}`$ is 0.805, 0.672 and 0.876% of an atmosphere for sevoflurane,
 isoflurane and desflurane. So the shipped alveolar trace falls below the
 readouts' 0.01 percentage points (`docs/INTERFACE.md` § "Displayed precision") at 2.8, 4.2 and 1.9
@@ -5474,7 +5475,7 @@ as page images. `test_the_published_coefficients_sum_below_one_at_discontinuatio
 their sum. The model runs at the shipped 0.1 s step, sampled once a minute.
 `test_the_run_ends_at_the_supported_run_length` checks the run's length, and
 `test_the_twenty_four_hour_run_opens_from_the_five_minute_gate_s_own_ratio` checks that its
-fifth minute matches the published-data gate's ratios to four decimal places. The model's terms are the
+fifth minute matches the ratios that the elimination regression pins hold, to four decimal places. The model's terms are the
 exponential modes of its open-circuit system, decomposed from its state at discontinuation.
 `test_the_model_s_apparent_muscle_and_fat_terms_against_the_fitted_ones` checks them. The
 modes match the stepped open-circuit run to within 0.08% at every minute from the fifth. The
@@ -6721,7 +6722,8 @@ A release is complete only when:
 - this document describes the behavior actually present in the tagged release.
 
 The elimination regression pins compare simulated elimination with the model's
-own earlier output, and passing them is not a condition of release. They check
+own earlier output. They run with the test suite, so a failing pin still stops
+a release, but they are not among the published-data checks above. They check
 only that the results have not changed, and do not show that they agree with
 published data.
 
