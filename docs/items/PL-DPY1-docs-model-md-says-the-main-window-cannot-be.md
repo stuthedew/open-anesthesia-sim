@@ -39,3 +39,15 @@ structure-read sweep of 2026-11-05.
 fixes was already in its file at `817a4d88`, the commit that froze Gate 3, so
 under ROADMAP.md § "The gate is a snapshot, not a moving target" the item
 joins v0.7.0's frozen list rather than being deferred by its capture date.
+
+**Done 2026-11-16.** The brief's recommendation was taken, on the thread's
+decision. In `docs/INTERFACE.md` § "What this list requires once the layout is
+the reader's", the bullet on the per-substance tier now states the requirement
+once (the tier must be in view whenever any window of the application is
+open) and one mechanism for it: closing the main window closes the others. The
+sentence that the main window cannot be closed while another window is open is
+gone. The reasons are the brief's own: closing the main window never refuses
+a reader's action, and the brief records it as how Blender treats its main
+window, which this session did not check again. The bullet records the mechanism as a
+placeholder until break-out windows are built. Docs sweep: that section, and
+`grep -n 'main window'` over `docs/INTERFACE.md` and `docs/MODEL.md`.

@@ -2875,9 +2875,10 @@ for different reasons, so each goes where its reason applies:
   shows a concentration needs its time, run state and drug, so the tier goes
   with the concentration into whatever window shows it. Five values and a name
   fit, without squeezing, in a window that holds one chart.
-- **The per-substance tier appears once, in the main window**, which cannot be
-  closed while any other window is open. Closing the main window closes the
-  others. A reader could misread the run's other displayed numbers without this
+- **The per-substance tier appears once, in the main window**, and must be in
+  view whenever any window of the application is open. Closing the main window
+  therefore closes the others. That mechanism is a placeholder until break-out
+  windows are built (`PL-DPY1`). A reader could misread the run's other displayed numbers without this
   tier, so it concerns the display as a whole rather than any one view.
 - **The agent accounting is unchanged**, because its requirement already applies
   to the application rather than to any layout or window.
