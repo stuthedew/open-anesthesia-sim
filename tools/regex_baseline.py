@@ -14,8 +14,6 @@ method that does the job better is `PL-8FT2`.
 """
 
 GRANDFATHERED_REGEX: dict[str, dict[tuple[str, str], int]] = {
-    ".claude/hooks/shell_split.py": {("<module>", "compile"): 2},
-    ".claude/hooks/thread_hooks.py": {("_matches", "fullmatch"): 1},
     "subprojects/docket/src/docket/arming.py": {("<module>", "compile"): 3},
     "subprojects/docket/src/docket/checks.py": {
         ("<module>", "compile"): 12,

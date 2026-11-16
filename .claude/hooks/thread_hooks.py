@@ -206,6 +206,8 @@ def _matches(group: dict[str, object], source: str) -> bool:
     if not isinstance(matcher, str) or matcher in ("", "*"):
         return True
     try:
+        # regex: Claude Code writes a hook matcher as a regular expression, so
+        # reading one the way the harness does takes the `re` module.
         return re.fullmatch(matcher, source) is not None
     except re.error:
         return False
