@@ -81,8 +81,9 @@ IEC 62304, for software.
 ### Intended use
 
 This is a teaching simulator for volatile-agent uptake and distribution. It is
-not a clinical prediction, dosing tool, patient monitor, or medical device. It is
-intended for anesthesia clinicians, trainees, and students. It helps them
+not intended for clinical prediction, dosing, monitoring a patient, or any other
+use as a medical device. It is intended for anesthesia clinicians, trainees,
+and students. It helps them
 build intuition about how agent concentration moves between the breathing
 circuit, alveolar gas, blood, and the tissue groups, under management that the
 learner chooses. In particular, it makes visible the compartments that no

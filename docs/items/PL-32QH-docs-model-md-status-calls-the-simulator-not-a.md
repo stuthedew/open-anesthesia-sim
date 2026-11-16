@@ -40,3 +40,16 @@ structure-read sweep of 2026-11-05.
 fixes was already in its file at `817a4d88`, the commit that froze Gate 3, so
 under ROADMAP.md § "The gate is a snapshot, not a moving target" the item
 joins v0.7.0's frozen list rather than being deferred by its capture date.
+
+**Done 2026-11-16.** The brief's fix was taken, on the thread's decision. In
+`docs/MODEL.md` § "Intended use", "It is not a clinical prediction, dosing
+tool, patient monitor, or medical device" now reads "It is not intended for
+clinical prediction, dosing, monitoring a patient, or any other use as a
+medical device". The sentence states an intended use rather than a device
+status, so the chapter makes one claim about regulatory status, which is none.
+The FDA passage in § "This is an engineering bar, not a regulatory status" is
+unchanged and still gives the reason that the boundary is drawn at a specific
+patient's data. Docs sweep: `grep -n -i 'medical device'` over `docs/MODEL.md`,
+`docs/INTERFACE.md` and `README.md`. `README.md` line 13 still says "This is an
+educational simulator, not a medical device", which is outside this item's
+chapter and `touches` and is reported to the thread.
