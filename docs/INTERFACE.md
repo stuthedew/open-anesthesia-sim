@@ -340,7 +340,7 @@ reason for either value (`PL-N8G4`).
 
 Capping the timeline would not bound memory use, because the run itself holds
 one stretch and one keyframe for each accepted change and has no limit either
-(§ "The run is that record, and every state is derived from it").
+(§ "A run is stored as its settings and keyframes, and every state is computed from them").
 
 The timeline can be unlimited because it grows with the number of settings
 changed, not with the length of the run. Until a drag was recorded only on its
@@ -357,7 +357,7 @@ about three hours of unbroken dragging under the old behaviour, and the
 timeline would then be smaller than 9 MB.
 <!-- provenance: app/dashboard_frame.py RENDER_INTERVAL_S = 0.2 -->
 
-#### The run is that record, and every state is derived from it
+#### A run is stored as its settings and keyframes, and every state is computed from them
 
 **A run is stored as a record of the settings in force at each moment and the
 state at each change.** The settings are the four controls above, together with
@@ -365,7 +365,9 @@ the patient and agent parameters that the equations use. Each change has one
 *keyframe*, the state at the instant that change took effect. Flows are stored
 as they were set, in liters per minute (§ "Time" explains why). Nothing else
 about the run is stored. The chart is drawn from the stored settings and
-keyframes, so there is no second record that could disagree with them.
+keyframes, so there is no second record that could disagree with them. The
+control-input timeline above is a separate record, kept to show and group the
+changes, and the program computes no state from it.
 
 **The program computes the state at a single instant in one calculation.** The
 settings stay constant over a *stretch*, the time between two changes. The
@@ -1718,7 +1720,7 @@ run may use a different one. It discards the run by opening a fresh run
 definition at the cleared state, under the user's settings. A run definition is
 the stored record of a run: the settings in force at each moment, and the state
 at each change of setting, from which every other state is computed
-(§ "The run is that record, and every state is derived from it"). The timeline
+(§ "A run is stored as its settings and keyframes, and every state is computed from them"). The timeline
 of control inputs is cleared because it belongs to the run that recorded it.
 
 On a branch, the fresh run definition opens instead on the stretch of the parent
@@ -1944,7 +1946,7 @@ diverge, in which direction, how quickly, and whether they converge again.
 
 **For developers.** A keyframe is the state at the instant a setting change
 took effect, and a segment is the stretch of a run between two changes
-(§ "The run is that record, and every state is derived from it"). A branch's
+(§ "A run is stored as its settings and keyframes, and every state is computed from them"). A branch's
 run definition carries the trunk's own keyframe. It forms each propagation
 interval as the instant minus the start of that instant's segment.
 The branch repeats the trunk's arithmetic because both use the same keyframe
@@ -2873,9 +2875,13 @@ for different reasons, so each goes where its reason applies:
   shows a concentration needs its time, run state and drug, so the tier goes
   with the concentration into whatever window shows it. Five values and a name
   fit, without squeezing, in a window that holds one chart.
-- **The per-substance tier appears once, in the main window**, which cannot be
-  closed while any other window is open. Closing the main window closes the
-  others. A reader could misread the run's other displayed numbers without this
+- **The per-substance tier appears once, in the main window**, and must be in
+  view whenever any window of the application is open. Closing the main window
+  closes the others, so no other window is left open without it. That rule does
+  not by itself keep the tier in view: a minimized main window, or a break-out
+  window placed over it, still hides the tier. The break-out design must also
+  cover those cases. The closing rule is a placeholder until break-out windows
+  are built (`PL-DPY1`). A reader could misread the run's other displayed numbers without this
   tier, so it concerns the display as a whole rather than any one view.
 - **The agent accounting is unchanged**, because its requirement already applies
   to the application rather than to any layout or window.
@@ -3416,8 +3422,11 @@ equilibration. All of these are equilibrated determinations, not fast-washout
 ones, so all three fractions belong against the vessel-rich trace. But ascending
 and descending determinations are not interchangeable, and no descending-washout
 MAC-awake for desflurane was found. The three fractions (0.31 isoflurane, 0.34
-sevoflurane, 0.36 desflurane) sit in a narrow range, so each agent carries its
-own value rather than one fraction covering all three.
+sevoflurane, 0.36 desflurane) sit in a narrow range. Each agent still carries
+its own value rather than one fraction covering all three. Isoflurane and
+sevoflurane were each measured in Katoh's slow-washout arm, and their fractions
+differ. Desflurane's was determined by the other method, so a shared fraction
+would mix ascending and descending determinations.
 <!-- provenance: data/agents/isoflurane.json mac_awake.fraction_of_mac = 0.31 -->
 <!-- provenance: data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34 -->
 
@@ -3897,12 +3906,12 @@ the convention it borrowed. Departing from the convention is also wanted for its
 own sake. A teaching tool that looks unmistakably unlike a monitor cannot be
 mistaken for one, which is the view this project's disclaimers already take.
 
-*The disclaimer line is always placed in the layout, but it is not in view on
-every screen today* (`PL-JSY5`, 2026-10-18). The argument above needs only that
-the line is a permanent statement, not a conditional one, and that is true at
-every window size. The paragraphs on the disclaimer line in
-§ "What this list requires once the layout is the reader's" describe where the
-line is placed and the one gap in that placement.
+*The disclaimer line has been in view at every window height since it was
+fixed outside the scrolling part of the page* (`PL-NNML`).
+The paragraph that opens "The disclaimer line and the unconditional region are
+always in view", in § "What this list requires once the layout is the
+reader's", says where the line is placed. The argument above needs only that
+the line is a permanent statement, not a conditional one.
 
 The boundary of the supported run length is shown in the muted color, not the
 alert color. Coloring a correct model's declared boundary as a fault would

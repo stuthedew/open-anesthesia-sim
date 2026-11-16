@@ -1132,7 +1132,7 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-HQPF (M) The accounting panel's unit caption ('Litres of equivalent pure agent gas') and the schematic's unit ('mL vapour') do not name the condition an agent amount is stated at, 20 °C and 1 atm, so a learner cannot tell that an amount held in the body is stated at room temperature and reads 5.8% high
 - PL-RJN9 (S) The agent cost View's two captions in src/anesthesia_sim/app/agent_cost.py write '20 degrees C' as text, a second copy of core/liquid_agent.py's REFERENCE_TEMPERATURE_CELSIUS, so a change to the reference temperature would leave the captions naming the old one
 
-**Cleared before v0.7.0's implementation begins, unless deferred - 165 entries**
+**Cleared before v0.7.0's implementation begins, unless deferred - 172 entries**
 
 - PL-H57W (L) Since PL-CZXN no check measures whether a branch that changes no core function weakens a core unit test, because PL-7FPD's route compares only the display modules' mutants; the same comparison over core's mutants took 538 to 968 s for one changed test file
 - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
@@ -1299,6 +1299,13 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-MVCF (S) A Reset that raises after it has cleared the run is not counted as a start-over, so a halt keeps the discarded run's cards under a clock of 10 min for a run at 0 s
 - PL-SV2Q (S) When a run's dials cannot be built after a Reset or an agent change, the dial row and the delivered line keep the discarded run's setting: 'Delivered 8.00% (4.00 ×MAC)' beside '1 MAC desflurane = 6.0%'
 - PL-CT4K (S) Six open safety items filed on 2026-11-10 (PL-0G2P, PL-B8DL, PL-G2WC, PL-GJ1W, PL-GKG4, PL-LHCL) are not on v0.7.0's frozen list, though a safety item re-enters the gate whether or not its problem was present at the freeze
+- PL-0G2P (M) The run-state tests read only the text of labels, buttons, combo boxes and sliders, so a value that a View paints, as the compartment schematic paints its amounts, is in no restatement test
+- PL-B8DL (M) The four test layouts named _EVERY_VIEW hold four of the six registered Views, so the tests that every widget restates a run's state never build the compartment schematic or the agent cost View
+- PL-G2WC (M) No test checks that a value shown in compare mode sits under its own run: the readout test checks the 'Run 1' and 'Run 2' labels and never a value against the run it names
+- PL-GJ1W (L) Nothing states in one place how far a computed value in core/ or app/ can be from the exact one, so each comparison picks its own allowance (13 tolerance constants, and none where nobody thought of rounding) and no test runs generated settings over many steps: seven items from 2026-10-25 to 2026-11-01 on error that accumulates or a rounded result compared exactly
+- PL-GKG4 (M) Blood flow is a bare float checked by hand at three places in core (blood.py, tissue.py, governing_equations.py) and is not a checked type as cardiac output is, so the next function that takes one can skip the check
+- PL-LHCL (L) A number in core/ is known to be inside its valid range only where a checked type holds it, and 151 parameters and fields are still bare float or int, so each sweep (PL-ZGYX) finds the ones someone listed and the next arrives after it closes: a blood flow of 5e-324 L/min is accepted (PL-GKG4) and a restored Keyframe holds instant_s = -50.0 (PL-8W1Q)
+- PL-RF2S (L) Every widget, painted canvas and chart keeps the last value written to it, and three separate paths each write a part of the screen, so a value from an earlier run or the other compared run stays wherever a path does not reach: the cause under PL-X7D5, PL-J5GC, PL-5JTH and PL-GTH6, whose four fixes each added a test over a hand-kept list
 
 ### Captures after the cut
 
@@ -1430,8 +1437,8 @@ Nothing ran the mutation tool's first step outside a mutation run, and the two
 test files were already long, at 8,933 and 5,114 lines. They are `PL-V067`,
 `PL-8YCC`, `PL-PG0S` and `PL-1FPR`. A fifth, `PL-19M4`, is placed by the
 branch that holds it. `PL-1FPR` stays on the list but is deferred to the next
-gate, because it waits on `PL-RF2S`, which this list does not hold, and it
-changes no value a learner sees.
+gate, because it waits on `PL-RF2S`, which is itself deferred to the next
+gate, and it changes no value a learner sees.
 
 **`PL-MVCF`, `PL-SV2Q` and `PL-CT4K` joined the frozen list on 2026-11-11,
 after the freeze.** `PL-MVCF` and `PL-SV2Q` are classed `safety`, so they
@@ -1439,6 +1446,20 @@ re-enter whether or not their problem was present. Each leaves a discarded
 run's values on screen after a halt, and each is on `main`. `PL-CT4K` is not
 `safety`, but it completes this list: it places six `safety` items that the
 list does not yet name.
+
+**Seven `safety` items joined the frozen list on 2026-11-16, after the
+freeze.** `PL-CT4K` placed them. Each is classed `safety`, so it re-enters
+whether or not its problem was present at the freeze. Six were filed on
+2026-11-10 and 2026-11-11. `PL-0G2P`, `PL-B8DL` and `PL-G2WC` are gaps in the
+tests that check each View shows only the current run's values. `PL-GJ1W`
+asks for one statement of how far a computed value may be from the exact one.
+`PL-LHCL` covers the numbers in `core/` that no checked type holds. `PL-GKG4`
+made blood flow a checked type, and it closed on 2026-11-11 before it was
+placed. It is listed because the rule placed it while it was open. The
+seventh is `PL-RF2S`, which draws every View whole from one value. It is the
+cause under `PL-0G2P`, `PL-B8DL` and `PL-G2WC`, and it was filed on
+2026-11-11. The six that are still open are deferred to the next gate. Each
+item's `deferred-from` field records the check that its hazard is not live.
 
 ### Required scope
 
@@ -2809,6 +2830,23 @@ first. The rule the build must satisfy is `docs/INTERFACE.md` § "Minimum
 displayed outputs" -> "What this list requires once the layout is the
 reader's".
 
+*A window reopens where it was, as in Blender* (project owner, 2026-11-09:
+"Do whatever blender does", `PL-KYGF`). v0.6.0 left this out, because a
+position restored onto a changed set of monitors can put a window where the
+learner cannot see it. Break-out now plans it, and follows Blender:
+
+1. Every window's position and size are saved with the layout, and each
+   window is put back there when the layout is loaded. Blender does the same
+   wherever the platform lets an application place its windows.
+2. Nothing here checks that the monitor a window was on is still connected.
+   Blender makes no such check either.
+3. The hazard is corrected by the toolkit, not by a check of this project's
+   own. Qt moves a restored window that would be off-screen to inside the
+   available screen area (`QWidget::restoreGeometry`). Blender's Windows
+   layer likewise moves and shrinks a new window to fit the nearest monitor.
+
+`PL-KYGF` records the Blender source and the Qt documentation read for this.
+
 *Floating windows are deferred, not refused* (project owner, 2026-09-15,
 correcting this paragraph's first form). Taking a tiled area out into a
 floating one is wanted later, and this milestone does not build it yet.
@@ -3038,10 +3076,10 @@ liquid-equivalent consumption figure that item 28 plans.
 
 *Its own item because two recorded limitations already end here.*
 `docs/MODEL.md` § "Known limitations" has two notes that both stop at the
-same unbuilt change. The note "One reference condition, where the model
-physically has two" sizes the temperature half. The alveolar, venous and
-tissue stores hold 5.5 % fewer moles than their 20 °C label implies. The
-note "The modeled alveoli are dry, and real ones are saturated at 47
+same unbuilt change. The note under § "One reference condition, where the
+model physically has two" sizes the temperature half. The alveolar, venous
+and tissue stores hold 5.5 % fewer moles than their 20 °C label implies. The
+note under § "The modeled alveoli are dry, and real ones are saturated at 47
 mmHg" sizes the water half at 47/760. Each note says that removing its
 limitation is outside the current milestone.
 
@@ -5993,7 +6031,9 @@ This milestone is the first half of planned-milestone item 34. It was scoped
 two releases ahead of its turn (project owner, 2026-09-16, **ratified** on
 `PL-NMTF`), because the design was already settled and fourteen prerequisites
 were waiting on a build item that did not exist. The placement, the split and
-the gate decision were all recommendations put to the owner and agreed. So
+the gate decision were all recommendations put to the owner and agreed. The
+gate decision was that v0.6.0 froze no debt gate of its own when it was
+scoped. Gate 2, which froze when v0.5.0 shipped, became its gate. So
 `CLAUDE.md`'s lower bar to reopen applies to each of them. What the owner
 *specified* is item 34's own content, which this milestone builds rather than
 re-decides. Item 34 carries the design and the Blender provenance behind every
@@ -6711,7 +6751,11 @@ before that change holds their text.
    version. So a three-pane state restores into a two-pane splitter and returns
    `True`. This was re-measured on PySide6 6.11.2 / Qt 6.11.2 on 2026-09-16.
    That measurement is the evidence behind `PL-C842`, and it is stronger than
-   the form that item recorded.
+   the form that item recorded. `PL-C842` showed that the state does not say
+   which View is in which pane, and that it restores into a splitter with one
+   pane fewer. The re-measurement showed that the same panes in reverse order
+   save the same bytes, and that a restore succeeds whichever way the number
+   of panes differs.
 
 #### Views
 
@@ -6733,13 +6777,14 @@ before that change holds their text.
 
 5. **The View contract** (queue item `PL-TH35`). The contract is written
    *with* the area system and validated against two Views that already exist.
-   It carries the four clauses that the 2026-09-16 audit added. They say what
-   a View's saved state is and who writes it, and what a View owes when it is
-   handed state it cannot read. They also say what a split, a swap and a stack
-   round trip each preserve, and what the container does when an Area cannot
-   honour a size. The contract is small by construction. It is re-checked
-   against its implementers, as § "Prune the contract" in the provenance
-   record requires.
+   It carries the four clauses that the 2026-09-16 audit of the queue against
+   the layout model (`PL-BNYF`) added. They say what a View's saved state is
+   and who writes it, and what a View owes when it is handed state it cannot
+   read. They also say what a split, a swap and a stack round trip each
+   preserve, and what the container does when an Area cannot honour a size.
+   Entry 8 decides that last behaviour. The contract is small by
+   construction. It is re-checked against its implementers, as § "Prune the
+   contract" in the provenance record requires.
 
 6. **An enforced import boundary** (queue item `PL-L8RN`). `QSplitter` is
    confined to the adapter, and concrete View modules are kept out of the
@@ -6890,10 +6935,12 @@ before that change holds their text.
 14. **The operations a reader performs** (queue item `PL-2KXB`). A border drag
     moves the collinear chain that the `borders()` query returns. A corner
     drag splits and joins. A reader can swap two Areas. The Workspace tab
-    strip carries the lifecycle from entry 11. The chain query recovers the one
-    behaviour that the tree gives up compared with Blender's graph. `PL-3J2P`
-    measured that behaviour as differing exactly once across thirty-two shipped
-    Blender Workspaces.
+    strip carries the lifecycle from entry 11. The tree gives up two things
+    compared with Blender's graph. The chain query recovers one of them: where
+    four Areas meet, a drag moves the whole line of borders. `PL-3J2P` found
+    such a meeting point exactly once across thirty-two shipped Blender
+    Workspaces. The other is a layout that only a join can reach, and entry 1
+    refuses that join.
     Entry 20 decides the look of the strip, the handle and the corner
     affordance (`PL-QW1Z`, `PL-RQT1`, `PL-30L5`). `PL-MS34` decides the look
     of the Area header.
@@ -6978,8 +7025,9 @@ before that change holds their text.
     **The Area header** (`PL-MS34`). The first question is whether there is a
     header at all. If there is, this entry decides its height, its contents,
     and whether the View name and the chooser sit in it. If there is not, it
-    decides where the chooser goes instead. Planned-milestone item 33's own
-    argument for the move names the header, but no entry specifies it.
+    decides where the chooser goes instead. Planned-milestone item 33's
+    argument for running after item 34 names the header, and no entry other
+    than this one specifies it.
 
     **The splitter handle** (`PL-RQT1`). This entry decides its width, its look
     at rest and on hover, its cursor and its drag feedback.
@@ -6992,7 +7040,11 @@ before that change holds their text.
     means most learners never discover that the layout is theirs.
 
     **The View chooser** (`PL-RBXL`), as something a learner sees. Entry 16
-    specifies only what the chooser guarantees.
+    specifies only what the chooser guarantees. This entry decides that the
+    chooser is a flat button showing the current View's name, not a drop-down
+    list, because this interface uses drop-down lists for settings, and
+    choosing a View changes nothing in the run. Its menu lists every View in
+    the order they are registered, with the current one checked.
 
     **The two failure states** (`PL-DB5G`). These are a matter of
     presentation safety rather than taste. One is an Area that names a View
@@ -7046,10 +7098,10 @@ before that change holds their text.
   Workspace switch and a reload.
 - From every shipped Workspace, a learner can bring the accounting tier on
   screen through the interface alone. A Workspace that names none of those
-  Views still leaves them reachable.
+  Views, whether shipped or saved by the learner, still leaves them reachable.
 - **No learner-visible regression against v0.5.0.** Compare mode ships before
   this milestone, and this milestone then rearranges it. Everything a learner
-  could do with two runs on 2026-09-16, they can still do. This is checked
+  could do with two runs in v0.5.0, they can still do. This is checked
   against v0.5.0's own definition of done.
 - Tests exercise the layout model with no `QApplication` at all. They include a
   fixture file one schema version ahead of the build and a file truncated
@@ -7057,8 +7109,8 @@ before that change holds their text.
 - `tools/import_boundary_check.py` fails the build if any module other than the
   adapter imports `QSplitter`, or if the layout tree imports a concrete View
   module.
-- Two Views that already exist implement the View contract. A test builds two
-  surfaces for one run and asserts that both draw.
+- Two Views that already exist implement the View contract. A test shows one
+  View in two Areas for one run and asserts that both draw.
 - `make check` is green, and the documents in Required scope entry 19 describe
   the interface that exists.
 
@@ -7072,14 +7124,14 @@ before that change holds their text.
   from version 1 (entry 1), and the unconditional region is built in its
   per-window shape (entry 7). When break-out is built, what it adds is the
   window, the window's lifetime and the test that drives it. **Both
-  reservations stay although break-out is unscheduled** (entry 1).
+  reservations stay although break-out is unscheduled** (entry 1). Remembering
+  where each window was is part of break-out too, and planned-milestone item
+  34 records how it works.
 - **Floating Areas or panels - not yet, rather than never.** The option to take
   a tiled Area out into a floating one is wanted later. This milestone does not
-  build it. Floating arrives under `docs/MODEL.md`'s occlusion rule, which
-  applies to it without being argued again for it.
-- **Remembering which screen a window was on.** Restoring a position against a
-  changed set of monitors puts a window where the reader cannot see it. That is
-  the occlusion failure, arriving through persistence.
+  build it. Floating arrives under the occlusion rule in `docs/INTERFACE.md`
+  § "Minimum displayed outputs", which applies to it without being argued
+  again for it.
 - **The View catalogue.** This is planned-milestone item 36. It stays after
   this milestone for the reason that item 34 records. A View's contract is
   whatever the area system requires of its contents. So Views built first would

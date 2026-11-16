@@ -3,11 +3,13 @@ id: PL-97S1
 title: Two citations name docs/MODEL.md's Known-limitations note 'One reference condition, where the model physically has two' without the section mark (core/liquid_agent.py:41 and ROADMAP.md:2759), so the doc check cannot see them, and the MODEL.md copy edit, which rewords that bold lead, would leave both pointing at nothing
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: repo-copy-edit
 touches: src/anesthesia_sim/core/liquid_agent.py, ROADMAP.md
 added: 2026-11-09
+closed: 2026-11-16
+pr: 2168
 payoff: a rename of the Known-limitations note on the reference condition is caught by the doc check, so the liquid-agent docstring never points a developer at a note that no longer exists
 verify: ! grep -qF '"Known limitations", "One reference' src/anesthesia_sim/core/liquid_agent.py && ! grep -qF 'The note "One reference condition' ROADMAP.md
 reenters: PL-93LV
@@ -34,3 +36,35 @@ paragraph of `docs/ARCHITECTURE.md` and of the last chapter of
 prose of `docs/MODEL.md` outside that binding, for the reason its brief gives.
 This item is about a citation's form, a section mark the doc check needs, which
 the paragraph binding does not read. It stays its own item.
+
+**Done 2026-11-16.** Both citations now carry the section mark before the
+note's name. `ROADMAP.md`'s item on the reference condition writes the note as
+`docs/MODEL.md` § "Known limitations" does in § "Agent amount": the note under
+§ "One reference condition, where the model physically has two". The same
+paragraph's second unmarked note name, the note under § "The modeled alveoli
+are dry, and real ones are saturated at 47 mmHg", got the same mark, because
+the two sentences are a pair and the fix is the same.
+
+The docstring in `src/anesthesia_sim/core/liquid_agent.py` could not copy that
+form. The doc check reads a docstring only for a citation that puts the
+document's name directly before the mark, and tests that one by whether the
+document holds the words, not by its headings. So the docstring now writes
+`docs/MODEL.md` § "One reference condition, where the model physically has
+two", under § "Known limitations". Nothing else in `core/` changed.
+
+A test copy of the tree outside the worktree showed what the check now sees.
+With only the bold lead renamed, it reports `docs/MODEL.md:574` and
+`ROADMAP.md:3041`. With `docs/MODEL.md:574` also updated to the new name, it
+reports `ROADMAP.md:3041` and `liquid_agent.py:41`. So a rename cannot land
+without all three citations updated. The docstring is caught one step late,
+because `docs/MODEL.md:574` still holds the old words until it is fixed.
+
+A fourth citation of the note has the old form: the `#:` comment above
+`REFERENCE_CONDITION_LABEL` in `src/anesthesia_sim/app/display_units.py`. No
+check reads a `#:` comment, so adding the mark there would change nothing the
+check sees, and it was left for the thread to file or fix.
+
+Files checked in the docs sweep: `docs/MODEL.md` (§ "Agent amount" and §
+"Known limitations"), `ROADMAP.md`, `src/anesthesia_sim/core/liquid_agent.py`,
+`src/anesthesia_sim/app/display_units.py`, and a search of `*.md` and `*.py`
+for "One reference condition".

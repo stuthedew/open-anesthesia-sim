@@ -3,11 +3,13 @@ id: PL-3807
 title: docs/MODEL.md § 'What the published-data gate can and cannot resolve' counts the sign of the elimination disagreement as part of the published-data gate, but § 'Release gate' says the elimination comparison is not part of the release check; decide which elimination checks a release must pass (copy editor structure read, 2026-11-05)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: model-md-structure
 touches: docs/MODEL.md
 added: 2026-11-05
+closed: 2026-11-16
+pr: 2168
 payoff: a reader of the release conditions sees every published-data check a release runs, including the direction of the elimination departure
 verify: ! grep -qF 'simulated wash-in passes validation against published data' docs/MODEL.md
 ---
@@ -46,3 +48,17 @@ structure-read sweep of 2026-11-05.
 fixes was already in its file at `817a4d88`, the commit that froze Gate 3, so
 under ROADMAP.md § "The gate is a snapshot, not a moving target" the item
 joins v0.7.0's frozen list rather than being deferred by its capture date.
+
+**Done 2026-11-16.** The published-data bullet in `docs/MODEL.md` § "Release
+gate" now requires every check of the published-data gate, for every agent and
+cohort, names the sign of the elimination disagreement among them, and points
+to § "What the published-data gate can and cannot resolve" for the list. It
+points rather than restating the list, so the two sections cannot drift apart
+again. The sentence about earlier versions now names the elimination
+regression pins, which compare simulated elimination with the model's own
+earlier output, so it cannot be read as covering the sign check. The developer
+note under it said the comparison with earlier versions sits in the wash-in
+module. It now says that the five-minute elimination pin is in the module of
+the published-data gate, and that the late-washout tables are in a module of
+their own (`tests/reference/test_late_washout_against_published_fits.py`, found
+with `grep -rln`). Docs sweep: both sections, and the two test modules.

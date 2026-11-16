@@ -3,11 +3,13 @@ id: PL-DQD8
 title: docs/MODEL.md's paragraph saying 'always' does not mean the disclaimer is in view on every screen today is stale since PL-NNML fixed the scrolling page, and it points to a gap the paragraphs above no longer state
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: model-md-structure
 touches: docs/MODEL.md, docs/INTERFACE.md
 added: 2026-11-05
+closed: 2026-11-16
+pr: 2168
 payoff: the specification says in one voice that the educational-use statement is always on screen
 verify: ! grep -qF 'but it is not in view on' docs/INTERFACE.md
 ---
@@ -42,3 +44,20 @@ structure-read sweep of 2026-11-05.
 fixes was already in its file at `817a4d88`, the commit that froze Gate 3, so
 under ROADMAP.md § "The gate is a snapshot, not a moving target" the item
 joins v0.7.0's frozen list rather than being deferred by its capture date.
+
+**Done 2026-11-16.** The paragraph was rewritten rather than cut, as the
+thread preferred. In `docs/INTERFACE.md` § "Color contrast, and the standard
+this interface is held to", it now says that the disclaimer line has been in
+view at every window height since `PL-NNML`, and points to the paragraph in
+§ "What this list requires once the layout is the reader's" that opens "The
+disclaimer line and the unconditional region are always in view". It keeps the
+sentence that the colour argument needs only a permanent statement. The
+sentence about "the one gap in that placement" is gone, because that section
+no longer describes a gap. The dated history, the paragraph that opens
+"Before the region and the line were fixed outside the scrolling part", is
+unchanged. Docs sweep: both sections, and `grep -n 'in view'` over
+`docs/INTERFACE.md` for other statements that the line is sometimes off screen.
+The rewritten paragraph no longer cites `PL-JSY5` or its date, 2026-10-18.
+Those recorded when the gap was found, and the gap is closed, so keeping them
+on a sentence that now says the line is always in view would misattribute it.
+`PL-JSY5` remains the record of the gap.

@@ -119,11 +119,19 @@ scripts from that licence. The pages are listed under
 § "Pages read on 2026-10-25". The licence statements were first confirmed on
 2026-09-16 through a search engine.
 
-Blender's own Copyright Rules handbook draws the same line between studying and
-copying for material entering Blender. It asks that a design be studied and
-re-expressed, and refuses lifted assets or prose. It bars copyrighted elements
-of other software, and encourages designs that build on Blender's own design
-history.
+Blender's own Copyright Rules page sets a rule for material entering Blender.
+It was read on 2026-11-16 at
+https://developer.blender.org/docs/handbook/communication/copyright_rules/ and
+is listed under § "Pages read on 2026-11-16". It asks contributors to present
+original mockups and designs that build on Blender's own design history. It bars
+copyrighted elements of proprietary software from every part of Blender, because
+adding them would breach that software's licence agreement. It also asks
+contributors to avoid referring to proprietary software, and to keep to public
+information where a mention is essential. Its bar on copying names only
+proprietary software, and the page says nothing about reading another program's
+source. So it points the same way as this study's rule, toward original work,
+but it does not draw the line between studying and copying that this study
+draws.
 
 ### What this project attributes
 
@@ -768,9 +776,13 @@ Manual says that it takes effect when the user enables it.
 ### There is no mode-awareness doctrine to borrow
 
 Blender has no doctrine for keeping the user aware of the current mode, so this
-project must design its own. The project's safety standard needs one, because it
-requires that a user can never be wrong about what state the application is in,
-or about what context a displayed value belongs to. The re-read found more than
+project must design its own. The safety-critical clinical-output standard in
+`CLAUDE.md` is what requires it. That standard asks that a clinically meaningful
+display be designed so that its simulation state and context cannot easily be
+misread, along with its units, model identity and relevant assumptions.
+`docs/INTERFACE.md` § "Minimum displayed outputs" lists the state and context
+that the interface must always show, such as the run state, the running agent
+and each setting changed during the run. The re-read found more than
 the first version of this section did, but the conclusion holds. Only one rule
 from Blender's interface guidelines carries over: each editor's header stays
 visible except in rare, well-reasoned cases.
@@ -837,6 +849,44 @@ regular editor, under the usual rules.
 
 ## What this project adopts, diverges from, and refuses
 
+**Conclusions from Blender's stated reasoning, and where each stands.**
+§ "What the code cannot answer: Blender's stated reasoning" draws four
+conclusions for this project. Each is listed here with the decision that
+settles it, or as open where none does yet. Of the four, only the header is
+built, in `app/area_layout.py`.
+
+1. **What may float: open.** The reasoning chapter's section on what
+   non-overlapping covers suggests that this project keep a small, named set of
+   things that may float, with a predicate that identifies them. No decision
+   has taken up that shape. `ROADMAP.md` item 34 records floating Areas and
+   panels as deferred, not refused (project owner, 2026-09-15). It also requires
+   any floating mechanism to obey the rule that nothing may cover a value the
+   display must show, which `PL-WLWY` settled. No Area or panel floats today,
+   and the values that must always show sit in the unconditional region, which
+   `SimulationView._build_page` keeps outside the Areas. The release that
+   builds floating will decide what may float.
+2. **The header stays visible: adopted, more strictly than Blender.** Blender's
+   guidelines let a default layout hide an editor's header in rare,
+   well-reasoned cases. Here the container in `app/area_layout.py` draws a
+   header on every Area, because the header holds the View chooser and, while
+   the Workspace pins a run, that run's name (`PL-TH35`, project owner,
+   2026-09-27, ratified; `PL-7Z84`). An Area
+   too short for its header is refused that size rather than given a shorter
+   header (`PL-MS34`). No decision lets a header be hidden.
+3. **This project's handling of modes: open.** § "There is no mode-awareness
+   doctrine to borrow" finds that this project must design its own. No decision
+   or `ROADMAP.md` entry sets that design as a whole. Single cases have been
+   settled where they arose. For example, while two runs are shown, every
+   readout names its run (`PL-1XPX`), and each View names both runs
+   (`test_the_views_name_each_run_while_two_are_drawn_and_only_then`).
+4. **No tablet build: open.** § "Where Blender says the model does not apply"
+   finds that Blender's area model is for desktops and not for a standalone
+   tablet. No decision or `ROADMAP.md` entry addresses a tablet build. The
+   interface ships only as a desktop application on PySide6, which
+   `pyproject.toml` declares, and v0.4.26 gave up the earlier Flet interface's
+   web target (`ROADMAP.md` § "Completed: v0.4.26 - the interface moves to
+   Qt"). So the area model applies to everything that ships today.
+
 ### Adopted
 
 **This project uses Blender's words for two of its three layout concepts, so
@@ -892,8 +942,9 @@ class cannot change what a saved file means (`PL-R1WQ`).
 **Context sits above tools.** The strip that says *what the numbers are about*
 outranks and sits above every tool that acts on them. It shows, for example,
 which run, which patient or which model the numbers concern. This placement
-serves the project's requirement that a user can never mistake which context a
-displayed value belongs to. It also follows Blender's argument for its
+serves the requirement that a displayed value's context cannot easily be
+misread, which § "There is no mode-awareness doctrine to borrow" traces to its
+source. It also follows Blender's argument for its
 information hierarchy (§ "Header, sidebar, toolbar and footer are keyed to
 scope of effect"). In this window, the unconditional region with each run's
 notices and readouts stays at the top, above the Workspace tabs and the Areas
@@ -1253,3 +1304,11 @@ https://projects.blender.org/api/v1/repos/blender/blender/.
   https://code.blender.org/2025/07/beyond-mouse-keyboard/
 - The two licence pages: https://developer.blender.org/docs/license/ and
   https://docs.blender.org/manual/en/latest/copyright.html
+
+## Pages read on 2026-11-16
+
+The page was downloaded whole with `curl` through this environment's proxy and
+read as text.
+
+- Developer Documentation, Copyright Rules:
+  https://developer.blender.org/docs/handbook/communication/copyright_rules/
