@@ -3038,10 +3038,10 @@ liquid-equivalent consumption figure that item 28 plans.
 
 *Its own item because two recorded limitations already end here.*
 `docs/MODEL.md` § "Known limitations" has two notes that both stop at the
-same unbuilt change. The note "One reference condition, where the model
-physically has two" sizes the temperature half. The alveolar, venous and
-tissue stores hold 5.5 % fewer moles than their 20 °C label implies. The
-note "The modeled alveoli are dry, and real ones are saturated at 47
+same unbuilt change. The note under § "One reference condition, where the
+model physically has two" sizes the temperature half. The alveolar, venous
+and tissue stores hold 5.5 % fewer moles than their 20 °C label implies. The
+note under § "The modeled alveoli are dry, and real ones are saturated at 47
 mmHg" sizes the water half at 47/760. Each note says that removing its
 limitation is outside the current milestone.
 
