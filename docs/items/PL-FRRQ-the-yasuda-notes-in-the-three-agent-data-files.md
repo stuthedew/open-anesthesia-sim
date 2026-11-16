@@ -3,11 +3,13 @@ id: PL-FRRQ
 title: The Yasuda notes in the three agent data files judge the stored tissue:gas coefficients by whether a measured value rounds to them ("rounding to the stored precision explains only two", "2.04 does not round to"); the project owner said on 2026-11-09 'I wouldn't round coefficients', and MODEL.md now gives each difference as a percentage, so the notes should say the same
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: model-md-structure
 touches: src/anesthesia_sim/data/agents
 added: 2026-11-09
+closed: 2026-11-16
+pr: 2170
 payoff: the provenance notes and MODEL.md give each stored coefficient's distance from its measurement in the same terms, as a percentage
 verify: ! grep -rqF 'does not round to' src/anesthesia_sim/data/agents && ! grep -rqF 'rounding to the stored precision explains only two' src/anesthesia_sim/data/agents
 ---
