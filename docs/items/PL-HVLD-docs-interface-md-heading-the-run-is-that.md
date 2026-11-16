@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: defect, docs
 feature: model-md-structure
-touches: docs/MODEL.md, .claude/rules/run-is-its-definition.md, docs/INTERFACE.md
+touches: docs/MODEL.md, .claude/rules/run-is-its-definition.md, docs/INTERFACE.md, docs/ARCHITECTURE.md, src/anesthesia_sim/core/run_definition.py
 added: 2026-11-05
 payoff: a developer looking for the record every displayed state is computed from is sent to the run definition, not to the control-input timeline
 verify: ! grep -qF 'The run is that record, and every state is derived from it' docs/INTERFACE.md
