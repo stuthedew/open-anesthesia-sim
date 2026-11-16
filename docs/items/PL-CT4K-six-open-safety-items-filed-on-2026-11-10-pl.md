@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: ready
 classes: defect, docs
-touches: ROADMAP.md
+touches: ROADMAP.md, docs/items/PL-CR81-projects-threads-in-the-v0-7-0-project-run.md
 added: 2026-11-11
 payoff: v0.7.0's gate lists every safety item that must clear before its features are built
 verify: grep -qE '^- PL-0G2P \(' ROADMAP.md && grep -qE '^- PL-B8DL \(' ROADMAP.md && grep -qE '^- PL-G2WC \(' ROADMAP.md && grep -qE '^- PL-GJ1W \(' ROADMAP.md && grep -qE '^- PL-GKG4 \(' ROADMAP.md && grep -qE '^- PL-LHCL \(' ROADMAP.md
