@@ -1960,6 +1960,7 @@ def test_the_reserved_refusal_names_the_way_out() -> None:
             "A patch cut under a number the roadmap leaves free is still available: "
             "`make release VERSION=` that number."
         )
+        # regex: every version the sentence names, wherever it sits in the prose.
         assert re.findall(r"\d+\.\d+\.\d+", refusal) == ["0.5.0"]
 
 
@@ -2657,7 +2658,18 @@ def test_a_version_that_is_not_semantic_is_refused(
     shipped = repo.items / "PL-D1D1-shipped.md"
     before = shipped.read_text(encoding="utf-8")
 
-    for typo in ("0.2.6x", "0.2", "0.2.6.1", "vv0.2.6", " 0.2.6", "0.2.6\n", ""):
+    for typo in (
+        "0.2.6x",
+        "0.2",
+        "0.2.6.1",
+        "vv0.2.6",
+        " 0.2.6",
+        "0.2.6\n",
+        "",
+        "01.2.3",
+        "v0.07.0",
+        "\u0661.\u0662.\u0663",
+    ):
         assert repo.run("release", typo, "--no-fetch", "--dry-run") == 1, typo
     assert repo.run("release", "0.2.6x", "--no-fetch") == 1
 
@@ -2667,7 +2679,7 @@ def test_a_version_that_is_not_semantic_is_refused(
         "Nothing was stamped and nothing was written." in out
     )
     assert "Cannot cut ' 0.2.6'" in out
-    assert "MAJOR.MINOR.PATCH, with an optional leading v" in out
+    assert "MAJOR.MINOR.PATCH, with no leading zero and an optional leading v" in out
     assert "-> 0.2.6x" not in out
     assert 'version = "0.2.5"' in repo.version()
     assert shipped.read_text(encoding="utf-8") == before

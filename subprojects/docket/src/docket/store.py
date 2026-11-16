@@ -46,12 +46,21 @@ ID_PREFIX = "PL-"
 # The pattern is exported unanchored as well, because an id has to be
 # recognised inside prose too - `roadmap.py` reads them out of the debt list
 # a milestone records - and two spellings of the same grammar would drift.
-ID_PATTERN = rf"{ID_PREFIX}(?:[{ID_ALPHABET}]{{{ID_LENGTH}}}|\d{{3}})(?![{ID_ALPHABET}])"
-ID_RE = re.compile(rf"^{ID_PATTERN}$")
+#
+# A historical id's digits are written `[0-9]`, which matches only ASCII
+# digits, where `\d` matches any script's digits (`PL-8FT2`).
+ID_PATTERN = rf"{ID_PREFIX}(?:[{ID_ALPHABET}]{{{ID_LENGTH}}}|[0-9]{{3}})(?![{ID_ALPHABET}])"
+# regex: an id is a token with a fixed shape, and this module owns its grammar.
+# `\Z` ends the match at the end of the text, where `$` would also allow a
+# trailing newline.
+ID_RE = re.compile(rf"^{ID_PATTERN}\Z")
+# regex: each run of characters other than a lower-case ASCII letter or digit
+# becomes one hyphen. No string method replaces a run of any length at once.
 SLUG_RE = re.compile(r"[^a-z0-9]+")
 #: An id anywhere in a text, as a citation names one. The one compiled form
 #: of `ID_PATTERN` for finding ids in prose, which `notes`, `cited_ids` and
 #: the tools that count citations read (`PL-LGDV`).
+# regex: an id inside free prose, found by this module's own id grammar.
 CITED_ID_RE = re.compile(ID_PATTERN)
 
 
@@ -78,7 +87,11 @@ def cited_ids(text: str, own: str) -> frozenset[str]:
 # must match a prefix, and this one judges a string a person typed, so it must
 # refuse everything that is not a whole filename. One name over two rules is
 # how a reader imports the wrong one.
-DECLARED_ITEM_RE = re.compile(rf"^({ID_PATTERN})-.+\.md$")
+#
+# regex: a whole file name, the id grammar this module owns followed by a slug
+# and `.md`. `\Z` ends the match at the end of the text, where `$` would also
+# allow a trailing newline.
+DECLARED_ITEM_RE = re.compile(rf"^({ID_PATTERN})-.+\.md\Z")
 
 
 def new_id(taken: set[str], rng: random.Random | None = None) -> str:

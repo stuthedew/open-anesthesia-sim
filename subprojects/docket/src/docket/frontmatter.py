@@ -129,6 +129,9 @@ MAX_CODE_POINT = 0x10FFFF
 #: spelling: `docket.model` declines an item field holding one through it, and
 #: `tools/doc_check.py` reads a workflow's `run:` header through it, where it
 #: spelt the same grammar beside this one (`PL-8MHZ`).
+# regex: a short header whose two indicators may come in either order, each
+# optional. The standard library has no YAML reader, and as a pattern the two
+# orders are one line each.
 BLOCK_SCALAR_RE = re.compile(
     r"(?P<style>[|>])(?:(?P<width>[1-9])?[-+]?|[-+](?P<late>[1-9]))(?:[ \t]+#.*)?"
 )
@@ -566,8 +569,12 @@ def _commented(text: str, at: int) -> bool:
     return uncommented(rest).rstrip() != rest.rstrip()
 
 
-#: A `:` that white space or the line's end follows, which no plain scalar holds (§ 7.3.3).
-_MAPPING_INDICATOR = re.compile(r":(?:[ \t]|$)")
+def _holds_mapping_indicator(words: str) -> bool:
+    """Whether `words` holds a `:` that a space, a tab or its end follows (§ 7.3.3).
+
+    No plain scalar holds one. `words` is one line's text, with no line break.
+    """
+    return ": " in words or ":\t" in words or words.endswith(":")
 
 
 def _carry_plain(text: str, indent: int, opens: int | None, ended: bool) -> None:
@@ -582,7 +589,7 @@ def _carry_plain(text: str, indent: int, opens: int | None, ended: bool) -> None
     words = text[indent:opens].rstrip()
     if ended:
         raise Unread(f"`{words}` carries on a plain scalar past the comment that ended it")
-    if _MAPPING_INDICATOR.search(words):
+    if _holds_mapping_indicator(words):
         raise Unread(
             f"`{words}` carries on a plain scalar with a `: `, which no plain scalar holds"
         )
@@ -606,7 +613,7 @@ def _refusal(text: str, at: int, after_key: bool) -> str | None:
         return f"opens with `{node[0]}`, which opens no node here"
     if after_key and (is_item(node) or (node[0] in "?:" and node[1:2] in BLANKS)):
         return "opens a block collection on its key's line"
-    if after_key and plain(node) and _MAPPING_INDICATOR.search(node):
+    if after_key and plain(node) and _holds_mapping_indicator(node):
         return "holds a second key on its key's line"
     return None
 

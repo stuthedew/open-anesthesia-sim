@@ -236,8 +236,12 @@ _LOG_FORMAT = (
 )
 _FIELDS = 7
 
+# regex: a commit hash is a token with a fixed shape, 7 to 64 hexadecimal digits.
 _HASH = re.compile(r"[0-9a-f]{7,64}", re.I)
-_VERSION = re.compile(r"(\d+)\.(\d+)")
+# regex: the first two numbers of a version inside the free text that the
+# version command prints. `[0-9]` matches only ASCII digits, where `\d` matches
+# any script's digits.
+_VERSION = re.compile(r"([0-9]+)\.([0-9]+)")
 
 
 @dataclass(frozen=True)

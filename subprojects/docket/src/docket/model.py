@@ -42,6 +42,9 @@ from .frontmatter import BLOCK_SCALAR_RE
 # into the block ended it there: every field below fell into the body, and a
 # `touches:` lost that way took the item out of every lane at `docket check`
 # exit 0 (`PL-LNDJ`). Such a line is now one no field reads, and is reported.
+# regex: this module is the one reader of an item's front matter, and the
+# pattern splits the text at its two fence lines. A string method would need a
+# search for the closing fence plus three special cases for where it may end.
 FRONT_MATTER_RE = re.compile(r"\A---\n(.*?)\n---(?:\n|\Z)(.*)\Z", re.DOTALL)
 
 # A field is recognised by its shape and never by its spelling: text at column
@@ -53,6 +56,9 @@ FRONT_MATTER_RE = re.compile(r"\A---\n(.*?)\n---(?:\n|\Z)(.*)\Z", re.DOTALL)
 # lines folded into the field above it (`PL-DSPM`). The key still ends at the
 # first colon, so every line the narrow grammar read splits the same way here,
 # and a line it refused spells no key this format knows.
+# regex: one line of a format this module owns, read as a key, a colon and a
+# value. It is kept as a pattern because the key's first character has its own
+# rule, which `partition` would not check.
 FIELD_RE = re.compile(r"^([^\s#:][^:]*):[ \t]*(.*)$")
 
 # An indented line under a field: YAML's continuation of the value above it.
@@ -60,10 +66,14 @@ FIELD_RE = re.compile(r"^([^\s#:][^:]*):[ \t]*(.*)$")
 # not a `key: value` line belongs to no field - and is reported, where it used to
 # be passed over (`PL-JD4L`). All 67 continuation lines in this store are
 # indented (measured 2026-09-21).
+# regex: a line that opens with spaces or tabs and then holds a character that
+# is not whitespace. The string-method spelling needs three tests to say this.
 CONTINUATION_RE = re.compile(r"^[ \t]+\S")
 
 # A continuation spelling a YAML block-sequence entry, `  - value`. The space
 # after the dash is what makes it one; `-value` is an ordinary word.
+# regex: indentation, a dash, then a space, a tab or the end of the line. The
+# three endings make a string-method spelling longer than this pattern.
 BLOCK_ENTRY_RE = re.compile(r"^[ \t]+-([ \t]|$)")
 
 
@@ -75,6 +85,9 @@ EFFORTS = ("S", "M", "L")
 # nothing else, and so a typo like `pr: #71 (docket)` is refused rather than
 # half-parsed. `str.isdigit` read `07` as #7 and `²` as a digit that `int`
 # then refused (`PL-4DK2`).
+# regex: a positive whole number in ASCII digits with no leading zero, as
+# GitHub writes one. `digits.whole_number` reads `07` as 7, so it would accept
+# a value this field refuses.
 PR_RE = re.compile(r"[1-9][0-9]*")
 
 
@@ -196,7 +209,13 @@ MIN_RECURRENCES = MIN_ROOT_CAUSE_ITEMS - 1
 #: `SEMVER_RE` because this module imports nothing of docket's, which is what
 #: lets every module read it. A name cannot repeat inside one pattern, so embed
 #: it once per pattern; `.groups()` still gives the parts in order.
-SEMVER_PATTERN = r"(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)"
+#:
+#: Each part is `0` or a number that does not start with `0`, because Semantic
+#: Versioning 2.0.0 item 2 says the three numbers "MUST NOT contain leading
+#: zeroes" (https://semver.org/spec/v2.0.0.html). `[0-9]` matches only ASCII
+#: digits, where `\d` matches any script's digits, so `v0.07.0` and `١.٢.٣` are
+#: not versions (`PL-8FT2`). Every tag the repository held on 2026-11-16 is one.
+SEMVER_PATTERN = r"(?P<major>0|[1-9][0-9]*)\.(?P<minor>0|[1-9][0-9]*)\.(?P<patch>0|[1-9][0-9]*)"
 
 # The second kind of entry `blocked-by` accepts: a milestone version, written
 # exactly as the roadmap's timeline writes it.
@@ -213,7 +232,11 @@ SEMVER_PATTERN = r"(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)"
 # The two are told apart syntactically, and can never collide: an id is
 # `PL-`-prefixed and a milestone is `v`-prefixed. An entry matching neither is
 # a typo rather than a third kind, and `checks.py` refuses it by name.
-MILESTONE_BLOCKER_RE = re.compile(rf"^v{SEMVER_PATTERN}$")
+#
+# regex: a whole entry that is `v` and a version. `SEMVER_PATTERN` is the one
+# grammar of a version, and `\Z` ends the match at the end of the entry, where
+# `$` would also allow a trailing newline.
+MILESTONE_BLOCKER_RE = re.compile(rf"^v{SEMVER_PATTERN}\Z")
 
 # The third kind of entry `blocked-by` accepts: a calendar date, written as ISO
 # 8601 writes one, before which the item's remaining work cannot start - a
@@ -229,7 +252,12 @@ MILESTONE_BLOCKER_RE = re.compile(rf"^v{SEMVER_PATTERN}$")
 # `Item.is_startable` already refuses `blocked`, so it needs no clock: the
 # model stays a function of the files alone, and only `docket check`, which
 # is given the day, reads a date against it.
-DATE_BLOCKER_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+#
+# regex: a whole entry shaped like an ISO 8601 date, in ASCII digits. The shape
+# is tested apart from `date.fromisoformat`, because `2026-13-40` must stay a
+# date blocker that `checks.py` refuses by name, and `fromisoformat` also reads
+# forms such as `20260101` that this field does not accept.
+DATE_BLOCKER_RE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}\Z")
 
 # Efforts a delegated item may carry. An `L` item is a milestone in disguise;
 # nothing that large has a brief precise enough to be worked without judgment.

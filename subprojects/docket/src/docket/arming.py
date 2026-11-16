@@ -277,6 +277,9 @@ ASK_OLD_REVIEW_WORDS = frozenset({"changed", "risk"})
 #: every figure" and "verify --self ACCEPTs" (project owner, 2026-11-02,
 #: `PL-BGN1`). This finds the names a tool or file goes by. Whether the rest
 #: of a sentence is plain is judgment, which the printed instructions ask for.
+# regex: each alternative is a token with a visible mark that a writer typed,
+# such as a backtick, a file ending, two hyphens or an underscore, so the
+# search reads syntax and guesses at no meaning.
 ASK_JARGON = re.compile(
     r"`"
     r"|\b[\w/.-]+\.(?:py|md|toml|ya?ml|json|txt)\b"
@@ -465,10 +468,14 @@ BLIND_EXAMPLE = (
 
 #: The older form, which totals the passes together. Read for its pass count,
 #: because 28 records on merged pull requests and branches in flight use it.
+# regex: a fixed sentence with five numbers in it. Splitting it with string
+# methods would take a test for each of its five labels. `re.ASCII` makes `\d`
+# match only ASCII digits.
 _BLIND_TOTALS = re.compile(
     r"passes (\d+), findings (\d+), fixed (\d+), filed (\d+), rejected (\d+)", re.ASCII
 )
-_BLIND_PASS = re.compile(r"pass (\d+): (.+)", re.ASCII)
+#: How each entry of the newer form opens, before its number.
+_BLIND_PASS_LABEL = "pass "
 
 
 @dataclass(frozen=True)
@@ -530,15 +537,14 @@ def parse_blind_review(value: str) -> BlindRecord:
         return BlindRecord(passes, totals=BlindTotals(*sums))
     split: list[tuple[BlindFinding, ...]] = []
     for entry in text.split(";"):
-        match = _BLIND_PASS.fullmatch(entry.strip())
-        if match is None:
+        label, colon, body = entry.strip().partition(": ")
+        written = label.removeprefix(_BLIND_PASS_LABEL)
+        number = whole_number(written) if label.startswith(_BLIND_PASS_LABEL) else None
+        if number is None or not colon or not body:
             raise ValueError(f"{entry.strip()!r} is not 'pass N: ...'")
-        number = whole_number(match.group(1))
         if number != len(split) + 1:
-            raise ValueError(
-                f"pass {match.group(1)} is out of order: expected pass {len(split) + 1}"
-            )
-        body = match.group(2).strip()
+            raise ValueError(f"pass {written} is out of order: expected pass {len(split) + 1}")
+        body = body.strip()
         if body == BLIND_NONE:
             split.append(())
             continue

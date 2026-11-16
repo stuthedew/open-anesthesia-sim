@@ -138,6 +138,25 @@ def test_every_version_grammar_in_docket_is_built_from_the_one_token() -> None:
         assert SEMVER_PATTERN in compiled.pattern, compiled.pattern
 
 
+def test_a_version_is_three_ascii_numbers_with_no_leading_zero() -> None:
+    """Semantic Versioning 2.0.0 item 2 refuses a leading zero (`PL-8FT2`).
+
+    `SEMVER_PATTERN` read each part as `\\d+`, which took `01.2.3` and
+    `v0.07.0`, and the digits of any script, so `١.٢.٣` (Arabic-Indic) passed
+    too. The accepted cases include each shape of tag the repository holds.
+    """
+    from docket.model import MILESTONE_BLOCKER_RE
+    from docket.release import SEMVER_RE
+
+    for version in ("0.0.1", "v0.2.10", "v0.4.35", "v0.6.0", "10.20.30", "v1.0.0"):
+        assert SEMVER_RE.match(version) is not None, version
+    for version in ("v0.2.10", "v0.6.0"):
+        assert MILESTONE_BLOCKER_RE.match(version) is not None, version
+    for version in ("01.2.3", "v0.07.0", "1.2.03", "v00.1.0", "\u0661.\u0662.\u0663", "1.2.3\n"):
+        assert SEMVER_RE.match(version) is None, version
+        assert MILESTONE_BLOCKER_RE.match(f"v{version.removeprefix('v')}") is None, version
+
+
 def test_missing_fields_come_back_empty_rather_than_defaulted() -> None:
     """A wrong-but-plausible default is worse than an obvious absence."""
     item = parse_item("---\nid: PL-001\n---\n\nBody\n")

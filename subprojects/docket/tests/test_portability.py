@@ -71,6 +71,8 @@ def _floor() -> tuple[int, int]:
     """The oldest Python this package claims to support."""
     with (PACKAGE_ROOT / "pyproject.toml").open("rb") as handle:
         requires = tomllib.load(handle)["project"]["requires-python"]
+    # regex: the lower bound of a version specifier. The standard library has no
+    # reader of specifiers, and this package may not depend on `packaging`.
     match = re.search(r">=\s*(\d+)\.(\d+)", requires)
     assert match is not None, requires
     return int(match.group(1)), int(match.group(2))
@@ -80,6 +82,7 @@ def _ruff_target() -> tuple[int, int]:
     """The Python version the formatter is allowed to emit syntax for."""
     with (PACKAGE_ROOT / "ruff.toml").open("rb") as handle:
         target = tomllib.load(handle)["target-version"]
+    # regex: ruff's `pyXY` form, split into its one-digit major and its minor.
     match = re.fullmatch(r"py(\d)(\d+)", target)
     assert match is not None, target
     return int(match.group(1)), int(match.group(2))

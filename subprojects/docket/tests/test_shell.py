@@ -648,8 +648,10 @@ PROLOGUE = (
     "TIMEFORMAT=\n"
 )
 #: What `time -p` prints to standard error.
+# regex: whole lines of a fixed shape inside bash's error output, to be removed.
 TIMED = re.compile(rb"(?m)^(?:real|user|sys) [0-9.]+\n")
 #: The path bash hands a command in place of a process substitution.
+# regex: a fixed prefix and a number of any length inside a word, to be replaced.
 PROCESS_PATH = re.compile(r"/dev/fd/\d+")
 
 
@@ -691,7 +693,10 @@ REDIRECTIONS = frozenset(("<", ">", ">>", ">|", "<>", "<&", ">&", "&>", "&>>", "
 RESERVED = frozenset(
     ("if", "then", "elif", "else", "fi", "{", "}", "!", "time", "while", "until", "do", "done")
 )
+# regex: the test's own reading of a descriptor before a redirection, kept
+# apart from `docket.shell` so that the two can disagree.
 DESCRIPTOR = re.compile(r"\d+|\{[A-Za-z_]\w*\}")
+# regex: the test's own reading of an assignment word, for the same reason.
 ASSIGNMENT = re.compile(r"[A-Za-z_]\w*\+?=")
 #: A parameter no script sets, so its expansion is nothing.
 UNSET = "${unset_value"
@@ -1007,7 +1012,7 @@ def _here_document(draw: st.DrawFn, nested: bool) -> tuple[str, str]:
     (`PL-55R2`).
     """
     spelled = draw(st.sampled_from(DELIMITERS))
-    delimiter = re.sub(r"['\"\\]", "", spelled)
+    delimiter = spelled.translate(str.maketrans("", "", "'\"\\"))
     dash = draw(st.booleans())
     quoted = spelled != delimiter
     lines = draw(
@@ -1033,6 +1038,8 @@ def _here_document(draw: st.DrawFn, nested: bool) -> tuple[str, str]:
             continue
         kept.append(line)
     # A continuation joins an unquoted body's next line, so its last may not be one.
+    # regex: a line that ends with an odd number of backslashes, which is a
+    # line continuation in bash.
     if kept and not quoted and re.search(r"(?<!\\)(\\\\)*\\$", kept[-1]):
         kept[-1] += "z"
     closing = ("\t" if dash else "") + delimiter
