@@ -489,7 +489,7 @@ def changed_rows(patch: str) -> set[int] | None:
     the function that lost the lines, and counting one function too many costs
     only its mutants.
     """
-    if not patch or doc_check.NEW_FILE_RE.search(patch):
+    if not patch or doc_check.adds_a_file(patch):
         return None
     rows: set[int] = set()
     for hunk in doc_check.HUNK_RE.finditer(patch):

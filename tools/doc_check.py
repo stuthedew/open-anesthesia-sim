@@ -287,6 +287,7 @@ try:
     # script is cut into those lines by the same reading (`PL-Q9LK`), as are a
     # script's comments, which the host-claim check reads (`PL-W9VC`).
     from docket.shell import Reading, Word, script_lines, shell_words, simple_commands
+    from docket.shell import argv as shell_argv
     from docket.shell import comments as shell_comments
     from docket.store import ID_PATTERN, read_items
 
@@ -537,10 +538,16 @@ NON_PARAMETER_KEYS = frozenset({"schema_version", "sources", "provenance_gap"})
 # and `tests/unit/test_parameters.py` fails if the two ever disagree.
 SOURCE_TIERS = ("primary", "secondary", "reference-implementation")
 
+# regex: a root line of a hand-drawn directory tree is a flat token, a path that ends in a slash,
+# and no parser reads these trees.
 TREE_ROOT_RE = re.compile(r"^(?P<path>[\w./-]+/)$")
 #: A source file's name as the reference index writes one, the whole of a code
 #: span: `name.pdf`.
+# regex: a reference file's name is a flat token of a fixed shape, a name with one of four
+# extensions.
 REFERENCE_FILE_RE = re.compile(r"[\w][\w.-]*\.(?:pdf|txt|csv|json)")
+# regex: a line of a drawn tree is a flat run of drawing characters before a name, and no parser
+# reads these trees.
 TREE_ENTRY_RE = re.compile(r"^(?P<indent>(?:(?:│   )|(?:    ))*)(?:├──|└──) (?P<name>\S+)")
 
 # A soft break (CommonMark 0.31.2 § 6.8) is `markdown.SOFT_BREAK`, imported
@@ -578,6 +585,8 @@ UNCLOSED_QUOTATION = rf'(?P<unclosed>{QUOTATION_CHAR}*+)(?!")'
 
 #: A backslash escape (§ 2.4) or a character reference (§ 2.5), as a link's
 #: destination decodes them.
+# regex: these are CommonMark's two flat token shapes. `html.unescape` reads no backslash escape,
+# and it also decodes a reference written without its semicolon, which CommonMark does not.
 ESCAPE_OR_REFERENCE_RE = re.compile(
     r"\\(?P<escaped>[!-/:-@\[-`{-~])"
     r"|(?P<reference>&(?:#[0-9]{1,7}|#[Xx][0-9A-Fa-f]{1,6}|[A-Za-z][A-Za-z0-9]{0,31});)"
@@ -931,6 +940,8 @@ def _title_end(text: str, position: int, end: int) -> int | None:
     return None
 
 
+# regex: this finds each number written in a run of prose, a search through free text for a flat
+# token.
 NUMBER_RE = re.compile(r"[-+]?\d+(?:\.\d+)?")
 
 # A prose value that restates a data-file constant declares which one, so it
@@ -963,6 +974,8 @@ NUMBER_RE = re.compile(r"[-+]?\d+(?:\.\d+)?")
 # with one, such as `<!-- not-restated: 4 L/min, 2 % -->`. The scan decides
 # only that a figure equals a stored value and nobody has said why. Which
 # value it means stays the writer's judgment.
+# regex: the marker is a fixed HTML-comment syntax that a writer adds on purpose, read one line at a
+# time.
 PROSE_MARKER_RE = re.compile(
     r"^<!--\s*(?P<kind>provenance|derived|not-restated):\s*(?P<body>.+?)\s*-->$"
 )
@@ -977,23 +990,34 @@ PROSE_MARKER_RE = re.compile(
 # future", "was deleted" - is the wording recognition `PL-GPJ7` retires from
 # the hard gates; the marker is syntax, and it is a claim of its own that is
 # checked: a path it names must be absent, and cited in its paragraph.
+# regex: the marker is a fixed HTML-comment syntax that a writer adds on purpose, read one line at a
+# time.
 ABSENT_MARKER_RE = re.compile(r"^<!--\s*absent:\s*(?P<paths>.+?)\s*-->$")
 # A marker opened on a line and not closed there (`PL-R417`). Markers are read a
 # line at a time, as the syntax they are, so a comment carried across lines was
 # read as nothing and the claim it made went unchecked; it is refused by name
 # instead, which costs the writer one join.
+# regex: this finds the same marker syntax opened on a line that does not close it.
 SPLIT_MARKER_RE = re.compile(r"^<!--\s*(?P<kind>provenance|derived|not-restated|absent):(?!.*-->)")
 #: A marker's kind after its comment's opening, on that line or a later one; a
 #: comment is read whole by `_split_markers`.
+# regex: this finds the opening of the marker syntax anywhere in a comment.
 MARKER_OPENING_RE = re.compile(r"<!--\s*(?P<kind>provenance|derived|not-restated|absent):")
+# regex: the body of a `derived:` marker is a fixed syntax: a figure, the word `from`, a file and
+# its assertions.
 DERIVED_FROM_RE = re.compile(r"^(?P<figure>.+?)\s+from\s+(?P<rest>\S+\.(?:json|py)\s.+)$")
+# regex: the body of a `provenance:` marker is a fixed syntax: a file and then its assertions.
 MARKER_SOURCE_RE = re.compile(r"^(?P<relative>\S+\.(?:json|py))\s+(?P<assertions>.+)$")
 # A number written with its thousands set apart by spaces, as this project
 # writes them: "86 400 s". `NUMBER_RE` reads that as 86 and 400, so the prose
 # under a marker, and a derived figure, are also read with this (`PL-NH53`).
+# regex: a number with its thousands set apart by spaces is a flat token, searched for through
+# prose.
 GROUPED_NUMBER_RE = re.compile(r"(?<![\d.])\d{1,3}(?: \d{3})+(?:\.\d+)?(?![\d.])")
+# regex: an assertion in a marker is a flat `key = number` token.
 ASSERTION_RE = re.compile(r"^(?P<key>[A-Za-z_][\w.]*)\s*=\s*(?P<value>[-+]?\d+(?:\.\d+)?)$")
 
+# regex: this finds the first `{a,b}` group in a path citation, a flat token that does not nest.
 BRACE_RE = re.compile(r"\{([^{}]*)\}")
 
 # A quoted phrase is a section citation when the section mark says it is: `§
@@ -1053,6 +1077,8 @@ BRACE_RE = re.compile(r"\{([^{}]*)\}")
 # blockquote is read past the next line's `>` as CommonMark reads it, where
 # `[ \n]*` stood and stopped there, leaving it unchecked (`PL-XW87`). The
 # quotation's own wrapped lines lose their markers in `_normalized`.
+# regex: the section mark followed by a quotation is an explicit syntax that the writer adds,
+# searched for through prose.
 CITATION_RE = re.compile(
     r"§{1,2}" + GAP + rf'*"(?:(?P<term>{QUOTATION_CHAR}++)"|{UNCLOSED_QUOTATION})'
 )
@@ -1088,6 +1114,8 @@ DIRECTION_RE = re.compile(GAP + r"*(?:above|below)\b", re.IGNORECASE)
 #: searched in the text up to and including the match's first character: a
 #: soft break is known only by the line it opens onto, so a window ending at
 #: the break would read the end of the window there (`PL-XW87`).
+# regex: this tests whether the section mark stands just before a quotation, across a soft break
+# where there is one.
 MARKED_RE = re.compile(r"§{1,2}" + GAP + r"*(?=.\Z)", re.DOTALL)
 
 # A `**Bold.**` run opening a statement, matched in text whose containers'
@@ -1103,6 +1131,8 @@ MARKED_RE = re.compile(r"§{1,2}" + GAP + r"*(?=.\Z)", re.DOTALL)
 # refused (`PL-8NPN`). A title wrapped across a soft break is still one title
 # (`PL-R417`); `_headings` hands it back on one line, as a citation of it is
 # compared.
+# regex: a bold run that opens a statement is an explicit syntax with a flat shape, matched in text
+# whose block markers are already blanked.
 MARKER_RE = re.compile(rf"^[ \t]*\*\*(?P<title>(?:[^*\n]|{SOFT_BREAK})+?)\.?\*\*", re.M)
 
 # A citation that names its target document and then quotes it:
@@ -1147,6 +1177,8 @@ MARKER_RE = re.compile(rf"^[ \t]*\*\*(?P<title>(?:[^*\n]|{SOFT_BREAK})+?)\.?\*\*
 #: cannot answer, and nothing else.
 CITATION_CONNECTIVE = r"(?:[,:(]|§{1,2}|['\u2019]s(?:" + GAP + r"+own)?|\bunder\b)"
 
+# regex: a code-spanned `.md` path followed by a connective and a quotation is the syntax this
+# project writes a citation of another document in, searched for through prose.
 QUOTED_SOURCE_RE = re.compile(
     r"(?:\b(?:see|under|in)" + GAP + r"+)?"
     r"`(?P<document>[\w./-]+\.md)`" + GAP + r"*"
@@ -1169,11 +1201,15 @@ QUOTED_SOURCE_RE = re.compile(
 #: possessive stays hard because neither refusal came through it, and because
 #: it is how this project quotes a sentence, whose drift is the point.
 CLAIMING_CONNECTIVE = r"§{1,2}|['\u2019]s(?:" + GAP + r"+own)?"
+# regex: this tests whether a captured connective is one of the claiming forms: the section mark or
+# a possessive.
 CLAIMING_CONNECTIVE_RE = re.compile(CLAIMING_CONNECTIVE)
 #: A code-spanned source - a document, an item, a module - standing directly
 #: before a citation, which then quotes *that* source. `` `docs/MODEL.md` under
 #: "Known limitations" `` is `QUOTED_SOURCE_RE`'s to hold, by containment, and
 #: telling it to take a `§` would break the one match that reads it.
+# regex: this tests whether a code-spanned source stands just before a quotation, across a soft
+# break where there is one.
 QUALIFIED_RE = re.compile(
     r"`[\w./-]+`" + GAP + r"*" + CITATION_CONNECTIVE + r"?" + GAP + r"*(?=.\Z)", re.DOTALL
 )
@@ -1186,6 +1222,8 @@ QUALIFIED_RE = re.compile(
 #: the connectives that claim the brief holds the words: `under "X"` names the
 #: heading the item is listed under elsewhere, as both such sites did that day,
 #: and a quotation after a bare id is prose.
+# regex: a code-spanned item id, a claiming connective and a quotation are an explicit citation
+# syntax, searched for through prose.
 ITEM_SECTION_RE = re.compile(
     rf"`(?P<item>{ID_PATTERN})`{GAP}*(?:{CLAIMING_CONNECTIVE}){GAP}*"
     rf'"(?:(?P<quoted>\w{QUOTATION_CHAR}{{2,}}+)"|(?=\w){UNCLOSED_QUOTATION})'
@@ -1201,7 +1239,10 @@ ITEM_SECTION_RE = re.compile(
 # is named in a bold sentence, and the decidable half of that is its count
 # against the names it gives; whether the omission is settled or an open
 # decision is not, and is left alone.
-TAGS_MARK_RE = re.compile(r"^[ \t]*\*\*Tags\.\*\*")
+#: The bold run that opens the paragraph of tag claims, after any blanks.
+TAGS_MARK = "**Tags.**"
+# regex: the claim is a fixed bold sentence that the writer adds on purpose, and its words may wrap
+# at any gap.
 UNTAGGED_CLAIM_RE = re.compile(
     rf"\*\*(?P<count>[A-Za-z]+|\d+){GAP}+versions?{GAP}+(?:are|is){GAP}+untagged\*\*", re.I
 )
@@ -1209,6 +1250,8 @@ UNTAGGED_CLAIM_RE = re.compile(
 # commit it shipped from although that commit's version file was never bumped.
 # The wording is the claim - the release went out like that - so a tag that is
 # merely on the wrong commit cannot honestly be excused by it, and is moved.
+# regex: the claim is a fixed bold sentence that the writer adds on purpose, and its words may wrap
+# at any gap.
 STALE_VERSION_CLAIM_RE = re.compile(
     rf"\*\*(?P<count>[A-Za-z]+|\d+){GAP}+versions?{GAP}+shipped{GAP}+with{GAP}+"
     rf"a{GAP}+stale{GAP}+version{GAP}+file\*\*",
@@ -1219,7 +1262,11 @@ STALE_VERSION_CLAIM_RE = re.compile(
 # Both claims and their lists cross a soft break as `GAP` does, a block quote's
 # `>` included, so the list also ends where its statement does rather than
 # running on past a blank line (`PL-4ZDZ`).
+# regex: the separator between listed versions is a flat run of commas, colons and gaps, with an
+# optional `and`.
 LIST_SEPARATOR_RE = re.compile(rf"(?:[,:]|{GAP})*(?:and{GAP}+)?")
+# regex: this finds each version in a list, and it is built from docket's own version pattern rather
+# than a second spelling of it.
 LIST_VERSION_RE = re.compile(rf"v(?P<version>{SEMVER_PATTERN})")
 # This document writes its counts as words, so both forms are read. Anything
 # outside the table is reported rather than guessed at: a count nobody can read
@@ -1251,6 +1298,8 @@ GNU_MAKE_FLOOR = (4, 0)
 #: an odd run of backslashes, since in an even run each escapes the next. Read
 #: from GNU make 4.3's `readline` and run through it on 2026-10-04: `echo a \\`
 #: over `echo next` ran as two commands.
+# regex: an odd run of backslashes at a line's end is a flat token, and the standard library has no
+# Makefile parser.
 MAKE_CONTINUED_RE = re.compile(r"(?<!\\)(?:\\\\)*\\$")
 #: A `define` directive, which opens a variable whose value is every line up to
 #: the `endef` closing it (`PL-4MLK`): the word `define` after any of the
@@ -1261,6 +1310,8 @@ MAKE_CONTINUED_RE = re.compile(r"(?<!\\)(?:\\\\)*\\$")
 #: `parse_var_assignment` in GNU make 4.3's `src/read.c` and run through make
 #: 4.3 on 2026-10-05. `name` is empty where the directive names no variable,
 #: which make refuses.
+# regex: this copies make's own token rules for a `define` line, and the standard library has no
+# Makefile parser.
 MAKE_DEFINE_RE = re.compile(
     r"[ \t]*(?:(?:export|override|private)[ \t]+)*define"
     r"(?:[ \t]+(?![ \t]|(?:::|[:+?!])?=)|$)(?P<name>[^#]*)"
@@ -1271,6 +1322,8 @@ MAKE_DEFINE_RE = re.compile(
 #: in GNU make 4.3's `src/read.c` tests a line against `cmd_prefix`), and
 #: every reader here knows a recipe line by its tab, so `_make_lines` declines
 #: the Makefile by name rather than read its recipes as missing (`PL-GSJ6`).
+# regex: this copies make's own token rules for a `.RECIPEPREFIX` assignment, and the standard
+# library has no Makefile parser.
 MAKE_RECIPEPREFIX_RE = re.compile(
     r"[ \t]*(?:(?:export|override|private)[ \t]+)*(?:define[ \t]+)?"
     r"\.RECIPEPREFIX[ \t]*(?:(?:::|[:+?!])?=|$|#)"
@@ -1279,12 +1332,18 @@ MAKE_RECIPEPREFIX_RE = re.compile(
 #: file reads them: a bare `define`, no modifier ahead of it, opens another, and
 #: an `endef` alone or before a blank closes one, so `endef # done` closes and
 #: `endef#` does not. A line led by a tab is neither, whatever it says.
+# regex: this copies make's test for a `define` line, a word after optional blanks, as the two
+# patterns above do.
 MAKE_DEFINE_OPENS_RE = re.compile(r"[ \t]*define(?:[ \t]|$)")
+# regex: this copies make's test for an `endef` line, a word after optional blanks, as the two
+# patterns above do.
 MAKE_DEFINE_CLOSES_RE = re.compile(r"[ \t]*endef(?:[ \t]|$)")
 #: What make skips ahead of a word and ends one at: `NEXT_TOKEN` and
 #: `END_OF_TOKEN` in GNU make 4.3's `src/makeint.h`, every character C's
 #: `isspace` takes.
 MAKE_SPACE = " \t\n\v\f\r"
+# regex: this splits at each one of make's six blank characters. `str.split` cannot, because with no
+# separator it merges runs and also splits at other Unicode spaces.
 MAKE_SPACE_RE = re.compile(r"[ \t\n\v\f\r]")
 #: The modifiers `parse_var_assignment` in make 4.3's `src/read.c` takes ahead
 #: of an assignment, and the two words that make an assignment of the line
@@ -1309,11 +1368,15 @@ MAKE_CONDITIONALS = frozenset({"ifdef", "ifndef", "ifeq", "ifneq", "else", "endi
 #: declined by name (run through make 4.3 on 2026-10-12, `PL-5M36`). Before
 #: anything else a backslash names itself, as make keeps it, and `x: a\=b` is a
 #: target-specific variable to make and to `_make_rule` alike.
+# regex: this finds a backslash before one of the characters make ends a name at, a flat token.
 MAKE_ESCAPED_NAME_RE = re.compile(r"\\[ \t:;#|]")
 # The target a `make` command names, read from the word after `make`.
+# regex: a make target's name is a flat token of a fixed shape.
 MAKE_TARGET_WORD_RE = re.compile(r"[a-z][\w.-]*")
 # `make docket`, as the documentation writes it. Read only inside code spans
 # and fenced blocks: prose says "make sure" and means nothing of the kind.
+# regex: `make` and a target inside a code span is a flat pair of tokens, and only code spans are
+# searched.
 MAKE_MENTION_RE = re.compile(r"\bmake\s+(?P<name>[a-z][\w.-]*)")
 # A fenced line names a target only where `make` heads a command, which
 # `_make_mentions` reads through docket's shell lexer. Read anywhere on the
@@ -1322,6 +1385,8 @@ MAKE_MENTION_RE = re.compile(r"\bmake\s+(?P<name>[a-z][\w.-]*)")
 # Makefile lacks, and the only repair was to reword a correct sample
 # (`PL-L8VP`). This pattern, `make` as a line's first word, is what is left
 # for a fence the lexer cannot read: prose, output, another language.
+# regex: this reads `make` as a line's first word, and only in a fence that the shell lexer cannot
+# read.
 FENCED_MAKE_RE = re.compile(r"^\s*make\s+(?P<name>[a-z][\w.-]*)")
 
 # GitHub renders inline math from `$`...`$` (or `$...$`) and block math from a
@@ -1338,6 +1403,7 @@ FENCED_MAKE_RE = re.compile(r"^\s*make\s+(?P<name>[a-z][\w.-]*)")
 # the escape, since `[WIP]` renders as written where no link definition claims
 # it and a code span carries any bracket; and a formula rendering as literal
 # text in `docs/MODEL.md` is the failure an advisory would leave unread.
+# regex: this finds each of four two-character delimiters on a line, with its position.
 TEX_DELIMITER_RE = re.compile(r"\\[()\[\]]")
 
 # The two halves of an inline expression, `$`...`$`, that is not well-formed:
@@ -1347,6 +1413,7 @@ TEX_DELIMITER_RE = re.compile(r"\\[()\[\]]")
 # of them already on the correct delimiters and broken only by a paragraph
 # reflow - which is why the rule is worth keeping after the conversion rather
 # than only during it.
+# regex: this finds each of two two-character delimiters on a line, with its position.
 MATH_EDGE_RE = re.compile(r"\$`|`\$")
 
 
@@ -1360,6 +1427,8 @@ WORKFLOW_GLOBS = (".github/workflows/*.yml", ".github/workflows/*.yaml")
 # parsing YAML keeps this tool standard-library only, which is what lets a hook
 # or a bare checkout run it. `lead` is everything before the key, so its length
 # is the key's column, which a value's lines are indented past.
+# regex: a `run:` key is a flat line shape, and this tool has no YAML parser because it must stay
+# standard-library only.
 RUN_STEP_RE = re.compile(r"^(?P<lead>\s*-?\s*)run:\s*(?P<inline>.*)$")
 
 # A token this check cannot resolve by reading the tree: a shell or GitHub
@@ -2535,6 +2604,8 @@ PROSE_UNITS = "|".join(
 #: its unit, and `×MAC` is read as `MAC`. A unit written as a word, such as
 #: "seconds", is one of `UNIT_WORDS`, and one written in lower case, such as
 #: "l/min", is one of `UNIT_CASES`.
+# regex: this searches free prose for a number and an optional unit, a flat token whose edges need
+# lookarounds.
 PROSE_FIGURE_RE = re.compile(
     r"(?<![\w.,])(?<![eE][-+])(?<!\d/)(?<!\d[ ]/)(?<!\d/[ ])(?<!\d[ ]/[ ])"
     r"(?P<number>\d+(?:\.\d+)?)"
@@ -2545,6 +2616,8 @@ PROSE_FIGURE_RE = re.compile(
 #: Numbers joined by slashes, such as "6/33/14.5 L", "6 / 33 / 14.5 L" or
 #: "0.76/0.18/0.06", and the unit written after the last of them, which each
 #: one carries (`PL-2T6S`). The edges are `PROSE_FIGURE_RE`'s.
+# regex: this searches free prose for numbers joined by slashes and an optional unit, a flat token
+# whose edges need lookarounds.
 LISTED_FIGURES_RE = re.compile(
     r"(?<![\w.,/])(?P<numbers>\d+(?:\.\d+)?(?:[ ]?/[ ]?\d+(?:\.\d+)?)+)"
     r"(?:[ \u00a0]?×?(?P<unit>" + PROSE_UNITS + r")(?![\w/]))?"
@@ -2555,6 +2628,8 @@ LISTED_FIGURES_RE = re.compile(
 MATH_UNITS: dict[str, str] = {r"L\,min^{-1}": "L/min", r"L\,s^{-1}": "L/s"}
 
 #: One math span, and a unit written after it.
+# regex: a math span is a flat token between `$` and backtick delimiters, with an optional unit
+# after it.
 MATH_SPAN_RE = re.compile(
     r"\$`(?P<body>[^`]*)`\$(?:[ \u00a0]?(?P<unit>" + PROSE_UNITS + r")(?![\w/]))?"
 )
@@ -2568,6 +2643,7 @@ MATH_SPAN_RE = re.compile(
 #: coefficients of an equation, such as $`10^{-12}`$, $`M^{3/4}`$ or
 #: $`= 2 \cdot x`$, and reading them would ask about every one that happens to
 #: equal a stored value (`PL-2T6S`).
+# regex: this finds a number given to a symbol inside a math span, a flat token.
 MATH_FIGURE_RE = re.compile(
     r"(?:=|\\approx)[ ]*(?P<number>\d+(?:\.\d+)?)"
     r"(?:[ ]*(?:\\[ ,;:]|~)?[ ]*(?:(?P<percent>\\%)|\\(?:mathrm|text)\{(?P<inner>"
@@ -2628,9 +2704,12 @@ def _untied_figures(prose: str, raw: str) -> Iterator[tuple[str, str | None]]:
 
 
 #: A figure a `not-restated:` marker lists, such as `4 L/min` or `0.65`.
+# regex: a figure in a `not-restated:` marker is a flat token, a number and an optional unit.
 LISTED_FIGURE_RE = re.compile(r"^(?P<number>\d+(?:\.\d+)?)(?:[ \u00a0]?×?(?P<unit>\S+))?$")
 
 #: An HTML comment written inside a line, which holds no prose.
+# regex: this removes each HTML comment that opens and closes on one line, taking the shortest match
+# each time.
 INLINE_COMMENT_RE = re.compile(r"<!--.*?-->")
 
 
@@ -3233,6 +3312,8 @@ ENTRY_COUNT_RE = re.compile(r"(?P<count>[\w-]+)\s+entries\b")
 # narrower `ENTRY_COUNT_RE` below is deliberately left plural-only - it scans
 # ordinary prose, where "the one entry in it a user cannot set" is a sentence
 # and not a claim about a list's size.
+# regex: a group heading is a fixed syntax that the writer adds on purpose: an emphasized line, a
+# dash, and a count of entries.
 GATE_GROUP_RE = re.compile(
     r"^\*{1,2}.*?(?:\u2014|\s-\s)\s*(?P<entries>[\w-]+)\s+entr(?:y|ies)\b"
     r"(?:,\s*(?P<ids>[\w-]+)\s+item ids?)?"
@@ -3267,6 +3348,7 @@ NOT_DELEGABLE_COUNT_RE = re.compile(
 # plural-only so that "the one entry in it a user cannot set" stays a sentence.
 # A heading holds no sentences, so the singular is a count there, and reading
 # it is what stops a one-entry subsection being the way round the rule.
+# regex: a count of entries in a heading is part of the fixed heading syntax above.
 HEADING_ENTRY_COUNT_RE = re.compile(r"(?P<count>[\w-]+)\s+entr(?:y|ies)\b")
 
 
@@ -3663,6 +3745,7 @@ def check_gate_counts(root: Path, report: Report) -> None:
 # and the version has to be the section's own - a list naming another
 # milestone's self-clearing would be a different claim, and not one this file
 # has made.
+# regex: the group's label is a fixed heading syntax, `Cleared by vX.Y.Z itself`.
 SELF_CLEARED_GROUP_RE = re.compile(rf"^\*{{1,2}}Cleared by (?P<version>v{SEMVER_PATTERN}) itself\b")
 
 
@@ -3756,12 +3839,15 @@ SCOPE_EXCLUSION_MARKERS = ("not in scope", "out of scope", "stays at gate", "sta
 
 #: A test function's name, as the whole of a code span names one, e.g.
 #: `` `test_washout` ``.
+# regex: a test function's name is a flat token of a fixed shape.
 TEST_NAME_RE = re.compile(r"test_[A-Za-z0-9_]+")
 #: A line ending inside a code span, a soft break as `markdown.SOFT_BREAK`
 #: reads one: a span's content is read from text whose container markers are
 #: blanked (`_code_spans`), so the next line's `>` is gone before this sees it.
 #: No test name holds a space, so a name broken here was broken by the wrap,
 #: and is read with the break taken out (`PL-6SRZ`).
+# regex: this compiles docket's own soft-break pattern, so a code span's breaks are read as Markdown
+# reads them.
 SPAN_BREAK_RE = re.compile(SOFT_BREAK)
 #: Where test functions are defined: the product suite and the apparatus one.
 TEST_ROOTS = (Path("tests"), Path("subprojects/docket/tests"))
@@ -3950,6 +4036,8 @@ def _entity_kind(noun: str, names: Callable[[str], bool]) -> EntityKind:
 
     Its words may wrap like any sentence's, so each gap is Markdown's `GAP`.
     """
+    # regex: the declared-none form, the word `no`, the noun, `yet` and an item id in parentheses,
+    # is a fixed syntax, and its words may wrap at any gap.
     return EntityKind(noun, names, re.compile(rf"\bno{GAP}{noun}{GAP}yet{GAP}\(`({ID_PATTERN})`\)"))
 
 
@@ -4095,6 +4183,8 @@ def _subsection_members(text: str, family: BoundFamily) -> Iterator[tuple[int, s
 #: same shape, so no pattern can tell the citation from the sentence
 #: (`PL-B6YV`). A paragraph that cites a source that way adds the locator or
 #: the identifier.
+# regex: a DOI, a PMID, an ISBN and a journal locator are flat tokens of fixed shapes, searched for
+# through prose.
 PUBLISHED_SOURCE_RE = re.compile(
     r"\b10\.\d{4,9}/[^\s<>`)\]]+"
     r"|\bPMID:?[  ]?\d{1,9}\b"
@@ -5014,7 +5104,11 @@ def _tags_region(text: str) -> tuple[int, str] | None:
     lines = split_lines(text)
     blanked = unmarked(lines)
     start = next(
-        (first for first, _ in statement_lines(lines, PROSE) if TAGS_MARK_RE.match(blanked[first])),
+        (
+            first
+            for first, _ in statement_lines(lines, PROSE)
+            if blanked[first].lstrip(" \t").startswith(TAGS_MARK)
+        ),
         None,
     )
     if start is None:
@@ -5570,6 +5664,7 @@ def _off_cut_error(where: str, name: str, cuts: _ReleaseCuts, root: Path, run: R
 #: A tag as `%D` prints it under `--decorate=full`: comma-separated ref names,
 #: a tag among them written in full. Matching the full form rather than the
 #: `tag: ` prefix is what keeps this independent of the log's decoration style.
+# regex: this finds each full tag name in git's comma-separated list of decorations, a flat token.
 TAG_REF_RE = re.compile(r"refs/tags/([^,\s]+)")
 
 
@@ -5586,6 +5681,7 @@ def span_bullet(identifiers: Sequence[str], number: str, described: str) -> str:
 #: spelling. The two sit together so that a change to one is made beside the
 #: other, and `test_naming_the_closure_in_the_notes_clears_it` holds each to the
 #: other by writing one and reading it.
+# regex: this reads back the line that `span_bullet` writes, a fixed shape defined beside it.
 SPAN_BULLET_RE = re.compile(r"^- .+? - #(\d+) - described in .+$", re.M)
 
 
@@ -5919,7 +6015,7 @@ def _project_version(pyproject: Path, report: Report, unread: str) -> str:
 
 
 def _is_path_citation(token: str) -> bool:
-    if not token or not re.fullmatch(r"[\w./*{},-]+", token):
+    if not token or not all(char.isalnum() or char in "_./*{},-" for char in token):
         return False
     # Slashes and dots alone - `/`, `./`, `../` - name a place by position
     # rather than a file by name. Read from the repository root, `/` would cite
@@ -6766,6 +6862,7 @@ def _cited_section(text: str, match: re.Match[str]) -> tuple[str, bool]:
 #: span, `app/theme.py:60-72`. The path half is held to `_is_path_citation`'s
 #: own suffix rule after the match, so this only has to be loose enough to
 #: catch what prose writes.
+# regex: a line citation is a flat token: a path, a colon, and a line or a span of lines.
 LINE_CITATION_RE = re.compile(r"`([\w./-]+):(\d+)(?:-(\d+))?`")
 
 
@@ -8007,6 +8104,8 @@ def pull_request_runs(
 #: `success()`. A GitHub expression writes a string in single quotes only
 #: ("Evaluate expressions in workflows and actions", docs.github.com, read
 #: 2026-10-18).
+# regex: this is the one comparison form of a GitHub expression that this check evaluates, a flat
+# token.
 EVENT_CONDITION_RE = re.compile(r"github\.event_name (?P<op>==|!=) '(?P<event>[a-z_]+)'")
 
 #: Conditions under which a step runs whenever the steps before it succeeded.
@@ -8051,7 +8150,7 @@ def _runs_on_pull_requests(
         return True
     index, column = key
     value = lines[index][column:].removeprefix("if:")
-    condition = re.split(r"\s#", value, maxsplit=1)[0].strip()
+    condition = uncommented(value).strip()
     below = next((line for line in lines[index + 1 :] if line.strip()), "")
     if not condition or condition[0] in "'\"|>&*!{[" or _indent(below) > column:
         return UnreadStatement(
@@ -8508,10 +8607,26 @@ COVERAGE_GATE_MARK = "--cov-fail-under"
 # It is the Makefile's line with ` --cov-fail-under=N` replaced by these flags
 # at its end, and `--cov-report=` keeps the part from printing its own partial
 # total.
+# regex: the part flags are a fixed suffix that CI appends to the Makefile's pytest line.
 COVERAGE_PART = re.compile(r" --cov-report= --part (?P<index>\d+)/(?P<parts>\d+)$")
 
-# The command that holds the parts' combined coverage to the threshold.
-COVERAGE_REPORT = re.compile(r"^uv run coverage report\b.* --fail-under=(?P<threshold>\S+)$")
+#: The first words of the command that holds the parts' combined coverage to
+#: the threshold, and the option at its end that gives the threshold.
+COVERAGE_REPORT_WORDS = ("uv", "run", "coverage", "report")
+COVERAGE_THRESHOLD_OPTION = "--fail-under="
+
+
+def _coverage_threshold(command: str) -> str | None:
+    """Return the threshold a `coverage report` command holds coverage to, or `None`.
+
+    `None` where `command` is not that command, or does not end in the option.
+    The command is read as bash reads its words, through `docket.shell.argv`.
+    """
+    words = shell_argv(command)
+    if words is None or words[: len(COVERAGE_REPORT_WORDS)] != COVERAGE_REPORT_WORDS:
+        return None
+    threshold = words[-1].removeprefix(COVERAGE_THRESHOLD_OPTION)
+    return threshold if threshold and threshold != words[-1] else None
 
 
 def _recipe_commands(text: str) -> Iterator[tuple[str, int]]:
@@ -8639,8 +8754,8 @@ def check_coverage_gate(root: Path, report: Report) -> None:
                 remote.append((command, origin))
             elif part := COVERAGE_PART.search(command):
                 parts.append((part, origin))
-            elif threshold := COVERAGE_REPORT.search(command):
-                thresholds.append((threshold["threshold"], origin))
+            elif (threshold := _coverage_threshold(command)) is not None:
+                thresholds.append((threshold, origin))
         _decline_steps(report, relative, unread, "the coverage gate was not compared")
         steps += unread
     # A step CI's side could not read may be the coverage run, so neither
@@ -8868,13 +8983,18 @@ def _blanked_code(prose: str) -> str:
     return "".join(kept) + prose[done:]
 
 
+def _blanked(text: str) -> str:
+    """Return `text` with each character but a line break made a space, so offsets keep."""
+    return "\n".join(" " * len(line) for line in text.split("\n"))
+
+
 def _blanked_span(prose: str, span: re.Match[str]) -> str:
     """A code span's text as `_without_code` hands it on: blank, its line breaks kept.
 
     A span a line ending splits keeps a run that stands against a `$` - see
     `_without_code`.
     """
-    blank = re.sub(r"[^\n]", " ", span.group(0))
+    blank = _blanked(span.group(0))
     if "\n" not in blank:
         return blank
     run = len(span["run"])
@@ -9869,6 +9989,8 @@ def _check_reference_files_exist(root: Path, report: Report) -> None:
 #: The domains are a list rather than any label, because a dotted identifier is
 #: far commoner in this tree than a host; every host it called blocked on
 #: 2026-10-06 ends in one of them.
+# regex: a host name is a flat token of dotted labels that ends in a listed domain, searched for
+# through prose.
 HOST_RE = re.compile(
     r"(?:(?<=//)|(?<![\w.@/-]))"
     r"(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+"
@@ -9922,9 +10044,11 @@ def dated_records(root: Path) -> tuple[str, ...]:
 YAML_SUFFIXES = frozenset({".yml", ".yaml", ".cff"})
 #: A comment's marker - `#`, the `#:` that documents an attribute - and the one
 #: space after it, so what is left reads as the prose it is.
+# regex: a comment's marker is a flat run of `#` characters, an optional `:` and one blank.
 COMMENT_MARK_RE = re.compile(r"^#+:?[ \t]?")
 #: A JSON string on its line, an escape taken whole; JSON allows no line ending
 #: inside one.
+# regex: this finds each JSON string on a line with its row, which the `json` parse does not give.
 JSON_STRING_RE = re.compile(r'"(?:[^"\\\n]|\\.)*"')
 
 
@@ -9940,7 +10064,7 @@ def _without_destinations(text: str) -> str:
     last = 0
     for link in sorted(_links(text), key=lambda link: link.at):
         start, end = link.at
-        pieces += (text[last:start], re.sub(r"[^\n]", " ", text[start:end]))
+        pieces += (text[last:start], _blanked(text[start:end]))
         last = end
     return "".join(pieces) + text[last:]
 
@@ -10463,13 +10587,25 @@ def _git_output(root: Path, *args: str) -> str:
 # no Python suffix. A JSON file's keys are read from both copies' `json` parse
 # (`_changed_json_keys`, `PL-VX3Q`), so `JSON_KEY_RE` reads only the lines of a
 # copy `json` refuses.
+# regex: this reads only the lines that the tokenizer refused, so `ast` and `tokenize` cannot read
+# them.
 DEFINITION_RE = re.compile(r"^[-+]\s*(?:async\s+)?(?:def|class)\s+(\w+)\s*[(:]")
+# regex: this reads only the lines of a copy that `json` refused, so the `json` parse cannot read
+# them.
 JSON_KEY_RE = re.compile(r'^[-+]\s*"(\w+)"\s*:')
 #: A `-U0` patch's hunk header: the rows it removes from the old file and adds
 #: to the new one, each a first row and a count that is 1 where it is left out.
+# regex: a hunk header is a fixed line shape in git's patch output, and no reader of it exists in
+# `docket.vcs`.
 HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@", re.MULTILINE)
 #: A patch's old-file header where the base has no such file.
-NEW_FILE_RE = re.compile(r"^--- /dev/null$", re.MULTILINE)
+NEW_FILE_HEADER = "--- /dev/null"
+
+
+def adds_a_file(patch: str) -> bool:
+    """Return whether `patch` holds a line that is the old-file header of a new file."""
+    return NEW_FILE_HEADER in patch.split("\n")
+
 
 # A term's shape decides how it is searched for, because the two shapes carry
 # different risk. `doc_check.py`, `changed_tokens` and `TreeMap` cannot be
@@ -10488,13 +10624,16 @@ NEW_FILE_RE = re.compile(r"^--- /dev/null$", re.MULTILINE)
 # internal capital, a digit, a dot, a slash, a hyphen - is a shape it does
 # not. A leading capital is not enough on its own, because `Gate` and `Scope`
 # are class names here and ordinary words in `ROADMAP.md`.
-ORDINARY_WORD_RE = re.compile(r"[A-Za-z][a-z]*")
+# `is_distinctive` applies this line: an ordinary word is one ASCII letter of
+# either case, then lower-case ASCII letters only.
 
 # The term is the tail or the head of a dotted or slashed reference:
 # `docket.render`, `tools/render`, `render.py`. The word character on the far
 # side of the separator is required so that a sentence ending "...how we
 # render." does not read as code.
+# regex: this tests the two characters before a match: a word character and then a `.` or `/`.
 QUALIFIED_LEFT_RE = re.compile(r"\w[./]$")
+# regex: this tests the two characters after a match: a `.` or `/` and then a word character.
 QUALIFIED_RIGHT_RE = re.compile(r"[./]\w")
 
 # Past this many lines for one term, the output has stopped being a shortlist:
@@ -10764,7 +10903,7 @@ def _removed_headings(root: Path, base: str, relative: str, patch: str) -> set[s
     where the patch removed one of its rows, either change left the old title
     off the list (`PL-F6T5`). A document the base does not have lost none.
     """
-    if HUNK_RE.search(patch) is None or NEW_FILE_RE.search(patch) is not None:
+    if HUNK_RE.search(patch) is None or adds_a_file(patch):
         return set()
     before = split_lines(_git_output(root, "show", f"{base}:{relative}").removeprefix("\ufeff"))
     after = (root / relative).read_bytes().decode("utf-8-sig")
@@ -10776,7 +10915,8 @@ def _removed_headings(root: Path, base: str, relative: str, patch: str) -> set[s
 
 def is_distinctive(term: str) -> bool:
     """Is this a shape an English sentence cannot produce by accident?"""
-    return ORDINARY_WORD_RE.fullmatch(term) is None
+    ordinary = term.isascii() and term.isalpha() and term[1:] == term[1:].lower()
+    return not ordinary
 
 
 def _marks_code(text: str, spans: Sequence[re.Match[str]], start: int, end: int) -> bool:
@@ -10825,6 +10965,8 @@ def mentions(term: str, text: str, spans: Sequence[re.Match[str]] | None = None)
     phrase = GAP.join(re.escape(word) for word in term.split())
     statements: list[tuple[int, int]] | None = None
     lines: list[int] = []
+    # regex: this searches prose for a term whose words may wrap at any gap, with no word character
+    # on either side.
     for match in re.finditer(rf"(?<!\w){phrase}(?!\w)", _unmarked_text(text)):
         if not distinctive and not _marks_code(text, spans or (), match.start(), match.end()):
             continue
