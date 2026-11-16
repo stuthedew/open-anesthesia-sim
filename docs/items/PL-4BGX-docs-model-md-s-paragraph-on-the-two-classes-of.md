@@ -3,11 +3,13 @@ id: PL-4BGX
 title: docs/MODEL.md's paragraph on the two classes of vaporizer is unclear and uses its own terms: it never says the maxima are dial maxima or how the classes differ, and states the altitude difference more firmly than a source the project can cite
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: model-md-structure
 touches: docs/MODEL.md
 added: 2026-11-07
+closed: 2026-11-16
+pr: 2171
 payoff: a clinician reads which vaporizer design sets each agent's dial limit, and the altitude behaviour no more firmly than its sources state it
 verify: ! grep -qF 'three maxima come from two classes of vaporizer' docs/MODEL.md
 ---
