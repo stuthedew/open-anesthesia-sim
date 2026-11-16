@@ -149,8 +149,10 @@ integration testing.
 Code that looks cosmetic cannot be split off into a lower class, because it
 carries clinical meaning. The chart's frame (`app/chart_frame.py`) decides what
 a chart line claims about a run. The styling file (`app/theme.py`) defines the
-ISO 5360 agent colours. The extreme-preserving decimation is a safety feature of
-the interface.
+ISO 5360 agent colours. The rule for which instants the chart draws is a safety
+feature of the interface. The chart computes the run's exact state at each
+instant that it draws, and every control change is one of those instants
+(`docs/INTERFACE.md` § "Interface boundary").
 
 A split would pay off only where the exempted part is large, genuinely
 non-clinical and costly to verify. None of those holds now.
