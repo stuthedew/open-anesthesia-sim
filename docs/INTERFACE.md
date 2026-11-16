@@ -340,7 +340,7 @@ reason for either value (`PL-N8G4`).
 
 Capping the timeline would not bound memory use, because the run itself holds
 one stretch and one keyframe for each accepted change and has no limit either
-(§ "The run is that record, and every state is derived from it").
+(§ "A run is stored as its settings and keyframes, and every state is computed from them").
 
 The timeline can be unlimited because it grows with the number of settings
 changed, not with the length of the run. Until a drag was recorded only on its
@@ -357,7 +357,7 @@ about three hours of unbroken dragging under the old behaviour, and the
 timeline would then be smaller than 9 MB.
 <!-- provenance: app/dashboard_frame.py RENDER_INTERVAL_S = 0.2 -->
 
-#### The run is that record, and every state is derived from it
+#### A run is stored as its settings and keyframes, and every state is computed from them
 
 **A run is stored as a record of the settings in force at each moment and the
 state at each change.** The settings are the four controls above, together with
@@ -365,7 +365,9 @@ the patient and agent parameters that the equations use. Each change has one
 *keyframe*, the state at the instant that change took effect. Flows are stored
 as they were set, in liters per minute (§ "Time" explains why). Nothing else
 about the run is stored. The chart is drawn from the stored settings and
-keyframes, so there is no second record that could disagree with them.
+keyframes, so there is no second record that could disagree with them. The
+control-input timeline above is a separate record, kept to show and group the
+changes, and the program computes no state from it.
 
 **The program computes the state at a single instant in one calculation.** The
 settings stay constant over a *stretch*, the time between two changes. The
@@ -1718,7 +1720,7 @@ run may use a different one. It discards the run by opening a fresh run
 definition at the cleared state, under the user's settings. A run definition is
 the stored record of a run: the settings in force at each moment, and the state
 at each change of setting, from which every other state is computed
-(§ "The run is that record, and every state is derived from it"). The timeline
+(§ "A run is stored as its settings and keyframes, and every state is computed from them"). The timeline
 of control inputs is cleared because it belongs to the run that recorded it.
 
 On a branch, the fresh run definition opens instead on the stretch of the parent
@@ -1944,7 +1946,7 @@ diverge, in which direction, how quickly, and whether they converge again.
 
 **For developers.** A keyframe is the state at the instant a setting change
 took effect, and a segment is the stretch of a run between two changes
-(§ "The run is that record, and every state is derived from it"). A branch's
+(§ "A run is stored as its settings and keyframes, and every state is computed from them"). A branch's
 run definition carries the trunk's own keyframe. It forms each propagation
 interval as the instant minus the start of that instant's segment.
 The branch repeats the trunk's arithmetic because both use the same keyframe
