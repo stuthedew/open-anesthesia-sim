@@ -50,3 +50,119 @@ The Qt equivalent of point 2 is `QWidget::restoreGeometry`: "If the restored geo
 **Generator check.** One-off: questions from the `ROADMAP.md` structure-read sweep, which a move-only slice left for the author. No mechanism keeps producing them.
 
 **Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** The passages these questions are about were present when Gate 3 froze at `817a4d88`: for example "the placement, the split and the gate decision were" all ratified, and "Remembering which screen" in the out-of-scope list. At `needs-decision` the item counts as debt, so it joins v0.7.0's frozen list.
+
+**Answers, 2026-11-16.** Each answer names the record it comes from.
+
+1. **"The gate decision"** was whether v0.6.0 froze a debt gate of its own on
+   the day it was scoped. `PL-NMTF`'s "Answered 2026-09-16" section, question
+   2, records the answer: no. Gate 2 stayed where the timeline put it, frozen
+   when v0.5.0 shipped, and became v0.6.0's gate. That day it was recorded as
+   an exception to the rule that a gate freezes when its milestone is
+   scoped. `PL-KKRP` replaced that rule on 2026-10-03: a list now freezes on
+   the later of the day its milestone is scoped and the day the milestone
+   before it ships, so no exception remains (`ROADMAP.md` § "The cadence").
+2. **Entry 8 decides it.** `PL-K285` is entry 8's item, and the code cites it
+   for the behaviour: `src/anesthesia_sim/layout/sizing.py` ("`PL-K285`
+   decided the rules"), `src/anesthesia_sim/app/area_layout.py`, and the
+   module docstring of `src/anesthesia_sim/app/view_contract.py` ("A View is
+   never drawn below the size it needs", `PL-K285`). `docs/interface-provenance.md`
+   § "An Area has a minimum size, and says so when it cannot be given it"
+   cites `PL-K285` as well. Entry 5's clause is the fourth question that
+   `PL-BNYF`'s audit added to `PL-TH35`, and the contract states the rule
+   while citing `PL-K285`. Entry 5 now ends that clause with "Entry 8 decides
+   that last behaviour."
+3. **Two things.** `PL-3J2P`'s brief, § "What it costs, stated exactly" and the
+   paragraph after it, and `docs/interface-provenance.md` give both. A
+   splitter tree cannot hold a layout that only a join reaches, such as the
+   five-area pinwheel, so that join is refused (entry 1). And where four
+   Areas meet, a tree keeps only one of the two crossing borders as one
+   handle. The chain query (`LayoutModel.borders()`) recovers that second
+   one, which is the behaviour entry 14 means. "Differing exactly once across
+   thirty-two" is the one four-way meeting point, in Blender's Shading
+   Workspace. Entry 14 now says the tree gives up two things and the query
+   recovers one.
+4. **v0.5.0.** v0.5.0 shipped on 2026-09-21 (its tag, and `PL-4B1G`, its cut
+   item, closed that day). 2026-09-16 is the day v0.6.0 was scoped, when
+   v0.5.0's compare mode was 13 of 20 Required-scope items done (`PL-NMTF`'s
+   2026-09-17 quote). The bullet already says the check is "against v0.5.0's
+   own definition of done". `PL-9CS6` and the done-check it cites
+   (`/mnt/project-files/v0.6.0/dod-check.md`, row 9) checked it that way:
+   "Every v0.5.0 capability is still tested". The trajectory comparison ran
+   against the v0.5.42 tag. The bullet now says "in v0.5.0".
+5. **Yes, it covers a Workspace the learner saved.** The guarantee holds by
+   construction: the chooser in every Area lists every registered View,
+   whatever the Workspace names (`src/anesthesia_sim/app/view_registry.py`'s
+   module docstring, `PL-50PZ`). `tests/integration/test_view_chooser.py`
+   checks it over the shipped Workspaces and one that is not shipped. **The
+   two surfaces are not the two Views.** They are two Areas showing the same
+   View for one run: `test_two_areas_of_the_chart_draw_one_frame_sampled_for_the_wider`
+   in `tests/integration/test_view_contract.py`, which the done-check's row 8
+   calls "two copies of one surface". Both bullets are reworded to say so.
+6. **`PL-BNYF`**, the 2026-09-16 audit of the queue against the layout model.
+   `PL-TH35`'s section "Area-model audit (PL-BNYF)" records the four clauses.
+   Entry 5 now names it.
+7. **Stronger in two ways.** The sentence was written in `9982a04f` (#629,
+   2026-09-16), where it closed a longer measurement that slice 6 moved to
+   `PL-C842`'s brief. `PL-C842` had recorded that the saved state carries
+   sizes, a child count and a few flags but not which View is in which pane,
+   and that a three-pane state restores into a two-pane splitter. The
+   re-measurement added that the same three panes in reverse order save the
+   same bytes, and that a two-pane state also restores into a three-pane
+   splitter, because `restoreState()` fails only on a bad magic number or a
+   newer format. So the state cannot even detect a reordering, and a
+   mismatch in either direction passes. The comparison is this session's
+   reading of the two records, which no record states in those words. Entry
+   2 now says what is stronger.
+8. **"The move" is item 33's move to after item 34.** The sentence's first
+   form, in `7f970bbe` (#1395, 2026-10-10), read "Named by item 33's own move
+   argument; specified by no entry", and item 33's paragraph "It runs after
+   item 34 rather than before it" (`PL-PHKP`, 2026-09-16) names the area
+   header among the surfaces item 34 brings. So it meant that no entry other
+   than entry 20 specified the header, which is why entry 20 took it. The
+   sentence now says so. **The chooser:** `PL-RBXL`'s answers of 2026-10-11
+   decide a flat menu button showing the current View's title, not a combo
+   box, because combo boxes here are settings and choosing a View changes no
+   run. Its menu lists every registered View in registry order, with the
+   current one checked, and it is as wide as its title. Entry 20's chooser
+   paragraph now gives the first two.
+9. Answered by the owner, above. See the next paragraph for what was written.
+10. **Only the occlusion rule.** The sentence's first form, in `9982a04f`,
+    ended with a colon: "the exclusion is stated with its condition: floating
+    arrives under `docs/MODEL.md`'s occlusion rule, which binds it without
+    being re-argued for it." So "its condition" was the occlusion rule and
+    nothing beyond it. The entry still states that condition. Its pointer
+    named `docs/MODEL.md`, but the rule moved to `docs/INTERFACE.md` with
+    `PL-CTXZ` (§ "Minimum displayed outputs" → "What this list requires once
+    the layout is the reader's"). The pointer now names `docs/INTERFACE.md`.
+
+**Done 2026-11-16.** Questions 1 to 8 and 10 are answered above, and the
+answers that belong in `ROADMAP.md` are written there: the gate decision in
+v0.6.0's opening paragraph, and the sentences in Required scope entries 2, 5,
+14 and 20, in two Definition of done bullets, and in the floating-Areas entry.
+For question 9, "Remembering which screen a window was on" left v0.6.0's
+out-of-scope list. Planned-milestone item 34 now holds a paragraph after
+"Break-out unscheduled, 2026-09-26" that records Blender's behaviour as the
+design, under the owner's answer. The break-out entry in v0.6.0's out-of-scope
+list points to it.
+
+Before writing the paragraph, this session read Blender's source again
+(`blender/blender` `main`, 2026-11-16) and the Qt 6 page for `QWidget`. It
+confirmed points 1 to 3 of "Answered 2026-11-09", with two corrections to
+that reading. First, `wm_window_ghostwindow_ensure` passes a saved position to
+a new window only where the platform reports that it can place windows
+(`WM_CAPABILITY_WINDOW_POSITION`), and otherwise opens it at position 0, 0.
+Second, the comment "in practice the window manager will likely move to the
+correct monitor" is about the start position used when there is no startup
+file, not about a saved position on a missing monitor. Blender still makes no
+check that a saved monitor exists. `adjustWindowRectForClosestMonitor` in
+`GHOST_WindowWin32.cc` clamps a new window's size and position to the work
+area of the nearest monitor, as recorded. Qt's documentation says of
+`restoreGeometry`: "If the restored geometry is off-screen, it will be modified
+to be inside the available screen geometry."
+
+Files checked in the docs sweep: `ROADMAP.md` (v0.6.0's section, planned-milestone
+items 33 and 34, § "The cadence"), `docs/interface-provenance.md`,
+`docs/INTERFACE.md` § "Minimum displayed outputs", the briefs of `PL-NMTF`,
+`PL-9CS6`, `PL-B6V1`, `PL-TH35`, `PL-3J2P`, `PL-C842` and `PL-RBXL`, and
+`src/anesthesia_sim/app/view_contract.py`, `view_registry.py` and
+`layout/sizing.py`.

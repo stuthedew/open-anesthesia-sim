@@ -2829,6 +2829,23 @@ first. The rule the build must satisfy is `docs/INTERFACE.md` § "Minimum
 displayed outputs" -> "What this list requires once the layout is the
 reader's".
 
+*A window reopens where it was, as in Blender* (project owner, 2026-11-09:
+"Do whatever blender does", `PL-KYGF`). v0.6.0 left this out, because a
+position restored onto a changed set of monitors can put a window where the
+learner cannot see it. Break-out now plans it, and follows Blender:
+
+1. Every window's position and size are saved with the layout, and each
+   window is put back there when the layout is loaded. Blender does the same
+   wherever the platform lets an application place its windows.
+2. Nothing here checks that the monitor a window was on is still connected.
+   Blender makes no such check either.
+3. The hazard is corrected by the toolkit, not by a check of this project's
+   own. Qt moves a restored window that would be off-screen to inside the
+   available screen area (`QWidget::restoreGeometry`). Blender's Windows
+   layer likewise moves and shrinks a new window to fit the nearest monitor.
+
+`PL-KYGF` records the Blender source and the Qt documentation read for this.
+
 *Floating windows are deferred, not refused* (project owner, 2026-09-15,
 correcting this paragraph's first form). Taking a tiled area out into a
 floating one is wanted later, and this milestone does not build it yet.
@@ -6013,7 +6030,9 @@ This milestone is the first half of planned-milestone item 34. It was scoped
 two releases ahead of its turn (project owner, 2026-09-16, **ratified** on
 `PL-NMTF`), because the design was already settled and fourteen prerequisites
 were waiting on a build item that did not exist. The placement, the split and
-the gate decision were all recommendations put to the owner and agreed. So
+the gate decision were all recommendations put to the owner and agreed. The
+gate decision was that v0.6.0 froze no debt gate of its own when it was
+scoped. Gate 2, which froze when v0.5.0 shipped, became its gate. So
 `CLAUDE.md`'s lower bar to reopen applies to each of them. What the owner
 *specified* is item 34's own content, which this milestone builds rather than
 re-decides. Item 34 carries the design and the Blender provenance behind every
@@ -6731,7 +6750,11 @@ before that change holds their text.
    version. So a three-pane state restores into a two-pane splitter and returns
    `True`. This was re-measured on PySide6 6.11.2 / Qt 6.11.2 on 2026-09-16.
    That measurement is the evidence behind `PL-C842`, and it is stronger than
-   the form that item recorded.
+   the form that item recorded. `PL-C842` showed that the state does not say
+   which View is in which pane, and that it restores into a splitter with one
+   pane fewer. The re-measurement showed that the same panes in reverse order
+   save the same bytes, and that a restore succeeds whichever way the number
+   of panes differs.
 
 #### Views
 
@@ -6753,13 +6776,14 @@ before that change holds their text.
 
 5. **The View contract** (queue item `PL-TH35`). The contract is written
    *with* the area system and validated against two Views that already exist.
-   It carries the four clauses that the 2026-09-16 audit added. They say what
-   a View's saved state is and who writes it, and what a View owes when it is
-   handed state it cannot read. They also say what a split, a swap and a stack
-   round trip each preserve, and what the container does when an Area cannot
-   honour a size. The contract is small by construction. It is re-checked
-   against its implementers, as § "Prune the contract" in the provenance
-   record requires.
+   It carries the four clauses that the 2026-09-16 audit of the queue against
+   the layout model (`PL-BNYF`) added. They say what a View's saved state is
+   and who writes it, and what a View owes when it is handed state it cannot
+   read. They also say what a split, a swap and a stack round trip each
+   preserve, and what the container does when an Area cannot honour a size.
+   Entry 8 decides that last behaviour. The contract is small by
+   construction. It is re-checked against its implementers, as § "Prune the
+   contract" in the provenance record requires.
 
 6. **An enforced import boundary** (queue item `PL-L8RN`). `QSplitter` is
    confined to the adapter, and concrete View modules are kept out of the
@@ -6910,10 +6934,12 @@ before that change holds their text.
 14. **The operations a reader performs** (queue item `PL-2KXB`). A border drag
     moves the collinear chain that the `borders()` query returns. A corner
     drag splits and joins. A reader can swap two Areas. The Workspace tab
-    strip carries the lifecycle from entry 11. The chain query recovers the one
-    behaviour that the tree gives up compared with Blender's graph. `PL-3J2P`
-    measured that behaviour as differing exactly once across thirty-two shipped
-    Blender Workspaces.
+    strip carries the lifecycle from entry 11. The tree gives up two things
+    compared with Blender's graph. The chain query recovers one of them: where
+    four Areas meet, a drag moves the whole line of borders. `PL-3J2P` found
+    such a meeting point exactly once across thirty-two shipped Blender
+    Workspaces. The other is a layout that only a join can reach, and entry 1
+    refuses that join.
     Entry 20 decides the look of the strip, the handle and the corner
     affordance (`PL-QW1Z`, `PL-RQT1`, `PL-30L5`). `PL-MS34` decides the look
     of the Area header.
@@ -6998,8 +7024,9 @@ before that change holds their text.
     **The Area header** (`PL-MS34`). The first question is whether there is a
     header at all. If there is, this entry decides its height, its contents,
     and whether the View name and the chooser sit in it. If there is not, it
-    decides where the chooser goes instead. Planned-milestone item 33's own
-    argument for the move names the header, but no entry specifies it.
+    decides where the chooser goes instead. Planned-milestone item 33's
+    argument for running after item 34 names the header, and no entry other
+    than this one specifies it.
 
     **The splitter handle** (`PL-RQT1`). This entry decides its width, its look
     at rest and on hover, its cursor and its drag feedback.
@@ -7012,7 +7039,11 @@ before that change holds their text.
     means most learners never discover that the layout is theirs.
 
     **The View chooser** (`PL-RBXL`), as something a learner sees. Entry 16
-    specifies only what the chooser guarantees.
+    specifies only what the chooser guarantees. This entry decides that the
+    chooser is a flat button showing the current View's name, not a drop-down
+    list, because this interface uses drop-down lists for settings, and
+    choosing a View changes nothing in the run. Its menu lists every View in
+    the order they are registered, with the current one checked.
 
     **The two failure states** (`PL-DB5G`). These are a matter of
     presentation safety rather than taste. One is an Area that names a View
@@ -7066,10 +7097,10 @@ before that change holds their text.
   Workspace switch and a reload.
 - From every shipped Workspace, a learner can bring the accounting tier on
   screen through the interface alone. A Workspace that names none of those
-  Views still leaves them reachable.
+  Views, whether shipped or saved by the learner, still leaves them reachable.
 - **No learner-visible regression against v0.5.0.** Compare mode ships before
   this milestone, and this milestone then rearranges it. Everything a learner
-  could do with two runs on 2026-09-16, they can still do. This is checked
+  could do with two runs in v0.5.0, they can still do. This is checked
   against v0.5.0's own definition of done.
 - Tests exercise the layout model with no `QApplication` at all. They include a
   fixture file one schema version ahead of the build and a file truncated
@@ -7077,8 +7108,8 @@ before that change holds their text.
 - `tools/import_boundary_check.py` fails the build if any module other than the
   adapter imports `QSplitter`, or if the layout tree imports a concrete View
   module.
-- Two Views that already exist implement the View contract. A test builds two
-  surfaces for one run and asserts that both draw.
+- Two Views that already exist implement the View contract. A test shows one
+  View in two Areas for one run and asserts that both draw.
 - `make check` is green, and the documents in Required scope entry 19 describe
   the interface that exists.
 
@@ -7092,14 +7123,14 @@ before that change holds their text.
   from version 1 (entry 1), and the unconditional region is built in its
   per-window shape (entry 7). When break-out is built, what it adds is the
   window, the window's lifetime and the test that drives it. **Both
-  reservations stay although break-out is unscheduled** (entry 1).
+  reservations stay although break-out is unscheduled** (entry 1). Remembering
+  where each window was is part of break-out too, and planned-milestone item
+  34 records how it works.
 - **Floating Areas or panels - not yet, rather than never.** The option to take
   a tiled Area out into a floating one is wanted later. This milestone does not
-  build it. Floating arrives under `docs/MODEL.md`'s occlusion rule, which
-  applies to it without being argued again for it.
-- **Remembering which screen a window was on.** Restoring a position against a
-  changed set of monitors puts a window where the reader cannot see it. That is
-  the occlusion failure, arriving through persistence.
+  build it. Floating arrives under the occlusion rule in `docs/INTERFACE.md`
+  § "Minimum displayed outputs", which applies to it without being argued
+  again for it.
 - **The View catalogue.** This is planned-milestone item 36. It stays after
   this milestone for the reason that item 34 records. A View's contract is
   whatever the area system requires of its contents. So Views built first would
