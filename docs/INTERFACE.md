@@ -3901,12 +3901,12 @@ the convention it borrowed. Departing from the convention is also wanted for its
 own sake. A teaching tool that looks unmistakably unlike a monitor cannot be
 mistaken for one, which is the view this project's disclaimers already take.
 
-*The disclaimer line is always placed in the layout, but it is not in view on
-every screen today* (`PL-JSY5`, 2026-10-18). The argument above needs only that
-the line is a permanent statement, not a conditional one, and that is true at
-every window size. The paragraphs on the disclaimer line in
-§ "What this list requires once the layout is the reader's" describe where the
-line is placed and the one gap in that placement.
+*The disclaimer line has been in view at every window height since it was
+fixed outside the scrolling part of the page* (`PL-NNML`).
+The paragraph that opens "The disclaimer line and the unconditional region are
+always in view", in § "What this list requires once the layout is the
+reader's", says where the line is placed. The argument above needs only that
+the line is a permanent statement, not a conditional one.
 
 The boundary of the supported run length is shown in the muted color, not the
 alert color. Coloring a correct model's declared boundary as a fault would
