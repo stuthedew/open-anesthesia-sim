@@ -6707,17 +6707,19 @@ A release is complete only when:
 
 - all parameter values and sources are present;
 - no scientific `TBD` markers remain;
-- simulated wash-in passes validation against published data for every agent
-  and cohort;
+- the model passes every check of the published-data gate, for every agent and
+  cohort, the sign of the elimination disagreement included (§ "What the
+  published-data gate can and cannot resolve" lists the checks);
 - mass balance closes within the documented tolerance;
 - deterministic replay passes (§ "Deterministic replay test");
 - changing a setting during a case keeps the simulation's current state;
 - the interface contains the educational and non-clinical warning; and
 - this document describes the behavior actually present in the tagged release.
 
-The comparison of simulated elimination with earlier versions is not a
-condition of release. It checks only that the results have not changed, and
-does not show that they agree with published data.
+The elimination regression pins compare simulated elimination with the model's
+own earlier output, and passing them is not a condition of release. They check
+only that the results have not changed, and do not show that they agree with
+published data.
 
 **For developers.** A release also needs these checks to pass:
 
@@ -6729,8 +6731,8 @@ does not show that they agree with published data.
 - pytest; and
 - GitHub Actions.
 
-The comparison of simulated elimination with earlier versions is in the same
-test module as the wash-in validation.
+The five-minute elimination pin is in the same test module as the
+published-data gate. The late-washout tables are in a test module of their own.
 
 ## How this document is held to the tree
 
