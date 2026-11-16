@@ -3,11 +3,13 @@ id: PL-DQD8
 title: docs/MODEL.md's paragraph saying 'always' does not mean the disclaimer is in view on every screen today is stale since PL-NNML fixed the scrolling page, and it points to a gap the paragraphs above no longer state
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: model-md-structure
 touches: docs/MODEL.md, docs/INTERFACE.md
 added: 2026-11-05
+closed: 2026-11-16
+pr: 2168
 payoff: the specification says in one voice that the educational-use statement is always on screen
 verify: ! grep -qF 'but it is not in view on' docs/INTERFACE.md
 ---

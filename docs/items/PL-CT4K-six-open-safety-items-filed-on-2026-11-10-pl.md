@@ -3,10 +3,12 @@ id: PL-CT4K
 title: Six open safety items filed on 2026-11-10 (PL-0G2P, PL-B8DL, PL-G2WC, PL-GJ1W, PL-GKG4, PL-LHCL) are not on v0.7.0's frozen list, though a safety item re-enters the gate whether or not its problem was present at the freeze
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 touches: ROADMAP.md, docs/items/PL-CR81-projects-threads-in-the-v0-7-0-project-run.md, src/anesthesia_sim/core/liquid_agent.py, docs/items/PL-LHCL-a-number-in-core-is-known-to-be-inside-its.md, docs/items/PL-GJ1W-nothing-states-in-one-place-how-far-a-computed.md
 added: 2026-11-11
+closed: 2026-11-16
+pr: 2168
 payoff: v0.7.0's gate lists every safety item that must clear before its features are built
 verify: grep -qE '^- PL-0G2P \(' ROADMAP.md && grep -qE '^- PL-B8DL \(' ROADMAP.md && grep -qE '^- PL-G2WC \(' ROADMAP.md && grep -qE '^- PL-GJ1W \(' ROADMAP.md && grep -qE '^- PL-GKG4 \(' ROADMAP.md && grep -qE '^- PL-LHCL \(' ROADMAP.md
 ---

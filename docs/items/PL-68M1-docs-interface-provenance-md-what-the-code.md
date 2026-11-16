@@ -3,11 +3,13 @@ id: PL-68M1
 title: docs/interface-provenance.md § 'What the code cannot answer' draws four conclusions for this project (a named set of things that may float, the header staying visible, modes, no tablets) that the adopts-diverges-refuses list has no entry for: adopted, open, or only advice? (copy editor structure read, 2026-11-05)
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, docs
 feature: interface-provenance-structure
 touches: docs/interface-provenance.md
 added: 2026-11-05
+closed: 2026-11-16
+pr: 2168
 payoff: the thread that designs the layout finds every conclusion it must answer to in the one list it is told to read, including the two that bear on misreading a value's context
 verify: grep -qF 'Conclusions from Blender' docs/interface-provenance.md
 ---

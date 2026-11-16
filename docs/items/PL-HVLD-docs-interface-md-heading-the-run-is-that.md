@@ -3,11 +3,13 @@ id: PL-HVLD
 title: docs/INTERFACE.md heading 'The run is that record, and every state is derived from it' says the run is the control-input record, while its rows describe the run definition and § 'The control-input timeline' treats the two as separate records (copy editor structure read, 2026-11-05)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: model-md-structure
 touches: docs/MODEL.md, .claude/rules/run-is-its-definition.md, docs/INTERFACE.md, docs/ARCHITECTURE.md, src/anesthesia_sim/core/run_definition.py
 added: 2026-11-05
+closed: 2026-11-16
+pr: 2168
 payoff: a developer looking for the record every displayed state is computed from is sent to the run definition, not to the control-input timeline
 verify: ! grep -qF 'The run is that record, and every state is derived from it' docs/INTERFACE.md
 ---

@@ -3,11 +3,13 @@ id: PL-DPY1
 title: docs/MODEL.md says the main window cannot be closed while another window is open, then that closing it closes the others; a reader cannot tell which is the requirement for break-out windows
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: model-md-structure
 touches: docs/MODEL.md, docs/INTERFACE.md
 added: 2026-11-05
+closed: 2026-11-16
+pr: 2168
 payoff: whoever builds break-out windows has one behaviour to build and test for keeping the per-substance values on screen
 verify: ! grep -qF 'closed while any other window is open' docs/INTERFACE.md
 ---

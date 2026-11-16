@@ -3,11 +3,13 @@ id: PL-2WBR
 title: docs/interface-provenance.md cites Blender's Copyright Rules handbook with no address or reading date, and the list of pages read leaves it out (copy editor structure read, 2026-11-05)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: interface-provenance-structure
 touches: docs/interface-provenance.md
 added: 2026-11-05
+closed: 2026-11-16
+pr: 2168
 payoff: a contributor checking the study protocol's rule on copying can open the Blender page it rests on and see when it was read
 verify: grep -qF 'handbook/communication/copyright_rules' docs/interface-provenance.md
 ---

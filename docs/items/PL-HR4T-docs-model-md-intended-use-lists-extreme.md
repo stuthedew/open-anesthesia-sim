@@ -3,11 +3,13 @@ id: PL-HR4T
 title: docs/MODEL.md § 'Intended use' lists extreme-preserving decimation as an interface safety feature, but § 'Interface boundary' says the chart evaluates the run at column instants and selects no recorded extremes; one is stale (copy editor structure read, 2026-11-05)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: model-md-structure
 touches: docs/MODEL.md
 added: 2026-11-05
+closed: 2026-11-16
+pr: 2168
 payoff: the safety-class section names the chart feature the safety argument actually rests on, so a reviewer checks the right code
 verify: ! grep -qF 'extreme-preserving decimation is a safety feature' docs/MODEL.md
 reenters: PL-4FBP

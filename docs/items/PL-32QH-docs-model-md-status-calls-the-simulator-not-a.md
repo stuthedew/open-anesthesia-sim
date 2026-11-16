@@ -3,11 +3,13 @@ id: PL-32QH
 title: docs/MODEL.md § 'Status' calls the simulator not a medical device, while § 'Intended use' says the safety class settles no device status and the section claims no regulatory status; decide which claim stands (copy editor structure read, 2026-11-05)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: model-md-structure
 touches: docs/MODEL.md
 added: 2026-11-05
+closed: 2026-11-16
+pr: 2168
 payoff: the specification makes one claim about regulatory status, so no reader meets the project asserting a device status it says it does not claim
 verify: ! grep -qF 'not a clinical prediction, dosing tool, patient monitor, or medical device' docs/MODEL.md
 ---

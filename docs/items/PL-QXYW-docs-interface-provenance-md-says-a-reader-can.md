@@ -3,11 +3,13 @@ id: PL-QXYW
 title: docs/interface-provenance.md says a reader can never be wrong about what context a displayed value belongs to, in two places, and neither names the document that sets the requirement (copy editor structure read, 2026-11-05)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: interface-provenance-structure
 touches: docs/interface-provenance.md
 added: 2026-11-05
+closed: 2026-11-16
+pr: 2168
 payoff: a contributor designing the handling of modes reads the context requirement at its true strength, with the document that sets it
 verify: ! grep -qF "The project's safety standard needs one" docs/interface-provenance.md
 ---

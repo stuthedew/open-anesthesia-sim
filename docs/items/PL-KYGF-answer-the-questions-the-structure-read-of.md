@@ -3,11 +3,13 @@ id: PL-KYGF
 title: Answer the questions the structure read of ROADMAP.md's v0.6.0 section left for its author: what 'the gate decision' was, which entry decides an Area refused a size, and the definition of done's baseline
 priority: P3
 effort: M
-status: ready
+status: done
 classes: docs
 feature: roadmap-structure
 touches: ROADMAP.md
 added: 2026-11-08
+closed: 2026-11-16
+pr: 2168
 payoff: The v0.6.0 record that a session reads to change the layout system answers its own open questions.
 verify: grep -qF 'restoreGeometry' ROADMAP.md
 ---

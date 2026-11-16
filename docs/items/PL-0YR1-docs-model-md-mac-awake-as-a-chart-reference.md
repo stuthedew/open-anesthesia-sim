@@ -3,11 +3,13 @@ id: PL-0YR1
 title: docs/MODEL.md § MAC-awake as a chart reference says the three fractions 'sit in a narrow range, so each agent carries its own value', but a narrow range argues for one shared fraction; the stated reason does not support the choice
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: model-md-structure
 touches: docs/MODEL.md, docs/INTERFACE.md
 added: 2026-11-05
+closed: 2026-11-16
+pr: 2168
 payoff: a clinician who asks why each agent keeps its own MAC-awake fraction reads the reason the sources support, not one that argues the other way
 verify: ! grep -qF 'narrow range, so each agent carries' docs/INTERFACE.md
 ---
