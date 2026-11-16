@@ -41,7 +41,7 @@ __all__ = ["RunId", "RunIdentities", "SessionToken"]
 
 # regex: a session token is 32 lowercase hexadecimal digits, the form
 # `uuid.UUID.hex` gives. `SessionToken.drawn` makes one from a random UUID, but
-# the pattern does not check for a version 4 UUID, so 32 zeros pass. `[0-9a-f]`
+# the pattern does not check the UUID's version, so 32 zeros pass. `[0-9a-f]`
 # matches only ASCII characters, and `fullmatch` refuses a trailing newline.
 _SESSION_TOKEN: Final = re.compile(r"[0-9a-f]{32}")
 
