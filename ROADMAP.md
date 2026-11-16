@@ -1132,7 +1132,7 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-HQPF (M) The accounting panel's unit caption ('Litres of equivalent pure agent gas') and the schematic's unit ('mL vapour') do not name the condition an agent amount is stated at, 20 °C and 1 atm, so a learner cannot tell that an amount held in the body is stated at room temperature and reads 5.8% high
 - PL-RJN9 (S) The agent cost View's two captions in src/anesthesia_sim/app/agent_cost.py write '20 degrees C' as text, a second copy of core/liquid_agent.py's REFERENCE_TEMPERATURE_CELSIUS, so a change to the reference temperature would leave the captions naming the old one
 
-**Cleared before v0.7.0's implementation begins, unless deferred - 165 entries**
+**Cleared before v0.7.0's implementation begins, unless deferred - 172 entries**
 
 - PL-H57W (L) Since PL-CZXN no check measures whether a branch that changes no core function weakens a core unit test, because PL-7FPD's route compares only the display modules' mutants; the same comparison over core's mutants took 538 to 968 s for one changed test file
 - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
@@ -1299,6 +1299,13 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-MVCF (S) A Reset that raises after it has cleared the run is not counted as a start-over, so a halt keeps the discarded run's cards under a clock of 10 min for a run at 0 s
 - PL-SV2Q (S) When a run's dials cannot be built after a Reset or an agent change, the dial row and the delivered line keep the discarded run's setting: 'Delivered 8.00% (4.00 ×MAC)' beside '1 MAC desflurane = 6.0%'
 - PL-CT4K (S) Six open safety items filed on 2026-11-10 (PL-0G2P, PL-B8DL, PL-G2WC, PL-GJ1W, PL-GKG4, PL-LHCL) are not on v0.7.0's frozen list, though a safety item re-enters the gate whether or not its problem was present at the freeze
+- PL-0G2P (M) The run-state tests read only the text of labels, buttons, combo boxes and sliders, so a value that a View paints, as the compartment schematic paints its amounts, is in no restatement test
+- PL-B8DL (M) The four test layouts named _EVERY_VIEW hold four of the six registered Views, so the tests that every widget restates a run's state never build the compartment schematic or the agent cost View
+- PL-G2WC (M) No test checks that a value shown in compare mode sits under its own run: the readout test checks the 'Run 1' and 'Run 2' labels and never a value against the run it names
+- PL-GJ1W (L) Nothing states in one place how far a computed value in core/ or app/ can be from the exact one, so each comparison picks its own allowance (13 tolerance constants, and none where nobody thought of rounding) and no test runs generated settings over many steps: seven items from 2026-10-25 to 2026-11-01 on error that accumulates or a rounded result compared exactly
+- PL-GKG4 (M) Blood flow is a bare float checked by hand at three places in core (blood.py, tissue.py, governing_equations.py) and is not a checked type as cardiac output is, so the next function that takes one can skip the check
+- PL-LHCL (L) A number in core/ is known to be inside its valid range only where a checked type holds it, and 151 parameters and fields are still bare float or int, so each sweep (PL-ZGYX) finds the ones someone listed and the next arrives after it closes: a blood flow of 5e-324 L/min is accepted (PL-GKG4) and a restored Keyframe holds instant_s = -50.0 (PL-8W1Q)
+- PL-RF2S (L) Every widget, painted canvas and chart keeps the last value written to it, and three separate paths each write a part of the screen, so a value from an earlier run or the other compared run stays wherever a path does not reach: the cause under PL-X7D5, PL-J5GC, PL-5JTH and PL-GTH6, whose four fixes each added a test over a hand-kept list
 
 ### Captures after the cut
 
@@ -1430,8 +1437,8 @@ Nothing ran the mutation tool's first step outside a mutation run, and the two
 test files were already long, at 8,933 and 5,114 lines. They are `PL-V067`,
 `PL-8YCC`, `PL-PG0S` and `PL-1FPR`. A fifth, `PL-19M4`, is placed by the
 branch that holds it. `PL-1FPR` stays on the list but is deferred to the next
-gate, because it waits on `PL-RF2S`, which this list does not hold, and it
-changes no value a learner sees.
+gate, because it waits on `PL-RF2S`, which is itself deferred to the next
+gate, and it changes no value a learner sees.
 
 **`PL-MVCF`, `PL-SV2Q` and `PL-CT4K` joined the frozen list on 2026-11-11,
 after the freeze.** `PL-MVCF` and `PL-SV2Q` are classed `safety`, so they
@@ -1439,6 +1446,19 @@ re-enter whether or not their problem was present. Each leaves a discarded
 run's values on screen after a halt, and each is on `main`. `PL-CT4K` is not
 `safety`, but it completes this list: it places six `safety` items that the
 list does not yet name.
+
+**Seven `safety` items joined the frozen list on 2026-11-16, after the
+freeze.** `PL-CT4K` placed them. Each is classed `safety`, so it re-enters
+whether or not its problem was present at the freeze. Six were filed on
+2026-11-10 and 2026-11-11. `PL-0G2P`, `PL-B8DL` and `PL-G2WC` are gaps in the
+tests that check each View shows only the current run's values. `PL-GJ1W`
+asks for one statement of how far a computed value may be from the exact one.
+`PL-LHCL` covers the numbers in `core/` that no checked type holds. `PL-GKG4`
+made blood flow a checked type, and it closed on 2026-11-11 before it was
+placed. It is listed because the rule placed it while it was open. The
+seventh is `PL-RF2S`, which draws every View whole from one value. It is the
+cause under `PL-0G2P`, `PL-B8DL` and `PL-G2WC`, and it was filed on
+2026-11-11.
 
 ### Required scope
 
