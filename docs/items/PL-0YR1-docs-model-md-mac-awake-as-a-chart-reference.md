@@ -41,3 +41,11 @@ parameter choice, and no head states it.
 fixes was already in its file at `817a4d88`, the commit that froze Gate 3, so
 under ROADMAP.md § "The gate is a snapshot, not a moving target" the item
 joins v0.7.0's frozen list rather than being deferred by its capture date.
+
+**Done 2026-11-16.** In `docs/INTERFACE.md` § "MAC-awake as a chart
+reference", the narrow spread of the three fractions is now stated as a fact
+in a sentence of its own. The next sentence gives the reason that each agent
+keeps its own value: the determinations behind them were not made by one
+method, which the paragraph's opening sentence states. The three fractions and
+their provenance markers are unchanged. Docs sweep: that paragraph, and
+`grep -n 'narrow range'` over `docs/MODEL.md` and `docs/INTERFACE.md`.

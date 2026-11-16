@@ -3418,8 +3418,9 @@ equilibration. All of these are equilibrated determinations, not fast-washout
 ones, so all three fractions belong against the vessel-rich trace. But ascending
 and descending determinations are not interchangeable, and no descending-washout
 MAC-awake for desflurane was found. The three fractions (0.31 isoflurane, 0.34
-sevoflurane, 0.36 desflurane) sit in a narrow range, so each agent carries its
-own value rather than one fraction covering all three.
+sevoflurane, 0.36 desflurane) sit in a narrow range. Each agent still carries
+its own value rather than one fraction covering all three, because the
+determinations behind them were not made by one method.
 <!-- provenance: data/agents/isoflurane.json mac_awake.fraction_of_mac = 0.31 -->
 <!-- provenance: data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34 -->
 
