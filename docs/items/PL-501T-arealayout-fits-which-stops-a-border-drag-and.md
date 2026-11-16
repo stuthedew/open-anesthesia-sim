@@ -3,11 +3,13 @@ id: PL-501T
 title: AreaLayout._fits, which stops a border drag and lights the WARNING line, still estimates each Area's drawn size as its window share minus one handle, not from the apportionment the splitters draw: the estimate ignores nested handles and overstates an Area whose split neighbour is held wider than its share, and two adapter tests pin the stop it gives, a handle's width short of the neighbour's need (found building PL-16BG)
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: area-layout-sizing
 touches: src/anesthesia_sim/app/area_layout.py, tests/integration/test_layout_adapter.py
 added: 2026-11-01
+closed: 2026-11-16
+pr: 2169
 payoff: a border drag stops where the neighbouring Area reaches the size it needs, so the stored layout matches what is drawn
 verify: grep -q 'def test_a_drag_into_a_nested_split_stops_at_the_drawn_need' tests/integration/test_layout_adapter.py
 reenters: PL-16BG

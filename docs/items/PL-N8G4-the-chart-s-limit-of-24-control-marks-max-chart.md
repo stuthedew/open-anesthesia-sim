@@ -3,10 +3,12 @@ id: PL-N8G4
 title: The chart's limit of 24 control marks (MAX_CHART_CONTROL_MARKS) and the change list's limit of 12 lines (MAX_LISTED_ADJUSTMENTS) carry no recorded reason: say why each is that number and what changing it would do
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, docs
 touches: src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/dashboard_frame.py, docs/MODEL.md, docs/INTERFACE.md
 added: 2026-11-05
+closed: 2026-11-16
+pr: 2169
 payoff: a developer can change either display limit knowing why it is that number and what a learner would gain or lose
 verify: ! grep -qF 'No record gives the' docs/INTERFACE.md
 ---

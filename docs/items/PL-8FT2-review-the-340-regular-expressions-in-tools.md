@@ -3,11 +3,13 @@ id: PL-8FT2
 title: Review the 340 regular expressions in tools/, .claude/hooks/, subprojects/docket/ and the tests that tools/regex_baseline.py lets stand without a reason, starting with the ones that read a format a module already parses
 priority: P3
 effort: L
-status: ready
+status: done
 classes: defect, refactor
 feature: regex-review
 touches: tools/, .claude/hooks/, subprojects/docket/, tests/unit/, tests/integration/, tests/reference/, docs/apparatus.md
 added: 2026-11-03
+closed: 2026-11-16
+pr: 2169
 payoff: each format the tools read has one reader, so a pattern re-reading item ids, front matter or version numbers stops producing defects when that format changes
 verify: ! grep -qE '^ *"(tools|subprojects|\.claude|tests)/' tools/regex_baseline.py
 ---

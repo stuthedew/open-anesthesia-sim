@@ -3,11 +3,13 @@ id: PL-3WFF
 title: Review the 6 regular expressions in src/anesthesia_sim/ that tools/regex_baseline.py lets stand without a reason, and replace each one a parser or string method does better or write its reason beside it
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: regex-review
 touches: src/anesthesia_sim/app/agent_cost.py, src/anesthesia_sim/app/currency_code.py, src/anesthesia_sim/app/preferences.py, src/anesthesia_sim/app/view_registry.py, src/anesthesia_sim/layout/run_identity.py, src/anesthesia_sim/layout/tree.py, tests/unit/test_view_registry.py, tools/regex_baseline.py
 added: 2026-11-03
+closed: 2026-11-16
+pr: 2169
 payoff: every regular expression in the simulator says why it is the right tool, and no comment claims the session token is a UUID version the check does not enforce
 verify: ! grep -qF '"src/anesthesia_sim/' tools/regex_baseline.py && ! grep -qF 'version 4 UUID' src/anesthesia_sim/layout/run_identity.py
 ---
