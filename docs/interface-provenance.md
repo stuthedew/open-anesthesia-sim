@@ -849,6 +849,43 @@ regular editor, under the usual rules.
 
 ## What this project adopts, diverges from, and refuses
 
+**Conclusions from Blender's stated reasoning, and where each stands.**
+§ "What the code cannot answer: Blender's stated reasoning" draws four
+conclusions for this project. Each is listed here with the decision that
+settles it, or as open where none does yet. Of the four, only the header is
+built, in `app/area_layout.py`.
+
+1. **What may float: open.** The reasoning chapter's section on what
+   non-overlapping covers suggests that this project keep a small, named set of
+   things that may float, with a predicate that identifies them. No decision
+   has taken up that shape. `ROADMAP.md` item 34 records floating Areas and
+   panels as deferred, not refused (project owner, 2026-09-15). It also requires
+   any floating mechanism to obey the rule that nothing may cover a value the
+   display must show, which `PL-WLWY` settled. No Area or panel floats today,
+   and the values that must always show sit in the unconditional region, which
+   `SimulationView._build_page` keeps outside the Areas. The release that
+   builds floating will decide what may float.
+2. **The header stays visible: adopted, more strictly than Blender.** Blender's
+   guidelines let a default layout hide an editor's header in rare,
+   well-reasoned cases. Here the container in `app/area_layout.py` draws a
+   header on every Area, because the header carries the name of the run that
+   the View is bound to, which no View may leave out (`PL-TH35`, project owner, 2026-09-27, ratified). An Area
+   too short for its header is refused that size rather than given a shorter
+   header (`PL-MS34`). No decision lets a header be hidden.
+3. **This project's handling of modes: open.** § "There is no mode-awareness
+   doctrine to borrow" finds that this project must design its own. No decision
+   or `ROADMAP.md` entry sets that design as a whole. Single cases have been
+   settled where they arose. For example, while two runs are shown, every
+   readout names its run (`PL-1XPX`), and each View names both runs
+   (`test_the_views_name_each_run_while_two_are_drawn_and_only_then`).
+4. **No tablet build: open.** § "Where Blender says the model does not apply"
+   finds that Blender's area model is for desktops and not for a standalone
+   tablet. No decision or `ROADMAP.md` entry addresses a tablet build. The
+   interface ships only as a desktop application on PySide6, which
+   `pyproject.toml` declares, and v0.4.26 gave up the earlier Flet interface's
+   web target (`ROADMAP.md` § "Completed: v0.4.26 - the interface moves to
+   Qt"). So the area model applies to everything that ships today.
+
 ### Adopted
 
 **This project uses Blender's words for two of its three layout concepts, so
