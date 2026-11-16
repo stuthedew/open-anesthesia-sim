@@ -119,11 +119,19 @@ scripts from that licence. The pages are listed under
 § "Pages read on 2026-10-25". The licence statements were first confirmed on
 2026-09-16 through a search engine.
 
-Blender's own Copyright Rules handbook draws the same line between studying and
-copying for material entering Blender. It asks that a design be studied and
-re-expressed, and refuses lifted assets or prose. It bars copyrighted elements
-of other software, and encourages designs that build on Blender's own design
-history.
+Blender's own Copyright Rules page sets a rule for material entering Blender.
+It was read on 2026-11-16 at
+https://developer.blender.org/docs/handbook/communication/copyright_rules/ and
+is listed under § "Pages read on 2026-11-16". It asks contributors to present
+original mockups and designs that build on Blender's own design history. It bars
+copyrighted elements of proprietary software from every part of Blender, because
+adding them would breach that software's licence agreement. It also asks
+contributors to avoid referring to proprietary software, and to keep to public
+information where a mention is essential. Its bar on copying names only
+proprietary software, and the page says nothing about reading another program's
+source. So it points the same way as this study's rule, toward original work,
+but it does not draw the line between studying and copying that this study
+draws.
 
 ### What this project attributes
 
@@ -1253,3 +1261,11 @@ https://projects.blender.org/api/v1/repos/blender/blender/.
   https://code.blender.org/2025/07/beyond-mouse-keyboard/
 - The two licence pages: https://developer.blender.org/docs/license/ and
   https://docs.blender.org/manual/en/latest/copyright.html
+
+## Pages read on 2026-11-16
+
+The page was downloaded whole with `curl` through this environment's proxy and
+read as text.
+
+- Developer Documentation, Copyright Rules:
+  https://developer.blender.org/docs/handbook/communication/copyright_rules/
