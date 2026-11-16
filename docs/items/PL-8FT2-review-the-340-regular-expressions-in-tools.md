@@ -6,7 +6,7 @@ effort: L
 status: ready
 classes: defect, refactor
 feature: regex-review
-touches: tools/, .claude/hooks/, subprojects/docket/, tests/unit/, tests/integration/, tests/reference/
+touches: tools/, .claude/hooks/, subprojects/docket/, tests/unit/, tests/integration/, tests/reference/, docs/apparatus.md
 added: 2026-11-03
 payoff: each format the tools read has one reader, so a pattern re-reading item ids, front matter or version numbers stops producing defects when that format changes
 verify: ! grep -qE '^ *"(tools|subprojects|\.claude|tests)/' tools/regex_baseline.py
@@ -69,3 +69,12 @@ simulator's `_VERSION`.
 **Generator check.** Leads to PL-4S6C's fact (which spelling of a repeated predicate is the answer); worked by directory, filing a member item per directory as the brief says. Not a new head.
 
 **Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present in part when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. About 294 of the 340 calls were outside `src/` at `817a4d88`, counted with `tools/regex_check.uses`.
+
+**Done 2026-11-16.** Every call that `tools/regex_baseline.py` let stand outside `src/` was reviewed, by directory, and the table is now empty. About 20 calls were replaced by the module that already reads their format (docket's front matter, shell, fence, code-span, date and Markdown readers, `digits.whole_number`, and PyYAML for the workflow tests) and about 25 by a string method or a standard-library parser. Every other call now has a `# regex:` comment giving its reason. Deliberate fixes:
+
+1. `SEMVER_PATTERN` and every reader built on it refuse a leading zero and non-ASCII digits (Semantic Versioning 2.0.0 item 2). All 124 `v*` tags still parse.
+2. `\d` became `[0-9]` and a whole-value `$` became `\Z` wherever the input comes from outside the repository.
+3. `tools/model_rewrite.py`'s fact reader no longer takes a paragraph line opening "43." for a list number, and reads a code span written with two backticks, or wrapped across a line, as one fact. `tests/unit/test_model_rewrite.py` has a test for each.
+4. The workflow tests read YAML with PyYAML. One consequence: an unquoted `python-version: 3.10`, which YAML reads as 3.1, now fails.
+
+Fifteen patterns guess at what prose means: eight in `tools/doc_check.py` and seven in docket's `checks.py`. They keep their behaviour and now carry a reason naming the item that set each up. Four of the eight in `doc_check` raise errors, and `PL-BHD7` asks whether they should only advise, as `.claude/rules/apparatus-standard.md` says the judgment half should. `docs/apparatus.md` no longer says the review is still to do. Files checked in the docs sweep: `docs/apparatus.md`, `tools/regex_baseline.py`'s docstring, `tools/regex_check.py`'s guidance, and `.claude/rules/apparatus-standard.md`.
