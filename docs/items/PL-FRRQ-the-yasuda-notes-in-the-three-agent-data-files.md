@@ -65,3 +65,5 @@ kept: it records why the tier was not raised before the paper was read, and
 judges no value by rounding. Docs sweep: `docs/MODEL.md` § "Parameter
 provenance" (already in percentages, unchanged), `ROADMAP.md` (the item's own
 line only), `tests/` (no test quotes the changed text).
+
+Blind review, 2026-11-16. The second pass found that the new list gives desflurane fat as +8.3 percent while the older sentence in the same note gives isoflurane fat as -8.3 percent, on a different basis. Each sentence now names its basis: the list is stored against measured, as a percentage of the measured mean, and the older sentence gives each change as a percentage of the stored value.
