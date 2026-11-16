@@ -191,6 +191,7 @@ PULL_REQUEST_FILTERS = ("types", "branches", "branches-ignore", "paths", "paths-
 # (*Events that trigger workflows*, docs.github.com, read 2026-10-05).
 DEFAULT_TYPES = frozenset({"opened", "synchronize", "reopened"})
 
+# regex: the marker is a fixed comment syntax that a writer adds on purpose.
 NOT_REQUIRED = re.compile(r"#\s*not-required:\s*(?P<reason>\S.*?)\s*$")
 
 # Each indicator `triggers` refuses where a node opens, with what it opens there
@@ -742,6 +743,8 @@ def _branch_pattern(pattern: str, unread: Undecidable) -> re.Pattern[str]:
         elif char == "[":
             close = pattern.find("]", at)
             listed = pattern[at + 1 : close] if close > at else ""
+            # regex: this accepts only the character ranges that the docstring above lists for
+            # GitHub's branch filter.
             if not re.fullmatch(r"(?:[a-z]-[a-z]|[A-Z]-[A-Z]|[0-9]-[0-9]|[a-zA-Z0-9])+", listed):
                 raise unread
             parts.append(f"[{listed}]")
@@ -760,6 +763,8 @@ def _branch_pattern(pattern: str, unread: Undecidable) -> re.Pattern[str]:
             quantifiable = True
         at += 1
     try:
+        # regex: GitHub's branch filter is a glob, translated part by part above into a pattern that
+        # this compiles.
         return re.compile("".join(parts))
     except re.error:
         raise unread from None

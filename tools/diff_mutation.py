@@ -150,6 +150,7 @@ RUN_LOG = "diff_mutation.log"
 #: What mutmut 3.8.0 says when no mutant matches the names it was given.
 NOTHING_MATCHES = "Filtered for specific mutants, but nothing matches"
 #: One line of `mutmut results --all true`: a mutant's name and its status.
+# regex: a line of mutmut's results listing is a fixed shape in that tool's text output.
 RESULT_RE = re.compile(r"^\s+(\S+): (.+)$")
 #: The exit status mutmut 3.8.0 records when its pytest run raised instead of
 #: returning. Its worker catches the exception and exits with -1.
@@ -166,6 +167,7 @@ INTERRUPTED = 2
 #: module raised while it was collected: "Interrupted: 1 error during
 #: collection". The files ran cleanly with no mutant applied first, so the
 #: mutant caused the raise (`PL-N3YB`).
+# regex: this finds pytest's fixed summary of a collection error in the output of a run.
 COLLECTION_ERROR_RE = re.compile(r"Interrupted: \d+ errors? during collection")
 #: How long that run may take before its mutant is reported as a timeout.
 RERUN_TIMEOUT_S = 900
@@ -275,6 +277,7 @@ cli(["run", *sys.argv[2:]])
 """
 #: One hunk header of the diff `mutmut show` prints. Its old side numbers the
 #: lines of the function's own text, from 1.
+# regex: a hunk header is a fixed line shape in the diff that `mutmut show` prints.
 SHOWN_HUNK_RE = re.compile(r"^@@ -(\d+)(?:,\d+)? \+\d+(?:,\d+)? @@")
 
 

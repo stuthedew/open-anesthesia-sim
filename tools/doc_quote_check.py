@@ -61,9 +61,12 @@ DOCS_URL = "https://code.claude.com/docs/en/"
 FETCH_TIMEOUT_S = 30
 
 #: A comment, quotation or list marker at the start of a line, with one space after it.
+# regex: the markers are a flat run at the start of each line, in Markdown and code comments alike,
+# so no one parser reads them.
 _LINE_MARKER = re.compile(r"(?m)^[ \t]*(?:#+|>|//|[-*](?=\s))[ \t]?")
+# regex: an inline link is a flat token here, read from pages fetched from outside the repository
+# only to compare their words.
 _LINK = re.compile(r"\[([^\]]*)\]\([^)]*\)")
-_SPACE = re.compile(r"\s+")
 _CHARACTERS = str.maketrans({"`": None, "*": None, "‘": "'", "’": "'", "“": '"', "”": '"'})
 
 
@@ -81,7 +84,7 @@ def normalize(text: str) -> str:
     text = _LINE_MARKER.sub("", text)
     text = _LINK.sub(r"\1", text)
     text = text.translate(_CHARACTERS)
-    return _SPACE.sub(" ", text).strip().casefold()
+    return " ".join(text.split()).casefold()
 
 
 def load(record: Path) -> list[Quote]:

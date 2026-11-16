@@ -182,6 +182,8 @@ from workflow_paths_check import tracked_under  # noqa: E402
 #: lookbehind can only ever drop a false positive. The lookahead is the other
 #: end of the same word: `PL-prefixed` is not an id-shaped word with a tail but
 #: no id at all.
+# regex: this is looser than docket's id pattern on purpose, so that an id-shaped word that the
+# grammar refuses is still found and judged.
 CANDIDATE_RE = re.compile(r"(?<![A-Za-z0-9])PL-[A-Z0-9]+(?![A-Za-z0-9])")
 
 #: A `PL-` that opens a *restatement* of the grammar rather than naming an item:
@@ -197,6 +199,8 @@ CANDIDATE_RE = re.compile(r"(?<![A-Za-z0-9])PL-[A-Z0-9]+(?![A-Za-z0-9])")
 #: case, so a pattern for one is naturally spelled `pl-` under `re.I`, and
 #: `vcs.BRANCH_ID_RE` was exactly that: a second copy of the alphabet this
 #: rule could not see while it read `PL-` alone (`PL-PB8V`).
+# regex: this finds a restatement of the id grammar inside another pattern's source text, which only
+# a search of that text can see.
 GRAMMAR_RE = re.compile(r"PL-(?:\(\?:)?(?:\[[^\]]*\]|\\[dwsDWS])\{\d+(?:,\d*)?\}", re.I)
 
 #: `f"PL-B1B{n:03d}"` mints `PL-B1B000`, so a hole has to stand for the digits
@@ -204,6 +208,7 @@ GRAMMAR_RE = re.compile(r"PL-(?:\(\?:)?(?:\[[^\]]*\]|\\[dwsDWS])\{\d+(?:,\d*)?\}
 #: character is the default. Dropping the holes instead would report `PL-B1B` as
 #: three characters, and a check with a false positive that obvious is one
 #: nobody leaves switched on.
+# regex: a format spec's width is a flat token at the end of the spec.
 SPEC_WIDTH_RE = re.compile(r"0(\d+)d\Z")
 
 #: The marker that exempts a literal. Read across every line the literal spans,
@@ -225,7 +230,10 @@ SHELL_FENCES = frozenset({"bash", "sh", "shell", "zsh"})
 #: character outside every string, white space aside. A string followed by a
 #: `:` is an object's key (RFC 8259 § 4), and that colon is what RFC 8259 calls
 #: the name separator.
+# regex: this reads the strings and the other characters of JSON with their offsets, which the
+# `json` parse does not give.
 JSON_TOKEN_RE = re.compile(r'"(?:[^"\\]|\\.)*"|[^\s"]')
+# regex: this tests for the name separator after a string, allowing white space, at a given offset.
 NAME_SEPARATOR_RE = re.compile(r"\s*:")
 
 

@@ -332,6 +332,8 @@ EXEMPT_NAMES: dict[str, str] = {
 }
 
 #: What rule 2 counts as a constant's name: upper case, two characters or more.
+# regex: a constant's name is a flat token of a fixed shape, read from a name that `ast` already
+# parsed.
 NAME_RE = re.compile(r"^_?[A-Z][A-Z0-9_]+$")
 
 SUBPROCESS_CALLS = frozenset({"run", "check_output", "check_call", "call", "Popen"})

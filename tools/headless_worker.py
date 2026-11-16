@@ -282,7 +282,9 @@ def tool_version(argv: Sequence[str], prefix: str) -> tuple[int, int] | None:
     text = record_text(done.stdout).strip()
     if not text.startswith(prefix):
         return None
-    found = re.match(r"(\d+)\.(\d+)", text[len(prefix) :])
+    # regex: the version a tool prints after its name is a flat token, two numbers and a dot, at the
+    # start of the rest of its output.
+    found = re.match(r"([0-9]+)\.([0-9]+)", text[len(prefix) :])
     return (int(found[1]), int(found[2])) if found else None
 
 

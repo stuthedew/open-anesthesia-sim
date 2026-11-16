@@ -115,6 +115,7 @@ SYMBOL_COLUMN = "Symbol"
 EM_DASH = "—"
 
 #: `ClassName.accessor`, as the Code column writes it: inside a code span.
+# regex: `ClassName.accessor` in a code span is a flat token of a fixed shape.
 _CODE_REFERENCE = re.compile(r"`([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)`")
 
 #: The token every partition-coefficient identifier is built around.

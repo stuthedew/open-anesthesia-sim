@@ -161,6 +161,8 @@ from docket.vcs import (  # noqa: E402
 
 #: What `make release` writes and `git tag -a vX.Y.Z` marks. Anchored, so a
 #: subject that merely mentions a release is not one.
+# regex: a release commit's subject opens with a fixed shape, `Release` and a version, and the
+# version part is docket's own pattern rather than a second spelling of it.
 RELEASE_RE = re.compile(rf"^Release\s+v{SEMVER_PATTERN}")
 
 #: `%p` is empty only for a commit whose parents this checkout does not hold.
