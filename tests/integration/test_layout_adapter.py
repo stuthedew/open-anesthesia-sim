@@ -490,16 +490,18 @@ def test_a_drag_stops_where_a_neighbour_reaches_its_least_size_and_its_line_turn
     with it. Area 4 lies between that border and the next one, at 0.8 of
     the window. A drag of 300 px to the right would carry the line to 0.875,
     past 0.8. So the line stops where Area 4 is as narrow as Qt would draw
-    it. That point is short of 0.8 of the container's width by the minimum
-    size set on Area 4's frame plus the handle width that the adapter allows
-    for.
+    it, the minimum size set on Area 4's frame. The bottom row has two
+    handles, so its three Areas share the container's width less 16 px, and
+    the line stops that minimum's share of those pixels short of 0.8
+    (`PL-501T`).
     """
 
     container = _show(application, shown, _PAST_A_NEIGHBOUR)
     splitters = _splitters(container)
     top, bottom = splitters[(0,)].handle(1), splitters[(1,)].handle(1)
     least = container.frame(AreaId(4)).minimumWidth()
-    expected = 0.8 - (least + AREA_HANDLE_WIDTH) / container.width()
+    shared_px = container.width() - 2 * AREA_HANDLE_WIDTH
+    expected = 0.8 - least / shared_px
     assert isinstance(top, _AreaHandle) and isinstance(bottom, _AreaHandle)
 
     start = _press(top)
@@ -507,8 +509,12 @@ def test_a_drag_stops_where_a_neighbour_reaches_its_least_size_and_its_line_turn
     QTest.mouseMove(top, start + _along(splitters[(0,)], 300))
     application.processEvents()
 
-    assert container.model.position(Handle(0, (0,), 0)) == pytest.approx(expected, abs=1e-5)
-    assert container.model.position(Handle(0, (1,), 0)) == pytest.approx(expected, abs=1e-5)
+    # A numerical limit of one pixel of the shared width: the splitter rounds each
+    # Area to whole pixels, so the stop is found to within a pixel (`pixel_sizes`).
+    one_pixel = 1 / shared_px
+    assert container.model.position(Handle(0, (0,), 0)) == pytest.approx(expected, abs=one_pixel)
+    assert container.model.position(Handle(0, (1,), 0)) == pytest.approx(expected, abs=one_pixel)
+    assert splitters[(1,)].sizes()[1] == least
     assert top.lit and top.warning
     assert bottom.lit and bottom.warning
     assert not splitters[()].handle(1).lit
@@ -2358,13 +2364,102 @@ def test_a_drag_stops_where_the_neighbour_reaches_its_views_declared_need(
 
     _drag(application, _splitters(container)[()], 1, 200)
 
-    # The border stops the handle's width short of the Area's need, as
-    # `PL-RQT1` Q3's stop does for any neighbour.
-    assert container.model.position(Handle(0, (), 0)) == pytest.approx(
-        1 - (300 + AREA_HANDLE_WIDTH) / _SIDE_PX, abs=1e-5
-    )
-    assert _splitters(container)[()].sizes()[1] >= 300
+    # The two Areas share 800 px, so the border stops at 500 px, which is
+    # 0.625 of the split. The handle is not counted twice (`PL-501T`). A
+    # numerical limit of one pixel of the 800, the splitter's rounding.
+    assert container.model.position(Handle(0, (), 0)) == pytest.approx(0.625, abs=1 / 800)
+    assert _splitters(container)[()].sizes() == [500, 300]
     assert container.too_small() == ()
+
+
+def test_a_drag_stops_where_an_area_in_a_nested_split_reaches_its_views_need(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """The stop counts the handles of the split that the Area is in (`PL-501T`).
+
+    The bottom row has two handles, so its three Areas share 1016 - 16 = 1000 px.
+    Its first border is on the top border's line, so a drag of the top border
+    moves it too. Area 4 holds the Big view, which needs 300 px, and lies
+    between that border and the one at 0.8. So the line stops at 0.8 - 300/1000
+    = 0.5, where Area 4 is 300 px wide. A reading that took one handle from the
+    Area's share of the window would stop at 0.8 - 308/1016, near 0.497, and
+    draw Area 4 303 px wide.
+    """
+
+    model = _layout(
+        _column(
+            (0.5, 0.5),
+            _row((0.4, 0.6), _area(1), _area(2)),
+            _row((0.4, 0.4, 0.2), _area(3), Area(AreaId(4), _BIG), _area(5)),
+        ),
+        6,
+    )
+    container = _show_sized(application, shown, model, (1000 + 2 * AREA_HANDLE_WIDTH, 808))
+    splitters = _splitters(container)
+    top = splitters[(0,)].handle(1)
+    assert isinstance(top, _AreaHandle)
+
+    start = _press(top)
+    QTest.mouseMove(top, start + QPoint(200, 0))
+    application.processEvents()
+
+    # A numerical limit of one pixel of the 1000 px the bottom row shares.
+    assert container.model.position(Handle(0, (1,), 0)) == pytest.approx(0.5, abs=1 / 1000)
+    assert splitters[(1,)].sizes() == [500, 300, 200]
+    assert top.warning
+    assert container.too_small() == ()
+
+    QTest.mouseRelease(
+        top, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, start + QPoint(200, 0)
+    )
+
+
+def test_a_drag_stops_where_an_area_reaches_its_least_size_beside_a_neighbour_held_wider(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """An Area beside a neighbour held at its need is narrower than its share (`PL-501T`).
+
+    The bottom row's three Areas share 800 px. Area 5 holds the Big view, whose
+    share of 160 px is less than the 300 it needs, so it is held at 300. Areas 3
+    and 4 share the other 500 px by their fractions. The top border's line
+    carries the bottom row's first border, so Area 4 narrows as the line moves
+    right. Its fraction of the window is 0.8 - p, so it is drawn 500 (0.8 - p) /
+    0.8 px wide, and it reaches its least size at p = 0.8 - 0.8 least / 500. A
+    reading from the Area's share of the whole window would let the line go on
+    to 0.8 - (least + 8) / 816. The splitter would then hold Area 4 at its least
+    size, and draw the border short of where the layout stores it.
+    """
+
+    model = _layout(
+        _column(
+            (0.5, 0.5),
+            _row((0.4, 0.6), _area(1), _area(2)),
+            _row((0.4, 0.4, 0.2), _area(3), _area(4), Area(AreaId(5), _BIG)),
+        ),
+        6,
+    )
+    container = _show_sized(application, shown, model, (800 + 2 * AREA_HANDLE_WIDTH, 808))
+    splitters = _splitters(container)
+    top = splitters[(0,)].handle(1)
+    assert isinstance(top, _AreaHandle)
+    least = container.frame(AreaId(4)).minimumWidth()
+    assert splitters[(1,)].sizes() == [250, 250, 300]
+
+    start = _press(top)
+    QTest.mouseMove(top, start + QPoint(200, 0))
+    application.processEvents()
+
+    # A numerical limit of one pixel of the 500 px that Areas 3 and 4 share,
+    # which is 0.8 / 500 of the window.
+    assert container.model.position(Handle(0, (1,), 0)) == pytest.approx(
+        0.8 - 0.8 * least / 500, abs=0.8 / 500
+    )
+    assert splitters[(1,)].sizes() == [500 - least, least, 300]
+    assert top.warning
+
+    QTest.mouseRelease(
+        top, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, start + QPoint(200, 0)
+    )
 
 
 def test_a_view_chosen_for_an_area_too_small_for_it_is_shown_as_too_small(
