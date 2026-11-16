@@ -776,9 +776,13 @@ Manual says that it takes effect when the user enables it.
 ### There is no mode-awareness doctrine to borrow
 
 Blender has no doctrine for keeping the user aware of the current mode, so this
-project must design its own. The project's safety standard needs one, because it
-requires that a user can never be wrong about what state the application is in,
-or about what context a displayed value belongs to. The re-read found more than
+project must design its own. The safety-critical clinical-output standard in
+`CLAUDE.md` is what requires it. That standard asks that a clinically meaningful
+display be designed so that its simulation state and context cannot easily be
+misread, along with its units, model identity and relevant assumptions.
+`docs/INTERFACE.md` § "Minimum displayed outputs" lists the state and context
+that the interface must always show, such as the run state, the running agent
+and each setting changed during the run. The re-read found more than
 the first version of this section did, but the conclusion holds. Only one rule
 from Blender's interface guidelines carries over: each editor's header stays
 visible except in rare, well-reasoned cases.
@@ -900,8 +904,9 @@ class cannot change what a saved file means (`PL-R1WQ`).
 **Context sits above tools.** The strip that says *what the numbers are about*
 outranks and sits above every tool that acts on them. It shows, for example,
 which run, which patient or which model the numbers concern. This placement
-serves the project's requirement that a user can never mistake which context a
-displayed value belongs to. It also follows Blender's argument for its
+serves the requirement that a displayed value's context cannot easily be
+misread, which § "There is no mode-awareness doctrine to borrow" traces to its
+source. It also follows Blender's argument for its
 information hierarchy (§ "Header, sidebar, toolbar and footer are keyed to
 scope of effect"). In this window, the unconditional region with each run's
 notices and readouts stays at the top, above the Workspace tabs and the Areas
