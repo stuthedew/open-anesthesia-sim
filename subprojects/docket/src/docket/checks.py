@@ -3098,6 +3098,9 @@ def _cue_pattern(cues: tuple[str, ...]) -> re.Pattern[str]:
     is what keeps the window off a blank line and a block's start. The break
     and the indent around it count as one character of the gap (`SOFT_BREAK`).
     """
+    # regex: this finds a cue such as "blocked on" or "depends on" and then an item id in the
+    # same clause, as a guess that the brief names a prerequisite. A match is an advisory
+    # (`PL-ZBRB`, `PL-8YXJ`).
     return re.compile(
         rf"\b(?:{'|'.join(cues)})\b(?:\.?\*\*)?(?:{SOFT_BREAK}|[^.;:()\"|—\n]){{0,40}}?"
         rf"`?({ID_PATTERN})`?",
@@ -3122,6 +3125,8 @@ CLOSED_DEPENDENCY = _cue_pattern(CLOSED_PREREQUISITE_CUES)
 # Searched from the statement's start, since the pattern ends at the cue: a
 # look-back of 24 characters counted the indent of a wrapped line and never
 # reached the `not` ending the line above (`PL-BVBB`).
+# regex: this finds a negation such as "not" or "no longer" just before a cue, as a guess
+# that the sentence says the item does not wait. A match silences an advisory (`PL-YKBF`).
 NEGATED_CUE = re.compile(
     r"(?:\b(?:not|cannot|never|nothing|neither|nor|without|no(?:\s+longer)?)|n['’]t)"
     r"[*_]{0,2}(?:[ \t]+|[ \t]*\n[ \t]*)\Z",
@@ -3140,6 +3145,8 @@ NEGATED_CUE = re.compile(
 # cue, declares only the first, and nothing fired - the first id was skipped as
 # declared and the second matched no cue - so an open prerequisite of a v0.4.1
 # item stayed invisible to `docket next` while the check reported clean.
+# regex: this finds "and on" or "and by" and then an item id, as a guess that it names a
+# second prerequisite. It is read only after a cue, and a match is an advisory (`PL-GGCN`).
 PROSE_DEPENDENCY_CONTINUATION = re.compile(
     rf"\band\s+(?:(?:up)?on|by)\b(?:\.?\*\*)?(?:{SOFT_BREAK}|[^.;:()\"|—\n]){{0,40}}?"
     rf"`?({ID_PATTERN})`?",
@@ -3152,6 +3159,8 @@ PROSE_DEPENDENCY_CONTINUATION = re.compile(
 # paragraph because a bare "and" is commoner still than "and on". An optional
 # parenthetical between them is the gloss every id carries here (`PL-QS9H`'s
 # "**Sequenced after `PL-6580`** (strip ...) and `PL-F9TQ`").
+# regex: this finds "and" or a comma and then an item id, straight after an id a cue read, as
+# a guess that the list goes on naming prerequisites. A match is an advisory (`PL-8YXJ`).
 PROSE_DEPENDENCY_LIST = re.compile(
     rf"(?:\.?\*\*)?(?:\s*\((?:{SOFT_BREAK}|[^()\n]){{0,160}}\))?"
     rf"(?:\s*,\s*(?:and\s+)?|\s+and\s+)`?({ID_PATTERN})`?",
@@ -3189,6 +3198,8 @@ OWN_STATUS_PHRASES = (
     r"parked\s+at",
 )
 _STATUS_WORDS = "|".join(re.escape(status) for status in STATUSES)
+# regex: this finds a phrase such as "left at" or "stays" and then a status, as a guess that
+# the brief names its own item's status. A match is an advisory (`PL-8YXJ`, `PL-X4RX`).
 OWN_STATUS = re.compile(
     rf"\b(?:{'|'.join(OWN_STATUS_PHRASES)})\s+"
     rf"(?:`({_STATUS_WORDS})`|(needs-decision|untriaged))(?![\w-])",
@@ -3201,7 +3212,13 @@ OWN_STATUS = re.compile(
 # item left `blocked`" say something departed it. The passive form opens its
 # sentence or follows a present form of "be"; the departing form follows its
 # subject (`PL-2GY0`). "was left" is history, which present tense only excludes.
+# regex: this finds "left" with no "at" after it, which `STANDING_LEFT` then reads to guess
+# whether the item is left at a status or has departed it. A match can only silence the
+# advisory `OWN_STATUS` raises (`PL-2GY0`).
 BARE_LEFT = re.compile(r"left\s+(?!at\b)", re.IGNORECASE)
+# regex: this finds a sentence start or a form of "be" just before "left", as a guess that
+# the "left" is passive and so names the item's status. It decides whether `OWN_STATUS`
+# raises its advisory (`PL-2GY0`).
 STANDING_LEFT = re.compile(
     r"(?:\A|[.!?:]\s|\b(?:is|are|be|been|being)\s)[\s*_>`-]*\Z", re.IGNORECASE
 )

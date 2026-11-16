@@ -8,15 +8,9 @@ call or gives it a `regex:` reason. Never add one: a new call carries its
 reason beside it instead.
 
 Taken on 2026-11-03 (`PL-7JYV`): 346 calls in 73 files, under 126 keys.
-`PL-3WFF` reviewed the six under `src/`, kept each one and wrote its reason
-beside it, so none is listed here. Reviewing the rest for a parser or string
-method that does the job better is `PL-8FT2`.
+`PL-3WFF` reviewed the six under `src/` and `PL-8FT2` reviewed the rest. Each
+call was replaced by a parser or a string method, or kept with its reason
+beside it, so the table is empty.
 """
 
-GRANDFATHERED_REGEX: dict[str, dict[tuple[str, str], int]] = {
-    "subprojects/docket/src/docket/checks.py": {
-        ("<module>", "compile"): 6,
-        ("_cue_pattern", "compile"): 1,
-    },
-    "tools/doc_check.py": {("<module>", "compile"): 8},
-}
+GRANDFATHERED_REGEX: dict[str, dict[tuple[str, str], int]] = {}

@@ -1103,12 +1103,18 @@ CITATION_RE = re.compile(
 # paragraph never closes is its `unclosed` branch, refused by name; the
 # `directed` branch is known only by the direction after its closing mark, so
 # an unclosed quotation is none.
+# regex: this finds a quotation after "see" or "under", or one before "above" or "below", as
+# a guess that it names a section without the § mark. A match is an advisory, and only where
+# the quotation names a heading (`PL-YSMV`).
 UNMARKED_CITATION_RE = re.compile(
     rf'(?:\b(?:see|under){GAP}+"(?:(?P<named>{QUOTATION_CHAR}++)"|{UNCLOSED_QUOTATION}))'
     rf'|(?:"(?P<directed>[`A-Za-z]{QUOTATION_CHAR}*+)"{GAP}+(?:above|below)\b)',
     re.IGNORECASE,
 )
 #: A direction after a quotation, matched at the quotation's end.
+# regex: this finds "above" or "below" just after a quotation, as a guess that the cited
+# section is in the same file. That decides which headings a citation is checked against, so
+# it feeds the error for a marked citation and the advisory for an unmarked one (`PL-032`).
 DIRECTION_RE = re.compile(GAP + r"*(?:above|below)\b", re.IGNORECASE)
 #: What stands immediately before a quotation that already carries the mark,
 #: searched in the text up to and including the match's first character: a
@@ -3102,6 +3108,8 @@ def check_timeline(root: Path, report: Report) -> None:
 #: A "not yet" states a status that the next step of the work makes false.
 #: The pattern allows any whitespace between the two words, because prose wraps
 #: between any two words.
+# regex: this finds the words "not yet", across a line break too, as a guess that the
+# sentence states a row's status. A match under the timeline is an error (`PL-0B22`).
 NOT_YET_RE = re.compile(r"\bnot\s+yet\b", re.IGNORECASE)
 
 
@@ -3292,6 +3300,9 @@ _TENS = ("twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ni
 # before `entries` is read as a number and the phrase is passed over when it is
 # not one, so "no entries" and "the remaining entries" state no count and are
 # left alone rather than reported.
+# regex: this finds a word followed by "entries", as a guess that the word counts the
+# release's frozen list. In a table cell that names the release, a count that differs from
+# the list is an error (`PL-H8MQ`).
 ENTRY_COUNT_RE = re.compile(r"(?P<count>[\w-]+)\s+entries\b")
 
 # A group heading inside a frozen list: an emphasized line whose label is
@@ -3339,6 +3350,9 @@ GATE_GROUP_RE = re.compile(
 # Read only inside the gate subsection, so position fixes the meaning the way
 # it does for the group headings above: a sentence in one section counting
 # another section's list would otherwise be compared against the wrong list.
+# regex: this finds "N entries are marked `not-delegable`", as a guess that N counts the
+# list's entries withheld from delegation. In a gate subsection, a count that differs from
+# the items' fields is an error (`PL-GLBF`).
 NOT_DELEGABLE_COUNT_RE = re.compile(
     rf"(?P<count>[\w-]+){GAP}entr(?:y|ies){GAP}(?:is|are){GAP}marked{GAP}`not-delegable`"
 )
@@ -10000,6 +10014,9 @@ HOST_RE = re.compile(
 #: A word saying a host did not answer. `EGRESS_BLOCKED`, the proxy's own word,
 #: is spelt out because `\b` does not split a word at its `_`. `block` and
 #: `blocks` are `HOST_BLOCK_RE`'s.
+# regex: this finds a word of refusal, such as "blocked", "denied" or "cannot reach", as a
+# guess that a sentence naming a host says the host was refused. In a sentence with no date,
+# a match is an error (`PL-CLW5`).
 HOST_REFUSAL_RE = re.compile(
     rf"\b(?:block(?:ed|ing)|refus(?:e|es|ed|al|als|ing)|den(?:y|ies|ied|ial)|unreachable"
     rf"|EGRESS_BLOCKED|(?:cannot|can't|could{GAP}+not|couldn't){GAP}+(?:be{GAP}+)?reach(?:ed)?)\b",
@@ -10011,10 +10028,16 @@ HOST_REFUSAL_RE = re.compile(
 #: included, four sentences named a host beside one of them and no other word
 #: of refusal, two of them claims and two blocks of text. So a sentence whose
 #: only refusal is one of them is an advisory rather than refused (`PL-79DP`).
+# regex: this finds "block" or "blocks", as a guess that a sentence naming a host says the
+# host was refused. In a sentence with no date, a match is an advisory, because the word as
+# often names a block of text (`PL-79DP`).
 HOST_BLOCK_RE = re.compile(r"\bblocks?\b", re.IGNORECASE)
 #: Every stem `HOST_REFUSAL_RE` and `HOST_BLOCK_RE` read, so a source holding
 #: none of them, nor a host, is passed over unparsed: it cannot carry a claim in
 #: any comment or docstring however they are joined.
+# regex: this finds any stem that the two patterns above look for, so that a Python file
+# holding none is not parsed. It reads no meaning and reports nothing itself, and it must
+# match wherever either of them does (`PL-CLW5`).
 HOST_REFUSAL_STEM_RE = re.compile(r"block|refus|den(?:y|i)|reach", re.IGNORECASE)
 
 
