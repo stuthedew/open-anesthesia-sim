@@ -328,7 +328,7 @@ divided by another.
 ambient pressure being 760 mmHg.** At 760 mmHg, both classes of vaporizer deliver the
 same partial pressure at a given dial position, so no equation, stored value
 or displayed number here is wrong at sea level. Away from 760 mmHg, the two
-classes diverge in opposite directions, as § "Known limitations" describes.
+classes are said to respond differently, as § "Known limitations" describes.
 
 **For developers.** The vaporizer control is `ControlInput.DELIVERED` in
 `app/control_record.py`. Each recorded change to it carries the unit *percent
@@ -3740,9 +3740,16 @@ and Datex-Ohmeda Isotec 5 for isoflurane, and the Tec 6 for desflurane. So desfl
 says how far a Tec 6 dial turns. Another desflurane vaporizer, or an injector that delivers into
 the circle, is not bound by it.
 
-**The model does not need to know which class of vaporizer each maximum delivered concentration
-comes from,** because the three maxima come from two classes of vaporizer that it would need to
-tell apart only away from sea level (§ "Assumptions", § "Known limitations").
+**These vaporizers work in two different ways.** The sevoflurane and isoflurane vaporizers are
+variable-bypass vaporizers: the dial splits the fresh gas between a bypass and a chamber in which
+the gas flows over the liquid agent and leaves saturated with vapour. The Tec 6 is not a
+variable-bypass vaporizer. Dosch and Tharp call it an injector, or gas–vapour blender, which heats
+desflurane and injects pure vapour into the fresh gas (§ "Known limitations" gives their full
+citation). Johnston et al. 1994, the source of desflurane's maximum, describe it in their abstract
+as "an electrically heated, pressurized, electromechanically coupled dual-circuit blender". The two
+designs are said to behave differently away from sea level (§ "Known limitations"). The model fixes
+ambient pressure at one atmosphere, 760 mmHg (§ "Assumptions"), so it does not need to know which
+design each maximum comes from.
 
 The stored MAC (`mac_percent`) is a single adult MAC. Its source, De Wolf et al. 2012, gives no age
 for it. The age-referenced values are Mapleson's MACs at age 40, which the table below compares
@@ -6487,8 +6494,8 @@ corresponding real device. That user is not delivering the same anesthetic,
 and nothing else in the simulator says so. The two pressures have no test yet
 (`PL-LP96`). The delivered-concentration control
 is a vaporizer dial, and this project's three agents are drawn from two
-classes of vaporizer that respond to falling ambient pressure in opposite
-directions.
+classes of vaporizer that are said to respond differently to falling ambient
+pressure.
 <!-- not-restated: 6 % -->
 
 **The real devices for sevoflurane and isoflurane are variable-bypass
@@ -6498,7 +6505,7 @@ vaporizing chamber. The gas leaving the chamber is saturated at the agent's
 saturated vapour pressure, which temperature sets and ambient pressure does
 not. The dial sets the splitting ratio. So as ambient pressure falls, the
 output rises in volumes percent while the delivered *partial pressure* is
-approximately preserved, and the dial needs no altitude correction. Boumphrey
+approximately preserved. Boumphrey
 and Marshall (*Contin Educ Anaesth Crit Care Pain* 2011;11:199–203) give the
 approximation as
 $`\%_1 = \%_\mathrm{cal} \times P_\mathrm{cal} / P_1`$. Their worked example
@@ -6543,8 +6550,15 @@ $`\mathrm{SVP} \ll P`$. Isoflurane's saturated vapour pressure is about
 through gives a delivered partial pressure that *overshoots* rather than holds
 steady: on that arithmetic alone, about 16% high at 585 mmHg, where the
 $`1/P`$ form predicts a flat line
-(`test_the_variable_bypass_overshoot_at_altitude_follows_from_the_fuller_form`). The direction of each class's response is
-not in doubt, and neither is the contrast between the two. The size of the
+(`test_the_variable_bypass_overshoot_at_altitude_follows_from_the_fuller_form`).
+Dosch and Tharp call the effect of altitude on vaporizer performance
+"controversial". They write that "Some sources state that variable bypass types
+need not be adjusted for moderate changes in barometric pressure, but the Tec 6
+must be dialed up beyond the desired dose at higher altitudes. Other sources
+disagree." They also report that Dorsch and Dorsch's *Understanding Anesthesia
+Equipment* (5th edition, 2008) says to consult the operator's manual for each
+model. That textbook could not be read for this document, so its advice is
+cited only as Dosch and Tharp report it. The size of the
 variable-bypass compensation is approximate, so no number is stored for it. An implementation of ambient pressure should
 derive the variable-bypass case from each agent's saturated vapour pressure
 rather than from the $`1/P`$ shortcut, and would owe each agent's SVP a source
@@ -6582,13 +6596,22 @@ value:
   the worked example, and never as the authority for a number. Its "Altitude"
   section describes both classes side by side. Read in full.
   **Owner-attested**: see the note below.
+- Dosch MP, Tharp D. *The Anesthesia Gas Machine*, chapter 5, "Processing:
+  Vaporizers". University of Detroit Mercy, revised February 2026.
+  https://healthprofessions.udmercy.edu/academics/na/agm/05. **Tier 2** under
+  § "Source hierarchy": a teaching text that draws on other sources. It is the
+  source of the two class names and of how each class works, as
+  § "Delivery-limit and MAC parameters" states them, and of the disagreement
+  about altitude quoted above. It is never the authority for a number. Read in
+  full at that address.
 
 <!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 
-**Two of those five are owner-attested: they were read from the project
+**Two of those six are owner-attested: they were read from the project
 owner's copies, and no other reader can check them.** They are the
 Datex-Ohmeda specification sheet and the Boumphrey and Marshall article. Any
-reader can reach the three journal articles above through their DOI or PMID.
+reader can reach the three journal articles above through their DOI or PMID,
+and Dosch and Tharp's chapter at its address.
 `docs/references/` cannot hold copies of these two, because the repository is
 public (`docs/references/README.md` § "Redistribution"). So three things rest
 on that reading alone: the passage quoted from Datex-Ohmeda, the 1–18% range

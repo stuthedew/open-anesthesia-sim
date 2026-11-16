@@ -63,3 +63,44 @@ when the copy editor was tested on this section (`PL-F0Q2`).
 fixes was already in its file at `817a4d88`, the commit that froze Gate 3, so
 under ROADMAP.md § "The gate is a snapshot, not a moving target" the item
 joins v0.7.0's frozen list rather than being deferred by its capture date.
+
+**Done 2026-11-16.** Following the item's recommendation, the sentence in
+`docs/MODEL.md` § "Delivery-limit and MAC parameters" that the owner could not
+follow is replaced by a paragraph that names the two designs in Dosch and
+Tharp's terms. The sevoflurane and isoflurane vaporizers are variable-bypass
+vaporizers, and the Tec 6 is an injector, or gas–vapour blender, which
+Johnston et al. 1994's abstract calls "an electrically heated, pressurized,
+electromechanically coupled dual-circuit blender". The paragraph says the
+model need not tell them apart because it fixes ambient pressure at 760 mmHg.
+That value was checked in `docs/MODEL.md` § "Assumptions" and in
+`core/liquid_agent.py`, where the reference pressure is one standard
+atmosphere, 101 325 Pa. In § "Known limitations", "respond to falling ambient
+pressure in opposite directions", "the dial needs no altitude correction" and
+"The direction of each class's response is not in doubt, and neither is the
+contrast between the two" were removed or softened. Dosch and Tharp's
+statement that the effect of altitude is "controversial" is quoted in their
+place, with their report that Dorsch and Dorsch say to consult each model's
+operator's manual. The Datex-Ohmeda and Andrews and Johnston quotations are
+kept unchanged. § "Assumptions" said the two classes "diverge in opposite
+directions" and pointed at § "Known limitations"; it now says they are said to
+respond differently, so the two sections agree. Dosch and Tharp is added to the
+list of sources as tier 2, and the owner-attested count reads "two of those
+six".
+
+What was read on 2026-11-16: Dosch and Tharp's chapter, in full, by `curl`
+from its address. Johnston et al. 1994 (PMID 8067562), the abstract only,
+through the PubMed MCP server; it says nothing about altitude. Dorsch and
+Dorsch's chapter 6 could not be read: Open Library lists the book with no
+e-book, the Internet Archive holds no copy, the Google Books API refused the
+query for quota, and the private reference corpus does not hold it. Its terms
+are therefore not checked, and its altitude advice is cited only as Dosch and
+Tharp report it.
+
+One difference found and not acted on: Dosch and Tharp give the Tec 6's
+vapour pressure at 39 °C as "around 1550 mm Hg", where `docs/MODEL.md` takes
+1460 mmHg from Weiskopf et al. 1994, which it records as read in full. The
+primary source is kept. Docs sweep: `docs/MODEL.md` § "Assumptions",
+§ "Delivery-limit and MAC parameters" and § "Known limitations";
+`docs/INTERFACE.md`, `README.md`, `docs/machine-survey.md`,
+`docs/machine-abstraction.md` and `docs/ARCHITECTURE.md` (no altitude
+statement); `tests/` (no test quotes the changed text).
