@@ -109,7 +109,6 @@ loads nothing the guard has not already loaded but itself and docket's
 """
 
 import os
-import re
 import sys
 
 # docket's `src`, from this file's own place, since a guard puts only
@@ -128,6 +127,7 @@ if _DOCKET not in sys.path:
 from docket.shell import (  # noqa: E402
     HEADS,
     REDIRECTIONS,
+    SHELL_OPERATORS,
     WRAPPERS,
     Assignment,
     Descriptor,
@@ -148,7 +148,6 @@ from docket.shell import (  # noqa: E402
 __all__ = [
     "EXPANDS",
     "HEADS",
-    "NEEDS_QUOTES",
     "REDIRECTIONS",
     "RUN_A_BUILTIN",
     "SEPARATORS",
@@ -164,6 +163,7 @@ __all__ = [
     "command_line",
     "command_words",
     "commands",
+    "expands",
     "flat_reading",
     "invocation",
     "is_python",
@@ -204,17 +204,32 @@ SEPARATORS = {
     for operator in HEADS - {"("}
 }
 
-# What makes bash read a word written bare as something else: a blank splits
-# it, a quote or a backslash is read as quoting, an operator character ends it,
-# and a `#` can open a comment. A `$`, a backtick and the glob characters are
-# not here, so a word bash expanded is expanded again (`PL-ZS13`).
-NEEDS_QUOTES = re.compile(r"[\s'\"\\&|;()<>#]")
+# What makes bash read a word written bare as something else, besides a blank:
+# a quote or a backslash is read as quoting, an operator character ends it, and
+# a `#` can open a comment. A `$`, a backtick and the glob characters are not
+# here, so a word bash expanded is expanded again (`PL-ZS13`).
+_READ_AS_SYNTAX = SHELL_OPERATORS | frozenset("'\"\\#")
+
+
+def needs_quotes(word: str) -> bool:
+    """Whether bash would read `word`, written bare, as something other than this word.
+
+    A blank is any character that `str.isspace` accepts. That set is wider than
+    the space, tab and newline that bash splits on, so a word is quoted when in doubt.
+    """
+    return any(char.isspace() or char in _READ_AS_SYNTAX for char in word)
+
 
 # What bash makes new words from after a guard has read these: a `$` opens a
 # parameter or a substitution, a backtick a substitution and a `{` a brace
 # expansion, so a word holding one is not yet the word the command is handed.
 # Two guards each held a copy before this one (`PL-ZXCN`).
-EXPANDS = re.compile(r"[$`{]")
+EXPANDS = frozenset("$`{")
+
+
+def expands(word: str) -> bool:
+    """Whether `word` holds a character of `EXPANDS`, from which bash makes new words."""
+    return not EXPANDS.isdisjoint(word)
 
 
 # The builtins that run another builtin in this shell (`help command` and `help
@@ -317,7 +332,7 @@ def _quoted(word: str) -> str:
     """
     head = word[: word.index("=") + 1] if isinstance(word, Assignment) else ""
     value = word[len(head) :]
-    if (value or head) and not NEEDS_QUOTES.search(value):
+    if (value or head) and not needs_quotes(value):
         return word
     if "$" in value or "`" in value:
         return head + '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'

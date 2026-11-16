@@ -133,7 +133,7 @@ _PRICE_KEYS: Final = frozenset(
     {_AGENT_KEY, _BOTTLE_PRICE_KEY, _BOTTLE_VOLUME_KEY, _CURRENCY_KEY, _APPLIES_ON_KEY}
 )
 
-# A date must be an ISO 8601 calendar date in its extended form, such as 2008-03-05.
+# regex: a date must be an ISO 8601 calendar date in its extended form, such as 2008-03-05.
 # `date.fromisoformat` also accepts the basic form, 20080305, which a reader could take
 # for another number. So the pattern is checked before `date.fromisoformat` runs.
 _DATE_PATTERN: Final = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")

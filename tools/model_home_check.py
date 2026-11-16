@@ -46,6 +46,7 @@ from docket.vcs import tracked_files  # noqa: E402
 #: A Claude model id: `claude-`, a family name, then one or more version
 #: numbers, the last of which may be a date. This file names no example,
 #: because it would be a copy this check refuses.
+# regex: a model id is a flat token of a fixed shape, searched for through prose and code alike.
 MODEL_ID_RE = re.compile(r"\bclaude-[a-z]+(?:-\d+)+\b")
 
 #: Where the item store lives. A closed item is a record. An open one is read

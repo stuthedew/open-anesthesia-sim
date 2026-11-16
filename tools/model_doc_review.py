@@ -106,6 +106,7 @@ API_TIMEOUT_S = 120
 REVIEW_DIR = STATE_DIR / "model-doc-review"
 
 #: A batch request's `custom_id` must match this, per the API reference.
+# regex: the API reference states the allowed `custom_id` as this character class and length.
 CUSTOM_ID_RE = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
 
 KINDS = ("data", "internal", "unit")
@@ -203,6 +204,8 @@ def sections(document: str) -> list[Section]:
             found[-1][1].append(line)
     out = []
     for index, (heading, lines) in enumerate(found, 1):
+        # regex: this turns each run of characters outside a fixed set into one dash, which no
+        # string method does.
         slug = re.sub(r"[^a-z0-9]+", "-", heading.lower()).strip("-")
         custom_id = f"s{index:02d}-{slug}"[:64].rstrip("-")
         out.append(Section(custom_id, heading, "".join(lines)))

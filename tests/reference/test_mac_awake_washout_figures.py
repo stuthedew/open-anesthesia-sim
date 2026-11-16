@@ -100,6 +100,8 @@ def _section_text() -> str:
 def _one(pattern: str, text: str) -> tuple[str, ...]:
     """The groups of the one match of `pattern`, or a failure that says what moved."""
 
+    # regex: each figure is read from a sentence of prose in docs/INTERFACE.md,
+    # and only a pattern can fix the words around a number and capture it.
     matches = re.findall(pattern, text)
     assert len(matches) == 1, (
         f"docs/INTERFACE.md § 'MAC-awake as a chart reference' should state this once, as "

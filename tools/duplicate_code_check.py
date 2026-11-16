@@ -69,6 +69,7 @@ _UNREAD_STATUS = 1 | 2
 ALLOWED_BLOCKS: Mapping[tuple[str, str], int] = {}
 
 #: A module and line span in an `R0801` message, such as `==tissue:[179:187]`.
+# regex: a module and its line span inside the text of pylint's `R0801` message is a fixed shape.
 _SPAN_RE = re.compile(r"^==(?P<module>[\w.]+):\[(?P<start>\d+):(?P<end>\d+)\]$", re.MULTILINE)
 
 

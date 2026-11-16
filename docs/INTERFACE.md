@@ -336,7 +336,11 @@ one multiplier and wrongly at another.
 The limit on a chart's marks is `MAX_CHART_CONTROL_MARKS` in
 `app/chart_frame.py`, and the limit on the list's lines is
 `MAX_LISTED_ADJUSTMENTS` in `app/dashboard_frame.py`. No record gives the
-reason for either value (`PL-N8G4`).
+reason for either value. Both first appear, at 24 and 12, in the change that
+first recorded the control-input timeline, and its commit message, its item
+and its documents say what each limit does but not why it is that number
+(`PL-DR1Z`, `PL-N8G4`). The comment beside each limit says what changing it
+would do.
 
 Capping the timeline would not bound memory use, because the run itself holds
 one stretch and one keyframe for each accepted change and has no limit either

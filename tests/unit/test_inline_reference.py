@@ -79,6 +79,8 @@ PUBLISHED = {
 #: The fence around a specification's example: its opening line carries
 #: `example` and the example's extension, if any.
 EXAMPLE_FENCE = "`" * 32
+# regex: this compiles the soft-break pattern that the readers under test use,
+# so that the test checks that one pattern against markdown-it-py.
 SOFT_BREAK = re.compile(doc_check.SOFT_BREAK)
 
 #: The lines of a paragraph, heading or table row, as markdown-it-py maps the

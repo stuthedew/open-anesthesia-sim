@@ -79,26 +79,26 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.config import load  # noqa: E402
+from docket.fences import blocks, without_fences  # noqa: E402
+from docket.instructions import ISO_DATE_RE  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
-from docket.markdown import PROSE, Heading, headings  # noqa: E402
+from docket.markdown import PROSE, Heading, headings, unmarked  # noqa: E402
+from docket.release import code_spans  # noqa: E402
 from docket.store import CITED_ID_RE  # noqa: E402
 from docket.vcs import RECORDS, GitUnanswered, default_base, listed_paths, read_git, resolved  # noqa: E402
 
 import doc_check  # noqa: E402
 from product_paths import MODEL_DOC, SPECIFICATION_DOCS  # noqa: E402
 
-#: A display equation's body: the lines of a ```math fence.
-MATH_FENCE_RE = re.compile(r"^```math[ \t]*\n(.*?)^```", re.M | re.S)
-#: An inline equation, written $`...`$ as GitHub renders one.
-INLINE_MATH_RE = re.compile(r"\$`([^`\n]+)`\$")
-#: A code span, once the inline equations are removed.
-CODE_RE = re.compile(r"`([^`\n]+)`")
-#: A date, which the history carries and a specification rarely needs.
-DATE_RE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
+#: The opening line of a display equation's fence, its trailing blanks removed.
+MATH_FENCE_OPENING = "```math"
 #: A pull request or issue number, which is history too.
+# regex: a pull request number is a flat token, `#` and digits, searched for through prose.
 PULL_RE = re.compile(r"#\d+\b")
 #: A digital object identifier, a PubMed id, a web address, or a page locator. A
 #: sentence's closing full stop is not part of an identifier or an address.
+# regex: these are flat tokens of fixed shapes, searched for through prose. They differ from
+# `doc_check.PUBLISHED_SOURCE_RE`, which reads no web address or page locator.
 SOURCE_LOCATOR_RE = re.compile(
     r"\b10\.\d{4,9}/[^\s)\]>,;]*[^\s)\]>,;.]"
     r"|\bPMID:?\s*\d+"
@@ -108,20 +108,21 @@ SOURCE_LOCATOR_RE = re.compile(
 #: A number as written in prose: its sign, thousands separators, decimals and
 #: exponent, and the unit after it from `doc_check.PROSE_UNITS`, so that
 #: "1.32 L" changed to "1.32 mL" reads as a different value.
+# regex: a number and its unit are a flat token searched for through prose, and the edges need
+# lookarounds.
 PROSE_NUMBER_RE = re.compile(
     r"(?<![\w.])[−+-]?\d+(?:[.,]\d+)*(?:[eE][−+-]?\d+)?"
     r"(?:[  ]?×?(?:" + doc_check.PROSE_UNITS + r")(?![\w/]))?"
     r"(?![\w])"
 )
 #: A number that `PROSE_NUMBER_RE` found, split into its numeral and its unit.
+# regex: this splits a token that `PROSE_NUMBER_RE` found into the same two parts it matched.
 NUMBER_PARTS_RE = re.compile(
     r"(?P<numeral>[−+-]?\d+(?:[.,]\d+)*(?:[eE][−+-]?\d+)?)[ \u00a0]?×?(?P<unit>.*)"
 )
 #: The heading level of a section of `docs/MODEL.md`. A restated number is
 #: paired with the dropped one only inside the same section of this level.
 SECTION_LEVEL = 2
-#: The marker of a numbered list item, whose ordinal is not a value.
-LIST_ORDINAL_RE = re.compile(r"^[ \t]*\d+\.(?=[ \t])", re.M)
 
 #: The kinds `lost` prints one by one, in the order it prints them. A
 #: declaration is the form ``no test yet (`PL-XXXX`)``, which
@@ -202,43 +203,56 @@ def facts(text: str) -> Iterable[tuple[str, str, int]]:
 
     blank = list(text)
 
-    def take(match: re.Match[str]) -> None:
-        for index in range(match.start(), match.end()):
+    def take_span(start: int, end: int) -> None:
+        for index in range(start, end):
             if blank[index] != "\n":
                 blank[index] = " "
 
-    for match in MATH_FENCE_RE.finditer(text):
-        yield "equation", match.group(1).strip(), line_of(match.start(1))
-        take(match)
+    def take(match: re.Match[str]) -> None:
+        take_span(match.start(), match.end())
+
+    rows = split_lines(text, keepends=True)
+    for block in blocks(text):
+        if rows[block.start].rstrip() != MATH_FENCE_OPENING:
+            continue
+        body = "".join(rows[index] for index in block.body)
+        yield "equation", body.strip(), block.start + 2
+        take_span(starts[block.start], starts[block.end] + len(rows[block.end]))
     scanned = "".join(blank)
-    for match in INLINE_MATH_RE.finditer(scanned):
-        yield "equation", match.group(1), line_of(match.start())
+    for match in doc_check.MATH_SPAN_RE.finditer(scanned):
+        yield "equation", match["body"], line_of(match.start())
         take(match)
     scanned = "".join(blank)
     for match in doc_check.TEST_ENTITY.declares_none.finditer(scanned):
         yield "declaration", " ".join(match.group().split()), line_of(match.start())
         take(match)
     scanned = "".join(blank)
-    for match in CODE_RE.finditer(scanned):
-        if CITED_ID_RE.fullmatch(match.group(1)):
-            yield "item id", match.group(1), line_of(match.start())
+    # A fenced block is no code span, and its numbers are read below as prose's are.
+    for match in code_spans(without_fences(scanned)):
+        content = (
+            " ".join(match["content"].split()) if "\n" in match["content"] else match["content"]
+        )
+        if CITED_ID_RE.fullmatch(content):
+            yield "item id", content, line_of(match.start())
         else:
-            yield "code", match.group(1), line_of(match.start())
+            yield "code", content, line_of(match.start())
         take(match)
     scanned = "".join(blank)
     for match in CITED_ID_RE.finditer(scanned):
         yield "item id", match.group(), line_of(match.start())
         take(match)
-    for pattern, kind in ((DATE_RE, "date"), (SOURCE_LOCATOR_RE, "citation")):
+    for pattern, kind in ((ISO_DATE_RE, "date"), (SOURCE_LOCATOR_RE, "citation")):
         scanned = "".join(blank)
         for match in pattern.finditer(scanned):
             yield kind, match.group(), line_of(match.start())
             take(match)
-    for pattern in (PULL_RE, LIST_ORDINAL_RE):
-        scanned = "".join(blank)
-        for match in pattern.finditer(scanned):
-            take(match)
     scanned = "".join(blank)
+    for match in PULL_RE.finditer(scanned):
+        take(match)
+    # A list item's marker, such as the ordinal `1.`, is no value, so every
+    # container's marker is blanked as `docket.markdown` reads them.
+    unmarked_rows = unmarked(split_lines(text), onto=split_lines("".join(blank)))
+    scanned = "\n".join(unmarked_rows) + ("\n" if text.endswith("\n") else "")
     for match in PROSE_NUMBER_RE.finditer(scanned):
         yield "number", match.group(), line_of(match.start())
 

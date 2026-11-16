@@ -39,8 +39,10 @@ from anesthesia_sim.layout.exceptions import InvalidLayout
 
 __all__ = ["RunId", "RunIdentities", "SessionToken"]
 
-# A session token is a version 4 UUID written as 32 lowercase hexadecimal
-# digits, the form `uuid.UUID.hex` gives.
+# regex: a session token is 32 lowercase hexadecimal digits, the form
+# `uuid.UUID.hex` gives. `SessionToken.drawn` makes one from a random UUID, but
+# the pattern does not check the UUID's version, so 32 zeros pass. `[0-9a-f]`
+# matches only ASCII characters, and `fullmatch` refuses a trailing newline.
 _SESSION_TOKEN: Final = re.compile(r"[0-9a-f]{32}")
 
 

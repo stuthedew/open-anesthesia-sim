@@ -50,6 +50,9 @@ wherever this convention is used, and a knob here would be one more thing to
 get wrong for no reader's benefit.
 """
 
+# regex: the word `open` at the start of a heading, in any case, ended by a
+# character that is not part of a word. `startswith` cannot see where the
+# word ends.
 _OPEN_HEADING_RE = re.compile(r"^\s*open\b", re.IGNORECASE)
 """The leading word that says a thread is still open: `Open thread:`, `Open:`.
 

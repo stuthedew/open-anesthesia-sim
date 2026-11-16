@@ -258,18 +258,23 @@ SHORTFALLS_SOURCE = Path("tools/contrast_check.py")
 #: `color: #D9E2EC;`, which matching the whole string never read (PL-PXT7).
 #: Not inside a longer run of hex digits or a word, and not a character
 #: reference such as `&#128512;`, which a rich-text label can hold.
+# regex: a hex color is a flat token of six hex digits, searched for through a string, with edges
+# that need lookarounds.
 HEX_COLOR_RE = re.compile(r"(?<![0-9A-Za-z_&])#[0-9A-Fa-f]{6}(?![0-9A-Za-z_])")
 #: A constant's whole value written as a hex color, of any length: what a
 #: name has to hold to be read as a color. Any length, so that a `#RGB` stays
 #: a color here and fails loudly where it is measured; the whole value, since
 #: a `+` also builds a stylesheet opening with an id selector,
 #: `"#transport { color: " + INK`, which is no color (PL-PXT7).
+# regex: a hex color written as a whole value is a flat token of a fixed shape.
 HEX_VALUE_RE = re.compile(r"#[0-9A-Fa-f]+")
 #: A stylesheet rule for the disabled state: `:disabled`, or the same state
 #: negated, `:!enabled` (PL-PXT7). Qt reads a pseudo-state's name in any case,
 #: and only written straight after its `:` or `!`: measured on Qt 6.11.2, where
 #: `:DISABLED` and `:!ENABLED` restyled a disabled `QPushButton`, `: disabled`
 #: and `:! enabled` dropped the rule, and `:!disabled` restyled it only enabled.
+# regex: a disabled state in a stylesheet is a flat token in either of two spellings, and the
+# standard library has no Qt stylesheet parser.
 DISABLED_RULE_RE = re.compile(r":(?:disabled|!enabled)", re.IGNORECASE)
 #: What stands in a string's text for a piece its source does not spell out -
 #: an f-string's replacement field, or a side of a `+` that is no string - so
@@ -294,6 +299,7 @@ CONTROL_EXEMPTION_NAME = "FOREGROUND_NOT_DECLARED"
 #: not `mount()`; a span holding anything else - a path, a prose word, an item
 #: id - is left alone, which is what keeps `.claude/rules/ui-color.md` and
 #: `docs/MODEL.md` readable as the citations they are.
+# regex: an identifier in a code span is a flat token of a fixed shape.
 SYMBOL_SPAN_RE = re.compile(r"`([A-Za-z_][A-Za-z0-9_]*)`")
 
 #: `simulation_view.py:320`, and the ranged form `:248-257`. Refused rather
@@ -301,6 +307,8 @@ SYMBOL_SPAN_RE = re.compile(r"`([A-Za-z_][A-Za-z0-9_]*)`")
 #: before, and the rotting is silent (PL-GJDW). Any such line number is
 #: refused, in backticks or not, so this is not `doc_check.LINE_CITATION_RE`,
 #: which reads a backticked citation to check that its line exists.
+# regex: a Python file's path and a line number is a flat token, searched for through prose and code
+# alike.
 LINE_NUMBER_RE = re.compile(r"\b[\w./]+\.py:\d+(?:-\d+)?")
 
 #: Ratios are compared at the precision they are printed at. A verdict that

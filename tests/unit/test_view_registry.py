@@ -192,6 +192,19 @@ def test_a_retirement_names_a_release_number(version: str) -> None:
         RetiredTag(OLD, version)
 
 
+@pytest.mark.parametrize("version", ["0.07.0", "00.7.0", "0.7.00", "01.0.0"])
+def test_a_release_number_has_no_leading_zero(version: str) -> None:
+    """The notice shows the number, and "0.07.0" names a release never made (`PL-3WFF`)."""
+
+    with pytest.raises(ValueError, match="no leading zero"):
+        RetiredTag(OLD, version)
+
+
+@pytest.mark.parametrize("version", ["0.0.0", "0.7.0", "10.20.300"])
+def test_a_release_number_may_hold_a_zero_or_a_number_of_several_digits(version: str) -> None:
+    assert RetiredTag(OLD, version).version == version
+
+
 def test_a_tag_cannot_be_renamed_to_itself() -> None:
     with pytest.raises(ValueError, match="'old_view' cannot be renamed to itself"):
         RetiredTag(OLD, "0.7.0", OLD)

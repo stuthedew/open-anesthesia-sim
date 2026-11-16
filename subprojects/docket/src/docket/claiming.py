@@ -137,6 +137,9 @@ WRITE_TIMEOUT = 120.0
 # What an attribution line must look like to stay a trailer: a token, a colon, a
 # space, a value, on one line. Anything else in the last paragraph can make git
 # read the whole paragraph as prose, and the claim with it.
+# regex: a token of letters, digits and hyphens, then a colon, a space and a
+# value. The token's character set needs a pattern, and `partition` would not
+# check it.
 _TRAILER = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]*: \S.*")
 
 

@@ -25,6 +25,8 @@ def test_a_window_refusing_the_wash_in_ratio_names_a_method_that_forms_it() -> N
         window.compartment_fractions(RecordedSeries("sevoflurane", RecordedQuantity.WASH_IN_RATIO))
 
     message = str(refusal.value)
+    # regex: the message is prose, and only a backticked identifier can name a
+    # method, so backticked text that is not an identifier is left out.
     named = re.findall(r"`(\w+)`", message)
 
     assert named, f"the refusal names no method: {message!r}"

@@ -231,7 +231,7 @@ def sends(words: list[str]) -> bool:
 
 def moved(where: str | None, target: str) -> str | None:
     """`where` after a change of directory to `target`, or None where the shell builds it."""
-    if where is None or target == "-" or shell_split.EXPANDS.search(target):
+    if where is None or target == "-" or shell_split.expands(target):
         return None
     return os.path.join(where, os.path.expanduser(target))
 

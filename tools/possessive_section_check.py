@@ -48,6 +48,8 @@ import doc_check
 #: `doc_check.CITATION_RE` gives (`PL-WJF2`): bounded at 200, a longer one was
 #: never compared with a heading. And within one statement, as every reader of a
 #: soft break there is (`doc_check._statement_matches`, `PL-Z1R7`).
+# regex: a code-spanned `.md` path, a possessive and a quotation are an explicit citation syntax,
+# searched for through prose.
 POSSESSIVE_RE = re.compile(
     r"`(?P<document>[\w./-]+\.md)`['’]s(?:"
     + doc_check.GAP

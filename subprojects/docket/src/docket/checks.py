@@ -122,12 +122,20 @@ DECISION_NEEDED = "**Decision needed.**"
 #: round's answers go under. Matched against a label's opening words, so
 #: `**Answered against the source, 2026-09-14, ...**` is one and prose about an
 #: answer is not.
-ANSWER_LABEL = re.compile(r"(?:Answer(?:ed|s)|Decided|Question \d+ is answered)\b")
+# regex: the fixed opening words of a label a writer puts in bold on purpose,
+# one of which holds a number. `[0-9]` matches only ASCII digits, where `\d`
+# matches any script's digits.
+ANSWER_LABEL = re.compile(r"(?:Answer(?:ed|s)|Decided|Question [0-9]+ is answered)\b")
 
 #: The labels that put a question: the section `needs-decision` requires, and a
 #: design round's heading and numbered questions. `_answered_beneath` reads a
 #: marked recommendation as one too, since it is a question put to the owner.
-QUESTION_LABEL = re.compile(r"(?:Decision needed|Design round|Q(?:uestion )?\d+[.:])")
+# regex: the fixed opening words of a label a writer puts in bold on purpose,
+# such as `Q2.` or `Question 2:`, which hold a number in ASCII digits.
+QUESTION_LABEL = re.compile(r"(?:Decision needed|Design round|Q(?:uestion )?[0-9]+[.:])")
+
+#: The labelled form of a recommendation, written outside emphasis.
+RECOMMENDATION_LABEL = "Recommendation:"
 
 #: The line a triage pass writes once it has asked an item touching the
 #: apparatus where it came from. Not a required section: `bin/docket triage`
@@ -172,6 +180,10 @@ STATUS_REQUIREMENTS: tuple[tuple[str, str], ...] = (
 # to find where one section stops rather than to validate the heading itself,
 # so bold text inside a paragraph does not end a section and a bold-opened
 # paragraph does.
+#
+# regex: `**` at the start of any line, searched from an offset. `^` with
+# `re.MULTILINE` says "at a line's start" in one token, where `str.find` needs
+# a special case for the text's first line.
 BRIEF_HEADING = re.compile(r"^\*\*", re.MULTILINE)
 
 # What a dangling declaration costs, said once because every rule reporting
@@ -246,9 +258,8 @@ def _marks_recommendation(body: str) -> bool:
     for start, end in _statements(body):
         flat = " ".join(text[start:end].split())
         prose = replace_code_spans(_blanked, flat)
-        if "Recommendation:" in prose or any(
-            re.search(r"recommend", prose[span.start : span.end], re.IGNORECASE)
-            for span in _paired(flat)
+        if RECOMMENDATION_LABEL in prose or any(
+            _says_recommend(prose[span.start : span.end]) for span in _paired(flat)
         ):
             return True
     return False
@@ -288,14 +299,14 @@ def _answered_beneath(body: str) -> str | None:
         flat = " ".join(words.strip("*_ \t").split())
         if ANSWER_LABEL.match(flat):
             labels.append((start, True, flat))
-        elif QUESTION_LABEL.match(flat) or re.search("recommend", flat, re.IGNORECASE):
+        elif QUESTION_LABEL.match(flat) or _says_recommend(flat):
             labels.append((start, False, flat))
     for start, end in _statements(body):
         text = replace_code_spans(_blanked, unmarked[start:end])
         labels.extend(
-            (start + found.start(), False, found.group(0))
-            for found in re.finditer("Recommendation:", text)
-            if not any(opens <= start + found.start() < ends for opens, ends in runs)
+            (start + at, False, RECOMMENDATION_LABEL)
+            for at in _occurrences(text, RECOMMENDATION_LABEL)
+            if not any(opens <= start + at < ends for opens, ends in runs)
         )
     standing = sorted(label for label in labels if _standing(body, label[0]))
     if not standing or not standing[-1][1]:
@@ -331,9 +342,22 @@ def _labels(body: str) -> Iterator[tuple[int, int, str]]:
             yield start + span.start, start + span.end, inner
 
 
+def _says_recommend(words: str) -> bool:
+    """Whether a label's words hold "recommend" in any case, which marks a recommendation."""
+    return "recommend" in words.lower()
+
+
+def _occurrences(text: str, word: str) -> Iterator[int]:
+    """Where each occurrence of `word` in `text` starts, left to right, none overlapping."""
+    at = text.find(word)
+    while at != -1:
+        yield at
+        at = text.find(word, at + len(word))
+
+
 def _blanked(literal: re.Match[str]) -> str:
     """A match's text as spaces, its line breaks kept, so every offset past it holds."""
-    return re.sub(r"[^\n]", " ", literal.group(0))
+    return "\n".join(" " * len(line) for line in literal.group(0).split("\n"))
 
 
 def _line_starts(body: str) -> list[int]:
@@ -465,6 +489,8 @@ def _heading_words(marker: str) -> re.Pattern[str]:
     required section it only begins like (`PL-47NJ`). A hyphen joins a word to
     the next, so `**Problem-solving**` is not one either.
     """
+    # regex: the marker's words at the start of any line, where a word character
+    # or a hyphen must not follow. `startswith` cannot test what follows.
     return re.compile(rf"^{re.escape(marker.removesuffix('.**'))}(?![\w-])", re.MULTILINE)
 
 
@@ -1352,7 +1378,8 @@ def _verify_prerequisite_refused(item: Item, config: Config) -> bool:
 # `grep.read_grep`, which `grep.wrapped` reads them through too, and the options
 # a clause may carry are `grep.GREP_FLAGS`, with the reason beside them.
 
-_DOTTED_MODULE_RE = re.compile(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*")
+# regex: a percentage from 0 to 100 with an optional decimal part, in ASCII
+# digits. `float` also reads `nan`, `inf`, exponents and values past 100.
 _PERCENT_RE = re.compile(r"(?:100|[1-9]?[0-9])(?:\.[0-9]+)?")
 _COVERAGE_RUN = ("uv", "run", "pytest")
 
@@ -1386,7 +1413,7 @@ def _coverage_refusal(words: Sequence[Word]) -> str | None:
         )
     for option in modules:
         module = option.split("=", 1)[1]
-        if not _DOTTED_MODULE_RE.fullmatch(module):
+        if not all(part.isidentifier() for part in module.split(".")):
             return f"gives `{option}`, where `--cov=` takes the dotted module, never a path"
     percent = thresholds[0].split("=", 1)[1] if len(thresholds) == 1 else ""
     if not _PERCENT_RE.fullmatch(percent) or float(percent) == 0:
@@ -3071,6 +3098,9 @@ def _cue_pattern(cues: tuple[str, ...]) -> re.Pattern[str]:
     is what keeps the window off a blank line and a block's start. The break
     and the indent around it count as one character of the gap (`SOFT_BREAK`).
     """
+    # regex: this finds a cue such as "blocked on" or "depends on" and then an item id in the
+    # same clause, as a guess that the brief names a prerequisite. A match is an advisory
+    # (`PL-ZBRB`, `PL-8YXJ`).
     return re.compile(
         rf"\b(?:{'|'.join(cues)})\b(?:\.?\*\*)?(?:{SOFT_BREAK}|[^.;:()\"|—\n]){{0,40}}?"
         rf"`?({ID_PATTERN})`?",
@@ -3095,6 +3125,8 @@ CLOSED_DEPENDENCY = _cue_pattern(CLOSED_PREREQUISITE_CUES)
 # Searched from the statement's start, since the pattern ends at the cue: a
 # look-back of 24 characters counted the indent of a wrapped line and never
 # reached the `not` ending the line above (`PL-BVBB`).
+# regex: this finds a negation such as "not" or "no longer" just before a cue, as a guess
+# that the sentence says the item does not wait. A match silences an advisory (`PL-YKBF`).
 NEGATED_CUE = re.compile(
     r"(?:\b(?:not|cannot|never|nothing|neither|nor|without|no(?:\s+longer)?)|n['’]t)"
     r"[*_]{0,2}(?:[ \t]+|[ \t]*\n[ \t]*)\Z",
@@ -3113,6 +3145,8 @@ NEGATED_CUE = re.compile(
 # cue, declares only the first, and nothing fired - the first id was skipped as
 # declared and the second matched no cue - so an open prerequisite of a v0.4.1
 # item stayed invisible to `docket next` while the check reported clean.
+# regex: this finds "and on" or "and by" and then an item id, as a guess that it names a
+# second prerequisite. It is read only after a cue, and a match is an advisory (`PL-GGCN`).
 PROSE_DEPENDENCY_CONTINUATION = re.compile(
     rf"\band\s+(?:(?:up)?on|by)\b(?:\.?\*\*)?(?:{SOFT_BREAK}|[^.;:()\"|—\n]){{0,40}}?"
     rf"`?({ID_PATTERN})`?",
@@ -3125,6 +3159,8 @@ PROSE_DEPENDENCY_CONTINUATION = re.compile(
 # paragraph because a bare "and" is commoner still than "and on". An optional
 # parenthetical between them is the gloss every id carries here (`PL-QS9H`'s
 # "**Sequenced after `PL-6580`** (strip ...) and `PL-F9TQ`").
+# regex: this finds "and" or a comma and then an item id, straight after an id a cue read, as
+# a guess that the list goes on naming prerequisites. A match is an advisory (`PL-8YXJ`).
 PROSE_DEPENDENCY_LIST = re.compile(
     rf"(?:\.?\*\*)?(?:\s*\((?:{SOFT_BREAK}|[^()\n]){{0,160}}\))?"
     rf"(?:\s*,\s*(?:and\s+)?|\s+and\s+)`?({ID_PATTERN})`?",
@@ -3138,7 +3174,12 @@ PROSE_DEPENDENCY_LIST = re.compile(
 # the keyword and the date, where the prose wraps (`PL-TY1Z`), and a blank line
 # may not; `_standing` searches only the passage holding the claim, so neither
 # may a block's start.
-SUPERSEDED = re.compile(r"\[superseded(?:[ \t]+|[ \t]*\n[ \t>]*)\d{4}-\d{2}-\d{2}\b[^\]]{0,300}\]")
+#
+# regex: a bracketed token a writer types on purpose, with a date in ASCII
+# digits, found anywhere in a passage.
+SUPERSEDED = re.compile(
+    r"\[superseded(?:[ \t]+|[ \t]*\n[ \t>]*)[0-9]{4}-[0-9]{2}-[0-9]{2}\b[^\]]{0,300}\]"
+)
 
 # A brief naming its own status: "Left at `needs-decision`", "it stays
 # `blocked`". The coined statuses are read bare as well, since no English uses
@@ -3157,6 +3198,8 @@ OWN_STATUS_PHRASES = (
     r"parked\s+at",
 )
 _STATUS_WORDS = "|".join(re.escape(status) for status in STATUSES)
+# regex: this finds a phrase such as "left at" or "stays" and then a status, as a guess that
+# the brief names its own item's status. A match is an advisory (`PL-8YXJ`, `PL-X4RX`).
 OWN_STATUS = re.compile(
     rf"\b(?:{'|'.join(OWN_STATUS_PHRASES)})\s+"
     rf"(?:`({_STATUS_WORDS})`|(needs-decision|untriaged))(?![\w-])",
@@ -3169,7 +3212,13 @@ OWN_STATUS = re.compile(
 # item left `blocked`" say something departed it. The passive form opens its
 # sentence or follows a present form of "be"; the departing form follows its
 # subject (`PL-2GY0`). "was left" is history, which present tense only excludes.
+# regex: this finds "left" with no "at" after it, which `STANDING_LEFT` then reads to guess
+# whether the item is left at a status or has departed it. A match can only silence the
+# advisory `OWN_STATUS` raises (`PL-2GY0`).
 BARE_LEFT = re.compile(r"left\s+(?!at\b)", re.IGNORECASE)
+# regex: this finds a sentence start or a form of "be" just before "left", as a guess that
+# the "left" is passive and so names the item's status. It decides whether `OWN_STATUS`
+# raises its advisory (`PL-2GY0`).
 STANDING_LEFT = re.compile(
     r"(?:\A|[.!?:]\s|\b(?:is|are|be|been|being)\s)[\s*_>`-]*\Z", re.IGNORECASE
 )

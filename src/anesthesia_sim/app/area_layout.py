@@ -1791,13 +1791,19 @@ class AreaLayout(QWidget):
     def _fits(self, start: LayoutModel, moved: LayoutModel) -> bool:
         """Return whether every Area of `moved` would be drawn no smaller than its least size.
 
-        Each Area's drawn size is estimated as its share of this widget, less one handle's
-        width. The estimate ignores the handles of nested splits. It also overstates an
-        Area's drawn size when a neighbour in the same split is held wider than that
-        neighbour's share (`PL-501T`). For an Area that draws its View, the least size is
-        the bound that the Area was given when the Areas were last settled (`Fit.bounds`).
-        For an Area that is too small for its View, the least size is its floor, measured at
-        the width that the drag would give the Area (`Floor.at`). Such an Area shows a notice
+        Each Area's size is read from `apportion`, which lays out the splitters, at this
+        widget's size. So the handles of every split are counted, nested ones included, and
+        so is a neighbour that is held wider than its share (`PL-501T`). Every other Area is
+        held at the bound it was given when the Areas were last settled (`Fit.bounds`), as
+        the splitters hold it. The Area being measured is given no bound of its own. If it
+        were, `apportion` would hold it at its least size whatever its fraction, and the
+        stored border would no longer match the drawn one. So the
+        size measured is the one that the Area's fraction gives it, and the drag stops
+        where that size reaches the least size.
+
+        For an Area that draws its View, the least size is its bound (`Fit.bounds`). For an
+        Area that is too small for its View, the least size is its floor, measured at the
+        width that the drag would give the Area (`Floor.at`). Such an Area shows a notice
         in place of its View, and a narrower Area needs a taller floor to fit that notice.
         So a drag stops before it would leave an Area's notice too little room (`PL-16BG`).
 
@@ -1807,21 +1813,19 @@ class AreaLayout(QWidget):
 
         fit = self._fit
         assert fit is not None, "every build settles the Areas"
-        width, height = self.width(), self.height()
+        extent = PixelSize(max(self.width(), 0), max(self.height(), 0))
 
-        def drawn(model: LayoutModel, area_id: AreaId) -> tuple[float, float]:
-            place = model.rectangle(area_id)
+        def drawn(model: LayoutModel, area_id: AreaId) -> tuple[int, int]:
+            bounds = dict(fit.bounds)
+            bounds[area_id] = PixelSize(0, 0)
+            tree = model.windows[MAIN_WINDOW].tree
+            size = apportion(tree, extent, AREA_HANDLE_WIDTH, bounds).areas[area_id]
 
-            return (
-                (place.right - place.left) * width - AREA_HANDLE_WIDTH,
-                (place.bottom - place.top) * height - AREA_HANDLE_WIDTH,
-            )
+            return size.width_px, size.height_px
 
-        def least(area_id: AreaId, width_px: float) -> tuple[int, int]:
+        def least(area_id: AreaId, width_px: int) -> tuple[int, int]:
             bound = (
-                fit.bounds[area_id]
-                if area_id in fit.drawn
-                else self._floors[area_id].at(int(width_px))
+                fit.bounds[area_id] if area_id in fit.drawn else self._floors[area_id].at(width_px)
             )
 
             return bound.width_px, bound.height_px

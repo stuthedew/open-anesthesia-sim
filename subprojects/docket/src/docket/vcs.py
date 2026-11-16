@@ -268,9 +268,9 @@ def listed_paths(listing: str) -> tuple[str, ...]:
     return tuple(path for path in listing.split("\0") if path)
 
 
+#: The digits git writes, three at a time, for a byte it escapes in a quoted path.
+_OCTAL_DIGITS = frozenset("01234567")
 #: The escapes git writes inside a quoted path, beside `\\ooo` for a byte.
-#: The three octal digits git writes for a byte it escapes in a quoted path.
-_OCTAL_ESCAPE_RE = re.compile(r"[0-7]{3}")
 _QUOTED_ESCAPES = {"a": 7, "b": 8, "t": 9, "n": 10, "v": 11, "f": 12, "r": 13, '"': 34, "\\": 92}
 
 
@@ -295,8 +295,8 @@ def unquoted_path(field: str) -> str:
         if char != "\\" or at + 1 == len(body):
             raw += char.encode()
             at += 1
-        elif _OCTAL_ESCAPE_RE.fullmatch(body[at + 1 : at + 4]):
-            raw.append(int(body[at + 1 : at + 4], 8) & 0xFF)
+        elif len(octal := body[at + 1 : at + 4]) == 3 and set(octal) <= _OCTAL_DIGITS:
+            raw.append(int(octal, 8) & 0xFF)
             at += 4
         else:
             raw.append(_QUOTED_ESCAPES.get(body[at + 1], ord(body[at + 1]) & 0xFF))
@@ -1158,7 +1158,12 @@ def _close(process: subprocess.Popen[bytes]) -> None:
 # together and left this matching the old alphabet (`PL-PB8V`). The segment
 # boundaries on either side are stricter than `ID_PATTERN`'s own lookahead, so
 # the id is still read only where a separator or the end of the name closes it.
-BRANCH_ID_RE = re.compile(rf"(?:^|[/_-])({ID_PATTERN})(?:$|[/_-])", re.I)
+#
+# regex: the store's id grammar between two separators of a branch name, which
+# no string method can find without splitting on all three separators first.
+# `\Z` ends the match at the end of the name, where `$` would also allow a
+# trailing newline.
+BRANCH_ID_RE = re.compile(rf"(?:^|[/_-])({ID_PATTERN})(?:\Z|[/_-])", re.I)
 
 # The ids at the *front* of a commit subject, and only there. `CLAUDE.md`
 # requires the id of the work to lead every implementation subject, so an id
@@ -1200,15 +1205,22 @@ BRANCH_ID_RE = re.compile(rf"(?:^|[/_-])({ID_PATTERN})(?:$|[/_-])", re.I)
 # 1,578 subjects on `main`, every gate entry and every slot in `ROADMAP.md`
 # exactly as their own readers did.
 _RUN_WRAP = r"[\s*_]*"
+# regex: a run of ids joined by commas, `&` or `and`, each perhaps wrapped in
+# emphasis. It is a flat sequence of tokens built on the store's id grammar,
+# and no parser of the surrounding prose exists.
 LEADING_IDS_RE = re.compile(
     rf"^{_RUN_WRAP}{ID_PATTERN}(?:{_RUN_WRAP}(?:(?:,|&|and){_RUN_WRAP})+{ID_PATTERN})*", re.I
 )
+# regex: each id inside the run `LEADING_IDS_RE` found, by the store's grammar.
 ANY_ID_RE = re.compile(ID_PATTERN, re.I)
 
 # An item file is named `<id>-<slug>.md`, so the id can be read from a tree
 # listing or from a diff without opening anything. The id grammar comes from
 # `store` rather than being spelled again here: two spellings of it would drift,
 # and the one that drifted would silently stop recognising items.
+#
+# regex: the store's id grammar at the start of a file name, followed by a
+# hyphen. The grammar is a pattern, so reading it needs one.
 ITEM_FILE_RE = re.compile(rf"^({ID_PATTERN})-")
 
 
@@ -4775,7 +4787,11 @@ def notes_added(
 # from owner/branch` for a merge commit, and `Title (#71)` for a squash. Both
 # are matched, because a repository that switches from one to the other keeps
 # the history it already has.
-PR_SUBJECT_RE = re.compile(r"^Merge pull request #(\d+)\b|\(#(\d+)\)\s*$")
+#
+# regex: one of two fixed phrases around a number, one at the start of the
+# subject and one at its end. `[0-9]` matches only ASCII digits, where `\d`
+# matches any script's digits; `pr_number` then refuses a leading zero.
+PR_SUBJECT_RE = re.compile(r"^Merge pull request #([0-9]+)\b|\(#([0-9]+)\)\s*\Z")
 
 
 @dataclass(frozen=True)

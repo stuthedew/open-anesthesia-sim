@@ -93,6 +93,8 @@ def test_agent_header_badge_is_bordered_against_the_panel(
     run = _shown_view(application, SimulationController(agent_id=agent_id)).runs[0]
     scheme = AGENT_COLOR_SCHEMES[agent_id]
 
+    # regex: the pattern accepts any spacing after `border:`, so the test does
+    # not depend on how the style sheet is laid out. Nothing here reads Qt style sheets.
     assert re.search(
         rf"border:\s*1px solid {re.escape(scheme.foreground)}", run._agent_header_badge.styleSheet()
     ), run._agent_header_badge.styleSheet()

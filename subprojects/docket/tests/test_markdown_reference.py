@@ -59,6 +59,8 @@ OPENS = frozenset({"blockquote_open", "list_item_open"})
 CLOSES = frozenset({"blockquote_close", "list_item_close"})
 
 #: A setext heading's `-` underline, past the indent markdown-it-py has read.
+# regex: a run of hyphens, then any spaces or tabs. The test reads this
+# itself, apart from the module under test, so the two can disagree.
 UNDERLINE = re.compile(r"-+[ \t]*")
 
 #: Each leaf block as (kind, first line, one past its last, depth, heading level).

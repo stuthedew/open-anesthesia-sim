@@ -72,6 +72,8 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 PROMPTS = ROOT / "tools" / "skill_start_prompts.json"
+# regex: this counts a docket command anywhere in a command string, including inside a quoted `bash
+# -c` script, which a reading of the outer command's words would miss.
 DOCKET_COMMAND = re.compile(r"bin/docket\s+([\w-]+)")
 
 

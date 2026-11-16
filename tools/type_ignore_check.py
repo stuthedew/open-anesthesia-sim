@@ -88,6 +88,8 @@ INERT = "[unused-ignore]"
 #: the directives suppress and reports them as unused.
 UNSOUND = ("[import-not-found]", "[import-untyped]")
 
+# regex: this finds the directive inside a comment token, with any blanks between `type:` and
+# `ignore`.
 DIRECTIVE = re.compile(r"type:\s*ignore")
 
 

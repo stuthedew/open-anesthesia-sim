@@ -316,6 +316,8 @@ def test_no_output_calls_anything_a_generator(
 #: looser than `ID_RE`, because what is under test is whether a printed id
 #: *matches* that pattern - a candidate regex that could only match a valid id
 #: would have nothing to report.
+# regex: it searches free output for id-shaped text that the store's own
+# readers would skip, which is what this test exists to catch.
 _PRINTED_ID_RE = re.compile(r"PL-[A-Za-z0-9]+")
 
 
