@@ -7,7 +7,7 @@ status: ready
 classes: safety
 feature: numbers-outside-their-valid-range
 touches: src/anesthesia_sim/core, tests/unit, docs/MODEL.md
-deferred-from: v0.7.0 - filed 2026-11-11, after the gate froze; a large structural change whose design waits on the owner's answer
+deferred-from: v0.7.0 - filed 2026-11-11, after the gate froze; a large structural change whose design waits on the owner's answer. Hazard not live, checked 2026-11-16 at 68fc719a: every item it cites is closed, so no rounding error it reports still reaches a learner; the item prevents the next instance, and open pull request #2121 builds its rounding bounds
 added: 2026-11-11
 payoff: a learner is not shown a run that halts, a trend labelled the wrong way or two readings that disagree because of rounding in the last digits
 not-delegable: a root cause built in several pull requests that change core/ signatures or comparison allowances, each read by the project owner, and run at extra-high effort
