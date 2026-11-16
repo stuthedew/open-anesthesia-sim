@@ -86,43 +86,5 @@ GRANDFATHERED_REGEX: dict[str, dict[tuple[str, str], int]] = {
         ("convert_open", "search"): 1,
         ("touches_from", "search"): 1,
     },
-    "tests/integration/simulation_view/test_simulation_view_agent_selector.py": {
-        ("test_agent_header_badge_is_bordered_against_the_panel", "search"): 1
-    },
-    "tests/integration/simulation_view/test_simulation_view_foreground.py": {
-        ("<module>", "compile"): 1
-    },
-    "tests/integration/simulation_view/test_simulation_view_whole_interface.py": {
-        ("test_the_interface_never_predicts_a_time_to_wake_up", "compile"): 1
-    },
-    "tests/reference/test_mac_awake_washout_figures.py": {("_one", "findall"): 1},
-    "tests/unit/test_ci_concurrency.py": {("<module>", "compile"): 4, ("_concurrency", "match"): 1},
-    "tests/unit/test_config_home_check.py": {("_letters", "findall"): 1},
-    "tests/unit/test_gate_status_guard.py": {
-        ("test_the_tracked_makefile_runs_no_recipe_under_a_dry_run", "fullmatch"): 1,
-        ("test_the_tracked_makefile_runs_no_recipe_under_a_dry_run", "match"): 1,
-    },
-    "tests/unit/test_generator_check.py": {("<module>", "compile"): 1},
-    "tests/unit/test_inline_reference.py": {("<module>", "compile"): 1},
-    "tests/unit/test_item_store_guard.py": {("<module>", "compile"): 1},
-    "tests/unit/test_makefile_reference.py": {("<module>", "compile"): 2},
-    "tests/unit/test_quality_step_order.py": {
-        ("<module>", "compile"): 12,
-        (
-            "test_an_apparatus_pull_request_skips_the_costly_tests_and_the_coverage_threshold",
-            "search",
-        ): 1,
-        ("test_checks_needs_every_other_job", "search"): 1,
-    },
-    "tests/unit/test_run_series.py": {
-        ("test_a_window_refusing_the_wash_in_ratio_names_a_method_that_forms_it", "findall"): 1
-    },
-    "tests/unit/test_source_tier_counts.py": {("<module>", "compile"): 1},
-    "tests/unit/test_tools_portability.py": {
-        ("_bare_python_floor", "search"): 1,
-        ("_concrete_pins", "findall"): 1,
-        ("_ruff_target", "fullmatch"): 1,
-    },
-    "tests/unit/test_update_armed.py": {("FakeGitHub.get", "search"): 3},
     "tools/doc_check.py": {("<module>", "compile"): 8},
 }

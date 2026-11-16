@@ -76,11 +76,13 @@ the same reason about its own input.
 from __future__ import annotations
 
 import ast
-import re
 import sys
 import tomllib
 from collections.abc import Iterator
 from pathlib import Path
+
+import yaml
+from docket.digits import whole_number
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 #: The directories whose `*.py` runs under bare `python3`. Each declares its
@@ -117,9 +119,20 @@ def _bare_python_floor() -> tuple[int, int]:
     """
     with (REPO_ROOT / "subprojects" / "docket" / "pyproject.toml").open("rb") as handle:
         requires = tomllib.load(handle)["project"]["requires-python"]
-    match = re.search(r">=\s*(\d+)\.(\d+)", requires)
-    assert match is not None, requires
-    return int(match.group(1)), int(match.group(2))
+    lowest = requires.partition(">=")[2].partition(",")[0].strip()
+    return _major_minor(lowest.split("."), requires)
+
+
+def _major_minor(parts: list[str], source: str) -> tuple[int, int]:
+    """The major and minor numbers that the first two of `parts` spell.
+
+    A part that is not a whole number fails the test, naming `source`.
+    """
+    numbers = [whole_number(part) for part in parts[:2]]
+    assert len(numbers) == 2, source
+    major, minor = numbers
+    assert major is not None and minor is not None, source
+    return major, minor
 
 
 def _ruff_target(root: Path) -> tuple[int, int]:
@@ -135,9 +148,10 @@ def _ruff_target(root: Path) -> tuple[int, int]:
         if "target-version" in config:
             break
         root = (root / config["extend"]).resolve().parent
-    match = re.fullmatch(r"py(\d)(\d+)", config["target-version"])
-    assert match is not None, config["target-version"]
-    return int(match.group(1)), int(match.group(2))
+    target = config["target-version"]
+    digits = target.removeprefix("py")
+    assert digits != target, target
+    return _major_minor([digits[:1], digits[1:]], target)
 
 
 def test_the_formatter_target_matches_the_declared_floor() -> None:
@@ -229,22 +243,39 @@ def test_no_tool_imports_outside_the_standard_library() -> None:
             )
 
 
-# A concrete `major.minor` pin. `3.x` and friends are deliberately not matched:
-# `drift.yml` pins `'3.x'` to run on the *newest* interpreter, which is the whole
-# point of that job, and holding it to the floor would invert it.
-CONCRETE_PIN_RE = r"""^\s*python-version:\s*['"]?([0-9]+\.[0-9]+)['"]?\s*$"""
+def _python_versions(node: object) -> Iterator[object]:
+    """Each value of a `python-version` key anywhere in `node`, in document order."""
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if key == "python-version":
+                yield value
+            else:
+                yield from _python_versions(value)
+    elif isinstance(node, list):
+        for value in node:
+            yield from _python_versions(value)
 
 
 def _concrete_pins(workflow: Path) -> list[str]:
-    """Every concrete `python-version:` pin in one workflow file.
+    """Every concrete `major.minor` `python-version:` pin in one workflow file.
 
-    Read with a regular expression rather than a YAML parser, for the reason
-    `tools/doc_check.py` gives for the same choice: nothing in the standard
-    library reads YAML, and one key's value is not worth a dependency. The
-    pattern is anchored to a whole line so that a job's comment about
-    deliberately *not* setting this input cannot match.
+    The file is read with PyYAML, so a comment about deliberately *not*
+    setting this input is never read as a pin. `3.x` and similar are
+    deliberately left out: `drift.yml` pins `'3.x'` to run on the *newest*
+    interpreter, which is the whole point of that job, and holding it to the
+    floor would invert it. A pin must be quoted, because YAML reads a bare
+    `3.10` as the number 3.1.
     """
-    return re.findall(CONCRETE_PIN_RE, workflow.read_text(encoding="utf-8"), re.MULTILINE)
+    pins = []
+    for value in _python_versions(yaml.safe_load(workflow.read_text(encoding="utf-8"))):
+        assert isinstance(value, str), (
+            f"{workflow.name} pins python-version to {value!r}, which YAML read as a "
+            "number; quote it"
+        )
+        parts = value.split(".")
+        if len(parts) == 2 and all(whole_number(part) is not None for part in parts):
+            pins.append(value)
+    return pins
 
 
 def _workflows() -> list[Path]:

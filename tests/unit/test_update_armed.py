@@ -8,8 +8,8 @@ The one real file read is the workflow, for the spelling of its secret.
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 import update_armed
@@ -52,15 +52,17 @@ class FakeGitHub(GitHub):
         self.updated: list[tuple[int, str]] = []
 
     def get(self, path: str) -> object:
-        if "/pulls?" in path:
-            page = int(re.search(r"[?&]page=(\d+)", path).group(1))  # type: ignore[union-attr]
+        url = urlsplit(path)
+        if url.path.endswith("/pulls"):
+            page = int(parse_qs(url.query)["page"][0])
             return self.entries[(page - 1) * 100 : page * 100]
-        if compare := re.search(r"/compare/main\.\.\.(\w+)$", path):
-            if compare.group(1) not in self.behind:
+        _, compared, head = url.path.partition("/compare/main...")
+        if compared:
+            if head not in self.behind:
                 raise Declined(f"GitHub could not be read at {path}: HTTP 404, Not Found")
-            return {"behind_by": self.behind[compare.group(1)]}
-        if checks := re.search(r"/commits/(\w+)/check-runs", path):
-            found = self.runs.get(checks.group(1), [])
+            return {"behind_by": self.behind[head]}
+        if url.path.endswith("/check-runs"):
+            found = self.runs.get(url.path.split("/")[-2], [])
             return {"total_count": len(found), "check_runs": found}
         raise AssertionError(f"unexpected read {path}")
 
