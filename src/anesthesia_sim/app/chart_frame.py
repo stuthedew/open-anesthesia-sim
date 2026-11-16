@@ -181,6 +181,18 @@ CHART_COLUMN_BUDGET_PER_SERIES: Final = 150
 # costs no construction per frame, and the bound is stated: the display counts
 # what the pool cannot show rather than dropping it silently (`docs/INTERFACE.md`
 # § "The control-input timeline", "Bounds are displayed, not silent").
+#
+# No record gives the reason for 24. The number first appears in the change
+# that recorded the control-input timeline (`PL-DR1Z`, #301, 2026-09-04), in
+# the Flet interface's `app/simulation_view.py`, and the PySide6 port (#578)
+# kept it. That change's commit message, its item and its documents say what
+# the limit does, but not why it is 24 (traced for `PL-N8G4`). Each plot
+# builds one mark for each place in this pool, for each run, when it is
+# created (`qt_chart._control_mark_pool`). The chart marks the newest changes
+# in its window and counts the rest as not marked. So raising the limit marks
+# more changes before that count appears, and builds more hidden marks with
+# each plot. Lowering it moves more changes into the count. The limit does not
+# bound the chart's columns (see `CHART_COLUMN_BUDGET_PER_SERIES`).
 MAX_CHART_CONTROL_MARKS: Final = 24
 
 # How many compartments may be drawn while more than one run is on the chart.
