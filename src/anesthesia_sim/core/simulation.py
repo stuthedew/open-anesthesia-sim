@@ -200,6 +200,8 @@ class SimulationState:
                     reached. Or `name` is `uptake_system` or `stored_states`
                     and the state already has one. Or the stored states do not
                     reach the count the state holds.
+                TypeError: `name` is `stored_states` and the value is not a
+                    `StoredStates`.
             """
 
             if name == "step_count":
@@ -222,8 +224,13 @@ class SimulationState:
                         "a new state"
                     )
 
-                if isinstance(value, StoredStates):
-                    _require_count_the_record_reaches(self.step_count, value)
+                if not isinstance(value, StoredStates):
+                    raise TypeError(
+                        f"stored_states has type {type(value).__name__}, not StoredStates: "
+                        "a run's record of stored states is built by the run itself"
+                    )
+
+                _require_count_the_record_reaches(self.step_count, value)
 
             super().__setattr__(name, value)
 

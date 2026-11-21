@@ -2213,6 +2213,7 @@ hard. No run in the application predicts it. A preview starts from a second that
 stepped to, and a run stepped at that corner stops on the mass-balance check at its first step.
 At the hardest corners a stepped run stops within seconds, as shown below.
 <!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
+<!-- provenance: core/numerical_envelope.py MAXIMUM_VOLUME_L = 10000 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 The 0.99 limit keeps even the largest excess inside the ambient pressure. The limit is far above

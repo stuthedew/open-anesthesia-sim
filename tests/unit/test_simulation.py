@@ -648,6 +648,20 @@ def test_a_step_whose_state_the_record_refuses_is_rolled_back(
     assert state.uptake_system.capture_state() == before
 
 
+def test_a_record_that_is_not_stored_states_is_refused_before_the_state_holds_one() -> None:
+    """A state not yet given its record refuses a value of another type as that record.
+
+    Only the constructor writes the record of a built state, and it always
+    writes a `StoredStates`. A state made without the constructor has no
+    record, so the type check is the one that applies to it.
+    """
+
+    unbuilt = SimulationState.__new__(SimulationState)
+
+    with pytest.raises(TypeError, match=r"^stored_states has type list, not StoredStates"):
+        unbuilt.stored_states = []  # type: ignore[assignment]
+
+
 def test_the_stored_states_cannot_be_replaced_or_copied_out_of_step() -> None:
     state = SimulationState()
     _advance_for(state, duration_s=3)
