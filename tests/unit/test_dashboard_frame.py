@@ -3109,7 +3109,9 @@ def test_the_trunk_reset_question_names_both_runs_and_what_the_trunk_keeps() -> 
     reader keeps by declining. The trunk is not touched either way.
     """
 
-    question = trunk_reset_question("Run 1", (BranchAtStake("Run 2", 60.0, 330.0, 2),))
+    question = trunk_reset_question(
+        "Run 1", (BranchAtStake("Run 2", CaseInstant(60), CaseInstant(330), 2),)
+    )
 
     assert question.title == "Reset Run 1 and discard Run 2?"
     assert question.body == (

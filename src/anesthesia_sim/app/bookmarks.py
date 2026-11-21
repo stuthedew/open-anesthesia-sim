@@ -457,8 +457,8 @@ class BookmarkCrossing:
     Attributes:
         instant_s: The simulated time of the step that crossed the marks, in
             the case's own seconds. It is the completed step's own instant, so
-            it lies on the run's `simulation_step_s` grid rather than on the
-            coarser `multiplier ×` grid that a tick boundary can reach.
+            it is the whole second on which the marks were crossed, and not
+            the later second on which a tick of several steps ends.
             `docs/INTERFACE.md` § "Halting on a marked crossing" states why that
             matters.
         time_bookmarks: The marked instants the step reached, in the order the
@@ -684,8 +684,8 @@ class BookmarkSet:
         `SimulationController.advance` calls this once per completed step, with
         the readings from either side of that step. Testing every step is the
         whole point. A test applied once per rendered frame would place the
-        halt up to `multiplier × simulation_step_s` past the value the learner
-        marked, which is 30 simulated seconds at 300×. The same bookmark would
+        halt up to one tick's steps past the value the learner marked, which
+        is 30 simulated seconds at 300×. The same bookmark would
         then stop the run at a different concentration depending on the
         playback speed (`PL-NBWP`, `docs/MODEL.md` § "Supported simulation
         step").
@@ -898,12 +898,11 @@ def _time_bookmark_standing(
     1. **The halt set** comes first, because it covers the one case that the
        comparison below cannot see. A halt lands on the step that *crossed*
        the mark, so a fork taken there opens at the crossing step's own
-       instant. That instant is at the marked instant or one step past it.
-       For an instant that is not a multiple of the step in binary, it is past
-       the marked instant by a few parts in 1e16. For example, with `45.3`
-       marked and `45.300000000000004` forked at, the branch opens after its
-       own mark. Only asking again about the step the branch opened on shows
-       that the two are one crossing.
+       instant. A mark and a step's instant are both whole seconds since
+       `PL-SZ6G`, so that instant is the marked instant itself, and case 2
+       below gives the same result. Before `PL-SZ6G` a step of 0.1 s could
+       land a few parts in 1e16 past a mark such as 45.3 s, and the branch
+       then opened after its own mark. The halt set is still asked first.
     2. **`opened_at_s <= instant_s <= elapsed_s`**: the run has been at that
        instant, whatever put it there.
     3. **`BEFORE_THIS_BRANCH`**, tested with a strict `<`, for an instant

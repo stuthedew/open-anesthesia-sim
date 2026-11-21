@@ -72,7 +72,7 @@ cannot drift from the loop.
 
 **The claim was measured on the shipped loop, and it is true** (`PL-SQJ1`,
 2026-09-27). `RunView._step_timer` is a `QTimer` of type `PreciseTimer` on
-`SIMULATION_TICK_INTERVAL_S`. It fires `step_tick` on its interval
+`SIMULATION_TICK_INTERVAL_MS`. It fires `step_tick` on its interval
 however long painting takes. The measurement ran with the real dashboard
 shown on the offscreen platform and both timers running as `main.py` runs
 them. Every rung from 1x to 300x delivered 99.0 to 99.9% of its nominal rate over

@@ -522,9 +522,10 @@ class SimulationSnapshot(RunRecord):
     ordinary pause. Start resumes the run, and resuming does not count the
     crossing it halted on again (`MacTarget.crossed_between`).
 
-    `instant_s` is the completed step's own instant. So it lies on the run's
-    `simulation_step_s` grid, not on the coarser grid that a tick boundary
-    can reach. That precision is the whole of what `PL-CTD7` provides, and
+    `instant_s` is the completed step's own instant. So it is the whole
+    second on which the marks were crossed, and not the later second on which
+    a tick of several steps ends. That precision is the whole of what
+    `PL-CTD7` provides, and
     `docs/INTERFACE.md` § "Halting on a marked crossing" states it.
     """
     bookmark_standings: BookmarkStandings

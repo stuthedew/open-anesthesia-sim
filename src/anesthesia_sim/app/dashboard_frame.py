@@ -3501,13 +3501,13 @@ class BranchAtStake:
     """
 
     name: str
-    began_at_s: float
-    elapsed_s: float | None
+    began_at_s: CaseInstant
+    elapsed_s: CaseInstant | None
     adjustment_count: int
 
 
 def branch_at_stake(
-    name: str, began_at_s: float, snapshot: SimulationSnapshot | None, adjustment_count: int
+    name: str, began_at_s: CaseInstant, snapshot: SimulationSnapshot | None, adjustment_count: int
 ) -> BranchAtStake | None:
     """Return whether a trunk's Reset would discard work in this branch, and what work.
 

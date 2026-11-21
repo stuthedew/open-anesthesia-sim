@@ -1296,10 +1296,15 @@ def wash_in_stretches(
     crossing column, the curve meets the equilibrium reference line and ends
     on it.
 
-    **Why the extension has a ceiling.** A run stepped at 0.1 s crosses
-    equilibrium by only a hair. This was measured across every agent and
-    every supported alveolar ventilation and cardiac output, at the maximum
-    fresh gas flow. The state at the first step above equilibrium reaches
+    **Why the extension has a ceiling.** A run crosses equilibrium by less
+    than 3% in one step. This was measured on 2026-11-21 across every agent
+    and the supported alveolar ventilations and cardiac outputs, at the
+    maximum fresh gas flow, in 2 646 runs. The state at the first step above
+    equilibrium reaches 1.0281, for sevoflurane at an alveolar ventilation of
+    0.5 L/min and a cardiac output of zero, with the dial closed after an hour
+    of wash-in. With no uptake, the inspired fraction falls in one second by
+    at most the factor exp((10/60)/6), which is 1.0282, for 10 L/min of fresh
+    gas into the 6 L circuit. At the earlier step of 0.1 s the figure was
     1.00235. That measurement was taken step by step. A drawn column falls
     wherever the column spacing puts it, so a column can land on a later
     state of the run, which the measurement did not cover. The ratio is also
