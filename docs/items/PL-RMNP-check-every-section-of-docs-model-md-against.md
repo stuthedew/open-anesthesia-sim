@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: docs
 feature: model-spec-accuracy
-touches: docs/MODEL.md
+touches: docs/MODEL.md, docs/items/PL-CR81-projects-threads-in-the-v0-7-0-project-run.md
 added: 2026-11-21
 payoff: a clinician or contributor reading docs/MODEL.md is not told the simulator does something it does not do
 verify: grep -qE '^\*\*Sections checked\.\*\*' docs/items/PL-RMNP*.md
