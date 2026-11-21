@@ -26,8 +26,7 @@ still delivers it — rather than rewriting. `.claude/rules/plain-writing.md`
 holds the prose-quality standard, deliberately apart from this one, and the
 `prose-quality` feature's items apply it to the existing text.
 
-`CLAUDE.md` § "A behavior change takes effect in the session that asks for it"
-holds the four dispositions, cheapest first: a check or script; a skill; a
+`.claude/rules/rule-routing.md` holds the four dispositions, cheapest first: a check or script; a skill; a
 path-scoped rule; resident. The question each is answered against is *at what
 moment does a session need this rule, and what is the cheapest thing that
 delivers it then.*
@@ -2560,4 +2559,154 @@ recommending work" holds the steps.
       `mine`, and the `tags` filter is refused inside a session. So while
       `PL-NZC0`'s Projects trial runs, triage and start nothing its Order list
       reserves (`PL-DR3G`).
+```
+
+### The procedures that load with the file they govern
+
+`PL-GDN7` moved the rows that apply only with a known file open into
+path-scoped rules. Each block below is the paragraph as it was loaded at launch
+before the move, and the line above it says what stays and which rule holds
+the rest. Row 69, which leads into row 70, is in one block with it.
+
+**Row 23, `CLAUDE.md`: how to record whether a decision was ratified or
+specified.** Two lines stay, which give both forms, because decisions are also
+recorded in files that load no path-scoped rule.
+`.claude/rules/citation-drift.md` § "Record whether the owner ratified or
+specified a decision" holds the rest.
+
+```text
+- **Record which it was.** A decision taken on a session's recommendation is
+  written `(project owner, DATE, ratified)` and names, in one clause, what it
+  was chosen over. One they specified keeps the plain `(project owner, DATE)`,
+  but only from 2026-09-16, the day this rule landed: dated earlier, the plain
+  form records no kind at all, so read it as unrecorded rather than as
+  specified, reopen it on ordinary evidence, and say the kind is unrecorded
+  rather than claiming it was ratified. One word and one clause, because the
+  reply that put the case is gone and the record is the only carrier - and
+  without it a later session cannot tell a design they authored from one they
+  nodded at.
+```
+
+**Row 53, `CLAUDE.md`: a check earns its place every run.** Two lines stay.
+`.claude/rules/apparatus-standard.md` § "A check earns its place every run, or
+it is retired" holds the rest.
+
+```text
+- **A check earns its place every run, or it is retired.** The gate above
+  decides whether to build one; this decides whether to keep it. A check that
+  fires every run without changing a decision is a defect in the check — it
+  costs attention forever and trains a session to skim the output where a real
+  advisory also appears. Removing one is a legitimate outcome of a workflow
+  pass, not a loss of coverage. Reserve hard failure for exact rules; a signal
+  needing context is an advisory, and an advisory nobody acts on is retired only after naming the decision it
+  was built to change and where that decision is taken: if that decision is
+  still taken somewhere, route the advisory to that moment first, and retire
+  it only if it still changes nothing there; if no such decision exists, it
+  is fluff and goes. Nobody reading it is the symptom, not the test (project
+  owner, 2026-10-01, ratified, over an item of its own, `PL-1XZD`). `PL-ZBJ0` carries the evidence.
+```
+
+**Row 69 and 70, `CLAUDE.md`: routing a behavior change to the cheapest place
+that delivers it.** Three lines stay. `.claude/rules/rule-routing.md`, which
+loads with `CLAUDE.md` and `.claude/`, holds the four dispositions.
+
+```text
+  **Route it; do not append here by default.** Ask *at what moment a session
+  needs the rule, and what is the cheapest thing that delivers it then.* Four
+  dispositions, cheapest first:
+
+  1. **A check or a script**, wired into `make check`, a hook, or CI. Zero
+     resident context, and it never fails to fire. Deleting prose because
+     something deterministic now enforces it is the strongest outcome here.
+  2. **A skill**, for a multi-step procedure whose trigger is the skill's own
+     trigger. It loads only when relevant; the queue workflows are the example.
+  3. **A path-scoped rule** — a `.claude/rules/*.md` with `paths:` frontmatter,
+     which loads when a session reads, writes or edits a matching file. Right
+     for a rule that matters only in part of the tree; wrong for one that must
+     fire before a first write, which it reaches only after that write.
+  4. **Resident here**, only for what a session could violate before it would
+     think to look anything up.
+```
+
+**Row 154, `.claude/rules/expert-review.md`: a reference implementation
+measured nothing.** Three lines of pointers stay.
+`.claude/rules/sources-and-docstrings.md` § "A reference implementation is not
+a source" holds the rule.
+
+```text
+A **reference implementation measured nothing**, and saying otherwise in a
+reply is the same error as writing it into a file: "it comes from Gas Man"
+describes a program's parameter set, not a measurement. It may still be
+*adopted* as the authority for a constant, on a recorded decision, and this
+project has done so for most of what it stores — the `tier` and `adopted`
+fields on each entry under `src/anesthesia_sim/data/` are what say which, so a
+reply ruling the practice out in general is wrong about the shipped set.
+`docs/MODEL.md` § "Source hierarchy: what may be cited as the authority for a
+value" is where that question is decided, and the only place it is. That rule
+in full, and what a docstring and an error message owe a reader, are in
+`.claude/rules/sources-and-docstrings.md`. Both fire with a file already open,
+so both load on a path rather than at launch. The concrete bar for `core/` —
+that it should read like the domain — is in `.claude/rules/core-domain.md`.
+```
+
+**Row 179, `.claude/rules/plain-writing.md`: where the rest goes.** One line
+stays. `.claude/rules/sources-and-docstrings.md` § "Write these files plainly"
+holds the note for developers.
+
+```text
+**Where the rest goes.** Decision history goes in the item. In `docs/MODEL.md`,
+detail of the numerical method goes in a note for developers at the end of its
+section, a paragraph that opens with "**For developers.**", because the
+document must specify the numerical method (`PL-TZ7R`). That note may name the
+tests for the paragraphs directly above it (`PL-W8FL`). State a model
+limitation only where it could change what a clinician concludes from a
+displayed value (`PL-BS6N`). `docs/INTERFACE.md` ends a section with the same
+note for developers, for the tests and code behind its requirements.
+```
+
+**Row 180, `.claude/rules/plain-writing.md`: take the reason for a chosen value
+from a record.** Nothing stays. `.claude/rules/sources-and-docstrings.md` §
+"Write these files plainly" holds the rule, and now loads with `tests/` too,
+because the rule's own example is a tolerance in a test.
+
+```text
+**Take the reason for a chosen value from a record.** Where a docstring, a
+comment or a note for developers explains a chosen value, such as a tolerance
+or a limit, take the reason from the code or test that uses the value, or from
+a cited record. When the reason is not at hand, trace the value's history
+first, with `git log -S` and the items. Search for the value as the code
+writes it: a 0.5% tolerance was `5e-3` in the test that used it. When the
+trace finds no reason, file an item for the missing record, and say in the
+text what the trace found. Never state a reason that no record holds.
+```
+
+**Row 197 to 202, `.claude/rules/plain-writing.md`: the examples of a
+`docs/MODEL.md` paragraph and of a docstring.** Nothing stays.
+`.claude/rules/sources-and-docstrings.md` § "Write these files plainly" holds
+both examples.
+
+```text
+**A paragraph of `docs/MODEL.md`**, for a clinician. The project owner accepted
+it on 2026-11-04 (`PL-ZDZ0`).
+
+"The smallest change the MAC readout can show is therefore 0.02
+percentage points of sevoflurane, 0.012 of isoflurane and 0.06 of desflurane,
+never less than the percent readout's. The two readouts round separately, so
+the MAC value can occasionally change while the percent stays the same."
+
+**A docstring**, for a developer. Say what the function returns or does, with
+its unit, then what it refuses, then anything a developer would get wrong
+without being told. Leave out what the signature, the body or a named type
+already shows.
+
+"Return this group's blood flow $`Q_i = f_iQ`$ at a cardiac output, in
+L/min. `docs/MODEL.md` § "Tissue groups" defines it. The group stores no flow
+of its own, so no write can leave its flow out of step with the cardiac output
+(`PL-HQF5`). Raises: TypeError: `cardiac_output_l_min` was not built as a
+`CardiacOutput` (`core/supported_ranges.py`)."
+
+Write each part in whole sentences:
+
+"Reject a volume or tissue:gas partition coefficient that would make the
+tissue's capacity less than the amount of agent it already holds."
 ```

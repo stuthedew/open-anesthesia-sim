@@ -149,3 +149,20 @@ reading "Open" over a resolved thread, a claim about what a command prints — i
 judgment, and no script here will decide it. It stays under `CLAUDE.md`'s
 capture rule, with one change: where the document is a **closed** brief, it is
 not a finding, on the same reasoning as above.
+
+## Record whether the owner ratified or specified a decision
+
+`CLAUDE.md` § "Working with the project owner" says why the two kinds differ,
+and keeps the two forms in one bullet. This is the rest of that bullet
+(`PL-GDN7`).
+
+**Record which it was.** A decision taken on a session's recommendation is
+written `(project owner, DATE, ratified)` and names, in one clause, what it
+was chosen over. One they specified keeps the plain `(project owner, DATE)`,
+but only from 2026-09-16, the day this rule landed: dated earlier, the plain
+form records no kind at all, so read it as unrecorded rather than as
+specified, reopen it on ordinary evidence, and say the kind is unrecorded
+rather than claiming it was ratified. One word and one clause, because the
+reply that put the case is gone and the record is the only carrier - and
+without it a later session cannot tell a design they authored from one they
+nodded at.
