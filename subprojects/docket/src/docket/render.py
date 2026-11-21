@@ -695,10 +695,9 @@ def format_digest(
         lines.append(f"  {unread}")
     if flight.unattributed:
         # Printed here, not only in `flight`, and with nothing suppressing it:
-        # on 2026-09-14 no ref in this repository is unattributed and
-        # `tools/branch_id_check.py` is what keeps it that way, so the steady
-        # state is silence and a line means a ref genuinely nobody can name
-        # (`PL-B73C`).
+        # a line means a ref that nobody can name (`PL-B73C`). No check has
+        # refused such a branch since `PL-HS2T` retired the CI refusal, so this
+        # line and `flight` are where one shows.
         lines.append(
             f"  Unlanded and attributable to no item: {', '.join(sorted(flight.unattributed))}. "
             "Nothing names it, so no guard here can see it - file an item or delete the branch."
@@ -1378,12 +1377,11 @@ def format_flight(
     the item (`PL-N1JK`).
 
     **`FlightReport.unattributed` is printed, and that is the opposite call for
-    the opposite reason** (`PL-B73C`). A ref nobody can name fires on no run at
-    all in the steady state - `tools/branch_id_check.py` refuses a `claude/*`
-    branch of one's own that names none - so it is not an advisory firing every
-    run, it is one firing only when something has escaped every guard this
-    repository has. That is the reading the whole report is silent about
-    otherwise: read perfectly well, and attributable to nothing.
+    the opposite reason** (`PL-B73C`). A ref nobody can name is rare, because
+    a session leads every commit subject with its item's id, so the line is
+    not an advisory firing every run. That is the reading the whole report is
+    silent about otherwise: read perfectly well, and attributable to nothing.
+    No check refuses such a branch since `PL-HS2T` retired the CI refusal.
 
     **`read` adds what the claim record knows and a row has no field for**
     (`PL-N162`, to `PL-MB2W`'s spec). Each row's state and kind - a `claim`, a
@@ -1643,8 +1641,9 @@ def _format_lapsed(read: Holdings, now: datetime) -> list[str]:
 def _format_unclaimed(found: Unclaimed, read: Holdings | None, now: datetime) -> list[str]:
     """The `unclaimed:` rows: work branches that claim nothing (`claims.claims_nothing`).
 
-    `PL-MB2W`'s third "Forgetful session" catch, and the same question
-    `tools/branch_id_check.py` refuses in CI. The rows are the count the
+    `PL-MB2W`'s third "Forgetful session" catch. CI refused such a branch
+    until `PL-HS2T` retired that check, so these rows are now the only place
+    it shows. The rows are the count the
     design's pre-registered 1-in-20 threshold reads, so each branch is one row
     and the heading says what it means rather than what to do about a session
     this checkout cannot see. A branch git did not answer about is named

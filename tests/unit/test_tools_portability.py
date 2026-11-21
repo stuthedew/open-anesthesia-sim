@@ -8,7 +8,7 @@ pinning the formatter to the floor and both are covered here. `PL-W4H9` moved
 the hook out of `tools/`, and covering it by directory rather than by name is
 what keeps the next one from arriving unguarded.
 
-`make check` invokes `python3 tools/branch_id_check.py` and its neighbours with
+`make check` invokes `python3 tools/rules_paths_check.py` and its neighbours with
 whatever bare `python3` is on PATH - no virtualenv, no install step - and CI's
 floor section does the same for `tools/doc_check.py` and more.
 This suite, by contrast, runs under the project virtualenv on the version
@@ -101,11 +101,8 @@ SOURCES = sorted(path for root in BARE_ROOTS for path in root.rglob("*.py"))
 #: tool, `tools/hook_blocks.py`, reads that location from it by inserting
 #: `.claude/hooks/`, so the log has one home (`PL-SG93`). `open_pull_requests`
 #: is the repository's one GitHub client (`tools/open_pull_requests.py`), and
-#: every tool that queries GitHub imports it (`PL-S3TF`). `branch_id_check`
-#: meets both conditions too, and a guard imports it. The guard in
-#: `.claude/hooks/docket_branch_guard.py` reads its `NOT_ASKED` exit status
-#: from it, on the path that `.claude/hooks/guard.py` inserts (`PL-9KSJ`).
-VENDORED = frozenset({"branch_id_check", "docket", "hook_input", "open_pull_requests"})
+#: every tool that queries GitHub imports it (`PL-S3TF`).
+VENDORED = frozenset({"docket", "hook_input", "open_pull_requests"})
 
 
 def _bare_python_floor() -> tuple[int, int]:

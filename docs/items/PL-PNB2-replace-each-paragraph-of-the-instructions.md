@@ -22,5 +22,6 @@ verify: grep -q "tools/import_boundary_check.py" CLAUDE.md
 **Generator check.** One-off. It carries out the owner's approval of `PL-MR85`'s table, and no fact was misread to cause it.
 
 **Checked 2026-11-21**, by `PL-TPXK` (the independent review of the four streamlining decisions). Row 72 names two checks, `tools/branch_id_check.py` and `tools/pr_title_check.py`, and `PL-HS2T` (retire the branch-name check) deletes the first. So row 72's line names only `tools/pr_title_check.py`, which requires the item id at the front of the pull request title. No check requires an id at the front of each commit subject, and `tools/branch_id_check.py` never did: its docstring says "Not every commit - one is enough to make the branch visible". The sentence that asks for the id on each commit therefore stays as text, beside the co-author line.
+<!-- absent: tools/branch_id_check.py -->
 
 **Done when.** Each row listed in the title holds no more lines than `PL-MR85`'s table gives it, each named check runs in `make check` or in CI, and `make check` passes.

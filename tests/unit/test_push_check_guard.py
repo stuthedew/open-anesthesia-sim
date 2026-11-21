@@ -1,8 +1,8 @@
 """Tests for the push-check guard, `.claude/hooks/push_check_guard.py` (`PL-PLSJ`).
 
-The hook runs `tools/doc_check.py`, `tools/branch_id_check.py` and `bin/docket
-check --verify` (`PL-S1BG`) in the working tree a `git push` runs from, and
-denies the push while any fails. Since `PL-3JG7` it also runs four more of
+The hook runs `tools/doc_check.py` and `bin/docket check --verify` (`PL-S1BG`)
+in the working tree a `git push` runs from, and denies the push while either
+fails. Since `PL-3JG7` it also runs four more of
 `make check`'s checks under the tree's `.venv/bin/python`. Each test builds a
 scratch repository whose scripts are stubs printing a known report, and points
 `CLAUDE_PROJECT_DIR` at it, so what is pinned is the hook's own rule: which
@@ -27,7 +27,7 @@ HOOK = REPO / ".claude" / "hooks" / "guard.sh"
 #: The guard these tests run alone, through the entry point every guard shares.
 GUARD = "push-check-guard"
 
-PASS = 'print("branch-id: visible in flight - PL-K7QX")'
+PASS = 'print("documentation: 0 errors, 0 advisories")'
 DOC_ERROR = "docs/items/PL-K7QX-a.md: cites `start.md`, which does not exist"
 DOC_FAILS = (
     "import sys\n"
@@ -39,12 +39,6 @@ DOC_FAILS = (
     'print("")\n'
     'print("Advisories (judgment needed):")\n'
     'print("  an advisory nobody needs at push time")\n'
-    "sys.exit(1)"
-)
-BRANCH_FAILS = (
-    "import sys\n"
-    'print("branch-id: 2 commit(s) ahead of origin/main, and no item id names any of them.",'
-    " file=sys.stderr)\n"
     "sys.exit(1)"
 )
 # `bin/docket` is a bash wrapper, so its stubs are bash.
@@ -73,10 +67,9 @@ def _git(where: Path, *args: str) -> None:
     )
 
 
-def _stub(tree: Path, doc: str = PASS, branch: str = PASS, store: str = STORE_PASS) -> None:
+def _stub(tree: Path, doc: str = PASS, store: str = STORE_PASS) -> None:
     (tree / "tools").mkdir(exist_ok=True)
     (tree / "tools" / "doc_check.py").write_text(doc + "\n")
-    (tree / "tools" / "branch_id_check.py").write_text(branch + "\n")
     (tree / "bin").mkdir(exist_ok=True)
     (tree / "bin" / "docket").write_text(store + "\n")
 
@@ -129,16 +122,6 @@ def test_a_push_whose_doc_check_fails_is_refused(project: Path) -> None:
     # pre-push hook's screens to run (`PL-5R11`).
     assert "PUSH_CHECKS=skip git push -u origin <branch>" in reason
     assert "--no-verify" not in reason
-
-
-def test_a_push_whose_branch_id_check_fails_is_refused(project: Path) -> None:
-    _stub(project, branch=BRANCH_FAILS)
-    decision = _decision("git push", cwd=project, project=project)
-    assert decision is not None
-    reason = decision["permissionDecisionReason"]
-    assert "`branch_id_check` failed" in reason
-    assert "no item id names any of them" in reason
-    assert "doc_check" not in reason
 
 
 def test_a_push_whose_store_check_fails_is_refused(project: Path) -> None:
@@ -254,21 +237,13 @@ def test_a_refusal_names_uncommitted_work_the_checks_read(project: Path) -> None
     assert "git stash --include-untracked" in reason
 
 
-def test_a_refusal_blames_no_uncommitted_work_where_none_was_read(project: Path) -> None:
-    # A clean tree holds none.
+def test_a_refusal_blames_no_uncommitted_work_in_a_clean_tree(project: Path) -> None:
     _stub(project, doc=DOC_FAILS)
     _git(project, "add", "-A")
     _git(project, "commit", "-q", "-m", "fails")
     decision = _decision("git push", cwd=project, project=project)
     assert decision is not None
     assert "uncommitted" not in decision["permissionDecisionReason"]
-    # `branch_id_check` reads the history, where uncommitted work cannot be the cause.
-    _stub(project, branch=BRANCH_FAILS)
-    decision = _decision("git push", cwd=project, project=project)
-    assert decision is not None
-    reason = decision["permissionDecisionReason"]
-    assert "`branch_id_check` failed" in reason
-    assert "uncommitted" not in reason
 
 
 PUSHES = (
@@ -521,20 +496,20 @@ def test_a_check_killed_at_the_deadline_is_named(
 
 def test_a_check_that_crashes_is_named(project: Path) -> None:
     """A check that dies with a traceback gave no answer either, and the note names its error."""
-    _stub(project, branch="raise RuntimeError('boom')")
+    _stub(project, doc="raise RuntimeError('boom')")
     output = _output("git push -u origin claude/x", cwd=project, project=project)
     assert output is not None
     assert "permissionDecision" not in output
-    assert "`branch_id_check` (exited 1: RuntimeError: boom)" in output["additionalContext"]
+    assert "`doc_check` (exited 1: RuntimeError: boom)" in output["additionalContext"]
 
 
 def test_a_refusal_also_names_a_check_that_gave_no_answer(project: Path) -> None:
-    _stub(project, doc=DOC_FAILS, branch="raise RuntimeError('boom')")
+    _stub(project, doc="raise RuntimeError('boom')", store=STORE_FAILS)
     decision = _decision("git push -u origin claude/x", cwd=project, project=project)
     assert decision is not None
     reason = decision["permissionDecisionReason"]
-    assert DOC_ERROR in reason
-    assert "`branch_id_check` (exited 1: RuntimeError: boom)" in reason
+    assert STORE_ERROR in reason
+    assert "`doc_check` (exited 1: RuntimeError: boom)" in reason
 
 
 @pytest.mark.parametrize(

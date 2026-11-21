@@ -6,10 +6,10 @@ retrieval path.
 
 **The entry lines below are emitted into every session's context at start, and
 a `SessionStart` hook's output is resent on every turn** — so they are budgeted
-at 30 entries and 4,000 bytes by `tools/dead_ends.py`, which `make check` runs.
-This preamble is not emitted and not budgeted: it is instructions for adding an
-entry, which a session reading the entries never needs. That tool carries the
-measurements behind the numbers.
+at 30 entries and 4,000 bytes. `tools/dead_ends.py` prints them, and its
+docstring carries the measurements behind the numbers. This preamble is not
+emitted and not budgeted: it is instructions for adding an entry, which a
+session reading the entries never needs.
 
 **Edit this file one entry at a time — add one, merge two, remove one — and
 never rewrite it as a whole.** Those are different operations and only the last is the
@@ -34,10 +34,10 @@ a place that still stops the approach at the moment a session would propose it:
 a path-scoped rule, or a check or docstring that cites its id. Or, when its
 question no longer exists, for example because the code it names was removed,
 it is listed under § "Retired" at the end of this file with the reason. Age is not
-a reason: an old entry that still guards a live temptation stays.
-`tools/dead_ends.py check --base origin/main` fails on an entry that left
-without either record. Each grooming pass re-tests every entry against the
-admission test above, and moves the ones that fail.
+a reason: an old entry that still guards a live temptation stays. No check
+refuses an entry that left without either record, so write the record in the
+commit that removes the entry. Each grooming pass re-tests every entry against
+the admission test above, and moves the ones that fail.
 
 **When every entry must stay resident and each is already one line, bring the
 owner the budget question.** State its cost: about one token per 4 bytes, on
@@ -54,18 +54,17 @@ output is resent on every turn, so these lines are present at the moment
 somebody re-proposes the thing — which is the only moment they are worth
 anything.
 
-**Size warns; it never fails the build.** `tools/dead_ends.py` nudges at 80% of
-either budget, naming the headroom and the repairs, so the decision arrives
-with slack rather than being forced on whoever trips the cap mid-task.
-`tests/unit/test_dead_ends.py` keeps the shipped file below the nudge, so a
-session that adds an entry makes room for it in the same commit. Going over
-warns louder and still does not go red. A blocked commit on an unrelated task
-is how a session learns to raise the cap just to get moving, and a larger
-budget is the owner's decision, put as above. Only a structural fault fails: an
-entry citing an id that resolves to nothing, one wrapped across two lines, or a
-bullet opening with a bolded title that is not in an entry's shape,
-`- **approach** — why`, with nothing between the closing `**` and the dash.
-All three are otherwise silent: the last is never emitted at all.
+**A test enforces the budget, and nothing checks an entry's format.**
+`tests/unit/test_dead_ends.py` fails when the entries reach 80% of either
+budget, so a session that adds an entry makes room for it in the same commit.
+A larger budget is the owner's decision, put as above. Write each entry on one
+line, in the shape `- **approach** — why`, with a dash at the margin and
+nothing between the closing `**` and the dash. A bullet in any other shape is
+not emitted, and nothing reports it. Cite only the id of an item that exists,
+because `bin/docket show <id>` is how a session reads the reasoning. A format
+check ran in `make check` and CI until 2026-11-21. It refused nothing across
+the eight commits on `main` that changed this file, so it was removed
+(`PL-8F5B`).
 
 **What does not belong here.** An item dropped as a duplicate, as superseded,
 or as out of scope. Those are ordinary queue outcomes and their `reason:` field
@@ -85,5 +84,5 @@ have to rediscover by building the thing.
 ## Retired
 
 Entries whose question no longer exists, each with the reason, in an entry's
-shape. This section is not emitted and not budgeted. It is the record that
-lets `tools/dead_ends.py check --base` accept an entry's removal.
+shape. This section is not emitted and not budgeted. It is the record of
+where a removed entry went.
