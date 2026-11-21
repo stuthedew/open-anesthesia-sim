@@ -4131,9 +4131,14 @@ def test_a_pinned_run_of_an_earlier_session_is_named_without_its_number() -> Non
     assert pinned_run_label(RunId(TEST_SESSION, 3), TEST_SESSION) == "Run 3"
 
 
-@pytest.mark.parametrize("session", ["0" * 32, None, RunId(TEST_SESSION, 1)])
-def test_a_pinned_run_is_named_only_in_a_session_given_by_its_token(session: object) -> None:
-    with pytest.raises(TypeError, match="a session is a SessionToken"):
+@pytest.mark.parametrize(
+    ("session", "type_name"),
+    [("0" * 32, "str"), (None, "NoneType"), (RunId(TEST_SESSION, 1), "RunId")],
+)
+def test_a_pinned_run_is_named_only_in_a_session_given_by_its_token(
+    session: object, type_name: str
+) -> None:
+    with pytest.raises(TypeError, match=f"a session is a SessionToken, not {type_name}$"):
         pinned_run_label(RunId(TEST_SESSION, 1), session)  # type: ignore[arg-type]
 
 

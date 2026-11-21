@@ -28,7 +28,9 @@ from anesthesia_sim.app.view_registry import (
     WASH_IN,
     RegisteredView,
     RetiredTag,
+    at_sentence_start,
     missing_view_text,
+    pinned_run_absent_title,
     registry,
     rename_offer_text,
     required_kinds,
@@ -362,3 +364,20 @@ def test_the_short_too_small_notice_states_both_sizes_and_drops_the_advice() -> 
 
     with pytest.raises(TypeError, match="a size on screen is a PixelSize, not tuple"):
         too_small_short_text(PixelSize(300, 246), (143, 31))  # type: ignore[arg-type]
+
+
+def test_a_name_that_starts_a_sentence_has_only_its_first_letter_raised() -> None:
+    """A run's name starts a notice or stands alone in a header, so its first letter is raised."""
+
+    assert at_sentence_start("a run from an earlier session") == "A run from an earlier session"
+    assert at_sentence_start("Run 2") == "Run 2"
+    assert at_sentence_start("") == ""
+
+
+def test_the_pinned_run_notice_is_titled_with_the_name_it_is_given() -> None:
+    """The title names the run as its caller named it, with or without a number (`PL-7H9X`)."""
+
+    assert pinned_run_absent_title("Run 2") == "Run 2 is not open."
+    assert pinned_run_absent_title("a run from an earlier session") == (
+        "A run from an earlier session is not open."
+    )

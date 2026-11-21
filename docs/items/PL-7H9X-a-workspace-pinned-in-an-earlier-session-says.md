@@ -6,12 +6,12 @@ effort: S
 status: done
 classes: defect
 feature: interface-matches-its-spec
-touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/view_registry.py, src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/workspace_tabs.py, docs/INTERFACE.md, tests/unit/test_dashboard_frame.py, tests/integration/test_workspace_tabs.py, tests/integration/test_workspace_saving.py, tests/integration/test_layout_keyboard.py
+touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/view_registry.py, src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/workspace_tabs.py, docs/INTERFACE.md, tests/unit/test_dashboard_frame.py, tests/unit/test_view_registry.py, tests/integration/test_workspace_tabs.py, tests/integration/test_workspace_saving.py, tests/integration/test_layout_keyboard.py
 added: 2026-11-21
 closed: 2026-11-21
 pr: 2191
 payoff: A learner who reopens the simulator is not told that Run 1 is not open under the readouts of a run called Run 1
-tests: tests/unit/test_dashboard_frame.py::test_a_pinned_run_of_an_earlier_session_is_named_without_its_number, tests/unit/test_dashboard_frame.py::test_a_pinned_run_is_named_only_in_a_session_given_by_its_token, tests/integration/test_workspace_tabs.py::test_a_pinned_run_that_is_not_open_is_stated_in_every_area_and_no_other_run_is_shown
+tests: tests/unit/test_dashboard_frame.py::test_a_pinned_run_of_an_earlier_session_is_named_without_its_number, tests/unit/test_dashboard_frame.py::test_a_pinned_run_is_named_only_in_a_session_given_by_its_token, tests/integration/test_workspace_tabs.py::test_a_pinned_run_that_is_not_open_is_stated_in_every_area_and_no_other_run_is_shown, tests/unit/test_view_registry.py::test_the_pinned_run_notice_is_titled_with_the_name_it_is_given, tests/unit/test_view_registry.py::test_a_name_that_starts_a_sentence_has_only_its_first_letter_raised
 ---
 
 **Problem.** A Workspace pinned in an earlier session says 'Run 1 is not open.' while this session's Run 1 is open and named directly above it
