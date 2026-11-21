@@ -1,12 +1,21 @@
 ---
 id: PL-TN2L
 title: Four dated numerical records in docs/MODEL.md do not reproduce on today's tree: the mass-balance headroom, the column built from shorter pieces, the alveolar volumes that halt a run, and what the envelope sweep holds one step to
-status: untriaged
+priority: P2
+effort: M
+status: blocked
+classes: defect
 feature: model-spec-accuracy
+touches: docs/MODEL.md
+blocked-by: PL-SZ6G
+deferred-from: v0.7.0 - captured after the freeze by the check of docs/MODEL.md against the code; it changes no displayed value, and it is not safety or science
 added: 2026-11-21
+payoff: four passages of docs/MODEL.md that argue from measured figures give the figures of the model that ships, or say that theirs are a dated run's
 ---
 
 **Problem.** Four dated numerical records in docs/MODEL.md do not reproduce on today's tree: the mass-balance headroom, the column built from shorter pieces, the alveolar volumes that halt a run, and what the envelope sweep holds one step to
+
+**Why it matters.** Each passage argues from its figures in the present tense: how much room the mass-balance tolerance leaves, why the 24-hour chart keeps its method, and which alveolar volumes halt a run. A reader takes them as figures of the model that ships, and they are figures of a dated run.
 
 **Found by.** `PL-RMNP`, the check of `docs/MODEL.md` against the code, on 2026-11-21. Each record below carries a date, so none is wrong as a record. Each is used in a present-tense sentence, and today's tree gives different figures. `PL-SZ6G` (a run's time as a whole number of seconds) changes the step that every one of them was measured at, so measure again after it merges, not before.
 
@@ -18,3 +27,5 @@ added: 2026-11-21
 The scripts that produced today's figures are not in the tree. Each figure above was measured with the test modules' own helpers at the 0.1 s step.
 
 **Done when.** Each of the four passages either states figures measured on the tree that ships, with the date, or says in its own sentence that the figures are those of the dated run.
+
+**Generator check.** Filed by `PL-RMNP` (the check of `docs/MODEL.md` against the code), a sweep that the owner asked for. The fact it misreads is whether a `docs/MODEL.md` sentence about what the model computes matches what it computes, which the head `PL-B6YV` (a document sentence about what the model computes, checked against the code) already states. It is counted under the sweep and is not a new head.

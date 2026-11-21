@@ -2,9 +2,11 @@
 
 This file is a transcription and nothing else. Every entry that
 `build_system_matrix` writes is one term of one balance equation in that
-document's "Governing equations" section. The entries are written in the order
-in which the document states them. So a reader who knows the standard variables
-can check the model against the code without a lookup table between them. The
+document's "Governing equations" or "Conservation of agent mass" section. The
+rows are written in the order of the state vector described below, each under
+a comment that gives its equation in the document's symbols. So a reader who
+knows the standard variables can check the model against the code without a
+lookup table between them. The
 arithmetic that solves the system is in `matrix_exponential.py`. That module
 contains no physiology, and this file contains no numerical methods.
 
@@ -612,13 +614,15 @@ def build_system_matrix(settings: UptakeEquationSettings) -> Matrix:
     """Assemble $`A`$, so that $`\\exp(A\\Delta t)`$ advances the model exactly.
 
     Each block below is one equation of `docs/MODEL.md` § "Governing
-    equations", written in that document's own order and symbols. The comment
-    above each block is the equation, and each line under the comment writes
-    one of its terms as one matrix entry. `docs/MODEL.md` § "Selected method
-    (as implemented)" describes the step for which this matrix is assembled,
-    and names this module as the source of $`A`$.
+    equations" or § "Conservation of agent mass", written in that document's
+    symbols. The blocks follow the order of the state vector, so the venous
+    balance comes before the tissue balances, and the two totals come last. The
+    comment above each block is the equation, and each line under the comment
+    writes one of its terms as one matrix entry. `docs/MODEL.md` § "Selected
+    method (as implemented)" describes the step for which this matrix is
+    assembled, and names this module as the source of $`A`$.
 
-    Both citations use the section-mark form, and quote the section title
+    Each citation uses the section-mark form, and quotes the section title
     exactly. `tools/doc_check.py` looks for that text in the named file. So
     renaming the section fails the check, instead of silently leaving the
     citation pointing at nothing (`PL-VZL0`, `PL-V13T`, `PL-316G`).

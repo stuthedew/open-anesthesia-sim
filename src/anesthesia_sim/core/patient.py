@@ -168,7 +168,7 @@ class PatientCompartments:
                         "was refused. The patient keeps its cardiac output of "
                         f"{self.cardiac_output_l_min} L/min. Change the output with "
                         "set_cardiac_output, the one way a cardiac output is changed "
-                        '(docs/MODEL.md, "Tissue groups")'
+                        '(docs/INTERFACE.md, "Supported input ranges")'
                     )
             elif name in _TISSUE_GROUP_FIELDS and hasattr(self, name):
                 if not isinstance(value, TissueGroup):
