@@ -3,12 +3,15 @@ id: PL-7CY5
 title: Run a design round on computing a run by one rule: one exact step per whole second, every state stored, and time held as a whole number of seconds
 priority: P1
 effort: M
-status: needs-decision
+status: done
 classes: planning
 feature: standing-weight
-touches: src/anesthesia_sim/core, src/anesthesia_sim/app, docs/MODEL.md, docs/INTERFACE.md
+touches: src/anesthesia_sim/core, src/anesthesia_sim/app, docs/MODEL.md, docs/INTERFACE.md, docs/items
 deferred-from: v0.7.0 - a design round filed on 2026-11-20, after the gate froze, on how a run is computed; it holds further work on PL-GJ1W, which v0.7.0 already defers, and changes nothing a learner sees until the owner answers
 added: 2026-11-20
+closed: 2026-11-21
+pr: 2175
+verify: grep -qF 'Answered 2026-11-21: one rule at whole seconds' docs/items/PL-7CY5-run-a-design-round-on-computing-a-run-by-one.md
 ---
 
 **Problem.** Run a design round on computing a run by one rule: one exact step per whole second, every state stored, and time held as a whole number of seconds
@@ -107,3 +110,7 @@ The alternatives:
 **Recommendation: one rule at whole seconds.** If the answer is yes, the build is filed as items under one feature, in this order: integer time; the stored states and one reader for the chart, readouts, marks and export; branches copying their parent's states; then removal of `RunDefinition`'s evaluation paths, the propagator store and the tolerance constants that no longer have a use. `PL-GJ1W` stays held until the first of these lands, and its module then covers what is left.
 
 **Generator check.** Not a head, and a member of none. The round decides a design that `PL-GJ1W`, a live head, would otherwise build around.
+
+**Answered 2026-11-21: one rule at whole seconds** (project owner, 2026-11-21, ratified, on the thread's decision card, over one rule at tenths of a second and over keeping today's design). The owner read the counts, the cost to a learner at 1x and the cost of reversing `PL-T691` on the card and in the thread's reply before choosing. This answer also changes the declared control-resolution tolerance that the owner set on 2026-09-06 (`PL-NBCJ`), from the 0.1 s figures to the 1 s figures above.
+
+The build is filed as four items under the feature `run-computed-one-way`, in the order they are built: `PL-SZ6G` (whole-second time and the 1 s step), `PL-MH9J` (every state stored, and every reader reading it), `PL-FST0` (a branch at any whole second) and `PL-Z6C8` (removing the evaluation paths, the kept propagators and the allowances they needed). `PL-GJ1W` stays held until `PL-Z6C8` lands, and then covers the allowances that remain.
