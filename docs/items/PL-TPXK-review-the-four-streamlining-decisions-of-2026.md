@@ -10,6 +10,7 @@ touches: docs/items
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science; it reviews how four workflow and design decisions were recorded, so the release does not wait on it
 added: 2026-11-21
 closed: 2026-11-21
+pr: 2197
 payoff: the owner's choice of whole-second stepping rests on corrected figures, and each build item carries the review's notes
 verify: grep -qF 'Answered 2026-11-21: keep whole seconds' docs/items/PL-TPXK-review-the-four-streamlining-decisions-of-2026.md
 ---
