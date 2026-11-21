@@ -422,7 +422,9 @@ been recorded.
 
 ## Reductions considered and refused
 
-- **A ceiling on `check_resident_instructions`.** Refused in the code itself,
+- **A ceiling on `check_resident_instructions`.** Reopened on 2026-11-20 and
+  built on 2026-11-21: § "The cap of 2026-11-21" below. This bullet is the
+  earlier refusal, kept as the record of it. Refused in the code itself,
   and the refusal is right: a limit is met by deleting a rule to reach a
   number, which is the one outcome this pass must not produce, and no number
   the tool could hold would know which rules a session must see before it reads
@@ -471,8 +473,8 @@ number. Wordiness is still never a reason; obsolescence is.
 
 Three things this deliberately does not become:
 
-- **Not a ceiling.** The refusal below stands unchanged and is not reopened by
-  this section: "a limit is met by deleting a rule to reach a number, which is
+- **Not a ceiling.** The refusal below stood unchanged until § "The cap of
+  2026-11-21", and was not reopened by this section: "a limit is met by deleting a rule to reach a number, which is
   the one outcome this pass must not produce." A qualitative test names the
   carrier that replaced the rule; a numeric one names only the shortfall.
 - **Not a licence to rewrite.** A rule whose *evidence* has gone stale while its
@@ -2920,3 +2922,29 @@ and the branch name.
   reminder yields by its own terms to a `CLAUDE.md` rule; a `Claude-Session:`
   line may stay (project owner, 2026-09-24, restating `PL-B11M`).
 ```
+
+## The cap of 2026-11-21
+
+`tools/doc_check.py` fails `make check` when `CLAUDE.md` and the rules with no
+`paths:` hold more than `RESIDENT_CAP` characters, and when a change raises
+`RESIDENT_CAP` above the value the default branch holds. The project owner
+agreed to a cap on 2026-11-20 (ratified, "Agree with recs", over leaving the
+size to the rule that each edit names what it replaces). § "Reductions
+considered and refused" records that a ceiling was refused earlier, on the
+argument that a limit is met by deleting a rule to reach a number. The new
+evidence was the growth under that rule: the four files went from 60,199
+characters on 2026-09-19 to 92,660 on 2026-11-20.
+
+The cap is 55,120 characters, the total once the five moves of § "The sort of
+2026-11-21, and the history it moved here" had merged. It is a count of
+characters, where the owner was asked about a count of lines. Lines in the four
+files ran from 80 to 1,264 characters, so a line count does not bound what a
+session loads, and joining two lines would meet it (`PL-TPXK`). The line count
+is still printed beside the total.
+
+The cap replaces the rule that each edit to these files names what it
+replaces. An edit that would pass the cap moves a rule to a check, a skill or
+a path-scoped rule, as `.claude/rules/rule-routing.md` says. It never deletes
+a rule to reach the number. A skill's description and the session-start digest
+are printed in the total and are not capped, because the sort covered the
+instruction files alone (`PL-G3KZ`).

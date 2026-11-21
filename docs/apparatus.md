@@ -549,9 +549,11 @@ available.
 every session loads at launch, before it has read anything. That is
 `CLAUDE.md`, the rules under `.claude/rules/` that carry no `paths:`, and what
 the session-start digest adds. It prints the total on every run, with each
-file's change against the tip of the default branch. It is an advisory and
-never a gate. A limit would be met by deleting a rule to reach a number, and no
-number could know which rules a session must see first. Two advisories can
+file's change against the tip of the default branch. `check_resident_cap` fails the check when `CLAUDE.md` and the rules with no
+`paths:` hold more than `RESIDENT_CAP` characters, or when a change raises that
+cap (project owner, 2026-11-20, ratified, over leaving the size to the rule
+that each edit names what it replaces, `PL-G3KZ`). A skill's description and
+the digest are printed and not capped. Two advisories can
 follow the total, and both stay quiet while the change is less than
 `MATERIAL_RESIDENT_DELTA` characters. The first names growth. The session that
 added the text then routes it to the cheapest thing that delivers it when it

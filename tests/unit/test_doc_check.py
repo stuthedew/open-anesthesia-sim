@@ -5713,9 +5713,106 @@ def test_resident_line_names_the_instruction_file_subtotal(tmp_path: Path) -> No
     assert report.resident.instruction_total == len(CLAUDE_BODY)
     assert report.resident.total > report.resident.instruction_total
     assert (
-        f"the instruction files alone come to {len(CLAUDE_BODY)} characters, the basis of the "
-        "resident-growth series in CLAUDE.md"
+        f"the instruction files alone come to {len(CLAUDE_BODY)} characters, against a cap of "
+        f"{doc_check.RESIDENT_CAP}"
     ) in printed
+
+
+def _cap_errors(report: doc_check.Report) -> list[str]:
+    return [message for message in report.errors if "RESIDENT_CAP" in message]
+
+
+def test_instruction_files_at_the_cap_pass_and_one_character_over_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The cap is a count of characters, so one more character is over it (`PL-G3KZ`)."""
+    monkeypatch.setattr(doc_check, "RESIDENT_CAP", len(CLAUDE_BODY))
+    root = _instructed(_repo(tmp_path))
+
+    assert _cap_errors(doc_check.analyze(root)) == []
+
+    (root / "CLAUDE.md").write_text(CLAUDE_BODY + "x", encoding="utf-8")
+    found = _cap_errors(doc_check.analyze(root))
+
+    assert len(found) == 1
+    assert (
+        f"hold {len(CLAUDE_BODY) + 1} characters, 1 more than the cap of {len(CLAUDE_BODY)}"
+        in (found[0])
+    )
+    assert "Do not delete a rule to reach the number, and do not raise the cap." in found[0]
+
+
+def test_a_rule_with_no_paths_counts_against_the_cap_and_a_scoped_one_does_not(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(doc_check, "RESIDENT_CAP", len(CLAUDE_BODY))
+    scoped = _instructed(_repo(tmp_path / "scoped"), scoped=SCOPED_RULE)
+    unscoped = _instructed(_repo(tmp_path / "unscoped"), unscoped=UNSCOPED_RULE)
+
+    assert _cap_errors(doc_check.analyze(scoped)) == []
+    assert len(_cap_errors(doc_check.analyze(unscoped))) == 1
+
+
+def test_a_skill_description_is_printed_and_not_counted_against_the_cap(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The sort that set the cap covered the instruction files alone."""
+    monkeypatch.setattr(doc_check, "RESIDENT_CAP", len(CLAUDE_BODY))
+    root = _instructed(_repo(tmp_path))
+    skill = root / ".claude" / "skills" / "demo" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_text("---\nname: demo\ndescription: Use it to demo.\n---\n\nBody.\n")
+
+    report = doc_check.analyze(root)
+
+    assert report.resident is not None
+    assert report.resident.total > doc_check.RESIDENT_CAP
+    assert _cap_errors(report) == []
+
+
+@pytest.mark.parametrize(
+    ("now", "refused"),
+    [(99, False), (100, False), (101, True)],
+    ids=["lowered", "unchanged", "raised"],
+)
+def test_a_cap_above_the_default_branch_s_is_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, now: int, refused: bool
+) -> None:
+    """The cap only goes down, so the default branch's value is the most it can be."""
+    root = _instructed(_repo(tmp_path))
+    home = root / doc_check.RESIDENT_CAP_HOME
+    home.parent.mkdir(parents=True, exist_ok=True)
+    home.write_text("RESIDENT_CAP = 100\n", encoding="utf-8")
+    _on_main(root)
+    monkeypatch.setattr(doc_check, "RESIDENT_CAP", now)
+
+    found = _cap_errors(doc_check.analyze(root))
+
+    if refused:
+        assert len(found) == 1
+        assert "is 101, and main holds 100" in found[0]
+        assert "set it to 100 or lower" in found[0]
+    else:
+        assert found == []
+
+
+@pytest.mark.parametrize(
+    "source",
+    ["OTHER = 100\n", "RESIDENT_CAP = (\n", 'RESIDENT_CAP = "100"\n', "RESIDENT_CAP = True\n"],
+    ids=["no cap", "does not parse", "not a number", "a boolean"],
+)
+def test_a_default_branch_that_states_no_cap_is_not_compared(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, source: str
+) -> None:
+    """Every default branch from before the cap holds none, and that is not a raise."""
+    root = _instructed(_repo(tmp_path))
+    home = root / doc_check.RESIDENT_CAP_HOME
+    home.parent.mkdir(parents=True, exist_ok=True)
+    home.write_text(source, encoding="utf-8")
+    _on_main(root)
+    monkeypatch.setattr(doc_check, "RESIDENT_CAP", 10**6)
+
+    assert _cap_errors(doc_check.analyze(root)) == []
 
 
 def test_a_one_character_file_is_reported_in_the_singular(tmp_path: Path) -> None:
