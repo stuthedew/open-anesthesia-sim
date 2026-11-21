@@ -3,11 +3,13 @@ id: PL-4BGX
 title: docs/MODEL.md's paragraph on the two classes of vaporizer is unclear and uses its own terms: it never says the maxima are dial maxima or how the classes differ, and states the altitude difference more firmly than a source the project can cite
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: model-md-structure
 touches: docs/MODEL.md
 added: 2026-11-07
+closed: 2026-11-16
+pr: 2171
 payoff: a clinician reads which vaporizer design sets each agent's dial limit, and the altitude behaviour no more firmly than its sources state it
 verify: ! grep -qF 'three maxima come from two classes of vaporizer' docs/MODEL.md
 ---
@@ -63,3 +65,58 @@ when the copy editor was tested on this section (`PL-F0Q2`).
 fixes was already in its file at `817a4d88`, the commit that froze Gate 3, so
 under ROADMAP.md § "The gate is a snapshot, not a moving target" the item
 joins v0.7.0's frozen list rather than being deferred by its capture date.
+
+**Done 2026-11-16.** Following the item's recommendation, the sentence in
+`docs/MODEL.md` § "Delivery-limit and MAC parameters" that the owner could not
+follow is replaced by a paragraph that names the two designs in Dosch and
+Tharp's terms. The sevoflurane and isoflurane vaporizers are variable-bypass
+vaporizers, and the Tec 6 is a gas–vapour blender, which
+Johnston et al. 1994's abstract calls "an electrically heated, pressurized,
+electromechanically coupled dual-circuit blender". The paragraph says the
+model need not tell them apart because it fixes ambient pressure at 760 mmHg.
+That value was checked in `docs/MODEL.md` § "Assumptions" and in
+`core/liquid_agent.py`, where the reference pressure is one standard
+atmosphere, 101 325 Pa. In § "Known limitations", "respond to falling ambient
+pressure in opposite directions" became "respond differently", and "the dial
+needs no altitude correction" and "The direction of each class's response is
+not in doubt, and neither is the contrast between the two" were removed. The
+Tec 6's response is still stated as fact, because its manufacturer's
+instruction and Andrews and Johnston's description of its mechanism support
+it. Dosch and Tharp's statement that the effect of altitude is
+"controversial" is quoted as applying to how large the variable-bypass
+response is and whether its dial needs correcting, with their report that Dorsch and Dorsch say to consult each model's
+operator's manual. The Datex-Ohmeda and Andrews and Johnston quotations are
+kept unchanged. § "Assumptions" said the two classes "diverge in opposite
+directions" and pointed at § "Known limitations"; it now says they respond
+differently, so the two sections agree. Dosch and Tharp is added to the
+list of sources as tier 2, and the owner-attested count reads "two of those
+six".
+
+What was read on 2026-11-16: Dosch and Tharp's chapter, in full, by `curl`
+from its address. Johnston et al. 1994 (PMID 8067562), the abstract only,
+through the PubMed MCP server; it says nothing about altitude. Dorsch and
+Dorsch's chapter 6 could not be read: Open Library lists the book with no
+e-book, the Internet Archive holds no copy, the Google Books API refused the
+query for quota, and the private reference corpus does not hold it. Its terms
+are therefore not checked, and its altitude advice is cited only as Dosch and
+Tharp report it.
+
+One difference found and not acted on: Dosch and Tharp give the Tec 6's
+vapour pressure at 39 °C as "around 1550 mm Hg", where `docs/MODEL.md` takes
+1460 mmHg from Weiskopf et al. 1994, which it records as read in full. The
+primary source is kept. Docs sweep: `docs/MODEL.md` § "Assumptions",
+§ "Delivery-limit and MAC parameters" and § "Known limitations";
+`docs/INTERFACE.md`, `README.md`, `docs/machine-survey.md`,
+`docs/machine-abstraction.md` and `docs/ARCHITECTURE.md` (no altitude
+statement); `tests/` (no test quotes the changed text).
+
+Blind review, 2026-11-16. The first pass found that the draft hedged both
+classes as "said to respond differently", which put Dosch and Tharp's
+unnamed "other sources" against the Tec 6's direction as well, although its
+manufacturer and a primary description support it. The hedge now applies only
+to the variable-bypass response. The pass also found that calling the Tec 6
+"an injector" beside the sentence saying an injector into the circle is not
+bound by the 18% maximum could reverse that sentence's meaning, so the new
+paragraph calls it a gas–vapour blender only.
+
+Owner's read, 2026-11-21. Asked how firmly `docs/MODEL.md` should state what real vaporizers do at altitude, with this change recommended over keeping both classes stated as certain, the project owner answered "Agree with recs" (project owner, 2026-11-21, ratified, over the firmer wording that said the sevoflurane and isoflurane dials need no altitude correction).
