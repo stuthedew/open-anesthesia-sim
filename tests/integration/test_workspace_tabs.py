@@ -75,7 +75,7 @@ class _Owner:
     def __init__(self, workspaces: WorkspaceSet, runs: tuple[RunId, ...] = (_RUN_1,)) -> None:
         self.changes: list[WorkspaceSet] = []
         self.runs = runs
-        self.strip = WorkspaceTabs(workspaces, self.change, lambda: self.runs)
+        self.strip = WorkspaceTabs(workspaces, self.change, lambda: self.runs, session=_SESSION)
         self.strip.resize(900, 40)
         self.strip.show()
 
@@ -213,7 +213,7 @@ def test_a_tabs_menu_ends_with_the_entries_for_every_workspace(owner: _Owner) ->
 def test_moves_stay_inside_the_tabs_group(owner: _Owner) -> None:
     """Maintenance is last of the shipped tabs, so it cannot move right onto the reader's own."""
 
-    operations = tab_operations(owner.strip.workspaces, 3, (_RUN_1,))
+    operations = tab_operations(owner.strip.workspaces, 3, (_RUN_1,), session=_SESSION)
     right = _named(operations, MOVE_RIGHT_LABEL)
 
     assert not right.available
@@ -235,7 +235,7 @@ def test_a_move_across_a_tab_of_the_other_group_lands_beside_its_neighbour() -> 
     """Induction's left neighbour in the strip is Default, which is two places away in the set."""
 
     workspaces = _with_mine(shipped_workspaces())
-    moved = _named(tab_operations(workspaces, 2, ()), MOVE_LEFT_LABEL).result
+    moved = _named(tab_operations(workspaces, 2, (), session=_SESSION), MOVE_LEFT_LABEL).result
 
     assert moved is not None
     assert display_order(moved) == (0, 1, 3, 2)
@@ -253,7 +253,7 @@ def test_each_open_run_can_be_pinned_and_a_pinned_run_unpinned(application: QApp
     workspaces = shipped_workspaces()
     pins = [
         operation
-        for operation in tab_operations(workspaces, 1, (_RUN_1, _RUN_2))
+        for operation in tab_operations(workspaces, 1, (_RUN_1, _RUN_2), session=_SESSION)
         if operation.label.startswith("Pin")
     ]
 
@@ -264,13 +264,13 @@ def test_each_open_run_can_be_pinned_and_a_pinned_run_unpinned(application: QApp
     assert pinned.workspaces[0].pinned_run is None
 
     # A pinned run that has closed can still be unpinned.
-    unpin = _named(tab_operations(pinned, 1, (_RUN_1,)), "Unpin Run 2")
+    unpin = _named(tab_operations(pinned, 1, (_RUN_1,), session=_SESSION), "Unpin Run 2")
     assert unpin.result is not None
     assert unpin.result.workspaces[1].pinned_run is None
 
 
 def test_no_run_to_pin_is_shown_unavailable() -> None:
-    pin = _named(tab_operations(shipped_workspaces(), 0, ()), "Pin run")
+    pin = _named(tab_operations(shipped_workspaces(), 0, (), session=_SESSION), "Pin run")
 
     assert not pin.available
     assert pin.refusal == "Not available: no run is open."
@@ -280,7 +280,7 @@ def test_the_last_workspaces_delete_is_shown_unavailable_with_its_reason() -> No
     """`PL-WV9K` Q2: the one-Workspace minimum is shown, never met as an error after a click."""
 
     lone = WorkspaceSet((shipped_workspace(ShippedWorkspaceId("default")),), 0)
-    delete = _named(tab_operations(lone, 0, ()), DELETE_LABEL)
+    delete = _named(tab_operations(lone, 0, (), session=_SESSION), DELETE_LABEL)
 
     assert not delete.available
     assert delete.refusal == "Not available: there is always at least one Workspace."
@@ -341,7 +341,9 @@ def test_a_reset_the_set_refuses_is_shown_unavailable(application: QApplication)
     def broken(shipped_id: ShippedWorkspaceId) -> Workspace:
         raise ShippedWorkspaceError(f"{shipped_id}.json does not read")
 
-    reset = _named(tab_operations(shipped_workspaces(), 0, (), broken), RESET_LABEL)
+    reset = _named(
+        tab_operations(shipped_workspaces(), 0, (), broken, session=_SESSION), RESET_LABEL
+    )
 
     assert not reset.available
     assert reset.refusal == "Not available: default.json does not read"
@@ -741,6 +743,10 @@ def test_a_pinned_run_that_is_not_open_is_stated_in_every_area_and_no_other_run_
 
     assert "Unpin a run from an earlier session" in [
         operation.label for operation in view.tab_strip.operations(0)
+    ]
+    # The entry gives no number even while no run is open.
+    assert "Unpin a run from an earlier session" in [
+        operation.label for operation in tab_operations(pinned, 0, (), session=_SESSION)
     ]
 
     # The region still shows the open run, which the pin never touches.

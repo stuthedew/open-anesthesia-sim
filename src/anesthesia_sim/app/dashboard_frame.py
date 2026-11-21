@@ -109,7 +109,7 @@ from anesthesia_sim.core.supported_ranges import (
     CaseInstant,
 )
 from anesthesia_sim.core.units import MINUTES_PER_HOUR, SECONDS_PER_HOUR, SECONDS_PER_MINUTE
-from anesthesia_sim.layout.run_identity import RunId
+from anesthesia_sim.layout.run_identity import RunId, SessionToken
 
 # The step that each simulation tick advances by. `core/` declares which steps
 # are *supported*: `core.simulation_step.MINIMUM_SIMULATION_STEP_S` and
@@ -361,9 +361,12 @@ NO_TRACES_SHOWN_TEXT: Final = (
 )
 
 #: Where a notice in a chart's Area sends the reader for a compartment's value.
-#: The compartment readouts are in the region above every Area, whatever the
-#: layout, so both notices that name the readouts use this one phrase
-#: (`PL-4246`).
+#: This build draws one window, and the compartment readouts are in the region
+#: above every Area of it, however the Areas are laid out. So both notices that
+#: name the readouts use this one phrase (`PL-4246`). A second window would
+#: carry no compartment readouts (`docs/INTERFACE.md` § "What this list
+#: requires once the layout is the reader's"), so a chart in one could not use
+#: this phrase.
 READOUTS_PLACE_TEXT: Final = "the readouts above"
 
 # Shown when a drawn trace goes above the top of the plot, naming the traces
@@ -3242,32 +3245,32 @@ def run_label(run: RunId) -> str:
     return RUN_LABEL_TEMPLATE.format(number=run.number)
 
 
-def pinned_run_label(pinned: RunId, open_runs: tuple[RunId, ...]) -> str:
-    """Return what a Workspace's pinned run is called beside the runs that are open.
+def pinned_run_label(pinned: RunId, session: SessionToken) -> str:
+    """Return what a Workspace's pinned run is called in the session `session`.
 
     A saved Workspace keeps its pin, so the pinned run can be one that an
     earlier session of the application placed. That run is never open, and a
     run that is open can carry its number. So it is called
-    `EARLIER_SESSION_RUN_TEXT`, without its number (`PL-7H9X`). A run of the
-    session that placed the open runs is called by `run_label`, whether or not
-    it is still open. While no run is open, the pinned run keeps its name,
-    because no open run can be mistaken for it.
+    `EARLIER_SESSION_RUN_TEXT`, without its number (`PL-7H9X`). A run that
+    this session placed is called by `run_label`, whether or not it is still
+    open.
 
     Args:
         pinned: The pinned run's identity.
-        open_runs: The identities of the runs that the session has open.
+        session: The token of the session that is running now
+            (`RunIdentities.session`).
 
     Raises:
-        TypeError: If `pinned` is not a `RunId`, or `open_runs` is not a tuple
-            of them.
+        TypeError: If `pinned` is not a `RunId`, or `session` is not a
+            `SessionToken`.
     """
 
-    if not isinstance(open_runs, tuple) or not all(isinstance(run, RunId) for run in open_runs):
-        raise TypeError("the open runs are a tuple of RunIds")
+    if not isinstance(session, SessionToken):
+        raise TypeError(f"a session is a SessionToken, not {type(session).__name__}")
 
     name = run_label(pinned)
 
-    if open_runs and all(run.session != pinned.session for run in open_runs):
+    if pinned.session != session:
         return EARLIER_SESSION_RUN_TEXT
 
     return name

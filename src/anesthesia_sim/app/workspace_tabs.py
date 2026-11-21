@@ -111,7 +111,7 @@ from anesthesia_sim.layout.exceptions import (
     ShippedWorkspaceError,
     WorkspaceFileError,
 )
-from anesthesia_sim.layout.run_identity import RunId
+from anesthesia_sim.layout.run_identity import RunId, SessionToken
 from anesthesia_sim.layout.shipped import shipped_workspace, shipped_workspaces
 from anesthesia_sim.layout.store import WorkspaceStore
 from anesthesia_sim.layout.workspace import (
@@ -271,6 +271,8 @@ def tab_operations(
     index: int,
     open_runs: tuple[RunId, ...],
     shipped: Callable[[ShippedWorkspaceId], Workspace] = shipped_workspace,
+    *,
+    session: SessionToken,
 ) -> tuple[TabOperation, ...]:
     """Return the menu entries after Rename for the tab at `index`, in `PL-QW1Z` Q3's order.
 
@@ -281,6 +283,8 @@ def tab_operations(
             pinned run that is no longer open can still be unpinned.
         shipped: Returns the shipped Workspace with a given id. A shipped
             tab resets to that Workspace. A test passes its own.
+        session: The token of the session that is running now. The unpin
+            entry gives no number for a run that another session placed.
 
     Raises:
         TypeError: If `index` is not an `int`.
@@ -290,7 +294,7 @@ def tab_operations(
     workspace = workspaces.activate(index).current
     operations = [TabOperation(DUPLICATE_LABEL, workspaces.duplicate(index))]
     operations.extend(_moves(workspaces, index))
-    operations.extend(_pins(workspaces, index, workspace, open_runs))
+    operations.extend(_pins(workspaces, index, workspace, open_runs, session))
 
     if workspace.origin.shipped_id is not None:
         operations.append(
@@ -326,7 +330,11 @@ def _moves(workspaces: WorkspaceSet, index: int) -> tuple[TabOperation, TabOpera
 
 
 def _pins(
-    workspaces: WorkspaceSet, index: int, workspace: Workspace, open_runs: tuple[RunId, ...]
+    workspaces: WorkspaceSet,
+    index: int,
+    workspace: Workspace,
+    open_runs: tuple[RunId, ...],
+    session: SessionToken,
 ) -> tuple[TabOperation, ...]:
     """Return an entry to unpin the pinned run, or one entry to pin each open run.
 
@@ -335,7 +343,7 @@ def _pins(
     """
 
     if workspace.pinned_run is not None:
-        label = _UNPIN_TEMPLATE.format(run=pinned_run_label(workspace.pinned_run, open_runs))
+        label = _UNPIN_TEMPLATE.format(run=pinned_run_label(workspace.pinned_run, session))
 
         return (TabOperation(label, workspaces.replace(index, workspace.pinned_to(None))),)
 
@@ -701,6 +709,8 @@ class WorkspaceTabs(QWidget):
         change: Called with each new set that a reader's action makes. The
             owner applies the set and calls `show_set` with it.
         open_runs: Returns the runs open now, for the pin entries.
+        session: The token of the session that is running now, by which the
+            unpin entry tells a run of an earlier session from one of this.
         live: Returns the set as it is now. The owner's current Workspace
             can change after the strip draws it, through a dragged border or
             a View's own settings. Every entry is worked out from this set, so
@@ -727,6 +737,7 @@ class WorkspaceTabs(QWidget):
         open_runs: Callable[[], tuple[RunId, ...]],
         parent: QWidget | None = None,
         *,
+        session: SessionToken,
         live: Callable[[], WorkspaceSet] | None = None,
         store: WorkspaceStore | None = None,
         notice: str | None = None,
@@ -736,6 +747,7 @@ class WorkspaceTabs(QWidget):
         self.setObjectName("workspaceTabs")
         self._change = change
         self._open_runs = open_runs
+        self._session = session
         self._live = live
         self._store = store
         # Why there is no store, which is the load's notice when there is one.
@@ -929,7 +941,7 @@ class WorkspaceTabs(QWidget):
     def operations(self, index: int) -> tuple[TabOperation, ...]:
         """The menu entries after Rename for the tab at `index`, from the set as it is now."""
 
-        return tab_operations(self._now(), index, self._open_runs())
+        return tab_operations(self._now(), index, self._open_runs(), session=self._session)
 
     def contextMenuEvent(self, event: QContextMenuEvent) -> None:
         # A tab opens its own menu, so this is a right-click on "+" or on the

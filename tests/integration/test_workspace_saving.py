@@ -31,6 +31,7 @@ from anesthesia_sim.app.workspace_tabs import (
     save_entry,
 )
 from anesthesia_sim.layout.exceptions import LayoutRefused, ShippedWorkspaceError
+from anesthesia_sim.layout.run_identity import SessionToken
 from anesthesia_sim.layout.serialization import workspace_set_to_json
 from anesthesia_sim.layout.shipped import shipped_workspace, shipped_workspaces
 from anesthesia_sim.layout.store import (
@@ -40,6 +41,9 @@ from anesthesia_sim.layout.store import (
     WorkspaceStore,
 )
 from anesthesia_sim.layout.workspace import ShippedWorkspaceId, WorkspaceName, WorkspaceSet
+
+#: The session the strip under test runs in. No test here pins a run.
+_SESSION = SessionToken("0" * 32)
 
 
 @pytest.fixture(scope="module")
@@ -64,7 +68,9 @@ def _strip(
         made.append(workspaces)
         strip.show_set(workspaces)
 
-    strip = WorkspaceTabs(workspaces, change, lambda: (), store=store, notice=notice)
+    strip = WorkspaceTabs(
+        workspaces, change, lambda: (), session=_SESSION, store=store, notice=notice
+    )
     strip.resize(900, 80)
     strip.show()
 

@@ -4124,20 +4124,17 @@ def test_a_pinned_run_of_an_earlier_session_is_named_without_its_number() -> Non
     """`PL-7H9X`: an open run can carry the number of a run pinned in an earlier session."""
 
     earlier = RunId(SessionToken("f" * 32), 1)
-    open_runs = (RunId(TEST_SESSION, 1), RunId(TEST_SESSION, 2))
 
-    assert pinned_run_label(earlier, open_runs) == "a run from an earlier session"
+    assert pinned_run_label(earlier, TEST_SESSION) == "a run from an earlier session"
     # A run of this session keeps its name, whether it is open or has closed.
-    assert pinned_run_label(RunId(TEST_SESSION, 2), open_runs) == "Run 2"
-    assert pinned_run_label(RunId(TEST_SESSION, 3), open_runs) == "Run 3"
-    # With no run open, no open run can be mistaken for the pinned one.
-    assert pinned_run_label(earlier, ()) == "Run 1"
+    assert pinned_run_label(RunId(TEST_SESSION, 1), TEST_SESSION) == "Run 1"
+    assert pinned_run_label(RunId(TEST_SESSION, 3), TEST_SESSION) == "Run 3"
 
 
-@pytest.mark.parametrize("open_runs", [[RunId(TEST_SESSION, 1)], (1,), None])
-def test_a_pinned_run_is_named_only_beside_a_tuple_of_run_identities(open_runs: object) -> None:
-    with pytest.raises(TypeError, match="tuple of RunIds"):
-        pinned_run_label(RunId(TEST_SESSION, 1), open_runs)  # type: ignore[arg-type]
+@pytest.mark.parametrize("session", ["0" * 32, None, RunId(TEST_SESSION, 1)])
+def test_a_pinned_run_is_named_only_in_a_session_given_by_its_token(session: object) -> None:
+    with pytest.raises(TypeError, match="a session is a SessionToken"):
+        pinned_run_label(RunId(TEST_SESSION, 1), session)  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize("position", [0, 1, True])
