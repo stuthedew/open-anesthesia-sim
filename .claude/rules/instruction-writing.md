@@ -1,15 +1,7 @@
 PRECEDENCE. These rules apply to every reply, unasked, and they decide its
-shape. Where another instruction — a project file, a skill, a saved
-preference — describes the same message differently, that instruction decides
-what the reply contains and these rules decide what comes first. Being the
-more specific document does not carry the format question: a rule that holds
-only until something else has an opinion has to be re-stated in every prompt,
-which is what these exist to stop.
-
-RESIDENT BY NECESSITY, and settled. No `paths:` scope can carry these, because
-no read comes before a reply. `docs/resident-instructions.md` has the carrier
-test and its result for every rule below. Do not re-open a rule's residency
-without a new carrier to name.
+shape. Where another instruction — a project file, a skill, a saved preference
+— describes the same message differently, that instruction decides what the
+reply contains and these rules decide what comes first.
 
 SCOPE. Rules 1–9 apply ONLY to procedures the user will personally execute
 step-by-step. For status reports, analyses, and decision requests, apply
@@ -84,13 +76,10 @@ these rules, "phases," or "closed loops" in the output itself.
     - Mark a recommendation as a recommendation, plainly, so "here are the
       options" and "I think you should do this one" are never mixed up.
     - Order the block the way it will be done, and let the order carry it.
-      This is rule 2 applied to the closing block. Where the items have a
-      sequence — one unblocks another, one has to land before the next makes
-      sense — the first line is the first thing to do. Never annotate a later
-      line with "do this one first": a numbered list states an order whether
-      or not one was meant, so an ordering note that disagrees with the
-      numbering makes the reader stop and work out which to believe, which is
-      exactly the friction the block exists to remove. Where the items are
+      Where the items have a sequence — one unblocks another, one has to land
+      before the next makes sense — the first line is the first thing to do.
+      Never annotate a later line with "do this one first": a numbered list
+      states an order whether or not one was meant. Where the items are
       genuinely independent, order them by consequence and say in one clause
       that they can be done in any order.
     - A line whose answer will produce a commit says so, and sorts as work
@@ -115,42 +104,27 @@ these rules, "phases," or "closed loops" in the output itself.
       reply, it has become a summary rather than a list of actions.
     - When there is genuinely nothing to act on, say that in one line rather
       than inventing items to fill the block.
-    - Every line must be actionable now. Nothing parked. "Worth deciding
-      sometime", "consider at some point", "we should think about X
-      eventually" — none of these belong here. They read as items but cannot
-      be acted on, so they turn a list of actions into a list of obligations
-      that never close, and the genuinely actionable lines get skimmed past
-      with them. When something surfaces that is not yet actionable, there
-      are exactly three honest dispositions and they are all yours to pick,
-      not the reader's: decide it yourself if it is yours to decide; put it
-      to them **now** as a real decision, with a recommendation and enough
-      context to answer in one read; or record it wherever the project
-      records such things and say you did. Raising something in order to
-      defer it is the one option that is not available.
+    - Every line must be actionable now. Nothing parked. When something
+      surfaces that is not yet actionable, there are three dispositions and
+      they are all yours to pick, not the reader's: decide it yourself if it is
+      yours to decide; put it to them **now** as a real decision, with a
+      recommendation and enough context to answer in one read; or record it
+      wherever the project records such things and say you did.
       **Which of the first two applies turns on consequence, not on what the
-      answer rests on** (project owner, 2026-09-19). Theirs are the
-      consequential questions: the order features come in, what the project
-      is for, behavior a learner would see, and anything the safety-critical
-      standard reaches. **Look, wording and placement are not among them for
-      now** (project owner, 2026-10-18). While the structure and function are
-      being built, those choices are placeholders. Decide one yourself, record
-      it in the item as a placeholder, and say in one line what you chose. A
-      choice stays theirs where it decides whether a value the safety-critical
-      standard requires is on screen, readable or correctly labelled, because
-      that is a correctness question and not one of look (`PL-KBBJ`). **A choice with one clearly correct option is never
-      offered: take it, record why in the item, and say in one line what you
-      did** (project owner, 2026-09-27), closing an item whose own
-      measurements show the work is not worth doing included. Offer a choice
-      only where it is genuinely close, changes the goal, or cannot be
-      undone, and then lead with the recommendation. A choice whose options
-      are all defensible and whose blast radius is one document's phrasing,
-      one internal structure or one item's disposition is one of those -
-      decide it, say in a line what you decided and why, and carry on.
-      Resting on "what the project wants" does not
-      make a granular choice theirs, and handing one back spends their
-      attention on exactly what they have said they do not want to spend it
-      on. Where one specific point genuinely needs them, ask that point
-      rather than handing over the decision around it.
+      answer rests on.** Theirs are the consequential questions: the order
+      features come in, what the project is for, behavior a learner would see,
+      and anything the safety-critical standard reaches. **Look, wording and
+      placement are not among them for now.** Decide one yourself, record it in
+      the item as a placeholder, and say in one line what you chose. A choice
+      stays theirs where it decides whether a value the safety-critical
+      standard requires is on screen, readable or correctly labelled
+      (`PL-KBBJ`). **A choice with one clearly correct option is never offered:
+      take it, record why in the item, and say in one line what you did.**
+      Offer a choice only where it is genuinely close, changes the goal, or
+      cannot be undone. A choice whose options are all defensible and whose
+      blast radius is one document's phrasing, one internal structure or one
+      item's disposition is yours to decide. Where one specific point needs
+      them, ask that point rather than handing over the decision around it.
     - The block is a handover, not a store. It is carried in
       `post_turn_summary.needs_action`, which a later session reads from the
       `RUNNING` and `IDLE` rows alone, so archiving this session deletes every
@@ -172,44 +146,29 @@ these rules, "phases," or "closed loops" in the output itself.
       not: write your recommendation into its brief beside the question, and
       mark it, before the block points at it. A reply is the one carrier
       certain to be gone when the answer comes (`PL-M21Q`).
-    - Where several lines are one problem, say so and name the group. A
-      reader tracks problems, not ids: three ids listed flat read as three
-      unrelated obligations, and nothing then says the list is finished when
-      they close. Lead with the problem and name the `feature:` its items
-      carry, so "is that dealt with?" has a command behind it —
+    - Where several lines are one problem, say so and name the group. A reader
+      tracks problems, not ids. Lead with the problem and name the `feature:`
+      its items carry, so "is that dealt with?" has a command behind it —
       `bin/docket feature <name>` — rather than a memory of this reply
       (`PL-N638`).
     - Only what this discussion raised. The block closes the reply that was
-      actually given, not the project. A status offer, a ranking of what to
-      do next, or a reminder about unrelated open work belongs to a reply
-      that was asked for one — appended to a design round, a question about
-      one mechanism, or a review of one change, it is noise the reader skims
-      past, and it drags the genuinely actionable lines past with it. Two
-      things are always in scope: the next step of the discussion itself,
-      and existing work that would fix or unblock what the discussion found
-      — name that one, glossed per rule 7, and say which comes first.
-    - Re-verify by refreshing, every time, before writing this block — not
-      only when something looks stale (project owner, 2026-09-19). Run
-      `bin/docket branch`, which fetches before it reads. Cheap, and the
-      default has to be refresh-first because a session cannot feel its own
-      copy going out of date: the session-start
-      digest is written once and resent every turn, its refs line dates that
-      moment rather than this one (`PL-XBV4`), and a
-      pull request can merge, a branch be deleted and the base move inside one
-      turn — all three happened in the sitting that produced this rule.
-      An ideation reply runs it too. It reads no document, so it is not
-      the detour that `CLAUDE.md` keeps ideation free of
-      (`PL-MR2V`).
-    - Re-verify every carried-over item before repeating it. An action that
-      was outstanding earlier in the session may have been done since — by
-      them, or somewhere this session cannot see. Repeating it from memory is
-      the single most likely way this block goes wrong, and it costs either a
-      lookup or the same work twice. Whether something is merged, tagged,
-      closed or still open is a fact to check against the source of truth,
-      not a memory to recall. Do this for anything asserted about external
-      state anywhere in a reply, not only in this block; the block is merely
-      where a stale claim is acted on. Say what the check showed when it
-      changes the answer, rather than quietly dropping the item.
+      actually given, not the project. A status offer, a ranking of what to do
+      next, or a reminder about unrelated open work belongs to a reply that was
+      asked for one. Two things are always in scope: the next step of the
+      discussion itself, and existing work that would fix or unblock what the
+      discussion found — name that one, glossed per rule 7, and say which comes
+      first.
+    - Re-verify by refreshing, every time, before writing this block — not only
+      when something looks stale. Run `bin/docket branch`, which fetches before
+      it reads. A session cannot feel its own copy going out of date. An
+      ideation reply runs it too (`PL-XBV4`, `PL-MR2V`).
+    - Re-verify every carried-over item before repeating it. An action that was
+      outstanding earlier in the session may have been done since — by them, or
+      somewhere this session cannot see. Whether something is merged, tagged,
+      closed or still open is a fact to check against the source of truth, not
+      a memory to recall. Do this for anything asserted about external state
+      anywhere in a reply, not only in this block. Say what the check showed
+      when it changes the answer, rather than quietly dropping the item.
     - Before recommending repository work - an item to start, or work that
       carries no item id - check whether another session is already on it or
       has asked for it. Every in-flight guard this project has reads a claim
@@ -237,9 +196,7 @@ these rules, "phases," or "closed loops" in the output itself.
       reserves (`PL-DR3G`).
 
 15. CLOCK TIMES IN CENTRAL. Give every clock time in a reply, and the date
-    beside it, in US Central (`America/Chicago`, the project owner's zone in
-    Madison, Wisconsin), marked CDT or CST as that date falls. That includes
-    the compaction deadline. The tools here print UTC and the offset moves with
-    daylight saving, so convert with a command rather than by hand:
-    `TZ=America/Chicago date -d '2026-09-27 23:19 UTC'` (project owner,
-    2026-09-27, `PL-R852`).
+    beside it, in US Central (`America/Chicago`), marked CDT or CST as that
+    date falls. That includes the compaction deadline. Convert with a command
+    rather than by hand: `TZ=America/Chicago date -d '2026-09-27 23:19 UTC'`
+    (project owner, 2026-09-27, `PL-R852`).
