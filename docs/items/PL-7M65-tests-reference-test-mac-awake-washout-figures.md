@@ -1,9 +1,17 @@
 ---
 id: PL-7M65
 title: tests/reference/test_mac_awake_washout_figures.py does not read the vessel-rich '0.84 MAC' figure, although docs/INTERFACE.md says the test checks each figure of the washout protocol
-status: untriaged
+priority: P3
+effort: S
+status: done
+classes: defect
 feature: interface-matches-its-spec
+touches: tests/reference/test_mac_awake_washout_figures.py, tests/reference/test_coupled_dynamics.py, tests/reference/test_canonical_evaluation.py
 added: 2026-11-21
+closed: 2026-11-21
+pr: 2201
+payoff: The vessel-rich figure that docs/INTERFACE.md teaches for the washout is checked against the model, so a parameter change cannot leave it wrong
+tests: tests/reference/test_mac_awake_washout_figures.py::test_the_mac_awake_washout_figures_match_the_model
 ---
 
 **Problem.** tests/reference/test_mac_awake_washout_figures.py does not read the vessel-rich '0.84 MAC' figure, although docs/INTERFACE.md says the test checks each figure of the washout protocol
@@ -19,3 +27,5 @@ The figure is true today: the vessel-rich trace stands at 0.8426 MAC at 3 hours.
 **Closed 2026-11-21.** The test now reads "the vessel-rich trace reached only 0.84 MAC" from `docs/INTERFACE.md` § "MAC-awake as a chart reference", computes the vessel-rich fraction at the end of the three-hour maintenance, divides it by the agent's MAC, and compares the two at the printed precision. The model gives 0.8426. With the printed figure edited to 0.99 in a copy of the document, the test failed with "assert '0.84' == '0.99'". Three reference-test docstrings that `PL-PH3N` found stale ride here, because an edit under `tests/reference/` waits for the owner's read: the module docstring of this test named `docs/MODEL.md` and "six figures"; `test_coupled_dynamics.py` gave rounding margins measured on an older model (re-measured 2026-11-21: 8e-9 counts, a widest differential of 2.06e-14 in fraction, and a smallest true gap of 1.12e-15); and `test_canonical_evaluation.py` said the accumulators are shown to six decimals of a litre, where the accounting View shows run totals to 0.1 L (`_RUN_TOTAL_LITRE_DECIMALS`). Documents checked: `docs/INTERFACE.md` § "MAC-awake as a chart reference", which names this test as checking each figure and now does, and `docs/ARCHITECTURE.md` § "Tests (`tests/`)", which describes the reference tree and does not change.
 
 **Blind review 2026-11-21.** One pass found two things, both acted on: the coupled-dynamics comment said `docs/MODEL.md` quotes the pairwise measurement, where `docs/INTERFACE.md` does, and a second docstring in `test_canonical_evaluation.py` still compared a divergence with a 1e-6 L resolution that no View uses. Both are fixed here. The first also found that `docs/INTERFACE.md` still gives the older pairwise figures, filed as `PL-VM4Q`.
+
+**Generator check.** One-off. The fact misread is which figures of the washout section the test reads: the figure was added to `docs/INTERFACE.md` without a matching pattern in `_printed`, and nothing compares the figures the section prints with the ones the test extracts.
