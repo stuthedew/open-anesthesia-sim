@@ -96,6 +96,7 @@ __all__ = [
     "WASH_IN",
     "RegisteredView",
     "RetiredTag",
+    "at_sentence_start",
     "missing_view_text",
     "registry",
     "rename_offer_text",
@@ -442,14 +443,21 @@ def unbuilt_view_text(
     return f"Building '{title}' failed: {type(error).__name__}: {error}. {CHOOSE_A_VIEW}"
 
 
+def at_sentence_start(text: str) -> str:
+    """Return `text` with its first letter in upper case, as the start of a sentence is written."""
+
+    return text[:1].upper() + text[1:]
+
+
 def pinned_run_absent_title(run_name: str) -> str:
     """The title of the notice every Area of a Workspace shows while its pinned run is not open.
 
-    `run_name` is the run's name as `dashboard_frame.run_label` renders it.
+    `run_name` is the run's name as `dashboard_frame.pinned_run_label` renders
+    it, which gives no number for a run of an earlier session (`PL-7H9X`).
     The wording is a placeholder, decided by `PL-2KXB`.
     """
 
-    return f"{run_name} is not open."
+    return at_sentence_start(f"{run_name} is not open.")
 
 
 def pinned_run_absent_text(run_name: str) -> str:

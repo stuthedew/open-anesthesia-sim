@@ -11,10 +11,15 @@ from PySide6.QtWidgets import QApplication, QLabel
 
 from anesthesia_sim.app.chart_frame import COMPARED_COMPARTMENT_CAP
 from anesthesia_sim.app.controller import SimulationController
-from anesthesia_sim.app.dashboard_frame import NO_TRACES_SHOWN_TEXT, SIMULATION_STEP_S
+from anesthesia_sim.app.dashboard_frame import (
+    NO_TRACES_SHOWN_TEXT,
+    READOUTS_PLACE_TEXT,
+    SIMULATION_STEP_S,
+)
 from anesthesia_sim.app.formatting import format_elapsed, format_flow, format_playback_rate
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.app.simulation_view import SimulationView
+from anesthesia_sim.app.unconditional_set import compartment_value
 from anesthesia_sim.app.view_registry import CONCENTRATION_CHART
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.layout.tree import AreaId
@@ -194,6 +199,41 @@ def test_two_runs_cap_the_chart_at_two_compartments_and_say_so(application: QApp
         drawn = bool(chart.drawn_points(0, quantity)[0])
 
         assert drawn is (quantity in _concentration(view).legend.shown)
+
+
+def test_the_cap_notice_sends_the_reader_to_readouts_that_are_above_it(
+    application: QApplication,
+) -> None:
+    """`PL-4246`: the notice says the readouts are above it, and they are.
+
+    The notice once said "the readouts below". The test compares the
+    notice's direction word with where the window draws each compartment's
+    readout, for both runs, so the word cannot again disagree with the layout.
+    """
+
+    first = SimulationController()
+    second = SimulationController()
+    first.start()
+    second.start()
+    _advance(first, 60.0)
+    _advance(second, 60.0)
+    view = _shown_view(application, first, second)
+    notice = _concentration(view).capped_traces_text
+
+    assert notice.isVisible()
+    assert READOUTS_PLACE_TEXT in notice.text()
+    assert READOUTS_PLACE_TEXT.endswith(" above")
+
+    notice_top = notice.mapToGlobal(QPoint(0, 0)).y()
+
+    for run in view.runs:
+        readouts = run.unconditional_widgets()
+
+        for quantity in COMPARTMENT_QUANTITIES:
+            readout = readouts[compartment_value(quantity)]
+
+            assert readout.isVisible()
+            assert readout.mapToGlobal(QPoint(0, readout.height())).y() <= notice_top
 
 
 def test_the_window_fits_the_longer_of_two_runs(application: QApplication) -> None:
