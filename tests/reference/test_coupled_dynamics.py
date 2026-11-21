@@ -911,7 +911,7 @@ HELD_RUN_ROUNDING_BOUND = 1e-12
 # is not a second, independent bound on the solver. If the absolute gate passes
 # and `format_percent` is monotone, this test cannot fail. When the formatter
 # stops being monotone, the unit test named above is what fails first. What this
-# test adds is the measurement that `docs/MODEL.md` quotes: the readings the
+# test adds is the measurement that `docs/INTERFACE.md` quotes: the readings the
 # shipped formatter gives on real trajectories, compared pair by pair. Until
 # `PL-0M7K` this test used a test-local `round()` instead, so it could not see
 # the formatter at all. The gate keeps its gap-threshold shape rather than

@@ -473,9 +473,9 @@ def test_a_fork_opening_at_the_instant_it_was_taken_does_not_reproduce_its_paren
     other catches. That the difference is *real* is what makes the condition
     worth enforcing. That it is *this small* is what makes enforcement in code
     the only way to catch it. It is nine orders below the 1e-4 that a
-    compartment readout resolves, and six below the 1e-6 L resolution at which
-    the mass balance is shown. A branch built this way would look exactly like one
-    built correctly.
+    compartment readout resolves, and more than ten orders below the 0.1 L to
+    which the accounting View shows the run totals. A branch built this way
+    would look exactly like one built correctly.
 
     The test fails honestly if a future change makes the restart exact. That
     would mean the condition had stopped costing anything, and that this file
