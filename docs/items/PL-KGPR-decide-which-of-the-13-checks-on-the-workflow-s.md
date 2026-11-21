@@ -26,6 +26,8 @@ added: 2026-11-21
 5. Decide the replay of `verify:` commands together with `PL-LFJZ`.
 6. Keep the other eight.
 
+**`PL-LFJZ` answered on 2026-11-20.** The owner chose a done-condition that is checked once when an item closes and not replayed afterwards. `PL-QTZG` (remove the shape rules and the replay's reading of commands) carries the removal, so point 5 is the replay's retirement once `PL-QTZG`'s three predecessors land.
+
 **Done when.** The owner has answered, and each check to retire has an item to remove it.
 
 **Generator check.** One-off. It is the owner's decision on `PL-LY24`'s count, and no fact was misread to cause it.
