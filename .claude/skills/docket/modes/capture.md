@@ -13,10 +13,19 @@ Triggered by the owner raising a passing thought they are not developing, or
 by a finding this session makes that it will not fix.
 
 **Whether a finding this session made is one it may fix instead is decided in
-`CLAUDE.md`, not here.** Its fix-now bullet holds the tests that all have to
-pass and the cap per branch; the door has one copy, and a second one here is
-how the two drift apart. Read it there, and treat everything below as being
-about a finding that is being recorded.
+`.claude/skills/docket/modes/start.md` § "Fix a small defect in place", not
+here.** That section holds the tests that all have to pass and the cap per
+branch; the door has one copy, and a second one here is how the two drift
+apart. Read it there, and treat everything below as being about a finding that
+is being recorded.
+
+**Capture covers findings the owner raises and findings you make on your own
+alike.** `bin/docket new` takes several titles in one call, because ideas
+arrive in clusters. Do not ask whether to record a finding — filing an item is
+not a decision the owner needs to make. Where a thread is still open when the
+session ends, update `docs/WORKING_NOTES.md` too — but only for a thread
+spanning more than one item, outliving its item, or having none. One item's own
+reasoning goes in that item, at any length.
 
 **A passing thought is the opposite case to an idea being designed, and the
 difference is whether a design conversation is happening.** The idea being
@@ -233,7 +242,7 @@ Triggered by the session being about to *do* repository work that no item
 names: resolving a merge, clearing a stale `origin/<branch>` ref, a docs
 sweep, a lint fix, recovering a stranded item, backfilling a field the store
 wants. `CLAUDE.md` § "The queue, and how the project owner works" keeps the
-rule and a pointer here, and this mode holds the rest (`PL-Z90G`).
+rule in one line, and this mode holds the rest (`PL-Z90G`).
 
 **The rule: file the item first, then start it under its id** — `docket new`,
 then **Mode: start an item**, in
@@ -294,8 +303,8 @@ it again.
 the work gets a commit of its own.** A rule demanding an item for a one-line
 typo fix would convert the queue into a log, which is worse than the collisions
 it prevents — so a fix riding inside a commit already led by an item's id is
-filed by that id and needs nothing more. A fix `CLAUDE.md`'s fix-now rule
-admits needs nothing more either, even though it takes a commit of its own:
+filed by that id and needs nothing more. A fix that the fix-in-place rule in
+`.claude/skills/docket/modes/start.md` admits needs nothing more either, even though it takes a commit of its own:
 that commit leads with the current item's id, so every id-matcher still sees
 it. File it when it is the reason this session exists, or when it will take a
 branch of its own.
