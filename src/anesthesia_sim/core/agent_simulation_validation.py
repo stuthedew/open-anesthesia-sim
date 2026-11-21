@@ -335,7 +335,7 @@ class AgentSimulationValidator:
         negative or not finite. Otherwise returns the passing check, which
         `AgentUptakeSystem.advance()` reports in `UptakeStepResult`.
         `check_agent_accounting()` does the same arithmetic without the halt,
-        for the display path.
+        for a reader such as the accounting panel.
 
         The method takes the currently stored amount rather than a completed
         `AgentSimulationValidationResult`. That way, the period it judges is

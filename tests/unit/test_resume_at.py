@@ -86,7 +86,7 @@ The value was measured on the run below, not assumed. The worst departure
 over every compartment at the instants probed is less than 1e-15 of one
 atmosphere. The display resolves 1e-4, as `docs/INTERFACE.md` § "Displayed
 precision" states. The tolerance is absolute, in fractions of one atmosphere,
-for the reason that `docs/MODEL.md` § "Closed-form agreement test" gives. A
+because that is what the compartments contain and what a readout converts. A
 relative tolerance would tighten without limit on the near-zero tissue
 fractions of an induction, and it would say nothing about a displayed digit.
 """
@@ -208,9 +208,8 @@ def test_a_resumed_system_steps_the_way_the_run_it_resumes_did() -> None:
     The system is placed at a stored state and then stepped by the ordinary
     `advance()`. The test adds no second way to move a run forward. The state
     the system reaches after 60 steps is compared with one exact propagation
-    of the same state over 60 s, under the same settings. That is `docs/MODEL.md`
-    § "Closed-form agreement test", applied to a system that did not step its
-    way to its starting point.
+    of the same state over 60 s, under the same settings, for a system that
+    did not step its way to its starting point.
     """
 
     system_parent, opening = _run()

@@ -25,7 +25,6 @@ from anesthesia_sim.core.supported_ranges import (
     FreshGasFlow,
 )
 from tests.integration.controller.controller_support import (
-    BRANCH_AGREEMENT,
     COMPARTMENT_SNAPSHOT_FIELDS,
     _advance_for,
     _run_with_two_changes,
@@ -144,10 +143,11 @@ def test_a_branch_reproduces_its_parent_at_every_instant_they_share() -> None:
 
 
 def test_a_branch_steps_to_where_its_parent_stepped() -> None:
-    """The live path agrees too, and a canonical comparison cannot see that half.
+    """The readouts agree too, in every digit.
 
     The parent stepped from induction to 120 s. The branch was placed at the
-    60 s keyframe and stepped from there. At the same case instant, the two
+    state its parent stored for 60 s, with the stored terms of its totals, and
+    stepped from there. At the same case instant, the two
     must describe one patient. Any comparison of two managements rests on that
     claim, because everything before the fork has to be the same history, not
     a reproduction of it.
@@ -166,12 +166,12 @@ def test_a_branch_steps_to_where_its_parent_stepped() -> None:
     assert resumed.elapsed_s == at_end.elapsed_s, "the two must be compared at one case instant"
 
     for field in COMPARTMENT_SNAPSHOT_FIELDS:
-        assert abs(getattr(at_end, field) - getattr(resumed, field)) < BRANCH_AGREEMENT, (
+        assert getattr(at_end, field) == getattr(resumed, field), (
             f"{field} diverged across the fork"
         )
 
-    assert abs(at_end.delivered_agent_l - resumed.delivered_agent_l) < BRANCH_AGREEMENT
-    assert abs(at_end.exhausted_agent_l - resumed.exhausted_agent_l) < BRANCH_AGREEMENT
+    assert at_end.delivered_agent_l == resumed.delivered_agent_l
+    assert at_end.exhausted_agent_l == resumed.exhausted_agent_l
 
 
 def test_a_branch_s_drawn_window_is_on_the_case_s_axis() -> None:

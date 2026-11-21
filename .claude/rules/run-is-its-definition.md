@@ -3,6 +3,7 @@ paths:
   - "/src/anesthesia_sim/core/run_definition.py"
   - "/src/anesthesia_sim/core/simulation.py"
   - "/src/anesthesia_sim/core/stored_states.py"
+  - "/src/anesthesia_sim/core/prediction.py"
   - "/src/anesthesia_sim/app/controller.py"
   - "/src/anesthesia_sim/app/run_series.py"
   - "/src/anesthesia_sim/app/chart_frame.py"
@@ -66,15 +67,14 @@ parent's bit for bit while no setting differs. Code that places a system at
 a stored state passes the terms stored beside it
 (`AgentUptakeSystem.resume_at`).
 
-## The preview computes by formula until `PL-Z6C8`
+## The preview is the one computed state
 
 `preview_window` shows what the run would do past the second it has reached,
-so the record holds no state for it. It opens a prediction from the stored
-state at the reach and evaluates it with `RunDefinition.evaluate_anchored`.
-`RunDefinition` still holds a run's settings and one keyframe per setting
-change, and its `state_at`, `evaluate` and `evaluate_anchored` remain for
-the preview and for tests. `PL-Z6C8` removes the evaluation paths that
-nothing reads and decides how the preview is computed.
+so the record holds no state for it. It calls `predicted_states` in
+`src/anesthesia_sim/core/prediction.py`, which takes one-second steps from the
+state stored at the reach. The predicted states go only into the window the
+chart draws. `RunDefinition` holds only the run's settings, as stretches, and
+computes no state (`PL-Z6C8`).
 
 ## `RecordedQuantity` and `RecordedSeries` name a trace
 
@@ -95,10 +95,10 @@ it is lowest, where that value lies outside the values at both ends
 2014 citation and the analysis of where that implementation departed from the
 paper's Theorem 1.
 
-## Why these six paths
+## Why these paths
 
 `core/simulation.py` holds the step that stores each state, and
-`core/stored_states.py` holds the record. `core/run_definition.py` holds the
-evaluation paths that a new reader must not use for a reached second.
-`app/controller.py` holds the readers, `app/run_series.py` holds the drawn
-window they fill, and `app/chart_frame.py` draws it.
+`core/stored_states.py` holds the record. `core/prediction.py` computes the
+preview, and `core/run_definition.py` holds the settings. `app/controller.py`
+holds the readers, `app/run_series.py` holds the drawn window they fill, and
+`app/chart_frame.py` draws it.

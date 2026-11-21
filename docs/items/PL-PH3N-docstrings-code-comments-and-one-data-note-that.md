@@ -38,6 +38,7 @@ In `tests/`:
 15. `tests/reference/test_mac_awake_washout_figures.py`: the module docstring names `docs/MODEL.md` and "six figures".
 16. `tests/reference/test_canonical_evaluation.py`: the module docstring says "six decimals of a litre", and the docstring of `test_a_branch_reproduces_its_parent_at_every_instant_they_share`.
 17. `tests/integration/simulation_view/test_simulation_view_foreground.py`: `FOREGROUND_NOT_DECLARED["QScrollBar"]` says `PL-KRZW` is open.
+<!-- absent: tests/reference/test_canonical_evaluation.py -->
 
 In `.claude/rules/`:
 
@@ -48,3 +49,6 @@ The reports that hold the quoted text and the evidence for each entry are summar
 **Why it matters.** A developer reads a docstring before the document, and each of these states something the code does not do.
 
 **Done when.** Each entry is corrected or shown to be right, entries 10 to 12 go through the review that `core/` and `data/` changes need, and entry 11's message has a test.
+
+**Checked 2026-11-21:** point 16 no longer applies. `PL-Z6C8` deleted `tests/reference/test_canonical_evaluation.py`.
+<!-- absent: tests/reference/test_canonical_evaluation.py -->

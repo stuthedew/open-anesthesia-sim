@@ -112,7 +112,8 @@ src/anesthesia_sim/
 │   ├── governing_equations.py     # MODEL.md's balance equations as one system matrix
 │   ├── matrix_exponential.py      # exp(A dt) for a compartment system; no physiology in it
 │   ├── uptake_system.py      # couples circuit + alveoli + patient; AgentUptakeSystem.advance is a run's step, one exact propagation of the whole system
-│   ├── run_definition.py               # a run as its settings over time; any state in closed form
+│   ├── run_definition.py               # a run's settings over time, as stretches; it computes no state
+│   ├── prediction.py              # predicted_states: the preview's one-second steps past the reach
 │   ├── agent_simulation_validation.py  # mass-balance / agent-accounting tracker
 │   ├── stored_states.py           # StoredStates: the state each step wrote, one per whole second of a run
 │   └── simulation.py              # SimulationState: explicit elapsed time (bounded) + AgentUptakeSystem + its StoredStates
@@ -369,60 +370,42 @@ test checks that the six amounts, added in `core/`'s order, equal
 `stored_agent_l` to the last bit, and a reference test compares each amount
 with oracles that do not read `core/`.
 
-**A run is its inputs, and its states are derived from them** (PL-T691).
-The controller holds the run as a `RunDefinition` (`core/run_definition.py`).
-The definition holds the settings in force at each moment, plus one keyframe
-per change, and nothing else of the run. A keyframe is the state at the instant
-of its change. The equations are linear and time-invariant while the settings
-stay the same, so the propagator is exact over any horizon, not only over a
-step. Every state that the run passed through is therefore one propagation from
-the latest keyframe at or before it, and none of those states has to have been
-recorded. `RunDefinition.evaluate(start_s, stop_s, columns)` and
-`evaluate_anchored(start_s, stop_s, spacing_s)` perform that evaluation. The
-chart uses the second, through `SimulationController.drawn_window`. The
-chart's evaluation keeps the propagators that its last window used, so that the
-next frame can reuse them. Each propagator is a function of settings that the
-definition already holds, so no drawn value depends on whether it was kept
-(`RunDefinition.evaluate_anchored`, PL-CNCF).
+**A run stores the state of every second it reaches** (PL-MH9J). Each step
+appends the state it wrote to the run's `StoredStates` (`core/stored_states.py`),
+one state for each whole second, with the compensation terms of the two running
+totals beside it. Every reader of a reached second takes that state: the
+readouts, the chart through `SimulationController.drawn_window`, the test of a
+mark, and a branch's opening. Nothing computes such a state a second time, so
+two readers cannot disagree. `docs/INTERFACE.md` § "Each second has one stored
+state" states the rule, and § "A run stores the state of every second it
+reaches" gives the memory figures.
 
-`run_segments` hands out the record itself as frozen segments, which can be
-read but not advanced. So nothing above the controller can move the run
-definition's reach past where the run actually got to, and then have a
-prediction drawn back on the run's own axis. `docs/INTERFACE.md` § "A run is stored
-as its settings and keyframes, and every state is computed from them" gives the
-measurements, and
-`docs/INTERFACE.md` § "The canonical evaluation rule" states which of the two
-evaluation paths a stored, exported, replayed or branched value may be taken
-from.
+The controller also holds the run's settings as a `RunDefinition`
+(`core/run_definition.py`): the stretches of unchanged settings and the second
+each opened at. It computes no state. A branch reads it for its provenance, the
+stretch that reached the fork, and the control panel for the settings in force.
+`run_segments` hands out the stretches as frozen segments, which can be read but
+not advanced, so nothing above the controller can move the record's reach past
+where the run got to.
 
-**The boundary between drawn values and the run's states is a type rather than
-a convention.** `evaluate` and `evaluate_anchored` return `DisplayState`
-values, which are not state vectors. So a drawn column cannot become a
-keyframe, an exported figure or a branch's opening state just because it holds
-the same nine numbers in the same order. `RunDefinition` rejects such a value
-as an opening state by name. A layer above the controller therefore cannot
-cross that boundary by forgetting that it is there.
-Forgetting is the only way that a boundary stated in prose is ever crossed.
+**The preview is the one computed state** (PL-Z6C8).
+`SimulationController.preview_window` predicts the seconds past the reach with
+`core/prediction.py`, which takes one-second steps from the stored state at the
+reach under the previewed settings. The predicted states go only into the
+window the chart draws.
 
-**The run definition is the only record of the run.** What the chart draws is
-what `drawn_window` evaluates, so nothing exists behind those states that could
-disagree with them. `PL-2FM6` deleted the per-step sample history that the
-controller once kept beside the definition, because the samples were a second
-copy of the run. Until then, `docs/MODEL.md` § "Closed-form agreement test"
-held the two in agreement with each other.
-
-Which instants `drawn_window` evaluates is a presentation-correctness concern,
-because a chart that stepped over a control change would show a curve the
-simulation never produced. So the rules that place the instants are stated in
+Which seconds `drawn_window` draws is a presentation-correctness concern,
+because a chart that stepped over a control change or a peak would show a curve
+the simulation never produced. So the rules that place the instants are stated in
 `docs/INTERFACE.md` § "What the chart draws" and are tested on their own. The
-evaluated instants are anchored to an absolute grid measured from the case's
-zero, rather than to their position within the window. So a window that
-follows the run keeps every column it had and gains at most one
-(`RunDefinition.evaluate_anchored`). `PL-Q197` set this rule for recorded
-samples, and `PL-2FM6` carried it over to evaluated columns.
+drawn seconds are anchored to an absolute grid measured from the case's zero,
+rather than to their position within the window. So a window that follows the
+run keeps every column it had and gains at most one (`drawn_seconds` in
+`app/chart_time_base.py`). Between two columns the chart also draws the second
+of each compartment's peak and trough (`extreme_seconds`, PL-BLZJ).
 
-The chart-frame module (`app/chart_frame.py`) is the layer above that anchored
-evaluation. It holds the rule of one column per pixel, with that rule's
+The chart-frame module (`app/chart_frame.py`) is the layer above the drawn
+window. It holds the rule of one column per pixel, with that rule's
 minimum column count (`chart_columns`). It reads the window once per run for
 every trace, and converts each drawn value into the unit of its own axis. It is
 a layer of its own because which quantity a line carries is a correctness
@@ -493,13 +476,10 @@ without bound and offer little over branching from the trunk again.
 This section is the object map of `BranchedCase`, its runs and the
 `RunDefinition` each run carries. What a branch *guarantees* is stated and
 measured in one place only:
-`docs/INTERFACE.md` § "The canonical evaluation rule". That section says that a
-branch's run definition opens at a keyframe of the case, and why. It says that
-the definition opens at that keyframe's own case instant, so no clock is
-re-based and no conversion is performed. It also says what both of these are
-worth in floating point. The same section's "What this requires of a branch"
-says which keyframe is used, and how it relates to the instant at which the
-branch itself began.
+`docs/INTERFACE.md` § "Each second has one stored state" and its "What this
+requires of a branch". They say that a branch holds a copy of its parent's
+stored states up to the fork and steps on from the state stored there, on the
+case's own clock, so no clock is re-based and no conversion is performed.
 
 Five things in `app/controller.py` implement a branch:
 
@@ -507,9 +487,9 @@ Five things in `app/controller.py` implement a branch:
   trunk's keyframes. It builds a second controller through the ordinary
   constructor, with the settings of the trunk's stretch that opens at
   `instant_s`, so the branch runs under the change recorded there. It then
-  seeds the new controller's system with the trunk's canonical state at
-  `instant_s`, which is the trunk's run definition evaluated at that instant,
-  and returns the controller paused. The trunk is read and never written. So
+  gives the new controller the trunk's stored states up to `instant_s`
+  (`StoredStates.through`), places its system at the state stored there with
+  the stored compensation terms, and returns the controller paused. The trunk is read and never written. So
   the two runs share no compartment, no accounting and no clock, and that is
   what lets both be advanced.
 - `SimulationController.resumed_here()` makes a branch where the paused trunk
@@ -537,7 +517,7 @@ Five things in `app/controller.py` implement a branch:
   It gives the branch that a halt on that mark would have given, taken late.
   The fork is the marked instant, which is the end of the step that reached the
   mark, and `TimeBookmark.steps_to_reach` gives the count of that step.
-  The branch opens from the trunk's canonical state there, exactly as a fork
+  The branch opens from the trunk's stored state there, exactly as a fork
   after a halt does. The method takes the mark rather than an instant, for the
   same reason that `resumed_here` takes nothing. `mark_fork_points` lists the
   marks it accepts, each with the instant at which its branch would open. A
@@ -546,7 +526,7 @@ Five things in `app/controller.py` implement a branch:
   and its Reset would return it to the same stop (`PL-VHQX`).
 - `ResumePoint` records where the branch came from. It holds the trunk stretch
   that the step reaching the fork ran under, the fork's instant and the
-  canonical state there, the case's step count at the fork, the step that ends
+  stored state there, the case's step count at the fork, the step that ends
   at the fork, and the agent that the branch's accounting period started from.
   It holds no crossing, because a crossing stored with the marks it named would
   go on naming a mark that was removed and added back (`PL-XV0D`). So at each
@@ -586,7 +566,7 @@ rule decides which stretch the branch names as its provenance: the stretch that
 the step reaching the fork ran under. After the case's opening, no later change
 on the trunk can replace that stretch. The branch runs under the stretch still
 open at the fork, which is what the dial says there
-(`docs/INTERFACE.md` § "The canonical evaluation rule", `PL-ZR49`).
+(`docs/INTERFACE.md` § "What this requires of a branch", `PL-ZR49`).
 
 A branch inherits the bookmarks but not the trunk's control timeline, and one
 test settles both. A mark is a question about what is still to come, and a
@@ -600,19 +580,17 @@ after them each setting that the learner changed and the reset kept.
 
 `opened_from` records where the fork was taken. Read the fork instant only
 from `began_at_s`, which is zero on a trunk and the fork instant on a branch.
-The property exists because the definition's own first segment no longer
-always starts at the fork, so the instant cannot be inferred from it
-(`PL-B8MK`).
+The property exists because the settings record's first stretch is the one
+that reached the fork, which can open earlier, so the fork cannot be inferred
+from it (`PL-B8MK`).
 
 **One time frame, and every reader is in it.** A branch continues the case's
 step count. So `snapshot().elapsed_s`, every control-change stamp,
-`drawn_window`'s instants *and* the instants `run_segments` hands out are all
-in case time. A branch's `RunDefinition` opens at a keyframe of the case rather
-than at a zero of its own. So a keyframe read from a branch needs no conversion
-to be placed on the case's axis, and no reader has to know which kind of run it
-holds. *Which* keyframe depends on the fork. For a branch taken at a control
-event, it is the fork itself. For a branch taken at a bookmark, it is the
-keyframe at or before the fork.
+`drawn_window`'s seconds, the seconds of the stored states *and* the seconds
+`run_segments` hands out are all in case time. A branch's settings record opens
+with the trunk's stretch that reached the fork, at that stretch's own second.
+So nothing read from a branch needs a conversion to be placed on the case's
+axis, and no reader has to know which kind of run it holds.
 
 A branch once had a second time frame, offset from the case's by
 `SimulationController.origin_s`. `advance` and `drawn_window` subtracted that
@@ -620,8 +598,6 @@ offset, and `run_segments` warned about it. The branch's drawn columns were
 anchored to its own zero, so they landed at case instants the trunk never draws
 (`PL-2R2C`). The frame was removed, with `origin_s` and both subtractions
 (`PL-ZMRT`), and that solved the problem without a separate fix.
-`docs/INTERFACE.md` § "The canonical evaluation rule" measures what the removal is
-worth.
 
 **Where a branch may be taken.** There are three places: at a keyframe, where
 the paused trunk stands, and at a time bookmark the trunk has passed. Each is
@@ -635,13 +611,9 @@ changed. Such an instant is listed as soon as the change is made, and it
 leaves the list if the settings are put back before the next step runs. Any
 *other* instant that a caller names to `fork_at` is refused
 as belonging to another method, not as an instant a branch could not reproduce
-(`PL-54V0`). The two methods below both fork between keyframes and reproduce
-the trunk exactly. No method *restarts* a branch's definition at its fork.
-`docs/MODEL.md` measures what a restart does, and
-`tests/unit/test_run_definition.py` checks that a restart really does stop
-reproducing the run it claims to continue. So the construction every method
-uses is never relaxed into a restart on the grounds that the difference is
-small.
+(`PL-54V0`). The two methods below fork at any other whole second the trunk
+has reached, and reproduce the trunk exactly, because every method opens from
+the trunk's stored states.
 
 The second is **where the paused trunk stands**, with `fork_here` (`PL-Y2SL`).
 A learner who pauses to think tries something else from that instant in one
@@ -652,18 +624,11 @@ one such pause. `app/bookmarks.py` defines what a learner may mark (`PL-LPLD`).
 the run where a mark lies between the two readings.
 
 Where a run stands is not, in general, a setting change. On a 120 s run with
-two control changes, 3 of the 121 instants it can stand at are keyframes. So
-the trunk holds no keyframe there, and nothing records one. The branch's
-*definition* opens at the keyframe at or before the fork
-(`SimulationController._keyframe_before`), while its clock and
-its live system stand at the fork. This costs the trunk nothing and reproduces
-it element-wise. The obvious route was measured and refused. Recording a
-keyframe where the run halts makes the branch exact against the trunk it forked
-from, but it also moves that trunk's own later results away from what the case
-would have given unmarked, so marking a run would change it. Both measurements
-are in `PL-B8MK`. `docs/INTERFACE.md` § "What this requires of a branch" records
-which of that section's two conditions the chosen route relaxes, and what the
-relaxation costs.
+two control changes, 3 of the 121 seconds it can stand at are setting changes.
+The trunk stored a state for every one of them, so the branch opens from the
+stored state at the fork (`StoredStates.through`), and nothing is recorded on
+the trunk. Marking a run or branching from it therefore never changes the
+trunk's later states.
 
 The paused point is a permission rather than a standing offer. It ends when the
 trunk starts again, because the point where a running trunk stands moves with

@@ -413,16 +413,12 @@ The guarantee does not cover three things, and none of them is a defect:
   property of the computer. So is how many steps it has reached when a
   wall-clock minute is up. Neither is a property of the model.
 
-**A state computed from a saved run has a guarantee of its own.** The guarantee
-above holds because two runs with the same inputs take the same steps, so only
-one sequence of calculations reaches step *n*. A saved run stores
-no samples. Its states are computed on request, and more than
-one sequence of calculations can reach the same instant. The guarantee for
-these states comes from a rule for computing them
-("The canonical evaluation rule" under `docs/INTERFACE.md` § "Runtime controls"). That rule is
-stronger in one way: two computations of one saved run at one instant give
-exactly the same bits. It is narrower in another: only values computed by that
-rule may be stored, exported or branched from.
+**Every value shown, compared or branched from is a state the run stored.** A run
+stores the state that each step wrote, one for each second it reaches, and every
+reader of a reached second takes that state rather than computing it again
+(`docs/INTERFACE.md` § "Each second has one stored state"). So two readers of one
+second get exactly the same bits. The one computed state is a preview of a setting
+not yet applied, which is only drawn.
 
 **For developers.** Faster playback never enlarges the step, because a larger
 step would compute a second solution of the same equations, one that the
@@ -1760,12 +1756,13 @@ Shifting the matrix before summing the exponential's series keeps that true in f
 
 The capacity guard and the rollback in § "Step atomicity" cover two cases to which the reasons
 above do not apply. The first is a state at the top of the range, which a caller can pass when
-resuming a run (`resume_at`) or opening a run definition (`RunDefinition`). Those two routes
+resuming a run (`resume_at`) or opening a prediction (`predicted_states`). Those two routes
 check only that a state lies from 0 through 1. The second is a model extension whose matrix is
 not a pure transfer system.
 
-The test of a stepped run against one calculation is `test_state_at_matches_a_stepped_run` in
-`tests/unit/test_run_definition.py` (§ "Step-refinement test").
+The test of a stepped run against the exact solution is
+`test_a_generated_run_keeps_what_must_hold_after_every_action` in
+`tests/unit/test_generated_runs.py` (§ "Step-refinement test").
 
 #### Supported simulation step
 
@@ -1951,19 +1948,15 @@ The run's state (`SimulationState`) has no method that takes steps in a loop for
 no caller in `src/` needs one. Apart from the run loop, the loops over `advance` are test helpers
 that drive the controller step by step, as the interface does.
 
-**To get the state after a set time, use a run definition (`RunDefinition`) instead of a long
-step.** A caller cannot take a step longer than one second. That keeps the record of control
-changes true, so that a stepped run
-is one the interface could have produced, with each setting held for whole steps. For the state
-after 30 s or an hour with unchanged settings, build the run definition from the system's
-`equation_settings()` and `state_vector()`, with `opened_at_s` set to the time the system has
-reached (`SimulationState.elapsed_s` for a run under way). Then move it with `advance_to` and read
-`state_at`. The start time `opened_at_s` has no default, so a run partway through a case cannot be
-opened at zero by mistake. Reading `state_at` computes one exact solution over the whole interval
-(`docs/INTERFACE.md` § "The canonical evaluation rule") in place of 30 or 3600 steps. A test checks that both
-routes agree (`test_state_at_matches_a_stepped_run` in `tests/unit/test_run_definition.py`). The
-application builds its predictions this way. A run definition also computes a state at an
-instant between two whole seconds, which no run reaches by stepping.
+**To get the state after a set time without stepping a run, use a prediction.** A caller cannot
+take a step longer than one second. That keeps the record of control changes true, so that a
+stepped run is one the interface could have produced, with each setting held for whole steps.
+For the states over the next 30 s or the next hour with unchanged settings, pass the system's
+`equation_settings()`, the state to start from and the two seconds to `predicted_states` in
+`core/prediction.py`. It takes one-second steps, as a run does, and returns the state at every
+second. A test checks that a prediction stays within rounding of a run that stepped the same
+seconds (`test_each_predicted_second_matches_the_second_the_run_stepped` in
+`tests/unit/test_prediction.py`). The application draws its previews this way.
 
 **A run of the supported length takes 86 400 steps**, one for each second
 (`MAXIMUM_STEP_COUNT` in `core/supported_ranges.py`). The last step ends exactly at the supported
@@ -2076,7 +2069,6 @@ outside it.
 | The time step of a compartment stepped on its own | 0.001 s to 86 400 s | `require_compartment_step` |
 | A time in the case | a whole number of seconds from 0 to 86 400 s (24 hours) | `CaseInstant` |
 | A run's step count | 0 to 86 400, one step for each second | `require_supported_step_count` |
-| The columns of one evaluation | 1 to 100 000 | `RunDefinition.evaluate` |
 | A partial pressure, as a fraction of one atmosphere | 0 to 1 | `Fraction` |
 | The same, as a percent of one atmosphere | 0 to 100 | `Percent` |
 | The delivered concentration in the whole model | 0 to 99% | `UptakeEquationSettings` and `AgentUptakeSystem.set_delivered_concentration_percent` |
@@ -2092,16 +2084,12 @@ outside it.
 <!-- provenance: core/blood_flow.py MAXIMUM_PERFUSION_FRACTION = 1 -->
 <!-- provenance: core/supported_ranges.py MINIMUM_COMPARTMENT_STEP_S = 0.001 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
-<!-- provenance: core/run_definition.py MAXIMUM_WINDOW_COLUMNS = 100000 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_INPUT_FRACTION = 0.99 -->
 
-Two refusals are expected even though every input lies inside its range, and each gives an error
+One refusal is expected even though every input lies inside its range, and it gives an error
 message, never a wrong value. At the hardest combinations of extreme volumes and coefficients, a
-24 h run computed in one piece needs more work than the simulator's method allows. The
-simulator then refuses that run, as § "What a long interval costs at the corners" below describes.
-At the same combinations, a run taken in steps is stopped by the mass-balance check on its
-first step or within minutes, as the paragraphs after that one describe.
-<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+run taken in steps is stopped by the mass-balance check on its first step or within minutes,
+as § "The numerical envelope" describes below.
 
 **In the whole model, the delivered concentration stops at 0.99 of the ambient pressure, and so
 does each fraction the model is built with.** A gas's partial pressure cannot exceed the ambient
@@ -2169,9 +2157,9 @@ corner, each volume is at one of its limits, and the two coefficients are at one
 corners of the region allowed by their own limits and the tissue:blood quotient's limits. Each
 flow is set to zero, to the smallest positive number a computer can hold and to its maximum. The
 test steps the whole model once, steps each compartment alone
-at its own limits, and computes a run over 24 hours by both the chart's method and the canonical
-one (`docs/INTERFACE.md` § "The canonical evaluation rule"). Each run washes in to the 0.99 limit, washes out from
-it, or sits at it. Stepped alone, a tissue group and the venous pool run at zero flow, at the
+at its own limits, and predicts every second of a 60 s run in one-second steps. At the two
+corners where rounding went furthest it predicts every second of 24 hours. Each run washes in
+to the 0.99 limit, washes out from it, or sits at it. Stepped alone, a tissue group and the venous pool run at zero flow, at the
 smallest positive flow and at the largest supported cardiac output, and each result stays
 finite and between its start and its equilibrium.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
@@ -2296,47 +2284,16 @@ the criterion allowed. The limits were kept on 2026-11-21 all the same, for four
 4. Nothing a learner sees depends on the choice.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-At the hardest corner, with every volume at 0.01 L, blood:gas at 10 000 and tissue:blood at 0.001,
-each column of a 24 h chart is the hardest calculation the method allows. That is why the
-chart's excess is the largest. The chart has 60 columns, each computed over 1464.4 s. Repeated
-over 59 columns, the error of one column adds up to the chart's excess.
-<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
-<!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
-
-**Neither shorter calculations nor a different method would shrink the 24-hour chart's excess,
-so the chart keeps its method.** Both remedies were tested on 2026-11-01 at the hardest corner,
-with every volume at 0.01 L, blood:gas at 10 000 and tissue:blood at 0.001. Each test computed
-one 1464.4 s column with no fresh gas and compared it with the same high-precision reference:
-<!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
-
-- **Splitting the interval does not help.** Computing the column in one piece gave a worst error
-  of 6.0×10⁻⁷. Building it from pieces of 100 s, 10 s or 1 s gave 5.9×10⁻⁷, 5.8×10⁻⁷ and
-  5.8×10⁻⁷. Each shorter piece is more accurate, but more of them are combined. The error limit
-  in "What it costs" (`core/matrix_exponential.py`) predicts this: it grows with the interval
-  times the fastest rate, however the interval is divided.
-- **A method that does less work cannot do much less here.** Al-Mohy and Higham's method saves
-  work when a matrix's largest rate is much smaller than a simple bound on it suggests. Here the
-  two are close, so it would save little. It would also give up the step that keeps the result
-  nonnegative after rounding, which every compartment's check relies on (Al-Mohy AH, Higham NJ.
-  A new scaling and squaring algorithm for the matrix exponential. SIAM J Matrix Anal Appl
-  2009;31(3):970-989. doi:10.1137/09074721X; read from its abstract).
-<!-- not-restated: 1 s -->
-
 The 0.99 limit leaves a margin of 0.01, about 300 times the largest excess. Pushing a computed
 fraction back to 1 would hide an error the size of the largest excess instead of limiting it. The
 limit belongs to the model, not to one agent's vapour pressure, so a later gas delivered at a high
 fraction does not need a new limit.
 
-**What a long interval costs at the corners.** At the hardest corner of the envelope, a run is
-refused once its settings stay unchanged for about 27 minutes. The canonical evaluation computes one step for each stretch of unchanged
-settings (`docs/INTERFACE.md` § "The canonical evaluation rule"). The calculation needs more squarings of a matrix
-for a longer step or faster rates, and each squaring can double the step's rounding error.
-At the hardest corner, a stretch longer than about 1,610 s needs more than 32 squarings, and the
-calculation refuses it with an error instead of returning a result. So a run at that corner is
-refused once its settings stay unchanged for about 27 minutes. That is an obvious failure, which
-this document prefers to a plausible-looking number. The shipped parameters need 19 squarings
-over the whole 24 hours.
-<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+**No calculation spans more than one second.** A run, a branch and a preview all take
+one-second steps, and the chart draws the states the run stored. The calculation needs more
+squarings of a matrix for a longer interval or faster rates, and each squaring can double the
+rounding error. A one-second step needs at most 22 squarings at the hardest corner, below the
+limit of 32 at which `core/matrix_exponential.py` refuses a propagator.
 
 **At the hardest corners of the envelope, the mass-balance check halts a run that advances in
 steps.** After every step, the check in § "Mass-balance identity" requires the agent
@@ -2482,8 +2439,7 @@ agent's parameters (`AgentParameters`) hold both factors, so they check the quot
 factor is written. A tissue group (`TissueGroup`) holds only its tissue:gas coefficient, so the
 patient's compartments (`PatientCompartments`) check each group's quotient when the patient is
 built and when a group is replaced. The function that checks a state
-(`require_canonical_state`) builds each of the six fractions as a `Fraction`. The display path
-builds each fraction it computes as a `Fraction` before it wraps the state in a `DisplayState`.
+(`require_canonical_state`) builds each of the six fractions as a `Fraction`.
 A settings record and the stepped system's dial setter both refuse a dial above 99%.
 
 The matrix exponential module (`core/matrix_exponential.py`) computes the propagator
@@ -2492,22 +2448,7 @@ returns the propagator (`matrix_exponential`) refuses a stretch that needs more 
 squarings with `SimulationConfigurationError`. A run that exceeds the mass-balance tolerance
 (`AGENT_ACCOUNTING_RELATIVE_TOLERANCE`) halts with `AgentSimulationValidationError`.
 
-The figures behind the chart's excess are these. In the canonical evaluation, one propagator
-across the whole 86 400 s at the hardest corners needs more than 32 squarings, so it is refused.
-In the 60-column chart, each column's 1464.4 s propagator needs 32 squarings, the most allowed.
-Its worst entry differed from a 50-digit reference by 5.65e-7, about 5e9 units in the last place.
-That error is about $`2^{32}`$ times the unit roundoff, or 4.8e-7. The chart applies
-the propagator 59 times, and 59 times 5.65e-7 is 3.3e-5. The same corner's one-second step needs
-22 squarings, and its worst error as a share is 9.3e-10, in the table above. Built from propagators over 1464.4 s, 100 s,
-10 s or 1 s, the interval needs 32, 28, 25 or 22 squarings for each piece. For Al-Mohy and
-Higham's method, the 1-norm of the system matrix is 1.83e5 /s and its spectral radius is
-1.67e5 /s. Scaling the spectral radius times 1464.4 s down to the degree-13 Padé approximant's
-threshold of 5.37 still takes 26 squarings.
-<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
-<!-- not-restated: 1 s -->
-
-The shipped run's 24-hour propagator had an error of 3.3e-11 in its worst entry, and the corners'
-one-second steps have errors of up to 1.3e-9.
+The corners' one-second steps have errors of up to 1.3e-9.
 
 One step's rounding is bounded by $`10 \cdot 2^{s} \cdot 2^{-52}`$, where $`s`$ is the number of
 squarings the step needs and 10 is the factor that § "How far a computed value can be from the
@@ -2545,7 +2486,6 @@ show a percentage to two decimals.
 | The state after $`n`$ steps, against the exact solution | $`n`$ times the allowance for one step | Bound |
 | A running total of delivered or exhausted agent, against the exact sum of its step amounts | $`2^{-51}`$ of the total, which is 4.4e-16 | Bound |
 | Agent held, delivered and exhausted (§ "Mass-balance identity") | One part in 10⁹ of the agent handled, or 1e-12 L | Fixed |
-| A reading stepped to an instant, against the canonical reading of that instant (`docs/INTERFACE.md` § "The canonical evaluation rule") | 1e-6 of the reading | Fixed |
 | $`F_A/F_I`$ above 1 in a run that is still washing in (`docs/INTERFACE.md` § "F_A/F_I as a displayed ratio") | 1e-6 | Fixed |
 | A reading at the height of a MAC target (`docs/INTERFACE.md` § "Halting on a marked crossing") | 1e-5 of the height | Fixed |
 | The tissue perfusion fractions, against a sum of 1 (§ "Tissue groups") | 1e-12 | Fixed |
@@ -4119,16 +4059,13 @@ simulation advances in steps of one second, and the model solves its equations e
 over each step. So a run taken in steps must agree, to within rounding, with one exact
 calculation over the same interval.
 
-Three tests enforce this requirement:
+Two tests enforce this requirement:
 
-1. One test takes a 600 s sevoflurane run in one-second steps, with a dial change at 30 s
-   and a ventilation change at 120 s. At every second, it compares the six concentrations
-   with one exact calculation over each stretch of unchanged settings. The largest
-   difference is 4.6 × 10⁻¹⁵, as a fraction (from a run on 2026-11-21).
-2. One test splits a calculation in two at an instant where no setting changes, and
-   compares the result with the calculation in one piece. The largest difference is
-   7.0 × 10⁻¹⁵, as a fraction (from a run on 2026-11-21).
-3. The independent solution takes 80 steps in each of the model's steps, and the two
+1. One test draws runs of many settings and actions, and after each action compares the
+   state with the exact solution of the equations over the action, worked out to 50 digits.
+   Each comparison allows the summed rounding bound of the steps taken (§ "How far a
+   computed value can be from the exact one").
+2. The independent solution takes 80 steps in each of the model's steps, and the two
    agree to within rounding (§ "Independent-solution test" below).
 
 Passing these tests shows only that dividing a run into steps does not change the
@@ -4139,13 +4076,9 @@ are solved correctly (§ "Independent-solution test" below). Another compares
 the model with patient measurements (§ "Published wash-in and elimination
 validation test").
 
-**For developers.** The first test is `test_state_at_matches_a_stepped_run` in
-`tests/unit/test_run_definition.py`. It allows a difference of 5e-14 in each
-concentration, a limit at the level of rounding error and about eleven times the
-largest difference measured. The second is
-`test_a_fork_opening_at_the_instant_it_was_taken_does_not_reproduce_its_parent` in
-`tests/reference/test_canonical_evaluation.py`, which allows 1e-13
-(§ "Canonical evaluation test").
+**For developers.** The first test is
+`test_a_generated_run_keeps_what_must_hold_after_every_action` in
+`tests/unit/test_generated_runs.py`.
 
 Until 2026-11-21 a run could take a step from 1 ms to 0.1 s, and two tests compared
 60 s sevoflurane runs at different steps. The first compared the alveolar, vessel-rich
@@ -5597,39 +5530,31 @@ $$
 isoflurane and desflurane (`test_wash_in_and_washout_validates_agent_simulation`
 in `tests/reference/test_multi_agent.py`).
 
-### Closed-form agreement test
+### Prediction agreement test
 
-The closed form computes a run's state directly from the run definition. The
-stepped solver advances the run one time step at a time. For a run driven
-through its own controls, the two must give identical states at each instant
-that the stepped solver passed through. The stepped solver was written
-independently of the closed form to solve the same equations, so agreement is
-the evidence that the closed form solves them correctly.
+A preview predicts the seconds a run has not reached, in one-second steps from
+the state the run stored at the second it has reached. The prediction must agree
+with a run that stepped the same seconds to within rounding, at every second and
+in every compartment. The run reads each fraction back from the amount of agent
+in its compartment, and the prediction carries the fractions directly, so the two
+routes are not the same arithmetic and agreement is evidence that both solve the
+same equations.
 
-The comparison covers every compartment at every instant probed, not only the
-first and the last (§ "Deterministic replay test" explains why). It must also
-cross at least two setting changes, because a stretch of constant settings is
-the easy case, and the run definition has to get each change right.
+The allowed difference is twice the summed rounding bound of the steps taken
+(§ "How far a computed value can be from the exact one"), because each route lies
+within that bound of the exact solution. That limit is far smaller than the
+second decimal place of a displayed percentage (`docs/INTERFACE.md` § "Displayed
+precision"). A prediction that stepped by any other length, or that was off by
+one second, fails it.
 
-The comparison's tolerance is far smaller than the second decimal place of a
-displayed percentage (`docs/INTERFACE.md` § "Displayed precision"), and far larger than the
-rounding error of computer arithmetic. A real divergence therefore fails the
-test, and a rounding difference does not.
-
-**For developers.** The tolerance is absolute, in fractions of one atmosphere,
-because that is what the compartments contain and what a readout converts. A
-relative tolerance would tighten without limit on the near-zero tissue fractions
-of an induction, and it would say nothing about a displayed digit.
-
-Two tests compare the closed form's functions (`state_at` and `evaluate`) with
-a run stepped alongside its definition. Both use one run that crosses two
-setting changes
-(`test_evaluate_matches_a_stepped_run` and `test_state_at_matches_a_stepped_run`
-in `tests/unit/test_run_definition.py`). Other tests make the same comparison in
-two more cases: a system started at a keyframe and stepped from there, and a
-branch compared against its parent (`tests/unit/test_resume_at.py` and
-`tests/integration/controller/test_controller_branching.py`). Each test records the difference it
-found and the headroom left below the tolerance.
+**For developers.** The test is
+`test_each_predicted_second_matches_the_second_the_run_stepped` in
+`tests/unit/test_prediction.py`. `tests/unit/test_generated_runs.py` also holds
+each prediction to the exact solution worked out to 50 digits. Other tests
+compare stepped runs in two more cases: a system resumed at a stored state and
+stepped from there, and a branch compared against its parent
+(`tests/unit/test_resume_at.py` and
+`tests/integration/controller/test_controller_branching.py`).
 
 ### Parameter-recovery test
 
@@ -5715,37 +5640,19 @@ The tests for this section are
 `test_a_run_reaches_the_same_definition_at_every_playback_rate`, in
 `tests/integration/test_sevo_controller.py`.
 
-### Canonical evaluation test
+### Stored-state test
 
-A run must give the same result, called its canonical result, whether or not
-values are read from it while it is computed. The two results must match value
-for value, in every quantity the model tracks, at every instant checked and in
-every state the run stores. The canonical result therefore depends only on how
-the run is defined.
+A run must give the same states whether or not they are read while it runs. Each
+second's state is stored once, by the step that reached it, and every reader takes
+that state (`docs/INTERFACE.md` § "Each second has one stored state"). A branch
+holds its parent's stored states up to the fork and must repeat its parent's later
+states in every digit while no setting differs.
 
-When a run starts from a state that its parent run stored, it must match the
-parent value for value at every instant they share.
-
-Values computed for the display can differ from the canonical result.
-`docs/INTERFACE.md` § "The canonical evaluation rule" publishes the difference. A test checks it
-against a bound for each quantity, so a change to how values are computed
-cannot silently move a figure that `docs/INTERFACE.md` prints. The program must refuse a display value wherever it needs a canonical one. That makes the rule a property of the program rather than of the reader.
-
-**For developers.** The tests are in `tests/reference/test_canonical_evaluation.py`.
-Two of them check that reading a run changes neither its results nor the states
-it stores, called keyframes (`test_querying_a_run_does_not_change_what_it_answers`,
-`test_querying_a_run_does_not_change_the_keyframes_it_stores`). A cache, a
-memoised propagator or a reused buffer would cause such a change, while looking
-like an optimisation. Another test checks that a run started from a stored state
-matches its parent (`test_a_fork_opening_from_a_keyframe_reproduces_its_parent`).
-That match is what `docs/INTERFACE.md` § "The canonical evaluation rule" owes the work planned in `ROADMAP.md` item 12. The refusal
-of display values has its own test (`test_a_display_value_cannot_open_a_run_definition`).
-
-The test of the bounds fails on a change to the equations, to the propagator or
-to how a window is walked (`test_the_display_path_stays_within_its_measured_separation`).
-The compartment fractions and the cumulative accumulators have separate bounds
-because the differences measured for them are about four orders of magnitude apart. A single
-bound for both would have to be the looser one.
+**For developers.** The tests are in
+`tests/integration/controller/test_controller_stored_states.py`. A branch with no
+setting moved repeats its trunk's later states in every number
+(`test_a_branch_with_no_setting_moved_repeats_its_trunks_later_states_in_every_number`),
+which is what `ROADMAP.md` item 12 asks for.
 
 ## Known limitations
 

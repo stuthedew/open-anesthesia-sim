@@ -24,9 +24,13 @@ payoff: the docstrings of three published-data tests give the figures and reason
 3. `tests/reference/test_published_wash_in_and_elimination.py`, docstring of `test_early_wash_in_matches_published_human_measurement`: desflurane runs "0.034 to 0.042" above its published curve from 1 to 10 minutes. The 7.5-minute point is 0.032 above, so the range is 0.032 to 0.042.
 4. The same file, two comments. "The numeric value is in the methods text and is not held here (`PL-ZDWL`)": `docs/MODEL.md` says that neither paper reports a ventilation, and the closed item `PL-ZDWL` found the same. "x1.10 is not used, because desflurane passes it": desflurane fails the gate at ×1.10, and `docs/MODEL.md` gives the right reason, that ×1.10 is too close to desflurane's edge at ×1.097.
 5. `tests/reference/test_canonical_evaluation.py`, module docstring: the accumulators show "to six decimals of a litre", and the two bounds differ because "their headroom differs by four orders". `app/formatting.py` shows the three amounts to 0.1 L (`_RUN_TOTAL_LITRE_DECIMALS = 1`). What differs by about four orders is the measured difference, 8.0e-13 of an atmosphere against 3.1e-9 L.
+<!-- absent: tests/reference/test_canonical_evaluation.py -->
 
 **Why it waits on `PL-SZ6G`** (a run's time as a whole number of seconds). That branch rewrites all three files, so a correction made now would conflict with it. A change to an existing line of a test under `tests/reference/` also waits for the project owner's read.
 
 **Done when.** Each of the five agrees with the code beside it and with `docs/MODEL.md`.
 
 **Generator check.** Split from an item that `PL-RMNP` (the check of `docs/MODEL.md` against the code) filed, a sweep that the owner asked for. The fact it misreads is whether a `docs/MODEL.md` sentence about what the model computes matches what it computes, which the head `PL-B6YV` (a document sentence about what the model computes, checked against the code) already states. It is counted under the sweep and is not a new head.
+
+**Checked 2026-11-21:** point 5 no longer applies. `PL-Z6C8` deleted `tests/reference/test_canonical_evaluation.py`, so only the other files remain.
+<!-- absent: tests/reference/test_canonical_evaluation.py -->

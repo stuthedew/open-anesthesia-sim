@@ -143,13 +143,14 @@ type, `CaseInstant`, is an `int` subclass built only through its guard
 whole number of seconds, because a run moves forward only by the one-second
 step (`core/simulation_step.py`, `PL-SZ6G`). So it accepts an `int` and nothing
 else, as the step count does. Every operation takes a
-`CaseInstant` if it opens, moves, marks or branches a run, or if it stores one
-of the run's keyframes. That covers `RunDefinition`'s opening, reach and
-keyframes, the marks in `app/bookmarks.py`, and the instant at which a branch
-is taken. The simulation state returns its elapsed time as one
-(`SimulationState.elapsed_s`). The control record's instants are `CaseInstant`
-too: the instant of each change (`app/control_record.py`) and the start and end
-of each adjustment (`app/control_timeline.py`, `PL-RCYZ`).
+`CaseInstant` if it opens, moves, marks or branches a run, or if it reads or
+stores the state of one of the run's seconds. That covers `RunDefinition`'s
+opening, reach and stretches, `StoredStates`, a `Keyframe`, the marks in
+`app/bookmarks.py`, and the second at which a branch is taken. The simulation
+state returns its elapsed time as one (`SimulationState.elapsed_s`). The
+control record's instants are `CaseInstant` too: the instant of each change
+(`app/control_record.py`) and the start and end of each adjustment
+(`app/control_timeline.py`, `PL-RCYZ`).
 
 The instants at which a run is only *read* are a plain number: `RunDefinition`'s
 `state_at` and a drawn window's bounds. The run refuses such an instant when it

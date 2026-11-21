@@ -210,10 +210,11 @@ at 18 and $`6.3\\times10^{-7}`$ at 31. At 51 squarings it was 174%
 (`PL-2MD9`).
 
 A cap of thirty-two puts the bound at $`2^{32}\\cdot2^{-52} = 2^{-20}`$, about
-one part in a million. The most squarings a shipped agent needs is 19. That
-is at the 24-hour horizon that `RunDefinition.state_at` can be asked for, at the
-widest supported flows. The cap therefore leaves a factor of $`2^{13}`$ in rate
-or interval before it refuses anything a run can reach. What it does refuse is
+one part in a million. A shipped agent's one-second step needs at most 3, at the
+widest supported flows, and the hardest corner of the numerical envelope needs
+22 (`docs/MODEL.md` § "The numerical envelope"). The cap therefore leaves a
+factor of $`2^{10}`$ in rate or interval before it refuses anything a run can
+reach. What it does refuse is
 the regime that the alveolar sweep found. At 1e-18 L the propagator was wrong by
 about 100% in every entry, yet the run advanced three steps with its accounting
 check passing. The check passed because the same failure had affected every
