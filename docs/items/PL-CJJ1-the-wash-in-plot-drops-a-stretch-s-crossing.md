@@ -19,3 +19,5 @@ verify: grep -q 'def test_a_wash_in_stretch_at_a_wide_time_base_ends_at_equilibr
 **Done when.** At every time base, a wash-in stretch that reached equilibrium ends on the equilibrium line or with a mark that says it ended there, never in clear space below it. `tests/unit/test_chart_frame.py` has `test_a_wash_in_stretch_at_a_wide_time_base_ends_at_equilibrium`, which reproduces the 60-minute run on the 4 h base.
 
 **Found by.** `PL-TBQS` reviewer replay on #578, findings r03 F3, r04 F3 and r05 F3, and `PL-ZWXD` entry 1. Checked against main on 2026-10-25 with `assemble_chart_frame` on a `SimulationController` run (`scripts/c_terminus.py`).
+
+**Checked 2026-11-21**, by `PL-5FMC` (the check of `docs/INTERFACE.md` against the code), at `2452b9b4e`. One of the three examples above no longer reproduces. A 10-minute wash-in followed by the dial at 0, drawn on a 4-hour time base at 900 px, ends its stretch at a ratio of 0.97 with no terminus dot. The other two examples were not rerun. Rerun all three before building, and say in the brief which still fail.
