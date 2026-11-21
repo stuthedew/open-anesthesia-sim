@@ -43,6 +43,7 @@ ALLOWED_IMPORTS = {
     "glob",
     "io",
     "json",
+    "keyword",
     "locale",
     "os",
     "pathlib",
