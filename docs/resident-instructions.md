@@ -1614,3 +1614,716 @@ reflexive one.
 **What was replaced, and the cost.** The rule went from 16,404 to 15,333
 characters. The five points added 1,013, and the bad examples removed about
 2,100.
+
+## The sort of 2026-11-21, and the history it moved here
+
+The project owner approved a sort of every paragraph loaded at launch (project
+owner, 2026-11-21, ratified, "Agree", over changing any row). `PL-MR85` holds
+the table. Each row is a paragraph, the group it was sorted into, and the
+number of lines that stay loaded at launch. The four files had grown from
+60,199 characters on 2026-09-19 to 92,660 on 2026-11-20, although every edit
+in that time had to name what it replaced.
+
+`PL-2PJ6` moved the rows that the table marks as history. It also shortened
+the rows of judgment that the table keeps at fewer lines, because the title of
+`PL-2PJ6` lists only the history rows and no other item names the rest. Rows
+63 and 69 are left for `PL-CYT1` and `PL-GDN7`, which move the rows that those
+two lead into.
+
+Each block below is a paragraph as `origin/main` held it at commit `2b17061`,
+word for word. The line above a block says what stays loaded at launch. The
+blocks are fenced, so that a path or a heading cited inside one is read as a
+record of that day and is not checked against the tree.
+
+**Row 2, `CLAUDE.md`: the map of where each rule is written.** A three-line map
+stays.
+
+```text
+Everything here is resident: it loads at launch, in every session, before
+anything has been read. It is therefore limited to what a session could get
+wrong *before* it would think to look anything up. The rest of the working
+agreement is routed to where it fires — `.claude/skills/docket/SKILL.md` for
+the queue workflows, `.claude/rules/instruction-writing.md` for the shape of a
+reply, `.claude/rules/expert-review.md` for the standard every approach is
+judged against (resident too, since an approach is chosen in a reply),
+`.claude/rules/plain-writing.md` for how a sentence is worded (resident too),
+`.claude/rules/core-domain.md` and `.claude/rules/apparatus-standard.md` for
+the bars that apply to particular parts of the tree, and
+`docs/maintainer.md` for what only the project owner can act on. Nothing was
+dropped in that routing; adding to it follows the same test, below, and
+`docs/resident-instructions.md` records what each block that stayed was tested
+against.
+```
+
+**Row 5, `CLAUDE.md`: the level of apparatus work against its trend.** The
+expectation stays, in two lines.
+
+```text
+**That answers the level, not the trend** (project owner, 2026-09-19). The
+apparatus was effectively the product while it was being built, so the
+refutation above was written about a period that has ended, and it cannot tell
+two claims apart. "There is too much apparatus, the effort belongs on the
+product" stays refused. "Apparatus inflow should be declining now that the
+functionality is settled, and if it is not, something is generating work we
+should go and find" was never asked, is live, and is a diagnostic expectation
+rather than a ratio — no ratio is tracked or enforced. `PL-04KR` (the
+pre-registered apparatus-convergence baseline) holds its numbers and
+predictions; `bin/docket release` names any that break (`PL-WXKD`).
+```
+
+**Row 14, `CLAUDE.md`: the ask-gate's one trigger.** The bullet stays without
+its last sentence, which said why the list is repeated there.
+
+```text
+- **The gate has one trigger and no others: a deliverable that would differ
+  materially from the one described.** It is not a general licence to ask, and
+  the cases most often mistaken for it are already decided — filing an item,
+  decomposing an idea into items, opening the pull request on approved work
+  that is green, choosing between approaches with little between them, and
+  anything not yet actionable. Each is settled below, in § "The queue", or by
+  `.claude/rules/instruction-writing.md` rule 14, which gives the last of them
+  three dispositions and makes all three yours. None returns here as a
+  question. This list is here rather than only at those five places because a
+  session that retains one sentence of this section retains the bolded one.
+```
+
+**Row 27, `CLAUDE.md`: which file decides the shape of a reply.** The rule
+stays, in four lines.
+
+```text
+**`.claude/rules/instruction-writing.md` decides the shape of a reply, and it
+wins.** It loads in every session and applies unasked, so it never needs to be
+named in a prompt — including its rule 14, the closing block of what the owner
+has to do, which every reply ends with. Where it and another instruction —
+this file, a skill, an item's brief — describe the same message differently,
+the rules file decides *shape* and the other decides *content*: what the reply
+must contain, in what words, with what judgment, is theirs; what comes first is
+the rules file's. Being the more specific document does not carry the format
+question. A prescribed opening that cannot survive that is edited, not obeyed —
+say so and fix it, per the behavior-change rule below. This file states no
+reply format of its own, deliberately: two documents specifying one thing is
+the hazard that rule exists to remove.
+```
+
+**Row 28, `CLAUDE.md`: what the ask-gate does not govern.** The rule stays, in
+three lines.
+
+```text
+The ask-gate in this section, which stops for an answer before building a
+deliverable that differs from the one described, governs the deliverable,
+not the session. Ordinary judgment inside an
+approach already agreed — naming, structure, where a thing lives, how it is
+tested, whether the work continues here or moves to a fresh session — stays
+yours. The trigger is a deliverable that would differ materially from the one
+described, not every decision taken while building it.
+```
+
+**Row 29, `CLAUDE.md`: the ask-gate is no licence to widen the goal.** The rule
+stays, in five lines.
+
+```text
+Nor is the ask-gate a license to redefine the goal, widen the scope, or substitute a
+more interesting problem. The end state is theirs; only the route to it is
+open to argument. The bar for proposing something other than the named
+mechanism is that the alternative is clearly superior *for the same goal* —
+not that it is the one you would have picked. And the safety-critical
+standard below is a floor rather than a preference: where the described
+approach would produce a wrong or misleading clinical value, that is not a
+mechanism preference to be weighed but a correctness problem, and saying so
+is not optional.
+```
+
+**Row 33, `CLAUDE.md`: one source of truth for a shared fact.** The principle
+and the two checks' names stay. The owner's words and their dates are below.
+
+```text
+- **A shared fact has one source of truth. This is the project's core design
+  principle** (project owner, 2026-10-12: "a hard coding principle", and "make
+  sure this happens. However the best approach"; 2026-10-19: "one source of
+  truth everywhere", "a core design principle", "fix this structurally
+  everywhere"). A value, grammar, predicate, state or reading the repository
+  already holds is read from the one module, data file or writer that owns
+  it. That applies in the simulator, its documents and the apparatus alike,
+  and the fact is never derived again beside it. Before writing a reader of a
+  fact, ask whether a module or document already states it: read that one,
+  or, where none does, write the one record and read it, never a sharper
+  heuristic. **Fix a second copy by its shape, not as one instance.** Replace
+  it with a read of the home, then make the next copy fail through a checked
+  type, a single writer or a check. File the copies a sweep finds under the
+  `one-source-of-truth` feature (`PL-2LB5`). Two copies stay copies: a test's
+  expected value, which `.claude/rules/test-oracles.md` takes from a source
+  independent of the code under test, and a published value restated beside
+  its citation. `tools/literal_home_check.py` refuses a second
+  copy of a number under `src/`, and `tools/fact_home_check.py` refuses a
+  reader of git, the tree, the GitHub API, the default branch or a shell
+  command outside the module that owns it, a constant defined in two
+  apparatus files, and a hand test of an item's status set or `pr:` number
+  outside `docket.model`. What neither check reaches is this sentence's to catch,
+  which is why it is resident (`PL-4S6C`).
+  `.claude/rules/apparatus-standard.md` § "Read the fact from its record;
+  where none exists, write one" has the three shapes a new reader takes.
+```
+
+**Row 37, `CLAUDE.md`: why session cost matters.** Two lines stay.
+
+```text
+Session cost is turns times context, because the whole conversation is resent
+every turn. So the practices below work by keeping context small — and none of
+them overrides the safety-critical verification requirements below: trimming
+applies to routine iteration, never to skipping a check before a commit or
+before finishing.
+```
+
+**Row 42, `CLAUDE.md`: editing a file loaded at launch invalidates no cache.**
+Nothing stays.
+
+```text
+- Editing this file or a resident rule mid-session invalidates no cache. The
+  resident set is sent once, at launch, as a user message; an edit on disk
+  changes nothing already sent, so this session keeps its launch copy until a
+  re-read, such as compaction, sends the changed file as a new message
+  (`PL-038`).
+```
+
+**Row 44, `CLAUDE.md`: waiting on a long run.** The rule stays, in four lines.
+
+```text
+- **Wait on a long run only through the harness** (project owner,
+  2026-10-25). Start any command you will wait on with the Bash tool's
+  `run_in_background`, never with `nohup`, a trailing `&` or `setsid`. A
+  detached process does not wake the session when it ends, and a container
+  restart kills it without a trace. Before ending a turn to wait, schedule a
+  `send_later` check-in as a fallback. After a gap, run `uptime` before
+  trusting that a run is still going. A hook cannot carry this rule, because
+  the repository's hooks do not run in project threads (`PL-D1FD`).
+```
+
+**Row 46, `CLAUDE.md`: which model a session runs.** Nothing stays.
+`docs/maintainer.md` holds the settings.
+
+```text
+Which model a session runs is the owner's lever rather than a session's, so it
+lives in `docs/maintainer.md` along with the settings that support it.
+```
+
+**Row 47, `CLAUDE.md`: why deterministic tooling pays.** Two lines stay.
+
+```text
+The section above keeps one session cheap; this one keeps every later session
+cheap, and is the higher-leverage of the two. Work moved out of the model is
+paid for once and then runs free; work left to the model is re-derived at full
+context in every session that needs it. `tools/doc_check.py` and
+`subprojects/docket/` are the worked examples. So, when building a mechanism:
+```
+
+**Row 48, `CLAUDE.md`: putting the decidable part in code.** The rule stays, in
+four lines.
+
+```text
+- **Find the decidable part and put it in code.** Anything answerable by
+  reading the tree, a data file, or a diff belongs in a script wired into `make
+  check`, a hook, or CI. Prefer this without being asked — it is standing
+  approval, needing no case put for it each time. The generator pause in
+  § "What this project is" suspends it while any open workflow-lane item
+  carries `generator: live`.
+```
+
+**Row 50, `CLAUDE.md`: the cheapest sufficient tier.** The rule stays, in three
+lines.
+
+```text
+- **Use the cheapest sufficient tier:** an existing tool, then a
+  standard-library script under `tools/`, then a subagent whose transcript
+  stays out of the main context, then the session itself — the last by a wide
+  margin the most expensive.
+```
+
+**Row 51, `CLAUDE.md`: summarizing counts as deterministic work.** The rule
+stays, in two lines.
+
+```text
+- **Summarizing counts, not only deciding.** Printing the few lines a decision
+  needs, instead of loading the documents that hold them, is the same win as
+  answering the question outright.
+```
+
+**Row 54, `CLAUDE.md`: a script answers identically every run.** Nothing stays.
+
+```text
+A script answers identically every
+run and states its rule where a reviewer can read it, which is the
+safety-critical standard's determinism and auditability arriving free.
+```
+
+**Row 55, `CLAUDE.md`: what the queue is.** Three lines stay.
+
+```text
+`docs/items/` is the queue: one file per item, read and written through
+`bin/docket <command>`, which runs from a bare checkout with no virtualenv.
+`ROADMAP.md` holds releases; `docs/WORKING_NOTES.md` holds narrative behind
+open threads. **Invoke the `docket` skill for any queue workflow** — picking
+what to work on, triaging, freezing a debt gate, shipping a release, closing an
+item out — rather than reconstructing it from here; `subprojects/docket/README.md`
+carries the item format. The rules below stay resident only because a session
+acts on them before it would have any reason to load the skill.
+```
+
+**Row 61, `CLAUDE.md`: when a change involves the owner.** The rule stays. The
+hard count that was considered and refused is below.
+
+```text
+**The trigger for involving them is a real trade-off, not the size of the
+change** (project owner, 2026-09-19). A recurring observed issue, or a cheaper
+route to behavior the project already has, is yours to fix and report —
+including new non-user-facing machinery, and whether or not anyone asked for it.
+It becomes theirs when something genuinely has to be weighed: a major refactor,
+a material risk of breaking what works, an increase in complexity, or a change
+that opens a class of follow-on work. Then put the risk and the reward, and
+stop. Report what the fast path did, in a line, every time — a fast path nobody
+can audit is indistinguishable from a session doing as it likes. A hard count
+on the fast path was considered and refused: any bright line drawn at "adds a
+standing mechanism" would have blocked the convergence check the owner asked
+for three times in the same conversation (`PL-04KR`, the pre-registered
+apparatus-convergence baseline). Nothing was cut to pay for this block; no
+existing sentence grants it, and the ask-gate above turns on a different axis —
+deviating from a described deliverable, not acting without one.
+```
+
+**Row 74, `CLAUDE.md`: read only.** The rule stays. The pull request that
+merged under a read-only instruction is below.
+
+```text
+- **Read only means read only** (project owner, 2026-09-27). Told "read
+  only", or anything meaning look but change nothing, a session writes nothing
+  until the owner lifts it: no file, commit, push, pull request, comment, claim
+  or merge. What it already set going stops unasked - it disarms auto-merge on
+  its own armed pull requests at once and says so, and a check-in it scheduled
+  only reads and reports - because letting it finish is a write nobody
+  approved, and the owner should never have to confirm a hold to prevent a
+  merge. The capture rule and the `pull-request` skill's item-only auto-merge are suspended
+  while it holds; a finding goes into the reply, to be filed once the mode
+  lifts. `#1213` merged after "Read only for now" because its session left it
+  armed and offered a hold (`PL-LK62`).
+```
+
+**Row 76, `CLAUDE.md`: friction that compounds.** The rule and its four tests
+stay. The example behind the fourth test is below.
+
+```text
+- **Friction that compounds is recommended the moment it is found, not filed.**
+  Some process findings are paid again by every remaining piece of work. Say so
+  in the reply that finds it, with a recommendation to do it first — recording
+  it and moving on is not enough, because the owner cannot act on what only
+  reached the queue. A finding earns that interruption on any one of four
+  tests and on nothing else: it **gives a wrong answer silently**, so a check
+  passes while the guarantee it stands for is void; it **is being routed
+  around**, a warning or advisory firing so routinely that nobody reads it;
+  it **sits upstream of everything**, in the store or the gate that every other
+  command reads from; or it **is paid on every run, session or commit, at a
+  measured cost** - seconds per CI run, tokens per turn, a step per release -
+  so each day it waits for its band pays it again (project owner, 2026-10-17,
+  ratified, over the three tests as they stood: `PL-4Z5Y` waited 20 days at
+  about 15 minutes of CI a day, `PL-KBVW`). The tests are properties, not
+  enthusiasm: work that is
+  merely valuable, cleaner or more interesting makes no remaining item cheaper
+  and waits for the roadmap.
+```
+
+**Row 77, `CLAUDE.md`: the docs sweep before an item closes.** The rule and its
+safety reason stay, in four lines.
+
+```text
+**Sweep the docs before calling an item done, and list in the item the files
+you checked.** Landing a change is not finishing it, and stale documentation is
+a safety issue here rather than tidiness: a reader who trusts a wrong statement
+about which agent is running, what a value means, or what the interface
+displays can reach a wrong clinical conclusion from a correct number. The
+`docket` skill's close-out carries what `make check` decides for you and what
+it cannot.
+```
+
+**Row 117, `.claude/rules/expert-review.md`: why the file names no paths.**
+Nothing stays.
+
+```text
+**Resident by necessity; no `paths:`, deliberately.** It governs the moment an
+approach is chosen — a design round, or any reply recommending one route over
+another — and a reply is not preceded by a read. Path-scoped, it reached that
+moment only when a session happened to open an item file (`PL-WWDT`);
+`docs/resident-instructions.md` carries the argument.
+```
+
+**Row 118, `.claude/rules/expert-review.md`: the file's scope.** Three lines
+stay.
+
+```text
+**Scope, on sight rather than three sentences away.** This is the standard for
+the **simulator** — `src/`, `tests/`, `docs/MODEL.md`, `docs/INTERFACE.md`,
+`README.md` — and for
+any conversation deciding what goes into them. It is not the bar for the
+apparatus (`subprojects/docket/`, `bin/`, `tools/`, `.claude/`, `.github/`,
+`CLAUDE.md`, `docs/worker.md`, `docs/maintainer.md`, `docs/apparatus.md`,
+`docs/resident-instructions.md`), which is held to the deliberately lower
+`.claude/rules/apparatus-standard.md`. `PL-6SBB` is what the mirror error cost:
+a session applied the apparatus bar to `src/`, quoting it correctly from a
+sentence whose scope sat too far away to travel.
+```
+
+**Row 119, `.claude/rules/expert-review.md`: the specialist standard,
+restated.** One line stays.
+
+```text
+`CLAUDE.md` requires review to reach past conventional software-engineering
+concerns and to reflect the standard expected from a top-tier specialist in
+the relevant field. This file is the list of fields that means here, and the
+principles that follow from them.
+```
+
+**Row 135, `.claude/rules/expert-review.md`: parse, don't validate.** The
+principle stays, in three lines.
+
+```text
+- **Parse, don't validate:** the same preference, in the code's own interfaces
+  (project owner, 2026-10-04). A quantity with a check of its own — a supported
+  range, a whole count — is checked once, by building a type only that check
+  produces, and every signature past that point takes the type rather than
+  re-checking a `float`. A check repeated at each way in fails at the one
+  nobody guarded, as `PL-HSFV`'s settings record did.
+  `.claude/rules/core-domain.md` has the pattern and where it stops.
+```
+
+**Row 142-143, `.claude/rules/expert-review.md`: the two sources behind naming
+the number.** One line of citation stays for each.
+
+```text
+This is not a reasoning failure and more careful reasoning does not fix it.
+When one side of a trade carries a number and the other does not, the numbered
+side wins on *fluency* rather than on merit — 21 preregistered experiments,
+N ≈ 23,000, in Chang LW, Kirgios EL, Mullainathan S, Milkman KL, "Does counting
+change what counts? Quantification fixation biases decision-making", PNAS
+2024;121(46):e2400215121 (https://doi.org/10.1073/pnas.2400215121), who name it
+*quantification fixation* and identify comparison fluency as the mechanism. A
+session that has just finished computing a rate is at its most exposed, not its
+least.
+
+The form is OMB Circular A-4's threshold analysis (2003), which states the
+failure and its remedy in one paragraph: "the most efficient alternative will
+not necessarily be the one with the largest quantified and monetized net-benefit
+estimate … Threshold or 'break-even' analysis answers the question, 'How small
+could the value of the non-quantified benefits be (or how large would the value
+of the non-quantified costs need to be) before the rule would yield zero net
+benefits?'" What is scripted is the question, never the answer: A-4 leaves how
+important the non-quantified side may be to professional judgment, which is
+`CLAUDE.md`'s own refusal to script the judgment half arriving from regulatory
+practice rather than from software.
+```
+
+**Row 144, `.claude/rules/expert-review.md`: the worked example of
+2026-09-12.** Nothing stays.
+
+```text
+**Worked example, 2026-09-12.** A session measured the workflow lane's
+self-generation rate at 0.69 new items per item worked and proposed raising the
+apparatus capture bar on the strength of it. The count it never ran — how many
+open items that bar would have suppressed — was 67% still-real findings, which
+killed the proposal. The project owner caught it by instinct first; the number
+only confirmed what the objection already said (`PL-LKGL`, `PL-27S8`).
+```
+
+**Row 145, `.claude/rules/expert-review.md`: the cheap route is a loan.** Three
+lines stay.
+
+```text
+`.claude/rules/expert-review.md` § "Name the number that would change your mind,
+then go and count it" fires on a proposal to tighten something. This is the
+other half of the same trade: two routes to one end state, the durable one
+slower, the cheap one destined to be redone. Doing it twice costs more than
+doing it once, so the cheap route is a loan — sound or reckless depending on a
+number nobody states.
+```
+
+**Row 147, `.claude/rules/expert-review.md`: the count runs both ways.** The
+rule stays with a one-line citation. Both sources are below in full.
+
+```text
+**The count runs both ways, which is what keeps it honest.** A mechanism with
+nothing downstream fails this test as surely as a stop-gap under a thousand
+call sites passes it, so it is never a licence to build the larger thing.
+Reversibility is the discriminator rather than size or effort: Bezos's 2015
+letter to Amazon shareholders reserves the slow, deliberate path for the Type 1
+decisions that are "consequential and irreversible or nearly irreversible" —
+one-way doors — and warns that putting the reversible Type 2 kind through the
+same process buys only risk aversion and too little experiment (*2015 Letter to
+Shareholders*, Amazon.com, Inc.,
+https://s2.q4cdn.com/299287126/files/doc_financials/annual/2015-Letter-to-Shareholders.PDF).
+Ward Cunningham's reading of his own debt metaphor has the same shape: the loan
+is sound taken deliberately and repaid by refactoring as experience arrives, and
+is never a licence for shipping what you already know is wrong (*Debt Metaphor*,
+2009, https://www.youtube.com/watch?v=pqeJFYwnkjE).
+```
+
+**Row 148, `.claude/rules/expert-review.md`: waiting for another instance.**
+The rule stays, in four lines. Fowler's rule of three and the deferral the
+owner refused are below.
+
+```text
+**Waiting for another instance is the cheap route, not a third one.** A
+recommendation to build the durable route only if another instance turns up
+builds nothing now. It is the cheap route with its repayment made conditional,
+so the count applies to it unchanged, and is taken before the wait is
+recommended. The rule of three does not exempt it. Fowler credits that rule to
+Don Roberts: refactor on the third similar case, not the first (*Refactoring*,
+1999, chapter 2, "The Rule of Three"). It stops an abstraction being extracted
+before enough cases show its shape, so it applies while the abstraction is
+still unknown. Once the abstraction is chosen, waiting only lets instances pile
+up. `PL-51B7`'s first recommendation, on 2026-10-04, deferred checked types for
+the supported-range quantities that way, without taking the count. The step's
+range had already been captured eight times before `PL-0GJC` typed it as
+`SimulationStep`, and the project owner refused the deferral (`PL-YJY3`).
+```
+
+**Row 149, `.claude/rules/expert-review.md`: the five-year horizon.** Four
+lines stay.
+
+```text
+**Where the count cannot be taken, the horizon decides.** The project owner's
+form of it, and the one to quote back: *of these options, which will we be glad
+we implemented in five years?* `CLAUDE.md` § "What this project is" is why that
+resolves anything here. It is the tie-breaker and not the opening move: reach
+for it where the count genuinely is not available, never to avoid taking one.
+```
+
+**Row 151, `.claude/rules/expert-review.md`: a wrongly permanent rule fails
+quietly.** Two lines stay.
+
+```text
+It fails quietly. A wrongly permanent sentence trips no check and never can,
+because altitude is judgment rather than a fact about the tree; it simply sits
+there being obeyed by sessions that were not there when it was written.
+```
+
+**Row 152, `.claude/rules/expert-review.md`: three instances from one
+session.** Nothing stays.
+
+```text
+`PL-GDB0` holds three instances from a single session, each caught by the
+project owner and none by any gate: floating windows recorded as permanently
+refused where a not-yet was asked for; a persistent strip recommended before
+counting what it would have to carry; and the minimum display's unconditional
+set written as the inhaled model's own list of concentrations, which
+planned-milestone item 13's intravenous models would have falsified. All three
+began from a sound argument about the mechanism in front of the session, which
+is what makes this worth a rule rather than an apology.
+```
+
+**Row 153, `.claude/rules/expert-review.md`: the pointer to the safety
+standard.** One line stays.
+
+```text
+The principles governing what a **displayed clinical value** may imply —
+false precision, modeled versus measured, misleading plots, visible model
+limitations — are not here. They are in `CLAUDE.md`'s safety-critical
+clinical-output standard, so that the safety floor is stated in exactly one
+place.
+```
+
+**Row 155, `.claude/rules/instruction-writing.md`: precedence over other
+instructions.** Four lines stay.
+
+```text
+PRECEDENCE. These rules apply to every reply, unasked, and they decide its
+shape. Where another instruction — a project file, a skill, a saved
+preference — describes the same message differently, that instruction decides
+what the reply contains and these rules decide what comes first. Being the
+more specific document does not carry the format question: a rule that holds
+only until something else has an opinion has to be re-stated in every prompt,
+which is what these exist to stop.
+```
+
+**Row 156, `.claude/rules/instruction-writing.md`: why these rules load at
+launch.** Nothing stays.
+
+```text
+RESIDENT BY NECESSITY, and settled. No `paths:` scope can carry these, because
+no read comes before a reply. `docs/resident-instructions.md` has the carrier
+test and its result for every rule below. Do not re-open a rule's residency
+without a new carrier to name.
+```
+
+**Row 172c, `.claude/rules/instruction-writing.md`: rule 14, ordering the
+closing block.** Seven lines stay.
+
+```text
+    - Order the block the way it will be done, and let the order carry it.
+      This is rule 2 applied to the closing block. Where the items have a
+      sequence — one unblocks another, one has to land before the next makes
+      sense — the first line is the first thing to do. Never annotate a later
+      line with "do this one first": a numbered list states an order whether
+      or not one was meant, so an ordering note that disagrees with the
+      numbering makes the reader stop and work out which to believe, which is
+      exactly the friction the block exists to remove. Where the items are
+      genuinely independent, order them by consequence and say in one clause
+      that they can be done in any order.
+```
+
+**Row 172h, `.claude/rules/instruction-writing.md`: rule 14, every line
+actionable now.** The rule stays, in 22 lines. The owner's dated words are
+below.
+
+```text
+    - Every line must be actionable now. Nothing parked. "Worth deciding
+      sometime", "consider at some point", "we should think about X
+      eventually" — none of these belong here. They read as items but cannot
+      be acted on, so they turn a list of actions into a list of obligations
+      that never close, and the genuinely actionable lines get skimmed past
+      with them. When something surfaces that is not yet actionable, there
+      are exactly three honest dispositions and they are all yours to pick,
+      not the reader's: decide it yourself if it is yours to decide; put it
+      to them **now** as a real decision, with a recommendation and enough
+      context to answer in one read; or record it wherever the project
+      records such things and say you did. Raising something in order to
+      defer it is the one option that is not available.
+      **Which of the first two applies turns on consequence, not on what the
+      answer rests on** (project owner, 2026-09-19). Theirs are the
+      consequential questions: the order features come in, what the project
+      is for, behavior a learner would see, and anything the safety-critical
+      standard reaches. **Look, wording and placement are not among them for
+      now** (project owner, 2026-10-18). While the structure and function are
+      being built, those choices are placeholders. Decide one yourself, record
+      it in the item as a placeholder, and say in one line what you chose. A
+      choice stays theirs where it decides whether a value the safety-critical
+      standard requires is on screen, readable or correctly labelled, because
+      that is a correctness question and not one of look (`PL-KBBJ`). **A choice with one clearly correct option is never
+      offered: take it, record why in the item, and say in one line what you
+      did** (project owner, 2026-09-27), closing an item whose own
+      measurements show the work is not worth doing included. Offer a choice
+      only where it is genuinely close, changes the goal, or cannot be
+      undone, and then lead with the recommendation. A choice whose options
+      are all defensible and whose blast radius is one document's phrasing,
+      one internal structure or one item's disposition is one of those -
+      decide it, say in a line what you decided and why, and carry on.
+      Resting on "what the project wants" does not make a granular choice theirs, and handing one back spends their
+      attention on exactly what they have said they do not want to spend it
+      on. Where one specific point genuinely needs them, ask that point
+      rather than handing over the decision around it.
+```
+
+**Row 172j, `.claude/rules/instruction-writing.md`: rule 14, naming the
+group.** Five lines stay.
+
+```text
+    - Where several lines are one problem, say so and name the group. A
+      reader tracks problems, not ids: three ids listed flat read as three
+      unrelated obligations, and nothing then says the list is finished when
+      they close. Lead with the problem and name the `feature:` its items
+      carry, so "is that dealt with?" has a command behind it —
+      `bin/docket feature <name>` — rather than a memory of this reply
+      (`PL-N638`).
+```
+
+**Row 172k, `.claude/rules/instruction-writing.md`: rule 14, only what the
+discussion raised.** Seven lines stay.
+
+```text
+    - Only what this discussion raised. The block closes the reply that was
+      actually given, not the project. A status offer, a ranking of what to
+      do next, or a reminder about unrelated open work belongs to a reply
+      that was asked for one — appended to a design round, a question about
+      one mechanism, or a review of one change, it is noise the reader skims
+      past, and it drags the genuinely actionable lines past with it. Two
+      things are always in scope: the next step of the discussion itself,
+      and existing work that would fix or unblock what the discussion found
+      — name that one, glossed per rule 7, and say which comes first.
+```
+
+**Row 172l, `.claude/rules/instruction-writing.md`: rule 14, refreshing before
+the block.** Four lines stay.
+
+```text
+    - Re-verify by refreshing, every time, before writing this block — not
+      only when something looks stale (project owner, 2026-09-19). Run
+      `bin/docket branch`, which fetches before it reads. Cheap, and the
+      default has to be refresh-first because a session cannot feel its own
+      copy going out of date: the session-start
+      digest is written once and resent every turn, its refs line dates that
+      moment rather than this one (`PL-XBV4`), and a
+      pull request can merge, a branch be deleted and the base move inside one
+      turn — all three happened in the sitting that produced this rule.
+      An ideation reply runs it too. It reads no document, so it is not
+      the detour that `CLAUDE.md` keeps ideation free of
+      (`PL-MR2V`).
+```
+
+**Row 172m, `.claude/rules/instruction-writing.md`: rule 14, re-verifying
+carried-over items.** Seven lines stay.
+
+```text
+    - Re-verify every carried-over item before repeating it. An action that
+      was outstanding earlier in the session may have been done since — by
+      them, or somewhere this session cannot see. Repeating it from memory is
+      the single most likely way this block goes wrong, and it costs either a
+      lookup or the same work twice. Whether something is merged, tagged,
+      closed or still open is a fact to check against the source of truth,
+      not a memory to recall. Do this for anything asserted about external
+      state anywhere in a reply, not only in this block; the block is merely
+      where a stale claim is acted on. Say what the check showed when it
+      changes the answer, rather than quietly dropping the item.
+```
+
+**Row 173, `.claude/rules/instruction-writing.md`: rule 15, clock times in
+Central.** Five lines stay.
+
+```text
+15. CLOCK TIMES IN CENTRAL. Give every clock time in a reply, and the date
+    beside it, in US Central (`America/Chicago`, the project owner's zone in
+    Madison, Wisconsin), marked CDT or CST as that date falls. That includes
+    the compaction deadline. The tools here print UTC and the offset moves with
+    daylight saving, so convert with a command rather than by hand:
+    `TZ=America/Chicago date -d '2026-09-27 23:19 UTC'` (project owner,
+    2026-09-27, `PL-R852`).
+```
+
+**Row 174, `.claude/rules/plain-writing.md`: why the file names no paths.**
+Nothing stays.
+
+```text
+**Resident, with no `paths:`.** It applies whenever a session writes prose. A
+path scope would miss item briefs, commit messages, pull request bodies and
+replies, because no read comes before them. `PL-8ZTQ` has the sources behind
+the points about sentences, and `PL-J1ZM` has the measurements behind choosing
+what goes in.
+```
+
+**Row 178, `.claude/rules/plain-writing.md`: notes on the reader table.**
+Nothing stays. The docstring of `tools/new_prose.py` now holds the three notes.
+
+```text
+The two `README.md` rows are the readers that `README.md` § "What it is for"
+names. `docs/releases/` has no row, because `bin/docket release` writes each
+note from item titles, and an edit there would make a note disagree with its
+item. `python3 tools/new_prose.py --compare`, which close-out step 8 runs,
+reads this table to choose the files it compares, so the table keeps its five
+columns.
+```
+
+**Row 192, `.claude/rules/plain-writing.md`: why points 7 to 11 exist.**
+Nothing stays.
+
+```text
+
+    Points 7 to 11 keep out padding that sounds careful and adds nothing. The
+    project owner judged `docs/MODEL.md` to read as machine-written because of
+    it (`PL-ZT47`).
+```
+
+**Row 196, `.claude/rules/plain-writing.md`: what the rule decides against the
+safety standard.** Three lines stay.
+
+```text
+This rule decides how a text is worded and ordered, and what it leaves out. The
+safety-critical standard in `CLAUDE.md` and `.claude/rules/sources-and-docstrings.md`
+decides which facts a docstring, an error message or a displayed value must give,
+and this rule never cuts one of those: a unit, a value, a condition or a citation.
+`.claude/rules/instruction-writing.md` decides the shape of a reply. Code,
+commands, paths and quoted output stay exactly as they are.
+```
