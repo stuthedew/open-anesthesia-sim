@@ -81,8 +81,10 @@ written until the first "Save as default", which creates the directory.
   saving is off instead, since a save would overwrite it. A previous
   generation that itself cannot be read, or is invalid, is left where it is
   and named in the notice. A previous generation that a newer build wrote turns saving off,
-  whatever the current file contains, just as a newer current file does,
-  because the first save copies the current file over it.
+  whatever the current file contains, just as a newer current file does. A
+  save copies the current file over the previous generation: the first save
+  does so when a current file exists, and the second save does so when none
+  does.
 - *No current file, but a previous generation that this build reads.* The
   previous generation is shown, with a notice. Without this case, a launch
   after a current file was set aside, with nothing saved since, would load the
@@ -475,8 +477,9 @@ class WorkspaceStore:
                 Source.SHIPPED,
                 False,
                 f"there is no {self.path}, and {previous} was written at schema version "
-                f"{rescued.found} by a newer build, which this build would overwrite at the next "
-                "save; the shipped Workspaces are shown and nothing will be saved this session",
+                f"{rescued.found} by a newer build, which the second save from this build "
+                "would overwrite; the shipped Workspaces are shown and nothing will be saved "
+                "this session",
                 None,
                 None,
             )

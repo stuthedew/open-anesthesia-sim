@@ -1215,8 +1215,9 @@ class SimulationController:
         nothing here or anywhere else keeps a copy. So a caller must not call
         this method in response to a gesture that looks like choosing a view.
         `docs/INTERFACE.md` § "Discarding a run, and the questions that guard
-        it" states what the interface owes a user before this call. `SimulationSnapshot.has_recorded_run` tells
-        the interface whether this call would lose anything.
+        it" states what the interface owes a user before this call.
+        `SimulationSnapshot.has_recorded_run` tells the interface whether this
+        call would lose anything.
 
         **A branch rejects this call** (`PL-TFX5`). A branch inherits its
         parent's agent rather than choosing it again. Changing agent is already

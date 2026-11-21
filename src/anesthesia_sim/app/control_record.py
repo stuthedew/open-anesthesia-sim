@@ -172,8 +172,8 @@ class ControlChange:
 
     A change is recorded per change rather than per user gesture, because the
     model integrates whatever value is in place at each step. A dial stepped
-    from 2% to 4% by eight arrow-key presses at eight simulated instants gives
-    eight different settings that the run was computed under. A record that
+    by eight arrow-key presses at eight simulated instants gives eight
+    different settings that the run was computed under. A record that
     kept only the endpoint would not reproduce the run it claims to describe.
     A drag applies once, on release, so it records one change (`PL-5B1N`).
 

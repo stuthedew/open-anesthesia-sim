@@ -96,8 +96,8 @@ def test_format_percent_uses_the_documented_display_resolution() -> None:
     legible. This test exists so that a change to the resolution is made
     deliberately.
     `test_concentration_decimals_are_a_choice_within_a_recorded_band` is the
-    other half. It says which direction of change requires re-deriving
-    something.
+    other half. It says why one decimal and three decimals are each ruled
+    out.
     """
 
     assert CONCENTRATION_DISPLAY_DECIMALS == 2
