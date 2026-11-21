@@ -380,9 +380,10 @@ def require_fraction(name: str, fraction: object) -> None:
     rebuild with the same message. `require_not_another_quantity`, which
     `Fraction` also calls, names a value built as any other checked quantity,
     such as a step, a flow, an instant or a count, and gives no advice
-    (`core/checked_number.py`). Until `PL-CX2C`, a `SimulationStep(0.05)`
-    passed in as a fraction was told to build `Fraction(...)` from it. That
-    rebuild would have stored a step's value as a concentration. The value is
+    (`core/checked_number.py`). Until `PL-CX2C`, a step of 0.05 s,
+    then a checked type of its own, was told to build `Fraction(...)` from
+    itself when passed in as a fraction. That rebuild would have stored a
+    step's value as a concentration. The value is
     printed through `shown`, so a bare `int` too long for `repr` is named by
     its length instead of escaping as a `ValueError`.
 

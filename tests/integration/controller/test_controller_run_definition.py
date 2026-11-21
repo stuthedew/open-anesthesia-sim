@@ -17,8 +17,15 @@ from anesthesia_sim.core import uptake_system
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationExecutionError
-from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
-from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
+from anesthesia_sim.core.governing_equations import ALVEOLAR_FRACTION
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
+from anesthesia_sim.core.stored_states import StoredStates
+from anesthesia_sim.core.supported_ranges import (
+    AlveolarVentilation,
+    CardiacOutput,
+    CaseInstant,
+    FreshGasFlow,
+)
 from tests.integration.controller.controller_support import (
     COMPARTMENT_SNAPSHOT_FIELDS,
     _advance_for,
@@ -77,7 +84,7 @@ def test_a_refused_setting_leaves_the_run_definition_describing_the_run() -> Non
 
     controller = SimulationController()
     controller.start()
-    _advance_for(controller, duration_s=10.0)
+    _advance_for(controller, duration_s=10)
 
     with pytest.raises(SimulationConfigurationError):
         controller.set_delivered_concentration_percent(Percent(50.0))
@@ -265,7 +272,7 @@ def test_a_setting_written_onto_the_core_past_the_controller_refuses_the_next_st
 
     controller = SimulationController()
     controller.start()
-    _advance_for(controller, duration_s=10.0)
+    _advance_for(controller, duration_s=10)
     system = controller._state.uptake_system
     recorded = controller.run_segments
     state_before = system.state_vector()
@@ -276,7 +283,7 @@ def test_a_setting_written_onto_the_core_past_the_controller_refuses_the_next_st
     assert system.equation_settings() != recorded[-1].settings
 
     with pytest.raises(SimulationExecutionError, match="without SimulationController recording it"):
-        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        controller.advance()
 
     assert system.state_vector() == state_before
     assert controller.snapshot().elapsed_s == elapsed_before == 10.0
@@ -292,19 +299,19 @@ def test_reset_after_a_setting_written_past_the_controller_runs_at_that_setting(
 
     controller = SimulationController()
     controller.start()
-    _advance_for(controller, duration_s=10.0)
+    _advance_for(controller, duration_s=10)
     controller._state.uptake_system.set_cardiac_output(CardiacOutput(6.0))
 
     with pytest.raises(SimulationExecutionError):
-        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        controller.advance()
 
     controller.reset()
     controller.start()
-    _advance_for(controller, duration_s=10.0)
+    _advance_for(controller, duration_s=10)
 
     fresh = SimulationController(cardiac_output_l_min=CardiacOutput(6.0))
     fresh.start()
-    _advance_for(fresh, duration_s=10.0)
+    _advance_for(fresh, duration_s=10)
 
     assert controller.run_segments[0].settings.cardiac_output_l_min == 6.0
     assert controller._state.uptake_system.state_vector() == (
@@ -317,19 +324,19 @@ def test_a_setting_written_onto_a_branch_s_core_past_its_controller_refuses_its_
 
     trunk = SimulationController()
     trunk.start()
-    _advance_for(trunk, duration_s=10.0)
+    _advance_for(trunk, duration_s=10)
     trunk.pause()
     branch = BranchedCase(trunk).fork_here()
     branch.start()
-    _advance_for(branch, duration_s=10.0)
+    _advance_for(branch, duration_s=10)
 
     branch._state.uptake_system.set_cardiac_output(CardiacOutput(6.0))
 
     with pytest.raises(SimulationExecutionError, match="without SimulationController recording it"):
-        branch.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        branch.advance()
 
     trunk.start()
-    _advance_for(trunk, duration_s=10.0)
+    _advance_for(trunk, duration_s=10)
 
     assert trunk.snapshot().elapsed_s == 20.0
 
@@ -350,15 +357,15 @@ def test_a_paused_run_s_definition_stops_where_the_run_did() -> None:
 
     controller = SimulationController()
     controller.start()
-    _advance_for(controller, duration_s=10.0)
+    _advance_for(controller, duration_s=10)
     controller.pause()
-    _advance_for(controller, duration_s=10.0)
+    _advance_for(controller, duration_s=10)
 
     elapsed_s = controller.snapshot().elapsed_s
 
     # The axis may extend past a paused run. The trace stops where the run
     # stopped and is not extended into a prediction.
-    window = controller.drawn_window(0.0, elapsed_s + MAXIMUM_SIMULATION_STEP_S, 150)
+    window = controller.drawn_window(0.0, elapsed_s + SIMULATION_STEP_S, 150)
 
     assert window.times_s[-1] == pytest.approx(elapsed_s)
 
@@ -375,7 +382,7 @@ def test_the_drawn_window_is_clipped_to_the_run_not_to_the_axis() -> None:
 
     controller = SimulationController()
     controller.start()
-    _advance_for(controller, duration_s=60.0)
+    _advance_for(controller, duration_s=60)
 
     window = controller.drawn_window(0.0, 900.0, 150)
 
@@ -407,7 +414,7 @@ def test_a_drawn_window_refuses_another_substance() -> None:
 
     controller = SimulationController()
     controller.start()
-    _advance_for(controller, duration_s=10.0)
+    _advance_for(controller, duration_s=10)
 
     window = controller.drawn_window(0.0, 10.0, 150)
 
@@ -423,7 +430,7 @@ def test_a_drawn_window_refuses_the_derived_ratio_as_a_compartment() -> None:
 
     controller = SimulationController()
     controller.start()
-    _advance_for(controller, duration_s=10.0)
+    _advance_for(controller, duration_s=10)
 
     window = controller.drawn_window(0.0, 10.0, 150)
     agent_id = controller.snapshot().agent_id
@@ -433,16 +440,24 @@ def test_a_drawn_window_refuses_the_derived_ratio_as_a_compartment() -> None:
 
 
 def _read_the_alveolar_quotient_as(monkeypatch: pytest.MonkeyPatch, quotient: float) -> None:
-    """Make every alveolar compartment return `quotient` as its partial-pressure fraction.
+    """Make the snapshot and the stepper alike read `quotient` as the alveolar fraction.
 
-    This is the one way left to get a quotient outside 0 to 1. No supported
-    setting produces one (`core/concentration.py`). Since `PL-544D`, an
-    amount larger than the capacity is refused when it is written. So the
-    helper replaces the quotient that every alveolar compartment returns, for
-    the snapshot and the stepper alike, rather than producing it through the
-    stored amount.
+    No supported setting produces a fraction outside 0 to 1
+    (`core/concentration.py`), and a run stores only a state whose fractions
+    it has checked. So the fraction is replaced where it is read. The
+    snapshot, the chart and the marks read a stored state
+    (`core/stored_states.py`), and the stepper reads the compartment.
     """
 
+    stored_state_at = StoredStates.state_at
+
+    def state_at(record: StoredStates, instant_s: CaseInstant) -> tuple[float, ...]:
+        state = list(stored_state_at(record, instant_s))
+        state[ALVEOLAR_FRACTION] = quotient
+
+        return tuple(state)
+
+    monkeypatch.setattr(StoredStates, "state_at", state_at)
     monkeypatch.setattr(
         AlveolarCompartment, "partial_pressure_fraction", property(lambda compartment: quotient)
     )
@@ -467,7 +482,7 @@ def test_a_snapshot_whose_quotient_is_refused_names_the_compartment_and_the_stat
 
     controller = SimulationController()
     controller.start()
-    _advance_for(controller, duration_s=5.0)
+    _advance_for(controller, duration_s=5)
 
     assert isinstance(controller.snapshot(), RunStatus)
 
@@ -511,7 +526,7 @@ def test_settings_are_read_of_a_run_whose_snapshot_refuses(monkeypatch: pytest.M
 
     controller = SimulationController()
     controller.start()
-    _advance_for(controller, duration_s=5.0)
+    _advance_for(controller, duration_s=5)
     controller.set_fresh_gas_flow(FreshGasFlow(6.0))
     controller.set_delivered_concentration_percent(Percent(3.0))
     controller.set_alveolar_ventilation(AlveolarVentilation(5.5))
@@ -562,7 +577,7 @@ def test_set_agent_on_a_run_whose_snapshot_refuses_raises_before_it_changes_anyt
 
     controller = SimulationController()
     controller.start()
-    _advance_for(controller, duration_s=5.0)
+    _advance_for(controller, duration_s=5)
     _read_the_alveolar_quotient_as(monkeypatch, 1.0000001)
 
     with pytest.raises(
@@ -588,7 +603,7 @@ def test_wash_in_is_formed_per_drawn_column() -> None:
 
     controller = SimulationController()
     controller.start()
-    _advance_for(controller, duration_s=120.0)
+    _advance_for(controller, duration_s=120)
 
     window = controller.drawn_window(0.0, controller.snapshot().elapsed_s, 150)
     quotients = window.wash_in_quotients(controller.snapshot().agent_id)
@@ -663,12 +678,12 @@ def test_a_control_change_is_drawn_at_every_time_base_the_reader_can_select() ->
 
     controller = SimulationController()
     controller.start()
-    _advance_for(controller, duration_s=60.0)
+    _advance_for(controller, duration_s=60)
     # The dial is turned *up* mid-rise, the case that a selection of extremes
     # could not capture.
     controller.set_delivered_concentration_percent(Percent(4.0))
     change_s = controller.snapshot().elapsed_s
-    _advance_for(controller, duration_s=60.0)
+    _advance_for(controller, duration_s=60)
 
     elapsed_s = controller.snapshot().elapsed_s
 

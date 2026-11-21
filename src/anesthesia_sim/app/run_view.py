@@ -131,8 +131,7 @@ from anesthesia_sim.app.dashboard_frame import (
     READOUT_RESERVATIONS,
     RESET_LABEL,
     RUNNING_AGENT_LOCK_TEXT,
-    SIMULATION_STEP_S,
-    SIMULATION_TICK_INTERVAL_S,
+    SIMULATION_TICK_INTERVAL_MS,
     START_LABEL,
     HaltDisposition,
     NewCaseQuestion,
@@ -156,6 +155,7 @@ from anesthesia_sim.app.halt_gate import halt_gate
 from anesthesia_sim.app.playback import (
     DEFAULT_PLAYBACK_RATE,
     SUPPORTED_PLAYBACK_RATES,
+    OwedSimulatedTime,
     PlaybackRate,
     playback_rate_for,
 )
@@ -201,7 +201,6 @@ from anesthesia_sim.core.exceptions import (
 )
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
-from anesthesia_sim.core.units import MILLISECONDS_PER_SECOND
 from anesthesia_sim.layout.run_identity import RunId
 
 # Adding a built-in agent without a verified identification colour would make
@@ -356,6 +355,7 @@ class RunView(QWidget):
         # simulation changes until the drag is released.
         self._preview: PreviewRequest | None = None
         self._playback_rate: PlaybackRate = DEFAULT_PLAYBACK_RATE
+        self._owed_time = OwedSimulatedTime()
         self._adjustment_grouping = AdjustmentGrouping()
         # The agent that a reader has asked for and not yet confirmed, and the
         # dialog that asks them. Together they are the state "a destructive
@@ -580,7 +580,7 @@ class RunView(QWidget):
 
         self._step_timer = QTimer(self)
         self._step_timer.setTimerType(Qt.TimerType.PreciseTimer)
-        self._step_timer.setInterval(round(SIMULATION_TICK_INTERVAL_S * MILLISECONDS_PER_SECOND))
+        self._step_timer.setInterval(SIMULATION_TICK_INTERVAL_MS)
         self._step_timer.timeout.connect(self.step_tick)
 
     # ------------------------------------------------------------ reading
@@ -1515,9 +1515,12 @@ class RunView(QWidget):
         frame draws, every compartment value on screen describes the run that
         was discarded, so a halt withholds them
         (`run_presentation.halted_run`). After recording the start-over, this
-        method emits `case_restarted` for the dashboard.
+        method emits `case_restarted` for the dashboard. The simulated time
+        that playback owed the discarded run is cleared, so the new run's
+        first step comes one whole step of owed time after it starts.
         """
 
+        self._owed_time.clear()
         self._case += 1
         self.case_restarted.emit()
 
@@ -1680,12 +1683,14 @@ class RunView(QWidget):
 
     @halt_gate
     def step_tick(self) -> None:
-        """Advance the run by one tick's worth of steps, and never draw.
+        """Advance the run by the steps that are due on this tick, and never draw.
 
-        The method reads the playback rate once and takes the number of steps that
-        it sets, each `SIMULATION_STEP_S` long, with nothing else serviced between
-        them. So a setting changed while the run plays takes effect on a tick
-        boundary (`PL-NBWP`). If the core refuses a step, the rest of that tick's
+        The method reads the playback rate once and adds one tick's simulated time
+        to what playback owes the run (`OwedSimulatedTime`). It then takes one
+        one-second step for each whole second owed, with nothing else serviced
+        between them. At 1x and 5x most ticks take no step. So a setting changed
+        while the run plays takes effect on the next step the loop takes
+        (`PL-NBWP`). If the core refuses a step, the rest of that tick's
         steps are abandoned, and the gate halts the run on the last completed step.
         The slot keeps working afterwards, so Reset can restart the run. A tick that
         fires late costs the run real time but never changes its trajectory, because
@@ -1696,12 +1701,12 @@ class RunView(QWidget):
         if not self.controller.is_running or self._held():
             return
 
-        steps = self._playback_rate.steps_per_tick(
-            tick_interval_s=SIMULATION_TICK_INTERVAL_S, simulation_step_s=SIMULATION_STEP_S
+        steps = self._owed_time.steps_due(
+            self._playback_rate, tick_interval_ms=SIMULATION_TICK_INTERVAL_MS
         )
 
         for _ in range(steps):
-            self.controller.advance(SIMULATION_STEP_S)
+            self.controller.advance()
 
     def start_simulation_timer(self) -> None:
         """Start the tick timer, which only `stop_timers` stops and a failure never does."""

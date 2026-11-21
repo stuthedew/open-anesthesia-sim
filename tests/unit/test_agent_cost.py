@@ -41,7 +41,6 @@ from anesthesia_sim.app.agent_cost import (
     price_from_entry,
 )
 from anesthesia_sim.app.controller import SimulationController, SimulationSnapshot
-from anesthesia_sim.app.dashboard_frame import SIMULATION_STEP_S
 from anesthesia_sim.app.formatting import AgentAmountUnit, format_delivered_agent
 from anesthesia_sim.app.preferences import (
     AGENT_COST_VIEW_UNITS,
@@ -51,6 +50,7 @@ from anesthesia_sim.app.preferences import (
 )
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
 
 #: Each agent's liquid density at 20 °C in g/mL and molar mass in g/mol,
@@ -95,7 +95,7 @@ def _run(
     controller.start()
 
     for _ in range(round(minutes * _SECONDS_PER_MINUTE / SIMULATION_STEP_S)):
-        controller.advance(SIMULATION_STEP_S)
+        controller.advance()
 
     return controller.snapshot()
 
@@ -167,7 +167,7 @@ def test_a_run_that_has_delivered_nothing_shows_zero_and_a_trace_shows_below_res
     controller = SimulationController()
     start = delivered_shown(controller.snapshot())
     controller.start()
-    controller.advance(SIMULATION_STEP_S)
+    controller.advance()
     trace = delivered_shown(controller.snapshot())
 
     assert start.amount_in(AgentAmountUnit.MILLILITRES_OF_LIQUID) == "0 mL of liquid"
@@ -390,7 +390,7 @@ def test_each_run_is_priced_at_its_own_agent_s_price() -> None:
     switched.start()
 
     for _ in range(round(60.0 * _SECONDS_PER_MINUTE / SIMULATION_STEP_S)):
-        switched.advance(SIMULATION_STEP_S)
+        switched.advance()
 
     cost = cost_shown(delivered_shown(switched.snapshot()), preferences)
     liquid_ml = 4800.0 / _vapour_ml_per_liquid_ml("sevoflurane")

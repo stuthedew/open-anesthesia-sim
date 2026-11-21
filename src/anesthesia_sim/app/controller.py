@@ -15,7 +15,7 @@ does not also depend on the controller.
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, fields, replace
-from math import isfinite
+from math import ceil, floor, isfinite
 from types import MappingProxyType
 
 from anesthesia_sim.app.bookmarks import (
@@ -26,7 +26,7 @@ from anesthesia_sim.app.bookmarks import (
     MarkStanding,
     TimeBookmark,
 )
-from anesthesia_sim.app.chart_time_base import grid_spacing_s
+from anesthesia_sim.app.chart_time_base import drawn_seconds, extreme_seconds, grid_spacing_s
 from anesthesia_sim.app.control_record import (
     CONTROL_INPUT_UNITS,
     ControlChange,
@@ -72,7 +72,8 @@ from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.parameters import MacAwakeReference, load_agent_parameters
 from anesthesia_sim.core.run_definition import Keyframe, RunDefinition, RunSegment
 from anesthesia_sim.core.simulation import SimulationState
-from anesthesia_sim.core.simulation_step import SimulationStep
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
+from anesthesia_sim.core.stored_states import StoredStates
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ELAPSED_SIMULATION_TIME_S,
     AlveolarVentilation,
@@ -80,7 +81,6 @@ from anesthesia_sim.core.supported_ranges import (
     CaseInstant,
     FreshGasFlow,
     StepCount,
-    require_case_instant,
     require_supported_run_length,
 )
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
@@ -522,9 +522,10 @@ class SimulationSnapshot(RunRecord):
     ordinary pause. Start resumes the run, and resuming does not count the
     crossing it halted on again (`MacTarget.crossed_between`).
 
-    `instant_s` is the completed step's own instant. So it lies on the run's
-    `simulation_step_s` grid, not on the coarser grid that a tick boundary
-    can reach. That precision is the whole of what `PL-CTD7` provides, and
+    `instant_s` is the completed step's own instant. So it is the whole
+    second on which the marks were crossed, and not the later second on which
+    a tick of several steps ends. That precision is the whole of what
+    `PL-CTD7` provides, and
     `docs/INTERFACE.md` § "Halting on a marked crossing" states it.
     """
     bookmark_standings: BookmarkStandings
@@ -611,12 +612,17 @@ class SimulationSnapshot(RunRecord):
 class ResumePoint:
     """Everything a branch needs in order to open at the instant where it was taken.
 
-    These six values mean something only together. So they travel as one
-    object, not as six attributes that a later edit could set one at a
+    These values mean something only together. So they travel as one
+    object, not as separate attributes that a later edit could set one at a
     time. `RunSegment` makes the same argument about its own two halves. A
-    branch rebuilt from five of these values and a stale sixth would open
-    at a state its settings never produced, or on an accounting period that
-    never happened.
+    branch rebuilt from all but one of these values and a stale one would
+    open at a state its settings never produced, or on an accounting period
+    that never happened.
+
+    The parent's stored states up to the fork are not held here. A branch is
+    given them when it opens (`SimulationController._open_at`) and keeps them
+    in its own record, so this object stays a small value that two branches
+    can share and compare.
 
     `SimulationController.reset()` also reads this object. Reset returns a
     run to its own beginning. A branch begins at the fork, the instant where
@@ -651,9 +657,9 @@ class ResumePoint:
 
     **`fork` and `segment.opening` are two instants, not one** (`PL-B8MK`).
     After the case's opening, `segment` begins at a keyframe before the fork,
-    even when the fork is itself a keyframe. Recording a keyframe at a
-    bookmark or a pause would change the trunk's own later results. So a
-    branch opens its run definition at the keyframe where `segment` begins,
+    even when the fork is itself a keyframe. Taking a branch records nothing
+    on the trunk, so the trunk holds no keyframe at a bookmark or a pause. So
+    a branch opens its run definition at the keyframe where `segment` begins,
     while the branch itself starts at the fork. Both are instants on the
     case's own time axis, which has been the only time axis since `PL-ZMRT`.
     They are equal only for a fork at the case's opening.
@@ -664,10 +670,11 @@ class ResumePoint:
             start from. The branch's own run definition opens at that
             keyframe, which lies before the fork. For a fork at the case's
             opening, the keyframe is at the fork.
-        fork: The instant at which the branch was taken, and the canonical
-            state that the parent held there. The state is the result of one
-            propagation from `segment`'s keyframe. At the case's opening, it
-            is that keyframe's own state. The branch began at this instant.
+        fork: The instant at which the branch was taken, and the state that
+            the parent stored for that second
+            (`SimulationState.stored_states`). The branch's own stored states
+            end with that state when it opens. The branch began at this
+            instant.
             The branch's clock and its live system start here, and a reset
             returns the branch here. `drawn_window` draws nothing to the left
             of this instant.
@@ -675,36 +682,28 @@ class ResumePoint:
             that the branch's clock continues the case's clock rather than
             restarting. The supported run length in `docs/INTERFACE.md`
             § "Supported run length" is measured against this count.
-        simulation_step_s: The step length the case has used, or `None` for
-            a fork from a run that has not stepped. A branch keeps its
-            parent's step length, and `SimulationState` rejects a different
-            one.
         accounting_anchor_l: The amount of agent present when the *case's*
             accounting period started. It is carried rather than derived
             again. `AgentUptakeSystem.resume_at` explains why deriving it is
             unsafe.
-        stepped_from: The instant one step before the fork and the parent's
-            canonical state there, or `None` for a fork at the case's
-            opening, where no step ends. Together with `fork`, it gives the
-            step that ends at the fork. The branch opens at the end of that
-            step. Each time the branch's mark standings (`MarkStanding`) are
-            read, the branch tests that step against the marks as they are at
-            that moment. So a mark added after the fork is treated as it
-            would have been if it had existed before the fork (`PL-1ZQ4`).
-            The halt record that a branch opens with is computed from the
-            same step (`SimulationSnapshot.bookmark_halt`). This object
-            stores no mark crossing, because a stored crossing would name the
-            marks as they were at the fork. If a mark were then removed and
-            added back, the stored crossing would still name the old mark
-            (`PL-XV0D`).
+
+    **The branch opens at the end of the step that ends at the fork**
+    (`PL-1ZQ4`). Each time the branch's mark standings (`MarkStanding`) are
+    read, the branch tests that step against the marks as they are at that
+    moment. So a mark added after the fork is treated as it would have been
+    if it had existed before the fork. The halt record that a branch opens
+    with is computed from the same step (`SimulationSnapshot.bookmark_halt`).
+    The branch reads both ends of that step from its own stored states, which
+    hold its parent's states up to the fork (`PL-FST0`). This object stores
+    no mark crossing, because a stored crossing would name the marks as they
+    were at the fork. If a mark were then removed and added back, the stored
+    crossing would still name the old mark (`PL-XV0D`).
     """
 
     segment: RunSegment
     fork: Keyframe
     step_count: StepCount
-    simulation_step_s: SimulationStep | None
     accounting_anchor_l: float
-    stepped_from: Keyframe | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -712,14 +711,12 @@ class MarkForkPoint:
     """A marked instant that a run has passed, and the instant where a branch taken there opens.
 
     These two instants are in general not equal, which is why this record
-    carries both (`PL-W4XQ`). A mark that lies inside a step is reached at
-    the end of that step. So `bookmark.instant_s` is where the learner placed
-    the mark, and `fork_s` is the end of that step, where a branch opens. For
-    a mark typed as 45.3 s, with a step of 0.1 s, they are 45.3 and
-    45.300000000000004. Code that labels the offer to branch reads `fork_s`,
-    the instant that the branch will use. Code that takes the offer passes
-    back `bookmark`, the mark itself. So neither piece of code has a float
-    to get wrong.
+    carries both (`PL-W4XQ`). `bookmark.instant_s` is where the learner placed
+    the mark, and `fork_s` is the end of the step that reaches it, where a
+    branch opens. With a step of one second the two are equal, because a mark
+    is a whole number of seconds (`PL-SZ6G`). Code that labels the offer to
+    branch reads `fork_s`, the instant that the branch will use. Code that
+    takes the offer passes back `bookmark`, the mark itself.
 
     Attributes:
         bookmark: The mark, as the run holds it.
@@ -824,10 +821,10 @@ class SimulationController:
         #
         # `_stands_where_it_stopped` records only *that* the run stands where it
         # stopped, on a halt or on a branch's fork. `_halt_crossing` tests that
-        # step again against the current marks, from the canonical readings at
-        # both ends, as the mark standings do (`PL-XV0D`). A halt is decided
-        # from those same readings (`PL-QVBR`). So the test finds every mark the
-        # halt crossed, and the halt needs no record of its own. An earlier
+        # step again against the current marks, from the states stored for both
+        # of its ends, as the mark standings do (`PL-XV0D`). A halt is decided
+        # from those same two states (`PL-QVBR`). So the test finds every mark
+        # the halt crossed, and the halt needs no record of its own. An earlier
         # version stored the mark objects themselves in the crossing. A mark
         # that was removed and added back then left the stored crossing naming
         # the old object.
@@ -928,7 +925,7 @@ class SimulationController:
         self._run_definition = RunDefinition(
             uptake_system.equation_settings(),
             uptake_system.state_vector(),
-            opened_at_s=CaseInstant(0.0),
+            opened_at_s=CaseInstant(0),
         )
         self._note_recorded_settings()
         # A run built here is a trunk, so it opens at the case's own zero.
@@ -1120,9 +1117,7 @@ class SimulationController:
     def _reason_the_next_step_would_be_refused(self) -> str | None:
         """Return the reason `SimulationState.advance` would give for rejecting the next step.
 
-        The result is `None` when the next step would not be rejected. A run
-        that has not stepped has no step length to measure the span in, so it
-        is at no limit.
+        The result is `None` when the next step would not be rejected.
         """
 
         return self._reason_a_step_would_be_refused_after(self._state.step_count)
@@ -1130,23 +1125,16 @@ class SimulationController:
     def _reason_a_step_would_be_refused_after(self, step_count: StepCount) -> str | None:
         """Return the reason the core would give for rejecting a step taken after `step_count`.
 
-        The result is `None` when that step would not be rejected, or when
-        this run has not stepped and so has no step length to measure the span
-        in. The run's own limit and every fork use this one method
-        (`_resume_point`, `mark_fork_points`, `PL-VHQX`). It calls the core's
-        own guard rather than restating its rule. So the controller and the
-        stepper cannot disagree about which count is the last supported one.
-        `maximum_step_count` decides that once, on the product of the count
-        and the step length (`PL-8H2R`). The message is the guard's own.
+        The result is `None` when that step would not be rejected. The run's
+        own limit and every fork use this one method (`_resume_point`,
+        `mark_fork_points`, `PL-VHQX`). It calls the core's own guard rather
+        than restating its rule. So the controller and the stepper cannot
+        disagree about which count is the last supported one. The message is
+        the guard's own.
         """
 
-        simulation_step_s = self._state.simulation_step_s
-
-        if simulation_step_s is None:
-            return None
-
         try:
-            require_supported_run_length(step_count, simulation_step_s)
+            require_supported_run_length(step_count)
         except SimulationDomainLimitError as refusal:
             return str(refusal)
 
@@ -1331,16 +1319,10 @@ class SimulationController:
     def snapshot(self) -> SimulationSnapshot:
         """Build a fresh, read-only view of current simulation state.
 
-        Raises:
-            SimulationConfigurationError: If a compartment's partial-pressure
-                quotient is outside 0 to 1. Each quotient is built here as a
-                `Fraction` under the compartment's name
-                (`run_series.COMPARTMENT_FRACTION_NAMES`). The compartment
-                holds an amount, and the quotient read from it carries no
-                proof of its range. The interface halts the run on this
-                rejection and describes the halt from `record()`, which
-                cannot raise it (`PL-7DJK`). No supported setting produces
-                such a quotient (`core/concentration.py`).
+        Each compartment's fraction is the one in the state that the run
+        stored for the second it stands at (`_stored_fractions`). The amounts
+        of agent are read from the compartments, which hold exactly what that
+        state's fractions wrote to them.
         """
 
         system = self._state.uptake_system
@@ -1348,6 +1330,11 @@ class SimulationController:
         alveoli = system.alveoli
         patient = system.patient
         accounting = system.agent_simulation_validation
+        # Each compartment's fraction is read from the state that the run
+        # stored for the second it stands at. The chart's last point and the
+        # marks read that same state, so the three cannot show different
+        # values for one second (`PL-MH9J`).
+        fractions = self._stored_fractions(self._state.elapsed_s)
 
         return SimulationSnapshot(
             is_running=self._is_running,
@@ -1365,27 +1352,12 @@ class SimulationController:
             delivered_concentration_percent=circuit.delivered_concentration_percent,
             alveolar_ventilation_l_min=alveoli.alveolar_ventilation_l_min,
             cardiac_output_l_min=patient.cardiac_output_l_min,
-            inspired_partial_pressure_fraction=circuit.inspired_partial_pressure_fraction,
-            alveolar_partial_pressure_fraction=Fraction(
-                alveoli.partial_pressure_fraction,
-                name=COMPARTMENT_FRACTION_NAMES[RecordedQuantity.ALVEOLAR],
-            ),
-            mixed_venous_partial_pressure_fraction=Fraction(
-                patient.mixed_venous_partial_pressure_fraction,
-                name=COMPARTMENT_FRACTION_NAMES[RecordedQuantity.MIXED_VENOUS],
-            ),
-            vessel_rich_partial_pressure_fraction=Fraction(
-                patient.vessel_rich.partial_pressure_fraction,
-                name=COMPARTMENT_FRACTION_NAMES[RecordedQuantity.VESSEL_RICH],
-            ),
-            muscle_partial_pressure_fraction=Fraction(
-                patient.muscle.partial_pressure_fraction,
-                name=COMPARTMENT_FRACTION_NAMES[RecordedQuantity.MUSCLE],
-            ),
-            fat_partial_pressure_fraction=Fraction(
-                patient.fat.partial_pressure_fraction,
-                name=COMPARTMENT_FRACTION_NAMES[RecordedQuantity.FAT],
-            ),
+            inspired_partial_pressure_fraction=fractions[RecordedQuantity.CIRCUIT],
+            alveolar_partial_pressure_fraction=fractions[RecordedQuantity.ALVEOLAR],
+            mixed_venous_partial_pressure_fraction=fractions[RecordedQuantity.MIXED_VENOUS],
+            vessel_rich_partial_pressure_fraction=fractions[RecordedQuantity.VESSEL_RICH],
+            muscle_partial_pressure_fraction=fractions[RecordedQuantity.MUSCLE],
+            fat_partial_pressure_fraction=fractions[RecordedQuantity.FAT],
             delivered_agent_l=accounting.delivered_agent_l,
             agent_vapour_per_liquid=self._agent_vapour_per_liquid,
             exhausted_agent_l=accounting.exhausted_agent_l,
@@ -1494,7 +1466,7 @@ class SimulationController:
 
         A mark that is added back is then a new mark to the standings. The
         standings and the halt record (`_halt_crossing`) both test the new mark
-        against the step the run stands on, using the same canonical readings. So
+        against the step the run stands on, from the same two stored states. So
         the halt record and the mark's row cannot disagree about whether the run
         stopped on it.
         """
@@ -1575,10 +1547,10 @@ class SimulationController:
         never lived.
         """
 
-        return CaseInstant(0.0) if self._opened_from is None else self._opened_from.fork.instant_s
+        return CaseInstant(0) if self._opened_from is None else self._opened_from.fork.instant_s
 
     def resumed_at(self, instant_s: CaseInstant) -> SimulationController:
-        """Open a second live run from this run's canonical state at `instant_s`.
+        """Open a second live run from the state that this run stored for `instant_s`.
 
         This method makes a branch something a learner can *manage*, not just
         a second curve (`PL-J2TD`). Managing a branch means advancing it. The
@@ -1587,20 +1559,27 @@ class SimulationController:
         through the same code as every other run. `advance()` is not
         overridden, and no second way to move a run forward is introduced.
 
-        **The branch opens at a keyframe, because that is this method's scope**
-        (`PL-54V0`). `instant_s` must be an instant at which this run has a
-        keyframe. A keyframe is the run's start or a recorded setting change.
-        The method rejects any other instant, but not because that instant
-        cannot be reproduced. Two other methods branch between keyframes.
-        `resumed_at_mark` branches at a marked instant, and `resumed_here`
-        branches at the instant where a paused run has stopped. Both
-        reproduce each element of this run's state exactly, because they open
-        the branch's run definition at the keyframe before the fork
-        (`_open_at`). No method offers any other instant, so a learner first
-        marks the instant or pauses the run there.
+        **The branch opens at any whole second that this run has reached**
+        (`PL-FST0`). The run stores a state for every such second, so
+        `instant_s` needs no keyframe, mark or pause. Until `PL-FST0` this
+        method opened only at the run's start or at a recorded setting
+        change. `resumed_at_mark` branches at a marked instant, and
+        `resumed_here` branches at the instant where a paused run has
+        stopped. All three open the branch the same way (`_open_at`). The
+        interface offers the control events, the passed marks and the place
+        where a paused run stands, so a learner who wants another second
+        marks it or pauses there.
 
-        No method *restarts* a run definition at the fork from the canonical
-        state there. A restart would replace one propagation over an interval
+        **The branch holds this run's stored states up to the fork, and steps
+        on from the last of them** (`PL-MH9J`, `PL-FST0`). Its uptake system
+        is placed at the state that this run stored for the fork, with the
+        compensation terms of the two running totals that were stored beside
+        it. While no setting differs, each state that the branch then stores
+        equals the state that this run stored for the same second, in all
+        nine numbers.
+
+        No method *restarts* a branch's run definition at the fork. A restart
+        would replace one propagation over an interval
         with two propagations, one on each side of the fork. The result would
         be a different rounding of the same exact solution. The difference was
         measured at up to 5.3e-13 in an accumulator. A branch must reproduce
@@ -1635,10 +1614,7 @@ class SimulationController:
         than at a zero of its own** (`PL-ZMRT`). So the branch's clock and the
         instants in its run definition are one quantity, and nothing converts
         between them. `docs/INTERFACE.md` § "The canonical evaluation rule"
-        requires this. When the branch evaluates a case instant, it forms the
-        interval from the same two floats that its parent used. A run
-        definition shifted to its own zero would depend on a subtraction that
-        does not always round-trip. The branch's run definition opens at the
+        requires this. The branch's run definition opens at the
         keyframe that starts the stretch before `instant_s`, as every branch's
         does. `_open_at` and `docs/INTERFACE.md` § "What this requires of a branch"
         explain why.
@@ -1665,7 +1641,7 @@ class SimulationController:
         volume is applied before any state is. That order matters because
         `set_circuit_volume` conserves agent by rewriting the inspired
         fraction. A volume set afterwards would silently move the branch off
-        its parent's keyframe. The four live controls come from the settings
+        the state it opened from. The four live controls come from the settings
         of the stretch still open at `instant_s`. Those settings store each
         value as it was set (`UptakeEquationSettings`, `PL-SM5V`). The rebuilt
         branch is then checked against those settings rather than trusted.
@@ -1678,8 +1654,8 @@ class SimulationController:
         (`_disagreements_with`).
 
         Args:
-            instant_s: The case instant to open at, in seconds. It must be an
-                instant at which this run has a keyframe.
+            instant_s: The case instant to open at, in seconds. It must be a
+                second that this run has reached.
 
         Returns:
             A paused `SimulationController` at that state. It carries this
@@ -1692,7 +1668,10 @@ class SimulationController:
                 checked it against the supported run length
                 (`core/supported_ranges.py`).
             SimulationConfigurationError: At least one of the following is true:
-                - `instant_s` is not an instant at which this run has a keyframe.
+                - `instant_s` is past the second this run has reached, so
+                  the run stores no state there.
+                - `instant_s` is the supported run length, where a branch
+                  would have no step to take.
                 - This run is itself a branch. A branch of a branch is rejected
                   rather than silently flattened (`PL-TFX5`).
                 - The frame this run is drawn in has failed (`fork_refusal`).
@@ -1721,15 +1700,13 @@ class SimulationController:
 
         **It takes no instant, so a caller has no instant to get wrong.** The
         clock names the fork, which is the step that the run is standing on.
-        The clock supplies only that instant. The state at the fork comes from
-        `RunDefinition.state_at`, the canonical path that every branching
-        method forks from, not from the live system. If this method took a
-        float instead, a caller could ask for a branch at an instant the run
-        has not reached. A caller could also ask at the instant a learner
-        *marked* rather than at the step instant where the run actually
-        stopped. Those are not the same number, because a mark that lies inside
-        a step halts the run at the step's end. This method is also the only
-        way to branch at a MAC target, which has no instant to name.
+        The clock supplies only that instant. The state at the fork is the one
+        that this run stored for that second, as for every branching method
+        (`_stored_keyframe`). It is not read back from the uptake system. If
+        this method took an instant instead, a caller could ask for a branch
+        at an instant the run has not reached, or at one where the run does
+        not stand. This method is also the only way to branch at a MAC
+        target, which has no instant to name.
 
         **It rejects a run that is advancing, a failed run, a run at its own
         opening, and a run at the supported run length**, each for its own
@@ -1824,14 +1801,14 @@ class SimulationController:
         and goes back to it to try something else there. The mark may have
         been set before the run passed it, so that it stopped the run. Or it
         may have been set after the clock was already past it, so that no step
-        ever crossed it. This method treats both cases alike, because the state
-        at a reached instant is the run definition evaluated there. The run
-        does not need to have stood on that instant to hold its state.
+        ever crossed it. This method treats both cases alike, because the run
+        stored a state for every second it reached. The run does not need to
+        have stopped on that second to hold its state.
 
         **It is the halt fork, taken later.** The fork is the end of the step
         that reaches the mark (`TimeBookmark.steps_to_reach`), which is the
-        instant where a halt stops the run. The state is
-        `RunDefinition.state_at` evaluated there. The branch runs under the
+        instant where a halt stops the run. The state is the one that this
+        run stored for that second. The branch runs under the
         settings the trunk left the fork under (`PL-HSP8`, `PL-ZR49`). Those
         settings include a change the trunk made while it stood at the fork,
         and no change it made later. So for a mark the run is halted on, this
@@ -1842,20 +1819,19 @@ class SimulationController:
         the case it would have been without the mark (`docs/INTERFACE.md` § "What
         this requires of a branch").
 
-        **The branch's halt record is computed from that step**, because a
-        step that halted nothing kept no record of what it crossed
+        **The branch's halt record is computed from that step**, because a step
+        that halted nothing kept no record of what it crossed
         (`_halt_crossing`). The record is the result of
         `BookmarkSet.crossings_between` for that one step. It uses the marks as
-        they are now and reads each compartment canonically at both ends of the
-        step. So the rule that halts a running case is the same rule that names
-        this crossing. The branch opens at the end of that step. A mark that
-        lies inside the step is still treated as passed, not as lying before
-        the branch (`PL-3K9B`, case B).
+        they are now and reads each compartment from the states stored for the
+        two ends of the step. So the rule that halts a running case is the same
+        rule that names this crossing. The branch opens at the end of that
+        step. A mark that lies inside the step is still treated as passed, not
+        as lying before the branch (`PL-3K9B`, case B).
 
-        **It takes the mark, not an instant**, for the same reason that
-        `resumed_here` takes nothing. A float would let a caller name the
-        instant a learner typed, which in general is not the step instant at
-        which the run reached the mark. A mark at the case's opening is the one
+        **It takes the mark, not an instant.** The offer to branch lists the
+        marks this run has passed (`mark_fork_points`), and a caller passes
+        back the mark it chose. A mark at the case's opening is the one
         mark that no step reaches. The run stands on it from the start, so this
         method forks at the opening keyframe with no crossing, as `resumed_at`
         would there.
@@ -1992,6 +1968,7 @@ class SimulationController:
             resume_point,
             branch._state.uptake_system.equation_settings(),
             self._changes_opened_at(fork_at_s),
+            self._state.stored_states.through(fork_at_s),
         )
 
         return branch
@@ -2087,6 +2064,7 @@ class SimulationController:
         resume_point: ResumePoint,
         settings: UptakeEquationSettings,
         opened_with: tuple[ControlChange, ...],
+        stored_through_fork: StoredStates,
     ) -> None:
         """Put this run at `resume_point`'s state, on its clock and its accounting.
 
@@ -2113,12 +2091,23 @@ class SimulationController:
         parent's settings** (`PL-B8MK`). That stretch is the one that the step
         reaching the fork ran under (`ResumePoint.segment`). The settings in
         force are then recorded as a change at the fork. Where they match the
-        stretch, `RunDefinition.record_change` records nothing. The definition
-        keeps propagating from the same keyframe as its parent. That alone
-        provides the element-wise guarantee, which is that the branch
-        reproduces each element of its parent's state exactly. A keyframe
-        that this method records carries `_canonical_state_at(fork)`, the
-        same expression that `resume_point.fork.state` came from.
+        stretch, `RunDefinition.record_change` records nothing. So the
+        branch's definition opens with the stretch and the keyframe that its
+        parent holds.
+
+        **The run opens with its parent's stored states up to the fork, and
+        the uptake system is placed at the last of them** (`PL-MH9J`,
+        `PL-FST0`). `stored_through_fork` holds those states. On a first
+        opening it is the parent's record up to the fork, and on a reset it
+        is this branch's own record up to the fork, which holds the same
+        states. The system is placed at the state stored for the fork, with
+        the compensation terms of the two running totals that were stored
+        beside it. The branch then advances by the ordinary step. So while no
+        setting differs, each state that the branch stores equals the state
+        that its parent stored for the same second, in all nine numbers. A
+        keyframe that `record_change` records at the fork holds the state
+        that the definition computes there by formula. Nothing that the
+        interface shows is read from that keyframe's state.
 
         **The control timeline opens with `opened_with`, kept as it was
         recorded** (`PL-ZR49`, `PL-K5BS`). On the first opening, these are the
@@ -2153,21 +2142,25 @@ class SimulationController:
         segment = resume_point.segment
         system = self._state.uptake_system
 
-        # The state comes from the canonical path, never from reading back the
-        # seeded system. A compartment stores an amount and derives its
-        # fraction from its own capacity, so the round trip is not exact. Over
-        # the range a case covers, 11.7% of alveolar fractions come back one
-        # unit in the last place away. The element-wise reproduction that
-        # `ROADMAP.md` item 12 requires would fail on exactly those entries.
-        # For a fork at a control event, the state is the parent's keyframe.
-        # For a fork at a bookmark, it is one propagation from that keyframe.
-        # `ResumePoint.fork` holds it in either case.
-        system.resume_at(resume_point.fork.state, initial_agent_l=resume_point.accounting_anchor_l)
+        # The state is the one that the parent stored for the fork, never one
+        # read back from the seeded system. A compartment stores an amount and
+        # derives its fraction from its own capacity, so the round trip is not
+        # exact. Over the range a case covers, 11.7% of alveolar fractions
+        # come back one unit in the last place away. Writing the stored state
+        # gives each compartment the amount that the parent's step gave it.
+        # The branch's record ends with that same state, so the two runs
+        # show one value for the fork (`PL-MH9J`).
+        fork_s = resume_point.fork.instant_s
+        system.resume_at(
+            stored_through_fork.state_at(fork_s),
+            initial_agent_l=resume_point.accounting_anchor_l,
+            compensation=stored_through_fork.compensation_at(fork_s),
+        )
 
         self._state = SimulationState(
             uptake_system=system,
             step_count=resume_point.step_count,
-            simulation_step_s=resume_point.simulation_step_s,
+            opening_record=stored_through_fork,
         )
         # The run definition opens on the parent's own stretch, with its
         # keyframe and its settings, at that keyframe's own instant on the
@@ -2221,40 +2214,27 @@ class SimulationController:
         Raises:
             TypeError: `instant_s` is not a `CaseInstant`.
             SimulationConfigurationError: If any of the following is true. This run is a
-                branch, or its frame has failed (`fork_refusal`). `instant_s`
-                is not one of this run's keyframes. Or the instant is not a
-                whole number of this run's steps.
+                branch, or its frame has failed (`fork_refusal`). This run
+                stores no state for `instant_s`, because it has not reached
+                that second (`StoredStates.state_at`). Or `instant_s` is the
+                supported run length, where no step is left to take.
         """
 
         self._require_forkable()
-        require_case_instant("instant_s", instant_s)
 
-        openings = [segment.opening.instant_s for segment in self._run_definition.segments]
+        # The stored state is read first. Its refusal names the seconds that
+        # this run stores, which is the reason a caller can act on.
+        fork = self._stored_keyframe(instant_s)
 
-        if instant_s not in openings:
-            # The reason is this method's scope, not arithmetic. The other two
-            # branching methods fork between keyframes and reproduce the run
-            # exactly (`PL-54V0`). So a message that blamed the propagation
-            # would teach a constraint that the code beside it disproves.
-            raise SimulationConfigurationError(
-                f"this run holds no keyframe at {instant_s} s, and resumed_at opens at one: the "
-                f"run's opening or a recorded setting change, which this run holds at {openings} "
-                "s. A marked instant is branched at with resumed_at_mark once the run has passed "
-                "it, and the instant a paused run stands at with resumed_here"
-            )
-
-        # The provenance is the stretch that the step reaching the keyframe ran
-        # under, as for every other branching method. It is not the stretch that
-        # the keyframe opens. A change made while the trunk stands at `instant_s`
-        # can still replace or remove the stretch that opens there. A branch
-        # whose provenance named that stretch would then name a stretch that the
-        # trunk no longer holds (`PL-NRR6`). Instead, the branch records the
-        # keyframe's own change (`_open_at`). The state at the keyframe is the
-        # keyframe's own state, which `state_at` returns bit for bit.
-        return self._resume_point(
-            self._run_definition.reaching_segment_at(instant_s),
-            Keyframe(instant_s, self._run_definition.state_at(instant_s)),
-        )
+        # The provenance is the stretch that the step reaching the fork ran
+        # under, as for every other branching method. Where the fork is a
+        # keyframe, it is not the stretch that the keyframe opens. A change
+        # made while the trunk stands at `instant_s` can still replace or
+        # remove the stretch that opens there. A branch whose provenance named
+        # that stretch would then name a stretch that the trunk no longer
+        # holds (`PL-NRR6`). Instead, the branch records the keyframe's own
+        # change (`_open_at`).
+        return self._resume_point(self._run_definition.reaching_segment_at(instant_s), fork)
 
     def _resume_point_here(self) -> ResumePoint:
         """Return everything a branch opening where this run stands needs, or reject it and say why.
@@ -2278,9 +2258,10 @@ class SimulationController:
             raise SimulationConfigurationError(refusal)
 
         fork_s = self._state.elapsed_s
-        fork = Keyframe(fork_s, self._run_definition.state_at(fork_s))
 
-        return self._resume_point(self._run_definition.reaching_segment_at(fork_s), fork)
+        return self._resume_point(
+            self._run_definition.reaching_segment_at(fork_s), self._stored_keyframe(fork_s)
+        )
 
     def _refusal_here(self) -> str | None:
         """Why a branch where this run stands is rejected, or None where it is not.
@@ -2330,36 +2311,72 @@ class SimulationController:
     def _keyframe_before(self, step_count: StepCount) -> Keyframe | None:
         """Where the step ending after `step_count` steps began, or None where no step ends there.
 
-        The result is the instant one step earlier and this run's canonical
-        state there. So both ends of the step are read from
-        `RunDefinition.state_at`, as a fork reads them. No step reaches the
-        case's opening.
+        The result is the instant one step earlier and the state stored for
+        it. So both ends of the step are read from stored states, as a fork's
+        state is. On a branch, the step that reached the fork began in the
+        parent's run. The branch holds its parent's stored states up to the
+        fork, so it reads that state from its own record (`PL-FST0`). No step
+        reaches the case's opening.
 
         Args:
             step_count: How many steps the case had completed at the step's
-                end. It is never fewer than the count this run opened on,
-                because a branch is never asked about a step it did not take.
+                end.
         """
 
         if step_count == 0:
             return None
 
-        before_s = self._instant_after(StepCount(step_count - 1))
+        return self._stored_keyframe(self._instant_after(StepCount(step_count - 1)))
 
-        return Keyframe(before_s, self._run_definition.state_at(before_s))
+    def _stored_keyframe(self, instant_s: CaseInstant) -> Keyframe:
+        """Return `instant_s` with the state this run stored for it.
+
+        Every state that this controller tests a mark against or opens a
+        branch from is read here, from the one record that the run's steps
+        wrote (`SimulationState.stored_states`, `PL-MH9J`). `_stored_fractions`
+        reads a snapshot's fractions from the same record.
+
+        Raises:
+            SimulationConfigurationError: This run stores no state at
+                `instant_s`, because the instant is before the run opened or
+                after the second it has reached.
+        """
+
+        return Keyframe(instant_s, self._state.stored_states.state_at(instant_s))
+
+    def _stored_fractions(self, instant_s: CaseInstant) -> Mapping[RecordedQuantity, Fraction]:
+        """Return each compartment's fraction of 1 atm in the state stored for `instant_s`.
+
+        `COMPARTMENT_STATE_INDEX` pairs each compartment with its position in
+        the state, as it does for a chart trace. Each fraction is built as a
+        `Fraction` under the compartment's name. The run checked each one when
+        it stored the state, so none is refused here.
+
+        Raises:
+            SimulationConfigurationError: This run stores no state at
+                `instant_s`.
+        """
+
+        state = self._state.stored_states.state_at(instant_s)
+
+        return {
+            quantity: Fraction(state[index], name=COMPARTMENT_FRACTION_NAMES[quantity])
+            for quantity, index in COMPARTMENT_STATE_INDEX.items()
+        }
 
     def _crossing_of_step(
         self, stepped_from: Keyframe | None, stepped_to: Keyframe
     ) -> BookmarkCrossing | None:
         """The marks that the step from `stepped_from` to `stepped_to` crossed, using current marks.
 
-        The result is computed again from the rule that `advance` halts by,
-        for that one step, with each compartment read canonically at both
-        ends. It is not read from any record. A step that halted nothing kept
-        no record. A halt's record names only what was marked when the run
-        stopped, so a mark added inside the halting step afterwards would be
-        missing from it (`PL-2N43`). Every branching method asks about the
-        step ending at its fork through this method. The standings also use
+        The result is computed again from the rule that `advance` halts by, for
+        that one step, with each compartment read from the two states passed
+        in. Each caller passes the states stored for the two ends of the step.
+        The result is not read from any record of crossings. A step that halted
+        nothing kept no record. A halt's record names only what was marked when
+        the run stopped, so a mark added inside the halting step afterwards
+        would be missing from it (`PL-2N43`). Every branching method asks about
+        the step ending at its fork through this method. The standings also use
         it, for the step a run opened on or stands on (`PL-1ZQ4`). The reading
         at the end of the step is the state a branch opens from. So the
         branch's first step begins where this step ends, and the branch does
@@ -2405,9 +2422,10 @@ class SimulationController:
 
         step_count = self._steps_to_reach(held)
         fork_s = self._instant_after(step_count)
-        fork = Keyframe(fork_s, self._run_definition.state_at(fork_s))
 
-        return self._resume_point(self._run_definition.reaching_segment_at(fork_s), fork)
+        return self._resume_point(
+            self._run_definition.reaching_segment_at(fork_s), self._stored_keyframe(fork_s)
+        )
 
     def _passed_time_bookmarks(self) -> tuple[TimeBookmark, ...]:
         """Return the time bookmarks that this run's standings show as passed.
@@ -2426,34 +2444,19 @@ class SimulationController:
         )
 
     def _steps_to_reach(self, passed: TimeBookmark) -> StepCount:
-        """How many of this run's steps reach `passed`, a mark that the run is at or past.
+        """How many of this run's steps reach `passed`, a mark that the run is at or past."""
 
-        A run that has not stepped stands at its opening. So the only mark it
-        can have passed is a mark at the opening, which no step reaches.
-        """
-
-        simulation_step_s = self._state.simulation_step_s
-
-        if simulation_step_s is None:
-            return StepCount(0)
-
-        return passed.steps_to_reach(simulation_step_s)
+        return passed.steps_to_reach()
 
     def _instant_after(self, step_count: StepCount) -> CaseInstant:
         """The case instant where this run stands once `step_count` steps are complete.
 
-        It forms the same product as `SimulationState.elapsed_s`, in the same
-        way. So an instant derived here is, bit for bit, the one the
-        clock reads after that many steps, and it passes `_resume_point`'s
-        whole-step check.
+        It forms the same product as `SimulationState.elapsed_s`, a whole
+        number of seconds. So an instant derived here is the one the clock
+        reads after that many steps.
         """
 
-        simulation_step_s = self._state.simulation_step_s
-
-        if simulation_step_s is None:
-            return CaseInstant(0.0)
-
-        return CaseInstant(step_count * simulation_step_s)
+        return CaseInstant(step_count * SIMULATION_STEP_S)
 
     def _require_forkable(self) -> None:
         """Refuse a fork from a run that is a branch, or whose frame has failed.
@@ -2513,8 +2516,8 @@ class SimulationController:
             segment: The stretch of this run under which the step that reaches
                 `fork` ran (`RunDefinition.reaching_segment_at`). Its opening is the
                 keyframe where the branch's own run definition opens.
-            fork: The instant at which the branch is taken, and this run's
-                canonical state there.
+            fork: The instant at which the branch is taken, and the state that
+                this run stored for it.
 
         Raises:
             SimulationConfigurationError: The fork instant is not a whole
@@ -2523,43 +2526,38 @@ class SimulationController:
                 run length, so the branch would have no step to take.
         """
 
-        simulation_step_s = self._state.simulation_step_s
+        step_count = StepCount(int(fork.instant_s) // SIMULATION_STEP_S)
 
-        if simulation_step_s is None:
-            step_count = StepCount(0)
-        else:
-            step_count = StepCount(round(fork.instant_s / simulation_step_s))
+        if step_count * SIMULATION_STEP_S != fork.instant_s:
+            raise SimulationConfigurationError(
+                f"{fork.instant_s} s is not a whole number of this run's "
+                f"{SIMULATION_STEP_S} s steps, so a branch could not continue the case's "
+                "step count exactly"
+            )
 
-            if step_count * simulation_step_s != fork.instant_s:
-                raise SimulationConfigurationError(
-                    f"{fork.instant_s} s is not a whole number of this run's "
-                    f"{simulation_step_s} s steps, so a branch could not continue the case's "
-                    "step count exactly"
-                )
-
-            if self._reason_a_step_would_be_refused_after(step_count) is not None:
-                raise SimulationConfigurationError(
-                    f"a branch at {fork.instant_s} s would open on the supported run length, "
-                    "where no step is left to take, so it could never be run; a setting change "
-                    "or a mark before it is still branched at with resumed_at or resumed_at_mark"
-                )
+        if self._reason_a_step_would_be_refused_after(step_count) is not None:
+            raise SimulationConfigurationError(
+                f"a branch at {fork.instant_s} s would open on the supported run length, "
+                "where no step is left to take, so it could never be run; a setting change "
+                "or a mark before it is still branched at with resumed_at or resumed_at_mark"
+            )
 
         return ResumePoint(
             segment=segment,
             fork=fork,
             step_count=step_count,
-            simulation_step_s=simulation_step_s,
             accounting_anchor_l=(
                 self._state.uptake_system.agent_simulation_validator.initial_agent_l
             ),
-            stepped_from=self._keyframe_before(step_count),
         )
 
     def drawn_window(self, start_s: float, stop_s: float, columns: int) -> DrawnWindow:
-        """Return the states to plot across an axis, evaluated from the run definition.
+        """Return the states to plot across an axis, each read from this run's stored states.
 
-        The chart reads its states here. Before the run stopped keeping
-        samples of itself, the chart read a recorded window instead (`PL-2FM6`).
+        The chart reads its states here. Each one is the state that the run
+        stored for a whole second (`SimulationState.stored_states`). So a
+        point on a trace is the value that the readout showed at that second
+        (`PL-MH9J`).
 
         **The axis is a viewport, and the run fills it.** Both bounds come from
         the axis that the caller has just set, and that axis may legitimately
@@ -2573,28 +2571,42 @@ class SimulationController:
         `CLAUDE.md` forbids. Nothing is substituted or defaulted, and
         `DrawnWindow.times_s` lists exactly which instants were returned. So a
         caller can see where the run ends, rather than being given a value for an
-        instant the run never reached. The run definition itself rejects a
-        request for those instants, and rightly so. See `evaluate_anchored`.
+        instant the run never reached. The run's record of stored states
+        refuses a request for such an instant (`StoredStates.state_at`).
 
         **The column spacing comes from the axis, not from the clipped
         range.** That keeps the grid anchored. The axis span is a property of
-        the selected time base, so it is constant. The evaluated instants
+        the selected time base, so it is constant. The drawn seconds
         therefore stay in place as the window follows the run, and only the
         newest column is new. Deriving the spacing from the clipped range
-        instead would move every column on every frame early in a run. That is
-        the defect `RunDefinition.evaluate_anchored` exists to avoid.
+        instead would move every column on every frame early in a run.
+        `chart_time_base.drawn_seconds` chooses the seconds, and says how the
+        grid is anchored.
+
+        **A peak or a trough between two columns is drawn too.** Where the
+        columns are more than a second apart, a compartment can turn between
+        two of them, as the alveolar fraction does a few seconds after the
+        vaporizer is turned down. `chart_time_base.extreme_seconds` finds the
+        second at which each compartment is highest and lowest between two
+        drawn seconds, and that second is drawn where its value lies outside
+        both. So each compartment's highest and lowest stored values between
+        two columns are on its trace (`PL-BLZJ`).
 
         Args:
             start_s: Left edge of the axis, in simulated seconds.
             stop_s: Right edge of the axis, in simulated seconds. It must not
                 be before `start_s`.
             columns: The number of grid columns the axis is divided into, at
-                least two. The spacing this gives is rounded down onto whole
-                hundredths of a second, so the grid can have a few more
-                columns than this (`chart_time_base.grid_spacing_s`). The
-                points actually drawn are these columns plus the control
-                events inside the window and the two ends of the drawn range.
-                So this value sets the grid, not the number of points.
+                least two. The spacing this gives is rounded down to a whole
+                number of seconds, and a spacing of less than one second is
+                raised to one second (`chart_time_base.grid_spacing_s`). So
+                the grid can have more columns than this, though fewer than
+                twice as many. It has fewer columns than this where the axis
+                spans fewer seconds than it has columns. The
+                points actually drawn are these columns, the control events
+                inside the window, the two ends of the drawn range, and the
+                second of each peak or trough between two of those. So this
+                value sets the grid, not the number of points.
 
         Returns:
             The states at the drawn instants, bound to this run's agent.
@@ -2605,14 +2617,17 @@ class SimulationController:
         """
 
         spacing_s = _axis_spacing_s(start_s, stop_s, columns)
-        # The axis and the run definition use one clock, so nothing is
-        # converted here. The range is only clipped to the span the run
-        # actually holds. The lower clip is where this run *began*, not zero.
-        # A branch begins at its fork, and the axis may legitimately extend to
-        # the left of the fork. `RunDefinition` rejects an instant from before
-        # a run existed, rather than returning a value from its nearest keyframe.
-        first_s = max(start_s, self.began_at_s)
-        last_s = min(stop_s, self._run_definition.reached_s)
+        # The axis and the run use one clock, so nothing is converted here.
+        # The range is only clipped to the span the run actually holds. The
+        # lower clip is where this run *began*, not zero. A branch begins at
+        # its fork, and the axis may legitimately extend to the left of the
+        # fork. The run stores no state from before it began, and its record
+        # refuses such a second rather than returning the nearest state.
+        # The drawn range also starts and ends on whole seconds, because the
+        # run holds no instant between them. So an axis edge that lies inside
+        # a second is moved inward to the nearest whole second.
+        first_s = max(ceil(start_s), self.began_at_s)
+        last_s = min(floor(stop_s), self._run_definition.reached_s)
 
         if last_s < first_s:
             # The axis and the run do not overlap. Two ordinary states cause
@@ -2626,12 +2641,30 @@ class SimulationController:
         # An axis of zero width is one instant, and it is still drawn. Both
         # bounds coincide, so no grid column can fall strictly between them,
         # and the spacing substituted here cannot place one there.
-        window = self._run_definition.evaluate_anchored(
-            first_s, last_s, spacing_s if spacing_s > 0.0 else 1.0
+        times_s = drawn_seconds(
+            first_s,
+            last_s,
+            max(spacing_s, 1),
+            events_s=tuple(segment.opening.instant_s for segment in self._run_definition.segments),
         )
+        stored_states = self._state.stored_states
+
+        # Where the columns are more than a second apart, a compartment can
+        # peak between two of them. The second of each such peak or trough is
+        # drawn too, so no trace is drawn below a peak that the run stored
+        # (`PL-BLZJ`). A window whose every second is a column needs no search.
+        if len(times_s) < last_s - first_s + 1:
+            extremes_s: set[int] = set()
+
+            for series in stored_states.fraction_series(CaseInstant(first_s), CaseInstant(last_s)):
+                extremes_s |= extreme_seconds(first_s, series, times_s)
+
+            times_s = tuple(CaseInstant(second) for second in sorted(extremes_s.union(times_s)))
 
         return DrawnWindow(
-            substance_id=self._agent_id, times_s=window.times_s, states=window.states
+            substance_id=self._agent_id,
+            times_s=times_s,
+            states=tuple(stored_states.state_at(instant_s) for instant_s in times_s),
         )
 
     def start(self) -> None:
@@ -2698,10 +2731,10 @@ class SimulationController:
         **A reset branch keeps its settings and the entries it opened with**
         (`PL-K5BS`, `PL-ZR49`). A trunk reopens under its current settings,
         because nothing comes before its opening. A branch reopens on its
-        parent's stretch (`opened_from.segment`). The branch cannot change
-        that stretch without losing its element-wise agreement with its
-        parent. So the settings in force are recorded at the fork in the run
-        definition, as `_open_at` does for every branch. The control timeline
+        parent's stretch (`opened_from.segment`), which is the parent's record
+        and not the branch's to change. So the settings in force are recorded
+        at the fork in the run definition, as `_open_at` does for every
+        branch. The control timeline
         opens with the entries that the branch first opened with
         (`RunRecord.opened_with`). After them it records each setting that
         differs from the one the branch opened under. A reset branch whose
@@ -2738,20 +2771,26 @@ class SimulationController:
         self._failed_frame_reason = None
         self._recorded_supported_limit_reason = None
         self._forget_reached_marks()
+
+        if self._opened_from is not None:
+            # A branch's beginning is the fork, so it keeps the states stored
+            # up to the fork and discards the ones its own steps stored.
+            # Resetting to a cleared system would put the patient at zero
+            # agent at a case time when the model says the patient is loaded.
+            # That is a plausible state that never happened, not the start of
+            # anything.
+            stored_through_fork = self._state.stored_states.through(
+                self._opened_from.fork.instant_s
+            )
+            self._state.reset()
+            self._open_at(self._opened_from, settings, self._opened_with, stored_through_fork)
+            return
+
         self._state.reset()
         uptake_system = self._state.uptake_system
 
-        if self._opened_from is not None:
-            # A branch's beginning is the fork. The branch cannot return to the
-            # case's induction, because it never held that state. Resetting to
-            # a cleared system would put the patient at zero agent at a case
-            # time when the model says the patient is loaded. That is a
-            # plausible state that never happened, not the start of anything.
-            self._open_at(self._opened_from, settings, self._opened_with)
-            return
-
         self._run_definition = RunDefinition(
-            settings, uptake_system.state_vector(), opened_at_s=CaseInstant(0.0)
+            settings, uptake_system.state_vector(), opened_at_s=CaseInstant(0)
         )
         self._note_recorded_settings()
         self._clear_control_timeline()
@@ -2978,16 +3017,22 @@ class SimulationController:
     ) -> DrawnWindow:
         """Return the states this run would pass through under `preview`, from its reach onward.
 
-        **This is a prediction, and it is computed as one.** `RunDefinition`
-        refuses to evaluate past the time the run has reached, because a value
-        there would be a prediction drawn as if it were the run. So the
-        prediction comes from a second definition. That definition starts at
-        the run's reach, from the run's canonical state at that instant, and
-        runs under `preview_settings(preview)`. It uses the same governing
-        equations, the same model version and the same state, and it is
-        deterministic. Nothing in this run is written. Its definition is only
-        read, through `state_at`, which is also the canonical path that a
-        branch starts from (`docs/INTERFACE.md` § "The canonical evaluation rule").
+        **This is a prediction, and it is computed as one.** The run stores
+        no state past the second it has reached, so there is nothing there to
+        read. The prediction comes from a `RunDefinition` that this method
+        builds. That definition opens at the run's reach, from the state that
+        the run stored for that second, and runs under
+        `preview_settings(preview)`. It uses the same governing equations and
+        the same model version, and it is deterministic. Nothing in this run
+        is written.
+
+        This is the one reader that computes its states by formula
+        (`RunDefinition.evaluate_anchored`). Its states are display values,
+        which may be drawn and used for nothing else (`docs/INTERFACE.md` §
+        "The canonical evaluation rule"). A run takes one step for each
+        second, so a predicted state can differ in its last bits from the
+        state that the run stores when it reaches that second. `PL-Z6C8`
+        decides what replaces the formula.
 
         The window is evaluated on the same grid as `drawn_window`, from the
         same axis, so the prediction is drawn at the run's own resolution. It
@@ -3015,21 +3060,24 @@ class SimulationController:
         spacing_s = _axis_spacing_s(start_s, stop_s, columns)
         settings = self.preview_settings(preview)
         reached_s = self._run_definition.reached_s
-        horizon_s = min(stop_s, MAXIMUM_ELAPSED_SIMULATION_TIME_S)
+        horizon_s = min(floor(stop_s), MAXIMUM_ELAPSED_SIMULATION_TIME_S)
 
         if horizon_s <= reached_s:
             return DrawnWindow(substance_id=self._agent_id, times_s=(), states=())
 
         prediction = RunDefinition(
-            settings, self._run_definition.state_at(reached_s), opened_at_s=reached_s
+            settings, self._state.stored_states.state_at(reached_s), opened_at_s=reached_s
         )
         prediction.advance_to(CaseInstant(horizon_s))
-        window = prediction.evaluate_anchored(
-            reached_s, horizon_s, spacing_s if spacing_s > 0.0 else 1.0
-        )
+        window = prediction.evaluate_anchored(reached_s, horizon_s, max(spacing_s, 1))
 
         return DrawnWindow(
-            substance_id=self._agent_id, times_s=window.times_s, states=window.states
+            substance_id=self._agent_id,
+            times_s=window.times_s,
+            # A predicted state is unwrapped here, where it enters the one
+            # record that only the chart reads. It is drawn and used for
+            # nothing else.
+            states=tuple(state.values for state in window.states),
         )
 
     def begin_control_adjustment(self) -> None:
@@ -3068,16 +3116,19 @@ class SimulationController:
     def _require_core_settings_recorded(self) -> None:
         """Refuse a step once the core's settings differ from the run's record.
 
-        The readouts come from the steps, which run at whatever the core
-        holds. The chart comes from the run definition, which holds only the
-        settings this controller recorded. So a setting written to the core
-        without going through this controller, such as `AgentUptakeSystem.set_cardiac_output`
-        or a compartment's own setter, would make the two show different
-        runs. This check stops the run before the first step at the
+        The readouts and the chart come from the steps, which run at whatever
+        the core holds. A branch and a preview take their settings from the
+        run definition, and the chart takes from it the seconds at which a
+        setting changed. The definition holds only the settings this
+        controller recorded. So a setting written to the core without going
+        through this controller, such as
+        `AgentUptakeSystem.set_cardiac_output` or a compartment's own setter,
+        would leave the definition describing settings that the run did not
+        step under. This check stops the run before the first step at the
         unrecorded setting instead (`PL-XRN8`). Nothing in `app/` writes to
         the core that way. The check is there so that a future caller fails
-        here, visibly, rather than drawing a chart that disagrees with the
-        values beside it.
+        here, visibly, rather than opening a branch or drawing a preview
+        under settings that the run did not have.
 
         Where the settings now on the core are inconsistent, building the
         settings record refuses them first, with the more specific message
@@ -3109,10 +3160,12 @@ class SimulationController:
 
         raise SimulationExecutionError(
             "A setting was changed on the simulation core without "
-            "SimulationController recording it, so the chart, which is drawn "
-            "from the recorded settings, would no longer match the values "
-            "shown. Change settings through SimulationController. Reset starts "
-            "a new run from the settings the core now holds."
+            "SimulationController recording it, so the run's record of its "
+            "settings would no longer match the settings the run steps under. "
+            "The list of control changes, the chart's preview and a branch are "
+            "built from that record. Change settings through "
+            "SimulationController. Reset starts a new run from the settings "
+            "the core now holds."
         )
 
     def _record_control_change(
@@ -3182,7 +3235,8 @@ class SimulationController:
             restore()
             raise
 
-        # Update the run definition first, because it is the run. The timeline
+        # Update the run definition first, because it records the settings
+        # that the run steps under. The timeline
         # records the actions a reader sees, and every conditional in
         # `_record_in_timeline` is about how those actions are grouped and
         # displayed. Both records are updated here rather than in the four
@@ -3292,19 +3346,17 @@ class SimulationController:
         could come to carry another compartment's values. A crossing tested
         against the wrong compartment is the same defect as a trace drawn from
         the wrong one. Each entry is built as a `Fraction` under the
-        compartment's name, because the vector returns the quotients that the
-        compartments derive from the amounts they hold (`PL-7DJK`).
+        compartment's name (`PL-7DJK`). A run checks each fraction when it
+        stores a state, so no stored state is refused here.
 
         Args:
-            state: A state vector in `governing_equations`' order. It is the
-                live system's vector for a step that `advance` is taking. Or
-                it is from `RunDefinition.state_at`, for a step that
-                `_crossing_of_step` asks about after the fact, for a fork or
-                for the standings.
+            state: A state vector in `governing_equations`' order.
+                `_crossing_of_step` passes the state that a run stored for
+                one end of a step.
 
         Raises:
-            SimulationConfigurationError: If a compartment's quotient is
-                outside 0 to 1, naming the compartment.
+            SimulationConfigurationError: If a fraction in `state` is outside
+                0 to 1, naming the compartment.
         """
 
         return {
@@ -3370,7 +3422,7 @@ class SimulationController:
 
         - **The step a branch opened on.** It is checked at every read,
           however far the branch has run since. The branch opens standing on
-          it (`ResumePoint.stepped_from`), as a fork at a halt always has.
+          it (`ResumePoint`), as a fork at a halt always has.
         - **The step at whose end a stopped run's clock stands.** This applies
           whether the run is paused or halted, at its cap or not, and on a
           trunk or a branch. A run that is advancing stands on no step,
@@ -3383,7 +3435,7 @@ class SimulationController:
 
         A trunk treats a mark the same way as a branch opened on the same step,
         because both ask about the same step through `_crossing_of_step`, from
-        the same canonical states at both ends.
+        the same stored states at both ends.
         """
 
         if self._bookmarks.is_empty:
@@ -3393,7 +3445,9 @@ class SimulationController:
         standing_on_fork = False
 
         if self._opened_from is not None:
-            steps.append((self._opened_from.stepped_from, self._opened_from.fork))
+            steps.append(
+                (self._keyframe_before(self._opened_from.step_count), self._opened_from.fork)
+            )
             standing_on_fork = self._state.step_count == self._opened_from.step_count
 
         if not self._is_running and self._failure_reason is None and not standing_on_fork:
@@ -3406,20 +3460,18 @@ class SimulationController:
         )
 
     def _step_ending_here(self) -> tuple[Keyframe | None, Keyframe]:
-        """The step at whose end this run's clock stands, read canonically at both ends.
+        """The step at whose end this run's clock stands, as the states stored for its two ends.
 
         The first keyframe is None at the case's opening, where no step ends.
         On a branch standing on its fork this is the step that reached the
-        fork. The branch's run definition opens on the stretch that step ran
-        under, so it evaluates both ends to the same values as its parent
-        (`ResumePoint.segment`).
+        fork. Its end is the state that the branch opened from, which the
+        parent stored for the fork. Its beginning is the state that the
+        parent stored one second earlier. The branch's record holds both.
         """
-
-        elapsed_s = self._state.elapsed_s
 
         return (
             self._keyframe_before(self._state.step_count),
-            Keyframe(elapsed_s, self._run_definition.state_at(elapsed_s)),
+            self._stored_keyframe(self._state.elapsed_s),
         )
 
     def _halt_crossing(self) -> BookmarkCrossing | None:
@@ -3436,9 +3488,9 @@ class SimulationController:
         call** (`PL-XV0D`). So it names a mark added after the halt that the step crosses. It does
         not name a removed mark. A mark that was removed and added back is named
         as it is now. The record is what the step crosses when it is tested
-        again against the current marks, from the canonical states at both ends.
+        again against the current marks, from the stored states at both ends.
         Every branch uses that test (`_crossings_stood_on`), and `advance`
-        decides a halt from the same canonical states (`PL-QVBR`). So the record
+        decides a halt from the same stored states (`PL-QVBR`). So the record
         for the step that halted a trunk includes every mark the trunk halted on,
         and a branch opened on that step names the same marks. When all of a
         halt's marks have been removed, this returns None.
@@ -3465,25 +3517,24 @@ class SimulationController:
             self._reached_instants_s |= _reached_instants(crossing)
             self._reached_crossings |= _reached_heights(crossing)
 
-    def advance(self, simulation_step_s: SimulationStep) -> None:
+    def advance(self) -> None:
         """Advance the state, record history and halt on a crossing, unless the run is paused.
 
         The run definition's reach, the time up to which it describes the run,
         is moved after the step rather than before it. So a step that the core
         refuses, for a domain limit or a numerical failure, leaves the run
         definition describing a run that stopped where the state did. The run
-        definition's `advance_to` records no state. The settings already imply
-        the states, which are recovered from them on demand.
+        definition's `advance_to` records no state. `SimulationState.advance`
+        stores the step's state, in the run's record of stored states.
 
         **The crossing test is here because this is where each single step is
-        taken** (`PL-CTD7`). The interface advances a whole tick's worth of steps
-        between frames: `multiplier x tick_interval_s / simulation_step_s`
-        steps, which is 300 at 300x. A test applied once per frame would place
-        the halt up to `multiplier x simulation_step_s` past the value the
-        learner marked. That is 30 simulated seconds at 300x and 0.1 s at 1x,
-        while `docs/MODEL.md` states its tolerance in hundredths of a percentage
-        point. The same bookmark would then silently stop the run at a different
-        concentration depending on the playback speed. That is the
+        taken** (`PL-CTD7`). At a fast playback rate the interface takes
+        several steps on one tick, which is 30 at 300x
+        (`app/playback.py`). A test applied once per tick would place the halt
+        up to 30 simulated seconds past the value the learner marked at 300x,
+        and on the marked step at 1x. The same bookmark would then silently
+        stop the run at a different concentration depending on the playback
+        speed. That is the
         presentation-correctness failure that `CLAUDE.md` treats as
         safety-critical. It would also put two branches that were nominally
         taken "at 0.8 xMAC" at two different states. Because the test runs on
@@ -3506,26 +3557,19 @@ class SimulationController:
         guard at the top of this method. So the burst of steps stops on the
         crossing step rather than running on to the frame boundary.
 
-        **Whether a step crosses a mark is decided from the canonical readings**
-        (`PL-QVBR`). The live readings come from the stepped system. The
-        canonical readings come from `RunDefinition.state_at`. Every branch
-        opens from them, and every later test of the step uses them
-        (`_crossing_of_step`). The two can lie about 1e-14 apart. A halt decided
-        from the live readings at the exact height could then stop the trunk on
-        a target that a branch opened on the same step shows as still running.
-        So a target's height is treated as a narrow band
-        (`HEIGHT_BAND` in `core/rounding.py`). Where neither live reading lies near an edge
-        of a band, the live readings give the same result as the canonical
-        ones. A step that they find crosses nothing then needs no canonical
-        reading. A step that they find crosses a mark, or that has a live
-        reading near an edge, is tested again from the canonical readings. Each
-        canonical reading costs a matrix exponential. So every halt is one that
-        the halt record names.
+        **Whether a step crosses a mark is decided from the two states that
+        the run stored for the step's ends** (`PL-MH9J`). Every branch opens
+        from a stored state, and every later test of the step reads the same
+        two states (`_crossing_of_step`). So a trunk cannot halt on a target
+        that a branch opened on the same step shows as still running, and
+        every halt is one that the halt record names. A target's height is
+        still treated as a narrow band (`HEIGHT_BAND` in `core/rounding.py`),
+        for the reason that `MacTarget.crossed_between` gives.
 
-        The readings are taken only when something is marked, so an unmarked
-        run costs nothing extra. A marked run costs two `state_vector()` reads
-        and six divisions per step. It also costs two canonical readings on a
-        step that crosses a mark or has a live reading near the edge of a band.
+        The step is tested only when something is marked, so an unmarked run
+        costs nothing extra. On each step, a marked run reads the two stored
+        states and converts each compartment's fraction in both to a multiple
+        of MAC.
 
         **The run halts on the step that brings it to the supported run
         length, not on the rejected step after it** (`PL-5291`). The core
@@ -3550,40 +3594,18 @@ class SimulationController:
         # stopped on, whether or not this step then completes.
         self._leave_where_it_stopped()
 
-        if self._bookmarks.is_empty:
-            self._state.advance(simulation_step_s)
-            self._run_definition.advance_to(self._state.elapsed_s)
-        else:
-            before_s = self._state.elapsed_s
-            before = self._compartment_mac_multiples(self._state.uptake_system.state_vector())
+        self._state.advance()
+        # The clock and the run definition's reach are one quantity on one
+        # time axis, on a branch as well as on a trunk. So the reach is the
+        # clock, and no offset appears here or anywhere else.
+        self._run_definition.advance_to(self._state.elapsed_s)
 
-            self._state.advance(simulation_step_s)
-            # The clock and the run definition's reach are one quantity on one
-            # time axis, on a branch as well as on a trunk. So the reach is the
-            # clock, and no offset appears here or anywhere else.
-            # `docs/INTERFACE.md` § "The canonical evaluation rule" now requires
-            # this. When a branch is asked for an instant of the case, it
-            # computes its interval from the same two floats its parent used,
-            # not from a difference that may not round-trip.
-            self._run_definition.advance_to(self._state.elapsed_s)
-
-            after = self._compartment_mac_multiples(self._state.uptake_system.state_vector())
-
-            crossing = self._bookmarks.crossings_between(
-                before_s=before_s, after_s=self._state.elapsed_s, before=before, after=after
-            )
-
-            # The live readings only screen the step. A step that they find
-            # crosses a mark, or that has a live reading near a band edge, is
-            # decided again from the canonical readings. `_halt_crossing`, the
-            # standings and every branch use those same readings. So the run
-            # never halts on a crossing that its own halt record cannot name. A
-            # crossing happens at most once per halt, so the canonical readings
-            # it needs cost almost nothing.
-            if crossing is not None or self._bookmarks.needs_canonical_readings(
-                before=before, after=after
-            ):
-                crossing = self._crossing_of_step(*self._step_ending_here())
+        if not self._bookmarks.is_empty:
+            # The step is tested from the two states the run stored for its
+            # ends. `_halt_crossing`, the standings and every branch read
+            # those same two states. So the run never halts on a crossing
+            # that its own halt record cannot name.
+            crossing = self._crossing_of_step(*self._step_ending_here())
 
             if crossing is not None:
                 self._halt_on(crossing)
@@ -3652,14 +3674,14 @@ def _opened_value(
     return control_value(stretch, control)
 
 
-def _axis_spacing_s(start_s: float, stop_s: float, columns: int) -> float:
+def _axis_spacing_s(start_s: float, stop_s: float, columns: int) -> int:
     """Return the spacing of an axis's grid columns, in simulated seconds, after checking the axis.
 
-    `drawn_window` and `preview_window` both evaluate on this grid, so a
+    `drawn_window` and `preview_window` both draw on this grid, so a
     prediction is drawn at the run's own resolution. The spacing is rounded
-    down onto a grid of whole hundredths of a second, so the chart's hover can
-    print each column's instant exactly (`chart_time_base.grid_spacing_s`,
-    `PL-T5NJ`). It is zero for an axis of zero width.
+    down onto whole seconds, and is never less than one second, because a run
+    stands only on whole seconds (`chart_time_base.grid_spacing_s`). It is
+    zero for an axis of zero width.
 
     Raises:
         SimulationConfigurationError: If `columns` is fewer than two, either
@@ -3683,7 +3705,7 @@ def _axis_spacing_s(start_s: float, stop_s: float, columns: int) -> float:
 
     span_s = stop_s - start_s
 
-    return grid_spacing_s(span_s / (columns - 1)) if span_s > 0.0 else 0.0
+    return grid_spacing_s(span_s / (columns - 1)) if span_s > 0.0 else 0
 
 
 class BranchedCase:
@@ -3799,17 +3821,17 @@ class BranchedCase:
 
         A **bookmark** is not one of these instants and does not become one
         (`PL-B8MK`). Making it one would mean recording a keyframe where the
-        run halted. That keeps the branch exact against its parent, but it
-        changes the parent's own later results, so marking a run would change
-        it. A fork at a mark is taken through `fork_here` or `fork_at_mark`
-        instead. Neither needs a keyframe, so neither adds an instant to this
-        list.
+        run halted, and a keyframe is the run's opening or a setting change.
+        Marking a run records nothing on it. A fork at a mark is taken through
+        `fork_here` or `fork_at_mark` instead. Neither needs a keyframe, so
+        neither adds an instant to this list.
 
         **The tuple is empty while the trunk refuses every fork** (`PL-T2Q2`).
         On a trunk, that means its frame has failed
         (`SimulationController.fork_refusal`). A trunk that failed on its own
-        step keeps its keyframes here. Each keyframe is a state the run
-        computed before the failure, and a branch from one is drawn normally.
+        step keeps its keyframes here. The run stored a state for each of
+        those seconds before the failure, and a branch from one is drawn
+        normally.
         """
 
         if self._trunk.fork_refusal is not None:
@@ -3861,8 +3883,9 @@ class BranchedCase:
         for another, which makes this a comparison instead of an undo.
 
         Args:
-            instant_s: The case instant to branch at, in seconds, from
-                `fork_points_s`.
+            instant_s: The case instant to branch at, in seconds. The
+                interface passes one of `fork_points_s`. Any second that the
+                trunk has reached is accepted (`PL-FST0`).
 
         Returns:
             The new branch, paused at the trunk's state at that instant,
@@ -3872,12 +3895,11 @@ class BranchedCase:
 
         Raises:
             TypeError: `instant_s` is not a `CaseInstant`.
-            SimulationConfigurationError: `instant_s` is not one of
-                `fork_points_s`, which is empty once the trunk's frame has
-                failed. Or `instant_s` is not a whole number of the trunk's
-                steps. Or the branch rebuilt there would not hold what the
-                trunk held. `resumed_at` raises these errors and names which
-                case applies.
+            SimulationConfigurationError: The trunk's frame has failed. Or
+                the trunk has not reached `instant_s`, or `instant_s` is the
+                supported run length. Or the branch rebuilt there would not
+                hold what the trunk held. `resumed_at` raises these errors
+                and names which case applies.
         """
 
         return self._kept(self._trunk.resumed_at(instant_s))

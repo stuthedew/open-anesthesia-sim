@@ -12,8 +12,9 @@ those claims are decided here, they can be read and tested without a display.
 `tests/unit/test_chart_frame.py` tests them that way.
 
 **Every drawn point is a state of the run at the instant where it is drawn.**
-`SimulationController.drawn_window` evaluates the run's definition at a set of
-columns. A column is one instant on the time axis. The axis is divided into
+`SimulationController.drawn_window` reads the state that the run stored for
+each of a set of columns (`PL-MH9J`). A column is one whole second on the
+time axis. The axis is divided into
 columns, and the window adds one column per control event in the window and
 one column at each end of the drawn range (`PL-2FM6`). So nothing here
 interpolates, extrapolates or synthesizes a value. The plot itself draws the
@@ -21,8 +22,10 @@ straight segment between two points. That segment does not misrepresent the
 run, for two reasons. First, a control event always gets its own column.
 Second, the columns are one per pixel of the plot they are drawn on
 (`chart_columns`, `PL-GS3R`), so no segment spans more than a pixel of time.
+The exception is an axis that shows fewer seconds than the plot has pixels,
+where the columns are one second apart (`chart_time_base.grid_spacing_s`).
 
-**One evaluation serves every trace of a run.** A state carries every
+**One read of the window serves every trace of a run.** A state carries every
 compartment at once, so a frame reads the window once per run, and every trace
 of that run draws the same instants. Two traces of one run therefore cannot
 come from different instants. The wash-in plot's stretches are built from the
@@ -68,7 +71,6 @@ from types import MappingProxyType
 from typing import Final
 
 from anesthesia_sim.app.chart_time_base import (
-    CHART_GRID_RESOLUTIONS_S,
     ChartTimeBase,
     fit_to_run,
     fitted_window,
@@ -116,7 +118,6 @@ __all__ = [
     "CHART_COLUMN_BUDGET_PER_SERIES",
     "COMPARED_COMPARTMENT_CAP",
     "COMPARTMENT_TRACES",
-    "HOVER_INSTANT_RESOLUTION_S",
     "MAX_CHART_CONTROL_MARKS",
     "MAX_CHART_WASH_IN_SEGMENTS",
     "WASH_IN_AXIS_MAXIMUM",
@@ -153,7 +154,7 @@ __all__ = [
 ]
 
 # The minimum number of *grid columns* an axis is divided into. The chart's
-# evaluated instants are placed on these columns. `chart_columns` decides the
+# drawn seconds are placed on these columns. `chart_columns` decides the
 # count a frame actually uses from the plot's width in pixels. It uses one
 # column per pixel boundary, so that no chord between two drawn instants
 # spans more than a pixel of time (`PL-GS3R`, decided 2026-09-14). This
@@ -162,7 +163,7 @@ __all__ = [
 # follows from the columns. It is the grid columns inside the drawn range, plus
 # the two ends of that range, plus one column per control event in the window.
 # That last term has no cap. `MAX_CHART_CONTROL_MARKS` limits the marks drawn,
-# not the event columns. `RunDefinition._anchored_columns` adds an event column
+# not the event columns. `chart_time_base.drawn_seconds` adds an event column
 # for every setting change inside the window.
 #
 # This constant has changed meaning over time. It was a bucket count while the
@@ -233,8 +234,8 @@ WASH_IN_AXIS_MAXIMUM: Final = 1.15
 
 # How far past equilibrium the trace may be drawn, so that its ending lands on
 # the line rather than a step short of it. `wash_in_stretches` gives the whole
-# reasoning, including why the bound is stated rather than taken from the
-# measured 1.00235 that a 0.1 s step actually produces. It is set below
+# reasoning, including why the bound is stated rather than taken from a
+# measurement of how far one step carries the ratio past equilibrium. It is set below
 # `WASH_IN_AXIS_MAXIMUM` rather than at it, so that even the widest crossing it
 # allows still has clear space above it.
 WASH_IN_TERMINUS_CEILING: Final = 1.05
@@ -265,23 +266,6 @@ WASH_IN_HOVER_LABEL: Final = "Wash-in F_A/F_I (alveolar / modelled circuit)"
 # wash-in label, it would suggest that wash-in can go past completion. It would do so
 # at the dot that a reader is most likely to point at.
 WASH_IN_HOVER_PAST_EQUILIBRIUM_TEXT: Final = "Past equilibrium: not a wash-in fraction"
-
-# The resolution to which the hover rounds the instant it prints. It is the finest
-# grid that a drawn column can sit on, a hundredth of a second. So the instant
-# printed is the instant whose state is printed beside it (`PL-T5NJ`). Columns used
-# to sit wherever the plot's width put them, such as at 410.7383 s, and the hover
-# rounded that to the clock's tenth of a second. The state printed was still the
-# state at 410.7383 s, up to 0.05 s from the printed instant. Early in a fast
-# induction that difference matters. Desflurane at 18% and 10 L/min takes the
-# circuit from 2.68% at 6.00 s to 2.70% at 6.04 s. So the hover at "6s" could print
-# 2.70% while the readout row at 6 s showed 2.68%.
-# `chart_time_base.grid_spacing_s` now rounds the column spacing down onto whole
-# hundredths of a second. It rounds onto tenths instead wherever that adds few
-# columns. Every other drawn instant (a bound, a control event, a fork) falls on a
-# simulation step. Rounding to this resolution therefore removes only
-# floating-point noise. The value is read from the grid's own declaration rather
-# than written as a digit, so the two cannot drift apart.
-HOVER_INSTANT_RESOLUTION_S: Final = CHART_GRID_RESOLUTIONS_S[-1]
 
 # The word that opens every hover readout. It appears on every hover, not only
 # on the two compartments that have a measured twin, because the readout is
@@ -652,11 +636,14 @@ def chart_columns(plot_width_px: float) -> int:
     straight segment drawn between them cross every level inside the same
     pixel. So the drawn line is within a pixel of time of the run everywhere,
     and on the run at every drawn instant. The count therefore follows the
-    plot, not the span. A twelve-hour axis on a 1 000 px plot draws 1 001
-    columns at a 43 s chord, and a fifteen-minute axis on the same plot draws
-    1 001 columns at 0.9 s. `docs/INTERFACE.md` § "What the chart draws" states
-    the guarantee, what it leaves between drawn instants, and what was
-    measured against it.
+    plot, not the span. A twelve-hour axis on a 1 000 px plot is divided into
+    1 001 columns, 43.2 s apart, and that spacing is rounded down to 43 s. A
+    fifteen-minute axis on the same plot would have columns 0.9 s apart. A
+    run stores one state for each whole second, so those columns are drawn
+    one second apart, and a chord there spans more than a pixel
+    (`chart_time_base.grid_spacing_s`). `docs/INTERFACE.md` § "What the chart
+    draws" states the guarantee, what it leaves between drawn instants, and
+    what was measured against it.
 
     The width is in logical pixels, as Qt lays the plot out, which is the
     resolution at which the axis is ruled and labelled. A high-DPI display
@@ -1022,8 +1009,8 @@ def assemble_chart_frame(
     The work takes four steps, in an order that makes two runs one picture
     rather than two. First the shared ruler is set from the reference run.
     Next the window is chosen so that it contains every run. Then the
-    references are placed across that window. Only then does each run
-    evaluate its own states into it.
+    references are placed across that window. Only then are each run's
+    stored states read into it.
 
     Args:
         runs: Every run on the chart, in drawing order, with the snapshot
@@ -1139,15 +1126,17 @@ def assemble_chart_frame(
 
 
 def _run_frame(run: RunInput, start_s: float, stop_s: float, columns: int) -> RunFrame:
-    """Evaluate one run into the window every run shares.
+    """Read one run's stored states into the window that every run shares.
 
     Raises:
         SimulationConfigurationError: If a drawn value is outside 0 to 1,
-            and the error names its compartment. The window evaluates the
-            closed form at instants where no step of the run produced a
-            compartment state. So each value is built as a `Fraction` here, under the name
-            a step would give it (`run_series.COMPARTMENT_FRACTION_NAMES`),
-            and the rejection comes before any `RunFrame` exists (`PL-7DJK`).
+            and the error names its compartment. Each value is built as a
+            `Fraction` here, under the name a step would give it
+            (`run_series.COMPARTMENT_FRACTION_NAMES`). So a rejection comes
+            before any `RunFrame` exists (`PL-7DJK`). The run's own values
+            are fractions that the run checked when it stored each state, so
+            none of them is refused. A preview's values are computed by
+            formula, and `_run_preview` builds each of them the same way.
     """
 
     snapshot = run.snapshot
@@ -1315,10 +1304,15 @@ def wash_in_stretches(
     crossing column, the curve meets the equilibrium reference line and ends
     on it.
 
-    **Why the extension has a ceiling.** A run stepped at 0.1 s crosses
-    equilibrium by only a hair. This was measured across every agent and
-    every supported alveolar ventilation and cardiac output, at the maximum
-    fresh gas flow. The state at the first step above equilibrium reaches
+    **Why the extension has a ceiling.** A run crosses equilibrium by less
+    than 3% in one step. This was measured on 2026-11-21 across every agent
+    and the supported alveolar ventilations and cardiac outputs, at the
+    maximum fresh gas flow, in 2 646 runs. The state at the first step above
+    equilibrium reaches 1.0281, for sevoflurane at an alveolar ventilation of
+    0.5 L/min and a cardiac output of zero, with the dial closed after an hour
+    of wash-in. With no uptake, the inspired fraction falls in one second by
+    at most the factor exp((10/60)/6), which is 1.0282, for 10 L/min of fresh
+    gas into the 6 L circuit. At the earlier step of 0.1 s the figure was
     1.00235. That measurement was taken step by step. A drawn column falls
     wherever the column spacing puts it, so a column can land on a later
     state of the run, which the measurement did not cover. The ratio is also
@@ -1766,12 +1760,12 @@ def _hover_agent(run: RunFrame) -> str:
 def _hover_instant(time_s: float) -> str:
     """Return a drawn point's instant, formatted the way the clock and the axis show time.
 
-    Every drawn instant is a whole multiple of `HOVER_INSTANT_RESOLUTION_S`. So the
-    rounding removes only floating-point noise, and the printed instant is the one
-    whose state the hover prints.
+    Every drawn instant is a whole number of seconds
+    (`SimulationController.drawn_window`). So the printed instant is the one whose
+    state the hover prints, and nothing is rounded here (`PL-T5NJ`, `PL-SZ6G`).
     """
 
-    return format_elapsed(round(time_s / HOVER_INSTANT_RESOLUTION_S) * HOVER_INSTANT_RESOLUTION_S)
+    return format_elapsed(time_s)
 
 
 def _hover_subject(quantity: RecordedQuantity) -> str:

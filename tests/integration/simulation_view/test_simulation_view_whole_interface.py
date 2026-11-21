@@ -256,7 +256,7 @@ def test_the_interface_never_predicts_a_time_to_wake_up(application: QApplicatio
 
     controller = SimulationController()
     controller.start()
-    _advance(controller, 600.0)
+    _advance(controller, 600)
     strings = _interface_strings(_shown_view(application, controller))
     prose = " ".join(strings).lower()
 

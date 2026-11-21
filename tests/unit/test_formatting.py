@@ -81,7 +81,6 @@ from anesthesia_sim.core.concentration import (
 )
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
-from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ELAPSED_SIMULATION_TIME_S,
     MAXIMUM_FRESH_GAS_FLOW_L_MIN,
@@ -1171,10 +1170,10 @@ def test_the_discard_warning_states_the_time_at_the_clock_s_own_resolution() -> 
     the function would have followed that change silently.
     """
 
-    warning = format_case_discard_warning("Sevoflurane", 1234.5, 3)
+    warning = format_case_discard_warning("Sevoflurane", 1234, 3)
 
-    assert format_elapsed(1234.5) in warning
-    assert "20m34.5s" in warning
+    assert format_elapsed(1234) in warning
+    assert "20m34s" in warning
 
 
 def test_the_discard_warning_names_the_agent_being_left() -> None:
@@ -1216,12 +1215,12 @@ def test_the_branch_discard_warning_states_both_instants_the_clock_showed() -> N
     """`PL-W5WX`: a branch's time is two instants on the case's clock, not a duration.
 
     The literal is written from `format_elapsed`'s stated grammar, such as
-    `1m` and `5m30.5s`, rather than from a call. A change to the clock's form
+    `1m` and `5m30s`, rather than from a call. A change to the clock's form
     therefore fails here instead of being followed silently.
     """
 
-    assert format_branch_discard_warning("Run 2", 60.0, 330.5, 2) == (
-        "Run 2 — branched at 1m and run to 5m30.5s, 2 recorded control changes — will be "
+    assert format_branch_discard_warning("Run 2", 60, 330, 2) == (
+        "Run 2 — branched at 1m and run to 5m30s, 2 recorded control changes — will be "
         "discarded along with its chart history. This cannot be undone."
     )
 
@@ -1261,9 +1260,9 @@ def test_the_branch_discard_warning_states_no_second_instant_it_cannot_stand_beh
         ),
         (
             "Isoflurane",
-            1234.5,
+            1234,
             2,
-            "The current isoflurane case — 20m34.5s of simulated time, 2 recorded control "
+            "The current isoflurane case — 20m34s of simulated time, 2 recorded control "
             "changes — will be discarded along with its chart history. This cannot be undone.",
         ),
     ],
@@ -1277,7 +1276,7 @@ def test_the_case_discard_warning_is_pinned_whole(
     control change" is a substring of "1 recorded control changes". So a
     warning that dropped its singular form passed the whole suite (`PL-79PK`).
     Each expected sentence here is typed out, with the clock reading worked
-    out by hand: 3725 s is 1 h 2 min 5 s, and 1234.5 s is 20 min 34.5 s.
+    out by hand: 3725 s is 1 h 2 min 5 s, and 1234 s is 20 min 34 s.
     """
 
     assert format_case_discard_warning(agent, elapsed_s, control_change_count) == expected
@@ -1530,18 +1529,18 @@ def test_the_clock_reads_the_supported_limit_the_way_the_limit_is_stated() -> No
 
 
 def test_the_clock_still_resolves_the_step_the_simulation_advances_by() -> None:
-    """The compound form keeps the tenth of a second, which is what made one form possible.
+    """The compound form keeps every second, which is what made one form possible.
 
     `format_elapsed`'s docstring used to argue that the clock and the axis
     could not share a form because "a compound duration form would round the
     stamp away". That was false of the compound form that shipped, and these
     assertions keep it false. A recorded control change has to resolve the
-    `0.1 s` step at which it was taken.
+    one-second step at which it was taken.
     """
 
-    assert format_elapsed(0.1) == "0.1s"
-    assert format_elapsed(5400.1) == "1h30m0.1s"
-    assert format_elapsed(86_399.9) == "23h59m59.9s"
+    assert format_elapsed(1) == "1s"
+    assert format_elapsed(5401) == "1h30m1s"
+    assert format_elapsed(86_399) == "23h59m59s"
 
 
 def test_the_widest_reachable_clock_string_is_what_the_reserved_width_assumes() -> None:
@@ -1558,25 +1557,18 @@ def test_the_widest_reachable_clock_string_is_what_the_reserved_width_assumes() 
 
     The test therefore checks the premise rather than a string (`PL-T5J5`).
     No hour of the span may display wider than the reading from which the
-    reserved width is measured. An hour's widest reading is its last tenth.
-    There the minutes and the seconds both have two digits and the tenth is
-    shown. That instant therefore represents the whole hour, at whatever
-    limit the model declares.
+    reserved width is measured. An hour's widest reading is its last second.
+    There the minutes and the seconds both have two digits. That instant
+    therefore represents the whole hour, at whatever limit the model declares.
     """
 
-    widest = max(
-        (
-            format_elapsed(MAXIMUM_ELAPSED_SIMULATION_TIME_S - tenth / 10.0)
-            for tenth in range(1, 11)
-        ),
-        key=len,
-    )
-    last_tenth_of_each_hour = (
-        format_elapsed(hour * 3600.0 + 3599.9)
-        for hour in range(int(MAXIMUM_ELAPSED_SIMULATION_TIME_S // 3600))
+    widest = format_elapsed(MAXIMUM_ELAPSED_SIMULATION_TIME_S - 1)
+    last_second_of_each_hour = (
+        format_elapsed(hour * 3600 + 3599)
+        for hour in range(MAXIMUM_ELAPSED_SIMULATION_TIME_S // 3600)
     )
 
-    assert all(len(reading) <= len(widest) for reading in last_tenth_of_each_hour)
+    assert all(len(reading) <= len(widest) for reading in last_second_of_each_hour)
 
 
 @pytest.mark.parametrize("bad_elapsed_s", [-0.1, float("nan"), float("inf")])
@@ -1923,7 +1915,6 @@ def test_the_model_keeps_precision_the_display_throws_away() -> None:
     shows, the two states would be identical and this test would fail.
     """
 
-    step_s = 0.1
     below_resolution = 1e-6  # percentage points, i.e. a fraction of 1e-8
 
     def run_at(delivered_concentration_percent: float) -> tuple[float, str]:
@@ -1931,8 +1922,8 @@ def test_the_model_keeps_precision_the_display_throws_away() -> None:
         controller.set_delivered_concentration_percent(Percent(delivered_concentration_percent))
         controller.start()
 
-        for _ in range(round(120.0 / step_s)):
-            controller.advance(SimulationStep(step_s))
+        for _ in range(120):
+            controller.advance()
 
         snapshot = controller.snapshot()
 

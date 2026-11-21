@@ -342,7 +342,7 @@ at sea level. A model that adds ambient pressure will need one.
 
 ### Time
 
-Times are in seconds throughout this document, the model's code and a saved run.
+Times are in seconds in the equations, the model's code and a saved run.
 The model keeps its own simulation time and never takes it from the computer's
 clock. That clock may still decide when the screen updates.
 
@@ -360,29 +360,29 @@ per-second values could therefore describe a run that nobody set up.
 
 #### Simulated time is a count of steps, not a running total
 
-Simulated time is the number of completed steps multiplied by the step size,
-which a run keeps for its whole length. At the app's 0.1 s step, the product
-and a running total of the step sizes agree within about 35 nanoseconds over
-a four-hour run. That is far below anything displayed, so multiplying gains
-no accuracy.
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+A run moves forward in steps of 1 s, and it takes no step of any other
+length. Simulated time is the number of steps the run has completed, so it is
+always a whole number of seconds. A computer holds a whole number exactly. So
+no instant of a run is a rounded value, and two instants can be compared
+exactly.
+<!-- provenance: core/simulation_step.py SIMULATION_STEP_S = 1 -->
 
-**For developers.** The advantage of multiplying is that the product is rounded
-once and depends only on how far the run has gone. A running total also depends
-on the order and number of the additions that produced it. Ten steps of 0.1 s
-sum to 0.9999999999999999 and multiply to 1.0.
-<!-- not-restated: 0.1 s -->
+A run's settings change only between two steps. So a control change takes
+effect at the next whole second, and the run records it at that second.
+§ "Supported simulation step" gives what that delay can cost a displayed value.
 
-When a step differs in size from the run's earlier steps, it is rejected with
-an error and not counted, because the count of steps gives the time only while
-every step is the same size. Reset clears the count and the step size together,
-so a fresh run may use a different step size.
+**For developers.** The model stores the count of completed steps
+(`SimulationState.step_count`) and returns it as the simulated time
+(`SimulationState.elapsed_s`), a whole number of seconds. A branched run
+continues the count of the run it branched from. So its time is still one
+count, and is not the instant of the branch plus a second total. Reset sets the
+count to zero.
 
 #### The reproducibility guarantee
 
 Two runs with the same inputs are **exactly identical** in every stored value at
-any step *n*, which falls at *n* times the step size in both. Those inputs are
-the starting state, parameters, step size, setting changes and order of events.
+any step *n*, which falls at *n* seconds in both. Those inputs are the
+starting state, parameters, setting changes and order of events.
 Every comparison of one run with another relies on the guarantee. That includes
 comparing a branched run with the run it branched from, at every instant they
 share. `docs/INTERFACE.md` § "What a branch comparison asserts, and what it does not" says what such
@@ -390,26 +390,20 @@ a comparison may and may not claim.
 
 **A slow or busy computer reaches each step later in real time, but computes and
 stores the same values as a fast one.** The screen uses the computer's clock to
-decide when to update. But the number of steps in each update is a setting the
-user chooses, and is never measured from the clock. The simulation never takes
+decide when to update. But the number of steps in each update follows from the
+playback rate the user chooses, and is never measured from the clock. The simulation never takes
 extra steps to catch up after a slow update, and it reads no clock. An automatic
 check keeps the model's code from reading the clock, and from drawing a random
 number that differs from run to run.
 
 **Playing a run faster does not make it a different run.** The playback rate is
 how much simulated time passes per second of real time. A faster rate takes
-more *whole steps* per screen update, never a larger step. So a case played at
+more *whole steps* per second of real time, never a larger step. So a case played at
 real time and at three hundred times real time takes the same steps, in the
 same order, at the same size, and gives exactly the same results sooner.
 
-The guarantee does not cover four things, and none of them is a defect:
+The guarantee does not cover three things, and none of them is a defect:
 
-- **A different step size.** Between setting changes, runs at two step sizes
-  differ only by computer rounding, because each step solves the equations
-  exactly. A test bounds that difference. A setting change takes effect at the
-  next step, and steps of different sizes end at different times. So the moment
-  a change takes effect moves with the step size, and after any setting change
-  the two runs differ by more than rounding.
 - **A different model version.** The guarantee applies within one version of
   the equations and one parameter set. That is why both are versioned.
 - **A different installation.** Basic arithmetic gives identical results on
@@ -420,9 +414,9 @@ The guarantee does not cover four things, and none of them is a defect:
   wall-clock minute is up. Neither is a property of the model.
 
 **A state computed from a saved run has a guarantee of its own.** The guarantee
-above holds because two runs with the same inputs take every step at the same
-size, so only one sequence of calculations reaches step *n*. A saved run stores
-no samples and no step size. Its states are computed on request, and more than
+above holds because two runs with the same inputs take the same steps, so only
+one sequence of calculations reaches step *n*. A saved run stores
+no samples. Its states are computed on request, and more than
 one sequence of calculations can reach the same instant. The guarantee for
 these states comes from a rule for computing them
 ("The canonical evaluation rule" under `docs/INTERFACE.md` § "Runtime controls"). That rule is
@@ -449,9 +443,9 @@ and whose `getstate()` raises an error. The function `uuid.uuid1()` mixes the
 current time with the host's hardware address, so a run that used it would
 differ between *machines* as well as between runs.
 
-Taking a step whose length differs from the run's earlier steps raises an error
-(`SimulationConfigurationError`), because the model computes the elapsed time
-(`elapsed_s`) as the step count times one step length.
+A caller cannot ask for a step of another length. The method that takes a step
+(`SimulationState.advance()`) takes no argument, and the step is the constant
+`SIMULATION_STEP_S` in `core/simulation_step.py`.
 
 The model stores each flow in the unit the user set it in
 (`UptakeEquationSettings` in `core/governing_equations.py`). Converting to a
@@ -712,7 +706,7 @@ symbol.
 | Symbol | Meaning | Unit | Code |
 | --- | --- | --- | --- |
 | $`t`$ | Elapsed simulation time | s | `SimulationState.elapsed_s` |
-| $`\Delta t`$ | Simulation step | s | `SimulationState.simulation_step_s` |
+| $`\Delta t`$ | An interval of simulated time. A run's step is one second (§ "Supported simulation step") | s | — the code reads the constant `SIMULATION_STEP_S` for a run's step; a compartment stepped on its own takes its interval as an argument |
 | $`F_D`$ | Delivered fresh-gas agent fraction | dimensionless | `BreathingCircuit.delivered_partial_pressure_fraction` |
 | $`F_I`$ | Inspired agent fraction, taken as the fraction in the breathing circuit (§ "Model boundary" states the assumption that makes circuit gas and inspired gas one quantity, and what would break it) | dimensionless | `BreathingCircuit.inspired_partial_pressure_fraction` |
 | $`F_A`$ | Alveolar agent fraction | dimensionless | `AlveolarCompartment.partial_pressure_fraction` |
@@ -1172,7 +1166,7 @@ the reference circle system's 6 L in both.
   flows give the fastest time constant of any supported setting. Isoflurane's
   fastest is 5.83 s, at 10 L/min of fresh gas, 12 L/min of ventilation and
   9.32 L/min of cardiac output. Nothing in the model changes faster.
-  § "Supported simulation step" compares the simulation step with this 5.83 s.
+  § "Supported simulation step" compares the one-second step with this 5.83 s.
 - **The slowest time constant is the fat group's, at 47 000 s (13 hours) to
   187 000 s (52 hours).**
 - **In five of the six rows, the two fastest terms form one oscillation, so
@@ -1481,15 +1475,15 @@ The mass-balance tolerance is relative because the residual is rounding error
 that accumulates once per step. The residual therefore scales with how much agent a run has
 handled. An absolute bound would measure the delivered concentration and the
 run length instead of conservation. The values below come from runs on
-2026-09-06 with the shipped exact step, over 600 s of wash-in followed by
+2026-11-21 at the one-second step, over 600 s of wash-in followed by
 600 s of washout:
 
 | Agent | Dial | Delivered | $`\varepsilon_{\mathrm{absolute}}`$ | $`\varepsilon_{\mathrm{relative}}`$ |
 | --- | --- | --- | --- | --- |
-| isoflurane | 4% | 1.60 L | 3.589e-13 L | 2.243e-13 |
-| isoflurane | 2% | 0.80 L | 1.794e-13 L | 2.243e-13 |
-| desflurane | 4% | 1.60 L | 9.262e-14 L | 5.789e-14 |
-| desflurane | 2% | 0.80 L | 4.631e-14 L | 5.789e-14 |
+| isoflurane | 4% | 1.60 L | 3.042e-13 L | 1.901e-13 |
+| isoflurane | 2% | 0.80 L | 1.521e-13 L | 1.901e-13 |
+| desflurane | 4% | 1.60 L | 8.152e-14 L | 5.095e-14 |
+| desflurane | 2% | 0.80 L | 4.076e-14 L | 5.095e-14 |
 
 <!-- not-restated: 2 % -->
 
@@ -1497,23 +1491,25 @@ Halving the dial setting halves the absolute residual exactly. It leaves the
 relative residual unchanged to four significant figures.
 
 The value of the mass-balance tolerance comes from the table below. The table
-gives the worst relative residual at any step, computed on the same day at two sets of settings. The
+gives the worst relative residual at any step and for any of the three agents, computed on the same day at two sets of settings. The
 first set is the reference runs' own settings. The second set is the corner of
 the supported envelope: fresh gas 10 L/min, alveolar ventilation 12 L/min,
-cardiac output 10 L/min, and each agent at its calibrated dial maximum.
+cardiac output 10 L/min, and each agent at its calibrated dial maximum. Each run
+delivers agent for the first half of its length and washes it out for the
+second half, as the reference runs do.
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10 -->
 
 | Horizon | Reference settings | Worst envelope corner |
 | --- | --- | --- |
-| 1200 s, what the reference runs cover | 2.12e-13 | 2.26e-13 |
-| 1 h | 2.19e-13 | 1.04e-12 |
-| 4 h | 3.75e-12 | 2.88e-12 |
-| 8 h | 5.05e-12 | 6.36e-12 |
+| 1200 s, what the reference runs cover | 1.90e-13 | 3.90e-13 |
+| 1 h | 5.60e-13 | 1.06e-12 |
+| 4 h | 1.94e-12 | 2.97e-12 |
+| 8 h | 3.32e-12 | 4.50e-12 |
 
-The mass-balance tolerance of 1e-10 leaves about 450x headroom at the horizon
-that the reference runs use, and about 16x at 8 h. So neither moving a dial nor
+The mass-balance tolerance of 1e-10 leaves about 250x headroom at the horizon
+that the reference runs use, and about 22x at 8 h. So neither moving a dial nor
 lengthening a case changes what the tolerance certifies. The tolerance is an
 order of magnitude stricter than the 1e-9 halt threshold. A run that meets the
 tolerance has therefore shown strictly more than that it did not stop. A real conservation defect would
@@ -1523,21 +1519,19 @@ raise the residual by orders of magnitude, not by factors of two.
 rounding error from building up.** Each total adds one transfer per step.
 Ordinary computer addition rounds slightly each time. For a nearly constant
 transfer it rounds the same way step after step, so the error grows with the
-number of steps. The worst case in the supported settings is desflurane at its
-18% vaporizer maximum and 10 L/min of fresh gas, at the shortest step of 1 ms.
-That delivers 0.00003 L per step, and 2592 L over the 86.4 million steps of a
-24 h run.
+number of steps. The largest totals in the supported settings come from
+desflurane at its 18% vaporizer maximum and 10 L/min of fresh gas. That
+delivers 0.03 L per step, and 2592 L over the 86 400 steps of a 24 h run.
 <!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
-<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-That run was simulated four ways on 2026-10-25, each for 24 h. Two
+That run was simulated four ways on 2026-11-21, each for 24 h. Two
 settings of the patient were used. "Default" is the reference adult's alveolar
 ventilation of 4 L/min and cardiac output of 5 L/min. "No uptake" sets both to
 zero, so that nearly all the delivered agent is exhausted again. Each total's
-drift is its relative difference from the true sum of the same transfers,
-rounded once. The drift was read every 2,000,000 steps. The residual is
+drift is its relative difference from the exact sum of the same transfers. The
+drift was read every 100 steps. The residual is
 $`\varepsilon_{\mathrm{relative}}`$ as the halt check computes it, and its
 worst value was taken over every step.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
@@ -1546,19 +1540,25 @@ worst value was taken over every step.
 
 | Summation | Patient | Worst drift, delivered | Worst drift, exhausted | Worst residual |
 | --- | --- | --- | --- | --- |
-| plain | default | 1.0e-9 | 9.1e-14 | 9.77e-10, at 18.96 h |
-| plain | no uptake | 1.0e-9 | 1.0e-9 | 1.10e-11 |
-| compensated | default | 8.8e-17 | 9.7e-17 | 3.73e-11, at 24 h |
-| compensated | no uptake | 2.5e-17 | 9.8e-17 | 4.52e-12 |
+| plain | default | 7.9e-13 | 2.2e-14 | 9.1e-13, at 18.96 h |
+| plain | no uptake | 7.9e-13 | 8.0e-13 | 1.9e-14 |
+| compensated | default | 8.5e-17 | 1.1e-16 | 1.6e-13, at 24 h |
+| compensated | no uptake | 7.9e-17 | 1.1e-16 | 1.1e-14 |
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-With plain addition, a correct run came within 2.4% of the halt threshold of
-one part in a billion. It would have been halted for agent that it had not
-lost. With no uptake, the two totals drifted alike and their errors cancelled
+With plain addition, each total drifts by up to 8 parts in 10¹³ over the
+longest run. With no uptake, the two totals drift alike and their errors cancel
 in the residual. With compensated summation, each total stays within the last
-digit or two of the exact sum for the whole run. The remaining residual comes
-from the model's own step, not the sums. It grows with the run's length and
-stays 27 times below the halt threshold at 24 h.
+digit of the exact sum for the whole run. The remaining residual comes
+from the model's own step, not the sums.
+
+The summation was adopted on 2026-10-25, when a run could take steps as short
+as 1 ms. A 24 h run then added 86.4 million transfers to each total. With plain
+addition, a correct run of that length came within 2.4% of the halt threshold
+of one part in a billion, and it would have been halted for agent that it had
+not lost. At the one-second step, plain addition would leave the same run a
+thousand times below the threshold.
+<!-- not-restated: 1 ms -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 The method is Kahan's compensated summation. Beside each total it keeps the
@@ -1579,12 +1579,12 @@ must not be used to conceal an unstable update.
 compensated summation, each total stays within a few units in the last place.
 The computed sum of n nonnegative terms is then within $`2u + O(nu^2)`$ of the
 exact sum, relative to it, where $`u = 2^{-53}`$ (Higham 2002, §4.3, equation
-4.8). At 8.64e7 steps the $`O(nu^2)`$ term is about 1e-24, so the bound does
+4.8). At the 86 400 steps of the longest run the $`O(nu^2)`$ term is about 1e-27, so the bound does
 not grow with the run's length. `tests/unit/test_agent_simulation_validation.py`
 checks both totals against an exact sum. `capture_state()` and
 `restore_state()` carry the correction terms, and `reset()` clears them. The
-measurement script and its logs are kept outside the repository, in the
-project's `v0.7.0/pl-xst1/` folder.
+script and logs of the measurement of 2026-10-25 are kept outside the
+repository, in the project's `v0.7.0/pl-xst1/` folder.
 <!-- absent: v0.7.0/pl-xst1/ -->
 
 ## Numerical method
@@ -1612,22 +1612,22 @@ rate is computed from the same state, which meets requirement 2.
 A step is all-or-nothing. A step that cannot be completed must leave every tracked value exactly
 as it was before the step. § "Step atomicity" explains why, and what the run is left with.
 
-**The model works within limits on the simulation step, compartment volumes, partition
-coefficients, delivered and stored fractions, and the mass-balance residual.**
-§ "Supported simulation step" gives the results behind the step limits, and
-§ "The numerical envelope" gives those behind the other limits.
+**The model takes one length of step, and works within limits on compartment volumes,
+partition coefficients, delivered and stored fractions, and the mass-balance residual.**
+§ "Supported simulation step" gives the results behind the step, and
+§ "The numerical envelope" gives those behind the limits.
 
-- **The largest step, 0.1 s.** Each step is exact, so this limit is set by how late a dial
-  change reaches the model rather than by accuracy. For an ordinary dial change, the delay
-  causes about a tenth of the error from one standard deviation in a measured partition
-  coefficient. For an abrupt ventilation change, it causes about twice that error.
+- **The step, 1 s.** Each step is exact, so the length of the step costs no accuracy. Its
+  cost is that a control change reaches the model up to one second late. For an ordinary dial
+  change, that delay moves a displayed value by less than one standard deviation of any
+  measured partition coefficient does. For an abrupt ventilation change, it moves the alveolar
+  value by more than one standard deviation of any coefficient does.
 - **Compartment volumes from 0.01 to 10 000 L, and partition coefficients from 0.001 to
   10 000.** These limits sit far outside any real patient or agent. The arithmetic has been
   checked against a high-precision calculation across the whole range.
 - **Delivered and stored fractions up to 0.99.**
 - **The tolerance on the mass-balance residual, one part in 10⁹.**
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
-<!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
+<!-- provenance: core/simulation_step.py SIMULATION_STEP_S = 1 -->
 <!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
 <!-- provenance: core/numerical_envelope.py MAXIMUM_VOLUME_L = 10000 -->
 <!-- provenance: core/numerical_envelope.py MINIMUM_PARTITION_COEFFICIENT = 0.001 -->
@@ -1643,17 +1643,13 @@ can reject a value after earlier compartments have been written.
 
 Each limit is set where it is for these reasons:
 
-- Lowering the largest step would make no visible difference, because the screen is redrawn
-  every 0.2 s.
-- The smallest step is 1 ms because it is the finest step whose results have been tested and
-  found to match those at the largest step.
+- The step is one second so that a run's time is a whole number of seconds, which a computer
+  holds exactly.
 - The smallest volume is no lower because, at 0.001 L, the error at the hardest settings grew
   to 0.049% of the state over 24 hours.
 - The fraction limit is below 1 so that rounding near the top cannot carry a fraction above 1.
-- The tolerance is at least 25 times a correct 24-hour run's residual, which stayed below 4e-11.
+- The tolerance is about 100 times a correct 24-hour run's residual, which stayed below 1e-11.
   A looser tolerance would let a real accounting error pass.
-<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
-<!-- provenance: app/dashboard_frame.py RENDER_INTERVAL_S = 0.2 -->
 <!-- not-restated: 24 hours -->
 
 ### Step atomicity
@@ -1662,7 +1658,7 @@ When a step of simulated time fails, the model undoes it. The run then stops, be
 step would fail again. The model is left at the last completed step, which is a real result at a
 real simulation time. Undoing the step determines only what the screen may show while the run is
 stopped: that result, which a reader can reason about. The error message names the check that
-failed and the step size, so nobody has to infer the cause from the numbers.
+failed and the totals it failed on, so nobody has to infer the cause from the numbers.
 
 A failed step is undone because a partly applied step would leave some compartments at the new
 time and others at the old time. The model never produced that set of numbers at any instant,
@@ -1680,12 +1676,6 @@ saved amount of agent rather than its saved fraction.
 starting amount of the mass-balance check, and it restores them if the step fails
 (`AgentUptakeSystem.advance()`). A failed step raises an exception (`SimulationNumericalError`).
 
-The step type (`SimulationStep`) cannot be built with a value below 1 ms
-(`MINIMUM_SIMULATION_STEP_S`) or above the largest step (`MAXIMUM_SIMULATION_STEP_S`). The two
-methods that advance the model accept only the step type (`AgentUptakeSystem.advance()` and
-`SimulationState.advance()`).
-<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
-
 ### Selected method (as implemented)
 
 **Each step solves the whole model at once, exactly.** Every setting is held constant during a
@@ -1694,11 +1684,12 @@ an exact solution. The same step also updates two running totals: the agent deli
 circuit and the agent exhausted from it, at the rates in § "External delivery" and
 § "Circuit exhaust".
 
-**The only error this method leaves is rounding.** In a 3600 s run at 1 MAC on 2026-09-06, the
-agent left unaccounted for at any step was at most 13 picolitres, for desflurane, and less than
+**The only error this method leaves is rounding.** In a 3600 s run at 1 MAC on 2026-11-21, the
+agent left unaccounted for at any step was at most 1.1 picolitres, for isoflurane, and less than
 one part in a trillion of the agent handled, for every agent.
+<!-- not-restated: 1.1 -->
 
-**No step can drive a fraction negative**, whatever the step size and the parameters,
+**No step can drive a fraction negative**, whatever the parameters,
 because the solution is exact and every transfer rate is zero or positive. The calculation keeps
 this true after rounding.
 
@@ -1711,13 +1702,14 @@ concentration and every starting fraction are limited to 0.99 of the ambient pre
 § "The numerical envelope" gives the largest overshoot simulated from that limit.
 <!-- provenance: core/supported_ranges.py MAXIMUM_INPUT_FRACTION = 0.99 -->
 
-**A shorter step does not change the result**, because each step is exact. A test checks that all
-supported step sizes agree to within rounding.
+**Taking the run in steps does not change the result**, because each step is exact. A test checks
+that a run taken in one-second steps agrees, to within rounding, with one exact calculation over
+each stretch of unchanged settings.
 
 **A test against an independent solution checks that the result is right.** It compares all six
 modelled fractions with that solution of the governing equations (§ "Independent-solution test").
-The step-size test cannot show that the result is right, because a wrong transfer rate would give
-the same error at every step size. Nor can a check that no agent goes unaccounted for, because
+The comparison of the two calculations cannot show that the result is right, because a wrong
+transfer rate would give the same error in both. Nor can a check that no agent goes unaccounted for, because
 every transfer between compartments adds exactly what it removes.
 
 **For developers.** Within a step, the six fractions follow $`dy/dt = Ay + b`$, where $`A`$
@@ -1742,9 +1734,9 @@ It is $`\dot V_F\int F_I\,dt`$ along the coupled solution. The step matrix that 
 fractions also computes it, which meets requirement 4 of § "Numerical method".
 
 Conservation is built into the matrix, but each transfer's equal-and-opposite terms cancel only
-to within rounding, because the arithmetic is done in fractions. On 2026-09-06, the largest
-amount of agent left unaccounted for was 1.0e-12 L for sevoflurane, 2.4e-12 L for isoflurane and
-1.3e-11 L for desflurane. As a share of the agent handled, it was at most 9.2e-13 for every agent.
+to within rounding, because the arithmetic is done in fractions. In the 3600 s runs of 2026-11-21, the largest
+amount of agent left unaccounted for was 5.1e-13 L for sevoflurane, 1.1e-12 L for isoflurane and
+9.6e-13 L for desflurane. As a share of the agent handled, it was at most 3.8e-13 for every agent.
 
 The check on agent accounting (`check_agent_accounting`) accepts an error within either of two
 limits: a fixed 1 picolitre, set in `AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L`, or a share of the
@@ -1754,9 +1746,9 @@ smaller than the share limit, so no accuracy is lost.
 
 In litres, though, that error scales with the largest amount in play: about 14 L of delivered
 agent over an hour at desflurane's 1 MAC dial setting. A long run therefore routinely exceeds the fixed
-limit and passes on the share limit alone. In runs on 2026-09-06, the fixed limit was first
-exceeded after 3452 s at the reference settings, and after 538 s at the most extreme sevoflurane
-settings the model accepts.
+limit and passes on the share limit alone. In runs on 2026-11-21, the fixed limit was first
+exceeded after 3457 s at the reference settings, for isoflurane at 1 MAC, and after 2193 s at
+the most extreme sevoflurane settings the model accepts.
 
 The tests on the reference runs use the share limit, `MASS_BALANCE_RELATIVE_GATE`
 (§ "Mass-balance identity"). A release test on the error in litres would rest on a claim that
@@ -1772,117 +1764,106 @@ resuming a run (`resume_at`) or opening a run definition (`RunDefinition`). Thos
 check only that a state lies from 0 through 1. The second is a model extension whose matrix is
 not a pure transfer system.
 
-The step-size test is `test_step_refinement_converges`.
+The test of a stepped run against one calculation is `test_state_at_matches_a_stepped_run` in
+`tests/unit/test_run_definition.py` (§ "Step-refinement test").
 
 #### Supported simulation step
 
-The program advances the model in steps of 0.1 s of simulated time, and a control change takes
-effect at the start of the next step. The program updates every 0.1 s of real time, the same as
-the step, so that real-time playback runs one step per update. At a faster playback speed, each
-update runs more steps of the same size.
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+The model advances in steps of 1 s of simulated time, and it takes no step of any other length.
+Every setting is held constant across a step. So a control change takes effect at the next whole
+second, up to one second after it is made.
+<!-- provenance: core/simulation_step.py SIMULATION_STEP_S = 1 -->
 
-A run may take steps from 1 ms to 0.1 s, and the program uses the largest. The two limits have
-different reasons. The largest step is a declared limit on how late a control change may reach
-the model. The smallest step is set by rounding.
-<!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
-<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
+**The step is exact at this length.** Each step solves the model's equations exactly, so a step of
+any length adds no error beyond rounding, and it keeps every fraction in range. In runs on
+2026-09-06 with steps from $`10^{-3}`$ s to 3600 s across the supported settings, the results
+differed from an independent solution by about $`10^{-14}`$ to $`2\times10^{-12}`$ of a fraction,
+and the difference did not grow with the step.
 
-**Accuracy does not set the largest step.** Each step solves the model's equations exactly, so at
-any step size it adds no error beyond rounding. It also keeps every fraction in range at any step
-size. In runs on 2026-09-06 with steps from $`10^{-3}`$ s to $`10^{300}`$ s across the supported
-settings, the results differed from an independent solution by about $`10^{-14}`$ to
-$`2\times10^{-12}`$ of a fraction, and the difference did not grow with the step. A displayed
-digit is first wrong by a whole count at a step of about $`10^{13}`$ s.
+**The step is one second so that simulated time is exact too.** Simulated time is the count of
+steps, and a computer holds a whole number of seconds exactly
+(§ "Simulated time is a count of steps, not a running total"). A step of a tenth of a second
+cannot be held exactly: three such steps add up to 0.30000000000000004 s.
 
-**A longer step costs control resolution.** Settings are held constant across a step, so the step
-is the interval over which a change to a control is invisible to the model. At 0.1 s, a slider
-move is resolved to a tenth of a second. At 10 s, a change made and reversed inside one step would
-never reach the model at all.
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+**What the step costs is control resolution.** Settings are held constant across a step, so the
+step is the interval over which a change to a control is invisible to the model. A slider move is
+resolved to one second. A change made and reversed between two steps never reaches the model at
+all.
 
-**The 0.1 s step is short beside the fastest process in the model.** That process has a time
+**The step is about a sixth of the fastest process in the model.** That process has a time
 constant of 5.83 s, the shortest anywhere in the supported settings (§ "Alveolar gas" gives the
-settings at which it occurs). The step is about a sixtieth of that. So in one step, the fastest
-process closes only about 1.7% of its remaining gap, and a control change one step late moves the
-values very little. A chart drawn once per step also misses no process.
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+settings at which it occurs). In one step, the fastest process closes about 16% of its remaining
+gap. So a control change that takes effect one step late can move a fast-changing value by an
+amount a reader can see, and the tables below give that amount.
 
-**Neither accuracy nor control timing sets a natural largest step, so the largest step is a
-declared limit.** Because a control change waits for the next step, it is delayed by up to one
-whole step. In runs of three manoeuvres with all three agents, the error that this delay causes in
-the modelled values is exactly proportional to the step. Halving the step halves the error, with
-no point where it suddenly drops. So no step size makes control timing invisible, and the largest
-step rests only on the timing errors stated below.
+**Control timing has no natural step, so the step is a declared tolerance.** Because a control
+change waits for the next step, it is delayed by up to one whole step. The delay grows in
+proportion to the step, and the error it causes in the modelled values grows with it, with no
+length at which the error suddenly drops. So no step makes control timing invisible, and the
+one-second step rests on the timing errors stated below.
 
 **The tolerance, in percentage points of one atmosphere.** The table below gives the timing
-error at the 0.1 s step, in percentage points (pp) of one atmosphere. Each figure is the worst displacement, over all three agents, when a control change
+error at the one-second step, in percentage points (pp) of one atmosphere. Each figure is the worst displacement, over all three agents, when a control change
 lands one step late. The figures are absolute concentrations, not counts of the readout's last
 digit. How many decimals the readout shows is a display choice, and it must not affect the model
 (`docs/INTERFACE.md` § "Why the readouts show two decimals", note for developers).
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 | Manoeuvre | Worst displacement | Agent giving the worst |
 | --- | --- | --- |
-| Case opening: dial off to 1 MAC, reference flows | 6.7×10⁻³ pp | desflurane |
-| Unperfused load, then perfusion on and dial off | 5.0×10⁻² pp | desflurane |
-| Ventilator start at the envelope corner | 1.4×10⁻¹ pp | desflurane |
+| Case opening: dial off to 1 MAC, reference flows | 6.6×10⁻² pp | desflurane |
+| Unperfused load, then perfusion on and dial off | 5.0×10⁻¹ pp | desflurane |
+| Ventilator start at the envelope corner | 1.3 pp | desflurane |
 
 These figures are judged against the model's own parameter uncertainty, which comes before both
 the step and the display. In the first hour at 1 MAC, one standard deviation (SD) of the
 blood:gas coefficient displaces a displayed compartment by up to $`8.2\times10^{-2}`$ pp, and one
-SD of the muscle coefficient by up to $`9.0\times10^{-1}`$ pp. So at 0.1 s, the timing error of an
-ordinary control action is about a twelfth of the blood:gas coefficient's shift, and in that sense
-the step is fine enough. The shift for each coefficient is in `docs/INTERFACE.md` § "Why the readouts show two decimals".
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+SD of the muscle coefficient by up to $`9.0\times10^{-1}`$ pp. The blood:gas shift is the smallest
+of the four coefficients' shifts, and the muscle shift is the largest. So the timing error of an
+ordinary control action is smaller than the shift from one SD of any coefficient, and in that
+sense the step is fine enough. The shift for each coefficient is in `docs/INTERFACE.md` § "Why the readouts show two decimals".
 
-**What 0.1 s does not buy.** An abrupt manoeuvre's timing error is not kept within one SD of
-every coefficient. At 0.1 s, a ventilator start shifts the alveolar reading by up to 0.14 pp while
-its effect settles. That is more than one SD of the blood:gas, vessel-rich or fat coefficient
-moves any readout in the first hour, and about a sixth of what one SD of the muscle coefficient
-moves one. So an abrupt ventilation change is the one case where the step adds more error than
-three of the four coefficients do. That error, 0.14 pp, is small in absolute terms beside a 1 MAC
-of 6.0% for desflurane. Still, a reader comparing an abrupt ventilation change with a measurement
-should know that its *timing* is accurate to a tenth of a second and no better.
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+**What one second does not buy.** An abrupt manoeuvre's timing error is not kept within one SD
+of any coefficient. A ventilator start that takes effect one second late shifts the alveolar
+reading by up to 1.3 pp. That is more than one SD of any single coefficient moves a readout in
+the first hour. The shift then fades as the two runs converge: it is 1.0 pp three seconds after
+the change and 0.5 pp after eight seconds. The figure is desflurane's, with the dial at its
+18% maximum, the ventilator off for five minutes and ventilation then started at 12 L/min. It
+is about a fifth of desflurane's 1 MAC of 6.0%. The same manoeuvre gives 0.59 pp for sevoflurane
+and 0.36 pp for isoflurane. So a reader comparing an abrupt ventilation change with a
+measurement should know that its *timing* is accurate to one second and no better.
 <!-- provenance: data/agents/desflurane.json mac_percent = 6 -->
+<!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
 
-**The step stays at 0.1 s, and that timing is accepted, for three reasons.**
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+**How playback takes the steps.** The program's timer runs every 100 ms of real time. Each tick
+adds the playback rate times 100 ms to the simulated time that the run is owed, and the run takes
+one step for each whole second owed. At real-time playback the run takes one step on every tenth
+tick, so the clock and the readouts change once a second. At 5× it takes one step on every second
+tick. At 20×, 60× and 300× it takes 2, 6 and 30 steps on every tick. The step is the same at
+every rate.
+<!-- provenance: app/dashboard_frame.py SIMULATION_TICK_INTERVAL_MS = 100 -->
 
-1. Halving the step doubles the computation per simulated second. It also changes how the
-   interface updates, because the interval between updates is set from the step, and the
-   playback speeds come from the ratio of the two.
-2. A finer step helps only at 1× playback. Above 1×, controls act only on a control grid of
-   simulated instants `multiplier × 0.1` s apart, where the multiplier is the playback rate.
-   That spacing is longer than the step, so a reader at 60× would see no change.
-3. Frames are two grid steps apart even at 1×. So a 0.05 s step would resolve control timing to
-   half of what the display can show.
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
-
-**Above 1× playback, a control change can wait longer than one step.** The table above gives the
-error for one step of delay, which is the error that the largest step allows. At 1×, a control
-change waits only one step. The program computes a whole update's worth of steps at once, so
-simulated time stands still for one real update interval and then jumps by `multiplier × 0.1` s.
-A setting changed during playback therefore first acts at the next update. So the same slider
+**Above 5× playback, a control change can wait longer than one step.** The table above gives the
+error for one step of delay. At 1× and 5×, a control change waits only for the next whole second.
+At a faster rate, the program takes all the steps of a tick at once, with nothing between them.
+A setting changed during playback first acts on the next step that the program takes, so the
+instants that a change can reach are one tick's steps apart. So the same slider
 moves made at two playback rates are different inputs, and they produce different runs. The
 table below gives the control grid and its errors at each rate:
 
-| Playback rate | Control grid | Frames are | Worst displacement per grid step | Second worst | Margin |
-| --- | --- | --- | --- | --- | --- |
-| 1× | 0.1 s | 0.2 s | 1.4×10⁻¹ pp | 5.0×10⁻² pp | 2.84× |
-| 5× | 0.5 s | 1 s | 7.0×10⁻¹ pp | 2.5×10⁻¹ pp | 2.78× |
-| 20× | 2 s | 4 s | 2.5 pp | 9.8×10⁻¹ pp | 2.56× |
-| 60× | 6 s | 12 s | 5.8 pp | 2.8 pp | 2.11× |
-| 300× | 30 s | 60 s | 1.0×10¹ pp | 1.0×10¹ pp | 1.03× |
+| Playback rate | Control grid | Worst displacement per grid step | Second worst | Margin |
+| --- | --- | --- | --- | --- |
+| 1× | 1 s | 1.3 pp | 5.0×10⁻¹ pp | 2.70× |
+| 5× | 1 s | 1.3 pp | 5.0×10⁻¹ pp | 2.70× |
+| 20× | 2 s | 2.5 pp | 9.8×10⁻¹ pp | 2.56× |
+| 60× | 6 s | 5.8 pp | 2.8 pp | 2.11× |
+| 300× | 30 s | 1.0×10¹ pp | 1.0×10¹ pp | 1.03× |
 
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
-<!-- provenance: app/dashboard_frame.py RENDER_INTERVAL_S = 0.2 -->
-<!-- not-restated: 1 s -->
+<!-- provenance: core/simulation_step.py SIMULATION_STEP_S = 1 -->
 
-The first three columns are in simulated seconds. The worst displacement is the same quantity as
+The control grid is in simulated seconds. The worst displacement is the same quantity as
 in the first table, recomputed at each rate over the same three manoeuvres and all three agents
-(simulated 2026-09-06). The second worst is the next manoeuvre down at that rate. The margin is
+(simulated 2026-11-21). The second worst is the next manoeuvre down at that rate. The margin is
 the ratio of the two, computed before rounding.
 
 **A test keeps the two timing tables above current.** Each time the tests run, it recomputes the
@@ -1906,8 +1887,8 @@ Neither the figures nor the margin can therefore be scaled between rates. Use th
 table.
 
 **An ordinary dial change is well below both the worst and the second-worst columns.** It is the
-case opening, a third manoeuvre, and its error is about 21 times smaller than the worst at 1×. The
-ratio narrows to 19 times at 20×, 16 times at 60× and about 7 times at 300×, where the case
+case opening, a third manoeuvre, and its error is about 20 times smaller than the worst at 1× and
+5×. The ratio narrows to 19 times at 20×, 16 times at 60× and about 7 times at 300×, where the case
 opening reaches 1.5 pp. Use this comparison to judge what a learner's own actions cost. To see how
 far the worst figure stands above the other abrupt manoeuvres, use the second-worst column. The
 tens of percentage points at 300× come from abrupt manoeuvres.
@@ -1915,131 +1896,90 @@ tens of percentage points at 300× come from abrupt manoeuvres.
 Three things follow.
 
 - **By its own record, no control change arrives late.** Each recorded control change carries the
-  simulated time it was made, and the new setting acts from the next step, at every rate. So the
-  control record is exact to the step, and no displayed value is stale against it. The rate limits
-  only which instants a reader can *choose*.
-- **An exact route exists at every rate: pause, change, resume.** No steps are taken while the run
-  is paused, so a setting changed during the pause acts from the step on which the run resumes.
-  Use this route to time a manoeuvre, and faster playback to watch one.
-- **Controls are already timed twice as finely as the screen shows.** The screen is redrawn every
-  two updates. So at every rate, a reader sees the run at half the resolution at which they can
-  act on it.
-
-**The smallest step, 1 ms, is the one limit on the step with a numerical reason.** A finer step
-loses more to rounding. Each step adds its change to the stored amount. The finer the step, the
-smaller that change is beside the amount, so the same rounding is a larger share of the change.
-The error grows with no sudden jump. So, as with the largest step, no step marks where results
-become wrong, and the smallest step is chosen rather than forced. The 1 ms limit is the finest
-step at which the results have been shown to match those at the step the program uses.
-<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
+  run's simulated time when it was made, and the new setting acts from the step that begins
+  there, at every rate. So the control record is exact to the step, and no displayed value is
+  stale against it. The rate limits only which instants a reader can *choose*.
+- **Pause, change, resume places a change on a chosen whole second at every rate.** No steps are
+  taken while the run is paused, so a setting changed during the pause acts from the step on which
+  the run resumes. Use this route to time a manoeuvre, and faster playback to watch one. No route
+  places a change between two whole seconds, because a run holds no instant there.
+- **At 20× and faster, controls are timed twice as finely as the screen shows.** The screen is
+  redrawn every 0.2 s of real time, which is every second tick. At 1× and 5× the run takes at most
+  one step between two redraws, so the screen shows every step.
+<!-- provenance: app/dashboard_frame.py RENDER_INTERVAL_S = 0.2 -->
 
 **A run stops when a step drives an amount out of range.** The step is undone in full, simulated
 time does not advance, and the run must stop at the last completed step. No step can drive a
 fraction below zero (§ "Selected method (as implemented)"). Rounding can still carry a fraction
-just above 1 from a state already at 1, which no supported setting reaches. Too coarse a step
-never causes this stop. A rejected setting leaves a run that can still be trusted, but a run
+just above 1 from a state already at 1, which no supported setting reaches. The length of the
+step does not cause this stop. A rejected setting leaves a run that can still be trusted, but a run
 stopped this way cannot be trusted.
 
-A run with identical initial state, settings, events, and simulation steps must produce identical
-results.
+A run with identical initial state, settings and events must produce identical results.
 
-**For developers.** The largest and smallest steps are declared in `core/simulation_step.py`, as
-`MAXIMUM_SIMULATION_STEP_S` and `MINIMUM_SIMULATION_STEP_S`. A run's step is built as a
-`SimulationStep`, which raises a `SimulationConfigurationError` for a value outside those limits
-before anything is calculated. The caller can then retry with a step inside the range, and the
-run it already has stays intact. Every function that takes a run's step takes a `SimulationStep`,
-so the step is checked once, where it is chosen. A playback update is a whole number of the run's
-own steps, so the method that gives the number of steps in each update also takes a
-`SimulationStep` (`PlaybackRate.steps_per_tick`). For callers that `mypy` does not check, three
-entry points reject anything else with a `TypeError`: `SimulationState`,
-`AgentUptakeSystem.advance()` and `PlaybackRate.steps_per_tick`.
+**For developers.** The step is declared in `core/simulation_step.py`, as `SIMULATION_STEP_S`.
+The two methods that advance the model, `AgentUptakeSystem.advance()` and
+`SimulationState.advance()`, take no argument, so no caller can ask for another step. The
+project owner chose the step on 2026-11-21 (ratified, `PL-7CY5`), over a step of a tenth of a
+second held as a whole count of tenths, and over keeping a step held as a decimal fraction of a
+second. It replaced a step of 0.1 s, chosen on 2026-09-06 (`PL-NBCJ`), at which each figure in
+the first table above was about a tenth of its value here.
 
-In the 2026-09-06 runs, the model raised no error for steps below about $`10^{18}`$ s, so no
-caller can reach a numerical limit. The difference from the independent solution was U-shaped in
-the step, with a minimum around 1 to 60 s, because rounding accumulates once per step: a finer
-step is slightly worse. The propagator had no negative entry at any of the 4374 (settings, step)
-combinations, so no fraction is rejected for stepping coarsely.
+In the 2026-09-06 runs, the difference from the independent solution was smallest for steps of
+about 1 to 60 s. Rounding accumulates once per step, so a finer step is slightly worse. The
+propagator had no negative entry at any of the 4374 combinations of settings and step, so no
+fraction is rejected for stepping coarsely. An interval that needs more than 32 squarings of the
+propagator is refused before any arithmetic (§ "The numerical envelope").
 
-The 1.7% per step is $`1 - e^{-0.1/5.83} = 0.0170`$.
+The 16% per step is $`1 - e^{-1/5.83} = 0.158`$.
 
 The test that recomputes the two timing tables (`tests/reference/test_control_resolution.py`)
 runs each manoeuvre on time and one step late, and takes the worst difference over all six
 displayed compartments. It also fixes the step at which the figures were computed, because the
-table and the step are one decision. The order of the worst and second-worst manoeuvres is
-checked by `test_the_ventilator_start_binds_the_per_rate_table_at_every_rate`.
+table and the step are one decision. The worst manoeuvre at each rate is checked by
+`test_the_ventilator_start_binds_the_per_rate_table_at_every_rate`, and the second worst and the
+margin by `test_the_second_worst_manoeuvre_and_the_margin_above_it`.
 
-Applying control changes between the steps of an update, or updating more often, would time
-controls more finely than the screen can show. A recorded control
-change is a `ControlChange`, and the simulated time it carries is `SimulationState.elapsed_s` when
-it was made.
+The simulated time that playback owes a run is held in whole milliseconds, so the sum is exact at
+every rate (`OwedSimulatedTime` in `app/playback.py`). The control grid at each rate is
+`PlaybackRate.control_grid_s`. At 20× and faster, applying control changes between the steps of
+an update, or updating more often, would time controls more finely than the screen can show. A
+recorded control change is a `ControlChange`, and the simulated time it carries is
+`SimulationState.elapsed_s` when it was made.
 
 The run's state (`SimulationState`) has no method that takes steps in a loop for a caller, because
 no caller in `src/` needs one. Apart from the run loop, the loops over `advance` are test helpers
 that drive the controller step by step, as the interface does.
 
 **To get the state after a set time, use a run definition (`RunDefinition`) instead of a long
-step.** A step longer than the largest step cannot be built: `SimulationStep(30.0)` raises a
-`SimulationConfigurationError`. The refusal of a long step protects the record of control changes, so that a stepped run
+step.** A caller cannot take a step longer than one second. That keeps the record of control
+changes true, so that a stepped run
 is one the interface could have produced, with each setting held for whole steps. For the state
 after 30 s or an hour with unchanged settings, build the run definition from the system's
 `equation_settings()` and `state_vector()`, with `opened_at_s` set to the time the system has
 reached (`SimulationState.elapsed_s` for a run under way). Then move it with `advance_to` and read
 `state_at`. The start time `opened_at_s` has no default, so a run partway through a case cannot be
 opened at zero by mistake. Reading `state_at` computes one exact solution over the whole interval
-(`docs/INTERFACE.md` § "The canonical evaluation rule") in place of 300 or 36 000 steps. A test checks that both
+(`docs/INTERFACE.md` § "The canonical evaluation rule") in place of 30 or 3600 steps. A test checks that both
 routes agree (`test_state_at_matches_a_stepped_run` in `tests/unit/test_run_definition.py`). The
-application builds its predictions this way.
+application builds its predictions this way. A run definition also computes a state at an
+instant between two whole seconds, which no run reaches by stepping.
 
-The table below records the rounding error in runs of 10 000 steps on 2026-10-03, from 60 s into
-the default sevoflurane wash-in, compared with the same span taken in 0.1 s steps or as one exact
-step. Each row gives the largest error, as a share of the change, in any of the alveolar,
-vessel-rich, muscle and fat fractions:
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+**A run of the supported length takes 86 400 steps**, one for each second
+(`MAXIMUM_STEP_COUNT` in `core/supported_ranges.py`). The last step ends exactly at the supported
+run length.
+<!-- derived: 86 400 steps from core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-| Step | Worst relative error in the change |
-| --- | --- |
-| 1 ms | 3.3×10⁻¹² |
-| 0.1 ms | 2.4×10⁻¹¹ |
-| 10 µs | 7.8×10⁻¹⁰ |
-| 1 µs | 7.2×10⁻⁹ |
-| 10 ns | 3.8×10⁻⁷ |
-| 0.1 ns | 1.0×10⁻⁴ |
-| 1 ps | 5.8×10⁻³ |
-| 10 fs | 3.2×10⁻¹ |
-
-<!-- not-restated: 1 ms -->
-
-<!-- not-restated: 2.4 -->
-
-No error is raised at any of these steps. At $`10^{-14}`$ s, the change over those steps is a
-third wrong, and a single step's change is nearly half wrong, yet each is returned as an ordinary
-step. From about $`10^{-16}`$ s down, a step changes nothing, and still returns normally.
-
-The smallest step is the bottom of the range of steps in the 2026-09-06 runs. A test beside the
-step-refinement test (§ "Step-refinement test") drives the model at 1 ms and checks that the
-constant still has that value. Apart from the tests of the smallest step itself, no test runs
-finer than 0.02304 s. The table of rounding errors above is a dated record that no test repeats,
-because the steps below its first row are below the smallest step and no test can take them. So
-lowering the smallest step needs new runs, starting with the test beside the step-refinement test,
-run at the new value.
-<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
-
-**The smallest step also keeps the count of steps exact.** At the smallest step, the supported run
-length is 86 400 000 steps. A float represents every whole count up to
-$`2^{53}\approx9.0\times10^{15}`$ exactly. Below a step of about $`9.6\times10^{-12}`$ s, a day
-would take more steps than that. The elapsed time, `elapsed_s`, would then be a rounded count
-multiplied by the step (§ "Simulated time is a count of steps, not a running total").
-<!-- derived: 86 400 000 steps from core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
-<!-- derived: 86 400 000 steps from core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
-<!-- derived: 9.6e-12 s from core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
-
-**A compartment stepped on its own is held to the smallest step, but not to the run's largest.**
+**A compartment stepped on its own takes a step from 1 ms up to the supported run length.**
 In a run, the compartments are stepped only by the uptake system's step method
-(`AgentUptakeSystem.advance()`), which takes a `SimulationStep`, so no step below the limit
-reaches them that way. But code can step each compartment directly, and rounding costs it as much
-as it costs a run. The table below records runs of 10 000 steps on 2026-10-19, with each
+(`AgentUptakeSystem.advance()`), always by one second. But code can step each compartment
+directly, by a step that it gives as a plain number. A finer step loses more to rounding. Each
+step adds its change to the stored amount. The finer the step, the smaller that change is beside
+the amount, so the same rounding is a larger share of the change. The table below records runs
+of 10 000 steps on 2026-10-19, with each
 compartment held at a fraction of 0.01 and stepped toward 0.02. The compartments were a tissue
 group with a time constant of 480 s, the venous pool at 7.8 s and the breathing circuit at 60 s:
+<!-- provenance: core/supported_ranges.py MINIMUM_COMPARTMENT_STEP_S = 0.001 -->
 
 | Step | Largest error in what the three changed by, as a share of the change |
 | --- | --- |
@@ -2049,20 +1989,15 @@ group with a time constant of 480 s, the venous pool at 7.8 s and the breathing 
 | 1e-10 s | 3e-5 |
 | 1e-14 s | 4% for the pool and the circuit; the tissue did not change at all |
 
-<!-- not-restated: 1 ms -->
+<!-- provenance: core/supported_ranges.py MINIMUM_COMPARTMENT_STEP_S = 0.001 -->
 
-<!-- not-restated: 0.1 s -->
-
-So each compartment's own step method rejects a step below the smallest step, with the same check
-and message that the run uses. The methods are `TissueGroup.advance`,
+So each compartment's own step method rejects a step below 1 ms
+(`MINIMUM_COMPARTMENT_STEP_S`). The methods are `TissueGroup.advance`,
 `VenousBloodCompartment.advance` and `BreathingCircuit.advance_fresh_gas`, which
-`BreathingCircuit.advance` calls. That shared check is `require_at_least_the_smallest_step` in
-`core/simulation_step.py`. The run reaches it through `require_supported_simulation_step`, and a
-compartment through `require_compartment_step` in `core/supported_ranges.py`. A compartment's step
-method takes a plain `float` rather than a `SimulationStep`. A compartment is not held to the
-run's largest step, because that limit is how long a run holds its settings, and a compartment
-stepped alone at 1 s is correct.
-<!-- not-restated: 1 s -->
+`BreathingCircuit.advance` calls. The check is `require_compartment_step` in
+`core/supported_ranges.py`. The error grows with no sudden jump, so the limit is declared, not
+derived, at the finest step at which the figures above were taken.
+<!-- provenance: core/supported_ranges.py MINIMUM_COMPARTMENT_STEP_S = 0.001 -->
 
 **A compartment stepped on its own has its own largest step: the supported run length.** One step
 cannot cover more simulated time than the span over which the model is claimed to represent a
@@ -2079,10 +2014,8 @@ rule says which steps a compartment accepts.
 <!-- derived: 1.4e6 time constants from core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- derived: 1.4e6 time constants from core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
 
-The spacing of points on a chart is not held to the smallest step. The run definition
-(`RunDefinition`) applies each column's spacing only once, so rounding does not build up beyond
-one spacing per column. A spacing of a tenth of the smallest step still matches the run to within
-5×10⁻¹⁴. A limit on the spacing would reject short time axes that the program draws correctly.
+The chart draws its columns at whole seconds, because a run holds no instant between two of them
+(`grid_spacing_s` in `app/chart_time_base.py`).
 
 The check that stops a run on an out-of-range amount is in `AgentUptakeSystem.advance()`, which
 raises `SimulationNumericalError`. Besides a fraction just above 1, it covers later model changes
@@ -2092,22 +2025,18 @@ whose equations are not pure transfers between compartments. A rejected setting 
 The implementation must not depend on wall-clock elapsed time, interface frame rate, the interface
 toolkit, filesystem state, display size or event-loop scheduling.
 
-Three constants have the same value and mean different things:
+The step and the tick interval are separate constants:
 
 ```text
-MAXIMUM_SIMULATION_STEP_S  = 0.1                   # core/simulation_step.py
-SIMULATION_STEP_S          = SimulationStep(0.1)   # app/dashboard_frame.py
-SIMULATION_TICK_INTERVAL_S = 0.1                   # app/dashboard_frame.py
+SIMULATION_STEP_S           = 1     # core/simulation_step.py, seconds of simulated time
+SIMULATION_TICK_INTERVAL_MS = 100   # app/dashboard_frame.py, milliseconds of real time
 ```
 
-The step the program uses (`SIMULATION_STEP_S`) is set separately from the largest step and
-equals it only in this configuration, so the two have separate names.
-
-The tick interval, the time between updates, has a name of its own
-(`SIMULATION_TICK_INTERVAL_S`). Each update runs `multiplier × tick interval ÷ step` whole steps,
-so a test can check a playback speed such as "60× real time". If the interval shared the step's
-name, someone could change how often the program updates to suit a different computer, without
-recomputing the speeds. Every speed on screen would then be false, and nothing would fail.
+Each update adds `multiplier × tick interval` to the simulated time that the run is owed, and
+the run takes one step for each whole second owed. The steps in each update are computed from
+the playback speed and the two constants, so a test can check a speed such as "60× real time".
+Someone who changes how often the program updates, to suit a different computer, changes only
+the tick interval, and the speeds on screen stay true.
 
 ### The numerical envelope
 
@@ -2144,10 +2073,9 @@ outside it.
 | Cardiac output | 0 to 10 L/min | `CardiacOutput` |
 | A tissue group's perfusion fraction | above 0, up to 1, the three summing to 1 | `PerfusionFraction` and `PatientCompartments` |
 | A tissue group's blood flow | its perfusion fraction of the cardiac output, so 0 to 10 L/min | `BloodFlow` |
-| The whole model's time step | 0.001 to 0.1 s | `SimulationStep` |
 | The time step of a compartment stepped on its own | 0.001 s to 86 400 s | `require_compartment_step` |
-| A time in the case | 0 to 86 400 s (24 hours) | `CaseInstant` |
-| A run's step count | 0 up to the steps that fit in 86 400 s | `require_supported_step_count` |
+| A time in the case | a whole number of seconds from 0 to 86 400 s (24 hours) | `CaseInstant` |
+| A run's step count | 0 to 86 400, one step for each second | `require_supported_step_count` |
 | The columns of one evaluation | 1 to 100 000 | `RunDefinition.evaluate` |
 | A partial pressure, as a fraction of one atmosphere | 0 to 1 | `Fraction` |
 | The same, as a percent of one atmosphere | 0 to 100 | `Percent` |
@@ -2162,16 +2090,17 @@ outside it.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10 -->
 <!-- provenance: core/blood_flow.py MAXIMUM_PERFUSION_FRACTION = 1 -->
-<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
-<!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
+<!-- provenance: core/supported_ranges.py MINIMUM_COMPARTMENT_STEP_S = 0.001 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- provenance: core/run_definition.py MAXIMUM_WINDOW_COLUMNS = 100000 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_INPUT_FRACTION = 0.99 -->
 
-One refusal is expected even though every input lies inside its range, and it gives an error
+Two refusals are expected even though every input lies inside its range, and each gives an error
 message, never a wrong value. At the hardest combinations of extreme volumes and coefficients, a
 24 h run computed in one piece needs more work than the simulator's method allows. The
 simulator then refuses that run, as § "What a long interval costs at the corners" below describes.
+At the same combinations, a run taken in steps is stopped by the mass-balance check on its
+first step or within minutes, as the paragraphs after that one describe.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **In the whole model, the delivered concentration stops at 0.99 of the ambient pressure, and so
@@ -2239,7 +2168,7 @@ calculation at 96 extreme combinations of volumes and coefficients, called corne
 corner, each volume is at one of its limits, and the two coefficients are at one of the six
 corners of the region allowed by their own limits and the tissue:blood quotient's limits. Each
 flow is set to zero, to the smallest positive number a computer can hold and to its maximum. The
-test steps the whole model once at the smallest and largest step, steps each compartment alone
+test steps the whole model once, steps each compartment alone
 at its own limits, and computes a run over 24 hours by both the chart's method and the canonical
 one (`docs/INTERFACE.md` § "The canonical evaluation rule"). Each run washes in to the 0.99 limit, washes out from
 it, or sits at it. Stepped alone, a tissue group and the venous pool run at zero flow, at the
@@ -2255,6 +2184,16 @@ of 8, so the bound at a corner that needs few squarings is a few rounding errors
 result, from runs on 2026-10-26, reached 2.5 times the bound's leading term,
 $`2^{s} \cdot 2^{-52}`$ for $`s`$ squarings.
 
+One step of the whole model must also pass the simulator's own mass-balance check, which allows
+one part in 10⁹. A step that needs 22 squarings may be refused by that check instead. The test
+accepts the refusal only when the imbalance is within the error bound for 22 squarings and the
+step was undone. On 2026-11-21 the check refused 76 of the 864 first steps that need 22
+squarings, at 8 of the 96 corners, and the largest imbalance was 1.7 parts in 10⁹. Those 8
+corners all have the alveolar gas at 0.01 L and blood:gas at 10 000, with the circuit or the
+venous pool at 10 000 L. The note for developers below describes these halts.
+<!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
+<!-- provenance: core/numerical_envelope.py MAXIMUM_VOLUME_L = 10000 -->
+
 The second test creates each input in the table at each end of its range and at the nearest value
 a computer can store past it, and requires the simulator's own refusal. Setting the model's
 starting state puts every compartment at the edge at once, so the first refusal is for the
@@ -2262,21 +2201,21 @@ circuit's fraction, which is checked directly. A compartment that stores an amou
 within the computer's last digit instead.
 
 The gap between 0.99 and 1 must exceed the largest overshoot that a run started at 0.99 computes.
-The overshoots below come from runs on 2026-10-31 at all 96 corners, each with the 27 combinations
-of extreme flows, for a wash-in to 0.99, a washout from it and an equilibrium at it:
+The overshoots below come from runs at all 96 corners, each with the 27 combinations
+of extreme flows, for a wash-in to 0.99, a washout from it and an equilibrium at it. The first
+row was computed on 2026-11-21 and the other two on 2026-10-31:
 
 | Path | Largest fraction computed from 0.99 | Overshoot above 0.99 |
 | --- | --- | --- |
-| One step of the whole model, at 0.001 s and 0.1 s | 0.9900000000610623 | 6.1e-11 |
+| One step of the whole model | 0.9900000011938722 | 1.2e-9 |
 | The canonical path, at five instants up to 86 400 s | 0.9900008107237728 | 8.1e-7 |
 | The display path, 60 columns across 86 400 s | 0.9900330968959383 | 3.3e-5 |
 <!-- provenance: core/supported_ranges.py MAXIMUM_INPUT_FRACTION = 0.99 -->
-<!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
-<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-No step inside the numerical envelope has a larger error bound than a calculation that a shipped
-run already makes.
+At the hardest corners of the envelope, one step has a larger error bound than any calculation
+that a shipped run makes. The note for developers below gives the bound, and says why the
+envelope's limits were kept.
 
 The largest excess is 0.0033 percentage points (computed 2026-10-31), less than half the smallest
 change the display shows, 0.01 percentage points at two decimals. The excess is error in the
@@ -2284,7 +2223,7 @@ calculation itself, far more than rounding in the stored values could cause. It 
 24-hour chart at the hardest corner, with every volume at 0.01 L, blood:gas at 10 000 and
 tissue:blood at 0.001. No shipped agent needs a calculation that hard over 24 hours. No run in the
 application produces that chart. A stepped run at the hardest corners stops on the mass-balance
-check within a few dozen steps, as shown below, so its chart never spans 24 hours.
+check within seconds, as shown below, so its chart never spans 24 hours.
 <!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
@@ -2297,60 +2236,65 @@ far narrower than the products and quotients alone would allow. That calculation
 (`core/matrix_exponential.py`) halves the interval until it is short, then doubles the result
 back up. Each doubling, called a squaring, can double the rounding error, so the number of
 squarings sets the accuracy ("What it costs" in that module). The fastest rate in the model sets
-how many are needed. The criterion for the bounds is that **at every corner of the envelope, the
-0.1 s step needs no more squarings than the shipped parameters already need over 24 hours.** That
-number is 19, for sevoflurane at the widest supported flows. This criterion is why no step inside
-the envelope has a larger error bound than a calculation that a shipped run already makes.
-<!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
+how many are needed.
+
+**At every corner of the envelope, the one-second step needs at most 22 squarings.** That is a
+factor of $`2^{10}`$ below the cap of 32. The count was taken on 2026-11-21 over 2,560 corners,
+with every flow at zero or at the top of its supported range and cardiac output divided among
+the tissues in four ways. A shipped agent's step needs 2 squarings at its default flows and 3 at
+the widest supported flows. A test checks the count of 22 at the 128 corners that have every
+flow at its maximum, and the count of 19 that one calculation over 24 hours needs for shipped
+sevoflurane (`test_the_step_needs_at_most_22_squarings_at_any_envelope_corner` in
+`tests/unit/test_numerical_envelope.py`).
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-Over all 2,560 corners, the 0.1 s step needed at most 19 squarings, a factor of $`2^{13}`$ below
-the cap of 32. The corners were computed on 2026-10-25, with every flow at zero or at the top of
-its supported range. Two independent sweeps found the same maximum of 19 across 24,576 and 32,768
-corners that also divided cardiac output in other ways. A test checks both counts
-(`tests/unit/test_numerical_envelope.py`).
-<!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
-
-The table gives the corners that matter, each compared with a calculation to 70 digits. In each
-row, the inputs not named are at the shipped values, and every flow is at the top of its
-supported range. "Step error" is the worst error, as a share, in any part of one 0.1 s step's
-calculation. "After 24 h" is the worst error, as a share, in a wash-in from zero after 864,000
-steps of 0.1 s, against the exact state at 24 h.
-<!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
+The table gives the corners that matter, each compared with a calculation to 70 digits on
+2026-11-21. In each row, the inputs not named are at the shipped values, and every flow is at the
+top of its supported range. "Step error" is the worst error, as a share, in any part of one
+step's calculation. "After 24 h" is the worst error, as a share, in a wash-in from zero after
+86 400 steps, against the exact state at 24 h.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-| Corner | Fastest rate (1/s) | Squarings at 0.1 s | Step error | After 24 h |
+| Corner | Fastest rate (1/s) | Squarings in one step | Step error | After 24 h |
 | --- | --- | --- | --- | --- |
-| Shipped sevoflurane | 0.136 | 0 | 6.0e-16 | 9.6e-11 |
-| Alveolar gas 0.01 L, blood:gas 10 000, every tissue:blood 1 | 1.67e5 | 19 | 7.5e-11 | 2.5e-5 |
-| Alveolar gas 0.01 L, blood:gas 10 000, tissue:blood as shipped | 1.67e5 | 19 | 5.8e-11 | 2.5e-5 |
-| Every volume 0.01 L, blood:gas 10 000, every tissue:blood 0.001 | 1.67e5 | 19 | 1.3e-10 | 2.6e-5 |
-| One tissue 0.01 L, its tissue:blood 0.001 | 1.27e4 | 15 | 7.3e-12 | 3.1e-6 |
-| Circuit 0.01 L | 36.7 | 6 | 1.4e-14 | 3.1e-9 |
-| Venous pool 0.01 L | 16.7 | 5 | 8.0e-15 | 2.9e-9 |
-| Alveolar gas 0.001 L, blood:gas 10 000, tissue:blood as shipped (below the 0.01 L minimum) | 1.67e6 | 22 | 1.7e-9 | 4.9e-4 |
-<!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
+| Shipped sevoflurane | 0.136 | 3 | 2.2e-15 | 7.6e-11 |
+| Alveolar gas 0.01 L, blood:gas 10 000, every tissue:blood 1 | 1.67e5 | 22 | 1.3e-9 | 4.8e-5 |
+| Alveolar gas 0.01 L, blood:gas 10 000, tissue:blood as shipped | 1.67e5 | 22 | 1.2e-9 | 4.1e-5 |
+| Every volume 0.01 L, blood:gas 10 000, every tissue:blood 0.001 | 1.67e5 | 22 | 9.3e-10 | 4.0e-5 |
+| Vessel-rich group 0.01 L, its tissue:blood 0.001 | 1.27e4 | 18 | 1.2e-10 | 5.0e-6 |
+| Circuit 0.01 L | 36.7 | 10 | 3.4e-13 | 1.5e-8 |
+| Venous pool 0.01 L | 16.7 | 9 | 1.5e-13 | 5.3e-9 |
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
 
-The last row is why the smallest volume is 0.01 L and not 0.001 L. It differs from the third row
-only in the alveolar gas volume. At 0.001 L, the hardest corner's step error was 1.7×10⁻⁹, against
-5.8×10⁻¹¹ for the same corner at 0.01 L. Over a 24-hour run, that error grew to 0.049% of the
-state. Both rows keep the tissue groups at their shipped tissue:blood coefficients with blood:gas
+The third row keeps the tissue groups at their shipped tissue:blood coefficients with blood:gas
 at 10 000, which makes each tissue:gas coefficient larger than 10 000. A settings record can build
 those settings, but no parameter file can.
+
+**The limits were chosen for a step of 0.1 s, and they were kept for the one-second step.** They
+were chosen on 2026-10-25, when a run took a step of 0.1 s. The criterion was that at every
+corner, the step should need no more squarings than the shipped parameters already need for one
+calculation over 24 hours. That number is 19, for sevoflurane at the widest supported flows, and
+the 0.1 s step needed at most 19. A smallest volume of 0.001 L was refused then. With the
+alveolar gas at 0.001 L, the hardest corner needed 22 squarings, its step error was 1.7×10⁻⁹
+against 5.8×10⁻¹¹ at 0.01 L, and over a 24-hour run that error grew to 0.049% of the state.
+<!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+
+The one-second step needs those 22 squarings at the smallest volume of 0.01 L, three more than
+the criterion allowed. The limits were kept on 2026-11-21 all the same, for four reasons:
 <!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
 
-The bound on the error after 24 h barely depends on the step. A shorter step needs fewer
-squarings, so each step's bound is smaller, but there are proportionally more steps. The computed
-error does vary with the step. At the alveolar corner it was 1.8×10⁻⁵ at 0.01 s and 3.0×10⁻⁵ at
-0.001 s. With every volume at 0.01 L, it fell from 2.6×10⁻⁵ at 0.1 s to 7.0×10⁻⁷ at 0.01 s and
-3.2×10⁻⁷ at 0.001 s. The shipped run needs no squarings, so its error grows with the number of
-steps: 9.6×10⁻¹¹ at 0.1 s, 9.6×10⁻¹⁰ at 0.01 s and 4.8×10⁻⁹ at 0.001 s (computed 2026-10-25).
-<!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
+1. What the criterion protected is the error of a run after 24 hours. At the hardest corner that
+   error is 0.0048% of the state. It is twice the 0.0025% of the 0.1 s step, and a tenth of the
+   0.049% that refused a smallest volume of 0.001 L. A one-second step has more squarings than a
+   0.1 s step, but a day holds a tenth as many steps.
+2. The smallest volume is 122 times below the smallest shipped volume, and the mass-balance
+   check halts a run at the hardest corner after 11 s.
+3. Raising the smallest volume to 0.1 L would bring the count back to 19. It would also refuse
+   a volume only 12 times below the smallest shipped one.
+4. Nothing a learner sees depends on the choice.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
-<!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
-<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
 
 At the hardest corner, with every volume at 0.01 L, blood:gas at 10 000 and tissue:blood at 0.001,
 each column of a 24 h chart is the hardest calculation the method allows. That is why the
@@ -2395,17 +2339,19 @@ over the whole 24 hours.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **At the hardest corners of the envelope, the mass-balance check halts a run that advances in
-short steps.** After every step, the check in § "Mass-balance identity" requires the agent
-delivered, exhausted and stored to agree within one part in 10⁹. At 19 squarings, each step's
-rounding error is about one part in 10¹⁰, so the unaccounted agent exceeds that tolerance within a
-few dozen steps. Then the step is undone, and the run ends with an error. On 2026-10-25,
+steps.** After every step, the check in § "Mass-balance identity" requires the agent
+delivered, exhausted and stored to agree within one part in 10⁹. At 22 squarings, the bound on
+one step's rounding error is 9.3 parts in 10⁹, which is above that tolerance. So the check can
+refuse the first step, as it does at 8 of the 96 corners in the test above. Where the first step
+passes, the unaccounted agent grows with each step until it exceeds the tolerance. Then the step
+is undone, and the run ends with an error. On 2026-11-21,
 sevoflurane was run at the widest supported flows, with every tissue:blood coefficient set to 1:
 
 | Alveolar gas | Blood:gas | The mass-balance check halted the run at |
 | --- | --- | --- |
-| 0.01 L | 10 000 | 4.3 s |
-| 0.01 L | 100 | 499 s |
-| 1.0 L | 10 000 | 934 s |
+| 0.01 L | 10 000 | 11 s |
+| 0.01 L | 100 | 765 s |
+| 1.0 L | 10 000 | 904 s |
 | 0.01 L | 12 | no halt within 1 h |
 | 2.5 L | 100 | no halt within 1 h |
 | 0.1 L | 1.3 | no halt within 1 h |
@@ -2415,7 +2361,7 @@ sevoflurane was run at the widest supported flows, with every tissue:blood coeff
 
 Inside the envelope, a run either matches the high-precision calculation to the limits in the
 earlier table with the "After 24 h" column, or is refused with an error. That column shows one
-step's calculation repeated 864,000 times, which is not a run that the model completes at the
+step's calculation repeated 86 400 times, which is not a run that the model completes at the
 hardest corners. Even with 0.01 L of alveolar gas, a run did not halt within an hour at a
 blood:gas coefficient of 12, as high as any volatile agent's.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
@@ -2423,35 +2369,35 @@ blood:gas coefficient of 12, as high as any volatile agent's.
 
 **The mass-balance tolerance stays fixed at one part in 10⁹.** A tolerance that grew with the
 number of squarings would end the halts above, but it would also loosen the check where learners
-run. No supported setting needs a squaring. On 2026-10-31, each shipped agent was run with
-fresh gas at 0, 0.5, 1, 4 and 10 L/min, alveolar ventilation at 0, 1, 4 and 12 L/min and cardiac
-output at 0, 0.5, 2.5, 5 and 10 L/min, at time steps of 0.1 s, 0.01 s and 0.001 s. None of the
-900 calculations needed a squaring. Over 24 h at the 0.1 s step, a correct run's worst error was
-3.08 parts in 10¹², for sevoflurane at 2% with 4 L/min of fresh gas, 4 L/min of ventilation and
-5 L/min of cardiac output. The worst case in § "Mass-balance identity" reached 3.73 parts in
-10¹¹, for desflurane at 18% at the 1 ms step for 24 h.
-<!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
+run. A shipped agent's step needs 2 squarings at its default flows and 3 at the widest supported
+flows. Over 24 h, a correct run's worst error was 9.8 parts in 10¹², about a hundredth of the
+tolerance. That run was sevoflurane at its highest dial setting, 8%, with 0.5 L/min of fresh
+gas, 12 L/min of ventilation and 10 L/min of cardiac output (computed 2026-11-21).
 <!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10 -->
-<!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
-<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
-<!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
-<!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
-<!-- not-restated: 4 L/min, 5 L/min -->
+<!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
 
-**A mass-balance tolerance that added up the worst-case rounding of every step would be loose
-where learners run.** Even with no squarings, a 24 h run at the 1 ms step would allow 1.9 parts
-in 10⁷. That is about 190 times looser than one part in 10⁹, so a real accounting error could
-pass on a long run that a learner can reach. A tolerance widened only by what the squarings add would equal
-one part in 10⁹ wherever no step needs a squaring. It suits a profile that needs squarings, and no
-shipped profile does, so it was not built.
-<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
+**The tolerance is not the sum of the worst-case rounding of every step.** For a shipped agent's
+longest run, that sum is 1.5 parts in 10⁹. The run is 24 h long, and each of its steps needs at
+most three squarings. So the sum is one and a half times the tolerance, and the measured error
+above is the check on it. For the same 24 h at the earlier step of 0.1 s, which needed no
+squaring, the sum was 1.9 parts in 10⁹. So the one-second step did not move the sum further
+above the tolerance.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+
+The tolerance was fixed on 2026-10-31, when a run could also take steps of 1 ms. The sum for
+24 h of those steps was 1.9 parts in 10⁷. That is about 190 times looser than one part in 10⁹,
+so a real accounting error could have passed on a long run that a learner could reach. A
+tolerance widened only by what the squarings add would end the halts at the hardest corners. It
+has not been built (`PL-TLKY`).
+<!-- not-restated: 1 ms -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **A test shows when to revisit the mass-balance tolerance.** It runs each shipped agent with the
 patient and machine that the application uses. It sets each flow at either end of its supported
-range, uses the smallest and largest step, and requires that no step needs a squaring. A patient
+range, and requires that the step needs at most three squarings. It also requires that the sum
+for the longest run is no larger than the sum at the 0.1 s step. A patient
 profile with faster rates, such as a small patient, fails the test on the day the profile ships.
 
 **A patient profile or agent near the volume or coefficient limits would need those limits
@@ -2470,18 +2416,17 @@ what the propagator's own refusals do when a matrix reaches them by another rout
 <!-- provenance: core/numerical_envelope.py MAXIMUM_VOLUME_L = 10000 -->
 
 **At tiny alveolar volumes, a run eventually halts or is refused.** The 2026-09-06 results in
-`docs/INTERFACE.md` § "What a wrong volume would be wrong for" were extended to smaller volumes at the shipped 0.1 s
-step. At an alveolar volume of $`10^{-8}`$ to $`10^{-10}`$ L, the mass-balance check halts the run
-with `AgentSimulationValidationError`. From $`10^{-11}`$ L down, the propagator is refused before
-any arithmetic. Down to $`10^{-308}`$ L, it is refused because it would need more than 32
-squarings (described below). Below that, it is refused because scaling the matrix down overflows,
+`docs/INTERFACE.md` § "What a wrong volume would be wrong for" were extended to smaller volumes, at the step of
+0.1 s that a run then took. At an alveolar volume of $`10^{-8}`$ to $`10^{-10}`$ L, the mass-balance check halted the run
+with `AgentSimulationValidationError`. From $`10^{-11}`$ L down, the propagator was refused before
+any arithmetic. Down to $`10^{-308}`$ L, it was refused because it would need more than 32
+squarings (described below). Below that, it was refused because scaling the matrix down overflows,
 and then the matrix itself overflows. Both the halt and the refusal are the required "obvious
 failure rather than a plausible-looking number", but they arrive by accident of arithmetic.
 Neither is a limit that this document declares, and neither may be treated as one. They sit far
 below any volume a caller would pass by mistake, and they say nothing about the physiological
 question that `docs/INTERFACE.md` § "What a wrong volume would be wrong for" asks. Circuit volume has no such point.
 Runs with circuit volumes up to $`10^{300}`$ L passed the mass-balance check throughout.
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 **A mass-balance check cannot catch a failure that wipes out every term it compares.** Before the
 refusals described below existed, an alveolar volume of $`10^{-300}`$ L turned the propagator
@@ -2503,12 +2448,11 @@ variable that no step changes. A matrix that carries it cannot produce the zero 
 the model now stops those volumes earlier, at the limit on squarings described below. The scaling
 refusal still fires first wherever the scaling overflows.
 
-At the 0.1 s step, the propagator was tried at every power of ten from $`10^{0}`$ to
-$`10^{-323}`$ L. It is returned at the 11 volumes from $`10^{0}`$ to $`10^{-10}`$ L, each with the
-constant state's row exact. The other 313 are refused before any arithmetic. A single entry is
+At that step of 0.1 s, the propagator was tried at every power of ten from $`10^{0}`$ to
+$`10^{-323}`$ L. It was returned at the 11 volumes from $`10^{0}`$ to $`10^{-10}`$ L, each with the
+constant state's row exact. The other 313 were refused before any arithmetic. A single entry is
 still returned as 0.0 when it is too small for any double, such as `exp(-0.5 * 3600)`, and that is
 correct. Such a single zero is what distinguishes a decayed entry from a wiped-out matrix.
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 **A limit on the squarings closes the last failure in this family.** At very small volumes,
 the propagator can stay finite and nonzero while the constant state's row drifts. No interval may
@@ -2553,35 +2497,35 @@ across the whole 86 400 s at the hardest corners needs more than 32 squarings, s
 In the 60-column chart, each column's 1464.4 s propagator needs 32 squarings, the most allowed.
 Its worst entry differed from a 50-digit reference by 5.65e-7, about 5e9 units in the last place.
 That error is about $`2^{32}`$ times the unit roundoff, or 4.8e-7. The chart applies
-the propagator 59 times, and 59 times 5.65e-7 is 3.3e-5. The same corner's 0.1 s step needs 19
-squarings and differs from the reference by 1.6e-11. Built from propagators over 1464.4 s, 100 s,
+the propagator 59 times, and 59 times 5.65e-7 is 3.3e-5. The same corner's one-second step needs
+22 squarings, and its worst error as a share is 9.3e-10, in the table above. Built from propagators over 1464.4 s, 100 s,
 10 s or 1 s, the interval needs 32, 28, 25 or 22 squarings for each piece. For Al-Mohy and
 Higham's method, the 1-norm of the system matrix is 1.83e5 /s and its spectral radius is
 1.67e5 /s. Scaling the spectral radius times 1464.4 s down to the degree-13 Padé approximant's
 threshold of 5.37 still takes 26 squarings.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
-<!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
 <!-- not-restated: 1 s -->
 
 The shipped run's 24-hour propagator had an error of 3.3e-11 in its worst entry, and the corners'
-0.1 s steps had errors of up to 1.3e-10. At 0.001 L, the hardest corner needed 22 squarings.
-<!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
+one-second steps have errors of up to 1.3e-9.
 
 One step's rounding is bounded by $`10 \cdot 2^{s} \cdot 2^{-52}`$, where $`s`$ is the number of
 squarings the step needs and 10 is the factor that § "How far a computed value can be from the
-exact one" derives. The mass-balance check compares the whole run's residual, so a rigorous
-tolerance would sum that bound over every step. Even at $`s = 0`$, the sum is 1.9e-9 for 24 h at
-the 0.1 s step, 1.9e-8 at 0.01 s and 1.9e-7 at the 1 ms step. A tolerance widened only by what the
+exact one" derives. At $`s = 22`$ that is 9.3e-9. The mass-balance check compares the whole
+run's residual, so a rigorous
+tolerance would sum that bound over every step (`run_rounding` in `core/rounding.py`). Over the
+86 400 steps of a 24 h run, the sum is 1.5e-9 at $`s = 3`$ and 7.7e-10 at $`s = 2`$. At
+$`s = 0`$, the sum was 1.9e-9 for 24 h at the earlier step of 0.1 s and 1.9e-7 at the 1 ms step.
+A tolerance widened only by what the
 squarings add would be about $`10 (2^{s} - 1) 2^{-52}`$ per step, summed over the run, which is
 exactly $`10^{-9}`$ wherever $`s = 0`$.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
-<!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
-<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
+<!-- not-restated: 1 ms -->
 
-The test that fails when a step needs a squaring is
-`test_every_shipped_agent_steps_without_squarings_at_any_supported_setting` in
-`tests/unit/test_numerical_envelope_sweep.py`. Its failure message says to widen the tolerance
-only by what the squarings add.
+The test that fails when a step needs more than three squarings is
+`test_every_shipped_agent_steps_with_at_most_three_squarings_at_any_supported_setting` in
+`tests/unit/test_numerical_envelope_sweep.py`. Its failure message says to set the tolerance
+again from the sum for the longest run.
 
 Tests of the matrix exponential module still trigger the propagator's own refusals, with a matrix
 built to match (`tests/unit/test_matrix_exponential.py`).
@@ -2590,15 +2534,14 @@ built to match (`tests/unit/test_matrix_exponential.py`).
 
 Every value the model computes is rounded to a 64-bit number, so it differs slightly from the
 exact value of its equation. The table gives the largest difference that the model allows in each
-comparison it makes. None of them reaches a displayed digit. Over the longest supported run, 24 h
-at the 1 ms step, the bound on a reading is 1.9 parts in 10⁷ of the reading, and the readouts
+comparison it makes. None of them reaches a displayed digit. Over a shipped agent's longest
+supported run, 24 h, the bound on a reading is 1.5 parts in 10⁹ of the reading, and the readouts
 show a percentage to two decimals.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
-<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
 
 | What is compared | Allowed difference | Kind |
 | --- | --- | --- |
-| The state after one step, against the exact solution | $`10 \cdot 2^{s} \cdot 2^{-52}`$ of the largest fraction in the run, where $`s`$ is the number of squarings the step needs. With no squarings that is 2.2e-15. | Bound |
+| The state after one step, against the exact solution | $`10 \cdot 2^{s} \cdot 2^{-52}`$ of the largest fraction in the run, where $`s`$ is the number of squarings the step needs. With no squarings that is 2.2e-15, and with the three that a shipped agent's step needs at most it is 1.8e-14. | Bound |
 | The state after $`n`$ steps, against the exact solution | $`n`$ times the allowance for one step | Bound |
 | A running total of delivered or exhausted agent, against the exact sum of its step amounts | $`2^{-51}`$ of the total, which is 4.4e-16 | Bound |
 | Agent held, delivered and exhausted (§ "Mass-balance identity") | One part in 10⁹ of the agent handled, or 1e-12 L | Fixed |
@@ -2607,7 +2550,7 @@ show a percentage to two decimals.
 | A reading at the height of a MAC target (`docs/INTERFACE.md` § "Halting on a marked crossing") | 1e-5 of the height | Fixed |
 | The tissue perfusion fractions, against a sum of 1 (§ "Tissue groups") | 1e-12 | Fixed |
 | The tissue blood flows, against cardiac output | One part in 10⁹ of cardiac output, plus 1e-12 L/s | Fixed |
-| A count of steps, axis ticks or grid units, against a whole number | 1e-9 of the count | Fixed |
+| A count of ticks on the chart's percent axis, against a whole number | 1e-9 of the count | Fixed |
 
 A bound follows from the arithmetic, and a test fails when a result exceeds it. The factor of 10
 in the first row is derived too. It counts every rounding in one step at its largest possible
@@ -2653,11 +2596,11 @@ in section 6.1. None of them analyses one propagator applied $`n`$ times, so the
 the evidence for the summed bound here, and the papers are the reason it was expected.
 
 **The agent balance does not use the summed bound.** It keeps its fixed limit of one part in
-10⁹, for the reason that § "The numerical envelope" gives: the summed bound for the longest run is
-about 190 times that limit, and a limit that wide would let a real accounting error pass. The
+10⁹, for the reasons that § "The numerical envelope" gives. The summed bound for a shipped
+agent's longest run is one and a half times that limit. The
 bound is the most that rounding can do anywhere in the numerical envelope, and the shipped agents
-stay far inside it. A correct 24-hour run of a shipped agent left a residual below 4 parts in
-10¹¹.
+stay far inside it. A correct 24-hour run of a shipped agent left a residual of at most 9.8
+parts in 10¹².
 
 **For developers.** `core/rounding.py` defines every figure in the table, and each comparison in
 `core/` and `app/` reads its allowance from there. `propagator_rounding` is the bound for one
@@ -4044,10 +3987,10 @@ The simulator must always meet the following conditions:
 
 - identical runs produce identical state and run definition, element for
   element, however the steps were grouped in real time;
-- simulated time is the number of completed steps times the run's step length;
-- a step is refused when its length is outside the allowed range
-  (`MINIMUM_SIMULATION_STEP_S` to `MAXIMUM_SIMULATION_STEP_S`) or differs
-  from the length of the run's earlier steps; and
+- simulated time in seconds is the number of completed steps, because every step is
+  one second long (`SIMULATION_STEP_S`);
+- a caller cannot ask for a step of another length, and a step that would take
+  a run past the supported run length is refused; and
 - a step that cannot be completed leaves simulated time and dynamic state
   exactly as the last completed step left them.
 
@@ -4173,74 +4116,56 @@ compartment to decrease monotonically. It is
 
 ### Step-refinement test
 
-**The time step changes the model's results only by computer rounding.** The
-simulation advances in steps of time. The model solves its equations exactly
-over each step. It accepts steps from 1 ms up to 0.1 s, the step the
-application uses.
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
-<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
+**Taking a run in steps changes the model's results only by computer rounding.** The
+simulation advances in steps of one second, and the model solves its equations exactly
+over each step. So a run taken in steps must agree, to within rounding, with one exact
+calculation over the same interval.
 
-Two tests compare runs at different steps and require their results to agree
-to within rounding. The first uses the application's step and two smaller
-steps, each half the one before, and compares the alveolar, vessel-rich and
-mixed-venous concentrations after 60 s. The second compares the application's
-step with the smallest step the model accepts, over the same 60 s.
+Three tests enforce this requirement:
 
-Passing these tests shows only that the application's step is short enough for
-the model's equations to be solved accurately. It does not show that the model
+1. One test takes a 600 s sevoflurane run in one-second steps, with a dial change at 30 s
+   and a ventilation change at 120 s. At every second, it compares the six concentrations
+   with one exact calculation over each stretch of unchanged settings. The largest
+   difference is 4.6 × 10⁻¹⁵, as a fraction (from a run on 2026-11-21).
+2. One test splits a calculation in two at an instant where no setting changes, and
+   compares the result with the calculation in one piece. The largest difference is
+   7.0 × 10⁻¹⁵, as a fraction (from a run on 2026-11-21).
+3. The independent solution takes 80 steps in each of the model's steps, and the two
+   agree to within rounding (§ "Independent-solution test" below).
+
+Passing these tests shows only that dividing a run into steps does not change the
+solution of the model's equations. It does not show that the model
 matches a patient. A model with a wrong transfer rate would pass, because it
-gives the same result at every step. A separate test checks that the equations
+gives the same result however the run is divided. A separate test checks that the equations
 are solved correctly (§ "Independent-solution test" below). Another compares
 the model with patient measurements (§ "Published wash-in and elimination
 validation test").
 
-**For developers.** The first test is `test_step_refinement_converges`, and the
-second is `test_the_smallest_supported_step_lands_on_the_ceilings_solution`.
-Both are in `tests/reference/test_sevo_patient.py`. The first compares at least
-these steps:
+**For developers.** The first test is `test_state_at_matches_a_stepped_run` in
+`tests/unit/test_run_definition.py`. It allows a difference of 5e-14 in each
+concentration, a limit at the level of rounding error and about eleven times the
+largest difference measured. The second is
+`test_a_fork_opening_at_the_instant_it_was_taken_does_not_reproduce_its_parent` in
+`tests/reference/test_canonical_evaluation.py`, which allows 1e-13
+(§ "Canonical evaluation test").
 
-```text
-dt = 0.1 s
-dt = 0.05 s
-dt = 0.025 s
-```
+Until 2026-11-21 a run could take a step from 1 ms to 0.1 s, and two tests compared
+60 s sevoflurane runs at different steps. The first compared the alveolar, vessel-rich
+and mixed-venous concentrations at steps of 0.1 s, 0.05 s and 0.025 s. A gap is the
+absolute difference between two compared runs in one concentration, expressed as a
+fraction. The worst gap between successive halvings was 3.4e-16 (from a run on
+2026-11-01). The second compared the 0.1 s step with the 1 ms step, and its worst gap
+was 2.4e-15 (from a run on 2026-10-03). Both tests were removed when a run kept one
+length of step.
+<!-- not-restated: 1 ms -->
 
-The coarsest is the largest step the model accepts (`MAXIMUM_SIMULATION_STEP_S`).
-The finest is 25 times the smallest (`MINIMUM_SIMULATION_STEP_S`). Two step sizes
-can show only that a pair of runs agree, and three show that the step does not
-change the result.
-
-The first test compares successive halvings (0.1 against 0.05, then 0.05
-against 0.025) rather than each step against the finest. A gap is the absolute
-difference between two compared runs in one concentration, expressed as a
-fraction.
-<!-- not-restated: 0.05 -->
-
-The first test requires every gap to stay below 1e-14, a limit at the level of
-rounding error. The worst gap between successive halvings is 3.4e-16, in the
-alveolar concentration (from a run on 2026-11-01). The 1e-14 limit was set on
-2026-09-06 at about twelve times the worst gap then, 8.1e-16. The run behind
-that figure reported four values, and no record names the fourth. The test has
-compared the same three concentrations since the model's method became exact.
-
-A method that does not solve the equations exactly fails the 1e-14 limit,
-because its result moves with the step. Euler's method, for example, gives gaps
-up to 1.8e-6 at the first test's steps (from a run on 2026-11-03). To test such
+A method that does not solve the equations exactly fails a limit at the level of
+rounding error, because its result moves with the step. Euler's method, for example,
+gave gaps of up to 7.1e-7 in those three concentrations at the first test's steps, and
+1.7e-6 in the circuit (from a run on 2026-11-21). To test such
 a method, check that each halving of the step shrinks every gap by a predicted
 factor. The factor is about two when the error is proportional to the step, as
-Euler's is. The model's own gaps do not shrink with the step.
-
-The second test allows 3e-14 in each compared concentration. That is wider than
-1e-14 because its 60 s run takes 60 000 steps rather than at most 2 400, and
-rounding builds up once per step. Its worst gap is 2.4e-15, in the alveolar
-concentration (from a run on 2026-10-03), so the limit is about twelve times
-that gap, the same margin as the first test's. The gap does not change smoothly
-with the step. It depends on how the calculation happens to round at each step
-size. At steps near 1 ms the gap reaches 1.2e-14, so on a machine that rounds
-differently, the margin could be nearer two and a half times. The test expects
-the smallest step to be 1 ms, so whoever changes that step must find these gaps
-again with a new run.
-<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
+Euler's is. The model's own gaps did not shrink with the step.
 
 ### Independent-solution test
 
@@ -4268,20 +4193,18 @@ because that difference falls at no predictable moment.
 **Runs held at the reference point for as long as one hour may differ from the
 independent solution by up to $`10^{-12}`$.** The reference point is 5% delivered,
 4 L/min fresh gas, and the reference adult's default alveolar ventilation and cardiac
-output. A test holds each agent there for 60, 600 and 3600 s, at the application's
-0.1 s step, and compares each result with the independent solution at that time. The
+output. A test holds each agent there for 60, 600 and 3600 s,
+and compares each result with the independent solution at that time. The
 limit for these runs is looser than the one above because the one-hour run builds up
 more rounding than any run below.
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 <!-- provenance: data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4 -->
 <!-- not-restated: 5 % -->
 
-**The allowed difference is the same at every step size.** The model solves its
-equations exactly over each step, so in exact arithmetic the two solutions would be
-identical, and the only difference between them is computer rounding. Rounding
-builds up with the *number* of steps rather than with their size, so it is
-slightly larger at a finer step. A limit that shrank with the step would
-therefore claim the reverse of what is true.
+**The only difference between the two solutions is computer rounding.** The model
+solves its equations exactly over each step, so in exact arithmetic the two solutions
+would be identical. Rounding
+builds up with the *number* of steps rather than with their length, so a longer run
+differs by more.
 
 Within one step, the model never updates a compartment from a value that the same
 step has already changed. So it leaves no error that runs in one direction, and the
@@ -4290,9 +4213,12 @@ concentration.
 
 **The $`4\times10^{-13}`$ limit leaves room for rounding that differs between
 computers, but not for the error of an approximate method.** It is sized on how much
-the model's own rounding can vary. Solving the five runs below with 0.1, 0.05 and
-0.025 s steps moves the model's result by more than its difference from the
-independent solution, and the limit is set above that spread. Even the largest
+the model's own rounding can vary. It was set when a run could take a step of 0.1,
+0.05 or 0.025 s. Solving the five runs below at those three steps moved the model's
+result by more than its difference from the
+independent solution, and the limit was set above that spread. A run now takes one
+length of step, so the spread cannot be measured again, and the limit was kept. It is
+28 times the largest difference at the one-second step. Even the largest
 difference found is nine orders of magnitude smaller than the worst error of the
 earlier method, which solved the equations only approximately. The limit is still
 nearly nine orders of magnitude below the error of any method that does not solve
@@ -4330,7 +4256,8 @@ checking than its evidence supports. The test therefore drives five kinds of run
   concentrations that the sliders allow. It is the only trajectory that takes
   cardiac output or the delivered concentration to its minimum. Under the
   earlier method it had the largest error of any trajectory, which is why it was
-  added. Under the present method it gives the smallest difference of the five.
+  added. Under the present method its difference is smaller than the envelope
+  corner's and the ventilator start's.
 
 <!-- provenance: data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10 -->
@@ -4338,11 +4265,10 @@ checking than its evidence supports. The test therefore drives five kinds of run
 **Random runs cover combinations of settings that nobody listed.** The five runs
 above change their settings once or never. A learner moves four sliders again and
 again, in combinations that nobody listed. So the test also drives three random runs
-for each agent. Each lasts 600 s and moves the controls every 0.1 to 20 s, sometimes
+for each agent. Each lasts 600 s and moves the controls every 1 to 20 s, sometimes
 to the very end of a slider's range, so zero ventilation, zero perfusion and zero
 fresh gas flow are all reached. These runs must meet the same $`4\times10^{-13}`$
 limit as the five above, and they stay below the worst of them.
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 A second test drives the same random runs through the full simulation. It checks
 that every step runs without error and is counted, and that the agent accounting
@@ -4351,22 +4277,27 @@ finite, at or above zero, and at or below the highest concentration delivered so
 far. No compartment can hold agent at a higher concentration than was ever
 delivered, because each is fed only from the others and from the vaporizer.
 
-**For developers.** The comparison is in `tests/reference/test_coupled_dynamics.py`
-(`test_exact_step_matches_the_independent_solution_everywhere`), where the
-independent solution is called the oracle. The two tests that enforce the
+**For developers.** The comparison is in `tests/reference/test_coupled_dynamics.py`,
+where the independent solution is called the oracle. The five runs are compared by
+`test_exact_step_matches_the_independent_solution_everywhere`, and the random runs by
+`test_exact_step_matches_the_independent_solution_on_randomised_trajectories`. The two tests that enforce the
 restriction check what the oracle imports and what its functions call
 (`test_oracle_imports_no_solver_from_core`,
 `test_oracle_bodies_call_no_solver_from_core`). Each figure in this note is an
 absolute difference in fraction, taken as the largest over the whole run.
 
-- **Why the limit does not shrink with the step.** The earlier method, an
+- **Why the limit is not a multiple of the step.** The earlier method, an
   operator split, had an error proportional to the step, $`C\,\Delta t`$, so a
   bound on the coefficient $`C`$ bounded the error at every step size. The
   present method's error has no such coefficient.
-- **Why the difference is rounding.** The independent solution takes steps an
-  eighth as long as the step under test, short enough that error from its own
-  method no longer adds to the difference. Shortening its steps eightfold again,
-  to 0.0015625 s, moves the largest differences by at most 11%, some up and some
+- **Why the difference is rounding.** The independent solution takes 80 steps of
+  0.0125 s in each of the model's steps, short enough that error from its own
+  method no longer adds to the difference. A test checks that the 80 steps cover
+  one second exactly
+  (`test_the_oracle_takes_a_whole_number_of_steps_in_each_shipped_step`). When
+  the model's step was 0.1 s, shortening the independent solution's steps
+  eightfold again, to 0.0015625 s, moved the largest differences by at most 11%,
+  some up and some
   down. A difference that still held error from the independent solution's own
   method would fall about four-thousandfold and never rise, so a difference that
   moves a few percent either way comes from rounding in the two solutions.
@@ -4374,24 +4305,26 @@ absolute difference in fraction, taken as the largest over the whole run.
   limit carried a margin of 1.22. Its error coefficient came out the same on
   every computer, but rounding does not. A different `exp` implementation or a
   fused multiply-add instruction moves the last bits of both solutions. The
-  spread between step sizes, found without the independent solution, reaches
-  1.07e-13. The limit is 3.7 times that spread and 6.8 times the largest
-  difference, 5.89e-14.
-- **Results for the five runs.** At the 0.1 s step, the largest differences are
-  1.58e-14 for *ordinary use*, 1.54e-14 for the *envelope corner*, 1.39e-14 for
-  the *ventilator start*, 1.34e-14 for the *reference point* and 8.80e-15 for the
-  *unperfused load, then dial off* (simulated 2026-09-07). A rerun on 2026-10-25
-  left all five unchanged to every digit that the test file records. Desflurane
-  gives the largest difference of the three agents on every run at this step.
-  The five lie within a factor of 1.8 of each other, because rounding does not
-  grow with how far settings move. The unperfused load gives the smallest
-  although it runs 900 s, against the others' 600 s. Its largest difference
-  falls while the blood and tissue states are still exactly zero. Rounding does
+  spread between steps of 0.1 s, 0.05 s and 0.025 s, found without the independent
+  solution, reached 1.07e-13. The limit is 3.7 times that spread and 6.8 times
+  the largest difference at those steps, 5.89e-14. It is 28 times the largest
+  difference at the one-second step, 1.43e-14.
+- **Results for the five runs.** At the one-second step, the largest differences
+  are 1.43e-14 for the *envelope corner*, 1.16e-14 for the *ventilator start*,
+  6.13e-15 for the *unperfused load, then dial off*, 2.49e-15 for the *reference
+  point* and 2.07e-15 for *ordinary use* (simulated 2026-11-21). Desflurane
+  gives the largest difference of the three agents on every run but the
+  reference point, where sevoflurane does.
+  The five lie within a factor of 6.9 of each other, because rounding does not
+  grow with how far settings move. On the unperfused load, desflurane's largest
+  difference falls at 399 s, while the blood and tissue states are still exactly
+  zero. Rounding does
   build up over a run. Three desflurane ventilator starts in a row reach
-  2.46e-14, against 1.39e-14 for one (simulated 2026-10-25). The test repeats all
-  five at 0.05 s and 0.025 s. The largest there is **5.89e-14**, for desflurane
-  on a ventilator start at 0.025 s, and the next is 5.46e-14, for desflurane on
-  the held envelope corner at the same step (simulated 2026-10-25). The earlier
+  1.23e-14, against 1.16e-14 for one (simulated 2026-11-21). At the earlier step
+  of 0.1 s, the largest of the five was 1.58e-14, for *ordinary use* (simulated
+  2026-09-07). The test then repeated all five at 0.05 s and 0.025 s. The largest
+  there was **5.89e-14**, for desflurane on a ventilator start at 0.025 s
+  (simulated 2026-10-25). The earlier
   method's largest error over these runs was 2.29e-4 at 0.1 s.
 - **The pinned reference states.** The test file pins the reference states,
   storing the independent solution's own results at the reference point as fixed
@@ -4402,34 +4335,44 @@ absolute difference in fraction, taken as the largest over the whole run.
   (`test_the_shipped_step_reaches_the_pinned_reference_horizons`) takes its limit,
   an absolute $`10^{-12}`$, from a named constant (`HELD_RUN_ROUNDING_BOUND`). A
   separate test ties the independent solution to the pinned reference states. The
-  one-hour run reaches **7.16e-14**, for desflurane in muscle (simulated 2026-09-07,
-  unchanged on 2026-11-02). Step count alone does not explain this figure. The hour
-  takes 36 000 steps, and so does the 900 s unperfused load at 0.025 s, whose
-  largest difference is smaller. The 600 s figures are at most 1.34e-14, and the
-  60 s figures at most 5.69e-16. Dividing the hour into different steps moves the
-  model's result by up to 2.17e-13, and the limit is 4.6 times that spread. The
-  test file records the full table.
+  one-hour run takes 3 600 steps and reaches **1.58e-14**, for isoflurane in muscle
+  (simulated 2026-11-21). The 600 s figures are at most 2.35e-15, and the
+  60 s figures at most 5.34e-16. The limit is 63 times the largest figure. It was
+  set at the earlier step of 0.1 s, when the one-hour run reached 7.16e-14 and
+  dividing the hour into steps of 0.1 s, 0.05 s and 0.025 s moved the
+  model's result by up to 2.17e-13. The limit is 4.6 times that spread. The
+  test file records both tables.
 - **When the largest difference falls.** With the earlier method it fell soon
   after a change: about 85 s into a wash-in at fixed settings, and about 13 s
   after a setting change. With the present method it falls wherever rounding
-  peaks, which moves with the step. In runs on 2026-10-25:
-  - At the shipped 0.1 s step, nine of the fifteen pairs of agent and run peak
-    in the last 1.5 s of a 600 s run. Desflurane peaks there on four of the five
-    runs. Only sevoflurane on the ventilator start peaks soon after a setting
-    change, 6.4 s after ventilation starts.
-  - At 0.05 s, only four of the fifteen pairs peak in the last 1.5 s, and at
-    0.025 s five do. The ventilator start peaks in the circuit between 236 s and
-    283 s, while ventilation is off, for every agent at 0.025 s and for two of
-    the three at 0.05 s. The largest difference in any run is one of these peaks,
+  peaks. In runs on 2026-11-21:
+  - Four of the fifteen pairs of agent and run peak in the run's last two
+    seconds. At the envelope corner, isoflurane and desflurane peak at 600 s and
+    sevoflurane at 442 s.
+  - On the ventilator start, sevoflurane and isoflurane peak in the circuit while
+    ventilation is still off, at 264 s and 233 s. Desflurane peaks in the run's
+    last two seconds.
+  - On the unperfused load, isoflurane and desflurane peak during the loading
+    phase, long after the circuit and alveoli have saturated. Sevoflurane peaks
+    19 s after that phase.
+
+  When a run could take other steps, the peak moved with the step. In runs on
+  2026-10-25:
+  - At the 0.1 s step, nine of the fifteen pairs peaked in the last 1.5 s of a
+    600 s run. Only sevoflurane on the ventilator start peaked soon after a
+    setting change, 6.4 s after ventilation started.
+  - At 0.05 s, four of the fifteen pairs peaked in the last 1.5 s, and at
+    0.025 s five did. The ventilator start peaked in the circuit between 236 s and
+    283 s, while ventilation was off, for every agent at 0.025 s and for two of
+    the three at 0.05 s. The largest difference in any run was one of these peaks,
     at 236.1 s.
-  - At every step, the unperfused load peaks during its loading phase, between
-    350.8 s and the phase's end at 600 s, long after the circuit and alveoli
-    have saturated.
+  - At each of the three steps, the unperfused load peaked during its loading
+    phase, between 350.8 s and the phase's end at 600 s.
 
   So the runs contain the moments at which the earlier method's error peaked,
   and that kind of error is what the test exists to catch. They do not contain
-  the largest rounding difference, which at the shipped step was still reaching
-  new highs in the last 1.5 s on those nine pairs. The pinned reference states
+  the largest rounding difference, which was still reaching
+  new highs in the last two seconds on those four pairs. The pinned reference states
   follow that growth at held settings out to 3600 s.
 - **How the envelope corner and the two runs that change settings were chosen.**
   A sweep computed the earlier method's error coefficient:
@@ -4462,9 +4405,9 @@ absolute difference in fraction, taken as the largest over the whole run.
   supported ranges. Controls move only on a step boundary. At each move, each
   control changes with probability one half, at least one always changes, and
   one move in five lands exactly on the end of a slider's range. The largest
-  difference in any random run is 1.10e-14, for desflurane in the vessel-rich
-  fraction (simulated 2026-11-01 at the shipped step). A run that changes its
-  settings 48 to 64 times takes as many steps as one that never does, so it builds
+  difference in any random run is 4.02e-15, for desflurane in the circuit
+  fraction (simulated 2026-11-21). A run that changes its
+  settings 48 to 53 times takes as many steps as one that never does, so it builds
   up as much rounding and no more. The second test
   (`test_randomised_control_trajectories_keep_every_invariant`) runs the full
   simulation (`SimulationState`). Its upper limit on each concentration replaces
@@ -4473,8 +4416,6 @@ absolute difference in fraction, taken as the largest over the whole run.
 - The test file restates the supported ranges above and checks them against the
   ranges the model declares (`core/supported_ranges.py`), so widening the declared
   ranges cannot silently leave this test covering only part of them.
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
-<!-- not-restated: 900 s -->
 <!-- not-restated: 5 L/min -->
 
 ### Published wash-in and elimination validation test
@@ -4483,7 +4424,8 @@ Every test above is **verification**. Each one asks whether the
 implementation solves the intended equations correctly. It checks this by
 comparing the implementation against an analytic solution, an independent
 integration of these same equations, a conservation identity, or the
-implementation's own behavior at another step size or setting. None of these
+implementation's own behavior when a run is divided into steps differently or run at
+another setting. None of these
 tests asks whether the equations describe the phenomenon. A model can be
 numerically flawless and physiologically wrong. A suite made only of the tests
 above would report the first property as though it had settled the second.
@@ -4610,22 +4552,29 @@ the inspired fraction during elimination, so an inspired fraction at or near zer
 not reported. This model cannot be set to that fraction at any supported flow.
 
 **The open-circuit diagnostic, and why its numbers are not this simulator's.** A test can run
-the same five minutes with the rebreathing taken away. After each step of the elimination, it
+the same five minutes with the rebreathing taken away. When the vaporizer is closed, the test
+empties the circuit and enlarges it to 10 000 L, the largest volume that the model accepts.
+After each step of the elimination, it
 discards whatever the patient exhaled into the circuit and records it as exhausted agent.
-Collecting the whole expirate has the same effect. This keeps $`F_I`$ near zero. With
+Collecting the whole expirate has the same effect. This keeps $`F_I`$ near zero. The circuit is
+enlarged because the test can empty it only once a second, and in the shipped circuit one
+second of exhaled gas would raise $`F_I`$ to about a hundredth of $`F_A`$. With
 rebreathing, the same run settles at 0.30 to 0.32. **This condition exists only in the test.
 No fresh gas flow, dial position or patient setting of the simulator produces it.** A
 non-rebreathing mode was not built, because it would change the model boundary and add one
 more mode for the interface to show (project owner, 2026-09-06). Nobody running the
-application sees the numbers below, so any restatement of them must carry this warning. They
-come from simulator runs on 2026-09-07:
+application sees the numbers below, so any restatement of them must carry this warning. The
+shipped column comes from simulator runs on 2026-09-07, and the open-circuit column from runs
+on 2026-11-21:
+<!-- provenance: core/numerical_envelope.py MAXIMUM_VOLUME_L = 10000 -->
 
 | Agent | Cohort | Shipped | Open circuit | Published |
 | --- | --- | --- | --- | --- |
-| Sevoflurane | n=7 | +3.79 SD | 0.1541, −0.15 SD | 0.157 ± 0.020 |
-| Isoflurane | n=7 | +4.15 SD | 0.2388, +0.66 SD | 0.223 ± 0.024 |
-| Desflurane | n=8 | +1.13 SD | 0.0935, −2.33 SD | 0.14 ± 0.02 |
-| Isoflurane | n=8 | +5.13 SD | 0.2388, +0.94 SD | 0.22 ± 0.02 |
+| Sevoflurane | n=7 | +3.79 SD | 0.1540, −0.15 SD | 0.157 ± 0.020 |
+| Isoflurane | n=7 | +4.15 SD | 0.2387, +0.65 SD | 0.223 ± 0.024 |
+| Desflurane | n=8 | +1.13 SD | 0.0934, −2.33 SD | 0.14 ± 0.02 |
+| Isoflurane | n=8 | +5.13 SD | 0.2387, +0.93 SD | 0.22 ± 0.02 |
+<!-- not-restated: 0.65 -->
 
 **Three of the four cohorts land inside the published spread once the rebreathing circuit is
 removed, and desflurane misses on the other side.** For sevoflurane, and for isoflurane in
@@ -4715,11 +4664,11 @@ private reference corpus that `docs/references/README.md` describes, and each ha
 extraction note in `docs/references/` that gives the pages cited above. The open-circuit
 condition is a test-only driver. Its $`F_I`$ is not zero, because exhaled gas refills the circuit
 during each step before being discarded. The remaining $`F_I`$ is at most
-$`\dot V_A \Delta t / V_C`$ of $`F_A`$ at the start of the step, or 1.1 × 10⁻³ at the shipped
-ventilation, step and circuit volume. The test also checks this residual $`F_I`$ and the model's
+$`\dot V_A \Delta t / V_C`$ of $`F_A`$ at the start of the step, or 6.7 × 10⁻⁶ at the shipped
+ventilation, the one-second step and the driver's enlarged circuit. The test also checks this residual $`F_I`$ and the model's
 mass balance across the discards. Across the supported flow range, the open-circuit elimination
-changes by 4 × 10⁻⁶ published SD.
-<!-- not-restated: 1.1 -->
+changes by 1.3 × 10⁻¹⁰ published SD at most.
+<!-- not-restated: 1.3 -->
 
 #### Desflurane's residual, and why the parameter file was not changed
 
@@ -4783,28 +4732,29 @@ tissue data support, desflurane's elimination still misses on the same side.
 
 | Coefficient given | $`F_A/F_{A0}`$ at 5 min | Against 0.14 ± 0.02 |
 | --- | --- | --- |
-| 1.286, shipped | 0.0935 | −2.33 SD |
-| 1.39, its own measured mean + 2 SD | 0.0998 | −2.01 SD |
-| 1.70, sevoflurane's, the highest of the three | 0.1167 | −1.17 SD |
+| 1.286, shipped | 0.0934 | −2.33 SD |
+| 1.39, its own measured mean + 2 SD | 0.0997 | −2.01 SD |
+| 1.70, sevoflurane's, the highest of the three | 0.1166 | −1.17 SD |
 
 **Nine other candidates were simulated or struck, and each fails in one of two ways.** Either
 it moves sevoflurane and isoflurane as much as desflurane or more, which the published rows
 have no room for, or it moves desflurane the wrong way. Rows one to six were simulated on
 2026-09-08, and the seventh on 2026-09-13, using the published apparatus's real volume from
-the methods sections. Rows four to six were computed by a separate calculation of the same
+the methods sections. Rows one to three and the seventh were simulated again on 2026-11-21,
+with the open-circuit test as it is described above. Rows four to six were computed by a separate calculation of the same
 equations, which agrees with the simulator to within 0.8%. The eighth and ninth rows were not
 simulated. Each is struck because a primary measurement on file rules it out, as described
 below the table.
 
 | Candidate | What reaching 0.140 takes | What it costs the other rows |
 | --- | --- | --- |
-| Blood:gas too low, with each tissue:blood ratio held | ×1.63, to 0.687 | 10.9 SD above Eger 1987's measured 0.424 ± 0.024, and the wash-in row falls to −4.35 SD |
+| Blood:gas too low, with each tissue:blood ratio held | ×1.64, to 0.687 | 11.0 SD above Eger 1987's measured 0.424 ± 0.024, and the wash-in row falls to −4.36 SD |
 | Alveolar ventilation too high | between 2.5 and 3.0 L/min | at 3.0, sevoflurane +2.1 and isoflurane +2.7 SD, and all three wash-in rows at −2.0 SD |
 | Cardiac output | out of reach | 3 to 7 L/min moves desflurane only from −2.6 to −2.1 SD |
 | Fast capacity this model omits: lung tissue, pulmonary and arterial blood | about 3 L of blood-equivalent | moves all three agents together (below) |
 | A non-ideal lung — shunt or ventilation-perfusion dispersion, both excluded by $`F_a \equiv F_A`$ | moves the wrong way | a 20% shunt takes desflurane from −2.29 to −2.66 SD; a log-normal V/Q distribution at log SD 1.0 takes it to −2.91 |
 | Circuit-style rebreathing in the published apparatus, at an assumed ratio | $`F_I/F_A`$ = 0.30 | sevoflurane +2.72 SD, isoflurane +3.29 and +4.10 |
-| The published apparatus's 50 ml dead space, as a ventilation decrement (below) | more than the wash-in rows allow | at the largest decrement they allow, desflurane is still −1.48 SD and both isoflurane cohorts leave their spread, at +1.69 and +2.17 |
+| The published apparatus's 50 ml dead space, as a ventilation decrement (below) | more than the wash-in rows allow | at the largest decrement they allow, desflurane is still −1.48 SD and both isoflurane cohorts leave their spread, at +1.68 and +2.17 |
 | End-tidal sampling bias, a correction to the *published* value | an upward bias in the ratio, growing as solubility falls | struck: the one human measurement of the alveolar-to-arterial gradient points the other way (below) |
 | Circuit-wall absorption, which this model's inert circuit walls leave out | the right direction, as in the sixth row | struck: the one study of a real circle system found desflurane close to the ideal curve at every flow (below) |
 
@@ -4837,22 +4787,22 @@ describe this model's circuit, not Yasuda's apparatus.
 as the second row. It is the second row's mechanism, at a size taken from the
 source.** The model has no respiratory rate, so the table runs the decrement
 across the conventional range of rates for a paralysed, normocapnic adult. It
-was simulated on 2026-09-13. For comparison, with no dead space at all,
+was simulated on 2026-11-21. For comparison, with no dead space at all,
 desflurane sits at −2.33 SD:
 
 | $`f`$ (/min) | $`\dot V_A`$ (L/min) | Desflurane | Isoflurane n=8 | Worst wash-in row |
 | --- | --- | --- | --- | --- |
-| 6 | 3.70 | −1.89 SD | +1.59 SD | −0.42 SD |
-| 8 | 3.60 | −1.73 SD | +1.82 SD | −0.63 SD |
-| 10 | 3.50 | −1.56 SD | +2.05 SD | −0.85 SD |
-| 12 | 3.40 | −1.38 SD | +2.30 SD | −1.08 SD |
+| 6 | 3.70 | −1.90 SD | +1.58 SD | −0.42 SD |
+| 8 | 3.60 | −1.74 SD | +1.81 SD | −0.63 SD |
+| 10 | 3.50 | −1.57 SD | +2.05 SD | −0.85 SD |
+| 12 | 3.40 | −1.39 SD | +2.29 SD | −1.08 SD |
 
 <!-- not-restated: 0.42 -->
 
-The decrement moves desflurane the right way. It recovers between 0.44 and
-0.95 SD of the 2.33 SD gap, which is a fifth to two fifths of it and never
+The decrement moves desflurane the right way. It recovers between 0.43 and
+0.94 SD of the 2.33 SD gap, which is a fifth to two fifths of it and never
 the whole. The cost falls on the isoflurane cohort that was inside its spread
-at +0.94 SD. The decrement pushes that cohort out to between +1.59 and +2.30
+at +0.93 SD. The decrement pushes that cohort out to between +1.58 and +2.29
 SD. The wash-in comparison sets its own ceiling. At 11 breaths per minute,
 sevoflurane's wash-in row reaches −0.96 SD, and one more breath per minute
 takes it outside its spread. So the largest decrement that the comparison
@@ -4973,7 +4923,7 @@ end-tidal gas and inspired gas simultaneously in eight surgical patients.
   $`F_I`$. It is upward during administration, where $`F_{A0}`$ is measured,
   and **downward through an elimination run at $`F_I = 0`$**. Both push the
   published $`F_A/F_{A0}`$ *down*. So the measured 0.140 understates the true
-  arterial ratio, and this model's 0.0935 sits further from the true ratio,
+  arterial ratio, and this model's 0.0934 sits further from the true ratio,
   not nearer.
 
 *Two limits of that measurement, neither enough to revive the hypothesis.*
@@ -5037,7 +4987,7 @@ here, for three separate reasons, any one of which is sufficient.**
 - **On the elimination rows the mechanism moves the wrong way, and it is
   absent from the published measurement besides.** Most of that departure is
   already attributed to the breathing system. Removing the rebreathing takes
-  sevoflurane to −0.15 SD and isoflurane to +0.66 SD. Wall absorption is a
+  sevoflurane to −0.15 SD and isoflurane to +0.65 SD. Wall absorption is a
   *further* store that returns agent to the circuit during the washout. Adding
   it would keep $`F_I`$ high for longer and push both rows further above their
   means, not toward them. The direction rules the candidate out for these two
@@ -5049,6 +4999,7 @@ here, for three separate reasons, any one of which is sufficient.**
   in the published number at all.
 
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
+<!-- not-restated: 0.65 -->
 
 **A mechanism that belongs to this model's circle system cannot explain a
 disagreement with a measurement made without one.** Such a mechanism can only
@@ -5094,7 +5045,7 @@ program default. Both Yasuda papers, Carpenter 1989, and Targ 1989 were read at 
 #### The early wash-in curve against the published figures
 
 **Over the first 25 minutes, sevoflurane and isoflurane follow the published
-wash-in curves within one SD** (simulated 2026-10-18). Desflurane's $`F_A/F_I`$
+wash-in curves within one SD** (simulated 2026-11-21). Desflurane's $`F_A/F_I`$
 runs 0.032 to 0.042 above its published curve from 1 to 10 minutes, and agrees
 from 12.5 minutes on. This early gap is a known limitation of the model. The
 model is compared with each curve point by point because $`F_A/F_I`$ at 30
@@ -5118,19 +5069,19 @@ instead fills at its own time constant, so its $`F_I`$ lags the dial for the
 first minute or more. In every other respect, the comparison runs the simulator
 as released.
 
-Simulated on 2026-10-18, as the model's distance from each published mean, in
+Simulated on 2026-11-21, as the model's distance from each published mean, in
 units of that point's SD:
 
 | Cohort | 1 to 3 min | 5 min | 7.5 to 25 min |
 | --- | --- | --- | --- |
 | Sevoflurane, n=7 | −0.54 to −0.69 SD | −0.22 SD | +0.48 to +0.77 SD |
-| Isoflurane, n=7 | −0.70 to −0.83 SD | −0.19 SD | +0.34 to +0.76 SD |
-| Isoflurane, n=8 | −0.60 to −0.67 SD | +0.08 SD | +0.32 to +1.06 SD |
-| Desflurane, n=8 | +1.79 to +1.82 SD | +1.82 SD | +1.70 SD at 7.5 min, +2.10 SD at 10 min, then +0.94 to +0.28 SD |
+| Isoflurane, n=7 | −0.69 to −0.83 SD | −0.18 SD | +0.34 to +0.76 SD |
+| Isoflurane, n=8 | −0.59 to −0.67 SD | +0.08 SD | +0.32 to +1.06 SD |
+| Desflurane, n=8 | +1.80 to +1.83 SD | +1.83 SD | +1.71 SD at 7.5 min, +2.10 SD at 10 min, then +0.95 to +0.28 SD |
 
 <!-- not-restated: 0.34 -->
 
-<!-- not-restated: 0.54, 0.76, 2.10 -->
+<!-- not-restated: 0.54, 0.76, 2.10, 0.18 -->
 
 **The model's sevoflurane and isoflurane curves sit a little below the published
 ones in the first 3 minutes and a little above from 7.5 minutes on.** Their only
@@ -5154,7 +5105,7 @@ coefficient at a time and left every other value as stored:
   1-to-10-minute points come within one SD once blood:gas is about 0.55 or
   higher. Eger's 0.424 ± 0.024 falls short of 0.55 even at the edge of its
   spread. Esper et al. 2015 measured 0.57 ± 0.04 in surgical patients, and at
-  0.57 every early point lies within 0.83 SD. But the 30-minute ratio stays
+  0.57 every point from 1 to 10 minutes lies within 0.83 SD. But the 30-minute ratio stays
   within one SD at every fresh gas flow from 1 to 10 L/min only while blood:gas
   is about 0.46 or lower. At 0.57 it falls outside one SD at every flow, from
   −1.35 SD at 10 L/min to −2.61 SD at 1 L/min. Raising blood:gas to 0.57 moves
@@ -5181,7 +5132,9 @@ uptake was already low and the effect was probably small.
 
 **For developers.** The comparison runs in a driver that only the tests use
 (`_clamped_wash_in()` in `tests/reference/test_published_wash_in_and_elimination.py`).
-After every step, the driver sets the circuit back to the fixed $`F_I`$ and
+Before the first step, the driver enlarges the circuit to the largest volume
+that the model accepts, because it can set the circuit back only once a second.
+Before the first step and after every step, it sets the circuit back to the fixed $`F_I`$ and
 records the agent it adds or removes, so the model's check that the amount of
 agent is conserved still passes.
 
@@ -5212,7 +5165,8 @@ have caught a wrong stored value.
 
 Each cell of the table below covers one stored parameter for one agent. It gives
 the lower and upper edges of the range of change over which the published-data gate still
-passes (from model runs on 2026-10-18). Each parameter was varied from a tenth
+passes (from model runs on 2026-10-18, and on 2026-11-21 for the edges that the early
+wash-in points set). Each parameter was varied from a tenth
 to four times its stored value, with every other value unchanged. The edges
 were found to the nearest half a percentage point. An edge marked "past", such
 as "past −90%", means that the published-data gate still passed at a tenth or at four times the
@@ -5221,11 +5175,11 @@ stored value.
 | Stored parameter | Sevoflurane | Isoflurane | Desflurane |
 | --- | --- | --- | --- |
 | Blood:gas coefficient | −5% / +5% | −1% / +5% | −1% / +10% |
-| Vessel-rich tissue:gas, or vessel-rich volume | −15% / +15% | −4% / +11% | −6% / +55% |
-| Muscle tissue:gas, or muscle volume | −44% / +102% | −17% / past +300% | −11% / +105% |
+| Vessel-rich tissue:gas, or vessel-rich volume | −15% / +15% | −3% / +11% | −6% / +55% |
+| Muscle tissue:gas, or muscle volume | −43% / +102% | −16% / past +300% | −11% / +105% |
 | Fat tissue:gas, or fat volume | past −90% / past +300% | past −90% / past +300% | −84% / past +300% |
-| Venous pool volume | past −90% / +86% | −50% / +60% | −83% / past +300% |
-| Alveolar gas volume (FRC) | past −90% / +19% | −39% / +21% | −8% / +33% |
+| Venous pool volume | past −90% / +88% | −47% / +61% | −78% / past +300% |
+| Alveolar gas volume (FRC) | past −90% / +20% | −37% / +22% | −8% / +33% |
 | Circuit volume | past −90% / +76% | past −90% / +253% | −85% / +98% |
 
 <!-- not-restated: 5 %, 6 %, 8 % -->
@@ -5250,7 +5204,7 @@ detect a change that this section says it cannot.
 
 - **A narrow edge is not a narrow uncertainty.** Most of the narrowest edges
   come from the 12.5- and 15-minute points, where the shipped model already sits
-  at +0.75 to +0.94 SD. There, a change that raises the curve by a few tenths of
+  at +0.75 to +0.95 SD. There, a change that raises the curve by a few tenths of
   an SD takes it past the published-data gate's limit of +1 SD. So isoflurane's −1% edge for
   blood:gas means that the shipped model has little room left there, not that
   the stored coefficient is known to 1%. The published figure can be read to
@@ -5265,7 +5219,7 @@ detect a change that this section says it cannot.
 - **The published-data gate detects an alveolar gas volume that is too large.** Making the
   volume a fifth to a third larger slows the first minute of wash-in enough to
   take it outside one SD for every agent. Doubling the volume moves
-  sevoflurane's 1-minute F_A/F_I from 0.537 to 0.429, which is −2.85 SD. The
+  sevoflurane's 1-minute F_A/F_I from 0.538 to 0.429, which is −2.85 SD. The
   published-data gate does not detect a smaller volume for sevoflurane.
 - **Desflurane's edges reflect its disagreement with the published data.**
   Its points from 1 to 10 minutes sit at +1.7 to +2.1 SD. They are checked
@@ -5346,7 +5300,8 @@ with a human washout, and none may be restated as one.
 
 1. A regression band around what the test computed. The runs date from
    2026-09-27, or from 2026-10-03 for the muscle group's variation and the open
-   circuit's modes below.
+   circuit's modes below. Every value from the stepped open-circuit run was
+   computed again on 2026-11-21.
 2. The conclusion that such a band supports.
 3. A property of the published coefficients.
 
@@ -5376,8 +5331,8 @@ and isoflurane from *Anesth Analg*, then desflurane and isoflurane from
 *Anesthesiology*.
 `test_the_first_24_hours_of_elimination_against_the_published_mean_curves`
 checks every entry to within 1%, and every crossing hour below to within
-0.1 h. The 1410-minute rows come from runs on 2026-10-17, and the rest from runs on
-2026-09-27:
+0.1 h. The shipped table comes from runs on 2026-09-27, and its 1410-minute row from runs on
+2026-10-17. The open-circuit table comes from runs on 2026-11-21:
 
 | Minutes | Sevoflurane, shipped | Isoflurane, shipped | Desflurane, shipped | Isoflurane (second study), shipped |
 | ---: | ---: | ---: | ---: | ---: |
@@ -5394,12 +5349,12 @@ checks every entry to within 1%, and every crossing hour below to within
 
 | Minutes | Sevoflurane, open circuit | Isoflurane, open circuit | Desflurane, open circuit | Isoflurane (second study), open circuit |
 | ---: | ---: | ---: | ---: | ---: |
-| 5 | 0.80 | 0.98 | 0.64 | 1.05 |
+| 5 | 0.79 | 0.98 | 0.64 | 1.05 |
 | 30 | 0.43 | 0.51 | 0.53 | 0.63 |
 | 60 | 0.58 | 0.64 | 0.65 | 0.79 |
 | 120 | 0.70 | 0.77 | 0.76 | 0.95 |
-| 240 | 0.82 | 0.85 | 0.58 | 1.04 |
-| 400 | 0.67 | 0.69 | 0.36 | 0.79 |
+| 240 | 0.81 | 0.85 | 0.58 | 1.03 |
+| 400 | 0.67 | 0.69 | 0.36 | 0.78 |
 | 600 | 0.47 | 0.48 | 0.37 | 0.53 |
 | 800 | 0.43 | 0.42 | 0.54 | 0.46 |
 | 1400 | 0.81 | 0.71 | 1.39 | 0.74 |
@@ -5423,7 +5378,7 @@ In the open circuit, the tail falls below the fitted curve between the second
 and the sixth minute. For sevoflurane and the first study's isoflurane, it
 stays below the curve for the whole run. Desflurane rises back above the
 curve at 19.18 h. The second study's isoflurane sits above the curve between
-2.45 and 4.58 h, by 5% at most. After the first hour, the open-circuit tail
+2.45 and 4.57 h, by 5% at most. After the first hour, the open-circuit tail
 falls as low as a third to a half of the mean curve in every cohort (0.34 to
 0.46), near hour 8 for desflurane and near hour 13 for the others. Sevoflurane's
 tail is lower only in the first half hour, at 0.36 near minute 19.
@@ -5502,7 +5457,7 @@ equilibrium. It takes up agent about as fast as its blood flow brings it, whatev
 capacity. So it contains only 4 to 10% less agent at discontinuation, and the change mainly
 alters how fast that store comes back. With the change, in six-hour runs, the open-circuit peak
 comes at 0.62 to 1.45 hours instead of 2.17 to 3.92. At four hours the tail is 0.50, 0.62, 0.24
-and 0.70 of the fitted curve, instead of 0.82, 0.85, 0.58 and 1.04. The shipped peak comes at
+and 0.70 of the fitted curve, instead of 0.81, 0.85, 0.58 and 1.03. The shipped peak comes at
 0.65 to 1.97 hours instead of 2.27 to 4.15. The tail lies above the curve until 1.6, 3.7 and
 4.5 hours instead of 6.9, 7.3 and 8.4. With the change, desflurane's tail never rises above the
 curve.
@@ -5603,17 +5558,19 @@ intertissue-diffusion note under § "Known limitations" and `docs/INTERFACE.md` 
 number as well as a direction. The coefficients were read at the source on 2026-09-27:
 *Anesth Analg* p. 321 through the private corpus's text layer, and *Anesthesiology* pp. 494-95
 as page images. `test_the_published_coefficients_sum_below_one_at_discontinuation` checks
-their sum. The model runs at the shipped 0.1 s step, sampled once a minute.
+their sum. The model runs in steps of 1 s, sampled once a minute.
 `test_the_run_ends_at_the_supported_run_length` checks the run's length, and
 `test_the_twenty_four_hour_run_opens_from_the_five_minute_gate_s_own_ratio` checks that its
 fifth minute matches the ratios that the elimination regression pins hold, to four decimal places. The model's terms are the
 exponential modes of its open-circuit system, decomposed from its state at discontinuation.
-`test_the_model_s_apparent_muscle_and_fat_terms_against_the_fitted_ones` checks them. The
-modes match the stepped open-circuit run to within 0.08% at every minute from the fifth. The
+`test_the_model_s_apparent_muscle_and_fat_terms_against_the_fitted_ones` checks them. A test
+requires the modes to match the stepped open-circuit run to within 0.08% at every minute from
+the fifth. The difference is at most 0.0005% from the fifth minute on (from a run on
+2026-11-21). The
 run lies above the modes by the amount that the driver re-breathes within each step before it
 empties the circuit. `test_the_muscle_group_s_slow_return_places_the_tail_s_rise_in_hours_2_to_4`
 checks the result of lowering the muscle group's coefficient.
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+<!-- provenance: core/simulation_step.py SIMULATION_STEP_S = 1 -->
 
 ### Mass-balance test
 
@@ -5724,7 +5681,8 @@ $`\lambda_{i:g}F_i`$, where $`F_i`$ is the tissue's own fraction.
 and `test_a_tissue_volume_recovered_from_its_washin_matches_the_stored_value`,
 in `tests/reference/test_parameter_recovery.py`. Both tolerances are relative. The
 dilution's is at the level of rounding. The wash-in's is set by the error of
-the test's own trapezoidal sum of the uptake. The test module gives each
+the test's own integration of the uptake, which applies Boole's rule to samples
+one second apart. The test module gives each
 tolerance beside the difference between the recovered and stored values from a
 run of the test.
 
@@ -6884,7 +6842,7 @@ published data.
 
 - the circuit reference tests from v0.0.2;
 - the unit, integration, invariant and independent reference tests;
-- the convergence and nonnegativity tests at every supported step size;
+- the tests of § "Step-refinement test", and the nonnegativity tests;
 - Ruff formatting and linting;
 - strict mypy;
 - pytest; and
@@ -7068,12 +7026,12 @@ document is worse than none.
 **Rewording a marked sentence is expected to fail the check.** The failure
 asks for the marker to be moved or updated with the sentence.
 
-A marker can also name a constant in code, such as the shipped step. It is
+A marker can also name a constant in code, such as the simulation step. It is
 written as the module's path under the package, followed by the constant's
 name:
 
 ```text
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+<!-- provenance: core/simulation_step.py SIMULATION_STEP_S = 1 -->
 ```
 
 **A figure that equals a stored value must carry a marker.**

@@ -45,10 +45,10 @@ from PySide6.QtCore import QEvent
 from PySide6.QtWidgets import QApplication
 
 from anesthesia_sim.app.controller import SimulationController
-from anesthesia_sim.app.dashboard_frame import SIMULATION_STEP_S
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.view_registry import REGISTERED
 from anesthesia_sim.app_metadata import APP_BUILD_VERSION
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, ViewKind, Window
 from anesthesia_sim.layout.workspace import Origin, Workspace, WorkspaceName, WorkspaceSet
@@ -120,7 +120,7 @@ def _strings_at(application: QApplication, agent_id: str, elapsed_s: float | Non
         controller.start()
 
         for _ in range(round(elapsed_s / SIMULATION_STEP_S)):
-            controller.advance(SIMULATION_STEP_S)
+            controller.advance()
 
         controller.pause()
 

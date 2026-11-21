@@ -1,7 +1,7 @@
 """Each supported-range guard accepts only values that the functions behind it can compute with.
 
-A guard in `core/supported_ranges.py` or `core/simulation_step.py` sits in
-front of the model's arithmetic. The defect that a guard exists to stop was
+A guard in `core/supported_ranges.py` sits in front of the model's
+arithmetic. The defect that a guard exists to stop was
 found one function at a time (`PL-YZ17`, `PL-5F76`, `PL-BPRK`). A guard
 accepted a value that the function behind it could not compute with, or
 refused a value by raising a Python error rather than the simulator's own
@@ -18,13 +18,13 @@ fails if an `OverflowError`, a `ValueError`, a `ZeroDivisionError` or a
 non-finite number escapes.
 
 **Found by type rather than listed.** The guards are every
-`require_supported_*` function that the two modules define, so a guard added
-to either module is drawn without editing this file. Each guard's quantity
-has one type once it is checked. The run's step and its step count have the
-types that the guards take, `SimulationStep` and `StepCount` (`PL-0GJC`,
-`PL-CN5S`). A quantity that a guard takes as a bare `float` has the `float`
-subclass that is built only through that guard. Those are the three flows
-since `PL-0YYV`, and the case instant since `PL-CN5S`. A function is behind a
+`require_supported_*` function that the module defines, so a guard added to
+the module is drawn without editing this file. Each guard's quantity has one
+type once it is checked. The run's step count has the type that its guards
+take, `StepCount` (`PL-CN5S`). A quantity that a guard takes as a bare `float`
+or a bare `int` has the subclass that is built only through that guard. Those
+are the three flows since `PL-0YYV`, which are floats, and the case instant
+since `PL-CN5S`, which is a whole number of seconds. A function is behind a
 guard wherever it takes that type, under any name and on any class. So
 `RunDefinition`'s `opened_at_s` is drawn, although its guard names the
 quantity `instant_s`. A record is drawn through its constructor. So
@@ -47,6 +47,10 @@ each edge that the type accepts, in turn. For example, a step's span is two
 instants, and a crossing inside the span is computed only where the two
 differ.
 
+**A run steps by one second and no other step** (`core/simulation_step.py`,
+`PL-SZ6G`). So no step is drawn. Whatever is built or set is stepped by its
+own `advance()`, which takes no argument.
+
 **What is kept by hand is how to build what is found, and each part fails by
 name rather than going untested.** `RECEIVERS` builds each class that a
 method is found on. It also builds the record that a constructor is built
@@ -68,13 +72,15 @@ Nothing else may compute `inf`, and nothing at all may compute `-inf` or
 `nan`.
 
 **Drawn, and the edges every time.** Hypothesis draws each value across and
-beyond every bound that the two modules declare. Every ordinary run draws the
+beyond every bound that the module declares. Every ordinary run draws the
 same values, so a failing run reproduces exactly, and a weekly run draws new
 ones (`tests/hypothesis_profiles.py`). Some
-edges are checked on every run, whatever Hypothesis draws. They are the IEEE
-754 edges (the infinities, NaN, signed zero, the subnormals and the largest
-float), each bound and its two neighbours, and an integer one digit longer
-than CPython will print (`sys.get_int_max_str_digits`).
+edges are checked on every run, whatever Hypothesis draws. For a `float` they
+are the IEEE 754 edges (the infinities, NaN, signed zero, the subnormals and
+the largest float), and each bound and its two neighbours. For a count or an
+instant they are each whole-number bound and the whole numbers beside it, and
+an integer one digit longer than CPython will print
+(`sys.get_int_max_str_digits`).
 """
 
 from __future__ import annotations
@@ -102,10 +108,8 @@ from anesthesia_sim.app.chart_time_base import SELECTABLE_TIME_BASES
 from anesthesia_sim.app.control_record import ControlChange, ControlInput
 from anesthesia_sim.app.control_timeline import ControlAdjustment
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
-from anesthesia_sim.app.dashboard_frame import SIMULATION_TICK_INTERVAL_S
-from anesthesia_sim.app.playback import PlaybackRate
-from anesthesia_sim.core import simulation_step, supported_ranges
-from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidator
+from anesthesia_sim.core import supported_ranges
+from anesthesia_sim.core.agent_simulation_validation import UNCOMPENSATED, AgentSimulationValidator
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.blood import VenousBloodCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
@@ -115,11 +119,7 @@ from anesthesia_sim.core.governing_equations import UptakeEquationSettings
 from anesthesia_sim.core.patient import PatientCompartments
 from anesthesia_sim.core.run_definition import Keyframe, RunDefinition
 from anesthesia_sim.core.simulation import SimulationState
-from anesthesia_sim.core.simulation_step import (
-    MAXIMUM_SIMULATION_STEP_S,
-    MINIMUM_SIMULATION_STEP_S,
-    SimulationStep,
-)
+from anesthesia_sim.core.stored_states import StoredStates
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ELAPSED_SIMULATION_TIME_S,
     CardiacOutput,
@@ -130,7 +130,7 @@ from anesthesia_sim.core.supported_ranges import (
 from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
-GUARD_MODULES = (supported_ranges, simulation_step)
+GUARD_MODULES = (supported_ranges,)
 
 Function = Callable[..., object]
 
@@ -139,7 +139,7 @@ def _run_definition() -> RunDefinition:
     system = AgentUptakeSystem.default()
 
     return RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
 
 
@@ -159,7 +159,7 @@ def _equation_settings_at(cardiac_output_l_min: CardiacOutput) -> UptakeEquation
 # A time bookmark has no default. So the bookmark that the bookmark classes are
 # built with marks the middle of the span, where a step can reach it from
 # either side.
-MARK = TimeBookmark(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S / 2))
+MARK = TimeBookmark(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S // 2))
 
 # How to build each class that a guard's quantity is found on, and the record
 # that a constructor is built from, with only its drawn fields replaced. Each
@@ -175,17 +175,19 @@ RECEIVERS: Mapping[type, Callable[[], object]] = {
     BranchedCase: lambda: BranchedCase(SimulationController()),
     BreathingCircuit: lambda: AgentUptakeSystem.default().circuit,
     ControlAdjustment: lambda: ControlAdjustment(
-        ControlInput.FRESH_GAS_FLOW, CaseInstant(0.0), CaseInstant(0.0), 6.0, 2.0, "L/min", 1
+        ControlInput.FRESH_GAS_FLOW, CaseInstant(0), CaseInstant(0), 6.0, 2.0, "L/min", 1
     ),
     ControlChange: lambda: ControlChange(
-        CaseInstant(0.0), 1, ControlInput.FRESH_GAS_FLOW, 6.0, 2.0, "L/min"
+        CaseInstant(0), 1, ControlInput.FRESH_GAS_FLOW, 6.0, 2.0, "L/min"
     ),
     Keyframe: lambda: _run_definition().segments[0].opening,
     PatientCompartments: lambda: AgentUptakeSystem.default().patient,
-    PlaybackRate: lambda: PlaybackRate(multiplier=1),
     RunDefinition: _run_definition,
     SimulationController: SimulationController,
     SimulationState: SimulationState,
+    StoredStates: lambda: StoredStates(
+        AgentUptakeSystem.default().case_state(), CaseInstant(0), UNCOMPENSATED
+    ),
     TimeBookmark: lambda: MARK,
     TissueGroup: lambda: AgentUptakeSystem.default().patient.fat,
     UptakeEquationSettings: lambda: AgentUptakeSystem.default().equation_settings(),
@@ -202,24 +204,28 @@ TIED: Mapping[tuple[type, type], Callable[[typing.Any], object]] = {
 
 # A value for each parameter that the guard being drawn does not bound, where
 # a function behind the guard takes one without a default. The values are the
-# shipped tick, the count of a run that has not stepped and the state it opens
-# at, and the narrowest width that the chart's selector offers. The venous pool
+# count of a run that has not stepped and the state it opens at, and the
+# narrowest width that the chart's selector offers. The venous pool
 # stepped on its own takes a one-second step towards a tissue return of zero.
 # The other values give a bookmark set's view of a run that has reached no
 # mark, has crossed no height and is neither at its cap nor failed. The squarings
 # are those of a shipped agent's step, which needs none.
 TYPICAL: Mapping[str, object] = {
+    "adjustment_count": 0,
     "after": {},
     "before": {},
+    "compensation": UNCOMPENSATED,
     "initial_state": AgentUptakeSystem.default().state_vector(),
+    "name": "Branch 1",
+    "opening": AgentUptakeSystem.default().case_state(),
     "reached_crossings": frozenset(),
     "reached_instants_s": frozenset(),
     "run_failed": False,
     "squarings": 0,
     "simulation_step_s": 1.0,
+    "snapshot": None,
     "step_count": StepCount(0),
     "stopped_at_cap": False,
-    "tick_interval_s": SIMULATION_TICK_INTERVAL_S,
     "time_base": SELECTABLE_TIME_BASES[0],
     "tissue_return_partial_pressure_fraction": Fraction(0.0),
 }
@@ -236,7 +242,7 @@ INFINITE_WHERE_NOTHING_FLOWS: frozenset[object] = frozenset(
 
 
 def _without_none(annotation: object) -> object:
-    """Return `X` for `X | None`, such as the optional step that a run has before it steps."""
+    """Return `X` for `X | None`, such as a chart frame's optional branch point."""
 
     members = [member for member in typing.get_args(annotation) if member is not type(None)]
     is_union = (
@@ -340,11 +346,13 @@ CALLABLES = tuple(_callables())
 
 
 def _built_types() -> dict[str, type]:
-    """Return the `float` subclass that each guarded quantity is built as.
+    """Return the `float` or `int` subclass that each guarded quantity is built as.
 
     Each subclass is keyed by the name that its constructor gives the
     quantity. For example, `FreshGasFlow(fresh_gas_flow_l_min)` names the
-    quantity that `require_supported_fresh_gas_flow` bounds (`PL-0YYV`).
+    quantity that `require_supported_fresh_gas_flow` bounds (`PL-0YYV`), and
+    `CaseInstant(instant_s)` names the one that
+    `require_supported_case_instant` bounds.
     """
 
     return {
@@ -352,8 +360,7 @@ def _built_types() -> dict[str, type]:
         for module in GUARD_MODULES
         for value in vars(module).values()
         if inspect.isclass(value)
-        and issubclass(value, float)
-        and value is not float
+        and issubclass(value, (float, int))
         and value.__module__ == module.__name__
         for name in _parameters(value.__new__)
     }
@@ -363,10 +370,9 @@ def _checked_types() -> dict[str, type]:
     """Return the type that each guarded quantity has once it is checked.
 
     That type is the narrowest type that any guard gives the quantity's name.
-    So the run's step is `SimulationStep`, although its own guard, which
-    builds that type, takes a `float`. A quantity that no guard takes as more
-    than a `float` gets the type that is built through its guard. That is how
-    the three flows and the case instant are found.
+    A quantity that no guard takes as more than a `float` or an `int` gets the
+    type that is built through its guard. That is how the three flows and the
+    case instant are found.
     """
 
     checked: dict[str, type] = {}
@@ -412,6 +418,17 @@ BOUNDS = sorted(
     }
 )
 
+# The bounds that the module declares as whole numbers: the supported run
+# length in seconds, and the count of one-second steps that reaches it.
+WHOLE_BOUNDS = sorted(
+    {
+        value
+        for module in GUARD_MODULES
+        for name, value in vars(module).items()
+        if name.startswith(("MINIMUM_", "MAXIMUM_")) and type(value) is int
+    }
+)
+
 TOO_LONG_TO_PRINT = 10 ** sys.get_int_max_str_digits()
 
 
@@ -440,25 +457,6 @@ FLOAT_EDGES = tuple(
     }.values()
 )
 
-
-def _admitted_step(seconds: float) -> SimulationStep | None:
-    try:
-        return SimulationStep(seconds)
-    except AnesthesiaSimulationError:
-        return None
-
-
-STEP_EDGES = tuple(step for step in map(_admitted_step, FLOAT_EDGES) if step is not None)
-
-# The finest and the coarsest step, at which every edge is stepped. The step's
-# own neighbours are its guard's edges, and from there they are handed to every
-# function behind the guard.
-EDGE_STEPS = (min(STEP_EDGES), max(STEP_EDGES))
-
-STEPS = st.floats(min_value=MINIMUM_SIMULATION_STEP_S, max_value=MAXIMUM_SIMULATION_STEP_S).map(
-    SimulationStep
-)
-
 FLOATS = st.one_of(
     st.floats(),
     *(
@@ -467,15 +465,30 @@ FLOATS = st.one_of(
     ),
 )
 
+# The whole numbers at a count's or an instant's edges: zero and the numbers
+# beside it, each whole-number bound and the numbers beside it, the first
+# integers that a `float` cannot hold exactly, and an integer too long to print.
+WHOLE_EDGES = tuple(
+    sorted(
+        {
+            0,
+            1,
+            -1,
+            2**53,
+            2**53 + 1,
+            2**63,
+            TOO_LONG_TO_PRINT,
+            -TOO_LONG_TO_PRINT,
+            *(bound + offset for bound in WHOLE_BOUNDS for offset in (-1, 0, 1)),
+        }
+    )
+)
 
-def _spans(step: SimulationStep) -> list[int]:
-    """Return how many steps reach each bound.
-
-    That is where a count guard's own bound falls, because every count here
-    is a span of steps.
-    """
-
-    return [math.floor(bound / step) for bound in BOUNDS if bound > 0]
+WHOLE_NUMBERS = st.one_of(
+    st.integers(),
+    st.sampled_from(WHOLE_EDGES),
+    *(st.integers(min_value=-bound, max_value=2 * bound + 1) for bound in WHOLE_BOUNDS),
+)
 
 
 def _admitted_count(count: int) -> StepCount | None:
@@ -485,67 +498,49 @@ def _admitted_count(count: int) -> StepCount | None:
         return None
 
 
-def _count_edges(step: SimulationStep) -> tuple[StepCount, ...]:
-    """Return the counts at a count guard's edges, as `StepCount` accepts them.
+# The counts at a count guard's edges, as `StepCount` accepts them. The
+# negative edges are offered to the type, which must refuse them with the
+# simulator's own error or this module fails to import. They are never passed
+# to a guard, because a count is checked for being whole and nonnegative once,
+# where it is built (`PL-CN5S`).
+COUNT_EDGES = tuple(count for count in map(_admitted_count, WHOLE_EDGES) if count is not None)
 
-    The negative edges are offered to the type, which must refuse them with
-    the simulator's own error or this test fails. They are never passed to a
-    guard, because a count is checked for being whole and nonnegative once,
-    where it is built (`PL-CN5S`).
-    """
-
-    edges = {
-        0,
-        1,
-        -1,
-        2**53,
-        2**53 + 1,
-        2**63,
-        TOO_LONG_TO_PRINT,
-        -TOO_LONG_TO_PRINT,
-        *(span + offset for span in _spans(step) for offset in (-1, 0, 1)),
-    }
-
-    return tuple(count for count in map(_admitted_count, sorted(edges)) if count is not None)
+COUNTS = st.one_of(
+    st.integers(min_value=0),
+    st.sampled_from(COUNT_EDGES),
+    *(st.integers(min_value=0, max_value=2 * bound + 1) for bound in WHOLE_BOUNDS),
+).map(StepCount)
 
 
-def _counts(step: SimulationStep) -> st.SearchStrategy[StepCount]:
-    return st.one_of(
-        st.integers(min_value=0),
-        st.sampled_from(_count_edges(step)),
-        *(st.integers(min_value=0, max_value=2 * span + 1) for span in _spans(step)),
-    ).map(StepCount)
-
-
-def _edges(annotation: object, step: SimulationStep) -> tuple[object, ...]:
-    if annotation is SimulationStep:
-        return (step,)
-
+def _edges(annotation: object) -> tuple[object, ...]:
     if annotation is StepCount:
-        return _count_edges(step)
+        return COUNT_EDGES
 
     if annotation is float:
         return FLOAT_EDGES
 
+    if annotation is int:
+        return WHOLE_EDGES
+
     pytest.fail(f"no edges for a guard parameter of type {annotation!r}")
 
 
-def _drawn(annotation: object, step: SimulationStep) -> st.SearchStrategy[object]:
-    if annotation is SimulationStep:
-        return st.just(step)
-
+def _drawn(annotation: object) -> st.SearchStrategy[object]:
     if annotation is StepCount:
-        return _counts(step)
+        return COUNTS
 
     if annotation is float:
         return FLOATS
+
+    if annotation is int:
+        return WHOLE_NUMBERS
 
     pytest.fail(f"no strategy for a guard parameter of type {annotation!r}")
 
 
 @cache
-def _pools(guard: Function, step: SimulationStep) -> dict[type, tuple[object, ...]]:
-    """Return, for each of the guard's quantities, every edge its type accepts at this step.
+def _pools(guard: Function) -> dict[type, tuple[object, ...]]:
+    """Return, for each of the guard's quantities, every edge that its type accepts.
 
     Each edge is built as the quantity's type. A place that takes the type
     again is handed these values.
@@ -556,7 +551,7 @@ def _pools(guard: Function, step: SimulationStep) -> dict[type, tuple[object, ..
     for name, annotation in _parameters(guard).items():
         admitted = []
 
-        for edge in _edges(annotation, step):
+        for edge in _edges(annotation):
             try:
                 admitted.append(CHECKED[name](edge))
             except AnesthesiaSimulationError:
@@ -579,17 +574,13 @@ def _require_finite(value: object, function: Function) -> None:
 
 
 def _drawings(
-    function: Function,
-    values: Mapping[type, object],
-    pools: Mapping[type, tuple[object, ...]],
-    step: SimulationStep,
+    function: Function, values: Mapping[type, object], pools: Mapping[type, tuple[object, ...]]
 ) -> Iterator[dict[str, object]]:
     """Yield each way to hand `function` what was drawn.
 
     The drawn value goes where the function first takes the value's type.
     Where the function takes the type again, it gets every value of the
-    type's pool in turn. The run's step goes wherever the function takes a
-    step.
+    type's pool in turn.
     """
 
     first: dict[str, object] = {}
@@ -603,8 +594,6 @@ def _drawings(
                 again[name] = pools[typing.cast(type, annotation)]
             else:
                 first[name] = values[typing.cast(type, annotation)]
-        elif annotation is SimulationStep:
-            first[name] = step
 
     for chosen in product(*again.values()):
         yield {**first, **dict(zip(again, chosen, strict=True))}
@@ -665,26 +654,33 @@ def _build(
     return owner(**_arguments(function, drawing))
 
 
-def _step(built: object, step: SimulationStep) -> None:
+def _takes_only_self(function: Function) -> bool:
+    return list(inspect.signature(function).parameters) == ["self"]
+
+
+def _step(built: object) -> None:
     """Take a step on whatever was just built or set, and read what it reports.
 
     Stepping and reading the reports is where a value that was set, rather
-    than computed, is used in a computation.
+    than computed, is used in a computation. A run is stepped by its own
+    `advance()`, which takes no argument, because a run moves only by the
+    one-second step. A compartment's own `advance` takes a step and its
+    inputs, and it is not called here.
     """
 
     for owner, function in CALLABLES:
-        if owner is type(built) and function.__name__ != "__init__":
-            if SimulationStep in _parameters(function).values():
-                for drawing in _drawings(function, {}, {}, step):
-                    _require_finite(
-                        getattr(built, function.__name__)(**_arguments(function, drawing)), function
-                    )
+        if owner is type(built) and function.__name__ == "advance" and _takes_only_self(function):
+            _require_finite(getattr(built, function.__name__)(), function)
 
     for name, member in vars(type(built)).items():
         if isinstance(member, property) and not name.startswith("_") and member.fget is not None:
             returned = typing.get_type_hints(member.fget).get("return")
 
-            if isinstance(returned, type) and issubclass(returned, float):
+            if (
+                isinstance(returned, type)
+                and issubclass(returned, (float, int))
+                and returned is not bool
+            ):
                 value = getattr(built, name)
 
                 if not (member in INFINITE_WHERE_NOTHING_FLOWS and value == math.inf):
@@ -692,7 +688,7 @@ def _step(built: object, step: SimulationStep) -> None:
 
 
 @contextmanager
-def _naming(called: str, values: Mapping[str, object], step: SimulationStep) -> Iterator[None]:
+def _naming(called: str, values: Mapping[str, object]) -> Iterator[None]:
     try:
         yield
     except BaseException as failure:
@@ -700,7 +696,7 @@ def _naming(called: str, values: Mapping[str, object], step: SimulationStep) -> 
             f"{name}={describe_count(value) if isinstance(value, int) else repr(value)}"
             for name, value in values.items()
         )
-        failure.add_note(f"{called}({shown}), stepping at {step!r} s")
+        failure.add_note(f"{called}({shown})")
         raise
 
 
@@ -709,7 +705,6 @@ def _computes_with(
     function: Function,
     values: Mapping[type, object],
     pools: Mapping[type, tuple[object, ...]],
-    step: SimulationStep,
 ) -> None:
     """Call one function behind a guard with what the guard accepted.
 
@@ -717,8 +712,8 @@ def _computes_with(
     refusal, and a constructor must build.
     """
 
-    for drawing in _drawings(function, values, pools, step):
-        with _naming(function.__qualname__, drawing, step):
+    for drawing in _drawings(function, values, pools):
+        with _naming(function.__qualname__, drawing):
             if owner is not None and function.__name__ == "__init__":
                 try:
                     built: object | None = _build(owner, function, values, drawing)
@@ -744,29 +739,28 @@ def _computes_with(
 
             if built is not None:
                 try:
-                    _step(built, step)
+                    _step(built)
                 except AnesthesiaSimulationError:
                     continue
 
 
-def _check(guard: Function, values: Mapping[str, object], step: SimulationStep) -> None:
+def _check(guard: Function, values: Mapping[str, object]) -> None:
     """Check the property for one draw.
 
     A refusal must be the simulator's own error, and every function behind
     the guard must compute with an accepted value.
     """
 
-    with _naming(guard.__name__, values, step):
+    with _naming(guard.__name__, values):
         try:
             guard(**values)
         except AnesthesiaSimulationError:
             return
 
         admitted = {CHECKED[name]: CHECKED[name](value) for name, value in values.items()}
-        step = typing.cast(SimulationStep, admitted.get(SimulationStep, step))
 
         for owner, function in _behind(guard):
-            _computes_with(owner, function, admitted, _pools(guard, step), step)
+            _computes_with(owner, function, admitted, _pools(guard))
 
 
 @pytest.mark.parametrize("guard", GUARDS, ids=lambda guard: guard.__name__)
@@ -782,23 +776,20 @@ def test_each_guard_admits_only_what_its_functions_compute(guard: Function) -> N
     assert not uncallable, f"no way to build the class behind {uncallable}: add it to RECEIVERS"
 
     annotations = _parameters(guard)
+    edges = [_edges(annotation) for annotation in annotations.values()]
 
-    for step in EDGE_STEPS:
-        edges = [_edges(annotation, step) for annotation in annotations.values()]
-
-        for values in product(*edges):
-            _check(guard, dict(zip(annotations, values, strict=True)), step)
+    for values in product(*edges):
+        _check(guard, dict(zip(annotations, values, strict=True)))
 
     @settings(max_examples=50)
     @given(st.data())
     def drawn(data: st.DataObject) -> None:
-        step = data.draw(STEPS, label="step")
         values = {
-            name: data.draw(_drawn(annotation, step), label=name)
+            name: data.draw(_drawn(annotation), label=name)
             for name, annotation in annotations.items()
         }
 
-        _check(guard, values, step)
+        _check(guard, values)
 
     drawn()
 

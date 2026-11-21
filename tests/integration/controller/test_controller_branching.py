@@ -15,11 +15,9 @@ from anesthesia_sim.app.run_series import COMPARTMENT_STATE_INDEX
 from anesthesia_sim.core import uptake_system
 from anesthesia_sim.core.concentration import MacPercent, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
-from anesthesia_sim.core.governing_equations import DELIVERED_AGENT_L, EXHAUSTED_AGENT_L
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
-from anesthesia_sim.core.run_definition import RunDefinition
-from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import (
     AlveolarVentilation,
     CardiacOutput,
@@ -76,7 +74,7 @@ def test_a_fork_opens_at_a_keyframe_on_the_case_s_own_axis() -> None:
 
     # It is a live run: it advances by the path every run takes.
     branch.start()
-    _advance_for(branch, duration_s=10.0)
+    _advance_for(branch, duration_s=10)
 
     assert branch.snapshot().elapsed_s == fork_s + 10.0
 
@@ -108,8 +106,10 @@ def test_a_branch_continues_the_case_s_step_count_so_the_envelope_is_the_case_s(
 
     branch = trunk.resumed_at(fork_s)
 
-    assert branch._state.step_count == round(fork_s / MAXIMUM_SIMULATION_STEP_S)
-    assert branch._state.simulation_step_s == MAXIMUM_SIMULATION_STEP_S
+    # The trunk's second change is at 60 s, and a step is one second. So the
+    # case had completed 60 steps at the fork.
+    assert fork_s == 60
+    assert branch._state.step_count == 60
     assert branch.snapshot().elapsed_s == fork_s
 
 
@@ -123,7 +123,7 @@ def test_a_branch_reproduces_its_parent_at_every_instant_they_share() -> None:
     here. Both runs are asked for each instant directly. There is nothing to
     convert. Since `PL-ZMRT`, the branch's definition opens at the fork on
     that same axis, so parent and child form their intervals from the
-    identical pair of floats.
+    identical pair of instants.
     """
 
     trunk = _trunk_with_two_changes()
@@ -131,92 +131,22 @@ def test_a_branch_reproduces_its_parent_at_every_instant_they_share() -> None:
     branch = trunk.resumed_at(fork_s)
 
     trunk.start()
-    _advance_for(trunk, duration_s=20.0)
+    _advance_for(trunk, duration_s=20)
     trunk.pause()
 
     branch.start()
-    _advance_for(branch, duration_s=20.0)
+    _advance_for(branch, duration_s=20)
     branch.pause()
 
     trunk_definition = trunk._run_definition
     branch_definition = branch._run_definition
-    fork_steps = round(fork_s / MAXIMUM_SIMULATION_STEP_S)
 
-    for steps_past_fork in range(0, 201):
-        case_s = (fork_steps + steps_past_fork) * MAXIMUM_SIMULATION_STEP_S
+    for steps_past_fork in range(0, 21):
+        case_s = fork_s + steps_past_fork * SIMULATION_STEP_S
 
         assert branch_definition.state_at(case_s) == trunk_definition.state_at(case_s), (
             f"the branch and its parent differ at {case_s} s"
         )
-
-
-def test_a_branch_on_its_own_axis_would_not_reproduce_its_parent() -> None:
-    """Why the branch opens at the fork, measured at this seam rather than quoted.
-
-    `PL-ZMRT` replaced the arrangement in which a definition opened at a zero
-    of its own. That arrangement was not so much wrong as conditional. It
-    reproduced the parent exactly *provided* every caller reached it by
-    subtracting the fork instant. It silently failed when a caller named the
-    branch's own elapsed time instead. The difference is real because the
-    subtraction does not round-trip. With a fork at 900 s,
-    `(900.0 + 1e-6) - 900.0` is 9.999999974752427e-07 and not 1e-6. So the
-    two routes are exact solutions of the same equations composed in
-    different orders, and `PL-Z3W6` requires the composition to be the same,
-    not only the solution.
-
-    Measured on the run below, the branch and its parent share 601 case
-    instants. Asked for the case's own instants, the shipped branch agrees
-    with its parent at every one. A definition opened at its own zero and
-    asked for `steps * step` differs at **354 of them**. The test builds the
-    second run itself rather than getting it from the controller, because the
-    controller can no longer produce one, which is the point.
-
-    The test fails openly if the two ever coincide. That would mean the hazard
-    no longer existed and the test no longer showed anything.
-    """
-
-    trunk = _trunk_with_two_changes()
-    fork_s = trunk.run_segments[-1].opening.instant_s
-    branch = trunk.resumed_at(fork_s)
-
-    trunk.start()
-    _advance_for(trunk, duration_s=60.0)
-    trunk.pause()
-
-    branch.start()
-    _advance_for(branch, duration_s=60.0)
-    branch.pause()
-
-    trunk_definition = trunk._run_definition
-    branch_definition = branch._run_definition
-    fork_segment = trunk.run_segments[-1]
-    # The rejected arrangement, which nothing in `src/` builds any more: the
-    # same keyframe under the same settings, opened at a zero of its own.
-    on_its_own_axis = RunDefinition(
-        fork_segment.settings, fork_segment.opening.state, opened_at_s=CaseInstant(0.0)
-    )
-    on_its_own_axis.advance_to(CaseInstant(60.0))
-
-    fork_steps = round(fork_s / MAXIMUM_SIMULATION_STEP_S)
-    shipped_differs = 0
-    own_axis_differs = 0
-
-    for steps_past_fork in range(0, 601):
-        case_s = (fork_steps + steps_past_fork) * MAXIMUM_SIMULATION_STEP_S
-        parent_state = trunk_definition.state_at(case_s)
-
-        shipped_differs += branch_definition.state_at(case_s) != parent_state
-        own_axis_differs += (
-            on_its_own_axis.state_at(steps_past_fork * MAXIMUM_SIMULATION_STEP_S) != parent_state
-        )
-
-    assert shipped_differs == 0, (
-        "a branch opening at the fork is asked for the case's own instants and must be exact"
-    )
-    assert own_axis_differs > 0, (
-        "a branch on its own axis now agrees everywhere, so the hazard this test "
-        "exists to describe has stopped existing"
-    )
 
 
 def test_a_branch_steps_to_where_its_parent_stepped() -> None:
@@ -272,7 +202,7 @@ def test_a_branch_s_drawn_window_is_on_the_case_s_axis() -> None:
     fork_s = trunk.run_segments[-1].opening.instant_s
     branch = trunk.resumed_at(fork_s)
     branch.start()
-    _advance_for(branch, duration_s=10.0)
+    _advance_for(branch, duration_s=10)
 
     window = branch.drawn_window(0.0, fork_s + 10.0, 150)
 
@@ -304,7 +234,7 @@ def test_a_branch_is_drawn_on_the_same_columns_as_the_run_it_forked_from() -> No
     client. While a branch's definition opened at a zero of its own, its
     columns fell at `fork + m x spacing`, against the trunk's `m x spacing`.
     On this 13-column 120 s axis, with the fork deliberately off the grid at
-    55.3 s, 2 of the branch's 8 columns landed where the trunk also drew. A
+    55 s, 2 of the branch's 8 columns landed where the trunk also drew. A
     learner then could not read "at this instant the trunk was here and the
     branch was there" from matched points. Any difference trace or shared
     tooltip built on that assumption would be wrong, not merely coarse.
@@ -318,9 +248,9 @@ def test_a_branch_is_drawn_on_the_same_columns_as_the_run_it_forked_from() -> No
 
     trunk = SimulationController()
     trunk.start()
-    _advance_for(trunk, duration_s=55.3)
+    _advance_for(trunk, duration_s=55)
     trunk.set_delivered_concentration_percent(Percent(4.0))
-    _advance_for(trunk, duration_s=64.7)
+    _advance_for(trunk, duration_s=65)
     trunk.pause()
 
     fork_s = trunk.run_segments[-1].opening.instant_s
@@ -380,7 +310,7 @@ def test_a_control_moved_before_a_branch_steps_replaces_the_stretch_at_its_fork(
 
     # And the new settings are the ones the run is then computed under.
     branch.start()
-    _advance_for(branch, duration_s=10.0)
+    _advance_for(branch, duration_s=10)
     branch.pause()
 
     assert branch.run_segments[-1].settings.delivered_concentration_percent == 1.0
@@ -400,12 +330,22 @@ def test_a_branch_carries_the_case_s_delivered_and_exhausted_totals() -> None:
     fork_s = trunk.run_segments[-1].opening.instant_s
     branch = trunk.resumed_at(fork_s)
 
+    # The expected totals come from a second run of the same case, stopped at
+    # the fork. `_run_with_two_changes` makes its second change at 60 s.
+    stopped_at_fork = SimulationController()
+    stopped_at_fork.start()
+    _advance_for(stopped_at_fork, duration_s=30)
+    stopped_at_fork.set_delivered_concentration_percent(Percent(4.0))
+    _advance_for(stopped_at_fork, duration_s=30)
+    expected = stopped_at_fork.snapshot()
+
     at_fork = branch.snapshot()
 
+    assert fork_s == expected.elapsed_s == 60
     assert at_fork.delivered_agent_l > 0.0
     assert at_fork.agent_accounting_passes_validation
-    assert at_fork.delivered_agent_l == trunk.run_segments[-1].opening.state[DELIVERED_AGENT_L]
-    assert at_fork.exhausted_agent_l == trunk.run_segments[-1].opening.state[EXHAUSTED_AGENT_L]
+    assert at_fork.delivered_agent_l == expected.delivered_agent_l
+    assert at_fork.exhausted_agent_l == expected.exhausted_agent_l
 
 
 def test_a_branch_opens_with_only_the_change_it_runs_under_in_its_timeline() -> None:
@@ -435,7 +375,7 @@ def test_a_branch_opens_with_only_the_change_it_runs_under_in_its_timeline() -> 
     assert at_the_keyframe.opened_with == at_the_keyframe.control_timeline
 
     trunk.start()
-    _advance_for(trunk, duration_s=10.0)
+    _advance_for(trunk, duration_s=10)
     trunk.pause()
 
     assert trunk.resumed_here().snapshot().control_timeline == ()
@@ -594,33 +534,28 @@ def test_a_branch_can_open_at_any_keyframe_the_run_holds() -> None:
         assert branch.run_segments[0] == trunk.run_segments[max(index - 1, 0)]
 
 
-def test_resumed_at_refuses_an_instant_no_setting_changed_at_and_names_the_other_doors() -> None:
-    """The refusal gives the method's scope as its reason, not an arithmetic limit (`PL-54V0`).
+def test_a_branch_between_two_setting_changes_runs_under_the_settings_in_force_there() -> None:
+    """A branch at 65 s runs under both of the trunk's changes, with nothing in its timeline.
 
-    `resumed_at` opens at the run's opening or at a recorded setting change.
-    An instant between two of them can still be reproduced: `resumed_at_mark`
-    and `resumed_here` both fork there and reproduce the run element-wise.
-    Such an instant belongs to another method, so the message says which one.
-    It also names the keyframes this run does have, so a caller can pick one.
-    The reason the message used to give was that opening there "would restart
-    from two propagations where the run took one". That is true only of a
-    construction that no fork method uses. A reader who believed it would
-    reach for the refused fix of recording a keyframe there.
+    The trunk changed the delivered concentration at 30 s and the alveolar
+    ventilation at 60 s. Second 65 holds no change, so the branch's timeline
+    opens empty (`PL-ZR49`), and its settings are the ones the trunk left
+    second 65 under. `test_controller_stored_states.py` checks the states a
+    branch at any second holds and stores (`PL-FST0`).
     """
 
     trunk = _trunk_with_two_changes()
-    between_s = trunk.run_segments[-1].opening.instant_s + 5.0
 
-    with pytest.raises(SimulationConfigurationError, match="holds no keyframe") as refusal:
-        trunk.resumed_at(CaseInstant(between_s))
+    branch = trunk.resumed_at(CaseInstant(65))
+    snapshot = branch.snapshot()
 
-    message = str(refusal.value)
-    openings = [segment.opening.instant_s for segment in trunk.run_segments]
-
-    assert str(openings) in message
-    assert "resumed_at_mark" in message
-    assert "resumed_here" in message
-    assert "two propagations" not in message
+    assert branch.began_at_s == snapshot.elapsed_s == 65
+    assert snapshot.control_timeline == ()
+    assert snapshot.delivered_concentration_percent == 4.0
+    assert snapshot.alveolar_ventilation_l_min == 6.0
+    assert branch.opened_from is not None
+    assert branch.opened_from.segment.opening.instant_s == 60
+    assert branch.opened_from == trunk.resumed_at(CaseInstant(65)).opened_from
 
 
 def test_an_instant_the_run_never_reached_is_refused() -> None:
@@ -628,26 +563,31 @@ def test_an_instant_the_run_never_reached_is_refused() -> None:
 
     trunk = _trunk_with_two_changes()
 
-    with pytest.raises(SimulationConfigurationError, match="holds no keyframe"):
-        trunk.resumed_at(CaseInstant(trunk.snapshot().elapsed_s + 600.0))
+    with pytest.raises(SimulationConfigurationError, match="stores no state at 720 s") as refusal:
+        trunk.resumed_at(CaseInstant(trunk.snapshot().elapsed_s + 600))
+
+    assert "from 0 s, where it opened, to 120 s, the second it has reached" in str(refusal.value)
 
 
 def test_a_non_finite_fork_instant_cannot_be_built() -> None:
     """This refusal is separate from the keyframe refusal, which would give the wrong reason.
 
     Since `PL-CN5S`, a non-finite instant is refused when the instant is
-    built, so no run is ever asked to branch at one.
+    built, so no run is ever asked to branch at one. An instant is a whole
+    number of seconds, and every `float` is refused as the wrong type
+    (`PL-SZ6G`). So the refusal is a `TypeError`, and it does not depend on
+    the value.
     """
 
-    with pytest.raises(SimulationConfigurationError, match="outside the supported run length"):
-        CaseInstant(float("inf"))
+    with pytest.raises(TypeError, match="has type float, not int"):
+        CaseInstant(float("inf"))  # type: ignore[arg-type]
 
 
-@pytest.mark.parametrize("instant_s", [0.0, float("inf")])
+@pytest.mark.parametrize("instant_s", [0, 0.0, float("inf")])
 def test_a_fork_instant_not_built_as_a_case_instant_is_refused(instant_s: float) -> None:
     """The instant is refused whatever its value, before the keyframes are searched (`PL-CN5S`).
 
-    A bare `0.0` is refused even though the trunk has a keyframe there,
+    A bare `0` or `0.0` is refused even though the trunk has a keyframe there,
     because nothing has checked it. The refusal says so. It does not say that
     the run has no keyframe there, which would be the wrong reason. `fork_at`
     forwards to this method, so it refuses the same way.
@@ -693,7 +633,7 @@ def test_a_failed_frame_refuses_every_fork_until_the_trunk_starts_over() -> None
     trunk.reset()
 
     assert trunk.fork_refusal is None
-    assert case.fork_points_s == (CaseInstant(0.0),)
+    assert case.fork_points_s == (CaseInstant(0),)
 
 
 def test_a_branch_of_a_branch_is_refused_rather_than_silently_flattened() -> None:
@@ -753,7 +693,7 @@ def test_resetting_a_branch_returns_it_to_its_fork_rather_than_to_zero() -> None
     at_fork = branch.snapshot()
 
     branch.start()
-    _advance_for(branch, duration_s=10.0)
+    _advance_for(branch, duration_s=10)
     branch.set_fresh_gas_flow(FreshGasFlow(1.0))
     branch.reset()
 
@@ -790,7 +730,7 @@ def test_a_branch_reset_the_core_refuses_leaves_the_branch_exactly_as_it_was() -
     fork_s = trunk.run_segments[-1].opening.instant_s
     branch = trunk.resumed_at(fork_s)
     branch.start()
-    _advance_for(branch, duration_s=10.0)
+    _advance_for(branch, duration_s=10)
     branch.set_fresh_gas_flow(FreshGasFlow(1.0))
     before = branch.snapshot()
     segments = branch.run_segments
@@ -906,7 +846,7 @@ def test_forking_a_case_repeatedly_leaves_the_trunk_where_it_was() -> None:
         branch = case.fork_at(elapsed_s)
         branch.set_cardiac_output(CardiacOutput(2.5))
         branch.start()
-        _advance_for(branch, duration_s=30.0)
+        _advance_for(branch, duration_s=30)
         branch.pause()
 
     assert case.trunk.snapshot() == before
@@ -931,16 +871,27 @@ def test_a_case_cannot_be_rooted_in_a_branch() -> None:
         BranchedCase(branch)
 
 
-def test_a_case_refuses_a_fork_at_an_instant_the_trunk_holds_no_keyframe_for() -> None:
-    """The refusal passes through the case unchanged rather than being softened by it."""
+def test_a_case_keeps_a_branch_taken_between_two_setting_changes() -> None:
+    """A case branches at any second its trunk has reached, and keeps the branch (`PL-FST0`)."""
 
     case = BranchedCase(_trunk_with_two_changes())
-    between_s = (case.fork_points_s[-2] + case.fork_points_s[-1]) / 2.0
+    between_s = (case.fork_points_s[-2] + case.fork_points_s[-1]) // 2
 
     assert between_s not in case.fork_points_s
 
-    with pytest.raises(SimulationConfigurationError, match="holds no keyframe"):
-        case.fork_at(CaseInstant(between_s))
+    branch = case.fork_at(CaseInstant(between_s))
+
+    assert case.branches == (branch,)
+    assert branch.began_at_s == between_s
+
+
+def test_a_case_refuses_a_fork_at_a_second_its_trunk_has_not_reached() -> None:
+    """The refusal passes through the case unchanged rather than being softened by it."""
+
+    case = BranchedCase(_trunk_with_two_changes())
+
+    with pytest.raises(SimulationConfigurationError, match="stores no state at 121 s"):
+        case.fork_at(CaseInstant(121))
 
     assert case.branches == ()
 
@@ -962,9 +913,9 @@ def test_a_case_s_branches_carry_the_trunk_s_agent_and_patient_at_the_fork() -> 
 
     trunk = SimulationController(agent_id="isoflurane", cardiac_output_l_min=CardiacOutput(4.2))
     trunk.start()
-    _advance_for(trunk, duration_s=30.0)
+    _advance_for(trunk, duration_s=30)
     trunk.set_cardiac_output(CardiacOutput(6.5))
-    _advance_for(trunk, duration_s=30.0)
+    _advance_for(trunk, duration_s=30)
     trunk.pause()
 
     case = BranchedCase(trunk)
@@ -1035,7 +986,7 @@ def test_every_recorded_control_event_is_an_instant_the_run_can_be_forked_at() -
 
     trunk = SimulationController()
     trunk.start()
-    _advance_for(trunk, duration_s=30.0)
+    _advance_for(trunk, duration_s=30)
 
     opening = trunk.snapshot()
     trunk.pause()
@@ -1055,9 +1006,9 @@ def test_every_recorded_control_event_is_an_instant_the_run_can_be_forked_at() -
     # Now the general property, on a run that does change. Every time stamp a
     # reader is shown is a fork point, which is what the clause promises.
     trunk.start()
-    _advance_for(trunk, duration_s=30.0)
+    _advance_for(trunk, duration_s=30)
     trunk.set_alveolar_ventilation(AlveolarVentilation(6.0))
-    _advance_for(trunk, duration_s=30.0)
+    _advance_for(trunk, duration_s=30)
     trunk.pause()
 
     case = BranchedCase(trunk)

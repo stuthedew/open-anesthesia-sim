@@ -2,139 +2,103 @@
 paths:
   - "/src/anesthesia_sim/core/run_definition.py"
   - "/src/anesthesia_sim/core/simulation.py"
+  - "/src/anesthesia_sim/core/stored_states.py"
   - "/src/anesthesia_sim/app/controller.py"
   - "/src/anesthesia_sim/app/run_series.py"
   - "/src/anesthesia_sim/app/chart_frame.py"
 ---
 
-# The run is its definition, so there is no sample store to add to
+# Each second of a run has one stored state, and every reader takes it from the run's record
 
-The run is its definition - patient, agents and the ordered control-input
-timeline. Every compartment value at every instant is a closed-form function
-of it, so the chart evaluates rather than reads back, and there is no sample
-store to add to. Storage is warranted only for a series that **cannot be
-re-derived from its inputs**, which nothing in the simulator produces.
+A run takes one step per second. Each step appends the state it wrote to the
+run's record, `SimulationState.stored_states`, a `StoredStates` in
+`src/anesthesia_sim/core/stored_states.py`. The record holds one state for
+each whole second, from the second the run opened at to the second it has
+reached.
 
-That is a precondition on the files this rule loads for rather than a
-prohibition to argue with. It is written down because "record each sample as
-the simulation steps" is the obvious design, it is what this project did for
-nine releases, and after `PL-T691` it is wrong - so a session re-introducing a
-store does it while believing it is being helpful, with every instinct pointing
-that way.
+The owner chose this design in `PL-7CY5` (project owner, 2026-11-21,
+ratified, on the thread's decision card, over one rule at tenths of a second
+and over keeping a run as its settings with every state computed from them).
+`PL-MH9J` built the record. Before it, a state was computed by three routes
+that agreed only to rounding, and a MAC target once read as reached on a run
+and not on a branch opened at the same step (`PL-QVBR`).
 
-## Nothing in the tree would catch it
+## Read a reached second's state from the record
 
-A cache of samples beside a closed-form sampler is correct on the frame it is
-written, plausible to a reviewer, and a second source of truth for the same
-trace. Every test still passes, because each source is self-consistent on its
-own; the two disagree only once one of them goes stale, which is a run later
-and a reader's problem rather than a suite's. `CLAUDE.md` § "Safety-critical
-clinical-output standard" makes a second divergent source for a displayed
-clinical value a safety failure rather than a design preference - a reader
-comparing a readout against the curve beside it is comparing two answers to one
-question and has no way to know it.
+Code that shows a state, tests a mark against one or opens a branch from one
+calls `stored_states.state_at(CaseInstant(second))`. The controller's readers
+are the instances to copy, in `src/anesthesia_sim/app/controller.py`:
 
-## The test is what the collection is indexed by
+- `snapshot()` reads the readouts' six fractions through `_stored_fractions`.
+- `drawn_window` reads the chart's states at the seconds that
+  `drawn_seconds` returns (`src/anesthesia_sim/app/chart_time_base.py`).
+- `_step_ending_here` reads the two states that decide whether a step
+  crossed a mark.
+- `_open_at` opens a branch with its parent's stored states up to the fork,
+  and places the branch's system at the last of them.
 
-Not "is this a cache?", which admits and refuses the right things by accident.
-Ask what one entry corresponds to.
+The step is the only code that computes the state of a reached second. A
+second reader reads the record again. It does not step again, apply a
+formula, or read a compartment back from the uptake system: 9% to 14% of the
+fractions read back from a compartment differ in the last bit from the
+fraction the step wrote (`PL-MH9J`, measured 2026-11-21).
 
-- **Indexed by something in the definition** - one state per control event, one
-  at the run's opening - is part of the answer rather than a record of it.
-  `run_definition.Keyframe` is exactly this: how many there are is fixed by the
-  definition, each is computed canonically, and a change to the definition
-  invalidates the segment that would have read it. Two runs built from
-  identical definitions hold identical keyframes.
-- **Indexed by the watching** - one entry per step taken, per frame drawn, per
-  window scrolled, per instant a reader happened to look at - is a record of
-  the run. It grows with elapsed time rather than with the definition, so it is
-  a function of the definition *and* of how the run was observed. That second
-  argument is the second source of truth: two runs built from identical
-  definitions can hold different ones.
+## Draw and show whole seconds only
 
-The second is what "cannot be re-derived from its inputs" rules out, and
-nothing in this simulator produces it.
+The record holds no state between two seconds, and `StoredStates.state_at`
+refuses a second it does not hold. A chart point, a readout and a mark each
+fall on a whole second. A value between two stored seconds would be a second
+route to a displayed number, so nothing interpolates one.
 
-## If the motivation is speed, it was measured and it is not there
+## Keep states in the record and nowhere else
 
-The instinct that a long run must be slow to draw is the usual reason a store
-gets proposed. `docs/INTERFACE.md` § "A run is stored as its settings and keyframes,
-and every state is computed from them" answers it with numbers: a one-hour
-window at 600 columns costs 10.6 ms on a two-hour run and 13.0 ms on a thirty-day one, against
-62.6 ms at four hours and 207.7 ms at twelve on the recorded path. Answering a
-window stopped depending on how long the run has been going, which is the whole
-of what the change bought.
+A reader takes the states it needs from the record each time it runs. It
+keeps no list of states of its own between calls. A branch holds its own
+record. It is a copy of its parent's record up to the fork
+(`StoredStates.through`), and the branch's steps append to the copy
+(`PL-FST0`). So a branch opens at any whole second that its parent has
+reached.
 
-Where cost does still move is the number of control changes inside the window,
-since each stretch in view needs its own propagator: 14.2 ms with two changes
-in view, 231 ms with sixty, about 1.1 s with six hundred. That is the regime
-where the columns are sparser than the changes, in which sampling 600 instants
-aliases the run whatever it samples - a question about what to draw, which
-storage answers no part of.
+The record also stores, for each second, the compensation terms of the
+delivered and the exhausted totals (`TotalsCompensation`). A branch continues
+both totals from the terms stored for the fork, so its totals equal its
+parent's bit for bit while no setting differs. Code that places a system at
+a stored state passes the terms stored beside it
+(`AgentUptakeSystem.resume_at`).
 
-Since `PL-CNCF` those figures are a first frame's: `RunDefinition.evaluate_anchored`
-keeps the propagators one window uses for the next, so a frame following the
-run forms only those that moved - its two bounds' and, when its left edge has
-passed a grid column, one more - and the full span of a 24-hour run with sixty
-changes in view costs 5.9 ms. **By the test above, that store is indexed by the
-watching**: what it holds depends on the window drawn last, so two runs built
-from identical definitions can hold different entries. It is kept as the one
-exception the test's own reason leaves room for (project owner, 2026-10-04,
-ratified, over keeping the test absolute and every frame's cost with it,
-`PL-CNCF`). The watching is refused as a
-second argument because a second argument makes a second source of truth, and
-here it cannot: an entry is found only by a stretch's settings and an interval,
-the whole of what it is formed from, so a hit returns the bits forming it again
-would, and two runs holding different entries draw the same window. Only the
-last window's are kept, so it does not grow with the watching either. A
-collection whose entries are anything but a function of their key alone - a
-state, a sample, anything taken from the run's past - has no such exemption.
+## The preview computes by formula until `PL-Z6C8`
 
-## Two names here say "recorded" and mean "addressed"
+`preview_window` shows what the run would do past the second it has reached,
+so the record holds no state for it. It opens a prediction from the stored
+state at the reach and evaluates it with `RunDefinition.evaluate_anchored`.
+`RunDefinition` still holds a run's settings and one keyframe per setting
+change, and its `state_at`, `evaluate` and `evaluate_anchored` remain for
+the preview and for tests. `PL-Z6C8` removes the evaluation paths that
+nothing reads and decides how the preview is computed.
 
-`run_series.RecordedQuantity` and `RecordedSeries` name what a trace *is* - one
-substance's values for one quantity - and they predate the change. Nothing is
-recorded behind either, and `RecordedSeries` was kept deliberately when the
-store went, because binding a trace to one substance-and-quantity pair is a
-presentation-safety guard rather than a storage concern (`PL-2FM6`). Read them
-as the vocabulary a drawn value is addressed by. Do not read them as evidence
-that a record exists somewhere to be extended.
+## `RecordedQuantity` and `RecordedSeries` name a trace
 
-## If you do have a series that cannot be re-derived
+`run_series.RecordedQuantity` and `RecordedSeries` name what a trace is: one
+substance's values for one quantity. `RecordedSeries` binds a trace to one
+pair of substance and quantity, so a value cannot be drawn under another
+agent's name (`PL-2FM6`). The states behind a trace are in the run's
+`StoredStates`.
 
-Then this rule does not reach it and the downsampling question is a real one.
-`PL-8LXM`, the item that deleted the chart-downsampling module, preserves the
-prior M4 implementation, the Jugel et al. 2014 citation in full, and the
-analysis of what M4 does and does not guarantee - including where that
-implementation departed from the paper's Theorem 1. Start from the item rather
-than from scratch.
+## A window with more seconds than columns
 
-That pointer rides on the rule and is not the reason for it. A rule whose only
-job is remembering a deleted file fires forever and changes no decision, which
-is what `CLAUDE.md` § "Prefer deterministic tooling over repeated model work"
-calls a defect in the check. This one earns its place every time it fires,
-because the regression it prevents is likelier than the recovery it enables.
+The chart draws one stored state per column, both ends of the window and
+each second at which a setting changed. Between two of those seconds it also
+draws the second at which each compartment is highest and the second at which
+it is lowest, where that value lies outside the values at both ends
+(`extreme_seconds` in `src/anesthesia_sim/app/chart_time_base.py`,
+`PL-BLZJ`). `PL-8LXM` holds the earlier M4 implementation, the Jugel et al.
+2014 citation and the analysis of where that implementation departed from the
+paper's Theorem 1.
 
-## Why these five paths
+## Why these six paths
 
-`PL-49R8` named three, two of them by description because the tree was expected
-to move under them, and it has: the sampler entry point from `PL-T691` is
-`core/run_definition.py`; the chart-series module it named is now
-`app/run_series.py`, split out of the controller by `PL-RD3B`; and what replaced
-`app/simulation_view.py`'s frame path is `app/chart_frame.py`.
-
-Two more are here because the rule's own opening sentence names them.
-`core/simulation.py` holds the stepper, which is where "record each sample as
-the simulation steps" would literally be written. `app/controller.py` is where
-the sample store actually lived - `RunHistory`, `SimulationHistorySample` and
-the M4 aggregate cache were 531 of its lines until `PL-2FM6` deleted them - and
-it still holds `drawn_window`, the chart's read, which is the method a cache
-would be hung on.
-
-**The widening from three to five was ratified rather than specified** (project
-owner, 2026-09-21, ratified, over the three paths `PL-49R8` itself named). It
-was a session's recommendation agreed to, not a scope the owner wrote, so
-ordinary evidence reopens it: a measurement of what this file costs on a read of
-one of the two added modules, or a session finding it fires there without
-changing a decision. Dropping either back is an edit to this file's `paths:` and
-nothing else.
+`core/simulation.py` holds the step that stores each state, and
+`core/stored_states.py` holds the record. `core/run_definition.py` holds the
+evaluation paths that a new reader must not use for a reached second.
+`app/controller.py` holds the readers, `app/run_series.py` holds the drawn
+window they fill, and `app/chart_frame.py` draws it.

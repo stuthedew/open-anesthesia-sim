@@ -6,7 +6,6 @@ These tests cover whether a run holds anything a reset would discard.
 """
 
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
-from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
 from tests.integration.controller.controller_support import (
     _advance_for,
@@ -31,7 +30,7 @@ def test_a_run_nobody_has_touched_holds_nothing_to_discard() -> None:
 def test_an_advanced_run_holds_something_to_discard() -> None:
     controller = SimulationController()
     controller.start()
-    _advance_for(controller, duration_s=10.0)
+    _advance_for(controller, duration_s=10)
 
     assert controller.snapshot().has_recorded_run is True
 
@@ -63,7 +62,7 @@ def test_reset_returns_a_run_to_holding_nothing_to_discard() -> None:
 
     controller = SimulationController()
     controller.start()
-    _advance_for(controller, duration_s=10.0)
+    _advance_for(controller, duration_s=10)
     controller.set_fresh_gas_flow(FreshGasFlow(2.0))
     controller.reset()
 
@@ -79,7 +78,7 @@ def test_set_agent_leaves_a_new_run_holding_nothing_to_discard() -> None:
 
     controller = SimulationController()
     controller.start()
-    _advance_for(controller, duration_s=10.0)
+    _advance_for(controller, duration_s=10)
     controller.set_agent("desflurane")
 
     assert controller.snapshot().has_recorded_run is False
@@ -130,7 +129,7 @@ def test_a_branch_advanced_one_step_past_its_fork_holds_something_to_destroy() -
     trunk = _trunk_with_two_changes()
     branch = trunk.resumed_at(trunk.run_segments[-1].opening.instant_s)
     branch.start()
-    branch.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    branch.advance()
 
     assert branch.snapshot().has_recorded_run is True
 
@@ -164,13 +163,13 @@ def test_resetting_a_branch_returns_it_to_holding_nothing_to_destroy() -> None:
     trunk = _trunk_with_two_changes()
     branch = trunk.resumed_at(trunk.run_segments[-1].opening.instant_s)
     branch.start()
-    _advance_for(branch, duration_s=5.0)
+    _advance_for(branch, duration_s=5)
     branch.reset()
 
     assert branch.snapshot().has_recorded_run is False
 
     branch.start()
-    _advance_for(branch, duration_s=5.0)
+    _advance_for(branch, duration_s=5)
     branch.set_fresh_gas_flow(FreshGasFlow(1.0))
     branch.reset()
 

@@ -16,7 +16,7 @@ coefficients' standard deviations. They are:
    first hour.
 
 Each run is the section's own condition: the agent's stored 1 MAC on the dial,
-the default flows, and the reference adult, stepped at 0.1 s for one hour.
+the default flows, and the reference adult, stepped at one second for one hour.
 
 Each figure is read from the section as printed and compared with the run at
 the precision the section prints it with, as
@@ -37,7 +37,7 @@ from anesthesia_sim.app.formatting import (
 )
 from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.parameters import load_agent_parameters
-from anesthesia_sim.core.simulation_step import SimulationStep
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 INTERFACE_PATH = Path(__file__).resolve().parents[2] / "docs" / "INTERFACE.md"
@@ -45,16 +45,14 @@ SECTION_HEADING = "### Displayed precision"
 
 #: The section lists its per-agent figures in this order.
 AGENTS = ("desflurane", "sevoflurane", "isoflurane")
-STEP = SimulationStep(0.1)
 RUN_S = 3600
 SECONDS_PER_MINUTE = 60.0
 ONE_DECIMAL_ZERO = "0.0"
 
-#: A figure printed in whole seconds is the first 0.1 s step at which the
-#: readout changes, rounded to the nearest second. This numerical limit is
-#: that rounding: half a second either way, so a step at exactly x.5 s
-#: matches either neighbour.
-WHOLE_SECOND_LIMIT_S = 0.5
+#: A figure printed in whole seconds is the first step at which the readout
+#: changes. A run steps by whole seconds, so the test compares the two exactly
+#: and needs no limit.
+#:
 #: A figure printed in minutes to one decimal is a step time rounded to
 #: 0.1 min. This numerical limit is that rounding: 0.05 min either way.
 TENTH_MINUTE_LIMIT_MIN = 0.05
@@ -64,14 +62,14 @@ TENTH_MINUTE_LIMIT_MIN = 0.05
 class AgentRun:
     """What one hour at 1 MAC shows, for one agent, in the units the section prints."""
 
-    muscle_first_two_decimal_s: float
-    fat_first_two_decimal_s: float
+    muscle_first_two_decimal_s: int
+    fat_first_two_decimal_s: int
     muscle_first_one_decimal_min: float
     fat_first_one_decimal_min: float | None
     fat_percent_at_end: float
     venous_amount_reads_below_step: bool
     alveolar_amount_reads_below_step: bool
-    alveolar_first_reads_step_s: float | None
+    alveolar_first_reads_step_s: int | None
 
 
 def _section_text() -> str:
@@ -115,13 +113,12 @@ def _run(agent_id: str) -> AgentRun:
         load_agent_parameters(agent_id).mac_percent
     ), f"{agent_id} does not open at its stored 1 MAC, which is the section's condition"
     patient = system.patient
-    first: dict[str, float] = {}
+    first: dict[str, int] = {}
     venous_below = True
     alveolar_below = True
 
-    for index in range(1, round(RUN_S / STEP) + 1):
-        system.advance(STEP)
-        elapsed_s = index * STEP
+    for elapsed_s in range(SIMULATION_STEP_S, RUN_S + 1, SIMULATION_STEP_S):
+        system.advance()
         for name, compartment in (("muscle", patient.muscle), ("fat", patient.fat)):
             fraction = compartment.partial_pressure_fraction
             if f"{name}:2" not in first and format_percent(Fraction(fraction)) != "<0.01%":
@@ -168,9 +165,9 @@ def test_the_first_nonzero_two_decimal_readings_match_the_model() -> None:
             ("muscle", muscle_s, run.muscle_first_two_decimal_s),
             ("fat", fat_s, run.fat_first_two_decimal_s),
         ):
-            assert abs(value - int(printed)) <= WHOLE_SECOND_LIMIT_S, (
+            assert value == int(printed), (
                 f"§ 'Displayed precision' says {agent_id}'s {what} first reads above <0.01% at "
-                f"{printed} s, and the model first does at {value:.1f} s. Update the figure."
+                f"{printed} s, and the model first does at {value} s. Update the figure."
             )
 
 
@@ -265,5 +262,5 @@ def test_the_amounts_below_the_run_totals_step_match_the_model() -> None:
     first_s = _run("desflurane").alveolar_first_reads_step_s
     assert first_s is not None, "desflurane's alveoli read below 0.1 L for the whole hour"
     assert round(first_s / SECONDS_PER_MINUTE) == 2, (
-        f"desflurane's alveoli first read 0.1 L at {first_s:.1f} s, not about two minutes"
+        f"desflurane's alveoli first read 0.1 L at {first_s} s, not about two minutes"
     )

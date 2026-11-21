@@ -52,9 +52,9 @@ reached by more than one route.
   from the canonical state there, replaces one propagation over an interval
   with two propagations over its halves. That is a different rounding of the
   same exact solution, and it stops reproducing the parent. On this file's run
-  forked at 1 234.5 s, 1 109 of the 1 269 state elements over the 141 probes at
-  or past the fork differ. The worst difference is 7.8e-15 as a fraction and
-  1.9e-12 L on an accumulator, measured 2026-09-21. Both figures are far below
+  forked at 1 234 s, 1 120 of the 1 269 state elements over the 141 probes at
+  or past the fork differ. The worst difference is 7.0e-15 as a fraction and
+  1.8e-12 L on an accumulator, measured 2026-11-21. Both figures are far below
   anything a readout resolves, which is why the condition is enforced in code
   rather than left to a reader to notice.
 
@@ -116,11 +116,11 @@ from anesthesia_sim.core.run_definition import DisplayState, RunDefinition
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CaseInstant, FreshGasFlow
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
-CHANGES: tuple[tuple[float, str, float], ...] = (
-    (30.0, "set_delivered_concentration_percent", Percent(4.0)),
-    (120.0, "set_alveolar_ventilation", AlveolarVentilation(6.0)),
-    (450.0, "set_fresh_gas_flow", FreshGasFlow(2.0)),
-    (900.0, "set_delivered_concentration_percent", Percent(1.0)),
+CHANGES: tuple[tuple[int, str, float], ...] = (
+    (30, "set_delivered_concentration_percent", Percent(4.0)),
+    (120, "set_alveolar_ventilation", AlveolarVentilation(6.0)),
+    (450, "set_fresh_gas_flow", FreshGasFlow(2.0)),
+    (900, "set_delivered_concentration_percent", Percent(1.0)),
 )
 """When each control moves, and to what, in the run that every test here uses.
 
@@ -129,9 +129,9 @@ easy case. What an evaluation rule has to get right is the boundary between two
 stretches, where one composition ends and the next begins.
 """
 
-RUN_LENGTH_S = 1800.0
+RUN_LENGTH_S = 1800
 
-SUPPORTED_RUN_LENGTH_S = 24 * 3600.0
+SUPPORTED_RUN_LENGTH_S = 24 * 3600
 """The longest run the model supports, from `docs/INTERFACE.md` § "Supported run length"."""
 
 FRACTION_STATES: tuple[int, ...] = (
@@ -185,7 +185,7 @@ without failing.
 """
 
 
-FORK_BETWEEN_KEYFRAMES_S = 1234.5
+FORK_BETWEEN_KEYFRAMES_S = 1234
 """A fork instant inside the run's last stretch that is not one of its keyframes.
 
 It was chosen for three properties. First, it lies in the stretch that opens at
@@ -193,10 +193,10 @@ It was chosen for three properties. First, it lies in the stretch that opens at
 share every instant from that keyframe to the end of the run, not only the
 instants up to the parent's next setting. Second, it is not a keyframe, and a
 fork at a bookmark halt is usually not one either: on the 120 s run that the
-integration tests use, 3 of the 1 201 instants a halt could land on are
-keyframes. Third, it is a whole number of the 0.1 s steps that a run advances
-through. So it is an instant at which the program could really be halted and
-forked, not one that only this file can name.
+integration tests use, 3 of the 121 instants a halt could land on are
+keyframes. Third, it is a whole number of seconds, and a run advances by one
+second at a step. So it is an instant at which the program could really be
+halted and forked, not one that only this file can name.
 """
 
 WORST_RESTART_FRACTION_DIVERGENCE = 1e-13
@@ -204,7 +204,7 @@ WORST_RESTART_FRACTION_DIVERGENCE = 1e-13
 
 "Restarted" is the route that the program refuses: a definition opened *at* an
 unkeyframed fork instant rather than at the keyframe before it. The divergence
-was measured at or below 7.8e-15 on the run below. The bound is set one order
+was measured at or below 7.0e-15 on the run below. The bound is set one order
 above that, so that ordinary floating-point wobble does not fail the suite. It
 is nine orders below the 1e-4 that a readout resolves, which is the point that
 the measurement makes.
@@ -213,7 +213,7 @@ the measurement makes.
 WORST_RESTART_ACCUMULATOR_DIVERGENCE = 2e-11
 """Bound on |parent - restarted| for a cumulative accumulator, in litres.
 
-The divergence was measured at or below 1.9e-12 on the run below. This bound is
+The divergence was measured at or below 1.8e-12 on the run below. This bound is
 separate from the fraction bound for the reason that
 `WORST_ACCUMULATOR_SEPARATION` gives. One bound covering both would have to be
 the looser of the two, and would let the other quantity drift orders of
@@ -221,7 +221,7 @@ magnitude past anything measured without failing.
 """
 
 
-def _run_definition(length_s: float = RUN_LENGTH_S, probe: Random | None = None) -> RunDefinition:
+def _run_definition(length_s: int = RUN_LENGTH_S, probe: Random | None = None) -> RunDefinition:
     """Build the run that every test here uses, optionally querying it while it is built.
 
     When `probe` is given, the queries are the whole point. They stand for what
@@ -232,7 +232,7 @@ def _run_definition(length_s: float = RUN_LENGTH_S, probe: Random | None = None)
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
 
     for at_s, setter, value in CHANGES:
@@ -404,7 +404,7 @@ def test_a_fork_opening_between_two_keyframes_reproduces_its_parent() -> None:
 
     A bookmark may be dropped anywhere, so a fork taken at one is in general
     taken between two of the parent's keyframes rather than on one. On the
-    120 s run that the integration tests use, 3 of the 1 201 instants a halt
+    120 s run that the integration tests use, 3 of the 121 instants a halt
     could land on are keyframes. Recording a keyframe where the run halts would
     make the two coincide again. `PL-B8MK` measured that route and refused it,
     because it displaces the parent's own later results, so marking a run would
@@ -466,9 +466,9 @@ def test_a_fork_opening_at_the_instant_it_was_taken_does_not_reproduce_its_paren
     parent has no keyframe replaces one propagation over an interval with two
     propagations over its halves. That is the same exact solution composed in
     a different order, and the difference survives to every later instant.
-    Measured on 2026-09-21 over the 141 probes at or past the fork, 1 109 of the
-    1 269 state elements differ. The worst difference is 7.8e-15 as a fraction
-    and 1.9e-12 L on an accumulator.
+    Measured on 2026-11-21 over the 141 probes at or past the fork, 1 120 of the
+    1 269 state elements differ. The worst difference is 7.0e-15 as a fraction
+    and 1.8e-12 L on an accumulator.
 
     Both halves are asserted, because each alone permits a failure that the
     other catches. That the difference is *real* is what makes the condition
@@ -536,7 +536,7 @@ def test_a_display_value_cannot_open_a_run_definition() -> None:
     assert not isinstance(drawn, tuple)
 
     with pytest.raises(SimulationConfigurationError, match="came from the display path"):
-        RunDefinition(_settings_at(definition, 0.0), drawn, opened_at_s=CaseInstant(0.0))  # type: ignore[arg-type]
+        RunDefinition(_settings_at(definition, 0.0), drawn, opened_at_s=CaseInstant(0))  # type: ignore[arg-type]
 
 
 def test_the_display_path_stays_within_its_measured_separation() -> None:

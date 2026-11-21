@@ -48,14 +48,14 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
-from math import ceil, isfinite
+from math import isfinite
 from types import MappingProxyType
 
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.core.concentration import MacMultiple
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.rounding import HEIGHT_BAND, LIVE_READING_GAP
-from anesthesia_sim.core.simulation_step import SimulationStep, require_simulation_step
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CaseInstant, StepCount, require_case_instant
 
 __all__ = [
@@ -247,52 +247,26 @@ class TimeBookmark:
 
         return before_s < self.instant_s <= after_s
 
-    def steps_to_reach(self, simulation_step_s: SimulationStep) -> StepCount:
-        """How many steps a run at `simulation_step_s` must complete to reach this instant.
+    def steps_to_reach(self) -> StepCount:
+        """How many steps a run must complete to reach this instant.
 
-        This is `crossed_between` applied the other way round, on a run's own
-        step grid. The step that ends at this count is the one that
-        `crossed_between` says reaches the mark. So it is the step a halt stops
-        on. `count x step`, the product that `SimulationState.elapsed_s` forms,
-        is the instant at which a branch taken at the mark opens
-        (`SimulationController.resumed_at_mark`). The count is zero for a mark
-        at the case's opening, because a run stands on that mark before any
-        step and no step crosses it.
-
-        **The count comes from the rule, not from rounding** (`PL-W4XQ`). The
-        quotient `instant_s / simulation_step_s` is itself rounded, so its
-        ceiling can land one step late. For example, `0.30000000000000004 / 0.1`
-        is 3.0000000000000004, though the third step's own product equals that
-        instant. So the ceiling is only a first guess. The code then moves the
-        guess to the right step by applying the two comparisons that
-        `crossed_between` makes to the step products themselves. `round` would
-        be worse than late: it puts a mark that lies inside a step on the step
-        *before* it, and no halt stops there.
-
-        Args:
-            simulation_step_s: The simulation step that the run uses.
+        A run stands only on whole steps, and a mark is a whole number of
+        seconds. The step that ends at this count is the one that
+        `crossed_between` says reaches the mark, so it is the step a halt
+        stops on. `count x step`, the product that
+        `SimulationState.elapsed_s` forms, is the instant at which a branch
+        taken at the mark opens (`SimulationController.resumed_at_mark`). The
+        count is zero for a mark at the case's opening, because a run stands
+        on that mark before any step and no step crosses it.
 
         Returns:
             The number of completed steps at which the run first stands at or
             past this instant.
-
-        Raises:
-            TypeError: If `simulation_step_s` is not a `SimulationStep`, so
-                nothing has checked it against the supported range
-                (`core/simulation_step.py`).
         """
 
-        require_simulation_step(simulation_step_s)
-
-        count = ceil(self.instant_s / simulation_step_s)
-
-        while count > 0 and (count - 1) * simulation_step_s >= self.instant_s:
-            count -= 1
-
-        while count * simulation_step_s < self.instant_s:
-            count += 1
-
-        return StepCount(count)
+        # Ceiling division on whole numbers. It is exact, where the float
+        # quotient this method once formed needed correcting (`PL-W4XQ`).
+        return StepCount(-(-int(self.instant_s) // SIMULATION_STEP_S))
 
 
 @dataclass(frozen=True, slots=True)
@@ -433,16 +407,17 @@ class MacTarget:
         return side_before != 0 and (side_after == 0 or side_after == -side_before)
 
     def reading_is_near_a_band_edge(self, reading: MacMultiple) -> bool:
-        """Return whether a live reading is within `LIVE_READING_GAP` of this target's band edges.
+        """Return whether a reading is within `LIVE_READING_GAP` of an edge of this target's band.
 
-        A live reading that is not near an edge lies on the same side of each
-        edge as the canonical reading of the same instant. So when neither of a
-        step's live readings is near an edge, `crossed_between` returns the same
-        result from the live readings as from the canonical ones. The step then
-        needs no canonical reading (`PL-QVBR`).
+        `BookmarkSet.needs_canonical_readings` used the result while a step
+        had two readings that agreed only to rounding. It decided whether a
+        step had to be tested a second time (`PL-QVBR`). A step now has one
+        reading at each end, taken from the run's stored states. Nothing in
+        `src/` calls `needs_canonical_readings` since `PL-MH9J`, so nothing
+        there reaches this method, and `PL-Z6C8` removes it.
 
         Args:
-            reading: A live reading of this target's compartment, as a multiple
+            reading: A reading of this target's compartment, as a multiple
                 of the running agent's 1 MAC.
         """
 
@@ -483,8 +458,8 @@ class BookmarkCrossing:
     Attributes:
         instant_s: The simulated time of the step that crossed the marks, in
             the case's own seconds. It is the completed step's own instant, so
-            it lies on the run's `simulation_step_s` grid rather than on the
-            coarser `multiplier ×` grid that a tick boundary can reach.
+            it is the whole second on which the marks were crossed, and not
+            the later second on which a tick of several steps ends.
             `docs/INTERFACE.md` § "Halting on a marked crossing" states why that
             matters.
         time_bookmarks: The marked instants the step reached, in the order the
@@ -710,8 +685,8 @@ class BookmarkSet:
         `SimulationController.advance` calls this once per completed step, with
         the readings from either side of that step. Testing every step is the
         whole point. A test applied once per rendered frame would place the
-        halt up to `multiplier × simulation_step_s` past the value the learner
-        marked, which is 30 simulated seconds at 300×. The same bookmark would
+        halt up to one tick's steps past the value the learner marked, which
+        is 30 simulated seconds at 300×. The same bookmark would
         then stop the run at a different concentration depending on the
         playback speed (`PL-NBWP`, `docs/MODEL.md` § "Supported simulation
         step").
@@ -764,19 +739,20 @@ class BookmarkSet:
         before: Mapping[RecordedQuantity, MacMultiple],
         after: Mapping[RecordedQuantity, MacMultiple],
     ) -> bool:
-        """Return whether a step's live and canonical readings could cross a MAC target differently.
+        """Return whether a reading of a step lies near an edge of a MAC target's band.
 
-        It returns true when a live reading lies near an edge of a target's
-        band (`MacTarget.reading_is_near_a_band_edge`). Otherwise the live
-        readings give the same result as the canonical ones for every target.
-        Marked instants play no part. Whether a step reaches a marked instant
-        depends only on the times at which the step starts and ends, and the
-        live and canonical readings share those times.
+        It returns true when a reading lies near an edge of a target's band
+        (`MacTarget.reading_is_near_a_band_edge`). Marked instants play no
+        part. `SimulationController.advance` called this method while a step
+        had two readings that agreed only to rounding, to decide whether the
+        step had to be tested a second time (`PL-QVBR`). A step is now tested
+        once, from the two states that the run stored for its ends. Nothing
+        in `src/` calls this method since `PL-MH9J`, and `PL-Z6C8` removes
+        it.
 
         Args:
-            before: The live reading of every compartment a target could
-                name, before the step, as multiples of the running agent's
-                1 MAC.
+            before: The reading of every compartment a target could name,
+                before the step, as multiples of the running agent's 1 MAC.
             after: The same compartments after the step.
 
         Raises:
@@ -924,12 +900,11 @@ def _time_bookmark_standing(
     1. **The halt set** comes first, because it covers the one case that the
        comparison below cannot see. A halt lands on the step that *crossed*
        the mark, so a fork taken there opens at the crossing step's own
-       instant. That instant is at the marked instant or one step past it.
-       For an instant that is not a multiple of the step in binary, it is past
-       the marked instant by a few parts in 1e16. For example, with `45.3`
-       marked and `45.300000000000004` forked at, the branch opens after its
-       own mark. Only asking again about the step the branch opened on shows
-       that the two are one crossing.
+       instant. A mark and a step's instant are both whole seconds since
+       `PL-SZ6G`, so that instant is the marked instant itself, and case 2
+       below gives the same result. Before `PL-SZ6G` a step of 0.1 s could
+       land a few parts in 1e16 past a mark such as 45.3 s, and the branch
+       then opened after its own mark. The halt set is still asked first.
     2. **`opened_at_s <= instant_s <= elapsed_s`**: the run has been at that
        instant, whatever put it there.
     3. **`BEFORE_THIS_BRANCH`**, tested with a strict `<`, for an instant

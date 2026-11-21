@@ -9,6 +9,7 @@ from math import isfinite
 from typing import TYPE_CHECKING
 
 from anesthesia_sim.core.checked_number import require_a_number, shown
+from anesthesia_sim.core.checked_record import restore_through_checks
 from anesthesia_sim.core.exceptions import (
     AgentSimulationValidationError,
     SimulationConfigurationError,
@@ -37,6 +38,69 @@ _ACCOUNTING_TOTALS = frozenset({"initial_agent_l", "delivered_agent_l", "exhaust
 _COMPENSATION_TERMS = frozenset({"delivered_compensation_l", "exhausted_compensation_l"})
 
 
+@dataclass(frozen=True, slots=True)
+class TotalsCompensation:
+    """The compensation terms of the delivered and the exhausted totals, in litres.
+
+    Each total is a running sum of one transfer per step, kept by compensated
+    summation (`_compensated_sum`). Its term carries the rounding error of
+    the additions so far into the next addition. A total continued from its
+    value alone, with a term of zero, is still accurate. But its next addition
+    can round differently, so two runs that add the same amounts can reach
+    totals that differ in the last bit. A run stores the pair beside each
+    second's state (`core/stored_states.py`), and a branch continues both
+    totals from the stored pair (`AgentUptakeSystem.resume_at`, `PL-FST0`).
+
+    A term is the size of a rounding error in its total, and it may be
+    negative.
+
+    Raises:
+        TypeError: a term is not an `int` or a `float`.
+        SimulationConfigurationError: a term is not finite.
+    """
+
+    delivered_l: float
+    exhausted_l: float
+
+    def __post_init__(self) -> None:
+        for name in ("delivered_l", "exhausted_l"):
+            term = getattr(self, name)
+            require_a_number(name, term)
+
+            if not isfinite(term):
+                raise SimulationConfigurationError(
+                    f"the compensation term {name} must be finite, and {shown(term)} is not"
+                )
+
+    def __setstate__(self, state: object) -> None:
+        """Restore an unpickled or copied record through the constructor's checks (`PL-8W1Q`)."""
+
+        restore_through_checks(self, state)
+
+
+UNCOMPENSATED = TotalsCompensation(delivered_l=0.0, exhausted_l=0.0)
+"""The terms of two totals that were written whole and not summed.
+
+A fresh run holds these, and so does a system placed at a state that carries
+no terms of its own (`AgentUptakeSystem.resume_at`).
+"""
+
+
+def require_totals_compensation(compensation: TotalsCompensation) -> None:
+    """Require a value built as a `TotalsCompensation`, which has checked its two terms.
+
+    Raises:
+        TypeError: `compensation` is anything else.
+    """
+
+    if not isinstance(compensation, TotalsCompensation):
+        raise TypeError(
+            f"compensation has type {type(compensation).__name__}, not TotalsCompensation: "
+            "the compensation terms of the running totals are built as a TotalsCompensation, "
+            "which checks that each is a finite number of litres"
+        )
+
+
 def _compensated_sum(total: float, compensation: float, addend: float) -> tuple[float, float]:
     """Add `addend` to a running total by Kahan's compensated summation.
 
@@ -53,8 +117,10 @@ def _compensated_sum(total: float, compensation: float, addend: float) -> tuple[
     *Accuracy and Stability of Numerical Algorithms*, 2nd ed., SIAM, 2002,
     section 4.3, equation 4.8). The error of plain addition does grow with the
     run's length, by up to u per addition. `docs/MODEL.md` § "Mass-balance
-    identity" gives the error that each method gave over a 24 h run at the
-    step floor, the shortest step the model allows (`PL-XST1`).
+    identity" gives how far each method's totals drifted from the exact sum
+    over a 24 h run at the one-second step, and each method's worst
+    mass-balance residual in that run. It also gives how close plain addition
+    came to the halt threshold when this summation was adopted (`PL-XST1`).
 
     Neumaier's variant, which CPython's `sum` uses, keeps the plain running
     sum and adds the compensation only at the end. That would leave the stored
@@ -301,6 +367,14 @@ class AgentSimulationValidator:
             "currently_stored="
             f"{check.currently_stored_agent_l:.6e} L",
             check=check,
+        )
+
+    @property
+    def compensation(self) -> TotalsCompensation:
+        """The compensation terms of the delivered and the exhausted totals, as they now are."""
+
+        return TotalsCompensation(
+            delivered_l=self.delivered_compensation_l, exhausted_l=self.exhausted_compensation_l
         )
 
     def capture_state(self) -> AgentSimulationValidatorState:

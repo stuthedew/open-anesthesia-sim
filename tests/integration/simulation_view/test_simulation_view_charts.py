@@ -48,7 +48,7 @@ from tests.integration.simulation_view.simulation_view_support import (
 def test_the_chart_defaults_to_fitting_the_whole_run(application: QApplication) -> None:
     controller = SimulationController()
     controller.start()
-    _advance(controller, 1200.0)
+    _advance(controller, 1200)
     view = _shown_view(application, controller)
     frame = _concentration(view).chart.frame
 
@@ -80,7 +80,7 @@ def test_selecting_a_time_base_makes_the_window_exactly_that_wide(
 ) -> None:
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     view = _shown_view(application, controller)
 
     for time_base in SELECTABLE_TIME_BASES:
@@ -98,7 +98,7 @@ def test_a_run_shorter_than_the_selected_time_base_shows_whole(application: QApp
 
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     view = _shown_view(application, controller)
 
     _select_time_base(view, "900.0")
@@ -117,7 +117,7 @@ def test_both_plots_are_labelled_from_the_same_ticks(application: QApplication) 
 
     controller = SimulationController()
     controller.start()
-    _advance(controller, 1800.0)
+    _advance(controller, 1800)
     view = _shown_view(application, controller)
 
     assert _wash_in(view).chart.frame is _concentration(view).chart.frame
@@ -133,7 +133,7 @@ def test_the_two_plots_share_one_frame_while_they_show_the_same_window(
 
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     view = _shown_view(application, controller)
     wash_in = _wash_in(view)
 
@@ -159,7 +159,7 @@ def test_the_time_axis_caption_on_screen_states_the_span_and_the_mode(
 
     controller = SimulationController()
     controller.start()
-    _advance(controller, 7200.0)
+    _advance(controller, 7200)
     view = _shown_view(application, controller)
     frame = _concentration(view).chart.frame
     assert frame is not None
@@ -179,7 +179,7 @@ def test_the_time_axis_caption_on_screen_states_the_span_and_the_mode(
 def test_choosing_a_time_base_changes_nothing_the_run_recorded(application: QApplication) -> None:
     controller = SimulationController()
     controller.start()
-    _advance(controller, 20.0)
+    _advance(controller, 20)
     view = _shown_view(application, controller)
     recorded = (controller.snapshot().elapsed_s, controller.run_segments)
 
@@ -204,7 +204,7 @@ def test_a_window_pick_whose_frame_fails_leaves_the_control_on_the_window_drawn(
 ) -> None:
     """The control names the window on the plot, not one that never drew (`PL-G3K7`, `PL-L59K`)."""
 
-    controller = _paused_run_with_history(1800.0)
+    controller = _paused_run_with_history(1800)
     view = _shown_view(application, controller)
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
 
@@ -227,7 +227,7 @@ def test_a_frame_is_assembled_and_checked_with_no_chart_shown(
     is shown again.
     """
 
-    view = _shown_view(application, _paused_run_with_history(60.0))
+    view = _shown_view(application, _paused_run_with_history(60))
 
     for area in (AreaId(1), AreaId(3)):
         view.layout_container.choose_view(area, PARAMETER_CONTROLS)
@@ -252,7 +252,7 @@ def test_a_chart_s_window_returns_with_the_chart_after_its_area_shows_another_vi
     that Area shows the window that the reader chose.
     """
 
-    controller = _paused_run_with_history(1800.0)
+    controller = _paused_run_with_history(1800)
     view = _shown_view(application, controller)
     _select_time_base(view, "1800.0")
 
@@ -362,10 +362,10 @@ def test_a_recorded_change_is_marked_on_the_chart_at_its_own_time(
 
     controller = SimulationController()
     controller.start()
-    _advance(controller, 600.0)
+    _advance(controller, 600)
     controller.begin_control_adjustment()
     controller.set_fresh_gas_flow(FreshGasFlow(2.0))
-    _advance(controller, 600.0)
+    _advance(controller, 600)
     view = _shown_view(application, controller)
 
     assert _concentration(view).chart.control_mark_times(0) == (pytest.approx(600.0),)
@@ -378,7 +378,7 @@ def test_a_real_run_draws_the_ratio_of_its_own_recorded_compartments(
 ) -> None:
     controller = SimulationController()
     controller.start()
-    _advance(controller, 60.0)
+    _advance(controller, 60)
     view = _shown_view(application, controller)
     snapshot = controller.snapshot()
     reading = read_wash_in(

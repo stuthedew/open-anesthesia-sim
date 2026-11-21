@@ -28,11 +28,7 @@ from PySide6.QtWidgets import QApplication, QLabel
 from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app.agent_cost import NO_PRICE_TEXT
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
-from anesthesia_sim.app.dashboard_frame import (
-    INTERPRETATION_DISCLAIMER_TEXT,
-    SIMULATION_STEP_S,
-    TRUNK_RUN_INDEX,
-)
+from anesthesia_sim.app.dashboard_frame import INTERPRETATION_DISCLAIMER_TEXT, TRUNK_RUN_INDEX
 from anesthesia_sim.app.formatting import AgentAmountUnit
 from anesthesia_sim.app.main import open_dashboard, open_preferences
 from anesthesia_sim.app.preferences import PREFERENCES_FILE_NAME, AgentPrice, PreferencesStore
@@ -41,6 +37,7 @@ from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING, AGENT_COST, BRANCH, REGISTERED
 from anesthesia_sim.app.views import AgentCostView, BranchView
 from anesthesia_sim.core.concentration import Percent
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
 from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.serialization import workspace_set_to_json
@@ -169,7 +166,7 @@ def _branch_control(view: SimulationView) -> ForkPanel:
 
 def _advance(controller: SimulationController, seconds: float) -> None:
     for _ in range(round(seconds / SIMULATION_STEP_S)):
-        controller.advance(SIMULATION_STEP_S)
+        controller.advance()
 
 
 def _liquid_ml(agent_id: str, vapour_l: float) -> float:

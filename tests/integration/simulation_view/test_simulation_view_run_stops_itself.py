@@ -7,7 +7,6 @@ These tests cover a run that stops itself (`PL-T995`).
 
 import time
 from collections.abc import Callable, Mapping
-from dataclasses import replace
 from typing import Final, NoReturn
 
 import pytest
@@ -35,7 +34,6 @@ from anesthesia_sim.app.dashboard_frame import (
     READOUT_PANELS,
     REFUSED_RESET_WAY_OUT_TEXT,
     RESET_EXIT_TEXT,
-    SIMULATION_STEP_S,
     STATUS_FAILED_TEXT,
     STATUS_MARK_HALT_TEXT,
     STATUS_SUPPORTED_LIMIT_TEXT,
@@ -83,6 +81,7 @@ from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
     SimulationDomainLimitError,
 )
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CardiacOutput, CaseInstant
 from anesthesia_sim.layout.tree import AreaId
 from tests.integration.simulation_view.simulation_view_support import (
@@ -132,12 +131,12 @@ from tests.integration.simulation_view.simulation_view_support import (
 # very frame that this path never asked for.
 
 #: How long a real-timer test waits for its condition before it fails rather
-#: than hangs. It is ample beside the half second of play that each test needs.
+#: than hangs. It is ample beside the one second of play that each test needs.
 _REAL_TIMER_BUDGET_S = 10.0
 
-#: Half a second of 1x play past the 60 s at which `_branched_case` pauses, so
-#: the step timer reaches it in five ticks.
-_TIMED_STOP_S = 60.5
+#: One second of 1x play past the 60 s at which `_branched_case` pauses, so
+#: the step timer reaches it in ten ticks.
+_TIMED_STOP_S = 61
 
 
 def _render_ticks(view: SimulationView) -> list[None]:
@@ -298,21 +297,19 @@ def test_a_run_that_arrives_at_the_supported_run_length_under_its_own_timers_is_
     `SimulationController.advance` halts a run on the step that lands it on
     the supported run length, and raises nothing. So `RunView._halt_run`, the
     one branch of `step_tick` that asked for a frame, is never reached
-    (`PL-T995`). The span is shortened to end half a second past the trunk's
-    pause. The timers would take a day to reach the real span, and stepping a
-    run to one step short of it takes about 27 s. `maximum_step_count` is the
-    one count from which the controller and the core both read the span, so
-    the two agree on the shortened span. Where a run stops on the real span is
+    (`PL-T995`). The span is shortened to end one second past the trunk's
+    pause, because the timers would take a day to reach the real span.
+    `MAXIMUM_STEP_COUNT` is the one count from which the controller and the
+    core both read the span, so the two agree on the shortened span. Where a
+    run stops on the real span is
     tested by
     `test_a_run_standing_on_the_supported_run_length_reads_as_stopped_from_the_arriving_step`.
     """
 
     case = _branched_case()
     view = _case_view(application, case)
-    last_step = round(_TIMED_STOP_S / SIMULATION_STEP_S)
-    monkeypatch.setattr(
-        supported_ranges_module, "maximum_step_count", lambda simulation_step_s: last_step
-    )
+    last_step = _TIMED_STOP_S // SIMULATION_STEP_S
+    monkeypatch.setattr(supported_ranges_module, "MAXIMUM_STEP_COUNT", last_step)
 
     _play_until_it_stops(view, case.trunk)
 
@@ -812,7 +809,7 @@ def test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one(
     controller = SimulationController()
     controller.start()
     controller.set_delivered_concentration_percent(Percent(8.0))
-    _advance(controller, 600.0)
+    _advance(controller, 600)
     controller.pause()
     view = _shown_view(application, controller)
     run = view.runs[0]
@@ -1157,10 +1154,10 @@ def _a_drawn_frame(
     controller = SimulationController()
     controller.start()
     controller.set_delivered_concentration_percent(Percent(8.0))
-    _advance(controller, 600.0)
+    _advance(controller, 600)
     controller.pause()
     run = _shown_view(application, controller).runs[0]
-    step = _fresh_run(600.0, delivered_concentration_percent=Percent(8.0)).snapshot()
+    step = _fresh_run(600, delivered_concentration_percent=Percent(8.0)).snapshot()
 
     return run, {
         "readouts": _readouts_of(step),
@@ -1185,7 +1182,7 @@ def _a_halt_after_an_agent_change(
     controller = SimulationController()
     controller.start()
     controller.set_delivered_concentration_percent(Percent(8.0))
-    _advance(controller, 600.0)
+    _advance(controller, 600)
     controller.pause()
     run = _shown_view(application, controller).runs[0]
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
@@ -1222,7 +1219,7 @@ def _a_halt_after_an_agent_change_whose_dials_cannot_be_written(
     controller = SimulationController()
     controller.start()
     controller.set_delivered_concentration_percent(Percent(8.0))
-    _advance(controller, 600.0)
+    _advance(controller, 600)
     controller.pause()
     run = _shown_view(application, controller).runs[0]
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
@@ -1289,7 +1286,7 @@ def _a_dial_moved_on_a_failed_run(
     controller = _StepFailingController(failure)
     controller._pending_error = None
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     run = _shown_view(application, controller).runs[0]
     controller._pending_error = failure
 
@@ -1297,7 +1294,7 @@ def _a_dial_moved_on_a_failed_run(
     assert controller.has_failed is True
     _drag(_dials(run)._cardiac_output_slider, 10.0, FLOW_DISPLAY_DECIMALS)
 
-    step = _fresh_run(300.0).snapshot()
+    step = _fresh_run(300).snapshot()
 
     return run, {
         "readouts": _readouts_of(step),
@@ -1311,25 +1308,23 @@ def _a_dial_moved_at_the_supported_run_length(
 ) -> tuple[RunView, _GroupReadings]:
     """A run stopped at a shortened supported run length, then had its cardiac output dial moved.
 
-    The supported run length here ends at 300 s, as `maximum_step_count` reads it,
+    The supported run length here ends at 300 s, as `MAXIMUM_STEP_COUNT` states it,
     for the reason that
     `test_a_run_that_arrives_at_the_supported_run_length_under_its_own_timers_is_redrawn`
     gives. Every group describes the step the run stopped on (`PL-3B34`).
     """
 
-    last_step = round(300.0 / SIMULATION_STEP_S)
-    monkeypatch.setattr(
-        supported_ranges_module, "maximum_step_count", lambda simulation_step_s: last_step
-    )
+    last_step = 300 // SIMULATION_STEP_S
+    monkeypatch.setattr(supported_ranges_module, "MAXIMUM_STEP_COUNT", last_step)
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     assert controller.has_reached_supported_limit is True
     run = _case_view(application, BranchedCase(controller)).runs[0]
 
     _drag(_dials(run)._cardiac_output_slider, 10.0, FLOW_DISPLAY_DECIMALS)
 
-    step = _fresh_run(300.0).snapshot()
+    step = _fresh_run(300).snapshot()
 
     return run, {
         "readouts": _readouts_of(step),
@@ -1350,14 +1345,14 @@ def _an_accounting_halt(
 
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     run = _shown_view(application, controller).runs[0]
     _reject_the_next_accounting_check(monkeypatch)
 
     _steps(run, 1)
 
     assert controller.has_failed is True
-    step = _fresh_run(300.0).snapshot()
+    step = _fresh_run(300).snapshot()
 
     return run, {
         "readouts": _readouts_of(step),
@@ -1379,7 +1374,7 @@ def _an_accounting_halt_that_no_frame_draws(
 
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     run = _shown_view(application, controller).runs[0]
     _reject_the_next_accounting_check(monkeypatch)
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
@@ -1387,7 +1382,7 @@ def _an_accounting_halt_that_no_frame_draws(
     _steps(run, 1)
 
     assert controller.status().rejected_accounting is not None
-    step = _fresh_run(300.0).snapshot()
+    step = _fresh_run(300).snapshot()
 
     return run, {
         "readouts": _readouts_of(step),
@@ -1412,7 +1407,7 @@ def _a_halt_after_a_reset_that_no_frame_draws(
 
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     run = _shown_view(application, controller).runs[0]
     _reject_the_next_accounting_check(monkeypatch)
     _steps(run, 1)
@@ -1447,7 +1442,7 @@ def _a_frame_after_a_reset_that_followed_an_accounting_halt(
 
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     run = _shown_view(application, controller).runs[0]
     _reject_the_next_accounting_check(monkeypatch)
     _steps(run, 1)
@@ -1479,7 +1474,7 @@ def _a_frame_after_an_agent_change_that_followed_an_accounting_halt(
 
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     run = _shown_view(application, controller).runs[0]
     _reject_the_next_accounting_check(monkeypatch)
     _steps(run, 1)
@@ -1516,7 +1511,7 @@ def _a_halt_after_a_frame_drawn_for_a_new_agent(
     controller = SimulationController()
     controller.start()
     controller.set_delivered_concentration_percent(Percent(8.0))
-    _advance(controller, 600.0)
+    _advance(controller, 600)
     controller.pause()
     view = _shown_view(application, controller)
     run = view.runs[0]
@@ -1555,16 +1550,16 @@ def _a_halt_after_frames_drawn_later_than_the_first(
     view = _shown_view(application, controller)
     run = view.runs[0]
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     view.present(False)
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     view.present(False)
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
 
     view.present(False)
 
     assert controller.has_failed is True
-    step = _fresh_run(600.0).snapshot()
+    step = _fresh_run(600).snapshot()
 
     return run, {
         "readouts": _readouts_of(step),
@@ -1795,16 +1790,14 @@ def test_a_setting_refused_at_the_supported_run_length_names_a_branch_only_while
     `_a_dial_moved_at_the_supported_run_length` gives.
     """
 
-    last_step = round(300.0 / SIMULATION_STEP_S)
-    monkeypatch.setattr(
-        supported_ranges_module, "maximum_step_count", lambda simulation_step_s: last_step
-    )
+    last_step = 300 // SIMULATION_STEP_S
+    monkeypatch.setattr(supported_ranges_module, "MAXIMUM_STEP_COUNT", last_step)
     refused = f"{_CARDIAC_OUTPUT_REFUSED_ON_A_STOPPED_RUN}. "
     reset_alone = refused + "Reset to start a new run, which keeps every setting."
 
     caseless = SimulationController()
     caseless.start()
-    _advance(caseless, 300.0)
+    _advance(caseless, 300)
     caseless_run = _shown_view(application, caseless).runs[0]
     _drag(_dials(caseless_run)._cardiac_output_slider, 10.0, FLOW_DISPLAY_DECIMALS)
 
@@ -1814,7 +1807,7 @@ def test_a_setting_refused_at_the_supported_run_length_names_a_branch_only_while
 
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     assert controller.has_reached_supported_limit is True
     view = _case_view(application, BranchedCase(controller))
     trunk = view.runs[0]
@@ -1852,13 +1845,11 @@ def test_a_setting_refused_after_the_dashboard_failed_at_the_supported_run_lengt
     `_a_dial_moved_at_the_supported_run_length` gives.
     """
 
-    last_step = round(300.0 / SIMULATION_STEP_S)
-    monkeypatch.setattr(
-        supported_ranges_module, "maximum_step_count", lambda simulation_step_s: last_step
-    )
+    last_step = 300 // SIMULATION_STEP_S
+    monkeypatch.setattr(supported_ranges_module, "MAXIMUM_STEP_COUNT", last_step)
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     view = _case_view(application, BranchedCase(controller))
     trunk = view.runs[0]
 
@@ -2418,7 +2409,7 @@ def _refusing_a_drawn_column(
 
     This is the one way to get a drawn fraction outside 0 to 1, because no
     supported setting computes one (`core/concentration.py`). A drawn window
-    is an evaluation of the closed form. So the value is written into the
+    holds states that the run stored after checking them. So the value is written into the
     window that the controller returns, not into any compartment.
     """
 
@@ -2427,9 +2418,9 @@ def _refusing_a_drawn_column(
     def drawn_window(start_s: float, stop_s: float, columns: int) -> DrawnWindow:
         window = real_drawn_window(start_s, stop_s, columns)
         states = list(window.states)
-        values = list(states[-1].values)
+        values = list(states[-1])
         values[COMPARTMENT_STATE_INDEX[quantity]] = value
-        states[-1] = replace(states[-1], values=tuple(values))
+        states[-1] = tuple(values)
 
         return DrawnWindow(window.substance_id, window.times_s, tuple(states))
 
@@ -2453,14 +2444,14 @@ def test_a_frame_that_refuses_a_drawn_value_moves_no_trace(application: QApplica
     controller.start()
     view = _shown_view(application, controller)
     for _ in range(50):
-        controller.advance(SIMULATION_STEP_S)
+        controller.advance()
     view.render_tick()
     chart = _concentration(view).chart
     before = {quantity: chart.drawn_points(0, quantity) for quantity in COMPARTMENT_QUANTITIES}
 
     _refusing_a_drawn_column(controller, RecordedQuantity.MUSCLE, 1.0000000000001568)
     for _ in range(50):
-        controller.advance(SIMULATION_STEP_S)
+        controller.advance()
 
     view.render_tick()
 
@@ -2502,14 +2493,14 @@ def test_a_non_finite_drawn_value_halts_the_run_naming_its_compartment(
     controller.start()
     view = _shown_view(application, controller)
     for _ in range(50):
-        controller.advance(SIMULATION_STEP_S)
+        controller.advance()
     view.render_tick()
     chart = _concentration(view).chart
     before = {quantity: chart.drawn_points(0, quantity) for quantity in COMPARTMENT_QUANTITIES}
 
     _refusing_a_drawn_column(controller, RecordedQuantity.FAT, value)
     for _ in range(50):
-        controller.advance(SIMULATION_STEP_S)
+        controller.advance()
 
     view.render_tick()
 
@@ -2571,9 +2562,15 @@ def test_a_resize_while_paused_redraws_the_frame_for_the_new_width(
     is right for that width only. On a paused run with no frame owed, nothing
     would redraw after a resize. The columns drawn for the narrow plot would
     then stay on the wide plot, at twice the chord.
+
+    The run is 30 minutes long, so its axis shows more seconds than the plot
+    has pixels across it at both widths. A chart column is drawn only at a
+    whole second. So on a one-minute axis both frames would hold a column at
+    every second, more than a pixel apart, and the test could not tell one
+    frame from the other.
     """
 
-    controller = _paused_run_with_history()
+    controller = _paused_run_with_history(1800)
     view = _shown_view(application, controller, width_px=800)
     presented = view.presented_frames
 

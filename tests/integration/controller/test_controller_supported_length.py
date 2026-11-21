@@ -21,12 +21,11 @@ from anesthesia_sim.app.formatting import format_supported_run_length
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.core.concentration import MacMultiple
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
-from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ELAPSED_SIMULATION_TIME_S,
+    MAXIMUM_STEP_COUNT,
     CaseInstant,
     FreshGasFlow,
-    maximum_step_count,
     require_supported_run_length,
 )
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
@@ -47,7 +46,7 @@ def test_stopping_at_the_supported_run_length_is_not_a_failure() -> None:
 
     controller = SimulationController()
     controller.start()
-    controller.advance(SimulationStep(0.1))
+    controller.advance()
     controller.halt_at_supported_limit("reached 86400 s of simulated time")
 
     snapshot = controller.snapshot()
@@ -94,7 +93,7 @@ def test_reset_clears_the_supported_limit_and_restores_a_startable_session() -> 
 
     controller = SimulationController()
     controller.start()
-    controller.advance(SimulationStep(0.1))
+    controller.advance()
     controller.halt_at_supported_limit("reached 86400 s of simulated time")
 
     controller.reset()
@@ -129,11 +128,11 @@ def test_switching_agent_clears_the_supported_limit() -> None:
 # reset onto such a fork. Each of these offered Start, showed no limit notice,
 # and told a learner that an unreached mark was still ahead of a run that could
 # not step. Every assertion below is checked end to end, from the controller's
-# snapshot through the pure dashboard functions that a frame is built from. The
-# tests use the shipped 0.1 s step, because that is the step whose last
-# supported count lands exactly on 24 hours (`PL-8H2R`).
+# snapshot through the pure dashboard functions that a frame is built from. A
+# run steps by one second, so its last supported count lands exactly on 24
+# hours.
 #
-# Stepping a run to 24 hours takes about 30 s. So the two runs that do it are
+# Stepping a run to 24 hours takes about 5 s. So the two runs that do it are
 # built once per pytest run and shared between xdist workers. No test below
 # changes what another test reads from them. A fork leaves its parent
 # untouched, and the one dial moved on a stopped run is refused (`PL-3B34`).
@@ -144,17 +143,16 @@ _UNREACHABLE_TARGET = MacTarget(RecordedQuantity.FAT, MacMultiple(3.0), "never")
 
 
 def _step_onto_the_supported_run_length(controller: SimulationController) -> None:
-    """Take exactly the supported number of 0.1 s steps, and no refused one.
+    """Take exactly the supported number of steps, and no refused one.
 
-    `maximum_step_count` is the largest step count the run may reach. The core
+    `MAXIMUM_STEP_COUNT` is the largest step count the run may reach. The core
     refuses the step after it, and this helper never takes that step.
     """
 
     controller.start()
-    step = SimulationStep(MAXIMUM_SIMULATION_STEP_S)
 
-    for _ in range(maximum_step_count(step)):
-        controller.advance(step)
+    for _ in range(MAXIMUM_STEP_COUNT):
+        controller.advance()
 
 
 def _stepped_onto_the_limit() -> SimulationController:
@@ -215,9 +213,7 @@ def _the_reason_the_refused_step_would_give(run: SimulationController) -> str:
     """The message with which the core refuses this run's next step, taken from the core."""
 
     with pytest.raises(SimulationDomainLimitError) as refusal:
-        require_supported_run_length(
-            run._state.step_count, SimulationStep(MAXIMUM_SIMULATION_STEP_S)
-        )
+        require_supported_run_length(run._state.step_count)
 
     return str(refusal.value)
 
@@ -269,12 +265,12 @@ def test_a_run_standing_on_the_supported_run_length_reads_as_stopped_from_the_ar
 
     trunk = trunk_stepped_onto_the_limit
 
-    assert trunk._state.step_count == maximum_step_count(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    assert trunk._state.step_count == MAXIMUM_STEP_COUNT
     _assert_reads_as_stopped_at_the_supported_run_length(trunk)
 
     # A further tick does nothing, as it does on a paused run. Nothing is
     # raised, and the clock stays exactly where the last supported step left it.
-    trunk.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    trunk.advance()
 
     assert trunk.snapshot().elapsed_s == MAXIMUM_ELAPSED_SIMULATION_TIME_S
 
@@ -320,7 +316,7 @@ def test_a_branch_on_the_supported_run_length_is_not_sent_to_a_reset_that_return
         trunk.resumed_at_mark(on_the_limit)
 
     assert str(refusal.value) == (
-        "a branch at 86400.0 s would open on the supported run length, where no step is left "
+        "a branch at 86400 s would open on the supported run length, where no step is left "
         "to take, so it could never be run; a setting change or a mark before it is still "
         "branched at with resumed_at or resumed_at_mark"
     )
@@ -330,13 +326,14 @@ def test_a_branch_on_the_supported_run_length_is_not_sent_to_a_reset_that_return
 def test_no_dial_makes_a_keyframe_on_the_supported_run_length_to_branch_at(
     trunk_stepped_onto_the_limit: SimulationController,
 ) -> None:
-    """A dial moved on the stopped trunk is refused, so no branch opens at a keyframe on 24:00:00.
+    """A dial moved on the stopped trunk is refused, and no branch opens on 24:00:00.
 
     Until `PL-3B34`, a dial moved after the run stopped was recorded at
     24:00:00. That made a keyframe there, and `resumed_at` opened a branch on
     it that could never step. The stopped run now refuses the dial, so the
-    trunk keeps its one stretch from 0 s. `resumed_at` therefore rejects the
-    limit as an instant with no keyframe. A mark on the limit is rejected too, as
+    trunk keeps its one stretch from 0 s. `resumed_at` rejects the limit
+    because a branch there would have no step to take, as it does for every
+    instant since `PL-FST0`. A mark on the limit is rejected too, as
     `test_a_branch_on_the_supported_run_length_is_not_sent_to_a_reset_that_returns_it_there`
     checks.
     """
@@ -349,9 +346,12 @@ def test_no_dial_makes_a_keyframe_on_the_supported_run_length_to_branch_at(
     ):
         trunk.set_fresh_gas_flow(FreshGasFlow(6.0))
 
-    assert [segment.opening.instant_s for segment in trunk.run_segments] == [0.0]
+    assert [segment.opening.instant_s for segment in trunk.run_segments] == [0]
 
-    with pytest.raises(SimulationConfigurationError, match="keyframe"):
+    with pytest.raises(
+        SimulationConfigurationError,
+        match="^a branch at 86400 s would open on the supported run length",
+    ):
         trunk.resumed_at(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S))
 
     _assert_reads_as_stopped_at_the_supported_run_length(trunk)
@@ -390,7 +390,7 @@ def test_the_refusal_to_branch_at_the_supported_run_length_is_pinned_whole(
         trunk_stepped_onto_the_limit.resumed_here()
 
     assert str(refusal.value) == (
-        "this run stands at 86400.0 s, the supported run length, where no step is left to "
+        "this run stands at 86400 s, the supported run length, where no step is left to "
         "take, so a branch opened where it stands could not be run; a setting change or a "
         "mark it passed before is still branched at with resumed_at or resumed_at_mark"
     )

@@ -53,7 +53,7 @@ from anesthesia_sim.app.chart_time_base import ChartTimeBase
 from anesthesia_sim.app.controller import BranchedCase, SimulationController, SimulationSnapshot
 from anesthesia_sim.app.dashboard_frame import (
     READOUT_PANELS,
-    SIMULATION_STEP_S,
+    SIMULATION_TICK_INTERVAL_MS,
     WITHHELD_ACCOUNTING,
     ComparedRuns,
     accounting,
@@ -93,9 +93,12 @@ from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.blood_flow import PerfusionFraction
 from anesthesia_sim.core.concentration import Fraction, MacMultiple
 from anesthesia_sim.core.exceptions import SimulationNumericalError
-from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
+from anesthesia_sim.core.governing_equations import ALVEOLAR_FRACTION
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
+from anesthesia_sim.core.stored_states import StoredStates
 from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow
 from anesthesia_sim.core.tissue import TissueGroup
+from anesthesia_sim.core.units import MILLISECONDS_PER_SECOND
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.run_identity import RunId, SessionToken
@@ -306,14 +309,14 @@ def _wash_in(view: SimulationView) -> WashInView:
     return next(v for v in view.layout_container.views() if isinstance(v, WashInView))
 
 
-def _advance(controller: SimulationController, seconds: float) -> None:
-    for _ in range(round(seconds / SIMULATION_STEP_S)):
-        controller.advance(SIMULATION_STEP_S)
+def _advance(controller: SimulationController, seconds: int) -> None:
+    for _ in range(seconds // SIMULATION_STEP_S):
+        controller.advance()
 
 
-def _advance_to(controller: SimulationController, elapsed_s: float) -> None:
-    while controller.snapshot().elapsed_s < elapsed_s - SIMULATION_STEP_S / 2.0:
-        controller.advance(SIMULATION_STEP_S)
+def _advance_to(controller: SimulationController, elapsed_s: int) -> None:
+    while controller.snapshot().elapsed_s < elapsed_s:
+        controller.advance()
 
 
 def _shown_view(
@@ -455,22 +458,53 @@ def _setting_sections(view: SimulationView) -> list[QWidget]:
     return list(_setting_controls(view).rows)
 
 
-def _steps(run: RunView, ticks: int) -> None:
+#: How many ticks of the run loop pass for each step of a run played at real
+#: time. `test_simulation_view_loops.py` checks the count against a literal,
+#: in its test of the run loop at real time.
+_TICKS_PER_STEP_AT_REAL_TIME: Final = (
+    SIMULATION_STEP_S * MILLISECONDS_PER_SECOND // SIMULATION_TICK_INTERVAL_MS
+)
+
+
+def _ticks(run: RunView, ticks: int) -> None:
+    """Fire the run's tick slot `ticks` times, as its timer does every 100 ms."""
+
     for _ in range(ticks):
         run.step_tick()
 
 
-def _read_the_alveolar_quotient_as(monkeypatch: pytest.MonkeyPatch, quotient: float) -> None:
-    """Make every alveolar compartment return `quotient` as its partial-pressure fraction.
+def _steps(run: RunView, steps: int) -> None:
+    """Fire the tick slot for as long as a run at real time takes to be owed `steps` steps.
 
-    This is the one remaining way to get a quotient outside 0 to 1. No
-    supported setting produces one (`core/concentration.py`). Since `PL-544D`,
-    an amount larger than the capacity is refused when it is written. So the
-    quotient that every alveolar compartment returns is replaced directly, for
-    the snapshot and the stepper alike, instead of being produced through the
-    stored amount.
+    A tick owes a run played at real time 100 ms of simulated time, and a step
+    is one second. So the run takes one step on every tenth tick, and `steps`
+    steps take ten times as many ticks. That count holds for a run that is
+    playing at 1x, is not held, and was owed nothing when the ticks began. A
+    test at another rate fires its ticks with `_ticks`.
     """
 
+    _ticks(run, steps * _TICKS_PER_STEP_AT_REAL_TIME)
+
+
+def _read_the_alveolar_quotient_as(monkeypatch: pytest.MonkeyPatch, quotient: float) -> None:
+    """Make the snapshot and the stepper alike read `quotient` as the alveolar fraction.
+
+    No supported setting produces a fraction outside 0 to 1
+    (`core/concentration.py`), and a run stores only a state whose fractions
+    it has checked. So the fraction is replaced where it is read. The
+    snapshot, the chart and the marks read a stored state
+    (`core/stored_states.py`), and the stepper reads the compartment.
+    """
+
+    stored_state_at = StoredStates.state_at
+
+    def state_at(record: StoredStates, instant_s: CaseInstant) -> tuple[float, ...]:
+        state = list(stored_state_at(record, instant_s))
+        state[ALVEOLAR_FRACTION] = quotient
+
+        return tuple(state)
+
+    monkeypatch.setattr(StoredStates, "state_at", state_at)
     monkeypatch.setattr(
         AlveolarCompartment, "partial_pressure_fraction", property(lambda compartment: quotient)
     )
@@ -547,7 +581,7 @@ def _set_trace_shown(
     application.processEvents()
 
 
-def _paused_run_with_history(elapsed_s: float = 60.0) -> SimulationController:
+def _paused_run_with_history(elapsed_s: int = 60) -> SimulationController:
     """A real, paused run holding both elapsed time and a recorded input.
 
     The run has both on purpose. `SimulationSnapshot.has_recorded_run` checks
@@ -564,13 +598,12 @@ def _paused_run_with_history(elapsed_s: float = 60.0) -> SimulationController:
     return controller
 
 
-def _branched_case(elapsed_s: float = 60.0) -> BranchedCase:
+def _branched_case(elapsed_s: int = 60) -> BranchedCase:
     """A case whose trunk is paused with a recorded run and two instants to fork at.
 
     `_paused_run_with_history` records one setting change, so the trunk holds
     a keyframe at induction and another at `elapsed_s`. Those two instants are
-    what `BranchedCase.fork_points_s` offers, and they are the only two
-    instants at which `resumed_at` will open a branch.
+    what `BranchedCase.fork_points_s` offers.
     """
 
     return BranchedCase(_paused_run_with_history(elapsed_s))
@@ -625,10 +658,10 @@ def _select_fork_entry(view: SimulationView, label: str) -> None:
 # The mark the halt tests stop the trunk on: later than the keyframe
 # `_branched_case` records at 60 s, so the instant a branch opens at is not one
 # of the trunk's keyframes and cannot be confused with one.
-_HALT_MARK_S = 80.0
+_HALT_MARK_S = 80
 
 # A budget rather than "step until it stops": a test that fails by hanging
-# reports nothing. 80 s from the trunk's 60 s is 200 steps, so this is ample.
+# reports nothing. 80 s from the trunk's 60 s is 20 steps, so this is ample.
 _TRUNK_STEP_BUDGET = 1000
 
 
@@ -651,7 +684,7 @@ def _halted_trunk_case(application: QApplication) -> tuple[BranchedCase, Simulat
         if case.trunk.snapshot().bookmark_halt is not None:
             break
 
-        case.trunk.advance(SIMULATION_STEP_S)
+        case.trunk.advance()
     else:
         raise AssertionError(
             f"the trunk ran {_TRUNK_STEP_BUDGET} steps without halting on the mark at "
@@ -667,21 +700,17 @@ def _halted_trunk_case(application: QApplication) -> tuple[BranchedCase, Simulat
 # 120 s. So a mark between the two lies behind the trunk's clock, at an instant
 # for which the trunk holds no keyframe. That is the case `PL-W4XQ` asked for,
 # and only a branch taken at a mark can open there.
-_REWIND_CHANGE_S = 30.0
-_REWIND_PAUSE_S = 120.0
+_REWIND_CHANGE_S = 30
+_REWIND_PAUSE_S = 120
 
-# The mark set behind that clock, inside a step. The clock first reaches 75.05 s
-# at the step ending at 751 x 0.1 s, so a branch taken there opens at a
-# different instant from the one typed. The expected instant is written as the
-# product the clock forms, not read from the controller, so that the test
-# compares the two values instead of copying one.
-_BEHIND_MARK_S = 75.05
-_BEHIND_MARK_FORK_S = 751 * 0.1
+# The mark set behind that clock. A mark's instant is a whole second, so a
+# branch taken at the mark opens at the instant the learner typed.
+_BEHIND_MARK_S = 75
 
 # What the selector says for that mark, restated rather than built from
 # `MARK_FORK_LABEL_TEMPLATE`, so an edit to the template cannot move both sides
 # of an assertion at once.
-_BEHIND_MARK_LABEL = f"{format_elapsed(_BEHIND_MARK_FORK_S)}, on your mark"
+_BEHIND_MARK_LABEL = f"{format_elapsed(_BEHIND_MARK_S)}, on your mark"
 
 
 def _rewind_case(application: QApplication) -> tuple[BranchedCase, SimulationView, TimeBookmark]:
@@ -869,7 +898,7 @@ def _real_step_failure() -> SimulationNumericalError:
     )
 
     try:
-        system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        system.advance()
     except SimulationNumericalError as error:
         return error
 
@@ -883,12 +912,12 @@ class _StepFailingController(SimulationController):
         super().__init__()
         self._pending_error: Exception | None = error
 
-    def advance(self, simulation_step_s: float) -> None:
+    def advance(self) -> None:
         if self._pending_error is not None:
             error, self._pending_error = self._pending_error, None
             raise error
 
-        super().advance(simulation_step_s)
+        super().advance()
 
 
 def _with_stale_tissue_flows(controller: SimulationController, cardiac_output_l_min: float) -> None:
@@ -1033,7 +1062,7 @@ def _withheld_accounting() -> dict[str, object]:
 
 
 def _fresh_run(
-    seconds: float, agent_id: str = "sevoflurane", **settings: Any
+    seconds: int, agent_id: str = "sevoflurane", **settings: Any
 ) -> SimulationController:
     """A run built directly with `settings` and stepped for `seconds`, then paused.
 
@@ -1088,7 +1117,7 @@ def _opened_bookmark_dialog(view: SimulationView) -> BookmarkDialog:
     return dialog
 
 
-# The branch crosses 0.50 xMAC at 114.7 s, 547 steps after it opens at 60 s.
+# The branch halts on 0.50 xMAC at 115 s, 55 steps after it opens at 60 s.
 # A budget rather than "step until it stops": a test that fails by hanging
 # reports nothing and costs a whole run to find out.
 _BRANCH_STEP_BUDGET = 2000
@@ -1100,8 +1129,9 @@ def _halted_branch_view(application: QApplication) -> SimulationView:
     The trunk is paused at 60 s at 0.17 xMAC alveolar and never advances, so
     it is still running for a target at 0.50 xMAC. The branch is opened at
     that instant, and its delivered concentration is raised to the agent's
-    maximum. It is then stepped until the crossing halts it, at 114.7 s,
-    which is where the offscreen reproduction on `PL-LHBY` put the halt.
+    maximum. It is then stepped until the crossing halts it, at 115 s. The
+    offscreen reproduction on `PL-LHBY` stepped by 0.1 s and put the crossing
+    between 114.6 s and 114.7 s, and 115 s is the first whole second after it.
 
     The time bookmark is added for the second half of the same defect. At
     30 s it is behind the trunk's clock and before the branch's own opening
@@ -1111,7 +1141,7 @@ def _halted_branch_view(application: QApplication) -> SimulationView:
     case = _branched_case()
     view = _case_view(application, case)
     case.trunk.add_mac_target(MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.5)))
-    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30.0), "check"))
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30), "check"))
 
     _take_fork(view, 60.0)
 
@@ -1125,7 +1155,7 @@ def _halted_branch_view(application: QApplication) -> SimulationView:
         if not branch.snapshot().is_running:
             break
 
-        branch.advance(SIMULATION_STEP_S)
+        branch.advance()
     else:
         raise AssertionError(
             f"the branch ran {_BRANCH_STEP_BUDGET} steps without halting on the target; "

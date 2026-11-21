@@ -18,7 +18,6 @@ from anesthesia_sim.app.chart_frame import (
     CHART_COLUMN_BUDGET_PER_SERIES,
     COMPARED_COMPARTMENT_CAP,
     COMPARTMENT_TRACES,
-    HOVER_INSTANT_RESOLUTION_S,
     MAX_CHART_CONTROL_MARKS,
     WASH_IN_HOVER_LABEL,
     WASH_IN_HOVER_PAST_EQUILIBRIUM_TEXT,
@@ -48,12 +47,7 @@ from anesthesia_sim.app.chart_frame import (
     wash_in_axis_ticks,
     wash_in_stretches,
 )
-from anesthesia_sim.app.chart_time_base import (
-    CHART_GRID_RESOLUTIONS_S,
-    TIME_BASE_LADDER,
-    grid_spacing_s,
-    time_base_for_span,
-)
+from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER, grid_spacing_s, time_base_for_span
 from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlInput
 from anesthesia_sim.app.control_timeline import ControlAdjustment
 from anesthesia_sim.app.controller import BranchedCase, SettingPreview, SimulationController
@@ -81,7 +75,7 @@ from anesthesia_sim.app.theme import (
 )
 from anesthesia_sim.core.concentration import Fraction, MacPercent, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
-from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow
 from anesthesia_sim.layout.run_identity import RunId, SessionToken
 
@@ -93,16 +87,15 @@ RUN_IDS = tuple(RunId(TEST_SESSION, number) for number in (1, 2, 3))
 FIRST_RUN, SECOND_RUN = RUN_IDS[:2]
 
 
-_STEP_S = SimulationStep(0.1)
 _PLOT_WIDTH_PX = 900.0
 
 
-def _advance(controller: SimulationController, seconds: float) -> None:
-    for _ in range(round(seconds / _STEP_S)):
-        controller.advance(_STEP_S)
+def _advance(controller: SimulationController, seconds: int) -> None:
+    for _ in range(seconds // SIMULATION_STEP_S):
+        controller.advance()
 
 
-def _run(seconds: float, agent_id: str = "sevoflurane") -> SimulationController:
+def _run(seconds: int, agent_id: str = "sevoflurane") -> SimulationController:
     controller = SimulationController(agent_id=agent_id)
     controller.start()
     _advance(controller, seconds)
@@ -110,7 +103,7 @@ def _run(seconds: float, agent_id: str = "sevoflurane") -> SimulationController:
     return controller
 
 
-def _input(controller: SimulationController, *marks_at_s: float, run_index: int = 0) -> RunInput:
+def _input(controller: SimulationController, *marks_at_s: int, run_index: int = 0) -> RunInput:
     return RunInput(
         run_label(RUN_IDS[run_index]),
         controller,
@@ -213,7 +206,7 @@ def test_the_hover_gloss_is_the_readout_row_s_required_hedge() -> None:
 
 
 def test_every_trace_of_a_run_draws_the_same_instants_and_ends_at_the_readout() -> None:
-    controller = _run(600.0)
+    controller = _run(600)
     frame = assemble_chart_frame(
         [_input(controller)], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
     )
@@ -236,7 +229,7 @@ def test_the_frame_refuses_no_runs_and_runs_on_different_agents() -> None:
 
     with pytest.raises(ValueError, match="same agent"):
         assemble_chart_frame(
-            [_input(_run(10.0)), _input(_run(10.0, "desflurane"))],
+            [_input(_run(10)), _input(_run(10, "desflurane"))],
             None,
             COMPARTMENT_QUANTITIES,
             plot_width_px=_PLOT_WIDTH_PX,
@@ -251,7 +244,7 @@ def test_the_frame_refuses_a_newest_instant_not_built_as_one() -> None:
     rejected before either window is formed from it.
     """
 
-    run = _input(_run(10.0))
+    run = _input(_run(10))
     stale = replace(run, snapshot=replace(run.snapshot, elapsed_s=1e9))
 
     with pytest.raises(TypeError, match="newest_instant_s of 1000000000.0 was not built as"):
@@ -259,7 +252,7 @@ def test_the_frame_refuses_a_newest_instant_not_built_as_one() -> None:
 
 
 def test_the_window_fits_the_longer_of_two_runs_and_both_draw_into_it() -> None:
-    short, long = _run(60.0), _run(500.0)
+    short, long = _run(60), _run(500)
     frame = assemble_chart_frame(
         [_input(short), _input(long)], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
     )
@@ -282,12 +275,12 @@ def test_the_fitted_window_reaches_a_branch_s_newest_instant_rather_than_its_len
     branch's whole half-minute as one point at its fork (`PL-59WB`).
     """
 
-    trunk = _run(120.0)
+    trunk = _run(120)
     trunk.begin_control_adjustment()
     trunk.set_fresh_gas_flow(FreshGasFlow(3.0))
-    branch = BranchedCase(trunk).fork_at(CaseInstant(120.0))
+    branch = BranchedCase(trunk).fork_at(CaseInstant(120))
     branch.start()
-    _advance(branch, 30.0)
+    _advance(branch, 30)
     newest_s = branch.snapshot().elapsed_s
     frame = assemble_chart_frame(
         (_input(trunk), _input(branch, run_index=1)),
@@ -305,7 +298,7 @@ def test_the_fitted_window_reaches_a_branch_s_newest_instant_rather_than_its_len
 
 
 def test_a_chosen_width_is_held_exactly_and_follows_the_run() -> None:
-    controller = _run(1200.0)
+    controller = _run(1200)
     base = time_base_for_span(900.0)
     frame = assemble_chart_frame(
         [_input(controller)], base, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
@@ -321,7 +314,7 @@ def test_a_chosen_width_is_held_exactly_and_follows_the_run() -> None:
 
 
 def test_hidden_traces_are_left_out_of_the_visible_set_but_still_evaluated() -> None:
-    controller = _run(60.0)
+    controller = _run(60)
     frame = assemble_chart_frame(
         [_input(controller)],
         None,
@@ -335,7 +328,7 @@ def test_hidden_traces_are_left_out_of_the_visible_set_but_still_evaluated() -> 
 
 def test_the_references_are_placed_from_the_running_agent_s_own_values() -> None:
     for agent_id in ("sevoflurane", "isoflurane", "desflurane"):
-        controller = _run(10.0, agent_id)
+        controller = _run(10, agent_id)
         snapshot = controller.snapshot()
         frame = assemble_chart_frame(
             [_input(controller)], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
@@ -350,10 +343,10 @@ def test_the_references_are_placed_from_the_running_agent_s_own_values() -> None
 
 
 def test_control_marks_are_the_most_recent_that_fit_and_the_rest_are_counted() -> None:
-    controller = _run(1200.0)
-    inside = tuple(float(at_s) for at_s in range(10, 10 + 5 * (MAX_CHART_CONTROL_MARKS + 6), 5))
+    controller = _run(1200)
+    inside = tuple(range(10, 10 + 5 * (MAX_CHART_CONTROL_MARKS + 6), 5))
     frame = assemble_chart_frame(
-        [_input(controller, *inside, 5000.0)],
+        [_input(controller, *inside, 5000)],
         None,
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
@@ -372,9 +365,9 @@ def test_a_mark_before_a_sliding_window_s_start_is_neither_drawn_nor_counted() -
     in this window either.
     """
 
-    controller = _run(1200.0)
+    controller = _run(1200)
     frame = assemble_chart_frame(
-        [_input(controller, 100.0, 600.0)],
+        [_input(controller, 100, 600)],
         time_base_for_span(900.0),
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
@@ -382,7 +375,7 @@ def test_a_mark_before_a_sliding_window_s_start_is_neither_drawn_nor_counted() -
     run = frame.runs[0]
 
     assert frame.start_s > 100.0
-    assert run.control_marks_s == (600.0,)
+    assert run.control_marks_s == (600,)
     assert run.undrawn_control_marks == 0
 
 
@@ -410,7 +403,7 @@ def test_a_plot_owes_a_frame_only_when_it_needs_more_columns_than_it_drew() -> N
     needs 902.
     """
 
-    run = _run(1200.0)
+    run = _run(1200)
     frame = assemble_chart_frame(
         [_input(run)], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
     )
@@ -431,14 +424,17 @@ def test_no_chord_is_wider_than_one_pixel_of_time() -> None:
     """Check the guarantee in `docs/INTERFACE.md` § "What the chart draws" at every rung.
 
     A frame drawn for a plot `_PLOT_WIDTH_PX` wide divides the axis into at
-    least that many intervals. Consecutive drawn instants are therefore never
-    more than `span / width` apart, which is one pixel of time, whichever
-    width the reader chose. The test checks the drawn instants themselves
-    rather than only the column count, because the plot draws its line
-    segments between those instants.
+    least that many intervals. Where a pixel spans a second or more,
+    consecutive drawn instants are therefore never more than `span / width`
+    apart, which is one pixel of time. Where a pixel spans less than a second,
+    they are one second apart, because a run stands only on whole seconds
+    (`PL-SZ6G`). On this plot those are the three rungs narrower than 15
+    minutes. The test checks the drawn instants themselves rather than only
+    the column count, because the plot draws its line segments between those
+    instants.
     """
 
-    controller = _run(1200.0)
+    controller = _run(1200)
 
     for base in TIME_BASE_LADDER:
         frame = assemble_chart_frame(
@@ -450,13 +446,15 @@ def test_no_chord_is_wider_than_one_pixel_of_time() -> None:
         assert frame.columns - 1 >= _PLOT_WIDTH_PX
         assert frame.plot_width_px == _PLOT_WIDTH_PX
         assert len(times) > 1
-        assert max(b - a for a, b in zip(times, times[1:], strict=False)) <= pixel_s + 1e-9
+        assert max(b - a for a, b in zip(times, times[1:], strict=False)) <= max(
+            pixel_s, SIMULATION_STEP_S
+        )
 
 
 def test_a_frame_refuses_a_width_that_is_not_a_width() -> None:
     """A frame with no valid width would otherwise be drawn silently at the minimum column count."""
 
-    controller = _run(10.0)
+    controller = _run(10)
 
     with pytest.raises(ValueError, match="pixels wide"):
         assemble_chart_frame([_input(controller)], None, COMPARTMENT_QUANTITIES, plot_width_px=-1.0)
@@ -515,12 +513,12 @@ def test_a_run_that_crosses_equilibrium_ends_its_stretch_with_a_terminus() -> No
     controller = SimulationController()
     controller.set_delivered_concentration_percent(Percent(2.0))
     controller.start()
-    _advance(controller, 600.0)
+    _advance(controller, 600)
     # Turning the vaporizer off lets the circuit concentration fall below the
     # alveolar concentration. The patient then returns agent to the circuit,
     # which is elimination and not wash-in.
     controller.set_delivered_concentration_percent(Percent(0.0))
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     frame = assemble_chart_frame(
         [_input(controller)], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
     )
@@ -546,9 +544,9 @@ def test_the_wash_in_hover_withholds_the_ratio_at_an_elimination_terminus() -> N
     controller = SimulationController()
     controller.set_delivered_concentration_percent(Percent(2.0))
     controller.start()
-    _advance(controller, 600.0)
+    _advance(controller, 600)
     controller.set_delivered_concentration_percent(Percent(0.0))
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     frame = assemble_chart_frame(
         [_input(controller)], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
     )
@@ -647,7 +645,7 @@ def _input_refusing_a_drawn_column(
 
     This is the only way to get a drawn fraction outside 0 to 1, because no
     supported setting computes one (`core/concentration.py`). A drawn window
-    is an evaluation of the closed form. The value is therefore written into
+    holds states that the run stored after checking them. The value is therefore written into
     the window that the controller returns, rather than into any compartment.
     """
 
@@ -656,9 +654,9 @@ def _input_refusing_a_drawn_column(
     def drawn_window(start_s: float, stop_s: float, columns: int) -> DrawnWindow:
         window = real_drawn_window(start_s, stop_s, columns)
         states = list(window.states)
-        values = list(states[-1].values)
+        values = list(states[-1])
         values[COMPARTMENT_STATE_INDEX[quantity]] = value
-        states[-1] = replace(states[-1], values=tuple(values))
+        states[-1] = tuple(values)
 
         return DrawnWindow(window.substance_id, window.times_s, tuple(states))
 
@@ -681,7 +679,7 @@ def test_a_drawn_fraction_past_one_atmosphere_is_refused_before_any_frame_exists
     in the muscle column.
     """
 
-    run = _input_refusing_a_drawn_column(_run(60.0), RecordedQuantity.MUSCLE, 1.0000000000001568)
+    run = _input_refusing_a_drawn_column(_run(60), RecordedQuantity.MUSCLE, 1.0000000000001568)
 
     with pytest.raises(
         SimulationConfigurationError,
@@ -701,7 +699,7 @@ def test_a_refused_drawn_value_names_its_compartment_as_a_step_would() -> None:
     """
 
     for quantity in COMPARTMENT_QUANTITIES:
-        run = _input_refusing_a_drawn_column(_run(60.0), quantity, nextafter(1.0, inf))
+        run = _input_refusing_a_drawn_column(_run(60), quantity, nextafter(1.0, inf))
 
         with pytest.raises(
             SimulationConfigurationError,
@@ -722,7 +720,7 @@ def test_a_non_finite_drawn_value_is_refused_naming_its_compartment(value: float
     """
 
     for quantity in COMPARTMENT_QUANTITIES:
-        run = _input_refusing_a_drawn_column(_run(60.0), quantity, value)
+        run = _input_refusing_a_drawn_column(_run(60), quantity, value)
 
         with pytest.raises(
             SimulationConfigurationError,
@@ -759,7 +757,7 @@ def test_a_frame_holds_built_fractions_so_nothing_drawn_from_it_builds_one() -> 
     """
 
     frame = assemble_chart_frame(
-        [_input(_run(60.0))], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+        [_input(_run(60))], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
     )
 
     assert isinstance(frame.axis_top_percent, Percent)
@@ -781,7 +779,7 @@ def test_an_axis_top_past_one_atmosphere_is_refused_when_the_frame_is_assembled(
     afterwards (`PL-7DJK`).
     """
 
-    controller = _run(60.0)
+    controller = _run(60)
     run = replace(
         _input(controller),
         snapshot=replace(controller.snapshot(), agent_mac_percent=MacPercent(40.0)),
@@ -1230,18 +1228,18 @@ def test_a_vertical_hand_movement_never_moves_the_instant_a_hover_reports(compar
     height.
     """
 
-    trunk = _run(600.0)
+    trunk = _run(600)
     trunk.begin_control_adjustment()
     trunk.set_delivered_concentration_percent(Percent(3.0))
-    _advance(trunk, 600.0)
+    _advance(trunk, 600)
     controllers = [trunk]
 
     if compared:
-        branch = BranchedCase(trunk).fork_at(CaseInstant(600.0))
+        branch = BranchedCase(trunk).fork_at(CaseInstant(600))
         branch.start()
         branch.begin_control_adjustment()
         branch.set_delivered_concentration_percent(Percent(0.0))
-        _advance(branch, 600.0)
+        _advance(branch, 600)
         controllers.append(branch)
 
     frame = assemble_chart_frame(
@@ -1396,9 +1394,9 @@ def test_a_run_that_draws_no_instant_answers_no_hover_and_silences_no_other() ->
 
 
 def test_the_hover_keeps_the_below_resolution_forms_and_the_readout_row_s_glosses() -> None:
-    """As in `docs/MODEL.md`'s measured table, fat at 48.3 s shows as `<0.01%`, never `3.52e-05`."""
+    """As in `docs/INTERFACE.md`'s measured table, fat shows as `<0.01%`, never `3.52e-05`."""
 
-    run = _run_frame((48.3,), fat=(3.52e-7,), circuit=(0.0262,), mixed_venous=(0.005,))
+    run = _run_frame((48.0,), fat=(3.52e-7,), circuit=(0.0262,), mixed_venous=(0.005,))
 
     assert format_trace_hover(run, RecordedQuantity.FAT, 0, 1).splitlines()[1:] == [
         "Fat",
@@ -1422,20 +1420,19 @@ def test_every_hover_number_is_the_formatter_s_at_the_snapshot_s_own_divisor() -
 
 
 def test_the_hover_states_the_instant_at_the_clock_s_own_resolution() -> None:
-    assert HOVER_INSTANT_RESOLUTION_S == CHART_GRID_RESOLUTIONS_S[-1]
-    assert CHART_GRID_RESOLUTIONS_S[0] == MAXIMUM_SIMULATION_STEP_S
+    """A drawn instant is a whole second, and the hover prints it as the clock would."""
 
-    run = _run_frame((410.7,), alveolar=(0.01,))
+    run = _run_frame((410.0,), alveolar=(0.01,))
 
     assert format_trace_hover(run, RecordedQuantity.ALVEOLAR, 0, 1).splitlines()[0] == (
-        "Modelled sevoflurane · 6m50.7s"
+        "Modelled sevoflurane · 6m50s"
     )
 
 
 @pytest.mark.parametrize("plot_width_px", [600.0, 873.0, 900.0, 1366.0, 2560.0])
-@pytest.mark.parametrize("seconds", [8.0, 600.0])
+@pytest.mark.parametrize("seconds", [8, 600])
 def test_the_hover_value_belongs_to_the_instant_it_prints(
-    plot_width_px: float, seconds: float
+    plot_width_px: float, seconds: int
 ) -> None:
     """`PL-T5NJ`: the state printed beside an instant is the state at that instant.
 
@@ -1443,9 +1440,9 @@ def test_the_hover_value_belongs_to_the_instant_it_prints(
     rounded the column's instant to a tenth of a second. Desflurane at 18% and
     10 L/min takes the circuit from 2.68% at 6.00 s to 2.70% at 6.04 s, so the
     hover at "6s" could print 2.70% while the readout row at 6 s showed 2.68%.
-    Each drawn column now sits on a whole number of hundredths of a second.
-    So the printed instant is the drawn one, and the run evaluated afresh at
-    the printed instant gives the printed value.
+    Each drawn column now sits on a whole second. So the printed instant is
+    the drawn one, and the run evaluated afresh at the printed instant gives
+    the printed value.
     """
 
     controller = SimulationController(agent_id="desflurane")
@@ -1458,22 +1455,20 @@ def test_the_hover_value_belongs_to_the_instant_it_prints(
         [_input(controller)], None, COMPARTMENT_QUANTITIES, plot_width_px=plot_width_px
     )
     run = frame.runs[0]
-    near = [index for index, time_s in enumerate(run.times_s) if 5.0 <= time_s <= 7.5]
+    near = [index for index, time_s in enumerate(run.times_s) if 5 <= time_s <= 7]
 
     assert len(near) >= 2
 
     for index, time_s in enumerate(run.times_s):
-        printed_s = round(time_s / HOVER_INSTANT_RESOLUTION_S) * HOVER_INSTANT_RESOLUTION_S
+        printed_s = round(time_s)
 
-        assert time_s == pytest.approx(printed_s, abs=1e-9)
+        assert time_s == printed_s
         assert format_trace_hover(run, RecordedQuantity.CIRCUIT, index, 1).splitlines()[0] == (
             f"Modelled desflurane · {format_elapsed(printed_s)}"
         )
 
     for index in near:
-        printed_s = round(run.times_s[index] / HOVER_INSTANT_RESOLUTION_S) * (
-            HOVER_INSTANT_RESOLUTION_S
-        )
+        printed_s = round(run.times_s[index])
         at_printed = controller.drawn_window(printed_s, printed_s, 2).compartment_fractions(
             RecordedSeries("desflurane", RecordedQuantity.CIRCUIT)
         )
@@ -1486,15 +1481,22 @@ def test_the_hover_value_belongs_to_the_instant_it_prints(
 
 @pytest.mark.parametrize(
     ("raw_spacing_s", "expected_s"),
-    [(43.2, 43.2), (3.6, 3.6), (1.0, 1.0), (1.07, 1.0), (0.9, 0.9), (0.873, 0.87), (0.0667, 0.06)],
+    [(43.2, 43), (3.6, 3), (2.0, 2), (1.07, 1), (1.0, 1), (0.9, 1), (0.873, 1), (0.0667, 1)],
 )
-def test_the_column_spacing_lands_on_whole_hundredths_and_never_widens(
-    raw_spacing_s: float, expected_s: float
+def test_the_column_spacing_is_whole_seconds_and_widens_only_up_to_one_second(
+    raw_spacing_s: float, expected_s: int
 ) -> None:
+    """A spacing of a second or more is rounded down, and a smaller one is raised to one second.
+
+    A run stands only on whole seconds, so no column can be drawn between two
+    of them (`PL-SZ6G`).
+    """
+
     spacing_s = grid_spacing_s(raw_spacing_s)
 
-    assert spacing_s == pytest.approx(expected_s, abs=1e-12)
-    assert spacing_s <= raw_spacing_s + 1e-9
+    assert type(spacing_s) is int
+    assert spacing_s == expected_s
+    assert spacing_s <= max(raw_spacing_s, 1)
 
 
 def test_the_hover_answers_every_drawn_point_within_reach_and_nothing_else() -> None:
@@ -1765,7 +1767,7 @@ def test_a_run_count_or_index_that_is_not_an_int_is_refused(value: object) -> No
 
 def test_a_frame_s_run_count_is_the_checked_count_of_its_runs() -> None:
     frame = assemble_chart_frame(
-        [_input(_run(60.0))], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+        [_input(_run(60))], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
     )
 
     assert isinstance(frame.run_count, RunCount)
@@ -1803,8 +1805,8 @@ def test_a_selection_already_inside_the_cap_is_left_alone() -> None:
 def test_a_frame_of_two_runs_draws_the_capped_set_and_says_what_it_left_out() -> None:
     """The cap is applied where the frame is assembled, not where a reader clicks."""
 
-    first = _run(60.0)
-    second = _run(60.0)
+    first = _run(60)
+    second = _run(60)
     frame = assemble_chart_frame(
         (_input(first), _input(second, run_index=1)),
         None,
@@ -1820,12 +1822,12 @@ def test_a_frame_of_two_runs_draws_the_capped_set_and_says_what_it_left_out() ->
 def test_a_branch_carries_its_fork_and_a_trunk_carries_none() -> None:
     """The frame marks the one instant at which two compared runs stop being the same run."""
 
-    trunk = _run(60.0)
+    trunk = _run(60)
     trunk.begin_control_adjustment()
     trunk.set_fresh_gas_flow(FreshGasFlow(3.0))
-    _advance(trunk, 60.0)
+    _advance(trunk, 60)
     case = BranchedCase(trunk)
-    branch = case.fork_at(CaseInstant(60.0))
+    branch = case.fork_at(CaseInstant(60))
     frame = assemble_chart_frame(
         (_input(trunk), _input(branch, run_index=1)),
         None,
@@ -1849,14 +1851,14 @@ def test_a_bookmark_branch_is_marked_at_its_fork_and_not_at_its_definition_s_ope
     """
 
     trunk = SimulationController()
-    trunk.add_time_bookmark(TimeBookmark(CaseInstant(45.3), "the decision point"))
+    trunk.add_time_bookmark(TimeBookmark(CaseInstant(45), "the decision point"))
     trunk.start()
-    _advance(trunk, 30.0)
+    _advance(trunk, 30)
     trunk.begin_control_adjustment()
     trunk.set_fresh_gas_flow(FreshGasFlow(3.0))
 
-    for _ in range(round(60.0 / _STEP_S)):
-        trunk.advance(_STEP_S)
+    for _ in range(60 // SIMULATION_STEP_S):
+        trunk.advance()
 
         if trunk.snapshot().bookmark_halt is not None:
             break
@@ -1865,7 +1867,8 @@ def test_a_bookmark_branch_is_marked_at_its_fork_and_not_at_its_definition_s_ope
     case = BranchedCase(trunk)
     branch = case.fork_here()
 
-    assert branch.run_segments[0].opening.instant_s == 30.0 < fork_s
+    assert fork_s == 45
+    assert branch.run_segments[0].opening.instant_s == 30 < fork_s
 
     frame = assemble_chart_frame(
         (_input(trunk), _input(branch, run_index=1)),
@@ -1881,13 +1884,13 @@ def test_a_bookmark_branch_is_marked_at_its_fork_and_not_at_its_definition_s_ope
 def test_a_fork_outside_the_drawn_window_is_not_marked_at_its_edge() -> None:
     """A mark pinned to the edge would put the fork at a time it did not happen."""
 
-    trunk = _run(60.0)
+    trunk = _run(60)
     trunk.begin_control_adjustment()
     trunk.set_fresh_gas_flow(FreshGasFlow(3.0))
-    _advance(trunk, 1800.0)
+    _advance(trunk, 1800)
     case = BranchedCase(trunk)
-    branch = case.fork_at(CaseInstant(60.0))
-    _advance(branch, 1800.0)
+    branch = case.fork_at(CaseInstant(60))
+    _advance(branch, 1800)
     frame = assemble_chart_frame(
         (_input(trunk), _input(branch, run_index=1)),
         time_base_for_span(900.0),
@@ -1923,7 +1926,7 @@ def test_a_preview_matches_a_twin_run_that_applied_the_setting() -> None:
     error, not bit for bit (`PL-5B1N`).
     """
 
-    previewed, applied = _run(300.0), _run(300.0)
+    previewed, applied = _run(300), _run(300)
     base = time_base_for_span(1800.0)
     frame = assemble_chart_frame(
         [_previewing(previewed, ControlInput.FRESH_GAS_FLOW, 6.0)],
@@ -1932,7 +1935,7 @@ def test_a_preview_matches_a_twin_run_that_applied_the_setting() -> None:
         plot_width_px=_PLOT_WIDTH_PX,
     )
     applied.set_fresh_gas_flow(FreshGasFlow(6.0))
-    _advance(applied, 600.0)
+    _advance(applied, 600)
     preview = frame.runs[0].preview
     assert preview is not None
     truth = applied.drawn_window(frame.start_s, frame.stop_s, frame.columns)
@@ -1959,7 +1962,7 @@ def test_a_preview_matches_a_twin_run_that_applied_the_setting() -> None:
 
 
 def test_a_preview_at_the_run_s_own_setting_coincides_with_what_the_run_then_draws() -> None:
-    controller = _run(300.0)
+    controller = _run(300)
     held = controller.settings().delivered_concentration_percent
     base = time_base_for_span(1800.0)
     frame = assemble_chart_frame(
@@ -1970,7 +1973,7 @@ def test_a_preview_at_the_run_s_own_setting_coincides_with_what_the_run_then_dra
     )
     preview = frame.runs[0].preview
     assert preview is not None
-    _advance(controller, 600.0)
+    _advance(controller, 600)
     later = controller.drawn_window(frame.start_s, frame.stop_s, frame.columns)
     drawn = dict(
         zip(
@@ -2015,21 +2018,23 @@ def test_a_preview_on_an_axis_that_ends_at_the_reach_predicts_nothing() -> None:
 
     The controller's preview window (`SimulationController.preview_window`) is
     empty when the axis ends at or before the run's reach. The axis here ends
-    exactly at the reach. An axis one step longer gets a prediction that holds
-    the reach and that step.
+    exactly at the reach. So does an axis that ends inside the next step,
+    because a prediction is drawn only at whole seconds. An axis one step
+    longer gets a prediction that holds the reach and that step.
     """
 
-    controller = _run(60.0)
+    controller = _run(60)
     setting = SettingPreview(ControlInput.FRESH_GAS_FLOW, 6.0)
 
-    assert controller.reached_s == 60.0
+    assert controller.reached_s == 60
     assert controller.preview_window(setting, 0.0, 60.0, 600).times_s == ()
     assert controller.preview_window(setting, 0.0, 30.0, 600).times_s == ()
-    assert controller.preview_window(setting, 0.0, 60.1, 600).times_s == (60.0, 60.1)
+    assert controller.preview_window(setting, 0.0, 60.9, 600).times_s == ()
+    assert controller.preview_window(setting, 0.0, 61.0, 600).times_s == (60, 61)
 
 
 def test_a_preview_window_keeps_its_width_and_puts_the_reach_at_mid_plot() -> None:
-    controller = _run(1200.0)
+    controller = _run(1200)
     base = time_base_for_span(900.0)
     following = assemble_chart_frame(
         [_input(controller)], base, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
@@ -2048,7 +2053,7 @@ def test_a_preview_window_keeps_its_width_and_puts_the_reach_at_mid_plot() -> No
 
 
 def test_a_preview_is_drawn_only_inside_its_region_and_carries_its_label() -> None:
-    controller = _run(300.0)
+    controller = _run(300)
     frame = assemble_chart_frame(
         [_previewing(controller, ControlInput.FRESH_GAS_FLOW, 6.0)],
         time_base_for_span(1800.0),
@@ -2074,7 +2079,7 @@ def test_a_preview_is_drawn_only_inside_its_region_and_carries_its_label() -> No
 
 
 def test_a_frame_without_a_held_thumb_draws_no_preview() -> None:
-    controller = _run(300.0)
+    controller = _run(300)
     frame = assemble_chart_frame(
         [_input(controller)], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
     )
@@ -2083,7 +2088,7 @@ def test_a_frame_without_a_held_thumb_draws_no_preview() -> None:
 
 
 def test_a_stopped_run_draws_no_preview_and_keeps_its_window() -> None:
-    controller = _run(60.0)
+    controller = _run(60)
     controller.fail("a failure the test injects")
     base = time_base_for_span(900.0)
     plain = assemble_chart_frame(
@@ -2101,7 +2106,7 @@ def test_a_stopped_run_draws_no_preview_and_keeps_its_window() -> None:
 
 
 def test_the_hover_never_answers_from_a_preview() -> None:
-    controller = _run(300.0)
+    controller = _run(300)
     frame = assemble_chart_frame(
         [_previewing(controller, ControlInput.DELIVERED, 8.0)],
         time_base_for_span(1800.0),
@@ -2160,12 +2165,12 @@ def test_no_trace_and_no_preview_is_drawn_thinner_than_two_pixels() -> None:
 
 
 def test_a_compared_run_previews_from_its_own_reach_and_the_window_centres_on_it() -> None:
-    trunk = _run(300.0)
+    trunk = _run(300)
     trunk.set_fresh_gas_flow(FreshGasFlow(3.0))
-    _advance(trunk, 300.0)
-    branch = BranchedCase(trunk).fork_at(CaseInstant(300.0))
+    _advance(trunk, 300)
+    branch = BranchedCase(trunk).fork_at(CaseInstant(300))
     branch.start()
-    _advance(branch, 60.0)
+    _advance(branch, 60)
     base = time_base_for_span(1800.0)
     frame = assemble_chart_frame(
         (_input(trunk), _previewing(branch, ControlInput.CARDIAC_OUTPUT, 8.0, run_index=1)),

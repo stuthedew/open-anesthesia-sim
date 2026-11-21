@@ -266,9 +266,9 @@ def require_canonical_state(state: object) -> None:
 
     if not isinstance(state, tuple):
         raise SimulationConfigurationError(
-            f"a {type(state).__name__} is not a state vector; a state that is stored, "
-            "exported, replayed or forked from is taken from RunDefinition.state_at, "
-            "whose answers compose their arithmetic in the canonical order"
+            f"a {type(state).__name__} is not a state vector; a state is a tuple of "
+            f"{STATE_SIZE} numbers that a step of the run wrote, and a run returns it from "
+            "its stored states (StoredStates.state_at)"
         )
 
     if len(state) != STATE_SIZE:

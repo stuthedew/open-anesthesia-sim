@@ -25,8 +25,8 @@ the labels cannot describe two different scales (`PL-Q4VH`).
 **The hover shows a readout whenever the pointer is over a drawn point,
 whether the run is playing or paused** (`docs/INTERFACE.md` § "The chart's hover
 readout: what the tooltip may show"). The readout is for the plot's *drawn
-points*, which are the states at which the run was evaluated. It is never for
-a position between two of them. Its text is the text that `chart_frame`
+points*, which are the states that the run stored for the drawn seconds. It
+is never for a position between two of them. Its text is the text that `chart_frame`
 produces through `app/formatting.py`, and never the text of the chart
 library's coordinate formatter. The hover's cost grows with pointer events,
 not with the number of points. So the chart needs no mode that turns the

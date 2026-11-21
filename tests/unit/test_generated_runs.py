@@ -43,7 +43,7 @@ from a step.
 """
 
 import math
-from decimal import Context, Decimal
+from decimal import Decimal
 from typing import NamedTuple
 
 from hypothesis import example, given, settings, target
@@ -87,11 +87,7 @@ from anesthesia_sim.core.rounding import (
     run_rounding,
 )
 from anesthesia_sim.core.run_definition import RunDefinition
-from anesthesia_sim.core.simulation_step import (
-    MAXIMUM_SIMULATION_STEP_S,
-    MINIMUM_SIMULATION_STEP_S,
-    SimulationStep,
-)
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
@@ -116,8 +112,9 @@ MOST_ACTIONS = 4
 MOST_STEPS_IN_AN_ACTION = 2_000
 """The most steps one action takes.
 
-A run then takes at most 8 000 steps, which is 800 s at the interface's 0.1 s
-step. Growth that needs millions of steps is out of this test's reach.
+A run then takes at most 8 000 steps. Each step is one second, so that is
+8 000 s, a little over two hours. Growth that needs millions of steps is out of
+this test's reach.
 """
 
 MOST_COLUMNS = 60
@@ -153,7 +150,7 @@ class Action(NamedTuple):
 
 
 class Plan(NamedTuple):
-    """A plan sets where one generated run opens, its step and what is done to it.
+    """A plan sets where one generated run opens and what is done to it.
 
     Each position is a share of the setting's supported range, from 0 at its
     lower edge to 1 at its upper edge. A plan for a shipped agent names it in
@@ -167,7 +164,6 @@ class Plan(NamedTuple):
     opening_fraction: float
     flows: tuple[float, float, float]
     dial: float
-    step_s: float
     actions: tuple[Action, ...]
     window_start: float
     columns: int
@@ -202,10 +198,6 @@ def _interior_coefficients(draw: st.DrawFn) -> tuple[float, float]:
 
 _COEFFICIENTS = st.sampled_from(COEFFICIENT_CORNERS) | _interior_coefficients()
 
-_STEPS_S = st.sampled_from((MAXIMUM_SIMULATION_STEP_S, MINIMUM_SIMULATION_STEP_S)) | st.floats(
-    MINIMUM_SIMULATION_STEP_S, MAXIMUM_SIMULATION_STEP_S
-)
-
 _ACTIONS = st.builds(
     Action,
     setting=st.sampled_from(SETTINGS),
@@ -232,7 +224,6 @@ def _plans(draw: st.DrawFn) -> Plan:
         opening_fraction=opening_fraction,
         flows=(draw(_POSITIONS), draw(_POSITIONS), draw(_POSITIONS)),
         dial=draw(_POSITIONS),
-        step_s=draw(_STEPS_S),
         actions=tuple(draw(st.lists(_ACTIONS, min_size=1, max_size=MOST_ACTIONS))),
         window_start=draw(st.floats(0.0, 0.9)),
         columns=draw(st.integers(2, MOST_COLUMNS)),
@@ -314,20 +305,17 @@ def _held_agent_l(settings_now: UptakeEquationSettings, state: tuple[float, ...]
     )
 
 
-def _exact_state(
-    matrix: Matrix, state: tuple[float, ...], step_s: float, steps: int
-) -> list[Decimal]:
-    """Return the state after `steps` steps of exactly `step_s`, from `state`, at 50 digits.
+def _exact_state(matrix: Matrix, state: tuple[float, ...], steps: int) -> list[Decimal]:
+    """Return the state after `steps` steps of one second, from `state`, at 50 digits.
 
     Between two setting changes the model is a linear system with constant
     coefficients, so its exact solution is the matrix exponential applied to
-    the state. The interval is the exact product of the number of steps and the
-    step as stored in binary, so the reference covers the same time as the
+    the state. The interval is the number of steps times the one-second step,
+    a whole number of seconds, so the reference covers the same time as the
     stepped run.
     """
 
-    interval_s = Context(prec=60).multiply(Decimal(step_s), Decimal(steps))
-    propagator = _decimal_exponential(matrix, str(interval_s))
+    propagator = _decimal_exponential(matrix, str(steps * SIMULATION_STEP_S))
 
     return [
         sum(propagator[row][column] * Decimal(state[column]) for column in range(STATE_SIZE))
@@ -367,7 +355,7 @@ class _Run:
         self.system = _build(plan)
         self.settings = self.system.equation_settings()
         opening = self.system.state_vector()
-        self.definition = RunDefinition(self.settings, opening, opened_at_s=CaseInstant(0.0))
+        self.definition = RunDefinition(self.settings, opening, opened_at_s=CaseInstant(0))
         self.opening_held_l = _held_agent_l(self.settings, opening)
         self.dial_fraction = float(self.settings.delivered_concentration_percent) / 100.0
         fractions = opening[:DELIVERED_AGENT_L]
@@ -382,9 +370,8 @@ class _Run:
         self.exhausted_l: list[float] = []
         # A segment is a stretch of the run under one set of settings. The list has
         # one entry for each segment: the instant it opened and its system matrix.
-        self.segments = [(0.0, build_system_matrix(self.settings))]
-        self.segment_opened_s = 0.0
-        self.closed_time_rounding = 0.0
+        self.segments = [(0, build_system_matrix(self.settings))]
+        self.segment_opened_s = 0
         self.closed_canonical_rounding = 0.0
         self.stepped_rounding = 0.0
 
@@ -395,10 +382,10 @@ class _Run:
         return self.segments[-1][1]
 
     @property
-    def elapsed_s(self) -> float:
-        """The instant the run has reached, as the application computes it: steps times step."""
+    def elapsed_s(self) -> int:
+        """The instant the run has reached, in whole seconds: the steps taken times the step."""
 
-        return self.steps * self.plan.step_s
+        return self.steps * SIMULATION_STEP_S
 
     def state(self) -> tuple[float, ...]:
         """Return the stepped state with the running totals in its two accumulated-amount entries.
@@ -415,17 +402,6 @@ class _Run:
         state[EXHAUSTED_AGENT_L] = accounting.exhausted_agent_l
 
         return tuple(state)
-
-    def _time_rounding_of_the_open_segment(self) -> float:
-        """Return how far rounding of the clock can move a reading of the open segment.
-
-        The figure is `clock_rounding` for the segment's interval. A segment
-        that no step has been taken in has no interval and no clock rounding.
-        """
-
-        interval_s = self.elapsed_s - self.segment_opened_s
-
-        return clock_rounding(self.elapsed_s, interval_s) if interval_s > 0.0 else 0.0
 
     def _canonical_rounding_of_the_open_segment(self) -> float:
         """Return the rounding allowed for the one propagator that spans the open segment.
@@ -469,7 +445,6 @@ class _Run:
             return
 
         self.closed_canonical_rounding += self._canonical_rounding_of_the_open_segment()
-        self.closed_time_rounding += self._time_rounding_of_the_open_segment()
         self.segment_opened_s = self.elapsed_s
         self.segments.append((self.elapsed_s, build_system_matrix(changed)))
 
@@ -483,12 +458,11 @@ class _Run:
         does not account for, and it fails the test.
         """
 
-        step = SimulationStep(self.plan.step_s)
-        squarings = _squarings(self.matrix, self.plan.step_s)
+        squarings = _squarings(self.matrix, SIMULATION_STEP_S)
 
         for taken in range(steps):
             try:
-                result = self.system.advance(step)
+                result = self.system.advance()
             except AgentSimulationValidationError:
                 reached = self.stepped_rounding + run_rounding(squarings, StepCount(taken + 1))
 
@@ -560,9 +534,9 @@ class _Run:
             )
 
         scales = self._scales(owed_l)
-        exact = _exact_state(self.matrix, before, self.plan.step_s, action.steps)
+        exact = _exact_state(self.matrix, before, action.steps)
         over_the_action = run_rounding(
-            _squarings(self.matrix, self.plan.step_s), StepCount(action.steps)
+            _squarings(self.matrix, SIMULATION_STEP_S), StepCount(action.steps)
         )
 
         for value, reference, scale in zip(state, exact, scales, strict=True):
@@ -573,12 +547,13 @@ class _Run:
                 context,
             )
 
+        # The run definition measures each segment as the difference of two
+        # whole seconds, which is exact. So the canonical state covers the
+        # same time as the stepped run, and no allowance is made for the clock.
         canonical_allowance = (
             stepped
             + self.closed_canonical_rounding
             + self._canonical_rounding_of_the_open_segment()
-            + self.closed_time_rounding
-            + self._time_rounding_of_the_open_segment()
         )
 
         try:
@@ -620,9 +595,13 @@ class _Run:
         residuals: Residuals,
         context: str,
     ) -> None:
-        """Sample a window that ends where the run stands, and check its last column."""
+        """Sample a window that ends where the run stands, and check its last column.
 
-        start_s = self.plan.window_start * self.elapsed_s
+        The window starts on a whole second, the last one at or before the
+        plan's share of the time the run has reached.
+        """
+
+        start_s = math.floor(self.plan.window_start * self.elapsed_s)
         columns = self.plan.columns
 
         try:
@@ -711,32 +690,36 @@ STIFFEST_CORNER = SMALLEST_CORNER._replace(blood_gas=1e4, tissue_blood=1e-3)
 
 ONE_STEP = (Action(setting="hold", position=0.0, steps=1),)
 FIFTY_STEPS = (Action(setting="hold", position=0.0, steps=50),)
-LONG_HOLD = (Action(setting="hold", position=0.0, steps=17_000),)
+LONG_HOLD = (Action(setting="hold", position=0.0, steps=1_700),)
 
 
-# The three plans below set up conditions that the drawn plans reach only after
-# 300 to 1 000 draws (measured 2026-11-11, `PL-GJ1W`). They are listed so that
-# every pass of the suite covers them.
+# The plans below set up conditions that the drawn plans reached only after
+# 300 to 1 000 draws (measured 2026-11-11, `PL-GJ1W`, when a plan also drew a
+# step of 1 ms to 0.1 s). They are listed so that every pass of the suite covers
+# them. What each one does at the one-second step was measured on 2026-11-21.
 @example(
-    # `PL-N559`: with no flow at all, one step moves the alveolar fraction above
-    # the inspired fraction by one rounding error.
-    Plan(None, SMALLEST_CORNER, 0.5 * CEILING, (0.0, 0.0, 0.0), 1.0, 0.1, ONE_STEP, 0.0, 2)
+    # `PL-N559`: with no flow at all, the alveolar fraction reads one rounding
+    # error above the inspired fraction, at the opening and after one step.
+    Plan(None, SMALLEST_CORNER, 0.5 * CEILING, (0.0, 0.0, 0.0), 1.0, ONE_STEP, 0.0, 2)
 )
 @example(
     # `PL-9B1M`: every compartment at the input ceiling, at the corner where
     # one step with blood flow alone rounded a fraction upward.
-    Plan(None, SMALLEST_CORNER, CEILING, (0.0, 0.0, 1.0), 0.0, 0.1, ONE_STEP, 0.0, 2)
+    Plan(None, SMALLEST_CORNER, CEILING, (0.0, 0.0, 1.0), 0.0, ONE_STEP, 0.0, 2)
 )
 @example(
     # `PL-D88N`: the same opening at the stiffest corner, where the run halts on
-    # the agent balance within about 24 steps.
-    Plan(None, STIFFEST_CORNER, CEILING, (0.0, 0.0, 1.0), 0.0, 0.1, FIFTY_STEPS, 0.0, 2)
+    # the agent balance at its third step.
+    Plan(None, STIFFEST_CORNER, CEILING, (0.0, 0.0, 1.0), 0.0, FIFTY_STEPS, 0.0, 2)
 )
 @example(
     # The stiffest corner holding little agent. The run does not halt, because
     # its balance is inside the absolute bound of 1e-12 L while outside the
-    # relative one (found by the blind review of this test, 2026-11-11).
-    Plan(None, STIFFEST_CORNER, 1e-6 * CEILING, (0.0, 0.0, 1.0), 0.0, 0.1, FIFTY_STEPS, 0.0, 2)
+    # relative one (found by the blind review of this test, 2026-11-11). After
+    # 50 steps the balance is 2.5e-13 L out, which is 2.5e-8 of the agent held.
+    # The run opens at 1e-7 of the ceiling. At 1e-6, where it opened while the
+    # step was 0.1 s, a one-second step passes the absolute bound at step 21.
+    Plan(None, STIFFEST_CORNER, 1e-7 * CEILING, (0.0, 0.0, 1.0), 0.0, FIFTY_STEPS, 0.0, 2)
 )
 @example(
     # One step that needs 5 squarings, whose state lands 3.4 leading terms from
@@ -756,7 +739,6 @@ LONG_HOLD = (Action(setting="hold", position=0.0, steps=17_000),)
         0.531887589207829,
         (0.4428973210177197, 0.42985577848716605, 1.0),
         0.4200385149876751,
-        0.1,
         ONE_STEP,
         0.0,
         2,
@@ -768,7 +750,7 @@ LONG_HOLD = (Action(setting="hold", position=0.0, steps=17_000),)
     # cap, so the run definition must refuse the canonical state. The run holds
     # too little agent to halt on the agent balance (found by the blind review
     # of the rounding module, 2026-11-11).
-    Plan(None, STIFFEST_CORNER, 1e-9 * CEILING, (0.0, 0.0, 1.0), 0.0, 0.1, LONG_HOLD, 0.0, 2)
+    Plan(None, STIFFEST_CORNER, 1e-9 * CEILING, (0.0, 0.0, 1.0), 0.0, LONG_HOLD, 0.0, 2)
 )
 @settings(max_examples=EXAMPLES)
 @given(_plans())

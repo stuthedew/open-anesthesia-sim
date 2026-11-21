@@ -39,7 +39,11 @@ from dataclasses import replace
 
 import pytest
 
-from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidator
+from anesthesia_sim.core.agent_simulation_validation import (
+    AgentSimulationValidator,
+    AgentSimulationValidatorState,
+    TotalsCompensation,
+)
 from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.governing_equations import (
@@ -54,13 +58,10 @@ from anesthesia_sim.core.governing_equations import (
 )
 from anesthesia_sim.core.rounding import AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L
 from anesthesia_sim.core.run_definition import DisplayState, Keyframe, RunDefinition, RunSegment
-from anesthesia_sim.core.simulation_step import SimulationStep
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow
 from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
-
-SIMULATION_STEP_S = SimulationStep(0.1)
-"""The step every run in this file takes, and the one the app layer ships."""
 
 FRACTION_STATES: tuple[int, ...] = (
     INSPIRED_FRACTION,
@@ -90,9 +91,12 @@ fractions of an induction, and it would say nothing about a displayed digit.
 
 
 def _run(
-    steps: int = 6_000, dial_step: int = 2_000, flow_step: int = 4_000
+    duration_s: int = 600, dial_at_s: int = 200, flow_at_s: int = 400
 ) -> tuple[AgentUptakeSystem, RunDefinition]:
     """Step a sevoflurane run across two setting changes, building its definition alongside.
+
+    The run lasts ten minutes by default. The dial moves at 200 s and the
+    fresh gas flow at 400 s.
 
     The changes are applied the way `app/controller.py` applies them. The
     setter runs first, so the core has accepted the value. Then the definition
@@ -107,18 +111,18 @@ def _run(
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
 
-    for step in range(1, steps + 1):
-        system.advance(SIMULATION_STEP_S)
+    for step in range(1, duration_s // SIMULATION_STEP_S + 1):
+        system.advance()
         definition.advance_to(CaseInstant(step * SIMULATION_STEP_S))
 
-        if step == dial_step:
+        if step * SIMULATION_STEP_S == dial_at_s:
             system.set_delivered_concentration_percent(Percent(0.8))
             definition.record_change(system.equation_settings())
 
-        if step == flow_step:
+        if step * SIMULATION_STEP_S == flow_at_s:
             system.set_fresh_gas_flow(FreshGasFlow(1.0))
             definition.record_change(system.equation_settings())
 
@@ -220,14 +224,14 @@ def test_a_resumed_system_steps_the_way_the_run_it_resumes_did() -> None:
 
     system.resume_at(opening.state, initial_agent_l=0.0)
 
-    ahead = RunDefinition(segment.settings, opening.state, opened_at_s=CaseInstant(0.0))
+    ahead = RunDefinition(segment.settings, opening.state, opened_at_s=CaseInstant(0))
 
-    for step in range(1, 601):
-        system.advance(SIMULATION_STEP_S)
+    for step in range(1, 60 // SIMULATION_STEP_S + 1):
+        system.advance()
         ahead.advance_to(CaseInstant(step * SIMULATION_STEP_S))
 
     stepped = system.state_vector()
-    closed_form = ahead.state_at(600 * SIMULATION_STEP_S)
+    closed_form = ahead.state_at(60)
 
     for entry in FRACTION_STATES:
         assert abs(stepped[entry] - closed_form[entry]) < STEPPED_AGREEMENT, (
@@ -252,8 +256,8 @@ def test_two_systems_resumed_at_one_state_step_identically() -> None:
     for system in (left, right):
         system.resume_at(segment.opening.state, initial_agent_l=0.0)
 
-        for _ in range(300):
-            system.advance(SIMULATION_STEP_S)
+        for _ in range(30 // SIMULATION_STEP_S):
+            system.advance()
 
     assert left.state_vector() == right.state_vector()
 
@@ -327,11 +331,11 @@ def test_the_accounting_anchor_is_carried_rather_than_derived() -> None:
     where a conservation error belongs.
     """
 
-    system_parent, definition = _run(steps=9_000, dial_step=3_000, flow_step=6_000)
+    system_parent, definition = _run(duration_s=900, dial_at_s=300, flow_at_s=600)
     segment = definition.segments[-1]
     opening = segment.opening
 
-    assert opening.instant_s == 600.0
+    assert opening.instant_s == 600
 
     system = _like(system_parent)
     system.resume_at(opening.state, initial_agent_l=0.0)
@@ -465,7 +469,7 @@ def test_a_refused_resume_leaves_every_compartment_as_it_was(
     system = _like(system_parent)
 
     system.resume_at(opening.state, initial_agent_l=0.0)
-    system.advance(SIMULATION_STEP_S)
+    system.advance()
 
     before = system.capture_state()
     original = TissueGroup.set_partial_pressure_fraction
@@ -489,29 +493,100 @@ def test_a_refused_resume_leaves_the_accounting_period_as_it_was(
 ) -> None:
     """The totals are written after the compartments, so the rollback has to restore them too.
 
-    The refusal is injected at the last write, after the accounting period has been reset
-    to the new anchor, for the reason the test above gives.
+    The refusal is injected after the accounting period has been written with the new
+    anchor, for the reason the test above gives. Only the first write is refused, because
+    the rollback restores the period through the same method.
     """
 
     system_parent, definition = _run()
     opening = definition.segments[-1].opening
     system = _like(system_parent)
 
-    system.resume_at(opening.state, initial_agent_l=0.125)
+    held = TotalsCompensation(delivered_l=3e-18, exhausted_l=-2e-18)
+    system.resume_at(opening.state, initial_agent_l=0.125, compensation=held)
 
-    monkeypatch.setattr(
-        AgentSimulationValidator,
-        "record_external_agent_transfer",
-        _refusing("the transfer was refused"),
-    )
+    restore = AgentSimulationValidator.restore_state
+    writes: list[float] = []
 
-    with pytest.raises(SimulationConfigurationError, match="the transfer was refused"):
+    def refuse_the_first_write(
+        validator: AgentSimulationValidator, state: AgentSimulationValidatorState
+    ) -> None:
+        restore(validator, state)
+        writes.append(state.initial_agent_l)
+
+        if len(writes) == 1:
+            raise SimulationConfigurationError("the accounting period was refused")
+
+    monkeypatch.setattr(AgentSimulationValidator, "restore_state", refuse_the_first_write)
+
+    with pytest.raises(SimulationConfigurationError, match="the accounting period was refused"):
         system.resume_at(opening.state, initial_agent_l=0.9)
+
+    # The refused write did put the new anchor in place, and the rollback put the old one back.
+    assert writes == [0.9, 0.125]
 
     accounting = system.agent_simulation_validation
 
     assert accounting.initial_agent_l == 0.125
     assert accounting.delivered_agent_l == opening.state[DELIVERED_AGENT_L]
+    assert system.accounting_compensation() == held
+
+
+def test_resuming_with_compensation_terms_puts_them_in_the_accounting() -> None:
+    """The totals and their terms are the ones passed in, and the default terms are zero."""
+
+    system_parent, definition = _run()
+    opening = definition.segments[-1].opening
+    system = _like(system_parent)
+    terms = TotalsCompensation(delivered_l=6.9e-18, exhausted_l=-1.1e-18)
+
+    system.resume_at(opening.state, initial_agent_l=0.0, compensation=terms)
+
+    assert system.accounting_compensation() == terms
+    assert system.agent_simulation_validator.delivered_compensation_l == 6.9e-18
+    assert system.agent_simulation_validator.exhausted_compensation_l == -1.1e-18
+    assert system.agent_simulation_validation.delivered_agent_l == opening.state[DELIVERED_AGENT_L]
+    assert system.agent_simulation_validation.exhausted_agent_l == opening.state[EXHAUSTED_AGENT_L]
+
+    system.resume_at(opening.state, initial_agent_l=0.0)
+
+    assert system.accounting_compensation() == TotalsCompensation(delivered_l=0.0, exhausted_l=0.0)
+    assert system.agent_simulation_validation.delivered_agent_l == opening.state[DELIVERED_AGENT_L]
+
+
+@pytest.mark.parametrize("terms", [(1e-17, 2e-17), 0.0, None])
+def test_resuming_with_terms_not_built_as_a_totals_compensation_changes_nothing(
+    terms: object,
+) -> None:
+    system_parent, definition = _run()
+    opening = definition.segments[-1].opening
+    system = _like(system_parent)
+    before = system.capture_state()
+
+    with pytest.raises(TypeError, match="not TotalsCompensation"):
+        system.resume_at(opening.state, initial_agent_l=0.0, compensation=terms)  # type: ignore[arg-type]
+
+    assert system.capture_state() == before
+
+
+@pytest.mark.parametrize(
+    ("delivered_l", "exhausted_l", "names"),
+    [
+        (float("nan"), 0.0, "delivered_l must be finite"),
+        (0.0, -float("inf"), "exhausted_l must be finite"),
+    ],
+)
+def test_a_compensation_term_that_is_not_finite_cannot_be_built(
+    delivered_l: float, exhausted_l: float, names: str
+) -> None:
+    with pytest.raises(SimulationConfigurationError, match=names):
+        TotalsCompensation(delivered_l=delivered_l, exhausted_l=exhausted_l)
+
+
+@pytest.mark.parametrize("term", ["0.0", None, True])
+def test_a_compensation_term_that_is_not_a_number_cannot_be_built(term: object) -> None:
+    with pytest.raises(TypeError):
+        TotalsCompensation(delivered_l=0.0, exhausted_l=term)  # type: ignore[arg-type]
 
 
 # --- The cached propagator ---------------------------------------------------
@@ -531,15 +606,15 @@ def test_resuming_does_not_strand_the_cached_propagator() -> None:
     segment = definition.segments[-1]
 
     warmed = _like(system_parent)
-    warmed.advance(SIMULATION_STEP_S)
+    warmed.advance()
     warmed.resume_at(segment.opening.state, initial_agent_l=0.0)
 
     cold = _like(system_parent)
     cold.resume_at(segment.opening.state, initial_agent_l=0.0)
 
-    for _ in range(200):
-        warmed.advance(SIMULATION_STEP_S)
-        cold.advance(SIMULATION_STEP_S)
+    for _ in range(20 // SIMULATION_STEP_S):
+        warmed.advance()
+        cold.advance()
 
     assert warmed.state_vector() == cold.state_vector()
 

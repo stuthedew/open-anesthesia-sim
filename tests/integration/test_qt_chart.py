@@ -98,7 +98,7 @@ from anesthesia_sim.app.theme import (
 from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.parameters import load_agent_parameters
-from anesthesia_sim.core.simulation_step import SimulationStep
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow
 from anesthesia_sim.layout.run_identity import RunId, SessionToken
 
@@ -110,9 +110,6 @@ RUN_IDS = tuple(RunId(TEST_SESSION, number) for number in (1, 2, 3))
 FIRST_RUN, SECOND_RUN = RUN_IDS[:2]
 
 
-_STEP_S = SimulationStep(0.1)
-
-
 @pytest.fixture(scope="module")
 def application() -> Iterator[QApplication]:
     existing = QApplication.instance()
@@ -120,9 +117,9 @@ def application() -> Iterator[QApplication]:
     yield existing if isinstance(existing, QApplication) else QApplication([])
 
 
-def _advance(controller: SimulationController, seconds: float) -> None:
-    for _ in range(round(seconds / _STEP_S)):
-        controller.advance(_STEP_S)
+def _advance(controller: SimulationController, seconds: int) -> None:
+    for _ in range(seconds // SIMULATION_STEP_S):
+        controller.advance()
 
 
 def _run_with_a_dial_change(
@@ -139,16 +136,16 @@ def _run_with_a_dial_change(
 
     if switched_from is not None:
         controller.start()
-        _advance(controller, 60.0)
+        _advance(controller, 60)
         controller.set_agent(agent_id)
 
     controller.start()
-    _advance(controller, 600.0)
+    _advance(controller, 600)
     controller.begin_control_adjustment()
     controller.set_delivered_concentration_percent(
         Percent(controller.snapshot().delivered_concentration_percent * 1.5)
     )
-    _advance(controller, 600.0)
+    _advance(controller, 600)
 
     return controller
 
@@ -251,7 +248,7 @@ def test_a_hidden_trace_is_not_drawn_and_is_current_when_shown_again(
     assert chart.drawn_points(0, RecordedQuantity.ALVEOLAR)[0]
     assert chart.readout_at(*_a_drawn_point(chart, RecordedQuantity.FAT, frame=None)) is None
 
-    _advance(controller, 60.0)
+    _advance(controller, 60)
     legend.show_selection(INITIAL_COMPARTMENT_SELECTION)
     frame = _frame(controller, shown=legend.shown)
     chart.draw(frame)
@@ -273,7 +270,7 @@ def _a_drawn_point(chart: ConcentrationChart, quantity: RecordedQuantity, *, fra
 def test_two_runs_draw_on_one_axis_that_fits_the_longer(application: QApplication) -> None:
     short = SimulationController()
     short.start()
-    _advance(short, 60.0)
+    _advance(short, 60)
     long = _run_with_a_dial_change()
     frame = _frame(short, long)
     chart = _shown(application, ConcentrationChart(), 480)
@@ -474,9 +471,9 @@ def test_the_wash_in_trace_ends_on_the_equilibrium_line_with_a_terminus_dot(
 ) -> None:
     controller = SimulationController()
     controller.start()
-    _advance(controller, 600.0)
+    _advance(controller, 600)
     controller.set_delivered_concentration_percent(Percent(0.0))
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     frame = _frame(controller)
     chart = _shown(application, WashInChart(), 300)
     chart.draw(frame)
@@ -554,11 +551,11 @@ def test_the_hover_answers_for_every_run_in_reach_on_a_real_branched_case(
 
     trunk = _run_with_a_dial_change()
     case = BranchedCase(trunk)
-    branch = case.fork_at(CaseInstant(600.0))
+    branch = case.fork_at(CaseInstant(600))
     branch.start()
     branch.begin_control_adjustment()
     branch.set_delivered_concentration_percent(Percent(0.0))
-    _advance(branch, 600.0)
+    _advance(branch, 600)
 
     shown = (RecordedQuantity.ALVEOLAR, RecordedQuantity.FAT)
     frame = _frame(*case.runs, shown=shown)
@@ -904,7 +901,7 @@ def test_the_hover_hides_when_the_pointer_leaves_and_a_later_frame_does_not_brin
 
     # A following frame does not bring a box back either, after the run has
     # played on.
-    _advance(controller, 30.0)
+    _advance(controller, 30)
     following = _frame(controller)
 
     for chart in charts:
@@ -1456,11 +1453,11 @@ def test_two_runs_on_one_axis_are_told_apart_by_line_width_and_named_in_text(
 
     trunk = _run_with_a_dial_change()
     case = BranchedCase(trunk)
-    branch = case.fork_at(CaseInstant(600.0))
+    branch = case.fork_at(CaseInstant(600))
     branch.start()
     branch.begin_control_adjustment()
     branch.set_fresh_gas_flow(FreshGasFlow(1.0))
-    _advance(branch, 600.0)
+    _advance(branch, 600)
 
     frame = _frame(*case.runs)
     chart = _shown(application, ConcentrationChart(), 480)
@@ -1588,7 +1585,7 @@ def test_both_plots_draw_a_preview_thinner_inside_its_labelled_region(
 ) -> None:
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     frame = _previewing_frame(controller, 6.0)
     preview = frame.runs[0].preview
     assert preview is not None
@@ -1634,7 +1631,7 @@ def test_every_curve_is_handed_the_frame_s_own_values_as_float64_arrays(
 
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     frame = _previewing_frame(controller, 6.0)
     run = frame.runs[0]
     preview = run.preview
@@ -1692,7 +1689,7 @@ def test_a_predicted_wash_in_that_stops_ends_in_a_dot_as_the_run_s_does(
 
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     frame = _previewing_frame(controller, 0.0, ControlInput.DELIVERED)
     preview = frame.runs[0].preview
     assert preview is not None
@@ -1725,7 +1722,7 @@ def test_a_frame_with_no_preview_takes_the_preview_off_both_plots(
 ) -> None:
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     chart = _shown(application, ConcentrationChart(), 480)
     wash_in = _shown(application, WashInChart(), 240)
     chart.draw(_previewing_frame(controller, 6.0))
@@ -1745,7 +1742,7 @@ def test_a_frame_with_no_preview_takes_the_preview_off_both_plots(
 def test_the_hover_does_not_answer_over_a_predicted_point(application: QApplication) -> None:
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     frame = _previewing_frame(controller, 10.0)
     preview = frame.runs[0].preview
     assert preview is not None

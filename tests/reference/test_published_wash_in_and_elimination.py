@@ -112,19 +112,33 @@ that it adds to:
 | Agent | Shipped, 10 L/min | Open circuit | Published |
 | --- | --- | --- | --- |
 | Sevoflurane | +3.79 SD | -0.15 SD | 0.157 +/- 0.020 |
-| Isoflurane | +4.15 SD | +0.66 SD | 0.223 +/- 0.024 |
+| Isoflurane | +4.15 SD | +0.65 SD | 0.223 +/- 0.024 |
 | Desflurane | +1.13 SD | -2.33 SD | 0.14 +/- 0.02 |
 
 The second isoflurane cohort, left out of the table for width, moves from
-+5.13 SD to +0.94 SD.
++5.13 SD to +0.93 SD. The open-circuit column was measured again on
+2026-11-21, with the driver as the next paragraph describes it. The driver of
+2026-09-07 emptied the shipped circuit every 0.1 s, and it gave +0.66 and
++0.94 SD for the two isoflurane cohorts and the same figures for the other
+two rows.
 
 **The open-circuit column is a diagnostic, and the shipped simulator cannot be
 put in the condition that produced it.** The column comes from
 `_eliminate_without_rebreathing()` below, a driver that exists only in this
-module. After each step of the elimination, the driver discards whatever the
-patient exhaled into the circuit and records it as exhausted agent. So the
-inspired fraction is held at zero instead of settling near a third of the
-alveolar fraction. No fresh gas flow, dial position or patient setting
+module. When the vaporizer is closed, the driver empties the circuit and
+gives it the largest volume that the model accepts, `MAXIMUM_VOLUME_L`. After
+each step of the elimination, the driver discards whatever the patient
+exhaled into the circuit and records it as exhausted agent. So the inspired
+fraction is held at zero instead of settling near a third of the alveolar
+fraction.
+
+The circuit is enlarged because the driver can empty it only between steps,
+and a step lasts one second. In the shipped 6 L circuit, one second of
+exhaled gas raises the inspired fraction to 1.1% of the alveolar fraction
+before the driver empties the circuit again. That much rebreathing raised
+each ratio in the column by 0.03 to 0.05 published SD. In the enlarged
+circuit, the same gas raises the inspired fraction to less than 0.001% of
+the alveolar fraction. No fresh gas flow, dial position or patient setting
 produces that condition, and no interface control offers it. `PL-W21J` weighed
 a supported non-rebreathing mode against this driver. The project owner chose
 the driver on 2026-09-06, because a mode would change the model boundary and
@@ -255,7 +269,7 @@ the measured table, and these are its main points:
   mis-parameterized one.
 - **A narrow edge is not a narrow uncertainty.** Most lower edges come from
   the 12.5- and 15-minute points, where the shipped model already sits at
-  +0.75 to +0.94 SD. A small change crosses +1 SD there, so a -1% edge says
+  +0.75 to +0.95 SD. A small change crosses +1 SD there, so a -1% edge says
   the model has used most of the band, not that the coefficient is known to
   1%. The figure's reading error is about 0.3 SD.
 - **The early points detect too large an alveolar gas volume.** The volume
@@ -316,21 +330,25 @@ import pytest
 from anesthesia_sim.app.wash_in import WashInDomain, read_wash_in
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidationResult
 from anesthesia_sim.core.concentration import Fraction, Percent, fraction_from_percent
-from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
+from anesthesia_sim.core.numerical_envelope import (
+    MAXIMUM_VOLUME_L,
+    CompartmentVolume,
+    PartitionCoefficient,
+)
 from anesthesia_sim.core.parameters import (
     load_agent_parameters,
     load_reference_adult_parameters,
     load_reference_circle_system_parameters,
 )
 from anesthesia_sim.core.patient import PatientCompartments
-from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 # The length of the measured wash-in. Both studies gave the potent agent for
 # 30 minutes and report F_A/F_I at the end of it.
-WASH_IN_DURATION_S = 1800.0
+WASH_IN_DURATION_S = 1800
 
 # The length of the measured elimination, also taken from the papers.
 # Elimination begins when the 30 minutes above end, and both papers report
@@ -338,15 +356,17 @@ WASH_IN_DURATION_S = 1800.0
 # administration, so the elimination run must continue the wash-in run rather
 # than start from a system loaded some other way. That is why `_eliminate()`
 # below washes in first rather than taking a system from `_wash_in_system()`.
-ELIMINATION_DURATION_S = 300.0
+ELIMINATION_DURATION_S = 300
 
-# The step is imported rather than restated as 0.1, so this module measures the
-# model as shipped, not a finer version of it that no user ever sees. Raising
-# the supported step is a safety-critical change to every displayed value
-# (docs/MODEL.md, "Supported simulation step"). If the step is ever raised,
-# this validation should move with it and be re-measured. It should not keep
-# running quietly at a step the interface no longer uses.
-SIMULATION_STEP_S = SimulationStep(MAXIMUM_SIMULATION_STEP_S)
+# The step is `SIMULATION_STEP_S`, imported rather than restated, so this
+# module steps the model as the interface does. The step was 0.1 s until
+# `PL-SZ6G` made it one second. The comparisons at the shipped settings do not
+# depend on its length, because each step solves the equations exactly. The two
+# test-only drivers below set the circuit back once a step. Between two
+# settings the circuit drifts by an amount that is proportional to the step
+# and inversely proportional to the circuit volume. So both drivers enlarge
+# the circuit, as `_enlarge_circuit()` describes, and the drift is 6.7e-6 of
+# the alveolar fraction at the one-second step.
 
 # The operating point. Alveolar ventilation and cardiac output are *not*
 # chosen here. The code below reads them from the reference-patient data file,
@@ -418,24 +438,29 @@ ELIMINATION_RATIO_PIN_TOLERANCE = 1e-4
 # could lead a later reader to cite a model output as a human measurement.
 MODELLED_ELIMINATION_RATIOS = {"sevoflurane": 0.2328, "isoflurane": 0.3227, "desflurane": 0.1626}
 
-# The same ratios with the rebreathing circuit taken away, produced by
-# `_eliminate_without_rebreathing()` and measured on 2026-09-07. They are kept
-# in a second dictionary rather than as a third column of one. These values
+# The same ratios with the rebreathing circuit taken away. They are model
+# outputs from the test-only driver `_eliminate_without_rebreathing()`,
+# measured on 2026-11-21 with the driver as it is now. It enlarges the circuit
+# to `MAXIMUM_VOLUME_L` and empties it once a second. The driver of 2026-09-07
+# emptied the shipped 6 L circuit every 0.1 s, and it gave 0.1541, 0.2388 and
+# 0.0935. The ratios are kept in a second dictionary rather than as a third
+# column of one. These values
 # come from a condition that the shipped simulator has no setting for, while
 # the values above come from the condition it ships in. A reader who took a
 # value from the wrong dictionary would be describing a breathing system that
 # does not exist. For the same reason as above, they are model outputs and not
 # fields of `PublishedMeasurement`.
 OPEN_CIRCUIT_ELIMINATION_RATIOS = {
-    "sevoflurane": 0.1541,
-    "isoflurane": 0.2388,
-    "desflurane": 0.0935,
+    "sevoflurane": 0.1540,
+    "isoflurane": 0.2387,
+    "desflurane": 0.0934,
 }
 
 # How far removing the rebreathing circuit must move each cohort's comparison
 # for this module's account of the elimination gap to remain true. The movement
-# was measured on 2026-09-07 at 3.45 to 4.20 published SD, and is asserted at
-# 3.0.
+# was measured on 2026-11-21 at 3.46 to 4.20 published SD, and is asserted at
+# 3.0. With the driver of 2026-09-07, which emptied the shipped circuit every
+# 0.1 s, it was recorded as 3.45 to 4.20.
 # `test_removing_the_rebreathing_circuit_is_what_moves_the_elimination_comparison`
 # gives the per-cohort table. The margin is deliberately wide. The point being
 # pinned is that the apparatus term is the large one, not its fourth digit,
@@ -573,11 +598,13 @@ class ApparatusDeadSpaceCase:
         )
 
 
-# Measured on 2026-09-13 across the conventional range. With no apparatus dead
+# Measured on 2026-09-13 across the conventional range, and again on
+# 2026-11-21 with the open-circuit driver as it is now. With no apparatus dead
 # space at all, desflurane's open-circuit residual is -2.33 SD. The shortfalls
 # below are what is left of that residual once the sourced dead space is
-# applied. At the largest shortfall the dead space accounts for 0.44 SD of the
-# 2.33, and at the smallest it accounts for 0.95 SD.
+# applied. At the largest shortfall the dead space accounts for 0.43 SD of the
+# 2.33, and at the smallest it accounts for 0.94 SD. The driver of 2026-09-13
+# emptied the shipped circuit every 0.1 s, and it gave 0.44 and 0.95 SD.
 APPARATUS_DEAD_SPACE_CASES = (
     ApparatusDeadSpaceCase(respiratory_rate_per_min=6.0, minimum_shortfall_sd=1.75),
     ApparatusDeadSpaceCase(respiratory_rate_per_min=8.0, minimum_shortfall_sd=1.60),
@@ -1078,8 +1105,8 @@ def _wash_in_system(
         change=change,
     )
 
-    for _ in range(round(WASH_IN_DURATION_S / SIMULATION_STEP_S)):
-        system.advance(SIMULATION_STEP_S)
+    for _ in range(WASH_IN_DURATION_S // SIMULATION_STEP_S):
+        system.advance()
 
     return system
 
@@ -1152,8 +1179,8 @@ def _private_washed_in_system(
         change,
     )
 
-    for _ in range(round(WASH_IN_DURATION_S / SIMULATION_STEP_S)):
-        system.advance(SIMULATION_STEP_S)
+    for _ in range(WASH_IN_DURATION_S // SIMULATION_STEP_S):
+        system.advance()
 
     return system
 
@@ -1229,8 +1256,8 @@ def _eliminate(
 
     system.set_delivered_concentration_percent(Percent(0.0))
 
-    for _ in range(round(ELIMINATION_DURATION_S / SIMULATION_STEP_S)):
-        system.advance(SIMULATION_STEP_S)
+    for _ in range(ELIMINATION_DURATION_S // SIMULATION_STEP_S):
+        system.advance()
 
     return EliminationReading(
         alveolar_fraction_at_discontinuation=alveolar_fraction_at_discontinuation,
@@ -1242,8 +1269,9 @@ def _eliminate(
 def _discard_circuit_contents(system: AgentUptakeSystem) -> None:
     """Empty the circuit to the atmosphere, and record where the agent went.
 
-    This function alone is what makes the driver below an open circuit, and it
-    is deliberately two operations rather than one. Zeroing the circuit
+    The driver below calls this function after every step, which is what
+    stops the patient from rebreathing. The function is deliberately two
+    operations rather than one. Zeroing the circuit
     fraction on its own would delete agent from a system that checks its own
     conservation. `AgentSimulationValidator` enforces the identity `initial +
     delivered = exhausted + stored`. So agent taken out of the circuit and
@@ -1266,6 +1294,38 @@ def _discard_circuit_contents(system: AgentUptakeSystem) -> None:
     system.agent_simulation_validator.record_external_agent_transfer(
         delivered_agent_l=0.0, exhausted_agent_l=discarded_agent_l
     )
+
+
+def _enlarge_circuit(system: AgentUptakeSystem) -> None:
+    """Give the circuit the largest volume that the model accepts, `MAXIMUM_VOLUME_L`.
+
+    Both test-only drivers below set the circuit back once a step, and between
+    two settings the patient's exhaled gas moves the circuit's fraction. That
+    movement is at most `V_A * step / circuit volume` of the alveolar fraction.
+    In the shipped 6 L circuit it is 1.1e-2 at the one-second step. In a
+    circuit of `MAXIMUM_VOLUME_L` it is 6.7e-6, so the inspired fraction stays
+    where the driver put it for the whole step.
+
+    The volume is the apparatus and not the patient. The setter is the public
+    one that the shipped code uses, and it conserves the agent in the circuit,
+    so the model's own accounting still holds. Each driver calls this function
+    while the circuit is empty.
+    """
+
+    system.circuit.set_circuit_volume(CompartmentVolume(MAXIMUM_VOLUME_L, name="circuit_volume_l"))
+
+
+def _open_the_circuit(system: AgentUptakeSystem) -> None:
+    """Begin an open-circuit elimination: empty the circuit, then enlarge it.
+
+    `_eliminate_without_rebreathing()` calls this function at discontinuation,
+    and so does the 24-hour run in
+    `test_late_washout_against_published_fits.py`. Each then calls
+    `_discard_circuit_contents()` after every step.
+    """
+
+    _discard_circuit_contents(system)
+    _enlarge_circuit(system)
 
 
 @dataclass(frozen=True, slots=True)
@@ -1334,27 +1394,33 @@ def _eliminate_without_rebreathing(
     inspired fraction at or near zero. Wherever a number from this function is
     stated, this limit must be stated with it.
 
-    The mechanism is `_discard_circuit_contents()`, applied at the start of
-    the elimination and after every step of it. Whatever the patient exhaled
-    into the circuit leaves the system as exhausted agent instead of being
-    offered back on the next breath. Nothing else changes. The equations, the
-    propagator, the compartments, the step and the operating point are the
-    shipped ones, and the wash-in is not touched at all. So the driver
-    isolates the apparatus and nothing else about the model.
+    The mechanism has two parts. At discontinuation, `_open_the_circuit()`
+    empties the circuit and enlarges it to `MAXIMUM_VOLUME_L`. After every
+    step of the elimination, `_discard_circuit_contents()` empties it again.
+    Whatever the patient exhaled into the circuit leaves the system as
+    exhausted agent instead of being offered back on the next breath. Nothing
+    else changes. The equations, the propagator, the patient's compartments,
+    the step and the operating point are the shipped ones, and the wash-in is
+    not touched at all. So the driver isolates the apparatus and nothing else
+    about the model.
 
     **It is an open circuit to within one step, not exactly.** Settings are
     held constant across a step, so within each step the circuit refills from
     the alveoli. F_I rises from zero to at most `V_A * step / circuit volume`
-    times the F_A at the start of the step. That is 1.1e-3 at the shipped
-    step, against the 0.30 to 0.32 that the same run settles at with
-    rebreathing. The residual is first-order in the step. It was measured at
-    1.111e-3, 1.111e-4 and 5.555e-5 at steps of 0.1, 0.01 and 0.005 s. Its
-    effect on the result was measured the same way on 2026-09-07.
-    Sevoflurane's ratio moves from 0.154059 at the shipped 0.1 s step to
-    0.153984 at 0.005 s, which is 0.004 published SD, and the other two agents
-    move less. So the numbers this driver produces match the F_I = 0 limit to
-    about three parts in ten thousand. The residual is reported rather than
-    assumed away, and
+    times the F_A at the start of the step. That is 6.7e-6 at the one-second
+    step in the enlarged circuit, against the 0.30 to 0.32 that the same run
+    settles at with rebreathing.
+
+    The residual is proportional to the step and inversely proportional to
+    the circuit volume, which is why the circuit is enlarged. On 2026-09-07
+    the driver emptied the shipped 6 L circuit, and a run could take a shorter
+    step. The residual was then measured at 1.111e-3, 1.111e-4 and 5.555e-5
+    at steps of 0.1, 0.01 and 0.005 s, and sevoflurane's ratio was 0.154059
+    at 0.1 s and 0.153984 at 0.005 s. At the one-second step the same 6 L
+    circuit left a residual of 1.1e-2 and a sevoflurane ratio of 0.154773,
+    which is 0.04 published SD above the 0.005 s value. In the enlarged
+    circuit, sevoflurane's ratio is 0.153980 (2026-11-21). The residual is
+    reported rather than assumed away, and
     `test_the_open_circuit_driver_holds_the_inspired_fraction_near_zero`
     fails if it grows.
 
@@ -1385,12 +1451,12 @@ def _eliminate_without_rebreathing(
     if elimination_fresh_gas_flow_l_min is not None:
         system.set_fresh_gas_flow(FreshGasFlow(elimination_fresh_gas_flow_l_min))
 
-    _discard_circuit_contents(system)
+    _open_the_circuit(system)
     peak_inspired_to_starting_alveolar_ratio = 0.0
 
-    for _ in range(round(ELIMINATION_DURATION_S / SIMULATION_STEP_S)):
+    for _ in range(ELIMINATION_DURATION_S // SIMULATION_STEP_S):
         alveolar_fraction_at_step_start = system.alveoli.partial_pressure_fraction
-        system.advance(SIMULATION_STEP_S)
+        system.advance()
         peak_inspired_to_starting_alveolar_ratio = max(
             peak_inspired_to_starting_alveolar_ratio,
             system.circuit.inspired_partial_pressure_fraction / alveolar_fraction_at_step_start,
@@ -1461,28 +1527,36 @@ def _clamped_wash_in(
     Dividing the shipped run's F_A by its own lagging F_I would compare a
     different experiment with the published curve.
 
-    The mechanism is `_hold_inspired_fraction()`, applied before the first
-    step and after every step. The equations, the propagator, the
-    compartments, the step and the patient's operating point are the shipped
-    ones. So the driver isolates the breathing system and nothing else. The
-    fresh gas flow does not affect the result, because the circuit is set
-    back after every step. The circuit volume affects it only through the
-    size of the drift within a step.
+    The mechanism has two parts. Before the first step, `_enlarge_circuit()`
+    gives the circuit a volume of `MAXIMUM_VOLUME_L`. Before the first step
+    and after every step, `_hold_inspired_fraction()` sets F_I back to the
+    held value. The equations, the propagator, the patient's compartments,
+    the step and the patient's operating point are the shipped ones. So the
+    driver isolates the breathing system and nothing else. The fresh gas flow
+    does not affect the result, because the circuit is set back after every
+    step. The stored circuit volume does not affect it either, because the
+    driver replaces that volume.
 
     **It holds F_I fixed to within one step, not exactly.** Within a step the
     patient exhales into the circuit at the alveolar ventilation, so F_I
     drifts toward F_A by at most `V_A * step / circuit volume` of F_I. That
-    is 1.1e-3 at the shipped 4 L/min, 0.1 s and 6 L, and
+    is 6.7e-6 at the shipped 4 L/min, one second and the enlarged circuit, and
     `test_the_inspired_clamp_holds_the_inspired_fraction` fails if it grows.
+    In the shipped 6 L circuit the drift would be 1.1e-2 at one second. It was
+    1.1e-3 on 2026-10-18, when the driver kept the shipped circuit and set it
+    back every 0.1 s.
 
     `change` is the resolving-power tests' override, and
     `StoredParameterChange` documents it.
     """
 
     system = _configured_system(agent_id, change=change)
+    _enlarge_circuit(system)
     inspired_fraction = fraction_from_percent(Percent(DELIVERED_PERCENT))
+    # Every published sample time is a whole number of seconds, and a run
+    # takes one step each second.
     sample_steps = {
-        round(time_min * SECONDS_PER_MINUTE / SIMULATION_STEP_S): time_min
+        round(time_min * SECONDS_PER_MINUTE) // SIMULATION_STEP_S: time_min
         for time_min in EARLY_WASH_IN_SAMPLE_TIMES_MIN
     }
     ratios: dict[float, float] = {}
@@ -1491,7 +1565,7 @@ def _clamped_wash_in(
     _hold_inspired_fraction(system, inspired_fraction)
 
     for step in range(1, max(sample_steps) + 1):
-        system.advance(SIMULATION_STEP_S)
+        system.advance()
         peak_inspired_deviation = max(
             peak_inspired_deviation,
             abs(system.circuit.inspired_partial_pressure_fraction - inspired_fraction)
@@ -1740,15 +1814,21 @@ def test_early_wash_in_matches_published_human_measurement(point: PublishedTimeP
     Figure 2 of each paper (`PublishedTimePoint` says how), and none of them
     came from this model.
 
-    Measured 2026-10-18 at the shipped defaults, as distance from each
+    Measured 2026-11-21 at the shipped defaults, as distance from each
     point's mean in that point's SD:
 
     | Cohort | 1 to 3 min | 5 min | 7.5 to 25 min |
     | --- | --- | --- | --- |
     | Sevoflurane, n=7 | -0.54 to -0.69 SD | -0.22 SD | +0.48 to +0.77 SD |
-    | Isoflurane, n=7 | -0.70 to -0.83 SD | -0.19 SD | +0.34 to +0.76 SD |
-    | Isoflurane, n=8 | -0.60 to -0.67 SD | +0.08 SD | +0.32 to +1.06 SD |
-    | Desflurane, n=8 | +1.79 to +1.82 SD | +1.82 SD | +2.10 SD at 10 min, then +0.94 to +0.28 SD |
+    | Isoflurane, n=7 | -0.69 to -0.83 SD | -0.18 SD | +0.34 to +0.76 SD |
+    | Isoflurane, n=8 | -0.59 to -0.67 SD | +0.08 SD | +0.32 to +1.06 SD |
+    | Desflurane, n=8 | +1.80 to +1.83 SD | +1.83 SD | +2.10 SD at 10 min, then +0.95 to +0.28 SD |
+
+    The table was first measured on 2026-10-18, when the driver kept the
+    shipped circuit and set it back every 0.1 s. Seven of its figures were
+    then 0.01 SD lower. They were -0.70 and -0.19 for the first isoflurane
+    cohort, -0.60 for the second, and +1.79 to +1.82, +1.82 and +0.94 for
+    desflurane.
 
     So sevoflurane and isoflurane follow the published curves within one SD,
     a little slow in the first 3 minutes and a little fast after 7.5. The
@@ -1756,7 +1836,7 @@ def test_early_wash_in_matches_published_human_measurement(point: PublishedTimeP
     the figure's reading error of the band.
 
     **Desflurane rises faster than its cohort from 1 to 10 minutes**, by
-    0.034 to 0.042 in F_A/F_I, and agrees from 12.5 minutes on. The
+    0.032 to 0.042 in F_A/F_I, and agrees from 12.5 minutes on. The
     operating point is an unlikely cause. The isoflurane breathed by the same
     eight volunteers in the same sitting follows its curve. Sevoflurane and
     isoflurane both sit slightly *below* their curves early, whereas a
@@ -1771,8 +1851,9 @@ def test_early_wash_in_matches_published_human_measurement(point: PublishedTimeP
     gate. `docs/MODEL.md` § "What the published-data gate can and cannot
     resolve" gives, for each stored parameter, the factor at which a change
     makes the gate fail. A doubled alveolar gas volume moves sevoflurane's
-    1-minute F_A/F_I from 0.537 to 0.429, -2.85 SD, so the early points catch
-    the error the 30-minute comparison at 10 L/min could not.
+    1-minute F_A/F_I from 0.538 to 0.429, -2.85 SD, so the early points catch
+    the error the 30-minute comparison at 10 L/min could not. The first of
+    those ratios was 0.537 on 2026-10-18.
     """
 
     failure = _early_wash_in_failure(point)
@@ -1805,13 +1886,14 @@ def test_the_inspired_clamp_holds_the_inspired_fraction(agent_id: str) -> None:
     ventilation, so F_I moves toward F_A by at most `V_A * step / V_circuit`
     of the distance between them, which is at most F_I itself. The fresh gas
     carries the same fraction, so it does not move F_I. The bound is
-    computed here from the parameter files the run uses. As measured on
-    2026-10-18, the peak is 1.1075e-3 against a bound of 1.1111e-3 for each
-    agent.
+    computed here from the patient's parameter file and from
+    `MAXIMUM_VOLUME_L`, the volume that the driver gives the circuit. As
+    measured on 2026-11-21, the peak is 6.5789e-6 to 6.5797e-6 against a
+    bound of 6.6667e-6.
     """
 
     patient_parameters = load_reference_adult_parameters()
-    circuit_volume_l = AgentUptakeSystem.for_agent(agent_id).circuit.circuit_volume_l
+    circuit_volume_l = MAXIMUM_VOLUME_L
     bound = (
         patient_parameters.default_alveolar_ventilation_l_min
         / SECONDS_PER_MINUTE
@@ -1836,8 +1918,10 @@ def test_the_inspired_clamp_neither_creates_nor_loses_agent(agent_id: str) -> No
     `_hold_inspired_fraction()` writes the circuit directly, outside
     `advance()`'s own accounting. Agent added without being recorded would
     look like agent the model created. So the model's own conservation check
-    is read at the end of the run. As measured on 2026-10-18, its relative
-    error is 3e-13 for each agent, which is rounding error.
+    is read at the end of the run. As measured on 2026-11-21, its relative
+    error is 9e-13 to 1.1e-12, which is rounding error. One correction left
+    unrecorded after the first step gives a relative error of 6.6e-6. The
+    error was 3e-13 on 2026-10-18, when the driver kept the shipped circuit.
     """
 
     accounting = _clamped_wash_in(agent_id).agent_accounting
@@ -2088,10 +2172,13 @@ DETECTED_CHANGES = (
 # passing gate says nothing about whether that value is right. A row that names
 # agents leaves out the others, because their edge lies inside the factor.
 # Isoflurane and desflurane fail when the alveolar gas volume is halved,
-# because they fail below x0.61 and x0.92 respectively. Sevoflurane and
+# because they fail below x0.63 and x0.92 respectively. Sevoflurane and
 # isoflurane fail when the venous pool is doubled, because they fail above
-# x1.86 and x1.60 respectively. Isoflurane's lower venous pool edge is x0.50
-# itself. The fat volume case runs for one agent only. A tissue's capacity is
+# x1.87 and x1.61 respectively. Isoflurane also fails when the venous pool is
+# halved, because it fails below x0.53. Those edges were measured on
+# 2026-11-21. Four of them were x0.61, x1.86, x1.60 and x0.50 on 2026-10-18,
+# when the clamped wash-in kept the shipped circuit and set it back every
+# 0.1 s. The fat volume case runs for one agent only. A tissue's capacity is
 # its volume times its tissue:gas coefficient, so doubling either one changes a
 # run identically. The edge searches of 2026-10-17 and 2026-10-18 found the
 # same edges for both, for every agent.
@@ -2194,7 +2281,7 @@ def test_five_minute_elimination_ratio_regression_pin(measurement: PublishedMeas
     rather than tissue return. This model rebreathes and the published
     protocol did not. Running the same five minutes through
     `_eliminate_without_rebreathing()` instead moves the same three agents to
-    -0.15, +0.66 and -2.33 SD.
+    -0.15, +0.65 and -2.33 SD.
     `test_five_minute_elimination_ratio_without_rebreathing_regression_pin`
     makes that comparison. It runs in a diagnostic condition that no setting
     of this simulator can produce.
@@ -2321,8 +2408,8 @@ def test_elimination_is_dominated_by_the_rebreathing_circuit(agent_id: str) -> N
     From one end of the sweep to the other, that is a movement of 11.5 to
     21.6 published SD.
     `test_the_open_circuit_elimination_does_not_depend_on_fresh_gas_flow` is
-    the counterpart: with the circuit discarded each step, the same sweep
-    moves the ratio by 4e-6 SD.
+    the counterpart. With the circuit enlarged and discarded after every step,
+    the same sweep moves the ratio by 1.3e-10 SD at most.
 
     `docs/MODEL.md` § "Model boundary" gives the mechanism. Inspired gas is
     circuit gas, and the circuit is a closed recirculating path except for
@@ -2455,7 +2542,8 @@ def test_five_minute_elimination_ratio_without_rebreathing_regression_pin(
 
     **The condition below is a diagnostic, and the shipped simulator cannot be
     put in it.** `_eliminate_without_rebreathing()` holds the inspired
-    fraction at zero by discarding the circuit after every step. The
+    fraction at zero by enlarging the circuit and discarding its contents
+    after every step. The
     published protocols' expirate collection had the same effect, and no
     fresh gas flow, dial position or patient setting in this simulator can
     produce it. Nobody running the application sees these numbers. Any
@@ -2463,16 +2551,21 @@ def test_five_minute_elimination_ratio_without_rebreathing_regression_pin(
     shipped model that is not true of it.
 
     The table shows what is left once the apparatus is gone, beside the
-    shipped condition that the module's other elimination tests measure. It
-    was measured on 2026-09-07, as distance from each cohort's mean in that
-    cohort's own standard deviations:
+    shipped condition that the module's other elimination tests measure. The
+    open-circuit column was measured on 2026-11-21 and the shipped column on
+    2026-09-07, as distance from each cohort's mean in that cohort's own
+    standard deviations:
 
     | Agent | Cohort | Shipped | Open circuit | Published |
     | --- | --- | --- | --- | --- |
-    | Sevoflurane | n=7 | +3.79 SD | 0.1541, -0.15 SD | 0.157 +/- 0.020 |
-    | Isoflurane | n=7 | +4.15 SD | 0.2388, +0.66 SD | 0.223 +/- 0.024 |
-    | Desflurane | n=8 | +1.13 SD | 0.0935, -2.33 SD | 0.14 +/- 0.02 |
-    | Isoflurane | n=8 | +5.13 SD | 0.2388, +0.94 SD | 0.22 +/- 0.02 |
+    | Sevoflurane | n=7 | +3.79 SD | 0.1540, -0.15 SD | 0.157 +/- 0.020 |
+    | Isoflurane | n=7 | +4.15 SD | 0.2387, +0.65 SD | 0.223 +/- 0.024 |
+    | Desflurane | n=8 | +1.13 SD | 0.0934, -2.33 SD | 0.14 +/- 0.02 |
+    | Isoflurane | n=8 | +5.13 SD | 0.2387, +0.93 SD | 0.22 +/- 0.02 |
+
+    The driver of 2026-09-07 emptied the shipped circuit every 0.1 s. It gave
+    0.1541, 0.2388 and 0.0935, and +0.66 and +0.94 SD for the two isoflurane
+    cohorts.
 
     **Three of the four cohorts land inside the published spread, and
     desflurane misses on the other side.** That is the answer the driver was
@@ -2509,7 +2602,7 @@ def test_five_minute_elimination_ratio_without_rebreathing_regression_pin(
 
     assert abs(ratio - modelled) <= ELIMINATION_RATIO_PIN_TOLERANCE, (
         f"{measurement.agent_id} eliminates into an open circuit to F_A/F_A0 {ratio:.5f} at "
-        f"5 min against the {modelled} this module measured on 2026-09-07, a drift of "
+        f"5 min against the {modelled} this module measured on 2026-11-21, a drift of "
         f"{drift_sd:.2f} published SD; it now sits {published_distance:+.2f} SD from the "
         f"{measurement.elimination_mean} +/- {measurement.elimination_standard_deviation} "
         f"measured in {measurement.cohort_size} volunteers ({measurement.source}). This is "
@@ -2532,15 +2625,19 @@ def test_removing_the_rebreathing_circuit_is_what_moves_the_elimination_comparis
     flow sweep. A flow sweep shows that the ratio is *sensitive* to the
     circuit, but not how much of the gap the circuit causes. Running the same
     five minutes with the circuit taken away answers that question directly.
-    The table was measured on 2026-09-07, in each cohort's own standard
-    deviations:
+    The table was measured on 2026-09-07, and its last two columns again on
+    2026-11-21, in each cohort's own standard deviations:
 
     | Agent | Cohort | Shipped | Open circuit | Moved by |
     | --- | --- | --- | --- | --- |
     | Sevoflurane | n=7 | +3.79 SD | -0.15 SD | 3.94 SD |
-    | Isoflurane | n=7 | +4.15 SD | +0.66 SD | 3.49 SD |
+    | Isoflurane | n=7 | +4.15 SD | +0.65 SD | 3.50 SD |
     | Desflurane | n=8 | +1.13 SD | -2.33 SD | 3.46 SD |
-    | Isoflurane | n=8 | +5.13 SD | +0.94 SD | 4.20 SD |
+    | Isoflurane | n=8 | +5.13 SD | +0.93 SD | 4.20 SD |
+
+    The driver of 2026-09-07 emptied the shipped circuit every 0.1 s. It gave
+    +0.66 SD and 3.49 SD for the first isoflurane cohort, and +0.94 SD for
+    the second.
 
     The test asserts the movement rather than either endpoint, and it asserts
     a downward movement rather than merely a large one. That is the claim the
@@ -2617,13 +2714,17 @@ def test_no_measured_tissue_solubility_reaches_desflurane_s_published_eliminatio
     was written to report. So the residual cannot be this coefficient. The
     assertion below is the contrapositive. Give desflurane a vessel-rich
     coefficient that the published human tissue data support, and its
-    elimination still misses on the same side. Measured 2026-09-08:
+    elimination still misses on the same side. Measured 2026-11-21:
 
     | Coefficient given | F_A/F_A0 at 5 min | Against 0.14 +/- 0.02 |
     | --- | --- | --- |
-    | 1.286, shipped | 0.0935 | -2.33 SD |
-    | 1.39, its own mean + 2 SD | 0.0998 | -2.01 SD |
-    | 1.70, sevoflurane's | 0.1167 | -1.17 SD |
+    | 1.286, shipped | 0.0934 | -2.33 SD |
+    | 1.39, its own mean + 2 SD | 0.0997 | -2.01 SD |
+    | 1.70, sevoflurane's | 0.1166 | -1.17 SD |
+
+    The table was first measured on 2026-09-08, when the driver emptied the
+    shipped circuit every 0.1 s. The ratios were then 0.0935, 0.0998 and
+    0.1167, at the same distances.
 
     **The two thresholds differ because the two ceilings make different
     claims.** At desflurane's own measurement, the residual is asserted to
@@ -2689,21 +2790,26 @@ def test_no_apparatus_dead_space_reaches_desflurane_s_published_elimination(
     elimination, because the apparatus was present throughout the published
     protocol.
 
-    The table below was measured on 2026-09-13, in each cohort's own
+    The table below was measured on 2026-11-21, in each cohort's own
     published SD, for comparison with desflurane's -2.33 SD with no dead
     space at all:
 
     | f (/min) | V_A | Desflurane | Isoflurane n=8 | Worst wash-in |
     | --- | --- | --- | --- | --- |
-    | 6 | 3.70 | -1.89 SD | +1.59 SD | -0.42 SD |
-    | 8 | 3.60 | -1.73 SD | +1.82 SD | -0.63 SD |
-    | 10 | 3.50 | -1.56 SD | +2.05 SD | -0.85 SD |
-    | 12 | 3.40 | -1.38 SD | +2.30 SD | -1.08 SD |
+    | 6 | 3.70 | -1.90 SD | +1.58 SD | -0.42 SD |
+    | 8 | 3.60 | -1.74 SD | +1.81 SD | -0.63 SD |
+    | 10 | 3.50 | -1.57 SD | +2.05 SD | -0.85 SD |
+    | 12 | 3.40 | -1.39 SD | +2.29 SD | -1.08 SD |
+
+    The table was first measured on 2026-09-13, when the driver emptied the
+    shipped circuit every 0.1 s. Desflurane's column was then -1.89, -1.73,
+    -1.56 and -1.38 SD, and isoflurane's was +1.59, +1.82, +2.05 and +2.30
+    SD. The wash-in column does not use the driver.
 
     So the dead space moves desflurane the right way and accounts for between
-    0.44 and 0.95 SD of the 2.33. That is about a fifth to two fifths of the
+    0.43 and 0.94 SD of the 2.33. That is about a fifth to two fifths of the
     residual, never the whole of it. Meanwhile it pushes the isoflurane cohort
-    that was inside its spread at +0.94 SD out to between +1.59 and +2.30. It
+    that was inside its spread at +0.93 SD out to between +1.58 and +2.29. It
     fails the way every other candidate in that section fails. It is
     **common-mode**, moving all four cohorts together, while desflurane's
     residual is differential, separating desflurane from the others. The
@@ -2751,14 +2857,18 @@ def test_the_apparatus_dead_space_moves_every_cohort_together() -> None:
     comparison itself, and it is why `PL-73G7` required any candidate for the
     elimination gap to be checked against the wash-in rows in the same pass.
 
-    Measured 2026-09-13 at f = 11, V_A = 3.45 L/min:
+    Measured 2026-11-21 at f = 11, V_A = 3.45 L/min:
 
     | Cohort | Wash-in | Elimination | Elimination with no dead space |
     | --- | --- | --- | --- |
-    | Sevoflurane n=7 | -0.96 SD | +0.95 SD | -0.15 SD |
-    | Isoflurane n=7 | -0.82 SD | +1.69 SD | +0.66 SD |
+    | Sevoflurane n=7 | -0.96 SD | +0.94 SD | -0.15 SD |
+    | Isoflurane n=7 | -0.82 SD | +1.68 SD | +0.65 SD |
     | Desflurane n=8 | -0.55 SD | -1.48 SD | -2.33 SD |
-    | Isoflurane n=8 | -0.64 SD | +2.17 SD | +0.94 SD |
+    | Isoflurane n=8 | -0.64 SD | +2.17 SD | +0.93 SD |
+
+    The table was first measured on 2026-09-13, when the driver emptied the
+    shipped circuit every 0.1 s. Four of its elimination figures were then
+    0.01 SD higher: +0.95, +1.69, +0.66 and +0.94.
 
     Desflurane is still 1.48 SD short, while both isoflurane cohorts have left
     their published spread entirely. That is the same failure that the
@@ -2846,27 +2956,28 @@ def test_the_open_circuit_driver_holds_the_inspired_fraction_near_zero(
     circuit fills from the alveoli at the alveolar ventilation, so
     dF_I/dt <= (V_A / V_circuit) F_A(t). F_A does not rise during a washout,
     so F_I at the end of the step is at most `V_A * step / V_circuit` of F_A
-    at the *start* of the step. That is 1.11e-3 at the shipped 4 L/min, 0.1 s
-    and 6 L. The bound is computed here from the same parameter files the run
-    uses rather than written down, so a change to any of the three moves the
-    assertion with it.
+    at the *start* of the step. That is 6.67e-6 at the shipped 4 L/min, one
+    second and the enlarged circuit. The bound is computed here from the
+    patient's parameter file, the step and `MAXIMUM_VOLUME_L` rather than
+    written down, so a change to any of the three moves the assertion with it.
 
     Until `PL-RXW0` the test divided by F_A at the end of the step, after F_A
     had already fallen, and that ratio is not limited by the same bound. At
     the 10 L/min that the run keeps, the old test passed with a relative
     margin of 1.5e-4 to 4.8e-4. At lower elimination flows a correct driver
     exceeded the bound, by a factor of 1.000911 to 1.001237 at 0 L/min
-    (measured 2026-10-17). So the test also runs at 0 L/min, the flow closest
-    to the bound. Measured on 2026-10-17 with the starting F_A, the peak is
-    0.99785 to 0.99790 of the bound at the run's own flow, and 0.99924 to
-    0.99931 of it at 0 L/min. The driver is about 280 times closer to an open
-    circuit than the shipped condition, which settles at 0.30 to 0.32. The
-    residual is first-order in the step, so a shorter step gets
-    proportionally closer.
+    (measured 2026-10-17, at the 0.1 s step). So the test also runs at
+    0 L/min, the flow closest to the bound. Measured on 2026-11-21 with the
+    starting F_A, the peak is 0.9979 to 0.9987 of the bound at both flows.
+    The fresh gas no longer changes the peak in the fourth decimal, because
+    one second of fresh gas is at most 0.17 L, which is negligible in a
+    circuit of `MAXIMUM_VOLUME_L`.
+    The shipped condition settles at an F_I of 0.30 to 0.32 of F_A, which is
+    more than 45 000 times the driver's peak.
     """
 
     patient_parameters = load_reference_adult_parameters()
-    circuit_volume_l = AgentUptakeSystem.for_agent(agent_id).circuit.circuit_volume_l
+    circuit_volume_l = MAXIMUM_VOLUME_L
     bound = (
         patient_parameters.default_alveolar_ventilation_l_min
         / SECONDS_PER_MINUTE
@@ -2903,8 +3014,8 @@ def test_the_open_circuit_driver_neither_creates_nor_loses_agent(agent_id: str) 
     So the model's own check is read at the end of the run rather than
     trusted. It is the same `AgentSimulationValidator` that can halt a live
     simulation, and it enforces `initial + delivered = exhausted + stored`.
-    On 2026-09-07 its relative error was measured at 3e-13, which is
-    arithmetic rounding rather than an accounting error.
+    On 2026-11-21 its relative error was measured at 3e-16 to 2e-13, which
+    is arithmetic rounding rather than an accounting error.
     """
 
     accounting = _eliminate_without_rebreathing(agent_id).agent_accounting
@@ -2931,10 +3042,11 @@ def test_the_open_circuit_elimination_does_not_depend_on_fresh_gas_flow(
     published standard deviations between 1 and 10 L/min. It moves because F_I
     settles at `V_A/(V_A + fresh gas flow)` of F_A, and the published ratio has
     no term to divide that out. This test runs the same sweep with the circuit
-    discarded each step, over the whole supported flow range including zero.
-    It finds a spread of 4e-6 published SD (2026-09-07), against the 11.5 to
-    21.6 SD that the shipped condition moves over the narrower range of 1 to
-    10 L/min.
+    enlarged and discarded each step, over the whole supported flow range
+    including zero. It found a spread of 1.0e-10 to 1.3e-10 published SD
+    (2026-11-21), against the 11.5 to 21.6 SD that the shipped condition moves
+    over the narrower range of 1 to 10 L/min. On 2026-09-07 the driver
+    discarded the shipped 6 L circuit every 0.1 s, and the spread was 4e-6 SD.
 
     That is the strongest single piece of evidence that the driver removes the
     apparatus term rather than shrinking it. It is stronger than the residual

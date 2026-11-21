@@ -27,7 +27,6 @@ from anesthesia_sim.core.parameters import (
     load_reference_circle_system_parameters,
     parse_breathing_circuit_parameters,
 )
-from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ELAPSED_SIMULATION_TIME_S,
     MAXIMUM_FRESH_GAS_FLOW_L_MIN,
@@ -581,7 +580,7 @@ def _a_sevoflurane_run_stepped_60_s() -> AgentUptakeSystem:
     system = AgentUptakeSystem.for_agent("sevoflurane")
 
     for _ in range(600):
-        system.advance(SimulationStep(0.1))
+        system.advance()
 
     return system
 
@@ -605,7 +604,7 @@ def test_a_volume_written_past_set_circuit_volume_is_refused_by_the_next_steps_a
     written_past.circuit.circuit_volume_l = CompartmentVolume(3.0)
 
     with pytest.raises(AgentSimulationValidationError, match="^Agent accounting validation failed"):
-        written_past.advance(SimulationStep(0.1))
+        written_past.advance()
 
     # The rollback leaves the volume written, because a volume is a setting.
     assert written_past.capture_state() == replace(
@@ -616,7 +615,7 @@ def test_a_volume_written_past_set_circuit_volume_is_refused_by_the_next_steps_a
 
     conserved.circuit.set_circuit_volume(CompartmentVolume(3.0))
 
-    assert conserved.advance(SimulationStep(0.1)).agent_accounting.passes_validation
+    assert conserved.advance().agent_accounting.passes_validation
 
 
 def test_a_bare_circuit_starts_with_the_vaporizer_off() -> None:
@@ -1081,13 +1080,12 @@ def test_a_step_below_the_floor_is_refused_when_the_circuit_is_stepped_alone(
 ) -> None:
     """`PL-WP52`: the circuit stepped on its own refuses a step shorter than 1 ms.
 
-    Rounding grows as the step shrinks in the circuit stepped alone, as it does in
-    a run. Over 10 000 steps of 1e-14 s, a 6 L circuit's wash-in at 6 L/min was 4%
-    wrong. Both `advance_fresh_gas` and `advance` refuse the step, and the
-    inspired fraction does not change. The 1 ms minimum itself is accepted, and so
-    is a step of 1 s, longer than the run's 0.1 s maximum, which does not apply to
-    a compartment stepped alone. The expected minimum, 0.001 s, is written out here
-    rather than read from `MINIMUM_SIMULATION_STEP_S`.
+    Rounding grows as the step shrinks in the circuit stepped alone. Over 10 000
+    steps of 1e-14 s, a 6 L circuit's wash-in at 6 L/min was 4% wrong. Both
+    `advance_fresh_gas` and `advance` refuse the step, and the inspired fraction
+    does not change. The 1 ms minimum itself is accepted, and so is a step of 1 s.
+    The expected minimum, 0.001 s, is written out here rather than read from
+    `MINIMUM_COMPARTMENT_STEP_S`.
     """
 
     circuit = BreathingCircuit(
