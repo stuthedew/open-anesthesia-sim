@@ -3,12 +3,14 @@ id: PL-5FMC
 title: Check each section of docs/INTERFACE.md and the other interface documents against the code, fix each plain fact error, and file each product decision the check finds
 priority: P2
 effort: M
-status: ready
+status: done
 classes: docs
-touches: docs/INTERFACE.md, docs/interface-provenance.md, docs/ARCHITECTURE.md, docs/items
+touches: docs/INTERFACE.md, docs/interface-provenance.md, docs/ARCHITECTURE.md, docs/items, docs/prose-review/model-description-draft.md
 added: 2026-11-21
+closed: 2026-11-21
+pr: 2181
 payoff: each sentence of the interface specification that says what the interface shows or does is true of the code, or is an item
-verify: grep -qE '^[*][*]Checked 2026-11-2[0-9][.:]' docs/items/PL-5FMC-*.md
+verify: grep -qF 'is 0.60 at 10 L/min, 0.68 at 5 L/min' docs/INTERFACE.md
 sweep: claims in docs/INTERFACE.md and the other interface documents that the code does not do
 ---
 
@@ -105,6 +107,16 @@ A finding that is neither corrected nor filed is in one of the three lists below
 - With the amounts in litres of vapour, the agent cost View's working line reads "11 mL of liquid x USD 0.2047 per mL of liquid" under the heading "Isoflurane delivered". The heading already says whose volume it is, so the wording stays (a placeholder, 2026-11-21).
 - `ROADMAP.md` is not edited on this branch. Its planned-milestone item 34 says that the invariant tier appears in a main window "that cannot be closed while any other window is open", as the owner's ratified decision of 2026-09-16. `PL-DPY1` changed that mechanism as a placeholder, and `docs/INTERFACE.md` now requires the tier to be in view whenever any window is open. `docs/interface-provenance.md` now says what `docs/INTERFACE.md` requires. The roadmap's sentence is a record of the decision as it was taken.
 - `docs/ARCHITECTURE.md` § "Where new code belongs" now says that a new View's values are computed in a module of its own under `app/` and drawn in a `qt_` module of its own, as the agent cost View and the compartment schematic are. The rule for a panel in the unconditional region is unchanged.
+
+**Close-out, 2026-11-21.** Two blind review passes read the branch and named three findings, all real.
+
+- The entry of § "Minimum displayed outputs" on setting changes said that the list and the chart show each change. They show each adjustment, which can hold several changes of one control. The entry now says so.
+- The passages left for the stepping build had no carrier outside this brief. `PL-LZ54` (correct what the build does not rewrite) now holds them, in the build's own feature, `run-computed-one-way`.
+- `docs/prose-review/model-description-draft.md`, the draft for a clinician, repeated the five wash-in figures that this check corrected. It now gives the same five as `docs/INTERFACE.md`.
+
+The five figures are $`F_A/F_I`$ at five minutes for cardiac outputs of 10, 5, 2.5, 1 and 0 L/min. The earlier figures (0.41 to 0.86) were the alveolar concentration divided by the dial setting. They were replaced with the ratio to the inspired concentration (0.60 to 0.96), and not relabelled, because the sentence names $`F_A/F_I`$ and § "F_A/F_I as a displayed ratio" defines the denominator as the modelled inspired concentration.
+
+Documents read for statements that this change makes stale: `README.md`, `ROADMAP.md`, `docs/MODEL.md`, `docs/machine-abstraction.md`, `docs/prose-review/model-description-draft.md` and `.claude/rules/ui-color.md`. `docs/machine-abstraction.md` needs no change. The others are covered above, in `PL-PH3N` (stale docstrings and comments), in `PL-L1LP` (a sixth OS package) or in `PL-VZ57` (the audit's unreproduced leads). `docs/MODEL.md` is `PL-RMNP`'s to change.
 
 **Not confirmed.** Each section report lists the sentences that its checker could not confirm or refute, 102 in all. Most need a run on macOS, a rerun of a dated measurement, or a source outside the repository. The three that matter most: the macOS directory of the saved files (`PL-RH43`), the macOS slider (`PL-57LD`), and "It takes about three seconds" for the frame-cost harness, which was not run.
 

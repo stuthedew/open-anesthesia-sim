@@ -2594,10 +2594,11 @@ entry are the tests that check whether the output is drawn on the display.
   § "MAC-awake as a chart reference" for what the band does and does not assert,
   and why no time-to-wake-up figure is displayed anywhere in the interface;
 - every setting changed during the current run. The list gives each of the
-  most recent changes with the simulated time at which it took effect, the
-  control and its old and new values, and it counts the earlier changes that
-  it leaves out. The chart marks the changes at their times, and counts those
-  that it could not mark
+  most recent adjustments with the simulated time at which it started, or the
+  interval that it spans, and the control and its values before and after. It
+  counts the earlier adjustments that it leaves out. The chart marks each
+  adjustment at the time it started, and counts those that it could not mark.
+  One adjustment can hold several changes of one control
   (`test_the_list_states_what_was_changed_and_to_what`,
   `test_a_recorded_change_is_marked_on_the_chart_at_its_own_time`). See
   § "The control-input timeline"; and
