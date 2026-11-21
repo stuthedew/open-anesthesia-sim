@@ -26,8 +26,7 @@ still delivers it — rather than rewriting. `.claude/rules/plain-writing.md`
 holds the prose-quality standard, deliberately apart from this one, and the
 `prose-quality` feature's items apply it to the existing text.
 
-`CLAUDE.md` § "A behavior change takes effect in the session that asks for it"
-holds the four dispositions, cheapest first: a check or script; a skill; a
+`.claude/rules/rule-routing.md` holds the four dispositions, cheapest first: a check or script; a skill; a
 path-scoped rule; resident. The question each is answered against is *at what
 moment does a session need this rule, and what is the cheapest thing that
 delivers it then.*
@@ -2559,4 +2558,284 @@ recommending work" holds the steps.
       `mine`, and the `tags` filter is refused inside a session. So while
       `PL-NZC0`'s Projects trial runs, triage and start nothing its Order list
       reserves (`PL-DR3G`).
+```
+
+### The procedures that load with the file they govern
+
+`PL-GDN7` moved the rows that apply only with a known file open into
+path-scoped rules. Each block below is the paragraph as it was loaded at launch
+before the move, and the line above it says what stays and which rule holds
+the rest. Row 69, which leads into row 70, is in one block with it.
+
+**Row 23, `CLAUDE.md`: how to record whether a decision was ratified or
+specified.** Two lines stay, which give both forms, because decisions are also
+recorded in files that load no path-scoped rule.
+`.claude/rules/citation-drift.md` § "Record whether the owner ratified or
+specified a decision" holds the rest.
+
+```text
+- **Record which it was.** A decision taken on a session's recommendation is
+  written `(project owner, DATE, ratified)` and names, in one clause, what it
+  was chosen over. One they specified keeps the plain `(project owner, DATE)`,
+  but only from 2026-09-16, the day this rule landed: dated earlier, the plain
+  form records no kind at all, so read it as unrecorded rather than as
+  specified, reopen it on ordinary evidence, and say the kind is unrecorded
+  rather than claiming it was ratified. One word and one clause, because the
+  reply that put the case is gone and the record is the only carrier - and
+  without it a later session cannot tell a design they authored from one they
+  nodded at.
+```
+
+**Row 53, `CLAUDE.md`: a check earns its place every run.** Two lines stay.
+`.claude/rules/apparatus-standard.md` § "A check earns its place every run, or
+it is retired" holds the rest.
+
+```text
+- **A check earns its place every run, or it is retired.** The gate above
+  decides whether to build one; this decides whether to keep it. A check that
+  fires every run without changing a decision is a defect in the check — it
+  costs attention forever and trains a session to skim the output where a real
+  advisory also appears. Removing one is a legitimate outcome of a workflow
+  pass, not a loss of coverage. Reserve hard failure for exact rules; a signal
+  needing context is an advisory, and an advisory nobody acts on is retired only after naming the decision it
+  was built to change and where that decision is taken: if that decision is
+  still taken somewhere, route the advisory to that moment first, and retire
+  it only if it still changes nothing there; if no such decision exists, it
+  is fluff and goes. Nobody reading it is the symptom, not the test (project
+  owner, 2026-10-01, ratified, over an item of its own, `PL-1XZD`). `PL-ZBJ0` carries the evidence.
+```
+
+**Row 69 and 70, `CLAUDE.md`: routing a behavior change to the cheapest place
+that delivers it.** Three lines stay. `.claude/rules/rule-routing.md`, which
+loads with `CLAUDE.md` and `.claude/`, holds the four dispositions.
+
+```text
+  **Route it; do not append here by default.** Ask *at what moment a session
+  needs the rule, and what is the cheapest thing that delivers it then.* Four
+  dispositions, cheapest first:
+
+  1. **A check or a script**, wired into `make check`, a hook, or CI. Zero
+     resident context, and it never fails to fire. Deleting prose because
+     something deterministic now enforces it is the strongest outcome here.
+  2. **A skill**, for a multi-step procedure whose trigger is the skill's own
+     trigger. It loads only when relevant; the queue workflows are the example.
+  3. **A path-scoped rule** — a `.claude/rules/*.md` with `paths:` frontmatter,
+     which loads when a session reads, writes or edits a matching file. Right
+     for a rule that matters only in part of the tree; wrong for one that must
+     fire before a first write, which it reaches only after that write.
+  4. **Resident here**, only for what a session could violate before it would
+     think to look anything up.
+```
+
+**Row 154, `.claude/rules/expert-review.md`: a reference implementation
+measured nothing.** Three lines of pointers stay.
+`.claude/rules/sources-and-docstrings.md` § "A reference implementation is not
+a source" holds the rule.
+
+```text
+A **reference implementation measured nothing**, and saying otherwise in a
+reply is the same error as writing it into a file: "it comes from Gas Man"
+describes a program's parameter set, not a measurement. It may still be
+*adopted* as the authority for a constant, on a recorded decision, and this
+project has done so for most of what it stores — the `tier` and `adopted`
+fields on each entry under `src/anesthesia_sim/data/` are what say which, so a
+reply ruling the practice out in general is wrong about the shipped set.
+`docs/MODEL.md` § "Source hierarchy: what may be cited as the authority for a
+value" is where that question is decided, and the only place it is. That rule
+in full, and what a docstring and an error message owe a reader, are in
+`.claude/rules/sources-and-docstrings.md`. Both fire with a file already open,
+so both load on a path rather than at launch. The concrete bar for `core/` —
+that it should read like the domain — is in `.claude/rules/core-domain.md`.
+```
+
+**Row 179, `.claude/rules/plain-writing.md`: where the rest goes.** One line
+stays. `.claude/rules/sources-and-docstrings.md` § "Write these files plainly"
+holds the note for developers.
+
+```text
+**Where the rest goes.** Decision history goes in the item. In `docs/MODEL.md`,
+detail of the numerical method goes in a note for developers at the end of its
+section, a paragraph that opens with "**For developers.**", because the
+document must specify the numerical method (`PL-TZ7R`). That note may name the
+tests for the paragraphs directly above it (`PL-W8FL`). State a model
+limitation only where it could change what a clinician concludes from a
+displayed value (`PL-BS6N`). `docs/INTERFACE.md` ends a section with the same
+note for developers, for the tests and code behind its requirements.
+```
+
+**Row 180, `.claude/rules/plain-writing.md`: take the reason for a chosen value
+from a record.** Nothing stays. `.claude/rules/sources-and-docstrings.md` §
+"Write these files plainly" holds the rule, and now loads with `tests/` too,
+because the rule's own example is a tolerance in a test.
+
+```text
+**Take the reason for a chosen value from a record.** Where a docstring, a
+comment or a note for developers explains a chosen value, such as a tolerance
+or a limit, take the reason from the code or test that uses the value, or from
+a cited record. When the reason is not at hand, trace the value's history
+first, with `git log -S` and the items. Search for the value as the code
+writes it: a 0.5% tolerance was `5e-3` in the test that used it. When the
+trace finds no reason, file an item for the missing record, and say in the
+text what the trace found. Never state a reason that no record holds.
+```
+
+**Row 197 to 202, `.claude/rules/plain-writing.md`: the examples of a
+`docs/MODEL.md` paragraph and of a docstring.** Nothing stays.
+`.claude/rules/sources-and-docstrings.md` § "Write these files plainly" holds
+both examples.
+
+```text
+**A paragraph of `docs/MODEL.md`**, for a clinician. The project owner accepted
+it on 2026-11-04 (`PL-ZDZ0`).
+
+"The smallest change the MAC readout can show is therefore 0.02
+percentage points of sevoflurane, 0.012 of isoflurane and 0.06 of desflurane,
+never less than the percent readout's. The two readouts round separately, so
+the MAC value can occasionally change while the percent stays the same."
+
+**A docstring**, for a developer. Say what the function returns or does, with
+its unit, then what it refuses, then anything a developer would get wrong
+without being told. Leave out what the signature, the body or a named type
+already shows.
+
+"Return this group's blood flow $`Q_i = f_iQ`$ at a cardiac output, in
+L/min. `docs/MODEL.md` § "Tissue groups" defines it. The group stores no flow
+of its own, so no write can leave its flow out of step with the cardiac output
+(`PL-HQF5`). Raises: TypeError: `cardiac_output_l_min` was not built as a
+`CardiacOutput` (`core/supported_ranges.py`)."
+
+Write each part in whole sentences:
+
+"Reject a volume or tissue:gas partition coefficient that would make the
+tissue's capacity less than the amount of agent it already holds."
+```
+
+### The procedures that the pull-request skill, the coordinator mode and the run-the-app skill hold
+
+`PL-T51K` moved the rows about pull requests, Projects threads and screenshots.
+Each block below is the paragraph as it was loaded at launch before the move,
+and the line above it says what stays and which file holds the rest.
+
+**Row 7, `CLAUDE.md`: product focus.** The rule stays in four lines.
+`.claude/skills/docket/modes/coordinator.md` § "Product focus and the Projects
+trial" holds who works a root cause while the trial runs, and how the focus
+ends.
+
+```text
+**Product focus, from 2026-09-25** (project owner, 2026-09-25, ratified, over
+a fix batch before the switch and over working each root cause in the owner's
+own sessions, `PL-2866`). A session given no particular work is a product
+session, and picks from `bin/docket next product`. An apparatus finding stops
+one only when it blocks it: a hard gate refusing correct work, a state answer
+that would lose or duplicate work, or a gap in a safety-floor guard. Any other
+is captured as always and the product item finished. Root causes are worked in
+parallel by the Projects trial's coordinator (`PL-NZC0`) while that trial runs,
+not in the owner's sessions. A product session that finds one
+while the trial is paused ends its reply with a ready-to-paste prompt for a
+fresh session on it, as the generator rule below says (`PL-0GWD`). It holds until the owner
+ends it. Ending it deletes this paragraph and `docket.toml`'s `focus` key, which
+points the digest's `Top:` line at the product lane (`PL-2CPD`).
+```
+
+**Row 45, `CLAUDE.md`: fill a long wait with work.** Nothing stays.
+`.claude/skills/docket/modes/coordinator.md` § "What every brief tells its
+thread" holds the rule, which applies to a Projects thread only.
+
+```text
+- **Fill a long wait with work** (project owner, 2026-10-25, ratified, over
+  leaving the coordinator to notice an idle thread). Before a thread goes idle
+  on a wait expected to last more than an hour, it runs `bin/docket next` in
+  its lane and takes any ready item inside the scope it was given. If there
+  is none, it tells the coordinator, so that the place can be filled
+  (`PL-D1FD`).
+```
+
+**Row 73, `CLAUDE.md`: commit and push as you go.** Three lines stay.
+`.claude/skills/pull-request/SKILL.md` already held the rest.
+
+```text
+- **Commit and push as you go, and read the `pull-request` skill before
+  opening, arming, updating or merging a pull request, or acting on a failed
+  check** (project owner, 2026-08-31; moved to
+  `.claude/skills/pull-request/SKILL.md` on 2026-10-24, `PL-S2NL`). The
+  container is ephemeral, so an uncommitted thought is one interruption from
+  gone and an unpushed commit dies with it. Once the owner has approved a piece
+  of work, its pull request opens as soon as the work is finished and green,
+  without asking. That standing request is the explicit ask the web harness
+  waits for. The skill holds when a pull request arms, when to bring `main` in,
+  when failed checks stop the session, and how to check a published body. The
+  push and pull request hooks name it at those moments.
+```
+
+**Row 167, `.claude/rules/instruction-writing.md`: rule 10, decision first.**
+Ten lines stay. `.claude/skills/run-the-app/SKILL.md` § "Compare interface
+approaches for the owner" holds the screenshot rule, and
+`.claude/skills/docket/modes/coordinator.md` § "What every brief tells its
+thread" holds which questions go to the coordinator.
+
+```text
+10. DECISION FIRST. A message asking the user to decide opens with the
+    question(s) and the recommendation, one line each. Supporting detail
+    follows; nothing precedes the questions.
+    **The reader must see on first reading what they are judging** (project
+    owner, 2026-10-19). This applies to every question, card and read ask.
+    Word the question in clinical or learner terms, not the code's or the
+    item's. Under each option, say what a learner sees or what changes for
+    them. Give the recommendation and its reason, and say why the choice is
+    theirs rather than the session's. A question about different approaches
+    to the interface carries one screenshot per option, of one concrete run,
+    annotated where the options differ. The run-the-app skill § "Compare
+    interface approaches for the owner" says how (`PL-KYTY`).
+    **A session running under a coordinator asks the coordinator, not the
+    owner** (project owner, 2026-10-19). This applies to a Projects thread and
+    to any other session that a coordinator session started. Such a session
+    sends a question the coordinator can answer to the coordinator, never to
+    the owner: what to work on next, which item to take, whether to carry on.
+    The coordinator decides it, or brings the owner only a real decision,
+    written to the standard above.
+```
+
+**Row 172d, `.claude/rules/instruction-writing.md`: a closing-block line whose
+answer makes a commit.** Two lines stay. `.claude/skills/pull-request/SKILL.md`
+§ "Ask `bin/docket arm` before arming and before every later push" holds how
+the item and the pull request wait for the answer.
+
+```text
+    - A line whose answer will produce a commit says so, and sorts as work
+      rather than as a question. Where that commit belongs in a branch another
+      line would merge or close, the decision line comes first. And while a
+      pull request is open on that branch, the item the answer goes into
+      stays claimed there at `needs-decision`, and the pull request is a
+      draft, until the answer is committed. `bin/docket arm` keeps a branch
+      with an open claim unarmed, so a merge from the pull request page
+      cannot land first and leave the answer on a merged branch (`PL-JHHC`).
+```
+
+**Row 194, `.claude/rules/plain-writing.md`: pull request titles.** One line
+stays. `.claude/skills/pull-request/SKILL.md` § "Write the title and body"
+holds the rule.
+
+```text
+**A pull request title names the change plainly and briefly.** The title
+becomes the squash commit's subject, the one line of `main`'s history that a
+reader sees for the change. After the item ids that the `pr-title` check
+requires, write a short phrase rather than a whole sentence: what the change
+does, to what, and the reason when it fits. Use names a reader of the
+repository already knows, such as a CI job, a check or a panel, not a term
+coined while building the change. Give each number the thing it counts. When a
+branch closes several items, name what they change together.
+```
+
+**Row 205 and 206, `.claude/rules/plain-writing.md`: the pull request body and
+title examples.** Nothing stays. `.claude/skills/pull-request/SKILL.md` §
+"Write the title and body" already held the two bodies, and now holds the
+title.
+
+```text
+**A pull request body.** `.claude/skills/pull-request/SKILL.md` § "Write the
+title and body" has two.
+
+**A pull request title.** The project owner chose this one, on `#1523`, on
+2026-10-17: "PL-ZWQS: rebalance the CI test split to offset part 1's lint
+steps". It names the change, what it changes and why.
 ```

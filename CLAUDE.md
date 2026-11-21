@@ -36,19 +36,10 @@ and if it does not, find what generates the work (`PL-04KR`, `PL-WXKD`).
 mechanism is built**, unless the owner asks. Fixing a generator or a defect
 needs no lift. `.claude/skills/docket/modes/triage.md` has the full rule.
 
-**Product focus, from 2026-09-25** (project owner, 2026-09-25, ratified, over
-a fix batch before the switch and over working each root cause in the owner's
-own sessions, `PL-2866`). A session given no particular work is a product
-session, and picks from `bin/docket next product`. An apparatus finding stops
-one only when it blocks it: a hard gate refusing correct work, a state answer
-that would lose or duplicate work, or a gap in a safety-floor guard. Any other
-is captured as always and the product item finished. Root causes are worked in
-parallel by the Projects trial's coordinator (`PL-NZC0`) while that trial runs,
-not in the owner's sessions. A product session that finds one
-while the trial is paused ends its reply with a ready-to-paste prompt for a
-fresh session on it, as the generator rule below says (`PL-0GWD`). It holds until the owner
-ends it. Ending it deletes this paragraph and `docket.toml`'s `focus` key, which
-points the digest's `Top:` line at the product lane (`PL-2CPD`).
+**Product focus, from 2026-09-25.** A session given no particular work picks
+from `bin/docket next product`. An apparatus finding stops it only when it
+blocks it: a hard gate refusing correct work, a state answer that would lose or
+duplicate work, or a gap in a safety-floor guard.
 
 ## Working with the project owner
 
@@ -122,16 +113,8 @@ decision, and they have different bars to reopen** (project owner, 2026-09-16).
 every nuance - not that the question is closed. A user-facing behavior they
 asked for in their own words is firmer. Four consequences:
 
-- **Record which it was.** A decision taken on a session's recommendation is
-  written `(project owner, DATE, ratified)` and names, in one clause, what it
-  was chosen over. One they specified keeps the plain `(project owner, DATE)`,
-  but only from 2026-09-16, the day this rule landed: dated earlier, the plain
-  form records no kind at all, so read it as unrecorded rather than as
-  specified, reopen it on ordinary evidence, and say the kind is unrecorded
-  rather than claiming it was ratified. One word and one clause, because the
-  reply that put the case is gone and the record is the only carrier - and
-  without it a later session cannot tell a design they authored from one they
-  nodded at.
+- **Record which it was**: `(project owner, DATE, ratified)` with what it was
+  chosen over, in one clause, or the plain `(project owner, DATE)`.
 - **Reopen a ratified decision on ordinary evidence**: a measurement, a cost the
   case did not carry, a constraint that has since appeared. Say so and put it
   back to them. "It is what the owner decided" does not defend it, because it
@@ -198,12 +181,6 @@ None of them overrides the safety-critical verification requirements below.
   the Bash tool's `run_in_background`, never with `nohup`, a trailing `&` or
   `setsid`. Before ending a turn to wait, schedule a `send_later` check-in.
   After a gap, run `uptime` before trusting that a run is still going.
-- **Fill a long wait with work** (project owner, 2026-10-25, ratified, over
-  leaving the coordinator to notice an idle thread). Before a thread goes idle
-  on a wait expected to last more than an hour, it runs `bin/docket next` in
-  its lane and takes any ready item inside the scope it was given. If there
-  is none, it tells the coordinator, so that the place can be filled
-  (`PL-D1FD`).
 
 ## Prefer deterministic tooling over repeated model work
 
@@ -227,18 +204,8 @@ to it is re-derived in every session. So, when building a mechanism:
   recurs and the answer is deterministic. Not for a one-off, not around what a
   linter already does, and not where upkeep would cost more than the passes it
   saves. Where the benefit is unclear, the answer is no.
-- **A check earns its place every run, or it is retired.** The gate above
-  decides whether to build one; this decides whether to keep it. A check that
-  fires every run without changing a decision is a defect in the check — it
-  costs attention forever and trains a session to skim the output where a real
-  advisory also appears. Removing one is a legitimate outcome of a workflow
-  pass, not a loss of coverage. Reserve hard failure for exact rules; a signal
-  needing context is an advisory, and an advisory nobody acts on is retired only after naming the decision it
-  was built to change and where that decision is taken: if that decision is
-  still taken somewhere, route the advisory to that moment first, and retire
-  it only if it still changes nothing there; if no such decision exists, it
-  is fluff and goes. Nobody reading it is the symptom, not the test (project
-  owner, 2026-10-01, ratified, over an item of its own, `PL-1XZD`). `PL-ZBJ0` carries the evidence.
+- **A check earns its place every run, or it is retired.**
+  `.claude/rules/apparatus-standard.md` has the test for retiring one.
 
 ## The queue, and how the project owner works
 
@@ -296,20 +263,8 @@ risk and the reward, and stop. Report in a line what the fast path did.
   corrected. The capture is the record; the edit is the change. Do both.
 
   **Route it; do not append here by default.** Ask *at what moment a session
-  needs the rule, and what is the cheapest thing that delivers it then.* Four
-  dispositions, cheapest first:
-
-  1. **A check or a script**, wired into `make check`, a hook, or CI. Zero
-     resident context, and it never fails to fire. Deleting prose because
-     something deterministic now enforces it is the strongest outcome here.
-  2. **A skill**, for a multi-step procedure whose trigger is the skill's own
-     trigger. It loads only when relevant; the queue workflows are the example.
-  3. **A path-scoped rule** — a `.claude/rules/*.md` with `paths:` frontmatter,
-     which loads when a session reads, writes or edits a matching file. Right
-     for a rule that matters only in part of the tree; wrong for one that must
-     fire before a first write, which it reaches only after that write.
-  4. **Resident here**, only for what a session could violate before it would
-     think to look anything up.
+  needs the rule, and what is the cheapest thing that delivers it then.*
+  `.claude/rules/rule-routing.md` lists four dispositions, cheapest first.
 
   A rule that lands in none of the four has been lost, which is worse than this
   file staying long: never delete a rule for being wordy — but a rule whose
@@ -340,15 +295,7 @@ risk and the reward, and stop. Report in a line what the fast path did.
   line may stay (project owner, 2026-09-24, restating `PL-B11M`).
 - **Commit and push as you go, and read the `pull-request` skill before
   opening, arming, updating or merging a pull request, or acting on a failed
-  check** (project owner, 2026-08-31; moved to
-  `.claude/skills/pull-request/SKILL.md` on 2026-10-24, `PL-S2NL`). The
-  container is ephemeral, so an uncommitted thought is one interruption from
-  gone and an unpushed commit dies with it. Once the owner has approved a piece
-  of work, its pull request opens as soon as the work is finished and green,
-  without asking. That standing request is the explicit ask the web harness
-  waits for. The skill holds when a pull request arms, when to bring `main` in,
-  when failed checks stop the session, and how to check a published body. The
-  push and pull request hooks name it at those moments.
+  check.** Approved work that is green opens its pull request unasked.
 - **Read only means read only** (`PL-LK62`). Told "read only", or anything
   meaning look but change nothing, a session writes nothing until the owner
   lifts it: no file, commit, push, pull request, comment, claim or merge. What

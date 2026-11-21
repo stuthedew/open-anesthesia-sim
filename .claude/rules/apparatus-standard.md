@@ -183,3 +183,19 @@ each is true for `'²'`, which `int` then refuses, and `digits.whole_number`
 already reads a whole number. A predicate that the check cannot
 recognise from its syntax, such as digits that only their source shows to be
 a pull request number, is still the judgment half.
+
+## A check earns its place every run, or it is retired
+
+**A check earns its place every run, or it is retired.** `CLAUDE.md` § "Prefer
+deterministic tooling over repeated model work" decides whether to build one;
+this decides whether to keep it. A check that fires every run without changing
+a decision is a defect in the check — it costs attention forever and trains a
+session to skim the output where a real advisory also appears. Removing one is
+a legitimate outcome of a workflow pass, not a loss of coverage. Reserve hard
+failure for exact rules; a signal needing context is an advisory, and an
+advisory nobody acts on is retired only after naming the decision it was built
+to change and where that decision is taken: if that decision is still taken
+somewhere, route the advisory to that moment first, and retire it only if it
+still changes nothing there; if no such decision exists, it is fluff and goes.
+Nobody reading it is the symptom, not the test (project owner, 2026-10-01,
+ratified, over an item of its own, `PL-1XZD`). `PL-ZBJ0` carries the evidence.
