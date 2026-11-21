@@ -590,13 +590,7 @@ def move_sections(root: Path, source: str, destination: str, titles: Sequence[st
 REPOINTED_SUFFIXES = frozenset({".py", ".md", ".toml", ".yml", ".yaml", ".sh", ".json", ".cff"})
 #: Records of what was true when they were written, which `repoint` leaves
 #: alone, as `tools/doc_check.py` leaves a closed item's citations.
-RECORD_DIRS = (
-    RECORDS,
-    "docs/releases/",
-    "docs/hook-blocks/",
-    "docs/worker-runs/",
-    "docs/prose-review/",
-)
+RECORD_DIRS = (RECORDS, "docs/releases/", "docs/hook-blocks/", "docs/prose-review/")
 #: What stands between a document and a quotation that claims the document
 #: holds the words: nothing, a possessive, a section mark, a comma, a colon, a
 #: parenthesis, or "under" or "section".

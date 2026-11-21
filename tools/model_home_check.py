@@ -55,7 +55,7 @@ MODEL_ID_RE = re.compile(r"\bclaude-[a-z]+(?:-\d+)+\b")
 ITEMS = "docs/items/"
 
 #: The files and trees that record what happened, and so may name any model.
-MODEL_RECORDS = ("docs/session-ledger.tsv", "docs/worker-runs/")
+MODEL_RECORDS = ("docs/session-ledger.tsv",)
 
 #: Each other file that may name a model id, and why it may.
 COPIES = {
@@ -70,7 +70,7 @@ COPIES = {
     ),
     "tools/skill_start_eval.py": "a usage example in the docstring",
     "docs/items/PL-6FX6-make-the-first-month-of-api-credit-runs-the.md": (
-        "the model-comparison trial's run commands, which name the models it compares"
+        "the dropped model-comparison trial's run commands, which name the models it compared"
     ),
     "docs/items/PL-J1ZM-sessions-write-prose-that-over-explains-in.md": (
         "the web addresses of two prompting guides it cites, which contain a model's name"

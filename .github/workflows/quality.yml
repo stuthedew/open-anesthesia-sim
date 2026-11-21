@@ -257,9 +257,6 @@ jobs:
       # `uv run` below, which is the run that checks those files (`PL-MB3F`).
       - run: python3 tools/possessive_section_check.py
       - run: python3 tools/rules_paths_check.py
-      # A headless worker's run record must carry its review before its branch
-      # merges (`PL-87BR`).
-      - run: python3 tools/worker_runs.py check
       # Bare for the same reason as the lines above, and the one tool here that
       # reads source with `ast` and still belongs at the floor: the apparatus
       # trees it reads are held to the floor themselves, where `src/` is not,
