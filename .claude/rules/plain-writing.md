@@ -1,11 +1,5 @@
 # Write plainly
 
-**Resident, with no `paths:`.** It applies whenever a session writes prose. A
-path scope would miss item briefs, commit messages, pull request bodies and
-replies, because no read comes before them. `PL-8ZTQ` has the sources behind
-the points about sentences, and `PL-J1ZM` has the measurements behind choosing
-what goes in.
-
 Write all prose that a person will read in plain English: docstrings, comments,
 error messages, documents, rules, item briefs, commit messages, pull request
 titles and bodies, replies, and every question or review request sent to the
@@ -43,13 +37,6 @@ after it is written, `PL-J1ZM`).
 | Replies, and questions and review requests to the project owner | The project owner, an anesthesiologist and intensive-care physician | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and what the session did. | Make a decision, or learn what changed. |
 | Item briefs in `docs/items/`; the workflow's files in `.claude/`, `tools/`, `subprojects/docket/src/`, `CLAUDE.md`, `docs/apparatus.md`, `docs/maintainer.md`, `docs/worker.md`, `docs/resident-instructions.md`, `docs/WORKING_NOTES.md`, `docs/dead-ends.md` and `docs/prose-review/README.md`; and commit messages | A later session, or the owner reading the history | Python, anesthesia, and this repository's rules. | What the writing session knew and did not write down. | Pick up the work, or find out why a change was made. |
 | Pull request titles and bodies, which the squash merge makes the commit message on `main` | The project owner deciding whether a change can merge, or anyone reading `main`'s history later | Python, anesthesia, and this repository's rules. | What the writing session knew and did not write down. | Decide whether the change can merge, or find out why it was made. |
-
-The two `README.md` rows are the readers that `README.md` § "What it is for"
-names. `docs/releases/` has no row, because `bin/docket release` writes each
-note from item titles, and an edit there would make a note disagree with its
-item. `python3 tools/new_prose.py --compare`, which close-out step 8 runs,
-reads this table to choose the files it compares, so the table keeps its five
-columns.
 
 **Where the rest goes.** Decision history goes in the item. In `docs/MODEL.md`,
 detail of the numerical method goes in a note for developers at the end of its
@@ -107,10 +94,6 @@ text what the trace found. Never state a reason that no record holds.
 11. **Give separate points their own structure.** When a table cell or a
     paragraph holds several separate points, make them a numbered list or a
     short section, and keep the cell to one sentence and a pointer.
-
-    Points 7 to 11 keep out padding that sounds careful and adds nothing. The
-    project owner judged `docs/MODEL.md` to read as machine-written because of
-    it (`PL-ZT47`).
 12. **Check every sentence before the text goes to its reader.** Go through
    the finished text one sentence at a time. Is each word used in its everyday
    sense? Does the text say which one each paper, file, rule or item is? Does
@@ -135,12 +118,9 @@ change plainly, even when the text around it is dense. Rewriting sentences you
 did not need to touch is work for its own item, in the `prose-quality`
 feature.
 
-This rule decides how a text is worded and ordered, and what it leaves out. The
-safety-critical standard in `CLAUDE.md` and `.claude/rules/sources-and-docstrings.md`
-decides which facts a docstring, an error message or a displayed value must give,
-and this rule never cuts one of those: a unit, a value, a condition or a citation.
-`.claude/rules/instruction-writing.md` decides the shape of a reply. Code,
-commands, paths and quoted output stay exactly as they are.
+This rule decides how a text is worded and what it leaves out. It never cuts a
+unit, a value, a condition or a citation that `CLAUDE.md`'s safety-critical
+standard requires. Code, commands, paths and quoted output stay as they are.
 
 ## Examples
 

@@ -230,24 +230,6 @@ FACTS: tuple[Fact, ...] = (
         ),
     ),
     Fact(
-        "the apparatus's paths, which the apparatus standard applies to",
-        Place(
-            "CLAUDE.md",
-            r"The workflow apparatus that exists so agent sessions can be productive"
-            r" — (.*?) — is held",
-            _paths,
-            _ACROSS_LINES,
-        ),
-        (
-            Place(
-                ".claude/rules/expert-review.md",
-                r"apparatus \((.*?)\), which is held",
-                _paths,
-                _ACROSS_LINES,
-            ),
-        ),
-    ),
-    Fact(
         "the command that installs the locked environment",
         Place("Makefile", r"^\tuv sync (--[^\n]*?)\s*$"),
         (
