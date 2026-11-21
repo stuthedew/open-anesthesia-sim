@@ -29,7 +29,9 @@ not-delegable: The work is recording the owner's answer and filing the removals;
 5. Decide the replay of `verify:` commands together with `PL-LFJZ`.
 6. Keep the other eight.
 
-**Answered 2026-11-21.** The owner agreed with all six recommendations (project owner, 2026-11-21, ratified, "Agree with recs", over keeping all 13 checks). Asked whether the dead-ends list goes too, the answer given was no: only its format check is retired, and the list still reaches each session through the start-up hook. The removals are `PL-HS2T` (the branch-id check), `PL-F7XT` (the body anchor check), `PL-8F5B` (the dead-ends format check) and `PL-3HNP` (the worker-run check). The replay of `verify:` commands is decided in `PL-LFJZ`.
+**`PL-LFJZ` answered on 2026-11-20.** The owner chose a done-condition that is checked once when an item closes and not replayed afterwards. `PL-QTZG` (remove the shape rules and the replay's reading of commands) carries the removal, so point 5 is the replay's retirement once `PL-QTZG`'s three predecessors land.
+
+**Answered 2026-11-21.** The owner agreed with all six recommendations (project owner, 2026-11-21, ratified, "Agree with recs", over keeping all 13 checks). Asked whether the dead-ends list goes too, the answer given was no: only its format check is retired, and the list still reaches each session through the start-up hook. The removals are `PL-HS2T` (the branch-id check), `PL-F7XT` (the body anchor check), `PL-8F5B` (the dead-ends format check) and `PL-3HNP` (the worker-run check). The replay of `verify:` commands is retired by `PL-QTZG`, as the paragraph above says.
 
 **Done when.** The owner has answered, and each check to retire has an item to remove it.
 
