@@ -49,7 +49,7 @@ from anesthesia_sim.app.agent_cost import (
 from anesthesia_sim.app.display_units import DisplayUnit
 from anesthesia_sim.app.formatting import format_entered_figure
 from anesthesia_sim.app.preferences import AgentPrice, Preferences
-from anesthesia_sim.app.qt_widgets import FocusedComboBox, styled_label
+from anesthesia_sim.app.qt_widgets import FocusedComboBox, declare_interface_colours, styled_label
 from anesthesia_sim.app.run_view import AVAILABLE_AGENTS
 from anesthesia_sim.app.stylesheets import (
     filled_button_stylesheet,
@@ -151,6 +151,17 @@ class PriceEntry(QWidget):
         self.applies_on_edit.setDisplayFormat(_DATE_FORMAT)
         self.applies_on_edit.setCalendarPopup(True)
         self.applies_on_edit.dateChanged.connect(self._handle_date_edit)
+
+        # An entry field paints its fill and its text from the palette, which
+        # follows the host's appearance unless the field declares this
+        # interface's colours (`PL-R51H`).
+        for entry in (
+            self.bottle_price_edit,
+            self.bottle_volume_edit,
+            self.currency_edit,
+            self.applies_on_edit,
+        ):
+            declare_interface_colours(entry)
 
         # `textEdited` is emitted only for what the reader types, so filling
         # the fields from a stored price never moves the date.

@@ -4164,18 +4164,20 @@ requirement measures a tooltip's colors.
 
 The dark-appearance test (`tests/integration/test_dark_appearance.py`) renders
 the dashboard, the bookmark editor and the new-case confirmation under the
-palette a dark host supplies. It
+palette a dark host supplies. The dashboard it renders draws every registered
+kind of View. It
 fails on any content widget that resolves to that palette, and it checks the
 chrome and the untouched `Disabled` group against the same host. Under that
 host palette, 94.3% of the page scroll bar's pixels are darker than mid-grey
 without the interface's own palette, and none are with it.
 
 A second test (`tests/integration/simulation_view/test_simulation_view_foreground.py`) catches any control
-that declares no color, including one added later. It builds the whole
-dashboard under a foreground color that this interface never uses, and fails
+that declares no color, including one added later. It builds the dashboard
+with every registered kind of View drawn, under a foreground color that this
+interface never uses, and fails
 on any control that paints its own content and resolves to that color. It
-exempts kinds of control that draw no text, and the plots, whose axis text
-takes its color from a pen that the test cannot read. It names each kind with
+exempts kinds of control that draw no text, and the plots and the compartment
+schematic, whose text takes its color from a pen that the test cannot read. It names each kind with
 its reason. A requirement exists only where somebody wrote a color down, so the
 contrast check counts those kinds into its report line. Without that count, a
 control that declares no color would appear on neither side of the report
