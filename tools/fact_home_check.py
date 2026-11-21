@@ -41,8 +41,8 @@ Three rules over every tracked Python file under `tools/`,
    each of `tests` and `src` (`PL-S08Z`). A path inside a tuple or an
    f-string is not read. A plain string bound under two names in two files
    is a finding as well, unless `DISTINCT_WORDS` lists every name that binds
-   it, with the reason they are different facts. `tools/worker_runs.py`
-   spelled `"claude/"` beside `docket.claims.AGENT_BRANCH_PREFIX`, and no
+   it, with the reason they are different facts. The worker-run tool, since
+   removed, spelled `"claude/"` beside `docket.claims.AGENT_BRANCH_PREFIX`, and no
    other rule compared them (`PL-3PKN`). The syntax cannot tell one fact
    from two that share a word, so the table records that decision, and an
    entry the tree no longer matches fails, as a baseline entry does.
