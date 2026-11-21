@@ -11,17 +11,14 @@ from PySide6.QtWidgets import QApplication, QLabel
 
 from anesthesia_sim.app.chart_frame import COMPARED_COMPARTMENT_CAP
 from anesthesia_sim.app.controller import SimulationController
-from anesthesia_sim.app.dashboard_frame import (
-    NO_TRACES_SHOWN_TEXT,
-    READOUTS_PLACE_TEXT,
-    SIMULATION_STEP_S,
-)
+from anesthesia_sim.app.dashboard_frame import NO_TRACES_SHOWN_TEXT, READOUTS_PLACE_TEXT
 from anesthesia_sim.app.formatting import format_elapsed, format_flow, format_playback_rate
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.unconditional_set import compartment_value
 from anesthesia_sim.app.view_registry import CONCENTRATION_CHART
 from anesthesia_sim.core.concentration import Percent
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.layout.tree import AreaId
 from anesthesia_sim.layout.workspace import WorkspaceName
 from tests.integration.simulation_view.simulation_view_support import (
@@ -215,8 +212,8 @@ def test_the_cap_notice_sends_the_reader_to_readouts_that_are_above_it(
     second = SimulationController()
     first.start()
     second.start()
-    _advance(first, 60.0)
-    _advance(second, 60.0)
+    _advance(first, 60)
+    _advance(second, 60)
     view = _shown_view(application, first, second)
     notice = _concentration(view).capped_traces_text
 

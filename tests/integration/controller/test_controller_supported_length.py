@@ -106,7 +106,7 @@ def test_a_run_at_the_supported_run_length_that_then_fails_gives_each_reason_in_
     controller = SimulationController()
     controller.add_mac_target(target)
     controller.start()
-    controller.advance(SimulationStep(0.1))
+    controller.advance()
     controller.halt_at_supported_limit("reached 86400 s of simulated time")
     controller.fail("RuntimeError: the frame could not be drawn")
 
