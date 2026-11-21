@@ -21,7 +21,6 @@ from typing import Any
 from . import arming, claiming, done, instructions, notes, render, sessions
 from .checks import (
     TIER_BANDS,
-    WORKER_ITEM_ENV,
     Report,
     SettingsSource,
     analyze,
@@ -185,7 +184,6 @@ from .vcs import (
     SinceFiled,
     Snapshot,
     StrandedReport,
-    WrittenReport,
     _head_name,
     _remotes,
     base_copies,
@@ -193,7 +191,6 @@ from .vcs import (
     churn,
     closed_by,
     closures_on_base,
-    commands_written_here,
     cut_window,
     cuts_in_flight,
     default_base,
@@ -222,21 +219,11 @@ from .vcs import (
     snapshot,
     stranded,
     tags,
-    tree_files,
     unresolved_base_cause,
     with_newest_pull_request,
     working_paths,
 )
-from .verify import (
-    GitUnanswered,
-    LandedReport,
-    Verification,
-    already_passing,
-    changed_paths,
-    file_arguments,
-    items_reading,
-    verify_batch,
-)
+from .verify import GitUnanswered, Verification, changed_paths, verify_batch
 
 # The one thing that is true at capture, and nothing else. Empty headings for a
 # session to write over were indistinguishable from headings a session had left
@@ -875,8 +862,6 @@ def _complete_report(
     items: list[Item],
     config: Config,
     args: argparse.Namespace,
-    *,
-    landed: LandedReport | None = None,
 ) -> Report:
     """The report behind a printed count, with every input asked for.
 
@@ -909,12 +894,7 @@ def _complete_report(
     Gathering them here is what makes that structural rather than remembered.
     A new input added to `analyze` is added once, and every command that
     prints a count has it in the same commit; added at one call site, it
-    silently reopens the gap. `landed` is the single deliberate exception and
-    is the caller's argument for that reason: it replays every open item's own
-    `verify:` command, 31 s of the 32 s `check --verify` takes, and only CI
-    passes it. `make docket` - the command the digest's own line names - does
-    not pass it either, so the digest still agrees with what its reader is
-    being sent to.
+    silently reopens the gap.
 
     What the digest pays for it is one git read per input: measured over five
     runs of each on this repository, 2026-09-20, 279 ms added to a 947 ms
@@ -965,10 +945,6 @@ def _complete_report(
         history=None if git is None else merged_pull_requests(root, runner=git),
         offered=_offered(root, items, config, args),
         milestones=_milestones(root, config),
-        landed=landed,
-        # The item a headless worker is working, whose passing command is its
-        # work done rather than a stale item (`PL-WJJ8`).
-        worked=os.environ.get(WORKER_ITEM_ENV) or None,
         closures=closures,
         # What each item this checkout closes records to show its work, read
         # once, here, and never after the closure has merged (`PL-FN11`).
@@ -996,19 +972,6 @@ def _complete_report(
                 runner=git,
             )
         ),
-        # The same diff read for the open items: which commands this branch
-        # wrote, so the admitted shapes reach a command written for an item
-        # older than their cutover (`PL-1P5V`).
-        written=(
-            None
-            if git is None or config.verify_allowlist_from is None
-            else commands_written_here(
-                root,
-                {i.identifier: i.verify for i in items if i.is_open and i.verify},
-                items_dir=tracked,
-                runner=git,
-            )
-        ),
         # Asked of the branch rather than of the default branch, and that is
         # the whole point: a squash merge makes the branch's commits ancestors
         # of nothing, so the objects proving what it carried stop being
@@ -1022,10 +985,6 @@ def _complete_report(
             else gone_paths(
                 root, (path for i in items if i.is_open for path in i.touches), runner=git
             )
-        ),
-        # Open items' `verify:` file arguments only, a stat each (`PL-ZB82`).
-        verify_files=tree_files(
-            root, (path for i in items if i.is_open for path in file_arguments(i.verify))
         ),
         # Read rather than asked of git: a stamped `milestone:` is judged
         # against the version the project is actually on, and an absent
@@ -1092,113 +1051,7 @@ def cmd_check(args: argparse.Namespace) -> int:
     # A validation reads the refs as they are: see `_snapshot`.
     _snapshot(args, refresh=False)
     root = inv.root
-    # The pull-request replay's scope, in two halves, computed here rather than
-    # inside `already_passing` so the cost line can name which half an id came
-    # from. The first is the items this branch edited; the second is the open
-    # items whose `verify:` command reads a file this branch edited, which is
-    # the half that catches a command a branch *invalidates* without ever
-    # opening its item (`PL-XMNC`). Both read the diff against the same base,
-    # and both under-report where that base cannot be resolved rather than
-    # guessing - a scoped run then checks nothing and says so.
-    #
-    # Saying so is the half that was missing (`PL-ZPDM`). The read answered a
-    # git that would not speak with an empty set, which is what a branch that
-    # changed no item looks like - so the replay was scoped to nothing, ran
-    # nothing, and the run reported a clean result. `unscoped` carries the
-    # reason instead, and the replay below declines whole rather than claiming
-    # a scope it could not read.
-    changed: frozenset[str] = frozenset()
-    reading: frozenset[str] = frozenset()
-    unscoped = ""
-    if args.verify and args.verify_base and inv.git is None:
-        # A scope is a diff, and `--no-git` asks git nothing, so the scoped
-        # replay declines whole and says why - the decline a base that will
-        # not resolve gets, rather than a replay scoped to nothing reporting
-        # clean. A bare `--verify` still replays: the commands it runs are the
-        # project's own, not docket's reads.
-        unscoped = (
-            f"the replay is scoped to what this branch changed against "
-            f"{args.verify_base}, and `--no-git` asks git nothing, so that was not read"
-        )
-    elif args.verify and args.verify_base:
-        # The same resolution `_complete_report` makes, and for the same
-        # reason: the diff behind the replay's scope is read from the
-        # repository root, so a store the settings do not name scopes the
-        # replay to nothing (`PL-T441`). An unreadable prefix leaves `known`
-        # false, and `unscoped` below says so rather than reporting a clean
-        # replay that never ran.
-        edited = changed_items(root, args.verify_base, items_dir=inv.tracked, runner=inv.git)
-        changed = edited.identifiers
-        declined = edited.declined
-        try:
-            reading = items_reading(items, changed_paths(root, args.verify_base)) - changed
-        except GitUnanswered as silence:
-            # The other half of the scope, and the same answer. Until
-            # `PL-9RFP` git's complaint came back as the changed paths, matched
-            # no command, and left the half that catches a branch breaking
-            # another item's `verify:` scoped to nothing.
-            declined = declined or str(silence)
-        if declined:
-            unscoped = (
-                f"the replay is scoped to what this branch changed against "
-                f"{args.verify_base}, and that could not be read - {declined}"
-            )
-    report = _complete_report(
-        root,
-        items,
-        config,
-        args,
-        # Runs every open item's own `verify:` command, which is the only
-        # check here that executes the project rather than reading it - 83
-        # subprocesses and 31 s of the 32 s this command took, measured
-        # 2026-09-04, against 0.28 s for everything else here.
-        #
-        # Behind a flag rather than always, because it is the wrong question
-        # for the caller that was paying it. `already_passing` finds work that
-        # *merged* without its item's `status` being set - all four known
-        # instances are that - so a pre-commit `make check` on a feature branch
-        # spends half its runtime asking, once per commit, about a merged state
-        # the commit under it cannot have changed. CI passes `--verify` and
-        # keeps the answer on both the events it had it on before; `make check`
-        # and `make docket` get the store validation alone (`PL-P3B6`).
-        #
-        # The cost also grew in the wrong direction. Every item triaged to
-        # `ready` adds its command's runtime to every future run, so the
-        # healthier the store got the more the gate cost - and narrowing the
-        # heaviest commands does not recover it, because the floor is set by
-        # the size of the queue: 1458 s of serial work over eight workers is a
-        # 182 s floor against 204 s elapsed, measured 2026-09-19 (`PL-G6J5`).
-        #
-        # `None` rather than an empty report, which is the same path `list`,
-        # `digest` and `next` take: `checks.py` reads it as "a caller that did
-        # not ask" and says nothing, which is what a caller that was never the
-        # right one to ask should produce. A line on every `make check` saying
-        # the replay did not run would be an advisory nobody reads.
-        #
-        # `--verify-base` narrows it further, to the two sets computed above
-        # (`PL-SDHR`, widened by `PL-XMNC`). The same argument one step on: if a
-        # pre-commit gate cannot have changed whether another item's work
-        # merged, neither can a pull request, and the sweep costs 87 s of the
-        # quality job's 152 s on every push to every open pull request while
-        # growing with the queue rather than with the change. CI scopes on
-        # `pull_request` and sweeps on `push` to the default branch, which is
-        # the one event where the answer is a fact about that branch.
-        landed=(
-            LandedReport(declined=unscoped)
-            if unscoped
-            else already_passing(
-                root,
-                items,
-                scoped_to=changed | reading,
-                reading=reading,
-                scope_base=args.verify_base,
-            )
-            if args.verify and args.verify_base
-            else already_passing(root, items)
-            if args.verify
-            else None
-        ),
-    )
+    report = _complete_report(root, items, config, args)
     print(render.format_check(report))
     return 1 if report.errors else 0
 
@@ -2018,15 +1871,11 @@ def cmd_set(args: argparse.Namespace) -> int:
       between the store's errors with and without the write, so an error the
       store already carries elsewhere blocks nothing and no rule is restated
       here - the vocabulary, the safety pin, what `ready` and `dropped` owe,
-      all arrive from `checks.py` in its own words. A `verify:` command is
-      replayed too, as `check --verify` replays it, because an open item whose
-      command already passes is an error only running it can find
-      (`PL-FTDB`). It runs with the line already written, since a command that
-      reads the item's own file sees that line - a `grep` for a string the
-      command itself spells passes on it and nowhere else - so a refusal puts
-      the file back as it was. The write then costs whatever the command
-      costs, which is the price of refusing it here rather than a `make check`
-      later.
+      all arrive from `checks.py` in its own words.
+    - a `verify:` that is not one search for fixed text is refused, in
+      `done.read_text_search`'s words, and so is what a closing item records
+      where it does not show the work (`PL-N046`, `PL-FN11`). No command is
+      run.
 
     A file the rewrite could not keep faithful is refused too: one spelling a
     key twice would be collapsed to the parser's pick, one carrying a field
@@ -2123,16 +1972,11 @@ def cmd_set(args: argparse.Namespace) -> int:
     )
     after = [updated if i is item else i for i in items]
     today = args.today or date.today()
-    # A command written here is written now, whatever the item's age, which is
-    # the one fact `check` has to ask git for (`PL-1P5V`).
-    written = (
-        WrittenReport(identifiers=frozenset({item.identifier})) if "verify" in changes else None
-    )
     # The roadmap `check` reads, so the rules that need it - a debt item's gate
     # disposition among them - refuse the write too, rather than surfacing one
     # `check` later (`PL-BB5W`). Unreadable, it declines as it does for `check`.
     milestones = _milestones(_invocation(args).root, config)
-    introduced = analyze(after, today, config, milestones=milestones, written=written).errors
+    introduced = analyze(after, today, config, milestones=milestones).errors
     if introduced:
         # Only what this write adds counts against it. An error the store
         # already carries is somebody else's, and blocking every write until
@@ -2154,6 +1998,17 @@ def cmd_set(args: argparse.Namespace) -> int:
         for error in introduced:
             print(f"  {error}")
         return 1
+    # A command written here is one search for fixed text, whatever the item's
+    # status, since that is the only form anything reads (`PL-N046`). A release
+    # item and one that says why no search can show it keep what they have.
+    if (
+        changes.get("verify")
+        and updated.resource != RELEASE_TRAIN
+        and not updated.not_delegable
+        and isinstance(shape := done.read_text_search(updated.verify), str)
+    ):
+        print(f"{item.identifier}: nothing was written; its `verify:` {shape}")
+        return 1
     # What the closing item records is read here as `check` will read it on the
     # branch, so a test the tree does not define, one the branch did not
     # change, or a search that does not hold is refused at the write that names
@@ -2170,9 +2025,8 @@ def cmd_set(args: argparse.Namespace) -> int:
             for fault in found:
                 print(f"  {item.identifier}: closes on this branch, and {fault}")
             return 1
-    # Then the writer's own read-back, before the file is touched and before a
-    # `verify:` is replayed: `analyze` reads the in-memory item, where a line
-    # break is one more character, and never the lines the file would split
+    # Then the writer's own read-back, before the file is touched: `analyze`
+    # reads the in-memory item, where a line break is one more character, and never the lines the file would split
     # into, so a value holding one passed every rule above at exit 0 (`PL-0779`).
     # A rule that names the field's own fault has already spoken by here.
     try:
@@ -2181,22 +2035,7 @@ def cmd_set(args: argparse.Namespace) -> int:
         print(f"{item.identifier}: nothing was written; {refusal}")
         return 1
 
-    original = (directory / item.path).read_bytes()
     path = rewrite_item(directory, updated)
-    if "verify" in changes:
-        try:
-            replayed = _replayed(args, updated, after, today, config, milestones, written)
-        except BaseException:
-            path.write_bytes(original)
-            raise
-        if replayed:
-            path.write_bytes(original)
-            print(
-                f"{item.identifier}: nothing was written; `docket check` would then report{raised}:"
-            )
-            for error in replayed:
-                print(f"  {error}")
-            return 1
     for key, attribute, value in requested:
         if attribute in changes:
             print(f"{item.identifier}: {key}: {_spelled(value) or '(removed)'}")
@@ -2262,35 +2101,6 @@ def _closing_pull_request(args: argparse.Namespace, item: Item) -> tuple[str | N
     if item.pr:
         return None, ""
     return number, f"pr: {number}, the pull request open on {branch}"
-
-
-def _replayed(
-    args: argparse.Namespace,
-    updated: Item,
-    after: list[Item],
-    today: date,
-    config: Config,
-    milestones: MilestoneStates | None,
-    written: WrittenReport | None,
-) -> list[str]:
-    """What `check --verify`'s replay would report about the command `set` just wrote.
-
-    The replay's own run and its own words: `already_passing` scoped to this
-    one item, read by `analyze` as `check` reads it, and only the errors that
-    run adds. So an open item whose command already exits 0 is refused in the
-    replay's own sentence, the one the next `make check` would print, and
-    everything the replay reads as no finding - a command it could not run,
-    one killed at the limit, one that reads past the tree, an item at a status
-    it does not ask about - refuses nothing here either (`PL-FTDB`).
-    """
-    landed = already_passing(
-        _invocation(args).root, [updated], scoped_to=frozenset({updated.identifier})
-    )
-    before = set(analyze(after, today, config, milestones=milestones, written=written).errors)
-    replayed = analyze(
-        after, today, config, milestones=milestones, written=written, landed=landed
-    ).errors
-    return [error for error in replayed if error not in before]
 
 
 def _say_contradicted(
@@ -6249,21 +6059,6 @@ def build_parser() -> argparse.ArgumentParser:
         )
 
     check_cmd = add("check", "validate the store")
-    check_cmd.add_argument(
-        "--verify",
-        action="store_true",
-        default=False,
-        help="also run every open item's `verify:` command; slow, and for CI rather than a gate",
-    )
-    check_cmd.add_argument(
-        "--verify-base",
-        default="",
-        metavar="REF",
-        help="with --verify, replay only the items this branch changed against REF, "
-        "plus the open items whose verify: command reads a file it changed (for a "
-        "pull request, where the whole-store sweep answers about the store rather "
-        "than about the change)",
-    )
     check_cmd.set_defaults(func=cmd_check)
     add("list", "one line per open item").set_defaults(func=cmd_list)
     digest_cmd = add("digest", "the session-start summary")
@@ -6474,7 +6269,7 @@ def build_parser() -> argparse.ArgumentParser:
     setter.add_argument("--reason")
     setter.add_argument("--payoff", metavar="LINE")
     setter.add_argument("--deferred-from", metavar="vX.Y.Z - WHY")
-    setter.add_argument("--verify", metavar="COMMAND")
+    setter.add_argument("--verify", metavar="grep -qF 'WORDS' FILE")
     setter.add_argument("--not-delegable", metavar="WHY")
     setter.add_argument("--generator", metavar="live|spent - WHY")
     setter.add_argument("--misread", metavar="FACT")
