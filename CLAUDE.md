@@ -261,7 +261,7 @@ risk and the reward, and stop. Report in a line what the fast path did.
   needs the rule, and what is the cheapest thing that delivers it then.*
   `.claude/rules/rule-routing.md` lists four dispositions, cheapest first.
 
-  `make check` prints the size of what loads at launch (`tools/doc_check.py`).
+  `tools/doc_check.py` caps the files loaded at launch, in `make check`.
 - **Lead each commit subject and pull request title with the item's id**;
   `tools/pr_title_check.py` checks the title. **End each commit with
   `Co-authored-by: Claude <noreply@anthropic.com>`, never one naming a model.**
