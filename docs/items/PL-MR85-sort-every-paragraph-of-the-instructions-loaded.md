@@ -3,12 +3,15 @@ id: PL-MR85
 title: Sort every paragraph of the instructions loaded at launch into four groups (enforced by a named check, procedure for a skill, history, judgment no check can carry) and bring the table to the owner before any text moves
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: session-cost, planning
 feature: standing-weight
 touches: docs/items/PL-MR85-sort-every-paragraph-of-the-instructions-loaded.md
 deferred-from: v0.7.0 - the sort changes how sessions are instructed, not the schematic, so the release does not wait on this answer
 added: 2026-11-20
+closed: 2026-11-21
+pr: 2178
+verify: grep -q "^id: PL-G3KZ" docs/items/PL-G3KZ-*.md && grep -q "Answered 2026-11-21" docs/items/PL-MR85-*.md
 ---
 
 **Problem.** Sort every paragraph of the instructions loaded at launch into four groups (enforced by a named check, procedure for a skill, history, judgment no check can carry) and bring the table to the owner before any text moves
@@ -180,6 +183,8 @@ The 584 lines of judgment alone are almost three times the target in Claude Code
 | 197-202 | plain-writing.md | 147-169 | 22 | Skill or path rule | 0 | path rules on docs/MODEL.md and src/** | MODEL.md paragraph and docstring examples |
 | 203-204 | plain-writing.md | 171-196 | 25 | Judgment | 25 | stays | The reply example |
 | 205-206 | plain-writing.md | 198-203 | 5 | Skill or path rule | 0 | pull-request skill (already holds the body examples) | Pull request body and title examples |
+
+**Answered 2026-11-21.** The owner approved the table as it stands (project owner, 2026-11-21, ratified, "Agree", over changing any row). The moves are filed as five items under the `standing-weight` feature, one per destination: `PL-2PJ6` (history to `docs/resident-instructions.md`), `PL-CYT1` (procedures to the docket skill), `PL-GDN7` (procedures to path-scoped rules), `PL-T51K` (procedures to the pull-request skill, the coordinator mode and the run-the-app skill) and `PL-PNB2` (one line naming each check). Each one edits `CLAUDE.md`, so they run one after another. `PL-G3KZ` (the cap in `make check`) waits for all five, so that the cap is set at the total after the moves.
 
 **What follows the owner's approval.** File the moves as items. File a check in `make check` that fails when the lines loaded at launch pass a cap. `CLAUDE.md` § "The queue, and how the project owner works" records that a ceiling on its size was refused earlier, and this answer reopens that.
 

@@ -556,3 +556,5 @@ The weekly job in 3 runs. `docs/MODEL.md` states the bounds.
 **Generator check.** This is a head. No other head's `misread:` states the
 fact. `PL-58D7`'s fact is the input domain of an operation, and three of the
 seven members were filed under it.
+
+**Held 2026-11-21 behind `PL-Z6C8`.** The owner chose on 2026-11-21 to compute every run by one rule: whole-second time, one exact 1 s step, and every state stored and read back (`PL-7CY5`, feature `run-computed-one-way`). That removes `LIVE_READING_GAP`, `_GRID_UNIT_COUNT_TOLERANCE`, probably `STEP_COUNT_TOLERANCE`, and the two-readings half of `HEIGHT_BAND`, and the variable step with its 1 ms floor goes. So build parts (b) and (c) wait until `PL-Z6C8` lands. Part (b) then covers the nine or ten allowances that remain, and part (c)'s 24-hour run is 86 400 steps of about 2.5 s, which can run on every push instead of weekly.
