@@ -21,4 +21,9 @@ verify: ! grep -q "reference implementation measured nothing" .claude/rules/expe
 
 **Generator check.** One-off. It carries out the owner's approval of `PL-MR85`'s table, and no fact was misread to cause it.
 
+**Checked 2026-11-21**, by `PL-TPXK` (the independent review of the four streamlining decisions). Two rows need more than the table gives them.
+
+1. Row 180, "Take the reason for a chosen value from a record", moves to `.claude/rules/sources-and-docstrings.md`. That rule loads with `src/`, `docs/MODEL.md`, `docs/INTERFACE.md` and `docs/references/`. The row's own example is a tolerance in a test, so the rule's paths also need `/tests/**`.
+2. Row 23, how to record whether the owner ratified or specified a decision, moves to `.claude/rules/citation-drift.md`. That rule loads with `docs/items/`, `docs/WORKING_NOTES.md`, `.claude/skills/` and `.claude/rules/`. Decisions are also recorded in `CLAUDE.md`, `ROADMAP.md`, `docs/MODEL.md` and `docs/INTERFACE.md`. So the one line that row 23 keeps in `CLAUDE.md` states the two forms themselves: `(project owner, DATE, ratified)` with what it was chosen over, and `(project owner, DATE)`.
+
 **Done when.** Each row listed in the title holds no more lines than `PL-MR85`'s table gives it, each moved rule loads when a session reads a matching file, and `make check` passes.
