@@ -357,7 +357,9 @@ fidelity-free choice, where the scoping that preceded that item had assumed it
 was not. The conclusion survives anyway - the multiplier stays steps-per-tick
 and the step stays 0.1 s - but for determinism rather than for accuracy, which
 is the ground `docs/MODEL.md` already gave and which `PL-SN2C`'s brief has
-been moved onto.
+been moved onto. Since 2026-11-21 the step is one second, and playback takes
+one step for each whole second it owes a run (`PL-SZ6G`, on the decision that
+`PL-7CY5` records).
 
 ## Aspirational: power-user custom agents (not scoped, not started)
 
@@ -807,6 +809,11 @@ is what settled it, by narrowing the benefit: above 1x the playback grid is
 `multiplier x 0.1` s and dominates the step outright, so halving the step would have
 changed nothing for a reader at any rate but the slowest, while doubling the
 propagations per simulated second and forcing the tick structure to be revisited.
+
+The 0.1 s step lasted until 2026-11-21, when `PL-SZ6G` made the step one second so
+that a run's time is a whole number of seconds (`PL-7CY5` records the decision).
+Every figure in this thread is the 0.1 s step's. `docs/MODEL.md` § "Supported
+simulation step" gives the one-second figures.
 
 **Why this thread is kept rather than deleted.** The three items ran together and
 `PL-NBCJ` was decided on a measurement made for `PL-NBWP`, which no single item is

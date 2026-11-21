@@ -96,7 +96,7 @@ src/anesthesia_sim/
 │   ├── concentration.py           # fraction vs percent: the two forms, and the only crossing
 │   ├── units.py                   # seconds, minutes, hours, milliseconds, and litres to millilitres and cubic metres: the factors between them, each written once
 │   ├── supported_ranges.py        # the declared domain: FreshGasFlow, AlveolarVentilation and CardiacOutput, which cannot hold a flow outside it, CaseInstant, which cannot hold an instant outside the run length, StepCount, a whole nonnegative count, and the guards that refuse a run outside it
-│   ├── simulation_step.py         # the run's step: its supported range, and SimulationStep, which cannot hold one outside it
+│   ├── simulation_step.py         # the run's step, one second, written once (SIMULATION_STEP_S)
 │   ├── numerical_envelope.py      # where core's arithmetic is shown correct: CompartmentVolume and PartitionCoefficient, which cannot hold a volume or a coefficient outside it, and the one place the tissue:blood quotient is formed
 │   ├── blood_flow.py              # a tissue group's perfusion fraction and its blood flow: PerfusionFraction, which cannot hold a fraction of 0 or less or a fraction above 1, and BloodFlow, which is built only as a PerfusionFraction of a CardiacOutput
 │   ├── rounding.py                # how far a computed value can be from the exact one: the bound for one propagator, for one step and for a run of n steps, and each fixed allowance that a comparison in core/ or app/ reads (PL-GJ1W)
@@ -114,7 +114,8 @@ src/anesthesia_sim/
 │   ├── uptake_system.py      # couples circuit + alveoli + patient; AgentUptakeSystem.advance is a run's step, one exact propagation of the whole system
 │   ├── run_definition.py               # a run as its settings over time; any state in closed form
 │   ├── agent_simulation_validation.py  # mass-balance / agent-accounting tracker
-│   └── simulation.py              # SimulationState: explicit elapsed time (bounded) + AgentUptakeSystem
+│   ├── stored_states.py           # StoredStates: the state each step wrote, one per whole second of a run
+│   └── simulation.py              # SimulationState: explicit elapsed time (bounded) + AgentUptakeSystem + its StoredStates
 ├── app/                  # user interface - PySide6 and pyqtgraph since PL-25KS (ROADMAP.md § "Completed: v0.4.26 - the interface moves to Qt")
 │   ├── controller.py               # SimulationController: run controls, read-only snapshots; ResumePoint and BranchedCase: where a branch opened, and the trunk it belongs to
 │   ├── run_series.py               # the vocabulary a run's drawn values are addressed by, and the window one frame reads them from: RecordedQuantity, RecordedSeries, DrawnWindow; toolkit-independent
@@ -136,7 +137,7 @@ src/anesthesia_sim/
 │   ├── formatting.py               # modeled value -> displayed string: a percent, and a multiple of the running agent's 1 MAC; toolkit-independent
 │   ├── currency_code.py            # the one rule for a currency code, three capital letters, which the preferences store and the cost formatters both read (PL-1P15); toolkit-independent
 │   ├── preferences.py              # the reader's preferences.json: an AgentPrice per agent and the agent cost View's unit (§ "User state: the reader's preferences", PL-93B3); toolkit-independent
-│   ├── playback.py                 # playback rate -> whole simulation steps per tick; toolkit-independent
+│   ├── playback.py                 # playback rate -> the simulated time each tick owes a run, and the whole steps the run takes for it; toolkit-independent
 │   ├── dashboard_frame.py          # what the dashboard claims about one run at one instant, as plain values: the status word, the notice and its precedence, the readouts and their glosses, the setting controls, the transport enablement, the accounting panel, the control-change list, the two bookmark listings, the captions and the new-case question; toolkit-independent
 │   ├── chart_frame.py              # what one frame of the plots at one time window draws, as plain values: the trace table, the window, the axes' ticks, the references, the marks, the wash-in stretches and the hover text; toolkit-independent
 │   ├── compartment_schematic.py    # what each container of the compartment schematic is filled to and labelled with, from one snapshot: its fill on the chart's own scale, whether it is off that scale, its tension and its amount (PL-RNYV); toolkit-independent
@@ -448,10 +449,11 @@ the trace in segments that break where the domain does. `docs/INTERFACE.md`
 § "F_A/F_I as a displayed ratio" is the specification.
 
 In `app/playback.py`, a playback rate is realised only as a step *count*, never
-as a larger step. So the module derives the count from the rate, and it rejects
-a rate that does not land on a whole number of steps. Otherwise the run would
-advance at a rate other than the one it displays, a presentation failure that
-looks like a working feature.
+as a larger step. The module counts the simulated time that each tick owes the
+run, in whole milliseconds, and the run takes one step for each whole second
+owed. The part of a second left over after a tick is carried to the next tick,
+so the run advances at the rate it displays. A run that advanced at any other
+rate would be a presentation failure that looks like a working feature.
 
 The MAC divisor is passed to the formatter as an argument, from
 `SimulationSnapshot.agent_mac_percent`, rather than being looked up. The
@@ -463,7 +465,7 @@ the other, so pairing two different agents' values would place a correct
 number at the wrong height.
 
 Stepping and drawing run on separate timers with separate intervals
-(`SIMULATION_TICK_INTERVAL_S` and `RENDER_INTERVAL_S`), so simulation time stays
+(`SIMULATION_TICK_INTERVAL_MS` and `RENDER_INTERVAL_S`), so simulation time stays
 a function of the steps taken rather than of how long a frame took.
 § "Failures and halts" says what the timers do on a halt.
 
@@ -504,9 +506,8 @@ Five things in `app/controller.py` implement a branch:
   above describes, and only the place where the fork may be taken differs. So a
   setting that the learner changed on the trunk while it stood there is on the
   branch (`PL-HSP8`, `PL-ZR49`). The method deliberately takes no instant,
-  because the fork is wherever the clock stands. So a caller has no float with
-  which to name an instant the run has not reached. Nor can anyone confuse the
-  instant a learner *marked* with the step instant the run actually stopped on.
+  because the fork is wherever the clock stands. So a caller has no value with
+  which to name an instant the run has not reached.
   The method refuses a running trunk, a failed one, and one standing at its
   opening (§ "Failures and halts" says what a failed run and a halt are). It
   also refuses one at the supported run length, where a branch would have no
@@ -522,8 +523,8 @@ Five things in `app/controller.py` implement a branch:
   bookmark that the trunk has passed. The run may have halted there, or the
   learner may have marked the instant after the clock went past it (`PL-W4XQ`).
   It gives the branch that a halt on that mark would have given, taken late.
-  The fork is the end of the step that reached the mark, and
-  `TimeBookmark.steps_to_reach` finds that step from the crossing rule itself.
+  The fork is the marked instant, which is the end of the step that reached the
+  mark, and `TimeBookmark.steps_to_reach` gives the count of that step.
   The branch opens from the trunk's canonical state there, exactly as a fork
   after a halt does. The method takes the mark rather than an instant, for the
   same reason that `resumed_here` takes nothing. `mark_fork_points` lists the
@@ -637,7 +638,7 @@ one such pause. `app/bookmarks.py` defines what a learner may mark (`PL-LPLD`).
 the run where a mark lies between the two readings.
 
 Where a run stands is not, in general, a setting change. On a 120 s run with
-two control changes, 3 of the 1 201 instants it can stand at are keyframes. So
+two control changes, 3 of the 121 instants it can stand at are keyframes. So
 the trunk holds no keyframe there, and nothing records one. The branch's
 *definition* opens at the keyframe at or before the fork
 (`SimulationController._keyframe_before`), while its clock and
@@ -728,8 +729,8 @@ is a property of the display, not of the model:
   made.
 
   The button passes no instant to `fork_here`, which takes none. That method
-  exists to prevent one hazard: a fork asked for at the instant a learner
-  *marked*, rather than at the step on which the run stopped. Because the
+  exists to prevent one hazard: a fork asked for at an instant on which the run
+  does not stand. Because the
   button names no instant, that hazard cannot be expressed through the
   interface either. `fork_offer` takes the paused point from the **trunk**,
   not from the displayed runs, because `fork_here` forks the trunk and refuses
@@ -831,7 +832,7 @@ different treatment:
   changed anything. The guards in `core/validation.py` raise it. So do the
   checked types' constructors (`Fraction`, `Percent` and `MacPercent` in
   `core/concentration.py`, and those in `core/supported_ranges.py`,
-  `core/simulation_step.py`, `core/numerical_envelope.py` and
+  `core/numerical_envelope.py` and
   `core/blood_flow.py`). Compartment
   constructors and setters raise it too. So does a compartment field written
   directly, because its record checks every write in `__setattr__` (`PL-19Y0`).
@@ -842,8 +843,8 @@ different treatment:
   first is a setter, or a compartment field written directly, that is handed a
   value not built as its type. The second is a checked type built from something
   it does not accept. That means a `bool`, a `Decimal` or a string for any
-  checked type, and a `float` for `StepCount`, which is built from an `int`
-  alone. For all of them, it also means a value already built as another checked
+  checked type, and a `float` for `StepCount` and `CaseInstant`, which are built
+  from an `int` alone. For all of them, it also means a value already built as another checked
   quantity. The checked type raises before it reads the range
   (`core/checked_number.py`). The third is the two sign-and-finiteness guards in
   `core/validation.py`. They also reject an `int` past the float range by name.
