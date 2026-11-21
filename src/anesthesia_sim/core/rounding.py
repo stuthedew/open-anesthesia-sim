@@ -391,7 +391,7 @@ Two readings of one instant can lie about 1e-14 apart, on opposite sides of a
 height. A steady reading also moves by one unit in the last place from step to
 step. Compared with the exact height, the first let a run stop on a target
 that its branch showed as still running, and the second made a run with a
-target at 1.00 ×MAC halt 965 times in its tenth minute (`PL-QVBR`, measured
+target at 1.00 ×MAC halt 965 times in ten minutes (`PL-QVBR`, measured
 2026-11-01). `MacTarget` in `app/bookmarks.py` says how a crossing is decided
 with the band.
 

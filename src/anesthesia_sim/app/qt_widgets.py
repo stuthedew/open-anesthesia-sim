@@ -332,11 +332,12 @@ def declare_application_colours(application: QApplication) -> None:
     dark around a light interface. Declaring the light palette here is the
     project owner's decision (`PL-KRZW`, 2026-09-20, ratified). It was chosen
     over leaving the host appearance alone, and over adding a second palette
-    for dark support. A second palette would mean re-measuring all 24
+    for dark support. A second palette would mean re-measuring all 27
     contrast requirements and re-picking the six trace colours against dark
     surfaces. The light theme is the one declared because of the contrast
-    checks. Every requirement in `tools/contrast_check.py` is measured on
-    PANEL and BACKGROUND. An interface that drew any other surface would be
+    checks. Every requirement in `tools/contrast_check.py` is measured on the
+    light theme's own surfaces: PANEL, BACKGROUND, the three agent fills and
+    the one filled button. An interface that drew any other surface would be
     measured against surfaces that are not on screen.
 
     **A palette rather than `styleHints().setColorScheme`.** Qt 6.8 documents

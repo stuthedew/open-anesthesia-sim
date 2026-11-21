@@ -819,9 +819,10 @@ def test_a_failed_run_reads_apart_from_one_that_ran_out_of_supported_time() -> N
 def test_the_cap_answers_for_a_run_standing_at_it_that_then_failed() -> None:
     """A run that carries both refusals reports the cap, and this is why.
 
-    `SimulationController.advance` takes no step on a stopped run. So a run that
-    stands at the cap and has failed was failed by a setting *after* it ran out
-    of supported time. The cap is the limit within which the mark went unreached,
+    `SimulationController.advance` takes no step on a stopped run, and a stopped
+    run refuses every setting. So a run that stands at the cap and has failed met
+    its error *after* it ran out of supported time, from something other than a
+    step or a setting. The cap is the limit within which the mark went unreached,
     and the failure came after the question had been answered. The cap is also
     the more durable of the two, because it is the one that the reset would not
     clear.
@@ -1343,7 +1344,7 @@ def test_a_compartment_that_settles_on_a_target_halts_once_and_asks_little(
     With no ventilation the patient takes up nothing, so the circuit settles
     on the delivered 2% of sevoflurane, which is 1.00 ×MAC. When the halt test
     compared the canonical readings with the exact height, this run halted at
-    the target 965 times in its tenth minute (`PL-QVBR`, 2026-11-01). The
+    the target 965 times in ten minutes (`PL-QVBR`, 2026-11-01). The
     canonical reading moved by one unit in the last place from step to step.
     For about a hundred steps after the halt, the reading still lies near the
     band's edge, and each of those steps is tested from the canonical

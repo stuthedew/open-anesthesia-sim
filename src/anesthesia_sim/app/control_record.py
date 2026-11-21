@@ -171,17 +171,20 @@ class ControlChange:
     """One setting change the running model actually saw.
 
     A change is recorded per change rather than per user gesture, because the
-    model integrates whatever value is in place at each step. A dial swept
-    from 2% to 4% across eight steps gives eight different settings that the
-    run was computed under. A record that kept only the endpoint would not
-    reproduce the run it claims to describe.
+    model integrates whatever value is in place at each step. A dial stepped
+    by eight arrow-key presses at eight simulated instants gives eight
+    different settings that the run was computed under. A record that
+    kept only the endpoint would not reproduce the run it claims to describe.
+    A drag applies once, on release, so it records one change (`PL-5B1N`).
 
     `adjustment` makes that faithful record readable. It groups the changes
-    that a user made as one act, such as one drag of one slider, so a reader
-    sees one adjustment where the model saw eight settings. It is assigned
-    from the input boundary that the interface reports, not guessed from the
-    timing of the entries. So two separate turns of the same dial are two
-    adjustments, however close together they fall.
+    that the interface reports as one act, so a reader can see one adjustment
+    where the model saw several settings. It is assigned from the input
+    boundary that the interface reports, not guessed from the timing of the
+    entries. So two separate drags of the same dial are two adjustments,
+    however close together they fall. Key presses, wheel notches and clicks
+    on the track report no boundary, so today they join the open adjustment
+    on the same control (`PL-0T2H`).
 
     Raises:
         TypeError: If `elapsed_s` was not built as a `CaseInstant`, because

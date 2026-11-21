@@ -3004,8 +3004,10 @@ def mac_reference_caption(frame: ChartFrame) -> str:
 def mac_awake_caption(snapshot: SimulationSnapshot) -> str:
     """Return what the MAC-awake band was drawn from: its published fraction and the divisor.
 
-    Both free parameters are named, so a reader who disagrees with either one
-    can see which one it is (`PL-F52R`).
+    This line names the published fraction. The divisor, the agent's 1 MAC in
+    percent, is on the 1 MAC reference line beside it (`mac_reference_caption`).
+    So both free parameters are on screen, and a reader who disagrees with
+    either one can see which one it is (`PL-F52R`).
 
     Args:
         snapshot: The reference run's state this tick.
@@ -3027,10 +3029,12 @@ def mac_awake_caption(snapshot: SimulationSnapshot) -> str:
 def wash_in_state(snapshot: SimulationSnapshot, undrawn_wash_in_stretches: int) -> str:
     """Return what the wash-in plot is showing at this instant, and why.
 
-    While the trace is being drawn, the number here is the same value as the
-    trace's right-hand end. Both come from `read_wash_in` on the snapshot's
-    own alveolar and inspired fractions, so the plot and the sentence beside
-    it cannot disagree.
+    The number here comes from `read_wash_in` on the snapshot's own alveolar
+    and inspired fractions. The trace's right-hand end comes from the states
+    that the chart evaluates (`DrawnWindow.wash_in_quotients`). Both apply the
+    same two boundaries from `app/wash_in.py`, and the two values agree to
+    within rounding. `PL-MH9J` (one stored state for each second, read by the
+    chart and the readouts alike) would make them one value.
 
     Args:
         snapshot: The run's state this tick.
@@ -3635,7 +3639,8 @@ def branch_at_stake(
 def trunk_reset_question(trunk_name: str, branches: Sequence[BranchAtStake]) -> NewCaseQuestion:
     """Return the confirmation asked before the trunk's Reset discards branches holding work.
 
-    `docs/INTERFACE.md` § "Agent-change behavior" requires it. That section exempts
+    `docs/INTERFACE.md` § "Discarding a run, and the questions that guard it"
+    requires it. That section exempts
     Reset from its confirmation only for the run whose button was pressed, and
     a branch is another run (`PL-W5WX`).
 

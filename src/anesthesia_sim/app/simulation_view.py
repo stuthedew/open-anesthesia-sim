@@ -611,8 +611,9 @@ class SimulationView(QWidget):
         layout. It builds each Area's View through the View registry, from the
         state that the Workspace keeps for that Area (`PL-TH35`). This is how a
         reader can drag the borders between the Areas and choose any View for any
-        Area. Under the Areas come the case's controls, the marks and the branch
-        control. The use disclaimer follows them, outside the scrolling part.
+        Area. The case's controls, the marks and the branch control are Views in
+        those Areas (`PL-9YPR`). The use disclaimer follows the Areas, outside the
+        scrolling part.
 
         This method places no run. Instead, it keeps every layout that a run adds
         widgets to. `_place_run` then fills those layouts in the same order, both
@@ -761,10 +762,9 @@ class SimulationView(QWidget):
     def layout_container(self) -> AreaLayout:
         """The Areas, which are the widget tree that the adapter draws from the layout model.
 
-        No unconditional value may sit inside this widget. A reader can resize
-        what is in it, and once the area system is built out, a reader will be
-        able to close it (`PL-W9P6`). Its `model` is the layout drawn now,
-        after every drag the reader has made.
+        No unconditional value may sit inside this widget. A reader can resize,
+        replace and close what is in it (`PL-W9P6`, `PL-2KXB`). Its `model` is
+        the layout drawn now, after every drag the reader has made.
         """
 
         return self._areas
