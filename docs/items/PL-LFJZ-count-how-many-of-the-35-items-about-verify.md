@@ -3,12 +3,16 @@ id: PL-LFJZ
 title: Count how many of the 35 items about verify: commands and shell commands a done-condition written as a test name would have prevented, and what the 923 other grep conditions check
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: planning
 feature: standing-weight
 touches: docs/items
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science; a count the owner asked for on 2026-11-20 about the workflow, which no v0.7.0 feature needs
 added: 2026-11-20
+closed: 2026-11-21
+pr: 2174
+payoff: the owner chose the form of a done-condition for each kind of item on two counts, and four items carry the build
+verify: grep -qF 'chose the four-part form' docs/items/PL-LFJZ-*.md
 ---
 
 **Problem.** Count how many of the 35 items about verify: commands and shell commands a done-condition written as a test name would have prevented, and what the 923 other grep conditions check
@@ -71,6 +75,15 @@ An item whose condition reads several kinds of file is counted once, under the f
 3. **An item that records a result in its own brief.** It needs no command: the closed status and the dated paragraph are the record.
 4. **Release items.** No change. `bin/docket release` already writes the version and the notes.
 
-This removes the shape rules and the replay's reading of commands, about 1,640 lines with their tests, and the 9 to 15 kinds of fault counted above. It costs the replay's catch of work merged with its item still open, for every item that no longer carries a command. That catch is worth keeping only if `PL-LY24` finds it caught real mistakes more often than it turned `main` red. So the build items filed on a yes would each carry `blocked-by` on `PL-LY24`, whose count covers `bin/docket check`. If that count says the catch is worth keeping, the replay can stay for the document conditions in part 2 and nothing else.
+[superseded 2026-11-21: `PL-LY24` closed with its count before the answer, and the build items below record the wait that remains.] This removes the shape rules and the replay's reading of commands, about 1,640 lines with their tests, and the 9 to 15 kinds of fault counted above. It costs the replay's catch of work merged with its item still open, for every item that no longer carries a command. That catch is worth keeping only if `PL-LY24` finds it caught real mistakes more often than it turned `main` red. So the build items filed on a yes would each carry `blocked-by` on `PL-LY24`, whose count covers `bin/docket check`. If that count says the catch is worth keeping, the replay can stay for the document conditions in part 2 and nothing else.
+
+**Answered 2026-11-20.** The project owner chose the four-part form on the decision card at 7:50 PM CST (project owner, 2026-11-20, ratified, over changing the form for code items only, and over keeping today's form). `PL-LY24` closed before the answer. It counted 9 episodes in which the replay of `verify:` commands caught a real mistake, all before 2026-09-23, and recommended retiring the replay together with the commands. `PL-KGPR` (which of the 13 workflow-record checks to retire) holds that decision.
+
+The build is four items under the feature `standing-weight`:
+
+1. `PL-FN11`: an item that changes code records its tests when it closes, and docket checks them once.
+2. `PL-N046`: an item that deletes code or changes only a document keeps one `grep`, checked once when it closes.
+3. `PL-NY7Q`: an item whose result is recorded in its own brief closes with no command.
+4. `PL-QTZG`: remove the shape rules and the replay's reading of commands once the first three land.
 
 **Generator check.** None: one instance. The item is a count the project owner asked for, and no misread fact produced it.
