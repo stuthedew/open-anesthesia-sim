@@ -57,3 +57,5 @@ passes.
 the repository named no home but `docs/MODEL.md` for a test's description,
 an interface requirement or a value's source history, so each change added
 them there. No new head.
+
+**Added 2026-11-20.** Write each requirement or claim in this document as the requirement, followed by the test that checks it. Where the document holds a parameter table, a test compares the table with its data file. History stays in the item (project owner, 2026-11-20, ratified, "Agree with recs", over leaving the form to each sorting item). `PL-WKKH` (the streamlining questions from the study of the one-shot rewrite) holds the measurements and the sources.
