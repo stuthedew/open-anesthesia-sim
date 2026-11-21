@@ -41,6 +41,7 @@ from anesthesia_sim.app.preferences import (
     AgentPrice,
     Preferences,
     PreferencesStore,
+    RefusedEntry,
 )
 from anesthesia_sim.app.qt_agent_price import PriceEntry
 from anesthesia_sim.app.qt_widgets import ForkPanel
@@ -1160,3 +1161,85 @@ def test_no_discard_is_offered_while_no_entry_is_refused(
     _enter_price(cost_view, "isoflurane", "20.47", "100", "USD", date(2008, 3, 5))
 
     assert cost_view.refused_discard.isHidden()
+
+
+def test_a_mouse_wheel_over_the_price_date_changes_nothing_until_it_has_focus(
+    application: QApplication,
+) -> None:
+    """A wheel turned to scroll the View does not date a price, or count as the reader's edit.
+
+    Blind review pass 2 of `PL-8FSN` found that the date field stepped on a
+    wheel without focus, and that the form then kept the stepped date.
+    """
+
+    entry, asked = _form_on_a_stored_price()
+    field = entry.applies_on_edit
+    centre = QPointF(field.rect().center())
+    wheel = QWheelEvent(
+        centre,
+        field.mapToGlobal(centre),
+        QPoint(0, 120),
+        QPoint(0, 120),
+        Qt.MouseButton.NoButton,
+        Qt.KeyboardModifier.NoModifier,
+        Qt.ScrollPhase.NoScrollPhase,
+        False,
+    )
+
+    QApplication.sendEvent(field, wheel)
+
+    assert field.focusPolicy() == Qt.FocusPolicy.StrongFocus
+    assert not wheel.isAccepted()
+    assert field.date() == _STORED_DAY
+
+    _type_over(entry.bottle_price_edit, "78")
+    entry.set_button.click()
+
+    assert asked == [AgentPrice("isoflurane", 78.0, 100.0, "USD", _ENTRY_DAY)]
+
+
+def test_discarding_a_refused_entry_keeps_what_the_reader_has_typed(
+    application: QApplication,
+) -> None:
+    """Only a change of the stored price fills the fields again.
+
+    Both blind review passes of `PL-7KXN` found that discarding the refused
+    entries emptied a price the reader had typed and not yet set.
+    """
+
+    refused = RefusedEntry({"agent": "isoflurane"}, "refused for the test", "isoflurane")
+    entry = PriceEntry(lambda _agent_id, _price: None, today=lambda: _ENTRY_DAY)
+    entry.show_prices(Preferences(refused_prices=(refused,)), "isoflurane")
+
+    assert entry.remove_button.isEnabled()
+
+    _type_over(entry.bottle_price_edit, "78")
+    _type_over(entry.bottle_volume_edit, "100")
+    entry.applies_on_edit.setDate(QDate(2019, 6, 30))
+    entry.show_prices(Preferences(), "isoflurane")
+
+    assert entry.bottle_price_edit.text() == "78"
+    assert entry.bottle_volume_edit.text() == "100"
+    assert entry.applies_on_edit.date() == QDate(2019, 6, 30)
+    assert not entry.remove_button.isEnabled()
+
+
+def test_the_button_that_keeps_refused_entries_stands_where_the_offer_stood(
+    application: QApplication, shown: list[SimulationView], tmp_path: Path
+) -> None:
+    """A second click made on the offer by mistake lands on the button that keeps the entries.
+
+    Both blind review passes of `PL-7KXN` found the discarding button there.
+    """
+
+    _refused_file(tmp_path)
+    view = _dashboard(application, shown, SimulationController(), directory=tmp_path)
+    (cost_view,) = _cost_views(view)
+    discard = cost_view.refused_discard
+    application.processEvents()
+    offer_left = discard.offer_button.geometry().left()
+    discard.offer_button.click()
+    application.processEvents()
+
+    assert discard.keep_button.geometry().left() == offer_left
+    assert discard.discard_button.geometry().left() > discard.keep_button.geometry().right()

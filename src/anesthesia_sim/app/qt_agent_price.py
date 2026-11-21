@@ -28,15 +28,7 @@ from functools import partial
 from typing import Final
 
 from PySide6.QtCore import QDate, QSignalBlocker
-from PySide6.QtWidgets import (
-    QDateEdit,
-    QFormLayout,
-    QHBoxLayout,
-    QLineEdit,
-    QPushButton,
-    QVBoxLayout,
-    QWidget,
-)
+from PySide6.QtWidgets import QFormLayout, QHBoxLayout, QLineEdit, QPushButton, QVBoxLayout, QWidget
 
 from anesthesia_sim.app.agent_cost import (
     DISCARD_REFUSED_CONFIRM_LABEL,
@@ -49,7 +41,12 @@ from anesthesia_sim.app.agent_cost import (
 from anesthesia_sim.app.display_units import DisplayUnit
 from anesthesia_sim.app.formatting import format_entered_figure
 from anesthesia_sim.app.preferences import AgentPrice, Preferences
-from anesthesia_sim.app.qt_widgets import FocusedComboBox, declare_interface_colours, styled_label
+from anesthesia_sim.app.qt_widgets import (
+    FocusedComboBox,
+    FocusedDateEdit,
+    declare_interface_colours,
+    styled_label,
+)
 from anesthesia_sim.app.run_view import AVAILABLE_AGENTS
 from anesthesia_sim.app.stylesheets import (
     filled_button_stylesheet,
@@ -104,7 +101,8 @@ class PriceEntry(QWidget):
     agent fills the fields with its stored price, or empties them when it has
     none. The fields are filled again only when the stored price for the
     chosen agent changes, so a frame drawn while the reader types never
-    overwrites what they typed.
+    overwrites what they typed. Discarding a refused entry changes no stored
+    price, so it leaves the fields as they are.
 
     The date of a stored price follows what the reader types. While the
     reader has not edited the date, typing another bottle price, bottle volume
@@ -130,8 +128,7 @@ class PriceEntry(QWidget):
         self._preferences = Preferences()
         # What the fields were last filled from. It is the agent, its stored
         # price, and whether a refused entry for the agent is in the file. The
-        # last of the three decides whether Remove is offered, so a change to it
-        # also fills the fields again.
+        # last of the three decides only whether Remove is offered.
         self._filled_from: tuple[str, AgentPrice | None, bool] | None = None
         self._agent_chosen = False
         # Whether the reader has edited the date since the fields were filled.
@@ -147,7 +144,7 @@ class PriceEntry(QWidget):
         self.bottle_volume_edit = QLineEdit()
         self.currency_edit = QLineEdit()
         self.currency_edit.setMaxLength(_CURRENCY_LENGTH)
-        self.applies_on_edit = QDateEdit()
+        self.applies_on_edit = FocusedDateEdit()
         self.applies_on_edit.setDisplayFormat(_DATE_FORMAT)
         self.applies_on_edit.setCalendarPopup(True)
         self.applies_on_edit.dateChanged.connect(self._handle_date_edit)
@@ -239,16 +236,22 @@ class PriceEntry(QWidget):
             self.agent_selector.setCurrentIndex(self.agent_selector.findData(first_run_agent_id))
             self._agent_chosen = True
 
-        agent_id = self.agent_id
+        key = _fill_key(preferences, self.agent_id)
 
-        if self._filled_from != _fill_key(preferences, agent_id):
-            self._fill(agent_id)
+        if self._filled_from is not None and key[:2] == self._filled_from[:2]:
+            # Only whether a refused entry is in the file can have changed. The
+            # stored price is the one the fields were filled from, so what the
+            # reader has typed since is left as it is.
+            self._filled_from = key
+            self._offer_remove()
+        else:
+            self._fill(key[0])
 
     def _fill(self, agent_id: str) -> None:
         """Fill the fields with the stored price for `agent_id`, or empty them when it has none."""
 
         key = _fill_key(self._preferences, agent_id)
-        _, price, refused = key
+        _, price, _ = key
         self._filled_from = key
 
         if price is None:
@@ -264,8 +267,17 @@ class PriceEntry(QWidget):
 
         self._date_edited = False
         self._show_date(applies_on, moved=False)
-        # Removing also discards a refused entry for the agent, which the
-        # reader may want gone although no price is in force.
+        self._offer_remove()
+
+    def _offer_remove(self) -> None:
+        """Offer Remove while the chosen agent has a stored price or a refused entry.
+
+        Removing also discards a refused entry for the agent, which the reader
+        may want gone although no price is in force.
+        """
+
+        assert self._filled_from is not None, "the fields are filled before Remove is offered"
+        _, price, refused = self._filled_from
         self.remove_button.setEnabled(price is not None or refused)
 
     def _show_date(self, applies_on: date, *, moved: bool) -> None:
@@ -353,8 +365,8 @@ class RefusedEntriesDiscard(QWidget):
     cannot be undone, so the reader confirms it first. Pressing the offer
     replaces it, in its own place, with a warning and two buttons. Nothing opens
     over the View's values, and the run goes on. The button that keeps the
-    entries takes the keyboard focus, so a press made without reading keeps
-    them.
+    entries stands where the offer stood and takes the keyboard focus, so a
+    second click or a key press made without reading keeps them.
 
     Args:
         request: Asks the dashboard to discard every refused entry.
@@ -377,9 +389,11 @@ class RefusedEntriesDiscard(QWidget):
         self.keep_button.clicked.connect(partial(self._ask, False))
         buttons = QHBoxLayout()
         buttons.setSpacing(VIEW_HEADING_SPACING)
+        # The button that keeps the entries stands where the offer stood, so a
+        # second click made on the offer by mistake keeps them.
         buttons.addWidget(self.offer_button)
-        buttons.addWidget(self.discard_button)
         buttons.addWidget(self.keep_button)
+        buttons.addWidget(self.discard_button)
         buttons.addStretch(1)
         column = QVBoxLayout(self)
         column.setContentsMargins(0, 0, 0, 0)

@@ -31,3 +31,5 @@ Two things differ from the decision as first written. The date moves for a chang
 **Generator check.** One-off. The fact is which date a price typed over a stored one carries. The form filled the date from the stored price and nothing connected it to the other fields. Found by `PL-5FMC`, the check of the interface documents that the project owner asked for.
 
 **Documents checked.** `docs/INTERFACE.md` § "A cost at the reader's price" (changed), `docs/ARCHITECTURE.md` § "User state: the reader's preferences" (nothing to change), `docs/MODEL.md` and `README.md` (neither describes the form's date).
+
+**Blind review, 2026-11-21.** Pass 2 found that a mouse wheel turned over the date field stepped the date without focus, and that the form then kept the stepped date as the reader's. The field is now a `FocusedDateEdit`, which ignores the wheel until it has focus, as the form's selector does. `test_a_mouse_wheel_over_the_price_date_changes_nothing_until_it_has_focus` checks it.
