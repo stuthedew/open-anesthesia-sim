@@ -1,4 +1,4 @@
-"""Say so if the base has moved, and, at the first edit that is work, if the branch claims nothing.
+"""Say so, at the first edit, if the base has moved.
 
 It runs as a `PreToolUse` guard on an edit and after each Bash call, through
 `guard.py` (`PL-9KSJ`).
@@ -23,35 +23,19 @@ worth interrupting an edit for.
 attached to, which is a security property, not a convenience. The hook's
 whole job is to say something.
 
-**The claim question waits for the first edit outside the queue** (`PL-J9S0`,
-`PL-MB2W` § "Forgetful session"). Who holds an item is a `Claim:` trailer the
-session commits, and a session that forgets to write one is invisible to
-every reader of that record until CI refuses its pull request. So before the
-first edit that is work, the hook adds "this branch claims nothing:
-`bin/docket claim <id>`" where that is so. Not at the first edit of any kind:
-a capture or a triage pass writes only the queue - its items, the roadmap,
-the notes and its body record - and owes no claim, and asking then would
-spend the session's one question where it had no answer.
-`tools/branch_id_check.py --hint` decides, from the reader CI's refusal uses,
-so the hook and the gate cannot disagree: its exit 3 says the path was not
-work outside the queue and nothing was asked. Any other status spends the
-question, since asking a broken check before every edit would tax each one.
-
 **After a Bash call, it reads the tree rather than the command** (`PL-RXFK`).
 A session can edit through Bash, which the harness's auto mode recommends for
 small edits, and a Bash command names no path. So the hook also runs after
 each Bash call: as `PostToolUse`, or as `PostToolUseFailure` where the
 command failed, which is common when one command edits and then runs a check.
-A clean tree means the call edited nothing yet, and the hook stops there.
-Otherwise both questions are asked as they are at an edit, and the claim
-question goes to `tools/branch_id_check.py --hint-changed`, which asks it of
-every file the checkout has changed. A command that edits and commits in one
-call leaves a clean tree, so it is asked at the next call that leaves a
-change. Speaking just after the edit rather than just before it costs
-nothing, because the hook adds context and blocks nothing.
+A clean tree means the call edited nothing yet, and the hook stops there. A
+command that edits and commits in one call leaves a clean tree, so the
+question is asked at the next call that leaves a change. Speaking just after
+the edit rather than just before it costs nothing, because the hook adds
+context and blocks nothing.
 
-**Only the run that creates a marker speaks.** The hooks for parallel tool
-calls run at the same time, so each marker is created with `O_EXCL`, which
+**Only the run that creates the marker speaks.** The hooks for parallel tool
+calls run at the same time, so the marker is created with `O_EXCL`, which
 refuses a file that already exists. Without it, two parallel calls could both
 fetch and both print. `GIT_OPTIONAL_LOCKS=0` keeps the hook's reads of the
 tree from refreshing the index as a side effect, so they never hold the index
@@ -59,9 +43,15 @@ lock while a `git add` or `git commit` in a parallel call needs it.
 
 **A question it could not ask is said, once** (`PL-9KSJ`). A checkout with no
 `bin/docket` has nothing to ask, and a tree git cannot read is taken for one
-the call left clean, so each says nothing. A `bin/docket branch` or
-`tools/branch_id_check.py` that fails spends its marker, as a question that
-was asked does, and the note says which one failed and how.
+the call left clean, so each says nothing. A `bin/docket branch` that fails
+spends the marker, as a question that was asked does, and the note says how
+it failed.
+
+**It asked a second question until 2026-11-21** (`PL-HS2T`): whether the
+branch claimed an item, at the first edit outside the queue. The answer came
+from `tools/branch_id_check.py`, which the project owner retired with its CI
+refusal. `bin/docket flight` still lists a branch with work and no claim as
+`unclaimed:`.
 """
 
 from __future__ import annotations
@@ -112,18 +102,6 @@ def _failed(what: str, done: subprocess.CompletedProcess[bytes]) -> str:
     )
 
 
-def _edited_path(fields: dict[str, object]) -> str:
-    """The path an edit's documented `tool_input` names, from the four edit tools, or ""."""
-    edit = fields.get("tool_input")
-    if not isinstance(edit, dict):
-        return ""
-    for key in ("file_path", "notebook_path"):
-        value = edit.get(key)
-        if isinstance(value, str) and value:
-            return value
-    return ""
-
-
 def decide(payload: str) -> str:
     """The note to add before an edit or after a Bash call, or "" where there is none."""
     root = hook_input.project_root()
@@ -132,7 +110,7 @@ def decide(payload: str) -> str:
         return ""
     # The id and the event are read as JSON as the rest of the payload is, so
     # an id laid out on the line after its key is still the id (`PL-CXK6`). A
-    # payload that is not JSON or names no id shares the markers kept for
+    # payload that is not JSON or names no id shares the marker kept for
     # "unknown": the first such session is asked, and the rest are not.
     try:
         data = json.loads(payload)
@@ -144,8 +122,7 @@ def decide(payload: str) -> str:
     event = named if isinstance(named, str) and named in AFTER_BASH else "PreToolUse"
     markers = Path(os.environ.get("TMPDIR") or "/tmp")
     stale = markers / f"docket-branch-{session}"
-    claim = markers / f"docket-claim-{session}"
-    if stale.exists() and claim.exists():
+    if stale.exists():
         return ""
 
     # `docket` resolves the store from the working directory, so every command
@@ -159,7 +136,7 @@ def decide(payload: str) -> str:
         return ""
 
     context: list[str] = []
-    if not stale.exists() and _create(stale):
+    if _create(stale):
         branch = run([str(docket), "branch", "--brief", "--if-stale"])
         if branch.returncode == 0:
             if branch.stdout.strip():
@@ -168,28 +145,6 @@ def decide(payload: str) -> str:
             errors = _text(branch.stderr).split("\n")
             floor = [line for line in errors if line.startswith(FLOOR_REFUSAL)]
             context.append(floor[0] if floor else _failed("whether the base has moved", branch))
-
-    check = root / "tools" / "branch_id_check.py"
-    if not claim.exists() and check.is_file():
-        hint: subprocess.CompletedProcess[bytes] | None = None
-        if event != "PreToolUse":
-            hint = run(["python3", str(check), "--hint-changed"])
-        else:
-            target = _edited_path(fields)
-            if target:
-                hint = run(["python3", str(check), "--hint", target])
-        # `NOT_ASKED` is the exit status of `--hint` and `--hint-changed` where
-        # nothing was asked, so the question waits for the next edit or Bash
-        # call. It is imported here, after the check has run, because the file
-        # starts docket, which the spent-marker path above must not pay for.
-        from branch_id_check import NOT_ASKED
-
-        if hint is not None and hint.returncode != NOT_ASKED and _create(claim):
-            if hint.returncode == 0:
-                if hint.stdout.strip():
-                    context.append(_text(hint.stdout).rstrip("\n"))
-            else:
-                context.append(_failed("whether this branch claims an item", hint))
 
     if not context:
         return ""

@@ -228,17 +228,12 @@ check: sync
 # a session the argv it ran, which is this one wherever this literal is right
 # (`PL-ZXCN`).
 	bin/docket check --verify --verify-base origin/main
-# Bare `python3`, like the three lines after it: none of them reads project
-# source, so the 3.11 floor parser has nothing it cannot read, and a bare run is
-# the no-virtualenv promise `tools/ruff.toml` states. Placed with the
-# provenance checks rather than earlier because that is what it is: `docket
-# check` asks whether the store is sound, this asks whether this branch's work
-# is visible to the guards that read the store. It answers from `git log`
-# alone, so it costs milliseconds wherever it lands. `PL-CP74`.
-	python3 tools/branch_id_check.py
-# Beside the guard above, and the same category one level out: that one asks
-# whether this branch's work is visible in the store, this asks whether it is
-# visible in the subject a squash merge will land on `main`. It was the only
+# Bare `python3`, like the lines after it: none of them reads project source,
+# so the 3.11 floor parser has nothing it cannot read, and a bare run is the
+# no-virtualenv promise `tools/ruff.toml` states. Placed with the provenance
+# checks: `docket check` asks whether the store is sound, and this asks whether
+# this branch's work is visible in the subject a squash merge will land on
+# `main`. It was the only
 # gate a session could not run before pushing, because CI reads the title from
 # `PR_TITLE` and nothing sets that locally, so every failure was found by CI
 # and cost a cycle. `--discover` reads the title from this branch's own open

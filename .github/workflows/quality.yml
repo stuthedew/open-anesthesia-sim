@@ -259,7 +259,6 @@ jobs:
       # files this 3.11 parser cannot read, and passes. Both are repeated under
       # `uv run` below, which is the run that checks those files (`PL-MB3F`).
       - run: python3 tools/possessive_section_check.py
-      - run: python3 tools/branch_id_check.py
       - run: python3 tools/rules_paths_check.py
       # A headless worker's run record must carry its review before its branch
       # merges (`PL-87BR`).
@@ -409,14 +408,12 @@ jobs:
           if-no-files-found: error
           retention-days: 1
       # Repeated from the floor section above, unlike the tools after them,
-      # which run only under `uv run python`. `branch_id_check.py` reads
-      # `git log` and the branch name, never project source, so the 3.11
-      # parser has nothing it cannot read (`PL-CP74`). The other two read every module's docstrings for the
-      # citations in them, and the floor declines the files it cannot parse, so
-      # these are the runs that check them (project owner, 2026-09-24,
-      # ratified, over leaving the possessive check at the floor alone, where
-      # no gate read `app/bookmarks.py` or `app_metadata.py`, `PL-MB3F`).
-      - run: uv run python tools/branch_id_check.py
+      # which run only under `uv run python`. Both read every module's
+      # docstrings for the citations in them, and the floor declines the files
+      # it cannot parse, so these are the runs that check them (project owner,
+      # 2026-09-24, ratified, over leaving the possessive check at the floor
+      # alone, where no gate read `app/bookmarks.py` or `app_metadata.py`,
+      # `PL-MB3F`).
       - run: uv run python tools/doc_check.py check
       - run: uv run python tools/possessive_section_check.py
       # The tools on the `uv run python` lines below are deliberately absent from

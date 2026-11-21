@@ -3,11 +3,13 @@ id: PL-HS2T
 title: Retire tools/branch_id_check.py from make check, CI and the push hook
 priority: P2
 effort: M
-status: ready
+status: done
 classes: infra
 feature: standing-weight
 touches: .claude/hooks/docket_branch_guard.py, .claude/hooks/push_check_guard.py, .claude/skills/docket/modes/capture.md, .claude/skills/docket/modes/start.md, .github/workflows/quality.yml, Makefile, docket.toml, docs/apparatus.md, docs/resident-instructions.md, subprojects/docket/README.md, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/claims.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_claims.py, subprojects/docket/tests/test_vcs.py, tests/unit/test_branch_id_check.py, tests/unit/test_docket_branch_guard.py, tests/unit/test_floor_interpreter_guard.py, tests/unit/test_main_ci_status.py, tests/unit/test_push_check_guard.py, tests/unit/test_tools_portability.py, tests/unit/test_workflow_paths_check.py, tools/branch_id_check.py, tools/fixture_id_check.py
 added: 2026-11-21
+closed: 2026-11-21
+pr: 2185
 payoff: a session's push and its pull request are no longer refused for a missing claim on work that other sessions could already see, and 1,400 lines of tool and test leave the tree
 verify: ! grep -qF 'branch_id_check' Makefile && ! grep -qF 'branch_id_check' .github/workflows/quality.yml && ! grep -qF '"tools/branch_id_check.py"' .claude/hooks/push_check_guard.py && ! grep -qF 'hint-changed' .claude/hooks/docket_branch_guard.py
 ---
@@ -31,3 +33,8 @@ verify: ! grep -qF 'branch_id_check' Makefile && ! grep -qF 'branch_id_check' .g
 The tool has two more callers than this brief first named. `.claude/hooks/docket_branch_guard.py` asked it, at a session's first edit, whether the branch claimed an item (`--hint` and `--hint-changed`). That question goes with the tool, and the hook keeps its other question, whether `main` has moved. Moving the question into the hook would rebuild the check that the owner retired. `quality.yml` ran the tool twice, once under the bare interpreter and once under `uv run`.
 
 **Generator check.** One-off. It is the removal that the owner decided in `PL-KGPR` from `PL-LY24`'s count, and no fact was misread to cause it.
+
+**Done 2026-11-21.** `make check`, both steps in `.github/workflows/quality.yml` and `.claude/hooks/push_check_guard.py` no longer run the tool, `.claude/hooks/docket_branch_guard.py` no longer asks it, and `tools/branch_id_check.py` and `tests/unit/test_branch_id_check.py` are deleted. The push guard's tests that used the tool as their second check now use `doc_check` and the store check.
+
+Documents checked, and changed where they said the check runs: `docs/apparatus.md` (the tool list, the paragraphs on the guard, the two-way run and the floor commands), `docs/resident-instructions.md` (three rows of the table of what catches each resident rule, and the housekeeping paragraph), `.claude/skills/docket/modes/start.md`, `.claude/skills/docket/modes/capture.md`, `subprojects/docket/README.md`, and the comments in `docket`'s `render.py`, `vcs.py`, `claims.py`, `checks.py` and `cli.py` that said the check keeps `flight`'s lines empty. Checked and left: `CLAUDE.md`, `docs/maintainer.md` and `docs/worker.md` do not name the tool. `tools/workflow_paths_check.py` names it in a dated account of 2026-09-06, which is still true.
+

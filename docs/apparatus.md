@@ -26,7 +26,6 @@ tools/
 ├── ast_identity.py      # says whether each file's code is the same at two revisions once docstrings and comments are removed, a docstring being any string that stands as a statement of its own as `docket.python.docstrings` reads one (`PL-6GP9`), by comparing `ast.dump` of both parses, so a release cut whose simulator tree object moved can still prove that no executable statement did; a file that is not Python is compared as text, and whether a docstring-only change is safe stays the reader's call (`PL-VHHB`)
 ├── blind_review.py      # counts the blind generalist review passes a simulator branch owes, one or two by `docket.arming.blind_passes`, builds one directory per pass outside the repository holding only the committed tree and the diff, and prints the reviewer brief `PL-TCBJ` ran for each. `.claude/skills/docket/modes/close-out.md` step 9 runs it, and `PL-TDV9` records why. `--count` is `docket.toml`'s `blind_count_command`, which `bin/docket arm` runs to hold a simulator branch until a `Blind-review:` trailer records that many passes (`PL-HDRN`)
 ├── blind_review_report.py # reports, pass by pass, what the blind review passes found on the simulator pull requests merged since a given one (default `#1767`), reading each `Blind-review:` record from the pull request's frozen head on GitHub and naming every pull request it could not count in full. The monthly model review runs it under `uv run python` (`.claude/skills/model-review/SKILL.md`, `PL-0BRY`)
-├── branch_id_check.py    # refuses a branch ahead of the default base that carries no item id in its name and leads no commit subject with one, because every in-flight guard matches an id and work carrying none is invisible to all of them - an id counting only where the base's or the branch's copy of the store holds it, since the grammar alone passes an English word such as `CTRL` (`PL-SN2T`); scoped to the `claude/*` namespace, since a contributor has no queue to be visible in. It also reads the claim record (`PL-J9S0`): it refuses a `claude/*` branch whose work outside the queue claims nothing, and a claim ordering behind another live claim; `--hint PATH` is the first-edit hook's half of the same question, and `--hint-changed` asks it of every file the checkout has changed, for the hook's run after a Bash call, which names no path (`PL-RXFK`)
 ├── branch_sweep.py       # archives, then deletes, every `claude/*` branch whose work is finished, because GitHub deletes a head branch only when its own pull request merges and a session cannot delete one at all (`PL-X8SV`); it adds no judgment of its own - a branch stays while a pull request is open from or onto it, `claims.unfinished_work` or a release cut holds it, `vcs.stranded` finds the only copy of an item or an edit to one still open on the base, `vcs.orphaned` or `left_behind_check.py` finds commits a merged pull request left behind, or its last commit is under 72 hours old; a worker branch whose latest run record is reviewed `sent-back` is kept only by an open pull request, the only copy of an item or the grace period (`PL-W5JR`); one atomic push, leased on the tip it judged, copies that tip to `refs/archive/<branch>/<tip>` and deletes the branch, so a wrong call costs a restore rather than work; any reading that fails pushes nothing and exits 1; `.github/workflows/branch-sweep.yml` runs it daily
 ├── dead_ends.py          # emits `docs/dead-ends.md`'s entry lines into session context at start, and holds that emitted half - never the file's preamble, which is instructions for adding an entry rather than for reading one - to 30 entries and 4,000 bytes, because a `SessionStart` hook's output is resent on every turn and an unbounded always-loaded store measurably degrades an agent rather than merely costing tokens; refuses an entry citing an id that resolves to nothing, since `bin/docket show <id>` is the entry's whole retrieval path; with `--base`, refuses an entry that left the list without a record of where it went: a path-scoped rule, a check or docstring citing its id, or the file's retired section, which is not emitted (`PL-5J1S`)
 ├── check_support.py     # what the source checks share, in one home: a scoped `ast` walk, a baseline by file that only shrinks with its overflow, stale-entry and report-line helpers, and the `--root` reading and report printing every check's `main` did by hand; pylint's duplicate-code check found the copies (`PL-VWXL`)
@@ -142,34 +141,12 @@ correct title goes stale the moment the next item closes on it. Every way the
 lookup can fail is a silent skip: no token, no network, or no pull request
 open yet. So `make check` stays green offline.
 
-`tools/branch_id_check.py` is the same kind of guard, aimed at the other end
-of the same problem. The two checks do not overlap. The title check asks
-whether a pull request names the items it *closes*. For a branch that closes
-none, it returns "no id is owed". That case is exactly the unfiled repository
-housekeeping that `PL-CP74` found colliding. `docket flight`, `show`, `next`,
-`concurrent` and the session-start digest all check the same question:
-"is anybody already on this?" They check it by matching a `PL-` id in a branch
-name or at the front of a commit subject. So every one of them treats a
-branch that carries no id as nobody's work. They go on doing so even after
-both sessions have pushed.
-
-That argument is about agent sessions. So the check applies only to their
-branch namespace, `claude/*`, and passes any branch outside it. A contributor
-has no queue and no id. Requiring an id once refused `#394`, the project
-owner's own web-UI edit to the README, in the required job (`PL-8P6D`).
-[`CONTRIBUTING.md`](../CONTRIBUTING.md) is the route that this leaves open to
-contributors.
-
-The branch check imports `BRANCH_ID_RE` and `leading_ids` from `docket.vcs`
-rather than matching ids its own way. A check looser than the guard it
-protects would certify a branch as visible while `docket flight` still cannot
-see it. The gate would be green while the guarantee is void. One commit
-carrying an id is enough. That keeps the tool out of a judgment it must not
-make: how small a piece of work is too small to file. That judgment is made in
-`.claude/skills/docket/modes/capture.md`, under
-"Mode: housekeeping nobody filed". A fix riding inside a commit that an id
-already leads needs no item of its own. A release commit is exempt, exactly.
-`make release` writes that subject, and a release commit closes no item.
+A second guard of this kind ran until 2026-11-21. It refused a `claude/*`
+branch that no item id named, one whose work claimed nothing, and a claim
+that ordered behind another live claim. The project owner retired it because
+none of its 12 refusals in CI caught a mistake (`PL-HS2T`, from the count in
+`PL-LY24`). `bin/docket flight` still lists a branch that no id names, and a
+branch with work and no claim.
 
 `tools/contrast_check.py` checks the interface against the accessibility target
 that `docs/INTERFACE.md` states, WCAG 2.2 Level AA. It reads the color constants
@@ -652,10 +629,7 @@ both `Makefile` and `.github/workflows/quality.yml`, never in that workflow's
 floor section.
 
 `doc_check.py` and `possessive_section_check.py` are the exception, run both
-ways. `branch_id_check.py` also runs both ways in `quality.yml`. But it
-reads only `git log` and the branch name, so the 3.11 parser has nothing it
-cannot read. The comment above its `uv run` step says why (`PL-CP74`). The
-other two do parse repository source: they read every module's docstrings for
+ways. Both parse repository source: they read every module's docstrings for
 the citations in them. The floor section runs them bare all the same. There,
 each one names the files that the floor parser cannot read on a "Not checked"
 line, and passes rather than failing on them. Both gates also run them through
@@ -687,7 +661,7 @@ interpreter's `sys.stdlib_module_names`. The floor section of the
 they stand in for. It runs `actions/setup-python` at the declared floor,
 then <!-- floor-commands -->
 `python3 tools/doc_check.py check`, `python3 tools/possessive_section_check.py`,
-`python3 tools/branch_id_check.py`, `python3 tools/rules_paths_check.py`,
+`python3 tools/rules_paths_check.py`,
 `python3 tools/worker_runs.py check`,
 `python3 tools/pr_body_check.py --anchors`, `python3 tools/dead_ends.py check`,
 `python3 tools/fact_home_check.py`, `python3 tools/config_home_check.py`,
