@@ -207,7 +207,8 @@ TIED: Mapping[tuple[type, type], Callable[[typing.Any], object]] = {
 # stepped on its own takes a one-second step towards a tissue return of zero.
 # The other values give a bookmark set's view of a run that has reached no
 # mark, has crossed no height and is neither at its cap nor failed. The squarings
-# are those of a shipped agent's step, which needs none.
+# are those of a shipped agent's step, which needs none. A prediction at chosen
+# seconds is given none, so it predicts nothing past its opening.
 TYPICAL: Mapping[str, object] = {
     "adjustment_count": 0,
     "after": {},
@@ -219,6 +220,7 @@ TYPICAL: Mapping[str, object] = {
     "reached_crossings": frozenset(),
     "reached_instants_s": frozenset(),
     "run_failed": False,
+    "seconds": (),
     "squarings": 0,
     "simulation_step_s": 1.0,
     "snapshot": None,

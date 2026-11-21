@@ -178,7 +178,12 @@ LISTED: dict[str, dict[str, tuple[str, ...]]] = {
     },
     STATE_VECTOR: {
         "matrix_exponential": ("propagate -> return", "propagate(state)"),
-        "prediction": ("predicted_states -> return", "predicted_states(opening)"),
+        "prediction": (
+            "predicted_states -> return",
+            "predicted_states(opening)",
+            "predicted_states_at -> return",
+            "predicted_states_at(opening)",
+        ),
         "stored_states": (
             "Keyframe.state",
             "StoredStates.__deepcopy__(memo)",
@@ -363,8 +368,9 @@ BARE_NUMBERS: dict[str, str] = {
 # returns (`PL-MH9J`), and the series of fractions that the chart reads
 # (`PL-BLZJ`). Removing the states that a run definition computed by formula
 # took out twelve, and the prediction that a preview draws added two for the
-# state it starts from and the states it returns (`PL-Z6C8`).
-MOST_BARE_NUMBERS = 167
+# state it starts from and the states it returns (`PL-Z6C8`). The prediction at
+# chosen seconds that a preview draws past its first hour added two more.
+MOST_BARE_NUMBERS = 169
 
 
 def _names_a_bare_number(
