@@ -47,11 +47,6 @@ from .python import UNTOKENIZABLE, places, read_logical_lines, refusal
 from .shell import argv
 from .vcs import ForkTexts, Runner, texts_at_fork
 
-#: A pytest node id as `tests:` holds one: a Python file, then the names that
-#: lead to the test, outermost first. A parameter set (`[...]`) is left out,
-#: because the entry names the test function and every set of it.
-NODE_RE = re.compile(r"(?P<path>[^\s:\[\]]+\.py)(?P<names>(?:::[A-Za-z_][A-Za-z0-9_]*)+)")
-
 
 @dataclass(frozen=True)
 class Node:
@@ -62,11 +57,18 @@ class Node:
 
 
 def read_node(entry: str) -> Node | None:
-    """The file and test that one `tests:` entry names, or `None` where it is no node id."""
-    match = NODE_RE.fullmatch(entry)
-    if match is None:
+    """The file and test that one `tests:` entry names, or `None` where it is no node id.
+
+    A pytest node id is a Python file, then `::` and the names that lead to
+    the test, outermost first. A parameter set (`[...]`) is no part of one
+    here, because the entry names the test function and every set of it.
+    """
+    path, _, names = entry.partition("::")
+    if not path.endswith(".py") or ":" in path or any(c.isspace() for c in path):
         return None
-    return Node(path=match["path"], name=match["names"][2:])
+    if not all(part.isidentifier() for part in names.split("::")):
+        return None
+    return Node(path=path, name=names)
 
 
 def node_refusal(entry: str) -> str:
@@ -226,6 +228,9 @@ def search_faults(command: str, root: Path) -> list[str]:
 #: A bold label that carries a date and opens a paragraph, such as
 #: `**Answered 2026-11-20.**` or `**Counted 2026-11-21**`. The label may run
 #: on past the date, and the bold may close anywhere on the line.
+# regex: a search through an item brief's free prose for a line that opens with
+# bold text holding a date. `docket.markdown` reads blocks and not the bold
+# inside a line, and the date may stand anywhere in the label.
 DATED_LABEL_RE = re.compile(r"^\*\*[A-Z][^*\n]*\b\d{4}-\d{2}-\d{2}\b[^*\n]*\*\*", re.MULTILINE)
 
 
