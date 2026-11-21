@@ -339,6 +339,31 @@ this one stood:
 PL-K7QX Decide what the interface shows after a halted step. Claim it with: bin/docket claim PL-K7QX --over claude/this-branch-name --reason "handed off by the session that held it"
 ```
 
+## Check the other sessions before recommending work
+
+**Before recommending repository work - an item to start, or work that carries
+no item id - check whether another session is already on it or has asked for
+it.** Every in-flight guard this project has reads a claim on a *pushed* ref,
+so an item is invisible to all of them until its session has claimed it and
+pushed the claim (`PL-0HPV` was reported unstarted twenty minutes into another
+session's run, `PL-7TVT`), and a release cut, a tag, a merge or a branch
+deletion has no id until somebody starts it. Two sessions cut v0.3.7 within the
+hour that way and the second was discarded at the merge (`PL-66FP`, two
+sessions cut the same release independently). One call answers it —
+`list_sessions` from the `claude-code-remote` MCP server (`mine: true`, `limit:
+8`) — whose `post_turn_summary.needs_action` carries each session's own closing
+block, written by the harness rather than by a rule anybody has to follow, and
+cleared when a session is archived. Read the `RUNNING` and `IDLE` rows; where
+one already asks for what you were about to, name that session instead of
+repeating the request. It warns and never certifies: the match is a judgment on
+another model's prose, a session still mid-turn has not written its line yet,
+and two closing in the same minute still collide. Finding nothing means
+nothing; finding something is decisive. `list_sessions` lists no Projects
+thread (measured 2026-09-25): those, tagged `hearth-thread`, are left out with
+or without `mine`, and the `tags` filter is refused inside a session. So while
+`PL-NZC0`'s Projects trial runs, triage and start nothing its Order list
+reserves (`PL-DR3G`).
+
 ## Mode: work several items at once
 
 Triggered by "can we do these together", or by planning a batch.
