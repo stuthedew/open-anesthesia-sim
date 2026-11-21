@@ -99,16 +99,9 @@ from dataclasses import dataclass
 from typing import Final
 
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.rounding import WHOLE_COUNT_TOLERANCE
 from anesthesia_sim.core.simulation_step import SimulationStep, require_simulation_step
 from anesthesia_sim.core.validation import require_positive_finite
-
-#: How far the derived step count may be from a whole number and still be
-#: treated as that whole number. The conversion is a ratio of two float
-#: intervals, so an exact comparison would refuse a configuration that is
-#: correct and merely inexact in binary. This tolerance is loose enough to
-#: absorb that error. It is far too tight to absorb a truly fractional rate,
-#: because the nearest such rate is half a step away from a whole number.
-STEP_COUNT_TOLERANCE: Final = 1e-9
 
 #: The largest number of steps that one tick may take. A tick runs all of its
 #: steps before the interface can respond, so an unbounded count would hang the
@@ -209,7 +202,7 @@ class PlaybackRate:
 
         steps = round(exact)
 
-        if steps < 1 or not math.isclose(exact, steps, rel_tol=STEP_COUNT_TOLERANCE):
+        if steps < 1 or not math.isclose(exact, steps, rel_tol=WHOLE_COUNT_TOLERANCE):
             raise SimulationConfigurationError(
                 f"playing at {self.multiplier}x real time with a {tick_interval_s} s tick "
                 f"and a {simulation_step_s} s step needs {exact} steps per tick, which is "

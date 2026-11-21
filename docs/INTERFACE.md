@@ -218,7 +218,7 @@ exponential. A running trunk also holds live readings, carried forward step by
 step. These can lie about 1e-14 from the canonical readings, on the other side
 of a height, which is why the trunk does not decide a crossing from them.
 
-The height band (`bookmarks.HEIGHT_BAND`) is there because a steady
+The height band (`HEIGHT_BAND` in `core/rounding.py`) is there because a steady
 compartment's canonical reading moves in its last digit from step to step. When
 crossings were tested at the exact height, a run with no ventilation and a
 target on the circuit at 1.00 ×MAC of a 1 MAC dial halted 965 times in ten
@@ -228,7 +228,7 @@ A canonical reading costs about 2 ms, and a whole step about 60 µs, so the live
 readings screen each step. A step is tested again from the canonical readings
 when its live readings cross a mark, or when either live reading differs from
 the height of a band edge by less than 1e-6 of that height
-(`bookmarks.LIVE_READING_GAP`). Any other step is let through, because its
+(`LIVE_READING_GAP` in `core/rounding.py`). Any other step is let through, because its
 canonical readings lie on the same side of each band edge as its live readings.
 So the run halts only on a crossing that its halt record names. The widest gap
 between the live and canonical readings in a 2 h run at the 0.001 s step

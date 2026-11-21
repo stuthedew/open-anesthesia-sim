@@ -3,12 +3,15 @@ id: PL-KGPR
 title: Decide which of the 13 checks on the workflow's own records to retire, from PL-LY24's count
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: planning
 feature: standing-weight
-touches: docs/items/PL-KGPR-decide-which-of-the-13-checks-on-the-workflow-s.md
+touches: docs/items/PL-KGPR-decide-which-of-the-13-checks-on-the-workflow-s.md, docs/items/PL-HS2T-retire-tools-branch-id-check-py-from-make-check.md, docs/items/PL-F7XT-retire-tools-pr-body-check-py-anchors-from-make.md, docs/items/PL-8F5B-retire-the-check-half-of-tools-dead-ends-py.md, docs/items/PL-3HNP-retire-tools-worker-runs-py-and-docs-worker.md
 deferred-from: v0.7.0 - the checks guard the workflow's records, not the schematic, so the release does not wait on this answer
 added: 2026-11-21
+closed: 2026-11-21
+pr: 2179
+not-delegable: The work is recording the owner's answer and filing the removals; no command can prove it.
 ---
 
 **Problem.** Decide which of the 13 checks on the workflow's own records to retire, from PL-LY24's count
@@ -27,6 +30,8 @@ added: 2026-11-21
 6. Keep the other eight.
 
 **`PL-LFJZ` answered on 2026-11-20.** The owner chose a done-condition that is checked once when an item closes and not replayed afterwards. `PL-QTZG` (remove the shape rules and the replay's reading of commands) carries the removal, so point 5 is the replay's retirement once `PL-QTZG`'s three predecessors land.
+
+**Answered 2026-11-21.** The owner agreed with all six recommendations (project owner, 2026-11-21, ratified, "Agree with recs", over keeping all 13 checks). Asked whether the dead-ends list goes too, the answer given was no: only its format check is retired, and the list still reaches each session through the start-up hook. The removals are `PL-HS2T` (the branch-id check), `PL-F7XT` (the body anchor check), `PL-8F5B` (the dead-ends format check) and `PL-3HNP` (the worker-run check). The replay of `verify:` commands is retired by `PL-QTZG`, as the paragraph above says.
 
 **Done when.** The owner has answered, and each check to retire has an item to remove it.
 
