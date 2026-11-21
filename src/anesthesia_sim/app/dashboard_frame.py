@@ -1025,8 +1025,10 @@ WASH_IN_UNDRAWN_SUFFIX_TEMPLATE: Final = " ({count} earlier stretch(es) not draw
 # it (`PL-2K1R`). The compartments this simulator exists to display are the
 # ones no monitor shows. So a reader has no measured value to check a trace
 # against, and the polish of the display suggests more accuracy than there
-# is. Each statement appears once, on the readout section's heading row,
-# because a repeated disclaimer stops being read.
+# is. The first is drawn once, as a line across the foot of the window,
+# because a repeated disclaimer stops being read. The second is drawn on the
+# readout section's heading row, and in the headings of the compartment
+# schematic View and the agent cost View.
 USE_DISCLAIMER_TEXT: Final = (
     "Educational simulation only. This idealized model is not a clinical prediction, "
     "monitoring, or dosing tool."

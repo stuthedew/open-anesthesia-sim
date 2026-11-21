@@ -3,13 +3,16 @@ id: PL-VF3H
 title: Docstrings and comments in tests/reference/, tools/doc_check.py and src/ repeat nine statements that docs/MODEL.md corrected on 2026-11-21
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: model-spec-accuracy
 touches: src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/app/dashboard_frame.py, tools/doc_check.py
 deferred-from: v0.7.0 - captured after the freeze by the check of docs/MODEL.md against the code; it changes no displayed value, and it is not safety or science
 added: 2026-11-21
+closed: 2026-11-21
+pr: 2190
 payoff: four docstrings and comments in the model code, the dashboard and the document checker say what the code beside them does
+verify: ! grep -qF 'passes all four of this' tools/doc_check.py
 ---
 
 **Problem.** Docstrings and comments in tests/reference/, tools/doc_check.py and src/ repeat nine statements that docs/MODEL.md corrected on 2026-11-21
@@ -26,5 +29,14 @@ payoff: four docstrings and comments in the model code, the dashboard and the do
 9. `tools/doc_check.py`, docstring of `check_untied_restatements`: it names `docs/MODEL.md` and `README.md` and leaves out `docs/INTERFACE.md`, which `PROVENANCE_DOCUMENTS` includes.
 
 **Done when.** Each of entries 6 to 9 agrees with the code beside it and with `docs/MODEL.md`.
+
+**What was done, 2026-11-21**, for entries 6 to 9.
+
+6. Both docstrings of `core/governing_equations.py` now name § "Conservation of agent mass" beside § "Governing equations", and say that the rows follow the order of the state vector, with the venous balance before the tissue balances and the two totals last.
+7. The comment above `USE_DISCLAIMER_TEXT` now says that the use statement is drawn once, across the foot of the window (`SimulationView._build_page`), and that the interpretation statement is drawn on the readout section's heading row and in the headings of the compartment schematic View and the agent cost View (`app/run_view.py`, `app/views.py`).
+8. The docstring of `check_source_tiers` now says five parameter files. Its clause "while every stored coefficient in them came from Gas Man" was also out of date, since the agent files adopt primary sources for some values. It now says that the reference patient's and the machine's files adopt no primary source, which the `tier` and `adopted` fields of the five files show.
+9. The docstring of `check_untied_restatements` now names `docs/INTERFACE.md` and `PROVENANCE_DOCUMENTS`.
+
+**Documents checked.** `docs/MODEL.md` § "Selected method (as implemented)"; `docs/INTERFACE.md`'s paragraph "The educational-use disclaimer is a line across the foot of the window"; `docs/ARCHITECTURE.md` and `.claude/rules/core-domain.md` for a statement about the order of the matrix rows; and `docs/apparatus.md` for the two checks.
 
 **Generator check.** Filed by `PL-RMNP` (the check of `docs/MODEL.md` against the code), a sweep that the owner asked for. The fact it misreads is whether a `docs/MODEL.md` sentence about what the model computes matches what it computes, which the head `PL-B6YV` (a document sentence about what the model computes, checked against the code) already states. It is counted under the sweep and is not a new head.

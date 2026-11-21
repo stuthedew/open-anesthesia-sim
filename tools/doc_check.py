@@ -1983,11 +1983,11 @@ def check_source_tiers(root: Path, report: Report) -> None:
 
     **The tier and the adoption are separate fields because rule 2 is
     otherwise vacuous.** Every agent file cites primary measurements it has
-    explicitly *not* adopted, and so does the reference patient - so a check
-    reading tier alone passes all four of this project's data files today
-    while every stored coefficient in them came from Gas Man, which is the
-    second of the same three rules stated as the failure it exists to
-    prevent.
+    explicitly *not* adopted, and so do the reference patient and the
+    reference machine - so a check reading tier alone passes all five of this
+    project's parameter files today, while the patient's and the machine's
+    files adopt no primary source at all. That is the second of the same
+    three rules stated as the failure it exists to prevent.
 
     **What this deliberately does not decide** is whether a citation declared
     `primary` really is a primary measurement of the quantity, which needs
@@ -2996,7 +2996,8 @@ def check_untied_restatements(root: Path, report: Report) -> None:
 
     `check_prose_provenance` holds a marked number to its home. This check
     finds the numbers nobody marked (`PL-JS6P`). It reads each figure in
-    `docs/MODEL.md` and `README.md` that equals a stored value in that value's
+    `docs/MODEL.md`, `docs/INTERFACE.md` and `README.md`, the three
+    `PROVENANCE_DOCUMENTS`, that equals a stored value in that value's
     unit (`stored_values`). The figure must sit under a marker that says what
     it is. A `provenance:` or `derived:` marker naming the value says it is
     the stored value, or was computed from it. A `not-restated:` marker
