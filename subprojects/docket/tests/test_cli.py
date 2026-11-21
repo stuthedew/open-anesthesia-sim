@@ -1719,7 +1719,7 @@ def test_release_refuses_to_invent_a_version_under_a_manual_policy(
 
 
 def _delegable_store(tmp_path: Path) -> Path:
-    """A store holding one delegable item and four that must not be offered."""
+    """A store holding two delegable items and three that must not be offered."""
     items = tmp_path / "docs" / "items"
     items.mkdir(parents=True)
     # Config is resolved from the store's parent, not the working directory,
@@ -1730,7 +1730,8 @@ def _delegable_store(tmp_path: Path) -> Path:
     brief = "**Problem.** P\n**Why it matters.** W\n**Done when.** D\n"
     for ident, extra in (
         ("PL-8888", "verify: pytest tests/test_a.py\ntouches: tests/test_a.py\n"),
-        ("PL-BBBB", "touches: tests/test_b.py\n"),  # no verify command
+        # No command: an open item names none, and is offered all the same.
+        ("PL-BBBB", "touches: tests/test_b.py\n"),
         ("PL-CCCC", "verify: pytest\ntouches: src/core/x.py\n"),  # protected
         ("PL-DDDD", "verify: pytest\ntouches: tests/test_d.py\nclasses: safety\n"),
         # A gate path, and deliberately from the package default rather than
@@ -1750,12 +1751,13 @@ def _delegable_store(tmp_path: Path) -> Path:
 def test_delegable_lists_only_what_qualifies(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Four of the five items must not be offered, each for a different reason."""
+    """Three of the five items must not be offered, each for a different reason."""
     assert main(["--items", str(_delegable_store(tmp_path)), "--no-git", "delegable"]) == 0
     out = capsys.readouterr().out
     assert "PL-8888" in out
     assert "verify: pytest tests/test_a.py" in out
-    for excluded in ("PL-BBBB", "PL-CCCC", "PL-DDDD", "PL-GGFF"):
+    assert "PL-BBBB" in out
+    for excluded in ("PL-CCCC", "PL-DDDD", "PL-GGFF"):
         assert excluded not in out
 
 
@@ -1765,7 +1767,7 @@ def test_delegable_ids_prints_the_same_list_and_nothing_else(
     """`--ids` is the list a script reads, so stdout holds one id per line and no prose."""
     items = _delegable_store(tmp_path)
     assert main(["--items", str(items), "--no-git", "delegable", "--ids"]) == 0
-    assert capsys.readouterr().out == "PL-8888\n"
+    assert capsys.readouterr().out == "PL-8888\nPL-BBBB\n"
 
 
 def test_delegable_sends_the_worker_to_the_instructions_that_qualify_it(
@@ -2990,7 +2992,7 @@ def test_triage_states_the_rules_the_answers_must_satisfy(
     assert "force P0 or P1" in output
     assert "the top band is P1, holding 1 startable of the 5" in output
     assert "src/core" in output
-    assert "`verify:` command" in output
+    assert "written into `tests:` when the item closes" in output
 
 
 def test_triage_states_the_rules_a_chosen_status_adds(

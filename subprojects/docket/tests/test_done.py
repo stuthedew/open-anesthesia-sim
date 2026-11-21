@@ -121,7 +121,9 @@ def test_a_method_is_found_under_its_class_and_not_under_another() -> None:
 
 
 def test_a_file_the_tokenizer_refuses_is_unread_and_not_a_pass() -> None:
-    faults, unread = done.test_faults([NODE], _reader(**{TEST_FILE: "def test_new(:\n  '''"}), _fork())
+    faults, unread = done.test_faults(
+        [NODE], _reader(**{TEST_FILE: "def test_new(:\n  '''"}), _fork()
+    )
 
     assert faults == []
     assert unread and TEST_FILE in unread[0]
@@ -172,7 +174,9 @@ def test_words_a_document_wraps_over_two_lines_are_found(tmp_path: Path) -> None
     (tmp_path / "a.md").write_text("The work adds these\nwords.\n")
 
     assert done.search_faults("grep -qF 'adds these words' a.md", tmp_path) == []
-    assert "still holds them" in done.search_faults("! grep -qF 'adds these words' a.md", tmp_path)[0]
+    assert (
+        "still holds them" in done.search_faults("! grep -qF 'adds these words' a.md", tmp_path)[0]
+    )
 
 
 def test_words_no_file_holds_are_a_fault(tmp_path: Path) -> None:

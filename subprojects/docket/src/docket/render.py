@@ -3192,7 +3192,7 @@ def _triage_rules(report: Report, config: Config) -> list[str]:
         rules.append(
             "an item set to `ready` must carry a `payoff:` - one plain-language line of "
             "what closing it buys, in consequence terms rather than a restatement of the "
-            "title. Every item has a consequence, so nothing excuses it."
+            "title. There is no `not-delegable` equivalent: every item has a consequence."
         )
     rules.append(
         "a status past `untriaged` needs the full brief: "

@@ -2782,10 +2782,10 @@ def _check_item(
     return report
 
 
-#: The mutation check's name on the page.
 #: The check that an item records something to show its work: the tests it
 #: added, in `tests:`, or a command, in `verify:` (`PL-FN11`).
 SHOWS_ITS_WORK = "records what shows its work"
+#: The mutation check's name on the page.
 MUTATION_CHECK = "the unit tests catch a mutation of each changed line"
 #: How long the mutation run may take before the check says it has no answer.
 #: On four cores on 2026-10-24 a run spent about five minutes before its first

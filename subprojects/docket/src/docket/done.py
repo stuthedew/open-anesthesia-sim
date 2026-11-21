@@ -74,9 +74,7 @@ def node_refusal(entry: str) -> str:
     if read_node(entry) is not None:
         return ""
     if "[" in entry:
-        return (
-            f"`{entry}` names one parameter set; name the test function, which covers every set"
-        )
+        return f"`{entry}` names one parameter set; name the test function, which covers every set"
     return (
         f"`{entry}` is not a pytest node id; write the test file, then `::` and the test's "
         "name, with its class between them where it has one"
@@ -276,7 +274,10 @@ def closing_faults(item: Item, root: Path, fork: ForkTexts) -> tuple[list[str], 
 def node_paths(items: Collection[Item]) -> set[str]:
     """Every file the `tests:` of `items` name."""
     return {
-        node.path for item in items for entry in item.tests if (node := read_node(entry)) is not None
+        node.path
+        for item in items
+        for entry in item.tests
+        if (node := read_node(entry)) is not None
     }
 
 

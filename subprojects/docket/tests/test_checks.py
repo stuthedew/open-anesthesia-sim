@@ -14,6 +14,7 @@ import pytest
 
 from docket.checks import Report, analyze
 from docket.config import Config
+from docket.done import ClosingReport
 from docket.grep import Wrap
 from docket.instructions import Assertion, unread_front_matter
 from docket.instructions import read as read_instructions
@@ -2666,11 +2667,30 @@ def test_a_pipe_belonging_to_a_later_command_is_not_read_as_reading_check() -> N
 CUTOVER = Config(verify_required_at_close_from=date(2026, 8, 1))
 
 
-def test_a_ready_item_must_name_the_command_that_proves_it_done() -> None:
-    """The gate is at `ready`, where the item has become a commitment to work."""
+def test_a_ready_item_names_no_command() -> None:
+    """Its Done-when section says what will be true, and its tests are named at close."""
     report = analyze([_item(added=date(2026, 8, 2))], TODAY, CUTOVER)
 
-    assert _has(report.errors, "names no `verify:` command")
+    assert report.errors == []
+
+
+def test_an_open_item_may_not_record_its_tests_yet() -> None:
+    """A test named before the work is written is a guess at a name (`PL-FN11`)."""
+    item = _item(added=date(2026, 8, 2), tests=("tests/test_it.py::test_it",))
+
+    assert _has(analyze([item], TODAY, CUTOVER).errors, "are named when it closes")
+
+
+def test_an_entry_of_tests_that_is_no_node_id_is_an_error() -> None:
+    item = _item(
+        status="done",
+        added=date(2026, 8, 2),
+        closed=date(2026, 8, 24),
+        pr="48",
+        tests=("tests/test_it.py",),
+    )
+
+    assert _has(analyze([item], TODAY, CUTOVER).errors, "its `tests:` entry")
 
 
 def test_a_ready_item_may_record_why_no_command_can_prove_it_instead() -> None:
@@ -2707,16 +2727,10 @@ def test_an_item_still_being_decided_is_not_asked_for_one() -> None:
 OLD = date(2026, 7, 31)
 
 
-def test_an_item_captured_before_the_cutover_is_held_to_the_rule_too() -> None:
-    """No grandfathering at `ready` any more, whatever the capture date.
-
-    `verify_required_from` once exempted items captured before the rule and
-    advised on each as it was offered. That set drained to zero and the date
-    went with it (`PL-Z34C`), so an old capture is an error like any other.
-    """
+def test_an_item_captured_before_the_cutover_is_asked_for_no_command_either() -> None:
     report = analyze([_item(added=OLD)], TODAY, CUTOVER, offered=_offering("PL-K7QX"))
 
-    assert _has(report.errors, "is ready but names no `verify:` command")
+    assert report.errors == []
     assert not _has(report.advisories, "verify:")
 
 
@@ -3522,16 +3536,17 @@ def test_a_closed_item_keeps_its_retired_feature() -> None:
 # `verify_required_from` because the `ready` gate never reaches an item that
 # goes straight to `done` (`PL-Z34C`).
 CLOSE_CUTOVER = Config(verify_required_at_close_from=date(2026, 8, 20))
+SHOWS_NOTHING = "is done but records nothing that shows its work"
 
 
-def test_closing_an_item_without_a_command_is_refused() -> None:
+def test_closing_an_item_that_records_nothing_is_refused() -> None:
     """The point of the closing gate, and the only reason it is keyed on `closed`."""
     item = _item(status="done", added=date(2026, 7, 1), closed=date(2026, 8, 24), pr="48")
 
-    assert _has(analyze([item], TODAY, CLOSE_CUTOVER).errors, "is done but names no `verify:`")
+    assert _has(analyze([item], TODAY, CLOSE_CUTOVER).errors, SHOWS_NOTHING)
 
 
-def test_an_item_that_never_held_ready_is_still_asked_for_its_command_at_close() -> None:
+def test_an_item_that_never_held_ready_is_still_asked_what_shows_its_work() -> None:
     """Why the closing gate is permanent rather than retired with the opening date.
 
     The `ready` gate fires on the status alone, so an item that goes
@@ -3542,7 +3557,46 @@ def test_an_item_that_never_held_ready_is_still_asked_for_its_command_at_close()
     """
     item = _item(status="done", added=date(2026, 8, 22), closed=date(2026, 8, 24), pr="48")
 
-    assert _has(analyze([item], TODAY, CLOSE_CUTOVER).errors, "is done but names no `verify:`")
+    assert _has(analyze([item], TODAY, CLOSE_CUTOVER).errors, SHOWS_NOTHING)
+
+
+@pytest.mark.parametrize(
+    "recorded",
+    [
+        {"tests": ("tests/test_it.py::test_it",)},
+        {"verify": "grep -qF 'these words' docs/a.md"},
+        {"body": BRIEF + "\n**Answered 2026-08-24.** The owner chose the first.\n"},
+    ],
+)
+def test_closing_an_item_takes_its_tests_one_search_or_a_dated_record(
+    recorded: dict[str, object],
+) -> None:
+    """The three things `PL-LFJZ` chose, and any one of them is enough."""
+    item = _item(
+        status="done", added=date(2026, 7, 1), closed=date(2026, 8, 24), pr="48", **recorded
+    )
+
+    assert not _has(analyze([item], TODAY, CLOSE_CUTOVER).errors, SHOWS_NOTHING)
+
+
+def test_what_a_closing_item_records_is_refused_where_it_does_not_show_the_work() -> None:
+    """The reading of the branch reaches the report as an error on the item."""
+    item = _item(status="done", added=date(2026, 7, 1), closed=date(2026, 8, 24), pr="48")
+    closing = ClosingReport(faults={"PL-K7QX": ("`tests:` names a test nobody changed",)})
+
+    errors = analyze([item], TODAY, CLOSE_CUTOVER, closing=closing).errors
+
+    assert _has(errors, "closes on this branch, and `tests:` names a test nobody changed")
+
+
+def test_a_branch_that_could_not_be_read_is_said_and_refuses_nothing() -> None:
+    item = _item(status="done", added=date(2026, 7, 1), closed=date(2026, 8, 24), pr="48")
+    closing = ClosingReport(declined="git answered nothing")
+
+    report = analyze([item], TODAY, CLOSE_CUTOVER, closing=closing)
+
+    assert _has(report.declined, "git answered nothing")
+    assert not _has(report.errors, "closes on this branch")
 
 
 def test_closing_an_item_may_record_why_no_command_can_prove_it() -> None:
@@ -3555,7 +3609,7 @@ def test_closing_an_item_may_record_why_no_command_can_prove_it() -> None:
         not_delegable="proving it means cutting a release",
     )
 
-    assert not _has(analyze([item], TODAY, CLOSE_CUTOVER).errors, "is done but names no")
+    assert not _has(analyze([item], TODAY, CLOSE_CUTOVER).errors, SHOWS_NOTHING)
 
 
 def test_an_item_closed_before_the_cutover_is_left_alone() -> None:
@@ -3567,7 +3621,7 @@ def test_an_item_closed_before_the_cutover_is_left_alone() -> None:
     """
     item = _item(status="done", added=date(2026, 7, 1), closed=date(2026, 8, 19), pr="48")
 
-    assert not _has(analyze([item], TODAY, CLOSE_CUTOVER).errors, "is done but names no")
+    assert not _has(analyze([item], TODAY, CLOSE_CUTOVER).errors, SHOWS_NOTHING)
 
 
 def test_a_dropped_item_is_never_asked_what_proved_it() -> None:
@@ -3581,7 +3635,7 @@ def test_a_dropped_item_is_never_asked_what_proved_it() -> None:
         reason="superseded by PL-8888",
     )
 
-    assert not _has(analyze([item], TODAY, CLOSE_CUTOVER).errors, "is done but names no")
+    assert not _has(analyze([item], TODAY, CLOSE_CUTOVER).errors, SHOWS_NOTHING)
 
 
 def test_the_closing_gate_is_off_when_a_project_declares_no_cutover() -> None:
@@ -3589,7 +3643,7 @@ def test_the_closing_gate_is_off_when_a_project_declares_no_cutover() -> None:
     off = Config()
     item = _item(status="done", added=date(2026, 7, 1), closed=date(2026, 8, 24), pr="48")
 
-    assert not _has(analyze([item], TODAY, off).errors, "is done but names no")
+    assert not _has(analyze([item], TODAY, off).errors, SHOWS_NOTHING)
 
 
 # --- `payoff:`: what closing the item buys, in the reader's language ---------
