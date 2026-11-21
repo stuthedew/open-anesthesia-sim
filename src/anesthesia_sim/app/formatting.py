@@ -215,7 +215,10 @@ class AgentAmount(Enum):
 class AgentAmountUnit(Enum):
     """The unit that an agent amount is shown in, used as a key of the precision table.
 
-    A member identifies a unit but does not say how the unit is written.
+    A member identifies a unit but does not say how the unit is written. Its
+    value is the word the preferences file stores for the unit, so it stays as
+    it is when a spelling on screen changes (`AGENT_AMOUNT_UNIT_DISPLAY` gives
+    the spellings).
     `docs/INTERFACE.md` § "The compartment schematic: what its heights, amounts
     and share bar assert" sets the spellings "mL vapour" and
     "mL of liquid". A spelling is added to `DisplayUnit` by the first View
@@ -421,6 +424,10 @@ MAC_DISPLAY_RESOLUTION_MAC: Final = DECIMAL_BASE**-MAC_DISPLAY_DECIMALS
 # The unit written after a MAC multiple. It is read from the unit's
 # `DisplayUnit` member, which explains why the multiplication sign matters.
 MAC_UNIT_SUFFIX: Final = f" {DisplayUnit.MAC_MULTIPLE.label}"
+
+# The unit written after each amount of the agent-accounting panel, read from
+# its `DisplayUnit` member. The panel's caption states the unit in full.
+_ACCOUNTED_LITRES: Final = DisplayUnit.ACCOUNTED_AGENT_LITRES.label
 
 # The label written after a concentration in percent, read from its
 # `DisplayUnit` member.
@@ -1411,7 +1418,7 @@ def format_agent_volume(litres: float) -> str:
         below-resolution form for a positive value that rounds to zero.
     """
 
-    return _format_run_total(litres, _RUN_TOTAL_LITRES, "L")
+    return _format_run_total(litres, _RUN_TOTAL_LITRES, _ACCOUNTED_LITRES)
 
 
 def _format_run_total(amount: float, precision: AgentAmountPrecision, unit: str) -> str:
@@ -1516,10 +1523,10 @@ def format_agent_residual(litres: float) -> str:
     """
 
     if not isfinite(litres):
-        return f"{litres} L"
+        return f"{litres} {_ACCOUNTED_LITRES}"
 
     if litres == 0.0:
-        return "0 L"
+        return f"0 {_ACCOUNTED_LITRES}"
 
     # `Decimal` stores the float's exact binary value, so `adjusted()` is the
     # exact floor of its base-10 logarithm. `math.log10` rounds instead. The
@@ -1527,7 +1534,7 @@ def format_agent_residual(litres: float) -> str:
     # -16.0 for it, which would print the decade above the one the value is in.
     exponent = Decimal(abs(litres)).adjusted() + 1
 
-    return f"<1e{exponent:+03d} L"
+    return f"<1e{exponent:+03d} {_ACCOUNTED_LITRES}"
 
 
 # A compartment's amount is shown to two significant figures, and never finer

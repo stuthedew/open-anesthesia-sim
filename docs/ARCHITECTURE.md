@@ -143,7 +143,7 @@ src/anesthesia_sim/
 │   ├── compartment_selection.py    # CompartmentSelection: which compartments the chart draws, as a value the dashboard owns and the legend shows (PL-VN6M); held inside the compared cap, and a reader's click over it drops the longest-standing; toolkit-independent
 │   ├── agent_cost.py               # what the agent cost View shows for one run, from one snapshot: the delivered agent in millilitres of liquid equivalent and in litres of vapour, each with its unit named and a caption saying what it measures; converts only the delivered agent, reading the amount and the agent's ratio from one snapshot (PL-B396); the cost at the reader's price, with the figures it multiplied and where the price came from, or why no cost is shown, all from one price record, and the price form's reading of what the reader typed (PL-1P15); toolkit-independent
 │   ├── qt_agent_cost.py            # RunAgentCost on Qt: one run's instant line, delivered amount and caption, in the unit its View sets (PL-B396), and its cost readout at the reader's price (PL-1P15); computes no value
-│   ├── qt_agent_price.py           # PriceEntry on Qt: the agent cost View's form for the reader's price per agent, which asks the dashboard through ViewRequests.agent_price and shows why an entry was refused (PL-1P15)
+│   ├── qt_agent_price.py           # PriceEntry on Qt: the agent cost View's form for the reader's price per agent, which asks the dashboard through ViewRequests.agent_price and shows why an entry was refused (PL-1P15), and RefusedEntriesDiscard, the View's offer to discard the refused entries of the preferences file (PL-7KXN)
 │   ├── qt_schematic.py             # SchematicCanvas on Qt: one run's six containers in the readout row's order, the tissue groups drawn in parallel between an arterial and a venous line, each filled in its trace colour to the reading's fill and labelled in text; ShareBar, each compartment's share of the agent the run holds as one bar (PL-S79P); and RunSchematic, the widget that adds the instant line, the run's name while compared and the scale and off-scale captions (PL-RNYV); computes no value
 │   ├── qt_chart.py                 # the concentration chart, the wash-in plot, the legend and the time base selector on pyqtgraph and Qt, moved per frame to match a chart_frame.ChartFrame, the legend showing a CompartmentSelection and the selector a time base it is handed; each chart says when it owes a frame at a wider width (PL-9LNF); declares no colour and formats no value
 │   ├── chart_time_base.py          # how wide the chart's window is and how it is ruled; toolkit-independent
@@ -1163,7 +1163,9 @@ specifies what a price carries and what is refused. The project ships no price.
   place. A refused unit falls back to millilitres of liquid. Either way, the
   notice says what was refused and why. Until the reader replaces a refused
   entry, each save writes it back unchanged, and the agent cost View shows the
-  notice about it.
+  notice about it. Under the notice, the View offers to discard every refused
+  entry (`ViewRequests.refused_entries_discard`). The reader confirms the
+  discard first, because it cannot be undone (`PL-7KXN`).
 - **Who uses the preferences.** The dashboard holds the preferences, as it
   holds the compartment selection. It passes them to every View in each tick
   (`ViewTick`). Only the agent cost View uses them (`PL-B396`). It asks the
@@ -1171,8 +1173,9 @@ specifies what a price carries and what is refused. The project ships no price.
   cost Views always show the same unit.
 - **When the file is written.** The preferences store writes the whole file when
   asked (`PreferencesStore.save`). The dashboard saves as soon as the reader
-  picks the agent cost View's unit (`PL-B396`) or sets or removes a price
-  (`PL-1P15`), as Blender saves its preferences on change. Nothing is
+  picks the agent cost View's unit (`PL-B396`), sets or removes a price
+  (`PL-1P15`) or discards the refused entries (`PL-7KXN`), as Blender saves its
+  preferences on change. Nothing is
   written until the reader does one of these.
 - **How a save works.** A save takes the same atomic write as the saved
   Workspaces, through `user_files.py`. No previous version is kept,
