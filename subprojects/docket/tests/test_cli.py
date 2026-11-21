@@ -36,7 +36,6 @@ from docket.model import parse_item, recurrence_count
 from docket.release import TAG_SCRIPT, notes_ids, tag_confirmation
 from docket.store import filename_for
 from docket.vcs import FETCHED, Fetch, leading_ids, lost, records_on_base
-from docket.verify import GitUnanswered
 
 READY = """---
 id: PL-B1B1
@@ -6982,9 +6981,9 @@ def test_flight_shares_the_invocations_git_runner(
     assert all(runner is runners[0] for runner in runners)
 
 
-#: Every command, spelled to reach the reads it has: the profile, each command that refreshes before it reads, and `record`. The
-#: writers come last because they change the store the readers above them
-#: read.
+#: Every command, spelled to reach the reads it has: the profile, each command
+#: that refreshes before it reads, and `record`. The writers come last
+#: because they change the store the readers above them read.
 NO_GIT_ARGV: tuple[tuple[str, ...], ...] = (
     ("check",),
     ("list",),

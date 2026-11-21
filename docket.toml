@@ -120,9 +120,8 @@ collected_test_paths = ["tests", "subprojects/docket/tests"]
 # sentences across the open backlog, each written by a session that already has
 # the brief open because it is about to work the item.
 #
-# Dated tomorrow rather than today, the one choice here rather than a reading,
-# exactly as the retired `verify_prerequisite_refused_from` was: the grandfathered set is
-# then closed at precisely what the store held when the rule began working, and
+# Dated tomorrow rather than today, the one choice here rather than a reading:
+# the grandfathered set is then closed at precisely what the store held when the rule began working, and
 # no item captured today has to carry a line written away from its work. Nothing
 # already closed is backfilled - that means writing a sentence about work whose
 # context is gone, which is the failure `PL-5YK8` refused at the other end of

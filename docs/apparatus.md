@@ -53,7 +53,7 @@ tools/
 ├── import_boundary_check.py  # fails the build on any import its `BOUNDARIES` table confines elsewhere: `pydantic` anywhere under `src/anesthesia_sim/` other than `core/parameters.py`; `time`, `datetime`, `random`, `secrets` or `uuid` in any module under `core/`; `flet` and `flet_charts` anywhere under `src/anesthesia_sim/`, the port being complete; `PySide6`, `pyqtgraph` or `numpy` in any module under `core/`; and `anesthesia_sim.app` in any module under `core/`, matched against every dotted name an import makes available with relative imports resolved - so the payload/dataclass boundary, the never-wall-clock rule, the toolkit-independence rule and the layering's one direction are measured rather than asserted
 ├── left_behind_check.py  # names the commits a branch carries past the head its newest merged pull request merged, because nothing merges a merged pull request a second time and a push made after the merge lands nowhere with no conflict, red check or advisory (`#284`); exact rather than a content comparison - the tip is compared by ancestry against the frozen `refs/pull/<n>/head`, read with one `ls-remote`, so a squash, a base that rewrote the file afterwards and identical lines from two sessions cannot confound it the way they have confounded `vcs.orphaned`, which stays beside it as the half that answers offline (`PL-VV4D`, `PL-BHVM`); the one case ancestry cannot see, a commit past the head whose change reached the base through another pull request, it puts to `vcs.change_landed`, the three-way replay `vcs.orphaned` reads too, and reports as landed there, naming the pull request (`PL-GHHW`, `PL-PXZ3`); git records no link from a branch to its pull request, so that mapping is GitHub's pull-request listing and needs a token; it declines, under its own prefix, on no network, no permission and a `refs/pull/<n>/head` GitHub has deleted (`PL-LF2C`), and never reads a missing answer as clear, because in the session-start digest that calls it silence is the all-clear; where it and `vcs.orphaned` disagree it prints the disagreement and wins
 ├── literal_home_check.py  # refuses a bare numeric literal anywhere under `src/anesthesia_sim/` outside the value of a module-level assignment - 0, 1 and 2 exempt, and never a `bool` - and a numeric constant defined in more than one module, so a number has one named home and a second copy cannot drift from the first; its `BASELINE` holds the literals the tree carried when it landed, keyed by file, scope and value rather than line, and may only shrink, and a finding names any constant of the same value without deciding that it is the same quantity (`PL-40SJ`)
-├── main_ci_status.py     # reports the default branch's last quality verdict, and nothing at all when it was a success, because the whole-store `verify:` replay runs only on push to `main` and its failures therefore land on a run no pull request shows; a run newer than that verdict that was cancelled, or concluded `action_required`, gets a line of its own whatever the verdict, since its commit has no whole-store verdict and the one reported is an older commit's (`PL-JTHW`); its `FAILED` set is the one `update_armed.py` reads a check run's conclusion by (`PL-351H`); on a failure it makes a second request for the run's jobs and names the step that failed, because 93 of the 109 failures on record are the whole-store replay alone and a line naming no step cannot separate those from a broken tree (`PL-T83R`); it also prints a line when the median time of CI's pytest step over `main`'s five newest successful runs leaves the band of 0.5 to 1.3 times `PYTEST_BASELINE_S`, and says in that line when it could not read the time, so that its silence means the time was read and in the band (`PL-YY32`); it also prints a line naming each `drift.yml` job whose newest result on `main` is not a pass, judged by the job and not by its run, since that workflow reports and never gates and a red run nobody read went unmentioned for 17 days (`PL-JTWV`); the session-start hook calls it, it gates nothing, and it is not the only tool here that reads the network - `required_checks_check.py` does too and gates, and `pr_body_check.py` does in its `--record`, `--recover` and `--compare` modes
+├── main_ci_status.py     # reports the default branch's last quality verdict, and nothing at all when it was a success, because `main`'s quality run checks the merged tree on a push that no pull request shows; a run newer than that verdict that was cancelled, or concluded `action_required`, gets a line of its own whatever the verdict, since its commit has no verdict and the one reported is an older commit's (`PL-JTHW`); its `FAILED` set is the one `update_armed.py` reads a check run's conclusion by (`PL-351H`); on a failure it makes a second request for the run's jobs and names the step that failed (`PL-T83R`); it also prints a line when the median time of CI's pytest step over `main`'s five newest successful runs leaves the band of 0.5 to 1.3 times `PYTEST_BASELINE_S`, and says in that line when it could not read the time, so that its silence means the time was read and in the band (`PL-YY32`); it also prints a line naming each `drift.yml` job whose newest result on `main` is not a pass, judged by the job and not by its run, since that workflow reports and never gates and a red run nobody read went unmentioned for 17 days (`PL-JTWV`); the session-start hook calls it, it gates nothing, and it is not the only tool here that reads the network - `required_checks_check.py` does too and gates, and `pr_body_check.py` does in its `--record`, `--recover` and `--compare` modes
 ├── model_doc_review.py  # has the model `docket.toml`'s `[models]` table chooses for the role `review` read `docs/MODEL.md` and `docs/INTERFACE.md` against `src/anesthesia_sim/data/` once, on the owner's API credit, through the Message Batches API: one request per `##` section, each carrying the whole document and every data file behind one cache marker so that a contradiction between sections is found; `estimate` prints the cost bound, `submit` refuses a bound above the credit left, and `fetch` writes one findings file for a session to check and file (`PL-5S71`). Its model, effort and price come from the table, and a model the table has no price for is refused (`PL-0XDM`)
 ├── model_home_check.py  # refuses a Claude model id written outside `docket.toml`'s `[models]` table, the records (the session ledger, worker runs, closed items), the tests and the copies registered in its `COPIES` with a reason; an open item is held to it too, because a stale model reached a session through one (`PL-0XDM`, `PL-J9VC`)
 ├── model_rewrite.py     # serves the section parts that make `docs/MODEL.md` readable for a clinician (`PL-ZT47`). `ids HEADING...` lists each line of the named sections that cites an item id outside the declared-none form, and each part's `verify:` runs it. `lost` lists each equation, "no test yet" declaration, code span, citation and number that the document held at the fork and holds fewer times now, marking those the branch added to an item file, and then each one the document holds more times now, so a part's pull request can account for every fact it dropped or added. A dropped number and an added one with the same value and unit in the same section are marked `restated` (`PL-TZ7R`). A part with nothing unaccounted merges on green (`PL-ZTZF`) `move --to DOCUMENT HEADING...` cuts the named sections out of `docs/MODEL.md` and appends them unchanged to another document of the specification, and `repoint` re-points each citation of a moved section (`PL-CTXZ`). `ids` and `lost` read every document that `product_paths.SPECIFICATION_DOCS` lists, as one text.
@@ -388,18 +388,11 @@ prints. It is also not the only tool here that reads the network.
 comment above it in the tree had named `required_checks_check.py` beside it
 ever since that tool landed. This document deliberately states no count,
 because the last two attempts at one both went stale.)
-`.github/workflows/quality.yml` runs the whole-store `verify:` replay only on
-push to `main`. That was the decision in `PL-SDHR`, for two reasons. A pull
-request cannot have changed whether some *other* item's work merged. And
-replaying the store on every branch costs more than it buys. A pull request
-*can* stop another item's command from discriminating, by editing a file that
-the command reads. So the scoped replay covers those items too. The sweep on
-`main` only picks up what is left over. It is not what catches those items
-(`PL-XMNC`). The consequence is that when the replay on `main` fails, it fails
-on a run that no pull request shows. `main` was red across three consecutive
-merges while every session believed the tree was clean (`PL-0ZGK`). So the
-loop is closed from the reading end, rather than by making every branch pay to
-prevent the failure. `.claude/hooks/docket-digest.sh` calls
+A pull request's checks run on its branch, and the quality run on `main`
+checks the merged tree. When that run fails, it fails on a run that no pull
+request shows. `main` was red across three consecutive merges while every
+session believed the tree was clean (`PL-0ZGK`). So the loop is closed from
+the reading end. `.claude/hooks/docket-digest.sh` calls
 `main_ci_status.py` at session start. The tool prints one line when the last
 verdict on `main` was not a success. It prints another when a run newer than
 that verdict was cancelled (`PL-JTHW`). It prints one when the time of CI's
@@ -421,17 +414,11 @@ moment its result changes anything.
 **The line names the step that failed, which is what makes it actionable.**
 `PL-T83R` sorted all 819 completed push runs of `quality.yml` on `main`, from
 2026-08-22 to 2026-09-20, by the step that failed. Of the 109 failures, 93
-were the whole-store replay and 14 were the bare `bin/docket check`. One was a
-pytest failure that asserted on `ROADMAP.md`, and one was a startup failure.
-**Not one of them was a defect in `src/`.** In all 93 replay failures, the
-bare `bin/docket check` step had passed earlier in the same job on the same
-tree. That isolates the cause to the one report that `--verify` adds: an open
-item whose own `verify:` command has flipped to passing. So when the replay is
-the *only* failing step, the line says that the red comes from the queue
-rather than the tree, and it hands over `bin/docket check --verify`. When
-anything else failed, the line names the failing steps and interprets
-nothing. It does so because the queue reading is sound only when the bare
-check passed first, and that fact is the whole basis for the reading.
+were a step that ran every open item's `verify:` command again, and 14 were
+the bare `bin/docket check`. One was a pytest failure that asserted on
+`ROADMAP.md`, and one was a startup failure. **Not one of them was a defect
+in `src/`.** `PL-QTZG` removed the step that re-ran the commands on
+2026-11-21, so the line now names the failing steps and interprets nothing.
 
 The failure *rate* was left alone in the same pass, and the reasoning is worth
 keeping. `PL-T83R` was filed on a narrower window, 2026-09-05 to 2026-09-16,
@@ -456,8 +443,8 @@ one was still pending evicted it. Across the eleven days that arrangement
 lasted, 31 of the 257 completed push runs on `main` ended `cancelled` without
 starting any job. `quality.yml` now gives each push to `main` a group of its
 own, which ends the eviction. A run that reaches this tool as `cancelled` is
-now a hand cancellation or a lost runner. The commit behind such a run still
-has no whole-store verdict that anything reports (`PL-JTHW`). The tool is
+now a hand cancellation or a lost runner. The commit behind such a run has
+no verdict, and the tool says so (`PL-JTHW`). The tool is
 unauthenticated. The repository is public, so the tool reads no token and
 needs none, which keeps a credential off a path that runs at session start.
 The GitHub read deliberately does not live in `docket`, whose rule is that

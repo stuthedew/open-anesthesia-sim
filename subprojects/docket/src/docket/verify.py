@@ -1888,36 +1888,34 @@ def verify_item(
     So in self-audit the four **commission** checks report as advisories -
     still printed, still naming every path, with the reason they are not
     refusing - while the four **integrity** checks stay absolute: no
-    suppression added and the item's own command passes, here, and, once for
-    the branch in `verify`, the unit tests catch a mutation of each changed
-    line and the project's own checks pass. That line is the whole design. A
+    suppression added and what the item records shows its work, here, and,
+    once for the branch in `verify`, the unit tests catch a mutation of each
+    changed line and the project's own checks pass. That line is the whole
+    design. A
     session may legitimately re-scope its own commission; it may not weaken
     the thing that measures it, and it may not skip the test.
 
-    The command check has a **declared** exemption, which is not a relaxation
+    The record check has a **declared** exemption, which is not a relaxation
     of that line but the reason it can stay absolute. Which copy of the item
     each field behind it is read from follows one rule, stated on
     `Commission`: an outcome is the branch's and excuses nothing, a prediction
-    is measured against the base's with the branch's correction run and
-    printed, a waiver is the base's (`PL-B8HZ`).
+    is measured against the base's with the branch's correction read, a
+    waiver is the base's (`PL-B8HZ`).
 
-    - A `dropped` item, or one carrying `not-delegable:`, has no command to
-      run by construction, and the command check reports which applies
-      (`PL-L4KX`). A dropped item that still carries one has it printed and
-      not run, since it names work the drop says will not be done
-      (`PL-BX1C`). The drop is an outcome, read off the *branch's* copy as it
-      has to be: it is what the close-out writes, and it grants nothing - it
-      claims no work. A delegated audit refuses a worker's drop through the
+    - A `dropped` item, or one carrying `not-delegable:`, records nothing by
+      construction, and the record check reports which applies (`PL-L4KX`).
+      The drop is an outcome, read off the *branch's* copy as it has to be:
+      it is what the close-out writes, and it grants nothing - it claims no
+      work. A delegated audit refuses a worker's drop through the
       front-matter check; `--self` only reports it. The reason is a waiver
-      and is held to the base's copy: it excuses a command the base never
+      and is held to the base's copy: it excuses a record the base never
       commissioned, never one the branch deleted, so it cannot be written
-      beside the deletion to skip the test (`PL-KSV2`).
+      beside the deletion to skip the check (`PL-KSV2`).
     - `verify:` and `touches:` are predictions, and the branch's copy of each
       is honoured as a correction rather than substituted silently. The
-      command the branch records decides its check, with the base's command
-      run and its exit printed under it where the two differ (`PL-PZ6T`),
-      and the diff is measured against the base's `touches` with a path only
-      the branch's own widening declares named as that.
+      search the branch records is the one that is read, and the diff is
+      measured against the base's `touches` with a path only the branch's own
+      widening declares named as that.
 
     Without them the absolute checks had no passing route on close-outs the
     project's own instructions prescribe, and a session meeting one could only
@@ -1932,13 +1930,11 @@ def verify_item(
     checks, so offering the work would mean refusing it once done". That is a
     defect absorbed into policy, and this is the repair.
 
-    What this reads from the item's own command (`PL-6TP8`): exit 0 is the
-    commission's assertion holding, and every other status is a `REJECT` with
-    the reason on the line where the run can name it - re-entered `docket
-    verify`, selected no test, killed at the limit, or the command's own last
-    lines. Unlike `already_passing` this may not decline: the command is the
-    thing being asked about, so "could not run it" rejects the work rather than
-    abstaining. What exit 0 does not prove is that the work is right;
+    What this reads from the item's own record (`PL-FN11`, `PL-N046`): the
+    tests a closed item names, each defined in the tree and added or changed
+    on the branch, and one search for fixed text, read from the tree. A record
+    that could not be read rejects the work. Nothing runs a command an item
+    holds (`PL-QTZG`). The record does not show that the work is right:
     `mutation_check`, `project_check` and the reviewer's reading of the diff
     carry that.
 
@@ -1979,58 +1975,49 @@ def _check_item(
     commits = item_commits(root, base, item.identifier)
     paths = changed_paths(root, base, commits)
 
-    # "No command recorded" means the test was skipped, except in the two
-    # states where the store has already decided that no command can exist. A
-    # `dropped` item built nothing, so there is nothing for a command to prove;
-    # a `not-delegable` reason is what `docket check` accepts *instead of* a
-    # command, in those words. Refusing both here made the two tools disagree
-    # about the same item - `check` clean, `verify --self` REJECT - and left the
-    # close-out the skill prescribes with no passing state at all, since writing
-    # a `verify:` onto a closed item is separately refused (`PL-L4KX`,
-    # `PL-JZ1D`).
+    # An item that records nothing to show its work is refused, except in the
+    # states where the store has already decided that it records nothing. A
+    # `dropped` item built nothing. A `not-delegable` reason is what `docket
+    # check` accepts in place of a record. Refusing both here made the two
+    # tools disagree about the same item, and left the close-out the skill
+    # prescribes with no passing state (`PL-L4KX`, `PL-JZ1D`).
     #
-    # Read off the store rather than taken on the session's word, and neither
-    # state is free to reach for: a drop is a closure that owes a `reason` and a
-    # `closed` date, and a `not-delegable` line is the thing that withholds the
-    # item from delegation in the first place. `Commission` states which copy
-    # each is read from. The drop is an *outcome* and is the branch's: the
-    # close-out is what writes it, and it claims no work for a command to
-    # prove. The reason is a *waiver* and waives only what the base holds: it
-    # excuses a command the commission never held, and never one the branch
-    # removed. Read off the branch alone, it let a close-out delete its failing
-    # command, write a reason beside the deletion and ACCEPT with the command
-    # never run - and a reason can say who should do the work rather than that
-    # nothing can prove it (`PL-KSV2`). A base that cannot be read excuses
-    # nothing, since the waiver turns on what it holds.
+    # Both are read off the store. `Commission` states which copy each is read
+    # from. The drop is an *outcome* and is the branch's: the close-out writes
+    # it, and it claims no work. The reason is a *waiver* and waives only what
+    # the base holds: it excuses an item whose `verify:` the base never held,
+    # and never one the branch removed. Read off the branch alone, it let a
+    # close-out delete its `verify:`, write a reason beside the deletion and
+    # ACCEPT (`PL-KSV2`). A base that cannot be read excuses nothing, since
+    # the waiver turns on what it holds.
     #
-    # Advisory unconditionally rather than under `self_audit`, because what
-    # excuses the command is a fact about the item and not about who is asking.
-    # And it does not stop early: that no command was recorded says nothing
-    # about whether the diff stayed inside `touches` or whether a suppression
-    # arrived, which is the half a hard stop was throwing away.
+    # The check is advisory whoever asks, because what excuses the record is a
+    # fact about the item. It does not stop the audit: that nothing was
+    # recorded says nothing about whether the diff stayed inside `touches` or
+    # whether a suppression arrived.
     commission = read_commission(root, base, config.items_dir, item)
     exemption, missing = "", "none recorded"
     unexcused: tuple[str, ...] = ()
     if item.status == "dropped":
-        exemption = "a dropped item built nothing, so no command can prove it"
+        exemption = "a dropped item built nothing, so no record can show its work"
     elif item.not_delegable and commission.unread:
         missing += (
-            f": the `not-delegable:` reason excuses a command only where {base} "
-            f"commissioned none, and {commission.unread}"
+            f": the `not-delegable:` reason excuses an item only where {base} "
+            f"holds no `verify:` for it, and {commission.unread}"
         )
     elif item.not_delegable and commission.verify:
         missing += (
-            f": this branch deleted the command {base} commissions, so the "
+            f": this branch deleted the `verify:` that {base} holds, so the "
             "`not-delegable:` reason beside the deletion is the branch's own word "
             "for skipping it"
         )
         unexcused = (
             f"{base} commissions: {commission.verify}",
-            "restore it, or give the command that proves the work; where none can, "
+            "restore it, or record the tests or the search that show the work; where none can, "
             f"that is {base}'s copy to say, not this branch's",
         )
     elif item.not_delegable:
-        exemption = f"the item records why no command can prove it - {item.not_delegable}"
+        exemption = f"the item records why nothing can show its work - {item.not_delegable}"
     elif not item.is_open and done.dated_record(item.body):
         exemption = "the item's brief holds a dated paragraph that states its result"
     if not item.verify and not item.tests:

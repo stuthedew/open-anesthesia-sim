@@ -3151,8 +3151,8 @@ def _say_promotable(items: list[Item], milestones: MilestoneStates | None) -> No
         "  Not ranked above - a closed blocker is not evidence that nothing else holds an "
         "item, and 7 of 13 measured this way were held by something the field could not "
         "see. `docket check` refuses the state, so the pull request that closed the "
-        "blocker moves each: `docket set <id> --status ready` with its `--verify` and "
-        "`--payoff`, or what is really holding it recorded in `blocked-by`."
+        "blocker moves each: `docket set <id> --status ready` with its `--payoff`, or "
+        "what is really holding it recorded in `blocked-by`."
     )
 
 
@@ -5683,9 +5683,8 @@ def cmd_ci_scope(args: argparse.Namespace) -> int:
     the diff is item or apparatus files alone takes the answer that skips
     nothing.
 
-    The changed paths are `verify.changed_paths`, the read behind the scoped
-    verify replay, against the same base. So the replay and the fast path judge
-    one diff. The store is the one `docket.toml` names.
+    The changed paths are `verify.changed_paths`, the read `docket verify`
+    takes its diff from. The store is the one `docket.toml` names.
 
     Prints the answer and the reason for it. With `--github-output`, it also
     appends `scope=<answer>` to that file, which is how a GitHub Actions step
@@ -6164,7 +6163,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--base",
         required=True,
         metavar="REF",
-        help="the ref the branch is compared with, as `check --verify-base` takes it",
+        help="the ref the branch is compared with, such as `origin/main`",
     )
     ci_scope_cmd.add_argument(
         "--github-output",

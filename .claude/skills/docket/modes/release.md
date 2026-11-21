@@ -60,9 +60,10 @@ or `science` entry (`ROADMAP.md` § "Deferring to the next gate"). A class-compu
 
 **Sweep the frozen list for staleness before clearing it.** That is beat 3 of
 `ROADMAP.md`'s cadence and the first thing to happen once the list exists. A
-`verify:` command tests for the presence of the fix and never for the presence
-of the fault, so an entry whose problem was solved another way fails forever and
-reads as outstanding work — and nothing in the store marks it, so it is ranked,
+`verify:` search tests for the presence of the fix and never for the presence
+of the fault, and an entry for code records nothing until it closes. So an
+entry whose problem was solved another way reads as outstanding work — and
+nothing in the store marks it, so it is ranked,
 offered by `bin/docket next`, and counted into this gate. Two passes have run.
 `PL-6ZQY` found 12 of 134 items dead and 31 more overtaken, 32% of the lane.
 `PL-C4W8` found 3 of Gate 2's 168 entries dead and 8 overstated, about 6.5%. A

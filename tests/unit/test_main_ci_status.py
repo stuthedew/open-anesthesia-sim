@@ -1,9 +1,8 @@
 """Tests for `tools/main_ci_status.py`, the default branch's quality verdict.
 
-The script exists because the whole-store `verify:` replay runs only on push to
-`main`, so its failures land on a run nobody watches - `main` was red across
-three consecutive merges with every session believing the tree was clean
-(`PL-0ZGK`).
+The script exists because `main`'s quality run checks the merged tree on a
+push nobody watches - `main` was red across three consecutive merges with
+every session believing the tree was clean (`PL-0ZGK`).
 
 Two properties are worth more than the happy path, and they pull in opposite
 directions. **It has to fire on the incident**, or it is the defect it was
@@ -132,12 +131,12 @@ class TestPickUnjudged:
         assert main_ci_status.pick_unjudged(runs)["run_number"] == 1555
 
     def test_takes_the_newest_of_several(self) -> None:
-        """Re-running the newest checks the whole store again, so it answers for the rest."""
+        """Re-running the newest checks the whole tree again, so it answers for the rest."""
         runs = [_run("cancelled", 1556), _run("cancelled", 1555), _run("failure", 1553)]
         assert main_ci_status.pick_unjudged(runs)["run_number"] == 1556
 
     def test_passes_over_a_cancelled_run_a_later_verdict_covers(self) -> None:
-        """Run 1556 checked the whole store on a tree containing 1555's commit."""
+        """Run 1556 checked the whole tree on a tree containing 1555's commit."""
         runs = [_run("success", 1556), _run("cancelled", 1555), _run("success", 1553)]
         assert main_ci_status.pick_unjudged(runs) is None
 
@@ -175,7 +174,7 @@ class TestUnjudgedAdvisory:
         assert unjudged is not None and unjudged["run_number"] == 1555
         line = main_ci_status.unjudged_advisory(unjudged, main_ci_status.pick_run(runs))
         assert "#1555 on c0ffee99 concluded action_required" in line
-        assert "no whole-store verdict" in line and "main is red" not in line
+        assert "no verdict" in line and "main is red" not in line
 
     def test_failed_is_the_one_set_update_armed_reads(self) -> None:
         """`update_armed` reads its hold through `open_pull_requests.failed_required`.
@@ -209,7 +208,7 @@ class TestUnjudgedAdvisory:
             _run("cancelled", 1555, "c0ffee9900"), _run("success", 1553, "abcdef1234")
         )
         assert "#1555 on c0ffee99 was cancelled" in line
-        assert "no whole-store verdict" in line
+        assert "no verdict" in line
         assert "#1553 on abcdef12" in line
         assert "Re-run it, unless a newer merge's run is still going" in line
         assert line.endswith("https://github.com/o/r/actions/runs/1555")
@@ -262,27 +261,25 @@ def _pairs(steps: list[tuple[str, str]]) -> tuple[tuple[str, str], ...]:
     return main_ci_status.step_conclusions([_job(steps)])
 
 
-# `quality.yml`'s real shape on a replay failure: the bare `bin/docket check`,
-# ruff, mypy and the suite pass above it. The replay is the job's last step, so
-# only GitHub's two cleanup rows follow it.
-_REPLAY_STEPS = [
+# The step that fails in the fixture below, named as GitHub names a step with
+# no `name:` of its own.
+_FAILED_STEP = "Run uv run mypy"
+
+# `quality.yml`'s shape when one step fails: the steps above it passed and the
+# steps after it were skipped.
+_FAILING_STEPS = [
     ("Set up job", "success"),
-    (main_ci_status.BARE_CHECK_STEP, "success"),
+    ("Run bin/docket check", "success"),
     ("Run uv run ruff check .", "success"),
-    ("Run uv run mypy", "success"),
-    ("Run uv run pytest", "success"),
-    ("verify replay, scoped to what this branch changed", "skipped"),
-    (main_ci_status.REPLAY_STEP, "failure"),
-    # GitHub's own cleanup rows, one per `uses:` action. Every real job carries
-    # them and every recorded replay failure carries exactly two.
+    (_FAILED_STEP, "failure"),
+    ("Run uv run pytest", "skipped"),
+    # GitHub's own cleanup rows, one per `uses:` action.
     ("Post Run astral-sh/setup-uv@v9.0.0", "skipped"),
     ("Post Run actions/checkout@v7.0.1", "success"),
 ]
 
 
-# The shape of a red `main` as it actually occurs: the whole-store replay is the
-# only failing step, and every check that reads the tree passed above it.
-_REPLAY_ONLY = _job(_REPLAY_STEPS)
+_FAILING_JOB = _job(_FAILING_STEPS)
 
 
 def _github_origin(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -325,7 +322,7 @@ class TestMain:
     def test_a_cancelled_main_run_is_reported(
         self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """`main`'s newest run was cancelled, so its commit has no whole-store verdict.
+        """`main`'s newest run was cancelled, so its commit has no verdict.
 
         The green verdict below it is about an older commit, and printing
         nothing handed that answer to a reader as `main`'s - true of that
@@ -336,7 +333,7 @@ class TestMain:
 
         def _jobs(slug: str, run_id: object) -> list[object]:
             asked.append(run_id)
-            return [_REPLAY_ONLY]
+            return [_FAILING_JOB]
 
         runs = [_run("cancelled", 1555, "c0ffee9900"), _run("success", 1553)]
         monkeypatch.setattr(main_ci_status, "fetch_runs", lambda slug: runs)
@@ -353,7 +350,7 @@ class TestMain:
     ) -> None:
         """The silence rule holds over an older cancellation.
 
-        Run 1556 checked the whole store again on a tree containing 1555's
+        Run 1556 checked the whole tree again on a tree containing 1555's
         commit, so there is nothing to re-run 1555 for, and `main` is green.
         """
         runs = [_run("success", 1556), _run("cancelled", 1555), _run("success", 1553)]
@@ -367,13 +364,13 @@ class TestMain:
         """Both lines, the newer commit first, and the red one still attributed."""
         runs = [_run("cancelled", 1555, "c0ffee9900"), _run("failure", 1553)]
         monkeypatch.setattr(main_ci_status, "fetch_runs", lambda slug: runs)
-        monkeypatch.setattr(main_ci_status, "fetch_jobs", lambda slug, run_id: [_REPLAY_ONLY])
+        monkeypatch.setattr(main_ci_status, "fetch_jobs", lambda slug, run_id: [_FAILING_JOB])
         assert main_ci_status.main() == 0
         lines = capsys.readouterr().out.splitlines()
         assert len(lines) == 2
         assert "#1555 on c0ffee99 was cancelled" in lines[0]
         assert "#1553 on abcdef12 concluded failure" in lines[1]
-        assert main_ci_status.REPLAY_STEP in lines[1]
+        assert _FAILED_STEP in lines[1]
 
     def test_reports_a_cancelled_run_when_no_run_reached_a_verdict(
         self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
@@ -445,7 +442,7 @@ class TestMain:
 
         def _jobs(slug: str, run_id: object) -> list[object]:
             seen.append(run_id)
-            return [_REPLAY_ONLY]
+            return [_FAILING_JOB]
 
         monkeypatch.setattr(main_ci_status, "fetch_runs", lambda slug: [run])
         monkeypatch.setattr(main_ci_status, "fetch_jobs", _jobs)
@@ -457,11 +454,10 @@ class TestMain:
         self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
         monkeypatch.setattr(main_ci_status, "fetch_runs", lambda slug: [_run("failure", 1553)])
-        monkeypatch.setattr(main_ci_status, "fetch_jobs", lambda slug, run_id: [_REPLAY_ONLY])
+        monkeypatch.setattr(main_ci_status, "fetch_jobs", lambda slug, run_id: [_FAILING_JOB])
         assert main_ci_status.main() == 0
         out = capsys.readouterr().out
-        assert main_ci_status.REPLAY_STEP in out
-        assert "bin/docket check --verify" in out
+        assert _FAILED_STEP in out
 
     def test_asks_for_the_jobs_only_once_the_verdict_is_a_failure(
         self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
@@ -477,7 +473,7 @@ class TestMain:
 
         def _jobs(slug: str, run_id: object) -> list[object]:
             asked.append(run_id)
-            return [_REPLAY_ONLY]
+            return [_FAILING_JOB]
 
         monkeypatch.setattr(main_ci_status, "fetch_runs", lambda slug: [_run("success", 1553)])
         monkeypatch.setattr(main_ci_status, "fetch_jobs", _jobs)
@@ -510,11 +506,8 @@ class TestMain:
 class TestStepConclusions:
     """Which steps ran and how they ended, read from the run's jobs.
 
-    Measured over every completed `main` push run from 2026-08-22 to 2026-09-20
-    (`PL-T83R`): 93 of the 109 failures were the replay step alone, with the
-    bare `bin/docket check`, `ruff`, `mypy` and the full suite passing above it
-    in the same job. The old line named no step, so a reader could not tell
-    those 93 from the 16 that were something else without opening the run.
+    The line named no step until `PL-T83R`, so a reader could not tell which
+    check had failed without opening the run.
     """
 
     def test_reads_every_step_in_run_order(self) -> None:
@@ -522,7 +515,7 @@ class TestStepConclusions:
         assert got == (("a", "success"), ("b", "failure"), ("c", "skipped"))
 
     def test_names_the_step_that_failed(self) -> None:
-        assert main_ci_status.failing_steps(_pairs(_REPLAY_STEPS)) == (main_ci_status.REPLAY_STEP,)
+        assert main_ci_status.failing_steps(_pairs(_FAILING_STEPS)) == (_FAILED_STEP,)
 
     def test_reports_every_failing_step_in_run_order(self) -> None:
         """Names chosen against alphabetical order, so sorting anywhere would fail."""
@@ -535,7 +528,7 @@ class TestStepConclusions:
         assert main_ci_status.failing_steps(pairs) == ("a",)
 
     def test_a_failing_step_with_no_readable_name_still_takes_a_row(self) -> None:
-        """Dropping it would turn two failures into the one that licenses the strong line."""
+        """Dropping it would make the line name fewer failures than the run had."""
         jobs = [{"steps": [{"name": 7, "conclusion": "failure"}, {"conclusion": "failure"}]}]
         assert main_ci_status.failing_steps(main_ci_status.step_conclusions(jobs)) == (
             main_ci_status.UNNAMED_STEP,
@@ -551,25 +544,21 @@ class TestStepConclusions:
 
 
 class TestAdvisoryNamesTheCause:
-    def test_says_the_failure_is_the_queue_when_the_replay_failed_alone(self) -> None:
-        line = main_ci_status.advisory(_run("failure", 1553), _pairs(_REPLAY_STEPS))
-        assert main_ci_status.REPLAY_STEP in line
-        assert "the only step that failed" in line
-        assert "bin/docket check --verify" in line, "the reader needs the command, not the cause"
-
-    def test_the_queue_line_still_carries_the_run_number_sha_and_url(self) -> None:
-        """The longer sentence must not have pushed out what identifies the run."""
-        line = main_ci_status.advisory(_run("failure", 1553, "9c6ebd29aaaa"), _pairs(_REPLAY_STEPS))
+    def test_the_line_carries_the_step_the_run_number_the_sha_and_the_url(self) -> None:
+        line = main_ci_status.advisory(
+            _run("failure", 1553, "9c6ebd29aaaa"), _pairs(_FAILING_STEPS)
+        )
+        assert _FAILED_STEP in line
         assert "#1553" in line
         assert "9c6ebd29" in line
         assert line.endswith("https://github.com/o/r/actions/runs/1553")
 
-    def test_reads_the_queue_through_the_checks_jobs_failed_parts_gate(self) -> None:
+    def test_the_checks_job_s_failed_parts_gate_is_not_named_beside_the_cause(self) -> None:
         """A part failing fails the `checks` job's gate step too, on every red run.
 
-        Since `PL-T9X9` split the suite, the replay runs in `checks-part-1` and
-        the `checks` job's first step fails because that part did. Counting it
-        as a second failure meant the queue reading could never fire.
+        Since `PL-T9X9` split the suite, a step fails in one part and the
+        `checks` job's first step fails because that part did. The gate names
+        no cause of its own.
         """
         gate = {
             "name": "checks",
@@ -579,9 +568,9 @@ class TestAdvisoryNamesTheCause:
                 {"name": "Run uv run coverage report", "conclusion": "skipped"},
             ],
         }
-        steps = main_ci_status.step_conclusions([_REPLAY_ONLY, gate])
+        steps = main_ci_status.step_conclusions([_FAILING_JOB, gate])
         line = main_ci_status.advisory(_run("failure", 1553), steps)
-        assert "bin/docket check --verify" in line
+        assert _FAILED_STEP in line
         assert main_ci_status.PARTS_GATE_STEP not in line
 
     def test_names_the_parts_gate_when_it_is_the_only_failing_step(self) -> None:
@@ -589,51 +578,13 @@ class TestAdvisoryNamesTheCause:
         pairs = _pairs([("Set up job", "success"), (main_ci_status.PARTS_GATE_STEP, "failure")])
         assert main_ci_status.failing_steps(pairs) == (main_ci_status.PARTS_GATE_STEP,)
 
-    def test_does_not_claim_the_queue_when_another_step_failed_too(self) -> None:
-        """The whole claim rests on the replay being the only failure."""
-        steps = [*_REPLAY_STEPS[:4], ("Run uv run mypy", "failure"), *_REPLAY_STEPS[5:]]
-        line = main_ci_status.advisory(_run("failure", 1553), _pairs(steps))
-        assert "bin/docket check --verify" not in line
-        assert "Run uv run mypy" in line
-
-    def test_does_not_claim_the_queue_when_the_bare_check_never_passed(self) -> None:
-        """The dangerous direction, and the one nothing else here would catch.
-
-        Without the bare run's verdict the replay's failure is not narrowed to
-        the `--verify` report at all: every store error the bare run rules out
-        is back in scope. A missing step is not a passing one.
-        """
-        without = [s for s in _REPLAY_STEPS if s[0] != main_ci_status.BARE_CHECK_STEP]
-        line = main_ci_status.advisory(_run("failure", 1553), _pairs(without))
-        assert "bin/docket check --verify" not in line
-        skipped = [
-            (main_ci_status.BARE_CHECK_STEP, "skipped")
-            if s[0] == main_ci_status.BARE_CHECK_STEP
-            else s
-            for s in _REPLAY_STEPS
-        ]
-        assert "bin/docket check --verify" not in main_ci_status.advisory(
-            _run("failure", 1553), _pairs(skipped)
-        )
-
-    def test_does_not_claim_the_queue_when_the_replay_was_killed_by_the_timeout(self) -> None:
-        """A hung command says nothing about what it would have found.
-
-        `quality.yml` sets `timeout-minutes: 15` precisely because one item's
-        `verify:` command can hang. Reading that kill as "already passing" would
-        invert it.
-        """
+    def test_a_step_the_job_timeout_killed_is_named_as_a_failure(self) -> None:
+        """`quality.yml` sets `timeout-minutes: 15`, and a killed step ends `timed_out`."""
         killed = [
-            (main_ci_status.REPLAY_STEP, "timed_out") if s[0] == main_ci_status.REPLAY_STEP else s
-            for s in _REPLAY_STEPS
+            (_FAILED_STEP, "timed_out") if s[0] == _FAILED_STEP else s for s in _FAILING_STEPS
         ]
         line = main_ci_status.advisory(_run("failure", 1553), _pairs(killed))
-        assert "bin/docket check --verify" not in line
-        assert main_ci_status.REPLAY_STEP in line
-
-    def test_does_not_claim_the_queue_when_the_run_itself_did_not_conclude_failure(self) -> None:
-        line = main_ci_status.advisory(_run("timed_out", 1553), _pairs(_REPLAY_STEPS))
-        assert "bin/docket check --verify" not in line
+        assert _FAILED_STEP in line
 
     def test_cuts_a_long_unnamed_step_and_says_that_it_cut_it(self) -> None:
         """`quality.yml`'s pytest step has no `name:`, so GitHub names it after 150
@@ -675,7 +626,7 @@ class TestAdvisoryNamesTheCause:
         assert "1553" in line
 
     def test_still_says_nothing_when_main_is_green(self) -> None:
-        assert main_ci_status.advisory(_run("success"), _pairs(_REPLAY_STEPS)) is None
+        assert main_ci_status.advisory(_run("success"), _pairs(_FAILING_STEPS)) is None
 
 
 class TestFetchJobs:
@@ -693,7 +644,7 @@ class TestFetchJobs:
 
         class _Response:
             def __enter__(self) -> io.BytesIO:
-                return io.BytesIO(json.dumps({"jobs": [_REPLAY_ONLY], "total_count": 1}).encode())
+                return io.BytesIO(json.dumps({"jobs": [_FAILING_JOB], "total_count": 1}).encode())
 
             def __exit__(self, *exc: object) -> None:
                 return None
@@ -710,7 +661,7 @@ class TestFetchJobs:
         assert _capture == ["https://api.github.com/repos/o/r/actions/runs/4242/jobs?per_page=50"]
 
     def test_reads_the_jobs_key(self, _capture: list[str]) -> None:
-        assert main_ci_status.fetch_jobs("o/r", 4242) == [_REPLAY_ONLY]
+        assert main_ci_status.fetch_jobs("o/r", 4242) == [_FAILING_JOB]
 
     @pytest.mark.parametrize("payload", [{}, {"jobs": "not a list"}, {"workflow_runs": []}])
     def test_returns_an_empty_list_for_a_payload_without_jobs(
@@ -780,11 +731,11 @@ class TestIdleJobs:
         assert main_ci_status.idle_jobs([_RUN_4805_JOB]) == ("checks",)
 
     def test_a_job_that_ran_is_not_idle(self) -> None:
-        ran = {**_REPLAY_ONLY, "runner_id": 1000011567}
+        ran = {**_FAILING_JOB, "runner_id": 1000011567}
         assert main_ci_status.idle_jobs([ran]) == ()
 
     def test_a_job_with_steps_is_not_idle_even_with_runner_id_zero(self) -> None:
-        assert main_ci_status.idle_jobs([{**_REPLAY_ONLY, "runner_id": 0}]) == ()
+        assert main_ci_status.idle_jobs([{**_FAILING_JOB, "runner_id": 0}]) == ()
 
     @pytest.mark.parametrize("runner", [None, False, "0", 0.0])
     def test_only_a_runner_id_of_integer_zero_reads_as_no_runner(self, runner: object) -> None:
@@ -799,8 +750,8 @@ class TestIdleJobs:
         assert main_ci_status.idle_jobs([job, "not a dict"]) == ("checks",)
 
     def test_a_job_that_ran_keeps_todays_line(self) -> None:
-        line = main_ci_status.advisory(_run("failure", 1553), _pairs(_REPLAY_STEPS), ())
-        assert "bin/docket check --verify" in line
+        line = main_ci_status.advisory(_run("failure", 1553), _pairs(_FAILING_STEPS), ())
+        assert "main is red" in line
         assert "no runner" not in line.lower()
 
     def test_one_idle_part_beside_passing_jobs_is_the_whole_failure(self) -> None:
@@ -826,34 +777,16 @@ class TestIdleJobs:
         assert "main is red" in line
         assert 'No runner took the jobs "checks-part-2", "checks", so they ran nothing.' in line
 
-    def test_withholds_the_queue_reading_while_a_job_is_idle(self) -> None:
-        """A part that never ran checked nothing, so the tree is not cleared."""
-        line = main_ci_status.advisory(
-            _run("failure", 1553), _pairs(_REPLAY_STEPS), ("checks-part-2",)
-        )
-        assert "bin/docket check --verify" not in line
-        assert main_ci_status.REPLAY_STEP in line
-        assert 'No runner took the job "checks-part-2", so it ran nothing.' in line
-
 
 class TestStepNamesMatchTheWorkflow:
-    """The constants are strings GitHub derives from `quality.yml`; hold them to it.
+    """The constant is a step's name in `quality.yml`, so it is held to that file.
 
-    A renamed step would silently drop the attribution back to the generic line
-    - the check would go on passing while the guarantee it stands for was void,
-    which is what `CLAUDE.md` calls a defect in the check. `PL-T83R`.
+    After a rename the gate step would be named beside the step that caused
+    its failure (`PL-T83R`).
     """
-
-    def test_the_replay_step_is_named_in_quality_yml(self) -> None:
-        assert f"name: {main_ci_status.REPLAY_STEP}" in _workflow()
 
     def test_the_parts_gate_step_is_named_in_quality_yml(self) -> None:
         assert f"- name: {main_ci_status.PARTS_GATE_STEP}\n" in _workflow()
-
-    def test_the_bare_check_step_is_the_run_line_github_names_it_after(self) -> None:
-        """It has no `name:`, so GitHub calls it `Run ` plus the `run:` line verbatim."""
-        command = main_ci_status.BARE_CHECK_STEP.removeprefix("Run ")
-        assert f"- run: {command}\n" in _workflow()
 
 
 class TestFetchRuns:
@@ -1188,7 +1121,7 @@ class TestMainWithThePytestLine:
 
         def _jobs(slug: str, run_id: object) -> list[object]:
             if run_id == page[0]["id"]:
-                return [_REPLAY_ONLY]
+                return [_FAILING_JOB]
             return _times_by_id(times)(slug, run_id)
 
         monkeypatch.setattr(main_ci_status, "fetch_runs", lambda slug: page)

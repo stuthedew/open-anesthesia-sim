@@ -621,12 +621,10 @@ def test_a_git_that_will_not_say_which_tags_exist_declines_rather_than_answering
 
 
 def test_a_git_that_will_not_diff_declines_rather_than_reporting_no_changed_items() -> None:
-    """The scope of `check --verify-base`, and the same collapse one read along.
+    """An empty set that means "git would not say" carries its reason (`PL-ZPDM`).
 
-    An empty set here scopes the `verify:` replay to nothing, so the run
-    executes no command and reports a clean result - which is what a branch
-    that changed no item also produces. The reason travels with the answer now
-    and `cmd_check` declines the replay whole rather than claiming that scope.
+    A branch that changed no item produces the same empty set, and a caller
+    has to tell the two apart.
     """
     silent = changed_items(ROOT, BASE, runner=lambda args, root: SILENT)
 

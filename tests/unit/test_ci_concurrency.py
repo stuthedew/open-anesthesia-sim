@@ -1,8 +1,8 @@
 """Hold `.github/workflows/quality.yml`'s concurrency block to what its comment claims.
 
 The claim is that every commit on `main` keeps its own quality run, which is
-what makes the whole-store `bin/docket check --verify` a fact about the default
-branch rather than about whichever merge happened to survive. For eleven days
+what makes a green `main` a fact about each commit rather than about whichever
+merge happened to survive. For eleven days
 the block did not deliver it and said it did: `cancel-in-progress: false`
 protects the run already *in progress*, while the single pending slot behind it
 is taken by whichever run arrives next. 31 of the 257 completed `main` push
@@ -14,7 +14,7 @@ is configuration rather than code, GitHub evaluates it, and the failure is all
 but silent by construction: an evicted run reports `cancelled`, which
 `tools/main_ci_status.py` declines to read as a verdict and reports only until
 a later run reaches one (`PL-JTHW`). Once the run that evicted it finishes, a
-commit with no whole-store check looks exactly like a commit nobody has asked
+commit with no quality run looks exactly like a commit nobody has asked
 about.
 
 So these tests render the group the way GitHub would, for a `main` push and for

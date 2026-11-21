@@ -10,7 +10,7 @@ were `doc_check` and 8 `branch_id_check`, rising week on week, and every one
 in a 15-log sample was the branch's own text - an item quoting `start.md` by
 bare name, a path that does not exist, a branch no item id names. `PL-1BGP`
 then sorted its 43 store-rule runs: 40 were the branch's own, and `make
-check`'s `bin/docket check --verify --verify-base origin/main` refuses all 40.
+check`'s `bin/docket check` refuses all 40.
 So each went out without `make check`, most often on the capture path, which
 is kept cheap on purpose. Run side by side the three take about as long as
 `doc_check` alone, 11 s, and cost no tokens; a red run costs a session a fix
@@ -151,17 +151,16 @@ SKILL_NOTE = (
 EXCERPT_LINES = 40
 
 
-def checks(base: str) -> tuple[tuple[str, tuple[str, ...]], ...]:
-    """Each check as a session types it to re-run it, the store check comparing against `base`.
+def checks() -> tuple[tuple[str, tuple[str, ...]], ...]:
+    """Each check as a session types it to re-run it.
 
-    `base` is the default base `docket.vcs` answers for the tree, `origin/main`
-    in this repository, as `make check` spells it (`PL-ZXCN`). `launch` says
-    which interpreter runs each one.
+    The store check reads the default base `docket.vcs` names for the tree,
+    as of the last fetch. `launch` says which interpreter runs each one.
     """
     return (
         ("doc_check", ("python3", "tools/doc_check.py", "check")),
         ("branch_id_check", ("python3", "tools/branch_id_check.py")),
-        ("docket check", ("bin/docket", "check", "--verify", "--verify-base", base, "--no-fetch")),
+        ("docket check", ("bin/docket", "check", "--no-fetch")),
         ("workflow_paths_check", (PROJECT_PYTHON, "tools/workflow_paths_check.py")),
         ("fixture_id_check", (PROJECT_PYTHON, "tools/fixture_id_check.py")),
         ("type_ignore_check", (PROJECT_PYTHON, "tools/type_ignore_check.py")),
@@ -385,7 +384,7 @@ def decide(payload: str) -> str:
 
     running: list[tuple[str, str, tuple[str, ...], subprocess.Popen[str]]] = []
     for top in trees:
-        for name, argv in checks(vcs.default_base(Path(top), runner=run)):
+        for name, argv in checks():
             command = launch(top, argv)
             if command is not None:
                 process = subprocess.Popen(
@@ -438,7 +437,7 @@ def decide(payload: str) -> str:
         reason += "\n\n" + unchecked
     changed = sum(uncommitted(run, top) for top in read_trees)
     if changed:
-        listed = ["`" + name + "`" for name, _ in checks("") if name in readers]
+        listed = ["`" + name + "`" for name, _ in checks() if name in readers]
         names = listed[-1] if len(listed) == 1 else ", ".join(listed[:-1]) + " and " + listed[-1]
         paths = "1 path" if changed == 1 else f"{changed} paths"
         reason += (

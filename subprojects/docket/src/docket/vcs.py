@@ -3986,16 +3986,6 @@ def in_tree(root: Path, path: str) -> bool:
     return (root / path).exists()
 
 
-def tree_files(root: Path, paths: Iterable[str]) -> frozenset[str]:
-    """Which of `paths` are files in the working tree now.
-
-    `in_tree`'s reading, held to files: a directory a `verify:` searches is
-    not one path its item could declare, so `PL-ZB82`'s advisory reads files
-    alone.
-    """
-    return frozenset(path for path in paths if (root / path).is_file())
-
-
 @dataclass(frozen=True)
 class TouchedPath:
     """One declared `touches` path, and what it has been through since its item was filed."""
@@ -5176,10 +5166,8 @@ def filed_with_work(
 ) -> FilingReport:
     """Items whose own file was added by a commit that also changed something outside the queue.
 
-    The shape `PL-3CBS`'s landed-work advisory cannot reach. That advisory is
-    keyed on `verify:` and scoped to `ready` and `needs-decision`, so an item
-    captured *and* worked in one commit never becomes a candidate for it: it
-    never passes through `ready`, so it never acquires a command. `#635` landed
+    No check of triaged items sees this, because an item captured *and*
+    worked in one commit never passes through `ready`. `#635` landed
     385 lines of this file while filing `PL-0J9K` and `PL-MMVF`, and both were
     still `untriaged` on the default branch days later, offered to the project
     owner as live work.
@@ -5766,11 +5754,9 @@ def _changed_items(root: Path, base: str, items_dir: str, run: Runner) -> set[st
 class ChangedItems:
     """The items a checkout changed against a base, or why that is not known.
 
-    `declined` because of what the one caller does with the set.
-    `docket check --verify --verify-base` scopes the `verify:` replay to these
-    ids, so an empty set that means "git would not say" scopes the replay to
-    nothing and the run reports a clean result it never established - the
-    permissive direction, on the gate CI is holding a pull request to
+    `declined` because of what a caller does with the set. `docket record`
+    writes a pull request's number onto these ids, so an empty set that means
+    "git would not say" has to be told from one that means nothing changed
     (`PL-ZPDM`). The private form has always had a channel, because
     `records_on_base` wraps its runner; this is that channel reaching the
     public read.
@@ -5790,15 +5776,12 @@ def changed_items(
     """The item ids this checkout has changed against `base`, or why that is unread.
 
     The public form of `_changed_items`, which `records_on_base` has used
-    internally since it was written. `docket check --verify-base` reads it to
-    narrow the replay to the items a branch can actually have changed
-    (`PL-SDHR`), which is a different caller with the same question.
+    internally since it was written. `docket record` and the store check's
+    question about closures read it.
 
-    Its one-sidedness is the property both callers rely on and is documented on
+    Its one-sidedness is the property its callers rely on and is documented on
     the private function: what it cannot read it leaves out rather than
-    guessing at. That makes a scoped run check nothing rather than the wrong
-    thing - correct, and half an answer until the run can also say *why* the
-    scope is empty, which is what `declined` carries.
+    guessing at. `declined` says why a set is empty where git did not answer.
     """
     run = _Silences(runner or _run_git)
     return ChangedItems(

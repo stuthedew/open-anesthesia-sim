@@ -251,7 +251,7 @@ load-bearing; the brief is not. `docket check` excuses a `housekeeping` item
 ```bash
 bin/docket new "Triage the 12 untriaged captures standing in the queue on 2026-09-19"
 bin/docket set PL-CSV0 --priority P2 --effort S --classes housekeeping \
-  --touches docs/items --status ready --verify "..." --payoff "..."
+  --touches docs/items --status ready --payoff "..."
 ```
 
 Filed before the work starts, the capture meets the near-duplicate search on a
@@ -265,9 +265,10 @@ nothing (`PL-0HLS`).
 `**Problem.**` is what `docket new` writes from the title, and that is the
 brief. The two sections that go are the two such a pass cannot answer without
 restating the category - "why it matters" is the standing rule above, and "done
-when" is the `verify:` command in prose. The command itself still stands: the
-exemption is the argument, never the proof - and `payoff:` stands too, for the
-same reason. It is one line rather than a section, the ranking can still put a
+when" is what the item records when it closes. That record is still owed, in
+one of the forms triage.md § "What shows an item is done, and when it is
+recorded" lists: the exemption is the argument, never the proof - and
+`payoff:` stands too, for the same reason. It is one line rather than a section, the ranking can still put a
 housekeeping item in front of the owner, and "the queue stops carrying twelve
 captures nobody can read" is not a restatement of the category.
 

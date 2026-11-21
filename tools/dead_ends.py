@@ -374,7 +374,7 @@ class BaseUnreadable(Exception):
 def read_base(root: Path, ref: str) -> str:
     """The file's text at the merge base of `HEAD` and `ref`, or `""` where the base lacks it.
 
-    The merge base rather than `ref` itself, as `bin/docket check --verify-base`
+    The merge base rather than `ref` itself, as `tools/contrast_check.py --base`
     takes its diff, so an entry `ref` removed after this branch left it is not
     counted as this change's removal.
 

@@ -122,8 +122,8 @@ page and decides which file a session reads.
 5. **Audit the branch: `bin/docket verify --self <id>`**, naming every id the
    closing commit leads with, since the diff is selected per id from the
    commits that name it. **Do step 8's check of the branch's text first.** Its fixes
-   change files that this audit reads. It reads the tests the item records against
-   the branch, runs the item's `verify:` command where it has one, and runs `make
+   change files that this audit reads. It reads the tests or the text search the item
+   records against the branch, runs no command the item holds, and runs `make
    check`, so it *is* the close-out's proof rather than a step beside one -
    re-run it until it says `ACCEPT`. A `REJECT` that stopped early ran
    neither.
@@ -142,40 +142,34 @@ page and decides which file a session reads.
    It relaxes those four and nothing else. They still run and still name every
    path, printed as `NOTE` with the reason they are not refusing - read them,
    because a path you did not expect is the finding. The four integrity checks
-   stay absolute: no suppression added, the item's own command passes, the
-   unit tests catch a mutation of each changed line, and `make check` passes.
+   stay absolute: no suppression added, what the item records shows its work,
+   the unit tests catch a mutation of each changed line, and `make check` passes.
    A session may re-scope its own commission; it may not weaken what measures
    it, and it may not skip the test.
 
-   **The command check takes an exemption the *item* declares, and which copy
+   **The record check takes an exemption the *item* declares, and which copy
    of the item each field is read from - the base's or your branch's - follows
    one rule, stated on `Commission` in `subprojects/docket/src/docket/verify.py`
    (`PL-B8HZ`).** An *outcome* (`status`, `closed`, `reason`, `pr`) is your
    branch's and excuses nothing. A *prediction* (`verify:`, `touches:`) is
    measured against the base's copy, and your branch's copy is a correction of
-   it: honoured, and printed beside the base's with the base's own result. A
+   it, which the audit reads. A
    *waiver* (`not-delegable:`) removes a refusal and is the base's alone, so
    adding one beside the work it would excuse waives nothing and is reported
    as your own word for it.
 
-   - `verify:` is a prediction, and rewriting it is a correction the audit
-     honours and prints: where the base's copy commissions a different
-     command, both run, yours decides the check, and the report carries
-     ``commissioned: `A` - fails on this tree (exit 1); this branch runs `B`
-     instead`` under it. A rewritten command is never silent, so say in the
-     reply why the commissioned one was wrong - that line is what a reviewer
-     will ask about (`PL-PZ6T`). `touches:` is read the same way: the diff is
-     measured against the base's, and a path only your own widening declares
-     is named as that in the NOTE.
-   - A `dropped` item, or one carrying `not-delegable:`, has no command to run,
-     and the check says which applies rather than stopping the audit dead
-     (`PL-L4KX`). A dropped item that still carries a `verify:` has it printed
-     and not run, so there is no need to delete one when dropping (`PL-BX1C`).
+   - `verify:` is a prediction, and rewriting it is a correction: the audit
+     reads the search your branch records. `touches:` is read the same way:
+     the diff is measured against the base's, and a path only your own
+     widening declares is named as that in the NOTE.
+   - A `dropped` item, or one carrying `not-delegable:`, records nothing, and
+     the check says which applies rather than stopping the audit (`PL-L4KX`).
      The drop is an outcome and is read off your branch, since the close-out
-     is what writes it - but a `not-delegable:` reason is a waiver and excuses
-     only a command the base never commissioned. Deleting the base's `verify:` and writing a
-     reason beside it is refused (`PL-KSV2`), and the paragraph below applies:
-     restore the command, or give the one that proves the work.
+     is what writes it. A `not-delegable:` reason is a waiver, and it excuses
+     only an item whose copy on the base holds no `verify:`. Deleting the
+     base's `verify:` and writing a reason beside it is refused (`PL-KSV2`),
+     and the paragraph below applies: restore it, or record the tests or the
+     search that show the work.
 
    **So a `REJECT` here is still a `REJECT`.** Meeting one on work you believe
    correct means the commission did not anticipate it: say so to the project

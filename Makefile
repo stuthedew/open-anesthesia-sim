@@ -14,9 +14,8 @@
 # were spent before `rm -rf __pycache__` resolved it.
 #
 # The cost is a little interpreter startup; the alternative is a red gate whose
-# failure the source cannot explain, and mutating-then-reverting is exactly what
-# `.claude/skills/docket/modes/triage.md` asks of a session writing a `verify:`
-# command. CI is unaffected either way, running pytest directly in a fresh
+# failure the source cannot explain, and mutating-then-reverting is what the
+# close-out audit's mutation check does. CI is unaffected either way, running pytest directly in a fresh
 # container where no stale cache can exist.
 #
 # Since `PL-0MLZ` the root `conftest.py` turns bytecode off inside every pytest
@@ -186,48 +185,11 @@ check: sync
 # CI's `checks` job holds the parts' combined coverage to 100%. The check puts
 # the threshold back into each part's line before it compares them.
 	uv run pytest -n $$(python3 -c 'import os; print(os.cpu_count() * 2)') --dist worksteal --cov=anesthesia_sim.core --cov-branch --cov-fail-under=100
-# The store validation, and since `PL-0HPV` the replay of the `verify:`
-# commands this branch can have changed: the items it edited, and the open
-# items whose command reads a file it edited (`PL-XMNC`). That is the step
-# `.github/workflows/quality.yml` runs on a pull request, and until this line
-# a session could not see its finding before pushing. That finding - an open
-# item whose `verify:` command already passes - is what 20 of the 56 red
-# `pull_request` runs from 2026-09-10 to 2026-09-22 failed on, the commonest
-# failing step there, each a round trip for an answer this line gives in
-# seconds.
-#
-# Scoped, and never the whole-store sweep. That one finds work that *merged*
-# without its item being closed, which a pre-commit gate on a feature branch
-# cannot have changed (`PL-P3B6`), so it runs on every push to `main`, where
-# its answer is a fact about `main`. The scoped form asks whether this
-# branch's own store edit, or a file it touched, has just made an open item's
-# command pass - and that this branch can have changed.
-#
-# The price, re-timed 2026-09-22 on four cores after `PL-0HPV` moved each
-# legacy command's `grep` ahead of the test file it ran first: `172f93e1`'s
-# file set, the widest of the last 80 merges with 55 items in scope, 5.0-5.3 s
-# against 41-46 s before; three more real merges' sets 1.3-5.4 s where they
-# cost 14.1-67.5 s; and 1.1-1.2 s on a branch that changes no item and no
-# file an open command reads, which is the validation alone. The slowest
-# command in scope sets it rather than how many run - `PL-LWMS`'s
-# `pytest tests/unit -k`, 4 s, on any branch touching `tests/unit` - and
-# `docket check` prints that reading on its own cost line every run, which is
-# the one to trust once these figures have aged.
-#
-# No shell conditional guards it. A base that cannot be read - no `origin`
-# remote, or a bare copy - declines with one "Not checked" line and exits 0
-# (`PL-ZPDM`), so the gate stays green offline and says what it skipped. The
-# ref is read without a fetch, so the gate needs no network, and a stale one
-# can only widen the scope, never hide this branch's own changes: the diff is
-# taken from the merge base, which a stale ref moves earlier and no later.
-#
-# `origin/main` stays a literal, read against `vcs.default_base` (`PL-9KLN`).
-# It is the ref that answers first there on any clone with a remote, and no
-# `bin/docket` command prints that answer for `make` to pass.
-# `.claude/hooks/push_check_guard.py` asks `vcs.default_base` itself and hands
-# a session the argv it ran, which is this one wherever this literal is right
-# (`PL-ZXCN`).
-	bin/docket check --verify --verify-base origin/main
+# The store validation. It reads what each item closed on this branch records
+# to show its work, and runs no item's command (`PL-QTZG`). The closures are
+# compared with the default base as of the last fetch, so the gate needs no
+# network.
+	bin/docket check
 # Bare `python3`, like the three lines after it: none of them reads project
 # source, so the 3.11 floor parser has nothing it cannot read, and a bare run is
 # the no-virtualenv promise `tools/ruff.toml` states. Placed with the
@@ -405,12 +367,10 @@ check: sync
 #
 # `--base origin/main` since `PL-VJFQ`: an entry added to `KNOWN_SHORTFALLS` in
 # the change that introduces or alters its colour fails, compared at the merge
-# base as the verify replay above is. Unlike that line, a base that cannot be
-# read fails rather than declining: this comparison is the only gate on the
-# rule it enforces, where the verify replay's scoped run has the whole-store
-# sweep behind it.
+# base. A base that cannot be read fails rather than declining, because this
+# comparison is the only gate on the rule it enforces.
 #
-# The ref stays a literal for the verify replay's first reason (`PL-9KLN`): no
+# The ref stays a literal (`PL-9KLN`): no
 # `bin/docket` command prints `vcs.default_base` for `make` to pass. Where
 # `origin/main` is gone, it cannot pass quietly either: an unread base fails here.
 	uv run python tools/contrast_check.py --base origin/main
