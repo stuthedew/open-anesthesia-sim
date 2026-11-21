@@ -1,8 +1,14 @@
 ---
 id: PL-MH9J
 title: Store every second's state of a run in one array, and have the chart, the readouts, the marks, the wash-in label and the export read that array
-status: untriaged
+priority: P1
+effort: L
+status: blocked
+classes: refactor, safety
 feature: run-computed-one-way
+touches: src/anesthesia_sim/core, src/anesthesia_sim/app, tests, docs/MODEL.md, docs/INTERFACE.md, docs/ARCHITECTURE.md, .claude/rules/run-is-its-definition.md
+blocked-by: PL-SZ6G
+deferred-from: v0.7.0 - filed 2026-11-21, after the gate froze, as the build of the design the owner chose in PL-7CY5; each of the four pull requests leaves main releasable, so the release does not wait for the feature to finish
 added: 2026-11-21
 ---
 
@@ -13,3 +19,5 @@ added: 2026-11-21
 **What it changes.** Each step appends its state to one array for the run, nine numbers per second for one agent, about 6.2 MB over 24 hours. The chart, the readouts, the marks and MAC targets, the wash-in label and the export read that array and nothing else. Nothing draws an interpolated value between two stored seconds, because that would be a second route to a displayed number. `.claude/rules/run-is-its-definition.md` is rewritten in the same pull request, because it forbids exactly this store.
 
 **Done when.** Every displayed or exported state is read from the stored array, and a test shows that the chart, the readouts and the marks read the same stored state for each second.
+
+**Generator check.** Work the owner asked for on 2026-11-21, building the design that `PL-7CY5` decided. It is not a head. The fact is `PL-GJ1W`'s, how far a computed value can be from the exact one: one stored state per second removes the second and third routes to a state that `PL-QVBR` and `PL-81Q2` came from.

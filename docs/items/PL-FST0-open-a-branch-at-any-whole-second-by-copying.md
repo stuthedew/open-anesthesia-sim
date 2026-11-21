@@ -1,8 +1,14 @@
 ---
 id: PL-FST0
 title: Open a branch at any whole second by copying its parent's stored states up to that second
-status: untriaged
+priority: P1
+effort: M
+status: blocked
+classes: feature, safety
 feature: run-computed-one-way
+touches: src/anesthesia_sim/core, src/anesthesia_sim/app, tests, docs/INTERFACE.md
+blocked-by: PL-MH9J
+deferred-from: v0.7.0 - filed 2026-11-21, after the gate froze, as the build of the design the owner chose in PL-7CY5; each of the four pull requests leaves main releasable, so the release does not wait for the feature to finish
 added: 2026-11-21
 ---
 
@@ -13,3 +19,5 @@ added: 2026-11-21
 **What it changes.** A branch opened at second n holds its parent's stored states for seconds 0 to n and steps on from there. A learner can branch at any whole second of a run.
 
 **Done when.** A branch opens at any whole second, and a test shows that the branch's stored states equal its parent's, bit for bit, up to and including that second.
+
+**Generator check.** Work the owner asked for on 2026-11-21, building the design that `PL-7CY5` decided. It is a one-off and not a head: the limit on where a branch opens came from the keyframes, which the stored states replace.
