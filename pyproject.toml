@@ -218,7 +218,9 @@ do_not_mutate = [
 # 150 frames short of the recursion limit. mutmut's wrapper adds two frames to
 # every call of a mutated function, so the reader runs out of stack. The
 # fourth lists what `app/stylesheets.py` imports, and mutmut's copy of that
-# module also imports mutmut's wrapper (`PL-19M4`).
+# module also imports mutmut's wrapper (`PL-19M4`). The fifth lists the public
+# names of `core/simulation_step.py`, and mutmut's copy of that module also
+# defines mutmut's `MutantDict` (`PL-SZ6G`).
 pytest_add_cli_args_test_selection = [
     "@selected-tests.txt",
     "--deselect",
@@ -229,6 +231,8 @@ pytest_add_cli_args_test_selection = [
     "tests/unit/test_layout_serialization.py::test_whether_a_document_reads_does_not_depend_on_where_its_caller_stands",
     "--deselect",
     "tests/unit/test_stylesheets.py::test_the_module_imports_nothing_but_the_theme_and_the_standard_library",
+    "--deselect",
+    "tests/unit/test_simulation_step.py::test_the_step_module_offers_no_other_step",
 ]
 # The default, `fork`, imports each test module once, unmutated, and then forks
 # a process for each mutant. A test whose expected value is computed when its
