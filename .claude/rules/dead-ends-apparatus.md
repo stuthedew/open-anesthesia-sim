@@ -15,8 +15,7 @@ of every session.
 
 Edit this file one entry at a time, as `docs/dead-ends.md` says. An entry that
 leaves this file goes back to that list, or into its retired section with the
-reason its question no longer exists, because `tools/dead_ends.py check
---base` counts this file as the place the entries went.
+reason its question no longer exists.
 
 ## Store and queue design
 

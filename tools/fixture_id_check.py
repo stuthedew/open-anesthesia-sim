@@ -22,10 +22,10 @@ the same defect in the document a session reads to learn what a placeholder *is*
 **Why a tool rather than a wider glob on the test it came from.** A pytest test
 could reach the same trees. The argument is consistency: every repo-wide grammar
 or structure guard in this project is already a `tools/` script with its own
-`tests/unit/test_*.py` - `branch_id_check.py`, `rules_paths_check.py`,
-`workflow_paths_check.py`, `core_vocabulary_check.py`, `glyph_check.py` - and a
-failure here names the file, the line and the token where an assertion dump
-would not. The test it replaced is gone rather than kept beside it, because two
+`tests/unit/test_*.py` - `rules_paths_check.py`, `workflow_paths_check.py`,
+`core_vocabulary_check.py`, `glyph_check.py` - and a failure here names the
+file, the line and the token where an assertion dump would not. The test it
+replaced is gone rather than kept beside it, because two
 spellings of one grammar drift, which is why `store.py` exports `ID_PATTERN`
 unanchored instead of letting each reader write its own. What that gives up,
 stated rather than left to be found: an extracted `subprojects/docket/` carries

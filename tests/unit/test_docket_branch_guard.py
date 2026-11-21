@@ -5,11 +5,9 @@ asks it, at the moment a discussion becomes implementation. What has to hold is
 narrow and easy to get silently wrong, which is why each of these exists: the
 line has to travel in the JSON form a session can actually read, the hook must
 not grant the permission it is attached to, it must ask once per session rather
-than once per edit, and it must say nothing when there is nothing to say. The
-claim question (`PL-J9S0`) adds the same three at a different moment: the
-first edit that is work, which a capture's edit is not. After a Bash call
-(`PL-RXFK`) the hook reads the tree instead of a path, and a clean tree, or one
-changing only the queue, has to spend nothing.
+than once per edit, and it must say nothing when there is nothing to say.
+After a Bash call (`PL-RXFK`) the hook reads the tree instead of a path, and a
+clean tree has to spend nothing.
 
 Real git and a local `file://` remote, so nothing here touches a network.
 """
@@ -34,9 +32,7 @@ def _git(*args: str, cwd: Path) -> None:
     subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)
 
 
-def _clone_of_a_moved_remote(
-    tmp_path: Path, *, moved: bool = True, branch: str = "claude/pl-k7qx-live"
-) -> Path:
+def _clone_of_a_moved_remote(tmp_path: Path, *, moved: bool = True) -> Path:
     """A checkout on its own branch, with the remote's `main` ahead of it or not.
 
     The session the check exists for: opened to discuss the next piece of work,
@@ -54,7 +50,7 @@ def _clone_of_a_moved_remote(
     _git("commit", "-qm", "c0", cwd=seed)
     _git("push", "-q", str(remote), "main", cwd=seed)
     subprocess.run(["git", "clone", "-q", f"file://{remote}", str(work)], check=True)
-    _git("checkout", "-qb", branch, cwd=work)
+    _git("checkout", "-qb", "claude/pl-k7qx-live", cwd=work)
 
     if moved:
         (seed / "f.txt").write_text("1", encoding="utf-8")
@@ -73,11 +69,11 @@ def _clone_of_a_moved_remote(
     # which failed three tests here on the project owner's Mac while CI stayed
     # green (`PL-Y6W9`). `test_docket_digest_hook.py` carries the full account.
     (work / "bin" / "python3").symlink_to(sys.executable)
-    # A real checkout tracks `bin/` and `tools/`, so the stand-ins here are kept
-    # out of what the tree has changed, which the hook reads after a Bash call.
+    # A real checkout tracks `bin/`, so the stand-in here is kept out of what
+    # the tree has changed, which the hook reads after a Bash call.
     exclude = work / ".git" / "info" / "exclude"
     exclude.parent.mkdir(exist_ok=True)
-    exclude.write_text("/bin/\n/tools/\n", encoding="utf-8")
+    exclude.write_text("/bin/\n", encoding="utf-8")
     return work
 
 
@@ -88,9 +84,6 @@ def _guard_env(root: Path, tmp_path: Path) -> dict[str, str]:
         "PATH": f"{root / 'bin'}:/usr/bin:/bin:/usr/local/bin",
         "HOME": str(root),
         "TMPDIR": str(tmp_path / "markers"),
-        # For the checkout's copy of `tools/branch_id_check.py`, which finds
-        # `docket` beside itself, where this checkout carries none.
-        "PYTHONPATH": str(REPO / "subprojects" / "docket" / "src"),
     }
 
 
@@ -180,21 +173,17 @@ def test_branch_guard_asks_once_per_session_not_once_per_edit(tmp_path: Path) ->
     assert other_session.stdout, "a different session gets its own answer"
 
 
-def test_spent_markers_start_python_once(tmp_path: Path) -> None:
-    """Once both questions are spent, an edit costs one Python start (`PL-J22P`).
+def test_a_spent_marker_starts_python_once(tmp_path: Path) -> None:
+    """Once the question is spent, an edit costs one Python start (`PL-J22P`).
 
     The hook started Python once for the checkout and again for the session
-    id before it looked at its markers, so every later edit and Bash call paid
+    id before it looked at its marker, so every later edit and Bash call paid
     about 95 ms for nothing.
     """
     (tmp_path / "markers").mkdir()
     work = _clone_of_a_moved_remote(tmp_path)
-    _with_the_check(work)
     _run_guard(work, tmp_path, target=work / "src" / "w.py")
-    assert sorted(path.name for path in (tmp_path / "markers").iterdir()) == [
-        "docket-branch-s1",
-        "docket-claim-s1",
-    ]
+    assert [path.name for path in (tmp_path / "markers").iterdir()] == ["docket-branch-s1"]
     starts = tmp_path / "starts.log"
     interpreter = work / "bin" / "python3"
     interpreter.unlink()
@@ -295,30 +284,6 @@ def test_the_hook_runs_under_the_interpreter_running_this_suite(tmp_path: Path) 
     assert found == sys.version, f"the hook gets {found}, not this suite's {sys.version}"
 
 
-def _with_the_check(work: Path) -> None:
-    """The checkout's own `tools/branch_id_check.py`, which the claim question asks.
-
-    Copied rather than linked: the check finds its repository from its own
-    path, and a link would resolve to this one.
-    """
-    (work / "tools").mkdir()
-    shutil.copy(REPO / "tools" / "branch_id_check.py", work / "tools" / "branch_id_check.py")
-
-
-def test_branch_guard_says_to_claim_before_the_first_edit_that_is_work(tmp_path: Path) -> None:
-    """A fresh session's branch claims nothing, and the first edit of work hears so, once."""
-    (tmp_path / "markers").mkdir()
-    work = _clone_of_a_moved_remote(tmp_path, moved=False, branch="claude/some-session-a1b2c3")
-    _with_the_check(work)
-
-    first = _run_guard(work, tmp_path, target=work / "src" / "work.py")
-    again = _run_guard(work, tmp_path, target=work / "src" / "work.py")
-
-    context = json.loads(first.stdout)["hookSpecificOutput"]["additionalContext"]
-    assert "this branch claims nothing: `bin/docket claim <id>`" in context
-    assert again.stdout == ""
-
-
 def test_an_unset_project_dir_falls_back_as_the_other_hooks_do(tmp_path: Path) -> None:
     """With `CLAUDE_PROJECT_DIR` unset it acts on the clone it sits in, as every hook does.
 
@@ -326,8 +291,7 @@ def test_an_unset_project_dir_falls_back_as_the_other_hooks_do(tmp_path: Path) -
     their own clone (`PL-FB77`).
     """
     (tmp_path / "markers").mkdir()
-    work = _clone_of_a_moved_remote(tmp_path, moved=False, branch="claude/some-session-a1b2c3")
-    _with_the_check(work)
+    work = _clone_of_a_moved_remote(tmp_path)
     hooks = work / ".claude" / "hooks"
     hooks.mkdir(parents=True)
     for name in ("guard.sh", "guard.py", "docket_branch_guard.py", "hook_input.py"):
@@ -346,20 +310,7 @@ def test_an_unset_project_dir_falls_back_as_the_other_hooks_do(tmp_path: Path) -
         check=False,
     )
 
-    assert "this branch claims nothing" in result.stdout
-
-
-def test_branch_guard_keeps_the_claim_question_past_a_capture(tmp_path: Path) -> None:
-    """An item file is not work: asking there would spend the question on nothing."""
-    (tmp_path / "markers").mkdir()
-    work = _clone_of_a_moved_remote(tmp_path, moved=False, branch="claude/some-session-a1b2c3")
-    _with_the_check(work)
-
-    capture = _run_guard(work, tmp_path, target=work / "docs" / "items" / "PL-K7QX-x.md")
-    later = _run_guard(work, tmp_path, target=work / "src" / "work.py")
-
-    assert capture.stdout == ""
-    assert "this branch claims nothing" in later.stdout
+    assert "behind origin/main" in result.stdout
 
 
 def _write(root: Path, path: str) -> None:
@@ -367,11 +318,10 @@ def _write(root: Path, path: str) -> None:
     (root / path).write_text("x", encoding="utf-8")
 
 
-def test_branch_guard_says_to_claim_after_the_first_bash_edit_that_is_work(tmp_path: Path) -> None:
+def test_branch_guard_speaks_after_the_first_bash_edit(tmp_path: Path) -> None:
     """An edit made through Bash is asked what an Edit-tool edit is, once (`PL-RXFK`)."""
     (tmp_path / "markers").mkdir()
-    work = _clone_of_a_moved_remote(tmp_path, branch="claude/some-session-a1b2c3")
-    _with_the_check(work)
+    work = _clone_of_a_moved_remote(tmp_path)
     _write(work, "src/work.py")
 
     first = _run_after_bash(work, tmp_path)
@@ -380,16 +330,14 @@ def test_branch_guard_says_to_claim_after_the_first_bash_edit_that_is_work(tmp_p
     payload = json.loads(first.stdout)["hookSpecificOutput"]
     assert payload["hookEventName"] == "PostToolUse"
     assert "behind origin/main" in payload["additionalContext"]
-    assert "this branch claims nothing: `bin/docket claim <id>`" in payload["additionalContext"]
     assert "permissionDecision" not in payload
     assert again.stdout == ""
 
 
 def test_a_bash_call_that_leaves_the_tree_clean_spends_nothing(tmp_path: Path) -> None:
-    """A read-only command is not where work begins, so both questions wait for one that is."""
+    """A read-only command is not where work begins, so the question waits for one that is."""
     (tmp_path / "markers").mkdir()
-    work = _clone_of_a_moved_remote(tmp_path, branch="claude/some-session-a1b2c3")
-    _with_the_check(work)
+    work = _clone_of_a_moved_remote(tmp_path)
 
     clean = _run_after_bash(work, tmp_path)
     _write(work, "src/work.py")
@@ -397,36 +345,19 @@ def test_a_bash_call_that_leaves_the_tree_clean_spends_nothing(tmp_path: Path) -
 
     assert clean.stdout == ""
     assert "behind origin/main" in later.stdout
-    assert "this branch claims nothing" in later.stdout
-
-
-def test_a_bash_call_writing_only_the_queue_keeps_the_claim_question(tmp_path: Path) -> None:
-    """A capture made through Bash owes no claim, so it must not spend the question."""
-    (tmp_path / "markers").mkdir()
-    work = _clone_of_a_moved_remote(tmp_path, moved=False, branch="claude/some-session-a1b2c3")
-    _with_the_check(work)
-    _write(work, "docs/items/PL-K7QX-x.md")
-
-    capture = _run_after_bash(work, tmp_path)
-    _write(work, "src/work.py")
-    later = _run_after_bash(work, tmp_path)
-
-    assert capture.stdout == ""
-    assert "this branch claims nothing" in later.stdout
 
 
 def test_a_failed_bash_call_answers_under_its_own_event(tmp_path: Path) -> None:
     """A command that edits and then fails a check fires `PostToolUseFailure` instead."""
     (tmp_path / "markers").mkdir()
-    work = _clone_of_a_moved_remote(tmp_path, branch="claude/some-session-a1b2c3")
-    _with_the_check(work)
+    work = _clone_of_a_moved_remote(tmp_path)
     _write(work, "src/work.py")
 
     result = _run_after_bash(work, tmp_path, event="PostToolUseFailure")
 
     payload = json.loads(result.stdout)["hookSpecificOutput"]
     assert payload["hookEventName"] == "PostToolUseFailure"
-    assert "this branch claims nothing" in payload["additionalContext"]
+    assert "behind origin/main" in payload["additionalContext"]
 
 
 def test_the_hook_runs_after_every_bash_call_and_before_every_edit() -> None:

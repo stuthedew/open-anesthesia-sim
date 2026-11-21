@@ -290,8 +290,7 @@ Measured before it was built: 22 items titled "Triage ..." carrying 1,127 lines
 of brief, 12 repeating the same rationale and 2 holding a finding a later
 session needs (`PL-TQFB`, project owner, 2026-09-19, ratified, over pointing
 the requirement at a standing rationale and over dropping the item altogether -
-the second was refused because the id is what `tools/branch_id_check.py` and
-the in-flight mark both read). The existing 22 are left as they are; this is
+the second was refused because the id is what the in-flight mark reads). The existing 22 are left as they are; this is
 for the next one.
 
 It buys a record as well as visibility. Housekeeping is obvious enough that two
@@ -331,14 +330,9 @@ may want to end, such as a pull request that should be closed, can be. When
 the dry run says the remote's branch list could not be read, the reply names
 no branch at all (`PL-TL6T`).
 
-`tools/branch_id_check.py` catches the case where none of this happened: `make
-check` and CI fail a branch ahead of `main` that carries no id in its name and
-leads no commit subject with one. It decides visibility only, never whether the
-work deserved an item — that judgment is the paragraph above and stays here.
-Since `PL-J9S0` it also fails a branch whose work outside the queue claims
-nothing, so housekeeping filed as an item is claimed like any other work,
-`bin/docket claim <id>` before its first commit; the first-edit hook says so.
-
-It binds the `claude/*` namespace and nothing outside it (`PL-8P6D`), so a
-session that names its branch anything else is unchecked rather than exempt:
-the rule above still applies to it, with nothing left to enforce it.
+No check enforces this. `bin/docket flight` lists a `claude/*` branch ahead of
+`main` that carries no id in its name and leads no commit subject with one,
+and one whose work outside the queue claims nothing. Housekeeping filed as an
+item is claimed like any other work, with `bin/docket claim <id>` before its
+first commit. A check in `make check` and CI refused both kinds of branch
+until the project owner retired it on 2026-11-21 (`PL-HS2T`).
