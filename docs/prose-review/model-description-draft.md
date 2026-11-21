@@ -707,8 +707,8 @@ compartments stop changing, and the alveolar equation loses its uptake term.
 The low end of each flow is also where the teaching is. Reducing cardiac
 output accelerates alveolar wash-in, because less agent is carried away from
 the lungs. With sevoflurane at 1 MAC and the other defaults, $`F_A/F_I`$ at
-five minutes is 0.41 at 10 L/min, 0.49 at 5 L/min, 0.58 at 2.5 L/min, 0.70 at
-1 L/min and 0.86 at zero. Zero alveolar ventilation is apnea.
+five minutes is 0.60 at 10 L/min, 0.68 at 5 L/min, 0.75 at 2.5 L/min, 0.85 at
+1 L/min and 0.96 at zero. Zero alveolar ventilation is apnea.
 
 A run at zero cardiac output shows where the agent goes when perfusion stops,
 and nothing else. It does not model circulatory arrest, cardiopulmonary bypass

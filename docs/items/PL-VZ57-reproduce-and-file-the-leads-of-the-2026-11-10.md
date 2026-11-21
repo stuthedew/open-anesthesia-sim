@@ -86,3 +86,5 @@ sweep: the leads of the 2026-11-10 root-cause audit that its session did not con
 **Generator check.** Work the owner asked for: the audit of 2026-11-10 looked for root causes that are unrecorded or whose fix did not hold. The leads above are its unconfirmed findings, and each owes its own check when it is filed.
 
 **Checked 2026-11-11:** `PL-39Y1` takes the guard leads above: the pruning fetch, the merge inside `bash -c`, the request that carries the token, the force push and the arming that `bin/docket arm` is not asked about. It removed the merge guard that the arming lead names, and it moves each refusal to GitHub's rules.
+
+**Checked 2026-11-21**, by `PL-5FMC` (the check of `docs/INTERFACE.md` against the code), at `2452b9b4e`. One lead is confirmed: the interface does show tooltips. `app/area_layout.py` sets one on an unavailable menu entry (`action.setToolTip(operation.refusal)`) and calls `setToolTipsVisible(True)`, and `app/workspace_tabs.py` sets one on the "+" button. `PL-5FMC` corrected the sentence in `docs/INTERFACE.md`. The same claim in `.claude/rules/ui-color.md` and `tests/integration/test_dark_appearance.py` is still to correct.

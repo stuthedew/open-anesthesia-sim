@@ -60,3 +60,5 @@ displayed outputs" now has a declaration in code,
 `RunView.unconditional_widgets` maps each of its values to the widget that
 draws it. Build this item's assertion over that declaration rather than over a
 list of its own, as `PL-NWTM`'s Done when asks.
+
+**Checked 2026-11-21**, by `PL-5FMC` (the check of `docs/INTERFACE.md` against the code), at `2452b9b4e`. Every output that § "Minimum displayed outputs" requires has a test that reaches a widget, though no single test covers them all. `test_every_layout_operation_leaves_the_unconditional_set_on_screen` already asserts that each widget of the unconditional set is visible after every layout operation. What is still missing is one test that walks the section's own list and reads each value's text from its widget.

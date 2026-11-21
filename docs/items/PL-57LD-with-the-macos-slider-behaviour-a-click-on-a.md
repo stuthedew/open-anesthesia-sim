@@ -1,0 +1,89 @@
+---
+id: PL-57LD
+title: With the macOS slider behaviour, a click on a slider's track applies the setting and then draws it as a preview labelled 'not applied', and a press on the handle away from its centre applies a change before any drag
+status: untriaged
+feature: interface-matches-its-spec
+added: 2026-11-21
+---
+
+**Problem.** With the macOS slider behaviour, a click on a slider's track applies the setting and then draws it as a preview labelled 'not applied', and a press on the handle away from its centre applies a change before any drag
+
+**Checked 2026-11-21**, at `2452b9b4e`. Found by `PL-5FMC` (the check of `docs/INTERFACE.md` and the two documents beside it against the code). `docs/INTERFACE.md` § "A preview of an unapplied setting" says "**A drag applies its value only when the handle is released.**" and "A key press, one notch of the scroll wheel or a click on the slider away from its handle is a single input, so it applies at once and draws no preview." Both hold under Qt's Fusion style, which the test platform uses. They may not hold on macOS, where the style lets a left click on the track move the handle to the pointer.
+
+Qt's source at tag v6.11.2 (the installed PySide6 is 6.11.2), read from `raw.githubusercontent.com/qt/qtbase`:
+
+- `src/plugins/styles/mac/qmacstyle_mac.mm` returns `Qt::LeftButton|Qt::MiddleButton` for `SH_Slider_AbsoluteSetButtons` and `0` for `SH_Slider_PageSetButtons`. `qcommonstyle.cpp` returns `Qt::MiddleButton` and `Qt::LeftButton` for the same two hints.
+- `QSlider::mousePressEvent` in `src/widgets/widgets/qslider.cpp`, for an absolute-set button, calls `setSliderPosition`, `triggerAction(SliderMove)` and `setSliderDown(true)`. `triggerAction` ends with `setValue`, which emits `valueChanged` even with tracking off, and `setSliderDown(true)` emits `sliderPressed`.
+- The application sets no style (`git grep -n -E "\.setStyle\(|QStyleFactory|Fusion" -- src` finds nothing), and a stylesheet does not change either hint.
+
+`ParameterSlider` in `app/qt_widgets.py` connects `sliderPressed` to the start of a preview and `valueChanged` to the applied value. The script below gives the slider the macOS hints through a proxy style on Linux, then presses the left button on the fresh gas flow slider's track on a run paused at 300 s. It was not run on macOS.
+
+```python
+import sys
+from PySide6.QtCore import QPoint, Qt
+from PySide6.QtTest import QTest
+from PySide6.QtWidgets import QApplication, QProxyStyle, QStyle, QStyleOptionSlider
+
+from anesthesia_sim.app.controller import SimulationController
+from tests.integration.simulation_view.simulation_view_support import (
+    _advance, _concentration, _dials, _shown_view, _wash_in,
+)
+
+
+class MacHints(QProxyStyle):
+    def styleHint(self, hint, option=None, widget=None, returnData=None):
+        if hint == QStyle.StyleHint.SH_Slider_AbsoluteSetButtons:
+            return int(Qt.MouseButton.LeftButton.value | Qt.MouseButton.MiddleButton.value)
+        if hint == QStyle.StyleHint.SH_Slider_PageSetButtons:
+            return 0
+        return super().styleHint(hint, option, widget, returnData)
+
+
+app = QApplication.instance() or QApplication(sys.argv)
+if "mac" in sys.argv:
+    app.setStyle(MacHints())
+controller = SimulationController()
+controller.start()
+_advance(controller, 300.0)
+controller.pause()
+view = _shown_view(app, controller)
+run = view.runs[0]
+control = _dials(run)._fresh_gas_flow_slider
+chart = _concentration(view).chart
+slider = control.slider
+opt = QStyleOptionSlider()
+slider.initStyleOption(opt)
+handle = slider.style().subControlRect(QStyle.ComplexControl.CC_Slider, opt, QStyle.SubControl.SC_SliderHandle, slider)
+away = QPoint(slider.width() - 10, slider.height() // 2)
+assert not handle.contains(away)
+print("before: flow in force", controller.settings().fresh_gas_flow_l_min, "| changes recorded", len(controller.record().control_timeline))
+QTest.mousePress(slider, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, away)
+view.render_tick()
+print("button held on the groove: flow in force", controller.settings().fresh_gas_flow_l_min,
+      "| changes recorded", len(controller.record().control_timeline),
+      "| label in the plot:", chart.preview_label(0), "| region:", chart.preview_region(0),
+      "| value beside the slider:", control.value_label.text())
+QTest.mouseRelease(slider, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, away)
+view.render_tick()
+print("released: flow in force", controller.settings().fresh_gas_flow_l_min, "| changes recorded", len(controller.record().control_timeline), "| label:", chart.preview_label(0))
+```
+
+Output of `QT_QPA_PLATFORM=offscreen PYTHONPATH=. uv run python dash.py fusion`, then with `mac`:
+
+```
+before: flow in force 4.0 | changes recorded 0
+button held on the groove: flow in force 4.1 | changes recorded 1 | label in the plot: None | region: None | value beside the slider: 4.1 L/min
+released: flow in force 4.1 | changes recorded 1 | label: None
+
+before: flow in force 4.0 | changes recorded 0
+button held on the groove: flow in force 10.0 | changes recorded 1 | label in the plot: Preview: Fresh gas flow 10.0 L/min, not applied | region: (300.0, 450.0) | value beside the slider: 10.0 L/min
+released: flow in force 10.0 | changes recorded 1 | label: None
+```
+
+With the macOS hints, a press on the handle 3 px to the right of its centre, released without moving, also applied a value: `[('value_changed', 4.1), ('preview_moved', 4.1), 'preview_ended']`. Under Fusion the same press gave `[('preview_moved', 4.0), 'preview_ended']`.
+
+**Why it matters.** If the macOS style behaves as its source reads, a learner on a Mac who clicks the track sees the setting jump to the pointer and take effect, while the chart labels that value "not applied" for as long as the button is down. A drag that starts off the handle's centre applies a value at the press, and a second value at release.
+
+**The owner can confirm it in a minute.** On a paused run on the Mac, click the fresh gas flow slider's track well away from the handle. If the value jumps to the pointer, and not by one step, the macOS style behaves as above.
+
+**Done when.** A click on the track and a press on the handle give the same result under the macOS hints as under Fusion, in whichever form `docs/INTERFACE.md` § "A preview of an unapplied setting" then states, and a test runs both gestures under a proxy style that returns the macOS hints.
