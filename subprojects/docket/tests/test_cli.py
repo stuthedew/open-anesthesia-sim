@@ -1719,7 +1719,7 @@ def test_release_refuses_to_invent_a_version_under_a_manual_policy(
 
 
 def _delegable_store(tmp_path: Path) -> Path:
-    """A store holding one delegable item and four that must not be offered."""
+    """A store holding two delegable items and three that must not be offered."""
     items = tmp_path / "docs" / "items"
     items.mkdir(parents=True)
     # Config is resolved from the store's parent, not the working directory,
@@ -1730,7 +1730,8 @@ def _delegable_store(tmp_path: Path) -> Path:
     brief = "**Problem.** P\n**Why it matters.** W\n**Done when.** D\n"
     for ident, extra in (
         ("PL-8888", "verify: pytest tests/test_a.py\ntouches: tests/test_a.py\n"),
-        ("PL-BBBB", "touches: tests/test_b.py\n"),  # no verify command
+        # No command: an open item names none, and is offered all the same.
+        ("PL-BBBB", "touches: tests/test_b.py\n"),
         ("PL-CCCC", "verify: pytest\ntouches: src/core/x.py\n"),  # protected
         ("PL-DDDD", "verify: pytest\ntouches: tests/test_d.py\nclasses: safety\n"),
         # A gate path, and deliberately from the package default rather than
@@ -1750,12 +1751,13 @@ def _delegable_store(tmp_path: Path) -> Path:
 def test_delegable_lists_only_what_qualifies(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Four of the five items must not be offered, each for a different reason."""
+    """Three of the five items must not be offered, each for a different reason."""
     assert main(["--items", str(_delegable_store(tmp_path)), "--no-git", "delegable"]) == 0
     out = capsys.readouterr().out
     assert "PL-8888" in out
     assert "verify: pytest tests/test_a.py" in out
-    for excluded in ("PL-BBBB", "PL-CCCC", "PL-DDDD", "PL-GGFF"):
+    assert "PL-BBBB" in out
+    for excluded in ("PL-CCCC", "PL-DDDD", "PL-GGFF"):
         assert excluded not in out
 
 
@@ -1765,7 +1767,7 @@ def test_delegable_ids_prints_the_same_list_and_nothing_else(
     """`--ids` is the list a script reads, so stdout holds one id per line and no prose."""
     items = _delegable_store(tmp_path)
     assert main(["--items", str(items), "--no-git", "delegable", "--ids"]) == 0
-    assert capsys.readouterr().out == "PL-8888\n"
+    assert capsys.readouterr().out == "PL-8888\nPL-BBBB\n"
 
 
 def test_delegable_sends_the_worker_to_the_instructions_that_qualify_it(
@@ -2990,7 +2992,7 @@ def test_triage_states_the_rules_the_answers_must_satisfy(
     assert "force P0 or P1" in output
     assert "the top band is P1, holding 1 startable of the 5" in output
     assert "src/core" in output
-    assert "`verify:` command" in output
+    assert "written into `tests:` when the item closes" in output
 
 
 def test_triage_states_the_rules_a_chosen_status_adds(
@@ -13818,3 +13820,65 @@ def test_flight_says_nothing_of_the_owner_when_no_pull_request_waits(
     out = capsys.readouterr().out
     assert "with no question recorded" not in out
     assert "could not be read:" not in out
+
+
+# --- what a closing item records, read at the write and on the branch --------
+
+
+def _closing_repo(root: Path) -> Path:
+    """A branch that added `test_new` beside `test_old`, and the store holding `PL-0001`."""
+    git = _repo_with_items(root)
+    (root / "tests").mkdir()
+    (root / "tests" / "test_thing.py").write_text("def test_old():\n    assert 1\n")
+    git("add", "-A")
+    git("commit", "-qm", "a test on main")
+    git("checkout", "-q", "-b", "work")
+    (root / "tests" / "test_thing.py").write_text(
+        "def test_old():\n    assert 1\n\n\ndef test_new():\n    assert 2\n"
+    )
+    git("commit", "-qam", "PL-0001 add a test")
+    return root / "items"
+
+
+def _close_recording(store: Path, *recorded: str) -> int:
+    closing = ("--status", "done", "--closed", "2026-08-24")
+    return _run_with_git("set", "PL-0001", *closing, *recorded, "--items", str(store))
+
+
+def test_closing_an_item_records_the_test_its_branch_added(tmp_path: Path) -> None:
+    store = _closing_repo(tmp_path)
+
+    assert _close_recording(store, "--tests", "tests/test_thing.py::test_new") == 0
+
+    written = (store / "PL-0001-on-main.md").read_text()
+    assert "tests: tests/test_thing.py::test_new\n" in written
+
+
+def test_closing_an_item_on_a_test_its_branch_left_alone_writes_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Refused at the write that names the test, where the session can still name another."""
+    store = _closing_repo(tmp_path)
+    before = (store / "PL-0001-on-main.md").read_text()
+
+    assert _close_recording(store, "--tests", "tests/test_thing.py::test_old") == 1
+
+    assert "neither added nor changed" in capsys.readouterr().out
+    assert (store / "PL-0001-on-main.md").read_text() == before
+
+
+def test_check_reads_what_an_item_closed_on_this_branch_records(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The same reading, for a closure written by hand or by an earlier commit."""
+    store = _closing_repo(tmp_path)
+    assert _close_recording(store, "--tests", "tests/test_thing.py::test_new") == 0
+    path = store / "PL-0001-on-main.md"
+    path.write_text(path.read_text().replace("::test_new", "::test_old"))
+    capsys.readouterr()
+
+    _run_with_git("check", "--items", str(store))
+
+    out = capsys.readouterr().out
+    assert "closes on this branch, and" in out
+    assert "neither added nor changed" in out

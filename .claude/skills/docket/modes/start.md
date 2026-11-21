@@ -284,7 +284,7 @@ reply. An item's disposition is the session's call under
 `.claude/rules/instruction-writing.md` rule 14, not a question for the owner.
 
 **An item named to you untriaged is triaged first, in this session**, by
-`.claude/skills/docket/modes/triage.md` - its fields, its `verify:`, and its
+`.claude/skills/docket/modes/triage.md` - its fields, its Done-when, and its
 gate placement where the gate has already frozen - before any work on it
 (project owner, 2026-09-25, ratified, in the Projects trial's instructions,
 `PL-NZC0`). **An item at `needs-decision`, or whose brief asks a decision,
@@ -324,12 +324,12 @@ milestone first, per the development rules there, and start the items that
 milestone produces.
 
 Set the item's `status` and `feature` as work begins, and add `touches` if it
-is missing — that is what makes the next concurrency answer correct. Two more
-fields are repaired at this moment, and the rules for them live in other modes.
+is missing — that is what makes the next concurrency answer correct. One more
+field is repaired at this moment, and the rule for it lives in another mode.
 Write a `payoff:` if the item has none, as `picking.md`'s paragraph on
-`payoff:` says. Rewrite a `verify:` that selects nothing or still carries a
-trailing selector clause, as `.claude/skills/docket/modes/triage.md` § "The
-`verify:` command, and running it before writing it down" says (`PL-B1R4`).
+`payoff:` says. The item records what shows its work when it closes, as
+`.claude/skills/docket/modes/triage.md` § "What shows an item is done, and
+when it is recorded" says.
 
 ## Check the spend before starting, and reset in place
 

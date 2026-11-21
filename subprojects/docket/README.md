@@ -2673,9 +2673,11 @@ line per open item and exists for scanning a whole queue, and the second is a
 worker's reading list, which wants the command that proves the work rather than
 the reason somebody wanted it.
 
-Two further fields govern whether the work may be handed to a cheaper model:
-`verify`, a single-line command that proves the item done, and `not-delegable`,
-holding the reason an otherwise-qualifying item is withheld. `docket check`
+Two fields record what shows an item's work when it closes: `tests`, the
+pytest node ids of the tests its branch added or changed, and `verify`, one
+search for fixed text. § "What a closing item records to show its work" has
+both. `not-delegable` holds the reason an otherwise-qualifying item is
+withheld from a cheaper model. `docket check`
 refuses a `verify` continued onto an indented line, because the reader joins the
 lines with a space and a shell continuation then runs as an escaped space. See *Delegation is
 derived, never granted* below.
@@ -2970,28 +2972,45 @@ request that closes the sweep beside other items leads with all their ids, so
 what those items' work filed in it counts as the sweep's too. A sweep keeps a
 pull request of its own where that would hide findings.
 
-An item at `ready` must carry one of them: the command that would prove it
-done, or a recorded reason why no command can. The gate sits at `ready` rather
-than at capture deliberately — demanding a command at the moment an idea occurs
-is the same tax as demanding a priority, and `ready` is the first point at
-which the question is answerable at all. `verify_required_at_close_from` is
-the date a project adopts the rule: from it every `ready` item must carry a
-command or a reason, and so must every item closed on or after it, which is
-what reaches an item that goes to `done` without ever holding `ready`. Leaving
-that setting unset leaves the requirement off, which is right for a project
-that does not delegate and therefore has nothing riding on the field.
+### What a closing item records to show its work
 
-A second date, `verify_required_from`, once grandfathered the `ready` half for
-items captured before the rule, with a grooming advisory naming only the ones
-`next` was about to offer. That set drained to zero and the date and its
-advisory were retired (`PL-Z34C`), since an advisory that cannot fire changes
-no decision. A store adopting the rule late triages its `ready` items in the
-commit that sets the date.
+An item at `ready` names no command. Its Done-when section says in words what
+will be true. What shows the work is recorded when the item closes, and
+`docket check` reads it once, on the branch that closes the item
+(`PL-LFJZ`, `PL-FN11`, `PL-N046`, `PL-NY7Q`). `done.py` holds the reading.
+`verify_required_at_close_from` is the date a project adopts the rule: every
+item closed on or after it records one of these.
 
-Write the command only after running it. Every one of the six that existed in
-the project this grew in was wrong and none had been executed — a check nobody
-ran is a specification nobody tested, and it fails after a worker has done the
-work rather than before.
+| The item's work | What it records |
+| --- | --- |
+| Code | `tests`: the pytest node ids of tests the branch added or changed |
+| A document, or a deletion | `verify`: one `grep -qF 'words' FILE...` or `! grep -qF 'words' FILE...` |
+| A result stated in the item's own brief | A paragraph that opens with a bold label carrying a date, such as `**Answered 2026-11-21.**` |
+| A release, `resource: release-train` | The command it carries |
+| Work that none of these can show | `not-delegable`: the reason |
+
+`docket set PL-K7QX --status done --closed 2026-11-21 --tests
+tests/test_thing.py::test_new` writes the first. `set` and `check` both refuse
+an entry of `tests` whose file the tree does not hold, whose test the file
+does not define, or whose test the branch neither added nor changed. A test
+counts as changed when its code differs from the copy at the commit where the
+branch left the default branch. Comments and line breaks are not code. Where
+that commit or a test file cannot be read, `check` says so under the checks
+that could not run and refuses nothing.
+
+`docket` evaluates the search itself and runs no shell. It compares the words
+with each run of white space treated as one space, so a phrase that a document
+wraps over two lines is found. A file the tree does not hold is a fault under
+`! grep` too. A search for words added to a Python file is refused, because a
+test shows that work.
+
+Only the items that the checkout closes and the default branch does not yet
+hold closed are read, so nothing reads a record after its branch merges. An
+open item may not carry `tests`.
+
+An open item may still carry a `verify` command written before this form, and
+the sections below describe the rules that command was written under. Closing
+such an item replaces the command with one of the records above.
 
 The command must not name `docket verify`. That subcommand runs an item's own
 `verify` field, so an item recording one re-enters it once per level, and each
@@ -4102,7 +4121,7 @@ itself rather than from a label somebody applied.
 
 An item is delegable when all of: its `status` is `ready`; `model_guidance` is
 silent, which excludes safety- and science-classed work and open decisions by
-the rule that already governs model choice; it names a `verify` command; its
+the rule that already governs model choice; its
 `touches` is declared and lies wholly outside `protected_paths` *and*
 `gate_paths`, where a directory holding one of their paths is not outside it;
 each of its paths outside `tests/` is placed by `workflow_paths` or
@@ -4291,7 +4310,8 @@ calls it rather than writing its own (`PL-63CB`).
 
 `docket verify <id>` answers a narrower question than "do the tests pass":
 did the work that claims to close this item stay inside what the item
-declared? It runs the item's `verify` command and the project's own
+declared? It reads the tests a closed item records against the branch, runs
+the item's `verify` command where it has one, runs the project's own
 check, it reads the diff for the ways a green build can be reached without
 doing the work — a file outside `touches`, a protected path, an edit to the
 gate itself, an added suppression, a rewritten front matter — and it measures

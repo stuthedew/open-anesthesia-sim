@@ -18,7 +18,7 @@ from datetime import UTC, date, datetime, time
 from pathlib import Path
 from typing import Any
 
-from . import arming, claiming, instructions, notes, render, sessions
+from . import arming, claiming, done, instructions, notes, render, sessions
 from .checks import (
     TIER_BANDS,
     WORKER_ITEM_ENV,
@@ -948,6 +948,12 @@ def _complete_report(
     git = inv.git
     tracked = inv.tracked
     unreferenced, unread_notes = unreferenced_by_version(root)
+    # Only the closures in question are asked about, because each costs a
+    # `git show`: a done item recording no `pr`, judged once its closure
+    # stands on the default base, and a done item this checkout changed,
+    # whose closure may be in flight carrying the number of a pull request
+    # the base has not merged (`PL-HMZZ`).
+    closures = None if git is None else _closures_in_question(root, items, tracked, git)
     return analyze(
         items,
         args.today or date.today(),
@@ -963,12 +969,18 @@ def _complete_report(
         # The item a headless worker is working, whose passing command is its
         # work done rather than a stale item (`PL-WJJ8`).
         worked=os.environ.get(WORKER_ITEM_ENV) or None,
-        # Only the closures in question are asked about, because each costs a
-        # `git show`: a done item recording no `pr`, judged once its closure
-        # stands on the default base, and a done item this checkout changed,
-        # whose closure may be in flight carrying the number of a pull request
-        # the base has not merged (`PL-HMZZ`).
-        closures=None if git is None else _closures_in_question(root, items, tracked, git),
+        closures=closures,
+        # What each item this checkout closes records to show its work, read
+        # once, here, and never after the closure has merged (`PL-FN11`).
+        closing=(
+            None
+            if closures is None or not closures.known
+            else done.read_closing(
+                root,
+                [i for i in items if i.status == "done" and i.identifier in closures.unlanded],
+                runner=git,
+            )
+        ),
         # The same `git show`, asked of the other half of a closure: not "has
         # this landed" but "does it still record the command that proved it".
         # Every closed item is offered and the reader narrows to the ones this
@@ -1966,6 +1978,7 @@ SET_FIELDS: tuple[tuple[str, str], ...] = (
     ("closed", "closed"),
     ("reason", "reason"),
     ("payoff", "payoff"),
+    ("tests", "tests"),
     ("verify", "verify"),
     ("not-delegable", "not_delegable"),
     ("root-cause-of", "root_cause_of"),
@@ -2141,6 +2154,22 @@ def cmd_set(args: argparse.Namespace) -> int:
         for error in introduced:
             print(f"  {error}")
         return 1
+    # What the closing item records is read here as `check` will read it on the
+    # branch, so a test the tree does not define, one the branch did not
+    # change, or a search that does not hold is refused at the write that names
+    # it (`PL-FN11`, `PL-N046`).
+    if updated.status == "done" and changes.keys() & {"tests", "verify", "status"}:
+        inv = _invocation(args)
+        found = (
+            done.read_closing(inv.root, [updated], runner=inv.git).faults.get(updated.identifier)
+            if inv.git is not None
+            else None
+        )
+        if found:
+            print(f"{item.identifier}: nothing was written; `docket check` would then report:")
+            for fault in found:
+                print(f"  {item.identifier}: closes on this branch, and {fault}")
+            return 1
     # Then the writer's own read-back, before the file is touched and before a
     # `verify:` is replayed: `analyze` reads the in-memory item, where a line
     # break is one more character, and never the lines the file would split
@@ -2354,7 +2383,7 @@ def _say_unblocked(
         "every blocker has closed. Not promoted for you: a closed blocker is not evidence "
         "that nothing else holds an item, and 7 of 13 measured this way were held by "
         "something the field could not see. Read each against the tree, then `docket set "
-        "<id> --status ready` with its `--verify` and `--payoff`, or write what is really "
+        "<id> --status ready` with its `--payoff`, or write what is really "
         "holding it into `blocked-by` - an item for the condition, as `PL-0H5D` settled."
     )
 
@@ -6433,6 +6462,7 @@ def build_parser() -> argparse.ArgumentParser:
         ("--root-cause-of", "PL-XXXX,PL-YYYY,PL-ZZZZ"),
         ("--reenters", "PL-XXXX"),
         ("--no-successor", "PL-XXXX"),
+        ("--tests", "FILE.PY::TEST"),
     ):
         setter.add_argument(
             flag, action="append", metavar=metavar, help="comma-separated; may be repeated"

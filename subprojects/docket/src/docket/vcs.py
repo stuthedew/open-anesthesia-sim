@@ -5859,6 +5859,52 @@ def records_on_base(
 
 
 @dataclass(frozen=True)
+class ForkTexts:
+    """The text each asked path held at the commit where this checkout left the default base.
+
+    A closing item names the tests that show its work, and `done.test_faults`
+    asks whether the branch added or changed each one (`PL-FN11`). The copy to
+    compare with is the fork's and not the base's tip, so that a change the
+    base made to a test after the fork is not read as the branch's.
+
+    A path absent from `texts` was not a file at the fork. `declined` says
+    where git did not answer, and `texts` is then partial.
+    """
+
+    fork: str = ""
+    texts: Mapping[str, str] = field(default_factory=dict)
+    declined: str = ""
+
+    @property
+    def known(self) -> bool:
+        return not self.declined
+
+
+def texts_at_fork(
+    root: Path, paths: Collection[str], *, base: str = "", runner: Runner | None = None
+) -> ForkTexts:
+    """What each of `paths` held where `HEAD` forked from `base`, the default base unless given.
+
+    One `ls-tree` says which of the paths the fork holds, so that a file the
+    branch created is read as new and not as a question git did not answer.
+    """
+    run = _Silences(runner or _run_git)
+    base = base or default_base(root, runner=run)
+    fork = run(["merge-base", base, "HEAD"], root).strip()
+    if not fork:
+        return ForkTexts(
+            declined=run.reason or f"no commit this checkout shares with `{base}` could be found"
+        )
+    wanted = sorted(set(paths))
+    if not wanted:
+        return ForkTexts(fork=fork, declined=run.reason)
+    held = set(listed_paths(run(["ls-tree", "-r", "-z", "--name-only", fork, "--", *wanted], root)))
+    shown = {path: run(["show", f"{fork}:{path}"], root) for path in wanted if path in held}
+    texts = {path: str(text) for path, text in shown.items() if answered(text)}
+    return ForkTexts(fork=fork, texts=texts, declined=run.reason)
+
+
+@dataclass(frozen=True)
 class WrittenReport:
     """Which open items' `verify:` this checkout wrote, rather than inherited from the base.
 
