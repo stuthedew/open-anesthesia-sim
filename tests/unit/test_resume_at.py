@@ -39,7 +39,11 @@ from dataclasses import replace
 
 import pytest
 
-from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidator
+from anesthesia_sim.core.agent_simulation_validation import (
+    AgentSimulationValidator,
+    AgentSimulationValidatorState,
+    TotalsCompensation,
+)
 from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.governing_equations import (
@@ -489,29 +493,100 @@ def test_a_refused_resume_leaves_the_accounting_period_as_it_was(
 ) -> None:
     """The totals are written after the compartments, so the rollback has to restore them too.
 
-    The refusal is injected at the last write, after the accounting period has been reset
-    to the new anchor, for the reason the test above gives.
+    The refusal is injected after the accounting period has been written with the new
+    anchor, for the reason the test above gives. Only the first write is refused, because
+    the rollback restores the period through the same method.
     """
 
     system_parent, definition = _run()
     opening = definition.segments[-1].opening
     system = _like(system_parent)
 
-    system.resume_at(opening.state, initial_agent_l=0.125)
+    held = TotalsCompensation(delivered_l=3e-18, exhausted_l=-2e-18)
+    system.resume_at(opening.state, initial_agent_l=0.125, compensation=held)
 
-    monkeypatch.setattr(
-        AgentSimulationValidator,
-        "record_external_agent_transfer",
-        _refusing("the transfer was refused"),
-    )
+    restore = AgentSimulationValidator.restore_state
+    writes: list[float] = []
 
-    with pytest.raises(SimulationConfigurationError, match="the transfer was refused"):
+    def refuse_the_first_write(
+        validator: AgentSimulationValidator, state: AgentSimulationValidatorState
+    ) -> None:
+        restore(validator, state)
+        writes.append(state.initial_agent_l)
+
+        if len(writes) == 1:
+            raise SimulationConfigurationError("the accounting period was refused")
+
+    monkeypatch.setattr(AgentSimulationValidator, "restore_state", refuse_the_first_write)
+
+    with pytest.raises(SimulationConfigurationError, match="the accounting period was refused"):
         system.resume_at(opening.state, initial_agent_l=0.9)
+
+    # The refused write did put the new anchor in place, and the rollback put the old one back.
+    assert writes == [0.9, 0.125]
 
     accounting = system.agent_simulation_validation
 
     assert accounting.initial_agent_l == 0.125
     assert accounting.delivered_agent_l == opening.state[DELIVERED_AGENT_L]
+    assert system.accounting_compensation() == held
+
+
+def test_resuming_with_compensation_terms_puts_them_in_the_accounting() -> None:
+    """The totals and their terms are the ones passed in, and the default terms are zero."""
+
+    system_parent, definition = _run()
+    opening = definition.segments[-1].opening
+    system = _like(system_parent)
+    terms = TotalsCompensation(delivered_l=6.9e-18, exhausted_l=-1.1e-18)
+
+    system.resume_at(opening.state, initial_agent_l=0.0, compensation=terms)
+
+    assert system.accounting_compensation() == terms
+    assert system.agent_simulation_validator.delivered_compensation_l == 6.9e-18
+    assert system.agent_simulation_validator.exhausted_compensation_l == -1.1e-18
+    assert system.agent_simulation_validation.delivered_agent_l == opening.state[DELIVERED_AGENT_L]
+    assert system.agent_simulation_validation.exhausted_agent_l == opening.state[EXHAUSTED_AGENT_L]
+
+    system.resume_at(opening.state, initial_agent_l=0.0)
+
+    assert system.accounting_compensation() == TotalsCompensation(delivered_l=0.0, exhausted_l=0.0)
+    assert system.agent_simulation_validation.delivered_agent_l == opening.state[DELIVERED_AGENT_L]
+
+
+@pytest.mark.parametrize("terms", [(1e-17, 2e-17), 0.0, None])
+def test_resuming_with_terms_not_built_as_a_totals_compensation_changes_nothing(
+    terms: object,
+) -> None:
+    system_parent, definition = _run()
+    opening = definition.segments[-1].opening
+    system = _like(system_parent)
+    before = system.capture_state()
+
+    with pytest.raises(TypeError, match="not TotalsCompensation"):
+        system.resume_at(opening.state, initial_agent_l=0.0, compensation=terms)  # type: ignore[arg-type]
+
+    assert system.capture_state() == before
+
+
+@pytest.mark.parametrize(
+    ("delivered_l", "exhausted_l", "names"),
+    [
+        (float("nan"), 0.0, "delivered_l must be finite"),
+        (0.0, -float("inf"), "exhausted_l must be finite"),
+    ],
+)
+def test_a_compensation_term_that_is_not_finite_cannot_be_built(
+    delivered_l: float, exhausted_l: float, names: str
+) -> None:
+    with pytest.raises(SimulationConfigurationError, match=names):
+        TotalsCompensation(delivered_l=delivered_l, exhausted_l=exhausted_l)
+
+
+@pytest.mark.parametrize("term", ["0.0", None, True])
+def test_a_compensation_term_that_is_not_a_number_cannot_be_built(term: object) -> None:
+    with pytest.raises(TypeError):
+        TotalsCompensation(delivered_l=0.0, exhausted_l=term)  # type: ignore[arg-type]
 
 
 # --- The cached propagator ---------------------------------------------------

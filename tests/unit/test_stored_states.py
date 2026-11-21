@@ -10,6 +10,7 @@ from collections.abc import Callable
 
 import pytest
 
+from anesthesia_sim.core.agent_simulation_validation import TotalsCompensation
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.stored_states import StoredStates
 from anesthesia_sim.core.supported_ranges import CaseInstant
@@ -23,12 +24,23 @@ AFTER_ONE = (0.011, 0.0052, 0.0007, 0.0013, 3.1e-05, 1.7e-06, 0.1 / 3.0, 0.01, 1
 AFTER_TWO = (0.012, 0.0061, 0.0009, 0.0016, 4.2e-05, 2.3e-06, 0.2 / 3.0, 0.02, 1.0)
 AFTER_THREE = (0.013, 0.0068, 0.0011, 0.0019, 5.5e-05, 3.1e-06, 0.3 / 3.0, 0.03, 1.0)
 
+# The compensation terms stored beside each state, in litres. Each is the
+# size of a rounding error in its total, and a term may be negative.
+NO_TERMS = TotalsCompensation(delivered_l=0.0, exhausted_l=0.0)
+TERMS_AFTER_ONE = TotalsCompensation(delivered_l=6.9e-18, exhausted_l=-1.1e-18)
+TERMS_AFTER_TWO = TotalsCompensation(delivered_l=-2.3e-17, exhausted_l=5.4e-17)
+TERMS_AFTER_THREE = TotalsCompensation(delivered_l=7.6e-17, exhausted_l=1.1e-17)
+
 
 def _record_of_four(opened_at_s: int) -> StoredStates:
-    record = StoredStates(OPENING, CaseInstant(opened_at_s))
+    record = StoredStates(OPENING, CaseInstant(opened_at_s), NO_TERMS)
 
-    for state in (AFTER_ONE, AFTER_TWO, AFTER_THREE):
-        record.append(state)
+    for state, terms in (
+        (AFTER_ONE, TERMS_AFTER_ONE),
+        (AFTER_TWO, TERMS_AFTER_TWO),
+        (AFTER_THREE, TERMS_AFTER_THREE),
+    ):
+        record.append(state, terms)
 
     return record
 
@@ -44,8 +56,109 @@ def test_each_second_returns_the_state_stored_for_it_bit_for_bit() -> None:
     assert record.state_at(CaseInstant(3)) == AFTER_THREE
 
 
+def test_each_second_returns_the_compensation_terms_stored_for_it() -> None:
+    record = _record_of_four(opened_at_s=1_800)
+
+    assert record.compensation_at(CaseInstant(1_800)) == NO_TERMS
+    assert record.compensation_at(CaseInstant(1_801)) == TERMS_AFTER_ONE
+    assert record.compensation_at(CaseInstant(1_802)) == TERMS_AFTER_TWO
+    assert record.compensation_at(CaseInstant(1_803)) == TERMS_AFTER_THREE
+
+
+@pytest.mark.parametrize("instant_s", [1_799, 1_804])
+def test_compensation_terms_are_refused_for_a_second_the_record_does_not_hold(
+    instant_s: int,
+) -> None:
+    record = _record_of_four(opened_at_s=1_800)
+
+    with pytest.raises(SimulationConfigurationError, match=f"no state at {instant_s} s"):
+        record.compensation_at(CaseInstant(instant_s))
+
+    with pytest.raises(TypeError, match="CaseInstant"):
+        record.compensation_at(1_801)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("terms", [(1e-17, 2e-17), [1e-17, 2e-17], 1e-17, None])
+def test_terms_that_were_not_built_as_a_totals_compensation_are_refused(terms: object) -> None:
+    """A refused pair stores nothing, so the states and the terms stay one for each second."""
+
+    record = _record_of_four(opened_at_s=0)
+
+    with pytest.raises(TypeError, match="not TotalsCompensation"):
+        record.append(AFTER_ONE, terms)  # type: ignore[arg-type]
+
+    assert record.reached_s == 3
+    assert record.compensation_at(CaseInstant(3)) == TERMS_AFTER_THREE
+
+    with pytest.raises(TypeError, match="not TotalsCompensation"):
+        StoredStates(OPENING, CaseInstant(0), terms)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="not TotalsCompensation"):
+        record.restart_from(OPENING, CaseInstant(0), terms)  # type: ignore[arg-type]
+
+    assert record.reached_s == 3
+    assert record.state_at(CaseInstant(3)) == AFTER_THREE
+
+
+def test_a_record_cut_at_a_second_holds_the_states_and_terms_up_to_that_second() -> None:
+    """A branch taken at second 1 802 opens from the record up to and including that second."""
+
+    record = _record_of_four(opened_at_s=1_800)
+
+    shortened = record.through(CaseInstant(1_802))
+
+    assert shortened.opened_at_s == 1_800
+    assert shortened.reached_s == 1_802
+    assert shortened.state_at(CaseInstant(1_800)) == OPENING
+    assert shortened.state_at(CaseInstant(1_801)) == AFTER_ONE
+    assert shortened.state_at(CaseInstant(1_802)) == AFTER_TWO
+    assert shortened.compensation_at(CaseInstant(1_801)) == TERMS_AFTER_ONE
+    assert shortened.compensation_at(CaseInstant(1_802)) == TERMS_AFTER_TWO
+
+    with pytest.raises(SimulationConfigurationError, match="no state at 1803 s"):
+        shortened.state_at(CaseInstant(1_803))
+
+
+def test_a_record_cut_at_a_second_grows_apart_from_the_record_it_was_cut_from() -> None:
+    record = _record_of_four(opened_at_s=1_800)
+
+    shortened = record.through(CaseInstant(1_801))
+    shortened.append(AFTER_THREE, TERMS_AFTER_THREE)
+
+    assert shortened.state_at(CaseInstant(1_802)) == AFTER_THREE
+    assert shortened.compensation_at(CaseInstant(1_802)) == TERMS_AFTER_THREE
+    assert record.state_at(CaseInstant(1_802)) == AFTER_TWO
+    assert record.compensation_at(CaseInstant(1_802)) == TERMS_AFTER_TWO
+    assert record.reached_s == 1_803
+
+
+def test_a_record_cut_at_its_first_or_last_second_holds_one_state_or_all_of_them() -> None:
+    record = _record_of_four(opened_at_s=1_800)
+
+    first = record.through(CaseInstant(1_800))
+    whole = record.through(CaseInstant(1_803))
+
+    assert first.reached_s == 1_800
+    assert first.state_at(CaseInstant(1_800)) == OPENING
+    assert first.compensation_at(CaseInstant(1_800)) == NO_TERMS
+    assert whole.reached_s == 1_803
+    assert whole.state_at(CaseInstant(1_803)) == AFTER_THREE
+    assert whole.compensation_at(CaseInstant(1_803)) == TERMS_AFTER_THREE
+
+
+@pytest.mark.parametrize("instant_s", [1_799, 1_804])
+def test_a_record_is_not_cut_at_a_second_it_does_not_hold(instant_s: int) -> None:
+    record = _record_of_four(opened_at_s=1_800)
+
+    with pytest.raises(SimulationConfigurationError, match=f"no state at {instant_s} s"):
+        record.through(CaseInstant(instant_s))
+
+    with pytest.raises(TypeError, match="CaseInstant"):
+        record.through(1_801)  # type: ignore[arg-type]
+
+
 def test_a_record_opened_part_way_through_a_case_keeps_the_cases_seconds() -> None:
-    """A branch's record opens at its fork, and each second keeps its number in the case."""
+    """A record that opens after the case began keeps each second's number in the case."""
 
     record = _record_of_four(opened_at_s=1_800)
 
@@ -78,7 +191,7 @@ def test_an_instant_that_was_not_built_as_a_case_instant_is_refused() -> None:
         record.state_at(2)  # type: ignore[arg-type]
 
     with pytest.raises(TypeError, match="CaseInstant"):
-        StoredStates(OPENING, 0)  # type: ignore[arg-type]
+        StoredStates(OPENING, 0, NO_TERMS)  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize(
@@ -96,23 +209,25 @@ def test_a_state_the_equations_cannot_use_is_refused_and_nothing_is_stored(
     record = _record_of_four(opened_at_s=0)
 
     with pytest.raises(SimulationConfigurationError, match=names):
-        record.append(state)
+        record.append(state, TERMS_AFTER_ONE)
 
     assert record.reached_s == 3
     assert record.state_at(CaseInstant(3)) == AFTER_THREE
+    assert record.compensation_at(CaseInstant(3)) == TERMS_AFTER_THREE
 
     with pytest.raises(SimulationConfigurationError, match=names):
-        StoredStates(state, CaseInstant(0))
+        StoredStates(state, CaseInstant(0), NO_TERMS)
 
 
 def test_restarting_a_record_discards_every_state_it_held() -> None:
     record = _record_of_four(opened_at_s=600)
 
-    record.restart_from(AFTER_TWO, CaseInstant(0))
+    record.restart_from(AFTER_TWO, CaseInstant(0), TERMS_AFTER_TWO)
 
     assert record.opened_at_s == 0
     assert record.reached_s == 0
     assert record.state_at(CaseInstant(0)) == AFTER_TWO
+    assert record.compensation_at(CaseInstant(0)) == TERMS_AFTER_TWO
 
     with pytest.raises(SimulationConfigurationError, match="no state at 600 s"):
         record.state_at(CaseInstant(600))
@@ -123,10 +238,11 @@ def test_a_refused_restart_leaves_the_record_as_it_was() -> None:
     not_a_state = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.0)
 
     with pytest.raises(SimulationConfigurationError):
-        record.restart_from(not_a_state, CaseInstant(0))
+        record.restart_from(not_a_state, CaseInstant(0), NO_TERMS)
 
     assert record.opened_at_s == 600
     assert record.state_at(CaseInstant(603)) == AFTER_THREE
+    assert record.compensation_at(CaseInstant(603)) == TERMS_AFTER_THREE
 
 
 def _pickled(record: StoredStates) -> StoredStates:
@@ -149,8 +265,10 @@ def test_a_copy_holds_the_same_states_and_grows_apart_from_the_original(
     assert record_copy.reached_s == 1_803
     assert record_copy.state_at(CaseInstant(1_801)) == AFTER_ONE
     assert record_copy.state_at(CaseInstant(1_803)) == AFTER_THREE
+    assert record_copy.compensation_at(CaseInstant(1_801)) == TERMS_AFTER_ONE
+    assert record_copy.compensation_at(CaseInstant(1_803)) == TERMS_AFTER_THREE
 
-    record_copy.append(AFTER_ONE)
+    record_copy.append(AFTER_ONE, TERMS_AFTER_ONE)
 
     assert record_copy.reached_s == 1_804
     assert record.reached_s == 1_803

@@ -34,7 +34,8 @@ are the instances to copy, in `src/anesthesia_sim/app/controller.py`:
   `drawn_seconds` returns (`src/anesthesia_sim/app/chart_time_base.py`).
 - `_step_ending_here` reads the two states that decide whether a step
   crossed a mark.
-- `_open_at` opens a branch from its parent's stored state at the fork.
+- `_open_at` opens a branch with its parent's stored states up to the fork,
+  and places the branch's system at the last of them.
 
 The step is the only code that computes the state of a reached second. A
 second reader reads the record again. It does not step again, apply a
@@ -53,7 +54,17 @@ route to a displayed number, so nothing interpolates one.
 
 A reader takes the states it needs from the record each time it runs. It
 keeps no list of states of its own between calls. A branch holds its own
-record, which opens from its parent's stored state at the fork.
+record. It is a copy of its parent's record up to the fork
+(`StoredStates.through`), and the branch's steps append to the copy
+(`PL-FST0`). So a branch opens at any whole second that its parent has
+reached.
+
+The record also stores, for each second, the compensation terms of the
+delivered and the exhausted totals (`TotalsCompensation`). A branch continues
+both totals from the terms stored for the fork, so its totals equal its
+parent's bit for bit while no setting differs. Code that places a system at
+a stored state passes the terms stored beside it
+(`AgentUptakeSystem.resume_at`).
 
 ## The preview computes by formula until `PL-Z6C8`
 
@@ -76,10 +87,13 @@ agent's name (`PL-2FM6`). The states behind a trace are in the run's
 ## A window with more seconds than columns
 
 The chart draws one stored state per column, both ends of the window and
-each second at which a setting changed. `PL-BLZJ` holds the question of
-drawing each column's lowest and highest stored values instead. `PL-8LXM`
-holds the earlier M4 implementation, the Jugel et al. 2014 citation and the
-analysis of where that implementation departed from the paper's Theorem 1.
+each second at which a setting changed. Between two of those seconds it also
+draws the second at which each compartment is highest and the second at which
+it is lowest, where that value lies outside the values at both ends
+(`extreme_seconds` in `src/anesthesia_sim/app/chart_time_base.py`,
+`PL-BLZJ`). `PL-8LXM` holds the earlier M4 implementation, the Jugel et al.
+2014 citation and the analysis of where that implementation departed from the
+paper's Theorem 1.
 
 ## Why these six paths
 

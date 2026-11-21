@@ -109,7 +109,7 @@ from anesthesia_sim.app.control_record import ControlChange, ControlInput
 from anesthesia_sim.app.control_timeline import ControlAdjustment
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.core import supported_ranges
-from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidator
+from anesthesia_sim.core.agent_simulation_validation import UNCOMPENSATED, AgentSimulationValidator
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.blood import VenousBloodCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
@@ -185,7 +185,9 @@ RECEIVERS: Mapping[type, Callable[[], object]] = {
     RunDefinition: _run_definition,
     SimulationController: SimulationController,
     SimulationState: SimulationState,
-    StoredStates: lambda: StoredStates(AgentUptakeSystem.default().case_state(), CaseInstant(0)),
+    StoredStates: lambda: StoredStates(
+        AgentUptakeSystem.default().case_state(), CaseInstant(0), UNCOMPENSATED
+    ),
     TimeBookmark: lambda: MARK,
     TissueGroup: lambda: AgentUptakeSystem.default().patient.fat,
     UptakeEquationSettings: lambda: AgentUptakeSystem.default().equation_settings(),
@@ -212,6 +214,7 @@ TYPICAL: Mapping[str, object] = {
     "adjustment_count": 0,
     "after": {},
     "before": {},
+    "compensation": UNCOMPENSATED,
     "initial_state": AgentUptakeSystem.default().state_vector(),
     "name": "Branch 1",
     "opening": AgentUptakeSystem.default().case_state(),

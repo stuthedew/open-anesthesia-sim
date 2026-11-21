@@ -143,17 +143,18 @@ def test_a_refused_branch_does_not_survive_a_one_run_reset(application: QApplica
     panel = _fork_panel(view)
     panel.set_offer(
         fork_offer(
-            (CaseInstant(0), CaseInstant(30), CaseInstant(60)), marks=(), comparing=None, here=None
+            (CaseInstant(0), CaseInstant(60), CaseInstant(90)), marks=(), comparing=None, here=None
         ),
         None,
     )
-    panel.point_selector.setCurrentIndex(panel.point_selector.findData(30.0))
+    # The trunk is paused at 60 s, so a branch at 90 s is refused.
+    panel.point_selector.setCurrentIndex(panel.point_selector.findData(90.0))
     panel.take_button.click()
 
     assert len(view.runs) == 1
     refusal = panel.notice.notice()
     assert refusal is not None
-    assert "30" in refusal
+    assert "90" in refusal
 
     view.runs[TRUNK_RUN_INDEX]._reset_button.click()
     _settle(application)

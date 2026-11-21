@@ -39,3 +39,14 @@ added: 2026-11-21
 **Left for `PL-Z6C8` (remove the old evaluation paths).** `BookmarkSet.needs_canonical_readings`, `_near_band_edge` and `LIVE_READING_GAP` in `app/bookmarks.py` have no caller in `src/`. Some controller tests still compare two runs through `RunDefinition.state_at`, and `CLOSED_FORM_AGREEMENT` in `tests/integration/controller/test_controller_run_definition.py` is unused. The rule file keeps the name `run-is-its-definition.md`, which no longer describes it: `core/run_definition.py` cites it by that name.
 
 **Costs, measured 2026-11-21 in this session's container.** Checking a state before it is stored took about 5 µs. A step with the store took 37 to 57 µs, the higher figure while the test suite was running beside it. A 24-hour run's record is 86,401 states, about 6.2 MB.
+
+**The code's prose was reworded, 2026-11-21.** The docstrings and comments in `app/` and `core/` that described readings computed from the run's settings now describe the stored states. With docstrings removed, each edited file's syntax tree equals its tree before the rewording. Three refusal messages that named `RunDefinition.state_at` or the recorded settings as the source of a state now name the stored states.
+
+**More left for `PL-Z6C8`, found during the rewording.**
+
+1. `require_canonical_state`'s docstring in `core/governing_equations.py` still describes two paths to a state.
+2. `preview_window` builds a new `RunDefinition` for each frame, so the propagators that one frame forms are not kept for the next.
+3. A branch's run definition holds a keyframe at the fork that is computed by formula. Nothing shows it, but `run_segments` returns it.
+4. `SimulationController.bookmark_standings`' docstring says that none of its inputs builds a `Fraction`, and `_crossings_stood_on` builds them.
+5. `app/run_view.py`, `app/run_presentation.py` and `app/theme.py` mention refusals from `snapshot()` and were not checked.
+6. These figures in docstrings were measured on the earlier design and were left as they were: "6.9e-14 L" in `resume_at` (`core/uptake_system.py`); "about 70 KiB" against "3.16 GB", "6.2 us" and "1.29 ms" in `core/run_definition.py`; "up to 5.3e-13 in an accumulator" in `resumed_at`; "48 of 54 elements differ" in `resumed_here`; and "40 of 45 elements differed" and "11.7%" in `_open_at` (`app/controller.py`).

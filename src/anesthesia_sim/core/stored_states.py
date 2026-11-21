@@ -13,18 +13,37 @@ amounts are totals for the case, where the vector that a step propagates
 holds only that step's own delivered and exhausted agent.
 
 The states are stored as one `array` of `STATE_SIZE` doubles per second. A
-24-hour run holds 86 401 states, about 6.2 MB. The same states as tuples took
-30 MB (`PL-7CY5`, measured 2026-11-21). `numpy` is not available to `core/`
+24-hour run holds 86 401 states, about 6.2 MB, and its compensation terms take
+1.4 MB more. The same states as tuples took 30 MB (`PL-7CY5`, measured
+2026-11-21). `numpy` is not available to `core/`
 (`tools/import_boundary_check.py`).
 
-The record is indexed by the case's own clock. A branch's record opens at the
-second where the branch was taken, and that second keeps its number.
+The record is indexed by the case's own clock. A branch's record is a copy of
+its parent's record up to the second where the branch was taken, and the
+branch's steps append to the copy (`through`, `PL-FST0`). So a branch holds
+the case from the same second as its parent, and each second keeps its number.
+
+**Each second also stores the two compensation terms of the running totals.**
+The delivered and the exhausted agent are sums over every step, and
+`AgentSimulationValidator` keeps a compensation term beside each sum, which
+carries the rounding error of the additions so far into the next addition
+(`core/agent_simulation_validation.py`). A run that restarted from a stored
+total with a term of zero would add the same amounts and reach a total that
+can differ in its last bit. The accounting panel shows each total to
+0.1 L of vapour (`app/formatting.py`), and a total can lie on the boundary
+between two displayed values. So a
+branch restarts from the stored total and its stored term, and repeats
+its parent's totals bit for bit (`PL-FST0`).
 """
 
 from __future__ import annotations
 
 from array import array
 
+from anesthesia_sim.core.agent_simulation_validation import (
+    TotalsCompensation,
+    require_totals_compensation,
+)
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.governing_equations import (
     FRACTION_STATE_NAMES,
@@ -32,6 +51,9 @@ from anesthesia_sim.core.governing_equations import (
     require_canonical_state,
 )
 from anesthesia_sim.core.supported_ranges import CaseInstant, require_case_instant
+
+COMPENSATION_SIZE = 2
+"""How many compensation terms a second stores: one for each of the two running totals."""
 
 
 class StoredStates:
@@ -42,23 +64,31 @@ class StoredStates:
 
     Args:
         opening: The state the run opens from.
-        opened_at_s: The second of the case at which the run opens. It is 0
-            for a run that starts a case, and the fork's second for a branch.
+        opened_at_s: The second of the case at which the record opens. It is 0
+            for a run that starts a case.
+        compensation: The compensation terms of the delivered and the
+            exhausted totals at `opening`
+            (`AgentUptakeSystem.accounting_compensation`).
 
     Raises:
-        TypeError: `opened_at_s` is not a `CaseInstant`.
+        TypeError: `opened_at_s` is not a `CaseInstant`, or `compensation` is
+            not a `TotalsCompensation`.
         SimulationConfigurationError: `opening` is not a state that the
             equations can be applied to (`require_canonical_state`).
     """
 
-    __slots__ = ("_opened_at_s", "_values")
+    __slots__ = ("_compensations", "_opened_at_s", "_values")
 
-    def __init__(self, opening: tuple[float, ...], opened_at_s: CaseInstant) -> None:
+    def __init__(
+        self, opening: tuple[float, ...], opened_at_s: CaseInstant, compensation: TotalsCompensation
+    ) -> None:
         require_case_instant("opened_at_s", opened_at_s)
         require_canonical_state(opening)
+        require_totals_compensation(compensation)
 
         self._opened_at_s = opened_at_s
         self._values = array("d", opening)
+        self._compensations = array("d", (compensation.delivered_l, compensation.exhausted_l))
 
     @property
     def opened_at_s(self) -> CaseInstant:
@@ -72,17 +102,20 @@ class StoredStates:
 
         return CaseInstant(self._opened_at_s + len(self._values) // STATE_SIZE - 1)
 
-    def append(self, state: tuple[float, ...]) -> None:
-        """Store the state of the second after `reached_s`.
+    def append(self, state: tuple[float, ...], compensation: TotalsCompensation) -> None:
+        """Store the state of the second after `reached_s`, and the totals' compensation terms.
 
         Raises:
+            TypeError: `compensation` is not a `TotalsCompensation`.
             SimulationConfigurationError: `state` is not a state that the
                 equations can be applied to (`require_canonical_state`).
-                Nothing is stored when it is refused.
+                Nothing is stored when either is refused.
         """
 
         require_canonical_state(state)
+        require_totals_compensation(compensation)
         self._values.extend(state)
+        self._compensations.extend((compensation.delivered_l, compensation.exhausted_l))
 
     def state_at(self, instant_s: CaseInstant) -> tuple[float, ...]:
         """Return the state stored for `instant_s`, bit for bit as its step wrote it.
@@ -94,6 +127,64 @@ class StoredStates:
                 state is substituted from the nearest second.
         """
 
+        self._require_stored(instant_s)
+
+        first = (instant_s - self._opened_at_s) * STATE_SIZE
+
+        return tuple(self._values[first : first + STATE_SIZE])
+
+    def compensation_at(self, instant_s: CaseInstant) -> TotalsCompensation:
+        """Return the compensation terms of the two running totals at `instant_s`.
+
+        A branch continues its totals from them
+        (`AgentUptakeSystem.resume_at`).
+
+        Raises:
+            TypeError: `instant_s` is not a `CaseInstant`.
+            SimulationConfigurationError: The record holds no state for
+                `instant_s`.
+        """
+
+        self._require_stored(instant_s)
+
+        first = (instant_s - self._opened_at_s) * COMPENSATION_SIZE
+
+        return TotalsCompensation(
+            delivered_l=self._compensations[first], exhausted_l=self._compensations[first + 1]
+        )
+
+    def through(self, instant_s: CaseInstant) -> StoredStates:
+        """Return a new record that holds this record's seconds up to and including `instant_s`.
+
+        A branch taken at `instant_s` opens from the result
+        (`SimulationState`). The result has its own arrays, so the two
+        records never grow as one.
+
+        Raises:
+            TypeError: `instant_s` is not a `CaseInstant`.
+            SimulationConfigurationError: The record holds no state for
+                `instant_s`.
+        """
+
+        self._require_stored(instant_s)
+
+        seconds = instant_s - self._opened_at_s + 1
+        shortened = StoredStates.__new__(StoredStates)
+        shortened._opened_at_s = self._opened_at_s
+        shortened._values = self._values[: seconds * STATE_SIZE]
+        shortened._compensations = self._compensations[: seconds * COMPENSATION_SIZE]
+
+        return shortened
+
+    def _require_stored(self, instant_s: CaseInstant) -> None:
+        """Require a second that this record holds a state for.
+
+        Raises:
+            TypeError: `instant_s` is not a `CaseInstant`.
+            SimulationConfigurationError: `instant_s` is before `opened_at_s`
+                or after `reached_s`.
+        """
+
         require_case_instant("instant_s", instant_s)
 
         if not self._opened_at_s <= instant_s <= self.reached_s:
@@ -102,10 +193,6 @@ class StoredStates:
                 f"second from {self._opened_at_s} s, where it opened, to {self.reached_s} s, "
                 "the second it has reached"
             )
-
-        first = (instant_s - self._opened_at_s) * STATE_SIZE
-
-        return tuple(self._values[first : first + STATE_SIZE])
 
     def fraction_series(
         self, first_s: CaseInstant, last_s: CaseInstant
@@ -161,38 +248,39 @@ class StoredStates:
         )
 
     def __copy__(self) -> StoredStates:
-        """Return a record with its own array, so that the two never grow as one.
+        """Return a record with its own arrays, so that the two never grow as one.
 
-        A shallow copy that shared the array would store every later state
+        A shallow copy that shared the arrays would store every later state
         of either run in both records.
         """
 
-        duplicate = StoredStates.__new__(StoredStates)
-        duplicate._opened_at_s = self._opened_at_s
-        duplicate._values = array("d", self._values)
-
-        return duplicate
+        return self.through(self.reached_s)
 
     def __deepcopy__(self, memo: dict[int, object]) -> StoredStates:
-        """Return a record with its own array, as `__copy__` does."""
+        """Return a record with its own arrays, as `__copy__` does."""
 
         return self.__copy__()
 
-    def restart_from(self, opening: tuple[float, ...], opened_at_s: CaseInstant) -> None:
+    def restart_from(
+        self, opening: tuple[float, ...], opened_at_s: CaseInstant, compensation: TotalsCompensation
+    ) -> None:
         """Discard every stored state and open again from `opening` at `opened_at_s`.
 
         A run that is reset starts over, and its record starts over with it
         (`SimulationState.reset`).
 
         Raises:
-            TypeError: `opened_at_s` is not a `CaseInstant`.
+            TypeError: `opened_at_s` is not a `CaseInstant`, or `compensation`
+                is not a `TotalsCompensation`.
             SimulationConfigurationError: `opening` is not a state that the
-                equations can be applied to. The record is unchanged when it
-                is refused.
+                equations can be applied to. The record is unchanged when
+                either is refused.
         """
 
         require_case_instant("opened_at_s", opened_at_s)
         require_canonical_state(opening)
+        require_totals_compensation(compensation)
 
         self._opened_at_s = opened_at_s
         self._values = array("d", opening)
+        self._compensations = array("d", (compensation.delivered_l, compensation.exhausted_l))

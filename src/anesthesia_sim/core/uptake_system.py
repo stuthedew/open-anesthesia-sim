@@ -22,9 +22,12 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from anesthesia_sim.core.agent_simulation_validation import (
+    UNCOMPENSATED,
     AgentSimulationValidationResult,
     AgentSimulationValidator,
     AgentSimulationValidatorState,
+    TotalsCompensation,
+    require_totals_compensation,
 )
 from anesthesia_sim.core.alveolar import AlveolarCompartment, AlveolarCompartmentState
 from anesthesia_sim.core.circuit import (
@@ -85,6 +88,10 @@ class UptakeStepResult:
             (`core/stored_states.py`). Each fraction is the value that the
             step wrote to its compartment. The two amounts are the delivered
             and the exhausted agent since the case began.
+        compensation: The compensation terms of the delivered and the
+            exhausted totals at the end of the step
+            (`AgentUptakeSystem.accounting_compensation`). A run stores them
+            beside `state`.
     """
 
     fresh_gas_exchange: FreshGasExchange
@@ -92,6 +99,7 @@ class UptakeStepResult:
     patient_agent_change_l: float
     agent_accounting: AgentSimulationValidationResult
     state: tuple[float, ...]
+    compensation: TotalsCompensation
 
 
 @dataclass(frozen=True, slots=True)
@@ -628,6 +636,7 @@ class AgentUptakeSystem:
             patient_agent_change_l=patient_agent_change_l,
             agent_accounting=accounting_check,
             state=self._with_case_totals(advanced),
+            compensation=self.accounting_compensation(),
         )
 
     def equation_settings(self) -> UptakeEquationSettings:
@@ -834,13 +843,24 @@ class AgentUptakeSystem:
 
         return self._with_case_totals(self.state_vector())
 
-    def stands_at(self, state: tuple[float, ...]) -> bool:
-        """Return whether writing `state` would leave this system exactly as it is.
+    def accounting_compensation(self) -> TotalsCompensation:
+        """Return the compensation terms of the delivered and the exhausted totals.
+
+        A run stores the pair beside each state, so that a branch opened from
+        that state adds to the totals exactly as its parent did (`resume_at`).
+        """
+
+        return self.agent_simulation_validator.compensation
+
+    def stands_at(self, state: tuple[float, ...], compensation: TotalsCompensation) -> bool:
+        """Return whether placing this system at `state` would leave it exactly as it is.
 
         It is true where every compartment already holds the amount that
-        `state`'s fraction writes to it, and the delivered and exhausted agent
-        since the case began are `state`'s. A run uses it to accept an opening
-        state that it did not read from this system (`core/simulation.py`).
+        `state`'s fraction writes to it, the delivered and exhausted agent
+        since the case began are `state`'s, and the totals' compensation
+        terms are `compensation`. A run uses it to accept a record of
+        stored states that it did not build from this system
+        (`core/simulation.py`).
 
         The fractions cannot be compared with `state_vector()` instead. A
         compartment holds an amount, and the fraction read back from it can
@@ -849,11 +869,13 @@ class AgentUptakeSystem:
         it held is put back.
 
         Raises:
+            TypeError: `compensation` is not a `TotalsCompensation`.
             SimulationConfigurationError: `state` is not a state that the
                 equations can be applied to (`require_canonical_state`).
         """
 
         require_canonical_state(state)
+        require_totals_compensation(compensation)
 
         held = self.capture_state()
 
@@ -867,6 +889,7 @@ class AgentUptakeSystem:
             written == held
             and state[DELIVERED_AGENT_L] == self.agent_simulation_validator.delivered_agent_l
             and state[EXHAUSTED_AGENT_L] == self.agent_simulation_validator.exhausted_agent_l
+            and compensation == self.accounting_compensation()
         )
 
     def _with_case_totals(self, state: tuple[float, ...]) -> tuple[float, ...]:
@@ -884,7 +907,12 @@ class AgentUptakeSystem:
 
         return tuple(with_totals)
 
-    def resume_at(self, state: tuple[float, ...], initial_agent_l: float) -> None:
+    def resume_at(
+        self,
+        state: tuple[float, ...],
+        initial_agent_l: float,
+        compensation: TotalsCompensation = UNCOMPENSATED,
+    ) -> None:
         """Place this system at `state`, with its accounting anchored at `initial_agent_l`.
 
         This is the write counterpart of `state_vector()`. It is how a branch's
@@ -907,6 +935,17 @@ class AgentUptakeSystem:
         it at zero. A learner comparing two managements of one case
         needs that, because the agent the patient has received belongs to the
         case and not to the branch.
+
+        **Each total's compensation term is carried over with it**
+        (`PL-FST0`). A branch passes the pair that its parent stored for the
+        fork (`StoredStates.compensation_at`). The branch's next step then
+        adds to each total exactly as its parent's next step did, so the
+        branch's totals equal its parent's bit for bit while no setting
+        differs. The default, `UNCOMPENSATED`, holds a term of zero for each
+        total. That is the exact term of a total that was written whole and
+        not summed, which is what a state from any other source holds. A run
+        built on a record checks the system's terms against that record
+        (`SimulationState`).
 
         `initial_agent_l` is the anchor of that same accounting period: the
         amount that the *parent's* period started from. It is passed in rather
@@ -943,20 +982,26 @@ class AgentUptakeSystem:
                 `require_canonical_state`'s checks, which a `RunDefinition`
                 and a run's record of stored states apply too. The error is
                 also raised when `initial_agent_l` is negative or not finite.
+            TypeError: `compensation` is not a `TotalsCompensation`.
         """
 
         require_canonical_state(state)
         require_nonnegative_finite("initial_agent_l", initial_agent_l)
+        require_totals_compensation(compensation)
 
         state_before = self.capture_state()
         resumed = False
 
         try:
             self._write_state_vector(state)
-            self.agent_simulation_validator.reset(initial_agent_l=initial_agent_l)
-            self.agent_simulation_validator.record_external_agent_transfer(
-                delivered_agent_l=state[DELIVERED_AGENT_L],
-                exhausted_agent_l=state[EXHAUSTED_AGENT_L],
+            self.agent_simulation_validator.restore_state(
+                AgentSimulationValidatorState(
+                    initial_agent_l=initial_agent_l,
+                    delivered_agent_l=state[DELIVERED_AGENT_L],
+                    exhausted_agent_l=state[EXHAUSTED_AGENT_L],
+                    delivered_compensation_l=compensation.delivered_l,
+                    exhausted_compensation_l=compensation.exhausted_l,
+                )
             )
             resumed = True
         finally:

@@ -289,10 +289,11 @@ WRITES: dict[str, dict[str, Write]] = {
             PRIVATE,
             why=(
                 "Only the record's own methods write it: the constructor, append, "
-                "restart_from and a copy. Each checks the state it stores."
+                "restart_from, through and a copy. Each checks the state and the "
+                "compensation terms it stores."
             ),
         )
-        for field in ("_opened_at_s", "_values")
+        for field in ("_compensations", "_opened_at_s", "_values")
     },
     "tissue.TissueGroup": {
         "name": Write(OWN, why="The name labels the group's messages and enters no rule."),

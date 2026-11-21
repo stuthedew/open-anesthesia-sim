@@ -603,8 +603,7 @@ def _branched_case(elapsed_s: int = 60) -> BranchedCase:
 
     `_paused_run_with_history` records one setting change, so the trunk holds
     a keyframe at induction and another at `elapsed_s`. Those two instants are
-    what `BranchedCase.fork_points_s` offers, and they are the only two
-    instants at which `resumed_at` will open a branch.
+    what `BranchedCase.fork_points_s` offers.
     """
 
     return BranchedCase(_paused_run_with_history(elapsed_s))

@@ -659,21 +659,26 @@ def test_a_mark_added_on_the_halting_step_reads_passed_on_the_branch() -> None:
     assert trunk.resumed_at_mark(added).opened_from == branch.opened_from
 
 
-def test_an_instant_between_keyframes_is_refused_even_where_the_run_stands_on_it() -> None:
-    """`resumed_at` keeps its keyframe rule unchanged, halt or no halt.
+def test_a_branch_at_the_second_a_halted_run_stands_on_is_the_branch_taken_there() -> None:
+    """`resumed_at` and `resumed_here` open one branch where the run is halted (`PL-FST0`).
 
-    `PL-B8MK` added a second fork method rather than widening this one, and
-    `PL-Z3W6` did not widen it either. Every instant at which a run can be
-    halted is already reachable through `resumed_here`. A marked instant that
-    the run has gone past is reachable too, through `resumed_at_mark`
-    (`PL-W4XQ`). That is a third method, and it leaves this method's scope
-    unchanged.
+    Until `PL-FST0`, `resumed_at` opened only at the run's start or at a
+    setting change, and it refused the second of a halt. The run stores a
+    state for every second, so naming the second now gives the branch that
+    `resumed_here` gives: the same provenance and the same snapshot.
     """
 
     marked = _trunk_halted_on_a_bookmark()
+    halted_s = marked.snapshot().elapsed_s
 
-    with pytest.raises(SimulationConfigurationError, match="holds no keyframe"):
-        marked.resumed_at(marked.snapshot().elapsed_s)
+    assert halted_s not in [segment.opening.instant_s for segment in marked.run_segments]
+
+    named = marked.resumed_at(halted_s)
+    here = marked.resumed_here()
+
+    assert named.opened_from == here.opened_from
+    assert named.began_at_s == halted_s
+    assert named.snapshot() == here.snapshot()
 
 
 def test_resetting_a_branch_taken_at_a_bookmark_returns_it_to_the_bookmark() -> None:

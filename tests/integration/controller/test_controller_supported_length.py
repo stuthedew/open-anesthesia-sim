@@ -326,13 +326,14 @@ def test_a_branch_on_the_supported_run_length_is_not_sent_to_a_reset_that_return
 def test_no_dial_makes_a_keyframe_on_the_supported_run_length_to_branch_at(
     trunk_stepped_onto_the_limit: SimulationController,
 ) -> None:
-    """A dial moved on the stopped trunk is refused, so no branch opens at a keyframe on 24:00:00.
+    """A dial moved on the stopped trunk is refused, and no branch opens on 24:00:00.
 
     Until `PL-3B34`, a dial moved after the run stopped was recorded at
     24:00:00. That made a keyframe there, and `resumed_at` opened a branch on
     it that could never step. The stopped run now refuses the dial, so the
-    trunk keeps its one stretch from 0 s. `resumed_at` therefore rejects the
-    limit as an instant with no keyframe. A mark on the limit is rejected too, as
+    trunk keeps its one stretch from 0 s. `resumed_at` rejects the limit
+    because a branch there would have no step to take, as it does for every
+    instant since `PL-FST0`. A mark on the limit is rejected too, as
     `test_a_branch_on_the_supported_run_length_is_not_sent_to_a_reset_that_returns_it_there`
     checks.
     """
@@ -347,7 +348,10 @@ def test_no_dial_makes_a_keyframe_on_the_supported_run_length_to_branch_at(
 
     assert [segment.opening.instant_s for segment in trunk.run_segments] == [0]
 
-    with pytest.raises(SimulationConfigurationError, match="keyframe"):
+    with pytest.raises(
+        SimulationConfigurationError,
+        match="^a branch at 86400 s would open on the supported run length",
+    ):
         trunk.resumed_at(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S))
 
     _assert_reads_as_stopped_at_the_supported_run_length(trunk)

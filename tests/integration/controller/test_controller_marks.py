@@ -513,6 +513,8 @@ def test_a_mark_set_behind_the_clock_can_be_returned_to() -> None:
     gone by. The branch opens where a halt would have stopped the run, from
     the state the trunk stored there. It reproduces the trunk element-wise
     from that instant on, and it leaves the trunk exactly the case it was.
+    Since `PL-FST0`, `resumed_at` opens the same branch when it is given the
+    mark's second.
     """
 
     trunk = _trunk_paused_past_a_change()
@@ -522,8 +524,7 @@ def test_a_mark_set_behind_the_clock_can_be_returned_to() -> None:
         (segment.opening.instant_s, segment.opening.state) for segment in trunk.run_segments
     ]
 
-    with pytest.raises(SimulationConfigurationError, match="holds no keyframe"):
-        trunk.resumed_at(CaseInstant(60))
+    assert 60 not in [instant_s for instant_s, _state in keyframes]
 
     # The paused trunk's own position is a separate fork point, and it is not the mark.
     here = trunk.here_fork_point
@@ -532,6 +533,8 @@ def test_a_mark_set_behind_the_clock_can_be_returned_to() -> None:
     assert here.fork_s == trunk.snapshot().elapsed_s != 60.0
 
     branch = trunk.resumed_at_mark(mark)
+
+    assert trunk.resumed_at(CaseInstant(60)).opened_from == branch.opened_from
 
     assert branch.began_at_s == branch.snapshot().elapsed_s == 60.0
     assert branch.opened_from is not None

@@ -150,6 +150,10 @@ LISTED: dict[str, dict[str, tuple[str, ...]]] = {
         ),
     },
     PLAIN_NUMBER: {
+        "agent_simulation_validation": (
+            "TotalsCompensation.delivered_l",
+            "TotalsCompensation.exhausted_l",
+        ),
         "blood_flow": ("BloodFlow.__reduce__ -> return",),
         "checked_number": (
             "CheckedQuantity.__reduce__ -> return",
@@ -188,10 +192,6 @@ LISTED: dict[str, dict[str, tuple[str, ...]]] = {
             "Keyframe.state",
             "RunDefinition.__init__(initial_state)",
             "RunDefinition.state_at -> return",
-        ),
-        "simulation": (
-            "SimulationState.__post_init__(opening_state)",
-            "SimulationState.opening_state",
         ),
         "stored_states": (
             "StoredStates.__deepcopy__(memo)",

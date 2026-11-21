@@ -534,33 +534,28 @@ def test_a_branch_can_open_at_any_keyframe_the_run_holds() -> None:
         assert branch.run_segments[0] == trunk.run_segments[max(index - 1, 0)]
 
 
-def test_resumed_at_refuses_an_instant_no_setting_changed_at_and_names_the_other_doors() -> None:
-    """The refusal gives the method's scope as its reason, not an arithmetic limit (`PL-54V0`).
+def test_a_branch_between_two_setting_changes_runs_under_the_settings_in_force_there() -> None:
+    """A branch at 65 s runs under both of the trunk's changes, with nothing in its timeline.
 
-    `resumed_at` opens at the run's opening or at a recorded setting change.
-    An instant between two of them can still be reproduced: `resumed_at_mark`
-    and `resumed_here` both fork there and reproduce the run element-wise.
-    Such an instant belongs to another method, so the message says which one.
-    It also names the keyframes this run does have, so a caller can pick one.
-    The reason the message used to give was that opening there "would restart
-    from two propagations where the run took one". That is true only of a
-    construction that no fork method uses. A reader who believed it would
-    reach for the refused fix of recording a keyframe there.
+    The trunk changed the delivered concentration at 30 s and the alveolar
+    ventilation at 60 s. Second 65 holds no change, so the branch's timeline
+    opens empty (`PL-ZR49`), and its settings are the ones the trunk left
+    second 65 under. `test_controller_stored_states.py` checks the states a
+    branch at any second holds and stores (`PL-FST0`).
     """
 
     trunk = _trunk_with_two_changes()
-    between_s = trunk.run_segments[-1].opening.instant_s + 5
 
-    with pytest.raises(SimulationConfigurationError, match="holds no keyframe") as refusal:
-        trunk.resumed_at(CaseInstant(between_s))
+    branch = trunk.resumed_at(CaseInstant(65))
+    snapshot = branch.snapshot()
 
-    message = str(refusal.value)
-    openings = [segment.opening.instant_s for segment in trunk.run_segments]
-
-    assert str(openings) in message
-    assert "resumed_at_mark" in message
-    assert "resumed_here" in message
-    assert "two propagations" not in message
+    assert branch.began_at_s == snapshot.elapsed_s == 65
+    assert snapshot.control_timeline == ()
+    assert snapshot.delivered_concentration_percent == 4.0
+    assert snapshot.alveolar_ventilation_l_min == 6.0
+    assert branch.opened_from is not None
+    assert branch.opened_from.segment.opening.instant_s == 60
+    assert branch.opened_from == trunk.resumed_at(CaseInstant(65)).opened_from
 
 
 def test_an_instant_the_run_never_reached_is_refused() -> None:
@@ -568,8 +563,10 @@ def test_an_instant_the_run_never_reached_is_refused() -> None:
 
     trunk = _trunk_with_two_changes()
 
-    with pytest.raises(SimulationConfigurationError, match="holds no keyframe"):
+    with pytest.raises(SimulationConfigurationError, match="stores no state at 720 s") as refusal:
         trunk.resumed_at(CaseInstant(trunk.snapshot().elapsed_s + 600))
+
+    assert "from 0 s, where it opened, to 120 s, the second it has reached" in str(refusal.value)
 
 
 def test_a_non_finite_fork_instant_cannot_be_built() -> None:
@@ -874,16 +871,27 @@ def test_a_case_cannot_be_rooted_in_a_branch() -> None:
         BranchedCase(branch)
 
 
-def test_a_case_refuses_a_fork_at_an_instant_the_trunk_holds_no_keyframe_for() -> None:
-    """The refusal passes through the case unchanged rather than being softened by it."""
+def test_a_case_keeps_a_branch_taken_between_two_setting_changes() -> None:
+    """A case branches at any second its trunk has reached, and keeps the branch (`PL-FST0`)."""
 
     case = BranchedCase(_trunk_with_two_changes())
     between_s = (case.fork_points_s[-2] + case.fork_points_s[-1]) // 2
 
     assert between_s not in case.fork_points_s
 
-    with pytest.raises(SimulationConfigurationError, match="holds no keyframe"):
-        case.fork_at(CaseInstant(between_s))
+    branch = case.fork_at(CaseInstant(between_s))
+
+    assert case.branches == (branch,)
+    assert branch.began_at_s == between_s
+
+
+def test_a_case_refuses_a_fork_at_a_second_its_trunk_has_not_reached() -> None:
+    """The refusal passes through the case unchanged rather than being softened by it."""
+
+    case = BranchedCase(_trunk_with_two_changes())
+
+    with pytest.raises(SimulationConfigurationError, match="stores no state at 121 s"):
+        case.fork_at(CaseInstant(121))
 
     assert case.branches == ()
 

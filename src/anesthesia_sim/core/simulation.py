@@ -34,6 +34,7 @@ also gave this class a facade that only shortened a name and expressed no
 intention. Callers use `uptake_system.circuit` (PL-006).
 """
 
+from copy import copy
 from dataclasses import InitVar, dataclass, field
 from typing import TYPE_CHECKING
 
@@ -63,42 +64,72 @@ class SimulationState:
     A state constructed part-way through a run, as a branch is, is built at
     the count its parent stood at.
     """
-    opening_state: InitVar[tuple[float, ...] | None] = None
-    """The state to store for the second the run opens at, or None to read it from the system.
+    opening_record: InitVar[StoredStates | None] = None
+    """The stored states the run opens with, or None to open from the system's own state.
 
-    A branch passes the state that its parent stored for the fork, so that
-    the branch's first stored state is its parent's, bit for bit. A fraction
-    read back from a compartment can differ in its last bit from the fraction
-    that was written to it, because the compartment holds an amount. A state
-    is accepted only where writing it would leave `uptake_system` exactly as
-    it is (`AgentUptakeSystem.stands_at`).
+    A branch passes its parent's stored states up to the second of the fork
+    (`StoredStates.through`), so the branch holds its parent's states for
+    those seconds bit for bit (`PL-FST0`). The run keeps a copy, and its
+    steps append to the copy. A record is accepted only where it ends at
+    `elapsed_s` and `uptake_system` stands exactly at its last state and at
+    that state's compensation terms (`AgentUptakeSystem.stands_at`). The
+    fractions are not compared with the ones read back from the system: a
+    compartment holds an amount, and the fraction read back from it can
+    differ in its last bit from the fraction that was written.
     """
     stored_states: StoredStates = field(init=False)
-    """The state of every second from the run's opening to `elapsed_s`.
+    """The state of every second from the case's opening to `elapsed_s`.
 
     It is built with the state and never replaced. `advance()` appends to it,
-    and `reset()` restarts it.
+    and `reset()` restarts it. A run built part-way with no `opening_record`
+    stores no earlier second, and its record opens at `elapsed_s`.
     """
 
-    def __post_init__(self, opening_state: tuple[float, ...] | None) -> None:
-        """Open the record of stored states at the second the run opens at.
+    def __post_init__(self, opening_record: StoredStates | None) -> None:
+        """Open the run's stored states, from `opening_record` or from the system's own state.
 
         Raises:
-            SimulationConfigurationError: `opening_state` is not a state that
-                the equations can be applied to, or `uptake_system` does not
-                stand at it.
+            TypeError: `opening_record` is neither None nor a `StoredStates`.
+            SimulationConfigurationError: `opening_record` does not end at
+                `elapsed_s`, or `uptake_system` does not stand at its last
+                state and that state's compensation terms.
         """
 
-        if opening_state is None:
-            opening_state = self.uptake_system.case_state()
-        elif not self.uptake_system.stands_at(opening_state):
-            raise SimulationConfigurationError(
-                "the opening state is not the state the uptake system stands at, so the "
-                "run's first stored state would describe another system: place the system "
-                "with AgentUptakeSystem.resume_at, and pass the same state"
+        system = self.uptake_system
+
+        if opening_record is None:
+            self.stored_states = StoredStates(
+                system.case_state(), self.elapsed_s, system.accounting_compensation()
+            )
+            return
+
+        if not isinstance(opening_record, StoredStates):
+            raise TypeError(
+                f"opening_record has type {type(opening_record).__name__}, not StoredStates: "
+                "a run opens with a record of stored states (StoredStates.through), or with "
+                "None to open from its uptake system's own state"
             )
 
-        self.stored_states = StoredStates(opening_state, self.elapsed_s)
+        reached_s = opening_record.reached_s
+
+        if reached_s != self.elapsed_s:
+            raise SimulationConfigurationError(
+                f"the opening record stores states up to {reached_s} s, and the run opens at "
+                f"{self.elapsed_s} s, after {self.step_count} steps: a run opens at the last "
+                "second its opening record stores (StoredStates.through)"
+            )
+
+        if not system.stands_at(
+            opening_record.state_at(reached_s), opening_record.compensation_at(reached_s)
+        ):
+            raise SimulationConfigurationError(
+                f"the uptake system does not stand at the state the opening record stores for "
+                f"{reached_s} s, so the run's next step would not continue that record: place "
+                "the system with AgentUptakeSystem.resume_at, and pass the record's last state "
+                "and its compensation terms (StoredStates.compensation_at)"
+            )
+
+        self.stored_states = copy(opening_record)
 
     if not TYPE_CHECKING:  # pragma: no branch - TYPE_CHECKING is False at run time
         # Hidden from `mypy` on purpose. When a class defines `__setattr__`,
@@ -274,7 +305,7 @@ class SimulationState:
         stored = False
 
         try:
-            self.stored_states.append(result.state)
+            self.stored_states.append(result.state, result.compensation)
             stored = True
         finally:
             if not stored:
@@ -292,7 +323,11 @@ class SimulationState:
         """
 
         self.uptake_system.reset()
-        self.stored_states.restart_from(self.uptake_system.case_state(), CaseInstant(0))
+        self.stored_states.restart_from(
+            self.uptake_system.case_state(),
+            CaseInstant(0),
+            self.uptake_system.accounting_compensation(),
+        )
         self.step_count = StepCount(0)
 
 

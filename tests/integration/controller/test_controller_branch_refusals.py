@@ -41,17 +41,15 @@ def test_a_branch_s_agent_change_refusal_is_pinned_whole() -> None:
     )
 
 
-def test_a_branch_at_no_keyframe_refusal_is_pinned_whole() -> None:
+def test_a_branch_at_a_second_the_run_has_not_reached_refusal_is_pinned_whole() -> None:
     trunk = _trunk_with_two_changes()
 
     with pytest.raises(SimulationConfigurationError) as refusal:
-        trunk.resumed_at(CaseInstant(65))
+        trunk.resumed_at(CaseInstant(121))
 
     assert str(refusal.value) == (
-        "this run holds no keyframe at 65 s, and resumed_at opens at one: the run's "
-        "opening or a recorded setting change, which this run holds at [0, 30, 60] s. "
-        "A marked instant is branched at with resumed_at_mark once the run has passed it, "
-        "and the instant a paused run stands at with resumed_here"
+        "this run stores no state at 121 s: it stores one state for each second from 0 s, "
+        "where it opened, to 120 s, the second it has reached"
     )
 
 

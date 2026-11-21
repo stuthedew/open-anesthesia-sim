@@ -9,6 +9,8 @@ tests exercise.
 
 import itertools
 
+import pytest
+
 from anesthesia_sim.app.bookmarks import MacTarget
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.formatting import mac_multiple
@@ -228,6 +230,249 @@ def test_a_branch_stores_its_parents_state_at_the_fork_and_steps_on_from_it() ->
 
         for field, position in SNAPSHOT_FIELD_POSITIONS:
             assert getattr(snapshot, field) == expected[second][position], (second, field)
+
+
+def _trunk_with_three_changes() -> SimulationController:
+    """A run of `RUN_S` seconds through the controller, with the three setting changes."""
+
+    controller = SimulationController(agent_id=AGENT)
+    controller.start()
+
+    for second in range(1, RUN_S + 1):
+        controller.advance()
+        _change_settings_at(controller, second)
+
+    controller.pause()
+
+    return controller
+
+
+def _next_change_after(second: int) -> int:
+    """The first second after `second` at whose end a setting changes, or the run's end."""
+
+    return min(
+        change_s
+        for change_s in (DIAL_CHANGE_S, VENTILATION_CHANGE_S, FLOW_CHANGE_S, RUN_S)
+        if change_s >= second
+    )
+
+
+# Seconds 40, 95 and 120 are setting changes. The others are ordinary seconds
+# of the run, with no setting change, mark or pause on them. Second 150 is
+# where the paused trunk stands.
+FORK_SECONDS = (1, 39, 40, 41, 94, 95, 96, 119, 120, 121, 150)
+
+
+@pytest.mark.parametrize("fork_s", FORK_SECONDS)
+def test_a_branch_at_any_whole_second_holds_its_trunks_states_up_to_that_second(
+    fork_s: int,
+) -> None:
+    """A branch opens at any second the run has reached, holding every state up to it (`PL-FST0`).
+
+    The expected states are stepped in `core/` with no branch taken, and all
+    nine numbers of each state are compared exactly. The branch shows the
+    trunk's totals at the fork, and the trunk keeps every state it stored.
+    """
+
+    expected = _states_stepped_in_core()
+    trunk = _trunk_with_three_changes()
+
+    branch = trunk.resumed_at(CaseInstant(fork_s))
+
+    assert branch.began_at_s == fork_s
+    assert branch.snapshot().elapsed_s == fork_s
+    assert branch._state.stored_states.opened_at_s == 0
+    assert branch._state.stored_states.reached_s == fork_s
+
+    for second in range(fork_s + 1):
+        assert branch._state.stored_states.state_at(CaseInstant(second)) == expected[second], second
+
+    snapshot = branch.snapshot()
+
+    for field, position in SNAPSHOT_FIELD_POSITIONS:
+        assert getattr(snapshot, field) == expected[fork_s][position], field
+
+    assert snapshot.delivered_agent_l == expected[fork_s][6]
+    assert snapshot.exhausted_agent_l == expected[fork_s][7]
+
+    assert trunk._state.stored_states.reached_s == RUN_S
+    assert trunk._state.stored_states.state_at(CaseInstant(RUN_S)) == expected[RUN_S]
+
+
+@pytest.mark.parametrize("fork_s", FORK_SECONDS)
+def test_a_branch_with_no_setting_moved_repeats_its_trunks_later_states_in_every_number(
+    fork_s: int,
+) -> None:
+    """Each state the branch stores equals the trunk's, in the fractions and in both totals.
+
+    The branch is stepped to the trunk's next setting change, which the
+    branch does not make. Up to that second the two runs took the same steps
+    under the same settings, so the branch's delivered and exhausted agent
+    equal the trunk's bit for bit. The expected states are stepped in `core/`
+    with no branch taken.
+
+    Before `PL-FST0`, a branch restarted the correction that each total
+    carries from one addition to the next. On a default run, a branch at
+    second 600 then stored a total that differed from its parent's in the
+    last bit at 245 of the next 1 200 seconds (measured 2026-11-21). The
+    accounting panel rounds each total to 0.1 L, so such a difference could
+    change a displayed value where the total lies on a rounding boundary.
+    """
+
+    expected = _states_stepped_in_core()
+    trunk = _trunk_with_three_changes()
+    branch = trunk.resumed_at(CaseInstant(fork_s))
+    until_s = _next_change_after(fork_s)
+
+    branch.start()
+
+    for second in range(fork_s + 1, until_s + 1):
+        branch.advance()
+
+        assert branch._state.stored_states.state_at(CaseInstant(second)) == expected[second], second
+
+    snapshot = branch.snapshot()
+
+    assert snapshot.elapsed_s == until_s
+    assert snapshot.delivered_agent_l == expected[until_s][6]
+    assert snapshot.exhausted_agent_l == expected[until_s][7]
+
+
+def test_a_branch_repeats_its_trunks_delivered_and_exhausted_totals_for_nine_minutes() -> None:
+    """Over 540 steps with no setting moved, both totals stay equal to the trunk's bit for bit.
+
+    The fork is a setting change at 60 s, where a branch could open before
+    `PL-FST0` too. So this test ran against the code before the change, and
+    it failed there: a total that the branch showed differed from the stepped
+    total in the last bit at 62 of the 540 seconds (measured 2026-11-21). The
+    expected states are stepped in `core/` with no branch taken.
+    """
+
+    stepped = SimulationState(uptake_system=AgentUptakeSystem.for_agent(AGENT))
+    expected = [stepped.uptake_system.case_state()]
+
+    for second in range(1, 601):
+        expected.append(stepped.advance().state)
+
+        if second == 60:
+            stepped.uptake_system.set_delivered_concentration_percent(Percent(4.0))
+
+    trunk = SimulationController(agent_id=AGENT)
+    trunk.start()
+
+    for second in range(1, 121):
+        trunk.advance()
+
+        if second == 60:
+            trunk.set_delivered_concentration_percent(Percent(4.0))
+
+    branch = trunk.resumed_at(CaseInstant(60))
+    branch.start()
+    differing = []
+
+    for second in range(61, 601):
+        branch.advance()
+        snapshot = branch.snapshot()
+
+        if (snapshot.delivered_agent_l, snapshot.exhausted_agent_l) != expected[second][6:8]:
+            differing.append(second)
+
+    assert differing == []
+    assert branch._state.stored_states.state_at(CaseInstant(600)) == expected[600]
+
+
+def test_a_reset_branch_keeps_the_states_up_to_its_fork_and_repeats_its_steps_exactly() -> None:
+    """A branch's reset returns it to the fork, with the trunk's states up to the fork kept."""
+
+    expected = _states_stepped_in_core()
+    trunk = _trunk_with_three_changes()
+    fork_s = 96
+    branch = trunk.resumed_at(CaseInstant(fork_s))
+    branch.start()
+
+    for _ in range(fork_s, FLOW_CHANGE_S):
+        branch.advance()
+
+    assert branch._state.stored_states.reached_s == FLOW_CHANGE_S
+
+    branch.reset()
+
+    assert branch.snapshot().elapsed_s == fork_s
+    assert branch._state.stored_states.opened_at_s == 0
+    assert branch._state.stored_states.reached_s == fork_s
+
+    for second in range(fork_s + 1):
+        assert branch._state.stored_states.state_at(CaseInstant(second)) == expected[second], second
+
+    branch.start()
+
+    for second in range(fork_s + 1, FLOW_CHANGE_S + 1):
+        branch.advance()
+
+        assert branch._state.stored_states.state_at(CaseInstant(second)) == expected[second], second
+
+
+def test_two_branches_at_one_second_store_their_steps_apart() -> None:
+    """Each branch keeps its own copy of the trunk's states, so one's steps reach no other run."""
+
+    expected = _states_stepped_in_core()
+    trunk = _trunk_with_three_changes()
+    first = trunk.resumed_at(CaseInstant(60))
+    second = trunk.resumed_at(CaseInstant(60))
+
+    first.set_delivered_concentration_percent(Percent(8.0))
+    first.start()
+
+    for _ in range(30):
+        first.advance()
+
+    assert first._state.stored_states.reached_s == 90
+    assert first._state.stored_states.state_at(CaseInstant(90)) != expected[90]
+    assert second._state.stored_states.reached_s == 60
+    assert second._state.stored_states.state_at(CaseInstant(60)) == expected[60]
+    assert trunk._state.stored_states.state_at(CaseInstant(90)) == expected[90]
+
+    second.start()
+
+    for instant in range(61, 91):
+        second.advance()
+
+        assert second._state.stored_states.state_at(CaseInstant(instant)) == expected[instant]
+
+
+def test_a_branch_tests_the_step_that_reached_its_fork_from_its_own_stored_states() -> None:
+    """A height that the step ending at the fork crossed reads as reached on the branch.
+
+    The step that reached the fork began in the trunk's run. The branch holds
+    the trunk's state for the second before the fork, so it finds the
+    crossing with a mark that was added after the branch was taken. The
+    height lies between the alveolar values that `core/` stepped for seconds
+    69 and 70.
+    """
+
+    expected = _states_stepped_in_core()
+    alveolar = COMPARTMENT_STATE_INDEX[RecordedQuantity.ALVEOLAR]
+    mac_percent = SimulationController(agent_id=AGENT).snapshot().agent_mac_percent
+    before = mac_multiple(
+        Fraction(expected[69][alveolar], name="alveolar partial_pressure_fraction"), mac_percent
+    )
+    after = mac_multiple(
+        Fraction(expected[70][alveolar], name="alveolar partial_pressure_fraction"), mac_percent
+    )
+    height = (before + after) / 2.0
+
+    assert before < height < after
+
+    trunk = _trunk_with_three_changes()
+    branch = trunk.resumed_at(CaseInstant(70))
+    target = MacTarget(RecordedQuantity.ALVEOLAR, height)
+    branch.add_mac_target(target)
+
+    halt = branch.snapshot().bookmark_halt
+
+    assert halt is not None
+    assert halt.instant_s == 70
+    assert halt.mac_targets == (target,)
 
 
 OVERPRESSURE_S = 120

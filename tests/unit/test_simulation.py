@@ -1,10 +1,10 @@
 import copy
 import pickle
-import sys
 from dataclasses import replace
 
 import pytest
 
+from anesthesia_sim.core.agent_simulation_validation import UNCOMPENSATED, TotalsCompensation
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume
@@ -468,61 +468,162 @@ def test_a_reset_run_stores_only_its_new_opening() -> None:
         state.stored_states.state_at(CaseInstant(30))
 
 
-def test_a_state_opened_from_a_stored_state_repeats_its_parents_later_states_exactly() -> None:
-    """A branch built at second 600 stores the fractions its parent stored, with no setting changed.
+def _stepped_straight_through(duration_s: int) -> SimulationState:
+    """A fresh run stepped for `duration_s` seconds, which no branch's code has touched."""
+
+    run = SimulationState()
+    _advance_for(run, duration_s=duration_s)
+
+    return run
+
+
+def _branch_of(parent: SimulationState, fork_s: int) -> SimulationState:
+    """A run opened from `parent`'s stored states up to `fork_s`, on a system of its own."""
+
+    record = parent.stored_states.through(CaseInstant(fork_s))
+    system = AgentUptakeSystem.default()
+    system.resume_at(
+        record.state_at(CaseInstant(fork_s)),
+        initial_agent_l=0.0,
+        compensation=record.compensation_at(CaseInstant(fork_s)),
+    )
+
+    return SimulationState(
+        uptake_system=system, step_count=StepCount(fork_s), opening_record=record
+    )
+
+
+@pytest.mark.parametrize("fork_s", [1, 60, 599, 600, 601])
+def test_a_branch_holds_its_parents_states_up_to_the_fork_and_repeats_the_later_ones(
+    fork_s: int,
+) -> None:
+    """With no setting changed, every state a branch stores is the state its parent stored.
 
     The parent is a fresh run stepped straight through, so the expected
-    states never pass through the branch's code. The six fractions and the
-    constant are equal bit for bit. The delivered and the exhausted agent are
-    running totals that the validator sums with a carried correction
-    (`core/agent_simulation_validation.py`). A stored state holds the totals
-    and not the correction, so a branch starts its correction at zero and its
-    totals can differ from its parent's in the last bits.
+    states never pass through the branch's code. All nine numbers of each
+    state are equal bit for bit, and so are the compensation terms of the two
+    running totals. A fork needs no setting change, mark or pause: seconds
+    599 and 601 are ordinary seconds of the run.
+
+    Before `PL-FST0`, a branch restarted the two totals' compensation terms
+    at zero. On this run, a branch at second 600 then stored a delivered or
+    exhausted total that differed from its parent's in the last bit at 245 of
+    the next 1 200 seconds, and a branch at second 60 at 154 of the next
+    1 740 (measured 2026-11-21).
     """
 
-    parent = SimulationState()
-    _advance_for(parent, duration_s=900)
-    fork_state = parent.stored_states.state_at(CaseInstant(600))
+    parent = _stepped_straight_through(duration_s=900)
+    branch = _branch_of(parent, fork_s)
 
+    assert branch.stored_states.opened_at_s == 0
+    assert branch.stored_states.reached_s == fork_s
+    assert branch.elapsed_s == fork_s
+
+    _advance_for(branch, duration_s=900 - fork_s)
+
+    assert branch.stored_states.reached_s == 900
+
+    for second in range(901):
+        instant_s = CaseInstant(second)
+
+        assert branch.stored_states.state_at(instant_s) == parent.stored_states.state_at(instant_s)
+        assert branch.stored_states.compensation_at(
+            instant_s
+        ) == parent.stored_states.compensation_at(instant_s)
+
+
+def test_a_branch_does_not_change_its_parents_stored_states() -> None:
+    """The branch keeps a copy of the record, so its steps are stored in the copy only."""
+
+    parent = _stepped_straight_through(duration_s=90)
+    untouched = _stepped_straight_through(duration_s=90)
+    record = parent.stored_states.through(CaseInstant(60))
     system = AgentUptakeSystem.default()
-    system.resume_at(fork_state, initial_agent_l=0.0)
-    branch = SimulationState(
-        uptake_system=system, step_count=StepCount(600), opening_state=fork_state
+    system.resume_at(
+        record.state_at(CaseInstant(60)),
+        initial_agent_l=0.0,
+        compensation=record.compensation_at(CaseInstant(60)),
     )
-    _advance_for(branch, duration_s=300)
+    system.set_delivered_concentration_percent(Percent(8.0))
+    branch = SimulationState(uptake_system=system, step_count=StepCount(60), opening_record=record)
 
-    assert branch.stored_states.opened_at_s == 600
-    assert branch.stored_states.state_at(CaseInstant(600)) == fork_state
+    _advance_for(branch, duration_s=30)
 
-    for second in (601, 700, 899, 900):
-        of_branch = branch.stored_states.state_at(CaseInstant(second))
-        of_parent = parent.stored_states.state_at(CaseInstant(second))
+    # The record that was passed in still ends at the fork, so a second
+    # branch can open from it.
+    assert record.reached_s == 60
+    assert parent.stored_states.reached_s == 90
 
-        assert of_branch[:6] == of_parent[:6]
-        assert of_branch[8] == of_parent[8] == 1.0
-        # A numerical limit, from the rounding of the two running sums. Each
-        # sum is compensated, so its error stays within a few units in the
-        # last place whatever its length. Eight times the spacing between
-        # floating-point numbers at the total is above that, and the largest
-        # difference measured was one unit in the last place.
-        assert of_branch[6:8] == pytest.approx(of_parent[6:8], rel=8 * sys.float_info.epsilon)
+    for second in (0, 59, 60, 61, 90):
+        assert parent.stored_states.state_at(
+            CaseInstant(second)
+        ) == untouched.stored_states.state_at(CaseInstant(second))
+
+    # The branch ran under another delivered concentration, so its later
+    # states are its own.
+    assert branch.stored_states.state_at(CaseInstant(90)) != parent.stored_states.state_at(
+        CaseInstant(90)
+    )
 
 
-def test_an_opening_state_the_system_does_not_stand_at_is_refused() -> None:
-    parent = SimulationState()
-    _advance_for(parent, duration_s=60)
-    stored = parent.stored_states.state_at(CaseInstant(60))
-    earlier = parent.stored_states.state_at(CaseInstant(59))
+def test_an_opening_record_the_system_does_not_stand_at_is_refused() -> None:
+    parent = _stepped_straight_through(duration_s=60)
+    record = parent.stored_states.through(CaseInstant(60))
+    earlier = parent.stored_states.through(CaseInstant(59))
 
     system = AgentUptakeSystem.default()
-    system.resume_at(stored, initial_agent_l=0.0)
+    system.resume_at(
+        record.state_at(CaseInstant(60)),
+        initial_agent_l=0.0,
+        compensation=record.compensation_at(CaseInstant(60)),
+    )
 
-    with pytest.raises(SimulationConfigurationError, match="not the state the uptake system"):
-        SimulationState(uptake_system=system, step_count=StepCount(60), opening_state=earlier)
+    with pytest.raises(SimulationConfigurationError, match="stores states up to 59 s"):
+        SimulationState(uptake_system=system, step_count=StepCount(60), opening_record=earlier)
 
-    accepted = SimulationState(uptake_system=system, step_count=StepCount(60), opening_state=stored)
+    with pytest.raises(SimulationConfigurationError, match="does not stand at the state"):
+        SimulationState(uptake_system=system, step_count=StepCount(59), opening_record=earlier)
 
-    assert accepted.stored_states.state_at(CaseInstant(60)) == stored
+    accepted = SimulationState(
+        uptake_system=system, step_count=StepCount(60), opening_record=record
+    )
+
+    assert accepted.stored_states.state_at(CaseInstant(60)) == record.state_at(CaseInstant(60))
+
+
+def test_an_opening_record_is_refused_where_the_system_holds_other_compensation_terms() -> None:
+    """A system placed at the stored state alone would add to the totals differently.
+
+    The system is placed at the state the record stores for second 60, with
+    the terms at zero. Its fractions and totals are the record's, and its
+    next step could still store a total that differs from the parent's in
+    the last bit. So the run is refused.
+    """
+
+    parent = _stepped_straight_through(duration_s=60)
+    record = parent.stored_states.through(CaseInstant(60))
+
+    # The stored terms are not zero at this second, or the refusal below
+    # would have nothing to detect.
+    assert record.compensation_at(CaseInstant(60)) != UNCOMPENSATED
+
+    system = AgentUptakeSystem.default()
+    system.resume_at(record.state_at(CaseInstant(60)), initial_agent_l=0.0)
+
+    with pytest.raises(SimulationConfigurationError, match="does not stand at the state"):
+        SimulationState(uptake_system=system, step_count=StepCount(60), opening_record=record)
+
+
+def test_an_opening_record_of_the_wrong_type_is_refused() -> None:
+    parent = _stepped_straight_through(duration_s=5)
+    state = parent.stored_states.state_at(CaseInstant(5))
+
+    with pytest.raises(TypeError, match="opening_record has type tuple, not StoredStates"):
+        SimulationState(
+            uptake_system=parent.uptake_system,
+            step_count=StepCount(5),
+            opening_record=state,  # type: ignore[arg-type]
+        )
 
 
 def test_a_step_whose_state_the_record_refuses_is_rolled_back(
@@ -534,7 +635,7 @@ def test_a_step_whose_state_the_record_refuses_is_rolled_back(
     _advance_for(state, duration_s=5)
     before = state.uptake_system.capture_state()
 
-    def refuse(_: StoredStates, __: tuple[float, ...]) -> None:
+    def refuse(_: StoredStates, __: tuple[float, ...], ___: TotalsCompensation) -> None:
         raise SimulationConfigurationError("refused for the test")
 
     monkeypatch.setattr(StoredStates, "append", refuse)
@@ -553,7 +654,7 @@ def test_the_stored_states_cannot_be_replaced_or_copied_out_of_step() -> None:
 
     with pytest.raises(SimulationConfigurationError, match="stored states cannot be replaced"):
         state.stored_states = StoredStates(  # type: ignore[misc]
-            state.stored_states.state_at(CaseInstant(0)), CaseInstant(0)
+            state.stored_states.state_at(CaseInstant(0)), CaseInstant(0), UNCOMPENSATED
         )
 
     duplicate = copy.deepcopy(state)
