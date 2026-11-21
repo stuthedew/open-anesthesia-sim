@@ -653,7 +653,7 @@ def test_the_stored_states_cannot_be_replaced_or_copied_out_of_step() -> None:
     _advance_for(state, duration_s=3)
 
     with pytest.raises(SimulationConfigurationError, match="stored states cannot be replaced"):
-        state.stored_states = StoredStates(  # type: ignore[misc]
+        state.stored_states = StoredStates(
             state.stored_states.state_at(CaseInstant(0)), CaseInstant(0), UNCOMPENSATED
         )
 
