@@ -40,8 +40,6 @@ compartments. So a compartment that reset to anything other than empty would lea
 residual check reporting a failure against a run that is perfectly accounted for.
 """
 
-import re
-
 import pytest
 
 from anesthesia_sim.core import supported_ranges
@@ -68,6 +66,7 @@ from anesthesia_sim.core.governing_equations import (
     VENOUS_FRACTION,
 )
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
+from anesthesia_sim.core.rounding import propagator_rounding
 from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
@@ -320,13 +319,15 @@ def test_rounding_can_carry_a_saturated_fraction_above_one(
     with pytest.raises(SimulationNumericalError) as raised:
         system.advance()
 
-    refused = re.search(r"fraction of (\S+) is outside 0 to 1", str(raised.value))
+    _, found, after = str(raised.value).partition("fraction of ")
+    refused, outside, _ = after.partition(" is outside 0 to 1")
 
-    assert refused is not None, raised.value
-    # A numerical limit. The propagator's rounding error was measured at 1e-14 to 2e-12 of a
-    # fraction across the settings envelope (`core/simulation_step.py`, `PL-X9KD`). The
-    # limit is about 9 000 times the spacing of floats at 1, which is 2.2e-16.
-    assert 1.0 < float(refused.group(1)) <= 1.0 + 2e-12
+    assert found and outside, raised.value
+    # A numerical limit, from the rounding of the arithmetic. One step's rounding is at most
+    # `propagator_rounding(squarings)` of the largest fraction in the state, which is 1 here.
+    # A shipped agent's step needs at most three squarings, so the limit is 80 times the
+    # spacing of floats at 1, which is 1.8e-14. The largest excess measured is 1.1e-15.
+    assert 1.0 < float(refused.split()[-1]) <= 1.0 + propagator_rounding(3)
     assert system.capture_state() == before
 
 
