@@ -7,8 +7,6 @@ from math import inf, nan
 import pytest
 
 from anesthesia_sim.core.agent_simulation_validation import (
-    AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L,
-    AGENT_ACCOUNTING_RELATIVE_TOLERANCE,
     MINIMUM_RELATIVE_SCALE_L,
     AgentSimulationValidationResult,
     AgentSimulationValidator,
@@ -22,6 +20,10 @@ from anesthesia_sim.core.exceptions import (
     SimulationNumericalError,
 )
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume
+from anesthesia_sim.core.rounding import (
+    AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L,
+    AGENT_ACCOUNTING_RELATIVE_TOLERANCE,
+)
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
