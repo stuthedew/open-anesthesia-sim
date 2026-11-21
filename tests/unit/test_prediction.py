@@ -18,8 +18,8 @@ from anesthesia_sim.core.governing_equations import (
     UptakeEquationSettings,
     build_system_matrix,
 )
-from anesthesia_sim.core.prediction import predicted_states
-from anesthesia_sim.core.rounding import run_rounding
+from anesthesia_sim.core.prediction import predicted_states, predicted_states_at
+from anesthesia_sim.core.rounding import propagator_rounding, run_rounding
 from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CaseInstant, StepCount
@@ -146,3 +146,100 @@ def test_a_second_not_built_as_a_case_instant_is_refused(argument: str) -> None:
 
     with pytest.raises(TypeError, match="CaseInstant"):
         predicted_states(settings, opening, **seconds)  # type: ignore[arg-type]
+
+
+CHOSEN_SECONDS = (630, 660, 690, 1_000, 1_043, 1_086, 1_800)
+"""Seconds past the reach with gaps of 30, 43, 310 and 714 s, ending at `LAST_S`."""
+
+
+def test_a_prediction_at_chosen_seconds_matches_the_seconds_the_run_stepped() -> None:
+    """Each state predicted at a chosen second is within rounding of the run's stored state there.
+
+    The expected states are the run's own, stepped one second at a time, which
+    is a separate route from one propagator over each gap. A prediction off by
+    one second at any gap would differ from the run by the change in a
+    fraction over one second. At these seconds that change is at least 8.9e-10
+    of 1 atm, and the limit is at most 2.7e-13 (measured 2026-11-21).
+
+    The limit is numerical. A propagator over a gap of n seconds takes more
+    squarings than one over a second, and each gap's propagator rounds within
+    `propagator_rounding` of its squarings. So the prediction lies within the
+    sum of those bounds of the exact solution, and the run within
+    `run_rounding` of its one-second steps. Both are shares of the largest
+    fraction in the run.
+    """
+
+    run, settings = _stepped_run(LAST_S)
+    stored = [run.stored_states.state_at(CaseInstant(second)) for second in range(LAST_S + 1)]
+    scale = max(
+        float(settings.delivered_concentration_percent) / 100.0,
+        *(state[index] for state in stored for index, _ in FRACTION_STATE_NAMES),
+    )
+    matrix = build_system_matrix(settings)
+
+    predicted = predicted_states_at(
+        settings,
+        stored[REACHED_S],
+        CaseInstant(REACHED_S),
+        tuple(CaseInstant(second) for second in CHOSEN_SECONDS),
+    )
+
+    assert len(predicted) == len(CHOSEN_SECONDS)
+    prediction_rounding = 0.0
+    previous_s = REACHED_S
+
+    for second, predicted_state in zip(CHOSEN_SECONDS, predicted, strict=True):
+        prediction_rounding += propagator_rounding(_squarings(matrix, second - previous_s))
+        previous_s = second
+        run_bound = run_rounding(
+            _squarings(matrix, SIMULATION_STEP_S), StepCount(second - REACHED_S)
+        )
+        limit = (prediction_rounding + run_bound) * scale
+
+        for index, _ in FRACTION_STATE_NAMES:
+            difference = abs(predicted_state[index] - stored[second][index])
+
+            assert difference <= limit, (second, index, difference, limit)
+
+
+def test_a_prediction_at_no_seconds_is_empty() -> None:
+    run, settings = _stepped_run(REACHED_S)
+    opening = run.stored_states.state_at(CaseInstant(REACHED_S))
+
+    assert predicted_states_at(settings, opening, CaseInstant(REACHED_S), ()) == ()
+
+
+@pytest.mark.parametrize(
+    ("seconds", "message"),
+    [
+        ((600,), "a prediction at 600 s follows 600 s"),
+        ((700, 650), "a prediction at 650 s follows 700 s"),
+        ((700, 700), "a prediction at 700 s follows 700 s"),
+    ],
+)
+def test_a_chosen_second_that_does_not_come_after_the_one_before_is_refused(
+    seconds: tuple[int, ...], message: str
+) -> None:
+    run, settings = _stepped_run(REACHED_S)
+    opening = run.stored_states.state_at(CaseInstant(REACHED_S))
+
+    with pytest.raises(SimulationConfigurationError, match=f"^{message}"):
+        predicted_states_at(
+            settings,
+            opening,
+            CaseInstant(REACHED_S),
+            tuple(CaseInstant(second) for second in seconds),
+        )
+
+
+def test_a_chosen_second_not_built_as_a_case_instant_is_refused() -> None:
+    run, settings = _stepped_run(REACHED_S)
+    opening = run.stored_states.state_at(CaseInstant(REACHED_S))
+
+    with pytest.raises(TypeError, match="CaseInstant"):
+        predicted_states_at(
+            settings,
+            opening,
+            CaseInstant(REACHED_S),
+            (700,),  # type: ignore[arg-type]
+        )

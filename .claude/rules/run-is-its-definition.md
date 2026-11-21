@@ -72,7 +72,8 @@ a stored state passes the terms stored beside it
 `preview_window` shows what the run would do past the second it has reached,
 so the record holds no state for it. It calls `predicted_states` in
 `src/anesthesia_sim/core/prediction.py`, which takes one-second steps from the
-state stored at the reach. The predicted states go only into the window the
+state stored at the reach for `PREVIEW_EXACT_S` seconds, and predicts only the
+drawn seconds after that. The predicted states go only into the window the
 chart draws. `RunDefinition` holds only the run's settings, as stretches, and
 computes no state (`PL-Z6C8`).
 

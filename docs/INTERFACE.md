@@ -415,8 +415,10 @@ each fall on a whole second.
 
 **A preview is the one computed state, and it is only drawn.** A preview shows
 seconds the run has not reached yet (§ "A preview of an unapplied setting"). It
-starts from the state stored for the second the run has reached, and takes
-one-second steps as the run does, under the previewed settings. A predicted
+starts from the state stored for the second the run has reached. For its first
+hour it takes one-second steps as the run does, under the previewed settings.
+After the first hour it predicts only the seconds the chart draws (§ "What the
+chart draws"). A predicted
 state can differ in its last digits from the state that the run later stores
 for the same second. A run's step reads each fraction back from the amount of
 agent in its compartment, and a prediction carries the fractions directly.
@@ -1928,11 +1930,20 @@ a gap of 0.036 pp on the vessel-rich trace on the twelve-hour time base, against
 a readout resolution of 0.01 pp. Both gaps are for a plot 1 000 px wide,
 measured on 2026-11-21.
 
-Two parts of the display still draw one value for each column. The predicted
-part of the chart, to the right of the second that a run has reached, can fall
-short of a predicted peak by the gaps above (`PL-Z6C8`). The F_A/F_I plot
-divides the two fractions at each drawn second, and the ratio can turn at a
-second where neither fraction does (`PL-DN13`).
+A preview is drawn by the same rule for its first hour, with the second of
+each predicted peak and trough between two columns. After its first hour it
+draws one value for each column and its right edge. Turning a setting causes
+the sharp peaks, and they come within the first hour. Measured for each
+shipped agent under eight setting changes, with columns from 43 s to 579 s
+apart, a preview drawn one value per column fell short of a peak by up to
+0.17 pp in the first hour, and by at most 0.000002 pp after it (`PL-Z6C8`,
+measured 2026-11-21). Predicting every
+second to the right edge of a 12-hour axis took 0.26 s, so a drag on a dial
+stuttered. The preview now takes about 0.03 s on any axis.
+
+The F_A/F_I plot still draws one value for each column. It divides the two
+fractions at each drawn second, and the ratio can turn at a second where
+neither fraction does (`PL-DN13`).
 
 **The user chooses which compartment traces are drawn and how wide a window
 of the run the chart shows, and neither choice changes the run.** The two
@@ -5442,13 +5453,15 @@ above the top of the concentration axis is cut off there, as a run's curve is.
 The off-scale notice then names each preview curve that is cut off, with its
 highest value in view, because the readouts give only the run's values.
 
-**For developers.** The preview's states come from `core/prediction.py`, which
-takes one-second steps from the state stored for the second the run has
-reached (`SimulationController.preview_window`). They are drawn on the same
-time grid as the run, with the second of each peak and trough between two
-columns. The controller keeps the last predicted window and draws it again
-while none of its inputs change, because the widest window takes about 0.1 s
-to predict. A branch is a run taken from another run. The preview's settings are
+**For developers.** The preview's states come from `core/prediction.py`
+(`SimulationController.preview_window`). For `PREVIEW_EXACT_S` seconds past the
+reach, `predicted_states` takes one-second steps from the state stored for the
+second the run has reached, and the window is drawn on the run's time grid with
+the second of each peak and trough between two columns. After that,
+`predicted_states_at` predicts each grid second and the right edge from the one
+before. The controller keeps the last predicted window and draws it again while
+none of its inputs change. `test_a_preview_past_its_first_hour_draws_the_grid_seconds_and_its_right_edge_only`
+in `tests/unit/test_chart_frame.py` checks the split. A branch is a run taken from another run. The preview's settings are
 built the way a branch's are (`SimulationController.preview_settings`). A trial
 run is rebuilt from the settings in force and checked to match the run in every
 value. The trial run then takes the new value through the same setter that

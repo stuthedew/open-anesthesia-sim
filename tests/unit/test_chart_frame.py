@@ -51,7 +51,12 @@ from anesthesia_sim.app.chart_frame import (
 from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER, grid_spacing_s, time_base_for_span
 from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlInput
 from anesthesia_sim.app.control_timeline import ControlAdjustment
-from anesthesia_sim.app.controller import BranchedCase, SettingPreview, SimulationController
+from anesthesia_sim.app.controller import (
+    PREVIEW_EXACT_S,
+    BranchedCase,
+    SettingPreview,
+    SimulationController,
+)
 from anesthesia_sim.app.dashboard_frame import run_label
 from anesthesia_sim.app.formatting import (
     chart_axis_top_percent,
@@ -79,10 +84,11 @@ from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.governing_equations import (
     ALVEOLAR_FRACTION,
     FIRST_TISSUE_FRACTION,
+    FRACTION_STATE_NAMES,
     VENOUS_FRACTION,
     build_system_matrix,
 )
-from anesthesia_sim.core.rounding import run_rounding
+from anesthesia_sim.core.rounding import propagator_rounding, run_rounding
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow, StepCount
 from anesthesia_sim.layout.run_identity import RunId, SessionToken
@@ -2016,6 +2022,59 @@ def test_a_preview_after_turning_the_dial_off_draws_each_peak_the_run_would_reac
         * 0.02
     )
     assert abs(drawn[peak_s][state_index] - truth_by_second[peak_s][state_index]) <= limit
+
+
+def test_a_preview_past_its_first_hour_draws_the_grid_seconds_and_its_right_edge_only() -> None:
+    """On a 12-hour axis, the preview steps every second for an hour and draws each column after it.
+
+    A preview of every second to the right edge took 0.26 s on this axis and
+    stalled a held drag (`PL-Z6C8`). So past `PREVIEW_EXACT_S` the preview is
+    predicted at the grid seconds and the right edge only. Within the first
+    hour it still draws the alveolar peak 2 s after the dial is turned off,
+    which no grid second holds. Each value drawn after the first hour is
+    checked against a twin run that applies the setting and steps every
+    second (rule 2 of `.claude/rules/test-oracles.md`).
+
+    The limit is numerical: the prediction's rounding, one-second steps for
+    an hour and one propagator over 43 s for each column after it, plus the
+    twin's rounding over its one-second steps, as a share of the dial's 2%.
+    """
+
+    previewed, applied = _run(300), _run(300)
+    preview = SettingPreview(ControlInput.DELIVERED, 0.0)
+    settings = previewed.preview_settings(preview)
+
+    window = previewed.preview_window(preview, 0.0, 43_200.0, 1_001)
+
+    spacing_s = 43
+    exact_end_s = 300 + PREVIEW_EXACT_S
+    later_s = tuple(second for second in window.times_s if second > exact_end_s)
+    first_column_s = (exact_end_s // spacing_s + 1) * spacing_s
+    assert later_s == (*range(first_column_s, 43_200, spacing_s), 43_200)
+    assert 302 in window.times_s
+
+    applied.set_delivered_concentration_percent(Percent(0.0))
+    checked_until_s = exact_end_s + 1_800
+    _advance(applied, checked_until_s - 300)
+    truth = applied.drawn_window(300.0, float(checked_until_s), checked_until_s - 299)
+    truth_by_second = dict(zip(truth.times_s, truth.states, strict=True))
+    drawn = dict(zip(window.times_s, window.states, strict=True))
+    matrix = build_system_matrix(settings)
+    one_second = _squarings(matrix, SIMULATION_STEP_S)
+    column = propagator_rounding(_squarings(matrix, spacing_s))
+    checked = [second for second in later_s if second <= checked_until_s]
+    assert len(checked) == 42
+
+    for count, second in enumerate(checked, start=1):
+        limit = (
+            run_rounding(one_second, StepCount(PREVIEW_EXACT_S))
+            + column * (count + 1)
+            + run_rounding(one_second, StepCount(second - 300))
+        ) * 0.02
+
+        for index, _ in FRACTION_STATE_NAMES:
+            difference = abs(drawn[second][index] - truth_by_second[second][index])
+            assert difference <= limit, (second, index, difference, limit)
 
 
 def test_a_preview_at_the_run_s_own_setting_coincides_with_what_the_run_then_draws() -> None:

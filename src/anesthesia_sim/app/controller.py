@@ -71,7 +71,7 @@ from anesthesia_sim.core.governing_equations import (
 )
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.parameters import MacAwakeReference, load_agent_parameters
-from anesthesia_sim.core.prediction import predicted_states
+from anesthesia_sim.core.prediction import predicted_states, predicted_states_at
 from anesthesia_sim.core.run_definition import RunDefinition, RunSegment
 from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
@@ -85,11 +85,28 @@ from anesthesia_sim.core.supported_ranges import (
     StepCount,
     require_supported_run_length,
 )
+from anesthesia_sim.core.units import SECONDS_PER_HOUR
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 from anesthesia_sim.core.validation import require_nonnegative_finite
 
 _PredictionKey = tuple[str, UptakeEquationSettings, int, tuple[float, ...], int, int]
 """Every input a preview's drawn window is computed from (`SimulationController.preview_window`)."""
+
+PREVIEW_EXACT_S = int(SECONDS_PER_HOUR)
+"""How many seconds past the reach a preview predicts one second at a time, then per column.
+
+Within this span the preview takes a one-second step for each second, so it
+draws the second of each peak and trough between two chart columns. Past it,
+it predicts only the chart's columns and its right edge. The project owner
+chose this on 2026-11-21 (`PL-Z6C8`, over one value per column for the whole
+preview and over one-second steps to the right edge). A 43 200-second
+one-second prediction took 0.26 s and stalled a held drag on long time bases.
+A preview drawn one value per column falls short of a peak by up to 0.17
+percentage points in the first hour after a setting change, and by at most
+1.9e-6 after it. That was measured for each shipped agent under eight setting
+changes, with columns from 43 s to 579 s apart, the widest a chart draws
+(`PL-Z6C8`, 2026-11-21).
+"""
 
 
 @dataclass(frozen=True, slots=True)
@@ -3004,26 +3021,26 @@ class SimulationController:
         deterministic. Nothing in this run is written.
 
         This is the one reader whose states no step wrote. They are drawn and
-        used for nothing else. The prediction takes one step for each second,
-        as the run does, and a predicted state can still differ in its last
-        bits from the state that the run stores when it reaches that second
+        used for nothing else. A predicted state can differ in its last bits
+        from the state that the run stores when it reaches that second
         (`core/prediction.py`).
 
-        The prediction is drawn by the rule that `drawn_window` draws the run
-        by, on the same axis: at the grid seconds, at its two ends, and at
-        the second of each peak or trough between two of those
-        (`_with_extremes`). A trace can peak after the reach. With the
-        vaporizer turned down, the alveolar concentration keeps rising for
-        some seconds, and the venous and vessel-rich concentrations for a
-        minute or more. The prediction ends at the axis's right edge, or at
-        the end of the supported run length if that comes first, because the
-        model is not claimed to represent a patient past it.
+        **For its first hour the prediction takes one step for each second,
+        as the run does, and is drawn by the rule that `drawn_window` draws
+        the run by**: at the grid seconds, at its two ends, and at the second
+        of each peak or trough between two of those (`_with_extremes`). A
+        trace can peak after the reach. With the vaporizer turned down, the
+        alveolar concentration keeps rising for some seconds, and the venous
+        and vessel-rich concentrations for a minute or more. **Past
+        `PREVIEW_EXACT_S`, it predicts only the grid seconds and the right
+        edge** (`predicted_states_at`), because no compartment turns between
+        two columns there, and its constant gives the measurement. The
+        prediction ends at the axis's right edge, or at the end of the
+        supported run length if that comes first, because the model is not
+        claimed to represent a patient past it.
 
         **The last window is kept, and a frame with the same inputs draws it
-        again.** A prediction costs one step for each second it covers. Over
-        half of the widest chart window that is 43 200 seconds and about
-        0.1 s, so computing it on every frame of a held drag would stall the
-        interface. The key holds the agent, the preview's settings, the reach,
+        again.** The key holds the agent, the preview's settings, the reach,
         the state stored there, the right edge and the grid spacing, which are
         every input the window is computed from. So a kept window is the
         window that computing it again would give.
@@ -3066,21 +3083,32 @@ class SimulationController:
         if self._prediction_memo is not None and self._prediction_memo[0] == key:
             return self._prediction_memo[1]
 
-        predicted = predicted_states(settings, reached_state, reached_s, CaseInstant(horizon_s))
+        grid_s = max(spacing_s, 1)
+        exact_s = min(horizon_s, reached_s + PREVIEW_EXACT_S)
+        predicted = predicted_states(settings, reached_state, reached_s, CaseInstant(exact_s))
         fractions = tuple(zip(*predicted, strict=True))
-        times_s = _with_extremes(
+        exact_times_s = _with_extremes(
             reached_s,
-            horizon_s,
-            drawn_seconds(reached_s, horizon_s, max(spacing_s, 1), events_s=()),
+            exact_s,
+            drawn_seconds(reached_s, exact_s, grid_s, events_s=()),
             tuple(fractions[index] for index, _ in FRACTION_STATE_NAMES),
+        )
+        later_times_s = tuple(
+            second
+            for second in drawn_seconds(exact_s, horizon_s, grid_s, events_s=())
+            if second > exact_s
+        )
+        later_states = predicted_states_at(
+            settings, predicted[-1], CaseInstant(exact_s), later_times_s
         )
 
         window = DrawnWindow(
             substance_id=self._agent_id,
-            times_s=times_s,
+            times_s=exact_times_s + later_times_s,
             # The predicted states go into the one record that only the
             # chart reads. They are drawn and used for nothing else.
-            states=tuple(predicted[instant_s - reached_s] for instant_s in times_s),
+            states=tuple(predicted[instant_s - reached_s] for instant_s in exact_times_s)
+            + later_states,
         )
         self._prediction_memo = (key, window)
 

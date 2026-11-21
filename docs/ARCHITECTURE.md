@@ -113,7 +113,7 @@ src/anesthesia_sim/
 │   ├── matrix_exponential.py      # exp(A dt) for a compartment system; no physiology in it
 │   ├── uptake_system.py      # couples circuit + alveoli + patient; AgentUptakeSystem.advance is a run's step, one exact propagation of the whole system
 │   ├── run_definition.py               # a run's settings over time, as stretches; it computes no state
-│   ├── prediction.py              # predicted_states: the preview's one-second steps past the reach
+│   ├── prediction.py              # predicted_states and predicted_states_at: the preview's states past the reach
 │   ├── agent_simulation_validation.py  # mass-balance / agent-accounting tracker
 │   ├── stored_states.py           # StoredStates: the state each step wrote, one per whole second of a run
 │   └── simulation.py              # SimulationState: explicit elapsed time (bounded) + AgentUptakeSystem + its StoredStates
@@ -390,9 +390,10 @@ where the run got to.
 
 **The preview is the one computed state** (PL-Z6C8).
 `SimulationController.preview_window` predicts the seconds past the reach with
-`core/prediction.py`, which takes one-second steps from the stored state at the
-reach under the previewed settings. The predicted states go only into the
-window the chart draws.
+`core/prediction.py` from the stored state at the reach, under the previewed
+settings. It takes one-second steps for the first hour and predicts only the
+drawn seconds after it. The predicted states go only into the window the chart
+draws.
 
 Which seconds `drawn_window` draws is a presentation-correctness concern,
 because a chart that stepped over a control change or a peak would show a curve

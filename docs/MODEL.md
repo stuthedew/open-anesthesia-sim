@@ -1954,7 +1954,8 @@ stepped run is one the interface could have produced, with each setting held for
 For the states over the next 30 s or the next hour with unchanged settings, pass the system's
 `equation_settings()`, the state to start from and the two seconds to `predicted_states` in
 `core/prediction.py`. It takes one-second steps, as a run does, and returns the state at every
-second. A test checks that a prediction stays within rounding of a run that stepped the same
+second. `predicted_states_at` returns the state at chosen seconds only, each reached from the one
+before by one calculation over the gap. A test checks that a prediction stays within rounding of a run that stepped the same
 seconds (`test_each_predicted_second_matches_the_second_the_run_stepped` in
 `tests/unit/test_prediction.py`). The application draws its previews this way.
 
@@ -2290,11 +2291,14 @@ fraction back to 1 would hide an error the size of the largest excess instead of
 limit belongs to the model, not to one agent's vapour pressure, so a later gas delivered at a high
 fraction does not need a new limit.
 
-**No calculation spans more than one second.** A run, a branch and a preview all take
-one-second steps, and the chart draws the states the run stored. The calculation needs more
-squarings of a matrix for a longer interval or faster rates, and each squaring can double the
-rounding error. A one-second step needs at most 22 squarings at the hardest corner, below the
-limit of 32 at which `core/matrix_exponential.py` refuses a propagator.
+**No stored state comes from a calculation that spans more than one second.** A run and a
+branch take one-second steps, and the chart draws the states the run stored. The calculation
+needs more squarings of a matrix for a longer interval or faster rates, and each squaring can
+double the rounding error. A one-second step needs at most 22 squarings at the hardest corner,
+below the limit of 32 at which `core/matrix_exponential.py` refuses a propagator. A preview takes
+one-second steps for its first hour, then one calculation for each chart column. For a shipped
+agent at the largest supported flows, a column of 579 s, the widest a chart draws, needs 12
+squarings (measured 2026-11-21).
 
 **At the hardest corners of the envelope, the mass-balance check halts a run that advances in
 steps.** After every step, the check in § "Mass-balance identity" requires the agent
