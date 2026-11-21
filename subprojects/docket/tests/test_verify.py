@@ -23,35 +23,24 @@ import pytest
 
 import docket.verify as verify_module
 from docket.config import Config
-from docket.grep import Wrap
 from docket.model import Item, parse_item
 from docket.python import SOURCE_SUFFIXES
 from docket.store import insert_field, replace_field
 from docket.verify import (
     CONFIGURATION_READERS,
-    LANDED_GUARD,
     MUTATION_CHECK,
     QUOTING_SUFFIXES,
+    RECORD_SHOWS_WORK,
     SUPPRESSION_BEARING_SUFFIXES,
     SUPPRESSIONS,
     TIMED_OUT,
-    VERIFY_GUARD,
     Check,
     GitUnanswered,
     Verification,
-    already_passing,
     changed_paths,
-    command_paths,
     item_commits,
-    items_reading,
-    landed_workers,
-    never_fails,
     project_check,
-    reaches_outside_tree,
-    reads_check_output,
-    reenters_verify,
     sanctioned_queue_edit,
-    selects_no_test,
     strip_non_code,
     verify,
     verify_batch,
@@ -181,82 +170,6 @@ def test_work_inside_the_declared_scope_is_accepted(tmp_path: Path) -> None:
         KEPT + "\n\ndef test_b() -> None:\n    assert 2 == 2\n",
     )
     assert verify(root, _item(), _config(), "HEAD~1").passed
-
-
-def test_a_nested_docket_verify_refuses_to_run_the_command_again(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """The level below the first reports the re-entry instead of recursing.
-
-    `already_passing` can decline its question and stay useful. This one
-    cannot: the command is what is being asked about, so the honest answer is
-    that it was not run and the item is therefore not verified.
-    """
-    root = _repo(tmp_path)
-    _work(
-        root,
-        "PL-K7QX add a test",
-        "tests/test_thing.py",
-        KEPT + "\ndef test_b() -> None:\n    assert 1\n",
-    )
-    monkeypatch.setenv(VERIFY_GUARD, "1")
-
-    report = verify(root, _item(verify="bin/docket verify PL-K7QX"), _config(), "HEAD~1")
-
-    assert not report.passed
-    command = [c for c in report.checks if c.name == "`verify:` command passes"]
-    assert command and not command[0].passed
-    assert any("re-enters `docket verify`" in line for line in command[0].lines)
-
-
-def test_the_command_is_told_it_is_running_underneath_docket_verify(tmp_path: Path) -> None:
-    """The marker the check above reads is set on the child, not merely expected."""
-    root = _repo(tmp_path)
-    _work(
-        root,
-        "PL-K7QX add a test",
-        "tests/test_thing.py",
-        KEPT + "\ndef test_b() -> None:\n    assert 1\n",
-    )
-    probe = f'test -n "${VERIFY_GUARD}"'
-    assert verify(root, _item(verify=probe), _config(), "HEAD~1").passed
-
-
-def test_a_nested_docket_check_from_verify_declines(tmp_path: Path) -> None:
-    """A `verify:` running `docket check --verify` does not replay the store under the audit.
-
-    `verify_item` set only `VERIFY_GUARD`, so such a command made `docket
-    verify` run every open item's command one level down (`PL-SHTR`). The store
-    here holds an item whose command leaves a file behind, so a sweep is seen
-    rather than inferred, and the same command run outside `docket verify` is
-    the control showing it would sweep.
-    """
-    root = _repo(tmp_path)
-    (root / "docs" / "items" / "PL-C3C3-leave-a-mark.md").write_text(
-        _stored("PL-C3C3", "Leave a mark", verify="touch swept")
-    )
-    _git(root, "add", "-A")
-    _git(root, "commit", "-qm", "PL-C3C3 capture")
-    _work(
-        root,
-        "PL-K7QX add a test",
-        "tests/test_thing.py",
-        KEPT + "\ndef test_b() -> None:\n    assert 1\n",
-    )
-    source = Path(verify_module.__file__).resolve().parents[1]
-    # `; true` because this store's items carry only the fields the audit
-    # reads, so the nested check's exit reports them, and the file is the answer.
-    nested = f'PYTHONPATH="{source}" "{sys.executable}" -m docket check --verify; true'
-    swept = root / "swept"
-
-    subprocess.run(nested, shell=True, cwd=root, check=True, capture_output=True)
-    assert swept.exists()
-    swept.unlink()
-
-    report = verify(root, _item(verify=nested), _config(), "HEAD~1")
-
-    assert _check(report, "`verify:` command passes").passed
-    assert not swept.exists()
 
 
 def test_a_file_outside_touches_is_rejected(tmp_path: Path) -> None:
@@ -1215,18 +1128,6 @@ def test_the_scope_detail_claims_no_commit_when_the_branch_has_none(tmp_path: Pa
     assert "commit(s)" not in scope.detail
 
 
-def test_a_failing_verify_command_is_rejected(tmp_path: Path) -> None:
-    root = _repo(tmp_path)
-    _work(
-        root,
-        "PL-K7QX add a test",
-        "tests/test_thing.py",
-        KEPT + "\n\ndef test_b() -> None:\n    assert 2 == 2\n",
-    )
-    report = verify(root, _item(verify="false"), _config(), "HEAD~1")
-    assert not report.passed
-
-
 def test_a_failing_project_check_is_rejected(tmp_path: Path) -> None:
     root = _repo(tmp_path)
     _work(
@@ -1267,23 +1168,6 @@ def test_a_failing_project_check_s_evidence_names_the_failing_test(tmp_path: Pat
         "Checked 26 packages in 0.62ms",
         "make: *** [Makefile:58: check] Error 1",
     )
-
-
-def test_a_failing_verify_command_s_evidence_keeps_its_stdout(tmp_path: Path) -> None:
-    """An item's own `verify:` command is read the same way as the project check."""
-    root = _repo(tmp_path)
-    _work(
-        root,
-        "PL-K7QX add a test",
-        "tests/test_thing.py",
-        KEPT + "\n\ndef test_b() -> None:\n    assert 2 == 2\n",
-    )
-    command = "echo before >&2; echo 'FAILED tests/test_thing.py::test_b'; echo after >&2; exit 1"
-    report = verify(root, _item(verify=command), _config(), "HEAD~1")
-    [check] = [check for check in report.checks if check.name == "`verify:` command passes"]
-    # The first line says the command differs from the one the item file at the
-    # base commissions; the evidence follows it.
-    assert check.lines[-3:] == ("FAILED tests/test_thing.py::test_b", "before", "after")
 
 
 def test_a_closed_item_that_records_nothing_cannot_be_verified(tmp_path: Path) -> None:
@@ -1332,12 +1216,52 @@ def test_a_closed_item_s_recorded_test_is_read_against_the_branch(tmp_path: Path
         root, _item(tests=("tests/test_thing.py::test_a",), **closed), _config(), "HEAD~1"
     )
 
-    def shown(report: Verification) -> Check:
-        return next(c for c in report.checks if c.name == "the recorded tests show the work")
+    assert _check(added, RECORD_SHOWS_WORK).passed
+    assert not _check(kept, RECORD_SHOWS_WORK).passed
+    assert "neither added nor changed" in _check(kept, RECORD_SHOWS_WORK).lines[0]
 
-    assert shown(added).passed
-    assert not shown(kept).passed
-    assert "neither added nor changed" in shown(kept).lines[0]
+
+def _documented(root: Path) -> None:
+    """Commit a document for `PL-K7QX`, whose sentence wraps over two lines."""
+    _work(root, "PL-K7QX write it", "docs/NOTES.md", "The inlet adds two rates\nand one volume.\n")
+
+
+FOUND = "grep -qF 'two rates and one volume' docs/NOTES.md"
+ABSENT = "grep -qF 'three rates' docs/NOTES.md"
+
+
+@pytest.mark.parametrize("status", ["ready", "done"])
+def test_an_item_s_search_is_read_whether_or_not_the_item_has_closed(
+    tmp_path: Path, status: str
+) -> None:
+    """A delegated worker leaves its item open, and the review still reads its search."""
+    root = _repo(tmp_path)
+    _documented(root)
+    fields = dict(touches=("docs/NOTES.md",), status=status)
+    if status == "done":
+        fields["closed"] = date(2026, 8, 2)
+
+    held = verify(root, _item(verify=FOUND, **fields), _config(), "HEAD~1")
+    missing = verify(root, _item(verify=ABSENT, **fields), _config(), "HEAD~1", self_audit=True)
+
+    assert _check(held, RECORD_SHOWS_WORK).passed
+    assert _check(missing, RECORD_SHOWS_WORK).blocks
+    assert not missing.passed
+
+
+def test_an_open_item_s_command_is_reported_as_not_run(tmp_path: Path) -> None:
+    """Nothing runs a command, so the report says that the command showed nothing."""
+    root = _repo(tmp_path)
+    _documented(root)
+
+    report = verify(
+        root, _item(verify="touch ran", touches=("docs/NOTES.md",)), _config(), "HEAD~1"
+    )
+
+    command = _check(report, RECORD_SHOWS_WORK)
+    assert command.advisory and not command.blocks
+    assert command.detail.startswith("not read: the item's `verify:` is a command")
+    assert not (root / "ran").exists()
 
 
 def test_uncommitted_work_is_counted(tmp_path: Path) -> None:
@@ -1714,7 +1638,6 @@ def test_an_edit_inside_a_block_the_reader_declines_is_refused_rather_than_uncha
         "HEAD~2's copy declines `touches` written as a block list, "
         "so the front matter could not be compared"
     )
-    assert any("commissioned it could not be read" in check.detail for check in report.checks)
 
 
 def test_a_base_with_nothing_between_it_and_head_is_not_a_pass(tmp_path: Path) -> None:
@@ -1859,814 +1782,15 @@ def test_a_base_current_with_its_remote_says_nothing(tmp_path: Path) -> None:
     assert verify(root, _item(), _config(), "main").base_note == ""
 
 
-# Finding an open item whose work already landed. Real commands rather than a
-# stubbed runner, for the same reason the rest of this file uses real git:
-# what is being tested is what a shell returns for a recorded command.
-
-
-@pytest.fixture(autouse=True)
-def _no_inherited_guard(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Clear the re-entry guards this suite may have inherited.
-
-    `docket check` sets `DOCKET_SKIP_LANDED` for every command it runs, and
-    `docket verify` sets `DOCKET_IN_VERIFY` for the item command it runs. One
-    of those commands is the pytest invocation recorded as this file's own
-    `verify:`, twice over. Without this, the cases below read the declined
-    report meant for a nested run and the item's command fails under the tool
-    that runs it while passing when run by hand - which is exactly the
-    environment-dependent result the check itself exists to make visible. The
-    one case that wants the verify guard sets it itself, after this.
-    """
-    monkeypatch.delenv(LANDED_GUARD, raising=False)
-    monkeypatch.delenv(VERIFY_GUARD, raising=False)
-
-
-def test_an_item_whose_work_has_landed_is_found_by_running_its_command(tmp_path: Path) -> None:
-    root = _repo(tmp_path)
-    report = already_passing(root, [_item(verify="true")])
-    assert report.known
-    assert report.passing == ("PL-K7QX",)
-    assert report.considered == 1
-
-
-def test_an_item_whose_command_still_fails_has_not_landed(tmp_path: Path) -> None:
-    root = _repo(tmp_path)
-    report = already_passing(root, [_item(verify="false")])
-    assert report.known
-    assert report.passing == ()
-    assert report.considered == 1
-
-
-def test_a_closed_item_is_not_asked_whether_it_landed(tmp_path: Path) -> None:
-    # `done` and `dropped` are settled, and an untriaged capture has promised
-    # nothing yet. Only an open commitment can be open by mistake.
-    root = _repo(tmp_path)
-    items = [
-        _item(identifier="PL-D0N3", status="done", verify="true"),
-        _item(identifier="PL-C4P5", status="untriaged", verify="true"),
-    ]
-    assert already_passing(root, items).passing == ()
-
-
-# The shared-command finding this module used to compute lives in `checks.py`
-# now, where it is read off the store rather than off a run: a command recorded
-# against two open items proves neither, whatever executing it returns, and
-# `test_checks.py` pins it. What stays here is that the replay still reports
-# both of them as passing - the finding it *can* only reach by running them.
-def test_two_open_items_sharing_a_command_both_report_as_passing(tmp_path: Path) -> None:
-    root = _repo(tmp_path)
-    items = [_item(identifier="PL-K7QX", verify="true"), _item(identifier="PL-41B2", verify="true")]
-    assert already_passing(root, items).passing == ("PL-K7QX", "PL-41B2")
-
-
-def test_only_the_passing_item_is_reported_where_two_commands_differ(tmp_path: Path) -> None:
-    """The other half the deleted pair pinned: the filter across items, not one flag."""
-    root = _repo(tmp_path)
-    items = [
-        _item(identifier="PL-K7QX", verify="true"),
-        _item(identifier="PL-41B2", verify="false"),
-    ]
-    assert already_passing(root, items).passing == ("PL-K7QX",)
-
-
-def test_the_landed_check_declines_rather_than_re_entering_docket_check(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    # Two open items on this store record `verify:` commands ending in
-    # `bin/docket check`. Unguarded, the outer run re-enters itself once per
-    # candidate and each re-entry does it again.
-    root = _repo(tmp_path)
-    monkeypatch.setenv(LANDED_GUARD, "1")
-    report = already_passing(root, [_item(verify="true")])
-    assert not report.known
-    assert report.passing == ()
-    assert "re-entered" in report.declined
-
-
-def test_a_nested_docket_check_is_told_not_to_ask_about_landed_work(tmp_path: Path) -> None:
-    root = _repo(tmp_path)
-    probe = f'test -n "${LANDED_GUARD}"'
-    assert already_passing(root, [_item(verify=probe)]).passing == ("PL-K7QX",)
-
-
-def test_the_landed_check_declines_when_no_command_can_be_run(tmp_path: Path) -> None:
-    # What a bare checkout with no virtualenv looks like from here: every
-    # command "not found". Reporting none passing would say only that the
-    # toolchain is missing, which is the shape of wrong answer this package
-    # declines rather than gives.
-    root = _repo(tmp_path)
-    items = [_item(identifier="PL-K7QX", verify="docket-no-such-command-xyz")]
-    report = already_passing(root, items)
-    assert not report.known
-    assert "toolchain is missing" in report.declined
-
-
-def test_one_missing_command_beside_a_real_one_still_reports_landed_work(tmp_path: Path) -> None:
-    root = _repo(tmp_path)
-    items = [
-        _item(identifier="PL-K7QX", verify="docket-no-such-command-xyz"),
-        _item(identifier="PL-41B2", verify="true"),
-    ]
-    report = already_passing(root, items)
-    assert report.known
-    assert report.passing == ("PL-41B2",)
-
-
-def test_an_item_with_no_command_is_not_a_landed_candidate(tmp_path: Path) -> None:
-    root = _repo(tmp_path)
-    assert already_passing(root, [_item(verify="")]).considered == 0
-
-
-# A command that could not answer, and the two ways that happens. The failure
-# both share is the one this module is otherwise built to refuse: a status that
-# means "could not look" read as "looked, and it failed correctly". A killed
-# command returned 1 - what a failing test returns - so it fell out of every
-# finding while the report stayed clean (`PL-T940`).
+# A run that was stopped at its time limit is told apart from one that
+# finished and failed, for the project's own check and the mutation check.
 
 
 def test_the_killed_status_cannot_be_confused_with_one_a_process_returned() -> None:
-    # The whole fix rests on the status being unreachable by a real command: a
-    # shell reports an exit status in 0-255 and a signal death as a small
-    # negative number, and 1 in particular is what a failing test returns, so a
-    # timeout sharing it is indistinguishable from an assertion that did not
-    # hold.
+    # A shell reports an exit status in 0-255 and a signal death as a small
+    # negative number, and 1 is what a failing test returns, so a timeout
+    # sharing one of those could not be told from an assertion that failed.
     assert not -255 <= TIMED_OUT <= 255
-
-
-def test_a_timed_out_command_is_not_checked(tmp_path: Path) -> None:
-    root = _repo(tmp_path)
-    items = [_item(identifier="PL-K7QX", verify="sleep 5"), _item(identifier="PL-41B2")]
-    report = already_passing(root, items, timeout=0.2, workers=2)
-
-    assert report.timed_out == ("PL-K7QX",)
-    assert report.passing == ("PL-41B2",)
-    assert report.vacuous == ()
-
-
-def test_a_timed_out_command_is_not_counted_as_one_that_ran(tmp_path: Path) -> None:
-    # `considered` is rendered to a reader as "checked". A command killed
-    # part-way through was not, and counting it overstates what the run saw.
-    root = _repo(tmp_path)
-    items = [_item(identifier="PL-K7QX", verify="sleep 5"), _item(identifier="PL-41B2")]
-
-    assert already_passing(root, items, timeout=0.2, workers=2).considered == 1
-
-
-def test_a_command_that_genuinely_fails_is_not_called_timed_out(tmp_path: Path) -> None:
-    root = _repo(tmp_path)
-    report = already_passing(root, [_item(verify="false")])
-
-    assert report.timed_out == ()
-    assert report.considered == 1
-
-
-def test_one_missing_command_beside_a_real_one_is_named_not_silently_dropped(
-    tmp_path: Path,
-) -> None:
-    # The same subtraction as a timeout, for the other way a command answers
-    # nothing: leaving it out of `considered` without saying so would replace
-    # one silent gap with a quieter one.
-    root = _repo(tmp_path)
-    items = [
-        _item(identifier="PL-K7QX", verify="docket-no-such-command-xyz"),
-        _item(identifier="PL-41B2", verify="true"),
-    ]
-    report = already_passing(root, items)
-
-    assert report.unavailable == ("PL-K7QX",)
-    assert report.considered == 1
-
-
-def test_a_run_where_every_command_was_killed_declines(tmp_path: Path) -> None:
-    # The counterpart of the missing-toolchain decline: finding none passing
-    # would be a fact about the machine, not about the store.
-    root = _repo(tmp_path)
-    items = [
-        _item(identifier="PL-K7QX", verify="sleep 5"),
-        _item(identifier="PL-41B2", verify="sleep 5"),
-    ]
-    report = already_passing(root, items, timeout=0.2, workers=2)
-
-    assert not report.known
-    assert "killed at the 0.2s limit" in report.declined
-
-
-def test_the_limit_the_results_were_produced_under_is_carried(tmp_path: Path) -> None:
-    # So a report names the number a reader would have to change, rather than
-    # the module-level default the run may not have used.
-    root = _repo(tmp_path)
-
-    assert already_passing(root, [_item()], timeout=7.5).limit == 7.5
-
-
-# What a command cost, not only what it returned. An outlier test lived here -
-# a command 30x the pool's median was named as the one the check waited for -
-# and it was retired 2026-09-19 once measurement showed it firing on nothing
-# (`PL-G6J5`). What is left reports rather than judges, so what these pin is
-# that each number is the one the run actually paid.
-
-
-def test_the_run_carries_what_it_would_have_cost_serially(tmp_path: Path) -> None:
-    # The pool holds the wall clock roughly flat as the queue grows, so the
-    # number a session feels is the one that hides the growth. The serial total
-    # is what the store actually asks for, and it climbs with every item
-    # triaged to `ready` (`PL-9NKK`).
-    root = _repo(tmp_path)
-    # Four commands of 0.5 s rather than 1 s. What is under test is that the
-    # total is summed while the wall clock is not, and the ratio carrying it is
-    # four-to-one either way: eight workers run these at once, so `elapsed`
-    # stays near one command's duration whatever that duration is (`PL-VJ7W`).
-    items = [_item(identifier=f"PL-000{n}", verify="sleep 0.5") for n in range(4)]
-    report = already_passing(root, items, workers=8)
-
-    assert report.serial >= 2
-    # `> 0` as well as the comparison: a pool that reported no wall clock at
-    # all would satisfy `0 < serial` and print `0.0s` from the cost line. This
-    # was pinned by a test that also covered the retired median (`PL-G6J5`).
-    assert report.elapsed > 0
-    assert report.elapsed < report.serial
-
-
-def test_the_costliest_command_is_carried_on_a_pool_with_no_outlier(tmp_path: Path) -> None:
-    # The property the retirement rests on. "Did an outlier arrive" is answered
-    # no by a store of comparable commands, and by this project's real store
-    # too; "how close is any one command to the limit" always has an answer and
-    # is the margin `LANDED_TIMEOUT` is chosen against, so it is the one
-    # carried (`PL-G6J5`).
-    root = _repo(tmp_path)
-    items = [_item(identifier=f"PL-000{n}") for n in range(6)]
-    report = already_passing(root, items, workers=8)
-
-    assert report.slowest is not None
-
-
-def test_the_costliest_command_is_the_one_that_actually_cost_the_most(tmp_path: Path) -> None:
-    root = _repo(tmp_path)
-    items = [_item(identifier=f"PL-000{n}") for n in range(4)]
-    # 0.3 s, not 1: `slowest` is a maximum and is held to no threshold, so this
-    # only has to beat four commands that take milliseconds - which it does by
-    # about sixty times (`PL-VJ7W`).
-    items.append(_item(identifier="PL-SL0W", verify="sleep 0.3"))
-    report = already_passing(root, items, workers=8)
-
-    assert report.slowest is not None
-    assert report.slowest.identifier == "PL-SL0W"
-
-
-def test_a_killed_command_does_not_count_into_the_serial_total(tmp_path: Path) -> None:
-    # It was stopped at the limit rather than having cost its duration, so
-    # counting it would report a total the run never paid - and this one is
-    # read against the limit itself.
-    root = _repo(tmp_path)
-    items = [_item(identifier=f"PL-000{n}") for n in range(4)]
-    items.append(_item(identifier="PL-K1LL", verify="sleep 30"))
-    report = already_passing(root, items, timeout=0.3, workers=8)
-
-    assert report.timed_out == ("PL-K1LL",)
-    assert report.serial < 1
-    assert report.slowest is not None
-    assert report.slowest.identifier != "PL-K1LL"
-
-
-def test_the_run_says_how_wide_the_pool_that_produced_it_was(tmp_path: Path) -> None:
-    # `serial` cannot be read without it: what the remaining commands cost is
-    # their total divided across the workers, and a report carrying the total
-    # but not the divisor can only guess (`PL-FRGP`).
-    root = _repo(tmp_path)
-    report = already_passing(root, [_item(identifier=f"PL-000{n}") for n in range(4)], workers=3)
-
-    assert report.workers == 3
-
-
-def test_a_run_that_chose_its_own_width_still_reports_it(tmp_path: Path) -> None:
-    # The caller usually passes nothing and `landed_workers()` decides, which
-    # is exactly the case a reader of the advisory is in.
-    root = _repo(tmp_path)
-    report = already_passing(root, [_item(identifier=f"PL-000{n}") for n in range(4)])
-
-    assert report.workers == landed_workers()
-
-
-def test_a_store_with_no_command_to_run_names_no_costliest_one(tmp_path: Path) -> None:
-    # An empty run must not render as a measured one, which is what a zero here
-    # would become by the time it reached a headline.
-    report = already_passing(_repo(tmp_path), [])
-
-    assert report.slowest is None
-    assert report.serial == 0.0
-
-
-# --- running them at once -----------------------------------------------------
-#
-# `make check` pays this, and the bill grows with the queue: every item triaged
-# to `ready` adds its command's runtime permanently, so the serial cost rose as
-# the store got healthier (`PL-LXR3`). Concurrency is the one remedy that
-# changes no answer, and these three pin the properties that make that true -
-# the commands really do overlap, the findings still come back in the store's
-# order rather than in whichever order the shells happened to finish, and no
-# two of them write coverage data to the same file.
-
-
-def test_verify_commands_run_concurrently(tmp_path: Path) -> None:
-    # Each command marks the shared log when it starts and again when it ends,
-    # so serial execution can only ever write `sese...` and any overlap at all
-    # puts two starts together. Asserting the property beats asserting a
-    # duration: a wall-clock threshold fails on a loaded machine for a reason
-    # that has nothing to do with the code.
-    root = _repo(tmp_path)
-    log = root / "overlap.log"
-    items = [
-        _item(identifier=f"PL-RVN{n}", verify=f"printf s >> {log}; sleep 0.3; printf e >> {log}")
-        for n in range(4)
-    ]
-
-    already_passing(root, items, workers=4)
-
-    assert "ss" in log.read_text(), f"the commands ran one after another: {log.read_text()}"
-
-
-def test_the_findings_follow_the_store_order_not_the_order_the_commands_finished(
-    tmp_path: Path,
-) -> None:
-    # The findings are reported as lists of ids. Collected as each shell
-    # returned, a slow command would sink to the bottom and the same unchanged
-    # store would print a different advisory run to run.
-    root = _repo(tmp_path)
-    items = [
-        _item(identifier="PL-SL0W", verify="sleep 0.3"),
-        _item(identifier="PL-F4ST", verify="true"),
-    ]
-
-    report = already_passing(root, items, workers=4)
-
-    assert report.passing == ("PL-SL0W", "PL-F4ST")
-
-
-def test_no_two_commands_share_a_coverage_data_file(tmp_path: Path) -> None:
-    # Coverage reads its data file back to decide `--cov-fail-under`, so two
-    # `--cov` commands sharing one would race and a command could fail on data
-    # a sibling truncated - a wrong answer created by running them at once. The
-    # store carries eight such commands today, none on an open item, so this
-    # guards the case rather than reports it.
-    root = _repo(tmp_path)
-    seen = root / "coverage-paths"
-    record = f'printf "%s\n" "$COVERAGE_FILE" >> {seen}'
-    items = [_item(identifier="PL-C0V1", verify=record), _item(identifier="PL-C0V2", verify=record)]
-
-    already_passing(root, items, workers=4)
-
-    paths = [line for line in seen.read_text().splitlines() if line]
-    assert len(paths) == 2
-    assert len(set(paths)) == 2, f"both commands wrote coverage to {paths[0]}"
-    assert all(Path(path).parent != root for path in paths), "a probe wrote into the tree"
-
-
-# --- a command that selects no test, told apart from one that fails ----------
-#
-# The two arrive as the same thing at every reader of an exit status - non-zero
-# - and they mean opposite things. A failing command ran an assertion that did
-# not hold, which is what an unstarted item's command is meant to do. One that
-# selects no test asserted nothing, and will go on asserting nothing after the
-# work unless a test name happens to match.
-
-
-def _pytest(selector: str) -> str:
-    """A real pytest run against the scratch repository's one test.
-
-    Deliberately the real runner rather than a stub returning 5: the whole
-    claim rests on pytest returning 5 for an empty selection and 1 for a
-    failing test, and a stub would test the stub's author's memory of that.
-    `sys.executable` because the interpreter running this suite is the one
-    that certainly has pytest importable.
-    """
-    return f"{sys.executable} -m pytest tests/test_thing.py -k {selector} -q -p no:cacheprovider"
-
-
-def test_pytest_returns_five_for_a_selector_that_matches_nothing(tmp_path: Path) -> None:
-    # The reference case the discriminator is built on, asserted against
-    # pytest itself rather than against a remembered exit code.
-    root = _repo(tmp_path)
-    result = subprocess.run(
-        _pytest("no_such_test_name"), cwd=root, shell=True, capture_output=True, text=True
-    )
-    assert result.returncode == 5
-    assert "deselected" in result.stdout
-
-
-def test_a_selector_matching_a_real_test_is_not_read_as_selecting_nothing(tmp_path: Path) -> None:
-    root = _repo(tmp_path)
-    result = subprocess.run(_pytest("test_a"), cwd=root, shell=True, capture_output=True, text=True)
-    assert result.returncode == 0
-    assert not selects_no_test(_pytest("test_a"), result.returncode)
-
-
-def test_a_failing_test_is_not_read_as_selecting_nothing() -> None:
-    # Exit 1 is the state a correctly written command is supposed to be in
-    # before the work, and must never be reported as an empty selection.
-    assert not selects_no_test("uv run pytest tests/test_thing.py -k test_a", 1)
-
-
-def test_exit_five_from_a_command_that_is_not_pytest_is_not_classified() -> None:
-    # Only pytest promises that 5 means "collected nothing". Reading another
-    # program's 5 that way would be the guess this check exists to prevent.
-    assert not selects_no_test("grep -qF 'the sentence' docs/MODEL.md", 5)
-    assert not selects_no_test("python3 tools/doc_check.py check", 5)
-
-
-def test_pytest_reached_through_a_runner_is_still_recognised() -> None:
-    # The three shapes the store actually records.
-    assert selects_no_test("pytest -k gate", 5)
-    assert selects_no_test("uv run pytest subprojects/docket/tests/test_release.py -k gate", 5)
-    assert selects_no_test("python -m pytest -k gate", 5)
-
-
-def test_a_path_containing_pytest_is_not_mistaken_for_the_runner() -> None:
-    assert not selects_no_test("uv run python tools/test_pytest_helpers.py", 5)
-
-
-def test_a_passing_command_is_never_read_as_selecting_nothing() -> None:
-    assert not selects_no_test("uv run pytest -k test_a", 0)
-
-
-def test_an_open_item_whose_command_selects_no_test_is_named(tmp_path: Path) -> None:
-    root = _repo(tmp_path)
-    report = already_passing(root, [_item(verify=_pytest("no_such_test_name"))])
-    assert report.known
-    assert report.vacuous == ("PL-K7QX",)
-    assert report.passing == ()
-    assert report.considered == 1
-
-
-def test_an_item_whose_command_genuinely_fails_is_not_named(tmp_path: Path) -> None:
-    root = _repo(tmp_path)
-    report = already_passing(root, [_item(verify="false")])
-    assert report.vacuous == ()
-
-
-def test_the_two_findings_are_separated_within_one_run(tmp_path: Path) -> None:
-    root = _repo(tmp_path)
-    items = [
-        _item(identifier="PL-P4SS", verify="true"),
-        _item(identifier="PL-N0N3", verify=_pytest("no_such_test_name")),
-        _item(identifier="PL-F41L", verify="false"),
-    ]
-    report = already_passing(root, items)
-    assert report.passing == ("PL-P4SS",)
-    assert report.vacuous == ("PL-N0N3",)
-    assert report.considered == 3
-
-
-def test_a_verify_report_says_a_command_selected_no_test_rather_than_failed(tmp_path: Path) -> None:
-    # The moment the defect bites hardest: a delegated branch is being
-    # reviewed, its command is non-zero, and "the work is missing" and "the
-    # command cannot tell you" look identical without this line.
-    root = _repo(tmp_path)
-    _work(
-        root,
-        "PL-K7QX add a test",
-        "tests/test_thing.py",
-        KEPT + "\n\ndef test_b() -> None:\n    assert 2 == 2\n",
-    )
-    report = verify(root, _item(verify=_pytest("no_such_test_name")), _config(), "HEAD~1")
-    assert not report.passed
-    command = next(c for c in report.checks if "`verify:` command" in c.name)
-    assert not command.passed
-    assert any("selects no test" in line for line in command.lines)
-
-
-def test_a_verify_report_of_a_real_failure_makes_no_such_claim(tmp_path: Path) -> None:
-    root = _repo(tmp_path)
-    _work(
-        root,
-        "PL-K7QX add a test",
-        "tests/test_thing.py",
-        KEPT + "\n\ndef test_c() -> None:\n    assert 3 == 3\n",
-    )
-    report = verify(root, _item(verify="false"), _config(), "HEAD~1")
-    command = next(c for c in report.checks if "`verify:` command" in c.name)
-    assert not command.passed
-    assert not any("selects no test" in line for line in command.lines)
-
-
-# --- a phrase its file holds only across a line break (`PL-RR1N`) -----------
-#
-# Read from the tree rather than from the exit status, which cannot carry it:
-# a `grep` for such a phrase fails whether or not the work is done, and a
-# `! grep` passes while the sentence it was to see removed is still there.
-# `test_grep.py` has the reading; these are the two places its answer goes.
-
-WRAPPED = "The fresh-gas inlet contributes exactly two rates and\none volume to the circuit.\n"
-PHRASE = "contributes exactly two rates and one volume"
-
-
-def test_the_replay_names_a_command_whose_phrase_its_file_wraps(tmp_path: Path) -> None:
-    root = _repo(tmp_path)
-    (root / "docs" / "MODEL.md").write_text(WRAPPED)
-    report = already_passing(root, [_item(verify=f"grep -qF '{PHRASE}' docs/MODEL.md")])
-
-    assert report.passing == ()
-    assert report.wrapped == (("PL-K7QX", (Wrap(PHRASE, False, "docs/MODEL.md", 1, 2),)),)
-
-
-def test_a_wrapped_removal_is_named_as_wrapped_and_not_as_blocked(tmp_path: Path) -> None:
-    # It passes, so without the reading it is the blocked finding, which says
-    # the command does not discriminate - true, but not why, and the sentence
-    # the command was written to see removed is still there.
-    root = _repo(tmp_path)
-    (root / "docs" / "MODEL.md").write_text(WRAPPED)
-    item = _item(status="blocked", verify=f"! grep -qF '{PHRASE}' docs/MODEL.md")
-    report = already_passing(root, [item], scoped_to={"PL-K7QX"})
-
-    assert report.passing == ("PL-K7QX",)
-    assert report.blocked == ()
-    assert report.wrapped == (("PL-K7QX", (Wrap(PHRASE, True, "docs/MODEL.md", 1, 2),)),)
-
-
-def test_a_verify_report_says_a_phrase_is_wrapped_rather_than_missing(tmp_path: Path) -> None:
-    # `PL-FG9D`'s close-out: the sentence was written, and its command could not see it.
-    root = _repo(tmp_path)
-    _work(root, "PL-K7QX write the sentence", "docs/MODEL.md", WRAPPED)
-    item = _item(touches=("docs/MODEL.md",), verify=f"grep -qF '{PHRASE}' docs/MODEL.md")
-    report = verify(root, item, _config(), "HEAD~1")
-
-    command = _check(report, "`verify:` command passes")
-    assert command.blocks
-    assert (
-        f"`{PHRASE}` is in docs/MODEL.md only across lines 1-2, so its `grep` fails "
-        "whether or not the work is done: `grep` reads one line at a time, so rewrite "
-        "the command to a phrase one line holds"
-    ) in command.lines
-
-
-def test_a_wrapped_removal_is_refused_although_its_command_exits_zero(tmp_path: Path) -> None:
-    # `PL-Z4WL`'s close-out, which passed: its fix quoted the sentence it removed
-    # across two lines, so the command written to see it gone could not see it.
-    root = _repo(tmp_path)
-    _work(root, "PL-K7QX quote the sentence", "docs/MODEL.md", WRAPPED)
-    item = _item(touches=("docs/MODEL.md",), verify=f"! grep -qF '{PHRASE}' docs/MODEL.md")
-    report = verify(root, item, _config(), "HEAD~1")
-
-    command = _check(report, "`verify:` command passes")
-    assert subprocess.run(item.verify, shell=True, cwd=root, check=False).returncode == 0
-    assert command.blocks
-    assert any(
-        line.startswith(f"`{PHRASE}` is still in docs/MODEL.md, across lines 1-2, so its `! grep`")
-        for line in command.lines
-    )
-
-
-# Scoping the replay to what a branch changed (`PL-SDHR`). The sweep answers a
-# question about the store, which a pull request cannot have changed - the same
-# argument `PL-P3B6` used to take it off `make check` - while costing 87 s of
-# the quality job's 152 s and growing with the queue rather than the change.
-
-
-def test_a_scoped_run_checks_only_the_items_it_was_given(tmp_path: Path) -> None:
-    root = _repo(tmp_path)
-    items = [_item(identifier="PL-K7QX", verify="true"), _item(identifier="PL-41B2", verify="true")]
-    report = already_passing(root, items, scoped_to={"PL-K7QX"})
-
-    assert report.passing == ("PL-K7QX",)
-    assert report.considered == 1
-
-
-def test_a_scoped_run_says_what_it_was_narrowed_to(tmp_path: Path) -> None:
-    root = _repo(tmp_path)
-    report = already_passing(
-        root, [_item(identifier="PL-K7QX")], scoped_to={"PL-K7QX"}, scope_base="origin/main"
-    )
-
-    assert report.scope == "1 item(s) this branch changed against origin/main"
-
-
-def test_a_scope_that_holds_nothing_to_run_still_carries_the_scope(tmp_path: Path) -> None:
-    # The path that would otherwise lie. A branch changing only closed items
-    # runs no command, and an empty report with no scope on it is
-    # indistinguishable from a store that holds no command at all - the exact
-    # confusion `declined` exists to prevent one level up.
-    root = _repo(tmp_path)
-    report = already_passing(
-        root, [_item(identifier="PL-K7QX")], scoped_to={"PL-N0N3"}, scope_base="origin/main"
-    )
-
-    assert report.passing == ()
-    assert report.considered == 0
-    assert report.scope == "1 item(s) this branch changed against origin/main"
-
-
-def test_an_unscoped_run_carries_no_scope(tmp_path: Path) -> None:
-    root = _repo(tmp_path)
-
-    assert already_passing(root, [_item()]).scope == ""
-
-
-def test_an_empty_scope_is_not_the_same_as_no_scope(tmp_path: Path) -> None:
-    # A branch that changed no item at all is still a scoped run, and saying
-    # "0 item(s)" is the answer. `scoped_to=None` is what means "sweep".
-    root = _repo(tmp_path)
-    report = already_passing(root, [_item()], scoped_to=set(), scope_base="origin/main")
-
-    assert report.scope == "0 item(s) this branch changed against origin/main"
-    assert report.considered == 0
-
-
-def test_a_declined_run_still_reports_what_it_would_have_covered(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    # A nested run declines before running anything, and the scope is built
-    # first so the decline can still say what was asked of it.
-    root = _repo(tmp_path)
-    monkeypatch.setenv(LANDED_GUARD, "1")
-    report = already_passing(
-        root, [_item(identifier="PL-K7QX")], scoped_to={"PL-K7QX"}, scope_base="origin/main"
-    )
-
-    assert not report.known
-    assert report.scope == "1 item(s) this branch changed against origin/main"
-
-
-# Widening that scope to the items a branch *invalidates*, not only the ones it
-# edited (`PL-XMNC`). Read from the item files alone, the replay ran a command
-# on the pull request that *wrote* it and never on the one that broke it - and
-# all six recorded breaks were the second case, a branch editing a file some
-# other item's command reads, each reported only by the whole-store sweep once
-# it was already on `main`.
-
-
-def test_a_branch_editing_a_file_a_verify_command_reads_is_in_scope() -> None:
-    # `PL-L9FC`'s own shape: its command greps `README.md`, and `#512` made it
-    # pass by writing that file without ever opening the item.
-    item = _item(
-        identifier="PL-L9FC", verify="python3 tools/doc_check.py check && grep -q x README.md"
-    )
-
-    assert items_reading([item], ["README.md"]) == {"PL-L9FC"}
-
-
-def test_the_gate_a_command_runs_is_not_a_file_it_reads() -> None:
-    """The half that keeps the widening affordable.
-
-    `tools/doc_check.py` is named by 54 of the 168 open commands and is the
-    health half of every one of them, so counting the program a clause runs
-    would put the whole of that set behind any edit to the gate - while the
-    thing each of them actually discriminates on sits in another clause.
-    """
-    item = _item(verify="python3 tools/doc_check.py check && grep -q x README.md")
-
-    assert items_reading([item], ["tools/doc_check.py"]) == frozenset()
-    assert items_reading([item], ["bin/docket"]) == frozenset()
-
-
-def test_a_test_file_handed_to_pytest_is_a_file_it_reads() -> None:
-    # Not the same case as the one above, though both name a path in the first
-    # clause: `pytest` is the program and the file is its input, so editing the
-    # file can change what the command returns.
-    item = _item(verify="uv run pytest tests/unit/test_x.py && grep -q def tests/unit/test_x.py")
-
-    assert items_reading([item], ["tests/unit/test_x.py"]) == {"PL-K7QX"}
-
-
-def test_a_directory_a_command_greps_covers_a_file_added_under_it() -> None:
-    # `PL-X9T3`'s shape, and the reason containment is the rule rather than
-    # equality: the branch that broke it added a file the recursive grep then
-    # found.
-    item = _item(verify="bin/docket check && ! grep -rq phrase docs/items/")
-
-    assert items_reading([item], ["docs/items/PL-41B2-a-new-capture.md"]) == {"PL-K7QX"}
-
-
-def test_a_file_the_branch_is_creating_is_matched_before_it_exists() -> None:
-    # `PL-XH1D`'s shape, and the reason this reader asks the filesystem
-    # nothing: `#487` broke it by *creating* `CONTRIBUTING.md`, which existed
-    # nowhere in the tree the command was written against.
-    item = _item(verify="test -f CONTRIBUTING.md")
-
-    assert items_reading([item], ["CONTRIBUTING.md"]) == {"PL-K7QX"}
-
-
-def test_a_bare_word_is_not_read_as_a_directory() -> None:
-    # A candidate carrying no `/` has to match a changed path exactly. Offered
-    # containment, a word inside a pattern would put the command behind every
-    # edit under a directory that happens to share its name.
-    item = _item(verify="grep -q src README.md")
-
-    assert items_reading([item], ["src/core.py"]) == frozenset()
-    assert items_reading([item], ["README.md"]) == {"PL-K7QX"}
-
-
-def test_a_path_inside_an_inline_script_is_read() -> None:
-    # Quoted spans are scanned for paths as well, which over-reports where the
-    # command is matching text rather than opening a file. That costs a replay;
-    # the other direction costs the finding.
-    inline = "python3 -c \"import json; json.load(open('src/a.json'))\""
-    item = _item(verify=inline)
-
-    assert items_reading([item], ["src/a.json"]) == {"PL-K7QX"}
-
-
-def test_a_separator_inside_a_quoted_pattern_does_not_split_a_clause() -> None:
-    # Clauses are cut on the blanked command, so a `&&` inside a pattern cannot
-    # start a phantom clause whose first word - the real file - would then read
-    # as the program it runs.
-    assert command_paths("grep -q 'a && b' docs/MODEL.md") >= {"docs/MODEL.md"}
-
-
-def test_a_closed_item_is_not_put_back_in_scope_by_its_command() -> None:
-    # A closed `verify:` records what was run on a tree that no longer exists.
-    # Replaying it would report a break in work that is finished.
-    item = _item(status="done", verify="grep -q x README.md")
-
-    assert items_reading([item], ["README.md"]) == frozenset()
-
-
-def test_an_item_with_no_command_is_in_no_scope_at_all() -> None:
-    assert items_reading([_item(verify="")], ["README.md"]) == frozenset()
-
-
-def test_a_widened_scope_says_which_half_each_id_came_from(tmp_path: Path) -> None:
-    # The cost line is the only place a reader learns why a command ran, and
-    # the two halves want different reactions: an item this branch edited is
-    # probably finished, while one it merely invalidated is a command that has
-    # stopped discriminating.
-    root = _repo(tmp_path)
-    report = already_passing(
-        root,
-        [_item(identifier="PL-K7QX"), _item(identifier="PL-41B2")],
-        scoped_to={"PL-K7QX", "PL-41B2"},
-        reading={"PL-41B2"},
-        scope_base="origin/main",
-    )
-
-    assert report.scope == (
-        "2 item(s) in scope: 1 this branch changed and 1 whose `verify:` command "
-        "reads a file it changed against origin/main"
-    )
-
-
-# A blocked item's command, asked about only where a branch touched the item
-# (`PL-RC0M`). `PL-N092`'s command passed for a day on a tree where none of its
-# work had been done, because the file its `grep` negated had been deleted and
-# `grep` on a missing file exits 2 - and nothing looked, because the item was
-# blocked. The pull request that unblocked it is the one that went red.
-
-
-def test_a_blocked_item_is_left_out_of_the_whole_store_sweep(tmp_path: Path) -> None:
-    # The cost half of the answer. The replay is this check's largest expense
-    # and the sweep is where it is paid, so widening it permanently to ask
-    # about work nobody can start is the repair that was rejected.
-    root = _repo(tmp_path)
-    report = already_passing(root, [_item(status="blocked", verify="true")])
-
-    assert report.passing == ()
-    assert report.blocked == ()
-    assert report.considered == 0
-
-
-def test_a_blocked_item_the_branch_changed_is_asked_about(tmp_path: Path) -> None:
-    root = _repo(tmp_path)
-    report = already_passing(root, [_item(status="blocked", verify="true")], scoped_to={"PL-K7QX"})
-
-    assert report.passing == ("PL-K7QX",)
-    assert report.blocked == ("PL-K7QX",)
-    assert report.considered == 1
-
-
-def test_a_blocked_item_outside_the_scope_is_still_left_alone(tmp_path: Path) -> None:
-    # Narrowing is what admits it, not the mere fact that the run is narrowed:
-    # a scoped run still asks only about the items the branch touched.
-    root = _repo(tmp_path)
-    items = [
-        _item(identifier="PL-K7QX", status="ready", verify="true"),
-        _item(identifier="PL-41B2", status="blocked", verify="true"),
-    ]
-    report = already_passing(root, items, scoped_to={"PL-K7QX"})
-
-    assert report.passing == ("PL-K7QX",)
-    assert report.blocked == ()
-
-
-def test_a_blocked_item_whose_command_still_fails_is_not_a_finding(tmp_path: Path) -> None:
-    # The steady state. Asking is only worth its cost if a healthy command is
-    # silent, and `blocked` is a subset of `passing` rather than of the pool.
-    root = _repo(tmp_path)
-    report = already_passing(root, [_item(status="blocked", verify="false")], scoped_to={"PL-K7QX"})
-
-    assert report.passing == ()
-    assert report.blocked == ()
-    assert report.considered == 1
-
-
-def test_blocked_is_always_a_subset_of_passing(tmp_path: Path) -> None:
-    root = _repo(tmp_path)
-    items = [
-        _item(identifier="PL-K7QX", status="ready", verify="true"),
-        _item(identifier="PL-41B2", status="blocked", verify="true"),
-    ]
-    report = already_passing(root, items, scoped_to={"PL-K7QX", "PL-41B2"})
-
-    assert set(report.blocked) <= set(report.passing)
-    assert report.passing == ("PL-K7QX", "PL-41B2")
-    assert report.blocked == ("PL-41B2",)
 
 
 TOUCHES = "diff stayed inside `touches`"
@@ -3479,21 +2603,6 @@ def test_the_batch_note_counts_the_commits_that_lead_with_the_other_id(tmp_path:
     assert check.detail.startswith("1 of 3 commit(s) also lead with PL-B2B2,")
 
 
-def test_a_self_audit_still_refuses_a_failing_command(tmp_path: Path) -> None:
-    """The other integrity half: `--self` never skips the test."""
-    root = _repo(tmp_path)
-    _work(
-        root,
-        "PL-K7QX add a test",
-        "tests/test_thing.py",
-        KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
-    )
-
-    report = verify(root, _item(verify="false"), _config(), "HEAD~1", self_audit=True)
-
-    assert not report.passed
-
-
 # `PL-CZXN` - whether the branch's tests still catch a change to its lines is
 # measured by mutation, and no longer read from the diff's text.
 
@@ -3787,56 +2896,9 @@ def test_a_done_item_with_no_command_and_no_reason_still_fails_hard(tmp_path: Pa
 
 
 # A dropped item that still carries a command (`PL-BX1C`). The command names
-# work the drop says will not be done, so running it measured unrelated work:
-# three drops were REJECTed on test-name greps that another branch's tests
-# went on to satisfy. This one fails, and leaves a file behind if it runs at
-# all, so "not run" is observed rather than inferred from the verdict.
+# work the drop says will not be done, and nothing reads it. This one would
+# leave a file behind if anything ran it.
 LEAVES_A_MARK = "touch ran && false"
-
-
-def test_a_dropped_items_verify_command_is_not_run(tmp_path: Path) -> None:
-    """Printed and not run, so a failing one refuses nothing."""
-    root = _repo(tmp_path)
-    _work(
-        root,
-        "PL-K7QX drop it",
-        "tests/test_thing.py",
-        KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
-    )
-
-    report = verify(
-        root, _item(status="dropped", verify=LEAVES_A_MARK), _config(), "HEAD~1", self_audit=True
-    )
-
-    command = _check(report, "`verify:` command passes")
-    assert command.advisory and not command.blocks
-    assert command.detail == LEAVES_A_MARK
-    assert command.lines == ("not run: a dropped item built nothing, so no command can prove it",)
-    assert not (root / "ran").exists()
-    # The other checks ran, the project's own included.
-    assert not report.stopped_early
-    assert _check(report, "no suppression added").passed
-    assert _check(report, "the project's own checks pass").passed
-    assert report.passed
-
-
-def test_the_same_command_on_a_done_item_still_runs_and_refuses(tmp_path: Path) -> None:
-    """The skip is keyed on the drop, not on the command: closed `done`, it runs."""
-    root = _repo(tmp_path)
-    _work(
-        root,
-        "PL-K7QX do it",
-        "tests/test_thing.py",
-        KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
-    )
-
-    report = verify(
-        root, _item(status="done", verify=LEAVES_A_MARK), _config(), "HEAD~1", self_audit=True
-    )
-
-    assert _check(report, "`verify:` command passes").blocks
-    assert (root / "ran").exists()
-    assert not report.passed
 
 
 def test_a_worker_dropping_its_own_item_is_still_refused_in_a_delegated_audit(
@@ -3962,114 +3024,16 @@ def test_a_not_delegable_line_excuses_nothing_where_the_base_cannot_be_read(tmp_
 
 # One rule for which copy of the item each contract field is read from
 # (`PL-B8HZ`), stated on `Commission`: an outcome is the branch's and excuses
-# nothing, a prediction is measured against the base's with the branch's
-# correction run and printed, a waiver is the base's. The outcome row is
-# pinned by `test_a_dropped_items_verify_command_is_not_run` and
+# nothing, a prediction is measured against the base's, and a waiver is the
+# base's. The outcome row is pinned by
 # `test_a_worker_dropping_its_own_item_is_still_refused_in_a_delegated_audit`;
 # the waiver row by
 # `test_a_not_delegable_line_does_not_excuse_a_command_the_base_holds`; and
 # a scope the base never commissioned staying the branch's own by
-# `test_work_inside_the_declared_scope_is_accepted`. The prediction rows,
-# `verify:` and `touches:`, are pinned here.
+# `test_work_inside_the_declared_scope_is_accepted`. The prediction row for
+# `touches:` is pinned here.
 
 ITEM_FILE = "docs/items/PL-K7QX-do-the-thing.md"
-COMMISSIONED = "grep -q 'def test_b' tests/test_thing.py"
-CORRECTED = "grep -q 'def test_c' tests/test_thing.py"
-ADDS_TEST_C = KEPT + "\ndef test_c() -> None:\n    assert 3 == 3\n"
-
-
-@pytest.mark.parametrize(
-    ("commissioned", "result"),
-    [(COMMISSIONED, "fails on this tree (exit 1)"), ("true", "passes on this tree")],
-    ids=["a-failing-command-swapped-away", "a-passing-command-swapped-away"],
-)
-@pytest.mark.parametrize("self_audit", [True, False], ids=["self-audit", "delegated"])
-def test_a_rewritten_command_prints_the_commissioned_one_beside_it(
-    tmp_path: Path, commissioned: str, result: str, self_audit: bool
-) -> None:
-    """`PL-PZ6T`'s shape: a commissioned test that never arrives, swapped for a passing grep.
-
-    The branch's command decides the check - 163 of 1,437 close-outs on `main`
-    rewrote theirs and every one was a correction - and the commissioned
-    command's own exit is printed under it, so an `ACCEPT` carries the trace
-    the front-matter NOTE never gave. Printed in both modes; what refuses the
-    rewrite in a delegated audit is the front-matter check, as before.
-    """
-    root = _repo(tmp_path)
-    _commission(root, "PL-K7QX-do-the-thing.md", verify=commissioned)
-    _work(root, "PL-K7QX do it", "tests/test_thing.py", ADDS_TEST_C)
-    closed = _stored("PL-K7QX", "Do the thing", status="done", verify=CORRECTED)
-    _work(root, "PL-K7QX close it", ITEM_FILE, closed)
-
-    report = verify(
-        root, _item(status="done", verify=CORRECTED), _config(), "HEAD~2", self_audit=self_audit
-    )
-
-    command = _check(report, "`verify:` command passes")
-    assert command.passed and command.detail == CORRECTED
-    assert command.lines == (
-        f"commissioned: `{commissioned}` - {result}; this branch runs `{CORRECTED}` instead",
-    )
-    assert _check(report, FRONT_MATTER).blocks is not self_audit
-    assert report.passed is self_audit
-
-
-def test_the_same_command_on_both_copies_prints_no_correction(tmp_path: Path) -> None:
-    """The ordinary close-out keeps its command, and its report gains no line."""
-    root = _repo(tmp_path)
-    _work(root, "PL-K7QX do it", "tests/test_thing.py", ADDS_TEST_C)
-
-    report = verify(root, _item(), _config(), "HEAD~1", self_audit=True)
-
-    command = _check(report, "`verify:` command passes")
-    assert command.passed and command.detail == "true" and command.lines == ()
-
-
-@pytest.mark.parametrize("held", ["no copy", "a copy with no command"])
-def test_a_command_the_base_never_commissioned_is_named_as_the_branch_s_own(
-    tmp_path: Path, held: str
-) -> None:
-    """Where the base commissions none, the line says the command is the branch's own.
-
-    A suffix rather than a line: an item captured and closed on one branch is
-    two close-outs in five, and a line that fires that often is skimmed.
-    """
-    root = _repo(tmp_path)
-    if held == "no copy":
-        identifier, title = "PL-N3W1", "A new one"
-    else:
-        identifier, title = "PL-K7QX", "Do the thing"
-    item_file = f"docs/items/{identifier}-{title.lower().replace(' ', '-')}.md"
-    if held != "no copy":
-        _work(root, "commission", item_file, _without_command(_stored(identifier, title)))
-    _work(root, f"{identifier} do it", "tests/test_thing.py", ADDS_TEST_C)
-    _work(root, f"{identifier} close it", item_file, _stored(identifier, title, status="done"))
-
-    report = verify(
-        root,
-        _item(identifier=identifier, title=title, path=Path(item_file).name, status="done"),
-        _config(),
-        "HEAD~2",
-        self_audit=True,
-    )
-
-    command = _check(report, "`verify:` command passes")
-    assert command.passed and command.lines == ()
-    assert command.detail == "true - this branch's own, since HEAD~2 commissions none"
-
-
-def test_an_unreadable_commission_says_the_command_could_not_be_compared(tmp_path: Path) -> None:
-    """Neither corrected nor called the branch's own: a comparison never made is said so."""
-    root = _repo(tmp_path)
-    _work(root, "PL-K7QX do it", "tests/test_thing.py", ADDS_TEST_C)
-
-    report = verify(root, _item(), _config(items_dir="nowhere"), "HEAD~1", self_audit=True)
-
-    command = _check(report, "`verify:` command passes")
-    assert command.passed and command.lines == ()
-    assert command.detail.startswith(
-        "true - whether HEAD~1 commissioned it could not be read: no item store at HEAD~1:nowhere"
-    )
 
 
 @pytest.mark.parametrize("self_audit", [True, False], ids=["self-audit", "delegated"])
@@ -4118,186 +3082,10 @@ def test_a_widened_touches_is_measured_against_the_commission_and_named(
     assert report.passed is self_audit
 
 
-# `verify:` commands that read past the tree (`PL-205P`). The two recorded
-# shapes are kept verbatim from the store, because the point of these is that
-# they are what was actually written rather than what a test author would
-# invent.
-TAG_COMMAND = "git ls-remote --tags origin v0.4.30 | grep -q 'refs/tags/v0.4.30'"
-REFS_COMMAND = "! git ls-remote --heads origin 'refs/heads/claude/x' | grep -q ."
-GREPS_FOR_A_NETWORK_VERB = (
-    "grep -q 'git push origin --delete' .claude/skills/docket/SKILL.md && "
-    "grep -q 'say the remote is gone' docs/worker.md"
-)
-
-
-@pytest.mark.parametrize("command", [TAG_COMMAND, REFS_COMMAND, "curl -sS https://example.com"])
-def test_a_command_that_asks_the_remote_reaches_outside_the_tree(command: str) -> None:
-    assert reaches_outside_tree(command) is True
-
-
-@pytest.mark.parametrize(
-    "command",
-    [
-        # The trap. `PL-K2C8`'s real command carries `git push origin --delete`
-        # as a *search string* and opens no socket, so a substring scan calls
-        # it non-hermetic and silently downgrades a finding that must stay an
-        # error. `shlex` collapses the quoted argument into one token.
-        GREPS_FOR_A_NETWORK_VERB,
-        "uv run pytest tests/unit/test_thing.py",
-        # A network subcommand that is not the word after `git`.
-        "git log --grep fetch",
-        # Unparseable, which must read as hermetic: failing to parse is not a
-        # licence to soften a finding.
-        "grep -q 'unbalanced",
-        "",
-    ],
-)
-def test_a_command_that_only_reads_the_tree_does_not(command: str) -> None:
-    assert reaches_outside_tree(command) is False
-
-
-def test_a_passing_command_that_asks_the_remote_is_reported_apart(tmp_path: Path) -> None:
-    """It stays in `passing` and is named in `external`, so `checks` can soften it.
-
-    `PL-205P`: the command's answer is a fact about the world at the moment it
-    ran, so it flips with no commit behind it - which is how `main` went red
-    across six commits by five unrelated sessions for `PL-8GQW` while the
-    repository had not changed.
-    """
-    root = _repo(tmp_path)
-    items = [
-        _item(identifier="PL-K7QX", status="ready", verify="true"),
-        _item(identifier="PL-41B2", status="ready", verify="git ls-remote --tags . HEAD"),
-    ]
-    report = already_passing(root, items)
-
-    assert report.passing == ("PL-K7QX", "PL-41B2")
-    assert set(report.external) <= set(report.passing)
-    assert report.external == ("PL-41B2",)
-
-
-def test_reaching_outside_the_tree_takes_precedence_over_blocked(tmp_path: Path) -> None:
-    """`blocked`'s certainty does not survive a command the world can answer.
-
-    A blocked item's passing command is reported as certainly
-    non-discriminating, because work nobody can start cannot have landed. That
-    rests on the tree being the only thing the command reads.
-    """
-    root = _repo(tmp_path)
-    items = [_item(identifier="PL-41B2", status="blocked", verify="git ls-remote --tags . HEAD")]
-    report = already_passing(root, items, scoped_to={"PL-41B2"})
-
-    assert report.passing == ("PL-41B2",)
-    assert report.external == ("PL-41B2",)
-    assert report.blocked == ()
-
-
-# One reading of a `verify:` command for every reader here, `docket.shell`'s
-# (`PL-P7J7`). Each command below was misread by the quote regexes and the
-# `shlex.split` these readers took before it, the first in the unsafe
-# direction: a real recursion into `docket verify` left unrefused.
-APOSTROPHE_IN_DOUBLE_QUOTES = (
-    'grep -qF "it\'s" a.md && bin/docket verify PL-K7QX && grep -qF "it\'s" b.md'
-)
-
-
-def test_an_apostrophe_in_double_quotes_hides_no_command() -> None:
-    # The single-quote regex ran from one apostrophe to the next, across the
-    # double quotes and the command between them.
-    assert reenters_verify(APOSTROPHE_IN_DOUBLE_QUOTES) is True
-    # `shlex.split` kept `a.md|curl` one word.
-    assert reaches_outside_tree("grep -qF 'x' a.md|curl -s https://example.com") is True
-    # A quoted `&&` cut the clause, so `z` read as the program the next one ran.
-    assert "z" in command_paths('grep -qF "x \\"y && z\\" w" docs/a.md')
-    # A substitution runs its body wherever it stands: quoted, bare or backquoted.
-    for command in (
-        'test -n "$(bin/docket verify PL-K7QX)"',
-        "echo $(bin/docket verify PL-K7QX)",
-        "echo `bin/docket verify PL-K7QX`",
-    ):
-        assert reenters_verify(command) is True, command
-
-
-def test_the_readers_take_bash_s_reading_of_quotes_comments_and_pipes() -> None:
-    # Quotes are removed as bash removes them, so these run the program.
-    assert never_fails("'true'") is True
-    assert reenters_verify('"docket" verify PL-K7QX') is True
-    # A comment is never read by bash, so it names no path.
-    assert "docs/b.md" not in command_paths("grep -q x docs/a.md # docs/b.md")
-    # `>|` is a redirection and `|&` a pipe; a backquote captures like `$( )`.
-    assert reads_check_output("bin/docket check >| out.txt") == ""
-    assert reads_check_output("bin/docket check |& grep -q x") == (
-        "pipes its output into another command"
-    )
-    assert reads_check_output("test -z `bin/docket check`") == (
-        "captures its output in a command substitution"
-    )
-    # An unclosed substitution is a command bash refuses, so it runs nothing.
-    assert reenters_verify('echo "$(bin/docket verify PL-K7QX"') is False
-
-
 # --- the command grammar is docket.shell's (`PL-RHPK`) -----------------------
 #
 # Each reader below asked its own question of a command's structure beside
 # `docket.shell`, and each pins the input on which the two readings parted.
-
-
-def test_a_command_program_is_read_through_docket_shell() -> None:
-    """The program is the one `docket.shell` reads, so the path it runs is no path read.
-
-    `verify` took the word after `time` for a path the command reads, and knew
-    `python3.11` as no interpreter, where `docket.shell` and the guard hooks
-    take `python3` and `python3.11` for the program (`PL-RHPK`). An assignment,
-    a wrapper, `uv run`, a reserved word and a pipe each come before a program.
-    """
-    for command in (
-        "time python3 tools/x.py docs/a.md",
-        "python3.11 tools/x.py docs/a.md",
-        "FOO=1 timeout 60 uv run python3 -X dev tools/x.py docs/a.md",
-        "if true; then python3 tools/x.py docs/a.md; fi",
-        "grep -c x docs/a.md | python3 tools/x.py",
-        "time bash tools/x.py docs/a.md",
-    ):
-        paths = command_paths(command)
-
-        assert "tools/x.py" not in paths, command
-        assert "docs/a.md" in paths, command
-    # A `-c` string is code rather than a script, so the path after it is read.
-    assert "tools/x.py" in command_paths("python3 -c 'import sys' tools/x.py")
-
-
-def test_a_docket_run_is_what_a_command_invokes() -> None:
-    """`docket <subcommand>` runs where a simple command invokes docket, as the gate guard reads it.
-
-    `python3 -m docket check` was a run to `verify` and no gate to the hook,
-    and `echo docket verify` was a run to `verify` though it runs `echo`
-    (`PL-RHPK`).
-    """
-    assert reenters_verify("python3 -m docket verify PL-K7QX")
-    assert reenters_verify("timeout 60 bin/docket verify PL-K7QX")
-    assert reenters_verify("FOO=1 uv run docket verify PL-K7QX")
-    assert not reenters_verify("echo docket verify")
-    assert not reenters_verify("grep -q 'docket verify' docs/items/")
-    assert reads_check_output("python3 -m docket check 2>&1 | grep -q x") == (
-        "pipes its output into another command"
-    )
-    # A `case` terminator ends the command, so the pipe after it is the next one's.
-    assert reads_check_output("case x in x) bin/docket check;; y) a | b;; esac") == ""
-
-
-def test_a_pytest_run_is_what_a_command_invokes() -> None:
-    """pytest runs where a simple command invokes it, as `checks` reads it (`PL-RHPK`).
-
-    `verify` matched the text `pytest`, so a `python3 -c` string calling
-    `pytest.main` was a pytest run to it and none to the `-k` rule in `checks`.
-    It runs the interpreter, so neither reads it as one now, and a wrapper
-    ahead of `python -m pytest` hides nothing.
-    """
-    assert not selects_no_test(
-        "python3 -c \"import pytest,sys; sys.exit(pytest.main(['-k','x','tests/unit']))\"", 5
-    )
-    assert not selects_no_test("echo pytest", 5)
-    assert selects_no_test("timeout 60 python3 -m pytest -k gate", 5)
 
 
 def test_an_added_line_in_a_file_git_quotes_is_read_as_that_file(tmp_path: Path) -> None:

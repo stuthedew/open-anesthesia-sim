@@ -1,6 +1,6 @@
 """Tests for the push-check guard, `.claude/hooks/push_check_guard.py` (`PL-PLSJ`).
 
-The hook runs `tools/doc_check.py` and `bin/docket check --verify` (`PL-S1BG`)
+The hook runs `tools/doc_check.py` and `bin/docket check` (`PL-S1BG`)
 in the working tree a `git push` runs from, and denies the push while either
 fails. Since `PL-3JG7` it also runs four more of
 `make check`'s checks under the tree's `.venv/bin/python`. Each test builds a
@@ -43,11 +43,11 @@ DOC_FAILS = (
 )
 # `bin/docket` is a bash wrapper, so its stubs are bash.
 STORE_PASS = 'echo "docket: 1 open, 0 errors, 0 advisories"'
-STORE_ERROR = "PL-K7QX is open but its `verify:` command already passes (1 of 1 checked)"
+STORE_ERROR = "PL-K7QX: marked ready but has no `touches`"
 STORE_FAILS = (
     "cat <<'EOF'\n"
     "docket: 1 open, 1 errors, 1 advisories\n"
-    "  verify: a cost line nobody needs at push time\n"
+    "  a summary line nobody needs at push time\n"
     "\n"
     "Errors (the store is wrong; fix before committing):\n"
     f"  {STORE_ERROR}\n"
@@ -130,29 +130,11 @@ def test_a_push_whose_store_check_fails_is_refused(project: Path) -> None:
     assert decision is not None
     reason = decision["permissionDecisionReason"]
     # The re-run is `make check`'s own store check, reading the base without a fetch.
-    assert (
-        "`docket check` failed "
-        "(`bin/docket check --verify --verify-base origin/main --no-fetch` re-runs it)"
-    ) in reason
+    assert "`docket check` failed (`bin/docket check --no-fetch` re-runs it)" in reason
     assert STORE_ERROR in reason
-    assert "a cost line nobody needs at push time" not in reason
+    assert "a summary line nobody needs at push time" not in reason
     assert "a grooming advisory nobody needs at push time" not in reason
     assert "doc_check" not in reason
-
-
-def test_the_store_check_compares_against_the_base_vcs_names(project: Path) -> None:
-    """`PL-ZXCN`: the base is `vcs.default_base`'s answer, where it was the literal `origin/main`.
-
-    On a clone whose default branch is `master`, the literal named a ref the
-    clone does not hold.
-    """
-    _git(project, "update-ref", "-d", "refs/remotes/origin/main")
-    _git(project, "update-ref", "refs/remotes/origin/master", "HEAD")
-    _stub(project, store=STORE_FAILS)
-    decision = _decision("git push", cwd=project, project=project)
-    assert decision is not None
-    rerun = "`bin/docket check --verify --verify-base origin/master --no-fetch` re-runs it"
-    assert rerun in decision["permissionDecisionReason"]
 
 
 #: A push behind each option git reads as its own that takes the next word, the

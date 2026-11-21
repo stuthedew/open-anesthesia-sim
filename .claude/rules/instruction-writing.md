@@ -44,17 +44,8 @@ these rules, "phases," or "closed loops" in the output itself.
     Word the question in clinical or learner terms, not the code's or the
     item's. Under each option, say what a learner sees or what changes for
     them. Give the recommendation and its reason, and say why the choice is
-    theirs rather than the session's. A question about different approaches
-    to the interface carries one screenshot per option, of one concrete run,
-    annotated where the options differ. The run-the-app skill § "Compare
-    interface approaches for the owner" says how (`PL-KYTY`).
-    **A session running under a coordinator asks the coordinator, not the
-    owner** (project owner, 2026-10-19). This applies to a Projects thread and
-    to any other session that a coordinator session started. Such a session
-    sends a question the coordinator can answer to the coordinator, never to
-    the owner: what to work on next, which item to take, whether to carry on.
-    The coordinator decides it, or brings the owner only a real decision,
-    written to the standard above.
+    theirs rather than the session's.
+    **A session under a coordinator asks the coordinator, not the owner.**
 11. PROGRESSIVE DISCLOSURE. Do not include execution steps for options
     not yet chosen. Name the option and its cost; deliver its procedure
     after the user picks it.
@@ -82,14 +73,8 @@ these rules, "phases," or "closed loops" in the output itself.
       states an order whether or not one was meant. Where the items are
       genuinely independent, order them by consequence and say in one clause
       that they can be done in any order.
-    - A line whose answer will produce a commit says so, and sorts as work
-      rather than as a question. Where that commit belongs in a branch another
-      line would merge or close, the decision line comes first. And while a
-      pull request is open on that branch, the item the answer goes into
-      stays claimed there at `needs-decision`, and the pull request is a
-      draft, until the answer is committed. `bin/docket arm` keeps a branch
-      with an open claim unarmed, so a merge from the pull request page
-      cannot land first and leave the answer on a merged branch (`PL-JHHC`).
+    - A line whose answer will produce a commit says so, and comes before a
+      line that would merge or close that commit's branch.
     - An action outside this session's reach carries its exact steps, not its
       intent. Anything they have to do somewhere the session cannot go — a
       repository or account setting, a tag, a plan change, a third-party

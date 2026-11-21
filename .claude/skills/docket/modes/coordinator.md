@@ -83,8 +83,19 @@ put to the owner at once, with a recommendation.
   request from a pull request's own author.
 - Never cut the release that the Goal names. A cut thread stops and reports if
   its version would be that release.
-- Decisions go in item files. The thread asks the coordinator, not the owner,
-  what to work on next (`.claude/rules/instruction-writing.md` rule 10).
+- Decisions go in item files.
+- **A session running under a coordinator asks the coordinator, not the owner**
+  (project owner, 2026-10-19). This applies to a Projects thread and to any
+  other session that a coordinator session started. Such a session sends a
+  question the coordinator can answer to the coordinator, never to the owner:
+  what to work on next, which item to take, whether to carry on. The
+  coordinator decides it, or brings the owner only a real decision, written to
+  the standard of `.claude/rules/instruction-writing.md` rule 10.
+- **Fill a long wait with work** (project owner, 2026-10-25, ratified, over
+  leaving the coordinator to notice an idle thread). Before a thread goes idle
+  on a wait expected to last more than an hour, it runs `bin/docket next` in
+  its lane and takes any ready item inside the scope it was given. If there is
+  none, it tells the coordinator, so that the place can be filled (`PL-D1FD`).
 - Run `uv run pytest -q tests/unit/test_line_splits.py | tail -1` as the
   first command. A Projects thread does not load `.claude/` (`PL-CR81`), and
   only the setup script in `docs/maintainer.md` gives it the repository's
@@ -154,6 +165,20 @@ once a plugin carries the hooks and skills (`PL-XFDQ`).
   function are built. Decide them without a decision card, unless a required
   value's visibility is at stake (`.claude/rules/instruction-writing.md` rule
   14).
+
+## Product focus and the Projects trial
+
+`CLAUDE.md` § "What this project is" keeps the rule: a session given no
+particular work is a product session, and an apparatus finding stops it only
+when it blocks it. The project owner set it on 2026-09-25 (ratified, over a fix
+batch before the switch and over working each root cause in the owner's own
+sessions, `PL-2866`). Root causes are worked in parallel by the Projects
+trial's coordinator (`PL-NZC0`) while that trial runs, not in the owner's
+sessions. A product session that finds one while the trial is paused ends its
+reply with a ready-to-paste prompt for a fresh session on it, as `CLAUDE.md`'s
+generator rule says (`PL-0GWD`). It holds until the owner ends it. Ending it
+deletes the paragraph in `CLAUDE.md` and `docket.toml`'s `focus` key, which
+points the digest's `Top:` line at the product lane (`PL-2CPD`).
 
 ## Merging
 

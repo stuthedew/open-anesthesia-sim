@@ -9030,13 +9030,6 @@ def _blanked_span(prose: str, span: re.Match[str]) -> str:
 #: into `make check`: cover it in CI too, or say in one line why the merge gate
 #: cannot ask it (`PL-PBP5`).
 GATE_ONLY: dict[str, tuple[str, str]] = {
-    "bin/docket check": (
-        "ci",
-        "the floor run: `quality.yml` runs it before `uv` exists, which is what proves "
-        "the store's own check needs no virtualenv under the 3.11 floor, and `make "
-        "check` asks everything it asks inside its `--verify` run, which only adds the "
-        "replay",
-    ),
     "bin/docket ci-scope --base --github-output": (
         "ci",
         "the item-only fast path's question: `quality.yml` asks it on a pull request "
@@ -9208,8 +9201,8 @@ def _mode(arguments: Sequence[str]) -> tuple[str, ...]:
     The subcommand is every word ahead of the first option - `check` in
     `bin/docket check` - and an option's name is the word as written, or its
     part before an `=`. The rest are values and are dropped, since
-    `--verify-base origin/main` locally and `--verify-base "$VERIFY_BASE"` in
-    CI are one mode handed two refs, and the names are sorted, since their order
+    `--base origin/main` locally and `--base "$CONTRAST_BASE"` in CI are one
+    mode handed two refs, and the names are sorted, since their order
     chooses nothing.
     """
     subcommand: list[str] = []

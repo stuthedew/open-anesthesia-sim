@@ -170,13 +170,11 @@ HOMES: tuple[Home, ...] = (
     Home(
         rule="walk",
         reads="walks the tree",
-        where=((DOCKET + "vcs.py", "tracked_files"), (DOCKET + "grep.py", "_walk")),
+        where=((DOCKET + "vcs.py", "tracked_files"),),
         why=(
             "`tracked_files` asks git which files the repository holds and walks only a tree "
             "that is not a checkout, so a reader of it never sees another checkout under "
-            "`.claude/worktrees/`, a virtualenv or a build product (`PL-HNXS`); `_walk` in "
-            "`docket.grep` is the model of what `grep -r` reads, which is the disk, so a "
-            "`verify:` command's grep is explained by the files it read (`PL-J4YY`)"
+            "`.claude/worktrees/`, a virtualenv or a build product (`PL-HNXS`)"
         ),
         remedy="read the files through `tracked_files`, or `tracked_under` for one subtree",
     ),
