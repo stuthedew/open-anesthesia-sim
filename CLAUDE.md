@@ -122,16 +122,8 @@ decision, and they have different bars to reopen** (project owner, 2026-09-16).
 every nuance - not that the question is closed. A user-facing behavior they
 asked for in their own words is firmer. Four consequences:
 
-- **Record which it was.** A decision taken on a session's recommendation is
-  written `(project owner, DATE, ratified)` and names, in one clause, what it
-  was chosen over. One they specified keeps the plain `(project owner, DATE)`,
-  but only from 2026-09-16, the day this rule landed: dated earlier, the plain
-  form records no kind at all, so read it as unrecorded rather than as
-  specified, reopen it on ordinary evidence, and say the kind is unrecorded
-  rather than claiming it was ratified. One word and one clause, because the
-  reply that put the case is gone and the record is the only carrier - and
-  without it a later session cannot tell a design they authored from one they
-  nodded at.
+- **Record which it was**: `(project owner, DATE, ratified)` with what it was
+  chosen over, in one clause, or the plain `(project owner, DATE)`.
 - **Reopen a ratified decision on ordinary evidence**: a measurement, a cost the
   case did not carry, a constraint that has since appeared. Say so and put it
   back to them. "It is what the owner decided" does not defend it, because it
@@ -227,18 +219,8 @@ to it is re-derived in every session. So, when building a mechanism:
   recurs and the answer is deterministic. Not for a one-off, not around what a
   linter already does, and not where upkeep would cost more than the passes it
   saves. Where the benefit is unclear, the answer is no.
-- **A check earns its place every run, or it is retired.** The gate above
-  decides whether to build one; this decides whether to keep it. A check that
-  fires every run without changing a decision is a defect in the check — it
-  costs attention forever and trains a session to skim the output where a real
-  advisory also appears. Removing one is a legitimate outcome of a workflow
-  pass, not a loss of coverage. Reserve hard failure for exact rules; a signal
-  needing context is an advisory, and an advisory nobody acts on is retired only after naming the decision it
-  was built to change and where that decision is taken: if that decision is
-  still taken somewhere, route the advisory to that moment first, and retire
-  it only if it still changes nothing there; if no such decision exists, it
-  is fluff and goes. Nobody reading it is the symptom, not the test (project
-  owner, 2026-10-01, ratified, over an item of its own, `PL-1XZD`). `PL-ZBJ0` carries the evidence.
+- **A check earns its place every run, or it is retired.**
+  `.claude/rules/apparatus-standard.md` has the test for retiring one.
 
 ## The queue, and how the project owner works
 
@@ -296,20 +278,8 @@ risk and the reward, and stop. Report in a line what the fast path did.
   corrected. The capture is the record; the edit is the change. Do both.
 
   **Route it; do not append here by default.** Ask *at what moment a session
-  needs the rule, and what is the cheapest thing that delivers it then.* Four
-  dispositions, cheapest first:
-
-  1. **A check or a script**, wired into `make check`, a hook, or CI. Zero
-     resident context, and it never fails to fire. Deleting prose because
-     something deterministic now enforces it is the strongest outcome here.
-  2. **A skill**, for a multi-step procedure whose trigger is the skill's own
-     trigger. It loads only when relevant; the queue workflows are the example.
-  3. **A path-scoped rule** — a `.claude/rules/*.md` with `paths:` frontmatter,
-     which loads when a session reads, writes or edits a matching file. Right
-     for a rule that matters only in part of the tree; wrong for one that must
-     fire before a first write, which it reaches only after that write.
-  4. **Resident here**, only for what a session could violate before it would
-     think to look anything up.
+  needs the rule, and what is the cheapest thing that delivers it then.*
+  `.claude/rules/rule-routing.md` lists four dispositions, cheapest first.
 
   A rule that lands in none of the four has been lost, which is worse than this
   file staying long: never delete a rule for being wordy — but a rule whose
