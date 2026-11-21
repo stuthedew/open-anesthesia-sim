@@ -11,11 +11,7 @@ import pytest
 from PySide6.QtWidgets import QApplication
 
 from anesthesia_sim.app.controller import SimulationController
-from anesthesia_sim.app.dashboard_frame import (
-    MAX_DISPLAYED_RUNS,
-    SIMULATION_STEP_S,
-    slider_position,
-)
+from anesthesia_sim.app.dashboard_frame import MAX_DISPLAYED_RUNS, slider_position
 from anesthesia_sim.app.formatting import (
     CONCENTRATION_DISPLAY_DECIMALS,
     FLOW_DISPLAY_DECIMALS,
@@ -29,6 +25,7 @@ from anesthesia_sim.app.playback import (
 from anesthesia_sim.app.qt_widgets import ParameterSlider
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import ACCENT_TEXT, INK, MUTED, PANEL
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
@@ -297,7 +294,7 @@ def test_the_sliders_declare_an_adjustment_boundary_when_a_drag_begins(
         run = _shown_view(application, controller).runs[0]
         controller.start()
         controller.set_fresh_gas_flow(FreshGasFlow(3.0))
-        controller.advance(SIMULATION_STEP_S)
+        controller.advance()
 
         control: ParameterSlider = getattr(_dials(run), slider_name)
         control.slider.sliderPressed.emit()
@@ -314,7 +311,7 @@ def test_a_declared_boundary_reaches_the_controller(application: QApplication) -
 
     controller.start()
     controller.set_fresh_gas_flow(FreshGasFlow(3.0))
-    controller.advance(SIMULATION_STEP_S)
+    controller.advance()
     run.start_adjustment()
     controller.set_fresh_gas_flow(FreshGasFlow(2.0))
 
@@ -340,7 +337,7 @@ def test_a_drag_of_one_slider_is_marked_and_listed_once(application: QApplicatio
 
     for percent in (3.0, 3.5, 4.0):
         slider.setSliderPosition(slider_position(percent, CONCENTRATION_DISPLAY_DECIMALS))
-        controller.advance(SIMULATION_STEP_S)
+        controller.advance()
 
     slider.setSliderDown(False)
     view.present(False)

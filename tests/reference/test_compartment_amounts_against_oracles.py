@@ -41,7 +41,6 @@ from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
-from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
 
 # The shipped step, restated rather than imported for the reason
@@ -152,7 +151,7 @@ def _run_for(controller: SimulationController, duration_s: float) -> None:
     controller.start()
 
     for _ in range(round(duration_s / SHIPPED_STEP_S)):
-        controller.advance(SimulationStep(SHIPPED_STEP_S))
+        controller.advance()
 
 
 @pytest.mark.parametrize(("agent_id", "duration_s"), sorted(ORACLE_FRACTIONS))

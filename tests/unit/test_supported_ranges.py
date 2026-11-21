@@ -344,7 +344,7 @@ def test_another_flows_type_is_refused_as_a_swapped_argument(control: Control) -
 @pytest.mark.parametrize("control", CONTROLS, ids=CONTROL_IDS)
 @pytest.mark.parametrize(
     "other",
-    [SimulationStep(0.1), StepCount(600), CaseInstant(600.0), Fraction(0.5), Percent(2.0)],
+    [SimulationStep(0.1), StepCount(600), CaseInstant(600), Fraction(0.5), Percent(2.0)],
     ids=lambda other: type(other).__name__,
 )
 def test_a_step_a_count_or_an_instant_handed_in_as_a_flow_is_refused_as_a_swapped_argument(
@@ -595,7 +595,7 @@ def test_a_cardiac_output_written_past_set_cardiac_output_is_refused_at_the_writ
     )
     assert patient.cardiac_output_l_min is held
     assert system.equation_settings() == settings
-    system.advance(SimulationStep(0.1))
+    system.advance()
 
     with pytest.raises(SimulationConfigurationError, match="written straight onto the patient"):
         patient.cardiac_output_l_min = CardiacOutput(nextafter(float(held), inf))
@@ -1265,7 +1265,7 @@ def test_arithmetic_on_an_instant_or_a_count_is_a_plain_number() -> None:
     assert type(-at_the_limit) is int
 
 
-@pytest.mark.parametrize("built", [CaseInstant(600.0), StepCount(6_000)], ids=repr)
+@pytest.mark.parametrize("built", [CaseInstant(600), StepCount(6_000)], ids=repr)
 def test_an_instant_and_a_count_survive_copy_and_pickle_as_their_types(built: object) -> None:
     """Each is rebuilt through its type's constructor, which checks it again and keeps the type."""
 
@@ -1303,7 +1303,7 @@ def test_a_value_not_built_as_the_type_is_refused_whatever_it_holds() -> None:
         assert f"it is {type(unbuilt).__name__}" in str(raised.value)
         assert "build it as StepCount(...)" in str(raised.value)
 
-    require_case_instant("instant_s", CaseInstant(600.0))
+    require_case_instant("instant_s", CaseInstant(600))
     require_step_count(StepCount(6_000))
 
 
@@ -1344,7 +1344,7 @@ def test_another_quantity_handed_in_as_an_instant_is_refused_as_a_swapped_argume
 @pytest.mark.parametrize(
     "other",
     [
-        CaseInstant(600.0),
+        CaseInstant(600),
         SimulationStep(0.1),
         FreshGasFlow(4.0),
         AlveolarVentilation(4.0),

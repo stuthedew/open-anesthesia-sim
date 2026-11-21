@@ -19,7 +19,7 @@ from anesthesia_sim.core.governing_equations import DELIVERED_AGENT_L, EXHAUSTED
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.run_definition import RunDefinition
-from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import (
     AlveolarVentilation,
     CardiacOutput,
@@ -108,8 +108,8 @@ def test_a_branch_continues_the_case_s_step_count_so_the_envelope_is_the_case_s(
 
     branch = trunk.resumed_at(fork_s)
 
-    assert branch._state.step_count == round(fork_s / MAXIMUM_SIMULATION_STEP_S)
-    assert branch._state.simulation_step_s == MAXIMUM_SIMULATION_STEP_S
+    assert branch._state.step_count == round(fork_s / SIMULATION_STEP_S)
+    assert branch._state.simulation_step_s == SIMULATION_STEP_S
     assert branch.snapshot().elapsed_s == fork_s
 
 
@@ -140,10 +140,10 @@ def test_a_branch_reproduces_its_parent_at_every_instant_they_share() -> None:
 
     trunk_definition = trunk._run_definition
     branch_definition = branch._run_definition
-    fork_steps = round(fork_s / MAXIMUM_SIMULATION_STEP_S)
+    fork_steps = round(fork_s / SIMULATION_STEP_S)
 
     for steps_past_fork in range(0, 201):
-        case_s = (fork_steps + steps_past_fork) * MAXIMUM_SIMULATION_STEP_S
+        case_s = (fork_steps + steps_past_fork) * SIMULATION_STEP_S
 
         assert branch_definition.state_at(case_s) == trunk_definition.state_at(case_s), (
             f"the branch and its parent differ at {case_s} s"
@@ -193,21 +193,21 @@ def test_a_branch_on_its_own_axis_would_not_reproduce_its_parent() -> None:
     # The rejected arrangement, which nothing in `src/` builds any more: the
     # same keyframe under the same settings, opened at a zero of its own.
     on_its_own_axis = RunDefinition(
-        fork_segment.settings, fork_segment.opening.state, opened_at_s=CaseInstant(0.0)
+        fork_segment.settings, fork_segment.opening.state, opened_at_s=CaseInstant(0)
     )
-    on_its_own_axis.advance_to(CaseInstant(60.0))
+    on_its_own_axis.advance_to(CaseInstant(60))
 
-    fork_steps = round(fork_s / MAXIMUM_SIMULATION_STEP_S)
+    fork_steps = round(fork_s / SIMULATION_STEP_S)
     shipped_differs = 0
     own_axis_differs = 0
 
     for steps_past_fork in range(0, 601):
-        case_s = (fork_steps + steps_past_fork) * MAXIMUM_SIMULATION_STEP_S
+        case_s = (fork_steps + steps_past_fork) * SIMULATION_STEP_S
         parent_state = trunk_definition.state_at(case_s)
 
         shipped_differs += branch_definition.state_at(case_s) != parent_state
         own_axis_differs += (
-            on_its_own_axis.state_at(steps_past_fork * MAXIMUM_SIMULATION_STEP_S) != parent_state
+            on_its_own_axis.state_at(steps_past_fork * SIMULATION_STEP_S) != parent_state
         )
 
     assert shipped_differs == 0, (
@@ -693,7 +693,7 @@ def test_a_failed_frame_refuses_every_fork_until_the_trunk_starts_over() -> None
     trunk.reset()
 
     assert trunk.fork_refusal is None
-    assert case.fork_points_s == (CaseInstant(0.0),)
+    assert case.fork_points_s == (CaseInstant(0),)
 
 
 def test_a_branch_of_a_branch_is_refused_rather_than_silently_flattened() -> None:

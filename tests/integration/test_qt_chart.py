@@ -554,7 +554,7 @@ def test_the_hover_answers_for_every_run_in_reach_on_a_real_branched_case(
 
     trunk = _run_with_a_dial_change()
     case = BranchedCase(trunk)
-    branch = case.fork_at(CaseInstant(600.0))
+    branch = case.fork_at(CaseInstant(600))
     branch.start()
     branch.begin_control_adjustment()
     branch.set_delivered_concentration_percent(Percent(0.0))
@@ -1456,7 +1456,7 @@ def test_two_runs_on_one_axis_are_told_apart_by_line_width_and_named_in_text(
 
     trunk = _run_with_a_dial_change()
     case = BranchedCase(trunk)
-    branch = case.fork_at(CaseInstant(600.0))
+    branch = case.fork_at(CaseInstant(600))
     branch.start()
     branch.begin_control_adjustment()
     branch.set_fresh_gas_flow(FreshGasFlow(1.0))

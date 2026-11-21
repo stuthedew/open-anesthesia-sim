@@ -25,7 +25,6 @@ from anesthesia_sim.core.parameters import (
     load_reference_adult_parameters,
 )
 from anesthesia_sim.core.run_definition import RunSegment
-from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
 from anesthesia_sim.core.supported_ranges import (
     AlveolarVentilation,
     CardiacOutput,
@@ -215,19 +214,19 @@ def test_every_run_simulates_the_shipped_reference_adult() -> None:
 
     stretches: list[RunSegment] = []
     controller = SimulationController(agent_id="isoflurane")
-    controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    controller.advance()
     controller.set_fresh_gas_flow(FreshGasFlow(1.0))
     controller.set_delivered_concentration_percent(Percent(3.0))
     controller.set_alveolar_ventilation(AlveolarVentilation(6.0))
     controller.set_cardiac_output(CardiacOutput(3.0))
-    controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    controller.advance()
     stretches.extend(controller.run_segments)
     controller.set_agent("desflurane")
     controller.set_cardiac_output(CardiacOutput(8.0))
-    controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    controller.advance()
     stretches.extend(controller.run_segments)
     controller.reset()
-    controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    controller.advance()
     stretches.extend(controller.run_segments)
 
     reference = load_reference_adult_parameters()
@@ -422,7 +421,7 @@ def test_a_switched_run_branches_as_a_fresh_run_of_that_agent_does(
         run.start()
         _advance_for(run, duration_s=120.0)
         run.pause()
-        branch = run.resumed_at(CaseInstant(0.0))
+        branch = run.resumed_at(CaseInstant(0))
         branch.start()
         _advance_for(branch, duration_s=60.0)
         branches.append(branch)

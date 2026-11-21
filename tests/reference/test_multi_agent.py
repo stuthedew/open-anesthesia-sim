@@ -132,7 +132,7 @@ def test_equilibrium_produces_no_net_internal_transfer(agent_id: str) -> None:
 
     system.agent_simulation_validator.reset(initial_agent_l=system.total_stored_agent_l)
 
-    result = system.advance(SimulationStep(0.1))
+    result = system.advance()
 
     assert result.circuit_to_alveolar_agent_l == pytest.approx(
         0.0, abs=EQUILIBRIUM_FRACTION_TOLERANCE

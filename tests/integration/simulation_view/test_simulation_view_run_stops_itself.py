@@ -35,7 +35,6 @@ from anesthesia_sim.app.dashboard_frame import (
     READOUT_PANELS,
     REFUSED_RESET_WAY_OUT_TEXT,
     RESET_EXIT_TEXT,
-    SIMULATION_STEP_S,
     STATUS_FAILED_TEXT,
     STATUS_MARK_HALT_TEXT,
     STATUS_SUPPORTED_LIMIT_TEXT,
@@ -83,6 +82,7 @@ from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
     SimulationDomainLimitError,
 )
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CardiacOutput, CaseInstant
 from anesthesia_sim.layout.tree import AreaId
 from tests.integration.simulation_view.simulation_view_support import (
@@ -2453,14 +2453,14 @@ def test_a_frame_that_refuses_a_drawn_value_moves_no_trace(application: QApplica
     controller.start()
     view = _shown_view(application, controller)
     for _ in range(50):
-        controller.advance(SIMULATION_STEP_S)
+        controller.advance()
     view.render_tick()
     chart = _concentration(view).chart
     before = {quantity: chart.drawn_points(0, quantity) for quantity in COMPARTMENT_QUANTITIES}
 
     _refusing_a_drawn_column(controller, RecordedQuantity.MUSCLE, 1.0000000000001568)
     for _ in range(50):
-        controller.advance(SIMULATION_STEP_S)
+        controller.advance()
 
     view.render_tick()
 
@@ -2502,14 +2502,14 @@ def test_a_non_finite_drawn_value_halts_the_run_naming_its_compartment(
     controller.start()
     view = _shown_view(application, controller)
     for _ in range(50):
-        controller.advance(SIMULATION_STEP_S)
+        controller.advance()
     view.render_tick()
     chart = _concentration(view).chart
     before = {quantity: chart.drawn_points(0, quantity) for quantity in COMPARTMENT_QUANTITIES}
 
     _refusing_a_drawn_column(controller, RecordedQuantity.FAT, value)
     for _ in range(50):
-        controller.advance(SIMULATION_STEP_S)
+        controller.advance()
 
     view.render_tick()
 

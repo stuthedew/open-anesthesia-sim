@@ -21,7 +21,7 @@ from anesthesia_sim.app.formatting import format_supported_run_length
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.core.concentration import MacMultiple
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
-from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S, SimulationStep
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ELAPSED_SIMULATION_TIME_S,
     CaseInstant,
@@ -47,7 +47,7 @@ def test_stopping_at_the_supported_run_length_is_not_a_failure() -> None:
 
     controller = SimulationController()
     controller.start()
-    controller.advance(SimulationStep(0.1))
+    controller.advance()
     controller.halt_at_supported_limit("reached 86400 s of simulated time")
 
     snapshot = controller.snapshot()
@@ -94,7 +94,7 @@ def test_reset_clears_the_supported_limit_and_restores_a_startable_session() -> 
 
     controller = SimulationController()
     controller.start()
-    controller.advance(SimulationStep(0.1))
+    controller.advance()
     controller.halt_at_supported_limit("reached 86400 s of simulated time")
 
     controller.reset()
@@ -151,7 +151,7 @@ def _step_onto_the_supported_run_length(controller: SimulationController) -> Non
     """
 
     controller.start()
-    step = SimulationStep(MAXIMUM_SIMULATION_STEP_S)
+    step = SimulationStep(SIMULATION_STEP_S)
 
     for _ in range(maximum_step_count(step)):
         controller.advance(step)
@@ -216,7 +216,7 @@ def _the_reason_the_refused_step_would_give(run: SimulationController) -> str:
 
     with pytest.raises(SimulationDomainLimitError) as refusal:
         require_supported_run_length(
-            run._state.step_count, SimulationStep(MAXIMUM_SIMULATION_STEP_S)
+            run._state.step_count, SimulationStep(SIMULATION_STEP_S)
         )
 
     return str(refusal.value)
@@ -269,12 +269,12 @@ def test_a_run_standing_on_the_supported_run_length_reads_as_stopped_from_the_ar
 
     trunk = trunk_stepped_onto_the_limit
 
-    assert trunk._state.step_count == maximum_step_count(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    assert trunk._state.step_count == maximum_step_count(SimulationStep(SIMULATION_STEP_S))
     _assert_reads_as_stopped_at_the_supported_run_length(trunk)
 
     # A further tick does nothing, as it does on a paused run. Nothing is
     # raised, and the clock stays exactly where the last supported step left it.
-    trunk.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    trunk.advance()
 
     assert trunk.snapshot().elapsed_s == MAXIMUM_ELAPSED_SIMULATION_TIME_S
 

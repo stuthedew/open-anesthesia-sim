@@ -352,7 +352,7 @@ def _require_the_run(corner: Corner) -> None:
             opening = _opening_state(opening_fraction)
             settings = _settings(corner, flows, dial_percent)
             matrix = build_system_matrix(settings)
-            run = RunDefinition(settings, opening, opened_at_s=CaseInstant(0.0))
+            run = RunDefinition(settings, opening, opened_at_s=CaseInstant(0))
             run.advance_to(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S))
             window = run.evaluate(0.0, MAXIMUM_ELAPSED_SIMULATION_TIME_S, COLUMNS)
             column_error = _propagator_error(matrix, COLUMN_SPACING_S)
@@ -637,7 +637,7 @@ def _build_window_columns(value: float) -> int:
     run = RunDefinition(
         _settings(CORNERS[0], (0.0, 0.0, 0.0), 0.0),
         _opening_state(0.0),
-        opened_at_s=CaseInstant(0.0),
+        opened_at_s=CaseInstant(0),
     )
     run.evaluate(0.0, 0.0, int(value))
 
@@ -752,7 +752,7 @@ def test_the_display_path_refuses_a_drawn_fraction_past_one_atmosphere() -> None
     run = RunDefinition(
         _settings(STIFFEST_DRAWN_CORNER, flows, 0.0),
         _opening_state(1.0),
-        opened_at_s=CaseInstant(0.0),
+        opened_at_s=CaseInstant(0),
     )
     run.advance_to(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S))
     refusal = (
@@ -900,11 +900,11 @@ def test_a_state_at_the_fraction_ceiling_stays_within_one_atmosphere() -> None:
 
         for fraction, dial_percent in OPENINGS_AND_DIALS:
             system = _system(corner, flows, fraction, dial_percent)
-            system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+            system.advance()
             run = RunDefinition(
                 _settings(corner, flows, dial_percent),
                 _opening_state(fraction),
-                opened_at_s=CaseInstant(0.0),
+                opened_at_s=CaseInstant(0),
             )
             run.advance_to(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S))
             window = run.evaluate(0.0, MAXIMUM_ELAPSED_SIMULATION_TIME_S, COLUMNS)

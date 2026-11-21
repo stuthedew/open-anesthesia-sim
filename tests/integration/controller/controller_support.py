@@ -9,7 +9,7 @@ from anesthesia_sim.app.control_record import ControlChange
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.core.blood_flow import PerfusionFraction
 from anesthesia_sim.core.concentration import Percent
-from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CaseInstant, FreshGasFlow
 
 
@@ -17,12 +17,12 @@ def _advance_for(controller: SimulationController, duration_s: float) -> None:
     """Advance a running controller to `duration_s` at the largest supported step.
 
     The helper reaches the simulated time by taking many supported steps, not
-    by asking for one large step. `MAXIMUM_SIMULATION_STEP_S` is the declared
+    by asking for one large step. `SIMULATION_STEP_S` is the declared
     control-resolution tolerance, and the controller refuses a longer step.
     """
 
-    for _ in range(round(duration_s / MAXIMUM_SIMULATION_STEP_S)):
-        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    for _ in range(round(duration_s / SIMULATION_STEP_S)):
+        controller.advance()
 
 
 def _with_stale_tissue_flows(controller: SimulationController, cardiac_output_l_min: float) -> None:
@@ -74,11 +74,11 @@ def _advance_through_halts(controller: SimulationController, duration_s: float) 
     for a caller with no marks this helper behaves exactly like `_advance_for`.
     """
 
-    for _ in range(round(duration_s / MAXIMUM_SIMULATION_STEP_S)):
+    for _ in range(round(duration_s / SIMULATION_STEP_S)):
         if not controller.is_running:
             controller.start()
 
-        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        controller.advance()
 
 
 def _run_with_two_changes(controller: SimulationController) -> None:
@@ -153,8 +153,8 @@ def _advance_until_halted(controller: SimulationController, limit_s: float) -> N
     assert nothing about the case it was meant to test.
     """
 
-    for _ in range(round(limit_s / MAXIMUM_SIMULATION_STEP_S)):
-        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    for _ in range(round(limit_s / SIMULATION_STEP_S)):
+        controller.advance()
 
         if controller.snapshot().bookmark_halt is not None:
             return
@@ -241,10 +241,10 @@ def _states_agree_after_the_fork(
 ) -> None:
     """Assert that two runs hold bit-identical canonical states for `steps` steps past `fork_s`."""
 
-    fork_steps = round(fork_s / MAXIMUM_SIMULATION_STEP_S)
+    fork_steps = round(fork_s / SIMULATION_STEP_S)
 
     for steps_past_fork in range(steps + 1):
-        case_s = (fork_steps + steps_past_fork) * MAXIMUM_SIMULATION_STEP_S
+        case_s = (fork_steps + steps_past_fork) * SIMULATION_STEP_S
 
         assert run._run_definition.state_at(case_s) == expected._run_definition.state_at(case_s), (
             f"the runs differ at {case_s} s"

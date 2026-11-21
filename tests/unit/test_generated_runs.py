@@ -405,7 +405,7 @@ class _Run:
         self.system = _build(plan)
         self.settings = self.system.equation_settings()
         opening = self.system.state_vector()
-        self.definition = RunDefinition(self.settings, opening, opened_at_s=CaseInstant(0.0))
+        self.definition = RunDefinition(self.settings, opening, opened_at_s=CaseInstant(0))
         self.opening_held_l = _held_agent_l(self.settings, opening)
         self.dial_fraction = float(self.settings.delivered_concentration_percent) / 100.0
         fractions = opening[:DELIVERED_AGENT_L]

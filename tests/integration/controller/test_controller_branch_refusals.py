@@ -29,7 +29,7 @@ from tests.integration.controller.controller_support import (
 
 def test_a_branch_s_agent_change_refusal_is_pinned_whole() -> None:
     trunk = _trunk_with_two_changes()
-    branch = BranchedCase(trunk).fork_at(CaseInstant(60.0))
+    branch = BranchedCase(trunk).fork_at(CaseInstant(60))
 
     with pytest.raises(SimulationConfigurationError) as refusal:
         branch.set_agent("desflurane")
@@ -45,7 +45,7 @@ def test_a_branch_at_no_keyframe_refusal_is_pinned_whole() -> None:
     trunk = _trunk_with_two_changes()
 
     with pytest.raises(SimulationConfigurationError) as refusal:
-        trunk.resumed_at(CaseInstant(65.0))
+        trunk.resumed_at(CaseInstant(65))
 
     assert str(refusal.value) == (
         "this run holds no keyframe at 65.0 s, and resumed_at opens at one: the run's "
@@ -89,14 +89,14 @@ def test_each_refusal_to_branch_where_a_run_stands_is_pinned_whole() -> None:
 
 def test_each_refusal_to_branch_at_a_mark_is_pinned_whole() -> None:
     trunk = _trunk_paused_past_a_change()
-    ahead = TimeBookmark(CaseInstant(600.0))
+    ahead = TimeBookmark(CaseInstant(600))
     trunk.add_time_bookmark(ahead)
 
     with pytest.raises(SimulationConfigurationError) as short_of_it:
         trunk.resumed_at_mark(ahead)
 
     with pytest.raises(SimulationConfigurationError) as unmarked:
-        trunk.resumed_at_mark(TimeBookmark(CaseInstant(60.0)))
+        trunk.resumed_at_mark(TimeBookmark(CaseInstant(60)))
 
     assert str(short_of_it.value) == (
         "this run's clock stands at 180.0 s, short of the mark at 600.0 s, so the case "

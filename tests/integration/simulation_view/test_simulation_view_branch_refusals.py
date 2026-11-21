@@ -92,7 +92,7 @@ def test_removing_a_mark_on_a_run_whose_snapshot_refuses_restates_the_halt(
     """
 
     controller = _paused_run_with_history()
-    time_mark = TimeBookmark(CaseInstant(30.0), "check")
+    time_mark = TimeBookmark(CaseInstant(30), "check")
     target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.5))
     controller.add_time_bookmark(time_mark)
     controller.add_mac_target(target)
@@ -189,10 +189,10 @@ def test_a_branch_the_case_refuses_is_reported_and_adds_no_run(application: QApp
     case = _branched_case()
     view = _case_view(application, case)
     panel = _fork_panel(view)
-    unkeyframed = ForkPoint(CaseInstant(30.0), format_elapsed(30.0), None)
+    unkeyframed = ForkPoint(CaseInstant(30), format_elapsed(30.0), None)
     panel.set_offer(
         fork_offer(
-            (CaseInstant(0.0), unkeyframed.instant_s, CaseInstant(60.0)),
+            (CaseInstant(0), unkeyframed.instant_s, CaseInstant(60)),
             marks=(),
             comparing=None,
             here=None,
@@ -229,7 +229,7 @@ def test_a_mark_branch_the_case_refuses_is_reported_and_adds_no_run(
     case = _branched_case()
     view = _case_view(application, case)
     panel = _fork_panel(view)
-    unmarked = TimeBookmark(CaseInstant(30.0), "since removed")
+    unmarked = TimeBookmark(CaseInstant(30), "since removed")
     panel.set_offer(
         fork_offer(
             case.fork_points_s,

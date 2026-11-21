@@ -16,7 +16,6 @@ from anesthesia_sim.app.controller import CompartmentAgentAmounts, SimulationCon
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
-from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
 
 # Six distinct amounts, so that a record which returned a neighbour's amount
@@ -125,7 +124,7 @@ def _snapshots_of_a_changing_run(agent_id: str) -> list[tuple[CompartmentAgentAm
     for change in changes:
         change()
         for _ in range(1200):
-            controller.advance(SimulationStep(0.1))
+            controller.advance()
         snapshot = controller.snapshot()
         observed.append((snapshot.compartment_agent_amounts, snapshot.stored_agent_l))
 

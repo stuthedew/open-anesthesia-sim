@@ -153,12 +153,12 @@ def _stepped_run(
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
     stepped = {0.0: _compartments(system)}
 
     for step in range(1, steps + 1):
-        system.advance(SIMULATION_STEP_S)
+        system.advance()
         elapsed_s = round(step * SIMULATION_STEP_S, 6)
         definition.advance_to(CaseInstant(elapsed_s))
 
@@ -264,7 +264,7 @@ def test_a_window_reads_only_the_segments_it_covers(monkeypatch: pytest.MonkeyPa
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
     total_s = MAXIMUM_ELAPSED_SIMULATION_TIME_S
 
@@ -294,9 +294,9 @@ def test_a_run_under_unchanged_settings_is_one_segment() -> None:
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
-    definition.advance_to(CaseInstant(10.0))
+    definition.advance_to(CaseInstant(10))
     definition.record_change(system.equation_settings())
 
     assert len(definition.segments) == 1
@@ -311,9 +311,9 @@ def test_two_changes_at_one_instant_are_one_segment() -> None:
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
-    definition.advance_to(CaseInstant(10.0))
+    definition.advance_to(CaseInstant(10))
     system.set_delivered_concentration_percent(Percent(3.0))
     definition.record_change(system.equation_settings())
     system.set_cardiac_output(CardiacOutput(4.0))
@@ -366,7 +366,7 @@ def test_a_recorded_setting_round_trips_to_what_was_set(
         system = AgentUptakeSystem.for_agent("sevoflurane")
         set_control(system, flow_type(set_l_min))
         definition = RunDefinition(
-            system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+            system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
         )
         recorded = definition.segments[-1].settings
 
@@ -421,8 +421,8 @@ def test_a_run_cannot_open_or_change_under_a_flow_outside_the_supported_ranges(
 
         return replace(held, **changed)
 
-    definition = RunDefinition(held, system.state_vector(), opened_at_s=CaseInstant(0.0))
-    definition.advance_to(CaseInstant(30.0))
+    definition = RunDefinition(held, system.state_vector(), opened_at_s=CaseInstant(0))
+    definition.advance_to(CaseInstant(30))
     segments = definition.segments
     refused = f"not built as {flow_type.__name__}"
 
@@ -430,12 +430,12 @@ def test_a_run_cannot_open_or_change_under_a_flow_outside_the_supported_ranges(
         RunDefinition(
             rebuilt(flow_type(reproduced_l_min)),
             system.state_vector(),
-            opened_at_s=CaseInstant(0.0),
+            opened_at_s=CaseInstant(0),
         )
 
     with pytest.raises(TypeError, match=refused):
         RunDefinition(
-            rebuilt(reproduced_l_min), system.state_vector(), opened_at_s=CaseInstant(0.0)
+            rebuilt(reproduced_l_min), system.state_vector(), opened_at_s=CaseInstant(0)
         )
 
     with pytest.raises(SimulationConfigurationError, match="supported input range"):
@@ -472,15 +472,15 @@ def test_a_run_cannot_open_or_change_under_a_dial_above_the_vaporizer_maximum() 
 
     assert held.max_delivered_concentration_percent == maximum == 8.0
 
-    definition = RunDefinition(held, system.state_vector(), opened_at_s=CaseInstant(0.0))
-    definition.advance_to(CaseInstant(30.0))
+    definition = RunDefinition(held, system.state_vector(), opened_at_s=CaseInstant(0))
+    definition.advance_to(CaseInstant(30))
     segments = definition.segments
 
     with pytest.raises(SimulationConfigurationError, match=reproduced):
         RunDefinition(
             replace(held, delivered_concentration_percent=Percent(20.0)),
             system.state_vector(),
-            opened_at_s=CaseInstant(0.0),
+            opened_at_s=CaseInstant(0),
         )
 
     with pytest.raises(SimulationConfigurationError, match=reproduced):
@@ -492,7 +492,7 @@ def test_a_run_cannot_open_or_change_under_a_dial_above_the_vaporizer_maximum() 
         RunDefinition(
             replace(held, delivered_concentration_percent=past_the_maximum),
             system.state_vector(),
-            opened_at_s=CaseInstant(0.0),
+            opened_at_s=CaseInstant(0),
         )
 
     with pytest.raises(SimulationConfigurationError, match="exceeds the vaporizer maximum"):
@@ -501,7 +501,7 @@ def test_a_run_cannot_open_or_change_under_a_dial_above_the_vaporizer_maximum() 
     assert definition.segments == segments
 
     at_the_maximum = replace(held, delivered_concentration_percent=maximum)
-    opened = RunDefinition(at_the_maximum, system.state_vector(), opened_at_s=CaseInstant(0.0))
+    opened = RunDefinition(at_the_maximum, system.state_vector(), opened_at_s=CaseInstant(0))
     definition.record_change(at_the_maximum)
 
     assert opened.segments[0].settings.delivered_concentration_percent == maximum
@@ -528,7 +528,7 @@ def test_a_recorded_segment_gives_back_each_vaporizer_percent_as_dialled() -> No
         system = AgentUptakeSystem.for_agent("sevoflurane")
         system.set_delivered_concentration_percent(dialled_percent)
         definition = RunDefinition(
-            system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+            system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
         )
         recorded = definition.segments[-1].settings
 
@@ -546,7 +546,7 @@ def test_a_change_opens_a_segment_at_the_run_s_own_reach() -> None:
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
     definition.advance_to(CaseInstant(12.5))
     system.set_fresh_gas_flow(FreshGasFlow(1.5))
@@ -562,7 +562,7 @@ def _changed_at_12_5_and_30() -> RunDefinition:
     system = AgentUptakeSystem.for_agent("sevoflurane")
     system.set_fresh_gas_flow(FreshGasFlow(4.0))
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
 
     for instant_s, flow_l_min in ((12.5, 1.5), (30.0, 6.0)):
@@ -640,7 +640,7 @@ def test_the_run_starts_where_the_system_does() -> None:
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
 
     assert definition.reached_s == 0.0
@@ -652,10 +652,10 @@ def test_advancing_to_the_time_already_reached_changes_nothing() -> None:
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
-    definition.advance_to(CaseInstant(5.0))
-    definition.advance_to(CaseInstant(5.0))
+    definition.advance_to(CaseInstant(5))
+    definition.advance_to(CaseInstant(5))
 
     assert definition.reached_s == 5.0
 
@@ -702,7 +702,7 @@ def test_a_segment_too_short_to_hold_a_column_is_skipped() -> None:
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
 
     for elapsed_s, flow in ((10.0, 1.5), (10.5, 3.0), (60.0, 5.0)):
@@ -710,7 +710,7 @@ def test_a_segment_too_short_to_hold_a_column_is_skipped() -> None:
         system.set_fresh_gas_flow(FreshGasFlow(flow))
         definition.record_change(system.equation_settings())
 
-    definition.advance_to(CaseInstant(120.0))
+    definition.advance_to(CaseInstant(120))
     window = definition.evaluate(0.0, 120.0, 5)
 
     assert len(definition.segments) == 4
@@ -739,7 +739,7 @@ def test_a_run_definition_refuses_a_display_state_as_its_opening_state() -> None
     system = AgentUptakeSystem.for_agent("sevoflurane")
 
     with pytest.raises(SimulationConfigurationError, match="came from the display path"):
-        RunDefinition(system.equation_settings(), drawn, opened_at_s=CaseInstant(0.0))  # type: ignore[arg-type]
+        RunDefinition(system.equation_settings(), drawn, opened_at_s=CaseInstant(0))  # type: ignore[arg-type]
 
 
 def test_a_display_state_is_not_a_state_vector() -> None:
@@ -762,7 +762,7 @@ def test_a_run_definition_refuses_a_state_of_the_wrong_length() -> None:
     system = AgentUptakeSystem.for_agent("sevoflurane")
 
     with pytest.raises(SimulationConfigurationError, match=f"the equations carry {STATE_SIZE}"):
-        RunDefinition(system.equation_settings(), (0.0, 1.0), opened_at_s=CaseInstant(0.0))
+        RunDefinition(system.equation_settings(), (0.0, 1.0), opened_at_s=CaseInstant(0))
 
 
 def test_a_run_definition_refuses_a_non_finite_state() -> None:
@@ -771,7 +771,7 @@ def test_a_run_definition_refuses_a_non_finite_state() -> None:
     state[ALVEOLAR_FRACTION] = nan
 
     with pytest.raises(SimulationConfigurationError, match="which is not finite"):
-        RunDefinition(system.equation_settings(), tuple(state), opened_at_s=CaseInstant(0.0))
+        RunDefinition(system.equation_settings(), tuple(state), opened_at_s=CaseInstant(0))
 
 
 def test_a_run_definition_refuses_a_state_whose_unit_is_not_one() -> None:
@@ -782,7 +782,7 @@ def test_a_run_definition_refuses_a_state_whose_unit_is_not_one() -> None:
     state[UNIT_STATE] = 0.5
 
     with pytest.raises(SimulationConfigurationError, match="the constant one"):
-        RunDefinition(system.equation_settings(), tuple(state), opened_at_s=CaseInstant(0.0))
+        RunDefinition(system.equation_settings(), tuple(state), opened_at_s=CaseInstant(0))
 
 
 def test_a_run_definition_refuses_a_state_the_live_system_refuses() -> None:
@@ -799,7 +799,7 @@ def test_a_run_definition_refuses_a_state_the_live_system_refuses() -> None:
     state[FIRST_TISSUE_FRACTION + 2] = 1.7
 
     with pytest.raises(SimulationConfigurationError) as by_definition:
-        RunDefinition(system.equation_settings(), tuple(state), opened_at_s=CaseInstant(0.0))
+        RunDefinition(system.equation_settings(), tuple(state), opened_at_s=CaseInstant(0))
 
     with pytest.raises(SimulationConfigurationError) as by_system:
         system.resume_at(tuple(state), initial_agent_l=0.0)
@@ -890,9 +890,9 @@ def test_opening_past_the_supported_envelope_cannot_be_built(opened_at_s: float)
 def test_a_run_refuses_to_go_backwards() -> None:
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
-    definition.advance_to(CaseInstant(20.0))
+    definition.advance_to(CaseInstant(20))
 
     with pytest.raises(SimulationConfigurationError, match="cannot go back"):
         definition.advance_to(CaseInstant(19.9))
@@ -924,9 +924,9 @@ def test_a_run_refuses_a_reach_not_built_as_a_case_instant(instant_s: float) -> 
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
-    definition.advance_to(CaseInstant(20.0))
+    definition.advance_to(CaseInstant(20))
 
     with pytest.raises(TypeError, match="instant_s of .* was not built as CaseInstant"):
         definition.advance_to(instant_s)  # type: ignore[arg-type]
@@ -939,7 +939,7 @@ def test_a_run_may_reach_the_end_of_the_supported_run_length() -> None:
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
 
     definition.advance_to(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S))
@@ -979,7 +979,7 @@ def test_a_run_may_reach_the_last_step_it_is_allowed_to_take(simulation_step_s: 
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
     last_step_s = SimulationState(
         step_count=StepCount(maximum_step_count(simulation_step_s)),
@@ -995,7 +995,7 @@ def test_a_run_may_reach_the_last_step_it_is_allowed_to_take(simulation_step_s: 
 def test_a_run_definition_refuses_a_non_finite_instant(instant_s: float) -> None:
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
 
     with pytest.raises(SimulationConfigurationError, match="not a finite instant"):
@@ -1005,7 +1005,7 @@ def test_a_run_definition_refuses_a_non_finite_instant(instant_s: float) -> None
 def test_a_run_definition_has_no_state_before_the_run_began() -> None:
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
 
     with pytest.raises(SimulationConfigurationError, match="before it began"):
@@ -1024,14 +1024,14 @@ def _opening_after_zero() -> RunDefinition:
     system = AgentUptakeSystem.for_agent("sevoflurane")
     system.set_delivered_concentration_percent(Percent(2.0))
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(600.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(600)
     )
 
-    definition.advance_to(CaseInstant(900.0))
+    definition.advance_to(CaseInstant(900))
     system.set_delivered_concentration_percent(Percent(0.5))
     definition.record_change(system.equation_settings())
 
-    definition.advance_to(CaseInstant(1200.0))
+    definition.advance_to(CaseInstant(1200))
 
     return definition
 
@@ -1050,7 +1050,7 @@ def test_a_run_definition_reports_the_instant_it_opens_at() -> None:
     trunk_shaped = RunDefinition(
         AgentUptakeSystem.for_agent("sevoflurane").equation_settings(),
         AgentUptakeSystem.for_agent("sevoflurane").state_vector(),
-        opened_at_s=CaseInstant(0.0),
+        opened_at_s=CaseInstant(0),
     )
 
     assert trunk_shaped.opened_at_s == 0.0
@@ -1122,9 +1122,9 @@ def test_a_run_definition_refuses_to_predict_past_the_run() -> None:
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
-    definition.advance_to(CaseInstant(30.0))
+    definition.advance_to(CaseInstant(30))
 
     with pytest.raises(SimulationConfigurationError, match="rather than the run"):
         definition.state_at(30.1)
@@ -1133,7 +1133,7 @@ def test_a_run_definition_refuses_to_predict_past_the_run() -> None:
 def test_a_window_needs_at_least_one_column() -> None:
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
 
     with pytest.raises(SimulationConfigurationError, match="at least one column"):
@@ -1143,9 +1143,9 @@ def test_a_window_needs_at_least_one_column() -> None:
 def test_a_window_refuses_to_end_before_it_begins() -> None:
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
-    definition.advance_to(CaseInstant(30.0))
+    definition.advance_to(CaseInstant(30))
 
     with pytest.raises(SimulationConfigurationError, match="ends before it begins"):
         definition.evaluate(20.0, 10.0, 5)
@@ -1154,9 +1154,9 @@ def test_a_window_refuses_to_end_before_it_begins() -> None:
 def test_a_window_refuses_to_reach_past_the_run() -> None:
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
-    definition.advance_to(CaseInstant(30.0))
+    definition.advance_to(CaseInstant(30))
 
     with pytest.raises(SimulationConfigurationError, match="rather than the run"):
         definition.evaluate(10.0, 30.1, 5)
@@ -1172,9 +1172,9 @@ def test_evaluate_ends_its_last_column_exactly_at_stop() -> None:
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
-    definition.advance_to(CaseInstant(11.0))
+    definition.advance_to(CaseInstant(11))
 
     assert 0.3 + 41 * ((11.0 - 0.3) / 41) > 11.0, "the case no longer rounds past the stop"
 
@@ -1218,7 +1218,7 @@ def test_a_window_refuses_a_column_count_that_is_not_an_int(
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
 
     expected = (
@@ -1235,9 +1235,9 @@ def test_evaluate_refuses_more_samples_than_its_bound() -> None:
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
-    definition.advance_to(CaseInstant(30.0))
+    definition.advance_to(CaseInstant(30))
 
     with pytest.raises(SimulationConfigurationError, match="one call may ask for$") as raised:
         definition.evaluate(0.0, 30.0, DOCUMENTED_MAXIMUM_WINDOW_COLUMNS + 1)
@@ -1280,9 +1280,9 @@ def test_a_change_undone_before_a_step_runs_leaves_no_segment() -> None:
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
-    definition.advance_to(CaseInstant(10.0))
+    definition.advance_to(CaseInstant(10))
     system.set_delivered_concentration_percent(Percent(3.0))
     definition.record_change(system.equation_settings())
 
@@ -1314,15 +1314,15 @@ def test_a_change_undone_at_one_instant_keeps_every_earlier_stretch() -> None:
     system.set_delivered_concentration_percent(Percent(2.0))
     opening_settings = system.equation_settings()
     opening_state = system.state_vector()
-    undone = RunDefinition(opening_settings, opening_state, opened_at_s=CaseInstant(0.0))
-    never_changed = RunDefinition(opening_settings, opening_state, opened_at_s=CaseInstant(0.0))
+    undone = RunDefinition(opening_settings, opening_state, opened_at_s=CaseInstant(0))
+    never_changed = RunDefinition(opening_settings, opening_state, opened_at_s=CaseInstant(0))
 
     for definition in (undone, never_changed):
-        definition.advance_to(CaseInstant(10.0))
+        definition.advance_to(CaseInstant(10))
     system.set_delivered_concentration_percent(Percent(3.0))
     for definition in (undone, never_changed):
         definition.record_change(system.equation_settings())
-        definition.advance_to(CaseInstant(20.0))
+        definition.advance_to(CaseInstant(20))
     system.set_delivered_concentration_percent(Percent(5.0))
     undone.record_change(system.equation_settings())
 
@@ -1337,7 +1337,7 @@ def test_a_change_undone_at_one_instant_keeps_every_earlier_stretch() -> None:
     ] == [(0.0, 2.0), (10.0, 3.0)]
 
     for definition in (undone, never_changed):
-        definition.advance_to(CaseInstant(600.0))
+        definition.advance_to(CaseInstant(600))
 
     assert undone.state_at(600.0) == never_changed.state_at(600.0)
 
@@ -1352,7 +1352,7 @@ def test_the_first_stretch_is_kept_even_when_a_change_returns_to_it() -> None:
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
     system.set_delivered_concentration_percent(Percent(5.0))
     definition.record_change(system.equation_settings())
@@ -1376,7 +1376,7 @@ def test_recording_a_change_copies_no_segment_already_recorded() -> None:
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
 
     for change in range(1, 301):
@@ -1404,9 +1404,9 @@ def test_a_record_handed_out_is_not_changed_by_later_changes() -> None:
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
-    definition.advance_to(CaseInstant(10.0))
+    definition.advance_to(CaseInstant(10))
     system.set_delivered_concentration_percent(Percent(3.0))
     definition.record_change(system.equation_settings())
     held = definition.segments
@@ -1701,12 +1701,12 @@ def _a_run_with_two_changes_in_view() -> tuple[AgentUptakeSystem, RunDefinition]
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
-    definition.advance_to(CaseInstant(1300.0))
+    definition.advance_to(CaseInstant(1300))
     system.set_delivered_concentration_percent(Percent(3.0))
     definition.record_change(system.equation_settings())
-    definition.advance_to(CaseInstant(1600.0))
+    definition.advance_to(CaseInstant(1600))
     system.set_fresh_gas_flow(FreshGasFlow(1.0))
     definition.record_change(system.equation_settings())
     definition.advance_to(CaseInstant(WINDOW_CLOSING_S))
@@ -1982,16 +1982,16 @@ def _two_change_run() -> RunDefinition:
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
 
-    definition.advance_to(CaseInstant(300.0))
+    definition.advance_to(CaseInstant(300))
     system.set_delivered_concentration_percent(Percent(3.0))
     definition.record_change(system.equation_settings())
-    definition.advance_to(CaseInstant(600.0))
+    definition.advance_to(CaseInstant(600))
     system.set_fresh_gas_flow(FreshGasFlow(1.0))
     definition.record_change(system.equation_settings())
-    definition.advance_to(CaseInstant(3600.0))
+    definition.advance_to(CaseInstant(3600))
 
     return definition
 
@@ -2031,7 +2031,7 @@ def test_opening_a_branch_off_a_keyframe_does_not_reproduce_the_run() -> None:
     branch = RunDefinition(
         parent.segments[-1].settings, parent.state_at(FORK_S), opened_at_s=CaseInstant(FORK_S)
     )
-    branch.advance_to(CaseInstant(3600.0))
+    branch.advance_to(CaseInstant(3600))
 
     divergences = [_worst(branch.state_at(p), parent.state_at(p)) for p in PROBES_S]
 
@@ -2064,12 +2064,12 @@ def test_a_pixel_wide_chord_misses_an_extremum_by_under_the_readout_s_resolution
     system.set_cardiac_output(CardiacOutput(10.0))
     system.set_delivered_concentration_percent(Percent(12.0))
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
-    definition.advance_to(CaseInstant(600.0))
+    definition.advance_to(CaseInstant(600))
     system.set_delivered_concentration_percent(Percent(6.0))
     definition.record_change(system.equation_settings())
-    definition.advance_to(CaseInstant(43_200.0))
+    definition.advance_to(CaseInstant(43_200))
 
     pixel_s = 43_200.0 / 1000.0
     drawn = definition.evaluate_anchored(0.0, 43_200.0, pixel_s)
@@ -2159,7 +2159,7 @@ def test_every_column_a_window_returns_has_been_checked_for_drawing(
 
     monkeypatch.setattr(run_definition, "_drawable", counting_drawable)
     definition = _changed_at_12_5_and_30()
-    definition.advance_to(CaseInstant(60.0))
+    definition.advance_to(CaseInstant(60))
 
     for window in (
         lambda: definition.evaluate(5.0, 60.0, 23),

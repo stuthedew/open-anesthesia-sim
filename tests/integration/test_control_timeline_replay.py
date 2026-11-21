@@ -27,12 +27,12 @@ from anesthesia_sim.app.control_record import ControlChange, ControlInput
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
-from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S, SimulationStep
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 _AGENT_ID = "sevoflurane"
-_STEP = SimulationStep(MAXIMUM_SIMULATION_STEP_S)
+_STEP = SimulationStep(SIMULATION_STEP_S)
 
 #: How each control is applied to the core, from the value the timeline holds.
 _CORE_SETTERS: dict[ControlInput, Callable[[AgentUptakeSystem, float], None]] = {
@@ -172,7 +172,7 @@ def _replayed(
     states: list[tuple[float, ...]] = []
 
     for steps_taken in range(steps):
-        while pending and pending[0].elapsed_s == steps_taken * MAXIMUM_SIMULATION_STEP_S:
+        while pending and pending[0].elapsed_s == steps_taken * SIMULATION_STEP_S:
             change = pending.pop(0)
             if check_previous_values:
                 assert _CORE_READERS[change.control](system) == change.previous_value, change

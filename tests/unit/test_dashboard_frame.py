@@ -100,7 +100,6 @@ from anesthesia_sim.app.dashboard_frame import (
     RESET_EXIT_TEXT,
     RESET_LABEL,
     RUNNING_AGENT_LOCK_TEXT,
-    SIMULATION_STEP_S,
     SIMULATION_TICK_INTERVAL_S,
     STATUS_FAILED_TEXT,
     STATUS_PAUSED_TEXT,
@@ -220,7 +219,11 @@ from anesthesia_sim.core.parameters import (
     parse_breathing_circuit_parameters,
 )
 from anesthesia_sim.core.run_definition import DisplayState
-from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, MINIMUM_SIMULATION_STEP_S
+from anesthesia_sim.core.simulation_step import (
+    MAXIMUM_SIMULATION_STEP_S,
+    MINIMUM_SIMULATION_STEP_S,
+    SIMULATION_STEP_S,
+)
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
@@ -407,7 +410,7 @@ def _snapshot(
     return SimulationSnapshot(
         is_running=is_running,
         elapsed_s=CaseInstant(latest.elapsed_s),
-        began_at_s=CaseInstant(0.0),
+        began_at_s=CaseInstant(0),
         opened_with=(),
         agent_id=agent_id,
         agent_display_name=agent_display_name,
@@ -579,7 +582,7 @@ def _advance_to(controller: SimulationController, elapsed_s: float) -> None:
     """Step a started controller to `elapsed_s` at the shipped step size."""
 
     while controller.snapshot().elapsed_s < elapsed_s - SIMULATION_STEP_S / 2.0:
-        controller.advance(SIMULATION_STEP_S)
+        controller.advance()
 
 
 def _paused_run_with_history(elapsed_s: float = 60.0) -> SimulationController:
@@ -2218,7 +2221,7 @@ def test_the_end_to_end_mac_path_reaches_the_panel_from_a_real_run() -> None:
     controller.start()
 
     for _ in range(600):
-        controller.advance(SIMULATION_STEP_S)
+        controller.advance()
 
     snapshot = controller.snapshot()
 
@@ -2259,7 +2262,7 @@ def test_each_agents_alveolar_readout_at_five_minutes_is_pinned_as_displayed(
     controller.start()
 
     for _ in range(3000):
-        controller.advance(SIMULATION_STEP_S)
+        controller.advance()
 
     snapshot = controller.snapshot()
     _, value, secondary = _readouts_by_name(snapshot)["Alveolar"]
@@ -3092,7 +3095,7 @@ def test_a_branch_holding_nothing_is_not_at_stake() -> None:
     from the start. What it holds is counted from the fork (`PL-7TBQ`).
     """
 
-    branch = BranchedCase(_paused_run_with_history()).fork_at(CaseInstant(60.0))
+    branch = BranchedCase(_paused_run_with_history()).fork_at(CaseInstant(60))
 
     assert branch_at_stake("Run 2", branch.began_at_s, branch.snapshot(), 0) is None
 
@@ -3103,7 +3106,7 @@ def test_a_branch_run_past_its_fork_is_at_stake_with_both_instants() -> None:
     The test uses a branch actually stepped to that instant.
     """
 
-    branch = BranchedCase(_paused_run_with_history()).fork_at(CaseInstant(60.0))
+    branch = BranchedCase(_paused_run_with_history()).fork_at(CaseInstant(60))
     branch.start()
     _advance_to(branch, elapsed_s=90.0)
     branch.pause()
@@ -3116,7 +3119,7 @@ def test_a_branch_run_past_its_fork_is_at_stake_with_both_instants() -> None:
 def test_a_branch_whose_snapshot_refuses_is_at_stake_with_no_instant_stated() -> None:
     """A branch that cannot be read is not known to hold nothing, so the question is still asked."""
 
-    assert branch_at_stake("Run 2", CaseInstant(60.0), None, 0) == BranchAtStake(
+    assert branch_at_stake("Run 2", CaseInstant(60), None, 0) == BranchAtStake(
         name="Run 2", began_at_s=60.0, elapsed_s=None, adjustment_count=0
     )
 
@@ -3254,7 +3257,7 @@ def _marks() -> BookmarkSet:
 
     return (
         BookmarkSet()
-        .with_time_bookmark(TimeBookmark(CaseInstant(600.0), "intubation"))
+        .with_time_bookmark(TimeBookmark(CaseInstant(600), "intubation"))
         .with_mac_target(MacTarget(RecordedQuantity.VESSEL_RICH, MacMultiple(0.8), "wash-in"))
     )
 
@@ -3326,7 +3329,7 @@ def test_a_marked_instant_is_listed_at_the_clock_the_run_states() -> None:
 
 
 def test_an_unnamed_instant_is_listed_under_its_own_time() -> None:
-    panel = _panel(BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(600.0))))
+    panel = _panel(BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(600))))
 
     assert panel.times.rows == (format_elapsed(600.0),)
 
@@ -3377,8 +3380,8 @@ def test_marks_are_listed_oldest_first() -> None:
     # have to find again.
     marks = (
         BookmarkSet()
-        .with_time_bookmark(TimeBookmark(CaseInstant(120.0), "first"))
-        .with_time_bookmark(TimeBookmark(CaseInstant(600.0), "second"))
+        .with_time_bookmark(TimeBookmark(CaseInstant(120), "first"))
+        .with_time_bookmark(TimeBookmark(CaseInstant(600), "second"))
     )
 
     rows = bookmark_panel(marks, _one_run(_unreached(marks))).times.rows
@@ -3418,7 +3421,7 @@ def test_a_mark_on_a_failed_run_says_the_run_stopped_rather_than_saying_nothing(
     model supports.
     """
 
-    bookmark = TimeBookmark(CaseInstant(600.0), "check")
+    bookmark = TimeBookmark(CaseInstant(600), "check")
     target = MacTarget(RecordedQuantity.FAT, MacMultiple(0.5))
     said = MARK_STANDING_TEXT[MarkStanding.NOT_REACHED_BEFORE_FAILURE]
 
@@ -3454,7 +3457,7 @@ def test_a_mark_the_clock_has_gone_past_is_worded_apart_from_one_the_run_halted_
     target the run crossed.
     """
 
-    bookmark = TimeBookmark(CaseInstant(600.0))
+    bookmark = TimeBookmark(CaseInstant(600))
     target = MacTarget(RecordedQuantity.FAT, MacMultiple(0.5))
 
     passed = _time_row(bookmark, elapsed_s=600.0)
@@ -3472,7 +3475,7 @@ def test_the_two_unreachable_outcomes_are_worded_apart() -> None:
     # running. `CLAUDE.md`'s safety-critical standard rules that out: the
     # model can decide the question outright, so a row must not imply
     # otherwise.
-    bookmark = TimeBookmark(CaseInstant(600.0))
+    bookmark = TimeBookmark(CaseInstant(600))
     at_the_cap = _time_row(bookmark, stopped_at_cap=True)
     inherited = _time_row(bookmark, opened_at_s=900.0, elapsed_s=900.0)
 
@@ -3483,7 +3486,7 @@ def test_the_two_unreachable_outcomes_are_worded_apart() -> None:
 
 def test_the_panel_reads_the_marks_the_snapshot_carries() -> None:
     controller = SimulationController()
-    controller.add_time_bookmark(TimeBookmark(CaseInstant(600.0), "intubation"))
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(600), "intubation"))
 
     panel = bookmark_panel(
         controller.snapshot().bookmarks, _one_run(controller.snapshot().bookmark_standings)
@@ -3505,7 +3508,7 @@ def test_two_runs_that_answer_a_mark_alike_state_it_once_and_name_no_run() -> No
     on.
     """
 
-    marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(30.0), "check"))
+    marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(30), "check"))
     passed = _standings(marks, elapsed_s=120.0)
 
     (row,) = bookmark_panel(marks, _two_runs(passed, passed)).times.rows
@@ -3574,7 +3577,7 @@ def test_a_bookmark_the_branch_opened_after_is_not_drawn_as_the_trunk_left_it() 
     because the correct standing under the wrong run is the wrong standing.
     """
 
-    marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(30.0), "check"))
+    marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(30), "check"))
     trunk = _standings(marks, elapsed_s=60.0)
     branch = _standings(marks, opened_at_s=60.0, elapsed_s=60.0)
 
@@ -3597,7 +3600,7 @@ def test_the_inherited_standing_can_reach_a_drawn_row() -> None:
     that carries it.
     """
 
-    marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(30.0)))
+    marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(30)))
     trunk = _standings(marks, elapsed_s=60.0)
     branch = _standings(marks, opened_at_s=60.0, elapsed_s=60.0)
 
@@ -3692,10 +3695,10 @@ _MARK_INSIDE_A_STEP = MarkForkPoint(
 )
 
 
-_INDUCTION_POINT = ForkPoint(CaseInstant(0.0), "0s", None)
-_SETTING_CHANGE_POINT = ForkPoint(CaseInstant(60.0), "1m", None)
+_INDUCTION_POINT = ForkPoint(CaseInstant(0), "0s", None)
+_SETTING_CHANGE_POINT = ForkPoint(CaseInstant(60), "1m", None)
 _MARK_POINT = ForkPoint(
-    CaseInstant(60.0), "1m, on your mark", TimeBookmark(CaseInstant(60.0), "check")
+    CaseInstant(60), "1m, on your mark", TimeBookmark(CaseInstant(60), "check")
 )
 
 
@@ -3719,8 +3722,8 @@ def test_a_selected_point_is_kept_while_the_offer_still_holds_it() -> None:
     """The selection follows its point to a new place in the list, found by equality."""
 
     before = (_INDUCTION_POINT, _SETTING_CHANGE_POINT)
-    after = (_INDUCTION_POINT, ForkPoint(CaseInstant(30.0), "30s", None), _SETTING_CHANGE_POINT)
-    rebuilt = ForkPoint(CaseInstant(60.0), "1m", None)
+    after = (_INDUCTION_POINT, ForkPoint(CaseInstant(30), "30s", None), _SETTING_CHANGE_POINT)
+    rebuilt = ForkPoint(CaseInstant(60), "1m", None)
 
     assert kept_fork_selection(before, _SETTING_CHANGE_POINT, after) == _SETTING_CHANGE_POINT
     assert kept_fork_selection(before, rebuilt, after) == _SETTING_CHANGE_POINT
@@ -3776,7 +3779,7 @@ def test_fork_offer_requires_the_marks_to_be_stated() -> None:
     """
 
     with pytest.raises(TypeError, match="marks"):
-        fork_offer((CaseInstant(0.0),), comparing=None, here=None)  # type: ignore[call-arg]
+        fork_offer((CaseInstant(0),), comparing=None, here=None)  # type: ignore[call-arg]
 
 
 def test_fork_offer_is_refused_while_a_comparison_is_shown_and_says_the_way_out() -> None:
@@ -3854,7 +3857,7 @@ def test_fork_offer_offers_the_fork_here_while_the_trunk_is_paused() -> None:
     branch at without inferring it from the run clock.
     """
 
-    here = HereForkPoint(CaseInstant(45.0), stopped_on_mark=False)
+    here = HereForkPoint(CaseInstant(45), stopped_on_mark=False)
 
     offer = fork_offer((0.0, 60.0), marks=(), comparing=None, here=here)
 
@@ -3904,7 +3907,7 @@ def test_the_fork_here_is_refused_with_the_rest_while_a_comparison_is_shown() ->
     """
 
     for stopped_on_mark in (False, True):
-        here = HereForkPoint(CaseInstant(45.0), stopped_on_mark)
+        here = HereForkPoint(CaseInstant(45), stopped_on_mark)
 
         offer = fork_offer((0.0, 60.0), marks=(), comparing=COMPARED, here=here)
 
@@ -3943,11 +3946,11 @@ def test_fork_offer_lists_each_passed_mark_among_the_keyframes_by_instant() -> N
     are passed in.
     """
 
-    early = MarkForkPoint(TimeBookmark(CaseInstant(30.0)), CaseInstant(30.0))
-    late = MarkForkPoint(TimeBookmark(CaseInstant(120.0), "what if"), CaseInstant(120.0))
+    early = MarkForkPoint(TimeBookmark(CaseInstant(30)), CaseInstant(30))
+    late = MarkForkPoint(TimeBookmark(CaseInstant(120), "what if"), CaseInstant(120))
 
     offer = fork_offer(
-        (CaseInstant(0.0), CaseInstant(60.0), CaseInstant(185.0)),
+        (CaseInstant(0), CaseInstant(60), CaseInstant(185)),
         marks=(late, early),
         comparing=None,
         here=None,
@@ -3974,7 +3977,7 @@ def test_a_mark_s_entry_is_labelled_with_the_instant_its_branch_opens_at() -> No
     template, so an edit to the template cannot move both sides at once.
     """
 
-    offer = fork_offer((CaseInstant(0.0),), marks=(_MARK_INSIDE_A_STEP,), comparing=None, here=None)
+    offer = fork_offer((CaseInstant(0),), marks=(_MARK_INSIDE_A_STEP,), comparing=None, here=None)
     entry = offer.points[-1]
 
     assert entry.label == "45.4s, on your mark"
@@ -3997,26 +4000,26 @@ def test_a_control_event_is_listed_before_a_mark_at_the_same_instant() -> None:
     keyframe, and the mark is listed after that keyframe.
     """
 
-    at_opening = MarkForkPoint(TimeBookmark(CaseInstant(0.0)), CaseInstant(0.0))
-    on_the_change = MarkForkPoint(TimeBookmark(CaseInstant(60.0), "the change"), CaseInstant(60.0))
+    at_opening = MarkForkPoint(TimeBookmark(CaseInstant(0)), CaseInstant(0))
+    on_the_change = MarkForkPoint(TimeBookmark(CaseInstant(60), "the change"), CaseInstant(60))
 
     offer = fork_offer(
-        (CaseInstant(0.0), CaseInstant(60.0)),
+        (CaseInstant(0), CaseInstant(60)),
         marks=(at_opening, on_the_change),
         comparing=None,
         here=None,
     )
 
     assert offer.points == (
-        ForkPoint(CaseInstant(0.0), format_elapsed(0.0), None),
+        ForkPoint(CaseInstant(0), format_elapsed(0.0), None),
         ForkPoint(
-            CaseInstant(0.0),
+            CaseInstant(0),
             MARK_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(0.0)),
             at_opening.bookmark,
         ),
-        ForkPoint(CaseInstant(60.0), format_elapsed(60.0), None),
+        ForkPoint(CaseInstant(60), format_elapsed(60.0), None),
         ForkPoint(
-            CaseInstant(60.0),
+            CaseInstant(60),
             MARK_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(60.0)),
             on_the_change.bookmark,
         ),
@@ -4036,7 +4039,7 @@ def test_each_entry_carries_the_door_it_is_taken_through() -> None:
     """
 
     offer = fork_offer(
-        (CaseInstant(0.0), CaseInstant(60.0)),
+        (CaseInstant(0), CaseInstant(60)),
         marks=(_MARK_INSIDE_A_STEP,),
         comparing=None,
         here=None,
@@ -4057,9 +4060,9 @@ def test_a_locked_offer_stays_locked_whatever_marks_the_trunk_has_passed() -> No
     control that the lock replaces, not a further control the cap could miss.
     """
 
-    here = HereForkPoint(CaseInstant(45.0), stopped_on_mark=True)
+    here = HereForkPoint(CaseInstant(45), stopped_on_mark=True)
     refusal = "Setting refused: no keyframe at 30.0 s"
-    keyframes = (CaseInstant(0.0), CaseInstant(60.0))
+    keyframes = (CaseInstant(0), CaseInstant(60))
 
     unmarked = fork_offer(keyframes, marks=(), comparing=COMPARED, here=here, refusal=refusal)
     marked = fork_offer(
@@ -4164,7 +4167,7 @@ def test_the_axis_caption_says_when_the_window_is_centred_for_a_preview() -> Non
     controller.start()
 
     for _ in range(round(600.0 / SIMULATION_STEP_S)):
-        controller.advance(SIMULATION_STEP_S)
+        controller.advance()
 
     frame = assemble_chart_frame(
         (
@@ -4202,7 +4205,7 @@ def test_a_preview_above_the_axis_is_named_with_its_highest_predicted_value() ->
     controller.start()
 
     for _ in range(round(300.0 / SIMULATION_STEP_S)):
-        controller.advance(SIMULATION_STEP_S)
+        controller.advance()
 
     frame = assemble_chart_frame(
         (
@@ -4240,7 +4243,7 @@ def test_a_run_and_its_preview_both_above_the_axis_are_named_in_two_sentences() 
     controller.start()
 
     for _ in range(round(2400.0 / SIMULATION_STEP_S)):
-        controller.advance(SIMULATION_STEP_S)
+        controller.advance()
 
     frame = assemble_chart_frame(
         (

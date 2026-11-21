@@ -5,12 +5,11 @@ from math import isfinite
 import pytest
 
 from anesthesia_sim.app.controller import SimulationController
-from anesthesia_sim.app.dashboard_frame import SIMULATION_STEP_S
 from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES
 from anesthesia_sim.app.run_series import RecordedQuantity, RecordedSeries
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume
-from anesthesia_sim.core.simulation_step import SimulationStep
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S, SimulationStep
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,

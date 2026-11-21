@@ -16,7 +16,6 @@ import math
 
 import pytest
 
-from anesthesia_sim.app.dashboard_frame import SIMULATION_STEP_S
 from anesthesia_sim.app.formatting import CONCENTRATION_DISPLAY_RESOLUTION_PERCENT
 from anesthesia_sim.app.wash_in import (
     WASH_IN_DENOMINATOR_FLOOR_FRACTION,
@@ -33,6 +32,7 @@ from anesthesia_sim.core.parameters import (
     load_agent_parameters,
     load_reference_adult_parameters,
 )
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_ELAPSED_SIMULATION_TIME_S,

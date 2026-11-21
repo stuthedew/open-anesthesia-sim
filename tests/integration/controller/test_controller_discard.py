@@ -6,7 +6,6 @@ These tests cover whether a run holds anything a reset would discard.
 """
 
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
-from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
 from tests.integration.controller.controller_support import (
     _advance_for,
@@ -130,7 +129,7 @@ def test_a_branch_advanced_one_step_past_its_fork_holds_something_to_destroy() -
     trunk = _trunk_with_two_changes()
     branch = trunk.resumed_at(trunk.run_segments[-1].opening.instant_s)
     branch.start()
-    branch.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    branch.advance()
 
     assert branch.snapshot().has_recorded_run is True
 

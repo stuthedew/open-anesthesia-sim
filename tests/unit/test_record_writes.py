@@ -60,7 +60,7 @@ from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionC
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.patient import PatientCompartments
 from anesthesia_sim.core.simulation import SimulationState
-from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
+from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import (
     AlveolarVentilation,
     CardiacOutput,
@@ -175,7 +175,7 @@ def _system_holding_agent() -> AgentUptakeSystem:
     system = AgentUptakeSystem.default()
 
     for _ in range(20):
-        system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        system.advance()
 
     return system
 

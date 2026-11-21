@@ -64,14 +64,14 @@ def _target(
 
 
 def test_a_time_bookmark_holds_its_instant_and_no_name_by_default() -> None:
-    bookmark = TimeBookmark(CaseInstant(600.0))
+    bookmark = TimeBookmark(CaseInstant(600))
 
     assert bookmark.instant_s == 600.0
     assert bookmark.label is None
 
 
 def test_a_time_bookmark_keeps_the_name_it_was_given_without_surrounding_space() -> None:
-    assert TimeBookmark(CaseInstant(600.0), "  intubation  ").label == "intubation"
+    assert TimeBookmark(CaseInstant(600), "  intubation  ").label == "intubation"
 
 
 @pytest.mark.parametrize(
@@ -98,14 +98,14 @@ def test_a_time_bookmark_refuses_an_instant_not_built_as_a_case_instant(instant_
 
 
 def test_the_case_opening_itself_is_a_markable_instant() -> None:
-    assert TimeBookmark(CaseInstant(0.0)).instant_s == 0.0
+    assert TimeBookmark(CaseInstant(0)).instant_s == 0.0
 
 
 def test_a_blank_name_is_refused_rather_than_read_as_no_name() -> None:
     # An empty row in a list is indistinguishable from a rendering failure,
     # and `None` already means "list it under its own value".
     with pytest.raises(SimulationConfigurationError, match="blank"):
-        TimeBookmark(CaseInstant(600.0), "   ")
+        TimeBookmark(CaseInstant(600), "   ")
 
 
 def test_no_mark_of_either_kind_carries_a_crossing_direction() -> None:
@@ -113,7 +113,7 @@ def test_no_mark_of_either_kind_carries_a_crossing_direction() -> None:
     # direction. The project owner removed it on 2026-09-20. A height is a
     # height, and a run that passes through it going up, and again coming down,
     # has reached the marked height both times.
-    assert not hasattr(TimeBookmark(CaseInstant(600.0)), "direction")
+    assert not hasattr(TimeBookmark(CaseInstant(600)), "direction")
     assert not hasattr(_target(), "direction")
 
 
@@ -181,38 +181,38 @@ def test_a_fresh_set_is_empty_in_both_collections() -> None:
 def test_the_two_kinds_are_listed_apart_rather_than_filtered_out_of_one_list() -> None:
     marks = (
         BookmarkSet()
-        .with_time_bookmark(TimeBookmark(CaseInstant(600.0)))
+        .with_time_bookmark(TimeBookmark(CaseInstant(600)))
         .with_mac_target(_target())
     )
 
-    assert marks.time_bookmarks == (TimeBookmark(CaseInstant(600.0)),)
+    assert marks.time_bookmarks == (TimeBookmark(CaseInstant(600)),)
     assert marks.mac_targets == (_target(),)
     assert not marks.is_empty
 
 
 def test_adding_a_mark_leaves_the_set_it_was_added_to_alone() -> None:
     before = BookmarkSet()
-    after = before.with_time_bookmark(TimeBookmark(CaseInstant(600.0)))
+    after = before.with_time_bookmark(TimeBookmark(CaseInstant(600)))
 
     assert before.time_bookmarks == ()
-    assert after.time_bookmarks == (TimeBookmark(CaseInstant(600.0)),)
+    assert after.time_bookmarks == (TimeBookmark(CaseInstant(600)),)
 
 
 def test_marks_are_listed_in_the_order_they_were_added() -> None:
     marks = (
         BookmarkSet()
-        .with_time_bookmark(TimeBookmark(CaseInstant(600.0)))
-        .with_time_bookmark(TimeBookmark(CaseInstant(120.0)))
+        .with_time_bookmark(TimeBookmark(CaseInstant(600)))
+        .with_time_bookmark(TimeBookmark(CaseInstant(120)))
     )
 
     assert [bookmark.instant_s for bookmark in marks.time_bookmarks] == [600.0, 120.0]
 
 
 def test_an_instant_already_marked_may_not_be_marked_again() -> None:
-    marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(600.0)))
+    marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(600)))
 
     with pytest.raises(SimulationConfigurationError, match="marked once"):
-        marks.with_time_bookmark(TimeBookmark(CaseInstant(600.0), "second thoughts"))
+        marks.with_time_bookmark(TimeBookmark(CaseInstant(600), "second thoughts"))
 
 
 def test_the_repeated_instant_refusal_is_pinned_whole() -> None:
@@ -224,10 +224,10 @@ def test_the_repeated_instant_refusal_is_pinned_whole() -> None:
     which is a defect of its own rather than a sentence to freeze.
     """
 
-    marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(600.0)))
+    marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(600)))
 
     with pytest.raises(SimulationConfigurationError) as refusal:
-        marks.with_time_bookmark(TimeBookmark(CaseInstant(600.0), "second thoughts"))
+        marks.with_time_bookmark(TimeBookmark(CaseInstant(600), "second thoughts"))
 
     assert str(refusal.value) == (
         "an instant is marked once: a second time bookmark naming 600.0 would be a row no "
@@ -259,19 +259,19 @@ def test_the_same_height_on_another_compartment_is_a_different_crossing() -> Non
 def test_removing_a_time_bookmark_leaves_the_targets_alone() -> None:
     marks = (
         BookmarkSet()
-        .with_time_bookmark(TimeBookmark(CaseInstant(600.0)))
+        .with_time_bookmark(TimeBookmark(CaseInstant(600)))
         .with_mac_target(_target())
     )
-    after = marks.without_time_bookmark(TimeBookmark(CaseInstant(600.0)))
+    after = marks.without_time_bookmark(TimeBookmark(CaseInstant(600)))
 
     assert after.time_bookmarks == ()
     assert after.mac_targets == (_target(),)
 
 
 def test_a_time_bookmark_is_removed_by_its_instant_rather_than_by_its_name() -> None:
-    marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(600.0), "intubation"))
+    marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(600), "intubation"))
 
-    assert marks.without_time_bookmark(TimeBookmark(CaseInstant(600.0))).time_bookmarks == ()
+    assert marks.without_time_bookmark(TimeBookmark(CaseInstant(600))).time_bookmarks == ()
 
 
 def test_a_target_is_removed_by_its_crossing_rather_than_by_its_name() -> None:
@@ -284,7 +284,7 @@ def test_removing_a_time_bookmark_that_is_not_there_is_refused() -> None:
     # Removing nothing silently would leave a panel reporting a deletion that
     # did not happen.
     with pytest.raises(SimulationConfigurationError, match="none to remove"):
-        BookmarkSet().without_time_bookmark(TimeBookmark(CaseInstant(600.0)))
+        BookmarkSet().without_time_bookmark(TimeBookmark(CaseInstant(600)))
 
 
 def test_removing_a_target_that_is_not_there_is_refused() -> None:
@@ -301,7 +301,7 @@ def test_a_set_built_directly_from_repeated_marks_is_refused_too() -> None:
     # The collection enforces the invariant, not the method that adds a mark.
     # So a caller that constructs a set directly cannot get round it.
     with pytest.raises(SimulationConfigurationError, match="marked once"):
-        BookmarkSet((TimeBookmark(CaseInstant(600.0)), TimeBookmark(CaseInstant(600.0))))
+        BookmarkSet((TimeBookmark(CaseInstant(600)), TimeBookmark(CaseInstant(600))))
 
 
 # ------------------------------------------------------- crossing predicates
@@ -328,7 +328,7 @@ def _readings(**multiples: float) -> dict[RecordedQuantity, MacMultiple]:
 
 
 def test_a_time_bookmark_is_crossed_by_the_step_that_reaches_it() -> None:
-    bookmark = TimeBookmark(CaseInstant(30.0))
+    bookmark = TimeBookmark(CaseInstant(30))
 
     assert bookmark.crossed_between(29.9, 30.0)
     assert bookmark.crossed_between(29.95, 30.05)
@@ -337,7 +337,7 @@ def test_a_time_bookmark_is_crossed_by_the_step_that_reaches_it() -> None:
 def test_a_time_bookmark_is_not_crossed_again_by_the_step_after_it() -> None:
     """Each step covers an interval open below and closed above, so an instant is reached once."""
 
-    bookmark = TimeBookmark(CaseInstant(30.0))
+    bookmark = TimeBookmark(CaseInstant(30))
 
     assert not bookmark.crossed_between(30.0, 30.1)
     assert not bookmark.crossed_between(29.8, 29.9)
@@ -438,7 +438,7 @@ def test_off_grid_instants_are_reached_on_the_crossing_step_at_every_step(step_s
 def test_a_mark_at_the_case_s_opening_is_reached_by_no_step() -> None:
     """A run is already at that instant before it steps, and `crossed_between` never fires there."""
 
-    assert TimeBookmark(CaseInstant(0.0)).steps_to_reach(STEP_S) == 0
+    assert TimeBookmark(CaseInstant(0)).steps_to_reach(STEP_S) == 0
 
 
 def test_the_last_supported_instant_is_reached_on_the_last_supported_step() -> None:
@@ -455,7 +455,7 @@ def test_steps_to_reach_refuses_a_step_not_built_as_one() -> None:
     """A bare float has passed no range check, and a zero step would divide by zero."""
 
     with pytest.raises(TypeError):
-        TimeBookmark(CaseInstant(30.0)).steps_to_reach(0.1)  # type: ignore[arg-type]
+        TimeBookmark(CaseInstant(30)).steps_to_reach(0.1)  # type: ignore[arg-type]
 
 
 def test_a_held_bookmark_is_found_by_its_instant_and_returned_as_the_set_holds_it() -> None:
@@ -465,16 +465,16 @@ def test_a_held_bookmark_is_found_by_its_instant_and_returned_as_the_set_holds_i
     bookmark a caller needs in order to look up its standing.
     """
 
-    marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(600.0), "intubation"))
+    marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(600), "intubation"))
 
-    assert marks.held_time_bookmark(TimeBookmark(CaseInstant(600.0))) == TimeBookmark(
-        CaseInstant(600.0), "intubation"
+    assert marks.held_time_bookmark(TimeBookmark(CaseInstant(600))) == TimeBookmark(
+        CaseInstant(600), "intubation"
     )
 
 
 def test_a_bookmark_the_set_does_not_hold_is_refused_by_its_instant() -> None:
     with pytest.raises(SimulationConfigurationError, match="no time bookmark stands at 600.0 s"):
-        BookmarkSet().held_time_bookmark(TimeBookmark(CaseInstant(600.0)))
+        BookmarkSet().held_time_bookmark(TimeBookmark(CaseInstant(600)))
 
 
 def test_a_target_is_crossed_by_the_step_that_reaches_its_height() -> None:
@@ -593,12 +593,12 @@ def test_only_a_reading_near_an_edge_of_the_band_needs_a_canonical_reading() -> 
 
 def test_a_step_that_crossed_nothing_is_reported_as_no_crossing() -> None:
     marks = (
-        BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(30.0))).with_mac_target(_target())
+        BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(30))).with_mac_target(_target())
     )
 
     assert (
         marks.crossings_between(
-            before_s=CaseInstant(10.0),
+            before_s=CaseInstant(10),
             after_s=CaseInstant(10.1),
             before=_readings(vessel_rich=0.1),
             after=_readings(vessel_rich=0.2),
@@ -610,18 +610,18 @@ def test_a_step_that_crossed_nothing_is_reported_as_no_crossing() -> None:
 def test_one_step_can_cross_a_marked_instant_and_a_marked_height_at_once() -> None:
     target = _target(multiple=0.8)
     marks = (
-        BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(30.0))).with_mac_target(target)
+        BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(30))).with_mac_target(target)
     )
 
     crossing = marks.crossings_between(
         before_s=CaseInstant(29.9),
-        after_s=CaseInstant(30.0),
+        after_s=CaseInstant(30),
         before=_readings(vessel_rich=0.79),
         after=_readings(vessel_rich=0.81),
     )
 
     assert crossing == BookmarkCrossing(
-        CaseInstant(30.0), (TimeBookmark(CaseInstant(30.0)),), (target,)
+        CaseInstant(30), (TimeBookmark(CaseInstant(30)),), (target,)
     )
 
 
@@ -631,20 +631,20 @@ def test_a_reading_missing_a_marked_compartment_is_refused() -> None:
 
     with pytest.raises(SimulationConfigurationError, match="no fat compartment"):
         marks.crossings_between(
-            before_s=CaseInstant(0.0), after_s=CaseInstant(0.1), before=short, after=short
+            before_s=CaseInstant(0), after_s=CaseInstant(0.1), before=short, after=short
         )
 
 
 def test_a_crossing_naming_no_mark_at_all_is_refused() -> None:
     with pytest.raises(SimulationConfigurationError, match="at least one mark"):
-        BookmarkCrossing(CaseInstant(30.0))
+        BookmarkCrossing(CaseInstant(30))
 
 
 def test_a_crossing_refuses_an_instant_not_built_as_a_case_instant() -> None:
     """A run stores the crossing it halted on, so the crossing checks its instant (`PL-CN5S`)."""
 
     with pytest.raises(TypeError, match="instant_s of 30.0 was not built as CaseInstant"):
-        BookmarkCrossing(30.0, (TimeBookmark(CaseInstant(30.0)),))  # type: ignore[arg-type]
+        BookmarkCrossing(30.0, (TimeBookmark(CaseInstant(30)),))  # type: ignore[arg-type]
 
 
 # ------------------------------------------------------------------ standings
@@ -680,7 +680,7 @@ def _standings(
 
 
 def test_a_mark_the_run_can_still_reach_stands_as_still_running() -> None:
-    bookmark = TimeBookmark(CaseInstant(600.0))
+    bookmark = TimeBookmark(CaseInstant(600))
     target = _target()
     marks = BookmarkSet().with_time_bookmark(bookmark).with_mac_target(target)
 
@@ -715,7 +715,7 @@ def test_an_instant_the_run_halted_on_stands_as_passed_rather_than_reached() -> 
     (`PL-3K9B`).
     """
 
-    bookmark = TimeBookmark(CaseInstant(600.0))
+    bookmark = TimeBookmark(CaseInstant(600))
     marks = BookmarkSet().with_time_bookmark(bookmark)
 
     standings = _standings(marks, reached_instants_s=frozenset({600.0}))
@@ -760,7 +760,7 @@ def test_a_bookmark_before_a_branch_fork_reads_apart_from_the_cap_case() -> None
     is false.
     """
 
-    inherited = TimeBookmark(CaseInstant(120.0))
+    inherited = TimeBookmark(CaseInstant(120))
     marks = BookmarkSet().with_time_bookmark(inherited)
 
     standings = _standings(marks, opened_at_s=300.0)
@@ -783,7 +783,7 @@ def test_a_mark_outstanding_on_a_failed_run_is_not_reported_as_still_reachable()
     than for the bookmark alone.
     """
 
-    bookmark = TimeBookmark(CaseInstant(600.0))
+    bookmark = TimeBookmark(CaseInstant(600))
     target = _target()
     marks = BookmarkSet().with_time_bookmark(bookmark).with_mac_target(target)
 
@@ -804,7 +804,7 @@ def test_a_failed_run_reads_apart_from_one_that_ran_out_of_supported_time() -> N
     claim to be false.
     """
 
-    bookmark = TimeBookmark(CaseInstant(600.0))
+    bookmark = TimeBookmark(CaseInstant(600))
     marks = BookmarkSet().with_time_bookmark(bookmark)
 
     failed = _standings(marks, run_failed=True)
@@ -827,7 +827,7 @@ def test_the_cap_answers_for_a_run_standing_at_it_that_then_failed() -> None:
     clear.
     """
 
-    bookmark = TimeBookmark(CaseInstant(600.0))
+    bookmark = TimeBookmark(CaseInstant(600))
     target = _target()
     marks = BookmarkSet().with_time_bookmark(bookmark).with_mac_target(target)
 
@@ -846,7 +846,7 @@ def test_a_failure_stops_a_clock_without_taking_it_back() -> None:
     mirror image of the defect that this outcome was added for.
     """
 
-    passed = TimeBookmark(CaseInstant(30.0))
+    passed = TimeBookmark(CaseInstant(30))
     reached = _target()
     marks = BookmarkSet().with_time_bookmark(passed).with_mac_target(reached)
 
@@ -867,7 +867,7 @@ def test_an_inherited_bookmark_on_a_failed_branch_still_reads_before_the_branch(
     opening, so the next run of the branch cannot reach the instant either.
     """
 
-    inherited = TimeBookmark(CaseInstant(120.0))
+    inherited = TimeBookmark(CaseInstant(120))
     marks = BookmarkSet().with_time_bookmark(inherited)
 
     standings = _standings(marks, opened_at_s=300.0, run_failed=True)
@@ -885,8 +885,8 @@ def test_a_mark_the_run_has_passed_does_not_read_as_still_reachable() -> None:
     nothing.
     """
 
-    at_the_fork = TimeBookmark(CaseInstant(300.0))
-    behind_the_clock = TimeBookmark(CaseInstant(120.0))
+    at_the_fork = TimeBookmark(CaseInstant(300))
+    behind_the_clock = TimeBookmark(CaseInstant(120))
     marks = BookmarkSet().with_time_bookmark(at_the_fork).with_time_bookmark(behind_the_clock)
 
     standings = _standings(marks, elapsed_s=300.0)
@@ -906,7 +906,7 @@ def test_a_bookmark_at_a_branch_s_own_fork_instant_reads_passed() -> None:
     this standing.
     """
 
-    at_the_fork = TimeBookmark(CaseInstant(300.0))
+    at_the_fork = TimeBookmark(CaseInstant(300))
     marks = BookmarkSet().with_time_bookmark(at_the_fork)
 
     standings = _standings(marks, opened_at_s=300.0, elapsed_s=300.0)
@@ -951,7 +951,7 @@ def test_a_bookmark_at_the_case_s_opening_reads_passed_on_an_ordinary_trunk() ->
     thing to mark, but not an impossible one.
     """
 
-    induction = TimeBookmark(CaseInstant(0.0))
+    induction = TimeBookmark(CaseInstant(0))
     marks = BookmarkSet().with_time_bookmark(induction)
 
     assert _standings(marks, elapsed_s=60.0).of_time_bookmark(induction) is MarkStanding.PASSED
@@ -966,7 +966,7 @@ def test_a_clock_standing_before_its_own_run_s_opening_is_refused() -> None:
     failure to that outcome.
     """
 
-    marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(120.0)))
+    marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(120)))
 
     with pytest.raises(SimulationConfigurationError, match="at or after its own beginning"):
         _standings(marks, opened_at_s=300.0, elapsed_s=299.9)
@@ -999,7 +999,7 @@ def test_a_standing_asked_for_a_mark_that_was_never_evaluated_is_refused() -> No
         standings.of_mac_target(_target())
 
     with pytest.raises(SimulationConfigurationError, match="does not hold the time bookmark"):
-        standings.of_time_bookmark(TimeBookmark(CaseInstant(30.0)))
+        standings.of_time_bookmark(TimeBookmark(CaseInstant(30)))
 
 
 # ---------------------------------------------------- halting on a crossing
@@ -1426,12 +1426,12 @@ def test_a_halt_target_removed_and_added_back_is_named_again_by_both_records() -
 
 def test_a_time_bookmark_halts_the_run_on_the_step_that_reaches_it() -> None:
     run = SimulationController()
-    run.add_time_bookmark(TimeBookmark(CaseInstant(30.0)))
+    run.add_time_bookmark(TimeBookmark(CaseInstant(30)))
     run.start()
 
     halt = _tick_until_halt(run, steps_per_tick=STEPS_PER_TICK_AT_300X)
 
-    assert halt == BookmarkCrossing(CaseInstant(30.0), (TimeBookmark(CaseInstant(30.0)),))
+    assert halt == BookmarkCrossing(CaseInstant(30), (TimeBookmark(CaseInstant(30)),))
     assert run.snapshot().elapsed_s == pytest.approx(30.0)
 
 
@@ -1444,7 +1444,7 @@ def test_an_unmarked_run_takes_the_same_trajectory_as_one_that_halted() -> None:
     """
 
     marked = SimulationController()
-    marked.add_time_bookmark(TimeBookmark(CaseInstant(30.0)))
+    marked.add_time_bookmark(TimeBookmark(CaseInstant(30)))
     marked.start()
 
     for _ in range(600):
@@ -1464,7 +1464,7 @@ def test_an_unmarked_run_takes_the_same_trajectory_as_one_that_halted() -> None:
 
 
 def test_resetting_forgets_what_the_run_did_with_the_marks_and_keeps_the_marks() -> None:
-    bookmark = TimeBookmark(CaseInstant(30.0))
+    bookmark = TimeBookmark(CaseInstant(30))
     run = SimulationController()
     run.add_time_bookmark(bookmark)
     run.start()
@@ -1481,7 +1481,7 @@ def test_resetting_forgets_what_the_run_did_with_the_marks_and_keeps_the_marks()
 def test_unmarking_the_instant_a_run_is_halted_on_clears_the_halt() -> None:
     """A halt naming a row nobody can see is stale state rather than a record."""
 
-    bookmark = TimeBookmark(CaseInstant(30.0))
+    bookmark = TimeBookmark(CaseInstant(30))
     run = SimulationController()
     run.add_time_bookmark(bookmark)
     run.start()

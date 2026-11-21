@@ -19,7 +19,6 @@ from anesthesia_sim.app.dashboard_frame import (
     COMPARING_AGENT_LOCK_TEXT,
     MAX_DISPLAYED_RUNS,
     RESET_LABEL,
-    SIMULATION_STEP_S,
     TRUNK_RUN_INDEX,
     comparing_fork_lock_text,
     fork_offer,
@@ -143,7 +142,7 @@ def test_a_refused_branch_does_not_survive_a_one_run_reset(application: QApplica
     panel = _fork_panel(view)
     panel.set_offer(
         fork_offer(
-            (CaseInstant(0.0), CaseInstant(30.0), CaseInstant(60.0)),
+            (CaseInstant(0), CaseInstant(30), CaseInstant(60)),
             marks=(),
             comparing=None,
             here=None,
@@ -178,7 +177,7 @@ def test_a_one_run_reset_leaves_a_case_with_no_branches(application: QApplicatio
 
     case = _branched_case()
     view = _case_view(application, case)
-    case.fork_at(CaseInstant(60.0))
+    case.fork_at(CaseInstant(60))
 
     assert len(view.runs) == 1
     assert len(case.branches) == 1
@@ -357,7 +356,7 @@ def test_an_open_trunk_reset_question_follows_a_running_branch(application: QApp
     assert "run to 1m0.4s" in dialog.body_labels[1].text()
 
     for _ in range(4):
-        branch.controller.advance(SIMULATION_STEP_S)
+        branch.controller.advance()
 
     view.present(False)
 
@@ -706,7 +705,7 @@ def test_a_run_added_to_a_paused_dashboard_is_drawn_on_the_next_tick(
     view = _case_view(application, case)
     presented = view.presented_frames
 
-    view.add_run(case.fork_at(CaseInstant(60.0)))
+    view.add_run(case.fork_at(CaseInstant(60)))
 
     assert view.presented_frames == presented, "add_run drew a frame of its own"
 
@@ -835,7 +834,7 @@ def test_add_run_refuses_a_branch_of_another_case(application: QApplication) -> 
 
     view = _case_view(application, _branched_case())
     elsewhere = BranchedCase(_paused_run_with_history())
-    foreign = elsewhere.fork_at(CaseInstant(60.0))
+    foreign = elsewhere.fork_at(CaseInstant(60))
 
     with pytest.raises(ValueError, match=re.escape("opened at 60.0 s but belongs to another case")):
         view.add_run(foreign)

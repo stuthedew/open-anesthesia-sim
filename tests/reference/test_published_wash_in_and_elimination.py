@@ -323,7 +323,7 @@ from anesthesia_sim.core.parameters import (
     load_reference_circle_system_parameters,
 )
 from anesthesia_sim.core.patient import PatientCompartments
-from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S, SimulationStep
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
@@ -346,7 +346,7 @@ ELIMINATION_DURATION_S = 300.0
 # (docs/MODEL.md, "Supported simulation step"). If the step is ever raised,
 # this validation should move with it and be re-measured. It should not keep
 # running quietly at a step the interface no longer uses.
-SIMULATION_STEP_S = SimulationStep(MAXIMUM_SIMULATION_STEP_S)
+SIMULATION_STEP_S = SimulationStep(SIMULATION_STEP_S)
 
 # The operating point. Alveolar ventilation and cardiac output are *not*
 # chosen here. The code below reads them from the reference-patient data file,
@@ -1079,7 +1079,7 @@ def _wash_in_system(
     )
 
     for _ in range(round(WASH_IN_DURATION_S / SIMULATION_STEP_S)):
-        system.advance(SIMULATION_STEP_S)
+        system.advance()
 
     return system
 
@@ -1153,7 +1153,7 @@ def _private_washed_in_system(
     )
 
     for _ in range(round(WASH_IN_DURATION_S / SIMULATION_STEP_S)):
-        system.advance(SIMULATION_STEP_S)
+        system.advance()
 
     return system
 
@@ -1230,7 +1230,7 @@ def _eliminate(
     system.set_delivered_concentration_percent(Percent(0.0))
 
     for _ in range(round(ELIMINATION_DURATION_S / SIMULATION_STEP_S)):
-        system.advance(SIMULATION_STEP_S)
+        system.advance()
 
     return EliminationReading(
         alveolar_fraction_at_discontinuation=alveolar_fraction_at_discontinuation,
@@ -1390,7 +1390,7 @@ def _eliminate_without_rebreathing(
 
     for _ in range(round(ELIMINATION_DURATION_S / SIMULATION_STEP_S)):
         alveolar_fraction_at_step_start = system.alveoli.partial_pressure_fraction
-        system.advance(SIMULATION_STEP_S)
+        system.advance()
         peak_inspired_to_starting_alveolar_ratio = max(
             peak_inspired_to_starting_alveolar_ratio,
             system.circuit.inspired_partial_pressure_fraction / alveolar_fraction_at_step_start,
@@ -1491,7 +1491,7 @@ def _clamped_wash_in(
     _hold_inspired_fraction(system, inspired_fraction)
 
     for step in range(1, max(sample_steps) + 1):
-        system.advance(SIMULATION_STEP_S)
+        system.advance()
         peak_inspired_deviation = max(
             peak_inspired_deviation,
             abs(system.circuit.inspired_partial_pressure_fraction - inspired_fraction)

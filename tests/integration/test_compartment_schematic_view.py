@@ -27,11 +27,7 @@ from anesthesia_sim.app.bookmarks import TimeBookmark
 from anesthesia_sim.app.chart_frame import trace_style
 from anesthesia_sim.app.compartment_schematic import NO_AGENT_SHARE_LINE, WITHHELD_AMOUNT_TEXT
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
-from anesthesia_sim.app.dashboard_frame import (
-    SIMULATION_STEP_S,
-    TRUNK_RUN_INDEX,
-    WITHHELD_CONCENTRATION_TEXT,
-)
+from anesthesia_sim.app.dashboard_frame import TRUNK_RUN_INDEX, WITHHELD_CONCENTRATION_TEXT
 from anesthesia_sim.app.formatting import format_elapsed
 from anesthesia_sim.app.qt_schematic import RunSchematic, SchematicCanvas
 from anesthesia_sim.app.qt_widgets import ForkPanel
@@ -43,6 +39,7 @@ from anesthesia_sim.app.view_registry import BRANCH, COMPARTMENT_SCHEMATIC, REGI
 from anesthesia_sim.app.views import BranchView, CompartmentSchematicView, ConcentrationView
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.parameters import load_agent_parameters
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CaseInstant, FreshGasFlow
 from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.shipped import shipped_workspaces
@@ -223,12 +220,12 @@ def _two_figures(millilitres: float) -> str:
 
 def _advance(controller: SimulationController, seconds: float) -> None:
     for _ in range(round(seconds / SIMULATION_STEP_S)):
-        controller.advance(SIMULATION_STEP_S)
+        controller.advance()
 
 
 def _advance_to(controller: SimulationController, elapsed_s: float) -> None:
     while controller.snapshot().elapsed_s < elapsed_s - SIMULATION_STEP_S / 2.0:
-        controller.advance(SIMULATION_STEP_S)
+        controller.advance()
 
 
 def test_the_two_figure_helper_writes_what_the_specification_writes() -> None:

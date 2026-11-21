@@ -285,7 +285,7 @@ def test_the_fitted_window_reaches_a_branch_s_newest_instant_rather_than_its_len
     trunk = _run(120.0)
     trunk.begin_control_adjustment()
     trunk.set_fresh_gas_flow(FreshGasFlow(3.0))
-    branch = BranchedCase(trunk).fork_at(CaseInstant(120.0))
+    branch = BranchedCase(trunk).fork_at(CaseInstant(120))
     branch.start()
     _advance(branch, 30.0)
     newest_s = branch.snapshot().elapsed_s
@@ -1237,7 +1237,7 @@ def test_a_vertical_hand_movement_never_moves_the_instant_a_hover_reports(compar
     controllers = [trunk]
 
     if compared:
-        branch = BranchedCase(trunk).fork_at(CaseInstant(600.0))
+        branch = BranchedCase(trunk).fork_at(CaseInstant(600))
         branch.start()
         branch.begin_control_adjustment()
         branch.set_delivered_concentration_percent(Percent(0.0))
@@ -1825,7 +1825,7 @@ def test_a_branch_carries_its_fork_and_a_trunk_carries_none() -> None:
     trunk.set_fresh_gas_flow(FreshGasFlow(3.0))
     _advance(trunk, 60.0)
     case = BranchedCase(trunk)
-    branch = case.fork_at(CaseInstant(60.0))
+    branch = case.fork_at(CaseInstant(60))
     frame = assemble_chart_frame(
         (_input(trunk), _input(branch, run_index=1)),
         None,
@@ -1886,7 +1886,7 @@ def test_a_fork_outside_the_drawn_window_is_not_marked_at_its_edge() -> None:
     trunk.set_fresh_gas_flow(FreshGasFlow(3.0))
     _advance(trunk, 1800.0)
     case = BranchedCase(trunk)
-    branch = case.fork_at(CaseInstant(60.0))
+    branch = case.fork_at(CaseInstant(60))
     _advance(branch, 1800.0)
     frame = assemble_chart_frame(
         (_input(trunk), _input(branch, run_index=1)),
@@ -2163,7 +2163,7 @@ def test_a_compared_run_previews_from_its_own_reach_and_the_window_centres_on_it
     trunk = _run(300.0)
     trunk.set_fresh_gas_flow(FreshGasFlow(3.0))
     _advance(trunk, 300.0)
-    branch = BranchedCase(trunk).fork_at(CaseInstant(300.0))
+    branch = BranchedCase(trunk).fork_at(CaseInstant(300))
     branch.start()
     _advance(branch, 60.0)
     base = time_base_for_span(1800.0)

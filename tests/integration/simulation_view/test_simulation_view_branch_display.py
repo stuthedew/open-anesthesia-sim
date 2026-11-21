@@ -21,7 +21,6 @@ from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import (
     ACCOUNTING_HEADING,
     CONTROL_TIMELINE_HEADING,
-    SIMULATION_STEP_S,
     run_label,
 )
 from anesthesia_sim.app.formatting import format_elapsed
@@ -36,6 +35,7 @@ from anesthesia_sim.app.unconditional_set import (
 )
 from anesthesia_sim.app.views import BranchView, ConcentrationView
 from anesthesia_sim.core.concentration import Percent
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CaseInstant, FreshGasFlow
 from anesthesia_sim.layout.tree import AreaId, Split
 from tests.integration.simulation_view.simulation_view_support import (
@@ -740,7 +740,7 @@ def test_a_run_refused_for_a_missing_unconditional_value_leaves_no_widgets(
 
     case = _branched_case()
     view = _case_view(application, case)
-    branch = case.fork_at(CaseInstant(60.0))
+    branch = case.fork_at(CaseInstant(60))
     before = set(view.findChildren(QWidget))
     readings_before = [
         len(panel.findChildren(QWidget)) for panel in view.runs[0]._readout_row.panels

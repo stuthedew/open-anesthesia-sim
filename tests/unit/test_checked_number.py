@@ -292,7 +292,7 @@ def test_a_value_built_as_another_quantity_is_refused_by_name_and_anything_else_
     `ValueError` while the refusal was being written (`PL-5F76`).
     """
 
-    for value in (CaseInstant(600.0), 600.0, 600, True, "600", None, _AFloat(600.0)):
+    for value in (CaseInstant(600), 600.0, 600, True, "600", None, _AFloat(600.0)):
         require_not_another_quantity("opening_s", value, CaseInstant)
 
     with pytest.raises(TypeError) as raised:

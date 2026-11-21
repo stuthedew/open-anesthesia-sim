@@ -53,7 +53,6 @@ from anesthesia_sim.app.chart_time_base import ChartTimeBase
 from anesthesia_sim.app.controller import BranchedCase, SimulationController, SimulationSnapshot
 from anesthesia_sim.app.dashboard_frame import (
     READOUT_PANELS,
-    SIMULATION_STEP_S,
     WITHHELD_ACCOUNTING,
     ComparedRuns,
     accounting,
@@ -93,7 +92,7 @@ from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.blood_flow import PerfusionFraction
 from anesthesia_sim.core.concentration import Fraction, MacMultiple
 from anesthesia_sim.core.exceptions import SimulationNumericalError
-from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow
 from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
@@ -308,12 +307,12 @@ def _wash_in(view: SimulationView) -> WashInView:
 
 def _advance(controller: SimulationController, seconds: float) -> None:
     for _ in range(round(seconds / SIMULATION_STEP_S)):
-        controller.advance(SIMULATION_STEP_S)
+        controller.advance()
 
 
 def _advance_to(controller: SimulationController, elapsed_s: float) -> None:
     while controller.snapshot().elapsed_s < elapsed_s - SIMULATION_STEP_S / 2.0:
-        controller.advance(SIMULATION_STEP_S)
+        controller.advance()
 
 
 def _shown_view(
@@ -651,7 +650,7 @@ def _halted_trunk_case(application: QApplication) -> tuple[BranchedCase, Simulat
         if case.trunk.snapshot().bookmark_halt is not None:
             break
 
-        case.trunk.advance(SIMULATION_STEP_S)
+        case.trunk.advance()
     else:
         raise AssertionError(
             f"the trunk ran {_TRUNK_STEP_BUDGET} steps without halting on the mark at "
@@ -869,7 +868,7 @@ def _real_step_failure() -> SimulationNumericalError:
     )
 
     try:
-        system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        system.advance()
     except SimulationNumericalError as error:
         return error
 
@@ -1111,7 +1110,7 @@ def _halted_branch_view(application: QApplication) -> SimulationView:
     case = _branched_case()
     view = _case_view(application, case)
     case.trunk.add_mac_target(MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.5)))
-    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30.0), "check"))
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30), "check"))
 
     _take_fork(view, 60.0)
 
@@ -1125,7 +1124,7 @@ def _halted_branch_view(application: QApplication) -> SimulationView:
         if not branch.snapshot().is_running:
             break
 
-        branch.advance(SIMULATION_STEP_S)
+        branch.advance()
     else:
         raise AssertionError(
             f"the branch ran {_BRANCH_STEP_BUDGET} steps without halting on the target; "

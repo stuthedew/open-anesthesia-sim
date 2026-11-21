@@ -1120,7 +1120,7 @@ def test_every_dashboard_control_is_restated_on_a_halt(application: QApplication
     """
 
     case = _branched_case()
-    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30.0), "check"))
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30), "check"))
     view = _case_view(application, case)
     _opened_bookmark_dialog(view)
     run_widgets = {id(widget) for run in view.runs for widget in _widget_attributes(run).values()}
@@ -1258,7 +1258,7 @@ def test_every_run_state_surface_outside_the_run_view_reads_alike_on_a_drawn_run
     """
 
     case = _branched_case()
-    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30.0), "check"))
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30), "check"))
     view = _case_view(application, case)
     _opened_bookmark_dialog(view)
     view.present(False)
@@ -1266,7 +1266,7 @@ def test_every_run_state_surface_outside_the_run_view_reads_alike_on_a_drawn_run
     _fork_panel(view).take_button.click()
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
 
-    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(45.0), "later"))
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(45), "later"))
     trunk = view.runs[0]
     trunk._playback_rate_dropdown.setCurrentIndex(trunk._playback_rate_dropdown.findData(5))
     view.present(False)
@@ -1322,13 +1322,13 @@ def test_the_surface_guard_fails_on_a_panel_only_a_frame_writes(
     """
 
     case = _branched_case()
-    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30.0), "check"))
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30), "check"))
     view = _case_view(application, case)
     view.present(False)
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
     monkeypatch.setattr(view, "_restate_bookmark_panel", lambda: None)
 
-    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(45.0), "later"))
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(45), "later"))
     view.present(False)
     halted = _surface_states(view)
 
@@ -1408,7 +1408,7 @@ def test_a_dial_write_that_refuses_on_a_halt_still_restates_every_panel(
     """
 
     case = _branched_case()
-    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(600.0), "check"))
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(600), "check"))
     view = _case_view(application, case)
     here = _fork_panel(view).here_button
     assert here.isHidden() is False, "the paused trunk offers no branch here to withdraw"
@@ -1445,7 +1445,7 @@ def test_a_withdrawn_bookmark_panel_withdraws_the_open_dialog(
     """
 
     controller = _paused_run_with_history()
-    controller.add_time_bookmark(TimeBookmark(CaseInstant(600.0), "check"))
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(600), "check"))
     view = _shown_view(application, controller)
     dialog = _opened_bookmark_dialog(view)
     withdrawn = (

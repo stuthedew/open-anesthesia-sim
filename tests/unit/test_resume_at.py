@@ -109,11 +109,11 @@ def _run(
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
 
     for step in range(1, steps + 1):
-        system.advance(SIMULATION_STEP_S)
+        system.advance()
         definition.advance_to(CaseInstant(step * SIMULATION_STEP_S))
 
         if step == dial_step:
@@ -222,10 +222,10 @@ def test_a_resumed_system_steps_the_way_the_run_it_resumes_did() -> None:
 
     system.resume_at(opening.state, initial_agent_l=0.0)
 
-    ahead = RunDefinition(segment.settings, opening.state, opened_at_s=CaseInstant(0.0))
+    ahead = RunDefinition(segment.settings, opening.state, opened_at_s=CaseInstant(0))
 
     for step in range(1, 601):
-        system.advance(SIMULATION_STEP_S)
+        system.advance()
         ahead.advance_to(CaseInstant(step * SIMULATION_STEP_S))
 
     stepped = system.state_vector()
@@ -255,7 +255,7 @@ def test_two_systems_resumed_at_one_state_step_identically() -> None:
         system.resume_at(segment.opening.state, initial_agent_l=0.0)
 
         for _ in range(300):
-            system.advance(SIMULATION_STEP_S)
+            system.advance()
 
     assert left.state_vector() == right.state_vector()
 
@@ -467,7 +467,7 @@ def test_a_refused_resume_leaves_every_compartment_as_it_was(
     system = _like(system_parent)
 
     system.resume_at(opening.state, initial_agent_l=0.0)
-    system.advance(SIMULATION_STEP_S)
+    system.advance()
 
     before = system.capture_state()
     original = TissueGroup.set_partial_pressure_fraction
@@ -533,15 +533,15 @@ def test_resuming_does_not_strand_the_cached_propagator() -> None:
     segment = definition.segments[-1]
 
     warmed = _like(system_parent)
-    warmed.advance(SIMULATION_STEP_S)
+    warmed.advance()
     warmed.resume_at(segment.opening.state, initial_agent_l=0.0)
 
     cold = _like(system_parent)
     cold.resume_at(segment.opening.state, initial_agent_l=0.0)
 
     for _ in range(200):
-        warmed.advance(SIMULATION_STEP_S)
-        cold.advance(SIMULATION_STEP_S)
+        warmed.advance()
+        cold.advance()
 
     assert warmed.state_vector() == cold.state_vector()
 

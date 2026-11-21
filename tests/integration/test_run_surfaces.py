@@ -23,12 +23,7 @@ from PySide6.QtCore import QEvent
 from PySide6.QtWidgets import QApplication
 
 from anesthesia_sim.app.controller import SimulationController
-from anesthesia_sim.app.dashboard_frame import (
-    ACCOUNTING_HEADING,
-    SIMULATION_STEP_S,
-    accounting,
-    slider_position,
-)
+from anesthesia_sim.app.dashboard_frame import ACCOUNTING_HEADING, accounting, slider_position
 from anesthesia_sim.app.formatting import FLOW_DISPLAY_DECIMALS, format_flow
 from anesthesia_sim.app.run_surfaces import AccountingPanel, ParameterControls
 from anesthesia_sim.app.simulation_view import SimulationView
@@ -40,6 +35,7 @@ from anesthesia_sim.app.view_registry import (
 )
 from anesthesia_sim.app.views import AccountingView, ConcentrationView, ParameterControlsView
 from anesthesia_sim.core.concentration import Percent
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, Window
 from anesthesia_sim.layout.workspace import Origin, Workspace, WorkspaceName, WorkspaceSet
@@ -143,7 +139,7 @@ def _shown_view(application: QApplication, controller: SimulationController) -> 
 
 def _advance(controller: SimulationController, seconds: float) -> None:
     for _ in range(round(seconds / SIMULATION_STEP_S)):
-        controller.advance(SIMULATION_STEP_S)
+        controller.advance()
 
 
 def _drawn(panel: AccountingPanel) -> tuple[str, str, str, str]:

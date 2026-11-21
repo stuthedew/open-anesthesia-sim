@@ -905,7 +905,7 @@ def _washout_curve(
     metabolised = 0.0
 
     for _ in range(round(WASH_IN_DURATION_S / SIMULATION_STEP_S)):
-        system.advance(SIMULATION_STEP_S)
+        system.advance()
         if hepatic_elimination_rate_constant_per_min:
             metabolised += _metabolise(system, hepatic_elimination_rate_constant_per_min)
 
@@ -927,7 +927,7 @@ def _washout_curve(
     ratios = [1.0]
     for _ in range(elimination_duration_min):
         for _ in range(STEPS_PER_SAMPLE):
-            system.advance(SIMULATION_STEP_S)
+            system.advance()
             if condition == "open circuit":
                 _discard_circuit_contents(system)
             if hepatic_elimination_rate_constant_per_min:

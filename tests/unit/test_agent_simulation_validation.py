@@ -22,7 +22,6 @@ from anesthesia_sim.core.exceptions import (
     SimulationNumericalError,
 )
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume
-from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 # These are the three constants that set how far a run's numbers may drift
@@ -842,7 +841,7 @@ def test_an_alveolar_volume_the_model_can_still_step_is_not_refused() -> None:
     system = AgentUptakeSystem.for_agent("sevoflurane")
     system.alveoli.gas_volume_l = CompartmentVolume(0.01)
 
-    result = system.advance(SimulationStep(0.1))
+    result = system.advance()
 
     assert result.agent_accounting.passes_validation
     assert result.fresh_gas_exchange.delivered_agent_l > 0.0

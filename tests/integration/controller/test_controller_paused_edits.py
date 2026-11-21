@@ -14,7 +14,7 @@ from anesthesia_sim.app.controller import BranchedCase, HereForkPoint, Simulatio
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.core.concentration import MacMultiple, Percent
 from anesthesia_sim.core.governing_equations import UptakeEquationSettings
-from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import (
     AlveolarVentilation,
     CardiacOutput,
@@ -80,14 +80,14 @@ def test_every_door_at_a_paused_instant_agrees_after_an_edit_made_there() -> Non
     nobody changed or the trunk.
     """
 
-    first = TimeBookmark(CaseInstant(30.0), "first")
-    relabelled = TimeBookmark(CaseInstant(30.0), "relabelled")
+    first = TimeBookmark(CaseInstant(30), "first")
+    relabelled = TimeBookmark(CaseInstant(30), "relabelled")
     trunk = SimulationController(delivered_concentration_percent=Percent(2.0))
     trunk.add_time_bookmark(first)
     trunk.start()
     _advance_until_halted(trunk, limit_s=31.0)
     fork_s = trunk.snapshot().elapsed_s
-    inside_s = fork_s - MAXIMUM_SIMULATION_STEP_S / 2
+    inside_s = fork_s - SIMULATION_STEP_S / 2
     inside = TimeBookmark(CaseInstant(inside_s), "inside the step")
 
     branches = {
@@ -216,7 +216,7 @@ def test_a_change_made_on_the_halt_opens_every_branch_taken_after_it() -> None:
     on the halt.
     """
 
-    mark = TimeBookmark(CaseInstant(60.0), "on your mark")
+    mark = TimeBookmark(CaseInstant(60), "on your mark")
     trunk = SimulationController(delivered_concentration_percent=Percent(2.0))
     trunk.add_time_bookmark(mark)
     trunk.start()
@@ -382,8 +382,8 @@ def test_the_halt_record_follows_the_current_marks_after_a_mark_is_removed_and_a
     offers a branch on its mark.
     """
 
-    original = TimeBookmark(CaseInstant(30.0), "original")
-    again = TimeBookmark(CaseInstant(30.0), "again")
+    original = TimeBookmark(CaseInstant(30), "original")
+    again = TimeBookmark(CaseInstant(30), "again")
     trunk = SimulationController()
     trunk.add_time_bookmark(original)
     trunk.start()
@@ -422,7 +422,7 @@ def test_a_branch_at_the_case_s_opening_keeps_the_settings_it_opened_under() -> 
 
     trunk = SimulationController(delivered_concentration_percent=Percent(2.0))
     trunk.set_delivered_concentration_percent(Percent(4.0))
-    branch = trunk.resumed_at(CaseInstant(0.0))
+    branch = trunk.resumed_at(CaseInstant(0))
     trunk.set_delivered_concentration_percent(Percent(2.0))
 
     assert branch.opened_from is not None
@@ -453,7 +453,7 @@ def test_a_branch_at_the_case_s_opening_states_the_trunk_s_changes_made_before_s
 
     trunk = SimulationController(delivered_concentration_percent=Percent(2.0))
     trunk.set_delivered_concentration_percent(Percent(3.0))
-    branch = trunk.resumed_at(CaseInstant(0.0))
+    branch = trunk.resumed_at(CaseInstant(0))
     trunk.set_delivered_concentration_percent(Percent(4.0))
     created_at_three = SimulationController(delivered_concentration_percent=Percent(3.0))
 
@@ -862,9 +862,9 @@ def test_a_passed_mark_opens_under_the_settings_the_trunk_left_its_instant_under
     trunk.start()
     _advance_for(trunk, duration_s=30.0)
     trunk.pause()
-    at_opening = TimeBookmark(CaseInstant(0.0))
-    on_the_change = TimeBookmark(CaseInstant(30.0), "the change")
-    after_it = TimeBookmark(CaseInstant(45.0))
+    at_opening = TimeBookmark(CaseInstant(0))
+    on_the_change = TimeBookmark(CaseInstant(30), "the change")
+    after_it = TimeBookmark(CaseInstant(45))
 
     for mark in (after_it, on_the_change, at_opening):
         trunk.add_time_bookmark(mark)

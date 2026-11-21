@@ -106,12 +106,12 @@ def test_fitting_a_run_always_contains_it() -> None:
 def test_fitting_takes_the_narrowest_width_that_holds_the_run() -> None:
     """A wider width would squeeze the run into part of the plot for no reason."""
 
-    assert fit_to_run(CaseInstant(0.0)).span_s == 60.0
-    assert fit_to_run(CaseInstant(60.0)).span_s == 60.0
+    assert fit_to_run(CaseInstant(0)).span_s == 60.0
+    assert fit_to_run(CaseInstant(60)).span_s == 60.0
     assert fit_to_run(CaseInstant(60.1)).span_s == 120.0
-    assert fit_to_run(CaseInstant(900.0)).span_s == 900.0
-    assert fit_to_run(CaseInstant(3_600.0)).span_s == 3_600.0
-    assert fit_to_run(CaseInstant(43_200.0)).span_s == 43_200.0
+    assert fit_to_run(CaseInstant(900)).span_s == 900.0
+    assert fit_to_run(CaseInstant(3_600)).span_s == 3_600.0
+    assert fit_to_run(CaseInstant(43_200)).span_s == 43_200.0
 
 
 def test_fitting_past_the_widest_rung_doubles_rather_than_giving_up() -> None:
@@ -178,7 +178,7 @@ def test_a_chosen_width_follows_the_run_once_it_is_outgrown() -> None:
 
     time_base = time_base_for_span(900.0)
     headroom_s = 900.0 * CHART_LIVE_HEADROOM_FRACTION
-    window_start_s, window_stop_s = following_window(time_base, CaseInstant(5_000.0))
+    window_start_s, window_stop_s = following_window(time_base, CaseInstant(5_000))
 
     assert window_stop_s == pytest.approx(5_000.0 + headroom_s)
     assert window_start_s == pytest.approx(5_000.0 + headroom_s - 900.0)
@@ -192,7 +192,7 @@ def test_fitting_charges_no_headroom_so_a_run_stays_on_its_own_rung() -> None:
     before the run reaches that width anyway.
     """
 
-    assert fit_to_run(CaseInstant(900.0)) is time_base_for_span(900.0)
+    assert fit_to_run(CaseInstant(900)) is time_base_for_span(900.0)
 
 
 def test_ticks_stand_at_absolute_times_rather_than_at_the_window_s_edge() -> None:
@@ -284,10 +284,10 @@ def test_a_time_base_carries_its_own_interval() -> None:
 def test_a_preview_window_keeps_the_width_and_centres_the_reach() -> None:
     base = time_base_for_span(1800.0)
 
-    assert preview_window(base, CaseInstant(3600.0)) == pytest.approx((2700.0, 4500.0))
+    assert preview_window(base, CaseInstant(3600)) == pytest.approx((2700.0, 4500.0))
     # Early in a run the window stops at zero, and the reach sits left of the middle.
-    assert preview_window(base, CaseInstant(300.0)) == pytest.approx((0.0, 1800.0))
-    assert preview_window(base, CaseInstant(900.0)) == pytest.approx((0.0, 1800.0))
+    assert preview_window(base, CaseInstant(300)) == pytest.approx((0.0, 1800.0))
+    assert preview_window(base, CaseInstant(900)) == pytest.approx((0.0, 1800.0))
 
 
 def test_a_preview_window_refuses_a_reach_not_built_as_an_instant() -> None:

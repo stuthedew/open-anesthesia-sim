@@ -44,7 +44,6 @@ from PySide6.QtWidgets import QApplication, QLabel, QScrollArea, QWidget
 from anesthesia_sim.app.chart_frame import ChartFrame, format_trace_hover
 from anesthesia_sim.app.chart_time_base import SELECTABLE_TIME_BASES
 from anesthesia_sim.app.controller import SimulationController
-from anesthesia_sim.app.dashboard_frame import SIMULATION_STEP_S
 from anesthesia_sim.app.qt_chart import ConcentrationChart, WashInChart
 from anesthesia_sim.app.qt_widgets import MetricPanel
 from anesthesia_sim.app.run_series import RecordedQuantity
@@ -61,6 +60,7 @@ from anesthesia_sim.app.theme import (
 from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING, CONCENTRATION_CHART, WASH_IN
 from anesthesia_sim.app.views import AccountingView, ConcentrationView, WashInView
 from anesthesia_sim.core.concentration import Percent
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, Window
 from anesthesia_sim.layout.workspace import Origin, Workspace, WorkspaceName, WorkspaceSet
@@ -200,7 +200,7 @@ def _wash_in(view: SimulationView) -> WashInView:
 
 def _advance(controller: SimulationController, seconds: float) -> None:
     for _ in range(round(seconds / SIMULATION_STEP_S)):
-        controller.advance(SIMULATION_STEP_S)
+        controller.advance()
 
 
 @pytest.fixture(scope="module")

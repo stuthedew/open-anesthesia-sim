@@ -62,7 +62,7 @@ def test_a_recorded_change_and_an_adjustment_refuse_an_instant_not_built_as_one(
         ControlAdjustment(
             ControlInput.FRESH_GAS_FLOW,
             float("nan"),  # type: ignore[arg-type]
-            CaseInstant(60.0),
+            CaseInstant(60),
             6.0,
             2.0,
             "L/min",
@@ -72,7 +72,7 @@ def test_a_recorded_change_and_an_adjustment_refuse_an_instant_not_built_as_one(
     with pytest.raises(TypeError, match="ended_at_s of -60.0 was not built as CaseInstant"):
         ControlAdjustment(
             ControlInput.FRESH_GAS_FLOW,
-            CaseInstant(60.0),
+            CaseInstant(60),
             -60.0,  # type: ignore[arg-type]
             6.0,
             2.0,

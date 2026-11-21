@@ -26,7 +26,7 @@ a change of cadence moves this measurement with it.
 
 **The three stages, and why a harness gets the third one wrong.**
 
-1. The simulation: `controller.advance(SIMULATION_STEP_S)`, once per step of
+1. The simulation: `controller.advance()`, once per step of
    every run.
 2. The assembly: `SimulationView.present(False)`, which assembles the frame and
    hands it to the widgets.
@@ -106,12 +106,12 @@ from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import (
     MAX_DISPLAYED_RUNS,
     RENDER_INTERVAL_S,
-    SIMULATION_STEP_S,
     SIMULATION_TICK_INTERVAL_S,
 )
 from anesthesia_sim.app.playback import playback_rate_for
 from anesthesia_sim.app.qt_chart import ConcentrationChart
 from anesthesia_sim.app.simulation_view import SimulationView
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.units import MILLISECONDS_PER_SECOND, SECONDS_PER_MINUTE
 
 #: The window size at which the dashboard is measured, matching the size in
@@ -408,7 +408,7 @@ def measure(
         controller.start()
 
         for _ in range(round(warm_up_s / SIMULATION_STEP_S)):
-            controller.advance(SIMULATION_STEP_S)
+            controller.advance()
 
     view = SimulationView((case.trunk,), case=case)
     view.resize(WINDOW_WIDTH_PX, WINDOW_HEIGHT_PX)
@@ -436,7 +436,7 @@ def measure(
 
             for controller in drawn:
                 for _ in range(per_frame):
-                    controller.advance(SIMULATION_STEP_S)
+                    controller.advance()
 
             advanced = perf_counter()
             view.present(False)

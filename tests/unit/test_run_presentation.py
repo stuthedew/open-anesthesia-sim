@@ -28,7 +28,6 @@ from anesthesia_sim.app.control_timeline import group_adjustments
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import (
     READOUT_PANELS,
-    SIMULATION_STEP_S,
     WITHHELD_ACCOUNTING,
     WITHHELD_CONCENTRATION_TEXT,
     WITHHELD_ELAPSED_TIME_TEXT,
@@ -55,6 +54,7 @@ from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
 )
 from anesthesia_sim.core.parameters import parse_breathing_circuit_parameters
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CaseInstant
 from anesthesia_sim.layout.run_identity import RunIdentities
 
@@ -97,7 +97,7 @@ def _run_at(elapsed_s: float, *, agent_id: str = "sevoflurane") -> SimulationCon
     controller.start()
 
     while controller.snapshot().elapsed_s < elapsed_s - SIMULATION_STEP_S / 2.0:
-        controller.advance(SIMULATION_STEP_S)
+        controller.advance()
 
     controller.pause()
 
@@ -197,14 +197,14 @@ def test_a_drawn_run_that_a_mark_stopped_says_so() -> None:
     """A run stopped by the learner's bookmark at 30 s is not described as a plain pause."""
 
     controller = SimulationController()
-    controller.add_time_bookmark(TimeBookmark(CaseInstant(30.0)))
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(30)))
     controller.start()
 
     for _ in range(round(60.0 / SIMULATION_STEP_S)):
         if not controller.snapshot().is_running:
             break
 
-        controller.advance(SIMULATION_STEP_S)
+        controller.advance()
 
     shown = _drawn(controller, _state())
 

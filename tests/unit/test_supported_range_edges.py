@@ -139,7 +139,7 @@ def _run_definition() -> RunDefinition:
     system = AgentUptakeSystem.default()
 
     return RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
 
 
@@ -175,10 +175,10 @@ RECEIVERS: Mapping[type, Callable[[], object]] = {
     BranchedCase: lambda: BranchedCase(SimulationController()),
     BreathingCircuit: lambda: AgentUptakeSystem.default().circuit,
     ControlAdjustment: lambda: ControlAdjustment(
-        ControlInput.FRESH_GAS_FLOW, CaseInstant(0.0), CaseInstant(0.0), 6.0, 2.0, "L/min", 1
+        ControlInput.FRESH_GAS_FLOW, CaseInstant(0), CaseInstant(0), 6.0, 2.0, "L/min", 1
     ),
     ControlChange: lambda: ControlChange(
-        CaseInstant(0.0), 1, ControlInput.FRESH_GAS_FLOW, 6.0, 2.0, "L/min"
+        CaseInstant(0), 1, ControlInput.FRESH_GAS_FLOW, 6.0, 2.0, "L/min"
     ),
     Keyframe: lambda: _run_definition().segments[0].opening,
     PatientCompartments: lambda: AgentUptakeSystem.default().patient,

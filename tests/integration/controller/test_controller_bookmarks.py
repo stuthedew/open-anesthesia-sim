@@ -25,7 +25,7 @@ from anesthesia_sim.app.run_series import (
 from anesthesia_sim.core.concentration import Fraction, MacMultiple, Percent, fraction_from_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.governing_equations import STATE_SIZE
-from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CaseInstant, FreshGasFlow
 from tests.integration.controller.controller_support import (
     _advance_for,
@@ -51,7 +51,7 @@ def test_a_fresh_run_is_marked_at_nothing() -> None:
 
 def test_a_mark_reaches_a_reader_through_the_snapshot() -> None:
     controller = SimulationController()
-    controller.add_time_bookmark(TimeBookmark(CaseInstant(600.0), "intubation"))
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(600), "intubation"))
     controller.add_mac_target(MacTarget(RecordedQuantity.VESSEL_RICH, MacMultiple(0.8), "wash-in"))
 
     marks = controller.snapshot().bookmarks
@@ -62,9 +62,9 @@ def test_a_mark_reaches_a_reader_through_the_snapshot() -> None:
 
 def test_the_two_collections_are_added_to_and_removed_from_independently() -> None:
     controller = SimulationController()
-    controller.add_time_bookmark(TimeBookmark(CaseInstant(600.0)))
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(600)))
     controller.add_mac_target(MacTarget(RecordedQuantity.FAT, MacMultiple(0.5)))
-    controller.remove_time_bookmark(TimeBookmark(CaseInstant(600.0)))
+    controller.remove_time_bookmark(TimeBookmark(CaseInstant(600)))
 
     marks = controller.snapshot().bookmarks
 
@@ -77,7 +77,7 @@ def test_a_snapshot_taken_before_a_mark_was_added_does_not_acquire_it() -> None:
     # snapshot from an earlier tick must not come to describe a later run.
     controller = SimulationController()
     before = controller.snapshot()
-    controller.add_time_bookmark(TimeBookmark(CaseInstant(600.0)))
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(600)))
 
     assert before.bookmarks.is_empty
     assert not controller.snapshot().bookmarks.is_empty
@@ -85,10 +85,10 @@ def test_a_snapshot_taken_before_a_mark_was_added_does_not_acquire_it() -> None:
 
 def test_a_marked_instant_cannot_be_marked_twice_through_the_controller() -> None:
     controller = SimulationController()
-    controller.add_time_bookmark(TimeBookmark(CaseInstant(600.0)))
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(600)))
 
     with pytest.raises(SimulationConfigurationError, match="marked once"):
-        controller.add_time_bookmark(TimeBookmark(CaseInstant(600.0), "and again"))
+        controller.add_time_bookmark(TimeBookmark(CaseInstant(600), "and again"))
 
     assert len(controller.snapshot().bookmarks.time_bookmarks) == 1
 
@@ -98,12 +98,12 @@ def test_resetting_a_run_keeps_its_marks() -> None:
     # learner was asking about. So the marks stay with the settings rather
     # than with the state.
     controller = SimulationController()
-    controller.add_time_bookmark(TimeBookmark(CaseInstant(600.0)))
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(600)))
     controller.start()
     _advance_for(controller, duration_s=30.0)
     controller.reset()
 
-    assert controller.snapshot().bookmarks.time_bookmarks == (TimeBookmark(CaseInstant(600.0)),)
+    assert controller.snapshot().bookmarks.time_bookmarks == (TimeBookmark(CaseInstant(600)),)
 
 
 def test_changing_agent_keeps_the_marks_although_it_destroys_the_run() -> None:
@@ -136,8 +136,8 @@ def _run_to_halt(
 
     mac_fraction = float(fraction_from_percent(controller.snapshot().agent_mac_percent))
     before = float(reading_of(controller.snapshot())) / mac_fraction
-    for _ in range(round(60.0 / MAXIMUM_SIMULATION_STEP_S)):
-        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    for _ in range(round(60.0 / SIMULATION_STEP_S)):
+        controller.advance()
         snapshot = controller.snapshot()
         if snapshot.bookmark_halt is not None:
             return before, snapshot
@@ -194,8 +194,8 @@ def test_an_alveolar_target_can_halt_two_counts_past_its_mark_when_ventilation_r
     controller = _sevoflurane_at_8_percent_and_10_l_min()
     controller.set_alveolar_ventilation(AlveolarVentilation(0.0))
     controller.start()
-    for _ in range(round(120.0 / MAXIMUM_SIMULATION_STEP_S)):
-        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    for _ in range(round(120.0 / SIMULATION_STEP_S)):
+        controller.advance()
     assert controller.snapshot().alveolar_partial_pressure_fraction == 0.0
     mark = MacMultiple(0.10)
     controller.add_mac_target(MacTarget(RecordedQuantity.ALVEOLAR, mark))
@@ -220,13 +220,13 @@ def test_a_branch_opens_carrying_the_marks_of_the_case_it_continues() -> None:
     # compare two branches at two different heights, with nothing to show it.
     trunk = _trunk_with_two_changes()
     target = MacTarget(RecordedQuantity.MUSCLE, MacMultiple(0.3))
-    trunk.add_time_bookmark(TimeBookmark(CaseInstant(45.0), "the decision point"))
+    trunk.add_time_bookmark(TimeBookmark(CaseInstant(45), "the decision point"))
     trunk.add_mac_target(target)
 
     branch = trunk.resumed_at(trunk.run_segments[-1].opening.instant_s)
     marks = branch.snapshot().bookmarks
 
-    assert marks.time_bookmarks == (TimeBookmark(CaseInstant(45.0), "the decision point"),)
+    assert marks.time_bookmarks == (TimeBookmark(CaseInstant(45), "the decision point"),)
     assert marks.mac_targets == (target,)
     # The trunk's earlier changes do not carry over, because a branch inherits
     # the marks but not the timeline. The branch's timeline holds only the
@@ -242,7 +242,7 @@ def test_marking_a_branch_does_not_mark_the_trunk_it_came_from() -> None:
     # one.
     trunk = _trunk_with_two_changes()
     branch = trunk.resumed_at(trunk.run_segments[-1].opening.instant_s)
-    branch.add_time_bookmark(TimeBookmark(CaseInstant(600.0)))
+    branch.add_time_bookmark(TimeBookmark(CaseInstant(600)))
 
     assert trunk.snapshot().bookmarks.is_empty
     assert len(branch.snapshot().bookmarks.time_bookmarks) == 1
@@ -261,7 +261,7 @@ def test_a_mark_changes_nothing_the_run_computes() -> None:
     # the same trajectory element-wise. A halt costs the run no simulated time
     # and changes no state. It only declines to take the next step until asked.
     marked = SimulationController()
-    marked.add_time_bookmark(TimeBookmark(CaseInstant(45.0)))
+    marked.add_time_bookmark(TimeBookmark(CaseInstant(45)))
     marked.add_mac_target(MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.8)))
     unmarked = SimulationController()
 
@@ -296,7 +296,7 @@ def _the_same_case_never_marked(steps: int) -> SimulationController:
     controller.set_delivered_concentration_percent(Percent(4.0))
 
     for _ in range(steps - controller._state.step_count):
-        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        controller.advance()
 
     return controller
 
@@ -350,7 +350,7 @@ def test_a_branch_taken_at_a_bookmark_reproduces_its_parent_without_changing_it(
     ]
 
     for steps in range(0, marked._state.step_count + 1):
-        case_s = steps * MAXIMUM_SIMULATION_STEP_S
+        case_s = steps * SIMULATION_STEP_S
 
         assert marked._run_definition.state_at(case_s) == unmarked._run_definition.state_at(
             case_s
@@ -359,7 +359,7 @@ def test_a_branch_taken_at_a_bookmark_reproduces_its_parent_without_changing_it(
     # And the branch reproduces the parent it forked from, element for element,
     # at every instant the two share.
     for steps_past_fork in range(0, 301):
-        case_s = (fork_steps + steps_past_fork) * MAXIMUM_SIMULATION_STEP_S
+        case_s = (fork_steps + steps_past_fork) * SIMULATION_STEP_S
 
         assert branch._run_definition.state_at(case_s) == marked._run_definition.state_at(case_s), (
             f"the branch and its parent differ at {case_s} s"
@@ -572,7 +572,7 @@ def test_a_paused_trunk_branches_where_it_stands() -> None:
     branch.pause()
 
     for steps_past_fork in range(0, 301):
-        case_s = (fork_steps + steps_past_fork) * MAXIMUM_SIMULATION_STEP_S
+        case_s = (fork_steps + steps_past_fork) * SIMULATION_STEP_S
 
         assert branch._run_definition.state_at(case_s) == trunk._run_definition.state_at(case_s), (
             f"the branch and the trunk it was paused at differ at {case_s} s"
@@ -594,7 +594,7 @@ def test_resuming_past_a_bookmark_turns_its_fork_into_the_paused_point() -> None
     assert marked.here_fork_point == HereForkPoint(halted_s, stopped_on_mark=True)
 
     marked.start()
-    marked.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    marked.advance()
 
     assert marked.here_fork_point is None
 
@@ -643,7 +643,7 @@ def test_a_run_at_its_opening_offers_no_place_to_branch_where_it_stands() -> Non
     with pytest.raises(SimulationConfigurationError, match="opening"):
         trunk.resumed_here()
 
-    assert trunk.resumed_at(CaseInstant(0.0)).began_at_s == 0.0
+    assert trunk.resumed_at(CaseInstant(0)).began_at_s == 0.0
 
 
 def test_a_mark_added_inside_the_halting_step_reads_passed_on_the_branch() -> None:
@@ -665,7 +665,7 @@ def test_a_mark_added_inside_the_halting_step_reads_passed_on_the_branch() -> No
     added = TimeBookmark(CaseInstant(45.33), "added while standing")
     trunk.add_time_bookmark(added)
 
-    assert trunk.snapshot().elapsed_s == 454 * MAXIMUM_SIMULATION_STEP_S
+    assert trunk.snapshot().elapsed_s == 454 * SIMULATION_STEP_S
 
     branch = trunk.resumed_here()
 
@@ -735,7 +735,7 @@ def test_a_branch_of_a_bookmark_fork_is_refused_rather_than_silently_flattened()
 
     marked = _trunk_halted_on_a_bookmark()
     branch = marked.resumed_here()
-    branch.add_time_bookmark(TimeBookmark(CaseInstant(600.0)))
+    branch.add_time_bookmark(TimeBookmark(CaseInstant(600)))
 
     with pytest.raises(SimulationConfigurationError, match="branch of a branch"):
         branch.resumed_at(branch.run_segments[0].opening.instant_s)
@@ -771,7 +771,7 @@ def test_a_mark_between_a_bookmark_branch_s_definition_and_its_fork_is_unreachab
     """
 
     marked = SimulationController()
-    marked.add_time_bookmark(TimeBookmark(CaseInstant(40.0), "passed on the way"))
+    marked.add_time_bookmark(TimeBookmark(CaseInstant(40), "passed on the way"))
     marked.add_time_bookmark(TimeBookmark(CaseInstant(45.3), "the decision point"))
     marked.start()
     _advance_until_halted(marked, limit_s=60.0)
@@ -788,6 +788,6 @@ def test_a_mark_between_a_bookmark_branch_s_definition_and_its_fork_is_unreachab
 
     standings = branch.snapshot().bookmark_standings
 
-    assert standings.of_time_bookmark(TimeBookmark(CaseInstant(40.0), "passed on the way")) is (
+    assert standings.of_time_bookmark(TimeBookmark(CaseInstant(40), "passed on the way")) is (
         MarkStanding.BEFORE_THIS_BRANCH
     )

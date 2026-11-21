@@ -75,7 +75,7 @@ def main() -> None:
 
     next(b for b in view.findChildren(QPushButton) if b.text() == "Start").click()
     for _ in range(round(SIMULATED_S / SIMULATION_STEP_S)):
-        case.trunk.advance(SIMULATION_STEP_S)
+        case.trunk.advance()
 
     view.present(False)
     app.processEvents()

@@ -53,7 +53,6 @@ from anesthesia_sim.core.governing_equations import (
 )
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
 from anesthesia_sim.core.patient import PatientCompartmentsState
-from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
 from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem, AgentUptakeSystemState
@@ -406,14 +405,14 @@ def test_the_propagator_cache_is_not_restored_by_a_rollback() -> None:
     system = AgentUptakeSystem.for_agent("sevoflurane")
 
     for _ in range(10):
-        system.advance(SimulationStep(0.1))
+        system.advance()
 
     captured = system.capture_state()
-    system.advance(SimulationStep(0.1))
+    system.advance()
     after_first_l = system.total_stored_agent_l
 
     system.restore_state(captured)
-    system.advance(SimulationStep(0.1))
+    system.advance()
 
     assert system.total_stored_agent_l == after_first_l
 
@@ -430,7 +429,7 @@ def test_restoring_the_system_cannot_raise_on_a_state_a_run_produced() -> None:
     system = AgentUptakeSystem.for_agent("sevoflurane")
 
     for _ in range(10):
-        system.advance(SimulationStep(0.1))
+        system.advance()
 
     state = system.capture_state()
 
@@ -466,7 +465,7 @@ def test_a_restore_after_a_circuit_volume_change_conserves_agent() -> None:
     system = AgentUptakeSystem.for_agent("sevoflurane")
 
     for _ in range(10):
-        system.advance(SimulationStep(0.1))
+        system.advance()
 
     state = system.capture_state()
     stored_before_l = system.total_stored_agent_l
@@ -479,7 +478,7 @@ def test_a_restore_after_a_circuit_volume_change_conserves_agent() -> None:
     assert system.circuit.agent_amount_l == pytest.approx(circuit_before_l, rel=1e-15)
     assert system.total_stored_agent_l == pytest.approx(stored_before_l, rel=1e-15)
 
-    system.advance(SimulationStep(0.1))
+    system.advance()
 
 
 def test_a_restore_with_the_volume_unchanged_puts_the_captured_fraction_back_exactly() -> None:
@@ -488,10 +487,10 @@ def test_a_restore_with_the_volume_unchanged_puts_the_captured_fraction_back_exa
     system = AgentUptakeSystem.for_agent("sevoflurane")
 
     for _ in range(10):
-        system.advance(SimulationStep(0.1))
+        system.advance()
 
     state = system.capture_state()
-    system.advance(SimulationStep(0.1))
+    system.advance()
     system.restore_state(state)
 
     assert system.capture_state() == state
@@ -621,15 +620,15 @@ def test_a_step_after_a_setting_moved_propagates_with_the_new_matrix() -> None:
     """
 
     changed = AgentUptakeSystem.for_agent("sevoflurane")
-    changed.advance(SimulationStep(0.1))
+    changed.advance()
     changed.set_alveolar_ventilation(AlveolarVentilation(8.0))
-    changed.advance(SimulationStep(0.1))
+    changed.advance()
 
     rebuilt = AgentUptakeSystem.for_agent("sevoflurane")
-    rebuilt.advance(SimulationStep(0.1))
+    rebuilt.advance()
     rebuilt.set_alveolar_ventilation(AlveolarVentilation(8.0))
     rebuilt._propagator = None
     rebuilt._propagator_key = None
-    rebuilt.advance(SimulationStep(0.1))
+    rebuilt.advance()
 
     assert changed.state_vector() == rebuilt.state_vector()

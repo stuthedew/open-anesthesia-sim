@@ -48,10 +48,10 @@ from PySide6.QtWidgets import QApplication, QScrollArea, QVBoxLayout, QWidget
 from anesthesia_sim.app.dashboard_frame import (
     MAX_DISPLAYED_RUNS,
     RENDER_INTERVAL_S,
-    SIMULATION_STEP_S,
     SIMULATION_TICK_INTERVAL_S,
 )
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 
 #: Simulated seconds of warm-up. Long enough that the dashboard has history
 #: to draw, short enough that this suite is not a benchmark.

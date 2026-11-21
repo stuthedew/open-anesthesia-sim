@@ -232,7 +232,7 @@ def _run_definition(length_s: float = RUN_LENGTH_S, probe: Random | None = None)
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0.0)
+        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
 
     for at_s, setter, value in CHANGES:
@@ -536,7 +536,7 @@ def test_a_display_value_cannot_open_a_run_definition() -> None:
     assert not isinstance(drawn, tuple)
 
     with pytest.raises(SimulationConfigurationError, match="came from the display path"):
-        RunDefinition(_settings_at(definition, 0.0), drawn, opened_at_s=CaseInstant(0.0))  # type: ignore[arg-type]
+        RunDefinition(_settings_at(definition, 0.0), drawn, opened_at_s=CaseInstant(0))  # type: ignore[arg-type]
 
 
 def test_the_display_path_stays_within_its_measured_separation() -> None:

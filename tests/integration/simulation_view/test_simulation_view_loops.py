@@ -18,7 +18,6 @@ from anesthesia_sim.app.chart_frame import ChartFrame
 from anesthesia_sim.app.compartment_schematic import SchematicShown
 from anesthesia_sim.app.controller import RunRecord, SimulationController, SimulationSnapshot
 from anesthesia_sim.app.dashboard_frame import (
-    SIMULATION_STEP_S,
     SIMULATION_TICK_INTERVAL_S,
     STATUS_FAILED_TEXT,
     Readout,
@@ -42,6 +41,7 @@ from anesthesia_sim.app.views import (
     CompartmentSchematicView,
     ConcentrationView,
 )
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
 from anesthesia_sim.layout.tree import AreaId
 from tests.integration.simulation_view.simulation_view_support import (
@@ -542,7 +542,7 @@ def test_a_halt_after_a_frame_whose_value_could_not_be_written_is_still_stated(
         write(shown)
 
     run._readout_row.set_readouts = refusing  # type: ignore[method-assign]
-    controller.advance(SIMULATION_STEP_S)
+    controller.advance()
 
     if refuses_every_write:
         with pytest.raises(ValueError, match="the readouts could not show these values"):

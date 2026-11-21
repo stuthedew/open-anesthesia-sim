@@ -1975,7 +1975,7 @@ def test_displayed_ordering_reverses_only_at_a_crossing(
         derivative = _build_derivative(agent_id, phase.point)
 
         for _ in range(round(phase.duration_s / SHIPPED_STEP_S)):
-            system.advance(SimulationStep(SHIPPED_STEP_S))
+            system.advance()
 
             for _ in range(round(SHIPPED_STEP_S / oracle_step_s)):
                 reference = _rk4_step(derivative, reference, oracle_step_s)

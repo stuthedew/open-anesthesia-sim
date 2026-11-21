@@ -177,7 +177,7 @@ def _a_run_whose_next_step_a_compartment_refuses(
     system = _sevoflurane_at_one_mac()
 
     for _ in range(steps_first):
-        system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        system.advance()
 
     _copy_fat_group_as(system, _TissueGroupThatCanRefuseAStep).refuse_next_fraction = True
 
@@ -223,7 +223,7 @@ def test_a_step_that_breaks_down_raises_a_numerical_error() -> None:
     system = _a_run_whose_next_step_a_compartment_refuses(steps_first=0)
 
     with pytest.raises(SimulationNumericalError) as raised:
-        system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        system.advance()
 
     # This is not a configuration error: the arguments were valid, but the numerics were
     # not. A caller bases its response on exactly this distinction.
@@ -237,7 +237,7 @@ def test_a_failed_step_names_the_step_and_keeps_the_failing_guard() -> None:
     system = _a_run_whose_next_step_a_compartment_refuses(steps_first=0)
 
     with pytest.raises(SimulationNumericalError) as raised:
-        system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        system.advance()
 
     assert f"{MAXIMUM_SIMULATION_STEP_S} s" in str(raised.value)
     assert FAT_REFUSAL_TEXT in str(raised.value)
@@ -259,7 +259,7 @@ def test_a_resume_into_an_impossible_fraction_says_which_state_refused() -> None
     system = _sevoflurane_at_one_mac()
 
     for _ in range(STEPS_BEFORE_FAILURE):
-        system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        system.advance()
 
     positions = (
         INSPIRED_FRACTION,
@@ -316,7 +316,7 @@ def test_rounding_can_carry_a_saturated_fraction_above_one(
     before = system.capture_state()
 
     with pytest.raises(SimulationNumericalError, match="of 1.0000000000000002 is outside 0 to 1"):
-        system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        system.advance()
 
     assert system.capture_state() == before
 
@@ -345,7 +345,7 @@ def test_writing_an_impossible_fraction_says_which_compartment_refused() -> None
     system = _sevoflurane_at_one_mac()
 
     for _ in range(STEPS_BEFORE_FAILURE):
-        system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        system.advance()
 
     owners = {
         INSPIRED_FRACTION: "inspired_partial_pressure_fraction",
@@ -436,7 +436,7 @@ def test_a_refused_maximum_simulation_step_leaves_the_run_untouched() -> None:
     """A refused step must not have moved the system part of the way."""
 
     system = _sevoflurane_at_one_mac()
-    system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    system.advance()
     before = system.total_stored_agent_l
 
     with pytest.raises(SimulationConfigurationError):
@@ -451,7 +451,7 @@ def test_the_maximum_simulation_step_itself_is_accepted() -> None:
 
     system = _sevoflurane_at_one_mac()
 
-    result = system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    result = system.advance()
 
     assert result.fresh_gas_exchange.delivered_agent_l > 0.0
     assert result.agent_accounting.passes_validation
@@ -497,7 +497,7 @@ def test_a_step_below_the_minimum_simulation_step_is_refused_and_changes_nothing
     """
 
     system = _sevoflurane_at_one_mac()
-    system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    system.advance()
     before = system.capture_state()
 
     with pytest.raises(SimulationConfigurationError, match="smallest supported step") as raised:
@@ -556,7 +556,7 @@ def test_the_ordinary_step_is_unaffected() -> None:
     """The wrapper must not change a step that succeeds."""
 
     system = _sevoflurane_at_one_mac()
-    result = system.advance(SimulationStep(0.1))
+    result = system.advance()
 
     assert result.fresh_gas_exchange.delivered_agent_l > 0.0
     assert result.agent_accounting.passes_validation
@@ -610,7 +610,7 @@ def test_a_refused_setting_leaves_the_run_trustworthy(
     """
 
     system = _sevoflurane_at_one_mac()
-    system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    system.advance()
     before = system.total_stored_agent_l
 
     with pytest.raises(TypeError, match=f"not built as {flow_type.__name__}") as raised:
@@ -619,7 +619,7 @@ def test_a_refused_setting_leaves_the_run_trustworthy(
     assert not isinstance(raised.value, SimulationNumericalError)
     assert system.total_stored_agent_l == before
 
-    result = system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    result = system.advance()
 
     assert result.agent_accounting.passes_validation
 
@@ -641,7 +641,7 @@ def test_a_failed_step_leaves_every_dynamic_value_bit_identical() -> None:
     before = system.capture_state()
 
     with pytest.raises(SimulationNumericalError):
-        system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        system.advance()
 
     assert system.capture_state() == before
 
@@ -679,7 +679,7 @@ def test_the_state_a_failed_step_leaves_is_the_last_completed_step() -> None:
     stopped = _a_run_whose_next_step_a_compartment_refuses()
 
     with pytest.raises(SimulationNumericalError):
-        failed.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        failed.advance()
 
     assert failed.capture_state() == stopped.capture_state()
     assert failed.total_stored_agent_l == stopped.total_stored_agent_l
@@ -726,7 +726,7 @@ def test_a_capacity_written_under_a_held_amount_is_rolled_back_past_the_guard() 
     before = system.capture_state()
 
     with pytest.raises(SimulationNumericalError, match=FAT_REFUSAL_TEXT):
-        system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        system.advance()
 
     assert system.capture_state() == before
     assert system.patient.venous_blood.agent_amount_l == (
@@ -746,7 +746,7 @@ def test_a_failed_step_says_it_was_rolled_back_and_names_the_invariant() -> None
     system = _a_run_whose_next_step_a_compartment_refuses()
 
     with pytest.raises(SimulationNumericalError) as raised:
-        system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        system.advance()
 
     message = str(raised.value)
 
@@ -796,7 +796,7 @@ def test_a_stale_record_met_at_step_time_is_a_failed_step_stated_in_litres_per_m
     """
 
     system = _sevoflurane_at_one_mac()
-    system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    system.advance()
     before = system.capture_state()
 
     _with_tissue_fractions_written_past_their_guard(system, 1.2)
@@ -808,7 +808,7 @@ def test_a_stale_record_met_at_step_time_is_a_failed_step_stated_in_litres_per_m
     assert system.patient.cardiac_output_l_min == 5.0
 
     with pytest.raises(SimulationNumericalError) as raised:
-        system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        system.advance()
 
     message = str(raised.value)
 
@@ -829,11 +829,11 @@ def test_a_failed_step_s_restated_refusal_is_pinned_whole() -> None:
     """
 
     system = _sevoflurane_at_one_mac()
-    system.advance(SimulationStep(0.1))
+    system.advance()
     _with_tissue_fractions_written_past_their_guard(system, 1.2)
 
     with pytest.raises(SimulationNumericalError) as raised:
-        system.advance(SimulationStep(0.1))
+        system.advance()
 
     assert str(raised.value) == (
         "the simulation step of 0.1 s could not be completed and was rolled back, leaving "
@@ -856,7 +856,7 @@ def test_simulation_time_does_not_advance_through_a_failed_step() -> None:
     elapsed_before_s = state.elapsed_s
 
     with pytest.raises(SimulationNumericalError):
-        state.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        state.advance()
 
     assert state.elapsed_s == elapsed_before_s
 
@@ -874,14 +874,14 @@ def test_a_failed_accounting_check_is_rolled_back_too() -> None:
 
     validator = _AccountingCheckThatFailsOnce()
     system = _sevoflurane_with(validator)
-    system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    system.advance()
     before = system.capture_state()
 
     armed = AgentSimulationValidationError("agent accounting failed")
     validator.pending_error = armed
 
     with pytest.raises(AgentSimulationValidationError) as raised:
-        system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        system.advance()
 
     assert raised.value is armed
     assert system.capture_state() == before
@@ -897,13 +897,13 @@ def test_an_unexpected_error_inside_a_step_is_rolled_back_and_re_raised() -> Non
 
     validator = _AccountingCheckThatFailsOnce()
     system = _sevoflurane_with(validator)
-    system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    system.advance()
     before = system.capture_state()
 
     validator.pending_error = TypeError("a refactor broke a call signature")
 
     with pytest.raises(TypeError) as raised:
-        system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        system.advance()
 
     assert not isinstance(raised.value, AnesthesiaSimulationError)
     assert system.capture_state() == before
@@ -921,7 +921,7 @@ def test_a_rolled_back_run_can_still_be_read_and_reset() -> None:
     system = _a_run_whose_next_step_a_compartment_refuses()
 
     with pytest.raises(SimulationNumericalError):
-        system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        system.advance()
 
     assert 0.0 < system.alveoli.partial_pressure_fraction <= 1.0
     assert 0.0 < system.circuit.inspired_partial_pressure_fraction <= 1.0
@@ -953,7 +953,7 @@ def test_changing_circuit_volume_mid_run_does_not_break_the_next_step() -> None:
     system = _sevoflurane_at_one_mac()
 
     for _ in range(600):
-        system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        system.advance()
 
     circuit_agent_before_l = system.circuit.agent_amount_l
     total_agent_before_l = system.total_stored_agent_l
@@ -976,7 +976,7 @@ def test_changing_circuit_volume_mid_run_does_not_break_the_next_step() -> None:
     assert system.circuit.agent_amount_l == pytest.approx(circuit_agent_before_l)
     assert system.total_stored_agent_l == pytest.approx(total_agent_before_l)
 
-    result = system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    result = system.advance()
 
     assert result.agent_accounting.passes_validation
 
@@ -1054,7 +1054,7 @@ def test_reset_still_anchors_at_zero_when_every_compartment_clears() -> None:
     system = _sevoflurane_at_one_mac()
 
     for _ in range(100):
-        system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        system.advance()
 
     assert system.total_stored_agent_l > 0.0
 
@@ -1104,7 +1104,7 @@ def _a_run_that_can_unwind_nonlocally(steps_first: int = 100) -> AgentUptakeSyst
     system = _sevoflurane_at_one_mac()
 
     for _ in range(steps_first):
-        system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        system.advance()
 
     _copy_fat_group_as(system, _TissueGroupThatCanUnwindNonlocally)
 
@@ -1135,7 +1135,7 @@ def test_a_nonlocal_unwind_mid_step_is_rolled_back_too() -> None:
     system.patient.fat.unwind_on_next_write = True
 
     with pytest.raises(_NonlocalUnwind):
-        system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        system.advance()
 
     assert system.capture_state() == state_before_step
 
@@ -1154,9 +1154,9 @@ def test_a_nonlocal_unwind_leaves_the_run_readable_and_steppable() -> None:
     system.patient.fat.unwind_on_next_write = True
 
     with pytest.raises(_NonlocalUnwind):
-        system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        system.advance()
 
-    result = system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    result = system.advance()
 
     assert result.agent_accounting.passes_validation
 

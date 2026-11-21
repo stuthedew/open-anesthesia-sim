@@ -14,8 +14,8 @@ from anesthesia_sim.core.parameters import (
 )
 from anesthesia_sim.core.patient import PatientCompartments
 from anesthesia_sim.core.simulation_step import (
-    MAXIMUM_SIMULATION_STEP_S,
     MINIMUM_SIMULATION_STEP_S,
+    SIMULATION_STEP_S,
     SimulationStep,
 )
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
@@ -42,7 +42,7 @@ EQUILIBRIUM_FRACTION_TOLERANCE = 1e-12
 MASS_BALANCE_RELATIVE_GATE = 1e-10
 
 # The steps docs/MODEL.md § "Step-refinement test" specifies, coarsest first.
-# All three are supported steps: the first is `MAXIMUM_SIMULATION_STEP_S`
+# All three are supported steps: the first is `SIMULATION_STEP_S`
 # itself, and the finest is 25 times `MINIMUM_SIMULATION_STEP_S`.
 STEP_REFINEMENT_STEPS_S = (0.1, 0.05, 0.025)
 STEP_REFINEMENT_HORIZON_S = 60.0
@@ -95,7 +95,7 @@ FLOOR_MEASURED_AT_S = 1e-3
 # `test_long_wash_in_and_washout_validate_agent_simulation`, so that the two
 # gates describe the same trajectory: 600 s at the default dial to load the
 # compartments, then 600 s at zero. `WASHOUT_STEP_S` equals
-# `MAXIMUM_SIMULATION_STEP_S`, the coarsest supported step. That step is the
+# `SIMULATION_STEP_S`, the coarsest supported step. That step is the
 # hardest case for a claim that the mass falls at every step.
 WASHOUT_LOAD_DURATION_S = 600.0
 WASHOUT_DURATION_S = 600.0
@@ -414,7 +414,7 @@ def test_the_smallest_supported_step_lands_on_the_ceilings_solution() -> None:
         f"{FLOOR_MEASURED_AT_S} s, so re-measure them at the new floor before moving it"
     )
 
-    ceiling = _states_after_one_minute(MAXIMUM_SIMULATION_STEP_S)
+    ceiling = _states_after_one_minute(SIMULATION_STEP_S)
     floor = _states_after_one_minute(MINIMUM_SIMULATION_STEP_S)
 
     for label, value in ceiling.items():
@@ -422,7 +422,7 @@ def test_the_smallest_supported_step_lands_on_the_ceilings_solution() -> None:
 
         assert gap <= FLOOR_SETTLED_GAP, (
             f"{label} after a minute of {MINIMUM_SIMULATION_STEP_S} s steps is {gap:.1e} from "
-            f"the {MAXIMUM_SIMULATION_STEP_S} s solution, above the {FLOOR_SETTLED_GAP:.0e} "
+            f"the {SIMULATION_STEP_S} s solution, above the {FLOOR_SETTLED_GAP:.0e} "
             "the floor of the supported steps may sit from it"
         )
 
@@ -566,7 +566,7 @@ def test_equilibrium_produces_no_net_internal_transfer() -> None:
     # amount must match the state actually under test.
     system.agent_simulation_validator.reset(initial_agent_l=system.total_stored_agent_l)
 
-    result = system.advance(SimulationStep(0.1))
+    result = system.advance()
 
     assert result.circuit_to_alveolar_agent_l == pytest.approx(
         0.0, abs=EQUILIBRIUM_FRACTION_TOLERANCE

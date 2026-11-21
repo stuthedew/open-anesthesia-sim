@@ -304,12 +304,12 @@ def test_a_step_size_change_within_one_system_obeys_the_semigroup_property() -> 
     whole = AgentUptakeSystem.for_agent("sevoflurane")
 
     for _ in range(600):
-        halves.advance(SimulationStep(0.1))
-        whole.advance(SimulationStep(0.1))
+        halves.advance()
+        whole.advance()
 
     halves.advance(SimulationStep(0.05))
     halves.advance(SimulationStep(0.05))
-    whole.advance(SimulationStep(0.1))
+    whole.advance()
 
     assert halves.state_vector() == pytest.approx(whole.state_vector(), rel=1e-12, abs=1e-18)
 

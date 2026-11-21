@@ -20,7 +20,6 @@ from anesthesia_sim.app.dashboard_frame import (
     HALT_FORK_LABEL_TEMPLATE,
     HERE_FORK_LABEL_TEMPLATE,
     MARK_STANDING_COMPARED_TEXT,
-    SIMULATION_STEP_S,
     STATUS_FAILED_TEXT,
     comparing_fork_lock_text,
     fork_offer,
@@ -242,7 +241,7 @@ def test_the_fork_here_is_on_the_panel_whenever_the_trunk_stops_and_off_it_while
     assert offered_on_the_halt == [*offered_before, halt.instant_s]
 
     case.trunk.start()
-    case.trunk.advance(SIMULATION_STEP_S)
+    case.trunk.advance()
     view.present(False)
 
     assert case.trunk.snapshot().bookmark_halt is None
@@ -383,7 +382,7 @@ def test_a_trunk_halted_by_a_failing_frame_offers_no_branch_at_all(
     """
 
     case = _branched_case()
-    mark = TimeBookmark(CaseInstant(30.0), "check")
+    mark = TimeBookmark(CaseInstant(30), "check")
     case.trunk.add_time_bookmark(mark)
     view = _case_view(application, case)
     panel = _fork_panel(view)
@@ -407,7 +406,7 @@ def test_a_trunk_halted_by_a_failing_frame_offers_no_branch_at_all(
     with pytest.raises(
         SimulationConfigurationError, match="the dashboard this run is drawn in failed"
     ):
-        case.fork_at(CaseInstant(60.0))
+        case.fork_at(CaseInstant(60))
 
     with pytest.raises(
         SimulationConfigurationError, match="the dashboard this run is drawn in failed"
@@ -505,7 +504,7 @@ def test_a_failing_frame_withdraws_the_last_frames_bookmark_standings(
 
     controller = _paused_run_with_history()
     # Ahead of the paused clock, so the run has not reached it yet.
-    controller.add_time_bookmark(TimeBookmark(CaseInstant(600.0), "check"))
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(600), "check"))
     view = _shown_view(application, controller)
     ahead = _marks_panel(view).times.text()
     assert ahead == "10m – check", "the mark is not listed as still to come"
@@ -564,7 +563,7 @@ def test_a_bookmark_panel_that_cannot_be_restated_on_a_halt_lists_no_standing(
     """
 
     controller = _paused_run_with_history()
-    controller.add_time_bookmark(TimeBookmark(CaseInstant(600.0), "check"))
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(600), "check"))
     view = _shown_view(application, controller)
     panel = _marks_panel(view)
     assert panel.times.isHidden() is False
@@ -771,7 +770,7 @@ def test_a_mark_still_ahead_of_the_trunk_s_clock_is_not_offered(application: QAp
     """
 
     case, view, behind = _rewind_case(application)
-    ahead = TimeBookmark(CaseInstant(600.0), "later")
+    ahead = TimeBookmark(CaseInstant(600), "later")
     case.trunk.add_time_bookmark(ahead)
     view.present(False)
 
@@ -801,7 +800,7 @@ def test_a_selected_mark_is_cleared_not_moved_when_the_learner_unmarks_it(
     """
 
     case, view, mark = _rewind_case(application)
-    later = TimeBookmark(CaseInstant(100.0))
+    later = TimeBookmark(CaseInstant(100))
     case.trunk.add_time_bookmark(later)
     view.present(False)
     panel = _fork_panel(view)
@@ -863,7 +862,7 @@ def _widest_mark_entry_fits(application: QApplication) -> tuple[int, int]:
 
     panel.set_offer(
         fork_offer(
-            (CaseInstant(0.0),),
+            (CaseInstant(0),),
             marks=(MarkForkPoint(TimeBookmark(instant), instant),),
             comparing=None,
             here=None,

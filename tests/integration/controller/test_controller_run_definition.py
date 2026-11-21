@@ -17,7 +17,7 @@ from anesthesia_sim.core import uptake_system
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationExecutionError
-from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
 from tests.integration.controller.controller_support import (
     COMPARTMENT_SNAPSHOT_FIELDS,
@@ -276,7 +276,7 @@ def test_a_setting_written_onto_the_core_past_the_controller_refuses_the_next_st
     assert system.equation_settings() != recorded[-1].settings
 
     with pytest.raises(SimulationExecutionError, match="without SimulationController recording it"):
-        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        controller.advance()
 
     assert system.state_vector() == state_before
     assert controller.snapshot().elapsed_s == elapsed_before == 10.0
@@ -296,7 +296,7 @@ def test_reset_after_a_setting_written_past_the_controller_runs_at_that_setting(
     controller._state.uptake_system.set_cardiac_output(CardiacOutput(6.0))
 
     with pytest.raises(SimulationExecutionError):
-        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        controller.advance()
 
     controller.reset()
     controller.start()
@@ -326,7 +326,7 @@ def test_a_setting_written_onto_a_branch_s_core_past_its_controller_refuses_its_
     branch._state.uptake_system.set_cardiac_output(CardiacOutput(6.0))
 
     with pytest.raises(SimulationExecutionError, match="without SimulationController recording it"):
-        branch.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        branch.advance()
 
     trunk.start()
     _advance_for(trunk, duration_s=10.0)
@@ -358,7 +358,7 @@ def test_a_paused_run_s_definition_stops_where_the_run_did() -> None:
 
     # The axis may extend past a paused run. The trace stops where the run
     # stopped and is not extended into a prediction.
-    window = controller.drawn_window(0.0, elapsed_s + MAXIMUM_SIMULATION_STEP_S, 150)
+    window = controller.drawn_window(0.0, elapsed_s + SIMULATION_STEP_S, 150)
 
     assert window.times_s[-1] == pytest.approx(elapsed_s)
 

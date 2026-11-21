@@ -457,7 +457,7 @@ def test_a_lone_run_states_a_mark_s_standing_without_naming_a_run(
     _advance_to(controller, 60.0)
     # Marked behind the clock, so the run passes it without halting on it:
     # this test is about how the standing is attributed, not about the halt.
-    controller.add_time_bookmark(TimeBookmark(CaseInstant(30.0), "check"))
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(30), "check"))
     view.present(False)
 
     listed = _marks_panel(view).times.text()

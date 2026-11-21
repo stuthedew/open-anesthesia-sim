@@ -141,7 +141,7 @@ def test_the_walk_finds_the_checked_records_that_the_item_named() -> None:
 def _keyframe() -> Keyframe:
     """A keyframe at 60 s, whose state is not checked by the keyframe itself."""
 
-    return Keyframe(CaseInstant(60.0), tuple(float(index) for index in range(STATE_SIZE)))
+    return Keyframe(CaseInstant(60), tuple(float(index) for index in range(STATE_SIZE)))
 
 
 def _keyframe_holding(instant_s: object) -> Keyframe:
@@ -211,4 +211,4 @@ def test_a_state_with_the_wrong_number_of_values_is_refused() -> None:
     empty = object.__new__(Keyframe)
 
     with pytest.raises(TypeError, match="restored from its 2 field values, not from 3"):
-        empty.__setstate__([CaseInstant(60.0), _keyframe().state, 0.0])
+        empty.__setstate__([CaseInstant(60), _keyframe().state, 0.0])
