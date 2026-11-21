@@ -11,6 +11,7 @@ deferred-from: v0.7.0 - not present at the freeze (817a4d88): the conflicting mo
 added: 2026-11-05
 payoff: a reader meeting 42 h in one chapter and 46 h in another learns that both are right and which kind each is, and can check the run-length argument against the table
 verify: ! grep -qF 'fat group has a time constant of about 42 h' docs/INTERFACE.md && ! grep -qF 'muscle group has a time constant of about 135 min' docs/INTERFACE.md && ! grep -qF "muscle's time constant for sevoflurane is about 135 min" docs/INTERFACE.md
+recurrences: 2026-11-21 PL-HQQZ withdrawn 2026-11-21 PL-RMNP
 ---
 
 **Problem.** docs/MODEL.md gives sevoflurane fat and muscle time constants as about 42 h and 135 min in three chapters, but § 'Alveolar gas' tabulates 46 h and 172 min, and only § 'The first 24 hours...' says these are two kinds of time constant; each figure should say which kind it is (copy editor structure read, 2026-11-05)
