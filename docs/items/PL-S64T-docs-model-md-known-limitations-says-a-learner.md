@@ -3,11 +3,11 @@ id: PL-S64T
 title: docs/MODEL.md § Known limitations says a learner would expect desflurane to wash out faster than Yasuda's volunteers did, and at the default settings the simulator draws it washing out slower
 status: done
 feature: model-spec-accuracy
-touches: docs/MODEL.md
+touches: docs/MODEL.md, docs/items/PL-1B8B-docs-model-md-s-sources-for-the-notes-above.md
 added: 2026-11-21
 closed: 2026-11-21
 pr: 2199
-verify: grep -qF 'early washout on screen as a prediction of how fast a patient recovers' docs/MODEL.md
+verify: grep -qF 'rebreathing through the circuit slows the fall on screen enough to' docs/MODEL.md
 ---
 
 **Problem.** docs/MODEL.md § Known limitations says a learner would expect desflurane to wash out faster than Yasuda's volunteers did, and at the default settings the simulator draws it washing out slower
@@ -52,8 +52,18 @@ The reason is that a learner acts on what the screen shows, and the present text
 
 **Answered 2026-11-21.** The project owner chose option 1 (project owner, 2026-11-21, ratified, "Agree with recs", over keeping the present warning and adding its condition). Two statements in the recommended text were wrong, and the paragraph in `docs/MODEL.md` § "Known limitations" corrects them while keeping option 1's shape:
 
-1. The recommended text called 0.163 the figure "at the default ventilation". It is the figure at a fresh gas flow of 10 L/min, which the published comparison pins in `FRESH_GAS_FLOW_L_MIN`. The simulator's default fresh gas flow is 4 L/min (`data/machines/reference_circle_system.json`), where the five-minute ratio is 0.285, 7.3 SD above the volunteers' mean. A raised ventilation gives a faster fall than the volunteers' only at 10 L/min: at 6 L/min of fresh gas the ratio is 0.182 at an alveolar ventilation of 6 L/min and 0.163 at 8 L/min, and at 4 L/min it is 0.254 and 0.237. Each was run on 2026-11-21 with `_eliminate("desflurane", ...)` from `tests/reference/test_published_wash_in_and_elimination.py`.
+1. The recommended text called 0.163 the figure "at the default ventilation". It is the figure at a fresh gas flow of 10 L/min, which the published comparison pins in `FRESH_GAS_FLOW_L_MIN`. The simulator's default fresh gas flow is 4 L/min (`data/machines/reference_circle_system.json`), where the five-minute ratio is 0.285, 7.3 SD above the volunteers' mean. The recommended text also placed the faster fall only at a raised ventilation at 10 L/min. The grid below, run on 2026-11-21 with `_eliminate("desflurane", ...)` from `tests/reference/test_published_wash_in_and_elimination.py` after its 30-minute wash-in, shows it at 8 L/min of fresh gas too, and at a low cardiac output. Each figure is the five-minute $`F_A/F_{A0}`$, against the volunteers' 0.14 ± 0.02.
+
+   | Fresh gas flow | Alveolar ventilation 4, 6, 8, 12 L/min | Cardiac output 2, 3 L/min (ventilation 4) |
+   | --- | --- | --- |
+   | 4 L/min | 0.285, 0.254, 0.237, 0.220 | 0.248, 0.268 |
+   | 6 L/min | 0.217, 0.182, 0.163, 0.144 | 0.179, 0.200 |
+   | 8 L/min | 0.183, 0.146, 0.126, 0.107 | 0.147, 0.166 |
+   | 10 L/min | 0.163, 0.125, 0.105, 0.086 | 0.130, 0.148 |
+
 2. The recommended text said the cause "is that the model returns too little desflurane from the tissues". § "Desflurane's residual, and why the parameter file was not changed" rules that explanation out against the measured human tissue solubility, and leaves the published value itself as the one hypothesis. The paragraph now says only that the model washes desflurane out faster than the volunteers without the circuit, and that rebreathing hides this at most settings.
 
 **Docs sweep.** Searched the tree outside `docs/items/` for the replaced sentences ("faster fall", "overstates recovery", "2.33 published"). `docs/prose-review/model-description-draft.md` still holds the old sentence, and is left as it is, because it is a dated draft that says `docs/MODEL.md` wins where they differ. The docstrings in `tests/reference/test_late_washout_against_published_fits.py` and `tests/reference/test_published_wash_in_and_elimination.py` that mention a faster fall or 2.33 SD describe the condition with the circuit removed, and stay true. `docs/WORKING_NOTES.md` describes the same condition. `docs/INTERFACE.md` and `README.md` do not repeat the sentence.
+
+**Blind review, 2026-11-21.** Two passes read the branch. Both found that the first rewrite placed the faster fall only at 10 L/min of fresh gas, when it also appears at 8 L/min with a raised ventilation and at 10 L/min with a low cardiac output. The grid above was run and the paragraph now names that region. Both noted that no test pins the 0.285 at the default fresh gas flow, and that the paragraph did not say the figures follow a 30-minute administration with the flow unchanged. The paragraph now says so, and `PL-M3J9` records the missing test. Pass 2 found that the `verify:` phrase wrapped over two lines, so a plain `grep` could not find it, and the phrase is now one that sits on one line.
 
