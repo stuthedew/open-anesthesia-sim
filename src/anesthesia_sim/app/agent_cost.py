@@ -79,6 +79,7 @@ __all__ = [
     "WITHHELD_COST",
     "CostShown",
     "cost_shown",
+    "entry_date",
     "price_from_entry",
     "DELIVERED_LABEL_TEMPLATE",
     "LIQUID_CAPTION_TEMPLATE",
@@ -457,3 +458,34 @@ def price_from_entry(
         currency.strip(),
         applies_on,
     )
+
+
+def entry_date(
+    stored: AgentPrice, bottle_price: str, bottle_volume_ml: str, currency: str, today: date
+) -> date:
+    """Return the date the form shows for an agent with a stored price, until the reader edits it.
+
+    The date is the stored price's date while the texts still state the stored
+    bottle price, bottle volume and currency. Once one of them states something
+    else, the reader is entering another price, so the date is `today`, the
+    day of entry. A price saved under the stored date would be shown as older
+    than it is (`docs/INTERFACE.md` § "A cost at the reader's price", `PL-8FSN`).
+    A figure that cannot be read as a number states something else. The form
+    stops calling this once the reader has edited the date.
+    """
+
+    try:
+        figures = (
+            _entered_figure(bottle_price, "bottle price"),
+            _entered_figure(bottle_volume_ml, "bottle volume"),
+        )
+    except SimulationConfigurationError:
+        return today
+
+    if figures != (stored.bottle_price, stored.bottle_volume_ml):
+        return today
+
+    if currency.strip() != stored.currency:
+        return today
+
+    return stored.applies_on

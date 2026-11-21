@@ -5859,6 +5859,15 @@ that price's date. The
 reader should change it to the day the price was quoted, because a price goes
 stale from that day, not from the day it was typed in.
 
+When the reader types another bottle price, bottle volume or currency over a
+stored price, the form moves the date to the day of entry and says that it did,
+because a new price saved under the stored date would be shown as older than it
+is. Typing the stored price again moves the date back. A date that the reader
+edits is kept, whatever they type afterwards. The date field therefore always
+shows the date that the form saves
+(`test_a_price_typed_over_a_stored_one_is_dated_at_the_day_of_entry`,
+`test_a_date_the_reader_edits_is_kept_for_a_price_typed_over_a_stored_one`).
+
 **The form takes the price per bottle, and the simulator derives the price per
 millilitre** (decided by `PL-VJZK` on 2026-10-26, over asking for a price per
 millilitre). An institution buys agent by the bottle, and its pharmacy quotes a

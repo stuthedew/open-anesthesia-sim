@@ -23,7 +23,8 @@ from typing import NoReturn
 import pytest
 from PySide6.QtCore import QDate, QEvent, QPoint, QPointF, Qt
 from PySide6.QtGui import QWheelEvent
-from PySide6.QtWidgets import QApplication, QLabel
+from PySide6.QtTest import QTest
+from PySide6.QtWidgets import QApplication, QLabel, QLineEdit
 
 from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app.agent_cost import NO_PRICE_TEXT
@@ -35,7 +36,13 @@ from anesthesia_sim.app.dashboard_frame import (
 )
 from anesthesia_sim.app.formatting import AgentAmountUnit
 from anesthesia_sim.app.main import open_dashboard, open_preferences
-from anesthesia_sim.app.preferences import PREFERENCES_FILE_NAME, AgentPrice, PreferencesStore
+from anesthesia_sim.app.preferences import (
+    PREFERENCES_FILE_NAME,
+    AgentPrice,
+    Preferences,
+    PreferencesStore,
+)
+from anesthesia_sim.app.qt_agent_price import PriceEntry
 from anesthesia_sim.app.qt_widgets import ForkPanel
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING, AGENT_COST, BRANCH, REGISTERED
@@ -920,3 +927,137 @@ def test_a_refused_price_for_the_first_run_s_agent_can_be_removed_from_the_first
     assert cost_view.preferences_notice.isHidden()
     assert _cost_line(cost_view) == NO_PRICE_TEXT.format(agent="sevoflurane")
     assert PreferencesStore(tmp_path).load().preferences.refused_prices == ()
+
+
+# --- the date of a price typed over a stored one (`PL-8FSN`) --------------------
+
+_STORED_PRICE = AgentPrice("isoflurane", 20.47, 100.0, "USD", date(2008, 3, 5))
+_STORED_DAY = QDate(2008, 3, 5)
+_ENTRY_DAY = date(2026, 1, 2)
+
+
+def _form_on_a_stored_price() -> tuple[PriceEntry, list[AgentPrice | None]]:
+    """Return the price form showing isoflurane's stored price, and the prices it asks for."""
+
+    asked: list[AgentPrice | None] = []
+    entry = PriceEntry(lambda _agent_id, price: asked.append(price), today=lambda: _ENTRY_DAY)
+    entry.show_prices(Preferences().with_price(_STORED_PRICE), "isoflurane")
+
+    return entry, asked
+
+
+def _type_over(field: QLineEdit, text: str) -> None:
+    """Replace what `field` holds by typing `text`, as a reader does."""
+
+    field.selectAll()
+    QTest.keyClicks(field, text)
+
+
+def test_a_price_typed_over_a_stored_one_is_dated_at_the_day_of_entry(
+    application: QApplication,
+) -> None:
+    """The date moves when the reader types, where they can see it, and is what Set price saves."""
+
+    entry, asked = _form_on_a_stored_price()
+
+    assert entry.applies_on_edit.date() == _STORED_DAY
+    assert entry.date_moved.isHidden()
+
+    _type_over(entry.bottle_price_edit, "78")
+
+    assert entry.applies_on_edit.date() == QDate(2026, 1, 2)
+    assert not entry.date_moved.isHidden()
+
+    entry.set_button.click()
+
+    assert asked == [AgentPrice("isoflurane", 78.0, 100.0, "USD", _ENTRY_DAY)]
+
+
+@pytest.mark.parametrize("field_name", ["bottle_volume_edit", "currency_edit"])
+def test_a_volume_or_currency_typed_over_a_stored_one_is_dated_at_the_day_of_entry(
+    application: QApplication, field_name: str
+) -> None:
+    entry, _ = _form_on_a_stored_price()
+
+    _type_over(getattr(entry, field_name), "250" if field_name == "bottle_volume_edit" else "CAD")
+
+    assert entry.applies_on_edit.date() == QDate(2026, 1, 2)
+    assert not entry.date_moved.isHidden()
+
+
+def test_typing_the_stored_price_again_puts_its_date_back(application: QApplication) -> None:
+    entry, asked = _form_on_a_stored_price()
+
+    _type_over(entry.bottle_price_edit, "78")
+    _type_over(entry.bottle_price_edit, "20.47")
+
+    assert entry.applies_on_edit.date() == _STORED_DAY
+    assert entry.date_moved.isHidden()
+
+    entry.set_button.click()
+
+    assert asked == [_STORED_PRICE]
+
+
+def test_a_date_the_reader_edits_is_kept_for_a_price_typed_over_a_stored_one(
+    application: QApplication,
+) -> None:
+    """A date edited before or after the price is typed is the date that Set price saves.
+
+    The second form is the reader who enters another price quoted on the stored
+    price's own day. The form has moved the date by then, and the reader moves
+    it back.
+    """
+
+    entry, asked = _form_on_a_stored_price()
+    entry.applies_on_edit.setDate(QDate(2019, 6, 30))
+    _type_over(entry.bottle_price_edit, "78")
+
+    assert entry.applies_on_edit.date() == QDate(2019, 6, 30)
+    assert entry.date_moved.isHidden()
+
+    entry.set_button.click()
+
+    assert asked == [AgentPrice("isoflurane", 78.0, 100.0, "USD", date(2019, 6, 30))]
+
+    entry, asked = _form_on_a_stored_price()
+    _type_over(entry.bottle_price_edit, "78")
+    entry.applies_on_edit.setDate(_STORED_DAY)
+    _type_over(entry.bottle_volume_edit, "250")
+
+    assert entry.applies_on_edit.date() == _STORED_DAY
+    assert entry.date_moved.isHidden()
+
+    entry.set_button.click()
+
+    assert asked == [AgentPrice("isoflurane", 78.0, 250.0, "USD", date(2008, 3, 5))]
+
+
+def test_a_first_price_for_an_agent_is_dated_at_the_day_of_entry_and_says_nothing(
+    application: QApplication,
+) -> None:
+    asked: list[AgentPrice | None] = []
+    entry = PriceEntry(lambda _agent_id, price: asked.append(price), today=lambda: _ENTRY_DAY)
+    entry.show_prices(Preferences(), "isoflurane")
+    _type_over(entry.bottle_price_edit, "78")
+    _type_over(entry.bottle_volume_edit, "100")
+    _type_over(entry.currency_edit, "USD")
+
+    assert entry.date_moved.isHidden()
+
+    entry.set_button.click()
+
+    assert asked == [AgentPrice("isoflurane", 78.0, 100.0, "USD", _ENTRY_DAY)]
+
+
+def test_filling_the_form_again_forgets_that_the_date_was_edited(application: QApplication) -> None:
+    """A date edited for one stored price does not hold the date of the next one."""
+
+    entry, _ = _form_on_a_stored_price()
+    entry.applies_on_edit.setDate(QDate(2019, 6, 30))
+    newer = AgentPrice("isoflurane", 78.0, 100.0, "USD", date(2019, 6, 30))
+    entry.show_prices(Preferences().with_price(newer), "isoflurane")
+    _type_over(entry.bottle_price_edit, "80")
+
+    assert entry.applies_on_edit.date() == QDate(2026, 1, 2)
+    assert not entry.date_moved.isHidden()
