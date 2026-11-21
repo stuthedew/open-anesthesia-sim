@@ -150,6 +150,7 @@ LIST_FIELDS = (
     "reenters",
     "no-successor",
     "recurrences",
+    "tests",
 )
 
 # What a `resource:` may name: the one thing in the repository that more than
@@ -796,9 +797,12 @@ class Item:
     #: consequence matters to a reader is judgment. So `checks.py` holds this
     #: field to *presence* and nothing else - see `_payoff_required`.
     payoff: str = ""
-    #: The command that proves this item done. Defaulted empty rather than
-    #: required, so an item written before the field existed - or captured
-    #: without one - is simply not delegable, which is the safe reading.
+    #: The tests that show this item's work, as pytest node ids, written when
+    #: the item closes and read once, on the branch that closes it
+    #: (`PL-FN11`). `done` holds the reading.
+    tests: tuple[str, ...] = ()
+    #: The command that proved this item done, on an item closed before
+    #: `tests:` existed. `done` says what a closing item records now.
     verify: str = ""
     #: The reason a qualifying item is withheld from delegation. Presence is
     #: the switch; there is deliberately no field that grants delegability.
@@ -1238,8 +1242,6 @@ class Item:
         - `model_guidance` is silent, which excludes safety- and
           science-classed work and open design decisions by the rule that
           already existed rather than by a second one written here;
-        - a `verify:` command exists, because without one "done" is a
-          judgment and there is nothing for a reviewer to trust instead;
         - `touches` is declared and wholly outside the protected paths, so the
           diff's blast radius is known before the work starts. A declared
           directory holding a protected path is not outside it;
@@ -1271,8 +1273,6 @@ class Item:
         guidance = self.model_guidance
         if guidance is not None:
             return guidance
-        if not self.verify:
-            return "no `verify:` command"
         if not self.touches:
             return "declares no `touches`"
         protected = self._reaching(paths.protected)
@@ -2273,6 +2273,7 @@ def parse_item(text: str, path: str = "") -> Item:
         pr=fields.get("pr", ""),
         reason=fields.get("reason", ""),
         payoff=fields.get("payoff", ""),
+        tests=lists["tests"],
         verify=fields.get("verify", ""),
         not_delegable=fields.get("not-delegable", ""),
         root_cause_of=lists["root-cause-of"],
@@ -2324,6 +2325,7 @@ FIELD_ORDER = (
     "pr",
     "reason",
     "payoff",
+    "tests",
     "verify",
     "not-delegable",
     "root-cause-of",
@@ -2364,6 +2366,7 @@ def _front_matter_values(item: Item) -> dict[str, str]:
         "pr": item.pr,
         "reason": item.reason,
         "payoff": item.payoff,
+        "tests": ", ".join(item.tests),
         "verify": item.verify,
         "not-delegable": item.not_delegable,
         "root-cause-of": ", ".join(item.root_cause_of),

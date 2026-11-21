@@ -85,6 +85,7 @@ from docket.vcs import (
     squash_message,
     stranded,
     tags,
+    texts_at_fork,
     with_newest_pull_request,
     working_paths,
 )
@@ -450,6 +451,13 @@ READS: tuple[Read, ...] = (
         "commands_written_here",
         lambda r, g: commands_written_here(r, {"PL-K7QX": "uv run pytest"}, runner=g),
         _findings("identifiers"),
+    ),
+    Read(
+        # `src/one.py` is on the base and the branch changed it, so the fork's
+        # copy is the finding a silence must not drop unsaid.
+        "texts_at_fork",
+        lambda r, g: texts_at_fork(r, ["src/one.py"], runner=g),
+        lambda a: frozenset(a.texts.items()),
     ),
     Read(
         "filed_with_work",
