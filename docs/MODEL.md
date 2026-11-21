@@ -5319,10 +5319,12 @@ not use ×1.10 for blood:gas, because that is too close to desflurane's edge at
 
 The test that expects the published-data gate to pass checks every agent at fat tissue:gas
 ×0.50 and ×2.00, muscle tissue:gas ×1.50 and circuit volume
-×0.50 (`test_the_published_data_gate_passes_at_a_stated_perturbation`). It also
-checks fat volume ×2.00 and alveolar gas volume ×0.50 for sevoflurane, venous pool volume ×0.50 for
-sevoflurane and desflurane, and venous pool volume ×2.00 for desflurane. The
-other agents have an edge at or inside those factors.
+×0.50 (`test_the_published_data_gate_passes_at_a_stated_perturbation`). It
+checks fat volume ×2.00 for sevoflurane only, because a tissue's volume and its
+tissue:gas coefficient change a run identically. It also checks alveolar gas
+volume ×0.50 for sevoflurane, venous pool volume ×0.50 for sevoflurane and
+desflurane, and venous pool volume ×2.00 for desflurane. For those three, the
+other agents have an edge at or inside the factor.
 
 Each factor in the two tests sits well clear of its edge, because a test placed
 at an edge would be 0.01 to 0.03 SD from flipping. Both tests run the published-data gate at
@@ -5419,11 +5421,13 @@ In the open circuit, the tail falls below the fitted curve between the second
 and the sixth minute. For sevoflurane and the first study's isoflurane, it
 stays below the curve for the whole run. Desflurane rises back above the
 curve at 19.18 h. The second study's isoflurane sits above the curve between
-2.45 and 4.58 h, by 5% at most. At its lowest, the open-circuit tail is a third
-to a half of the mean curve in every cohort (0.34 to 0.46). The lowest point
-comes near hour 8 for desflurane and near hour 13 for the others.
+2.45 and 4.58 h, by 5% at most. After the first hour, the open-circuit tail
+falls as low as a third to a half of the mean curve in every cohort (0.34 to
+0.46), near hour 8 for desflurane and near hour 13 for the others. Sevoflurane's
+tail is lower only in the first half hour, at 0.36 near minute 19.
 <!-- not-restated: 5 % -->
 <!-- not-restated: 0.34 -->
+<!-- not-restated: 0.36 -->
 
 **Read in stretches.** The shipped tail sits above the fitted curve at five
 minutes. That excess is the apparatus term that the five-minute elimination comparison records. The tail
@@ -6213,8 +6217,8 @@ simulator:
   below at the widest, near hour 13. For desflurane it is below from 3.4 to
   15.3 hours, by about half at the widest point, near 8 hours. The shipped tail
   is above the curves before and after that span. With the rebreathing circuit
-  taken away, the model's tissue return alone falls to a third to a half of the mean
-  curve at its lowest, near hour 8 for desflurane and near hour 13 for the others. With the circuit in place, as shipped, the gap
+  taken away, the model's tissue return alone falls, after the first hour, as low as a third to a half of the mean
+  curve, near hour 8 for desflurane and near hour 13 for the others. With the circuit in place, as shipped, the gap
   starts later than the third hour, because the rebreathing circuit and the
   muscle group's slow return hold the tail above the curve until the seventh
   hour. The size is known to about a factor of two, which is the fourth
