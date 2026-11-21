@@ -328,7 +328,7 @@ divided by another.
 ambient pressure being 760 mmHg.** At 760 mmHg, both classes of vaporizer deliver the
 same partial pressure at a given dial position, so no equation, stored value
 or displayed number here is wrong at sea level. Away from 760 mmHg, the two
-classes diverge in opposite directions, as § "Known limitations" describes.
+classes respond differently, as § "Known limitations" describes.
 
 **For developers.** The vaporizer control is `ControlInput.DELIVERED` in
 `app/control_record.py`. Each recorded change to it carries the unit *percent
@@ -797,7 +797,7 @@ $$
 $$
 
 **For developers.** In the code, the tolerance on $`\sum_i f_i = 1`$ is
-`FLOW_FRACTION_TOLERANCE = 1e-12`.
+`FLOW_FRACTION_TOLERANCE = 1e-12`, defined in `core/rounding.py`.
 
 ## Compartment capacities
 
@@ -1449,7 +1449,7 @@ another field, or names the open item that will check it.
 
 Two bounds apply, and each one addresses a different question.
 
-**The run-time halt thresholds, as implemented in `core/agent_simulation_validation.py`:**
+**The run-time halt thresholds.** The two tolerances are defined in `core/rounding.py`, and the minimum scale in `core/agent_simulation_validation.py`:
 
 ```text
 AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L = 1e-12
@@ -2245,10 +2245,11 @@ finite and between its start and its equilibrium.
 
 Each result of the first test must be finite. Each fraction must lie from 0 through 1, with no
 allowance. It must also lie at or below 0.99, and the agent balance must close, both to within
-the error bound of the propagators that produced the result (`core/matrix_exponential.py`). That
-bound uses the squarings each propagator actually needed, with a margin of 3, so the bound at a
-corner that needs few squarings is a few rounding errors. The worst result, from runs on
-2026-10-26, reached 2.5 times its bound.
+the error bound of the propagators that produced the result (`propagator_rounding` in
+`core/rounding.py`). That bound uses the squarings each propagator actually needed, with a margin
+of 8, so the bound at a corner that needs few squarings is a few rounding errors. The worst
+result, from runs on 2026-10-26, reached 2.5 times the bound's leading term,
+$`2^{s} \cdot 2^{-52}`$ for $`s`$ squarings.
 
 The second test creates each input in the table at each end of its range and at the nearest value
 a computer can store past it, and requires the simulator's own refusal. Setting the model's
@@ -2436,9 +2437,9 @@ output at 0, 0.5, 2.5, 5 and 10 L/min, at time steps of 0.1 s, 0.01 s and 0.001 
 <!-- not-restated: 4 L/min, 5 L/min -->
 
 **A mass-balance tolerance that added up the worst-case rounding of every step would be loose
-where learners run.** Even with no squarings, a 24 h run at the 1 ms step would allow 5.8 parts
-in 10⁸. That is 58 times looser than one part in 10⁹, so a real accounting error could pass on a
-long run that a learner can reach. A tolerance widened only by what the squarings add would equal
+where learners run.** Even with no squarings, a 24 h run at the 1 ms step would allow 1.9 parts
+in 10⁷. That is about 190 times looser than one part in 10⁹, so a real accounting error could
+pass on a long run that a learner can reach. A tolerance widened only by what the squarings add would equal
 one part in 10⁹ wherever no step needs a squaring. It suits a profile that needs squarings, and no
 shipped profile does, so it was not built.
 <!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
@@ -2562,13 +2563,13 @@ The shipped run's 24-hour propagator had an error of 3.3e-11 in its worst entry,
 0.1 s steps had errors of up to 1.3e-10. At 0.001 L, the hardest corner needed 22 squarings.
 <!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
 
-One step's rounding is bounded by about $`3 \cdot 2^{s} \cdot 2^{-52}`$, where $`s`$ is the
-number of squarings the step needs and 3 is the margin the sweep uses. The mass-balance check
-compares the whole run's residual, so a rigorous tolerance would sum that bound over every step.
-Even at $`s = 0`$, the sum is 5.8e-10 for 24 h at the 0.1 s step, 5.8e-9 at 0.01 s and 5.8e-8 at
-the 1 ms step. A tolerance widened only by what the squarings add would be about
-$`3 (2^{s} - 1) 2^{-52}`$ per step, summed over the run, which is exactly $`10^{-9}`$ wherever
-$`s = 0`$.
+One step's rounding is bounded by $`10 \cdot 2^{s} \cdot 2^{-52}`$, where $`s`$ is the number of
+squarings the step needs and 10 is the factor that § "How far a computed value can be from the
+exact one" derives. The mass-balance check compares the whole run's residual, so a rigorous
+tolerance would sum that bound over every step. Even at $`s = 0`$, the sum is 1.9e-9 for 24 h at
+the 0.1 s step, 1.9e-8 at 0.01 s and 1.9e-7 at the 1 ms step. A tolerance widened only by what the
+squarings add would be about $`10 (2^{s} - 1) 2^{-52}`$ per step, summed over the run, which is
+exactly $`10^{-9}`$ wherever $`s = 0`$.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- provenance: core/simulation_step.py MAXIMUM_SIMULATION_STEP_S = 0.1 -->
 <!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
@@ -2580,6 +2581,108 @@ only by what the squarings add.
 
 Tests of the matrix exponential module still trigger the propagator's own refusals, with a matrix
 built to match (`tests/unit/test_matrix_exponential.py`).
+
+### How far a computed value can be from the exact one
+
+Every value the model computes is rounded to a 64-bit number, so it differs slightly from the
+exact value of its equation. The table gives the largest difference that the model allows in each
+comparison it makes. None of them reaches a displayed digit. Over the longest supported run, 24 h
+at the 1 ms step, the bound on a reading is 1.9 parts in 10⁷ of the reading, and the readouts
+show a percentage to two decimals.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
+
+| What is compared | Allowed difference | Kind |
+| --- | --- | --- |
+| The state after one step, against the exact solution | $`10 \cdot 2^{s} \cdot 2^{-52}`$ of the largest fraction in the run, where $`s`$ is the number of squarings the step needs. With no squarings that is 2.2e-15. | Bound |
+| The state after $`n`$ steps, against the exact solution | $`n`$ times the allowance for one step | Bound |
+| A running total of delivered or exhausted agent, against the exact sum of its step amounts | $`2^{-51}`$ of the total, which is 4.4e-16 | Bound |
+| Agent held, delivered and exhausted (§ "Mass-balance identity") | One part in 10⁹ of the agent handled, or 1e-12 L | Fixed |
+| A reading stepped to an instant, against the canonical reading of that instant (`docs/INTERFACE.md` § "The canonical evaluation rule") | 1e-6 of the reading | Fixed |
+| $`F_A/F_I`$ above 1 in a run that is still washing in (`docs/INTERFACE.md` § "F_A/F_I as a displayed ratio") | 1e-6 | Fixed |
+| A reading at the height of a MAC target (`docs/INTERFACE.md` § "Halting on a marked crossing") | 1e-5 of the height | Fixed |
+| The tissue perfusion fractions, against a sum of 1 (§ "Tissue groups") | 1e-12 | Fixed |
+| The tissue blood flows, against cardiac output | One part in 10⁹ of cardiac output, plus 1e-12 L/s | Fixed |
+| A count of steps, axis ticks or grid units, against a whole number | 1e-9 of the count | Fixed |
+
+A bound follows from the arithmetic, and a test fails when a result exceeds it. The factor of 10
+in the first row is derived too. It counts every rounding in one step at its largest possible
+size, and lets each squaring double the error it receives. The count gives at most 9.13 times
+$`2^{s} \cdot 2^{-52}`$, and 10 is that rounded up. The largest fraction in the run includes the
+fraction that the vaporizer delivers. A measurement checks that
+the bound is not far above what happens. On 2026-11-11 and 2026-11-14, 480 000 steps were drawn
+across the numerical envelope, and one corner was stepped from 400 opening states. The largest
+error was 3.9 times $`2^{s} \cdot 2^{-52}`$, at that corner, which is about 40% of the bound.
+A fixed allowance is a chosen number, far above the rounding that
+was measured and far below a displayed digit. The section named in each row gives its
+measurement.
+
+**The bound for $`n`$ steps is the sum of the steps' bounds.** The other candidate grows as the
+square root of $`n`$. It holds where the rounding errors are independent and average zero, and a
+run that repeats one step $`n`$ times meets neither condition. A state held at equilibrium in a
+10 000 L tissue drifted by 1.6e-12 over 4 308 steps on 2026-11-11, which is 38 times the
+square-root figure. The five steps with the largest errors in the same day's measurement were
+each repeated 2 000 times, and the error after $`n`$ steps stayed at $`n`$ times the error of
+one.
+<!-- provenance: core/numerical_envelope.py MAXIMUM_VOLUME_L = 10000 -->
+
+- Higham and Mary show that the square-root bounds hold "under the assumption that rounding
+  errors are independent and of zero mean", and give "two cases where Model 2.1 is invalid and
+  the probabilistic bound does not hold. In the first case the rounding errors have nonzero mean
+  and in the second case they are dependent" (Higham NJ, Mary T. A new approach to probabilistic
+  rounding error analysis. SIAM J Sci Comput 2019;41(5):A2815-A2835. doi:10.1137/18M1226312,
+  sections 5 and 4.2).
+- Connolly, Higham and Mary describe a sum that stops changing under round to nearest: "This
+  leads to necessarily negative rounding errors", and the error then grows in proportion to
+  $`n`$ (Connolly MP, Higham NJ, Mary T. Stochastic rounding and its probabilistic backward
+  error analysis. SIAM J Sci Comput 2021;43(1):A566-A585. doi:10.1137/20M1334796, section 7).
+- Croci et al. say that the two assumptions "are often satisfied in practice, but it is easy to
+  construct examples where either of the assumptions fails and the backward error almost attains
+  the worst-case bound" (Croci M, Fasi M, Higham NJ, Mary T, Mikaitis M. Stochastic rounding:
+  implementation, error analysis and applications. R Soc Open Sci 2022;9:211631.
+  doi:10.1098/rsos.211631, section 6.1).
+<!-- not-restated: 2.1 -->
+
+The first two papers were read on 2026-11-11 as their MIMS EPrints, 2018.33 and 2020.12, in the
+passages quoted. The third was read the same day in the full text at PubMed Central (PMC8905452),
+in section 6.1. None of them analyses one propagator applied $`n`$ times, so the measurement is
+the evidence for the summed bound here, and the papers are the reason it was expected.
+
+**The agent balance does not use the summed bound.** It keeps its fixed limit of one part in
+10⁹, for the reason that § "The numerical envelope" gives: the summed bound for the longest run is
+about 190 times that limit, and a limit that wide would let a real accounting error pass. The
+bound is the most that rounding can do anywhere in the numerical envelope, and the shipped agents
+stay far inside it. A correct 24-hour run of a shipped agent left a residual below 4 parts in
+10¹¹.
+
+**For developers.** `core/rounding.py` defines every figure in the table, and each comparison in
+`core/` and `app/` reads its allowance from there. `propagator_rounding` is the bound for one
+step, `run_rounding` the bound for $`n`$ steps, and `RUNNING_TOTAL_ROUNDING` the bound for a
+running total. `clock_rounding` bounds one more term: a run definition measures an interval as
+the difference of two rounded instants, which moves a reading by at most one and a half units in
+the last place of the later instant, divided by the interval. `tests/unit/test_rounding.py` checks each
+figure and that no other module in `core/` or `app/` defines an allowance.
+`tests/unit/test_generated_runs.py` holds generated runs to the bounds after every action, and
+`tests/unit/test_numerical_envelope_sweep.py` holds one step from each corner of the envelope to
+the bound for one step. The factor of 10 is `PROPAGATOR_ROUNDING_UNITS`, whose docstring gives
+the derivation. It counts the roundings with the standard model of floating-point arithmetic and
+its bound on a product of rounding factors (Higham NJ, Mary T, MIMS EPrint 2018.33, eqs. 1.1 and
+1.2, pp. 2-3, and Lemma 2.2, p. 4), and the error of Python's compensated `sum` (Ogita T, Rump SM,
+Oishi S. Accurate sum and dot product. SIAM J Sci Comput 2005;26(6):1955-1988. Proposition 4.5,
+read in the authors' copy). It assumes that the C library's `exp` is within one unit in the last
+place, which glibc states. It also assumes that the fraction rows create agent at a rate $`r`$
+with $`r\,\Delta t \le 2^{-9}`$. The equations create none, and the check that the tissue flows
+sum to cardiac output keeps $`r\,\Delta t`$ below 1.5e-3 over 24 h. The errors are measured in the row sums of the propagator's fraction
+rows, with the forcing column divided by the delivered fraction. Every number is nonnegative after
+the shift, so the relative bounds add without cancellation. The factor was a measured margin of 3
+until 2026-11-11, when a review found a step inside the envelope with an error of 3.4 times
+$`2^{s} \cdot 2^{-52}`$, and a measured margin of 8 until 2026-11-14. `tests/unit/test_rounding.py`
+derives the bound again from the matrix exponential module's constants, holds 200 steps drawn
+across the envelope to it, and recomputes the four worst steps found against a 50-digit
+calculation, requiring them to pass 3 and stay inside 10.
+Two tolerances for the shares of a window that its areas take stay in `layout/`.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- not-restated: 1.1, 4.5 -->
 
 ## Parameter provenance
 
@@ -3740,9 +3843,16 @@ and Datex-Ohmeda Isotec 5 for isoflurane, and the Tec 6 for desflurane. So desfl
 says how far a Tec 6 dial turns. Another desflurane vaporizer, or an injector that delivers into
 the circle, is not bound by it.
 
-**The model does not need to know which class of vaporizer each maximum delivered concentration
-comes from,** because the three maxima come from two classes of vaporizer that it would need to
-tell apart only away from sea level (§ "Assumptions", § "Known limitations").
+**These vaporizers work in two different ways.** The sevoflurane and isoflurane vaporizers are
+variable-bypass vaporizers: the dial splits the fresh gas between a bypass and a chamber in which
+the gas flows over the liquid agent and leaves saturated with vapour. The Tec 6 is not a
+variable-bypass vaporizer. Dosch and Tharp call it a gas–vapour blender, which heats desflurane
+and adds pure vapour to the fresh gas (§ "Known limitations" gives their full
+citation). Johnston et al. 1994, the source of desflurane's maximum, describe it in their abstract
+as "an electrically heated, pressurized, electromechanically coupled dual-circuit blender". The two
+designs behave differently away from sea level (§ "Known limitations"). The model fixes
+ambient pressure at one atmosphere, 760 mmHg (§ "Assumptions"), so it does not need to know which
+design each maximum comes from.
 
 The stored MAC (`mac_percent`) is a single adult MAC. Its source, De Wolf et al. 2012, gives no age
 for it. The age-referenced values are Mapleson's MACs at age 40, which the table below compares
@@ -6487,8 +6597,7 @@ corresponding real device. That user is not delivering the same anesthetic,
 and nothing else in the simulator says so. The two pressures have no test yet
 (`PL-LP96`). The delivered-concentration control
 is a vaporizer dial, and this project's three agents are drawn from two
-classes of vaporizer that respond to falling ambient pressure in opposite
-directions.
+classes of vaporizer that respond differently to falling ambient pressure.
 <!-- not-restated: 6 % -->
 
 **The real devices for sevoflurane and isoflurane are variable-bypass
@@ -6498,7 +6607,7 @@ vaporizing chamber. The gas leaving the chamber is saturated at the agent's
 saturated vapour pressure, which temperature sets and ambient pressure does
 not. The dial sets the splitting ratio. So as ambient pressure falls, the
 output rises in volumes percent while the delivered *partial pressure* is
-approximately preserved, and the dial needs no altitude correction. Boumphrey
+approximately preserved. Boumphrey
 and Marshall (*Contin Educ Anaesth Crit Care Pain* 2011;11:199–203) give the
 approximation as
 $`\%_1 = \%_\mathrm{cal} \times P_\mathrm{cal} / P_1`$. Their worked example
@@ -6543,8 +6652,18 @@ $`\mathrm{SVP} \ll P`$. Isoflurane's saturated vapour pressure is about
 through gives a delivered partial pressure that *overshoots* rather than holds
 steady: on that arithmetic alone, about 16% high at 585 mmHg, where the
 $`1/P`$ form predicts a flat line
-(`test_the_variable_bypass_overshoot_at_altitude_follows_from_the_fuller_form`). The direction of each class's response is
-not in doubt, and neither is the contrast between the two. The size of the
+(`test_the_variable_bypass_overshoot_at_altitude_follows_from_the_fuller_form`).
+The Tec 6's response rests on its manufacturer's instruction and on Andrews and
+Johnston's description of its mechanism, both quoted above. How large the
+variable-bypass response is, and whether its dial needs correcting, is less
+settled. Dosch and Tharp call the effect of altitude on vaporizer performance
+"controversial". They write that "Some sources state that variable bypass types
+need not be adjusted for moderate changes in barometric pressure, but the Tec 6
+must be dialed up beyond the desired dose at higher altitudes. Other sources
+disagree." They also report that Dorsch and Dorsch's *Understanding Anesthesia
+Equipment* (5th edition, 2008) says to consult the operator's manual for each
+model. That textbook could not be read for this document, so its advice is
+cited only as Dosch and Tharp report it. The size of the
 variable-bypass compensation is approximate, so no number is stored for it. An implementation of ambient pressure should
 derive the variable-bypass case from each agent's saturated vapour pressure
 rather than from the $`1/P`$ shortcut, and would owe each agent's SVP a source
@@ -6582,13 +6701,22 @@ value:
   the worked example, and never as the authority for a number. Its "Altitude"
   section describes both classes side by side. Read in full.
   **Owner-attested**: see the note below.
+- Dosch MP, Tharp D. *The Anesthesia Gas Machine*, chapter 5, "Processing:
+  Vaporizers". University of Detroit Mercy, revised February 2026.
+  https://healthprofessions.udmercy.edu/academics/na/agm/05. **Tier 2** under
+  § "Source hierarchy": a teaching text that draws on other sources. It is the
+  source of the two class names and of how each class works, as
+  § "Delivery-limit and MAC parameters" states them, and of the disagreement
+  about altitude quoted above. It is never the authority for a number. Read in
+  full at that address.
 
 <!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 
-**Two of those five are owner-attested: they were read from the project
+**Two of those six are owner-attested: they were read from the project
 owner's copies, and no other reader can check them.** They are the
 Datex-Ohmeda specification sheet and the Boumphrey and Marshall article. Any
-reader can reach the three journal articles above through their DOI or PMID.
+reader can reach the three journal articles above through their DOI or PMID,
+and Dosch and Tharp's chapter at its address.
 `docs/references/` cannot hold copies of these two, because the repository is
 public (`docs/references/README.md` § "Redistribution"). So three things rest
 on that reading alone: the passage quoted from Datex-Ohmeda, the 1–18% range

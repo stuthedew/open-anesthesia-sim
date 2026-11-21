@@ -39,10 +39,7 @@ from dataclasses import replace
 
 import pytest
 
-from anesthesia_sim.core.agent_simulation_validation import (
-    AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L,
-    AgentSimulationValidator,
-)
+from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidator
 from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.governing_equations import (
@@ -55,6 +52,7 @@ from anesthesia_sim.core.governing_equations import (
     UNIT_STATE,
     VENOUS_FRACTION,
 )
+from anesthesia_sim.core.rounding import AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L
 from anesthesia_sim.core.run_definition import DisplayState, Keyframe, RunDefinition, RunSegment
 from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow

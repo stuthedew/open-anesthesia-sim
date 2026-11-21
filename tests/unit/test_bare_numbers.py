@@ -172,6 +172,7 @@ LISTED: dict[str, dict[str, tuple[str, ...]]] = {
     },
     INSTANT_OR_WINDOW: {
         "matrix_exponential": ("matrix_exponential(interval_s)",),
+        "rounding": ("clock_rounding(instant_s)", "clock_rounding(interval_s)"),
         "run_definition": (
             "RunDefinition.evaluate(columns)",
             "RunDefinition.evaluate(start_s)",
@@ -331,6 +332,13 @@ LISTED: dict[str, dict[str, tuple[str, ...]]] = {
             "PatientCompartments.tissue_return_partial_pressure_fraction -> return",
             "PatientCompartments.total_perfusion_fraction -> return",
         ),
+        "rounding": (
+            "clock_rounding -> return",
+            "propagator_rounding -> return",
+            "propagator_rounding(squarings)",
+            "run_rounding -> return",
+            "run_rounding(squarings)",
+        ),
         "supported_ranges": ("maximum_step_count -> return",),
         "tissue": (
             "TissueGroup.capacity_l -> return",
@@ -353,8 +361,10 @@ BARE_NUMBERS: dict[str, str] = {
 # This count equals the length of `BARE_NUMBERS`. It was 173 on 2026-11-11, when the
 # list was written. Giving a quantity a checked type lowers it. A change that raises
 # it shows a reviewer that the change adds a bare number. The blood flow and the
-# perfusion fraction took it to 165 (`PL-GKG4`).
-MOST_BARE_NUMBERS = 165
+# perfusion fraction took it to 165 (`PL-GKG4`). `core/rounding.py` added seven:
+# the squarings and the result of its two bounds on a propagator, and the instant,
+# the interval and the result of its bound on the clock (`PL-GJ1W`).
+MOST_BARE_NUMBERS = 172
 
 
 def _names_a_bare_number(

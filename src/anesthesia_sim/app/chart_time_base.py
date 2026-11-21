@@ -45,6 +45,7 @@ import math
 from dataclasses import dataclass
 from typing import Final
 
+from anesthesia_sim.core.rounding import WHOLE_COUNT_TOLERANCE
 from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CaseInstant, require_case_instant
 
@@ -92,12 +93,6 @@ CHART_GRID_RESOLUTIONS_S: Final = (MAXIMUM_SIMULATION_STEP_S, MAXIMUM_SIMULATION
 # fraction more columns.
 _GRID_UNITS_FOR_A_COARSER_GRID: Final = 10
 
-# How far a spacing's count of grid units may fall short of a whole number and still
-# count as that number. In binary floating point, dividing a spacing such as 0.9 s by
-# 0.01 s can give a result just below 90. Taking the floor would then lose a whole
-# unit. A billionth of a unit is far smaller than any spacing the chart could be
-# asked for.
-_GRID_UNIT_COUNT_TOLERANCE: Final = 1e-9
 
 # The key of the selector's "Fit run" entry. It is a sentinel rather than a
 # width, because fitting is a *rule* for choosing the width each frame, not one
@@ -459,6 +454,9 @@ def grid_spacing_s(raw_spacing_s: float) -> float:
         ),
         finest,
     )
-    units = math.floor(raw_spacing_s / resolution + _GRID_UNIT_COUNT_TOLERANCE)
+    # Rounding can leave the quotient just below the whole number it equals, as
+    # 0.7 / 0.1 is 6.999999999999999, and the floor would then lose a whole unit.
+    # The allowance is far smaller than any spacing the chart could be asked for.
+    units = math.floor(raw_spacing_s / resolution + WHOLE_COUNT_TOLERANCE)
 
     return max(units, 1) * resolution

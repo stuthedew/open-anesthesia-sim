@@ -21,7 +21,6 @@ from anesthesia_sim.app.formatting import CONCENTRATION_DISPLAY_RESOLUTION_PERCE
 from anesthesia_sim.app.wash_in import (
     WASH_IN_DENOMINATOR_FLOOR_FRACTION,
     WASH_IN_EQUILIBRIUM_RATIO,
-    WASH_IN_ROUNDING_ALLOWANCE,
     WashInDomain,
     is_wash_in,
     read_wash_in,
@@ -33,6 +32,7 @@ from anesthesia_sim.core.parameters import (
     load_agent_parameters,
     load_reference_adult_parameters,
 )
+from anesthesia_sim.core.rounding import WASH_IN_ROUNDING_ALLOWANCE
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_ELAPSED_SIMULATION_TIME_S,
