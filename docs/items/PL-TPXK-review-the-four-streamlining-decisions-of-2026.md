@@ -3,12 +3,15 @@ id: PL-TPXK
 title: Review the four streamlining decisions of 2026-11-20 independently, and put the corrected whole-second stepping facts back to the owner
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: housekeeping
 feature: standing-weight
 touches: docs/items
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science; it reviews how four workflow and design decisions were recorded, so the release does not wait on it
 added: 2026-11-21
+closed: 2026-11-21
+payoff: the owner's choice of whole-second stepping rests on corrected figures, and each build item carries the review's notes
+verify: grep -qF 'Answered 2026-11-21: keep whole seconds' docs/items/PL-TPXK-review-the-four-streamlining-decisions-of-2026.md
 ---
 
 **Problem.** Review the four streamlining decisions of 2026-11-20 independently, and put the corrected whole-second stepping facts back to the owner
@@ -87,6 +90,8 @@ added: 2026-11-21
 **Recommendation: keep whole seconds.** The corrected figures change how large the cost is and not which design is better. The run a learner sees is still exact for the changes as recorded, the fastest time constant of the model is 6 s, and the worst figure needs an 18% desflurane dial with the ventilator off for five minutes. Tenths of a second keep today's timing at 1x and 5x, and cost ten times the memory and time: 62 MB and about 4 s for each 24-hour run.
 
 **Done when.** The owner has answered on the corrected figures, and the answer is recorded here and beside `PL-7CY5`'s recorded answer.
+
+**Answered 2026-11-21: keep whole seconds** (project owner, 2026-11-21, ratified, on the thread's decision card, over one rule at tenths of a second and over stopping the build to talk it through). The owner read the corrected figures in the thread's reply before choosing: no 10x rate, 1x and 5x both on a 1 s grid, and a worst case of 1.34 percentage points that stays above 0.5 for 8 s. `PL-SZ6G` (whole-second time and the 1 s step) may now publish its text about 1x and 5x, with these figures.
 
 **Generator check.** Not a head, and a member of none. The three wrong statements have one cause, a playback rate recalled and not read from `app/playback.py`. That is one instance.
 
