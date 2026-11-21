@@ -13,8 +13,8 @@ that produced it. This rounding is the last of those transformations.
 `tests/unit/test_formatting.py` tests it.
 
 `docs/INTERFACE.md` § "Displayed precision" derives how many digits of a
-concentration are worth showing, starting from what the model's parameters can
-support. This module applies the result and deliberately does not restate the
+concentration are worth showing, from what keeps every compartment legible.
+This module applies the result and deliberately does not restate the
 derivation's figures. They were once restated at four places in this package,
 and all four went stale together when the solver changed (`PL-X9KD`). Citing
 the section leaves the next re-derivation only one place to update.
@@ -136,22 +136,21 @@ DECIMAL_BASE: Final = 10.0
 # Displayed resolution for every modeled concentration and relative partial
 # pressure, and for the delivered-agent setting shown beside its slider.
 #
-# **A choice, inside a band the model imposes.** `docs/INTERFACE.md` § "Displayed
-# precision" derives the band as one to two decimals. The upper end of the band
-# is set by what the measured spread of the partition coefficients supports.
-# The lower end is set by the fat and muscle compartments. At one decimal they
-# show a flat `0.0%` for minutes to an hour, which erases the wash-in that the
-# simulator exists to teach. Two decimals is the project owner's choice inside
-# that band (PL-040, re-affirmed 2026-09-03 under `PL-88GQ`). One decimal is
-# ruled out by a teaching judgment, not by a numerical limit.
+# **Legibility sets the count.** `docs/INTERFACE.md` § "Displayed precision"
+# shows that the equation solver does not limit it, and that the spread of the
+# partition coefficients between patients does not set it either (project
+# owner, 2026-11-14, `PL-W51N`). That spread is stated there as a limitation on
+# reading a value as a patient's. Two decimals is the coarsest count that keeps
+# every compartment's wash-in visible: at one decimal, fat and muscle show a
+# flat `0.0%` for minutes to an hour, which erases the uptake that the
+# simulator exists to show. Ruling out one decimal is the project owner's
+# teaching judgment (PL-040, re-affirmed 2026-09-03 under `PL-88GQ`), not a
+# numerical limit.
 #
-# So moving this count to one decimal is the owner's decision. The move would
-# need no re-derivation in `core/`, because no model-side bound is computed
-# from this count. Moving it to three decimals would leave the band. That is a
-# safety-critical change, because three decimals would assert a resolution that
-# the parameters do not support. Revise the documented derivation along with it.
-# The figures behind both ends of the band are in that section and are
-# deliberately not restated here.
+# So moving this count is the owner's decision, and the documented reasoning
+# changes with it. The move would need no re-derivation in `core/`, because no
+# model-side bound is computed from this count. The figures behind the choice
+# are in that section and are deliberately not restated here.
 #
 # **This count also sets two things outside the display** (`PL-0S0V`). It sets
 # the delivered dial's slider step, through `ParameterControl.decimals`, so it
@@ -788,8 +787,10 @@ def format_mac_awake_reference(
     the MAC axis. A clinically meaningful mark on the display must be
     traceable to the exact values that produced it. The band has two free
     parameters rather than one: a published fraction and the divisor it is
-    applied to. So both are named, together with the percent they land at.
-    A reader who disagrees with either can see which one they disagree with.
+    applied to. This line gives the fraction, the percent it lands at and the
+    band's two edges in percent. The divisor, the agent's 1 MAC in percent,
+    is on the line that `format_mac_reference` writes beside it. So a reader
+    who disagrees with either can see which one they disagree with.
 
     The fraction is shown at the resolution of the MAC readouts. The
     percents are shown at the resolution of the concentration readouts. So
@@ -1508,7 +1509,8 @@ def format_agent_residual(litres: float) -> str:
     has the measurement. Any finer form would print a digit that is noise.
     So both lines use the same form. The signed values are still shown when
     they mean something: a failing check halts the run, and the failure
-    notice prints them to six figures.
+    notice prints the signed unaccounted amount with six decimal places, such
+    as `1.000000e+00 L`.
 
     Exactly zero is shown as `0 L`. A value that is not finite cannot come
     out of the accounting check. If one arrives, it is printed as itself
@@ -1540,7 +1542,7 @@ def format_agent_residual(litres: float) -> str:
 # A compartment's amount is shown to two significant figures, and never finer
 # than 0.01 mL of vapour. `docs/INTERFACE.md` § "Displayed precision" gives the
 # reasons for the two figures and the floor (`PL-2881`). The amounts span from a fraction
-# of a millilitre to about a litre, so the precision is a count of
+# of a millilitre to several litres, so the precision is a count of
 # significant figures rather than of decimals, and the amount has no entry in
 # `AGENT_AMOUNT_DISPLAY_PRECISION`. These two constants are the only place that
 # states its precision. The floor of two decimals is a legibility choice. It is

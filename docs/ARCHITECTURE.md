@@ -1203,10 +1203,15 @@ them to arrays. The tests also use numpy: one decomposes the model's
 open-circuit system with `numpy.linalg.eig`
 (`tests/reference/test_late_washout_against_published_fits.py`, `PL-921Y`).
 
-**On Linux, the Qt wheels need shared objects from five OS packages.** Running
+**On Linux, the Qt wheels need shared objects from six OS packages.** Running
 `ldd` on 2026-09-16 showed that the wheels' `Qt/lib/libQt6Gui.so.6` and
 `Qt/plugins/platforms/libqoffscreen.so` link to the shared objects below, which
-resolve outside the wheels that `pyproject.toml` installs.
+resolve outside the wheels that `pyproject.toml` installs. `readelf -d` on
+`libQt6Gui.so.6` of `pyside6-essentials` 6.11.2 added the glib row on
+2026-11-21, and the same day `import PySide6.QtGui` failed in a container with
+`libglib-2.0.so.0` hidden. The table's first five packages bring in
+`libX11.so.6`, `libfreetype.so.6` and `libz.so.1`, which the wheels also link,
+as their own dependencies.
 
 | shared object | Debian/Ubuntu package |
 | --- | --- |
@@ -1215,13 +1220,14 @@ resolve outside the wheels that `pyproject.toml` installs.
 | `libxkbcommon.so.0` | `libxkbcommon0` |
 | `libdbus-1.so.3` | `libdbus-1-3` |
 | `libfontconfig.so.1` | `libfontconfig1` |
+| `libglib-2.0.so.0`, `libgthread-2.0.so.0` | `libglib2.0-0t64` on Ubuntu 24.04, which also answers to `libglib2.0-0` |
 
 Only `libegl1` is normally missing, because an ordinary desktop already has the
-other four. `README.md` § "Running it" therefore names only that package. The
+other five. `README.md` § "Running it" therefore names only that package. The
 CI workflow (`.github/workflows/quality.yml`) also installs only `libegl1`,
 because its own comment records that the `ubuntu-latest` image has the other
-four (`PL-VHLZ`). A minimal container is neither an ordinary desktop nor that
-image, so check it for all five packages. macOS and Windows need nothing extra.
+five (`PL-VHLZ`). A minimal container is neither an ordinary desktop nor that
+image, so check it for all six packages. macOS and Windows need nothing extra.
 
 **A bundled build will bring licence obligations, and nothing is violated today
 (`PL-3SQT`).** `pyside6_essentials` 6.11.2 and `shiboken6` 6.11.2 both declare

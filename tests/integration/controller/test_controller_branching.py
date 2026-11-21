@@ -121,8 +121,9 @@ def test_a_branch_reproduces_its_parent_at_every_instant_they_share() -> None:
     canonical path. The instants probed are the case's own: a whole number of
     steps times the step, which is the only way simulated time is ever formed
     here. Both runs are asked for each instant directly. There is nothing to
-    convert. Since `PL-ZMRT`, the branch's definition opens at the fork on
-    that same axis, so parent and child form their intervals from the
+    convert. Since `PL-ZMRT`, the branch's definition opens on that same axis,
+    at the keyframe that opens the stretch the step reaching the fork ran
+    under (`PL-ZR49`). So parent and child form their intervals from the
     identical pair of floats.
     """
 

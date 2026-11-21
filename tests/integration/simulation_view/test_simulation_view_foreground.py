@@ -80,9 +80,9 @@ FOREGROUND_NOT_DECLARED: dict[str, str] = {
     "QScrollBar": (
         "Qt's own chrome, on the page and inside each selector's popup. It "
         "draws no text, and its groove and handle come from the platform "
-        "style rather than from the foreground role. Whether this interface "
-        "should declare a colour scheme so the chrome follows it is PL-KRZW, "
-        "which is the project owner's decision and open."
+        "style rather than from the foreground role. The application palette "
+        "that `declare_application_colours` sets reaches it, which is the "
+        "project owner's decision in PL-KRZW."
     ),
     "QSlider": (
         "the four setting sliders. Each draws no text - the value beside it is "

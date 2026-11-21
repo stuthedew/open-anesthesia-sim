@@ -68,10 +68,16 @@ MUTED = "#59728A"
 #
 # IEC 60601-1-8 governs *visual alarm signals*. Those are indicators that
 # encode priority by colour together with a flash rate, and this interface has
-# none. Every use of WARNING is bold, coloured text: the run-status word, the
-# transient notice line, the agent-accounting status word, the permanent
-# educational disclaimer, and the case-discard dialog. There is no indicator
-# lamp, no filled banner, no flashing element and no priority tier.
+# none. WARNING colours text and three kinds of drawn line. The text is the
+# run-status word of a failed run, the transient notice line, the
+# agent-accounting status word, the permanent educational disclaimer, the
+# case-discard dialog, the title of an Area's notice, and the lines that state
+# a refusal or a value above the scale. The lines are an Area border whose drag
+# has stopped at a least size, the preview of a layout change that is refused,
+# and the bar over a schematic container above its scale. `docs/INTERFACE.md`
+# § "Color contrast, and the standard this interface is held to" keeps the full
+# list. There is no indicator lamp, no filled banner, no flashing element and no
+# priority tier.
 #
 # The disclaimer is the use that settles the question, and it argues against
 # adopting the convention. WARNING colours a line that is on screen *always*.

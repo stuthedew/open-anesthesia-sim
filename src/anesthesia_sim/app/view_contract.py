@@ -18,7 +18,8 @@ must build a View that satisfies the protocol. A member that nothing calls is
 deleted rather than kept for later. For comparison, Blender's editor table
 carries two hooks that no editor implements and a field that no editor
 assigns, and nothing in its design reports either problem
-(`docs/interface-provenance.md` § "Prune the contract").
+(`docs/interface-provenance.md`, the entry "Prune the contract of a View
+instead of letting it grow").
 
 **What a View is given, and what it is not** (Q2, Q7). A View is handed a
 `ViewContext` when it is built and a `ViewTick` on every frame. It receives no
@@ -102,7 +103,7 @@ reader replaces a View through the chooser, the View's state is saved under
 its Area and kind. When that kind returns to that Area, its View is built from
 the saved state again. A split gives the new Area a copy of the source View's
 state, and a swap moves each instance with its state. Splitting and swapping
-are left to `PL-2KXB`, and they build on `save_state` as it stands here.
+(`PL-2KXB`) build on `save_state` as it stands here.
 
 **What a View must do when there is nothing to draw** (Q6). It must show text
 in its rectangle that states what is absent, and never leave it blank. The
@@ -122,9 +123,9 @@ minimum size hint (`app/view_registry.py`). The container holds the Area at
 that size wherever the layout can give it. Where the layout cannot, the
 container hides the View and shows a notice stating the size the View needs
 and the size the Area has (`layout/sizing.py`). So a View never has to draw
-itself in less than it asked for, and is never clipped. Where a Workspace
-pins a View to one run, that binding is left to `PL-7Z84`. Until then, every
-View draws every displayed run.
+itself in less than it asked for, and is never clipped. A Workspace that
+pins a run draws that run alone, in every one of its Views (`PL-7Z84`).
+Every other Workspace's Views draw every displayed run.
 """
 
 from __future__ import annotations

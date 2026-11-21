@@ -939,10 +939,12 @@ def _time_bookmark_standing(
     4. **The cap**, then **the failure**, then **still running**.
 
     The cap outranks the failure when a run has both, because the cap came
-    first. `SimulationController.advance` takes no step on a stopped run. So a
-    run that is at the cap and has failed was failed by a setting made *after*
-    it had already run out of supported time. The cap is then what the mark
-    went unreached within. The cap is also the more durable answer of the two.
+    first. `SimulationController.advance` takes no step on a stopped run, and a
+    stopped run refuses every setting (`PL-3B34`). So a run that is at the cap
+    and has failed met its error *after* it had already run out of supported
+    time, from something other than a step or a setting, such as a frame that
+    the dashboard could not draw. The cap is then what the mark went unreached
+    within. The cap is also the more durable answer of the two.
     A mark that the cap leaves ahead of the clock lies past the last instant a
     run at this step can stand on, so the fresh run that a reset would give
     also stops short of it. A mark that is merely unreached before a failure
