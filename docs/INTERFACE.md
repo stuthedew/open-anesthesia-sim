@@ -6113,7 +6113,9 @@ total of stored agent (`stored_agent_l`).
 Each spelling of an amount's unit is defined once, in `app/display_units.py`
 (`DisplayUnit`). Whoever writes the first View to print a spelling adds it
 there. Every View reads its spellings from that file and defines none of
-its own.
+its own (`test_no_agent_amount_unit_is_spelled_outside_the_units_module`). The
+agent-accounting panel's caption and the "L" beside each of its amounts are
+one member of that file.
 
 The empty bar at a run's start is there because computing a share would then
 divide by zero, and six zeros would look like real shares.

@@ -136,13 +136,12 @@ DISCARD_REFUSED_CONFIRM_LABEL: Final = "Discard them"
 DISCARD_REFUSED_KEEP_LABEL: Final = "Keep them"
 
 #: The label of the View's unit selector, and the name of each unit in it, in
-#: the order `AGENT_COST_VIEW_UNITS` lists them. The wording is a placeholder.
+#: the order `AGENT_COST_VIEW_UNITS` lists them. Each name is the unit written
+#: in full, read from its `DisplayUnit` member (`PL-2TWX`). The wording is a
+#: placeholder.
 UNIT_CHOICE_LABEL: Final = "Show as"
 UNIT_CHOICES: Final[tuple[tuple[AgentAmountUnit, str], ...]] = tuple(
-    (unit, name)
-    for unit, name in zip(
-        AGENT_COST_VIEW_UNITS, ("millilitres of liquid", "litres of vapour"), strict=True
-    )
+    (unit, AGENT_AMOUNT_UNIT_DISPLAY[unit].recorded) for unit in AGENT_COST_VIEW_UNITS
 )
 
 

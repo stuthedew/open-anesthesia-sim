@@ -84,6 +84,7 @@ from types import MappingProxyType
 from typing import Final
 
 from anesthesia_sim.app.currency_code import is_currency_code
+from anesthesia_sim.app.display_units import DisplayUnit
 from anesthesia_sim.app.formatting import AgentAmountUnit
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES
@@ -201,7 +202,8 @@ class AgentPrice:
 
         require_positive_finite(f"the {self.agent_id} bottle price", self.bottle_price)
         require_positive_finite(
-            f"the {self.agent_id} bottle volume in millilitres of liquid", self.bottle_volume_ml
+            f"the {self.agent_id} bottle volume in {DisplayUnit.AGENT_LIQUID_MILLILITRES.recorded}",
+            self.bottle_volume_ml,
         )
 
         if not isinstance(self.currency, str):

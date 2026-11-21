@@ -874,9 +874,12 @@ ACCOUNTING_WITHHELD_DETAIL_TEXT: Final = "No frame has been drawn since the run 
 # panel's minimum size. Each line fits in the width the panel had before the
 # condition was added, so the panel's column, and the plot beside it, keep
 # their width. The wording is a placeholder, but the condition
-# and its effect on the stored amount must be on screen.
+# and its effect on the stored amount must be on screen. The unit's name is
+# read from its `DisplayUnit` member (`PL-2TWX`).
+_ACCOUNTED_UNIT_IN_FULL: Final = DisplayUnit.ACCOUNTED_AGENT_LITRES.recorded
 ACCOUNTING_UNIT_CAPTION: Final = (
-    f"Litres of equivalent pure agent gas,\nat {REFERENCE_CONDITION_LABEL}.\n"
+    f"{_ACCOUNTED_UNIT_IN_FULL[:1].upper()}{_ACCOUNTED_UNIT_IN_FULL[1:]},\n"
+    f"at {REFERENCE_CONDITION_LABEL}.\n"
     f"{BODY_STORES_CONDITION_LINES}"
 )
 #: The names of the panel's five amount lines, in the order the panel shows them.
