@@ -36,19 +36,10 @@ and if it does not, find what generates the work (`PL-04KR`, `PL-WXKD`).
 mechanism is built**, unless the owner asks. Fixing a generator or a defect
 needs no lift. `.claude/skills/docket/modes/triage.md` has the full rule.
 
-**Product focus, from 2026-09-25** (project owner, 2026-09-25, ratified, over
-a fix batch before the switch and over working each root cause in the owner's
-own sessions, `PL-2866`). A session given no particular work is a product
-session, and picks from `bin/docket next product`. An apparatus finding stops
-one only when it blocks it: a hard gate refusing correct work, a state answer
-that would lose or duplicate work, or a gap in a safety-floor guard. Any other
-is captured as always and the product item finished. Root causes are worked in
-parallel by the Projects trial's coordinator (`PL-NZC0`) while that trial runs,
-not in the owner's sessions. A product session that finds one
-while the trial is paused ends its reply with a ready-to-paste prompt for a
-fresh session on it, as the generator rule below says (`PL-0GWD`). It holds until the owner
-ends it. Ending it deletes this paragraph and `docket.toml`'s `focus` key, which
-points the digest's `Top:` line at the product lane (`PL-2CPD`).
+**Product focus, from 2026-09-25.** A session given no particular work picks
+from `bin/docket next product`. An apparatus finding stops it only when it
+blocks it: a hard gate refusing correct work, a state answer that would lose or
+duplicate work, or a gap in a safety-floor guard.
 
 ## Working with the project owner
 
@@ -190,12 +181,6 @@ None of them overrides the safety-critical verification requirements below.
   the Bash tool's `run_in_background`, never with `nohup`, a trailing `&` or
   `setsid`. Before ending a turn to wait, schedule a `send_later` check-in.
   After a gap, run `uptime` before trusting that a run is still going.
-- **Fill a long wait with work** (project owner, 2026-10-25, ratified, over
-  leaving the coordinator to notice an idle thread). Before a thread goes idle
-  on a wait expected to last more than an hour, it runs `bin/docket next` in
-  its lane and takes any ready item inside the scope it was given. If there
-  is none, it tells the coordinator, so that the place can be filled
-  (`PL-D1FD`).
 
 ## Prefer deterministic tooling over repeated model work
 
@@ -310,15 +295,7 @@ risk and the reward, and stop. Report in a line what the fast path did.
   line may stay (project owner, 2026-09-24, restating `PL-B11M`).
 - **Commit and push as you go, and read the `pull-request` skill before
   opening, arming, updating or merging a pull request, or acting on a failed
-  check** (project owner, 2026-08-31; moved to
-  `.claude/skills/pull-request/SKILL.md` on 2026-10-24, `PL-S2NL`). The
-  container is ephemeral, so an uncommitted thought is one interruption from
-  gone and an unpushed commit dies with it. Once the owner has approved a piece
-  of work, its pull request opens as soon as the work is finished and green,
-  without asking. That standing request is the explicit ask the web harness
-  waits for. The skill holds when a pull request arms, when to bring `main` in,
-  when failed checks stop the session, and how to check a published body. The
-  push and pull request hooks name it at those moments.
+  check.** Approved work that is green opens its pull request unasked.
 - **Read only means read only** (`PL-LK62`). Told "read only", or anything
   meaning look but change nothing, a session writes nothing until the owner
   lifts it: no file, commit, push, pull request, comment, claim or merge. What

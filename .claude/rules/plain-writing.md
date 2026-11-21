@@ -86,14 +86,7 @@ after it is written, `PL-J1ZM`).
    way to a colleague? Fix what fails, and recommend a text to the project
    owner only after this check (project owner, 2026-11-11, `PL-J1ZM`).
 
-**A pull request title names the change plainly and briefly.** The title
-becomes the squash commit's subject, the one line of `main`'s history that a
-reader sees for the change. After the item ids that the `pr-title` check
-requires, write a short phrase rather than a whole sentence: what the change
-does, to what, and the reason when it fits. Use names a reader of the
-repository already knows, such as a CI job, a check or a panel, not a term
-coined while building the change. Give each number the thing it counts. When a
-branch closes several items, name what they change together.
+The `pull-request` skill says how to write a pull request's title and body.
 
 **Match the code around you, not its prose.** Copy the structure, naming and
 idiom of the code you are working in. Much of the existing prose here breaks
@@ -134,10 +127,3 @@ an id was put and what each new item holds are in the item.
 > 3. Press Tab in the app on your Mac and tell me whether Start shows a focus
 >    mark. That settles PL-CXYV (the run buttons' missing pressed and focus
 >    states).
-
-**A pull request body.** `.claude/skills/pull-request/SKILL.md` § "Write the
-title and body" has two.
-
-**A pull request title.** The project owner chose this one, on `#1523`, on
-2026-10-17: "PL-ZWQS: rebalance the CI test split to offset part 1's lint
-steps". It names the change, what it changes and why.
