@@ -125,27 +125,11 @@ these rules, "phases," or "closed loops" in the output itself.
       blast radius is one document's phrasing, one internal structure or one
       item's disposition is yours to decide. Where one specific point needs
       them, ask that point rather than handing over the decision around it.
-    - The block is a handover, not a store. It is carried in
-      `post_turn_summary.needs_action`, which a later session reads from the
-      `RUNNING` and `IDLE` rows alone, so archiving this session deletes every
-      outstanding request in it silently — `v0.3.8` sat untagged for hours that
-      way, and was caught only because a second session happened to raise the
-      same thing (`PL-H1JD`). So a line that could reasonably outlive this
+    - The block is a handover, not a store. A line that could outlive this
       sitting is `bin/docket new "..."` as well, and the block then points at
-      the item, though a list of remote branches to delete stays in the reply,
-      per the docket skill's housekeeping mode. Name a branch there only when
-      `python3 tools/branch_sweep.py` lists it under "Kept" with a reason other
-      than its grace period, and it should go anyway. A branch GitHub already
-      deleted, or one kept only by the grace period, is never named, because
-      nothing is left for the owner to do (`PL-TL6T`). That is `CLAUDE.md`'s capture rule
-      reaching the closing block, not a new obligation of its own. A line the
-      reader acts on in this sitting — a decision this reply waits on, a tag to
-      run now — needs nothing. Where the line asks them to decide something
-      **an item
-      already holds**, that item is the instrument and `bin/docket new` is
-      not: write your recommendation into its brief beside the question, and
-      mark it, before the block points at it. A reply is the one carrier
-      certain to be gone when the answer comes (`PL-M21Q`).
+      the item. Where the line asks them to decide something **an item already
+      holds**, write your recommendation into its brief beside the question,
+      and mark it, before the block points at it (`PL-M21Q`).
     - Where several lines are one problem, say so and name the group. A reader
       tracks problems, not ids. Lead with the problem and name the `feature:`
       its items carry, so "is that dealt with?" has a command behind it —
@@ -169,31 +153,9 @@ these rules, "phases," or "closed loops" in the output itself.
       a memory to recall. Do this for anything asserted about external state
       anywhere in a reply, not only in this block. Say what the check showed
       when it changes the answer, rather than quietly dropping the item.
-    - Before recommending repository work - an item to start, or work that
-      carries no item id - check whether another session is already on it or
-      has asked for it. Every in-flight guard this project has reads a claim
-      on a *pushed* ref, so an item is invisible to all of them until its
-      session has claimed it and pushed the claim (`PL-0HPV` was reported
-      unstarted twenty minutes into another session's run, `PL-7TVT`), and a
-      release cut, a tag, a merge or a branch deletion has no id until somebody
-      starts it. Two
-      sessions cut v0.3.7 within the hour that way and the second was
-      discarded at the merge (`PL-66FP`, two sessions cut the same release
-      independently). One call answers it — `list_sessions` from the
-      `claude-code-remote` MCP server (`mine: true`, `limit: 8`) — whose
-      `post_turn_summary.needs_action` carries each session's own closing
-      block, written by the harness rather than by a rule anybody has to
-      follow, and cleared when a session is archived. Read the `RUNNING` and
-      `IDLE` rows; where one already asks for what you were about to, name
-      that session instead of repeating the request. It warns and never
-      certifies: the match is a judgment on another model's prose, a session
-      still mid-turn has not written its line yet, and two closing in the same
-      minute still collide. Finding nothing means nothing; finding something
-      is decisive. `list_sessions` lists no Projects thread (measured
-      2026-09-25): those, tagged `hearth-thread`, are left out with or without
-      `mine`, and the `tags` filter is refused inside a session. So while
-      `PL-NZC0`'s Projects trial runs, triage and start nothing its Order list
-      reserves (`PL-DR3G`).
+    - Before recommending repository work, check whether another session is
+      already on it or has asked for it, as the `docket` skill's picking mode
+      says. Name that session instead of repeating the request.
 
 15. CLOCK TIMES IN CENTRAL. Give every clock time in a reply, and the date
     beside it, in US Central (`America/Chicago`), marked CDT or CST as that

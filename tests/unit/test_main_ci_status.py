@@ -13,7 +13,7 @@ reader to skim the region a real advisory appears in. So the silence cases
 outnumber the speaking ones here deliberately.
 
 `fetch_runs` and the `git` call are substituted rather than a server or a
-repository built, matching `test_branch_id_check.py`: what is under test is the
+repository built: what is under test is the
 reading of a response and the decision to speak, not urllib and not git.
 Nothing here touches a network.
 
@@ -862,7 +862,7 @@ def _timed_job(seconds: float, conclusion: str = "success", name: str = "checks-
                 "completed_at": _stamp(end),
             },
             {
-                "name": "Run uv run python tools/branch_id_check.py",
+                "name": "Run uv run python tools/doc_check.py check",
                 "conclusion": "success",
                 "started_at": _stamp(end),
                 "completed_at": _stamp(end + timedelta(seconds=1)),

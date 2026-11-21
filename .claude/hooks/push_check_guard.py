@@ -5,16 +5,17 @@ often turn a pull request red on something `make check` already refuses
 locally. It denies the push while any of them fails (`PL-PLSJ`, `PL-S1BG`,
 `PL-3JG7`).
 
-**Why these three and why here.** `PL-JYJJ`'s census counted 391 red runs; 32
-were `doc_check` and 8 `branch_id_check`, rising week on week, and every one
+**Why `doc_check` and the store check, and why here.** `PL-JYJJ`'s census
+counted 391 red runs; 32 were `doc_check`, rising week on week, and every one
 in a 15-log sample was the branch's own text - an item quoting `start.md` by
-bare name, a path that does not exist, a branch no item id names. `PL-1BGP`
-then sorted its 43 store-rule runs: 40 were the branch's own, and `make
-check`'s `bin/docket check` refuses all 40.
-So each went out without `make check`, most often on the capture path, which
-is kept cheap on purpose. Run side by side the three take about as long as
-`doc_check` alone, 11 s, and cost no tokens; a red run costs a session a fix
-cycle. The store check compares against the default base `docket.vcs` names -
+bare name, a path that does not exist. `PL-1BGP` then sorted its 43 store-rule
+runs: 40 were the branch's own, and `make check`'s `bin/docket check` refuses
+all 40. So each went out without `make
+check`, most often on the capture path, which is kept cheap on purpose. Run
+side by side the two take about as long as `doc_check` alone, 11 s, and cost
+no tokens; a red run costs a session a fix cycle. A third check ran here until
+`PL-HS2T` retired it, with its tool, on 2026-11-21: one that refused a branch
+no item id names. The store check compares against the default base `docket.vcs` names -
 `origin/main` here, the ref `make check` spells - as of the last fetch, and
 never fetches, so a push never waits on the network. The other 2 of those 43 runs
 were `main`'s, on one day and from one cause `tools/pr_record_check.py` has
@@ -29,8 +30,8 @@ hook runs, and four checks it did not run were behind 22 of those 26:
 them one branch pushing again past the same failure),
 `tools/fixture_id_check.py` (4) and `tests/unit/test_line_splits.py` (3).
 They cost the push no time. In a four-CPU session container on 2026-10-26,
-the first three took 61 s side by side, bounded by `doc_check` alone at 59 s,
-and all seven took 61 s. The four run under the tree's `.venv/bin/python`,
+the three that ran then took 61 s side by side, bounded by `doc_check` alone
+at 59 s, and all seven took 61 s. The four run under the tree's `.venv/bin/python`,
 the interpreter `make check`'s `uv run` uses, because `fixture_id_check`
 parses `src/`, whose Python 3.14 syntax the bare `python3` running this hook
 need not read.
@@ -67,14 +68,12 @@ tree, so an uncommitted edit counts. Each runs from that tree's own copy of
 its script, and is skipped in a tree without one. The four that need the
 project's interpreter are skipped in a tree without `.venv/bin/python` too.
 A push sends an uncommitted edit only once it is committed, so where a check
-that reads the tree fails in a tree `git status` shows changes in, the
-refusal says so and how to settle which tree was meant. `branch_id_check`
-reads the history, where no uncommitted edit can be the cause (`PL-GR0L`).
+fails in a tree `git status` shows changes in, the refusal says so and how to
+settle which tree was meant (`PL-GR0L`).
 
 **Known gaps**, each costing a push CI would then catch, never a false
-refusal of a clean tree: in `git commit ... && git push` the hook runs before
-the commit, so `branch_id_check` reads the history without it; a push of a
-branch other than the one checked out is read as the checked-out one; and a
+refusal of a clean tree: a push of a branch other than the one checked out is
+read as the checked-out one; and a
 `cd` or `-C` built from a variable, `--git-dir` or `--work-tree`, and a push
 inside `bash -c "..."` are not followed, so they are let through unchecked.
 
@@ -123,16 +122,6 @@ SENDS_NOTHING = frozenset(("--delete", "--dry-run"))
 # The assignment ahead of `git push` that skips the checks for a
 # work-in-progress push, and leaves the `pre-push` git hook to run (`PL-5R11`).
 SKIP_CHECKS = "PUSH_CHECKS=skip"
-READS_THE_TREE = frozenset(
-    (
-        "doc_check",
-        "docket check",
-        "workflow_paths_check",
-        "fixture_id_check",
-        "type_ignore_check",
-        "line-split tests",
-    )
-)
 # The interpreter of the project, relative to the top of the tree: the one
 # that the `uv run` steps of `make check` run under (`PL-3JG7`).
 PROJECT_PYTHON = ".venv/bin/python"
@@ -159,7 +148,6 @@ def checks() -> tuple[tuple[str, tuple[str, ...]], ...]:
     """
     return (
         ("doc_check", ("python3", "tools/doc_check.py", "check")),
-        ("branch_id_check", ("python3", "tools/branch_id_check.py")),
         ("docket check", ("bin/docket", "check", "--no-fetch")),
         ("workflow_paths_check", (PROJECT_PYTHON, "tools/workflow_paths_check.py")),
         ("fixture_id_check", (PROJECT_PYTHON, "tools/fixture_id_check.py")),
@@ -417,9 +405,9 @@ def decide(payload: str) -> str:
             rerun = " ".join(argv)
             report = "\n".join(part for part in (out.rstrip(), err.rstrip()) if part)
             refusals.append(f"`{name}` failed (`{rerun}` re-runs it):\n\n{excerpt(report)}")
-            if name in READS_THE_TREE:
-                readers.add(name)
-                read_trees.add(top)
+            # Every check reads the working tree, so uncommitted work may be the cause.
+            readers.add(name)
+            read_trees.add(top)
     unchecked = unfinished_note(unfinished)
     if not refusals:
         if not trees:

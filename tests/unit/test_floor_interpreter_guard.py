@@ -96,11 +96,11 @@ ALLOWED = (
     "uv run pytest tests/unit/test_app_metadata.py",
     ".venv/bin/python -m compileall src/",
     # The CI floor section runs these bare on purpose, and `make check` runs
-    # `branch_id_check.py` bare too; the floor promise is exactly that they keep
+    # `rules_paths_check.py` bare too; the floor promise is exactly that they keep
     # working this way. `doc_check` names what it cannot parse there and
     # declines, rather than failing.
     "python3 tools/doc_check.py check",
-    "python3 tools/branch_id_check.py",
+    "python3 tools/rules_paths_check.py",
     "python3 -m compileall tools/",
     # Named by path, which is how the floor failure is reproduced deliberately.
     "/usr/bin/python3.11 -m compileall src/",

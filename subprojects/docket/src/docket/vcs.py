@@ -175,8 +175,7 @@ def unresolved_base_cause(base: str) -> str:
     happened, because the reader picks a remedy from it (`PL-27VL`). Where no
     candidate resolved, `default_base` returns the `GUESSED_BASE` singleton,
     so identity tells it apart from a name that resolved after git left a
-    candidate ahead of it unanswered. Both declines that print this, `bin/docket
-    verify` and `tools/branch_id_check.py`, read it here so they cannot drift.
+    candidate ahead of it unanswered. `bin/docket verify`'s decline prints this.
     """
     tried = ", ".join(DEFAULT_BRANCHES)
     if base is GUESSED_BASE:
@@ -605,7 +604,7 @@ class GitCall:
     none, and `tools/left_behind_check.py` the exit status and stderr to name a
     decline by. Before `PL-S9JK` each tool ran git itself and decided those
     three on its own: on `git show HEAD:no/such/file`, exit 128, `_run_git` read
-    an answer and `tools/branch_id_check.py` none; on a stdout that is not text
+    an answer and one tool none; on a stdout that is not text
     here, two tools raised `UnicodeDecodeError` where two others declined; and
     past its bound one gave up after 1,800 seconds where another waited for ever.
     """
@@ -1357,11 +1356,10 @@ class FlightReport:
     #: such ref and a line about it therefore appearing in every session for as
     #: long as it existed; `PL-JX2T` closed it, the branch is gone, and on
     #: 2026-09-14 none of the remote's ten non-default heads is unattributed.
-    #: `tools/branch_id_check.py` is what holds that: it fails a `claude/*`
-    #: branch of one's own that names no id. So the steady state is empty by
-    #: construction and there is nothing for an age, a push-date floor or an
-    #: allow-list to suppress. Should a line start appearing that nobody acts
-    #: on, `CLAUDE.md`'s retirement test governs this like any other check.
+    #: A CI check refused a `claude/*` branch that names no id until `PL-HS2T`
+    #: retired it on 2026-11-21, so this report is now where such a branch
+    #: shows. Should a line start appearing that nobody acts on, `CLAUDE.md`'s
+    #: retirement test governs this like any other check.
     unattributed: tuple[str, ...] = ()
     #: Refs that have edited an item's file without claiming to work it, for
     #: the items no `Branch` already accounts for. Disjoint from `branches` by
@@ -3048,9 +3046,9 @@ def default_base(root: Path, *, runner: Runner | None = None) -> str:
     wrap one then decline with the cause rather than with whichever call git
     happened to refuse afterwards.
 
-    The two callers that pass no wrapped runner - `cli`'s `verify` and
-    `tools/branch_id_check` - read `resolved` directly, which is the whole of
-    what `PL-29HL` asked for before it was folded in here.
+    A caller that passes no wrapped runner, as `cli`'s `verify` does, reads
+    `resolved` directly, which is the whole of what `PL-29HL` asked for before
+    it was folded in here.
     """
     run = runner or _run_git
     silenced = False
@@ -5482,12 +5480,12 @@ def _item_blobs(ref: str, root: Path, items_dir: str, run: Runner) -> dict[str, 
     holding a byte above 0x7f, a tab, `"` or `\\` (`PL-4YDJ`).
 
     **This is the one listing of the item files at a ref** (`PL-86H3`).
-    `_items_at` is its path half, and `claims`, `claiming`, `verify`,
-    `tools/pr_title_check.py` and `tools/branch_id_check.py` read it rather
-    than listing the tree again. A file is an item only where it sits directly
-    in the store, since `store.read_items` reads no subdirectory. Before this,
-    the recursive read here counted a file under `docs/items/sub/` as an item
-    and the one-level reads beside it did not.
+    `_items_at` is its path half, and `claims`, `claiming`, `verify` and
+    `tools/pr_title_check.py` read it rather than listing the tree again. A file
+    is an item only where it sits directly in the store, since
+    `store.read_items` reads no subdirectory. Before this, the recursive read
+    here counted a file under `docs/items/sub/` as an item and the one-level
+    reads beside it did not.
     """
     directory = items_dir.strip("/")
     found: dict[str, tuple[str, str]] = {}

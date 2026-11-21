@@ -1,46 +1,31 @@
-"""Emit `docs/dead-ends.md`'s entries into session context, and hold them to a budget.
+"""Print `docs/dead-ends.md`'s entries for the session-start digest.
 
-Two subcommands, and the split between them is the whole design.
+`emit` is the one subcommand. It prints the entry lines and nothing else.
+`.claude/hooks/docket-digest.sh` calls it at session start, and a
+`SessionStart` hook's output is resent on every turn for the life of the
+session, so every session pays for what `emit` prints on every turn. The
+file's preamble is instructions for somebody adding an entry. A session
+reading the entries never needs it, so it is not printed and not budgeted.
+The file can therefore explain itself at any length while the always-loaded
+half stays small.
 
-`emit` prints the entry lines and nothing else. `.claude/hooks/docket-digest.sh`
-calls it at session start, and a `SessionStart` hook's output is resent on
-every turn for the life of the session - so what `emit` prints is paid once per
-turn, by every session, forever. The file's preamble is instructions for
-somebody *adding* an entry; a session reading the entries never needs it, so it
-is not emitted and not budgeted. That separation is the point: the file may
-explain itself at whatever length is useful, and the always-loaded half stays
-small.
+**The budget is 30 entries and 4,000 bytes of printed text, and a test
+enforces it.** `tests/unit/test_dead_ends.py` fails when the shipped file
+reaches `NUDGE_FRACTION` of either number, so a session that adds an entry
+makes room for it in the same commit. A larger budget is the owner's decision,
+put to them with its cost, and only once every entry has to stay resident
+(`PL-5J1S`). The section under `RETIRED` is not printed and not budgeted.
 
-`check` reports two different things, and the split is deliberate. A
-*structural* fault fails the build: an entry citing an id that resolves to
-nothing, an entry wrapped across two lines, or a bullet opening like an entry
-that `ENTRY` cannot read. All three are silent otherwise - a dangling id leaves
-a claim with no reasoning behind it, a wrapped entry is two lines in the file
-and one in the digest, or, carried on from the margin, a line nothing can place
-in an entry (`PL-F5B9`), which the digest can only name in the entry's place
-(`PL-DQ9C`), and an unreadable one is never emitted at all (`PL-QFFF`).
-
-**Size never fails, and that is a decision rather than laxity.** Going over
-budget does not make a commit on an unrelated task wrong, and a red gate that
-blocks one is how a session learns to raise the cap just to get moving. It
-warns instead, in two bands. `tests/unit/test_dead_ends.py` keeps the shipped
-file below the nudge, so a session that adds an entry makes room for it in the
-same commit. A larger budget is the owner's decision, put to them with its
-cost, and only once every entry has to stay resident (`PL-5J1S`).
-
-**An entry leaves only for a place that still stops its approach** (`PL-5J1S`).
-With `--base`, `check` reads the file at the merge base and fails on an entry
-that is gone from the list without a record of where it went. The record is
-one of four places. The entry's bolded title, or an id it cites, can appear in
-another live entry, which is a merge. It can appear in a path-scoped rule under
-`.claude/rules/`, a file with `paths:` frontmatter, which loads where the
-approach would be built. An id it cites can appear in the code under
-`CATCHER_CODE`, where a check refuses the approach or a docstring explains why
-it fails. Or its title or an id can appear in the retired section below
-`RETIRED`, beside the reason its question no longer exists. The retired
-section is not emitted and not budgeted. This decides only that a named place
-exists. Whether that place still stops the approach is judgment, which the
-grooming pass in `.claude/skills/docket/modes/triage.md` re-tests.
+**Nothing checks an entry's format.** A `check` subcommand ran in `make check`
+and CI from `PL-NB35` until 2026-11-21. It refused an entry citing an id that
+no item holds, an entry wrapped onto a second line, a bullet that opens like
+an entry and is not in an entry's shape, and an entry removed with no record
+of where it went. `PL-LY24` counted no refusal from it in CI, and `PL-8F5B`
+removed it. `emit` still prints a line naming an entry that a line carries on
+from the margin (`PL-DQ9C`). A bullet that opens like an entry and that
+`ENTRY` cannot read is not printed, and nothing reports it. `docs/dead-ends.md`
+states the rules for editing the list, and the grooming pass in
+`.claude/skills/docket/modes/triage.md` re-tests each entry.
 
 **Why the entries are resident at all, which is the load-bearing choice here.**
 Not because records like this go unread - that argument comes from human
@@ -86,23 +71,6 @@ session could plausibly propose that approach again, so one whose code or
 design question no longer exists comes out. Reaching the nudge band means that
 pass is due.
 
-**What is decided here is arithmetic, and only arithmetic.** Entry count,
-emitted bytes, one line per entry, and that every `PL-` id an entry cites
-resolves to a real item. Whether an approach *deserves* a line - whether a
-future session would plausibly propose it again, which is the file's own
-admission test - is judgment, and a tool guessing at it would be the "worse
-than no tool" case `CLAUDE.md` names: its output would look authoritative and
-would not be. The file states that test in prose for a reader; this refuses
-only what a reader cannot see at a glance.
-
-**Why a dangling id is an error rather than an advisory.** An entry's whole
-retrieval path is `bin/docket show <id>`. An id resolving to nothing leaves a
-claim with no reasoning behind it, in a file every session reads and no session
-can check - strictly worse than the entry not being there. The tree answers the
-question outright, so there is no reading under which a dangling id is
-intended. Same argument `tools/rules_paths_check.py` makes for a `paths:` glob
-pointing at nothing.
-
 Standard library only, and parses at the floor
 `tests/unit/test_tools_portability.py` holds this directory to.
 """
@@ -112,52 +80,41 @@ from __future__ import annotations
 import argparse
 import re
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
-from docket.config import load as load_config  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
 from docket.roadmap import document_entry_lines  # noqa: E402
-from docket.store import CITED_ID_RE  # noqa: E402
-from docket.vcs import ITEM_FILE_RE, answered, call_git, tracked_under  # noqa: E402
 
 DEAD_ENDS = ROOT / "docs" / "dead-ends.md"
 
 #: The heading of the section that records retired entries. A bullet below it
 #: names an entry that left the list and why its question no longer exists. It
-#: is held to an entry's shape but is not emitted and not budgeted (`PL-5J1S`).
+#: is not emitted and not budgeted (`PL-5J1S`).
 RETIRED = "## Retired"
 
-#: The code trees where an id an entry cites counts as its new place: a check
-#: that refuses the approach, or a docstring a session building it must read.
-CATCHER_CODE = ("tools", "subprojects/docket/src", "src")
-
 # Both budgets bind, and they bind in different directions: many short entries
-# trip the count, one essay trips the bytes. Neither fails the build; both
-# warn, and both warn at NUDGE_FRACTION before they are reached.
+# reach the count, and one essay reaches the bytes.
 MAX_ENTRIES = 30
 MAX_EMITTED_BYTES = 4000
 
-# The nudge band. Anthropic's own always-loaded index warns *near* its limit
-# rather than at it - "if the file is near a limit, Claude Code reminds Claude
+# The share of either budget that `tests/unit/test_dead_ends.py` keeps the
+# shipped file below. Anthropic's own always-loaded index warns near its limit
+# and not at it - "if the file is near a limit, Claude Code reminds Claude
 # to shorten it: keep one line per entry, move detail into topic files, and
-# merge or drop stale entries" - which is the property that matters, because a
-# decision forced at the cap is taken by whoever happens to trip it, mid-task,
-# with no slack to think.
+# merge or drop stale entries" - because a decision forced at the cap is taken
+# by whoever happens to reach it, mid-task, with no slack to think.
 NUDGE_FRACTION = 0.8
 
 # regex: an entry is this file's own fixed line syntax: a bullet, a bold title, a dash and a reason.
 ENTRY = re.compile(r"^- \*\*(?P<what>.+?)\*\* [-—] (?P<why>.+)$")
 #: What an entry opens with, before its title is known to close: a bullet and a
-#: bolded approach. A bullet opening this way is held to the entry's rules even
-#: where its title wraps (`PL-F5B9`), and is refused where `ENTRY` cannot read
-#: it (`PL-QFFF`), so it cannot leave the digest unreported. Every bullet form
-#: CommonMark 0.31.2 opens (§ 5.2) counts - a dash, a plus or a star, after up
-#: to three spaces - though `ENTRY` reads only the dash at the margin, so any
-#: other form is refused by name rather than dropped (`PL-K02Q`).
+#: bolded approach. A bullet opening this way is read as one entry even where
+#: its title wraps (`PL-F5B9`). Every bullet form CommonMark 0.31.2 opens
+#: (§ 5.2) counts - a dash, a plus or a star, after up to three spaces - though
+#: `ENTRY` reads only the dash at the margin, so no other form is printed.
 # regex: this finds the opening of an entry, a bullet and a bold run, wherever the title goes on to
 # wrap.
 OPENING = re.compile(r"^ {0,3}[-+*] \*\*")
@@ -207,33 +164,6 @@ def _live_bullets(text: str) -> list[tuple[int, int, str, int]]:
     return [bullet for bullet in _bullets(text) if bullet[0] < cut]
 
 
-def entries(text: str) -> list[tuple[int, str]]:
-    """Return `(line number, text)` for every bullet that is an entry, read whole.
-
-    An entry is a top-level bullet opening with a bolded approach. Prose
-    bullets in the preamble are not entries, are not emitted, and do not count
-    against either budget. An entry's text is the whole bullet, its wrapped
-    lines joined. A bullet a line carries on from the margin is none, since the
-    walker reads it short: `emitted` names it in its place and `check` refuses
-    the line (`PL-DQ9C`). A bullet in the retired section is not an entry.
-    """
-    return [
-        (number, joined)
-        for number, _, joined, lazy in _live_bullets(text)
-        if not lazy and ENTRY.match(joined)
-    ]
-
-
-def retired(text: str) -> list[tuple[int, str]]:
-    """Return `(line number, text)` for every entry-shaped bullet in the retired section."""
-    cut = _retired_from(text)
-    return [
-        (number, joined)
-        for number, _, joined, lazy in _bullets(text)
-        if number > cut and not lazy and ENTRY.match(joined)
-    ]
-
-
 def _printed(text: str) -> list[str]:
     """The lines the digest prints under its header, in the file's order.
 
@@ -255,257 +185,25 @@ def _printed(text: str) -> list[str]:
 
 
 def emitted(text: str) -> str:
+    """What `emit` prints for the file `text`: the header and each line, or nothing."""
     lines = _printed(text)
     if not lines:
         return ""
     return "\n".join([HEADER, *lines])
 
 
-def known_ids() -> set[str]:
-    """Every id an item's file in the store carries, by `vcs.ITEM_FILE_RE`.
-
-    That is the reading every `docket` reader of the store's history makes of
-    a name. A split on hyphens stood here and took a file whose name carries
-    no slug for an item, under an id that kept its `.md` (`PL-5QG4`).
-
-    The store is where `docket.toml` puts it, as docket reads it (`PL-WCHF`).
-    """
-    items = ROOT / load_config(ROOT).items_dir
-    return {
-        found.group(1) for path in items.glob("*.md") if (found := ITEM_FILE_RE.match(path.name))
-    }
-
-
-def budget(text: str) -> list[str]:
-    """Advisories about size. Never errors - see the module docstring for why.
-
-    Two bands, and the first is the one that does the work. At `NUDGE_FRACTION`
-    of either budget this names the headroom and the repairs, so the
-    decision about what to drop arrives while there is still slack. Over
-    budget it says what is now silently true - the emitted text is past what
-    the always-loaded half should carry - and still does not fail, because
-    nothing about being over it makes a commit on an unrelated task wrong.
-    """
-    advisories: list[str] = []
-    found = _printed(text)
-    size = len(emitted(text).encode("utf-8"))
-
-    over_bytes = size > MAX_EMITTED_BYTES
-    over_entries = len(found) > MAX_ENTRIES
-    near = size >= MAX_EMITTED_BYTES * NUDGE_FRACTION or len(found) >= MAX_ENTRIES * NUDGE_FRACTION
-
-    if over_bytes or over_entries:
-        advisories.append(
-            f"docs/dead-ends.md is over budget: {len(found)}/{MAX_ENTRIES} entries, "
-            f"{size}/{MAX_EMITTED_BYTES} emitted bytes. This text is resent on every turn "
-            f"of every session. Repairs, cheapest first: shorten an entry to one line, "
-            f"merge two related entries into one, move an entry a path-scoped rule can "
-            f"catch into that rule, or retire one whose question no longer exists. Never "
-            f"drop an entry with no record of where it went. When every entry must stay, "
-            f"bring the owner the cost of a larger budget: about one token per 4 bytes on "
-            f"every turn of every session."
-        )
-    elif near:
-        advisories.append(
-            f"docs/dead-ends.md is near budget: {len(found)}/{MAX_ENTRIES} entries, "
-            f"{size}/{MAX_EMITTED_BYTES} emitted bytes. Decide now while there is slack: "
-            f"shorten, merge, move an entry a path-scoped rule can catch, or retire one "
-            f"whose question no longer exists."
-        )
-
-    return advisories
-
-
-def check(text: str) -> list[str]:
-    """Structural errors only. Size is `budget()` above, and it never fails."""
-    problems: list[str] = []
-    found = entries(text)
-
-    ids = known_ids()
-    for number, line in [*found, *retired(text)]:
-        # The store's own grammar, so that "cites X, which is not an item" is
-        # refused on the same tokens `bin/docket check` calls ids (`PL-KYW3`).
-        for cited in CITED_ID_RE.findall(line):
-            if cited not in ids:
-                problems.append(
-                    f"docs/dead-ends.md:{number}: cites {cited}, which is not an item. "
-                    f"An entry's whole retrieval path is `bin/docket show {cited}`."
-                )
-
-    # A wrapped entry is emitted joined, but the one-line rule is what keeps the
-    # file and the digest the same text, and a line carrying an entry on from
-    # the margin is one the walker could not place at all: both are refused.
-    bullets = _bullets(text)
-    wrapped: set[int] = set()
-    for number, spanned, _, _ in bullets:
-        if spanned > 1:
-            wrapped.add(number)
-            problems.append(
-                f"docs/dead-ends.md:{number + 1}: continuation of the entry above. "
-                f"One line per entry - shorten it instead."
-            )
-    for number, _, _, lazy in bullets:
-        if lazy:
-            wrapped.add(number)
-            problems.append(
-                f"docs/dead-ends.md:{lazy}: continuation of the entry above, carried on "
-                f"from the margin. One line per entry - shorten it instead."
-            )
-
-    # `entries` keeps what `ENTRY` reads and discards the rest, so any other
-    # bullet opening like an entry would leave the digest with nothing said
-    # (`PL-QFFF`). A wrapped one is already refused above, and is not called
-    # unreadable too: rejoined, it may read.
-    for number, _, joined, _ in bullets:
-        if number not in wrapped and not ENTRY.match(joined):
-            problems.append(
-                f"docs/dead-ends.md:{number}: opens like an entry but is not in an entry's "
-                f"shape, `- **approach** — why`, so it is never emitted. Open it with a "
-                f"dash at the margin, and put nothing between the closing `**` and the dash."
-            )
-
-    return problems
-
-
-class BaseUnreadable(Exception):
-    """The file at the base could not be read, so no removal can be judged."""
-
-
-def read_base(root: Path, ref: str) -> str:
-    """The file's text at the merge base of `HEAD` and `ref`, or `""` where the base lacks it.
-
-    The merge base rather than `ref` itself, as `tools/contrast_check.py --base`
-    takes its diff, so an entry `ref` removed after this branch left it is not
-    counted as this change's removal.
-
-    Raises:
-        BaseUnreadable: git did not name a merge base, or would not show the file.
-    """
-    fork = call_git(["merge-base", "HEAD", ref], root)
-    commit = fork.answer.strip() if fork.code == 0 and answered(fork.answer) else ""
-    if not commit:
-        raise BaseUnreadable(f"git merge-base HEAD {ref}: {fork.reason}")
-    shown = call_git(["show", f"{commit}:{DEAD_ENDS.relative_to(ROOT).as_posix()}"], root)
-    if not answered(shown.answer):
-        raise BaseUnreadable(f"git show {commit[:12]}:docs/dead-ends.md: {shown.reason}")
-    return shown.answer
-
-
-@dataclass(frozen=True)
-class Catchers:
-    """The places outside the list where a departed entry may be recorded.
-
-    `rules` is the text of every path-scoped rule, read whole so that a moved
-    entry's bolded title is found in it. `code_ids` is every id the code under
-    `CATCHER_CODE` cites.
-    """
-
-    rules: str
-    code_ids: frozenset[str]
-
-
-def read_catchers(root: Path) -> Catchers:
-    """The path-scoped rules and the code ids this checkout holds, through `tracked_under`.
-
-    A rule counts only when `paths:` frontmatter scopes it, since a rule
-    without one is resident and would only move the entry's cost. The rule
-    files and that reading of their scope are `rules_paths_check`'s and
-    `doc_check`'s, imported here rather than at the top so that `emit`, which
-    the digest runs on every session start, does not load them.
-    """
-    from doc_check import is_path_scoped
-    from rules_paths_check import rule_files
-
-    rules = [
-        text
-        for path in rule_files(root)
-        if is_path_scoped(text := path.read_text(encoding="utf-8"))
-    ]
-    code_ids = {
-        cited
-        for tree in CATCHER_CODE
-        for path in tracked_under(root, tree, ".py")
-        for cited in CITED_ID_RE.findall(path.read_text(encoding="utf-8"))
-    }
-    return Catchers("\n".join(rules), frozenset(code_ids))
-
-
-def _identity(line: str) -> tuple[str, frozenset[str]]:
-    """An entry's bolded title and the ids it cites, which is how a departure is followed."""
-    found = ENTRY.match(line)
-    title = found.group("what") if found else line
-    return title, frozenset(CITED_ID_RE.findall(line))
-
-
-def departures(base_text: str, text: str, catchers: Catchers) -> list[str]:
-    """Each entry the base listed that left the list with no place recorded for it.
-
-    An entry has a place when its title or a cited id is in a live entry, its
-    title or an id is in a path-scoped rule or the retired section, or an id is
-    in the code. The module docstring says why each of the four counts.
-    """
-    live = [_identity(line) for _, line in entries(text)]
-    gone = [_identity(line) for _, line in retired(text)]
-    held_titles = {title for title, _ in [*live, *gone]}
-    held_ids = {cited for _, ids in [*live, *gone] for cited in ids}
-    problems: list[str] = []
-    for _, line in entries(base_text):
-        title, ids = _identity(line)
-        if title in held_titles or ids & held_ids:
-            continue
-        if f"**{title}**" in catchers.rules or any(cited in catchers.rules for cited in ids):
-            continue
-        if ids & catchers.code_ids:
-            continue
-        problems.append(
-            f"docs/dead-ends.md: the entry **{title}** left the list with no record of where "
-            f"it went. Move it into a path-scoped rule under .claude/rules/ that loads where "
-            f"the approach would be built, cite its id in the check or docstring that now "
-            f"refuses it, or list it under `{RETIRED}` with the reason its question no longer "
-            f"exists. If only its title was reworded, cite its item id in the entry so the "
-            f"rewording is followed."
-        )
-    return problems
-
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("emit", "check"))
-    parser.add_argument(
-        "--base",
-        help="with check: fail on an entry the file at this ref's merge base listed "
-        "that left with no record of where it went",
-    )
-    args = parser.parse_args(argv)
+    parser.add_argument("command", choices=("emit",))
+    parser.parse_args(argv)
 
-    if not DEAD_ENDS.exists():
-        # `emit` stays silent, so a checkout without the file starts cleanly -
-        # the same promise every other line of the digest hook makes.
-        if args.command == "emit":
-            return 0
-        print("docs/dead-ends.md: missing", file=sys.stderr)
-        return 1
-
-    text = DEAD_ENDS.read_text(encoding="utf-8")
-
-    if args.command == "emit":
-        out = emitted(text)
+    # Silent where the file is missing, so a checkout without it starts
+    # cleanly - the same promise every other line of the digest hook makes.
+    if DEAD_ENDS.exists():
+        out = emitted(DEAD_ENDS.read_text(encoding="utf-8"))
         if out:
             print(out)
-        return 0
-
-    for advisory in budget(text):
-        print(advisory, file=sys.stderr)
-
-    problems = check(text)
-    if args.base:
-        try:
-            problems += departures(read_base(ROOT, args.base), text, read_catchers(ROOT))
-        except BaseUnreadable as error:
-            problems.append(f"docs/dead-ends.md: --base {args.base} could not be read: {error}")
-    for problem in problems:
-        print(problem, file=sys.stderr)
-    return 1 if problems else 0
+    return 0
 
 
 if __name__ == "__main__":

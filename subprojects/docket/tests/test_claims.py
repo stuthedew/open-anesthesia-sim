@@ -1609,8 +1609,7 @@ def test_a_ref_whose_commits_went_unread_is_never_settled() -> None:
     assert settled_branches(Path("."), read, opened=lambda: ()).branches == ()
 
 
-# A work branch that claims nothing (`PL-FFR0`, moved here from
-# `tools/branch_id_check.py`, whose tests still hold its CI refusal).
+# A work branch that claims nothing (`PL-FFR0`).
 
 #: The queue as this repository's settings name it: the default has no notes file.
 QUEUE = Config(notes_file="docs/WORKING_NOTES.md")
@@ -1660,8 +1659,7 @@ def test_a_name_holds_only_an_item_a_copy_of_the_store_holds(tmp_path: Path) -> 
     `HTML` is in the alphabet, so `claude/fix-pl-html-export-abc123` carries
     `PL-HTML` by its position and names no item. The name holds nothing, the
     branch's unclaimed work is asked for its claim like any other, and its
-    leading id still attributes it. `PL-SN2T` gave `tools/branch_id_check.py`
-    the same rule.
+    leading id still attributes it.
     """
     repo = _Repo(tmp_path / "repo")
     repo.branch("claude/fix-pl-html-export-abc123")

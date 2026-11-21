@@ -164,8 +164,8 @@ still ordered by date, the session overtaken learning that only by reading
 from the `claude-code-remote` MCP server (`mine: true`) returns every session's
 title and its branch but a Projects thread's, including a session that has
 committed nothing at all — the window the two rules above leave open. For a
-thread, rule 14 in `.claude/rules/instruction-writing.md` says where the trial
-records what it will take. Scan the live ones for the id
+thread, `.claude/skills/docket/modes/picking.md` § "Check the other sessions
+before recommending work" says where the trial records what it will take. Scan the live ones for the id
 (`session_status` `RUNNING` or `IDLE`; archived and completed ones are finished
 work), in the title and in `external_metadata.current_branches` both, because
 either can carry it and neither reliably does.
@@ -310,11 +310,10 @@ otherwise:
   branch generated before the session started cannot be renamed; that is
   expected, and the commits carry the id instead. Leading
   every commit subject with the id is what attributes such a branch's work -
-  `tools/branch_id_check.py` and `flight`'s unattributed line read the
-  subjects, and an id buried mid-sentence does not count - but it holds
-  nothing: the `Claim:` trailer `bin/docket claim` wrote does. A `claude/*`
-  branch with work outside the queue and no claim is refused in CI and listed
-  as `unclaimed:` in `flight` (`PL-N162`).
+  `flight`'s unattributed line reads the subjects, and an id buried
+  mid-sentence does not count - but it holds nothing: the `Claim:` trailer
+  `bin/docket claim` wrote does. A `claude/*` branch with work outside the
+  queue and no claim is listed as `unclaimed:` in `flight` (`PL-N162`).
 
 **A `P0` is a hotfix.** Before feature work, on its own branch, with a patch
 version bump and a regression test. It joins no milestone list.
@@ -338,7 +337,9 @@ when it is recorded" says.
 item, not on reaching it** (project owner, 2026-09-16; re-anchored from the
 absolute reading to spend 2026-09-21, ratified, over a budget that is mostly a
 budget on the apparatus and moves whenever the resident set does). `CLAUDE.md`
-§ "Session and tool-use efficiency" keeps that sentence resident. A session
+§ "Session and tool-use efficiency" keeps the budget resident, in one line. Keep
+a session short and scoped to one topic; start a fresh one for an unrelated
+topic rather than continuing or compacting a long one. A session
 decides whether to keep going while it works, and no read comes before that
 decision. This section holds the procedure, which `PL-Z90G` moved here.
 
@@ -389,3 +390,61 @@ cut to it substitutes for resetting the session (`PL-H253`).
 
 After a reset, pick up cold from the session-start digest, `bin/docket next`
 and the one item being worked, not by reading the queue whole.
+
+## Fix a small defect in place
+
+`CLAUDE.md` § "The queue, and how the project owner works" keeps one line of
+this rule, which names the paths where a defect is always filed. A session can
+meet a defect before it loads this skill, so that line stays loaded at launch,
+and this section holds the rest (`PL-CYT1`).
+
+**Fix it in place, now.** The exemption that `CLAUDE.md`'s capture rule
+states — "not fixed in that same session" — opens for a small defect a session
+finds while
+building an item, wherever in the tree it finds it (project owner,
+2026-10-12, widening the door `PL-3MJH` built narrow on 2026-09-01; `PL-6B1Z`
+carries the count and the decisions). All four hold, or the finding is filed:
+
+1. **It is a defect, not a choice.** No reasonable person could prefer the
+   current state: a wrong answer against the code's own stated intent, a rule
+   this repository states, or plain fact. A rename, an extracted helper, a
+   check somebody might defend — that is a decision, and decisions are items.
+2. **It is small: one defect, one commit, with its regression test.** The
+   fix carries the test a code change owes under both standards and nothing
+   more; one that wants a second commit, reaches a second mechanism, or
+   leaves anything to come back to is an item.
+3. **It stays off the clinical floor and adds no read hold.** A defect in
+   `src/anesthesia_sim/core/`, `src/anesthesia_sim/data/`, `docs/MODEL.md` or
+   `docs/INTERFACE.md`,
+   or any finding the safety-critical standard reaches, is filed: the item is
+   what ranks it `P1`, offers it to the strongest model and stands as its
+   provenance. A fix that needs the owner's read (the `pull-request` skill
+   says which) is taken only where the branch already waits on that read, so a fix
+   never turns a pull request that would merge on green into one that waits
+   on the owner (project owner, 2026-10-12, ratified, over holding the pull
+   request for the read, and over opening the clinical paths with a
+   regression test).
+4. **No open item already describes it.** Then it is that item's: claim it
+   alongside and close it under its own id, or leave it to the queue; a fix
+   under another id leaves the item open with its fix merged.
+
+**Fix at most two per branch**, and the third means stop and file — or, where
+the three are one mechanism, record the generator. A hard count rather than a
+judgement call, because knowing when to call it a day is the judgement a
+session is likeliest to rationalise past; it binds about one finder in 22.
+Record each as its own commit led by the *current* item's id, and one line in
+the pull request body saying what it fixed and where: no item file, no triage,
+and the file is *not* added to the item's `touches`, which derive its lane
+and feed `bin/docket concurrent`. `bin/docket verify --self` names the file
+as outside `touches` and still `ACCEPT`s, the intended reading (`PL-6QZP`); a
+delegated review refuses it, so this is a session's door and never a
+delegated worker's (`docs/worker.md`). The separate commit is what makes this
+safe to grant — the owner can drop it in a rebase — and why a session holding
+no item cannot use the rule, having no id to lead it. A no-behaviour repair
+to another item's file or to `docs/WORKING_NOTES.md` (drift, a stale status
+sentence, a missing recommendation marker) is not a fix-now use at all:
+declare the file in the current item's `touches`, and it rides the commit
+already being made, counting against nothing (project owner, 2026-09-22,
+ratified, over leaving that licence in the path-scoped citation-drift rule,
+which loads only after the decision to file; eleven such repairs became items
+in three days, `PL-G40Z`).

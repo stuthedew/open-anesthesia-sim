@@ -1374,8 +1374,8 @@ def test_the_digest_names_a_ref_nothing_can_attribute() -> None:
     Every session reads the digest and few run `flight`, which is the whole
     argument for the unread line above. The 2026-09-04 decline feared the
     mirror image - a line nobody acts on, resent on every turn - and the count
-    that settled it is that no ref in this repository is unattributed today,
-    with `tools/branch_id_check.py` holding that (`PL-B73C`).
+    that settled it is that no ref in this repository was unattributed that
+    day (`PL-B73C`).
     """
     unattributed = FlightReport(
         branches=UNREAD.branches, unattributed=("origin/Review_articles",), base=BASE

@@ -733,8 +733,8 @@ answer with no repository at all (`PL-19T3`).
 A session takes an item with `docket claim`, and that commit is the record of
 who holds it. Every reader of in-flight work asks one function for it,
 `claims.holdings`: `flight` and the commands that rank against it, the session
-digest, `release`'s collision guard, `docket arm`, `claim` itself and
-`tools/branch_id_check.py`. The holder used to be worked out instead, by each
+digest, `release`'s collision guard, `docket arm` and `claim` itself. The
+holder used to be worked out instead, by each
 of three readers for itself (`branches_in_flight`, the release guard and the
 arming rule), from which id led a commit's subject, which paths the commit
 touched and how old the ref was. Every new shape of work — a triage pass, a
@@ -790,11 +790,13 @@ names. It is an order rather than a fence: nothing stops a later claim being
 written. `claim` itself writes nothing where a live claim elsewhere orders
 first, unless it is taking that claim over, and withdraws a claim this branch
 never pushed where another session has published one, since git records no
-push time (`PL-ZLJ9`). And
-`tools/branch_id_check.py`, in `make check` and in CI, fails a branch whose
-claim orders behind another live claim on the same item, and a `claude/*`
-branch that changed something outside the queue with no claim of its own and
-no item in its name (`PL-J9S0`).
+push time (`PL-ZLJ9`). Until 2026-11-21 a check in `make check` and in CI
+failed a branch whose claim orders behind another live claim on the same item,
+and a `claude/*` branch that changed something outside the queue with no claim
+of its own and no item in its name (`PL-J9S0`). The project owner retired it
+because none of its 12 refusals in CI caught a mistake (`PL-HS2T`). `docket
+show` still prints the order of the claims on an item, and `flight` lists a
+branch with work and no claim as `unclaimed:`.
 
 **Three other kinds of hold ride the same read, and none of them is a claim.**
 A *status disposition* is a branch whose copy of an item has moved its
@@ -913,9 +915,9 @@ branch name or at the front of any subject. Such a ref used to be dropped
 silently, so the report was complete about what it could not read and silent
 about work it could. It is
 named in `flight` and in the session digest with nothing suppressing it,
-because the steady state is empty: `tools/branch_id_check.py` fails a
-`claude/*` branch of one's own that names no id, and on 2026-09-14 none of this
-repository's ten unlanded heads was unattributable. A bookkeeping push is not
+because it is rare: a session leads each commit subject with its item's id,
+and on 2026-09-14 none of this repository's ten unlanded heads was
+unattributable. A bookkeeping push is not
 one of these — a capture, a triage pass and a `docket record` write all name
 the item they concern, so they are attributable even though none of them
 claims it. That distinction is what keeps the line quiet.
@@ -1023,10 +1025,9 @@ either, because `next` does not offer that item. And an `unclaimed:` row names
 each `claude/*` branch that has a non-merge commit changing a path outside the
 queue — the items, `roadmap_file` and `notes_file` — no claim of its own in
 any state, and no id in its name that a copy of the store holds (`PL-WK57`).
-That is `claims.claims_nothing`, the
-same function `tools/branch_id_check.py` refuses such a branch on in CI
-(`PL-FFR0`), so the count the design's pre-registered 1-in-20 threshold reads
-and the refusal cannot disagree. A claim counts in any state because closing
+That is `claims.claims_nothing` (`PL-FFR0`), and the design's
+pre-registered 1-in-20 threshold reads its count. A claim counts in any state
+because closing
 an item releases the branch's claim on it, and a finished branch is not a
 forgetful one. The digest's in-flight line and `next`'s exclusion line carry
 the same state and kind beside each id, as `PL-B1B1 (live claim)`, so a
@@ -2149,7 +2150,7 @@ goes unmentioned because whoever wrote them forgot it.
 
 **A cut is the one change whose own commits no in-flight guard can see.**
 Every guard here matches a `PL-` id — `flight`, `show`, `next`, `concurrent`,
-the digest, `branch_id_check` — and a cut still carries none: it stamps other
+the digest — and a cut still carries none: it stamps other
 items' `milestone:`. So the change that rewrites the version file, the lock
 file, the roadmap and a new notes file, which is the most collision-prone in
 the repository, was the only one nothing watched. Two sessions cut v0.3.7
@@ -4018,7 +4019,7 @@ from the diff, and the failure before was that the widened scope was silent.
 
 Several ids may be given at once — `docket verify PL-K7QX PL-B2B2` — because
 that is the shape delegated work comes back in: one branch, one
-commit per item. Each item's own command still runs per item, since that is
+commit per item. Each item's own record is still read per item, since that is
 what makes one acceptable and the next rejectable, while the project's own
 check runs once for the batch. It proves a property of the tree, and proving
 the same property six times turns a two-second command into a two-minute one,

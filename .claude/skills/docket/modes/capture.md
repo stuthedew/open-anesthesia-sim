@@ -13,10 +13,19 @@ Triggered by the owner raising a passing thought they are not developing, or
 by a finding this session makes that it will not fix.
 
 **Whether a finding this session made is one it may fix instead is decided in
-`CLAUDE.md`, not here.** Its fix-now bullet holds the tests that all have to
-pass and the cap per branch; the door has one copy, and a second one here is
-how the two drift apart. Read it there, and treat everything below as being
-about a finding that is being recorded.
+`.claude/skills/docket/modes/start.md` § "Fix a small defect in place", not
+here.** That section holds the tests that all have to pass and the cap per
+branch; the door has one copy, and a second one here is how the two drift
+apart. Read it there, and treat everything below as being about a finding that
+is being recorded.
+
+**Capture covers findings the owner raises and findings you make on your own
+alike.** `bin/docket new` takes several titles in one call, because ideas
+arrive in clusters. Do not ask whether to record a finding — filing an item is
+not a decision the owner needs to make. Where a thread is still open when the
+session ends, update `docs/WORKING_NOTES.md` too — but only for a thread
+spanning more than one item, outliving its item, or having none. One item's own
+reasoning goes in that item, at any length.
 
 **A passing thought is the opposite case to an idea being designed, and the
 difference is whether a design conversation is happening.** The idea being
@@ -233,7 +242,7 @@ Triggered by the session being about to *do* repository work that no item
 names: resolving a merge, clearing a stale `origin/<branch>` ref, a docs
 sweep, a lint fix, recovering a stranded item, backfilling a field the store
 wants. `CLAUDE.md` § "The queue, and how the project owner works" keeps the
-rule and a pointer here, and this mode holds the rest (`PL-Z90G`).
+rule in one line, and this mode holds the rest (`PL-Z90G`).
 
 **The rule: file the item first, then start it under its id** — `docket new`,
 then **Mode: start an item**, in
@@ -282,8 +291,7 @@ Measured before it was built: 22 items titled "Triage ..." carrying 1,127 lines
 of brief, 12 repeating the same rationale and 2 holding a finding a later
 session needs (`PL-TQFB`, project owner, 2026-09-19, ratified, over pointing
 the requirement at a standing rationale and over dropping the item altogether -
-the second was refused because the id is what `tools/branch_id_check.py` and
-the in-flight mark both read). The existing 22 are left as they are; this is
+the second was refused because the id is what the in-flight mark reads). The existing 22 are left as they are; this is
 for the next one.
 
 It buys a record as well as visibility. Housekeeping is obvious enough that two
@@ -295,8 +303,8 @@ it again.
 the work gets a commit of its own.** A rule demanding an item for a one-line
 typo fix would convert the queue into a log, which is worse than the collisions
 it prevents — so a fix riding inside a commit already led by an item's id is
-filed by that id and needs nothing more. A fix `CLAUDE.md`'s fix-now rule
-admits needs nothing more either, even though it takes a commit of its own:
+filed by that id and needs nothing more. A fix that the fix-in-place rule in
+`.claude/skills/docket/modes/start.md` admits needs nothing more either, even though it takes a commit of its own:
 that commit leads with the current item's id, so every id-matcher still sees
 it. File it when it is the reason this session exists, or when it will take a
 branch of its own.
@@ -323,14 +331,9 @@ may want to end, such as a pull request that should be closed, can be. When
 the dry run says the remote's branch list could not be read, the reply names
 no branch at all (`PL-TL6T`).
 
-`tools/branch_id_check.py` catches the case where none of this happened: `make
-check` and CI fail a branch ahead of `main` that carries no id in its name and
-leads no commit subject with one. It decides visibility only, never whether the
-work deserved an item — that judgment is the paragraph above and stays here.
-Since `PL-J9S0` it also fails a branch whose work outside the queue claims
-nothing, so housekeeping filed as an item is claimed like any other work,
-`bin/docket claim <id>` before its first commit; the first-edit hook says so.
-
-It binds the `claude/*` namespace and nothing outside it (`PL-8P6D`), so a
-session that names its branch anything else is unchecked rather than exempt:
-the rule above still applies to it, with nothing left to enforce it.
+No check enforces this. `bin/docket flight` lists a `claude/*` branch ahead of
+`main` that carries no id in its name and leads no commit subject with one,
+and one whose work outside the queue claims nothing. Housekeeping filed as an
+item is claimed like any other work, with `bin/docket claim <id>` before its
+first commit. A check in `make check` and CI refused both kinds of branch
+until the project owner retired it on 2026-11-21 (`PL-HS2T`).

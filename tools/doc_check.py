@@ -8467,8 +8467,8 @@ FLOOR_LIST_CLOSES = "<!-- /floor-commands -->"
 def _command_key(command: str) -> str:
     """A command's first two words, stopping at an option, which is how the floor list names one.
 
-    `python3 tools/pr_body_check.py --anchors` and `python3
-    tools/pr_body_check.py` are the same tool here. The list in
+    `python3 tools/pr_record_check.py --discover` and `python3
+    tools/pr_record_check.py` are the same tool here. The list in
     `docs/apparatus.md` drifted by gaining and losing whole commands, never by
     an argument, and `bin/docket ci-scope` is quoted there without its
     arguments.
@@ -9273,7 +9273,8 @@ def check_gate_parity(root: Path, report: Report) -> None:
     with `--anchors` in one gate and `--check` in the other is two checks with
     one of them unenforced: matched by path alone, `tools/pr_body_check.py
     --anchors` ran only in `make check` from `PL-73G8` until `PL-3PH2`, counted
-    as covered by CI's `--check` (`PL-RW3T`). The match is exact rather than
+    as covered by CI's `--check` (`PL-RW3T`; `PL-F7XT` has since removed that
+    mode). The match is exact rather than
     "covered by a run with more options", since an option can switch what a
     script checks rather than add to it and telling which would mean reading
     each script's parser; an exact match reports the difference and asks for

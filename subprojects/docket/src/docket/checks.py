@@ -91,8 +91,8 @@ DONE_WHEN = "**Done when.**"
 #: sections that argue for the work rather than describe it.
 #:
 #: The exemption is the whole point and the id is not part of it. Two
-#: mechanisms need the id and neither is bookkeeping: `tools/branch_id_check.py`
-#: refuses a branch in the agent namespace that no id names, and a diff
+#: mechanisms need the id and neither is bookkeeping: `flight` lists a branch
+#: in the agent namespace that no id names as attributable to no item, and a diff
 #: confined to `docs/items/` raises the in-flight mark only under a subject
 #: leading with the item's own id - for a housekeeping item, because its own
 #: `touches` stays inside the queue (`PL-7790`, `PL-3W3P`) - a queue-only

@@ -1,23 +1,15 @@
-"""Tests for `tools/dead_ends.py`, the always-loaded dead-ends record and its budget.
+"""Tests for `tools/dead_ends.py`, which prints the dead-ends list for the session-start digest.
 
-`.claude/hooks/docket-digest.sh` emits this file's entries at session start and
+`.claude/hooks/docket-digest.sh` prints this file's entries at session start and
 a `SessionStart` hook's output is resent on every turn, so an entry added
 without a thought for the budget is paid by every session forever.
 
-What is tested is the split between the two kinds of finding, because getting
-it wrong in either direction is a live failure. Size only ever *warns* - and
-warns at 80% of budget, before the decision is forced on whoever trips the cap
-mid-task - because a red gate on an unrelated commit is how a session learns to
-raise the cap just to get moving, and a larger budget is the owner's decision.
-A structural fault *does* fail, because a dangling id, a wrapped entry or one
-the entry pattern cannot read is silent otherwise. The third case matters as
-much as either: a comfortable file must say nothing at all, or the advisory
-fires every run and trains a reader to skim past it.
-
-The emit/check split is the second thing under test: the preamble explains how
-to add an entry, which a session *reading* entries never needs, so it must not
-be emitted and must not count against the budget. Getting that backwards is
-what the first draft of this tool did.
+Two things are tested. The first is what `emit` prints: the entries and never
+the preamble, which explains how to add an entry and which a session reading
+the entries never needs. The second is the budget: the shipped file stays
+below `NUDGE_FRACTION` of 30 entries and 4,000 printed bytes, so a session that
+adds an entry makes room for it in the same commit. This test is the budget's
+only enforcement since `PL-8F5B` removed the tool's `check` subcommand.
 """
 
 from __future__ import annotations
@@ -27,13 +19,6 @@ import sys
 from pathlib import Path
 
 import dead_ends
-import pytest
-
-# Marked whole for CI's item-only fast path (`PL-DXD4`). `dead_ends.check` and
-# `known_ids` list the real store, and three tests run the tool over this
-# checkout, which reads it too. The few tests that only parse an entry are
-# marked with the rest, which costs the fast path a few milliseconds.
-pytestmark = pytest.mark.reads_item_store
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -52,382 +37,110 @@ def entry(what: str, why: str) -> str:
     return f"- **{what}** — {why}\n"
 
 
-def test_the_shipped_file_is_inside_its_own_budget() -> None:
-    """The file in the tree must pass, or `make check` is red for everyone."""
-    assert dead_ends.check(dead_ends.DEAD_ENDS.read_text(encoding="utf-8")) == []
+def printed(text: str) -> list[str]:
+    """The lines `emit` prints under its header for the file `text`."""
+    return dead_ends.emitted(text).splitlines()[1:]
+
+
+def test_the_shipped_file_is_below_the_nudge_on_both_budgets() -> None:
+    """Adding an entry that reaches 80% of either budget fails here, in the commit that adds it."""
+    text = dead_ends.DEAD_ENDS.read_text(encoding="utf-8")
+
+    assert len(printed(text)) < dead_ends.MAX_ENTRIES * dead_ends.NUDGE_FRACTION
+    size = len(dead_ends.emitted(text).encode("utf-8"))
+    assert size < dead_ends.MAX_EMITTED_BYTES * dead_ends.NUDGE_FRACTION
 
 
 def test_emit_excludes_the_preamble_and_prose_bullets() -> None:
     text = PREAMBLE + entry("An approach", "why it failed. `PL-D188`")
-    emitted = dead_ends.emitted(text)
-    assert "Prose that explains" not in emitted
-    assert "a plain prose bullet" not in emitted
-    assert "An approach" in emitted
+
+    assert printed(text) == ["- **An approach** — why it failed. `PL-D188`"]
 
 
-def test_prose_bullets_do_not_count_against_the_entry_budget() -> None:
-    text = PREAMBLE + entry("One", "only entry. `PL-D188`")
-    assert len(dead_ends.entries(text)) == 1
-
-
-def test_size_never_fails_the_build() -> None:
-    """A blocked commit on an unrelated task is how a session learns to raise the cap."""
-    text = PREAMBLE + "".join(
-        entry(f"Approach {n}", "refuted. `PL-D188`") for n in range(dead_ends.MAX_ENTRIES + 1)
-    )
-    assert dead_ends.check(text) == []
-
-
-def test_over_budget_warns_and_names_all_three_repairs() -> None:
-    text = PREAMBLE + "".join(
-        entry(f"Approach {n}", "refuted. `PL-D188`") for n in range(dead_ends.MAX_ENTRIES + 1)
-    )
-    advisories = dead_ends.budget(text)
-    assert any("over budget" in a for a in advisories)
-    joined = " ".join(advisories)
-    assert "shorten" in joined and "merge" in joined and "drop" in joined
-
-
-def test_over_budget_names_the_moves_and_the_owner_s_budget_question() -> None:
-    """Dropping a still-needed lesson is no repair, so the advisory never offers it (`PL-5J1S`)."""
-    text = PREAMBLE + entry("A long one", "x" * (dead_ends.MAX_EMITTED_BYTES + 1))
-    joined = " ".join(dead_ends.budget(text))
-    assert "path-scoped rule" in joined and "retire" in joined
-    assert "bring the owner the cost of a larger budget" in joined
-    assert "least likely to propose again" not in joined
-
-
-def test_over_the_byte_budget_warns() -> None:
-    text = PREAMBLE + entry("A long one", "x" * (dead_ends.MAX_EMITTED_BYTES + 1))
-    assert any("over budget" in a for a in dead_ends.budget(text))
-
-
-def test_the_nudge_fires_before_the_budget_is_reached() -> None:
-    """The whole point: the decision arrives with slack, not at the cap."""
-    count = int(dead_ends.MAX_ENTRIES * dead_ends.NUDGE_FRACTION)
-    text = PREAMBLE + "".join(entry(f"Approach {n}", "refuted. `PL-D188`") for n in range(count))
-    advisories = dead_ends.budget(text)
-    assert any("near budget" in a for a in advisories)
-    assert not any("over budget" in a for a in advisories)
-
-
-def test_a_comfortable_file_says_nothing_at_all() -> None:
-    """An advisory that fires every run trains a reader to skim the output."""
-    text = PREAMBLE + entry("One", "refuted. `PL-D188`")
-    assert dead_ends.budget(text) == []
-
-
-def test_the_shipped_file_is_not_yet_in_the_nudge_band() -> None:
-    assert dead_ends.budget(dead_ends.DEAD_ENDS.read_text(encoding="utf-8")) == []
-
-
-def test_a_preamble_may_be_long_without_breaching_the_byte_budget() -> None:
+def test_a_preamble_may_be_long_without_counting_against_the_byte_budget() -> None:
     """The point of the split: explaining the file costs a reader nothing."""
     text = ("x" * (dead_ends.MAX_EMITTED_BYTES * 3)) + "\n\n" + entry("One", "refuted. `PL-D188`")
-    assert dead_ends.check(text) == []
-    assert dead_ends.budget(text) == []
+
+    assert len(dead_ends.emitted(text).encode("utf-8")) < 200
 
 
-def test_an_entry_citing_an_unknown_id_fails() -> None:
-    problems = dead_ends.check(PREAMBLE + entry("An approach", "refuted. `PL-ZZZZ`"))
-    assert any("PL-ZZZZ" in p and "not an item" in p for p in problems)
+def test_a_file_with_no_entry_prints_nothing_not_even_the_header() -> None:
+    assert dead_ends.emitted(PREAMBLE) == ""
 
 
-def test_an_entry_citing_a_real_id_passes() -> None:
-    known = next(iter(dead_ends.known_ids()))
-    assert dead_ends.check(PREAMBLE + entry("An approach", f"refuted. `{known}`")) == []
-
-
-def test_an_item_s_id_is_read_off_its_file_name_by_docket_s_grammar(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """`vcs.ITEM_FILE_RE` says whose a file is; a split on hyphens said otherwise (`PL-5QG4`).
-
-    The split took a file whose name carries no slug for an item, under the id
-    `PL-CCCC.md`, which no reader of the store's history calls an item at all.
-    """
-    items = tmp_path / "docs" / "items"
-    items.mkdir(parents=True)
-    for name in ("PL-8888-named.md", "PL-CCCC.md"):
-        (items / name).write_text("---\n---\n", encoding="utf-8")
-    monkeypatch.setattr(dead_ends, "ROOT", tmp_path)
-
-    assert dead_ends.known_ids() == {"PL-8888"}
-    problems = dead_ends.check(PREAMBLE + entry("An approach", "refuted. `PL-CCCC`"))
-    assert any("PL-CCCC" in p and "not an item" in p for p in problems)
-
-
-def test_an_entry_with_no_id_at_all_passes() -> None:
-    """Not every dead end has an item - some are only recorded in source comments."""
-    assert dead_ends.check(PREAMBLE + entry("An approach", "refuted, see store.py")) == []
-
-
-def test_a_wrapped_entry_is_refused() -> None:
-    text = PREAMBLE + entry("An approach", "refuted. `PL-D188`") + "and here is the rest of it\n"
-    problems = dead_ends.check(text)
-    assert any("continuation" in p for p in problems)
-
-
-@pytest.mark.parametrize(
-    "wrapped",
-    [
-        "- **One shared\nqueue document** — rejected. `PL-D188`\n",
-        "- **An approach** — measured in\n#1234 and PL-ZZZZ\n",
-        "- **An approach** — measured in\n*one* run, PL-ZZZZ\n",
-        "- **An approach** — measured in\n| one run | PL-ZZZZ |\n",
-    ],
-)
-def test_an_entry_carried_on_from_the_margin_is_refused(wrapped: str) -> None:
-    """`PL-F5B9`: CommonMark carries the entry onto each of these lines (0.31.2 § 5.2).
-
-    Read a line at a time, a bolded title wrapped onto a second line made no
-    entry at all - nothing emitted, nothing refused - and a line opening `#`,
-    `*` or a pipe was taken for the next block, so the entry was read short and
-    its `PL-ZZZZ` never checked.
-    """
-    problems = dead_ends.check(PREAMBLE + wrapped)
-    assert any("dead-ends.md:10: continuation of the entry above" in p for p in problems)
-
-
-def test_an_entry_wrapped_onto_an_indented_line_is_read_whole_and_refused() -> None:
-    """Indented, the second line is the entry's: emitted joined, and still one line too many."""
+def test_an_entry_wrapped_onto_an_indented_line_is_printed_whole() -> None:
+    """`PL-F5B9`: indented, the second line is the entry's, so it is printed joined."""
     text = PREAMBLE + "- **One shared\n  queue document** — rejected. `PL-D188`\n"
-    assert dead_ends.entries(text) == [(9, "- **One shared queue document** — rejected. `PL-D188`")]
-    assert any("dead-ends.md:10: continuation" in p for p in dead_ends.check(text))
+
+    assert printed(text) == ["- **One shared queue document** — rejected. `PL-D188`"]
 
 
-def test_an_entry_carried_on_from_the_margin_is_not_emitted_short() -> None:
+def test_an_entry_carried_on_from_the_margin_is_not_printed_short() -> None:
     """`PL-DQ9C`: the digest names an entry the walker declined, rather than printing it short.
 
-    `entries` handed the walker an empty list for what it declines, so the
-    digest printed this entry ending at `holds is`, its retrieval id lost on
-    the declined line, and `budget` measured the shorter text, where `check`
-    refuses the same line by name.
+    Printed as the walker reads it, this entry ended at `holds is`, with its
+    retrieval id lost on the declined line.
     """
     text = PREAMBLE + (
         "- **An index committed beside the items** - rejected: anything an index holds is\n"
         "recomputable, and an index is one more thing two branches conflict over. `PL-KM3X`\n"
     )
-    emitted = dead_ends.emitted(text)
 
-    assert dead_ends.entries(text) == []
-    assert "anything an index holds is" not in emitted
-    assert emitted.splitlines()[1:] == [
+    assert printed(text) == [
         "- docs/dead-ends.md:9: not printed, since line 10 carries it on from the margin "
         "and it would read short; read it in the file."
     ]
-    assert any(
-        "dead-ends.md:10: continuation of the entry above" in p for p in dead_ends.check(text)
-    )
 
 
-@pytest.mark.parametrize(
-    "unreadable",
-    [
-        "- **An approach** (an aside) — refuted. `PL-D188`\n",
-        "- **An approach**: refuted. `PL-D188`\n",
-        "- **An approach** refuted, with no dash at all\n",
-    ],
-)
-def test_an_entry_the_pattern_cannot_read_is_refused(unreadable: str) -> None:
-    """`PL-QFFF`: a bullet opening like an entry that `ENTRY` cannot read is named, not dropped.
-
-    `entries` keeps what `ENTRY` matches and discards the rest, so a one-line
-    bullet with an aside between its title and its dash left the digest with
-    nothing reported - the shipped file's line 74 did, from 2026-09-15 on.
-    """
-    text = PREAMBLE + unreadable
-
-    assert dead_ends.entries(text) == []
-    assert any(
-        p.startswith("docs/dead-ends.md:9: opens like an entry") for p in dead_ends.check(text)
-    )
-
-
-@pytest.mark.parametrize(
-    "form",
-    [
-        pytest.param("* **Star bullet** — written with a star.\n", id="star"),
-        pytest.param("+ **Plus bullet** — written with a plus.\n", id="plus"),
-        pytest.param(" - **Indented one** — indented one space.\n", id="indented one"),
-        pytest.param(
-            "   * **Indented three** — a star indented three spaces.\n", id="indented three"
-        ),
-    ],
-)
-def test_an_entry_in_every_bullet_form_is_read_or_refused(form: str) -> None:
-    """`PL-K02Q`: CommonMark opens a bullet with a dash, a plus or a star after up to three spaces.
-
-    Each of these is the same entry to a reader of the file. `OPENING` used to
-    match only a dash at the margin, so each was neither emitted nor checked.
-    """
-    text = PREAMBLE + form
-
-    assert dead_ends.entries(text) == []
-    assert any(
-        p.startswith("docs/dead-ends.md:9: opens like an entry") for p in dead_ends.check(text)
-    )
-
-
-def test_a_bullet_nested_under_an_entry_is_refused_as_its_continuation() -> None:
-    """`PL-K02Q`'s indented-two form: indented under an entry, it is part of that entry."""
-    text = PREAMBLE + "* **Star bullet** — written with a star.\n  - **Indented two** — nested.\n"
-
-    assert dead_ends.entries(text) == []
-    assert any(
-        "dead-ends.md:10: continuation of the entry above" in p for p in dead_ends.check(text)
-    )
-
-
-def test_a_following_bullet_or_heading_is_not_a_continuation() -> None:
+def test_a_following_bullet_or_heading_carries_no_entry_on() -> None:
     text = (
         PREAMBLE
         + entry("One", "refuted. `PL-D188`")
         + entry("Two", "also refuted. `PL-D188`")
         + "## Another section\n"
     )
-    assert dead_ends.check(text) == []
+
+    assert printed(text) == [
+        "- **One** — refuted. `PL-D188`",
+        "- **Two** — also refuted. `PL-D188`",
+    ]
 
 
 def test_a_line_separator_in_an_entry_carries_nothing_on() -> None:
     """A U+2028 ends no line in CommonMark (0.31.2 § 2.1), so an entry holding one is one line.
 
-    Cut by `str.splitlines()`, what followed it was refused as a continuation
-    of the entry, and the entry below stood a line further down (`PL-BBYJ`).
+    Cut by `str.splitlines()`, what followed it was read as a line carrying the
+    entry on from the margin (`PL-BBYJ`).
     """
     text = (
         PREAMBLE
-        + entry("An approach", "refuted\u2028twice. `PL-D188`")
+        + entry("An approach", "refuted twice. `PL-D188`")
         + entry("Two", "also refuted. `PL-D188`")
     )
 
-    assert [line for line, _ in dead_ends.entries(text)] == [9, 10]
-    assert dead_ends.check(text) == []
+    assert dead_ends._printed(text) == [
+        "- **An approach** — refuted twice. `PL-D188`",
+        "- **Two** — also refuted. `PL-D188`",
+    ]
 
 
-@pytest.mark.parametrize("command", ["emit", "check"])
-def test_the_script_runs_under_a_bare_interpreter(command: str) -> None:
-    """No virtualenv: `make check` and the session-start hook both invoke it bare."""
-    result = subprocess.run(
-        [sys.executable, str(REPO / "tools" / "dead_ends.py"), command],
-        capture_output=True,
-        text=True,
-        cwd=REPO,
-    )
-    assert result.returncode == 0, result.stderr
+def test_a_retired_entry_is_not_printed() -> None:
+    """The retired section records where an entry went, and no session needs it on every turn."""
+    text = PREAMBLE + f"\n{dead_ends.RETIRED}\n\n" + entry("Gone", "retired: its code was removed.")
+
+    assert dead_ends.emitted(text) == ""
 
 
-def test_emit_prints_the_header_and_every_entry() -> None:
+def test_emit_runs_under_a_bare_interpreter_and_prints_the_shipped_entries() -> None:
+    """No virtualenv: the session-start hook invokes it bare."""
     result = subprocess.run(
         [sys.executable, str(REPO / "tools" / "dead_ends.py"), "emit"],
         capture_output=True,
         text=True,
         cwd=REPO,
     )
-    shipped = dead_ends.entries(dead_ends.DEAD_ENDS.read_text(encoding="utf-8"))
-    assert "bin/docket show" in result.stdout
-    assert result.stdout.count("\n") == len(shipped) + 1
 
-
-def test_an_entry_citing_a_token_the_store_could_not_mint_says_nothing() -> None:
-    """`PL-[A-Z0-9]{3,4}` read three letters as an id; only three *digits* is one.
-
-    The store mints four characters from Crockford base32 minus the vowels, or
-    three digits, and nothing else. A looser reader here turns an ordinary
-    hyphenated word into "cites X, which is not an item" - a hard failure on
-    prose that named no item at all (`PL-KYW3`).
-    """
-    text = PREAMBLE + entry("An approach", "refuted at the PL-CAP stage")  # not-an-id
-
-    assert dead_ends.check(text) == []
-
-
-NO_CATCHERS = dead_ends.Catchers(rules="", code_ids=frozenset())
-
-
-def test_a_removed_entry_needs_a_catcher_or_a_retirement() -> None:
-    """An entry may leave the list only for a place that still stops its approach (`PL-5J1S`).
-
-    Deleted with nothing recorded, a lesson learned the hard way is gone from
-    every session, and the approach it refuted can come back unopposed.
-    """
-    base = PREAMBLE + entry("Kept", "refuted. `PL-D188`") + entry("Gone", "refuted.")
-    after = PREAMBLE + entry("Kept", "refuted. `PL-D188`")
-
-    problems = dead_ends.departures(base, after, NO_CATCHERS)
-
-    assert len(problems) == 1
-    assert "**Gone**" in problems[0]
-    assert dead_ends.RETIRED in problems[0]
-
-
-def test_a_retired_entry_passes_and_is_neither_emitted_nor_budgeted() -> None:
-    base = PREAMBLE + entry("Gone", "refuted.")
-    after = (
-        PREAMBLE + f"\n{dead_ends.RETIRED}\n\n" + entry("Gone", "retired: its code was removed.")
-    )
-
-    assert dead_ends.departures(base, after, NO_CATCHERS) == []
-    assert dead_ends.entries(after) == []
-    assert dead_ends.emitted(after) == ""
-    assert [line for line, _ in dead_ends.retired(after)] == [len(after.splitlines())]
-
-
-def test_an_entry_moved_into_a_path_scoped_rule_passes() -> None:
-    base = PREAMBLE + entry("Moved", "refuted.")
-    moved = dead_ends.Catchers(rules=entry("Moved", "refuted."), code_ids=frozenset())
-
-    assert dead_ends.departures(base, PREAMBLE, moved) == []
-
-
-def test_an_entry_whose_id_the_code_cites_passes() -> None:
-    base = PREAMBLE + entry("Checked", "refuted. `PL-D188`")
-    checked = dead_ends.Catchers(rules="", code_ids=frozenset({"PL-D188"}))
-
-    assert dead_ends.departures(base, PREAMBLE, checked) == []
-
-
-def test_two_entries_merged_into_one_that_keeps_an_id_pass() -> None:
-    base = PREAMBLE + entry("First", "refuted. `PL-D188`") + entry("Second", "refuted. `PL-D188`")
-    after = PREAMBLE + entry("First and second", "both refuted. `PL-D188`")
-
-    assert dead_ends.departures(base, after, NO_CATCHERS) == []
-
-
-def test_a_rule_counts_as_a_place_only_when_paths_scope_it(tmp_path: Path) -> None:
-    """A rule without `paths:` loads in every session, so it would only move the entry's cost."""
-    rules = tmp_path / ".claude" / "rules"
-    rules.mkdir(parents=True)
-    scoped = '---\npaths:\n  - "/tools/**"\n---\n\n' + entry("Scoped", "refuted.")
-    (rules / "scoped.md").write_text(scoped, encoding="utf-8")
-    (rules / "resident.md").write_text(entry("Resident", "refuted."), encoding="utf-8")
-
-    catchers = dead_ends.read_catchers(tmp_path)
-
-    assert "**Scoped**" in catchers.rules
-    assert "**Resident**" not in catchers.rules
-
-
-def test_the_shipped_rules_hold_every_entry_that_left_the_list() -> None:
-    """The entries moved on 2026-10-26 are found in the rule they moved to."""
-    catchers = dead_ends.read_catchers(REPO)
-
-    assert "**One shared queue document**" in catchers.rules
-
-
-def test_check_with_a_base_runs_under_a_bare_interpreter() -> None:
-    """`make check` and CI pass `--base`, and the shipped tree must pass it against itself."""
-    result = subprocess.run(
-        [sys.executable, str(REPO / "tools" / "dead_ends.py"), "check", "--base", "HEAD"],
-        capture_output=True,
-        text=True,
-        cwd=REPO,
-    )
     assert result.returncode == 0, result.stderr
-
-
-def test_a_base_git_cannot_name_fails_rather_than_passing(tmp_path: Path) -> None:
-    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
-
-    with pytest.raises(dead_ends.BaseUnreadable):
-        dead_ends.read_base(tmp_path, "no-such-ref")
+    shipped = dead_ends.emitted(dead_ends.DEAD_ENDS.read_text(encoding="utf-8"))
+    assert result.stdout == shipped + "\n"
+    assert result.stdout.startswith(dead_ends.HEADER)
