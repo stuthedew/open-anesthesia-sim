@@ -76,142 +76,24 @@ top_band_limit = 12
 # Past this, an untriaged capture has become a second queue nobody reads.
 untriaged_stale_days = 14
 
-# The `verify:` rule (PL-G049), and the one date that adopts it. Every item
-# set to `ready` must carry `verify:`, or record in `not-delegable:` why no
-# command can prove it; and an item closed on or after this date must too, as
-# an **error** (PL-J49T).
+# The date from which an item that closes must record what shows its work
+# (PL-J49T, PL-LFJZ): the tests its branch added or changed in `tests:`, one
+# search for fixed text in `verify:`, a dated paragraph in its brief, or a
+# `not-delegable:` reason. `bin/docket check` reads the record once, on the
+# branch that closes the item. An item set to `ready` names no command.
 #
-# A second date, `verify_required_from` (2026-08-30), once exempted the items
-# captured before the rule from the `ready` half, and raised a grooming
-# advisory for each only as `docket next` was about to offer it. That set
-# drained to zero on 2026-10-01 and the date was retired with its advisory
-# (PL-Z34C). The closing half below is what drained it, and is permanent: an
-# item can reach `done` without ever holding `ready`.
-#
-# What follows is the closing half's original case, kept because it is still
-# why this date is an error and not an advisory.
-#
-# Keyed on the closure date rather than the capture date, which is what lets it
-# reach the grandfathered items at all: they are exempt at `ready` and stay
-# exempt however long they sit there, so until now the only thing asking for
-# their command was a grooming advisory - a signal that works if somebody reads
-# it, and on 2026-09-03 a session read "1 advisory" across several runs without
-# reading the advisory. Closing an item is the first moment its command can be
-# written having been run, which is the objection that earned the
-# grandfathering; at that moment the objection has lapsed, so the exemption
-# lapses with it.
-#
-# An error rather than an advisory because the decidable half and the judgment
-# half separate cleanly here: whether the field is present is a yes/no, and only
-# what it should say needs a person. This refuses silence without guessing at
-# the sentence.
-#
-# Set to the day the rule landed, so it touches nothing already closed. The 54
-# done items carrying no command stay as they are, deliberately: backfilling one
-# onto merged work means writing a command with nothing left to run it against,
-# which is precisely the failure PL-5YK8 refused at the other end.
+# Keyed on the closure date, so it touches nothing closed before it: a record
+# added to merged work has nothing left to be read against.
 verify_required_at_close_from = 2026-09-03
 
-# What the command may *be*, once it is present - the third of the three dates,
-# and the decidable half of the contract `PL-6TP8` settled on 2026-09-19
-# (project owner, 2026-09-19, ratified): the field records the discriminator, and proving
-# the tree is `check_command`'s job, which `docket verify`, `docs/worker.md`
-# and CI each already run. Until now that contract was carried by one table in
-# the `docket` skill - now `.claude/skills/docket/modes/triage.md` - and by
-# nothing a machine reads, against a
-# store recording 82 counter-examples - 23 of them written on 2026-09-14 alone.
-#
-# The rule fires only where the author has already said which clause
-# discriminates, by writing a separate non-pytest one beside the run. A command
-# whose only clause is the pytest run says the opposite and is untouched, as is
-# one whose run carries `-k`, `-m`, `--cov` or a `::`. The other 73 multi-clause
-# commands - `python3 tools/doc_check.py check && ...` and friends - are the
-# same contract and are deliberately not refused here: which clause is the
-# prerequisite there depends on what the item's work is, and scripting that
-# judgment is worse than leaving it prose (`PL-09G9`).
-#
-# Dated tomorrow rather than today, which is the one thing here that is a
-# choice rather than a reading. `PL-QSGX` was captured on 2026-09-19 carrying
-# the shape; repairing another item's command outside the moment that item is
-# started is the one-pass pass the project owner refused on the same day, so it
-# is left to repair-as-started like the other 81 and the cutover starts after
-# it. The grandfathered set is therefore exactly what the store held when the
-# rule began working - closed, since the test is the capture date, and draining
-# at the 48 items/day the queue closed over the fortnight to 2026-09-19.
-verify_prerequisite_refused_from = 2026-09-20
-
 # The test trees `check_command` already collects, mirroring
-# `[tool.pytest.ini_options] testpaths` in `pyproject.toml`. Only a pytest
-# target inside one of these is provably redundant with `make check`; a run
-# over anything else is doing something no other consumer does, and the rule
-# above leaves it alone. Measured 2026-09-19: 0 of the 82 name a target outside
-# these two, which is the count that says the rule refuses nothing real.
+# `[tool.pytest.ini_options] testpaths` in `pyproject.toml`.
+# `tools/model_home_check.py` reads them.
 #
 # Kept here rather than read out of `pyproject.toml` because `bin/docket` runs
 # from a bare checkout with no virtualenv and knows nothing about pytest's
-# configuration. Drift is one-directional and safe: a tree added to `testpaths`
-# and not here makes the rule refuse *less*, never more.
+# configuration.
 collected_test_paths = ["tests", "subprojects/docket/tests"]
-
-# The health half of a `verify:` command, spelled as the commands carry it:
-# the clauses that prove the tree rather than the item, which `make check`
-# runs anyway. `docket check`'s shared-clause rule keys on every clause outside
-# this set and outside the pytest runs `collected_test_paths` covers, so two
-# open items both carrying `python3 tools/doc_check.py check` are not thereby
-# one finding, while two carrying the same `git check-ignore` behind it are
-# (`PL-1YDK`/`PL-8PT6`, `PL-BGMK`). Measured 2026-09-30: with these left out
-# the rule reports 0 pairs over 308 open items; counted in, 497. A health
-# clause added to `make check` and not here reports a false pair loudly, as a
-# hard error naming both items, rather than hiding a real one.
-health_clauses = ["python3 tools/doc_check.py check", "bin/docket check"]
-
-# The first obligation `PL-6TP8` put on a command, made mechanical (`PL-Q8RQ`):
-# its failure before the work is an evaluation - an ordinary exit 1 - and never
-# pytest's 5. A pytest run narrowed by `-k` over a tree `collected_test_paths`
-# names cannot be one. Every test there passes or `make check` is red, so the
-# run selects tests that already pass (0) or selects none (5), and a substring
-# is satisfied by whatever test later comes to carry it: `PL-S5YM`'s
-# `-k covered` began passing when an unrelated merge added a test so named, and
-# three sessions diagnosed the red `main` that followed inside four minutes
-# (`PL-99YZ`). Refused wherever the clause stands in the `&&` chain; a run piped
-# into another command, one carrying `--cov`, and one over a tree outside the
-# list above are left alone, because there the reading stops being true.
-#
-# A date of its own rather than `verify_prerequisite_refused_from`'s, because the
-# two close different sets. That rule leaves any run carrying `-k` alone, so
-# `PL-W4XQ` was captured on its first day with one ahead of a `grep`, and
-# sharing its date would refuse that item the moment this landed. Dated
-# tomorrow, as both rules before it were, so the grandfathered set is exactly
-# what the store held when the rule began working - five open items, `PL-10MX`,
-# `PL-GVC0`, `PL-8JY7` and `PL-W4XQ` at `ready` and `PL-LWMS` at `blocked` -
-# each repaired as its item is started, never in a pass.
-verify_k_selector_refused_from = 2026-09-23
-
-# What the command may be, stated as a list rather than a growing set of
-# refusals (`PL-1P5V`; project owner, 2026-09-23, ratified, over a structured
-# `verify:` field). The three dates above each refuse one shape, and each was
-# written after its shape had failed: seven more arrived in the four days after
-# `PL-6TP8` closed. From this date a command is one of the shapes the triage
-# table prescribes - a `grep -q` for what the work adds, a `! grep -q` for what
-# it removes, several of those joined by `&&`, or `uv run pytest
-# --cov=<dotted.module> --cov-fail-under=<N>` alone - or the item says in
-# `not-delegable:` why none can prove it. A new shape joins the list in
-# `checks.py`, with its argument beside it, instead of failing first.
-#
-# Read two ways, because the capture date cannot say when a command was written.
-# An item captured on or after this date is held to the list wherever it is
-# checked. An older item's command is held to it on the branch that writes or
-# rewrites it - `docket check` reads that from git, `docket set` knows it as it
-# writes - so the triage of old items and the repair of legacy commands as each
-# is started land in the list too; a command a branch leaves as the base had it
-# stays grandfathered. Measured 2026-09-23 over the 220 open commands: 103 fit
-# as they stand, 93 more once their legacy trailing health clause is stripped,
-# and 24 are other shapes - tool runs, pipes, `-k`, `test -f`.
-#
-# Dated tomorrow, as the three before it were, so no item captured today is
-# bound by its capture date. A branch is judged when it is checked, so one
-# carrying an older item's new command has until the date to land it.
-verify_allowlist_from = 2026-09-24
 
 # The date an item reaching `ready` must carry one plain-language line of what
 # closing it buys (`PL-WYKF`). The project owner asked for the half of "why this
@@ -238,9 +120,8 @@ verify_allowlist_from = 2026-09-24
 # sentences across the open backlog, each written by a session that already has
 # the brief open because it is about to work the item.
 #
-# Dated tomorrow rather than today, the one choice here rather than a reading,
-# exactly as `verify_prerequisite_refused_from` was: the grandfathered set is
-# then closed at precisely what the store held when the rule began working, and
+# Dated tomorrow rather than today, the one choice here rather than a reading:
+# the grandfathered set is then closed at precisely what the store held when the rule began working, and
 # no item captured today has to carry a line written away from its work. Nothing
 # already closed is backfilled - that means writing a sentence about work whose
 # context is gone, which is the failure `PL-5YK8` refused at the other end of

@@ -1,16 +1,10 @@
-"""Hold `quality.yml`'s step order, its jobs to `checks`, and its item-only fast path.
+"""Hold `quality.yml`'s jobs to `checks`, and its item-only fast path.
 
-No step reads the replay's answer, and it is the most expensive and the most
-failure-prone step in the job, so a step after it runs only where the replay
-passed. Eleven checks used to, and a replay failure on `main` meant the contrast
-audit, the import-boundary, core-vocabulary and glyph checks and the
-required-checks reconciliation never ran against that commit.
-
-The replay runs in `checks-part-1` since `PL-T9X9` split the suite across two
-jobs. The required check is `checks`, which needs the other jobs and fails
-unless they succeeded. A job left out of its `needs:` would report on a pull
-request without gating a merge, while its `# not-required:` line says that
-`checks` gates it, so that is held here too.
+The suite runs across two jobs since `PL-T9X9`. The required check is
+`checks`, which needs the other jobs and fails unless they succeeded. A job
+left out of its `needs:` would report on a pull request without gating a
+merge, while its `# not-required:` line says that `checks` gates it, so that
+is held here too.
 
 **The fast path skips only what an item file cannot change** (`PL-DXD4`). A
 pull request that changes only item files skips the steps that read only
@@ -61,26 +55,6 @@ def _steps(workflow: dict[str, Any], job: str = "checks-part-1") -> list[Step]:
     """`job`'s steps in the order the job runs them."""
     steps: list[Step] = workflow["jobs"][job]["steps"]
     return steps
-
-
-def _replays(step: Step) -> bool:
-    """Whether a step runs the replay, scoped (`--verify-base`) or over the whole store."""
-    return str(step.get("run", "")).split()[:3] == ["bin/docket", "check", "--verify"]
-
-
-def test_the_split_finds_the_whole_store_replay() -> None:
-    """The step `main` runs is where the split looks, so the order test reads something."""
-    steps = _steps(_workflow())
-    whole_store = [step for step in steps if _replays(step) and "--verify-base" not in step["run"]]
-    assert len(whole_store) == 1, f"expected one whole-store replay step among {len(steps)}"
-
-
-def test_the_whole_store_replay_is_the_last_step_in_the_job() -> None:
-    """No step follows either replay step, so a replay failure skips nothing."""
-    steps = _steps(_workflow())
-    first = next(index for index, step in enumerate(steps) if _replays(step))
-    after = [_name(step) for step in steps[first:] if not _replays(step)]
-    assert not after, f"these run after the verify replay, so its failure skips them: {after}"
 
 
 def test_checks_needs_every_other_job() -> None:
@@ -318,7 +292,6 @@ def test_an_item_only_pull_request_skips_only_the_steps_no_item_file_can_change(
         "Run uv run python tools/doc_check.py check",
         "Run uv run python tools/fixture_id_check.py",
         "Run bin/docket check",
-        "verify replay, scoped to what this branch changed",
     ):
         assert reader in ran, f"{reader!r} does not run on an item-only pull request"
 

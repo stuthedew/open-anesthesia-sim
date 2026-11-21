@@ -110,13 +110,6 @@ HEADS = frozenset((";", ";;", ";&", ";;&", "&", "&&", "||", "|", "|&", "("))
 #: and `|&`, which carries its standard error too.
 PIPES = frozenset(("|", "|&"))
 
-#: The operators that end a command and run the next one apart from it, as
-#: `shell_words` spells them inside a clause: every one of `HEADS` but a pipe,
-#: a subshell's `(` and `&&`, which cuts the clauses and so never stands
-#: inside one. `verify` and `checks` each spelt a subset of these by hand,
-#: and parted on `;;` (`PL-RHPK`).
-COMMAND_ENDS = HEADS - PIPES - {"(", "&&"}
-
 #: The operators that redirect, each taking the word after it; only those
 #: opening with `<` or `>` take a descriptor written against them (Bash
 #: Reference Manual §3.6 "Redirections"). The rest of `OPERATORS` end a

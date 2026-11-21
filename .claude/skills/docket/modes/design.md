@@ -72,8 +72,8 @@ The procedure, in the order it runs:
    (`CLAUDE.md` § "Working with the project owner") - mark every passage above
    it the answer ended with `[superseded DATE: ...]`, and **move the status in
    the same commit**: `bin/docket check` refuses an answer left beneath a
-   `needs-decision` front matter (`PL-JNWS`), and a `ready` item carries a
-   `verify:` in an admitted shape and the Done-when in the decided form.
+   `needs-decision` front matter (`PL-JNWS`), and a `ready` item carries the
+   Done-when in the decided form.
    triage.md carries each of those in full; this step is the order.
 7. **Then `bin/docket yield <id>`**, with the same `--trailer` lines as the
    claim, and push with the command it prints where it exits 4 (`PL-1X56`).
