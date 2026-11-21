@@ -305,7 +305,7 @@ otherwise:
   session, `set_session_title` via the `claude-code-remote` MCP server.
 - **Commit subjects and PR title** — always carry the id. These outlive the
   branch. After the ids, the title names the change plainly and briefly, per
-  `.claude/rules/plain-writing.md`.
+  `.claude/skills/pull-request/SKILL.md` § "Write the title and body".
 - **Branch** — `claude/pl-k7qx-short-slug` where the session creates it. A
   branch generated before the session started cannot be renamed; that is
   expected, and the commits carry the id instead. Leading
