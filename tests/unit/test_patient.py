@@ -257,12 +257,18 @@ def test_a_perfusion_fraction_written_on_a_built_patient_is_refused() -> None:
     patient = _build_patient()
     vessel_rich = patient.vessel_rich
 
-    with pytest.raises(
-        SimulationConfigurationError,
-        match="^the vessel_rich tissue group's perfusion fraction of 0.76 cannot be written "
-        "again, as 0.5, once the group is built",
-    ):
+    with pytest.raises(SimulationConfigurationError) as raised:
         vessel_rich.perfusion_fraction = PerfusionFraction(0.5)
+
+    # The whole message, so that the place it sends a reader to for the reason
+    # is checked too (`PL-XXXJ`).
+    assert str(raised.value) == (
+        "the vessel_rich tissue group's perfusion fraction of 0.76 cannot be written again, as "
+        "0.5, once the group is built, because the patient checks that its tissue fractions "
+        "sum to 1 when it is built and when a group is replaced, and never when a fraction is "
+        "written (see TissueGroup.__setattr__ in core/tissue.py): build a new patient with the "
+        "new fractions"
+    )
 
     with pytest.raises(
         SimulationConfigurationError,
@@ -372,8 +378,17 @@ def test_a_tissue_blood_quotient_outside_the_envelope_is_refused_where_the_patie
     with pytest.raises(SimulationConfigurationError, match="^fat tissue_blood_partition_coeff"):
         patient.fat = too_soluble
 
-    with pytest.raises(SimulationConfigurationError, match="cannot be written again, as 10000.0"):
+    with pytest.raises(SimulationConfigurationError) as raised:
         patient.fat.tissue_gas_partition_coefficient = PartitionCoefficient(1e4)
+
+    # The whole message, so that the section it sends a reader to for the
+    # reason is checked too (`PL-XXXJ`).
+    assert str(raised.value) == (
+        "the fat tissue group's tissue:gas partition coefficient of 34.0 cannot be written "
+        "again, as 10000.0, once the group is built, because the patient checks the group's "
+        "tissue:blood coefficient only when the group is put in its place (docs/MODEL.md, "
+        '"The numerical envelope"): replace the group with one built with the new coefficient'
+    )
 
     assert patient.fat.tissue_gas_partition_coefficient == 34.0
 

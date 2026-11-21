@@ -68,8 +68,6 @@ docket record N              # write this branch's open pull request's number on
 docket record N --merge SHA  # ...or onto what that merge on the base closed, for a
                              # closure that reached it without one; restates its notes
 docket check                 # validate the store; exits non-zero on errors
-docket check --verify        # ...and replay every open item's `verify:` command
-docket check --verify --verify-base origin/main   # ...only the ones this branch could have changed
 ```
 
 Any of them can be piped into a reader that stops early: `docket next | head
@@ -1216,9 +1214,8 @@ reports an untriaged item whose file was *added* by a commit that also changed
 something outside the queue and whose subject leads with that item's id — #635
 filed `PL-0J9K` and `PL-MMVF` while landing 385 lines of `vcs.py`, and both were
 still untriaged on `main` days later, offered to the project owner as live work.
-It is the shape `PL-3CBS`'s landed-work advisory cannot reach at all: that one is
-keyed on `verify:` and scoped to `ready`, and an item captured and worked in one
-commit never passes through `ready` to acquire a command.
+No check of triaged items sees it, because an item captured and worked in one
+commit never passes through `ready`.
 
 **It prints a pointer and never a verdict**, which is a measured limit rather
 than caution. `PL-SWP3` counted three keys over this store. Without the subject
@@ -1318,7 +1315,7 @@ to recall the rules from memory and find out afterwards whether the recall was
 right.
 
 `docket set` writes the answers. `docket set PL-K7QX --priority P2 --effort S
---classes defect --touches a.py --status ready --verify '...'` sets the named
+--classes defect --touches a.py --status ready --payoff '...'` sets the named
 fields, renders the front matter in the order every tool-written file has, and
 keeps the file's name whatever the title now says — a rename arriving as a side
 effect of a field write conflicts against whoever else holds the file. That is
@@ -1828,9 +1825,7 @@ saying which question it had skipped. The digest never asked for `closures`,
 and reported 10 advisories against `check`'s 19 (`PL-VKGJ`). All three now
 build their report through `cli._complete_report`, which gathers every input in
 one place, so a new one reaches every count-printing command in the commit that
-adds it. `landed` is the single exception and stays the caller's argument: the
-`verify:` replay is behind `--verify`, and `make docket` - the command the
-digest's own line names - does not pass it either. The digest pays 279 ms of
+adds it. The digest pays 279 ms of
 git reads for the agreement, on a 947 ms command, none of them over the
 network.
 
@@ -2410,9 +2405,8 @@ change (`PL-STM6`). `--github-output PATH` also appends `scope=items`,
 step hands a value to the steps after it. With no `workflow_paths` declared,
 the answer is never `apparatus`.
 
-The changed paths are the ones the scoped verify replay reads, against the same
-base, so the replay and the fast path judge one diff. An item moved out of the
-store is a path outside it, because the diff reads a rename as a deletion and
+The changed paths are the ones `docket verify` reads for its diff. An item
+moved out of the store is a path outside it, because the diff reads a rename as a deletion and
 an addition.
 
 Every reading that cannot show the diff is item or apparatus files alone
@@ -2658,12 +2652,12 @@ about to be offered - which is also where the sentence is cheapest, since the
 session about to work an item already has its brief open. Nothing already
 closed is asked for one.
 
-Unlike `verify`, it has no exemption. Some work genuinely has no command that
-can run before it; no work has no consequence, and an item nobody can say that
+Unlike `verify`, it has no exemption. Some work has nothing that can show it
+before it is done; no work has no consequence, and an item nobody can say that
 much about is a finding about the item rather than a case for an escape hatch.
 There is also no close-time counterpart to `verify_required_at_close_from`:
-that rule exists because closing an item is the first moment its command can
-be *run*, and a consequence needs no run, so the requirement is answerable in
+that rule exists because closing an item is the first moment its tests can
+be named, and a consequence needs no work to exist, so the requirement is answerable in
 full at `ready` and has nowhere later to reach.
 
 `show`, `next` and the digest print it wherever they name an item - beside the
@@ -3008,324 +3002,46 @@ Only the items that the checkout closes and the default branch does not yet
 hold closed are read, so nothing reads a record after its branch merges. An
 open item may not carry `tests`.
 
-An open item may still carry a `verify` command written before this form, and
-the sections below describe the rules that command was written under. Closing
-such an item replaces the command with one of the records above.
+An open item may still carry a `verify` command written before 2026-11-21.
+Nothing reads or runs it, and closing the item replaces it with one of the
+records above (`PL-QTZG`). `set` writes a `verify` only as one search. On an
+open item it refuses a search that is already true on the tree, and one that
+reads the item's own file, because either would show nothing about the work.
+`docket verify` reads an open item's search as well as a closed item's
+record, because a delegated worker leaves its item open.
 
-The command must not name `docket verify`. That subcommand runs an item's own
-`verify` field, so an item recording one re-enters it once per level, and each
-level takes a fresh timeout rather than a share of one — the recursion ends at
-the process table rather than at an answer. `check` refuses such an item by
-name, and `verify` itself reports the re-entry as a failed check where it is
-reached on a store nobody has validated yet. `check` is deliberately not
-refused the same way: it replays a `verify` only under `--verify`, and a nested
-run is told not to ask, so `docket check && grep -q ...`, the shape the older
-commands record, is bounded at one level. Since `PL-6TP8` the `grep` is
-written alone, and `docket check` is not put ahead of it.
+### A closed item's record is not rewritten
 
-Two ways of recording a command that proves nothing are refused by a bare
-`check`, with no command run at all. **A command that cannot fail** — `true`,
-`:`, `exit 0`, and the path spellings of the first — specifies nothing whatever
-the tree holds, so `verify` would ACCEPT a branch that did none of the work.
-**One command recorded against two or more open items** is the same conclusion
-reached by counting rather than by reading: whichever item is worked first makes
-the command pass, so from then on it accepts a branch that did none of the
-other's. Both are answerable from the store, which is why they are here and not
-behind `--verify`: that flag is the expensive tier, it is CI-only in the project
-this grew in, and three items triaged with one placeholder command on 2026-09-20
-passed every local gate and turned CI red after review had started (`PL-J3WK`).
+Once the item is `done`, its `tests` and `verify` are the record of what
+showed the work on the branch that closed it. That is a fact about a tree
+which no longer exists, not a claim about the default branch today.
 
-The rules are exact and stop where the judgment starts. A command whose
-*effect* is a no-op — a `grep` for a string that is not in the file it reads,
-say — is only answerable by running it, and that question stays with the
-replay. Sharing is exact string equality too: collapsing whitespace would be
-right for the words of a shell line and wrong inside a quoted argument, where
-`grep -q 'a  b'` and `grep -q 'a b'` read different files. An item whose command
-cannot fail is told that and is not also told about the sharing, which is a
-consequence of the placeholder rather than a second defect.
+The record stops resolving as a matter of course. Of 1,060 closed items whose
+command named a test, 109 named one that a later change renamed or removed
+(`PL-LFJZ`), and each is later work correctly changing what its predecessor
+left. So nothing reads a closed item's record after its branch merges, and
+nothing warns that one has gone stale.
 
-What `check` does say about that command is an advisory, and only for the one
-shape that can pass without meaning anything: a `docket check` whose *output*
-is piped or captured, rather than whose exit status is read. A nested run is
-told not to replay the open items' commands, so it never prints the landed
-advisory - a `grep` for that answer matches nothing whether the work is done or
-not, and an inverted one passes on the strength of it. An advisory rather than
-an error because "reads the output" is a judgment about a shell line, and hard
-failure is reserved for exact rules.
-
-### What a `verify:` exit status proves, and to whom
-
-A `verify:` command is one shell line and its exit status is one number, and
-four consumers read that number: the replay (`check --verify`, whole-store on
-a push to the default branch and scoped on a pull request), the delegated
-audit (`docket verify`), the close-out (`docket verify --self`), and the person
-writing the command. Until `PL-6TP8` each read its own meaning out of it, so a
-non-zero exit meant all of "not started", "prerequisite broken", "selected
-nothing", "timed out" and "finished under another name" at once, and twelve
-items each re-decided one facet. This is the one reading. Each consumer in
-`verify.py` and `checks.py` names the clause of it that it applies.
-
-**Exit 0 proves that the command's assertion holds on the tree in front of
-it** - and nothing about the work being right. It proves the *work landed*
-only if the command discriminates, which is to say fails on the tree before
-the work, and no exit status can say whether it does. The author establishes
-that once, by running the command and watching it fail before writing it down,
-and the replay holds the contrapositive forever after: an open item whose
-command passes is either finished and unclosed or non-discriminating, and both
-are errors (`_check_landed`).
-
-**A non-zero exit proves only that the assertion does not hold *or was never
-evaluated***, and the number alone cannot tell the two apart. Three
-never-evaluated outcomes are decidable from the run itself, and every consumer
-peels them off before reading anything else: killed at the limit
-(`TIMED_OUT`, a status no process can return), not found by the shell (127),
-and selected no test (pytest's 5, claimed only where the command names
-pytest). A fourth is not decidable at all: a prerequisite clause that is red.
-`python3 tools/doc_check.py check && grep …` exits 1 whether the `grep` failed
-or `doc_check` did, so a command carrying such a clause has made its own
-failure unreadable, and the replay accordingly reads nothing from a plain
-failure (`PL-T7VS`). A fifth is undecidable by construction: work finished
-under a name other than the one the command greps for fails exactly as
-unstarted work does, and nothing that reads an exit status will ever separate
-them (`PL-0M32`, `PL-6TN8`). That one is the author's to prevent - a
-name-pinning `grep` on an item whose work may already exist is checked against
-the code, not against the test names - and the close-out's to read, since it
-reads the command and the diff together.
-
-**A phrase its file wraps is the one fault read from the tree rather than
-from the status** (`PL-RR1N`). `grep` reads a line at a time, so a phrase a
-document carries across a line break - a paragraph's soft break, a comment
-continued on the next line - is on no line it reads: its `grep -q` fails
-whether or not the work is done, and its `! grep -q` passes while the phrase
-is still there. `grep.wrapped` finds it in the files the clause reads, as a
-phrase on none of their lines that one of them holds once each statement's
-lines are read as one. It reads only a fixed string, or a pattern whose only
-special character is `.`, so its answer is exact. Every consumer that runs
-the command asks it too and names the phrase and the lines it spans:
-the replay as an error whatever the command exited with, `verify_item` on
-its command check, where the negated case's exit 0 is a `REJECT`. The fault
-is the command's, so the repair is a phrase one line holds rather than a
-reflow the next edit undoes.
-
-**Who may conclude what.**
-
-- **The replay** - `already_passing`, reported by `_check_landed`,
-  `_check_selects_nothing` and `_note_cost` - is one-directional. It
-  reads exit 0 as its finding, the three never-evaluated statuses as refusals
-  (reported per item as not checked, or for the whole run where nothing ran
-  to completion), and nothing from any other non-zero exit but the wrapped
-  phrase above, which it reads from the tree. It never reads a
-  failure as "the item is legitimately open", because it cannot know that. It
-  may decline, and a declined run says so; an empty result is never a clean
-  one. Where the command reads past the tree its exit 0 is a fact about
-  the world rather than about the commit, so the finding is reported as an
-  advisory rather than an error (`PL-205P`).
-- **The delegated audit and the close-out** - `verify_item` - read exit 0 as
-  the commission's assertion holding, unless a `! grep`'s phrase is still in
-  its file across a line break, and every other status as `REJECT`, with
-  the reason on the line where the run can name it: re-entered `docket
-  verify`, selected no test, killed at the limit, a phrase its file wraps.
-  They may not decline. The
-  command is the thing being asked about, so "could not run it" rejects the
-  work rather than abstaining. What they may not conclude from exit 0 is that
-  the work is right; the project's own check and the reviewer's reading of
-  the diff carry that, on their own lines of the same report.
-- **Delegability** - `Item.delegability` - reads whether a command is
-  *recorded*, never whether it would run or discriminate. Both are the
-  author's obligations below.
-- **`docket check`** reads the command as text: one line, not re-entering
-  `docket verify`, not reading `docket check`'s output, `touches` declared
-  beside it, and one of the admitted shapes below. It executes the command only under `--verify`, and then as the
-  replay above.
-- **A closed item's command** is read by nobody as a claim about today's
-  tree. It is the record of what ran, and the next section holds it to that.
-
-**What the command owes its item** - three things the author can decide at
-the moment of writing and no exit status can decide afterwards:
-
-1. **It discriminates on this item's own work.** Its failure before the work
-   is an evaluation - an ordinary exit 1, never pytest's 5 - and it goes green
-   only for what *this* item's work creates. A clause a neighbouring item's
-   work satisfies makes the replay accuse the wrong item the day the neighbour
-   lands (`PL-3DXV`); a bare `-k` is a bet on a name no test may ever carry,
-   and `docket check` refuses one at the field (`PL-Q8RQ`, below).
-2. **It reads the tree the item touches.** The paths its discriminating clause
-   reads are declared in `touches`, so `docket concurrent` and the pull
-   request's replay scope both see them (`PL-LBW5`); a `pytest` clause naming
-   a suite that cannot exercise the change proves a different tree's health
-   and sends a delegated worker to the wrong file (`PL-2M4X`, `PL-6YL1`).
-3. **It has been run and watched fail, and the author knows why it failed.**
-   `grep` exits 2 for a file it could not read as well as 1 for a line it did
-   not find, and `docket` exits 2 for a subcommand it does not have; either
-   reads as "not done" forever.
-
-A prerequisite clause - `doc_check`, `bin/docket check`, a file's whole
-`pytest` run ahead of the `grep` - is what makes a failure unreadable, and it
-proves nothing the consumers do not already prove: every such clause in this
-store is a line of `make check`, which `docket verify` runs as a line of its
-own report, which `docs/worker.md`'s loop runs after the command, and whose
-`doc_check`, `bin/docket check` and whole-suite steps CI runs ahead of the
-replay. So the field does not carry one: the command is the discriminator
-alone (project owner, 2026-09-19, ratified under `PL-6TP8`, chosen over
-keeping the paired shape), and a command recorded before that date loses its
-clause as its item is started rather than in one pass, which was chosen over
-a mechanical strip of all of them. Measured 2026-09-19: 162 of 177 open
-commands carried one, they were 1,879 of the replay's 1,884 serial seconds,
-and none of them masked a pass.
-
-**The decidable half of that is a check, and only that half.**
-`verify_prerequisite_refused_from` refuses a command that runs `pytest` over a
-tree named in `collected_test_paths` while a *separate*, non-pytest clause
-stands beside it. The separate clause is what makes it decidable: the author
-has already said which clause discriminates, so the `pytest` run is not it,
-whatever the item turns out to be about. A command whose only clause is the
-`pytest` run says the opposite and is untouched, as is one whose run carries
-`-k`, `-m`, `--cov` or a `::` (a `-k` is refused by the rule below instead), and
-as is a target outside the declared trees -
-that one is running something no other consumer does, which is the condition
-that would falsify the rule and the reason the trees are declared rather than
-assumed. Measured 2026-09-19: 0 of the 82 open commands of this shape name
-such a target.
-
-The other 73 multi-clause commands - `python3 tools/doc_check.py check &&
-grep …` and its relatives - are the same contract and are deliberately not
-refused. Which clause is the prerequisite there is a question about the item's
-work: an item whose work is *making `doc_check` pass* has that clause as its
-discriminator, and two of the 73 are two discriminators rather than a
-prerequisite and a discriminator at all. A tool guessing at that half would be
-worse than no tool, so it stays prose (`PL-09G9`).
-
-**Two open items recording one discriminating clause are refused outright**
-(`PL-J3WK`, widened from the whole string to the clause by `PL-BGMK`).
-Whichever is worked first makes the clause pass, so it can prove neither done.
-The key leaves out the health half - the clauses `health_clauses` spells, and a
-selector-less `pytest` run over `collected_test_paths` - because that half is
-what every command shares: counted in, the rule reported 497 pairs over 308
-open items on 2026-09-30, and left out, 0, while catching the pair that had
-been worked twice (`PL-1YDK`, `PL-8PT6`). It does not decide which clause is an
-item's discriminator, which is the judgment the paragraph above leaves to
-prose: an item whose work is making `doc_check` pass shares that clause with
-nothing the rule can see, and that blind spot is the price of a rule that fires
-on nothing false.
-
-The cutover is read against the item's `added` date, so the commands already
-recorded are a closed set - nothing can join it - and it drains as each item
-is started, which is the repair-as-started policy rather than an exception to
-it. It leaks in the bounded way the retired `verify_required_from` did: an item
-captured before the cutover can still have a command written after it. Because
-`docket set` refuses any write `docket check` would then fail, the rule is met
-at the moment the command is typed rather than at the next run.
-
-**A `-k` is refused on its own account** (`PL-Q8RQ`), which is the contract's
-first obligation made mechanical. `verify_k_selector_refused_from` refuses a
-command whose `&&` chain narrows a `pytest` run over the collected trees with
-`-k`. Every test in those trees passes or `make check` is red, so such a run can
-only select tests the check already proves (exit 0) or select none (exit 5, or
-4 for a path the work has yet to write), and a substring is satisfied by
-whatever test later comes to carry it: `PL-S5YM`'s `-k covered` began passing
-when an unrelated merge added one, and three sessions diagnosed the red `main`
-that followed (`PL-99YZ`). It is refused wherever the clause stands, since
-position decides only which half of the contract it breaks - ahead of a `grep`
-its 5 is the command's answer before the work, behind one it re-proves the
-tree. Three runs are left alone, each because that reading stops being true:
-one whose status a pipe or `||` replaces, one carrying `--cov`, and one over a
-tree outside `collected_test_paths`. The date is its own rather than the
-prerequisite rule's, because that rule leaves any `-k` alone and `PL-W4XQ` was
-captured on its first day carrying one; the five open commands of this shape
-on 2026-09-22 are grandfathered and repaired as each item is started.
-
-**Since `PL-1P5V` the shapes are a list, and one nobody has argued for is
-refused when it is written.** Each rule above refuses one shape, and each was
-written after its shape had failed - a red `main`, a dead command, a finished
-item read as absent. Seven arrived in the four days after `PL-6TP8` closed,
-because a list of refused shapes never closes. `verify_allowlist_from` inverts
-it (project owner, 2026-09-23, ratified, over a structured `verify:` field): a
-command is one of these, or its item says in `not-delegable` why none can
-prove it, which also keeps it from a worker whose `docket verify` would trust
-the command.
-
-| The work | The command |
-| --- | --- |
-| adds a test, a line, a sentence | `grep -q 'def test_halted' tests/unit/test_simulation_view.py`, or `grep -qF '<phrase>' <file>` |
-| removes one | `! grep -qF '<the stale sentence>' <file>` |
-| does several of those | the clauses joined by `&&` |
-| covers a module | `uv run pytest --cov=<dotted.module> --cov-fail-under=<N>`, alone |
-
-A `grep` may carry `-F`, `-E`, `-r`, `-i` and, with `-r`, `--include=` or
-`--exclude=` ahead of the pattern; a path may glob, since an item file is named
-after a title that can change; `--` goes ahead of a pattern that starts with a
-dash. Everything else - a pipe, `||`, `;`, a redirection, a `$` the shell would
-expand, any other program or `grep` option, a path outside the repository - is
-refused by `verify_shape_refusal` in `checks.py`, which names the first thing
-it found. A new shape joins the list there, with its argument beside it,
-instead of failing first.
-
-**`! grep` is admitted because of the direction it fails in.** A `grep -q` for
-what the work adds fails quietly when it is wrong - a typo, a file that moved
-(`PL-CWD4`) - because "never passes" reads as work not started. A `! grep -q`
-passes when it is wrong: a typo, a line another branch reworded, a file
-another branch deleted, whose `grep` exit 2 the `!` turns into 0. A passing
-open command is already an error, and the scoped replay runs every command
-reading a file on the branch that edits it, so each way the absence shape goes
-wrong is reported loudly on the branch that caused it. It is also the one
-shape for the commonest removal, a stale sentence a fix deletes, that does not
-dictate the fix's wording. A phrase the document wraps goes wrong in both
-directions, and is the one such fault the tree decides, so it is named rather
-than left to read as either (`PL-RR1N`, above).
-
-**Two anchors, because the capture date cannot say when a command was
-written.** An item captured on or after the date is held to the list wherever
-it is checked. An older item's command is held to it on the branch that writes
-or rewrites it: `check` reads which open items' commands differ from the
-default base's copy (`vcs.commands_written_here`), and `set` knows it is
-writing one. So the triage of old items and the repair of legacy commands as
-each item starts land in the list; a command a branch leaves as the base had it
-stays grandfathered, and a base that cannot be read declines rather than
-accusing the branch. Measured 2026-09-23 over the 220 open commands: 103 fit as
-they stand, 93 more once their legacy trailing health clause is stripped, and
-24 are other shapes. The per-shape rules stay, guarding the grandfathered
-commands until they drain.
-
-### A closed item's command is a record, and it is not rewritten
-
-Once the item is `done`, `verify` stops being a command and becomes the record
-of an experiment that was performed: this command ran, it failed before the
-work and passed after. That is a fact about a tree which no longer exists, not
-a claim about the default branch today, and reading it as the second is what
-makes the field look broken when it is working.
-
-It stops resolving as a matter of course. Measured over the store this grew
-in, 14 of the 179 closed items carrying a command no longer resolve against
-the tree, and not one of the 14 is a defect — each is later work correctly
-consuming the state its predecessor established. Four are
-`grep '^blocked-by: PL-…'` against an item file, which pass exactly while the
-blocker is unresolved and were written in the expectation of stopping. A field
-whose commands are designed to become false cannot be read as a standing
-claim, so nothing here runs a closed item's command and nothing warns that one
-has gone stale: a check firing on all 14 would change no decision on any of
-them, which is the shape of check this project retires rather than adds.
-
-The hazard is the repair. A session meeting a dead command re-points it at
-whatever covers the ground now, and the item then names a command that never
-ran against the work it claims to prove — a false provenance where there was a
-true one, which is worse than an absent one because it looks authoritative.
+The hazard is the repair. A session that meets a record that no longer
+resolves re-points it at whatever covers the ground now, and the item then
+names something that was never read against the work it claims to show.
 
 So `check` errors where a branch changes the `verify` of an item that already
 reads `done` on the default base, and where it adds one to an item closed
-without a command, which after the merge has nothing left to run against it.
+without one, which no branch read against the work.
 An error rather than an advisory because the rule is exact: the field either
 differs from the base's or it does not. The reading is one-sided — the two
 diffs behind it return nothing where no merge base resolves, so a truncated
 checkout under-reports and no branch is ever accused of an edit it did not
 make. Reopening the item is the way out and needs no flag, because an item
-whose status admits the work is unfinished is no longer claiming the recorded
-command proved it.
+whose status admits the work is unfinished is no longer claiming the record
+showed it.
 
-Which tree the command was true of is already recorded, and by `pr` rather
+Which tree the record was true of is already recorded, and by `pr` rather
 than by a second field. The pull request outlives the squash-merge that
 discards the branch commit, which is why `commit` was retired; 246 of the 248
 closed items in the store carry one, and the merge behind it is what a reader
-follows back to the tree the command last passed on.
+follows back to the tree the record was read on.
 
 `status` runs `untriaged` → `ready` / `needs-decision` / `blocked` → `done` /
 `dropped`. Requirements scale with it: an untriaged capture needs only a
@@ -3853,266 +3569,6 @@ records the measurement and the decision. The check on the pull request is
 what CI does instead: it reads the number the event carries and refuses,
 which needs no token and no push.
 
-### An open item whose own command already passes
-
-Closing an item is a hand edit, so work that merges without `status` being set
-leaves the item `ready` for good. Nothing notices: it keeps its place in
-`next`, `wave` and `gate` count it open, and the next session picks it up and
-re-derives what is already on `main` before finding out. Four instances are
-known — `PL-XCYB`, `PL-ZQ9C`, `PL-1TPM` and `PL-0RS6`, the last two squashed in
-one pull request — and every one was caught by a person rather than by a check.
-
-The obvious signal is an item id at the head of a commit subject on the default
-branch, and it was measured and rejected: of the thirteen open items whose id
-led such a subject, eleven were capture or triage commits ("PL-8HJ2 Capture
-that make release always ends in a red test") and two were implementations. An
-advisory wrong five times in six is one every session learns to skim past.
-
-So `check --verify` runs each open item's own `verify:` command instead — the
-item's own statement of what would prove it done — and reports the ones that
-pass. Scoped to `ready` and `needs-decision`, and behind a flag: it is the only
-check here that *executes* the project rather than reading it. `next` and the
-digest are asked on every session start, and a bare `check` is a pre-commit
-gate, which is the wrong moment for this — the finding is about work that has
-already *merged*, so a `make check` on a feature branch was spending about half
-its wall clock asking about a state its own commit could not have changed.
-Measured 2026-09-05 on four cores, `make check` went 60.0 s → 29.5 s. CI passes
-the flag and answers on the same events it always did (`PL-P3B6`).
-
-**`--verify-base REF` narrows the replay to the items this branch could have
-changed the answer for**, which is the same argument one step on (`PL-SDHR`). A
-pull request cannot have changed whether some *other* item's work merged, any
-more than a pre-commit gate can, and the sweep was measured at 74.6 s of a
-102-command run against 5.5 s scoped. So CI scopes on `pull_request` and sweeps
-on `push` to the default branch, where the answer is a fact about that branch.
-This project's `make check` runs the scoped form too, against `origin/main`, so
-a session sees the finding before it pushes rather than from CI (`PL-0HPV`);
-the whole-store sweep stays off it, for the reason above.
-
-**That is two sets, and reading it as one was a defect** (`PL-XMNC`). The first
-is the items whose own file the branch edited, read from the diff rather than
-from their declared `touches`, which is a claim made before the work. The
-second is the open items whose `verify:` command *reads* a file the branch
-edited — the command a branch invalidates without ever opening its item, which
-every one of the six recorded breaks was, and which the first set replays
-never. A command is read clause by clause, split on `&&`, `||` and `;` outside
-quotes, and the program a clause runs is not a file it reads: `python3
-tools/doc_check.py check` names a path and discriminates on none, so counting
-it would drag the 54 open commands carrying that gate behind any edit to it.
-
-Where the reader cannot classify a token it widens rather than narrows, and it
-asks the filesystem nothing — a file the branch is *creating* matches, which
-`test -f CONTRIBUTING.md` needed. **A scoped run always says so**, on the cost
-line and even when the scope held nothing to run: a narrowed run reporting
-nothing must never read as a whole store with nothing to report. Where the two
-sets both contributed, the line says how many came from each.
-
-**A command that reads past the tree is reported as an advisory, not an error**
-(`PL-205P`). Everything above reads exit 0 as a fact about the tree, which
-holds only while the command is a function of the tree. A `verify:` that asks
-the remote is not one: its answer is a fact about the world at the moment it
-ran, so it flips with no commit behind it and the commits the sweep then names
-are innocent. `PL-8GQW`'s was `git ls-remote --tags origin v0.4.30` — correct
-and failing when `#730` filed it, passing the instant the project owner pushed
-the tag, and `main` was then red across six commits by five unrelated sessions
-while the repository had not changed. No branch could have shown it, because no
-branch changed anything, and scoping was never the reason. Five items have ever
-recorded such a command, four of them the same release-tag line, one per
-release; there is no hermetic substitute to prefer, because the work is the
-owner's and the remote is the only place it is visible.
-
-`verify.reaches_outside_tree` decides it by reading the command's words through
-`shell.shell_words`, docket's one reading of a `verify:` command, over the
-command and every substitution's body (`PL-P7J7`), and
-looking for a network command word — `curl`, `wget`, `gh`, `ssh`, `scp`,
-`rsync`, `nc`, or `git` immediately followed by `ls-remote`, `fetch`, `push`,
-`pull` or `clone`. Tokenized rather than searched because a hermetic command
-may carry one as a *search string*: `PL-K2C8`'s greps `SKILL.md` for the
-literal `git push origin --delete` and opens no socket. Unparseable, and
-anything unrecognized, reads as hermetic — wrong in the safe direction, so the
-finding keeps its severity and only a command the predicate is sure about is
-softened. `ROADMAP.md` settled the same question at the other end of the same
-window: a release whose tag has not been pushed yet is an advisory "rather than
-an error: failing it would turn `make check` red on every release branch".
-
-**It reports two findings rather than a verdict**, because a passing command is
-consistent with two states no exit status can separate:
-
-- the work landed and nobody set `status: done`; or
-- the command does not discriminate — it would have passed before the work
-  too, so it proves nothing and the item's commission is unprovable.
-
-Both want a person, and both close: the first by closing the item, the second
-by giving it a command that fails until its work exists. Run against this store
-on 2026-09-01 the second reading was every one of the eight it named, which is
-why the wording leads with the possibility rather than the conclusion.
-
-**An error rather than an advisory since `PL-71P4`.** Not knowing which of the
-two states holds does not make either one tolerable: the second leaves `docket
-verify` returning `ACCEPT` on a branch that did none of the work, which is the
-delegation gate open, and the first is an item that should have closed. The
-message names both repairs, and reporting an ambiguity is not the same as
-reporting something optional.
-
-The severity was affordable only because of an ordering. `PL-L9JS` repaired the
-seven items that passed on a clean tree *first*, so the rule needed no cutover
-date, no grandfathered set, and no second dated policy sitting beside
-`verify_required_from` for a reader to tell apart. Had the repair not gone
-first, the rule would have had to grandfather them and carry that exemption
-forever.
-
-The transient case — a session that ran the work before editing its item —
-resolves in the commit the close-out procedure already requires, since `status:
-done` travels with the work. `_check_selects_nothing` stays an *advisory* beside
-it, deliberately, though no longer because the repair is in doubt. A selector
-matching no test was once the recommended shape for an item whose work had yet
-to write the test; since `PL-6TP8` the repair is always a `grep` for the test
-the work adds, and since `PL-Q8RQ` a `-k` is refused outright on a command
-captured from `verify_k_selector_refused_from`. What the advisory still reaches
-is that rule's grandfathered set, repaired as each item is started - an error
-would force the one-pass repair instead.
-
-One part of that *is* decidable. A command recorded against more than one open
-item cannot be proving any single one of them done, whatever it returns, so
-those are named separately and with certainty — five of the eight shared
-`python3 tools/doc_check.py check`, which passes whenever the docs are
-internally consistent and says nothing about any particular item.
-
-Two conditions decline rather than answer, for the reason
-`merged_pull_requests` declines on a shallow clone — an empty result meaning
-"could not look" must never render as "looked, found nothing":
-
-- **A nested run.** Two open items record commands ending in `bin/docket
-  check`. Unguarded, the outer run would re-enter itself once per candidate and
-  each re-entry would do it again, so children are given `DOCKET_SKIP_LANDED`
-  and skip this one question while still validating the store.
-- **Nothing ran to completion.** Every command returning "not found" is what a
-  bare checkout with no virtualenv looks like from here; every one killed at
-  the time limit is what a box too loaded to finish anything looks like. Either
-  is indistinguishable from a clean store unless it is reported as a refusal,
-  and the two want different repairs, so the sentence says which happened.
-
-**Where only some commands could not answer, the run still reports and names
-them** — among the not-checked lines, beside the runs that declined whole.
-This is the same refusal made per item rather than for the whole run, and it
-is what keeps the `N of M checked` in the findings above honest: a command
-that was killed, or that the shell could not find, produced no evidence about
-its item and is left out of that M rather than counted in it.
-
-It has to be said rather than merely subtracted, and a status of its own is
-what makes saying it possible. A killed command used to come back as exit 1 —
-which is what a failing test returns — so it fell out of every finding while
-still counting as checked, and the report stayed clean (`PL-T940`).
-
-The commands run concurrently, at twice the core count and capped at eight,
-which changes no answer — each still runs in the working tree against the
-current state — and only the wall clock (`PL-LXR3`).
-
-**So `check` reports what the run cost, on the line under its headline:**
-
-```
-docket: 141 open (…), 0 errors, 3 advisories
-  verify: 82 commands in 31.1s (181.4s serially); slowest PL-GS5X 26.4s against a 120s limit
-```
-
-Four figures, and the reason each is there. The count and the wall clock are
-what a session pays. The **serial total** beside them is the one that carries
-the news: concurrency holds the wall clock roughly flat while the store grows,
-so it is the number that hides the growth, while the serial total climbs with
-every item triaged to `ready`. And the costliest command is given against the
-per-command limit, because that margin is the question the limit is set to
-answer — how much room is left before a real command starts being killed and
-the check declines instead of answering.
-
-It is a fact rather than a finding, and it sits outside the errors and the
-advisories for that reason: nobody is asked to act on it, and a *change* in it
-is the signal. That is what it is for. The same figures used to be written by
-hand into two comments and this file, and all three went stale inside a
-fortnight while the queue doubled underneath them — which nobody caught,
-because a healthy store printed no cost at all and there was nothing to notice
-moving (`PL-9NKK`). The dated measurements live in `PL-LXR3` and `PL-9NKK`,
-where a number keeps its date and stays true; this line is the same reading
-taken now.
-
-The wall clock is set by the slowest single command as much as by the number of
-them, which is worth knowing before writing a `verify:` — a full-suite `pytest
---cov` run is tens of seconds on its own, and once one is in the pool a second
-costs a fraction of that. Each command is capped at two minutes so one wedged
-run cannot hang the check.
-
-**An advisory beside it named the outlier, and was retired 2026-09-19.** A
-command 30x above the pool's median was named as the one the check waited for,
-on the reasoning that the person who writes a heavy `verify:` is the only one
-placed to reconsider it and was the one person told nothing (`PL-VG7G`). It was
-dropped on a count rather than on taste (`PL-G6J5`), and the numbers are worth
-keeping because they say something about the store rather than about the check:
-
-| | 2026-09-02 | 2026-09-19 |
-| --- | --- | --- |
-| commands in the pool | 46 | **179** |
-| median command | 0.65 s | **3.65 s** |
-| serial total | 34 s | **1458 s** |
-| slowest command | 8.95 s | **67.4 s** |
-| the ratio's bar, at 30x | ~20 s | **109.5 s** |
-
-The threshold was calibrated when the typical `verify:` was a `grep`. It is now
-`uv run pytest <file>`, so the median rose with the pool and the bar rose with
-the median — to 109.5 s against a per-command limit of 120 s, and a command over
-that limit is killed and kept out of the median, so **once the median passes
-4.0 s the test cannot fire on anything at all.** It was already firing on
-nothing: zero of thirteen real branch scopes taken from the last twenty-five
-merges, and nothing on the whole store. Widening the denominator to the
-*store's* median, which is what the item was filed to propose, measured the
-same: zero of thirteen.
-
-**And the silence is the right answer, not a tuning failure.** 1458 s of serial
-work across eight workers is a 182 s floor against 204 s elapsed, so no single
-command is what the run waits for — the queue is. That is the heaviest of three
-whole-store runs taken that day; the container's load moves the totals (serial
-1204–1458 s, slowest 48.9–67.4 s, wall 166–204 s) and the conclusion holds at
-both ends, since the floor is 150–182 s against 166–204 s elapsed and the
-slowest command is far under it in all three. That is `PL-FRGP`'s
-correction taken to its conclusion: a pool cannot finish before its slowest
-member, but the slowest member is only the *binding* constraint while the rest
-of the work fits underneath it, and this store outgrew that. With 49 commands
-totalling 34 s, about 4 s of aggregate work sat behind a 6.9 s slowest member
-and the slowest member really was the floor; at 78 commands totalling 175 s,
-removing the named command measured **28.6 s → 23.7 s**. At 179 commands
-totalling 1458 s it would measure nothing at all.
-
-So the cost line above carries the signal alone, and it is built for it:
-`serial` is where a store that is uniformly heavy shows up, and the margin
-between the costliest command and the limit is where a single command closing
-on the timeout does. Neither needs a threshold, which is why neither went stale
-the way the ratio did.
-
-Where the cost now is, measured the same day and not addressed by any
-per-command test: three test files carry **59% of the 1458 s**, each re-run by
-every item whose command names it — `subprojects/docket/tests/test_cli.py` 415 s
-across 14 items, `tests/unit/test_doc_check.py` 292 s across 12, and
-`subprojects/docket/tests/test_verify.py` 152 s across 4. `PL-FZ58` carries it.
-
-**Two of those three were a setting, not a fixture** (`PL-YRYR`, 2026-09-21).
-Both files under `subprojects/docket/tests/` build a scratch repository per
-test, and git signed every commit in them because the machine's `~/.gitconfig`
-said to - 72.7 ms a commit against 5.1 ms unsigned, which nothing in either
-file named or could have named. The repository root's `conftest.py` now points
-`GIT_CONFIG_GLOBAL` and `GIT_CONFIG_SYSTEM` at `/dev/null`, and the two
-commands cost 25.1 s -> 8.6 s and 30.9 s -> 10.0 s measured on 4 cores the same
-way. Across the 28 open items whose commands name them, and the 3 naming the
-whole tree, that is about 573 s off a whole-store replay - roughly 39% of the
-1458 s above, none of it from changing a test. `tests/unit/test_doc_check.py`,
-the third file, builds a repository only in the tests that read git rather
-than in every test, and was not re-measured. The
-`conftest.py` sits at the repository root rather than in this tree, so the
-repository's own `tests/` gets the same isolation from the same two lines.
-
-**It changes nothing about `make check`.** That runs pytest under `-n
-$(cpu*2) --dist worksteal`, where this cost was subprocess waiting already
-overlapped with other workers' CPU work: 77.83 s against 78.78 s, which is
-noise. The replay is where it lands, because the replay is serial by
-construction - one command per open item, one after another.
-
 ### Delegation is derived, never granted
 
 Work that a cheaper model can finish should go to one; work whose correctness
@@ -4173,11 +3629,10 @@ means a project has never declared one, and delegation closes. An empty
 that told `verify` to stop auditing its checks has not asked delegability to
 start.
 
-A `verify` command bounds what "done" means; it does not prove the work is
-right. It can be satisfied by the wrong route — a weakened assertion, an added
-suppression, an edit to the check itself. What makes the pair trustworthy is
-the check *plus* the declared scope, which is why an item naming a `verify`
-command and no `touches` is a validation error rather than a delegable item.
+What an item records bounds what "done" means; it does not prove the work is
+right. A named test or a search can be satisfied by the wrong route — a
+weakened assertion, an added suppression, an edit to the check itself. What
+makes the pair trustworthy is the record *plus* the declared scope.
 
 ### The model evidence table
 
@@ -4310,9 +3765,8 @@ calls it rather than writing its own (`PL-63CB`).
 
 `docket verify <id>` answers a narrower question than "do the tests pass":
 did the work that claims to close this item stay inside what the item
-declared? It reads the tests a closed item records against the branch, runs
-the item's `verify` command where it has one, runs the project's own
-check, it reads the diff for the ways a green build can be reached without
+declared? It reads the tests or the text search the item records against the
+branch, runs the project's own check, reads the diff for the ways a green build can be reached without
 doing the work — a file outside `touches`, a protected path, an edit to the
 gate itself, an added suppression, a rewritten front matter — and it measures
 whether the tests still catch a change to the lines the branch changed.
@@ -4344,8 +3798,8 @@ one a session works itself, and closing an item edits the very front matter the
 guard watches. So in `--self` those four **commission** checks report instead of
 refusing: still run, still naming every path, with the reason they are not
 refusing. The four **integrity** checks are untouched — no suppression added,
-the item's own command passes, the unit tests catch a mutation of each changed
-line, the project's own checks pass.
+what the item records shows its work, the unit tests catch a mutation of each
+changed line, the project's own checks pass.
 A session may re-scope its own commission; it may not weaken what measures it,
 and it may not skip the test (`PL-69JZ`, `PL-B5YN`, `PL-4LT9`).
 
@@ -4499,74 +3953,59 @@ and each reader names the kind it applies.
 
 - **An outcome** — `status`, `closed`, `reason`, `pr` — says what the work did.
   It is the **branch's**, because the close-out is what writes it, and it
-  excuses nothing: a drop claims no work for a command to prove.
+  excuses nothing: a drop claims no work for a record to show.
 - **A prediction** — `verify:` and `touches:` — says what the work was to
-  satisfy, written before it existed: a command naming a test not yet written,
-  a path list naming files not yet created. The **base's** copy is the
+  satisfy, written before it existed: a search for words not yet written, a
+  path list naming files not yet created. The **base's** copy is the
   commission and is what the branch is measured against. The branch's copy is
-  a *correction* of the prediction: it is the evidence the audit runs and
-  reads, and it is printed as a correction beside the base's with the base's
-  own result, never substituted silently. A delegated audit refuses the
-  correction outright, through the front-matter check.
+  a *correction* of the prediction, and it is the evidence the audit reads. A
+  delegated audit refuses the correction outright, through the front-matter
+  check.
 - **A waiver** — `not-delegable:` — says what the work may waive. A waiver
   removes a refusal, and it waives only what the base holds, so the **base's**
   copy is the only word on it.
 
-In one sentence: a correction supplies evidence and is honoured and printed; a
+In one sentence: a correction supplies evidence and is honoured; a
 waiver removes a refusal and is the base's; an outcome is the branch's and
 excuses nothing. Counted before the kinds were split, because one copy for
 every field was the shape first asked for. Of 1,437 close-outs on `main`, 163
 rewrote a `verify:` the base already held and every one was a correction — a
 grep target reworded, a test that never existed under the commissioned name, a
-moved file — so reading the command from the base and refusing where it fails
+moved file — so reading `verify:` from the base and refusing where it fails
 would have refused 163 correct close-outs and caught nothing. A wrong correction leaves
 every integrity check running over the diff; a wrong waiver switches one off,
 which is why the two kinds cannot share a copy.
 
 - **`verify:` and `touches:`** are predictions, and the branch's copy of each
-  is honoured as a correction rather than substituted silently. Where the base
-  commissions a command and the branch's differs, both run: the branch's
-  decides the check, and the commissioned command and its own exit are printed
-  under it — ``commissioned: `A` - fails on this tree (exit 1); this branch
-  runs `B` instead`` — so a failing commissioned command replaced by a weaker
-  passing one reaches `ACCEPT` only with that trace beside it, where before
-  the only trace was the front-matter NOTE every close-out prints, which
-  `PL-KSV2` found readers skim (`PL-PZ6T`). Where the base commissions none,
-  the check's own line says the command is the branch's own — a suffix, since
-  that is true of two close-outs in five and a line that fires that often is
-  skimmed. The diff is measured against the base's `touches` where the base
-  holds one, and a path only the branch's own widening declares is named as
-  that rather than passing silently: `--self` reports it as it reports every
-  commission check, and a delegated audit refuses it.
+  is honoured as a correction. The audit reads the search the branch records,
+  and runs no command. The diff is measured against the base's `touches`
+  where the base holds one, and a path only the branch's own widening
+  declares is named as that rather than passing silently: `--self` reports it
+  as it reports every commission check, and a delegated audit refuses it.
 - **A `dropped` item, or one carrying `not-delegable:`** — an outcome and a
-  waiver — has no `verify:` command by construction: the first built nothing, and the second is what
-  `docket check` accepts *instead of* a command. The check names which applies
-  and the remaining checks still run, where a missing command used to stop the
-  audit dead. `docket check` and `docket verify` had disagreed about every
-  such item, so the close-out the `docket` skill prescribes had no passing
-  state (`PL-L4KX`). A dropped item that still carries a command has it
-  printed and not run: the command names work the drop says will not be done,
-  so its exit status follows unrelated work — three drops `REJECT`ed on
-  2026-09-22 on test-name `grep`s that would have passed once another branch
-  added those names (`PL-BX1C`).
+  waiver — records nothing by construction: the first built nothing, and the
+  second is what `docket check` accepts in place of a record. The check names
+  which applies and the remaining checks still run. `docket check` and
+  `docket verify` had disagreed about every such item, so the close-out the
+  `docket` skill prescribes had no passing state (`PL-L4KX`).
 
 A waiver is nothing a session can grant itself, because it turns on the item
 as the **base** holds it — the commission — rather than on the branch. A
-`not-delegable:` reason added beside the deletion of the command it would
+`not-delegable:` reason added beside the deletion of the `verify:` it would
 excuse is reported as the branch's own word for skipping it (`PL-KSV2`). That
 matters most in `--self`, where `front_matter_check` is an advisory by design
 and so catches nothing; reading the base holds the property in both modes and
 needs no second guard. Where the base's copy cannot be read at all, the report
-says so rather than excusing the command silently.
+says so rather than excusing the item silently.
 
 The drop is an outcome and is read the other way, off the **branch's** copy,
 as it has to be: it is what the close-out writes, while the base still holds
 the item open. A delegated audit refuses a drop written by the worker, through
 `front_matter_check`; `--self` only reports it, which grants nothing, since a
-drop claims no work for a command to prove. A `not-delegable:` reason is a
-waiver and is held to the base's copy: it excuses a command the base never
-commissioned - an item filed and closed on one branch, or one the base holds
-without a command - and never one the branch deleted, so a reason written
+drop claims no work for a record to show. A `not-delegable:` reason is a
+waiver and is held to the base's copy: it excuses a `verify:` the base never
+held - an item filed and closed on one branch, or one the base holds
+without one - and never one the branch deleted, so a reason written
 beside the deletion is refused rather than skipping the test (`PL-KSV2`). A
 base whose copy cannot be read excuses nothing, since the waiver turns on
 what it holds.
@@ -4580,7 +4019,7 @@ from the diff, and the failure before was that the widened scope was silent.
 
 Several ids may be given at once — `docket verify PL-K7QX PL-B2B2` — because
 that is the shape delegated work comes back in: one branch, one
-commit per item. Each item's own command still runs per item, since that is
+commit per item. Each item's own record is still read per item, since that is
 what makes one acceptable and the next rejectable, while the project's own
 check runs once for the batch. It proves a property of the tree, and proving
 the same property six times turns a two-second command into a two-minute one,
@@ -4638,17 +4077,10 @@ because a rename or deletion left it naming nothing and `concurrent` then misses
 the overlap. A path no commit has held is not named, because it reads exactly as
 a file the work will create - eleven of the thirteen absent paths open items
 declared on 2026-09-30 were those - so a typo is not named either, and a shallow
-clone declines rather than answer from a truncated history (`PL-8JY7`). It also
-names an open item whose `verify:` command takes, as a plain argument, an
-existing file its `touches` do not cover, because another item's work on that
-file could flip the command while `concurrent` treats the two as independent
-(`PL-ZB82`). But it
+clone declines rather than answer from a truncated history (`PL-8JY7`). But it
 will not tell you what to work on instead, and it does not try to decide
 whether an item is still worth doing. A tool that guessed at that would produce output that looks
-authoritative and is not. Where it does fail the run — an open item whose own
-`verify:` command already passes — it still names the two readings and both
-repairs rather than picking one: it does not close the item whose command
-passed, and it does not rewrite the command.
+authoritative and is not.
 
 ## Configuration
 
@@ -4670,17 +4102,9 @@ instruction_stale_days = 90        # a dated assertion goes this long
                                    # unchecked before it is named
 instruction_paths = []             # the instruction files it reads;
                                    # empty = the audit is off
-verify_required_at_close_from = 2026-09-03   # omit to leave the `verify:` rule off
-verify_prerequisite_refused_from = 2026-09-20   # when a command may no longer
-                                   # re-run a tree `check_command` collects
-collected_test_paths = ["tests"]   # the trees it does collect; empty = rule off
-health_clauses = ["python3 tools/doc_check.py check"]   # the clauses that prove
-                                   # the tree, not the item; left out of the
-                                   # shared-clause key
-verify_k_selector_refused_from = 2026-09-23   # when a command may no longer
-                                   # narrow a run over those trees with `-k`
-verify_allowlist_from = 2026-09-24 # when a command must be an admitted shape
-                                   # or its item `not-delegable`; omit for off
+verify_required_at_close_from = 2026-09-03   # from this date a closing item
+                                   # records what shows its work; omit for off
+collected_test_paths = ["tests"]   # the trees `check_command` collects tests from
 payoff_required_from = 2026-09-20  # omit to leave the `payoff:` rule off
 recommendation_required_from = 2026-09-21   # a `needs-decision` brief
                                    # marks a recommendation; omit for off
@@ -4746,9 +4170,8 @@ who sees no line cannot tell a config that was found from a version of the
 command that reports nothing, and it is the difference between two runs' lines
 that carries the diagnosis.
 
-It is a fact about the run rather than a finding — the category the `verify:`
-cost line beside it is in, and the open-item counts above it — so nobody is
-asked to act on it.
+It is a fact about the run rather than a finding, like the open-item counts
+above it, so nobody is asked to act on it.
 
 **Every other command that loads an item says the second form too, at its foot,
 and says nothing where the file was found** (`PL-N0MH`). The quiet failure was
@@ -4781,8 +4204,7 @@ project's store under its own defaults is correct behaviour and a real use.
 **Where a git read takes the store from is the sibling question, and the same
 invocation answers it** (`PL-T441`). The settings come from beside the store;
 the store, for every read that asks git about the queue - what has landed,
-which closure is owed a `pr`, what a branch holds, what a `--verify` replay is
-scoped to - is the one the command resolved, spelled as git spells it beneath
+which closure is owed a `pr`, what a branch holds - is the one the command resolved, spelled as git spells it beneath
 the repository root (`Invocation.tracked`, from `_tracked` in `cli.py`). It is
 never `config.items_dir`: `--items` wins over the setting here for the reason
 it does above, since a command pointed at one queue must not be answered about

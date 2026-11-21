@@ -3984,16 +3984,6 @@ def in_tree(root: Path, path: str) -> bool:
     return (root / path).exists()
 
 
-def tree_files(root: Path, paths: Iterable[str]) -> frozenset[str]:
-    """Which of `paths` are files in the working tree now.
-
-    `in_tree`'s reading, held to files: a directory a `verify:` searches is
-    not one path its item could declare, so `PL-ZB82`'s advisory reads files
-    alone.
-    """
-    return frozenset(path for path in paths if (root / path).is_file())
-
-
 @dataclass(frozen=True)
 class TouchedPath:
     """One declared `touches` path, and what it has been through since its item was filed."""
@@ -5174,10 +5164,8 @@ def filed_with_work(
 ) -> FilingReport:
     """Items whose own file was added by a commit that also changed something outside the queue.
 
-    The shape `PL-3CBS`'s landed-work advisory cannot reach. That advisory is
-    keyed on `verify:` and scoped to `ready` and `needs-decision`, so an item
-    captured *and* worked in one commit never becomes a candidate for it: it
-    never passes through `ready`, so it never acquires a command. `#635` landed
+    No check of triaged items sees this, because an item captured *and*
+    worked in one commit never passes through `ready`. `#635` landed
     385 lines of this file while filing `PL-0J9K` and `PL-MMVF`, and both were
     still `untriaged` on the default branch days later, offered to the project
     owner as live work.
@@ -5764,11 +5752,9 @@ def _changed_items(root: Path, base: str, items_dir: str, run: Runner) -> set[st
 class ChangedItems:
     """The items a checkout changed against a base, or why that is not known.
 
-    `declined` because of what the one caller does with the set.
-    `docket check --verify --verify-base` scopes the `verify:` replay to these
-    ids, so an empty set that means "git would not say" scopes the replay to
-    nothing and the run reports a clean result it never established - the
-    permissive direction, on the gate CI is holding a pull request to
+    `declined` because of what a caller does with the set. `docket record`
+    writes a pull request's number onto these ids, so an empty set that means
+    "git would not say" has to be told from one that means nothing changed
     (`PL-ZPDM`). The private form has always had a channel, because
     `records_on_base` wraps its runner; this is that channel reaching the
     public read.
@@ -5788,15 +5774,12 @@ def changed_items(
     """The item ids this checkout has changed against `base`, or why that is unread.
 
     The public form of `_changed_items`, which `records_on_base` has used
-    internally since it was written. `docket check --verify-base` reads it to
-    narrow the replay to the items a branch can actually have changed
-    (`PL-SDHR`), which is a different caller with the same question.
+    internally since it was written. `docket record` and the store check's
+    question about closures read it.
 
-    Its one-sidedness is the property both callers rely on and is documented on
+    Its one-sidedness is the property its callers rely on and is documented on
     the private function: what it cannot read it leaves out rather than
-    guessing at. That makes a scoped run check nothing rather than the wrong
-    thing - correct, and half an answer until the run can also say *why* the
-    scope is empty, which is what `declined` carries.
+    guessing at. `declined` says why a set is empty where git did not answer.
     """
     run = _Silences(runner or _run_git)
     return ChangedItems(
@@ -5902,63 +5885,6 @@ def texts_at_fork(
     shown = {path: run(["show", f"{fork}:{path}"], root) for path in wanted if path in held}
     texts = {path: str(text) for path, text in shown.items() if answered(text)}
     return ForkTexts(fork=fork, texts=texts, declined=run.reason)
-
-
-@dataclass(frozen=True)
-class WrittenReport:
-    """Which open items' `verify:` this checkout wrote, rather than inherited from the base.
-
-    The authoring moment of a command, which the store cannot date: `added:`
-    says when an item was captured, not when its command was written, and a
-    rule dated by capture never reaches the commands written for older items -
-    the ones given a command at triage, and the legacy ones rewritten as their
-    items start. The branch that changes a command is where it was written, so
-    a rule about what a command may be is held to it there (`PL-1P5V`).
-
-    One-sided, as `RecordReport` is: an id absent from `identifiers` was not
-    written here or could not be read, and `declined` says which.
-    """
-
-    base: str = ""
-    identifiers: frozenset[str] = frozenset()
-    declined: str = ""
-
-    @property
-    def known(self) -> bool:
-        return not self.declined
-
-
-def commands_written_here(
-    root: Path,
-    commands: Mapping[str, str],
-    *,
-    items_dir: str = "docs/items",
-    runner: Runner | None = None,
-) -> WrittenReport:
-    """The open items whose `verify:` this checkout wrote, against the default base.
-
-    `commands` maps each open item carrying a command to that command. An item
-    is written here when the branch changed its file and the base's copy
-    records a different command, or none, or the base has never held the item.
-    Resolved by id, as `records_on_base` is, so a retitle is not read as a new
-    item; and one `git show` per changed open item, which is usually none.
-    """
-    run = _Silences(runner or _run_git)
-    base = default_base(root, runner=run)
-    if not run(["rev-parse", "--verify", "--quiet", base], root).strip():
-        return WrittenReport(declined="no default branch this checkout can read")
-    changed = _changed_items(root, base, items_dir, run) & set(commands)
-    if not changed:
-        return WrittenReport(base=base, declined=run.reason)
-    at_base = _items_at(base, root, items_dir, run)
-    written: set[str] = set()
-    for identifier in sorted(changed):
-        path = at_base.get(identifier)
-        text = run(["show", f"{base}:{path}"], root) if path else ""
-        recorded = parse_item(text, path.rsplit("/", 1)[-1]).verify if path and text else ""
-        if recorded != commands[identifier]:
-            written.add(identifier)
-    return WrittenReport(base=base, identifiers=frozenset(written), declined=run.reason)
 
 
 @dataclass(frozen=True)

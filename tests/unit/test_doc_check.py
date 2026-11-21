@@ -5144,7 +5144,7 @@ def test_a_subcommand_is_part_of_the_mode(tmp_path: Path) -> None:
 
 
 def test_an_option_value_and_the_order_of_options_are_not_a_mode(tmp_path: Path) -> None:
-    """`--verify-base origin/main` locally and `"$VERIFY_BASE"` in CI are one run."""
+    """`--base origin/main` locally and `--base="$BASE"` in CI are one run."""
     root = _parity_repo(
         _repo(tmp_path),
         local=["python3 tools/a_check.py check --verify --base origin/main"],

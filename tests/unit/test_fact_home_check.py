@@ -117,7 +117,6 @@ def test_a_recursive_walk_outside_tracked_files_fails_and_a_directory_listing_pa
             "def tracked_files(root):\n    return sorted(root.rglob('*'))\n\n"
             "def ruff_configs(root):\n    return sorted(root.rglob('ruff.toml'))\n"
         ),
-        docket__grep="import os\n\ndef _walk(directory):\n    return list(os.walk(directory))\n",
     )
 
     printed = _report(tmp_path)
@@ -131,8 +130,6 @@ def test_a_recursive_walk_outside_tracked_files_fails_and_a_directory_listing_pa
     assert "tools/walker.py:11: glob.glob in every" in printed
     assert "subprojects/docket/src/docket/vcs.py:2:" not in printed
     assert "subprojects/docket/src/docket/vcs.py:5: rglob in ruff_configs" in printed
-    # `grep._walk` models `grep -r`, which reads the disk: a home of its own (`PL-J4YY`).
-    assert "subprojects/docket/src/docket/grep.py:4:" not in printed
     assert "Home: `tracked_files` in subprojects/docket/src/docket/vcs.py" in printed
 
 

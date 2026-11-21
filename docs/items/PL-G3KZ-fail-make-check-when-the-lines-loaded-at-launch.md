@@ -3,7 +3,7 @@ id: PL-G3KZ
 title: Fail make check when the lines loaded at launch pass a cap set at the total after PL-MR85's moves, a cap that can only go down, and retire the rule that each edit to those files names what it replaces
 priority: P2
 effort: M
-status: blocked
+status: ready
 classes: session-cost
 feature: standing-weight
 touches: CLAUDE.md, .claude/rules/expert-review.md, .claude/rules/instruction-writing.md, .claude/rules/plain-writing.md, tools/doc_check.py, tests/unit/test_doc_check.py, docs/resident-instructions.md
