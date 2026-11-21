@@ -33,6 +33,10 @@ A `MINIMUM_` name moves down by the same distance, but never below zero. A
 floor at zero is not moved at all, and the report says so without failing.
 Every quantity the module bounds is a flow or a time, which cannot be
 negative, so admitting a negative value breaks the model's own arithmetic.
+A minimum whose maximum has another name is paired with it in
+`PAIRED_MAXIMUM`. A compartment stepped on its own takes a step from
+`MINIMUM_COMPARTMENT_STEP_S` up to the supported run length, so that floor is
+paired with `MAXIMUM_ELAPSED_SIMULATION_TIME_S`.
 Measured on 2026-10-25, lowering the three zero floors failed 52 tests, and
 the three that did not import the floor's name failed for that reason or
 through a subprocess, not because they copied a zero. A test that copies a
@@ -146,7 +150,7 @@ TRIPWIRES: Mapping[tuple[str, str], str] = {
         "::test_the_run_ends_at_the_supported_run_length",
     ): (
         "its tables were measured over ELIMINATION_DURATION_MIN, which it checks against "
-        "maximum_step_count, so a new run length means re-measuring them"
+        "MAXIMUM_STEP_COUNT, so a new run length means re-measuring them"
     ),
     (
         "MAXIMUM_ELAPSED_SIMULATION_TIME_S",
@@ -225,6 +229,12 @@ def tripwire_reason(name: str, nodeid: str) -> str | None:
 
 MINIMUM_PREFIX = "MINIMUM_"
 MAXIMUM_PREFIX = "MAXIMUM_"
+#: The maximum that bounds a minimum's interval, where the two names differ
+#: by more than their prefix. `require_compartment_step` in
+#: `core/supported_ranges.py` applies this pair.
+PAIRED_MAXIMUM: Mapping[str, str] = {
+    "MINIMUM_COMPARTMENT_STEP_S": "MAXIMUM_ELAPSED_SIMULATION_TIME_S"
+}
 
 
 @dataclass(frozen=True)
@@ -290,7 +300,9 @@ def widened(constant: Constant, constants: Sequence[Constant]) -> float | None:
         width = constant.value - values.get(partner, 0.0)
         return constant.value + width if width > 0 else None
     if constant.name.startswith(MINIMUM_PREFIX) and not is_zero_floor(constant):
-        partner = MAXIMUM_PREFIX + constant.name.removeprefix(MINIMUM_PREFIX)
+        partner = PAIRED_MAXIMUM.get(
+            constant.name, MAXIMUM_PREFIX + constant.name.removeprefix(MINIMUM_PREFIX)
+        )
         if partner not in values:
             return None
         width = values[partner] - constant.value

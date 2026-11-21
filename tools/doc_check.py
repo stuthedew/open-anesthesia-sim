@@ -2327,7 +2327,7 @@ def module_constants(path: Path) -> dict[str, float]:
 
     A constant counts when its value is a number literal, a negated one, or a
     call with one such argument and nothing else, as in
-    `SIMULATION_STEP_S: Final = SimulationStep(0.1)`. The module is parsed and
+    `LAYOUT_SCHEMA_VERSION: Final = SchemaVersion(2)`. The module is parsed and
     never imported, so reading it runs none of its code. A constant computed
     from others is left out, because only running the module could say what
     it holds.
