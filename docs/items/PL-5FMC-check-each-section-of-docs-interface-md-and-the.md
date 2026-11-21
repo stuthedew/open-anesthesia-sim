@@ -43,3 +43,7 @@ instead, because that build is changing `core/` while this sweep runs.
 **Done when.** Every section of `docs/INTERFACE.md` has a dated verdict in
 this item, each plain fact error is corrected, and each product decision is
 an item of its own.
+
+**Generator check.** No generator. This item is a sweep that the project
+owner asked for, and it reads no workflow fact. It declares `docs/items`
+only because its verdicts and the items it files are written there.
