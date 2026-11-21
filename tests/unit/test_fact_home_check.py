@@ -308,7 +308,7 @@ def test_a_method_argument_names_no_path(tmp_path: Path) -> None:
 
 
 def test_a_string_bound_under_two_names_in_two_modules_is_refused(tmp_path: Path) -> None:
-    """`PL-3PKN`: `tools/worker_runs.py` spelled `"claude/"` as `BRANCH_PREFIX`
+    """`PL-3PKN`: the worker-run tool, since removed, spelled `"claude/"` as `BRANCH_PREFIX`
     beside `docket.claims.AGENT_BRANCH_PREFIX`. The prefix names no path in the
     tree, so the path comparison passed it, and no rule compared plain strings."""
     _tree(
