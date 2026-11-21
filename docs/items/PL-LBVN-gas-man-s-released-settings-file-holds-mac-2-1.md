@@ -112,3 +112,5 @@ at the stored MAC. The dial keeps opening at 1 MAC, now the age-40 value:
 1.80% sevoflurane, 1.17% isoflurane and 6.60% desflurane, all on the dial's
 0.01-point steps. Decided here because it keeps the existing rule that every
 run starts at a recognizable clinical anchor.
+
+**Checked 2026-11-21:** `PL-RMNP` (the check of `docs/MODEL.md` against the code) found three places that the move to Mapleson's age-40 values must change with the stored numbers. `format_mac_reference` in `app/formatting.py` prints the MAC with one decimal (`{mac_percent:.1f}`), so isoflurane's 1.17% would be shown as "1.2%" and sevoflurane's 1.80% as "1.8%". The docstring of `MacPercent` in `core/concentration.py` and `docs/MODEL.md` § "Conventions" both say "The shipped MACs are 1.2% to 6.0%". `docs/MODEL.md` and the three agent files still hold De Wolf's 2.0, 1.2 and 6.0 today, which is this item's work and not a finding against the document.

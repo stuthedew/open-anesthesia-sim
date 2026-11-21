@@ -33,19 +33,8 @@ raising it again spends a reply re-deriving what this section already settles
 and if it does not, find what generates the work (`PL-04KR`, `PL-WXKD`).
 
 **While any open workflow-lane item carries `generator: live`, no new workflow
-mechanism is built** (project owner, 2026-09-22, ratified, and narrowed to the
-workflow lane 2026-10-17, ratified; the triage mode records what each was
-chosen over). The pause holds apparatus work unrelated to fixing the
-generators, both new features and housekeeping. A new command, check, field or
-rule of that kind, or a re-specification of the generator rule, is captured
-and not built, and is not offered as the answer to a finding. Work on the
-generators needs no lift: fixing a live generator, fixing a defect in what
-exists, or fixing the machinery that finds and ranks generators. The pause
-applies while `bin/docket generators` marks a workflow-lane head "still
-generating", not while `next` shows a generator tier (`PL-CT07`). A request
-from the project owner lifts it for that request, and the session says so
-(`PL-6Q9L`). `.claude/skills/docket/modes/triage.md` § "Generators, how they
-rank, and the pause they set" has the full rule and its history (`PL-6VJ3`).
+mechanism is built**, unless the owner asks. Fixing a generator or a defect
+needs no lift. `.claude/skills/docket/modes/triage.md` has the full rule.
 
 **Product focus, from 2026-09-25** (project owner, 2026-09-25, ratified, over
 a fix batch before the switch and over working each root cause in the owner's
@@ -194,14 +183,7 @@ misleading clinical value, saying so is not optional.
 Session cost is turns times context, so the practices below keep context small.
 None of them overrides the safety-critical verification requirements below.
 
-- Keep a session short and scoped to one topic; start a fresh one for an
-  unrelated topic rather than continuing or compacting a long one. **Reset at
-  150,000 tokens of spend, and check that budget with
-  `python3 tools/context_reading.py` before starting an item, not on reaching
-  it** (project owner, 2026-09-16; re-anchored to spend 2026-09-21, ratified). When
-  the item will not fit in what is left, or a session passes the budget anyway,
-  reset in place as `.claude/skills/docket/modes/start.md` § "Check the spend
-  before starting, and reset in place" says (`PL-Z90G`).
+- Keep a session to one topic, and reset it at 150,000 tokens of spend.
 - Batch related questions, and related edits, into one turn.
 - Prefer targeted reads over whole-file reads of large documents once you know
   roughly where the section is. Read the whole file when editing it.
@@ -296,90 +278,15 @@ in complexity, or a change that opens a class of follow-on work. Then put the
 risk and the reward, and stop. Report in a line what the fast path did.
 
 - **Capture, always, and capture cheaply.** Any defect, risk, cleanup,
-  optimization, inconsistency, or idea identified in a session and not fixed in
-  that same session gets recorded before the session ends — findings the owner
-  raises and findings you make on your own alike. `bin/docket new "..."` is the
-  whole procedure: no id to allocate, no band to choose, nothing that can
-  conflict with another branch, and it takes several titles in one call because
-  ideas arrive in clusters.
-  **Where those titles are one problem, group them as you file them:**
-  `bin/docket new --feature <name> "..." "..."`. The session that diagnosed it
-  is the only one that knows they are one thing; the next reads separate
-  files. Name the group for what *completes*, and the `docket` skill has the
-  rest (`PL-N638`). Do not ask whether to record it — filing an item is
-  not a decision the owner needs to make. Where
-  a thread is still open when the session ends, update `docs/WORKING_NOTES.md`
-  too — but only for a thread spanning more than one item, outliving its item,
-  or having none. One item's own reasoning goes in that item, at any length.
-- **Or fix it in place, now.** The exemption the capture rule states — "not
-  fixed in that same session" — opens for a small defect a session finds while
-  building an item, wherever in the tree it finds it (project owner,
-  2026-10-12, widening the door `PL-3MJH` built narrow on 2026-09-01; `PL-6B1Z`
-  carries the count and the decisions). All four hold, or the finding is filed:
-
-  1. **It is a defect, not a choice.** No reasonable person could prefer the
-     current state: a wrong answer against the code's own stated intent, a rule
-     this repository states, or plain fact. A rename, an extracted helper, a
-     check somebody might defend — that is a decision, and decisions are items.
-  2. **It is small: one defect, one commit, with its regression test.** The
-     fix carries the test a code change owes under both standards and nothing
-     more; one that wants a second commit, reaches a second mechanism, or
-     leaves anything to come back to is an item.
-  3. **It stays off the clinical floor and adds no read hold.** A defect in
-     `src/anesthesia_sim/core/`, `src/anesthesia_sim/data/`, `docs/MODEL.md` or
-     `docs/INTERFACE.md`,
-     or any finding the safety-critical standard reaches, is filed: the item is
-     what ranks it `P1`, offers it to the strongest model and stands as its
-     provenance. A fix that needs the owner's read (the `pull-request` skill
-     says which) is taken only where the branch already waits on that read, so a fix
-     never turns a pull request that would merge on green into one that waits
-     on the owner (project owner, 2026-10-12, ratified, over holding the pull
-     request for the read, and over opening the clinical paths with a
-     regression test).
-  4. **No open item already describes it.** Then it is that item's: claim it
-     alongside and close it under its own id, or leave it to the queue; a fix
-     under another id leaves the item open with its fix merged.
-
-  **Fix at most two per branch**, and the third means stop and file — or, where
-  the three are one mechanism, record the generator. A hard count rather than a
-  judgement call, because knowing when to call it a day is the judgement a
-  session is likeliest to rationalise past; it binds about one finder in 22.
-  Record each as its own commit led by the *current* item's id, and one line in
-  the pull request body saying what it fixed and where: no item file, no triage,
-  and the file is *not* added to the item's `touches`, which derive its lane
-  and feed `bin/docket concurrent`. `bin/docket verify --self` names the file
-  as outside `touches` and still `ACCEPT`s, the intended reading (`PL-6QZP`); a
-  delegated review refuses it, so this is a session's door and never a
-  delegated worker's (`docs/worker.md`). The separate commit is what makes this
-  safe to grant — the owner can drop it in a rebase — and why a session holding
-  no item cannot use the rule, having no id to lead it. A no-behaviour repair
-  to another item's file or to `docs/WORKING_NOTES.md` (drift, a stale status
-  sentence, a missing recommendation marker) is not a fix-now use at all:
-  declare the file in the current item's `touches`, and it rides the commit
-  already being made, counting against nothing (project owner, 2026-09-22,
-  ratified, over leaving that licence in the path-scoped citation-drift rule,
-  which loads only after the decision to file; eleven such repairs became items
-  in three days, `PL-G40Z`).
-- **Housekeeping you are about to do yourself is filed before you do it.**
-  Repository work that no item names, such as resolving a merge, a docs sweep
-  or recovering a stranded item, gets `bin/docket new` and a claim before its
-  first commit. Deleting remote branches is never filed.
-  `.claude/skills/docket/modes/capture.md` § "Mode: housekeeping nobody filed"
-  has the reason, what is too small to file, and what a reply does about
-  branches instead (`PL-CP74`, `PL-Z90G`).
-- **A generator takes one of two endings: fix it in this session, or end the
-  reply with a ready-to-paste prompt that starts a fresh session on it**
-  (project owner, 2026-09-17). A generator is a mechanism that causes three or
-  more items. The two endings bind a head recorded `generator: live`, and an
-  item recorded `impairs-generators:`, which is a defect in the machinery that
-  finds and ranks generators. Filing it and carrying on is not a third ending,
-  because an item alone changes nothing. Found in a product session, it takes
-  the prompt, after the product item, unless it blocks that item (project
-  owner, 2026-09-25, ratified, over fixing it in that session once the item is
-  done, `PL-2866`). A spent generator is ordinary work under the capture rule
-  above. How to record a generator, and why a live one ranks above everything
-  but `P0`, is in `.claude/skills/docket/modes/triage.md` § "Generators, how
-  they rank, and the pause they set" (`PL-6VJ3`).
+  optimization, inconsistency or idea found in a session and not fixed in it is
+  recorded before the session ends, with `bin/docket new "..."`. Do not ask
+  whether to record it. The `docket` skill's capture mode has the rest.
+- **Or fix a small defect in place**, as the `docket` skill says. A defect in
+  `src/anesthesia_sim/core/`, `src/anesthesia_sim/data/`, `docs/MODEL.md` or
+  `docs/INTERFACE.md`, or one the safety-critical standard reaches, is filed.
+- **File housekeeping before you do it**: `bin/docket new`, then a claim.
+- **A generator**, a cause of three or more items, **is fixed in this session,
+  or the reply ends with a ready-to-paste prompt for a fresh session on it.**
 - **A behavior change takes effect in the session that asks for it.** When the
   owner asks for a change to how sessions work — these instructions,
   `docs/worker.md`, the `docket` skill — record it like any other finding and
@@ -448,13 +355,8 @@ risk and the reward, and stop. Report in a line what the fast path did.
   it already set going stops unasked: it disarms auto-merge on its own armed
   pull requests at once and says so, and a check-in it scheduled only reads and
   reports. A finding goes into the reply, to be filed once the mode lifts.
-- **Capture intent, and route it by how ready it is.** A **specific change** is
-  a queue item, written now. A **feature wanted but not yet ready to build** is
-  one unscoped line of intent in `ROADMAP.md` § "Planned milestones" — filing it
-  as an `L` queue item instead puts work in the queue that cannot be worked,
-  where every session reads past it. A **feature being designed right now** gets
-  the design round first and items only once the shape has settled, because an
-  idea changes most in its first exchange.
+- **Capture intent, and route it by how ready it is**: a specific change is a
+  queue item, and a feature not yet ready is one line in `ROADMAP.md`.
 - **Friction that compounds is recommended the moment it is found, not filed.**
   Say so in the reply that finds it, with a recommendation to do it first,
   because the owner cannot act on what only reached the queue. A finding earns

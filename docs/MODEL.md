@@ -241,8 +241,9 @@ below the end-tidal one during administration, as Carpenter and Eger measured
 (§ "Desflurane's residual, and why the parameter file was not changed").
 § "Known limitations" lists this simplification.
 
-This project's sevoflurane and patient parameters come from the Gas Man
-simulator, whose structure matches this model's in two respects. In Gas Man,
+Most of this project's agent and patient parameters come from the Gas Man
+simulator (§ "Parameter provenance" says which), whose structure matches this
+model's in two respects. In Gas Man,
 each tissue group exchanges agent only with blood, at a perfusion-limited rate,
 and arterial partial pressure is displayed without being tracked as a
 compartment. Gas Man tracks four compartments: alveolar gas and the vessel-rich,
@@ -321,8 +322,8 @@ They differ only by a factor of the ambient pressure, so with that pressure
 fixed at 760 mmHg, $`F_A = 0.02`$ is 15.2 mmHg. The model relies on this in
 three places. It stores every modeled concentration as a fraction with no
 unit (see § "Concentrations"). The interface displays each concentration as a
-percent of one atmosphere. And $`\mathrm{MAC}_\%`$ is one sea-level percent
-divided by another.
+percent of one atmosphere. And a MAC multiple is one sea-level percent divided by
+another, the displayed percent over $`\mathrm{MAC}_\%`$.
 
 **More than anything else in the model, the vaporizer control depends on the
 ambient pressure being 760 mmHg.** At 760 mmHg, both classes of vaporizer deliver the
@@ -568,8 +569,8 @@ unit**, into moles, mass, or the millilitres of liquid that a vaporizer is fille
 from. Every governing equation works with dimensionless fractions and physical
 volumes, and every partition coefficient is a ratio. So the condition changes no
 concentration curve, mass balance or displayed concentration, and no other
-number under § "Governing equations", "Conservation of agent mass" or
-"Minimum displayed outputs". The ideal-gas molar volume is 25.450 L/mol at
+number under § "Governing equations" or "Conservation of agent mass", or
+under `docs/INTERFACE.md` § "Minimum displayed outputs". The ideal-gas molar volume is 25.450 L/mol at
 37 °C, so declaring 37 °C instead would change each converted amount by a
 factor of 1.058.
 
@@ -699,8 +700,7 @@ was read.
 
 **For developers.** The code must use the one reference condition everywhere,
 and must never add gas fractions, dissolved blood concentrations and tissue
-concentrations directly. It works in litres unless the implementation document
-explicitly selects another consistent unit.
+concentrations directly. It works in litres.
 
 ## Symbols
 
@@ -726,7 +726,7 @@ symbol.
 | $`Q`$ | Cardiac output | L blood/min | `PatientCompartments.cardiac_output_l_min` |
 | $`Q_i`$ | Blood flow to tissue group $`i`$, formed as $`f_iQ`$ and never stored | L blood/min | `TissueGroup.blood_flow_l_min_at` |
 | $`f_i`$ | Fraction of cardiac output reaching tissue group $`i`$ | dimensionless | `TissueGroup.perfusion_fraction` |
-| $`\mathrm{MAC}_\%`$ | The agent's alveolar concentration at 1 MAC, a single adult value whose source states no age. It is used only as a display divisor | percent | `AgentParameters.mac_percent` |
+| $`\mathrm{MAC}_\%`$ | The agent's alveolar concentration at 1 MAC, a single adult value whose source states no age. It sets the dial's starting position and is the divisor for the display in MAC multiples. No governing equation reads it | percent | `AgentParameters.mac_percent` |
 | $`\lambda_{b:g}`$ | Agent blood:gas partition coefficient, read from the agent data files and stored once per patient in the venous pool | dimensionless | `PatientCompartments.blood_gas_partition_coefficient` |
 | $`\lambda_{i:g}`$ | Tissue:gas partition coefficient for group $`i`$, read from the agent data files | dimensionless | `TissueGroup.tissue_gas_partition_coefficient` |
 | $`\lambda_{i:b}`$ | Tissue:blood partition coefficient for group $`i`$, derived as $`\lambda_{i:g}/\lambda_{b:g}`$ and never stored | dimensionless | `TissueGroup.tissue_blood_partition_coefficient_for` |
@@ -1445,7 +1445,8 @@ detects either case at the next step or read.
 mutable record must either refuse a later write or be checked against a rule,
 at the write or by this identity. The test fails on any field that does
 neither. A field is exempt only when its entry says why no rule ties it to
-another field, or names the open item that will check it.
+another field, says that the field is private and written only by its record's
+own methods, or names the open item that will check it.
 
 Two bounds apply, and each one addresses a different question.
 
@@ -1727,7 +1728,7 @@ y(t+\Delta t) = \exp(A\,\Delta t)\,y(t)
 $$
 
 The model builds $`A`$ in `core/governing_equations.py`. Each entry of $`A`$ is one term of one
-balance equation in § "Governing equations", in the order this document gives them. The model
+balance equation in § "Governing equations" or § "Conservation of agent mass". The model
 computes $`\exp(A\Delta t)`$ in `core/matrix_exponential.py`, which contains no physiology. That
 module's docstring gives the method's source and how its constants were derived. Neither module
 needs an outside library.
@@ -1749,8 +1750,8 @@ agent handled. The fixed limit catches a gross error early, while little agent h
 delivered, and the share limit takes over after that. The rounding error is a thousand times
 smaller than the share limit, so no accuracy is lost.
 
-In litres, though, that error scales with the largest amount in play: about 43 L of delivered
-agent over an hour at desflurane's dial setting. A long run therefore routinely exceeds the fixed
+In litres, though, that error scales with the largest amount in play: about 14 L of delivered
+agent over an hour at desflurane's 1 MAC dial setting. A long run therefore routinely exceeds the fixed
 limit and passes on the share limit alone. In runs on 2026-09-06, the fixed limit was first
 exceeded after 3452 s at the reference settings, and after 538 s at the most extreme sevoflurane
 settings the model accepts.
@@ -2180,8 +2181,9 @@ refused, and the whole model refuses to start with any compartment above 0.99. A
 is still checked only from 0 through 1, because rounding may put it just above 0.99.
 <!-- provenance: core/supported_ranges.py MAXIMUM_INPUT_FRACTION = 0.99 -->
 
-The chart checks each fraction it computes before drawing it, so a chart opened from a state at 1
-is refused rather than drawn. The refusal names the compartment, such as the muscle group, because
+The chart checks each fraction it computes before drawing it, so a chart that computes a fraction
+above 1 is refused rather than drawn. A chart opened from a state at 1 at the hardest corner
+computes one, and no supported setting produces that state. The refusal names the compartment, such as the muscle group, because
 a learner sees it as the banner that says why the run halted.
 
 **For developers.** Two types in `core/numerical_envelope.py` enforce the envelope:
@@ -2547,7 +2549,7 @@ squarings with `SimulationConfigurationError`. A run that exceeds the mass-balan
 The figures behind the chart's excess are these. In the canonical evaluation, one propagator
 across the whole 86 400 s at the hardest corners needs more than 32 squarings, so it is refused.
 In the 60-column chart, each column's 1464.4 s propagator needs 32 squarings, the most allowed.
-Its worst entry differed from a 50-digit reference by 5.65e-7, about 3e11 units in the last place.
+Its worst entry differed from a 50-digit reference by 5.65e-7, about 5e9 units in the last place.
 That error is about $`2^{32}`$ times the unit roundoff, or 4.8e-7. The chart applies
 the propagator 59 times, and 59 times 5.65e-7 is 3.3e-5. The same corner's 0.1 s step needs 19
 squarings and differs from the reference by 1.6e-11. Built from propagators over 1464.4 s, 100 s,
@@ -2712,7 +2714,7 @@ decision, under the rule set out after the three tiers.
    reports the value, its dispersion and its reference conditions. Examples
    are Strum and Eger's sevoflurane blood:gas measurement
    (0.686 ± 0.047 at 37 °C, n=19) and Yasuda, Targ and Eger's human
-   tissue:blood coefficients.
+   tissue:gas coefficients.
 2. **Secondary synthesis.** A source in this tier is a review, textbook,
    monograph or consensus document that collects primary measurements without
    making one. It is a good way to find the primary source, and to record the
@@ -2788,18 +2790,20 @@ that quantity supports it, and in this simulator that is the ordinary case.
 Where a primary measurement *is* available and simply has not been adopted,
 the source entry says so in those words.
 
-**Holding a source's full text does not change its tier.** Full texts that the
-project holds are kept in `docs/references/` so that a claim can be checked
-against the source itself. Each text's full citation is in
-`docs/references/README.md`. Baker and Farmery's 2011 *Comprehensive
+**Holding a source's full text does not change its tier.** The project owner
+keeps the full texts in a private corpus, so that a claim can be checked
+against the source itself. `docs/references/` holds no full text. It records
+each source's full citation, in `docs/references/README.md`, and notes of the
+values taken from it. Baker and Farmery's 2011 *Comprehensive
 Physiology* review of inert gas transport in blood and tissues is the closest
 published statement of what this document specifies. For any individual number
 in it, the review is still a tier-2 synthesis.
 
 **Republication does not promote a value between tiers.** A peer-reviewed
 paper that prints a reference implementation's parameter table is still a
-tier-3 citation. This project's two tier-3 citations are of that kind, and
-neither measured a coefficient. Both are Gas Man simulation studies. Table 1
+tier-3 citation. Two of this project's three tier-3 citations are of that kind, and
+neither measured a coefficient. Both are Gas Man simulation studies, and the
+third citation is the Gas Man Workbook itself. Table 1
 of De Wolf et al. 2012 is the parameter set that the authors fed to Gas Man,
 and Weber et al. 2021 describe the product's standard 70 kg patient. The two
 papers do not even agree on what Gas Man's set holds. Weber et al.'s Table 1
@@ -2853,7 +2857,9 @@ departs deliberately from the published Gas Man figure, and a default fresh gas
 flow with no published counterpart.
 
 **Of all the stored values, MAC (`mac_percent`) is the only one used as a
-divisor for a displayed value.** The three stored MAC values are the ones that
+divisor for a displayed concentration.** The liquid density is the divisor for
+the displayed millilitres of liquid agent (§ "Agent amount"). The three stored
+MAC values are the ones that
 De Wolf et al. state they used in their Gas Man simulations. MAC divides every
 value shown in MAC multiples, so its tier affects a displayed clinical value as
 well as a starting dial position. § "Delivery-limit and MAC parameters" states
@@ -3109,8 +3115,8 @@ fat is 16.3% of body mass, against Lowe's 15.0%.
 
 **The perfusion fractions therefore still have no identified origin.**
 References 19 and 20 give different flows for different compartments. Reference
-9, Mapleson 1963, is the last of the four still unread, and reference 20 names
-him only as the source of the model *concept*.
+20 names Mapleson 1963, reference 9, only as the source of the model
+*concept*. The paragraphs below record what reading it found.
 
 **For developers.** The reference patient's data file is
 `src/anesthesia_sim/data/patients/reference_adult.json`, and the anesthesia
@@ -3284,10 +3290,11 @@ data file carries the figures and the detail for each value.
 <!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
 
 **Nothing is promoted or adopted because of any of it.** All seven values stay
-tier 3 and unadopted. Learning where Gas Man's numbers came from is not
+tier 3, with the Workbook as their adopted authority, and Lowe and Ernst stays
+cited and not adopted. Learning where Gas Man's numbers came from is not
 evidence that they were measured. For the four that do not reproduce, there is
 nothing here to adopt. For the ones that do, adopting would mean naming as the
-authority a compilation whose own four sources are unread. What the reading
+authority a compilation, not a measurement. What the reading
 gains is an attribution checked against the document itself, and a known tier
 for the next link in the chain.
 
@@ -3316,16 +3323,16 @@ default. Nothing argues for restoring 1.0 L.
 
 **The larger pool leaves the wash-in comparison unchanged and moves elimination
 further from published data.** The 30-minute $`F_A/F_I`$ wash-in distances
-from the published cohort means are unchanged to two decimal places (+0.16,
-+0.31, +0.79, +0.38 SD). The pool has long since equilibrated by then. So the
+from the published cohort means move by 0.01 SD or less (+0.16, +0.31, +0.79, +0.38 SD
+at the stored pool). The pool has long since equilibrated by then. So the
 published wash-in comparison cannot discriminate between the two values. The
 5-minute $`F_A/F_{A0}`$ elimination ratios move **0.11 to 0.13 published SD
-further from** their cohort means: sevoflurane +3.67 to +3.79, isoflurane +4.02
-to +4.15, and desflurane +1.02 to +1.13. They move because a larger pool returns
+further from** their cohort means in each agent's first cohort: sevoflurane
++3.67 to +3.79, isoflurane +4.02 to +4.15, and desflurane +1.02 to +1.13. They move because a larger pool returns
 more agent to the lungs. § "Published wash-in and elimination validation test"
 already attributes a shift in the same direction to this model's rebreathing
-circuit rather than to tissue return. This shift is a tenth of the gap it adds
-to.
+circuit rather than to tissue return. This shift is between a thirtieth and a tenth of
+the gap it adds to.
 <!-- not-restated: 0.31 -->
 
 **Gas Man's 1.0 L is not an arterial compartment under a venous name.** Lerou
@@ -3340,7 +3347,7 @@ the volume. It is not evidence of a shared lineage, because nothing documents
 Gas Man as having taken anything from this paper.
 <!-- not-restated: 2 % -->
 
-The following table records the values selected for v0.1.0. Each value is
+The following table records every stored value. Each value is
 loaded from a versioned data file and validated against its schema, rather than
 written into the program. That file records full citations, definitions and
 reference conditions in its `sources` entries, and the table does not repeat
@@ -3416,8 +3423,9 @@ source, and that book prints the same material as per cent of a 100 kg body,
 with cardiac output an allometric function of mass.
 <!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
 
-**The vessel-rich flow fraction is 0.76 here and 75.8% in the one reachable
-publication of the same parameter set.** The stored value comes from the
+**The vessel-rich flow fraction is 0.76 here and 75.8% in one of the two
+reachable publications of the same parameter set.** Weber et al. 2021's Table 2
+prints 76.00%. The stored value comes from the
 Workbook's own page-168 table, which gives the vessel-rich relative flow as
 0.76 (read at the source on 2026-09-06). The twelve partition coefficients come
 from De Wolf et al. 2012. Their Table 1 prints 75.8, and 75.8 + 18 + 6 = 99.8.
@@ -3657,8 +3665,8 @@ Fiserova-Bergerova and Diaz 1986 were checked in PubMed on 2026-10-25 (PMIDs
 23737195, 16115976 and 3721592). Only Baker and Farmery was read in full text,
 and its full citation is in `docs/references/README.md`.
 
-**For developers.** The patient weight (`PatientParameters.weight_kg`) is loaded
-and range-validated, and nothing else reads it.
+**For developers.** The patient weight (`ReferenceAdultParameters.weight_kg`) is
+loaded and checked to be positive and finite, and nothing else reads it.
 
 Two checks each reject a set of flow fractions whose sum differs from 1.0 by
 more than the tolerance in § "Tissue groups" (`FLOW_FRACTION_TOLERANCE`). One
@@ -3679,9 +3687,9 @@ effective volume (`docs/machine-abstraction.md`), and the roadmap says when
 that decision is revisited (`ROADMAP.md` planned-milestone item 39).
 
 The tissue:blood coefficients are computed by properties of the class for an
-agent's parameters (`AgentParameters`, in `core/parameters.py`). The
-tissue-blood partition-coefficient tests in `tests/unit/test_parameters.py`
-check the division of tissue:gas by blood:gas.
+agent's parameters (`AgentParameters`, in `core/parameters.py`). One test in
+`tests/unit/test_parameters.py`, `test_derives_tissue_blood_coefficients`,
+checks the division of tissue:gas by blood:gas, for sevoflurane.
 
 ### v0.2.0: isoflurane and desflurane
 
@@ -3713,7 +3721,7 @@ The three blood:gas values can be compared only because they come from one publi
 are Gas Man's set, at tier 3 of the source grades in § "Source hierarchy".
 
 The argument from a shared source covers the partition coefficients only. It does not cover the
-stored MAC values, which differ from the primary literature in opposite directions for sevoflurane
+stored MAC values, which differ from Mapleson's age-40 values in opposite directions for sevoflurane
 and desflurane. § "Delivery-limit and MAC parameters" gives the differences.
 
 **Gas Man's Workbook says the nine tissue:gas coefficients come from Yasuda, Targ and Eger, and
@@ -3810,16 +3818,19 @@ coefficient, which makes that coefficient the obvious suspect. It is not the cau
 source. The reference adult patient's physiologic parameters are in
 `data/patients/reference_adult.json`. Storing Yasuda's figures would require
 recomputing every pinned reference state under `tests/reference/`, because
-those states are this parameter set's solution. One test file checks the
-stored coefficients and the simulated alveolar-to-circuit ratios
-(`tests/reference/test_multi_agent.py`). Before changing any of desflurane's
+those states are this parameter set's solution. `tests/unit/test_parameters.py` checks each
+stored coefficient against a literal. `tests/reference/test_multi_agent.py`
+checks mass balance and equilibrium for isoflurane and desflurane, and that
+desflurane's alveolar-to-circuit ratio is above isoflurane's after one minute. Before changing any of desflurane's
 coefficients, read § "Desflurane's residual, and why the parameter file was not changed".
 
 ### Delivery-limit and MAC parameters
 
-Each agent has two stored values that play no part in the model's equations: its maximum delivered
-concentration and its MAC. Both are specified here because a value that a clinician could read or
-act on is safety-critical whether or not the model uses it.
+This section specifies two of an agent's stored values that play no part in the model's
+equations: its maximum delivered concentration and its MAC. A value that a clinician could read or
+act on is safety-critical whether or not the model uses it. § "Agent amount" specifies the
+agent's molar mass and liquid density, and `docs/INTERFACE.md` § "MAC-awake as a chart reference"
+specifies its MAC-awake.
 
 The maximum delivered concentration (`max_delivered_concentration_percent`) is the highest
 concentration that the agent's real vaporizer can deliver: sevoflurane 8%, isoflurane 5% and
@@ -3863,8 +3874,9 @@ displayed compartment value and the chart's second axis are divided by it. The s
 any agent whose own vaporizer cannot deliver its 1 MAC, because every run starts the dial
 at 1 MAC.
 
-The stored MAC (`mac_percent`) is not carried into the simulation. No governing equation reads
-it, and the simulation code (`core/`) computes no quantity derived from it. Specifically, the model does **not**:
+No governing equation reads the stored MAC (`mac_percent`). The simulation code (`core/`) reads
+it in two places: to refuse an agent whose MAC is above its vaporizer maximum, and to set the
+dial's opening position. Specifically, the model does **not**:
 
 - compute MAC-hours or an age-adjusted MAC, or sum MAC fractions across agents;
 - model an effect-site compartment or any depth-of-anesthesia endpoint; or
@@ -3917,8 +3929,9 @@ age-40 values). Mapleson's values are not adopted, for three reasons:
    display shows the MAC it divides by and states the limitation, instead of presenting another
    estimate as settled.
 
-A planned milestone is the route to primary values for all three agents
-(`ROADMAP.md` planned-milestone item 31).
+No planned milestone moves the MAC to a primary measurement. `ROADMAP.md`'s
+planned-milestone item 30 moves it to Mapleson's age-40 values, and item 31
+plans a primary-literature set of partition coefficients beside the stored one.
 
 **For developers.** In the simulation code, the breathing circuit (`BreathingCircuit`) carries
 the maximum delivered concentration for the agent in use. The circuit itself **must reject** any
@@ -3947,13 +3960,14 @@ The maximum is stored with the agent for two reasons:
 
 When a machine profile mounts a vaporizer whose maximum differs from the agent file's, the
 maximum moves to the profile's per-agent limit, which `docs/machine-abstraction.md` names
-`agent_limits`. Three things move with it:
+`agent_limits`. Two things move with it:
 
 - The MAC check moves to wherever the machine and the agent are paired. Otherwise a machine
   whose limit is below an agent's MAC would reject the run at construction.
 - The code in `AgentUptakeSystem.for_agent()` that reads the maximum moves.
-- The controller's own copy of the maximum moves too. The interface draws its dial from that
-  copy, so without the move the dial would offer positions that the circuit rejects.
+
+The controller reads the maximum from the circuit, and the interface draws its dial from that
+value, so the dial follows the move.
 
 Until a profile mounts such a vaporizer, the circuit and the dial read the same number from the
 same file.
@@ -3968,7 +3982,7 @@ whether each test is any good.
 | A reader could be misled into | What stops it | Tested by |
 | --- | --- | --- |
 | reading a run as a prediction for a real patient whose data was entered into it | the use statement stays in view. It is the disclaimer at the foot of the window. The simulated patient is always the built-in reference adult. Cardiac output and ventilation are teaching controls, and a learner can set either one to a value measured in a patient. Only the use statement stops a learner reading that run as a prediction for that patient (§ "What keeps a real patient's data out of a run") | `test_the_educational_disclaimer_says_what_the_tool_is_not`, `test_the_dashboard_carries_the_educational_disclaimer`, `test_the_region_and_the_use_disclaimer_stay_in_the_viewport`, `test_every_run_simulates_the_shipped_reference_adult` |
-| reading a correct concentration as belonging to a different agent | agent colour is never the only cue. The agent name is always visible in every top-level window, within the limit stated in `docs/INTERFACE.md` § "Minimum displayed outputs" -> "What this list requires once the layout is the reader's". A separate tool checks the ISO 5360 agent colours and the text colour that stays readable on each (`tools/agent_identity_check.py`, which reads the colours from `src/anesthesia_sim/app/theme.py`) | `test_agent_dropdown_options_pair_every_color_with_the_agent_name`, `test_every_agent_has_render_objects_in_its_own_identification_color`, `test_the_agent_name_stays_legible_while_the_run_disables_the_selector` |
+| reading a correct concentration as belonging to a different agent | agent colour is never the only cue. The agent name is always visible in every top-level window, within the limit stated in `docs/INTERFACE.md` § "Minimum displayed outputs" -> "What this list requires once the layout is the reader's". A separate tool checks the ISO 5360 agent colours and the text colour that stays readable on each (`tools/contrast_check.py`, which reads the colours from `src/anesthesia_sim/app/theme.py`) | `test_agent_dropdown_options_pair_every_color_with_the_agent_name`, `test_every_agent_has_render_objects_in_its_own_identification_color`, `test_the_agent_name_stays_legible_while_the_run_disables_the_selector` |
 | reading a run halted by a failure as one the user paused | a halt has its own status words, and the two failure modes have different words. The status word, the transport controls and the banner are set from the run's status alone, never from a compartment value. A halted run therefore still shows as stopped, and does not offer Pause, even when its values cannot be read. When a run halts before any of it has been drawn on screen, its banner says so, instead of claiming that a step was rolled back | `test_refresh_view_reports_a_failed_run_as_stopped_not_paused`, `test_refresh_view_reports_the_supported_run_length_as_stopped_not_failed`, `test_a_halt_is_shown_when_the_snapshot_itself_is_refused`, `test_a_halt_is_stated_from_the_run_status_alone`, `test_a_halt_no_frame_was_drawn_for_is_worded_as_one_rather_than_as_a_failed_step` |
 | reading a run that a mark stopped as one the learner paused, while two runs are compared | the status word reads "Paused — stopped on your mark". While two runs are compared, the branch control hides its own "stopped on your mark", so this status word is the only cue. A failure, or reaching the supported run length, overrides this word. A MAC target's row reads "reached" from its first crossing on. A new branch reads "Paused" at the instant it starts from its parent run, though it carries the parent's halt record, because no step of the branch stopped it | `test_a_halt_on_a_mark_is_told_apart_from_a_pause_during_a_comparison`, `test_a_branch_opened_on_a_mark_crossing_is_not_said_to_be_stopped_by_it`, `test_a_run_a_mark_stopped_is_not_worded_as_the_learner_s_own_pause` |
 | reading a run whose Reset the model refused as one still running, or as one that was reset | a refused Reset leaves the run exactly as it was, and the interface halts the run and states the halt (`docs/INTERFACE.md` § "Reset behavior") | `test_a_reset_the_core_refuses_halts_the_run_visibly`, `test_a_reset_the_core_refuses_leaves_the_run_exactly_as_it_was`, `test_a_refused_reset_names_the_way_out_in_the_banner`, `test_a_tissue_flow_mismatch_is_stated_in_litres_per_minute` |
@@ -3986,7 +4000,7 @@ whether each test is any good.
 | reading one run's displayed value, or the record of what was changed on it, as the other's while two are compared | while more than one run is drawn, every place that shows a value, or the record of what was changed, names its run in text. `docs/INTERFACE.md` § "Naming the run in a comparison" lists the seven places | `test_the_hover_names_the_run_only_while_more_than_one_is_drawn`, `test_two_runs_within_the_hover_radius_answer_under_their_own_names`, `test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers`, `test_the_wash_in_state_and_off_scale_lines_name_their_run`, `test_a_lone_run_leaves_the_shared_chart_lines_unnamed`, `test_each_run_s_unmarked_changes_line_is_named_while_runs_are_compared`, `test_the_sidebar_panels_name_the_run_they_record`, `test_a_lone_run_leaves_the_sidebar_panel_headings_unnamed`, `test_the_halt_and_refusal_banners_name_their_run`, `test_a_halt_stated_without_a_frame_still_names_the_run_it_stopped`, `test_a_lone_run_leaves_the_notice_banner_unnamed`, `test_hidden_notice_banners_take_no_height`, `test_the_schematic_follows_its_run_through_a_reset_an_agent_change_and_a_comparison`, `test_the_panel_follows_its_run_through_an_agent_change_and_a_comparison` |
 | reading a preview of a dragged setting as part of the run that happened | the preview is drawn only while the slider handle is held, inside a tinted region with a label saying the value is not applied, and the hover never reports from it (`docs/INTERFACE.md` § "A preview of an unapplied setting") | `test_a_held_thumb_previews_the_setting_without_applying_it`, `test_a_preview_is_drawn_only_inside_its_region_with_its_label`, `test_the_hover_never_answers_from_a_preview` |
 | reading a cost as a figure the project supplies, or as computed at a price other than the one it used | the project supplies no price. A cost is shown only beside the two numbers it multiplied, the liquid volume and the price per millilitre. The volume is shown in whole millilitres and the cost is computed before rounding, so the product of the two numbers shown can differ from the cost by up to about half a millilitre's price. The readout says that they are rounded. Beside them are the bottle price, currency and date that the price came from, and words saying that the price is the reader's (`docs/INTERFACE.md` § "A cost at the reader's price") | `test_no_cost_is_shown_until_the_reader_sets_a_price`, `test_the_cost_is_the_delivered_liquid_times_the_bottle_price_over_the_bottle_volume`, `test_the_displayed_cost_reproduces_gas_man_s_printed_costs`, `test_the_cost_is_computed_from_the_unrounded_figures_not_the_ones_shown`, `test_each_run_is_priced_at_its_own_agent_s_price`, `test_no_cost_is_shown_where_one_cannot_be_trusted` |
-| reading a cost computed from a price entered in the wrong form: a price per millilitre typed as the bottle price, a bottle volume typed in litres or as a count of bottles, the price and the volume swapped, or a price in another currency | the price is entered as a bottle price and a bottle volume, and the volume field names its unit, millilitres of liquid. The readout shows the price per millilitre of liquid that the two give. Each of the first two mistakes makes that price 100 to 1000 times the true one. A swap shows only where price and volume differ widely. At Gas Man's default sevoflurane price, a swap changes the cost by only 8 %. The currency is stored and shown as its three-letter ISO 4217 code, never as a bare "$" (`docs/INTERFACE.md` § "A cost at the reader's price") | `test_an_entry_that_is_not_a_plain_positive_price_is_refused_with_its_reason`, `test_a_refused_entry_changes_nothing_and_says_why`, `test_a_price_per_millilitre_is_shown_to_four_figures_in_millilitres_of_liquid`, `test_a_currency_that_is_not_three_capital_letters_is_refused` |
+| reading a cost computed from a price entered in the wrong form: a price per millilitre typed as the bottle price, a bottle volume typed in litres or as a count of bottles, the price and the volume swapped, or a price in another currency | the price is entered as a bottle price and a bottle volume, and the volume field names its unit, millilitres of liquid. The readout shows the price per millilitre of liquid that the two give. The first mistake makes that price 100 to 250 times too low, and the second makes it 100 to 1000 times too high. A swap shows only where price and volume differ widely. At Gas Man's default sevoflurane price, a swap changes the cost by only 8 %. The currency is stored and shown as its three-letter ISO 4217 code, never as a bare "$" (`docs/INTERFACE.md` § "A cost at the reader's price") | `test_an_entry_that_is_not_a_plain_positive_price_is_refused_with_its_reason`, `test_a_refused_entry_changes_nothing_and_says_why`, `test_a_price_per_millilitre_is_shown_to_four_figures_in_millilitres_of_liquid`, `test_a_currency_that_is_not_three_capital_letters_is_refused` |
 | reading a container's fill height, or its filled area, as the amount of agent it holds | a container's height shows the compartment's tension on the concentration chart's own scale, and its amount is printed beside it and on a share bar (`docs/INTERFACE.md` § "The compartment schematic: what its heights, amounts and share bar assert") | `test_a_container_s_height_is_its_tension_and_not_its_amount`, `test_fat_s_share_grows_through_the_first_hour_while_its_container_stays_nearly_empty`, `test_the_share_bar_is_painted_to_each_share_and_named_in_text`, `test_the_circuit_fills_to_its_closed_form_tension_on_the_chart_s_scale`, `test_a_tension_above_the_chart_s_top_fills_the_container_and_keeps_its_value` |
 | reading an amount of agent vapour as millilitres of liquid, or a liquid-equivalent amount as vapour, which misreads it by a factor of about 180 to 210, depending on the agent | no panel prints a bare "mL" beside an agent amount: every amount says vapour or liquid (`docs/INTERFACE.md` § "The compartment schematic: what its heights, amounts and share bar assert") | `test_no_agent_amount_is_printed_with_a_bare_millilitre_unit`, `test_the_delivered_agent_is_shown_at_its_derived_precision_with_its_unit_named`, `test_patient_inputs_reach_the_drawn_liquid_figure_through_the_model`, `test_a_unit_picked_in_one_view_reaches_every_view_and_survives_a_restart` |
 
@@ -4619,8 +4633,8 @@ elimination once the breathing systems are matched. For desflurane, removing the
 than closes the gap. The model crosses its published mean and settles 2.33 SD below it, so it
 washes out *faster* than the volunteers did. With the circuit gone, that residual is a
 disagreement about tissue return. § "Desflurane's residual" below lists the explanations that
-were ruled out and what remains. The test checks that the shift between the two conditions is
-3.5 to 4.2 SD per cohort, so a test fails if the circuit stops explaining the gap. Without the
+were ruled out and what remains. The shift between the two conditions is 3.5 to 4.2 SD per cohort. A test fails
+if any cohort's shift is not more than 3.0 SD, so it fails if the circuit stops explaining the gap. Without the
 circuit, the elimination does not measurably depend on fresh gas flow. With it, the
 elimination moves by 11.5 to 21.6 SD between 1 and 10 L/min.
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
@@ -4782,7 +4796,7 @@ below the table.
 
 | Candidate | What reaching 0.140 takes | What it costs the other rows |
 | --- | --- | --- |
-| Blood:gas too low | ×1.63, to 0.687 | 10.9 SD above Eger 1987's measured 0.424 ± 0.024, and the wash-in row falls to −4.35 SD |
+| Blood:gas too low, with each tissue:blood ratio held | ×1.63, to 0.687 | 10.9 SD above Eger 1987's measured 0.424 ± 0.024, and the wash-in row falls to −4.35 SD |
 | Alveolar ventilation too high | between 2.5 and 3.0 L/min | at 3.0, sevoflurane +2.1 and isoflurane +2.7 SD, and all three wash-in rows at −2.0 SD |
 | Cardiac output | out of reach | 3 to 7 L/min moves desflurane only from −2.6 to −2.1 SD |
 | Fast capacity this model omits: lung tissue, pulmonary and arterial blood | about 3 L of blood-equivalent | moves all three agents together (below) |
@@ -4834,7 +4848,7 @@ desflurane sits at −2.33 SD:
 <!-- not-restated: 0.42 -->
 
 The decrement moves desflurane the right way. It recovers between 0.44 and
-0.95 SD of the 2.33 SD gap, which is a quarter to two fifths of it and never
+0.95 SD of the 2.33 SD gap, which is a fifth to two fifths of it and never
 the whole. The cost falls on the isoflurane cohort that was inside its spread
 at +0.94 SD. The decrement pushes that cohort out to between +1.59 and +2.30
 SD. The wash-in comparison sets its own ceiling. At 11 breaths per minute,
@@ -5079,7 +5093,7 @@ program default. Both Yasuda papers, Carpenter 1989, and Targ 1989 were read at 
 
 **Over the first 25 minutes, sevoflurane and isoflurane follow the published
 wash-in curves within one SD** (simulated 2026-10-18). Desflurane's $`F_A/F_I`$
-runs 0.034 to 0.042 above its published curve from 1 to 10 minutes, and agrees
+runs 0.032 to 0.042 above its published curve from 1 to 10 minutes, and agrees
 from 12.5 minutes on. This early gap is a known limitation of the model. The
 model is compared with each curve point by point because $`F_A/F_I`$ at 30
 minutes alone would barely show an error in the lung's gas volume or the circuit.
@@ -5110,7 +5124,7 @@ units of that point's SD:
 | Sevoflurane, n=7 | −0.54 to −0.69 SD | −0.22 SD | +0.48 to +0.77 SD |
 | Isoflurane, n=7 | −0.70 to −0.83 SD | −0.19 SD | +0.34 to +0.76 SD |
 | Isoflurane, n=8 | −0.60 to −0.67 SD | +0.08 SD | +0.32 to +1.06 SD |
-| Desflurane, n=8 | +1.79 to +1.82 SD | +1.82 SD | +2.10 SD at 10 min, then +0.94 to +0.28 SD |
+| Desflurane, n=8 | +1.79 to +1.82 SD | +1.82 SD | +1.70 SD at 7.5 min, +2.10 SD at 10 min, then +0.94 to +0.28 SD |
 
 <!-- not-restated: 0.34 -->
 
@@ -5304,11 +5318,13 @@ not use ×1.10 for blood:gas, because that is too close to desflurane's edge at
 <!-- not-restated: 1.10 -->
 
 The test that expects the published-data gate to pass checks every agent at fat tissue:gas
-×0.50 and ×2.00, fat volume ×2.00, muscle tissue:gas ×1.50 and circuit volume
-×0.50 (`test_the_published_data_gate_passes_at_a_stated_perturbation`). It also
-checks alveolar gas volume ×0.50 for sevoflurane, venous pool volume ×0.50 for
-sevoflurane and desflurane, and venous pool volume ×2.00 for desflurane. The
-other agents have an edge at or inside those factors.
+×0.50 and ×2.00, muscle tissue:gas ×1.50 and circuit volume
+×0.50 (`test_the_published_data_gate_passes_at_a_stated_perturbation`). It
+checks fat volume ×2.00 for sevoflurane only, because a tissue's volume and its
+tissue:gas coefficient change a run identically. It also checks alveolar gas
+volume ×0.50 for sevoflurane, venous pool volume ×0.50 for sevoflurane and
+desflurane, and venous pool volume ×2.00 for desflurane. For those three, the
+other agents have an edge at or inside the factor.
 
 Each factor in the two tests sits well clear of its edge, because a test placed
 at an edge would be 0.01 to 0.03 SD from flipping. Both tests run the published-data gate at
@@ -5337,9 +5353,9 @@ volunteer's elimination to a sum of five exponentials,
 $`F_A/F_{A0} = \sum_i A_i e^{-t/\tau_i}`$. Each paper publishes the mean and
 SD of every coefficient in its Tables 1 and 2 (*Anesth Analg* p. 321,
 *Anesthesiology* pp. 494-95). The curve built from the mean coefficients is compared as
-published. Its amplitudes sum to 0.912 to 0.937 rather than 1 at discontinuation, because they
+published. Its amplitudes sum to 0.912 to 0.936 rather than 1 at discontinuation, because they
 are means of per-subject fits. Scaling them to sum to 1 would raise every fitted value by 7 to
-10%, and lower every ratio below by 7 to 10%. The model runs the protocol of the five-minute elimination comparison in
+10%, and lower every ratio below by 6 to 9%. The model runs the protocol of the five-minute elimination comparison in
 § "Published wash-in and elimination validation test": the
 shipped 30-minute wash-in at the reference settings, then the vaporizer closed for 23.5 hours.
 So the run ends at the supported run length of 24 hours. Its fifth minute matches the five-minute
@@ -5405,10 +5421,13 @@ In the open circuit, the tail falls below the fitted curve between the second
 and the sixth minute. For sevoflurane and the first study's isoflurane, it
 stays below the curve for the whole run. Desflurane rises back above the
 curve at 19.18 h. The second study's isoflurane sits above the curve between
-2.45 and 4.58 h, by 5% at most. Between 8 and 13 hours, the open-circuit
-tail is a third to a half of the mean curve in every cohort (0.34 to 0.46).
+2.45 and 4.58 h, by 5% at most. After the first hour, the open-circuit tail
+falls as low as a third to a half of the mean curve in every cohort (0.34 to
+0.46), near hour 8 for desflurane and near hour 13 for the others. Sevoflurane's
+tail is lower only in the first half hour, at 0.36 near minute 19.
 <!-- not-restated: 5 % -->
 <!-- not-restated: 0.34 -->
+<!-- not-restated: 0.36 -->
 
 **Read in stretches.** The shipped tail sits above the fitted curve at five
 minutes. That excess is the apparatus term that the five-minute elimination comparison records. The tail
@@ -5520,7 +5539,7 @@ already falling on its fat term's.
    to a half below the mean curve over those hours is inside the spread of the
    volunteers' own curves. The direction and the mechanism are settled. The
    model has no term there, and in the open circuit the model's tissue return
-   alone is a third to a half of the mean. The size is known to about a factor
+   alone falls to a third to a half of the mean. The size is known to about a factor
    of two, and no better.
 3. *The published subjects breathed nitrous oxide throughout, and the
    parameters under test descend from the lineage of the data.* These are
@@ -5701,8 +5720,9 @@ $`\lambda_{i:g}F_i`$, where $`F_i`$ is the tissue's own fraction.
 **For developers.** The tests for the two procedures are
 `test_an_alveolar_volume_recovered_by_closed_circuit_dilution_matches_the_stored_value`
 and `test_a_tissue_volume_recovered_from_its_washin_matches_the_stored_value`,
-in `tests/reference/test_parameter_recovery.py`. The tolerance on each recovered
-value is relative and at the level of rounding. The test module gives each
+in `tests/reference/test_parameter_recovery.py`. Both tolerances are relative. The
+dilution's is at the level of rounding. The wash-in's is set by the error of
+the test's own trapezoidal sum of the uptake. The test module gives each
 tolerance beside the difference between the recovered and stored values from a
 run of the test.
 
@@ -5751,7 +5771,7 @@ parent value for value at every instant they share.
 Values computed for the display can differ from the canonical result.
 `docs/INTERFACE.md` § "The canonical evaluation rule" publishes the difference. A test checks it
 against a bound for each quantity, so a change to how values are computed
-cannot silently move a figure this document prints. The program must refuse a display value wherever it needs a canonical one. That makes the rule a property of the program rather than of the reader.
+cannot silently move a figure that `docs/INTERFACE.md` prints. The program must refuse a display value wherever it needs a canonical one. That makes the rule a property of the program rather than of the reader.
 
 **For developers.** The tests are in `tests/reference/test_canonical_evaluation.py`.
 Two of them check that reading a run changes neither its results nor the states
@@ -5766,7 +5786,7 @@ of display values has its own test (`test_a_display_value_cannot_open_a_run_defi
 The test of the bounds fails on a change to the equations, to the propagator or
 to how a window is walked (`test_the_display_path_stays_within_its_measured_separation`).
 The compartment fractions and the cumulative accumulators have separate bounds
-because their displays differ in resolution by four orders of magnitude. A single
+because the differences measured for them are about four orders of magnitude apart. A single
 bound for both would have to be the looser one.
 
 ## Known limitations
@@ -6046,15 +6066,16 @@ timing. It rescales one agent's MAC axis against another's. The
 sevoflurane-versus-desflurane shift is larger than the confidence limits of
 Mapleson's values, so by Mapleson's meta-analysis two agents at one MAC each
 are not equipotent to that precision. The interface displays
-the divisor for this reason. Moving all parameters to primary sources is
-`ROADMAP.md`'s planned-milestone item 31.
+the divisor for this reason. `ROADMAP.md`'s planned-milestone item 30
+moves the MAC to Mapleson's age-40 values, and item 31 plans a
+primary-literature set of partition coefficients beside the stored one.
 
 **Two omissions limit the supported run length, and a third limits the late
 washout within it.** The first two are metabolism, in the list above, and the
 fat group's flow, in the note below. Both are negligible over a case and not
 over days, so a run is supported to 24 hours, and the simulator will not step
 past that limit. A longer run would increasingly display what this model
-leaves out. "Supported run length" argues for the number and gives the measured
+leaves out. `docs/INTERFACE.md` § "Supported run length" argues for the number and gives the measured
 extent of sevoflurane's metabolism. Within those 24 hours:
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
@@ -6113,7 +6134,7 @@ Neither settles it, for different reasons. The PET figure is one depot in one
 small cohort, awake and at rest, set against a whole-body lumped compartment,
 and the depots within such a compartment really do differ (Frayn and Karpe).
 The fitted compartment is fat only by the authors' assignment (see the
-cautions below). Its volume is a third to two fifths of the fat this model
+cautions below). Its volume is between a quarter and two fifths of the fat this model
 stores, and the analysis "only accounts for about 25 L of the body volume"
 (*Anesth Analg* 1991;72:323). The same paper's flow estimates ran too small for the
 vessel-rich group and too large for muscle, compared with known values
@@ -6186,8 +6207,8 @@ simulator:
   the published mean washout curves (Tables 1 and 2 of each paper), after a
   30-minute administration the fourth compartment's term becomes the largest
   in the measured washout at 1.8 to 3.1 hours. It stays the largest until 20.7
-  to 29.4 hours, inside the 24 hours that a run is supported for (`docs/INTERFACE.md` § "Supported
-  run length").
+  hours for desflurane, and until 27.5 to 29.4 hours for the other three cohorts, past the end of
+  the 24 hours that a run is supported for (`docs/INTERFACE.md` § "Supported run length").
   `test_the_fourth_compartment_is_the_largest_term_over_the_recorded_hours`
   re-derives those hours from the coefficients. Without that store the
   modelled tail should fall faster, and it does. Against the mean curves themselves (§ "The first 24 hours of
@@ -6196,8 +6217,8 @@ simulator:
   below at the widest, near hour 13. For desflurane it is below from 3.4 to
   15.3 hours, by about half at the widest point, near 8 hours. The shipped tail
   is above the curves before and after that span. With the rebreathing circuit
-  taken away, the model's tissue return alone is a third to a half of the mean
-  curve between hours 8 and 13. With the circuit in place, as shipped, the gap
+  taken away, the model's tissue return alone falls, after the first hour, as low as a third to a half of the mean
+  curve, near hour 8 for desflurane and near hour 13 for the others. With the circuit in place, as shipped, the gap
   starts later than the third hour, because the rebreathing circuit and the
   muscle group's slow return hold the tail above the curve until the seventh
   hour. The size is known to about a factor of two, which is the fourth
@@ -6344,8 +6365,8 @@ for a stored value:
   JFA, De Wolf A, *Special aspects of pharmacokinetics of inhalation
   anesthesia*, Handb Exp Pharmacol 2008;(182):159-86, PMID 18175091,
   doi:10.1007/978-3-540-74806-9_8, pp. 163 and 165-66. Both were read from the
-  private reference corpus. Both are tier 3, and `docs/references/README.md`
-  carries their entries.
+  private reference corpus. The Workbook is tier 3 and the chapter is tier 2, and
+  `docs/references/README.md` carries their entries.
 
 **The tissue:gas coefficients rest on one laboratory's means, and other
 laboratories disagree with them by up to 150% in some tissues.** The stored
@@ -6449,7 +6470,7 @@ children is the classic reference for that direction. Its PubMed record was
 retrieved, but its text has not been read, so no figure is taken from it.)
 Half of the scaling is therefore worse than none of it. Adopting the relation
 for the one patient that exists would have lengthened every time constant by
-3.32% and changed nothing else.
+3.30% and changed nothing else.
 
 **So this model describes one 70 kg adult.** It is not a paediatric, obese,
 or otherwise weight-varying model, and no field in the interface makes it one.
@@ -6479,8 +6500,8 @@ gas to body temperature would expand it by the molar-volume ratio.
 
 **The size is 5.8 %, and it applies to the stores, not to conservation.**
 Every term is exact in the model's own arithmetic, and the mass balance closes
-to within $`10^{-13}`$ L, a ten-millionth of a microlitre, whatever condition
-the unit names. So no agent goes missing, and the question is what the litres
+to a relative residual below $`10^{-10}`$ (§ "Mass-balance identity"), whatever
+condition the unit names. So no agent goes missing, and the question is what the litres
 *mean*. Read as amounts of substance, the alveolar, venous and tissue stores
 hold 5.5 % fewer moles than their 20 °C label implies, so the label overstates
 them by 5.8 %. The ratio behind both figures is 25.450/24.055, the molar
@@ -6558,7 +6579,8 @@ outside it:
 <!-- not-restated: 0.31 -->
 
 These figures were computed on 2026-09-19, at the parameters stored then,
-against the published means and standard deviations.
+against the published means and standard deviations. The table's factor is
+712.88/760, from the computed 47.12 mmHg.
 
 **Humidification is real, and the factor fails because it would count it
 twice.** In those studies, $`F_A/F_I`$ is a ratio of two analyser readings
@@ -6692,8 +6714,9 @@ value:
   class only.
 - Datex-Ohmeda. *Tec 6 Plus Vaporizer* specification sheet AN3307-A/1100,
   © 2000 Datex-Ohmeda Division, Instrumentarium Corp. A manufacturer
-  statement, quoted above. It also gives the 1–18% concentration range that
-  this model stores as desflurane's delivery range. Read in full.
+  statement, quoted above. It also gives a 1–18% concentration range, whose upper
+  end is the 18% that this model stores as desflurane's maximum delivered
+  concentration. Read in full.
   **Owner-attested**: see the note below.
 - Boumphrey S, Marshall N. Understanding vaporizers. *Contin Educ Anaesth
   Crit Care Pain* 2011;11:199–203. **Tier 2** under § "Source hierarchy". It
@@ -6818,7 +6841,7 @@ output slows the rise of $`F_A`$. The MAC-multiple display divides by each
 agent's tier-3 `mac_percent`, and the Datex-Ohmeda 1–18% range is desflurane's
 `max_delivered_concentration_percent`. `reference_adult.json` carries both
 fat-flow comparisons. Its Heinonen et al. note gives both figures and the
-volume-to-mass conversion between them, and its Frayn and Karpe entry records
+volume-to-mass conversion between them, and says
 that fat depots differ. The default cardiac output is
 `default_cardiac_output_l_min`, and no equation reads `weight_kg`. The
 reference-condition gap leaves the relative residual, which the mass-balance
@@ -6882,8 +6905,8 @@ output, the document cannot drift from the model without the test failing.
 
 In some parts of this document, an automatic check makes sure that each claim
 names in fixed-width type what it describes. It checks every row of the hazard
-table, every output in the displayed-outputs list and every subsection of the
-required tests. It does not yet check the entries of the required invariants.
+table and every subsection of the required tests, and every output in the
+displayed-outputs list of `docs/INTERFACE.md`. It does not yet check the entries of the required invariants.
 
 In the sections that the check reads paragraph by paragraph, every number with a
 unit has something behind it. Its paragraph gives a test, the fixed form, a date
@@ -6924,11 +6947,11 @@ A statement is about the code or its data when it says, for example, that a test
 enforces a rule, that a field exists, that a value is *N*, or that a job runs
 something. It names that thing as a test, path, symbol or field in fixed-width
 type, or with a `<!-- provenance: -->` marker over a restated number. In the
-documentation check (`tools/doc_check.py`), the functions that look up these
-forms are `check_named_tests`, `check_citations`, `check_prose_provenance` and
-`check_make_targets`. The strongest link for a figure from the model is a test
+documentation check (`tools/doc_check.py`), `check_named_tests` looks up a
+test, `check_citations` a path, `check_prose_provenance` a marker and
+`check_make_targets` a `make` command. No check looks up a symbol or a field. The strongest link for a figure from the model is a test
 that reads it from this document, as
-`tests/reference/test_mac_awake_washout_figures.py` does.
+`tests/reference/test_known_limitations_figures.py` does.
 
 A writer may phrase the words before ``no test yet (`PL-XXXX`)`` freely, but the
 form itself is fixed, so that the documentation check can tell a forgotten link
@@ -6950,7 +6973,8 @@ pattern can tell them from a phrase such as "Until 2026".
 
 A paragraph's test or fixed form may sit in the note for developers below it.
 That note covers the paragraphs directly above it, back to the previous heading
-or note, and stops at the first paragraph that passes on its own. A date or a
+or note, and stops at the first paragraph that has a test, the fixed form, a date or a
+source of its own. A date or a
 source in the note covers only the note.
 
 A paragraph with no test, fixed form, date or source passes only if a marker
@@ -6962,9 +6986,9 @@ the paragraph's numbers are not stored values. So a computed figure cannot pass
 on a marker written for a figure beside it.
 
 Outside the lists and sections where the check looks for a missing name, a
-command for the documentation review (`tools/doc_check.py candidates`) prints a
-number without a marker, or a claim without a name in fixed-width type, when
-the thing that the number or claim describes changes.
+command for the documentation review (`tools/doc_check.py candidates`) prints
+each line that names a file, a definition or a data key that a change touched.
+Only the reviewer finds a number or a claim on a line that names none of these.
 
 Besides a count in a heading, a check compares a count with what it counts only
 through a marker over a data value. Any other count is dated, copied from a
@@ -7051,8 +7075,8 @@ name:
 ```
 
 **A figure that equals a stored value must carry a marker.**
-`doc_check.py` finds each figure in this document and in `README.md` that
-equals a stored value, in that value's unit. The stored values are every
+`doc_check.py` finds each figure in this document, in `docs/INTERFACE.md` and in
+`README.md` that equals a stored value, in that value's unit. The stored values are every
 number in a parameter data file, and every public constant in the package
 whose name ends in a unit, such as `_S` or `_L_MIN`. A figure that restates
 its value carries a `provenance:` or `derived:` marker. A figure that only
@@ -7063,8 +7087,8 @@ coincides with one carries a `not-restated:` marker that lists it:
 ```
 
 The check never decides which kind a figure is. `2.5` appears in this document
-as an alveolar volume in litres, a tolerance in seconds and a flow in litres
-per minute, and `2%` is sevoflurane's MAC in one sentence and a dial setting in
+as an alveolar volume in litres, a flow in litres per minute and a distance in
+standard deviations, and `2%` is sevoflurane's MAC in one sentence and a dial setting in
 the next. Binding a figure to a key by its value would be confidently wrong
 where a reader trusts most. So the writer says which kind it is, and the check
 enforces only that somebody did. A marker covers only the values it names, in
@@ -7092,7 +7116,7 @@ flow-sweep point or a worked example, needs no marker.
 
 ### What the data-file format requires of a `sources` entry
 
-**The first and third of the rules for a `sources` entry in
+**The second and third of the rules for a `sources` entry in
 § "Source hierarchy: what may be cited as the authority for a value"
 are part of the data-file format, and `make check` enforces them.** Each
 family of data file (agent, patient and
@@ -7134,13 +7158,13 @@ bad entry fails as soon as the file is read.
 **`tier` and `adopted` are two fields because one field alone would decide
 nothing.** Every agent file cites primary measurements that it has explicitly
 *not* adopted, and so does the reference patient, which cites five. A check
-that read the tier alone would report all four of this project's data files as
+that read the tier alone would report all five of this project's parameter data files as
 primary-sourced, although the reference patient adopts no primary source and
 many of the table's rows are tier 3 (§ "Where this project stands" gives
 the counts). That is the failure the second rule for a `sources` entry exists to prevent, so
 the check reads the adoption and not the citation list. Today each agent file
-declares two adopted primary sources, for `mac_awake` and for the vaporizer
-maximum. `src/anesthesia_sim/data/patients/reference_adult.json` declares
+declares four adopted primary sources: for the tissue:gas coefficients, the
+vaporizer maximum, `mac_awake` and the liquid density. `src/anesthesia_sim/data/patients/reference_adult.json` declares
 none and records the gap.
 
 **What the check does not decide is whether a citation labelled `primary`

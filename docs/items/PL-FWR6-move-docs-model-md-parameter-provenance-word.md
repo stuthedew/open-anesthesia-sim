@@ -12,6 +12,7 @@ blocked-by: PL-6PPZ
 added: 2026-11-11
 payoff: a reader checking a stored value finds its file, its source and why it was chosen in one document
 verify: ! grep -q '^## Parameter provenance$' docs/MODEL.md
+recurrences: 2026-11-21 PL-RMNP
 ---
 
 **Problem.** Move docs/MODEL.md § Parameter provenance, word for word, to a new parameter document, with the code's citations of it and the check that holds its table to the data files (stage 1 of the split PL-P3GZ decided)
