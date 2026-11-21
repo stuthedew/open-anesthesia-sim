@@ -72,12 +72,26 @@ _PART_FIELDS = ("circuit", "alveoli", "patient", "agent_simulation_validator")
 
 @dataclass(frozen=True, slots=True)
 class UptakeStepResult:
-    """Validation and transfer results from one complete step."""
+    """Validation and transfer results from one complete step.
+
+    Attributes:
+        fresh_gas_exchange: The agent delivered and exhausted during the step.
+        circuit_to_alveolar_agent_l: The agent that ventilation carried from
+            the circuit to the alveoli during the step, in litres.
+        patient_agent_change_l: The change in the agent that the patient
+            holds, in litres.
+        agent_accounting: The mass-balance check made at the end of the step.
+        state: The state at the end of the step, as a run stores it
+            (`core/stored_states.py`). Each fraction is the value that the
+            step wrote to its compartment. The two amounts are the delivered
+            and the exhausted agent since the case began.
+    """
 
     fresh_gas_exchange: FreshGasExchange
     circuit_to_alveolar_agent_l: float
     patient_agent_change_l: float
     agent_accounting: AgentSimulationValidationResult
+    state: tuple[float, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -613,6 +627,7 @@ class AgentUptakeSystem:
             circuit_to_alveolar_agent_l=circuit_to_alveolar_agent_l,
             patient_agent_change_l=patient_agent_change_l,
             agent_accounting=accounting_check,
+            state=self._with_case_totals(advanced),
         )
 
     def equation_settings(self) -> UptakeEquationSettings:
@@ -804,6 +819,68 @@ class AgentUptakeSystem:
         state[UNIT_STATE] = 1.0
 
         return tuple(state)
+
+    def case_state(self) -> tuple[float, ...]:
+        """Return the state that a run stores for the second this system stands at.
+
+        The fractions are read out of the compartments, as `state_vector()`
+        reads them. The two amounts are the delivered and the exhausted agent
+        since the case began, which the validator holds. A run stores this
+        state when it opens (`core/simulation.py`). Each later state that it
+        stores is the one its step wrote (`UptakeStepResult.state`).
+        """
+
+        return self._with_case_totals(self.state_vector())
+
+    def stands_at(self, state: tuple[float, ...]) -> bool:
+        """Return whether writing `state` would leave this system exactly as it is.
+
+        It is true where every compartment already holds the amount that
+        `state`'s fraction writes to it, and the delivered and exhausted agent
+        since the case began are `state`'s. A run uses it to accept an opening
+        state that it did not read from this system (`core/simulation.py`).
+
+        The fractions cannot be compared with `state_vector()` instead. A
+        compartment holds an amount, and the fraction read back from it can
+        differ in its last bit from the fraction that was written. So the
+        state is written, the system is compared with what it held, and what
+        it held is put back.
+
+        Raises:
+            SimulationConfigurationError: `state` is not a state that the
+                equations can be applied to (`require_canonical_state`).
+        """
+
+        require_canonical_state(state)
+
+        held = self.capture_state()
+
+        try:
+            self._write_state_vector(state)
+            written = self.capture_state()
+        finally:
+            self.restore_state(held)
+
+        return (
+            written == held
+            and state[DELIVERED_AGENT_L] == self.agent_simulation_validator.delivered_agent_l
+            and state[EXHAUSTED_AGENT_L] == self.agent_simulation_validator.exhausted_agent_l
+        )
+
+    def _with_case_totals(self, state: tuple[float, ...]) -> tuple[float, ...]:
+        """Return `state` with the case's delivered and exhausted agent in place of a step's.
+
+        A propagated state holds the agent delivered and exhausted during its
+        own step. A stored state holds the totals since the case began, so
+        that a branch opened from it continues the case's accounting
+        (`resume_at`).
+        """
+
+        with_totals = list(state)
+        with_totals[DELIVERED_AGENT_L] = self.agent_simulation_validator.delivered_agent_l
+        with_totals[EXHAUSTED_AGENT_L] = self.agent_simulation_validator.exhausted_agent_l
+
+        return tuple(with_totals)
 
     def resume_at(self, state: tuple[float, ...], initial_agent_l: float) -> None:
         """Place this system at `state`, with its accounting anchored at `initial_agent_l`.

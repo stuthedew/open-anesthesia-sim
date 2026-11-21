@@ -17,8 +17,15 @@ from anesthesia_sim.core import uptake_system
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationExecutionError
+from anesthesia_sim.core.governing_equations import ALVEOLAR_FRACTION
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
-from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
+from anesthesia_sim.core.stored_states import StoredStates
+from anesthesia_sim.core.supported_ranges import (
+    AlveolarVentilation,
+    CardiacOutput,
+    CaseInstant,
+    FreshGasFlow,
+)
 from tests.integration.controller.controller_support import (
     COMPARTMENT_SNAPSHOT_FIELDS,
     _advance_for,
@@ -433,16 +440,24 @@ def test_a_drawn_window_refuses_the_derived_ratio_as_a_compartment() -> None:
 
 
 def _read_the_alveolar_quotient_as(monkeypatch: pytest.MonkeyPatch, quotient: float) -> None:
-    """Make every alveolar compartment return `quotient` as its partial-pressure fraction.
+    """Make the snapshot and the stepper alike read `quotient` as the alveolar fraction.
 
-    This is the one way left to get a quotient outside 0 to 1. No supported
-    setting produces one (`core/concentration.py`). Since `PL-544D`, an
-    amount larger than the capacity is refused when it is written. So the
-    helper replaces the quotient that every alveolar compartment returns, for
-    the snapshot and the stepper alike, rather than producing it through the
-    stored amount.
+    No supported setting produces a fraction outside 0 to 1
+    (`core/concentration.py`), and a run stores only a state whose fractions
+    it has checked. So the fraction is replaced where it is read. The
+    snapshot, the chart and the marks read a stored state
+    (`core/stored_states.py`), and the stepper reads the compartment.
     """
 
+    stored_state_at = StoredStates.state_at
+
+    def state_at(record: StoredStates, instant_s: CaseInstant) -> tuple[float, ...]:
+        state = list(stored_state_at(record, instant_s))
+        state[ALVEOLAR_FRACTION] = quotient
+
+        return tuple(state)
+
+    monkeypatch.setattr(StoredStates, "state_at", state_at)
     monkeypatch.setattr(
         AlveolarCompartment, "partial_pressure_fraction", property(lambda compartment: quotient)
     )

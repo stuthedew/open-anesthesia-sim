@@ -39,7 +39,6 @@ from anesthesia_sim.core.governing_equations import (
     INSPIRED_FRACTION,
     VENOUS_FRACTION,
 )
-from anesthesia_sim.core.run_definition import DisplayState
 
 __all__ = [
     "COMPARTMENT_FRACTION_NAMES",
@@ -182,22 +181,16 @@ class RecordedSeries:
 
 @dataclass(frozen=True, slots=True)
 class DrawnWindow:
-    """The states one frame draws, evaluated from the run's definition.
+    """The states one frame draws, each read from the states the run stored.
 
     `SimulationController.drawn_window` returns this window, and the chart is
-    drawn from nothing else. It replaces `HistoryWindow`, and `PL-2FM6` made
-    that change. The old window covered *recorded samples*. A caller asked it
-    which samples to draw, and its cost grew with the span it covered. This
-    window holds only the result, which is the states at the instants the
-    chart plots, and nothing else.
+    drawn from nothing else. Each state is the one that the run stored for
+    its second (`core/stored_states.py`), so a point on a trace is the value
+    that the readout showed at that second (`PL-MH9J`).
 
-    **A drawn value is not a recorded one, and the type says so.** Every
-    state here is a `DisplayState`. `core/run_definition.py` makes that type
-    structurally different from a state vector. It does so precisely so that
-    a drawn value cannot become a keyframe, an export or a fork's opening
-    state just by having the right shape. `docs/INTERFACE.md` § "The canonical
-    evaluation rule" states the guarantee, and this class is one of the
-    places that must enforce it.
+    `SimulationController.preview_window` returns one too. Its states are
+    predicted, for a setting that the reader is trying, and no run stored
+    them. They are drawn as a preview and used for nothing else.
 
     Attributes:
         substance_id: Which substance every state here describes. It is
@@ -220,7 +213,7 @@ class DrawnWindow:
 
     substance_id: str
     times_s: tuple[float, ...]
-    states: tuple[DisplayState, ...]
+    states: tuple[tuple[float, ...], ...]
 
     def __post_init__(self) -> None:
         if len(self.times_s) != len(self.states):
@@ -264,7 +257,7 @@ class DrawnWindow:
 
         index = COMPARTMENT_STATE_INDEX[series.quantity]
 
-        return [state.values[index] for state in self.states]
+        return [state[index] for state in self.states]
 
     def wash_in_quotients(self, substance_id: str) -> list[float | None]:
         """F_A/F_I at every drawn instant, or `None` where there is no quotient.
@@ -306,9 +299,7 @@ class DrawnWindow:
         alveolar = COMPARTMENT_STATE_INDEX[RecordedQuantity.ALVEOLAR]
         circuit = COMPARTMENT_STATE_INDEX[RecordedQuantity.CIRCUIT]
 
-        return [
-            wash_in_ratio(state.values[alveolar], state.values[circuit]) for state in self.states
-        ]
+        return [wash_in_ratio(state[alveolar], state[circuit]) for state in self.states]
 
     def _require_substance(self, substance_id: str) -> None:
         """Reject a read for a substance this window does not describe.

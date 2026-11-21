@@ -93,7 +93,9 @@ from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.blood_flow import PerfusionFraction
 from anesthesia_sim.core.concentration import Fraction, MacMultiple
 from anesthesia_sim.core.exceptions import SimulationNumericalError
+from anesthesia_sim.core.governing_equations import ALVEOLAR_FRACTION
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
+from anesthesia_sim.core.stored_states import StoredStates
 from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow
 from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.units import MILLISECONDS_PER_SECOND
@@ -485,16 +487,24 @@ def _steps(run: RunView, steps: int) -> None:
 
 
 def _read_the_alveolar_quotient_as(monkeypatch: pytest.MonkeyPatch, quotient: float) -> None:
-    """Make every alveolar compartment return `quotient` as its partial-pressure fraction.
+    """Make the snapshot and the stepper alike read `quotient` as the alveolar fraction.
 
-    This is the one remaining way to get a quotient outside 0 to 1. No
-    supported setting produces one (`core/concentration.py`). Since `PL-544D`,
-    an amount larger than the capacity is refused when it is written. So the
-    quotient that every alveolar compartment returns is replaced directly, for
-    the snapshot and the stepper alike, instead of being produced through the
-    stored amount.
+    No supported setting produces a fraction outside 0 to 1
+    (`core/concentration.py`), and a run stores only a state whose fractions
+    it has checked. So the fraction is replaced where it is read. The
+    snapshot, the chart and the marks read a stored state
+    (`core/stored_states.py`), and the stepper reads the compartment.
     """
 
+    stored_state_at = StoredStates.state_at
+
+    def state_at(record: StoredStates, instant_s: CaseInstant) -> tuple[float, ...]:
+        state = list(stored_state_at(record, instant_s))
+        state[ALVEOLAR_FRACTION] = quotient
+
+        return tuple(state)
+
+    monkeypatch.setattr(StoredStates, "state_at", state_at)
     monkeypatch.setattr(
         AlveolarCompartment, "partial_pressure_fraction", property(lambda compartment: quotient)
     )

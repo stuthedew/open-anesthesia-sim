@@ -26,7 +26,7 @@ from anesthesia_sim.app.bookmarks import (
     MarkStanding,
     TimeBookmark,
 )
-from anesthesia_sim.app.chart_time_base import grid_spacing_s
+from anesthesia_sim.app.chart_time_base import drawn_seconds, grid_spacing_s
 from anesthesia_sim.app.control_record import (
     CONTROL_INPUT_UNITS,
     ControlChange,
@@ -1316,16 +1316,10 @@ class SimulationController:
     def snapshot(self) -> SimulationSnapshot:
         """Build a fresh, read-only view of current simulation state.
 
-        Raises:
-            SimulationConfigurationError: If a compartment's partial-pressure
-                quotient is outside 0 to 1. Each quotient is built here as a
-                `Fraction` under the compartment's name
-                (`run_series.COMPARTMENT_FRACTION_NAMES`). The compartment
-                holds an amount, and the quotient read from it carries no
-                proof of its range. The interface halts the run on this
-                rejection and describes the halt from `record()`, which
-                cannot raise it (`PL-7DJK`). No supported setting produces
-                such a quotient (`core/concentration.py`).
+        Each compartment's fraction is the one in the state that the run
+        stored for the second it stands at (`_stored_fractions`). The amounts
+        of agent are read from the compartments, which hold exactly what that
+        state's fractions wrote to them.
         """
 
         system = self._state.uptake_system
@@ -1333,6 +1327,11 @@ class SimulationController:
         alveoli = system.alveoli
         patient = system.patient
         accounting = system.agent_simulation_validation
+        # Each compartment's fraction is read from the state that the run
+        # stored for the second it stands at. The chart's last point and the
+        # marks read that same state, so the three cannot show different
+        # values for one second (`PL-MH9J`).
+        fractions = self._stored_fractions(self._state.elapsed_s)
 
         return SimulationSnapshot(
             is_running=self._is_running,
@@ -1350,27 +1349,12 @@ class SimulationController:
             delivered_concentration_percent=circuit.delivered_concentration_percent,
             alveolar_ventilation_l_min=alveoli.alveolar_ventilation_l_min,
             cardiac_output_l_min=patient.cardiac_output_l_min,
-            inspired_partial_pressure_fraction=circuit.inspired_partial_pressure_fraction,
-            alveolar_partial_pressure_fraction=Fraction(
-                alveoli.partial_pressure_fraction,
-                name=COMPARTMENT_FRACTION_NAMES[RecordedQuantity.ALVEOLAR],
-            ),
-            mixed_venous_partial_pressure_fraction=Fraction(
-                patient.mixed_venous_partial_pressure_fraction,
-                name=COMPARTMENT_FRACTION_NAMES[RecordedQuantity.MIXED_VENOUS],
-            ),
-            vessel_rich_partial_pressure_fraction=Fraction(
-                patient.vessel_rich.partial_pressure_fraction,
-                name=COMPARTMENT_FRACTION_NAMES[RecordedQuantity.VESSEL_RICH],
-            ),
-            muscle_partial_pressure_fraction=Fraction(
-                patient.muscle.partial_pressure_fraction,
-                name=COMPARTMENT_FRACTION_NAMES[RecordedQuantity.MUSCLE],
-            ),
-            fat_partial_pressure_fraction=Fraction(
-                patient.fat.partial_pressure_fraction,
-                name=COMPARTMENT_FRACTION_NAMES[RecordedQuantity.FAT],
-            ),
+            inspired_partial_pressure_fraction=fractions[RecordedQuantity.CIRCUIT],
+            alveolar_partial_pressure_fraction=fractions[RecordedQuantity.ALVEOLAR],
+            mixed_venous_partial_pressure_fraction=fractions[RecordedQuantity.MIXED_VENOUS],
+            vessel_rich_partial_pressure_fraction=fractions[RecordedQuantity.VESSEL_RICH],
+            muscle_partial_pressure_fraction=fractions[RecordedQuantity.MUSCLE],
+            fat_partial_pressure_fraction=fractions[RecordedQuantity.FAT],
             delivered_agent_l=accounting.delivered_agent_l,
             agent_vapour_per_liquid=self._agent_vapour_per_liquid,
             exhausted_agent_l=accounting.exhausted_agent_l,
@@ -2138,18 +2122,21 @@ class SimulationController:
         segment = resume_point.segment
         system = self._state.uptake_system
 
-        # The state comes from the canonical path, never from reading back the
-        # seeded system. A compartment stores an amount and derives its
-        # fraction from its own capacity, so the round trip is not exact. Over
-        # the range a case covers, 11.7% of alveolar fractions come back one
-        # unit in the last place away. The element-wise reproduction that
-        # `ROADMAP.md` item 12 requires would fail on exactly those entries.
-        # For a fork at a control event, the state is the parent's keyframe.
-        # For a fork at a bookmark, it is one propagation from that keyframe.
-        # `ResumePoint.fork` holds it in either case.
+        # The state is the one that the parent stored for the fork, never one
+        # read back from the seeded system. A compartment stores an amount and
+        # derives its fraction from its own capacity, so the round trip is not
+        # exact. Over the range a case covers, 11.7% of alveolar fractions
+        # come back one unit in the last place away. Writing the stored state
+        # gives each compartment the amount that the parent's step gave it.
+        # The branch stores that same state as its first, so the two runs
+        # show one value for the fork (`PL-MH9J`).
         system.resume_at(resume_point.fork.state, initial_agent_l=resume_point.accounting_anchor_l)
 
-        self._state = SimulationState(uptake_system=system, step_count=resume_point.step_count)
+        self._state = SimulationState(
+            uptake_system=system,
+            step_count=resume_point.step_count,
+            opening_state=resume_point.fork.state,
+        )
         # The run definition opens on the parent's own stretch, with its
         # keyframe and its settings, at that keyframe's own instant on the
         # case's time axis. That keeps the clock and the definition's reach
@@ -2233,8 +2220,7 @@ class SimulationController:
         # keyframe's own change (`_open_at`). The state at the keyframe is the
         # keyframe's own state, which `state_at` returns bit for bit.
         return self._resume_point(
-            self._run_definition.reaching_segment_at(instant_s),
-            Keyframe(instant_s, self._run_definition.state_at(instant_s)),
+            self._run_definition.reaching_segment_at(instant_s), self._stored_keyframe(instant_s)
         )
 
     def _resume_point_here(self) -> ResumePoint:
@@ -2259,9 +2245,10 @@ class SimulationController:
             raise SimulationConfigurationError(refusal)
 
         fork_s = self._state.elapsed_s
-        fork = Keyframe(fork_s, self._run_definition.state_at(fork_s))
 
-        return self._resume_point(self._run_definition.reaching_segment_at(fork_s), fork)
+        return self._resume_point(
+            self._run_definition.reaching_segment_at(fork_s), self._stored_keyframe(fork_s)
+        )
 
     def _refusal_here(self) -> str | None:
         """Why a branch where this run stands is rejected, or None where it is not.
@@ -2327,7 +2314,48 @@ class SimulationController:
 
         before_s = self._instant_after(StepCount(step_count - 1))
 
-        return Keyframe(before_s, self._run_definition.state_at(before_s))
+        if self._opened_from is not None and before_s < self._opened_from.fork.instant_s:
+            # A branch stores its states from its fork onward. The step that
+            # reached the fork began one second earlier, in the parent's run,
+            # and the branch carries the state the parent stored there.
+            return self._opened_from.stepped_from
+
+        return self._stored_keyframe(before_s)
+
+    def _stored_keyframe(self, instant_s: CaseInstant) -> Keyframe:
+        """Return `instant_s` with the state this run stored for it.
+
+        Every state that this controller tests a mark against, opens a branch
+        from or reports in a snapshot is read here, from the one record that
+        the run's steps wrote (`SimulationState.stored_states`, `PL-MH9J`).
+
+        Raises:
+            SimulationConfigurationError: This run stores no state at
+                `instant_s`, because the instant is before the run opened or
+                after the second it has reached.
+        """
+
+        return Keyframe(instant_s, self._state.stored_states.state_at(instant_s))
+
+    def _stored_fractions(self, instant_s: CaseInstant) -> Mapping[RecordedQuantity, Fraction]:
+        """Return each compartment's fraction of 1 atm in the state stored for `instant_s`.
+
+        `COMPARTMENT_STATE_INDEX` pairs each compartment with its position in
+        the state, as it does for a chart trace. Each fraction is built as a
+        `Fraction` under the compartment's name. The run checked each one when
+        it stored the state, so none is refused here.
+
+        Raises:
+            SimulationConfigurationError: This run stores no state at
+                `instant_s`.
+        """
+
+        state = self._state.stored_states.state_at(instant_s)
+
+        return {
+            quantity: Fraction(state[index], name=COMPARTMENT_FRACTION_NAMES[quantity])
+            for quantity, index in COMPARTMENT_STATE_INDEX.items()
+        }
 
     def _crossing_of_step(
         self, stepped_from: Keyframe | None, stepped_to: Keyframe
@@ -2386,9 +2414,10 @@ class SimulationController:
 
         step_count = self._steps_to_reach(held)
         fork_s = self._instant_after(step_count)
-        fork = Keyframe(fork_s, self._run_definition.state_at(fork_s))
 
-        return self._resume_point(self._run_definition.reaching_segment_at(fork_s), fork)
+        return self._resume_point(
+            self._run_definition.reaching_segment_at(fork_s), self._stored_keyframe(fork_s)
+        )
 
     def _passed_time_bookmarks(self) -> tuple[TimeBookmark, ...]:
         """Return the time bookmarks that this run's standings show as passed.
@@ -2590,10 +2619,18 @@ class SimulationController:
         # An axis of zero width is one instant, and it is still drawn. Both
         # bounds coincide, so no grid column can fall strictly between them,
         # and the spacing substituted here cannot place one there.
-        window = self._run_definition.evaluate_anchored(first_s, last_s, max(spacing_s, 1))
+        times_s = drawn_seconds(
+            first_s,
+            last_s,
+            max(spacing_s, 1),
+            events_s=tuple(segment.opening.instant_s for segment in self._run_definition.segments),
+        )
+        stored_states = self._state.stored_states
 
         return DrawnWindow(
-            substance_id=self._agent_id, times_s=window.times_s, states=window.states
+            substance_id=self._agent_id,
+            times_s=times_s,
+            states=tuple(stored_states.state_at(instant_s) for instant_s in times_s),
         )
 
     def start(self) -> None:
@@ -2983,13 +3020,18 @@ class SimulationController:
             return DrawnWindow(substance_id=self._agent_id, times_s=(), states=())
 
         prediction = RunDefinition(
-            settings, self._run_definition.state_at(reached_s), opened_at_s=reached_s
+            settings, self._state.stored_states.state_at(reached_s), opened_at_s=reached_s
         )
         prediction.advance_to(CaseInstant(horizon_s))
         window = prediction.evaluate_anchored(reached_s, horizon_s, max(spacing_s, 1))
 
         return DrawnWindow(
-            substance_id=self._agent_id, times_s=window.times_s, states=window.states
+            substance_id=self._agent_id,
+            times_s=window.times_s,
+            # A predicted state is unwrapped here, where it enters the one
+            # record that only the chart reads. It is drawn and used for
+            # nothing else.
+            states=tuple(state.values for state in window.states),
         )
 
     def begin_control_adjustment(self) -> None:
@@ -3375,11 +3417,9 @@ class SimulationController:
         (`ResumePoint.segment`).
         """
 
-        elapsed_s = self._state.elapsed_s
-
         return (
             self._keyframe_before(self._state.step_count),
-            Keyframe(elapsed_s, self._run_definition.state_at(elapsed_s)),
+            self._stored_keyframe(self._state.elapsed_s),
         )
 
     def _halt_crossing(self) -> BookmarkCrossing | None:
@@ -3509,40 +3549,18 @@ class SimulationController:
         # stopped on, whether or not this step then completes.
         self._leave_where_it_stopped()
 
-        if self._bookmarks.is_empty:
-            self._state.advance()
-            self._run_definition.advance_to(self._state.elapsed_s)
-        else:
-            before_s = self._state.elapsed_s
-            before = self._compartment_mac_multiples(self._state.uptake_system.state_vector())
+        self._state.advance()
+        # The clock and the run definition's reach are one quantity on one
+        # time axis, on a branch as well as on a trunk. So the reach is the
+        # clock, and no offset appears here or anywhere else.
+        self._run_definition.advance_to(self._state.elapsed_s)
 
-            self._state.advance()
-            # The clock and the run definition's reach are one quantity on one
-            # time axis, on a branch as well as on a trunk. So the reach is the
-            # clock, and no offset appears here or anywhere else.
-            # `docs/INTERFACE.md` § "The canonical evaluation rule" now requires
-            # this. When a branch is asked for an instant of the case, it
-            # computes its interval from the same two floats its parent used,
-            # not from a difference that may not round-trip.
-            self._run_definition.advance_to(self._state.elapsed_s)
-
-            after = self._compartment_mac_multiples(self._state.uptake_system.state_vector())
-
-            crossing = self._bookmarks.crossings_between(
-                before_s=before_s, after_s=self._state.elapsed_s, before=before, after=after
-            )
-
-            # The live readings only screen the step. A step that they find
-            # crosses a mark, or that has a live reading near a band edge, is
-            # decided again from the canonical readings. `_halt_crossing`, the
-            # standings and every branch use those same readings. So the run
-            # never halts on a crossing that its own halt record cannot name. A
-            # crossing happens at most once per halt, so the canonical readings
-            # it needs cost almost nothing.
-            if crossing is not None or self._bookmarks.needs_canonical_readings(
-                before=before, after=after
-            ):
-                crossing = self._crossing_of_step(*self._step_ending_here())
+        if not self._bookmarks.is_empty:
+            # The step is tested from the two states the run stored for its
+            # ends. `_halt_crossing`, the standings and every branch read
+            # those same two states. So the run never halts on a crossing
+            # that its own halt record cannot name.
+            crossing = self._crossing_of_step(*self._step_ending_here())
 
             if crossing is not None:
                 self._halt_on(crossing)

@@ -42,6 +42,7 @@ display would be asserting something false about what the reader is looking at.
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Final
 
@@ -54,6 +55,7 @@ __all__ = [
     "SELECTABLE_TIME_BASES",
     "TIME_BASE_LADDER",
     "ChartTimeBase",
+    "drawn_seconds",
     "fit_to_run",
     "fitted_window",
     "following_window",
@@ -388,6 +390,59 @@ def tick_times(start_s: float, stop_s: float, interval_s: float) -> tuple[float,
     last = math.floor(stop_s / interval_s)
 
     return tuple(index * interval_s for index in range(first, last + 1))
+
+
+def drawn_seconds(
+    first_s: int, last_s: int, spacing_s: int, events_s: Iterable[int]
+) -> tuple[CaseInstant, ...]:
+    """Return the seconds of a run at which one window of the chart draws a point.
+
+    Each is a whole second, so each point is a state that the run stored
+    (`core/stored_states.py`). No point is drawn between two seconds, because
+    its value would have to be made up from its neighbours (`PL-MH9J`).
+
+    **The grid is anchored to the case's zero, not to the window.** Columns
+    fall on multiples of `spacing_s` on the case's own axis. So a window that
+    follows the run keeps every second it drew in the last frame and gains at
+    most one. A trunk and its branches draw at the same seconds, so two
+    traces on one axis can be read against each other (`PL-2R2C`).
+    `docs/INTERFACE.md` § "What the chart draws" states the rule.
+
+    **Every control change inside the window is drawn.** The model's
+    response has its sharp corners where a setting changed, and a grid that
+    stepped over a change would draw a straight line through the corner.
+
+    **Both bounds are drawn.** The readouts show the state at the run's last
+    second, so the right-hand end of a trace is the value the readout beside
+    it shows.
+
+    Args:
+        first_s: The window's first second.
+        last_s: The window's last second, which is not before `first_s`.
+        spacing_s: The distance between grid columns, in whole seconds, at
+            least one (`grid_spacing_s`).
+        events_s: The seconds at which a setting changed. Those outside the
+            window are ignored.
+
+    Returns:
+        The seconds to draw, ascending, each once.
+
+    Raises:
+        ValueError: `spacing_s` is less than one, or `last_s` is before
+            `first_s`.
+    """
+
+    if spacing_s < 1:
+        raise ValueError(f"column spacing must be at least one second, got {spacing_s!r}")
+
+    if last_s < first_s:
+        raise ValueError(f"a window from {first_s} s to {last_s} s ends before it begins")
+
+    seconds = {int(first_s), int(last_s)}
+    seconds.update(range((first_s // spacing_s + 1) * spacing_s, last_s, spacing_s))
+    seconds.update(int(event_s) for event_s in events_s if first_s < event_s < last_s)
+
+    return tuple(CaseInstant(second) for second in sorted(seconds))
 
 
 def grid_spacing_s(raw_spacing_s: float) -> int:

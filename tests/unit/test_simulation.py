@@ -1,5 +1,6 @@
 import copy
 import pickle
+import sys
 from dataclasses import replace
 
 import pytest
@@ -9,6 +10,7 @@ from anesthesia_sim.core.exceptions import SimulationConfigurationError, Simulat
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
+from anesthesia_sim.core.stored_states import StoredStates
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ELAPSED_SIMULATION_TIME_S,
     MAXIMUM_STEP_COUNT,
@@ -395,13 +397,15 @@ def test_a_count_written_onto_a_built_state_is_refused_at_the_write() -> None:
     assert state.step_count is held_count
     assert state.elapsed_s == 1
 
-    state.step_count = StepCount(2)
+    with pytest.raises(SimulationConfigurationError, match="stores one state for each second"):
+        state.step_count = StepCount(2)
 
-    assert state.elapsed_s == 2
+    assert state.step_count is held_count
+    assert state.elapsed_s == 1
 
     state.advance()
 
-    assert state.step_count == 3
+    assert state.step_count == 2
 
     state.reset()
 
@@ -418,3 +422,150 @@ def test_a_count_written_onto_a_built_state_is_refused_at_the_write() -> None:
 
     with pytest.raises(TypeError, match="step_count of 5 was not built as StepCount"):
         pickle.loads(pickle.dumps(smuggled))
+
+
+def test_each_step_stores_the_state_it_wrote_for_the_second_it_reached() -> None:
+    """The record holds one state per second, and each is the one its step returned.
+
+    The amounts are the independent check. A compartment holds an amount, and
+    the stored fraction is the one that was written to it. So the capacity
+    times the stored fraction is the amount, bit for bit, where a fraction
+    read back from the amount can differ in its last bit.
+    """
+
+    state = SimulationState()
+    opening = state.uptake_system.case_state()
+    returned = [state.advance().state for _ in range(120)]
+
+    assert state.stored_states.opened_at_s == 0
+    assert state.stored_states.reached_s == state.elapsed_s == 120
+    assert state.stored_states.state_at(CaseInstant(0)) == opening
+    assert [
+        state.stored_states.state_at(CaseInstant(second)) for second in range(1, 121)
+    ] == returned
+
+    last = state.stored_states.state_at(CaseInstant(120))
+    fat = state.uptake_system.patient.fat
+
+    assert fat.agent_amount_l == fat.capacity_l * last[5]
+    assert last[6] == state.uptake_system.agent_simulation_validation.delivered_agent_l
+    assert last[7] == state.uptake_system.agent_simulation_validation.exhausted_agent_l
+    assert last[6] > 0.0
+    assert last[8] == 1.0
+
+
+def test_a_reset_run_stores_only_its_new_opening() -> None:
+    state = SimulationState()
+    opening = state.stored_states.state_at(CaseInstant(0))
+    _advance_for(state, duration_s=30)
+
+    state.reset()
+
+    assert state.stored_states.reached_s == 0
+    assert state.stored_states.state_at(CaseInstant(0)) == opening
+
+    with pytest.raises(SimulationConfigurationError, match="no state at 30 s"):
+        state.stored_states.state_at(CaseInstant(30))
+
+
+def test_a_state_opened_from_a_stored_state_repeats_its_parents_later_states_exactly() -> None:
+    """A branch built at second 600 stores the fractions its parent stored, with no setting changed.
+
+    The parent is a fresh run stepped straight through, so the expected
+    states never pass through the branch's code. The six fractions and the
+    constant are equal bit for bit. The delivered and the exhausted agent are
+    running totals that the validator sums with a carried correction
+    (`core/agent_simulation_validation.py`). A stored state holds the totals
+    and not the correction, so a branch starts its correction at zero and its
+    totals can differ from its parent's in the last bits.
+    """
+
+    parent = SimulationState()
+    _advance_for(parent, duration_s=900)
+    fork_state = parent.stored_states.state_at(CaseInstant(600))
+
+    system = AgentUptakeSystem.default()
+    system.resume_at(fork_state, initial_agent_l=0.0)
+    branch = SimulationState(
+        uptake_system=system, step_count=StepCount(600), opening_state=fork_state
+    )
+    _advance_for(branch, duration_s=300)
+
+    assert branch.stored_states.opened_at_s == 600
+    assert branch.stored_states.state_at(CaseInstant(600)) == fork_state
+
+    for second in (601, 700, 899, 900):
+        of_branch = branch.stored_states.state_at(CaseInstant(second))
+        of_parent = parent.stored_states.state_at(CaseInstant(second))
+
+        assert of_branch[:6] == of_parent[:6]
+        assert of_branch[8] == of_parent[8] == 1.0
+        # A numerical limit, from the rounding of the two running sums. Each
+        # sum is compensated, so its error stays within a few units in the
+        # last place whatever its length. Eight times the spacing between
+        # floating-point numbers at the total is above that, and the largest
+        # difference measured was one unit in the last place.
+        assert of_branch[6:8] == pytest.approx(of_parent[6:8], rel=8 * sys.float_info.epsilon)
+
+
+def test_an_opening_state_the_system_does_not_stand_at_is_refused() -> None:
+    parent = SimulationState()
+    _advance_for(parent, duration_s=60)
+    stored = parent.stored_states.state_at(CaseInstant(60))
+    earlier = parent.stored_states.state_at(CaseInstant(59))
+
+    system = AgentUptakeSystem.default()
+    system.resume_at(stored, initial_agent_l=0.0)
+
+    with pytest.raises(SimulationConfigurationError, match="not the state the uptake system"):
+        SimulationState(uptake_system=system, step_count=StepCount(60), opening_state=earlier)
+
+    accepted = SimulationState(uptake_system=system, step_count=StepCount(60), opening_state=stored)
+
+    assert accepted.stored_states.state_at(CaseInstant(60)) == stored
+
+
+def test_a_step_whose_state_the_record_refuses_is_rolled_back(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The clock, the system and the record all stay on the last completed step."""
+
+    state = SimulationState()
+    _advance_for(state, duration_s=5)
+    before = state.uptake_system.capture_state()
+
+    def refuse(_: StoredStates, __: tuple[float, ...]) -> None:
+        raise SimulationConfigurationError("refused for the test")
+
+    monkeypatch.setattr(StoredStates, "append", refuse)
+
+    with pytest.raises(SimulationConfigurationError, match="refused for the test"):
+        state.advance()
+
+    assert state.elapsed_s == 5
+    assert state.stored_states.reached_s == 5
+    assert state.uptake_system.capture_state() == before
+
+
+def test_the_stored_states_cannot_be_replaced_or_copied_out_of_step() -> None:
+    state = SimulationState()
+    _advance_for(state, duration_s=3)
+
+    with pytest.raises(SimulationConfigurationError, match="stored states cannot be replaced"):
+        state.stored_states = StoredStates(  # type: ignore[misc]
+            state.stored_states.state_at(CaseInstant(0)), CaseInstant(0)
+        )
+
+    duplicate = copy.deepcopy(state)
+    restored = pickle.loads(pickle.dumps(state))
+
+    for other in (duplicate, restored):
+        assert other.elapsed_s == 3
+        assert other.stored_states.state_at(CaseInstant(2)) == state.stored_states.state_at(
+            CaseInstant(2)
+        )
+
+    duplicate.advance()
+
+    assert duplicate.stored_states.reached_s == 4
+    assert state.stored_states.reached_s == 3

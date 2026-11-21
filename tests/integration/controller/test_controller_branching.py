@@ -15,7 +15,6 @@ from anesthesia_sim.app.run_series import COMPARTMENT_STATE_INDEX
 from anesthesia_sim.core import uptake_system
 from anesthesia_sim.core.concentration import MacPercent, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
-from anesthesia_sim.core.governing_equations import DELIVERED_AGENT_L, EXHAUSTED_AGENT_L
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
@@ -331,12 +330,22 @@ def test_a_branch_carries_the_case_s_delivered_and_exhausted_totals() -> None:
     fork_s = trunk.run_segments[-1].opening.instant_s
     branch = trunk.resumed_at(fork_s)
 
+    # The expected totals come from a second run of the same case, stopped at
+    # the fork. `_run_with_two_changes` makes its second change at 60 s.
+    stopped_at_fork = SimulationController()
+    stopped_at_fork.start()
+    _advance_for(stopped_at_fork, duration_s=30)
+    stopped_at_fork.set_delivered_concentration_percent(Percent(4.0))
+    _advance_for(stopped_at_fork, duration_s=30)
+    expected = stopped_at_fork.snapshot()
+
     at_fork = branch.snapshot()
 
+    assert fork_s == expected.elapsed_s == 60
     assert at_fork.delivered_agent_l > 0.0
     assert at_fork.agent_accounting_passes_validation
-    assert at_fork.delivered_agent_l == trunk.run_segments[-1].opening.state[DELIVERED_AGENT_L]
-    assert at_fork.exhausted_agent_l == trunk.run_segments[-1].opening.state[EXHAUSTED_AGENT_L]
+    assert at_fork.delivered_agent_l == expected.delivered_agent_l
+    assert at_fork.exhausted_agent_l == expected.exhausted_agent_l
 
 
 def test_a_branch_opens_with_only_the_change_it_runs_under_in_its_timeline() -> None:

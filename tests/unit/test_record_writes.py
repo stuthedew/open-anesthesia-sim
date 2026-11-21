@@ -61,7 +61,6 @@ from anesthesia_sim.core.parameters import load_agent_parameters, load_reference
 from anesthesia_sim.core.patient import PatientCompartments
 from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.supported_ranges import (
-    MAXIMUM_STEP_COUNT,
     AlveolarVentilation,
     CardiacOutput,
     FreshGasFlow,
@@ -278,11 +277,22 @@ WRITES: dict[str, dict[str, Write]] = {
     },
     "simulation.SimulationState": {
         "uptake_system": Write(ONCE, SimulationState),
-        # A count one past the supported run length is whole and nonnegative, so
-        # `StepCount` builds it, and the state refuses it as its clock.
-        "step_count": Write(
-            CHECKED, SimulationState, lambda state: StepCount(MAXIMUM_STEP_COUNT + 1)
-        ),
+        # A count of one is a supported run length, so the count's own checks
+        # pass it. A fresh state stores no state for second 1, so the state
+        # refuses it as its clock. `tests/unit/test_simulation.py` writes a
+        # count past the supported run length.
+        "step_count": Write(CHECKED, SimulationState, lambda state: StepCount(1)),
+        "stored_states": Write(ONCE, SimulationState),
+    },
+    "stored_states.StoredStates": {
+        field: Write(
+            PRIVATE,
+            why=(
+                "Only the record's own methods write it: the constructor, append, "
+                "restart_from and a copy. Each checks the state it stores."
+            ),
+        )
+        for field in ("_opened_at_s", "_values")
     },
     "tissue.TissueGroup": {
         "name": Write(OWN, why="The name labels the group's messages and enters no rule."),

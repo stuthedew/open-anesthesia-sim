@@ -189,9 +189,23 @@ LISTED: dict[str, dict[str, tuple[str, ...]]] = {
             "RunDefinition.__init__(initial_state)",
             "RunDefinition.state_at -> return",
         ),
+        "simulation": (
+            "SimulationState.__post_init__(opening_state)",
+            "SimulationState.opening_state",
+        ),
+        "stored_states": (
+            "StoredStates.__deepcopy__(memo)",
+            "StoredStates.__init__(opening)",
+            "StoredStates.append(state)",
+            "StoredStates.restart_from(opening)",
+            "StoredStates.state_at -> return",
+        ),
         "uptake_system": (
+            "AgentUptakeSystem.case_state -> return",
             "AgentUptakeSystem.resume_at(state)",
+            "AgentUptakeSystem.stands_at(state)",
             "AgentUptakeSystem.state_vector -> return",
+            "UptakeStepResult.state",
         ),
     },
     MATRIX: {
@@ -357,8 +371,10 @@ BARE_NUMBERS: dict[str, str] = {
 # it shows a reviewer that the change adds a bare number. The blood flow and the
 # perfusion fraction took it to 165 (`PL-GKG4`). `core/rounding.py` added seven:
 # the squarings and the result of its two bounds on a propagator, and the instant,
-# the interval and the result of its bound on the clock (`PL-GJ1W`).
-MOST_BARE_NUMBERS = 168
+# the interval and the result of its bound on the clock (`PL-GJ1W`). The record
+# of a run's stored states added ten state vectors, which it passes, stores and
+# returns (`PL-MH9J`).
+MOST_BARE_NUMBERS = 178
 
 
 def _names_a_bare_number(

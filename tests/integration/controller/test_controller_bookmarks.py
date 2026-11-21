@@ -24,7 +24,6 @@ from anesthesia_sim.app.run_series import (
 )
 from anesthesia_sim.core.concentration import Fraction, MacMultiple, Percent, fraction_from_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
-from anesthesia_sim.core.governing_equations import STATE_SIZE
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CaseInstant, FreshGasFlow
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
@@ -297,8 +296,8 @@ def test_a_mark_changes_nothing_the_run_computes() -> None:
         window = marked.drawn_window(0.0, marked.snapshot().elapsed_s, 50)
         same = unmarked.drawn_window(0.0, unmarked.snapshot().elapsed_s, 50)
 
-        assert [state.values[position] for state in window.states] == [
-            state.values[position] for state in same.states
+        assert [state[position] for state in window.states] == [
+            state[position] for state in same.states
         ]
 
 
@@ -446,21 +445,6 @@ def test_a_branch_taken_at_a_bookmark_is_not_drawn_before_its_fork() -> None:
     assert marked.drawn_window(0.0, fork_s - 5.0, 150).times_s != ()
 
 
-WORST_SHARED_COLUMN_DIVERGENCE = 1e-13
-"""Bound the difference between the trunk's and the branch's drawn values at a shared column.
-
-The trunk is the parent run, and the branch is the run forked from one of its bookmarks. A
-column is one of the sampled points that the plot draws.
-
-The divergence was measured at or below 2.8e-15 on the case below. The bound is about 36 times
-that, roughly one and a half orders of magnitude. That margin keeps an ordinary floating-point
-wobble from failing the suite. The bound is also nine orders of magnitude below 1e-4, the
-smallest difference that the display resolves according to `docs/INTERFACE.md` § "Displayed
-precision". That gap is the point of the measurement: the two runs differ by far less than the
-display can show.
-"""
-
-
 def test_a_bookmark_branch_and_its_parent_agree_at_every_column_they_share() -> None:
     """`PL-Z3W6`: a branch agrees with its parent at every sampled point a learner sees.
 
@@ -470,7 +454,7 @@ def test_a_bookmark_branch_and_its_parent_agree_at_every_column_they_share() -> 
     traces. A divergence before the fork would make it impossible to attribute a
     difference after the fork to the one setting that was changed.
 
-    Three things are asserted, and they are three different claims:
+    Two things are asserted:
 
     - **The branch draws no column that the trunk does not draw.** This axis has a
       column at every whole second, and the mark is a whole second. So the fork is a
@@ -479,25 +463,13 @@ def test_a_bookmark_branch_and_its_parent_agree_at_every_column_they_share() -> 
       the branch adds, which
       `test_a_bookmark_branch_draws_one_column_its_parent_does_not_and_it_is_the_fork`
       covers.
-    - **Evaluated by the canonical rule, they agree element for element at every
-      column they share.** This is the guarantee, checked at the drawn instants:
-      0 of 279 elements differ over 31 shared columns.
-    - **The drawn values at those columns do not agree exactly.** 183 of the same
-      279 elements differ, the worst by 1.2e-15. This was measured on 2026-11-21,
-      after `PL-SZ6G` put the columns on whole seconds. Before that, with columns on
-      whole hundredths of a second, 2 000 of 2 259 elements over 251 columns
-      differed, the worst by 5.3e-16. The
-      values differ because `evaluate_anchored` chains one propagator across
-      consecutive columns and breaks the chain at a bound. So
-      the trunk chains through the fork, while the branch restarts there. Without
-      this third claim, a display path that had quietly become the canonical one
-      would satisfy the first two. `docs/INTERFACE.md` § "The canonical evaluation
-      rule" would then be enforcing a separation that no longer existed.
-
-    The third claim is why the second is worth asserting at all. A reader who
-    subtracts one drawn trace from the other sees a few units in the last place
-    here, where two identical runs should show zero. The canonical agreement is
-    what shows that the case did not disagree with itself.
+    - **The drawn compartment values agree bit for bit at every column they share.**
+      Each run draws the states it stored. The branch's first stored state is the
+      one its parent stored for the fork, and with no setting changed each later
+      step repeats its parent's (`PL-MH9J`). So a reader who subtracts one drawn
+      trace from the other sees zero. Before `PL-MH9J` the chart computed each
+      column by formula, and 183 of the 279 drawn elements at these columns
+      differed in their last bits (measured 2026-11-21).
     """
 
     marked = _trunk_halted_on_a_bookmark()
@@ -525,29 +497,18 @@ def test_a_bookmark_branch_and_its_parent_agree_at_every_column_they_share() -> 
 
     trunk_drawn = dict(zip(trunk_window.times_s, trunk_window.states, strict=True))
     branch_drawn = dict(zip(branch_window.times_s, branch_window.states, strict=True))
-    elements = drawn_differing = 0
+
+    elements = 0
 
     for elapsed_s in shared:
-        assert branch._run_definition.state_at(elapsed_s) == marked._run_definition.state_at(
-            elapsed_s
-        ), f"the branch and its parent differ at the column drawn at {elapsed_s} s"
-
-        for entry in range(STATE_SIZE):
+        for position in COMPARTMENT_STATE_INDEX.values():
             elements += 1
-            trunk_value = trunk_drawn[elapsed_s].values[entry]
-            branch_value = branch_drawn[elapsed_s].values[entry]
-            drawn_differing += trunk_value != branch_value
 
-            assert abs(trunk_value - branch_value) < WORST_SHARED_COLUMN_DIVERGENCE, (
-                f"the two drawn columns at {elapsed_s} s diverged further than measured"
+            assert trunk_drawn[elapsed_s][position] == branch_drawn[elapsed_s][position], (
+                f"the two drawn columns at {elapsed_s} s differ"
             )
 
-    assert elements == 31 * STATE_SIZE
-    assert drawn_differing > 0, (
-        "the drawn values at every shared column agreed bit for bit, so the display path "
-        "has become the canonical one and the separation docs/MODEL.md enforces no longer "
-        "costs or buys anything"
-    )
+    assert elements == 31 * len(COMPARTMENT_QUANTITIES)
 
 
 def test_a_paused_trunk_branches_where_it_stands() -> None:
@@ -580,7 +541,7 @@ def test_a_paused_trunk_branches_where_it_stands() -> None:
     assert branch.began_at_s == branch.snapshot().elapsed_s == fork_s
     assert branch._state.step_count == fork_steps
     assert branch.opened_from is not None
-    assert branch.opened_from.fork.state == trunk._run_definition.state_at(fork_s)
+    assert branch.opened_from.fork.state == trunk._state.stored_states.state_at(fork_s)
     assert branch.snapshot().bookmark_halt is None
     assert branch.run_segments[0].opening.instant_s == trunk.run_segments[-1].opening.instant_s
     assert [

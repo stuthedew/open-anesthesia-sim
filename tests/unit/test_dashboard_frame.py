@@ -218,7 +218,6 @@ from anesthesia_sim.core.parameters import (
     load_agent_parameters,
     parse_breathing_circuit_parameters,
 )
-from anesthesia_sim.core.run_definition import DisplayState
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
@@ -491,7 +490,7 @@ class _FakeController:
         return DrawnWindow(
             substance_id=substance_id,
             times_s=tuple(sample.elapsed_s for sample in inside),
-            states=tuple(DisplayState(_state_of(sample, substance_id)) for sample in inside),
+            states=tuple(_state_of(sample, substance_id) for sample in inside),
         )
 
 

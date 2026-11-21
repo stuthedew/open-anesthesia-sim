@@ -511,7 +511,7 @@ def test_a_mark_set_behind_the_clock_can_be_returned_to() -> None:
     When the item was filed, both fork methods refused it. The trunk has no
     keyframe there, and no step ever crossed a mark set after the clock had
     gone by. The branch opens where a halt would have stopped the run, from
-    the trunk's canonical state there. It reproduces the trunk element-wise
+    the state the trunk stored there. It reproduces the trunk element-wise
     from that instant on, and it leaves the trunk exactly the case it was.
     """
 
@@ -535,7 +535,7 @@ def test_a_mark_set_behind_the_clock_can_be_returned_to() -> None:
 
     assert branch.began_at_s == branch.snapshot().elapsed_s == 60.0
     assert branch.opened_from is not None
-    assert branch.opened_from.fork.state == trunk._run_definition.state_at(CaseInstant(60))
+    assert branch.opened_from.fork.state == trunk._state.stored_states.state_at(CaseInstant(60))
     assert branch.snapshot().bookmark_standings.of_time_bookmark(mark) is MarkStanding.PASSED
     # The branch's definition opens at the trunk's own keyframe before the mark,
     # and nothing was recorded on the trunk to make one where it was marked.

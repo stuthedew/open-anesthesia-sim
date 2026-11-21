@@ -7,7 +7,6 @@ These tests cover a run that stops itself (`PL-T995`).
 
 import time
 from collections.abc import Callable, Mapping
-from dataclasses import replace
 from typing import Final, NoReturn
 
 import pytest
@@ -2410,7 +2409,7 @@ def _refusing_a_drawn_column(
 
     This is the one way to get a drawn fraction outside 0 to 1, because no
     supported setting computes one (`core/concentration.py`). A drawn window
-    is an evaluation of the closed form. So the value is written into the
+    holds states that the run stored after checking them. So the value is written into the
     window that the controller returns, not into any compartment.
     """
 
@@ -2419,9 +2418,9 @@ def _refusing_a_drawn_column(
     def drawn_window(start_s: float, stop_s: float, columns: int) -> DrawnWindow:
         window = real_drawn_window(start_s, stop_s, columns)
         states = list(window.states)
-        values = list(states[-1].values)
+        values = list(states[-1])
         values[COMPARTMENT_STATE_INDEX[quantity]] = value
-        states[-1] = replace(states[-1], values=tuple(values))
+        states[-1] = tuple(values)
 
         return DrawnWindow(window.substance_id, window.times_s, tuple(states))
 

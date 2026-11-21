@@ -119,6 +119,7 @@ from anesthesia_sim.core.governing_equations import UptakeEquationSettings
 from anesthesia_sim.core.patient import PatientCompartments
 from anesthesia_sim.core.run_definition import Keyframe, RunDefinition
 from anesthesia_sim.core.simulation import SimulationState
+from anesthesia_sim.core.stored_states import StoredStates
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ELAPSED_SIMULATION_TIME_S,
     CardiacOutput,
@@ -184,6 +185,7 @@ RECEIVERS: Mapping[type, Callable[[], object]] = {
     RunDefinition: _run_definition,
     SimulationController: SimulationController,
     SimulationState: SimulationState,
+    StoredStates: lambda: StoredStates(AgentUptakeSystem.default().case_state(), CaseInstant(0)),
     TimeBookmark: lambda: MARK,
     TissueGroup: lambda: AgentUptakeSystem.default().patient.fat,
     UptakeEquationSettings: lambda: AgentUptakeSystem.default().equation_settings(),
@@ -207,14 +209,18 @@ TIED: Mapping[tuple[type, type], Callable[[typing.Any], object]] = {
 # mark, has crossed no height and is neither at its cap nor failed. The squarings
 # are those of a shipped agent's step, which needs none.
 TYPICAL: Mapping[str, object] = {
+    "adjustment_count": 0,
     "after": {},
     "before": {},
     "initial_state": AgentUptakeSystem.default().state_vector(),
+    "name": "Branch 1",
+    "opening": AgentUptakeSystem.default().case_state(),
     "reached_crossings": frozenset(),
     "reached_instants_s": frozenset(),
     "run_failed": False,
     "squarings": 0,
     "simulation_step_s": 1.0,
+    "snapshot": None,
     "step_count": StepCount(0),
     "stopped_at_cap": False,
     "time_base": SELECTABLE_TIME_BASES[0],
