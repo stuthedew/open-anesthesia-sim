@@ -11,7 +11,7 @@ added: 2026-11-21
 closed: 2026-11-21
 pr: 2183
 payoff: a clinician or contributor reading docs/MODEL.md is not told the simulator does something it does not do
-verify: grep -qE '^\*\*Sections checked\.\*\*' docs/items/PL-RMNP*.md
+verify: grep -qF 'After the first hour, the open-circuit tail falls as low as a third to a half of the mean curve' docs/MODEL.md
 sweep: reads every section of docs/MODEL.md against the code and data files, and files each claim the tree contradicts that it cannot correct as a plain fact
 ---
 
@@ -135,7 +135,7 @@ The passages that state the step, by section:
 - § "Release gate": "the convergence and nonnegativity tests at every supported step size".
 - § "How this document is held to the tree": the example marker `<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->`, which sits in a code fence, so no check will flag it when the constant changes.
 
-**Docs sweep.** `docs/MODEL.md` is the file this item changes. Checked for statements that the corrections make stale: `docs/INTERFACE.md` (two found: the open-circuit tail's hours in § "Supported run length", and where the use disclaimer sits. Both were handed to `PL-5FMC`, the check of `docs/INTERFACE.md` against the code, which corrected them in `af8d1ffc3` on pull request `#2181`. `PL-LCP4` was filed for them here and removed again before it reached `main`), `README.md` and `docs/ARCHITECTURE.md` (neither repeats a corrected statement), `docs/references/README.md` (agrees with the corrected sentence about where full texts are kept), the `sources` notes under `src/anesthesia_sim/data/` (seven found, filed as `PL-GW5R`), and the docstrings of the tests the corrected passages name (nine found, filed as `PL-VF3H`).
+**Docs sweep.** `docs/MODEL.md` is the file this item changes. Checked for statements that the corrections make stale: `docs/INTERFACE.md` (two found: the open-circuit tail's hours in § "Supported run length", and where the use disclaimer sits. Both were handed to `PL-5FMC`, the check of `docs/INTERFACE.md` against the code, which corrected them in `af8d1ffc3` on pull request `#2181`. `PL-LCP4` was filed for them here and is recorded as dropped, with that reason), `README.md` and `docs/ARCHITECTURE.md` (neither repeats a corrected statement), `docs/references/README.md` (agrees with the corrected sentence about where full texts are kept), the `sources` notes under `src/anesthesia_sim/data/` (seven found, filed as `PL-GW5R`), and the docstrings of the tests the corrected passages name (nine found, filed as `PL-VF3H`).
 
 **Blind review, 2026-11-21.** Two passes read the branch. Between them they named three faults, and each was real. The corrected sentence on the open-circuit tail placed sevoflurane's lowest point near hour 13, and its lowest point over the whole run is 0.36 at minute 19, so the sentence now says "after the first hour". The corrected sentence on the fat-volume case left "The other agents have an edge at or inside those factors" applying to it, which is false for fat volume, so the sentence now gives the real reason the case runs once. And `PL-S64T` said that desflurane washes out slower on screen "at every setting", which holds at the default ventilation and not at 6 L/min or more, so the item now gives the figures by setting.
 
