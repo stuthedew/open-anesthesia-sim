@@ -21,7 +21,9 @@ Every assertion below is one of three kinds. It is a regression band around a
 value this module itself measured, or the reading that such a band supports,
 or a property of the published coefficients. The values were measured on
 2026-09-27, except for the muscle group's variation and the open circuit's
-modes, which were measured on 2026-10-03. No assertion claims agreement with a
+modes, which were measured on 2026-10-03. Every value from the stepped
+open-circuit run was measured again on 2026-11-21, when the open-circuit
+driver began to enlarge the circuit. No assertion claims agreement with a
 human washout, and none may be restated as one.
 
 **What is compared.** Both papers fit each volunteer's elimination to a sum of
@@ -48,7 +50,9 @@ The run uses exactly the gate's two conditions:
 
 - *Shipped* is the rebreathing circuit at 10 L/min. It gives the tail that the
   chart draws.
-- *Open circuit* calls `_discard_circuit_contents()` after every step. No
+- *Open circuit* is the gate's test-only driver. At discontinuation it
+  empties the circuit and enlarges it to the largest volume that the model
+  accepts, and it calls `_discard_circuit_contents()` after every step. No
   setting of the shipped simulator produces this condition, and every
   restatement of its numbers must say so.
 
@@ -59,7 +63,8 @@ and 1400 min (*Anesth Analg* p. 317). The run's last minute, 1410 min, is
 added to them.
 
 **The result, as model over fit at those times.** The values were measured on
-2026-09-27, and the 1410-minute rows on 2026-10-17. The four cohorts are, in
+2026-09-27, and the 1410-minute rows on 2026-10-17. The open-circuit table was
+measured again on 2026-11-21. The four cohorts are, in
 order, sevoflurane and isoflurane from *Anesth Analg*, then desflurane and
 isoflurane from *Anesthesiology*.
 
@@ -78,16 +83,21 @@ isoflurane from *Anesthesiology*.
 
 | Minutes | Sevo, open | Iso, open | Des, open | Iso 2, open |
 | ---: | ---: | ---: | ---: | ---: |
-| 5 | 0.80 | 0.98 | 0.64 | 1.05 |
+| 5 | 0.79 | 0.98 | 0.64 | 1.05 |
 | 30 | 0.43 | 0.51 | 0.53 | 0.63 |
 | 60 | 0.58 | 0.64 | 0.65 | 0.79 |
 | 120 | 0.70 | 0.77 | 0.76 | 0.95 |
-| 240 | 0.82 | 0.85 | 0.58 | 1.04 |
-| 400 | 0.67 | 0.69 | 0.36 | 0.79 |
+| 240 | 0.81 | 0.85 | 0.58 | 1.03 |
+| 400 | 0.67 | 0.69 | 0.36 | 0.78 |
 | 600 | 0.47 | 0.48 | 0.37 | 0.53 |
 | 800 | 0.43 | 0.42 | 0.54 | 0.46 |
 | 1400 | 0.81 | 0.71 | 1.39 | 0.74 |
 | 1410 | 0.82 | 0.72 | 1.41 | 0.75 |
+
+Four entries of the open-circuit table differ from those of 2026-09-27, when
+the driver emptied the shipped circuit every 0.1 s. Sevoflurane's were then
+0.80 at 5 minutes and 0.82 at 240 minutes. The second isoflurane cohort's
+were 1.04 at 240 minutes and 0.79 at 400 minutes.
 
 **The crossing hours mark three stretches of the comparison.** In the shipped
 condition, the modelled tail crosses the fitted curve four times in the run.
@@ -243,6 +253,7 @@ from test_published_wash_in_and_elimination import (
     PublishedMeasurement,
     _configured_system,
     _discard_circuit_contents,
+    _open_the_circuit,
 )
 
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidationResult
@@ -433,11 +444,12 @@ MUSCLE_GROUP, FOURTH_COMPARTMENT, FAT_GROUP = 2, 3, 4
 
 @dataclass(frozen=True, slots=True)
 class RecordedComparison:
-    """What this module measured for one cohort in one condition on 2026-09-27.
+    """What this module measured for one cohort in one condition.
 
-    The entry for the run's last minute, 1410, was measured on 2026-10-17, when
-    the run was shortened to end at the supported run length (`PL-RXW0`).
-    Every other entry is unchanged from 2026-09-27.
+    The shipped entries were measured on 2026-09-27. The entry for the run's
+    last minute, 1410, was measured on 2026-10-17, when the run was shortened
+    to end at the supported run length (`PL-RXW0`). The open-circuit entries
+    were measured on 2026-11-21, and the comment beside each one says why.
 
     Attributes:
         ratios: model over fit at each of `STATED_MINUTES`.
@@ -454,38 +466,52 @@ class RecordedComparison:
 # `PUBLISHED_FITS` for the same reason that the gate keeps its modelled ratios
 # out of its published rows. When a number measured from the model sits among
 # published ones, a later reader comes to cite it as a human measurement.
+#
+# Each open-circuit entry is a model output from the test-only driver, measured
+# on 2026-11-21 with the driver as it is now. It enlarges the circuit and
+# empties it once a second. The driver of 2026-09-27 emptied the shipped 6 L
+# circuit every 0.1 s, and the comment beside each entry gives what that
+# driver produced.
 RECORDED_COMPARISONS: dict[tuple[str, Condition], RecordedComparison] = {
     ("sevoflurane/Anesth Analg 1991;72:316-24", "shipped"): RecordedComparison(
         ratios=(1.201, 0.610, 0.808, 1.006, 1.204, 1.023, 0.737, 0.667, 1.225, 1.240),
         crossing_hours=(0.13, 1.98, 6.88, 20.65),
     ),
+    # The 0.1 s driver gave ratios of (0.795, 0.426, 0.576, 0.704, 0.815, 0.666,
+    # 0.468, 0.427, 0.806, 0.816) and the same crossing.
     ("sevoflurane/Anesth Analg 1991;72:316-24", "open circuit"): RecordedComparison(
-        ratios=(0.795, 0.426, 0.576, 0.704, 0.815, 0.666, 0.468, 0.427, 0.806, 0.816),
+        ratios=(0.794, 0.426, 0.575, 0.704, 0.814, 0.665, 0.468, 0.427, 0.805, 0.815),
         crossing_hours=(0.05,),
     ),
     ("isoflurane/Anesth Analg 1991;72:316-24", "shipped"): RecordedComparison(
         ratios=(1.329, 0.708, 0.872, 1.070, 1.255, 1.070, 0.777, 0.684, 1.106, 1.118),
         crossing_hours=(0.17, 1.62, 7.33, 21.78),
     ),
+    # The 0.1 s driver gave ratios of (0.983, 0.509, 0.641, 0.766, 0.854, 0.686,
+    # 0.478, 0.423, 0.710, 0.718) and the same crossing.
     ("isoflurane/Anesth Analg 1991;72:316-24", "open circuit"): RecordedComparison(
-        ratios=(0.983, 0.509, 0.641, 0.766, 0.854, 0.686, 0.478, 0.423, 0.710, 0.718),
+        ratios=(0.983, 0.509, 0.641, 0.766, 0.853, 0.685, 0.478, 0.422, 0.710, 0.717),
         crossing_hours=(0.08,),
     ),
     ("desflurane/Anesthesiology 1991;74:489-98", "shipped"): RecordedComparison(
         ratios=(1.109, 0.753, 0.927, 1.111, 0.881, 0.547, 0.562, 0.800, 2.086, 2.110),
         crossing_hours=(0.10, 1.30, 3.38, 15.30),
     ),
+    # The 0.1 s driver gave ratios of (0.638, 0.530, 0.647, 0.760, 0.582, 0.356,
+    # 0.373, 0.536, 1.394, 1.410) and the same crossings.
     ("desflurane/Anesthesiology 1991;74:489-98", "open circuit"): RecordedComparison(
-        ratios=(0.638, 0.530, 0.647, 0.760, 0.582, 0.356, 0.373, 0.536, 1.394, 1.410),
+        ratios=(0.637, 0.530, 0.646, 0.759, 0.582, 0.356, 0.373, 0.535, 1.393, 1.409),
         crossing_hours=(0.03, 19.18),
     ),
     ("isoflurane/Anesthesiology 1991;74:489-98", "shipped"): RecordedComparison(
         ratios=(1.417, 0.879, 1.077, 1.329, 1.521, 1.225, 0.857, 0.741, 1.150, 1.161),
         crossing_hours=(0.22, 0.78, 8.42, 21.05),
     ),
+    # The 0.1 s driver gave ratios of (1.049, 0.632, 0.792, 0.952, 1.035, 0.785,
+    # 0.527, 0.457, 0.738, 0.746) and crossings at (0.10, 2.45, 4.58) hours.
     ("isoflurane/Anesthesiology 1991;74:489-98", "open circuit"): RecordedComparison(
-        ratios=(1.049, 0.632, 0.792, 0.952, 1.035, 0.785, 0.527, 0.457, 0.738, 0.746),
-        crossing_hours=(0.10, 2.45, 4.58),
+        ratios=(1.048, 0.631, 0.792, 0.951, 1.034, 0.784, 0.527, 0.457, 0.738, 0.745),
+        crossing_hours=(0.10, 2.45, 4.57),
     ),
 }
 
@@ -515,7 +541,10 @@ FIVE_MINUTE_DISTANCE_TOLERANCE_SD = 0.02
 # how far the sink lowers F_A/F_A0 at each of `STATED_MINUTES`, compared with
 # the same run without the sink. The share and the
 # entry for 1410 minutes were measured on 2026-10-17, when the run was
-# shortened to end at the supported run length (`PL-RXW0`).
+# shortened to end at the supported run length (`PL-RXW0`). The open-circuit
+# entries are model outputs from the test-only driver. They were measured
+# again on 2026-11-21 with the driver as it is now, and each one equals what
+# the 0.1 s driver gave, to the four decimals recorded.
 RECORDED_METABOLISED_SHARE: dict[Condition, float] = {"shipped": 0.0779, "open circuit": 0.0714}
 RECORDED_TAIL_REDUCTIONS: dict[Condition, tuple[float, ...]] = {
     "shipped": (0.0447, 0.0286, 0.0194, 0.0206, 0.0229, 0.0255, 0.0269, 0.0263, 0.0241, 0.0241),
@@ -558,7 +587,10 @@ class RecordedMuscleVariation:
 
 
 # Measured on 2026-10-03 (`PL-95NW`). These are model outputs, kept apart from
-# `PUBLISHED_FITS` for the same reason as `RECORDED_COMPARISONS`.
+# `PUBLISHED_FITS` for the same reason as `RECORDED_COMPARISONS`. Each
+# open-circuit entry is a model output from the test-only driver, measured
+# again on 2026-11-21 with the driver as it is now. The comment beside each
+# entry gives what the 0.1 s driver produced where that differs.
 RECORDED_MUSCLE_VARIATIONS: dict[tuple[str, Condition], RecordedMuscleVariation] = {
     ("sevoflurane/Anesth Analg 1991;72:316-24", "shipped"): RecordedMuscleVariation(
         rise_as_stored=(4.15, 1.205),
@@ -566,9 +598,11 @@ RECORDED_MUSCLE_VARIATIONS: dict[tuple[str, Condition], RecordedMuscleVariation]
         ratio_at_four_hours_at_fitted_time_constant=0.770,
         crossing_hours_at_fitted_time_constant=(0.15, 1.07, 1.60),
     ),
+    # The 0.1 s driver gave peaks of 0.815 as stored and 0.700 at the fitted
+    # time constant.
     ("sevoflurane/Anesth Analg 1991;72:316-24", "open circuit"): RecordedMuscleVariation(
-        rise_as_stored=(3.92, 0.815),
-        rise_at_fitted_time_constant=(1.13, 0.700),
+        rise_as_stored=(3.92, 0.814),
+        rise_at_fitted_time_constant=(1.13, 0.699),
         ratio_at_four_hours_at_fitted_time_constant=0.497,
         crossing_hours_at_fitted_time_constant=(0.07,),
     ),
@@ -578,10 +612,12 @@ RECORDED_MUSCLE_VARIATIONS: dict[tuple[str, Condition], RecordedMuscleVariation]
         ratio_at_four_hours_at_fitted_time_constant=0.959,
         crossing_hours_at_fitted_time_constant=(0.22, 0.73, 3.65),
     ),
+    # The 0.1 s driver gave a peak of 0.775 at the fitted time constant and a
+    # four-hour ratio of 0.619.
     ("isoflurane/Anesth Analg 1991;72:316-24", "open circuit"): RecordedMuscleVariation(
         rise_as_stored=(3.72, 0.856),
-        rise_at_fitted_time_constant=(1.45, 0.775),
-        ratio_at_four_hours_at_fitted_time_constant=0.619,
+        rise_at_fitted_time_constant=(1.45, 0.774),
+        ratio_at_four_hours_at_fitted_time_constant=0.618,
         crossing_hours_at_fitted_time_constant=(0.10,),
     ),
     ("desflurane/Anesthesiology 1991;74:489-98", "shipped"): RecordedMuscleVariation(
@@ -590,9 +626,10 @@ RECORDED_MUSCLE_VARIATIONS: dict[tuple[str, Condition], RecordedMuscleVariation]
         ratio_at_four_hours_at_fitted_time_constant=0.367,
         crossing_hours_at_fitted_time_constant=(0.13,),
     ),
+    # The 0.1 s driver gave a peak of 0.662 at the fitted time constant.
     ("desflurane/Anesthesiology 1991;74:489-98", "open circuit"): RecordedMuscleVariation(
         rise_as_stored=(2.17, 0.762),
-        rise_at_fitted_time_constant=(0.62, 0.662),
+        rise_at_fitted_time_constant=(0.62, 0.661),
         ratio_at_four_hours_at_fitted_time_constant=0.236,
         crossing_hours_at_fitted_time_constant=(0.05,),
     ),
@@ -602,10 +639,12 @@ RECORDED_MUSCLE_VARIATIONS: dict[tuple[str, Condition], RecordedMuscleVariation]
         ratio_at_four_hours_at_fitted_time_constant=1.092,
         crossing_hours_at_fitted_time_constant=(4.48,),
     ),
+    # The 0.1 s driver gave peaks of 1.047 as stored and 0.966 at the fitted
+    # time constant, and a four-hour ratio of 0.698.
     ("isoflurane/Anesthesiology 1991;74:489-98", "open circuit"): RecordedMuscleVariation(
-        rise_as_stored=(3.47, 1.047),
-        rise_at_fitted_time_constant=(1.23, 0.966),
-        ratio_at_four_hours_at_fitted_time_constant=0.698,
+        rise_as_stored=(3.47, 1.046),
+        rise_at_fitted_time_constant=(1.23, 0.965),
+        ratio_at_four_hours_at_fitted_time_constant=0.697,
         crossing_hours_at_fitted_time_constant=(0.12,),
     ),
 }
@@ -643,17 +682,17 @@ OPEN_CIRCUIT_STATES = ("alveolar", "mixed venous", "vessel-rich group", "muscle 
 # on. The difference between them comes from the driver.
 # `_discard_circuit_contents()` empties the circuit only after each step, so
 # within a step the patient re-breathes a little of what the patient exhaled.
-# As a result, the stepped run lies above the modes. The tolerance was set when
-# the step was 0.1 s and the run lay above the modes by up to 0.08%. Halving
-# that step halved the difference for sevoflurane: from 0.052 to 0.026% at five
-# minutes, and from 0.061 to 0.030% at four hours (measured once, 2026-10-03,
-# `PL-921Y`). Before the fifth minute the fast terms carry the curve, and the
-# stepped run then departed from the modes by up to 1.6%, at the first minute.
-# At the one-second step the run lies above the modes by up to 0.76% from the
-# fifth minute on (2026-11-21), ten times as far. So
-# `test_the_model_s_apparent_muscle_and_fat_terms_against_the_fitted_ones`
-# fails at this tolerance until the driver holds the open circuit more closely
-# or the tolerance is set again.
+# As a result, the stepped run lies above the modes. The tolerance is a
+# numerical limit on that re-breathing. It was set on 2026-10-03, when the
+# driver emptied the shipped 6 L circuit every 0.1 s and the run lay above the
+# modes by up to 0.08%. Halving that step halved the difference for
+# sevoflurane: from 0.052 to 0.026% at five minutes, and from 0.061 to 0.030%
+# at four hours (measured once, 2026-10-03, `PL-921Y`). Before the fifth minute
+# the fast terms carry the curve, and the stepped run then departed from the
+# modes by up to 1.6%, at the first minute. The driver now enlarges the
+# circuit. The run lies above the modes by at most 0.0005% from the fifth
+# minute on, and by at most 0.0004% before it (2026-11-21). The tolerance
+# keeps its value, which is about 170 times the difference now measured.
 MODE_RECONSTRUCTION_TOLERANCE = 0.0008
 RECONSTRUCTION_FROM_MINUTE = 5
 
@@ -927,7 +966,7 @@ def _washout_curve(
 
     system.set_delivered_concentration_percent(Percent(0.0))
     if condition == "open circuit":
-        _discard_circuit_contents(system)
+        _open_the_circuit(system)
 
     ratios = [1.0]
     for _ in range(elimination_duration_min):
@@ -1089,9 +1128,9 @@ def _open_circuit_system_per_min(
     M is built at the reference patient's default ventilation and cardiac
     output, which is `_configured_system()`'s operating point. Each row is the
     equation that `docs/MODEL.md` § "Governing equations" gives for its state,
-    with the inspired fraction held at zero. That is the limit that
-    `_discard_circuit_contents()` approaches by emptying the circuit after
-    every step. Only the parameter loaders are reused, as
+    with the inspired fraction held at zero. That is the limit that the
+    open-circuit driver approaches by enlarging the circuit and emptying it
+    after every step. Only the parameter loaders are reused, as
     `test_coupled_dynamics.py`'s `_build_derivative()` reuses them. Nothing
     here calls the implementation under test, so the stepped run's agreement
     with these equations' modes is evidence rather than an identity.
@@ -1236,7 +1275,7 @@ def test_the_first_24_hours_of_elimination_against_the_published_mean_curves(
         assert abs(ratio - expected) <= RATIO_REGRESSION_TOLERANCE * expected, (
             f"{fit.label}, {condition}: at {minutes} min the model's F_A/F_A0 is "
             f"{curve.ratio_at(minutes):.5f} against the fitted {fit.ratio_at(minutes):.5f}, a "
-            f"ratio of {ratio:.3f} where this module measured {expected} on 2026-09-27. "
+            f"ratio of {ratio:.3f} where this module recorded {expected}. "
             "Re-measure this module's tables and docs/MODEL.md's rather than widening the band"
         )
 
@@ -1246,8 +1285,8 @@ def test_the_first_24_hours_of_elimination_against_the_published_mean_curves(
         for found, expected in zip(crossings, recorded.crossing_hours, strict=True)
     ), (
         f"{fit.label}, {condition}: the model now crosses the fitted curve at "
-        f"{tuple(round(h, 2) for h in crossings)} h where this module measured "
-        f"{recorded.crossing_hours} on 2026-09-27; the stretches the module docstring and "
+        f"{tuple(round(h, 2) for h in crossings)} h where this module recorded "
+        f"{recorded.crossing_hours}; the stretches the module docstring and "
         "docs/MODEL.md describe have moved"
     )
 
@@ -1410,9 +1449,10 @@ def test_the_muscle_group_s_slow_return_places_the_tail_s_rise_in_hours_2_to_4(
     wash-in the group is far from equilibrium, so it takes up agent about as
     fast as its blood flow brings it, whatever its capacity. A variation that
     emptied the store would lower the tail for a reason that the reading does
-    not name. The test then checks these values against what was measured on
-    2026-10-03: where the rise peaks on each coefficient, and the four-hour
-    ratio and the crossings on the lowered coefficient. Last, it asserts the
+    not name. The test then checks these values against what
+    `RECORDED_MUSCLE_VARIATIONS` holds: where the rise peaks on each
+    coefficient, and the four-hour ratio and the crossings on the lowered
+    coefficient. Last, it asserts the
     reading itself. The rise peaks after the second hour on the stored
     coefficient and before it at the fitted time constant, and the tail at
     four hours is lower.
@@ -1461,8 +1501,8 @@ def test_the_muscle_group_s_slow_return_places_the_tail_s_rise_in_hours_2_to_4(
             and abs(ratio - expected_ratio) <= RATIO_REGRESSION_TOLERANCE * expected_ratio
         ), (
             f"{fit.label}, {condition}, {which}: the rise toward the curve now peaks at "
-            f"{ratio:.3f} at {hours:.2f} h where this module measured {expected_ratio} at "
-            f"{expected_hours} h on 2026-10-03; re-measure it here and in docs/MODEL.md"
+            f"{ratio:.3f} at {hours:.2f} h where this module recorded {expected_ratio} at "
+            f"{expected_hours} h; re-measure it here and in docs/MODEL.md"
         )
     assert rise_varied[0] < 2.0 < rise_as_stored[0], (
         f"{fit.label}, {condition}: the rise toward the curve peaks at {rise_as_stored[0]:.2f} h "
@@ -1489,8 +1529,8 @@ def test_the_muscle_group_s_slow_return_places_the_tail_s_rise_in_hours_2_to_4(
         for found, crossing in zip(crossings, expected_crossings, strict=True)
     ), (
         f"{fit.label}, {condition}: at the fitted time constant the tail now crosses the curve at "
-        f"{tuple(round(h, 2) for h in crossings)} h where this module measured "
-        f"{expected_crossings} on 2026-10-03"
+        f"{tuple(round(h, 2) for h in crossings)} h where this module recorded "
+        f"{expected_crossings}"
     )
 
 
