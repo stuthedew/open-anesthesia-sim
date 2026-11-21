@@ -70,11 +70,14 @@ from anesthesia_sim.app.workspace_tabs import (
     display_order,
 )
 from anesthesia_sim.layout.model import Handle, LayoutModel
+from anesthesia_sim.layout.run_identity import SessionToken
 from anesthesia_sim.layout.shipped import shipped_workspace, shipped_workspaces
 from anesthesia_sim.layout.store import WORKSPACES_FILE_NAME, Source, WorkspaceStore
 from anesthesia_sim.layout.tree import Area, AreaId, Node, Orientation, Split, ViewKind, Window
 from anesthesia_sim.layout.workspace import ShippedWorkspaceId, WorkspaceName, WorkspaceSet
 
+#: The session the tab strips under test run in. No test here pins a run.
+_SESSION = SessionToken("0" * 32)
 _VIEW = ViewKind("test_view")
 _REQUESTS = ViewRequests(
     frame=lambda _time_base: None,
@@ -531,7 +534,7 @@ def test_the_layout_menu_lists_every_workspace_in_tab_order_with_the_current_che
     application: QApplication,
 ) -> None:
     workspaces = shipped_workspaces().duplicate(0).activate(2)
-    strip = WorkspaceTabs(workspaces, lambda _set: None, lambda: ())
+    strip = WorkspaceTabs(workspaces, lambda _set: None, lambda: (), session=_SESSION)
     strip.layout_menu.fill()
     actions = strip.layout_menu.actions()
     names = [workspaces.workspaces[index].name for index in display_order(workspaces)]
@@ -559,7 +562,7 @@ def test_next_and_previous_workspace_follow_the_tabs_and_wrap_round(
     def change(made: WorkspaceSet) -> None:
         strip.show_set(made)
 
-    strip = WorkspaceTabs(workspaces, change, lambda: ())
+    strip = WorkspaceTabs(workspaces, change, lambda: (), session=_SESSION)
 
     strip.next_action.trigger()
     assert strip.workspaces.active == order[1]
@@ -581,7 +584,7 @@ def test_next_workspace_during_a_rename_takes_the_typed_name_before_it_switches(
     def change(made: WorkspaceSet) -> None:
         strip.show_set(made)
 
-    strip = WorkspaceTabs(workspaces, change, lambda: ())
+    strip = WorkspaceTabs(workspaces, change, lambda: (), session=_SESSION)
     strip.rename(order[0])
     editor = strip.editor
     assert editor is not None
@@ -599,7 +602,7 @@ def test_a_menu_written_at_each_opening_keeps_only_the_submenus_of_the_last_one(
 ) -> None:
     """After three openings, a menu rebuilt on opening holds one opening's submenus, not three."""
 
-    strip = WorkspaceTabs(shipped_workspaces(), lambda _set: None, lambda: ())
+    strip = WorkspaceTabs(shipped_workspaces(), lambda _set: None, lambda: (), session=_SESSION)
     container = _container(
         application, shown, _layout(_row((1 / 3, 1 / 3, 1 / 3), _area(1), _area(2), _area(3)), 4)
     )
@@ -631,7 +634,7 @@ def test_the_strip_holds_no_layout_button_and_a_right_click_beside_the_tabs_open
     A right-click on a tab opens that tab's own menu instead.
     """
 
-    strip = WorkspaceTabs(shipped_workspaces(), lambda _set: None, lambda: ())
+    strip = WorkspaceTabs(shipped_workspaces(), lambda _set: None, lambda: (), session=_SESSION)
     strip.resize(900, 40)
     strip.show()
     shown.append(strip)
@@ -953,7 +956,7 @@ def test_the_this_workspace_submenu_acts_on_the_current_workspace(
 
     workspaces = shipped_workspaces().activate(2)
     made: list[WorkspaceSet] = []
-    strip = WorkspaceTabs(workspaces, made.append, lambda: ())
+    strip = WorkspaceTabs(workspaces, made.append, lambda: (), session=_SESSION)
     strip.layout_menu.fill()
     entry = next(
         action for action in strip.layout_menu.actions() if action.text() == THIS_WORKSPACE_LABEL

@@ -1,9 +1,17 @@
 ---
 id: PL-7H9X
 title: A Workspace pinned in an earlier session says 'Run 1 is not open.' while this session's Run 1 is open and named directly above it
-status: untriaged
+priority: P3
+effort: S
+status: done
+classes: defect
 feature: interface-matches-its-spec
+touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/view_registry.py, src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/workspace_tabs.py, docs/INTERFACE.md, tests/unit/test_dashboard_frame.py, tests/unit/test_view_registry.py, tests/integration/test_workspace_tabs.py, tests/integration/test_workspace_saving.py, tests/integration/test_layout_keyboard.py
 added: 2026-11-21
+closed: 2026-11-21
+pr: 2191
+payoff: A learner who reopens the simulator is not told that Run 1 is not open under the readouts of a run called Run 1
+tests: tests/unit/test_dashboard_frame.py::test_a_pinned_run_of_an_earlier_session_is_named_without_its_number, tests/unit/test_dashboard_frame.py::test_a_pinned_run_is_named_only_in_a_session_given_by_its_token, tests/integration/test_workspace_tabs.py::test_a_pinned_run_that_is_not_open_is_stated_in_every_area_and_no_other_run_is_shown, tests/unit/test_view_registry.py::test_the_pinned_run_notice_is_titled_with_the_name_it_is_given, tests/unit/test_view_registry.py::test_a_name_that_starts_a_sentence_has_only_its_first_letter_raised
 ---
 
 **Problem.** A Workspace pinned in an earlier session says 'Run 1 is not open.' while this session's Run 1 is open and named directly above it
@@ -15,3 +23,9 @@ added: 2026-11-21
 **Decided here, as a placeholder** (wording, 2026-11-21): when the pinned run belongs to an earlier session, the notice says so, for example "This Workspace is pinned to a run from an earlier session, which is not open." It does not print that run's number.
 
 **Done when.** An Area of a Workspace pinned in an earlier session names no run number that an open run carries, and the test above checks the new wording.
+
+**Built 2026-11-21.** `pinned_run_label` in `app/dashboard_frame.py` names a Workspace's pinned run from the pin and the token of the session that is running. A run of an earlier session is called "a run from an earlier session", without its number. The Area's notice, the Area's header and the Unpin entry of the Workspace tab's menu all take the name from it. The notice reads "A run from an earlier session is not open." and "This Workspace is pinned to a run from an earlier session, so its Views show no run. Unpin it from the Workspace's tab to show the runs that are open." The wording is a placeholder. A run of this session that has closed keeps its name ("Run 2 is not open."), because no number is given out twice in a session. `docs/INTERFACE.md` says so beside its description of the pin.
+
+**Generator check.** One-off. The fact is which session a run's number belongs to. `run_label` renders the number alone, which is right for an open run, and the pin was the one caller that can hold a run of another session. Found by `PL-5FMC`, the check of the interface documents that the project owner asked for.
+
+**Blind review, 2026-11-21.** Pass 1 found that the first version worked out the running session from the open runs, so with no run open it still gave the earlier session's number. The function now takes the session's own token (`RunIdentities.session`), and `WorkspaceTabs` and `tab_operations` are given it. A test reads the Unpin entry with no run open.

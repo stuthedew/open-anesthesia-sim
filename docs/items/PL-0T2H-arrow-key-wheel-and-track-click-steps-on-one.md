@@ -1,9 +1,16 @@
 ---
 id: PL-0T2H
 title: Arrow-key, wheel and track-click steps on one dial are joined into one adjustment, so the chart marks only the first step and docs/INTERFACE.md says each step is an adjustment of its own: decide which a learner sees
-status: untriaged
+priority: P2
+effort: M
+status: blocked
+classes: defect
 feature: interface-matches-its-spec
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/chart_frame.py, docs/INTERFACE.md, tests/integration/controller/test_controller_control_timeline.py
+blocked-by: PL-Z6C8
+deferred-from: v0.7.0 - filed on 2026-11-21, after the gate froze; it builds after the whole-second stepping work, which changes when a setting takes effect
 added: 2026-11-21
+payoff: A learner who steps a dial up and later back with the keys sees a mark on the chart at each change
 ---
 
 **Problem.** Arrow-key, wheel and track-click steps on one dial are joined into one adjustment, so the chart marks only the first step and docs/INTERFACE.md says each step is an adjustment of its own: decide which a learner sees
@@ -68,4 +75,10 @@ Three wheel notches and three clicks on the track gave the same single line unde
 
 **Recommendation: A.** It is what the document already requires, and it marks the dial-back that the section exists to show. It costs more dashed lines when a learner holds an arrow key down while the run plays. The chart's existing rule for crowded marks covers that case.
 
-**Done when.** A key press, a wheel notch and a click on the track each give the result the owner chooses, a test presses a key on a slider at two simulated instants and checks the marks, and `docs/INTERFACE.md` § "The control-input timeline" and the docstring of `begin_control_adjustment` say what the code does. Build this after the whole-second stepping work (`PL-SZ6G`, `PL-MH9J`, `PL-FST0`, `PL-Z6C8`), which changes when a setting takes effect.
+**Decided 2026-11-21: A, as an obvious call in the round.** `docs/INTERFACE.md` § "The control-input timeline" already requires it: "A key press, one notch of the scroll wheel or a click on the slider away from its handle is a single input, and is an adjustment of its own." So the code is the defect, and the document is not changed. B would lower a requirement of the document to match the code. The coordinator of the v0.7.0 project asked for the call to be taken on this ground on 2026-11-21. The project owner was told in the thread the same day and can overrule it. The session took the call, so it is not recorded as the owner's.
+
+**Waits on the whole-second stepping build.** `PL-SZ6G`, `PL-MH9J`, `PL-FST0` and `PL-Z6C8` change when a setting takes effect, and they were in flight on `origin/claude/project-thread-er38tc` on 2026-11-21. This item is blocked on the last of them, `PL-Z6C8`, and it is deferred from v0.7.0's gate because it was filed after that gate froze.
+
+**Generator check.** One-off. The fact is what one adjustment is. The document states it per input, and `SimulationController._record_in_timeline` opens an adjustment per control. `test_consecutive_changes_to_one_control_are_one_adjustment` checks the controller's reading, and no test pressed a key on a slider at two simulated instants. `PL-41YP` (assert every required displayed output reaches the rendered view) describes the wider gap. Found by `PL-5FMC`, the check of the interface documents that the project owner asked for.
+
+**Done when.** A key press, a wheel notch and a click on the track each open an adjustment of their own when they take effect at a different simulated instant, a test presses a key on a slider at two simulated instants and checks the marks, and `docs/INTERFACE.md` § "The control-input timeline" and the docstring of `begin_control_adjustment` say what the code does. Build this after the whole-second stepping work (`PL-SZ6G`, `PL-MH9J`, `PL-FST0`, `PL-Z6C8`), which changes when a setting takes effect.
