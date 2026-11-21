@@ -100,6 +100,19 @@ For a branch that added item files only:
 > `PL-HS9M` (the order of work for the interface), `PL-BVC5` (how the
 > controls are drawn) and `PL-6VZF` (the network allowlist).
 
+**A pull request title names the change plainly and briefly.** The title
+becomes the squash commit's subject, the one line of `main`'s history that a
+reader sees for the change. After the item ids that the `pr-title` check
+requires, write a short phrase rather than a whole sentence: what the change
+does, to what, and the reason when it fits. Use names a reader of the
+repository already knows, such as a CI job, a check or a panel, not a term
+coined while building the change. Give each number the thing it counts. When a
+branch closes several items, name what they change together.
+
+**A pull request title.** The project owner chose this one, on `#1523`, on
+2026-10-17: "PL-ZWQS: rebalance the CI test split to offset part 1's lint
+steps". It names the change, what it changes and why.
+
 ## Run the blind review passes before a simulator pull request is ready
 
 **A simulator pull request is not marked ready or armed until its blind
@@ -154,6 +167,16 @@ quotes it. Workflow items need no merge confirmation (project owner, 2026-10-12,
 
 `subprojects/docket/src/docket/arming.py` carries the rules and the decisions
 behind them (`PL-QP9Z`, `PL-1MCK`, `PL-KWCY`, `PL-3FYK`, `PL-H14W`).
+
+**A question in a reply's closing block whose answer will produce a commit
+waits on a draft.** A line whose answer will produce a commit says so, and
+sorts as work rather than as a question. Where that commit belongs in a branch
+another line would merge or close, the decision line comes first. And while a
+pull request is open on that branch, the item the answer goes into stays
+claimed there at `needs-decision`, and the pull request is a draft, until the
+answer is committed. `bin/docket arm` keeps a branch with an open claim
+unarmed, so a merge from the pull request page cannot land first and leave the
+answer on a merged branch (`PL-JHHC`).
 
 ## Bring `origin/main` in once
 

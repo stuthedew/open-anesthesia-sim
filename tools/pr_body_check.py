@@ -42,14 +42,12 @@ that added each one dates its fetch. Every file carries `note:`, backfilled
 once across the records already written, and `docs/pr-bodies/README.md` says
 the rest of what a record is.
 
-**`--anchors` checks that every recovered file's `commit:` is a first-parent
-commit of the default branch** (`PL-73G8`). It is the one field tying a
-recovered body to the tree, and the 2026-09-06 signing rewrite remapped every
-hash once already. It runs in `make check`, fails naming each file and the
-squash commit its number resolves to now, names without failing a file whose
-`commit:` it cannot read (`PL-4ZVH`), and on a shallow clone or with no default
-branch says it checked nothing. A record's front matter is read as an item's
-is, so a `commit:` wrapped onto an indented line is read whole.
+**Nothing checks a record once it is written.** `--recover` writes `commit:`
+from the squash commit it found the gap on, and only a rewrite of the default
+branch's history could leave that hash naming nothing. The branch's rulesets
+refuse one. An `--anchors` mode checked the field in `make check` and CI from
+`PL-73G8` until 2026-11-21 and refused nothing in that time, so `PL-F7XT`
+removed it.
 
 **What follows is the history behind that record.** The squash copy did not
 always arrive. Measured 2026-09-20 over all 805 first-parent commits on `main`:
@@ -205,7 +203,7 @@ sys.path.insert(0, str(ROOT / ".claude" / "hooks"))
 
 from docket.config import load as load_docket_config  # noqa: E402
 from docket.frontmatter import DELIMITER  # noqa: E402
-from docket.model import PullRequestNumber, parse_front_matter, pr_number  # noqa: E402
+from docket.model import PullRequestNumber, pr_number  # noqa: E402
 from docket.store import read_items  # noqa: E402
 from docket.vcs import (  # noqa: E402
     RECORDS,
@@ -636,24 +634,6 @@ def write_recovery(
     return _write(pr, header, body)
 
 
-def parse_record(text: str) -> tuple[dict[str, str], str] | None:
-    """A record's front-matter fields and body, or None where no field is read.
-
-    The front matter follows the item convention, so it is read the way
-    `docket.model` reads an item's: a value continued on an indented line is
-    read whole, as `docket verify` reads the same file (`PL-4ZVH`).
-    """
-    # Set aside on purpose: a field written as a block arrives empty, and the
-    # anchor check, the one reader of a record's fields, says so of an empty
-    # `commit:` rather than passing it.
-    header, body, _declined = parse_front_matter(text.replace("\r\n", "\n"))
-    if not header:
-        return None
-    #: The one blank line `_write` puts after the front matter, and no more, so
-    #: a body that itself opens with a blank line survives the round trip.
-    return header, body.removeprefix("\n")
-
-
 def _shown(path: Path) -> Path:
     """`path` relative to the repository where it is inside it, as a message names it.
 
@@ -692,54 +672,11 @@ def recover(ref: str) -> int:
     return written
 
 
-def anchors(ref: str | None) -> int:
-    """`--anchors`: every recovered file's `commit:` must be on `ref`'s first-parent line."""
-    shallow = _shallow()
-    line = (
-        set(_git("rev-list", "--first-parent", ref).split()) if ref and shallow is False else set()
-    )
-    if not line:
-        print("pr-body: recovery anchors not checked: no full default branch is readable here.")
-        return 0
-    stray: list[tuple[str, str, str]] = []
-    for path in sorted(RECOVERY_DIR.glob("*.md")) if RECOVERY_DIR.is_dir() else []:
-        # Only a record is anchored, and only a record is named for its number,
-        # as `recovered()` reads them; the README beside them is the
-        # directory's statement of what a record is (`PL-TDBT`).
-        if pr_number(path.stem) is None:
-            continue
-        parsed = parse_record(path.read_text(encoding="utf-8"))
-        # A record with no `commit:` at all was `recorded:` before its merge
-        # and has no anchor to check; one whose `commit:` reads as nothing has
-        # one this check cannot read, and says so rather than passing it.
-        if parsed is None or parsed[0].get("commit") == "":
-            why = "no front matter is read" if parsed is None else "its `commit:` holds no value"
-            print(f"pr-body: {RECORD_PATH}/{path.name}: anchor not checked: {why}.")
-            continue
-        sha = parsed[0].get("commit", "")
-        if sha and sha not in line:
-            stray.append((path.name, parsed[0].get("pr", path.stem), sha))
-    if not stray:
-        return 0
-    now = {str(pr): sha for sha, pr, _, _ in squash_commits(ref or "")}
-    print(
-        f"pr-body: {len(stray)} recovered file(s) name a `commit:` that is not on {ref}'s "
-        f"first-parent line, so nothing anchors the body to the tree:",
-        file=sys.stderr,
-    )
-    for name, pr, sha in stray:
-        fix = f"its squash commit there is {now[pr]}" if pr in now else "no squash commit names it"
-        print(f"  {RECORD_PATH}/{name}: commit {sha[:12]}; {fix}", file=sys.stderr)
-    print("  Replace each `commit:` with the squash commit named, and commit.", file=sys.stderr)
-    return 1
-
-
 def main(argv: list[str]) -> int:
     """Run the mode `argv` names.
 
     The default mode, `--recover` and `--compare` report and always exit 0,
     since a merge made what they find rather than the branch that runs them.
-    `--anchors` exits 1 where it fails, because `make check` rests on it.
 
     `--screen-push` is `tools/email_screen.py`'s, run from here for a
     `pre-push` hook installed before `PL-NDY5` moved the screen. A session
@@ -751,8 +688,6 @@ def main(argv: list[str]) -> int:
 
         return email_screen.main(argv)
     ref = default_branch_ref()
-    if "--anchors" in argv:
-        return anchors(ref)
     if ref is None:
         print("pr-body: no default branch is readable here; nothing checked.")
         return 0

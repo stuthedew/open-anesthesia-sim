@@ -91,10 +91,11 @@ for**: the Simulated time readout must show the time you advanced to.
 
 ## Compare interface approaches for the owner
 
-`.claude/rules/instruction-writing.md` rule 10 requires a question about
-different approaches to the interface to carry one screenshot per option,
-annotated where the options differ (project owner, 2026-10-19, `PL-KYTY`).
-This is how to make them.
+A question to the owner about different approaches to the interface carries one
+screenshot per option, of one concrete run, annotated where the options differ
+(project owner, 2026-10-19, `PL-KYTY`). `.claude/rules/instruction-writing.md`
+rule 10 says what else such a question holds. This is how to make the
+screenshots.
 
 1. **Pick one concrete run that shows the difference**, and use it for every
    option. On `#1650` that was 8% sevoflurane for 10 minutes, then 0% for 25,

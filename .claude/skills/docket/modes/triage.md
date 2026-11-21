@@ -495,9 +495,9 @@ tools. Second, does the entry refuse only the approach it names? Reword one
 that would also refuse a sound neighbour. An entry whose question no longer
 exists, for example because its code was removed, goes under § "Retired" at the
 end of `docs/dead-ends.md` with the reason. Age alone is never a reason to
-move one. `tools/dead_ends.py check --base` refuses a removal with neither
-record, so whichever you choose, the move has to be written down. "Nothing"
-is the common answer, and the reply says so.
+move one. No check refuses a removal with neither record, so write the move
+down whichever you choose. "Nothing" is the common answer, and the reply says
+so.
 
 ### What shows an item is done, and when it is recorded
 
