@@ -56,13 +56,14 @@ value is stale against it. Only the choice of instants becomes coarser.
 of that coarsening costs a displayed compartment. At 300x on an abrupt
 manoeuvre, the cost is about ten percentage points.
 
-**Pause, change, resume places a change on a chosen whole second at every
-rate.** `RunView.step_tick` takes no steps while the run is paused, and this
-application's setters apply unconditionally. So a setting changed while
-paused acts from the step on which the run resumes. That is the route to
-use when *when* a change happened is the point of the exercise. No route
-places a change between two whole seconds, because the run holds no instant
-there.
+**A control change timed to the step is available at every rate: pause,
+change, resume.** `RunView.step_tick` takes no steps while the run is
+paused, and this application's setters accept a change while a run is
+paused. So a setting changed while paused acts from the step on which the
+run resumes. That is the route to use when *when* a change happened is the
+point of the exercise. No route places a change between two whole seconds,
+because the run holds no instant there. The ladder of rates below is for
+watching a trajectory, not for timing one.
 
 **The rate is stated as a multiple of real time, because a reader can
 check that.** "60x real time" is a claim about the clock on screen. This

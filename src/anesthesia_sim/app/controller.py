@@ -555,7 +555,7 @@ class SimulationSnapshot(RunRecord):
 
     This is the other half of the question that `bookmarks` asks. That field
     holds what the learner marked, and this one holds where the run stands
-    on each mark. There are five possible results rather than two. "Not
+    on each mark. There are six possible results rather than two. "Not
     reached", "not reached yet" and "already behind the clock" are different
     claims, and a row that merged them would tell a learner to wait for
     something that cannot arrive. `bookmarks.MarkStanding` gives the argument
@@ -1226,9 +1226,10 @@ class SimulationController:
         timeline and the simulated time the run reached are all lost, and
         nothing here or anywhere else keeps a copy. So a caller must not call
         this method in response to a gesture that looks like choosing a view.
-        `docs/INTERFACE.md` § "Agent-change behavior" states what the interface
-        owes a user before this call. `SimulationSnapshot.has_recorded_run` tells
-        the interface whether this call would lose anything.
+        `docs/INTERFACE.md` § "Discarding a run, and the questions that guard
+        it" states what the interface owes a user before this call.
+        `SimulationSnapshot.has_recorded_run` tells the interface whether this
+        call would lose anything.
 
         **A branch rejects this call** (`PL-TFX5`). A branch inherits its
         parent's agent rather than choosing it again. Changing agent is already
@@ -1463,8 +1464,8 @@ class SimulationController:
         """Mark a height on one compartment.
 
         Raises:
-            SimulationConfigurationError: If that compartment, height and
-                direction is already marked.
+            SimulationConfigurationError: If that height on that compartment
+                is already marked.
         """
 
         self._bookmarks = self._bookmarks.with_mac_target(target)
@@ -3128,10 +3129,13 @@ class SimulationController:
         This method records nothing on its own and changes no simulation
         state. It only closes whichever adjustment is open, so the next change
         starts a new one. A change that arrives with no adjustment open, such
-        as a key press on a slider, a programmatic call or a test, therefore
-        becomes an adjustment of its own. That is the honest reading of a
-        single discrete input. It is also why the grouping degrades safely,
-        rather than wrongly, when this method is never called.
+        as a programmatic call or a test, therefore becomes an adjustment of
+        its own. A key press, a wheel notch or a click on a slider's track
+        calls nothing here, so it joins the adjustment that is open on the
+        same control, however much simulated time has passed since.
+        `PL-0T2H` (one adjustment for each step of a dial) changes that. The
+        grouping degrades safely, rather than wrongly, when this method is
+        never called.
         """
 
         self._open_adjustment_control = None
@@ -3577,8 +3581,9 @@ class SimulationController:
 
         **A crossing pauses the run**, and that makes the halt genuinely useful
         rather than a courtesy. No step is taken while paused, and the setters
-        apply unconditionally. So "halt at 0.8 xMAC, then turn the vaporizer
-        off" takes effect at the instant the learner was looking at. Without
+        accept a change while the run is paused. So "halt at 0.8 xMAC, then
+        turn the vaporizer off" takes effect at the instant the learner was
+        looking at. Without
         the pause, it would take effect at the next tick boundary, up to 30
         simulated seconds later. The pause is an ordinary one, and `start()`
         resumes the run. Resuming does not count the halt's crossing again,
@@ -3874,8 +3879,10 @@ class BranchedCase:
     def fork_points_s(self) -> tuple[CaseInstant, ...]:
         """The case instants at which a fork may be taken, earliest first.
 
-        These are the trunk's keyframes: its opening at induction, and every
-        setting change the model was actually stepped under. That is what
+        These are the trunk's keyframes: its opening at induction, and the
+        instant of every setting change that `RunDefinition.record_change`
+        keeps. A change is listed from the moment it is made, before any step
+        runs under it. That is what
         `PL-TFX5` means by "any recorded control-input-timeline event", and it
         is the scope of `fork_at`. `fork_at` rejects any other instant. The
         reason is not that a branch could not reproduce the trunk there. It is

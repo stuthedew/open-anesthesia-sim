@@ -239,8 +239,9 @@ Building from source needs:
   the exact patch release.
 - **On Linux, `libegl1`** (`apt install libegl1`). The Qt interface requires it,
   and the PySide6 wheels do not carry it. An ordinary desktop needs nothing
-  else, because it already has the four other system libraries that Qt links:
-  `libgl1`, `libxkbcommon0`, `libdbus-1-3` and `libfontconfig1`. For a minimal
+  else, because it already has the five other system libraries that Qt links:
+  `libgl1`, `libxkbcommon0`, `libdbus-1-3`, `libfontconfig1` and glib
+  (`libglib2.0-0`). For a minimal
   container, which may lack them, `docs/ARCHITECTURE.md` § "Dependencies" has
   the measured list of what the wheels expect from the system.
 - **On macOS and Windows, nothing extra.**

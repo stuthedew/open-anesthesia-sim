@@ -103,6 +103,12 @@ class DisplayUnit(Enum):
     # (`PL-B396`). In millilitres of liquid, the figure is the volume of liquid agent
     # that the vaporizer turned into the delivered vapour.
     AGENT_VAPOUR_LITRES = ("litres of vapour", "L vapour", "L vapour")
+    # The same unit as the agent-accounting panel writes it. The panel's caption
+    # states the unit once, in full, as `recorded` with its first letter raised.
+    # Each amount under that caption then carries the bare `label`. A bare "L" is
+    # allowed there only because the caption stands over every amount it is
+    # written beside (`docs/INTERFACE.md` § "The agent-accounting panel").
+    ACCOUNTED_AGENT_LITRES = ("litres of equivalent pure agent gas", "L", "L")
     # A bottle of agent holds real liquid. So the reader's bottle volume, and
     # the price per millilitre worked out from it, are in this unit too
     # (`PL-1P15`). The field for the bottle volume names this unit, so the reader

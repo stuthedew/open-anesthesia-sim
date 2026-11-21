@@ -1433,10 +1433,11 @@ class _WashInRunItems:
 class WashInChart(QWidget):
     """The F_A/F_I plot: the stretches, the equilibrium line, the marks, and its axis.
 
-    The plot sits under the compartment chart rather than beside it, on the
-    same time window, because it shows that chart's alveolar and circuit
-    traces as one number. It draws the window of the same `ChartFrame`, so
-    the two plots can never show different spans of the run.
+    The plot is a View of its own, and it keeps its own time window
+    (`PL-L59K`). It shows the compartment chart's alveolar and circuit traces
+    as one number, so the Induction Workspace places it under that chart.
+    While the two plots show the same window, they draw the same `ChartFrame`
+    (`AreaLayout.frame_requests`), so they show the same instants.
     """
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -1486,9 +1487,9 @@ class WashInChart(QWidget):
         """Move every item to match one frame.
 
         Args:
-            frame: What to draw. This is the same frame that the
-                compartment chart drew, so the two plots share their
-                instants and not merely their axis numbers.
+            frame: What to draw. While the compartment chart shows the same
+                window, this is the frame that it drew, so the two plots
+                share their instants and not merely their axis numbers.
         """
 
         item = self._plot.getPlotItem()
@@ -2175,8 +2176,8 @@ class TraceLegend(QWidget):
         # drawn-trace rule. The band names vessel-rich, not alveolar. The
         # model has no effect-site compartment, and it defines the arterial
         # fraction as the alveolar one. So the alveolar trace is the fastest
-        # curve on the chart, and the furthest from where responsiveness
-        # returns. The 1 MAC line names alveolar, because MAC is defined for
+        # patient trace on the chart, and the furthest from where
+        # responsiveness returns. The 1 MAC line names alveolar, because MAC is defined for
         # the alveolar concentration.
         layout.addLayout(
             _legend_row(

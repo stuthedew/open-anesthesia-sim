@@ -93,7 +93,7 @@ from anesthesia_sim.app.dashboard_frame import (
 from anesthesia_sim.app.formatting import AgentAmountUnit
 from anesthesia_sim.app.preferences import Preferences
 from anesthesia_sim.app.qt_agent_cost import RunAgentCost
-from anesthesia_sim.app.qt_agent_price import PriceEntry
+from anesthesia_sim.app.qt_agent_price import PriceEntry, RefusedEntriesDiscard
 from anesthesia_sim.app.qt_chart import (
     ConcentrationChart,
     TimeBaseSelector,
@@ -1150,6 +1150,8 @@ class AgentCostView(QWidget):
     multiplied to give it, and where the price came from (`PL-1P15`). Under
     the panels, a form lets the reader set or remove that price. The form
     sends the request to the dashboard through `ViewRequests.agent_price`.
+    Under the notice that names the refused entries of the preferences file,
+    the View offers to discard them (`RefusedEntriesDiscard`, `PL-7KXN`).
     The form starts on the first displayed run's agent, which it reads from
     that run's presentation. So a form opened while no frame can be drawn
     names the agent that the run holds. The project ships no price, so until
@@ -1187,6 +1189,7 @@ class AgentCostView(QWidget):
             "", color=WARNING, size_px=METRIC_QUALIFIER_SIZE, wrap=True
         )
         self.preferences_notice.setHidden(True)
+        self.refused_discard = RefusedEntriesDiscard(context.requests.refused_entries_discard)
         column = _panel_column(self, _AGENT_COST_VIEW_NAME)
         heading = QHBoxLayout()
         heading.setSpacing(VIEW_HEADING_SPACING)
@@ -1201,6 +1204,7 @@ class AgentCostView(QWidget):
         column.addLayout(heading)
         column.addLayout(choice)
         column.addWidget(self.preferences_notice)
+        column.addWidget(self.refused_discard)
         column.addWidget(self._panels.holder)
         self.price_entry = PriceEntry(context.requests.agent_price)
         column.addWidget(self.price_entry)
@@ -1248,6 +1252,7 @@ class AgentCostView(QWidget):
         notice = tick.preferences.notice
         self.preferences_notice.setText(notice or "")
         self.preferences_notice.setHidden(notice is None)
+        self.refused_discard.show_offer(preferences.holds_refused_entries)
         self._drawn = True
 
     @property

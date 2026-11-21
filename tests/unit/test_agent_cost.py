@@ -38,6 +38,7 @@ from anesthesia_sim.app.agent_cost import (
     cost_shown,
     delivered_liquid_ml,
     delivered_shown,
+    entry_date,
     price_from_entry,
 )
 from anesthesia_sim.app.controller import SimulationController, SimulationSnapshot
@@ -501,3 +502,44 @@ def test_an_entry_that_is_not_a_plain_positive_price_is_refused_with_its_reason(
 ) -> None:
     with pytest.raises(SimulationConfigurationError, match=message):
         price_from_entry("isoflurane", bottle_price, bottle_volume_ml, currency, date(2026, 1, 2))
+
+
+_STORED_PRICE = AgentPrice("isoflurane", 20.47, 100.0, "USD", date(2008, 3, 5))
+_ENTRY_DAY = date(2026, 1, 2)
+
+
+@pytest.mark.parametrize(
+    ("bottle_price", "bottle_volume_ml", "currency"),
+    [("20.47", "100", "USD"), (" 20.470 ", "100.", " USD ")],
+)
+def test_an_entry_that_states_the_stored_price_keeps_its_date(
+    bottle_price: str, bottle_volume_ml: str, currency: str
+) -> None:
+    """The stored date stays while the fields state the stored price, however it is typed."""
+
+    assert (
+        entry_date(_STORED_PRICE, bottle_price, bottle_volume_ml, currency, _ENTRY_DAY)
+        == _STORED_PRICE.applies_on
+    )
+
+
+@pytest.mark.parametrize(
+    ("bottle_price", "bottle_volume_ml", "currency"),
+    [
+        ("78", "100", "USD"),
+        ("20.47", "250", "USD"),
+        ("20.47", "100", "CAD"),
+        ("", "100", "USD"),
+        ("20.47", "1,0", "USD"),
+        ("100", "20.47", "USD"),
+    ],
+)
+def test_an_entry_that_states_another_price_is_dated_at_the_day_of_entry(
+    bottle_price: str, bottle_volume_ml: str, currency: str
+) -> None:
+    """Another price, volume or currency, or an unreadable figure, is a new price (`PL-8FSN`)."""
+
+    assert (
+        entry_date(_STORED_PRICE, bottle_price, bottle_volume_ml, currency, _ENTRY_DAY)
+        == _ENTRY_DAY
+    )

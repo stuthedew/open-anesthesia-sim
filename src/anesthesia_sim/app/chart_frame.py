@@ -29,8 +29,9 @@ where the columns are one second apart (`chart_time_base.grid_spacing_s`).
 compartment at once, so a frame reads the window once per run, and every trace
 of that run draws the same instants. Two traces of one run therefore cannot
 come from different instants. The wash-in plot's stretches are built from the
-same columns that the compartment chart drew. So the two plots cannot differ,
-even if the run advances a step between drawing one and drawing the other.
+same columns as the frame's compartment traces. So while the two plots show
+the same window, and so draw the same frame, they cannot differ, even if the
+run advances a step between drawing one and drawing the other.
 
 **Six compartment traces, and the table that ties each one to what it draws.**
 `COMPARTMENT_TRACES` is the one place where a compartment is paired with its
@@ -1249,10 +1250,10 @@ def _run_preview(
 def _drawn_wash_in(window: DrawnWindow, substance_id: str) -> tuple[WashInStretch, ...]:
     """Return every wash-in stretch inside the window, oldest first.
 
-    The stretches are built from the same columns that the compartment chart
-    draws. So the two plots cannot differ by a step the run took in between,
-    and a stretch boundary can fall only on an instant the chart actually
-    plots.
+    The stretches are built from the same columns as the frame's compartment
+    traces. So two plots that draw one frame cannot differ by a step the run
+    took in between, and a stretch boundary can fall only on an instant the
+    chart actually plots.
     """
 
     quotients = window.wash_in_quotients(substance_id)

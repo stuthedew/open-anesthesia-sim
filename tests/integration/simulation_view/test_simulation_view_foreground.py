@@ -24,11 +24,16 @@ from PySide6.QtWidgets import (
 )
 
 from anesthesia_sim.app import theme
-from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.controller import BranchedCase, SimulationController
+from anesthesia_sim.app.qt_widgets import ForkPanel
 from anesthesia_sim.app.simulation_view import SimulationView
+from anesthesia_sim.app.view_registry import REGISTERED
 from tests.integration.simulation_view.simulation_view_support import (
+    EVERY_REGISTERED_VIEW_SIZE_PX,
     _delete_shown_views,
     _shown_view,
+    built_view_kinds,
+    every_registered_view,
 )
 
 # ------------------------------------------- what declares its own foreground
@@ -75,9 +80,9 @@ FOREGROUND_NOT_DECLARED: dict[str, str] = {
     "QScrollBar": (
         "Qt's own chrome, on the page and inside each selector's popup. It "
         "draws no text, and its groove and handle come from the platform "
-        "style rather than from the foreground role. Whether this interface "
-        "should declare a colour scheme so the chrome follows it is PL-KRZW, "
-        "which is the project owner's decision and open."
+        "style rather than from the foreground role. The application palette "
+        "that `declare_application_colours` sets reaches it, which is the "
+        "project owner's decision in PL-KRZW."
     ),
     "QSlider": (
         "the four setting sliders. Each draws no text - the value beside it is "
@@ -111,6 +116,20 @@ FOREGROUND_NOT_DECLARED: dict[str, str] = {
     "_BandSwatch": (
         "the MAC-awake band's legend mark, painted with the band's own edge "
         "pen and fill for the reason the line swatches are."
+    ),
+    "SchematicCanvas": (
+        "the compartment schematic's drawing (`qt_schematic.SchematicCanvas`, "
+        "PL-RNYV). It paints each container's name, tension and amount with a "
+        "pen it sets to INK, the outlines in INK, the flow lines and scale "
+        "marks in MUTED and the off-scale bar in WARNING, and never reads its "
+        "foreground role. `tools/contrast_check.py` measures each of those "
+        "colours against PANEL, and each container's fill as a trace colour."
+    ),
+    "ShareBar": (
+        "the bar under the schematic that shows each compartment's share of "
+        "the agent in the body (`qt_schematic.ShareBar`, PL-RNYV). It draws no "
+        "text: segments in the trace colours, dividers in PANEL and an outline "
+        "in INK, each from a pen or brush it sets itself."
     ),
 }
 
@@ -245,6 +264,34 @@ def _resolved_foreground(widget: QWidget) -> str:
     return widget.palette().color(widget.foregroundRole()).name().upper()
 
 
+def _every_view(application: QApplication) -> SimulationView:
+    """A dashboard that draws every registered kind of View, over a case that can be branched.
+
+    A control inside a View that the dashboard does not draw is not in the
+    walk, so a control added to that View would declare nothing and pass
+    (`PL-R51H`). The Workspace is read from the registry, and the two asserts
+    fail if a kind is registered and not drawn. The case is there so that the
+    branch control is drawn.
+    """
+
+    width_px, height_px = EVERY_REGISTERED_VIEW_SIZE_PX
+    case = BranchedCase(SimulationController())
+    view = _shown_view(
+        application,
+        case.trunk,
+        case=case,
+        workspaces=every_registered_view(),
+        width_px=width_px,
+        height_px=height_px,
+    )
+
+    assert len(built_view_kinds(view)) == len(REGISTERED), built_view_kinds(view)
+    assert view.layout_container.too_small() == ()
+    assert view.findChildren(ForkPanel), "the walk does not reach a branch control"
+
+    return view
+
+
 @pytest.fixture
 def alien_foreground(application: QApplication) -> Iterator[QApplication]:
     """The application with every foreground role set to `_ALIEN_FOREGROUND`.
@@ -295,7 +342,7 @@ def test_every_control_that_paints_its_own_content_declares_a_foreground(
     or decide which selector applied to which widget.
     """
 
-    view = _shown_view(alien_foreground, SimulationController())
+    view = _every_view(alien_foreground)
     declared = _declared_colours()
     painters = _content_painters(view)
 
@@ -339,7 +386,7 @@ def test_no_control_kind_is_exempted_from_declaring_a_foreground_without_cause(
     as a missing entry understates it.
     """
 
-    view = _shown_view(alien_foreground, SimulationController())
+    view = _every_view(alien_foreground)
     painters = _content_painters(view)
     built = {type(widget).__name__ for widget in painters}
 

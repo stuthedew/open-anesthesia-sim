@@ -100,7 +100,7 @@ the same View give way last. An Area that gives way shrinks to its header and
 shows the size its View needs beside the size it has. It stays that way until
 a later change can give it the size it needs.
 
-**What is not here yet.** The Workspace tab strip is left to `PL-2KXB`. Only
+**What is not here.** The Workspace tab strip is `app/workspace_tabs.py`. Only
 the main window is drawn, because v0.6.0 opens only one window (`ROADMAP.md`
 § "v0.6.0 - the layout is the reader's", "Explicitly out of scope for
 v0.6.0").

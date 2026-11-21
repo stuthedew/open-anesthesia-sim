@@ -15,3 +15,6 @@ The figure is true today: the vessel-rich trace stands at 0.8426 MAC at 3 hours.
 **Why it matters.** A change to the vessel-rich group's coefficient or volume, or an edit to that figure, would leave a wrong number on the page with the test green.
 
 **Done when.** The test reads the vessel-rich figure from the section and compares it with the rerun, and an edit of that figure in a copy of the document fails it.
+
+**Checked 2026-11-21:** `PL-PH3N` moved its entries 14 to 16 to this item. Entry 16 concerned `tests/reference/test_canonical_evaluation.py`, which `PL-Z6C8` deleted with the evaluation paths it tested, so only entries 14 and 15 remain.
+<!-- absent: tests/reference/test_canonical_evaluation.py -->

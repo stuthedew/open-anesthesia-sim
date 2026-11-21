@@ -78,6 +78,7 @@ from anesthesia_sim.app.view_registry import (
     COMPARTMENT_SCHEMATIC,
     CONCENTRATION_CHART,
     PARAMETER_CONTROLS,
+    REGISTERED,
     WASH_IN,
 )
 from anesthesia_sim.app.views import (
@@ -155,6 +156,40 @@ _EVERY_VIEW = WorkspaceSet(
     ),
     0,
 )
+
+#: The size of a window in which every Area of `every_registered_view` is large
+#: enough for its View, so that each View is drawn and none is replaced by the
+#: notice that its Area is too small.
+EVERY_REGISTERED_VIEW_SIZE_PX: Final = (2400, 3600)
+
+
+def every_registered_view() -> WorkspaceSet:
+    """Return one Workspace that shows every registered kind of View, each in an Area of its own.
+
+    The kinds are read from the registry, so a kind registered later is in the
+    Workspace with no edit here. The two colour tests build it, so that a
+    control added to any View is in their walk (`PL-R51H`). The Areas stand in
+    rows of two. An odd last kind takes a row to itself.
+    """
+
+    areas = tuple(Area(AreaId(number), kind) for number, kind in enumerate(REGISTERED, start=1))
+    rows: list[Area | Split] = []
+
+    for first in range(0, len(areas), 2):
+        pair = areas[first : first + 2]
+        rows.append(pair[0] if len(pair) == 1 else Split(Orientation.ROW, (0.5, 0.5), pair))
+
+    tree = Split(Orientation.COLUMN, (1.0 / len(rows),) * len(rows), tuple(rows))
+    layout = LayoutModel((Window(tree),), AreaId(len(areas) + 1))
+
+    return WorkspaceSet((Workspace(WorkspaceName("Every View"), Origin.mine(), layout),), 0)
+
+
+def built_view_kinds(view: SimulationView) -> list[str]:
+    """Return the class name of each View the dashboard draws now, sorted."""
+
+    return sorted(type(drawn).__name__ for drawn in view.layout_container.views())
+
 
 # The identities that a dashboard gives the first runs it places, in order.
 # They render as "Run 1", "Run 2" and "Run 3". A run is named from its identity,
