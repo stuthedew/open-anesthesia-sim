@@ -5966,13 +5966,23 @@ measurement, and no parameter value that the human measurements support closes
 the gap.** As a diagnostic, the model was run with the rebreathing circuit
 removed. It then reproduces the published $`F_A/F_{A0}`$ at five minutes for
 sevoflurane and for both isoflurane cohorts, but washes desflurane out 2.33
-published standard deviations too *fast*. This is the one comparison in this
-project against a human measurement that fails in the direction that
-overstates recovery. A learner who took desflurane's early washout as a
-physiologic prediction would expect a faster fall than Yasuda's volunteers
-showed. "Desflurane's residual, and why the parameter file was not changed"
+published standard deviations too *fast*. No setting of the simulator removes
+the circuit, so what a learner sees depends on the fresh gas flow and the
+ventilation. At the default settings, with a fresh gas flow of 4 L/min,
+desflurane's five-minute ratio is 0.285, 7.3 published standard deviations
+above the volunteers' mean of 0.14, because the circle system returns exhaled
+desflurane to the patient (simulated 2026-11-21). At a fresh gas flow of
+10 L/min it is 0.163, 1.13 standard deviations above. At 10 L/min with an
+alveolar ventilation of about 6 L/min or more, the fall on screen is faster
+than the volunteers'. Rebreathing through the circuit slows the fall on screen
+enough to hide the model's faster washout at most settings. A learner should
+not take desflurane's early washout on screen as a prediction of how fast a
+patient recovers. "Desflurane's residual, and why the parameter file was not changed"
 gives what was ruled out. The one hypothesis left is the published value itself, which this project cannot test,
 so the disagreement is left uncorrected.
+
+<!-- provenance: data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4 -->
+<!-- not-restated: 10 L/min -->
 
 **Dead space is left out, and the effect of a series dead space is known
 exactly.** The model ventilates the alveolar compartment continuously and has

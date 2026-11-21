@@ -1,9 +1,13 @@
 ---
 id: PL-S64T
 title: docs/MODEL.md § Known limitations says a learner would expect desflurane to wash out faster than Yasuda's volunteers did, and at the default settings the simulator draws it washing out slower
-status: untriaged
+status: done
 feature: model-spec-accuracy
+touches: docs/MODEL.md
 added: 2026-11-21
+closed: 2026-11-21
+pr: 2199
+verify: grep -qF 'early washout on screen as a prediction of how fast a patient recovers' docs/MODEL.md
 ---
 
 **Problem.** docs/MODEL.md § Known limitations says a learner would expect desflurane to wash out faster than Yasuda's volunteers did, and at the default settings the simulator draws it washing out slower
@@ -43,3 +47,13 @@ So the sentence about what a learner would expect is true at a raised ventilatio
 The reason is that a learner acts on what the screen shows, and the present text describes only one of the two directions the screen can err in.
 
 **Done when.** The paragraph says in which direction the on-screen washout differs at the default settings and at a raised ventilation, and says that the circuit-removed figure comes from a condition no setting produces.
+
+**Generator check.** Not a generator. One sentence restated a figure from a condition that only a test can produce, the circuit removed, without saying so, which § "Published wash-in and elimination validation test" already forbids. No other item in the `model-spec-accuracy` feature has that cause.
+
+**Answered 2026-11-21.** The project owner chose option 1 (project owner, 2026-11-21, ratified, "Agree with recs", over keeping the present warning and adding its condition). Two statements in the recommended text were wrong, and the paragraph in `docs/MODEL.md` § "Known limitations" corrects them while keeping option 1's shape:
+
+1. The recommended text called 0.163 the figure "at the default ventilation". It is the figure at a fresh gas flow of 10 L/min, which the published comparison pins in `FRESH_GAS_FLOW_L_MIN`. The simulator's default fresh gas flow is 4 L/min (`data/machines/reference_circle_system.json`), where the five-minute ratio is 0.285, 7.3 SD above the volunteers' mean. A raised ventilation gives a faster fall than the volunteers' only at 10 L/min: at 6 L/min of fresh gas the ratio is 0.182 at an alveolar ventilation of 6 L/min and 0.163 at 8 L/min, and at 4 L/min it is 0.254 and 0.237. Each was run on 2026-11-21 with `_eliminate("desflurane", ...)` from `tests/reference/test_published_wash_in_and_elimination.py`.
+2. The recommended text said the cause "is that the model returns too little desflurane from the tissues". § "Desflurane's residual, and why the parameter file was not changed" rules that explanation out against the measured human tissue solubility, and leaves the published value itself as the one hypothesis. The paragraph now says only that the model washes desflurane out faster than the volunteers without the circuit, and that rebreathing hides this at most settings.
+
+**Docs sweep.** Searched the tree outside `docs/items/` for the replaced sentences ("faster fall", "overstates recovery", "2.33 published"). `docs/prose-review/model-description-draft.md` still holds the old sentence, and is left as it is, because it is a dated draft that says `docs/MODEL.md` wins where they differ. The docstrings in `tests/reference/test_late_washout_against_published_fits.py` and `tests/reference/test_published_wash_in_and_elimination.py` that mention a faster fall or 2.33 SD describe the condition with the circuit removed, and stay true. `docs/WORKING_NOTES.md` describes the same condition. `docs/INTERFACE.md` and `README.md` do not repeat the sentence.
+
