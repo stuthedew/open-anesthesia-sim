@@ -12,7 +12,7 @@ added: 2026-11-21
 closed: 2026-11-21
 pr: 2187
 payoff: sessions load fewer lines of instructions before they read anything, so each rule that stays is likelier to be followed
-verify: ! grep -q "It is a defect, not a choice" CLAUDE.md && grep -rq "It is a defect, not a choice" .claude/skills/docket/
+verify: ! grep -qF 'It is a defect, not a choice' CLAUDE.md
 ---
 
 **Problem.** Move the procedures in the instructions loaded at launch that the docket skill already holds or should hold into it, leaving one trigger line each, as PL-MR85's approved table marks them: rows 6, 38, 62, 64-67, 75, 172i and 172n, including the four fix-in-place conditions
