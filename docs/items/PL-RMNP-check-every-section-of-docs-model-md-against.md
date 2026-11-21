@@ -1,9 +1,16 @@
 ---
 id: PL-RMNP
 title: Check every section of docs/MODEL.md against the code and data files: fix each plain fact error, note what PL-SZ6G will change, and file what needs the owner's clinical judgment
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: docs
+feature: model-spec-accuracy
 touches: docs/MODEL.md
 added: 2026-11-21
+payoff: a clinician or contributor reading docs/MODEL.md is not told the simulator does something it does not do
+verify: grep -qE '^\*\*Sections checked\.\*\*' docs/items/PL-RMNP*.md
+sweep: reads every section of docs/MODEL.md against the code and data files, and files each claim the tree contradicts that it cannot correct as a plain fact
 ---
 
 **Problem.** Check every section of docs/MODEL.md against the code and data files: fix each plain fact error, note what PL-SZ6G will change, and file what needs the owner's clinical judgment
@@ -47,3 +54,10 @@ sections checked in this brief, with its count of claims checked and what was
 found. Each plain fact error is corrected on this item's branch. Each claim
 that `PL-SZ6G` will change is listed. Each finding that needs the owner is an
 item of its own.
+
+**Generator check.** Work the owner asked for, and no new mechanism. The fact
+each finding misreads is whether a `docs/MODEL.md` sentence about what the
+model computes matches what it computes, which `PL-B6YV` (a document sentence
+about what the model computes, checked against the code) already states as a
+head. This item is the sweep of that fact over the whole document, so each
+item it files is counted under `sweep:` and is not a new head.
