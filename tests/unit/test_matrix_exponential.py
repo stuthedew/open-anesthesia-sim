@@ -28,8 +28,6 @@ from anesthesia_sim.core.matrix_exponential import (
     multiply,
     propagate,
 )
-from anesthesia_sim.core.simulation_step import SimulationStep
-from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 WORST_RELATIVE_ERROR_MEASURED = {
     0.1: 2.3e-16,
@@ -275,43 +273,6 @@ def test_many_small_steps_match_one_long_one() -> None:
     assert state == pytest.approx(
         propagate(matrix_exponential(matrix, 60.0), (0.05, 0.0)), rel=_relative_tolerance(60.0)
     )
-
-
-def test_a_step_size_change_within_one_system_obeys_the_semigroup_property() -> None:
-    """Two half steps of one uptake system reach where one whole step does.
-
-    `AgentUptakeSystem` keeps the propagator it built for one step and reuses
-    it while its cache key is unchanged. The step is part of that key. If the
-    step were left out, a system that changed its step would go on using the
-    old step's exp(A dt), and every value it reported would belong to a later
-    instant than the one reported. No guard and no accounting check would
-    notice, because the delivered and exhausted agent come from the same
-    wrong propagator (`PL-4H4T`).
-
-    The expected value does not depend on the cache. For a constant matrix,
-    exp(A x 0.05) squared equals exp(A x 0.1), so a system that takes two
-    0.05 s steps must reach the state that an identical system reaches after
-    one 0.1 s step. Both systems first take 600 steps of 0.1 s, so the first
-    one holds a 0.1 s propagator when its step changes.
-
-    The worst relative difference on the shipped code was 5.4e-16, measured
-    on 2026-10-17. A system that reused the 0.1 s propagator for the half
-    steps would advance 0.2 s instead of 0.1 s, and its alveolar fraction
-    would be 1.8e-3 of its value too high.
-    """
-
-    halves = AgentUptakeSystem.for_agent("sevoflurane")
-    whole = AgentUptakeSystem.for_agent("sevoflurane")
-
-    for _ in range(600):
-        halves.advance()
-        whole.advance()
-
-    halves.advance(SimulationStep(0.05))
-    halves.advance(SimulationStep(0.05))
-    whole.advance()
-
-    assert halves.state_vector() == pytest.approx(whole.state_vector(), rel=1e-12, abs=1e-18)
 
 
 @pytest.mark.parametrize("interval_s", [0.1, 1.0, 100.0, 100000.0])

@@ -330,7 +330,7 @@ def test_a_drag_of_one_slider_is_marked_and_listed_once(application: QApplicatio
     view = _shown_view(application, controller)
     run = view.runs[0]
     controller.start()
-    _advance(controller, 10.0)
+    _advance(controller, 10)
     slider = _dials(run)._delivered_concentration_slider.slider
 
     slider.setSliderDown(True)

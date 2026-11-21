@@ -383,7 +383,7 @@ def test_a_view_that_raises_on_a_halt_leaves_no_dial_on_a_setting_the_run_refuse
     View that showed 2.0 L/min (blind review of `PL-RF2S`).
     """
 
-    controller = _paused_run_with_history(60.0)
+    controller = _paused_run_with_history(60)
     view = _shown_view(application, controller)
     view.layout_container.choose_view(AreaId(3), PARAMETER_CONTROLS)
     _settle(application)
@@ -543,7 +543,7 @@ def test_a_view_chosen_while_frames_fail_does_not_ask_again_every_tick(
     Views, and a View owes one again only once the Views change.
     """
 
-    controller = _paused_run_with_history(60.0)
+    controller = _paused_run_with_history(60)
     view = _shown_view(application, controller)
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
     halts: list[Exception] = []
@@ -580,7 +580,7 @@ def test_a_held_thumb_previews_the_setting_without_applying_it(application: QApp
 
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     controller.pause()
     held_flow = controller.settings().fresh_gas_flow_l_min
     view = _shown_view(application, controller)
@@ -617,7 +617,7 @@ def test_a_preview_is_drawn_only_inside_its_region_with_its_label(
 ) -> None:
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     controller.pause()
     view = _shown_view(application, controller)
     control = _dials(view.runs[0])._cardiac_output_slider
@@ -648,7 +648,7 @@ def test_a_preview_is_drawn_only_inside_its_region_with_its_label(
 def test_the_hover_never_answers_from_a_preview(application: QApplication) -> None:
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     controller.pause()
     view = _shown_view(application, controller)
     control = _dials(view.runs[0])._delivered_concentration_slider
@@ -667,7 +667,7 @@ def test_the_hover_never_answers_from_a_preview(application: QApplication) -> No
 def test_a_stopped_run_draws_no_preview_while_its_thumb_is_held(application: QApplication) -> None:
     controller = SimulationController()
     controller.start()
-    _advance(controller, 60.0)
+    _advance(controller, 60)
     controller.fail("a failure the test injects")
     view = _shown_view(application, controller)
     control = _dials(view.runs[0])._fresh_gas_flow_slider
@@ -902,7 +902,7 @@ def test_a_stopped_run_names_a_branch_only_while_an_area_shows_the_branch_contro
     refused = f"{_CARDIAC_OUTPUT_REFUSED_ON_A_STOPPED_RUN}. "
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     view = _case_view(application, BranchedCase(controller))
     trunk = view.runs[0]
     view.layout_container.choose_view(AreaId(6), AGENT_ACCOUNTING)

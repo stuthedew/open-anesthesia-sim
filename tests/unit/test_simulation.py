@@ -8,38 +8,38 @@ from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.simulation import SimulationState
-from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S, SimulationStep
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ELAPSED_SIMULATION_TIME_S,
+    MAXIMUM_STEP_COUNT,
     AlveolarVentilation,
     CardiacOutput,
     CaseInstant,
     FreshGasFlow,
     StepCount,
-    maximum_step_count,
 )
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 
-def _advance_for(state: SimulationState, duration_s: float) -> None:
-    """Advance the state by `duration_s` in steps of the largest supported size.
+def _advance_for(state: SimulationState, duration_s: int) -> None:
+    """Advance the state by `duration_s`, a whole number of seconds, one step at a time.
 
-    A simulated time is reached by taking supported steps, not by asking for
-    one large step. `SIMULATION_STEP_S` is the longest interval over
-    which the settings are held constant. A caller that wants 10 s of
-    simulated time takes 100 steps rather than one.
+    A simulated time is reached by taking the run's one step, not by asking
+    for one large step. `SIMULATION_STEP_S` is the interval over which the
+    settings are held constant. A caller that wants 10 s of simulated time
+    takes 10 steps rather than one.
     """
 
-    for _ in range(round(duration_s / SIMULATION_STEP_S)):
+    for _ in range(duration_s // SIMULATION_STEP_S):
         state.advance()
 
 
 def test_advance_updates_time_and_complete_uptake_system() -> None:
     state = SimulationState()
 
-    _advance_for(state, duration_s=2.5)
+    _advance_for(state, duration_s=3)
 
-    assert state.elapsed_s == 2.5
+    assert state.elapsed_s == 3
     assert state.uptake_system.circuit.inspired_partial_pressure_fraction > 0.0
     assert state.uptake_system.alveoli.partial_pressure_fraction > 0.0
     assert state.uptake_system.patient.total_agent_amount_l > 0.0
@@ -55,11 +55,11 @@ def test_reset_preserves_settings_and_clears_dynamic_state() -> None:
     system.set_cardiac_output(CardiacOutput(6.0))
 
     state = SimulationState(uptake_system=system)
-    _advance_for(state, duration_s=10.0)
+    _advance_for(state, duration_s=10)
 
     state.reset()
 
-    assert state.elapsed_s == 0.0
+    assert state.elapsed_s == 0
     assert state.uptake_system.circuit.inspired_partial_pressure_fraction == 0.0
     assert state.uptake_system.alveoli.partial_pressure_fraction == 0.0
     assert state.uptake_system.patient.total_agent_amount_l == 0.0
@@ -71,86 +71,44 @@ def test_reset_preserves_settings_and_clears_dynamic_state() -> None:
     assert state.uptake_system.patient.cardiac_output_l_min == 6.0
 
 
-@pytest.mark.parametrize("simulation_step_s", [0.0, -0.1, float("nan")])
-def test_rejects_invalid_simulation_step(simulation_step_s: float) -> None:
-    with pytest.raises(SimulationConfigurationError):
-        SimulationState().advance(SimulationStep(simulation_step_s))
+def test_a_run_cannot_be_asked_for_a_step_of_another_length() -> None:
+    """`advance` takes no step, and a state has no step to write, so every step is one second.
 
-
-@pytest.mark.parametrize("simulation_step_s", [0.0, -0.1, float("nan"), float("inf")])
-def test_an_invalid_initial_step_is_refused_before_a_run_length_is_read_from_it(
-    simulation_step_s: float,
-) -> None:
-    """The state checks the step before it derives the supported run length from it.
-
-    The run-length guard divides the span by the step. If that guard ran
-    first, a zero step would raise `ZeroDivisionError` and `nan` would raise
-    `ValueError`. A negative step would get a run-length refusal, and an
-    infinite step would get no refusal at all. None of these is the refusal
-    naming the step that the state's write guard promises (`PL-BMY5`).
-    `PL-8W1W` moved that guard from `__post_init__` to `__setattr__`.
-    """
-
-    with pytest.raises(SimulationConfigurationError, match="simulation_step_s"):
-        SimulationState(
-            step_count=StepCount(0), simulation_step_s=SimulationStep(simulation_step_s)
-        )
-
-
-def test_rejects_a_step_above_the_maximum_simulation_step() -> None:
-    """Elapsed time must not move for a step that was never simulated.
-
-    `SimulationState` is the class that owns simulated time. This is
-    therefore the one place where the refusal has a consequence beyond the
-    uptake system. Without it, a caller that caught and ignored the exception
-    and then read `elapsed_s` would be told that the run had advanced by a
-    step for which nothing was calculated.
+    Until `PL-SZ6G` a caller chose the step, and the state refused a step
+    outside the supported range and a second step of a different length. Now
+    a caller cannot hand in a step at all. Elapsed time must not move for a
+    step that was never simulated. `SimulationState` is the class that owns
+    simulated time. So without the refusal, a caller that caught and ignored
+    the exception and then read `elapsed_s` would be told that the run had
+    advanced by a step for which nothing was calculated.
     """
 
     state = SimulationState()
     state.advance()
-    before_s = state.elapsed_s
+    stored_before = state.uptake_system.capture_state()
 
-    with pytest.raises(SimulationConfigurationError, match="largest supported step"):
-        state.advance(SimulationStep(SIMULATION_STEP_S * 10.0))
+    with pytest.raises(TypeError, match="advance"):
+        state.advance(0.5)  # type: ignore[call-arg]
 
-    assert state.elapsed_s == before_s
+    with pytest.raises(AttributeError, match="simulation_step_s"):
+        state.simulation_step_s = 0.5  # type: ignore[attr-defined]
 
-
-def test_rejects_a_step_below_the_minimum_simulation_step() -> None:
-    """Reject the step that PL-YZ17 was filed for, taken as a fresh run's first step.
-
-    The step's guard used to accept 5e-324 s. The run-length guard then
-    divided the 86 400 s span by it, which overflows, so `advance()` raised a
-    bare `OverflowError`. That is not one of the simulator's own exceptions,
-    so a caller catching `AnesthesiaSimulationError` did not catch it at all.
-    The minimum-step check now refuses the step first, and the run records no
-    step.
-    """
-
-    state = SimulationState()
-
-    with pytest.raises(SimulationConfigurationError, match="smallest supported step"):
-        state.advance(SimulationStep(5e-324))
-
-    assert state.elapsed_s == 0.0
-    assert state.simulation_step_s is None
+    assert state.step_count == 1
+    assert state.elapsed_s == 1
+    assert state.uptake_system.capture_state() == stored_before
 
 
-def test_elapsed_time_is_the_step_count_times_the_step() -> None:
-    """Simulated time is computed from the number of steps taken, not by adding them up.
+def test_elapsed_time_is_the_count_of_steps_in_whole_seconds() -> None:
+    """Simulated time is the number of steps taken, and each step is one second.
 
-    Ten steps of 0.1 s are 1.0 s. Before `PL-VM40`, this class accumulated
-    them instead, with `elapsed_s += simulation_step_s` at each step. That
-    sum reaches 0.9999999999999999. The value depends on the order and number
-    of the additions, not on how far the run has gone. The gap is
-    nanoseconds, and nothing displayed can show it. What it costs is the
-    element-wise comparison of one run against another, which a replayed or
-    forked run depends on.
-
-    The test uses the literal step that the interface ships rather than
-    `SIMULATION_STEP_S`, because the arithmetic asserted here belongs
-    to that step: at any other step, 10 steps do not make 1.0 s.
+    Ten steps are 10 s, as a whole number. Before `PL-VM40`, this class added
+    the step to a running total at each step. The step was then 0.1 s, and ten
+    of those additions reach 0.9999999999999999, not 1.0. Such a total depends
+    on the order and number of the additions, not on how far the run has gone.
+    The gap was nanoseconds, and nothing displayed could show it. What it cost
+    was the element-wise comparison of one run against another, which a
+    replayed or forked run depends on. The expected time here is the count of
+    steps that the test itself takes.
     """
 
     state = SimulationState()
@@ -159,77 +117,50 @@ def test_elapsed_time_is_the_step_count_times_the_step() -> None:
         state.advance()
 
     assert state.step_count == 10
-    assert state.elapsed_s == 1.0
+    assert state.elapsed_s == 10
+    assert isinstance(state.elapsed_s, int)
 
 
-def test_elapsed_time_holds_where_an_accumulated_sum_has_drifted() -> None:
-    """Compare one minute of stepping with the sum that the old formulation reached.
+def test_a_state_built_part_way_through_a_run_reads_its_count_as_seconds() -> None:
+    """A state built at a count of 600 steps stands at 600 s, which is ten minutes.
 
-    The comparison is the point. The sum is what this class would report
-    after the same 600 steps, and it is not 60 s. The state is constructed
-    at the count rather than stepped 600 times, because the claim is about
-    the arithmetic and not about the model.
+    The state is constructed at the count rather than stepped 600 times,
+    because the claim is about the clock and not about the model. Until
+    `PL-SZ6G` such a state also had to say what step it took, and its time
+    was the count times that step, a rounded product. It now needs only the
+    count.
     """
 
-    accumulated_s = 0.0
+    state = SimulationState(step_count=StepCount(600))
 
-    for _ in range(600):
-        accumulated_s += 0.1
-
-    state = SimulationState(step_count=StepCount(600), simulation_step_s=SimulationStep(0.1))
-
-    assert state.elapsed_s == 60.0
-    assert accumulated_s != 60.0
+    assert state.elapsed_s == 600
+    assert type(state.elapsed_s) is CaseInstant
 
 
-def test_a_run_keeps_the_step_it_started_at() -> None:
-    """A second step size would make the recorded history non-uniform.
-
-    The change is refused rather than accommodated. `elapsed_s` has one step
-    to multiply by, and every reader that maps a sample index to a time
-    treats the spacing as a constant of the run.
-    """
-
-    state = SimulationState()
-    state.advance()
-
-    with pytest.raises(SimulationConfigurationError, match="cannot switch"):
-        state.advance(SimulationStep(0.05))
-
-    assert state.step_count == 1
-    assert state.elapsed_s == 0.1
-
-
-def test_reset_frees_the_step_so_a_fresh_run_may_take_a_different_one() -> None:
+def test_reset_returns_the_clock_to_zero_and_the_run_can_be_stepped_again() -> None:
     state = SimulationState()
     state.advance()
 
     state.reset()
 
     assert state.step_count == 0
-    assert state.simulation_step_s is None
-    assert state.elapsed_s == 0.0
+    assert state.elapsed_s == 0
 
-    state.advance(SimulationStep(0.05))
+    state.advance()
 
-    assert state.elapsed_s == 0.05
+    assert state.elapsed_s == 1
 
 
-def test_a_run_reset_to_a_new_step_matches_a_fresh_run_at_that_step() -> None:
-    """A reset run that takes a new step must reach the same state as a fresh run.
+def test_a_reset_run_matches_a_fresh_run() -> None:
+    """A reset run must reach the same state as a fresh run that takes the same steps.
 
-    This is the route that `advance()`'s own refusal recommends: "reset it to
-    run at a different step". `reset()` clears the compartments but leaves
-    the uptake system's cached propagator in place. The run is therefore
-    correct only while the cache key includes the step. If the step were left
-    out of the key, the reset run would take each 0.05 s step with the 0.1 s
-    propagator. It would then report 1.0 s of elapsed time for 2.0 s of
-    physics, with an alveolar fraction 3.9 times the fresh run's, and the
-    accounting check would still pass (`PL-4H4T`).
+    `reset()` clears the compartments but leaves the uptake system's cached
+    propagator in place. So the reset run takes its steps with the propagator
+    that it built before the reset, and the fresh run builds its own.
 
-    The expected state is a fresh run built at the new step, which never held
-    another step's propagator. Both runs start from empty compartments with
-    the same settings and take the same steps, so they must agree exactly.
+    The expected state is a fresh run, which was never reset. Both runs start
+    from empty compartments with the same settings and take the same steps,
+    so they must agree exactly.
     """
 
     reset_run = SimulationState()
@@ -241,10 +172,10 @@ def test_a_run_reset_to_a_new_step_matches_a_fresh_run_at_that_step() -> None:
     fresh_run = SimulationState()
 
     for _ in range(20):
-        reset_run.advance(SimulationStep(0.05))
-        fresh_run.advance(SimulationStep(0.05))
+        reset_run.advance()
+        fresh_run.advance()
 
-    assert reset_run.elapsed_s == fresh_run.elapsed_s == 1.0
+    assert reset_run.elapsed_s == fresh_run.elapsed_s == 20
     assert reset_run.uptake_system.capture_state() == fresh_run.uptake_system.capture_state()
 
 
@@ -300,51 +231,12 @@ def test_a_state_keeps_the_checked_types_through_every_move() -> None:
     assert type(state.elapsed_s) is CaseInstant
 
 
-def test_rejects_a_step_count_with_no_step_to_multiply_it_by() -> None:
-    """A state part-way through a run has to say what step it took."""
-
-    with pytest.raises(SimulationConfigurationError, match="simulation_step_s"):
-        SimulationState(step_count=StepCount(10))
-
-
-def test_rejects_an_initial_step_above_the_largest_supported_one() -> None:
-    """The step that a state is constructed with must meet the same bound.
-
-    Otherwise a state could be built at a step that `advance()` would
-    refuse, and every later step would be checked against that step.
-    """
-
-    with pytest.raises(SimulationConfigurationError, match="largest supported step"):
-        SimulationState(
-            step_count=StepCount(1),
-            simulation_step_s=SimulationStep(SIMULATION_STEP_S * 10.0),
-        )
-
-
-@pytest.mark.parametrize("simulation_step_s", [5e-324, 4e-304, 1e-12])
-def test_rejects_an_initial_step_below_the_smallest_supported_one(simulation_step_s: float) -> None:
-    """Reject the state in which PL-YZ17 was found, and steps between it and the minimum.
-
-    `SimulationState(step_count=0, simulation_step_s=5e-324)` raised
-    `OverflowError` from `maximum_step_count`, as did every step below about
-    4.8e-304 s. A state at 1e-12 s could be built. At that step, a day is
-    more steps than a float can count exactly, so `elapsed_s` would round
-    the count before multiplying it. The step's own guard now refuses all
-    three, before any run length is read from the step.
-    """
-
-    with pytest.raises(SimulationConfigurationError, match="smallest supported step"):
-        SimulationState(
-            step_count=StepCount(0), simulation_step_s=SimulationStep(simulation_step_s)
-        )
-
-
 # --- The supported run length (PL-Y5WR) -------------------------------------
 #
 # `core/supported_ranges.py` owns the number and the refusal. These tests
 # check that the limit is enforced *here*, the only place where a run length
 # exists. They start at the boundary rather than running up to it, because
-# 864 000 steps is a real run but an unusable test. So each state is
+# 86 400 steps is a real run but an unusable test. So each state is
 # constructed part-way through a run and stepped across the edge.
 # `SimulationState` supports that construction explicitly.
 
@@ -352,24 +244,18 @@ def test_rejects_an_initial_step_below_the_smallest_supported_one(simulation_ste
 def test_a_run_may_be_advanced_up_to_the_supported_run_length() -> None:
     """The last supported step completes and lands on the declared boundary."""
 
-    state = SimulationState(
-        step_count=StepCount(maximum_step_count(SIMULATION_STEP_S) - 1),
-        simulation_step_s=SimulationStep(SIMULATION_STEP_S),
-    )
+    state = SimulationState(step_count=StepCount(MAXIMUM_STEP_COUNT - 1))
 
     state.advance()
 
-    assert state.step_count == maximum_step_count(SIMULATION_STEP_S)
+    assert state.step_count == MAXIMUM_STEP_COUNT
     assert state.elapsed_s == MAXIMUM_ELAPSED_SIMULATION_TIME_S
 
 
 def test_the_step_past_the_supported_run_length_is_refused() -> None:
     """Beyond the boundary the model is not claimed to represent a patient."""
 
-    state = SimulationState(
-        step_count=StepCount(maximum_step_count(SIMULATION_STEP_S)),
-        simulation_step_s=SimulationStep(SIMULATION_STEP_S),
-    )
+    state = SimulationState(step_count=StepCount(MAXIMUM_STEP_COUNT))
 
     with pytest.raises(SimulationDomainLimitError, match="supported run length"):
         state.advance()
@@ -385,17 +271,14 @@ def test_a_refused_step_leaves_the_run_exactly_where_it_was() -> None:
     rejected would leave the clock unchanged and the compartments moved.
     """
 
-    state = SimulationState(
-        step_count=StepCount(maximum_step_count(SIMULATION_STEP_S)),
-        simulation_step_s=SimulationStep(SIMULATION_STEP_S),
-    )
+    state = SimulationState(step_count=StepCount(MAXIMUM_STEP_COUNT))
     stored_before = state.uptake_system.total_stored_agent_l
     alveolar_before = state.uptake_system.alveoli.partial_pressure_fraction
 
     with pytest.raises(SimulationDomainLimitError):
         state.advance()
 
-    assert state.step_count == maximum_step_count(SIMULATION_STEP_S)
+    assert state.step_count == MAXIMUM_STEP_COUNT
     assert state.elapsed_s == MAXIMUM_ELAPSED_SIMULATION_TIME_S
     assert state.uptake_system.total_stored_agent_l == stored_before
     assert state.uptake_system.alveoli.partial_pressure_fraction == alveolar_before
@@ -404,10 +287,7 @@ def test_a_refused_step_leaves_the_run_exactly_where_it_was() -> None:
 def test_reset_returns_a_run_stopped_at_the_limit_to_a_startable_one() -> None:
     """Reset is the way out, and it has to actually clear the count."""
 
-    state = SimulationState(
-        step_count=StepCount(maximum_step_count(SIMULATION_STEP_S)),
-        simulation_step_s=SimulationStep(SIMULATION_STEP_S),
-    )
+    state = SimulationState(step_count=StepCount(MAXIMUM_STEP_COUNT))
 
     state.reset()
     state.advance()
@@ -419,41 +299,26 @@ def test_reset_returns_a_run_stopped_at_the_limit_to_a_startable_one() -> None:
 #
 # A branch is built at its parent's step count. So construction is where a run
 # is handed a point on the span, rather than reaching that point by stepping.
-# The limit is a whole number of steps of whatever size the run takes. So the
-# tests use the shipped step, a step that does not divide 24 hours evenly
-# (0.07 s), and one that does (0.025 s). They also use the two computed steps
-# whose quotient gave the wrong number of steps before `PL-8H2R`. At
-# 0.07680000000000001 s it gave one step too many, which ended at
-# 86400.00000000001 s. At 0.02304 s it gave one step too few.
-
-STEPS_A_RUN_MAY_TAKE_S = (SIMULATION_STEP_S, 0.07, 0.025, 768 / 1_000_000 * 100, 0.02304)
+# The limit is `MAXIMUM_STEP_COUNT` steps of one second, which is the supported
+# run length exactly.
 
 
-@pytest.mark.parametrize("simulation_step_s", STEPS_A_RUN_MAY_TAKE_S)
-def test_a_state_may_be_built_standing_on_the_supported_run_length(
-    simulation_step_s: float,
-) -> None:
+def test_a_state_may_be_built_standing_on_the_supported_run_length() -> None:
     """A run may stop on the last supported count, so a state may be built at that count.
 
     Refusing it would refuse a branch taken where its parent stopped at the
     limit. Only the next step from that count is refused, by `advance()`.
     """
 
-    state = SimulationState(
-        step_count=StepCount(maximum_step_count(simulation_step_s)),
-        simulation_step_s=SimulationStep(simulation_step_s),
-    )
+    state = SimulationState(step_count=StepCount(MAXIMUM_STEP_COUNT))
 
-    assert state.elapsed_s <= MAXIMUM_ELAPSED_SIMULATION_TIME_S
+    assert state.elapsed_s == MAXIMUM_ELAPSED_SIMULATION_TIME_S
 
     with pytest.raises(SimulationDomainLimitError):
-        state.advance(SimulationStep(simulation_step_s))
+        state.advance()
 
 
-@pytest.mark.parametrize("simulation_step_s", STEPS_A_RUN_MAY_TAKE_S)
-def test_a_state_past_the_supported_run_length_is_refused_at_construction(
-    simulation_step_s: float,
-) -> None:
+def test_a_state_past_the_supported_run_length_is_refused_at_construction() -> None:
     """One count past the limit is refused where it is built, not by its first advance.
 
     The error is a configuration error rather than the domain limit. The
@@ -461,52 +326,46 @@ def test_a_state_past_the_supported_run_length_is_refused_at_construction(
     """
 
     with pytest.raises(SimulationConfigurationError, match="supported run length"):
-        SimulationState(
-            step_count=StepCount(maximum_step_count(simulation_step_s) + 1),
-            simulation_step_s=SimulationStep(simulation_step_s),
-        )
+        SimulationState(step_count=StepCount(MAXIMUM_STEP_COUNT + 1))
 
 
 def test_the_state_measured_past_the_limit_is_refused() -> None:
-    """The regression case is 1 000 000 steps of 0.1 s, which is 27.8 hours.
+    """The regression case is a state standing at 100 000 s, which is 27.8 hours.
 
     On 2026-09-14 this state was measured being constructed without complaint
-    and reporting an `elapsed_s` of 100 000 s. Every reader of the state,
-    such as a snapshot, a readout or a chart axis, would have presented it as
-    an ordinary run until something tried to step it. The test writes the
-    count as its distance past the limit, 136 000 steps. That is the measured
-    state while the limit is 24 hours, and it stays past the limit wherever
-    the limit is set.
+    and reporting an `elapsed_s` of 100 000 s. It was then 1 000 000 steps of
+    0.1 s, and it is now 100 000 steps of one second. Every reader of the
+    state, such as a snapshot, a readout or a chart axis, would have presented
+    it as an ordinary run until something tried to step it. The test writes
+    the count as its distance past the limit, 13 600 steps. That is the
+    measured state while the limit is 24 hours, and it stays past the limit
+    wherever the limit is set.
     """
 
-    step_count = maximum_step_count(0.1) + 136_000
+    step_count = MAXIMUM_STEP_COUNT + 13_600
 
     with pytest.raises(SimulationConfigurationError, match="supported run length"):
-        SimulationState(step_count=StepCount(step_count), simulation_step_s=SimulationStep(0.1))
+        SimulationState(step_count=StepCount(step_count))
 
 
 # --- Written onto a built state (PL-8W1W) --------------------------------------
 #
-# Nothing in `src/` writes either field outside `advance` and `reset`, and
+# Nothing in `src/` writes the count outside `advance` and `reset`, and
 # `mypy --strict` refuses such an assignment there. Only a caller that `mypy`
 # does not check can make the write. The write must pass the same checks that
 # the constructor applies.
 
 
-def test_a_count_or_a_step_written_onto_a_built_state_is_refused_at_the_write() -> None:
-    """The run's clock moves only to a count and a step the simulator checked (`PL-8W1W`).
+def test_a_count_written_onto_a_built_state_is_refused_at_the_write() -> None:
+    """The run's clock moves only to a count that the simulator checked (`PL-8W1W`).
 
-    Until `PL-8W1W`, only the constructor checked the pair. A fresh state
-    accepted a bare count of 5 and read 0 s. One step on from there, it
-    accepted a bare float step of 0.5 s and read 3.0 s for a system advanced
-    0.1 s. A count of -3 was refused only when `elapsed_s` was next read, as
-    a run-length error naming an instant nobody handed in. The state's
-    `__setattr__` now runs the constructor's checks at the write, with the
-    constructor's messages. When it refuses, the field keeps its old value.
-    Each refusal below is therefore the one that the constructor gives for
-    the same pair. A checked count inside the run length is accepted
-    whoever writes it. Beyond the types, the write checks only the pair, so
-    keeping one step size per run is still `advance`'s own refusal.
+    Until `PL-8W1W`, only the constructor checked the count. A fresh state
+    accepted a bare count of 5 that was not built as a `StepCount`, and a
+    bare count of -3 after it. The state's `__setattr__` now runs the
+    constructor's checks at the write, with the constructor's messages. When
+    it refuses, the field keeps its old value. Each refusal below is
+    therefore the one that the constructor gives for the same count. A
+    checked count inside the run length is accepted whoever writes it.
     `dataclasses.replace`, a copy and a pickle all write through the same
     path. The copy and the pickle do so because the state is a `slots=True`
     dataclass, whose state is restored one field at a time.
@@ -519,55 +378,26 @@ def test_a_count_or_a_step_written_onto_a_built_state_is_refused_at_the_write() 
         state.step_count = 5  # type: ignore[assignment]
 
     assert state.step_count is fresh_count
-    assert state.elapsed_s == 0.0
-
-    with pytest.raises(SimulationConfigurationError, match="no simulation_step_s"):
-        state.step_count = StepCount(5)
-
-    assert state.step_count is fresh_count
-    assert state.elapsed_s == 0.0
+    assert state.elapsed_s == 0
 
     state.advance()
     held_count = state.step_count
-    held_step = state.simulation_step_s
-
-    with pytest.raises(TypeError, match="simulation_step_s of 0.5 was not built as SimulationStep"):
-        state.simulation_step_s = 0.5  # type: ignore[assignment]
-
-    assert state.simulation_step_s is held_step
-    assert state.elapsed_s == 0.1
 
     with pytest.raises(TypeError, match="step_count of -3 was not built as StepCount"):
         state.step_count = -3  # type: ignore[assignment]
 
     assert state.step_count is held_count
-    assert state.elapsed_s == 0.1
-
-    with pytest.raises(SimulationConfigurationError, match="no simulation_step_s"):
-        state.simulation_step_s = None
-
-    assert state.simulation_step_s is held_step
+    assert state.elapsed_s == 1
 
     with pytest.raises(SimulationConfigurationError, match="supported run length"):
-        state.step_count = StepCount(maximum_step_count(SimulationStep(0.1)) + 1)
+        state.step_count = StepCount(MAXIMUM_STEP_COUNT + 1)
 
     assert state.step_count is held_count
-    assert state.elapsed_s == 0.1
-
-    standing_at_the_limit = SimulationState(
-        step_count=StepCount(maximum_step_count(SimulationStep(0.025))),
-        simulation_step_s=SimulationStep(0.025),
-    )
-
-    with pytest.raises(SimulationConfigurationError, match="supported run length"):
-        standing_at_the_limit.simulation_step_s = SimulationStep(0.1)
-
-    assert standing_at_the_limit.simulation_step_s == 0.025
-    assert standing_at_the_limit.elapsed_s == MAXIMUM_ELAPSED_SIMULATION_TIME_S
+    assert state.elapsed_s == 1
 
     state.step_count = StepCount(2)
 
-    assert state.elapsed_s == 0.2
+    assert state.elapsed_s == 2
 
     state.advance()
 
@@ -576,7 +406,6 @@ def test_a_count_or_a_step_written_onto_a_built_state_is_refused_at_the_write() 
     state.reset()
 
     assert state.step_count == 0
-    assert state.simulation_step_s is None
 
     with pytest.raises(TypeError, match="step_count of 5 was not built as StepCount"):
         replace(state, step_count=5)  # type: ignore[arg-type]

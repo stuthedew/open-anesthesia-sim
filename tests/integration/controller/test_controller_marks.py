@@ -57,13 +57,13 @@ def test_a_branch_forked_at_a_mark_on_the_step_grid_reads_it_as_passed() -> None
     on_the_grid = TimeBookmark(CaseInstant(30), "induction complete")
     marked.add_time_bookmark(on_the_grid)
     marked.start()
-    _advance_until_halted(marked, limit_s=60.0)
+    _advance_until_halted(marked, limit_s=60)
 
     assert marked.snapshot().elapsed_s == 30.0
 
     branch = marked.resumed_here()
     branch.start()
-    _advance_for(branch, duration_s=60.0)
+    _advance_for(branch, duration_s=60)
 
     assert branch.snapshot().bookmark_standings.of_time_bookmark(on_the_grid) is (
         MarkStanding.PASSED
@@ -88,7 +88,7 @@ def test_one_act_off_the_step_grid_reads_the_same_as_on_it() -> None:
         marked = SimulationController()
         marked.add_time_bookmark(mark)
         marked.start()
-        _advance_until_halted(marked, limit_s=60.0)
+        _advance_until_halted(marked, limit_s=60)
         branch = marked.resumed_here()
         standings.append(branch.snapshot().bookmark_standings.of_time_bookmark(mark))
 
@@ -110,7 +110,7 @@ def test_a_trunk_and_its_branch_agree_about_the_height_that_separated_them() -> 
     target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.4), "the decision point")
     marked.add_mac_target(target)
     marked.start()
-    _advance_until_halted(marked, limit_s=400.0)
+    _advance_until_halted(marked, limit_s=400)
 
     # A height stops the run as an instant does, and the offered fork point
     # says so in the same way.
@@ -120,7 +120,7 @@ def test_a_trunk_and_its_branch_agree_about_the_height_that_separated_them() -> 
 
     branch = marked.resumed_here()
     branch.start()
-    _advance_for(branch, duration_s=300.0)
+    _advance_for(branch, duration_s=300)
 
     assert marked.snapshot().bookmark_standings.of_mac_target(target) is MarkStanding.REACHED
     assert branch.snapshot().bookmark_standings.of_mac_target(target) is MarkStanding.REACHED
@@ -137,7 +137,7 @@ def test_a_mark_added_behind_a_running_trunk_is_not_called_still_reachable() -> 
 
     run = SimulationController()
     run.start()
-    _advance_for(run, duration_s=60.0)
+    _advance_for(run, duration_s=60)
 
     behind_the_clock = TimeBookmark(CaseInstant(30), "when the pressure dropped")
     run.add_time_bookmark(behind_the_clock)
@@ -146,7 +146,7 @@ def test_a_mark_added_behind_a_running_trunk_is_not_called_still_reachable() -> 
         MarkStanding.PASSED
     )
 
-    _advance_for(run, duration_s=120.0)
+    _advance_for(run, duration_s=120)
 
     assert run.snapshot().bookmark_standings.of_time_bookmark(behind_the_clock) is (
         MarkStanding.PASSED
@@ -166,7 +166,7 @@ def test_a_branch_taken_at_a_control_event_agrees_with_its_trunk_about_a_mark_th
     at_the_keyframe = TimeBookmark(CaseInstant(30), "the decision point")
     marked.add_time_bookmark(at_the_keyframe)
     marked.start()
-    _advance_until_halted(marked, limit_s=60.0)
+    _advance_until_halted(marked, limit_s=60)
     marked.set_fresh_gas_flow(FreshGasFlow(3.0))
 
     branch = marked.resumed_at(CaseInstant(30))
@@ -196,7 +196,7 @@ def test_a_mark_removed_and_re_added_at_a_branch_s_fork_instant_still_reads_pass
     at_the_fork = TimeBookmark(CaseInstant(30))
     marked.add_time_bookmark(at_the_fork)
     marked.start()
-    _advance_until_halted(marked, limit_s=60.0)
+    _advance_until_halted(marked, limit_s=60)
 
     branch = marked.resumed_here()
     branch.remove_time_bookmark(at_the_fork)
@@ -221,11 +221,11 @@ def test_resetting_a_branch_leaves_it_standing_on_the_crossing_it_opened_at() ->
     marked.add_time_bookmark(at_the_fork)
     marked.add_mac_target(target)
     marked.start()
-    _advance_until_halted(marked, limit_s=60.0)
+    _advance_until_halted(marked, limit_s=60)
 
     branch = marked.resumed_here()
     branch.start()
-    _advance_for(branch, duration_s=30.0)
+    _advance_for(branch, duration_s=30)
     branch.reset()
     after = branch.snapshot()
 
@@ -246,7 +246,7 @@ def test_a_mark_unmarked_on_a_branch_does_not_come_back_with_its_reset() -> None
     at_the_fork = TimeBookmark(CaseInstant(30))
     marked.add_time_bookmark(at_the_fork)
     marked.start()
-    _advance_until_halted(marked, limit_s=60.0)
+    _advance_until_halted(marked, limit_s=60)
 
     branch = marked.resumed_here()
     branch.remove_time_bookmark(at_the_fork)
@@ -302,9 +302,9 @@ def test_a_bookmark_branch_draws_one_column_its_parent_does_not_and_it_is_the_fo
     branch = marked.resumed_here()
 
     marked.start()
-    _advance_for(marked, duration_s=30.0)
+    _advance_for(marked, duration_s=30)
     branch.start()
-    _advance_for(branch, duration_s=30.0)
+    _advance_for(branch, duration_s=30)
 
     trunk_columns = set(marked.drawn_window(0.0, 120.0, 150).times_s)
     branch_columns = set(branch.drawn_window(0.0, 120.0, 150).times_s)
@@ -383,7 +383,7 @@ def test_a_branch_standing_on_its_own_halt_cannot_be_forked_either() -> None:
     branch = marked.resumed_here()
     branch.add_time_bookmark(TimeBookmark(CaseInstant(branch.began_at_s + 5.0)))
     branch.start()
-    _advance_until_halted(branch, limit_s=30.0)
+    _advance_until_halted(branch, limit_s=30)
 
     assert branch.snapshot().bookmark_halt is not None
 
@@ -410,7 +410,7 @@ def test_a_setting_changed_while_halted_is_carried_by_the_halt_fork_and_the_keyf
     marked = SimulationController()
     marked.add_time_bookmark(TimeBookmark(CaseInstant(45.3), "the decision point"))
     marked.start()
-    _advance_until_halted(marked, limit_s=60.0)
+    _advance_until_halted(marked, limit_s=60)
 
     fork_s = marked.snapshot().elapsed_s
     dialled = marked.snapshot().delivered_concentration_percent
@@ -433,11 +433,11 @@ def test_a_setting_changed_while_halted_is_carried_by_the_halt_fork_and_the_keyf
         ]
 
     marked.start()
-    _advance_for(marked, duration_s=30.0)
+    _advance_for(marked, duration_s=30)
 
     for branch in (here, at_the_keyframe):
         branch.start()
-        _advance_for(branch, duration_s=30.0)
+        _advance_for(branch, duration_s=30)
 
         _states_agree_after_the_fork(branch, marked, fork_s, steps=300)
 
@@ -465,7 +465,7 @@ def test_two_reversible_acts_in_either_order_leave_one_branch() -> None:
     reset_first = marked.resumed_here()
 
     marked.start()
-    _advance_for(marked, duration_s=60.0)
+    _advance_for(marked, duration_s=60)
     marked.pause()
 
     dialled_back_first.set_cardiac_output(CardiacOutput(4.0))
@@ -482,7 +482,7 @@ def test_two_reversible_acts_in_either_order_leave_one_branch() -> None:
         assert len(branch.run_segments) == 1
 
         branch.start()
-        _advance_for(branch, duration_s=60.0)
+        _advance_for(branch, duration_s=60)
         branch.pause()
 
     fork_steps = round(fork_s / SIMULATION_STEP_S)
@@ -566,7 +566,7 @@ def test_a_mark_set_behind_the_clock_can_be_returned_to() -> None:
     assert trunk.snapshot().elapsed_s == 180.0
 
     branch.start()
-    _advance_for(branch, duration_s=60.0)
+    _advance_for(branch, duration_s=60)
     branch.pause()
 
     for steps_past_fork in range(0, 601):
@@ -593,9 +593,9 @@ def test_a_mark_set_behind_the_clock_forks_where_its_halt_would_have() -> None:
 
     late = SimulationController()
     late.start()
-    _advance_for(late, duration_s=30.0)
+    _advance_for(late, duration_s=30)
     late.set_delivered_concentration_percent(Percent(4.0))
-    _advance_for(late, duration_s=60.0)
+    _advance_for(late, duration_s=60)
     late.pause()
     late.add_time_bookmark(TimeBookmark(CaseInstant(45.3), "the decision point"))
 
@@ -622,7 +622,7 @@ def test_a_mark_the_run_halted_on_is_returned_to_alike_before_and_after_it_steps
     assert marked.resumed_at_mark(mark).opened_from == at_the_halt.opened_from
 
     marked.start()
-    _advance_for(marked, duration_s=30.0)
+    _advance_for(marked, duration_s=30)
     marked.pause()
 
     assert marked.resumed_here().began_at_s == marked.snapshot().elapsed_s > mark.instant_s
@@ -653,7 +653,7 @@ def test_a_branch_returned_to_a_mark_off_the_step_grid_reads_it_as_passed(
     assert branch.snapshot().bookmark_standings.of_time_bookmark(mark) is MarkStanding.PASSED
 
     branch.start()
-    _advance_for(branch, duration_s=10.0)
+    _advance_for(branch, duration_s=10)
     branch.reset()
 
     assert branch.snapshot().elapsed_s == steps * SIMULATION_STEP_S
@@ -674,7 +674,7 @@ def test_a_height_crossed_on_the_step_that_reached_a_passed_mark_is_stood_on_too
     finder = SimulationController()
     finder.add_mac_target(target)
     finder.start()
-    _advance_until_halted(finder, limit_s=400.0)
+    _advance_until_halted(finder, limit_s=400)
     crossed_at_s = finder.snapshot().elapsed_s
 
     late = SimulationController()
@@ -723,7 +723,7 @@ def test_a_mark_added_after_the_step_that_crossed_it_reads_alike_on_every_run() 
     finder = SimulationController()
     finder.add_mac_target(target)
     finder.start()
-    _advance_until_halted(finder, limit_s=400.0)
+    _advance_until_halted(finder, limit_s=400)
     crossing_steps = finder._state.step_count
     crossed_at_s = finder.snapshot().elapsed_s
     # Both lie inside the crossing step, which ends at `crossed_at_s`: the
@@ -742,7 +742,7 @@ def test_a_mark_added_after_the_step_that_crossed_it_reads_alike_on_every_run() 
         run = SimulationController()
         run.add_time_bookmark(halting)
         run.start()
-        _advance_until_halted(run, limit_s=400.0)
+        _advance_until_halted(run, limit_s=400)
         assert run.snapshot().elapsed_s == crossed_at_s, "the premise: the halt is the step's"
 
         return run
@@ -771,7 +771,7 @@ def test_a_mark_added_after_the_step_that_crossed_it_reads_alike_on_every_run() 
 
     for run in (paused, from_the_pause):
         run.start()
-        _advance_for(run, duration_s=300.0)
+        _advance_for(run, duration_s=300)
         run.pause()
 
     assert paused.snapshot().elapsed_s == from_the_pause.snapshot().elapsed_s
@@ -873,7 +873,7 @@ def test_a_branch_cannot_be_returned_to_a_mark_it_has_passed() -> None:
     trunk.add_time_bookmark(mark)
     branch = trunk.resumed_at_mark(mark)
     branch.start()
-    _advance_for(branch, duration_s=30.0)
+    _advance_for(branch, duration_s=30)
     branch.pause()
     later = TimeBookmark(CaseInstant(75))
     branch.add_time_bookmark(later)

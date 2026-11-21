@@ -294,7 +294,7 @@ def test_set_agent_starts_fresh_preserving_flow_settings_but_not_concentration()
         cardiac_output_l_min=CardiacOutput(6.0),
     )
     controller.start()
-    _advance_for(controller, duration_s=30.0)
+    _advance_for(controller, duration_s=30)
 
     assert controller.snapshot().stored_agent_l > 0.0
 
@@ -350,11 +350,11 @@ def _switched_after_a_run_of(previous_agent_id: str, new_agent_id: str) -> Simul
 
     run = _run_with_non_default_settings(previous_agent_id)
     run.start()
-    _advance_for(run, duration_s=60.0)
+    _advance_for(run, duration_s=60)
     run.set_delivered_concentration_percent(
         Percent(1.5 * load_agent_parameters(previous_agent_id).mac_percent)
     )
-    _advance_for(run, duration_s=30.0)
+    _advance_for(run, duration_s=30)
     assert run.snapshot().stored_agent_l > 0.0
 
     run.set_agent(new_agent_id)
@@ -392,7 +392,7 @@ def test_an_agent_switch_runs_exactly_as_a_fresh_run_of_that_agent(
 
     for run in (switched, fresh):
         run.start()
-        _advance_for(run, duration_s=300.0)
+        _advance_for(run, duration_s=300)
 
     assert fresh.snapshot().alveolar_partial_pressure_fraction > 0.0
     assert switched.snapshot() == fresh.snapshot()
@@ -419,11 +419,11 @@ def test_a_switched_run_branches_as_a_fresh_run_of_that_agent_does(
         _run_with_non_default_settings(new_agent_id),
     ):
         run.start()
-        _advance_for(run, duration_s=120.0)
+        _advance_for(run, duration_s=120)
         run.pause()
         branch = run.resumed_at(CaseInstant(0))
         branch.start()
-        _advance_for(branch, duration_s=60.0)
+        _advance_for(branch, duration_s=60)
         branches.append(branch)
 
     switched_branch, fresh_branch = branches

@@ -404,8 +404,7 @@ def test_the_propagator_cache_is_not_restored_by_a_rollback() -> None:
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
 
-    for _ in range(10):
-        system.advance()
+    system.advance()
 
     captured = system.capture_state()
     system.advance()
@@ -428,8 +427,7 @@ def test_restoring_the_system_cannot_raise_on_a_state_a_run_produced() -> None:
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
 
-    for _ in range(10):
-        system.advance()
+    system.advance()
 
     state = system.capture_state()
 
@@ -464,8 +462,7 @@ def test_a_restore_after_a_circuit_volume_change_conserves_agent() -> None:
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
 
-    for _ in range(10):
-        system.advance()
+    system.advance()
 
     state = system.capture_state()
     stored_before_l = system.total_stored_agent_l
@@ -486,8 +483,7 @@ def test_a_restore_with_the_volume_unchanged_puts_the_captured_fraction_back_exa
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
 
-    for _ in range(10):
-        system.advance()
+    system.advance()
 
     state = system.capture_state()
     system.advance()
@@ -529,16 +525,17 @@ def test_the_propagator_cache_key_covers_every_equation_setting() -> None:
     `TissueGroupEquationSettings.name` contributes none, because
     `build_system_matrix()` never reads it. Hence the `- 1` in each count.
     Adding a field to either settings class without an entry in
-    `_propagator_cache_key()` fails here.
+    `settings_key()` fails here. The step is no part of the key, because a run
+    takes only the one step (`PL-SZ6G`).
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
 
     scalar_settings = len(fields(UptakeEquationSettings)) - 1
     per_tissue = len(fields(TissueGroupEquationSettings)) - 1
-    expected = 1 + scalar_settings + TISSUE_GROUP_COUNT * per_tissue
+    expected = scalar_settings + TISSUE_GROUP_COUNT * per_tissue
 
-    assert len(system._propagator_cache_key(0.1)) == expected
+    assert len(system.settings_key()) == expected
     assert len(system.equation_settings().tissues) == TISSUE_GROUP_COUNT
 
 
@@ -596,17 +593,17 @@ def test_moving_any_setting_moves_the_propagator_cache_key(
 
     Where no setter exists, the case writes straight onto the compartment. That
     path has no guard of its own, and it is the one the key exists to catch.
-    `_propagator_for()` compares values rather than trusting a setter to
+    `_step_propagator()` compares values rather than trusting a setter to
     invalidate the cache. So a setting changed around the control surface must
     move the key just the same.
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
-    before = system._propagator_cache_key(0.1)
+    before = system.settings_key()
 
     move(system)
 
-    assert system._propagator_cache_key(0.1) != before, f"{description} left the key unchanged"
+    assert system.settings_key() != before, f"{description} left the key unchanged"
 
 
 def test_a_step_after_a_setting_moved_propagates_with_the_new_matrix() -> None:

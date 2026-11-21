@@ -61,8 +61,8 @@ def test_two_run_views_drive_two_controllers(application: QApplication) -> None:
 
     lean.start()
     generous.start()
-    _advance_to(lean, 120.0)
-    _advance_to(generous, 60.0)
+    _advance_to(lean, 120)
+    _advance_to(generous, 60)
     view.present(False)
 
     assert lean.snapshot().fresh_gas_flow_l_min == pytest.approx(1.0)
@@ -99,8 +99,8 @@ def test_each_run_draws_only_its_own_recorded_values(application: QApplication) 
     double.set_delivered_concentration_percent(Percent(4.0))
     single.start()
     double.start()
-    _advance(single, 60.0)
-    _advance(double, 60.0)
+    _advance(single, 60)
+    _advance(double, 60)
     view = _shown_view(application, single, double)
     chart = _concentration(view).chart
 
@@ -127,8 +127,8 @@ def test_one_compartment_selection_applies_to_every_run(application: QApplicatio
     second = SimulationController()
     first.start()
     second.start()
-    _advance(first, 60.0)
-    _advance(second, 60.0)
+    _advance(first, 60)
+    _advance(second, 60)
     view = _shown_view(application, first, second)
     chart = _concentration(view).chart
     # One of the two compartments that the cap leaves drawn. So the test
@@ -160,8 +160,8 @@ def test_two_runs_cap_the_chart_at_two_compartments_and_say_so(application: QApp
     second = SimulationController()
     first.start()
     second.start()
-    _advance(first, 60.0)
-    _advance(second, 60.0)
+    _advance(first, 60)
+    _advance(second, 60)
     single = _shown_view(application, first)
 
     assert _concentration(single).legend.shown == COMPARTMENT_QUANTITIES
@@ -204,8 +204,8 @@ def test_the_window_fits_the_longer_of_two_runs(application: QApplication) -> No
     long = SimulationController()
     short.start()
     long.start()
-    _advance_to(short, 60.0)
-    _advance_to(long, 600.0)
+    _advance_to(short, 60)
+    _advance_to(long, 600)
     view = _shown_view(application, short, long)
     frame = _concentration(view).chart.frame
 

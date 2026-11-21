@@ -297,7 +297,7 @@ def test_the_schematic_follows_its_run_through_a_reset_an_agent_change_and_a_com
 ) -> None:
     trunk = SimulationController()
     trunk.start()
-    _advance_to(trunk, 60.0)
+    _advance_to(trunk, 60)
     trunk.set_fresh_gas_flow(FreshGasFlow(2.0))
     trunk.pause()
     case = BranchedCase(trunk)
@@ -308,7 +308,7 @@ def test_the_schematic_follows_its_run_through_a_reset_an_agent_change_and_a_com
 
     # Every frame redraws the instant the run stands at.
     trunk.start()
-    _advance(trunk, 30.0)
+    _advance(trunk, 30)
     trunk.pause()
     view.present(False)
     _assert_every_label_matches_its_run(view)
@@ -328,7 +328,7 @@ def test_the_schematic_follows_its_run_through_a_reset_an_agent_change_and_a_com
     # The branch moves on its own; each schematic shows its own run.
     branch = view.runs[1].controller
     branch.start()
-    _advance(branch, 45.0)
+    _advance(branch, 45)
     branch.pause()
     view.present(False)
     _assert_every_label_matches_its_run(view)
@@ -358,7 +358,7 @@ def test_the_schematic_follows_its_run_through_a_reset_an_agent_change_and_a_com
     combo.setCurrentIndex(combo.findData("isoflurane"))
     _settle(application)
     run.controller.start()
-    _advance(run.controller, 120.0)
+    _advance(run.controller, 120)
     run.controller.pause()
     view.present(False)
 
@@ -391,9 +391,9 @@ def test_a_branch_taken_at_a_mark_behind_the_clock_draws_that_instant(
 
     trunk = SimulationController()
     trunk.start()
-    _advance_to(trunk, 30.0)
+    _advance_to(trunk, 30)
     trunk.set_fresh_gas_flow(FreshGasFlow(2.0))
-    _advance_to(trunk, 120.0)
+    _advance_to(trunk, 120)
     trunk.pause()
     case = BranchedCase(trunk)
     view = _dashboard(application, shown, trunk, case, _SCHEMATIC_AND_BRANCH)
@@ -458,7 +458,7 @@ def test_a_reset_that_no_frame_draws_withholds_the_schematic_with_the_readouts(
 
     controller = SimulationController()
     controller.start()
-    _advance_to(controller, 90.0)
+    _advance_to(controller, 90)
     controller.pause()
     view = _dashboard(application, shown, controller, workspaces=shipped_workspaces())
     view.layout_container.choose_view(AreaId(2), COMPARTMENT_SCHEMATIC)
@@ -528,7 +528,7 @@ def test_a_schematic_reset_with_no_frame_is_drawn_like_one_that_never_showed_a_r
 
     controller = SimulationController()
     controller.start()
-    _advance_to(controller, 90.0)
+    _advance_to(controller, 90)
     controller.pause()
     used = _dashboard(application, shown, controller, workspaces=shipped_workspaces())
     used.layout_container.choose_view(AreaId(2), COMPARTMENT_SCHEMATIC)
@@ -604,7 +604,7 @@ def test_a_container_cannot_be_read_against_the_chart(
     )
     controller = SimulationController()
     controller.start()
-    _advance(controller, 600.0)
+    _advance(controller, 600)
     view = _dashboard(
         application, shown, controller, workspaces=WorkspaceSet(workspaces.workspaces, maintenance)
     )

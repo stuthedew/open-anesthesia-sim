@@ -812,7 +812,7 @@ def test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one(
     controller = SimulationController()
     controller.start()
     controller.set_delivered_concentration_percent(Percent(8.0))
-    _advance(controller, 600.0)
+    _advance(controller, 600)
     controller.pause()
     view = _shown_view(application, controller)
     run = view.runs[0]
@@ -1157,10 +1157,10 @@ def _a_drawn_frame(
     controller = SimulationController()
     controller.start()
     controller.set_delivered_concentration_percent(Percent(8.0))
-    _advance(controller, 600.0)
+    _advance(controller, 600)
     controller.pause()
     run = _shown_view(application, controller).runs[0]
-    step = _fresh_run(600.0, delivered_concentration_percent=Percent(8.0)).snapshot()
+    step = _fresh_run(600, delivered_concentration_percent=Percent(8.0)).snapshot()
 
     return run, {
         "readouts": _readouts_of(step),
@@ -1185,7 +1185,7 @@ def _a_halt_after_an_agent_change(
     controller = SimulationController()
     controller.start()
     controller.set_delivered_concentration_percent(Percent(8.0))
-    _advance(controller, 600.0)
+    _advance(controller, 600)
     controller.pause()
     run = _shown_view(application, controller).runs[0]
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
@@ -1222,7 +1222,7 @@ def _a_halt_after_an_agent_change_whose_dials_cannot_be_written(
     controller = SimulationController()
     controller.start()
     controller.set_delivered_concentration_percent(Percent(8.0))
-    _advance(controller, 600.0)
+    _advance(controller, 600)
     controller.pause()
     run = _shown_view(application, controller).runs[0]
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
@@ -1289,7 +1289,7 @@ def _a_dial_moved_on_a_failed_run(
     controller = _StepFailingController(failure)
     controller._pending_error = None
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     run = _shown_view(application, controller).runs[0]
     controller._pending_error = failure
 
@@ -1297,7 +1297,7 @@ def _a_dial_moved_on_a_failed_run(
     assert controller.has_failed is True
     _drag(_dials(run)._cardiac_output_slider, 10.0, FLOW_DISPLAY_DECIMALS)
 
-    step = _fresh_run(300.0).snapshot()
+    step = _fresh_run(300).snapshot()
 
     return run, {
         "readouts": _readouts_of(step),
@@ -1323,13 +1323,13 @@ def _a_dial_moved_at_the_supported_run_length(
     )
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     assert controller.has_reached_supported_limit is True
     run = _case_view(application, BranchedCase(controller)).runs[0]
 
     _drag(_dials(run)._cardiac_output_slider, 10.0, FLOW_DISPLAY_DECIMALS)
 
-    step = _fresh_run(300.0).snapshot()
+    step = _fresh_run(300).snapshot()
 
     return run, {
         "readouts": _readouts_of(step),
@@ -1350,14 +1350,14 @@ def _an_accounting_halt(
 
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     run = _shown_view(application, controller).runs[0]
     _reject_the_next_accounting_check(monkeypatch)
 
     _steps(run, 1)
 
     assert controller.has_failed is True
-    step = _fresh_run(300.0).snapshot()
+    step = _fresh_run(300).snapshot()
 
     return run, {
         "readouts": _readouts_of(step),
@@ -1379,7 +1379,7 @@ def _an_accounting_halt_that_no_frame_draws(
 
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     run = _shown_view(application, controller).runs[0]
     _reject_the_next_accounting_check(monkeypatch)
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
@@ -1387,7 +1387,7 @@ def _an_accounting_halt_that_no_frame_draws(
     _steps(run, 1)
 
     assert controller.status().rejected_accounting is not None
-    step = _fresh_run(300.0).snapshot()
+    step = _fresh_run(300).snapshot()
 
     return run, {
         "readouts": _readouts_of(step),
@@ -1412,7 +1412,7 @@ def _a_halt_after_a_reset_that_no_frame_draws(
 
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     run = _shown_view(application, controller).runs[0]
     _reject_the_next_accounting_check(monkeypatch)
     _steps(run, 1)
@@ -1447,7 +1447,7 @@ def _a_frame_after_a_reset_that_followed_an_accounting_halt(
 
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     run = _shown_view(application, controller).runs[0]
     _reject_the_next_accounting_check(monkeypatch)
     _steps(run, 1)
@@ -1479,7 +1479,7 @@ def _a_frame_after_an_agent_change_that_followed_an_accounting_halt(
 
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     run = _shown_view(application, controller).runs[0]
     _reject_the_next_accounting_check(monkeypatch)
     _steps(run, 1)
@@ -1516,7 +1516,7 @@ def _a_halt_after_a_frame_drawn_for_a_new_agent(
     controller = SimulationController()
     controller.start()
     controller.set_delivered_concentration_percent(Percent(8.0))
-    _advance(controller, 600.0)
+    _advance(controller, 600)
     controller.pause()
     view = _shown_view(application, controller)
     run = view.runs[0]
@@ -1555,16 +1555,16 @@ def _a_halt_after_frames_drawn_later_than_the_first(
     view = _shown_view(application, controller)
     run = view.runs[0]
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     view.present(False)
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     view.present(False)
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
 
     view.present(False)
 
     assert controller.has_failed is True
-    step = _fresh_run(600.0).snapshot()
+    step = _fresh_run(600).snapshot()
 
     return run, {
         "readouts": _readouts_of(step),
@@ -1804,7 +1804,7 @@ def test_a_setting_refused_at_the_supported_run_length_names_a_branch_only_while
 
     caseless = SimulationController()
     caseless.start()
-    _advance(caseless, 300.0)
+    _advance(caseless, 300)
     caseless_run = _shown_view(application, caseless).runs[0]
     _drag(_dials(caseless_run)._cardiac_output_slider, 10.0, FLOW_DISPLAY_DECIMALS)
 
@@ -1814,7 +1814,7 @@ def test_a_setting_refused_at_the_supported_run_length_names_a_branch_only_while
 
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     assert controller.has_reached_supported_limit is True
     view = _case_view(application, BranchedCase(controller))
     trunk = view.runs[0]
@@ -1858,7 +1858,7 @@ def test_a_setting_refused_after_the_dashboard_failed_at_the_supported_run_lengt
     )
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     view = _case_view(application, BranchedCase(controller))
     trunk = view.runs[0]
 

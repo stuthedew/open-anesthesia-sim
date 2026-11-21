@@ -233,13 +233,13 @@ def test_a_mark_branch_the_case_refuses_is_reported_and_adds_no_run(
     panel.set_offer(
         fork_offer(
             case.fork_points_s,
-            marks=(MarkForkPoint(unmarked, CaseInstant(300 * 0.1)),),
+            marks=(MarkForkPoint(unmarked, CaseInstant(30)),),
             comparing=None,
             here=None,
         ),
         None,
     )
-    _select_fork_entry(view, f"{format_elapsed(30.0)}, on your mark")
+    _select_fork_entry(view, f"{format_elapsed(30)}, on your mark")
 
     selected = panel.selected_point()
     assert selected is not None
@@ -252,7 +252,7 @@ def test_a_mark_branch_the_case_refuses_is_reported_and_adds_no_run(
     assert case.branches == ()
     notice = panel.notice.notice()
     assert notice is not None
-    assert "no time bookmark stands at 30.0 s" in notice
+    assert "no time bookmark stands at 30 s" in notice
 
 
 def test_a_branch_control_with_nothing_selected_says_so(application: QApplication) -> None:

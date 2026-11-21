@@ -123,7 +123,7 @@ def _snapshots_of_a_changing_run(agent_id: str) -> list[tuple[CompartmentAgentAm
 
     for change in changes:
         change()
-        for _ in range(1200):
+        for _ in range(120):
             controller.advance()
         snapshot = controller.snapshot()
         observed.append((snapshot.compartment_agent_amounts, snapshot.stored_agent_l))
@@ -141,15 +141,23 @@ def test_the_six_amounts_add_up_to_the_stored_total_exactly(agent_id: str) -> No
     that order must give the snapshot's `stored_agent_l` with no rounding
     difference at all. A record whose amounts came from anywhere else, or a
     total that summed something else, would differ.
+
+    `PatientCompartments.total_agent_amount_l` adds the three tissue groups
+    with the built-in `sum`, which carries a correction for rounding that a
+    chain of `+` does not. So the test adds the three with `sum` too. A chain
+    of `+` differs from the stored total in the last bit at some instants,
+    such as sevoflurane's last one here (`PL-SZ6G`).
     """
 
     for record, stored_agent_l in _snapshots_of_a_changing_run(agent_id):
-        patient_l = (
-            record.of(RecordedQuantity.VESSEL_RICH)
-            + record.of(RecordedQuantity.MUSCLE)
-            + record.of(RecordedQuantity.FAT)
-            + record.of(RecordedQuantity.MIXED_VENOUS)
+        tissues_l = sum(
+            (
+                record.of(RecordedQuantity.VESSEL_RICH),
+                record.of(RecordedQuantity.MUSCLE),
+                record.of(RecordedQuantity.FAT),
+            )
         )
+        patient_l = tissues_l + record.of(RecordedQuantity.MIXED_VENOUS)
         summed_l = record.of(RecordedQuantity.CIRCUIT) + record.of(RecordedQuantity.ALVEOLAR)
         summed_l += patient_l
 

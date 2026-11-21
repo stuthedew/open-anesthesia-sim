@@ -60,8 +60,8 @@ from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionC
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.patient import PatientCompartments
 from anesthesia_sim.core.simulation import SimulationState
-from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import (
+    MAXIMUM_STEP_COUNT,
     AlveolarVentilation,
     CardiacOutput,
     FreshGasFlow,
@@ -170,11 +170,11 @@ def _halved_fraction(field: str) -> Callable[[PatientCompartments], TissueGroup]
 
 
 def _system_holding_agent() -> AgentUptakeSystem:
-    """The default sevoflurane system after 20 of its largest steps at its opening settings."""
+    """The default sevoflurane system after two seconds at its opening settings."""
 
     system = AgentUptakeSystem.default()
 
-    for _ in range(20):
+    for _ in range(2):
         system.advance()
 
     return system
@@ -190,10 +190,6 @@ _ACCOUNTING = (
     "The identity ties the field to every other store of agent in the system, and the "
     "system checks it at every step and at every read of its accounting."
 )
-
-
-def _state_part_way() -> SimulationState:
-    return SimulationState(step_count=StepCount(3), simulation_step_s=SimulationStep(0.1))
 
 
 WRITES: dict[str, dict[str, Write]] = {
@@ -282,8 +278,11 @@ WRITES: dict[str, dict[str, Write]] = {
     },
     "simulation.SimulationState": {
         "uptake_system": Write(ONCE, SimulationState),
-        "step_count": Write(CHECKED, SimulationState, lambda state: StepCount(1)),
-        "simulation_step_s": Write(CHECKED, _state_part_way, lambda state: None),
+        # A count one past the supported run length is whole and nonnegative, so
+        # `StepCount` builds it, and the state refuses it as its clock.
+        "step_count": Write(
+            CHECKED, SimulationState, lambda state: StepCount(MAXIMUM_STEP_COUNT + 1)
+        ),
     },
     "tissue.TissueGroup": {
         "name": Write(OWN, why="The name labels the group's messages and enters no rule."),
@@ -301,7 +300,7 @@ WRITES: dict[str, dict[str, Write]] = {
             field: Write(
                 PRIVATE,
                 why=(
-                    "The cached propagator and its key, written by _propagator_for and "
+                    "The cached propagator and its key, written by _step_propagator and "
                     "keyed by the settings they were built from."
                 ),
             )

@@ -32,7 +32,6 @@ from anesthesia_sim.core.parameters import (
     load_agent_parameters,
     load_reference_adult_parameters,
 )
-from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_ELAPSED_SIMULATION_TIME_S,
@@ -43,9 +42,18 @@ from anesthesia_sim.core.supported_ranges import (
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
-#: The limit is one hour of `SIMULATION_STEP_S` steps. Each run below reaches its fixed
-#: point in about 21 000 steps, so a run that has not reached it within the limit has failed.
-ZERO_OUTPUT_STEP_LIMIT = 36_000
+#: The limit is one hour of one-second steps. Each run below reaches its fixed point
+#: in about 2 250 steps at the fastest fresh gas flow and in about 3 250 steps at
+#: `FRESH_GAS_FLOW_THAT_SETTLES_ABOVE_L_MIN`, so a run that has not reached it within the limit
+#: has failed.
+ZERO_OUTPUT_STEP_LIMIT = 3_600
+
+#: A fresh gas flow, in L/min, at which isoflurane at zero cardiac output settles with $`F_A`$
+#: above $`F_I`$. That is the case that the rule once treated as elimination (`PL-N559`). Which
+#: side of 1 a run settles on is a property of the rounding, and it changes with the step. At
+#: the one-second step the quotient settles 4.7e-15 above 1 at this flow, and below 1 for every
+#: agent at the fastest flow (measured 2026-11-21, `PL-SZ6G`).
+FRESH_GAS_FLOW_THAT_SETTLES_ABOVE_L_MIN = 6.0
 
 #: The largest share of the agent in the fast pool that a run may lose while it is held at the
 #: edge of `WASH_IN_ROUNDING_ALLOWANCE` for the longest supported run length. This is the
@@ -57,8 +65,9 @@ HIDDEN_LOSS_LIMIT_FRACTION_OF_FAST_POOL = 0.01
 #: caption.
 ROUNDING_MARGIN = 1_000
 
-#: How close each settled fraction must be to the closed form, relative. The
-#: measured distance is about 2e-14 (`PL-N559`, 2026-10-26).
+#: How close each settled fraction must be to the closed form, relative. This is a numerical
+#: limit on the rounding of the stepped run. The measured distance is at most 7.5e-14 at the
+#: one-second step (`PL-SZ6G`, 2026-11-21).
 ZERO_OUTPUT_CLOSED_FORM_TOLERANCE = 1e-12
 
 
@@ -187,15 +196,26 @@ def test_the_domain_and_the_plotted_value_always_agree(
     assert (reading.plotted_ratio is not None) == (expected is WashInDomain.WASH_IN)
 
 
-@pytest.mark.parametrize("agent", ["sevoflurane", "isoflurane", "desflurane"])
-def test_a_zero_cardiac_output_steady_state_is_not_read_as_elimination(agent: str) -> None:
+@pytest.mark.parametrize(
+    ("agent", "fresh_gas_flow_l_min"),
+    [
+        ("sevoflurane", MAXIMUM_FRESH_GAS_FLOW_L_MIN),
+        ("isoflurane", MAXIMUM_FRESH_GAS_FLOW_L_MIN),
+        ("desflurane", MAXIMUM_FRESH_GAS_FLOW_L_MIN),
+        ("isoflurane", FRESH_GAS_FLOW_THAT_SETTLES_ABOVE_L_MIN),
+    ],
+)
+def test_a_zero_cardiac_output_steady_state_is_not_read_as_elimination(
+    agent: str, fresh_gas_flow_l_min: float
+) -> None:
     """At zero cardiac output, the settled run is treated as wash-in at equilibrium (`PL-N559`).
 
     With no blood flow there is no uptake. The closed form then has the circuit and the alveoli
     both settle at the delivered fraction, so $`F_A/F_I`$ is exactly 1. The stepped run settles
-    onto a floating-point fixed point instead, within rounding of that value. Isoflurane at the
-    fastest fresh gas flow settles with $`F_A`$ above $`F_I`$, which the rule once treated as
-    elimination.
+    onto a floating-point fixed point instead, within rounding of that value. Each agent is run
+    at the fastest fresh gas flow, where the fixed point is furthest from 1. Isoflurane is also
+    run at `FRESH_GAS_FLOW_THAT_SETTLES_ABOVE_L_MIN`, where it settles with $`F_A`$ above
+    $`F_I`$, which the rule once treated as elimination.
 
     The test does not depend on how long a run may last. It steps until one more step changes
     neither fraction. From then on every step returns the same state, so the reading at the
@@ -204,12 +224,11 @@ def test_a_zero_cardiac_output_steady_state_is_not_read_as_elimination(agent: st
 
     system = AgentUptakeSystem.for_agent(agent)
     system.set_cardiac_output(CardiacOutput(0.0))
-    system.set_fresh_gas_flow(FreshGasFlow(MAXIMUM_FRESH_GAS_FLOW_L_MIN))
-    step = SIMULATION_STEP_S
+    system.set_fresh_gas_flow(FreshGasFlow(fresh_gas_flow_l_min))
 
     previous = system.state_vector()
     for _ in range(ZERO_OUTPUT_STEP_LIMIT):
-        system.advance(step)
+        system.advance()
         state = system.state_vector()
         settled = (state[INSPIRED_FRACTION], state[ALVEOLAR_FRACTION])
         if settled == (previous[INSPIRED_FRACTION], previous[ALVEOLAR_FRACTION]):
@@ -227,7 +246,7 @@ def test_a_zero_cardiac_output_steady_state_is_not_read_as_elimination(agent: st
     reading = read_wash_in(alveolar, inspired)
     assert reading.domain is WashInDomain.WASH_IN
     assert reading.plotted_ratio == alveolar / inspired
-    if agent == "isoflurane":
+    if fresh_gas_flow_l_min == FRESH_GAS_FLOW_THAT_SETTLES_ABOVE_L_MIN:
         assert alveolar > inspired, "the case that the rule once read as elimination"
     overshoot = abs(alveolar / inspired - WASH_IN_EQUILIBRIUM_RATIO)
     assert overshoot * ROUNDING_MARGIN <= WASH_IN_ROUNDING_ALLOWANCE, (

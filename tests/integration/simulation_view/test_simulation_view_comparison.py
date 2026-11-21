@@ -424,7 +424,7 @@ def test_the_run_does_not_advance_while_a_reset_question_is_open(
 def test_a_running_run_holds_while_its_new_case_question_is_open(application: QApplication) -> None:
     """The question asked before a new agent discards the run holds it too (`PL-TPBH`)."""
 
-    controller = _paused_run_with_history(60.0)
+    controller = _paused_run_with_history(60)
     controller.start()
     view = _shown_view(application, controller)
     run = view.runs[0]
@@ -449,7 +449,7 @@ def test_a_running_run_holds_while_its_new_case_question_is_open(application: QA
 def test_a_running_run_holds_while_a_workspace_question_is_open(application: QApplication) -> None:
     """A Workspace question blocks Pause as a Reset question does, so it holds the run too."""
 
-    controller = _paused_run_with_history(60.0)
+    controller = _paused_run_with_history(60)
     controller.start()
     view = _shown_view(application, controller)
     run = view.runs[0]
@@ -482,7 +482,7 @@ def test_the_bookmark_editor_is_not_modal_and_holds_no_run(application: QApplica
     meant to be non-modal, so it is now shown with `show()`.
     """
 
-    controller = _paused_run_with_history(60.0)
+    controller = _paused_run_with_history(60)
     controller.start()
     view = _shown_view(application, controller)
     run = view.runs[0]

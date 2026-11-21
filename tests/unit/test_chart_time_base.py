@@ -93,7 +93,7 @@ def test_fitting_a_run_always_contains_it() -> None:
     rung, rather than at a convenient length.
     """
 
-    instants = [0.0, 0.1, 59.9, 60.0, 60.1, 899.9, 900.0, 900.1, 43_200.0, 43_200.1, 86_400.0]
+    instants = [0, 1, 59, 60, 61, 899, 900, 901, 43_200, 43_201, 86_400]
 
     for newest_instant_s in instants:
         time_base = fit_to_run(CaseInstant(newest_instant_s))
@@ -108,7 +108,7 @@ def test_fitting_takes_the_narrowest_width_that_holds_the_run() -> None:
 
     assert fit_to_run(CaseInstant(0)).span_s == 60.0
     assert fit_to_run(CaseInstant(60)).span_s == 60.0
-    assert fit_to_run(CaseInstant(60.1)).span_s == 120.0
+    assert fit_to_run(CaseInstant(61)).span_s == 120.0
     assert fit_to_run(CaseInstant(900)).span_s == 900.0
     assert fit_to_run(CaseInstant(3_600)).span_s == 3_600.0
     assert fit_to_run(CaseInstant(43_200)).span_s == 43_200.0
@@ -126,7 +126,8 @@ def test_fitting_past_the_widest_rung_doubles_rather_than_giving_up() -> None:
     """
 
     widest = TIME_BASE_LADDER[-1]
-    beyond = fit_to_run(CaseInstant(widest.span_s * 1.5))
+    widest_span_s = int(widest.span_s)
+    beyond = fit_to_run(CaseInstant(widest_span_s * 3 // 2))
 
     assert beyond.span_s == widest.span_s * 2.0
     # The span and the tick interval double together. So the wider axis has as
@@ -135,7 +136,7 @@ def test_fitting_past_the_widest_rung_doubles_rather_than_giving_up() -> None:
     assert beyond.span_s / beyond.tick_interval_s == widest.span_s / widest.tick_interval_s
     # A run that ends exactly on a doubled width fits it, as a run that ends
     # exactly on a declared rung fits that rung, and is not doubled again.
-    assert fit_to_run(CaseInstant(widest.span_s * 2.0)).span_s == widest.span_s * 2.0
+    assert fit_to_run(CaseInstant(widest_span_s * 2)).span_s == widest.span_s * 2.0
 
 
 def test_a_chosen_width_is_held_exactly_at_every_point_of_a_run() -> None:
@@ -148,7 +149,7 @@ def test_a_chosen_width_is_held_exactly_at_every_point_of_a_run() -> None:
     """
 
     for time_base in SELECTABLE_TIME_BASES:
-        for newest_instant_s in (0.0, 1.0, time_base.span_s, MAXIMUM_ELAPSED_SIMULATION_TIME_S):
+        for newest_instant_s in (0, 1, int(time_base.span_s), MAXIMUM_ELAPSED_SIMULATION_TIME_S):
             window_start_s, window_stop_s = following_window(
                 time_base, CaseInstant(newest_instant_s)
             )
@@ -166,7 +167,7 @@ def test_a_run_shorter_than_the_chosen_width_still_shows_whole() -> None:
 
     time_base = time_base_for_span(900.0)
 
-    for newest_instant_s in (0.0, 10.0, 400.0, 880.0):
+    for newest_instant_s in (0, 10, 400, 880):
         window_start_s, window_stop_s = following_window(time_base, CaseInstant(newest_instant_s))
 
         assert window_start_s == 0.0
@@ -214,21 +215,34 @@ def test_ticks_include_a_window_edge_that_falls_exactly_on_one() -> None:
     assert tick_times(180.0, 540.0, 180.0) == (180.0, 360.0, 540.0)
 
 
-@pytest.mark.parametrize(
-    "newest_instant_s", [-1.0, -0.001, math.nan, math.inf, MAXIMUM_ELAPSED_SIMULATION_TIME_S + 0.1]
-)
-def test_a_window_cannot_be_given_an_instant_off_the_case_s_axis(newest_instant_s: float) -> None:
+@pytest.mark.parametrize("newest_instant_s", [-1, MAXIMUM_ELAPSED_SIMULATION_TIME_S + 1])
+def test_a_window_cannot_be_given_an_instant_off_the_case_s_axis(newest_instant_s: int) -> None:
     """An axis drawn against a width nobody can account for is worse than none.
 
     `CLAUDE.md`'s standard prefers an obvious failure to a plausible-looking
     displayed value, and every drawn time is placed against the window's width.
-    Both windows take a `CaseInstant`. So an instant before induction, one that
-    is not finite, or one past the supported run length is rejected where the
-    instant is built, and neither window checks it again (`PL-9DF9`).
+    Both windows take a `CaseInstant`. So an instant before induction or one
+    past the supported run length is rejected where the instant is built, and
+    neither window checks it again (`PL-9DF9`).
     """
 
     with pytest.raises(SimulationConfigurationError, match="outside the supported run length"):
         CaseInstant(newest_instant_s)
+
+
+@pytest.mark.parametrize(
+    "newest_instant_s", [-0.001, 2.0, math.nan, math.inf, MAXIMUM_ELAPSED_SIMULATION_TIME_S + 0.1]
+)
+def test_a_window_cannot_be_given_an_instant_between_two_seconds(newest_instant_s: float) -> None:
+    """An instant is a whole number of seconds, so a `float` is refused whatever its value.
+
+    A run stands only on whole seconds. A `float` instant, even a whole one
+    such as 2.0, or one that is not finite, is refused where the instant is
+    built, before its range is checked (`PL-SZ6G`).
+    """
+
+    with pytest.raises(TypeError, match="has type float, not int"):
+        CaseInstant(newest_instant_s)  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize("newest_instant_s", [math.inf, math.nan, 900.0])

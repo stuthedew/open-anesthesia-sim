@@ -348,7 +348,9 @@ def test_a_branch_halted_on_a_mark_says_so(application: QApplication) -> None:
 
     view = _halted_branch_view(application)
 
-    assert view.runs[1].snapshot().elapsed_s == pytest.approx(114.7)
+    # The crossing lies between 114.6 s and 114.7 s (`_halted_branch_view`), and
+    # the run stops on the first whole second after it.
+    assert view.runs[1].snapshot().elapsed_s == 115
     assert view.runs[1].is_running is False
 
     listed = _marks_panel(view).targets.text()
@@ -454,7 +456,7 @@ def test_a_lone_run_states_a_mark_s_standing_without_naming_a_run(
     controller = SimulationController()
     view = _shown_view(application, controller)
     controller.start()
-    _advance_to(controller, 60.0)
+    _advance_to(controller, 60)
     # Marked behind the clock, so the run passes it without halting on it:
     # this test is about how the standing is attributed, not about the halt.
     controller.add_time_bookmark(TimeBookmark(CaseInstant(30), "check"))

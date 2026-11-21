@@ -323,14 +323,14 @@ from anesthesia_sim.core.parameters import (
     load_reference_circle_system_parameters,
 )
 from anesthesia_sim.core.patient import PatientCompartments
-from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S, SimulationStep
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 # The length of the measured wash-in. Both studies gave the potent agent for
 # 30 minutes and report F_A/F_I at the end of it.
-WASH_IN_DURATION_S = 1800.0
+WASH_IN_DURATION_S = 1800
 
 # The length of the measured elimination, also taken from the papers.
 # Elimination begins when the 30 minutes above end, and both papers report
@@ -338,7 +338,7 @@ WASH_IN_DURATION_S = 1800.0
 # administration, so the elimination run must continue the wash-in run rather
 # than start from a system loaded some other way. That is why `_eliminate()`
 # below washes in first rather than taking a system from `_wash_in_system()`.
-ELIMINATION_DURATION_S = 300.0
+ELIMINATION_DURATION_S = 300
 
 # The step is imported rather than restated as 0.1, so this module measures the
 # model as shipped, not a finer version of it that no user ever sees. Raising
@@ -346,7 +346,6 @@ ELIMINATION_DURATION_S = 300.0
 # (docs/MODEL.md, "Supported simulation step"). If the step is ever raised,
 # this validation should move with it and be re-measured. It should not keep
 # running quietly at a step the interface no longer uses.
-SIMULATION_STEP_S = SimulationStep(SIMULATION_STEP_S)
 
 # The operating point. Alveolar ventilation and cardiac output are *not*
 # chosen here. The code below reads them from the reference-patient data file,
@@ -1078,7 +1077,7 @@ def _wash_in_system(
         change=change,
     )
 
-    for _ in range(round(WASH_IN_DURATION_S / SIMULATION_STEP_S)):
+    for _ in range(WASH_IN_DURATION_S // SIMULATION_STEP_S):
         system.advance()
 
     return system
@@ -1152,7 +1151,7 @@ def _private_washed_in_system(
         change,
     )
 
-    for _ in range(round(WASH_IN_DURATION_S / SIMULATION_STEP_S)):
+    for _ in range(WASH_IN_DURATION_S // SIMULATION_STEP_S):
         system.advance()
 
     return system
@@ -1229,7 +1228,7 @@ def _eliminate(
 
     system.set_delivered_concentration_percent(Percent(0.0))
 
-    for _ in range(round(ELIMINATION_DURATION_S / SIMULATION_STEP_S)):
+    for _ in range(ELIMINATION_DURATION_S // SIMULATION_STEP_S):
         system.advance()
 
     return EliminationReading(
@@ -1388,7 +1387,7 @@ def _eliminate_without_rebreathing(
     _discard_circuit_contents(system)
     peak_inspired_to_starting_alveolar_ratio = 0.0
 
-    for _ in range(round(ELIMINATION_DURATION_S / SIMULATION_STEP_S)):
+    for _ in range(ELIMINATION_DURATION_S // SIMULATION_STEP_S):
         alveolar_fraction_at_step_start = system.alveoli.partial_pressure_fraction
         system.advance()
         peak_inspired_to_starting_alveolar_ratio = max(

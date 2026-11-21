@@ -85,7 +85,7 @@ def test_every_door_at_a_paused_instant_agrees_after_an_edit_made_there() -> Non
     trunk = SimulationController(delivered_concentration_percent=Percent(2.0))
     trunk.add_time_bookmark(first)
     trunk.start()
-    _advance_until_halted(trunk, limit_s=31.0)
+    _advance_until_halted(trunk, limit_s=31)
     fork_s = trunk.snapshot().elapsed_s
     inside_s = fork_s - SIMULATION_STEP_S / 2
     inside = TimeBookmark(CaseInstant(inside_s), "inside the step")
@@ -109,7 +109,7 @@ def test_every_door_at_a_paused_instant_agrees_after_an_edit_made_there() -> Non
     here_on_the_trunk = trunk.here_fork_point
 
     trunk.start()
-    _advance_for(trunk, duration_s=10.0)
+    _advance_for(trunk, duration_s=10)
     trunk.pause()
 
     branches |= {
@@ -184,11 +184,11 @@ def test_every_door_at_a_paused_instant_agrees_after_an_edit_made_there() -> Non
     # the 4% branch is the trunk, element for element.
     never_changed = SimulationController(delivered_concentration_percent=Percent(2.0))
     never_changed.start()
-    _advance_for(never_changed, duration_s=40.0)
+    _advance_for(never_changed, duration_s=40)
 
     for name, branch in branches.items():
         branch.start()
-        _advance_for(branch, duration_s=10.0)
+        _advance_for(branch, duration_s=10)
         _states_agree_after_the_fork(
             branch, trunk if runs_under_the_change(name) else never_changed, fork_s, steps=100
         )
@@ -220,14 +220,14 @@ def test_a_change_made_on_the_halt_opens_every_branch_taken_after_it() -> None:
     trunk = SimulationController(delivered_concentration_percent=Percent(2.0))
     trunk.add_time_bookmark(mark)
     trunk.start()
-    _advance_until_halted(trunk, limit_s=61.0)
+    _advance_until_halted(trunk, limit_s=61)
     halt_s = trunk.snapshot().elapsed_s
 
     before_the_change = trunk.resumed_here()
     trunk.set_delivered_concentration_percent(Percent(0.0))
     after_the_change = {"here, after the change": trunk.resumed_here()}
     trunk.start()
-    _advance_for(trunk, duration_s=60.0)
+    _advance_for(trunk, duration_s=60)
     trunk.pause()
     trunk.set_delivered_concentration_percent(Percent(1.0))
     after_the_change |= {
@@ -247,15 +247,15 @@ def test_a_change_made_on_the_halt_opens_every_branch_taken_after_it() -> None:
 
     never_changed = SimulationController(delivered_concentration_percent=Percent(2.0))
     never_changed.start()
-    _advance_for(never_changed, duration_s=70.0)
+    _advance_for(never_changed, duration_s=70)
     before_the_change.start()
-    _advance_for(before_the_change, duration_s=10.0)
+    _advance_for(before_the_change, duration_s=10)
 
     _states_agree_after_the_fork(before_the_change, never_changed, halt_s, steps=100)
 
     for branch in after_the_change.values():
         branch.start()
-        _advance_for(branch, duration_s=10.0)
+        _advance_for(branch, duration_s=10)
 
         _states_agree_after_the_fork(branch, trunk, halt_s, steps=100)
 
@@ -275,7 +275,7 @@ def test_a_trunk_change_at_a_forked_instant_keeps_the_branch_provenance_in_the_t
 
     trunk = SimulationController(delivered_concentration_percent=Percent(2.0))
     trunk.start()
-    _advance_for(trunk, duration_s=30.0)
+    _advance_for(trunk, duration_s=30)
     trunk.pause()
     fork_s = trunk.snapshot().elapsed_s
     trunk.set_delivered_concentration_percent(Percent(4.0))
@@ -310,14 +310,14 @@ def test_a_branch_reset_after_a_setting_change_keeps_its_record_and_provenance_i
 
     trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
     trunk.start()
-    _advance_for(trunk, duration_s=30.0)
+    _advance_for(trunk, duration_s=30)
     trunk.pause()
     fork_s = trunk.snapshot().elapsed_s
     trunk.set_fresh_gas_flow(FreshGasFlow(6.0))
 
     branch = trunk.resumed_at(fork_s)
     branch.start()
-    _advance_for(branch, duration_s=10.0)
+    _advance_for(branch, duration_s=10)
     branch.pause()
     branch.set_fresh_gas_flow(FreshGasFlow(8.0))
     branch.reset()
@@ -339,9 +339,9 @@ def test_a_branch_reset_after_a_setting_change_keeps_its_record_and_provenance_i
     assert _replayed_from_provenance(branch) == branch._state.uptake_system.equation_settings()
 
     branch.start()
-    _advance_for(branch, duration_s=10.0)
+    _advance_for(branch, duration_s=10)
     built_directly.start()
-    _advance_for(built_directly, duration_s=10.0)
+    _advance_for(built_directly, duration_s=10)
 
     _states_agree_after_the_fork(branch, built_directly, fork_s, steps=100)
 
@@ -356,7 +356,7 @@ def test_a_branch_taken_at_a_keyframe_keeps_a_record_of_the_setting_it_opened_un
 
     trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
     trunk.start()
-    _advance_for(trunk, duration_s=60.0)
+    _advance_for(trunk, duration_s=60)
     trunk.pause()
     fork_s = trunk.snapshot().elapsed_s
     trunk.set_fresh_gas_flow(FreshGasFlow(6.0))
@@ -387,7 +387,7 @@ def test_the_halt_record_follows_the_current_marks_after_a_mark_is_removed_and_a
     trunk = SimulationController()
     trunk.add_time_bookmark(original)
     trunk.start()
-    _advance_until_halted(trunk, limit_s=31.0)
+    _advance_until_halted(trunk, limit_s=31)
     halt_s = trunk.snapshot().elapsed_s
     branch = trunk.resumed_here()
 
@@ -500,7 +500,7 @@ def test_a_dial_set_back_at_the_fork_is_work_a_trunk_reset_would_lose() -> None:
 
     trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
     trunk.start()
-    _advance_for(trunk, duration_s=60.0)
+    _advance_for(trunk, duration_s=60)
     trunk.pause()
     fork_s = trunk.snapshot().elapsed_s
     trunk.set_fresh_gas_flow(FreshGasFlow(6.0))
@@ -555,13 +555,13 @@ def test_a_branch_reset_at_the_trunk_s_earlier_value_is_work_a_trunk_reset_would
 
     trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
     trunk.start()
-    _advance_for(trunk, duration_s=60.0)
+    _advance_for(trunk, duration_s=60)
     trunk.pause()
     fork_s = trunk.snapshot().elapsed_s
     trunk.set_fresh_gas_flow(FreshGasFlow(6.0))
     branch = trunk.resumed_at(fork_s)
     branch.start()
-    _advance_for(branch, duration_s=10.0)
+    _advance_for(branch, duration_s=10)
     branch.pause()
     branch.set_fresh_gas_flow(FreshGasFlow(4.0))
     branch.reset()
@@ -593,7 +593,7 @@ def test_a_branch_reset_between_a_change_and_its_undoing_holds_what_the_other_or
 
     trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
     trunk.start()
-    _advance_for(trunk, duration_s=30.0)
+    _advance_for(trunk, duration_s=30)
     trunk.pause()
 
     reset_between = trunk.resumed_here()
@@ -630,7 +630,7 @@ def test_a_dial_set_back_and_forward_again_at_the_fork_leaves_nothing_to_lose() 
 
     trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
     trunk.start()
-    _advance_for(trunk, duration_s=60.0)
+    _advance_for(trunk, duration_s=60)
     trunk.pause()
     fork_s = trunk.snapshot().elapsed_s
     trunk.set_fresh_gas_flow(FreshGasFlow(6.0))
@@ -665,13 +665,13 @@ def test_a_learner_s_first_change_on_a_branch_is_an_adjustment_of_its_own() -> N
 
     trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
     trunk.start()
-    _advance_for(trunk, duration_s=60.0)
+    _advance_for(trunk, duration_s=60)
     trunk.pause()
     fork_s = trunk.snapshot().elapsed_s
     trunk.set_fresh_gas_flow(FreshGasFlow(6.0))
     branch = trunk.resumed_at(fork_s)
     branch.start()
-    _advance_for(branch, duration_s=10.0)
+    _advance_for(branch, duration_s=10)
     branch.pause()
     branch.set_fresh_gas_flow(FreshGasFlow(8.0))
 
@@ -703,13 +703,13 @@ def test_a_reset_branch_stands_on_no_halt_it_made_after_its_fork() -> None:
     target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.4), "later")
     trunk = SimulationController()
     trunk.start()
-    _advance_for(trunk, duration_s=20.0)
+    _advance_for(trunk, duration_s=20)
     trunk.pause()
     fork_s = trunk.snapshot().elapsed_s
     branch = trunk.resumed_here()
     branch.add_mac_target(target)
     branch.start()
-    _advance_until_halted(branch, limit_s=400.0)
+    _advance_until_halted(branch, limit_s=400)
     halt = branch.snapshot().bookmark_halt
 
     assert halt is not None
@@ -746,14 +746,14 @@ def test_a_setting_kept_through_a_branch_reset_is_work_a_trunk_reset_would_lose(
         alveolar_ventilation_l_min=AlveolarVentilation(4.0),
     )
     trunk.start()
-    _advance_for(trunk, duration_s=60.0)
+    _advance_for(trunk, duration_s=60)
     trunk.pause()
     fork_s = trunk.snapshot().elapsed_s
     trunk.set_fresh_gas_flow(FreshGasFlow(6.0))
     branch = trunk.resumed_at(fork_s)
     branch.set_delivered_concentration_percent(Percent(3.0))
     branch.start()
-    _advance_for(branch, duration_s=5.0)
+    _advance_for(branch, duration_s=5)
     branch.pause()
     branch.reset()
 
@@ -797,7 +797,7 @@ def test_branch_here_opens_with_the_dials_as_they_stand() -> None:
 
     trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
     trunk.start()
-    _advance_for(trunk, duration_s=60.0)
+    _advance_for(trunk, duration_s=60)
     trunk.pause()
     fork_s = trunk.snapshot().elapsed_s
     trunk.set_fresh_gas_flow(FreshGasFlow(6.0))
@@ -817,14 +817,14 @@ def test_branch_here_opens_with_the_dials_as_they_stand() -> None:
 
     never_changed = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
     never_changed.start()
-    _advance_for(never_changed, duration_s=70.0)
+    _advance_for(never_changed, duration_s=70)
     changed_at_the_fork = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
     changed_at_the_fork.start()
-    _advance_for(changed_at_the_fork, duration_s=60.0)
+    _advance_for(changed_at_the_fork, duration_s=60)
     changed_at_the_fork.pause()
     changed_at_the_fork.set_fresh_gas_flow(FreshGasFlow(6.0))
     changed_at_the_fork.start()
-    _advance_for(changed_at_the_fork, duration_s=10.0)
+    _advance_for(changed_at_the_fork, duration_s=10)
 
     for branch, expected in (
         (under_the_change["here"], changed_at_the_fork),
@@ -832,7 +832,7 @@ def test_branch_here_opens_with_the_dials_as_they_stand() -> None:
         (set_back, never_changed),
     ):
         branch.start()
-        _advance_for(branch, duration_s=10.0)
+        _advance_for(branch, duration_s=10)
 
         _states_agree_after_the_fork(branch, expected, fork_s, steps=100)
 
@@ -855,12 +855,12 @@ def test_a_passed_mark_opens_under_the_settings_the_trunk_left_its_instant_under
 
     trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
     trunk.start()
-    _advance_for(trunk, duration_s=30.0)
+    _advance_for(trunk, duration_s=30)
     trunk.pause()
     change_s = trunk.snapshot().elapsed_s
     trunk.set_fresh_gas_flow(FreshGasFlow(6.0))
     trunk.start()
-    _advance_for(trunk, duration_s=30.0)
+    _advance_for(trunk, duration_s=30)
     trunk.pause()
     at_opening = TimeBookmark(CaseInstant(0))
     on_the_change = TimeBookmark(CaseInstant(30), "the change")
@@ -889,11 +889,11 @@ def test_a_passed_mark_opens_under_the_settings_the_trunk_left_its_instant_under
 
     never_changed = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
     never_changed.start()
-    _advance_for(never_changed, duration_s=10.0)
+    _advance_for(never_changed, duration_s=10)
 
     for mark, branch in branches.items():
         branch.start()
-        _advance_for(branch, duration_s=10.0)
+        _advance_for(branch, duration_s=10)
         expected = never_changed if mark is at_opening else trunk
 
         _states_agree_after_the_fork(branch, expected, points[mark], steps=100)

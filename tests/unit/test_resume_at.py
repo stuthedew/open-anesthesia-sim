@@ -56,13 +56,10 @@ from anesthesia_sim.core.governing_equations import (
     VENOUS_FRACTION,
 )
 from anesthesia_sim.core.run_definition import DisplayState, Keyframe, RunDefinition, RunSegment
-from anesthesia_sim.core.simulation_step import SimulationStep
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow
 from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
-
-SIMULATION_STEP_S = SimulationStep(0.1)
-"""The step every run in this file takes, and the one the app layer ships."""
 
 FRACTION_STATES: tuple[int, ...] = (
     INSPIRED_FRACTION,
@@ -92,9 +89,12 @@ fractions of an induction, and it would say nothing about a displayed digit.
 
 
 def _run(
-    steps: int = 6_000, dial_step: int = 2_000, flow_step: int = 4_000
+    duration_s: int = 600, dial_at_s: int = 200, flow_at_s: int = 400
 ) -> tuple[AgentUptakeSystem, RunDefinition]:
     """Step a sevoflurane run across two setting changes, building its definition alongside.
+
+    The run lasts ten minutes by default. The dial moves at 200 s and the
+    fresh gas flow at 400 s.
 
     The changes are applied the way `app/controller.py` applies them. The
     setter runs first, so the core has accepted the value. Then the definition
@@ -112,15 +112,15 @@ def _run(
         system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
     )
 
-    for step in range(1, steps + 1):
+    for step in range(1, duration_s // SIMULATION_STEP_S + 1):
         system.advance()
         definition.advance_to(CaseInstant(step * SIMULATION_STEP_S))
 
-        if step == dial_step:
+        if step * SIMULATION_STEP_S == dial_at_s:
             system.set_delivered_concentration_percent(Percent(0.8))
             definition.record_change(system.equation_settings())
 
-        if step == flow_step:
+        if step * SIMULATION_STEP_S == flow_at_s:
             system.set_fresh_gas_flow(FreshGasFlow(1.0))
             definition.record_change(system.equation_settings())
 
@@ -224,12 +224,12 @@ def test_a_resumed_system_steps_the_way_the_run_it_resumes_did() -> None:
 
     ahead = RunDefinition(segment.settings, opening.state, opened_at_s=CaseInstant(0))
 
-    for step in range(1, 601):
+    for step in range(1, 60 // SIMULATION_STEP_S + 1):
         system.advance()
         ahead.advance_to(CaseInstant(step * SIMULATION_STEP_S))
 
     stepped = system.state_vector()
-    closed_form = ahead.state_at(600 * SIMULATION_STEP_S)
+    closed_form = ahead.state_at(60)
 
     for entry in FRACTION_STATES:
         assert abs(stepped[entry] - closed_form[entry]) < STEPPED_AGREEMENT, (
@@ -254,7 +254,7 @@ def test_two_systems_resumed_at_one_state_step_identically() -> None:
     for system in (left, right):
         system.resume_at(segment.opening.state, initial_agent_l=0.0)
 
-        for _ in range(300):
+        for _ in range(30 // SIMULATION_STEP_S):
             system.advance()
 
     assert left.state_vector() == right.state_vector()
@@ -329,11 +329,11 @@ def test_the_accounting_anchor_is_carried_rather_than_derived() -> None:
     where a conservation error belongs.
     """
 
-    system_parent, definition = _run(steps=9_000, dial_step=3_000, flow_step=6_000)
+    system_parent, definition = _run(duration_s=900, dial_at_s=300, flow_at_s=600)
     segment = definition.segments[-1]
     opening = segment.opening
 
-    assert opening.instant_s == 600.0
+    assert opening.instant_s == 600
 
     system = _like(system_parent)
     system.resume_at(opening.state, initial_agent_l=0.0)
@@ -539,7 +539,7 @@ def test_resuming_does_not_strand_the_cached_propagator() -> None:
     cold = _like(system_parent)
     cold.resume_at(segment.opening.state, initial_agent_l=0.0)
 
-    for _ in range(200):
+    for _ in range(20 // SIMULATION_STEP_S):
         warmed.advance()
         cold.advance()
 

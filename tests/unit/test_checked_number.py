@@ -1,9 +1,9 @@
 """Test, in one place, the shared rule for what a checked type may be built from.
 
 `core/checked_number.py` sets the rule for every checked type: `Fraction`,
-`Percent`, `MacPercent`, `SimulationStep`, the three flows, `CaseInstant`,
-`StepCount`, `CompartmentVolume`, `PartitionCoefficient`, `PerfusionFraction`
-and `BloodFlow`. The rule says what a checked type may be built from, that none
+`Percent`, `MacPercent`, the three flows, `CaseInstant`, `StepCount`,
+`CompartmentVolume`, `PartitionCoefficient`, `PerfusionFraction` and
+`BloodFlow`. The rule says what a checked type may be built from, that none
 is built from another, and how a zero is stored. `BloodFlow` is built from a
 cardiac output and a perfusion fraction, where every other type is built from
 one number, so `tests/unit/test_blood_flow.py` checks what it is built from.
@@ -39,7 +39,6 @@ from anesthesia_sim.core.checked_number import (
 from anesthesia_sim.core.concentration import Fraction, MacPercent, Percent
 from anesthesia_sim.core.exceptions import AnesthesiaSimulationError
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
-from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import (
     AlveolarVentilation,
     CardiacOutput,
@@ -63,8 +62,7 @@ INSIDE_EVERY_RANGE: dict[type[Any], float] = {
     FreshGasFlow: 0.05,
     AlveolarVentilation: 0.05,
     CardiacOutput: 0.05,
-    SimulationStep: 0.05,
-    CaseInstant: 0.05,
+    CaseInstant: 1,
     Fraction: 0.05,
     Percent: 0.05,
     MacPercent: 0.05,
@@ -75,25 +73,24 @@ INSIDE_EVERY_RANGE: dict[type[Any], float] = {
 }
 """For each checked type, a number that every other type's range accepts, with one exception.
 
-0.05 is a supported step, a flow of 0.05 L/min, an instant of 0.05 s, a
-fraction of 0.05, a dial at 0.05%, a volume of 0.05 L, a partition
-coefficient of 0.05 and a perfusion fraction of 0.05. A count of one step is
-an instant of 1 s, a flow of 1 L/min, a fraction of 1.0, a dial at 1%, a
-volume of 1 L, a coefficient of 1 and a perfusion fraction of 1. So when one of
-these values, built as one type, is refused by another type, the refusal
-comes from the type and not from the number. The one exception is the step
-built from the count, because no whole number of seconds is a supported
-step. There the range would refuse 1 s too, as a
-`SimulationConfigurationError`. The `TypeError` that the pair test asserts
-is what proves that the type was checked first. The values are built inside
-each test rather than here, for the reason that `_AFloat` gives.
+0.05 is a flow of 0.05 L/min, a fraction of 0.05, a dial at 0.05%, a volume
+of 0.05 L, a partition coefficient of 0.05 and a perfusion fraction of 0.05.
+A count of one step and an instant of 1 s are each other's number, and that
+number is also a flow of 1 L/min, a fraction of 1.0, a dial at 1%, a volume
+of 1 L, a coefficient of 1 and a perfusion fraction of 1. So when one of these
+values, built as one type, is refused by another type, the refusal comes from
+the type and not from the number. The one exception is a count or an instant
+built from 0.05. Each of those two types is built from an `int` alone, so it
+would refuse a bare 0.05 too, as a `float`. That refusal is also a
+`TypeError`, in other words. The message that the pair test asserts is what
+proves that the type the value was built as was checked first. The values are
+built inside each test rather than here, for the reason that `_AFloat` gives.
 """
 
 NAMED_AS: dict[type[Any], str] = {
     FreshGasFlow: "fresh_gas_flow_l_min",
     AlveolarVentilation: "alveolar_ventilation_l_min",
     CardiacOutput: "cardiac_output_l_min",
-    SimulationStep: "simulation_step_s",
     CaseInstant: "instant_s",
     Fraction: "fraction",
     Percent: "percent",
@@ -105,8 +102,7 @@ NAMED_AS: dict[type[Any], str] = {
 }
 """The name that each constructor gives its value in a refusal.
 
-The name is the constructor's parameter, with two exceptions. The step uses
-the run's `simulation_step_s`, although its parameter is `seconds`. A
+The name is the constructor's parameter, with one exception. A
 concentration, a volume, a partition coefficient and a perfusion fraction use
 their default `name`."""
 
@@ -323,14 +319,15 @@ def test_no_checked_type_is_built_from_another_checked_quantity(
 ) -> None:
     """Every ordered pair of checked types is refused, before any comparison reads the number.
 
-    `mypy --strict` accepts each of these calls except the seven that build
-    `StepCount` from a float type. It accepts them because a checked `float`
-    is a `float`, and an `int` is accepted where a `float` is annotated. So
+    `mypy --strict` accepts each of these calls except those that build
+    `StepCount` or `CaseInstant` from a float type. It accepts them because a
+    checked `float` is a `float`, and an `int` is accepted where a `float` is
+    annotated. So
     the constructor is the only check that a slip of this kind meets. Until
     `PL-979Z`, the constructor checked the number against its own range, and
     so it stored a count of 600 steps as an instant of 600 s. The number is
     inside the range of the type being built (`INSIDE_EVERY_RANGE` names the
-    one pair where it is not). So what refuses it is the type. The refusal
+    pairs where it is not). So what refuses it is the type. The refusal
     names the parameter, the value, the type the value was built as and the
     type asked for, and it prescribes no rebuild. `Fraction` and `Percent`
     keep their own refusal of each other, which says to convert, because that
@@ -438,8 +435,7 @@ OUTSIDE_ITS_RANGE: dict[type[Any], float] = {
     FreshGasFlow: 1000.0,
     AlveolarVentilation: 1000.0,
     CardiacOutput: 1000.0,
-    SimulationStep: 5.0,
-    CaseInstant: -1.0,
+    CaseInstant: -1,
     Fraction: 1.5,
     Percent: 150.0,
     MacPercent: 150.0,

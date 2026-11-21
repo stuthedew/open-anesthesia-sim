@@ -4,13 +4,11 @@ This file is regression cover for the first half of PL-018. A step that broke do
 raise a bare `ValueError` from deep inside a compartment. A caller could not tell that error
 apart from a programming error, and so could not act on it.
 
-It also covers PL-VP7N, which added the other half of the same distinction. A step larger
-than `MAXIMUM_SIMULATION_STEP_S` is refused as a configuration error before the step begins.
-Since PL-GS5X, that bound is the longest interval over which settings are held constant,
-not a limit of numerical applicability, and the refusal it produces is unchanged. PL-YZ17
-gives the step a lower bound, `MINIMUM_SIMULATION_STEP_S`, which is refused the same way
-for a different reason. The lower bound is numerical: it is the finest step at which the
-solution has been shown to be the shipped one.
+PL-VP7N added the other half of the same distinction. A step outside the supported range
+was refused as a configuration error before the step began. Since `PL-SZ6G` the system
+takes one step, `SIMULATION_STEP_S`, and a caller cannot hand in another. So the tests
+here check that a step handed in is refused and changes nothing. A compartment stepped on
+its own still takes a step of any supported length.
 
 PL-0MLQ applies the same distinction to the four controls that a user sets. A setting
 outside `core/supported_ranges.py` is refused by the compartment it belongs to, which is
@@ -42,7 +40,7 @@ compartments. So a compartment that reset to anything other than empty would lea
 residual check reporting a failure against a run that is perfectly accounted for.
 """
 
-from math import inf, nan, nextafter
+import re
 
 import pytest
 
@@ -71,11 +69,7 @@ from anesthesia_sim.core.governing_equations import (
 )
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
 from anesthesia_sim.core.simulation import SimulationState
-from anesthesia_sim.core.simulation_step import (
-    MAXIMUM_SIMULATION_STEP_S,
-    MINIMUM_SIMULATION_STEP_S,
-    SimulationStep,
-)
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
 from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
@@ -86,7 +80,7 @@ from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 # comparison vacuous, because every value it had to preserve would be 0.0, and PL-026's
 # regression cover exists to avoid exactly that failure mode. 60 s of run leaves all
 # eight dynamic values distinct and nonzero.
-STEPS_BEFORE_FAILURE = 600
+STEPS_BEFORE_FAILURE = 60
 
 # The full text of the armed fat group's refusal.
 #
@@ -239,7 +233,7 @@ def test_a_failed_step_names_the_step_and_keeps_the_failing_guard() -> None:
     with pytest.raises(SimulationNumericalError) as raised:
         system.advance()
 
-    assert f"{MAXIMUM_SIMULATION_STEP_S} s" in str(raised.value)
+    assert "the simulation step of 1 s could not be completed" in str(raised.value)
     assert FAT_REFUSAL_TEXT in str(raised.value)
 
     cause = raised.value.__cause__
@@ -297,8 +291,16 @@ def test_rounding_can_carry_a_saturated_fraction_above_one(
     """The Metzler argument bounds a fraction below, not above (`PL-PM67`).
 
     Every compartment at 1.0 under a 100% dial is the exact equilibrium, yet one step rounds
-    a tissue fraction to 1.0000000000000002. The step is refused and rolled back. So the
-    documents claim only the lower bound, and this test keeps that claim honest.
+    a fraction above 1. The step is refused and rolled back. So the documents claim only the
+    lower bound, and this test keeps that claim honest.
+
+    Which fraction is refused, and how far above 1 it is, depends on the agent and on the
+    step. At the one-second step it is the inspired fraction, the first one written:
+    1.000000000000001 for sevoflurane, 1.0000000000000004 for isoflurane and
+    1.0000000000000002 for desflurane (measured 2026-11-21). The test does not pin those
+    digits, because they are rounding error and no calculation other than the step itself
+    gives them. It checks that the refused value is above 1 by no more than the
+    propagator's rounding error.
 
     No supported input reaches this state. No shipped vaporizer maximum reaches 100%, and
     since `PL-9B1M` the coupled model refuses a dial above 99%. So the test widens both
@@ -315,9 +317,16 @@ def test_rounding_can_carry_a_saturated_fraction_above_one(
     system.resume_at(tuple(saturated), initial_agent_l=0.0)
     before = system.capture_state()
 
-    with pytest.raises(SimulationNumericalError, match="of 1.0000000000000002 is outside 0 to 1"):
+    with pytest.raises(SimulationNumericalError) as raised:
         system.advance()
 
+    refused = re.search(r"fraction of (\S+) is outside 0 to 1", str(raised.value))
+
+    assert refused is not None, raised.value
+    # A numerical limit. The propagator's rounding error was measured at 1e-14 to 2e-12 of a
+    # fraction across the settings envelope (`core/simulation_step.py`, `PL-X9KD`). The
+    # limit is about 9 000 times the spacing of floats at 1, which is 2.2e-16.
+    assert 1.0 < float(refused.group(1)) <= 1.0 + 2e-12
     assert system.capture_state() == before
 
 
@@ -414,57 +423,40 @@ def test_every_compartment_holding_a_fraction_names_itself_refusing_a_bare_float
     assert len(set(messages.values())) == len(messages), messages
 
 
-def test_a_step_above_the_maximum_simulation_step_is_refused() -> None:
-    """The defect PL-VP7N fixes: a 30 s step used to return a plausible number.
+def test_the_system_cannot_be_asked_for_a_step_of_another_length() -> None:
+    """A step handed to `advance` is refused, and the run is left untouched.
 
-    The refusal is a configuration error rather than a numerical one, and the difference is
-    the whole point. Nothing has been miscalculated, because the argument was refused. So a
-    caller holds a run it can still trust, and it can retry with a supported step. Reporting
-    the refusal as a numerical failure would tell that caller to throw away state that is
-    fine.
+    The defect that PL-VP7N fixed was a 30 s step that returned a plausible number. The
+    system then refused a step outside a supported range. Since `PL-SZ6G` it takes the
+    one-second step and no other, so `advance` has no parameter for a step. The refusal is
+    Python's own `TypeError`, raised before the step begins. It is not a numerical failure,
+    and the difference is the whole point. Nothing has been miscalculated, so the caller
+    holds a run that it can still trust and go on stepping.
     """
 
     system = _sevoflurane_at_one_mac()
-
-    with pytest.raises(SimulationConfigurationError, match="largest supported step") as raised:
-        system.advance(SimulationStep(30.0))
-
-    assert not isinstance(raised.value, SimulationNumericalError)
-
-
-def test_a_refused_maximum_simulation_step_leaves_the_run_untouched() -> None:
-    """A refused step must not have moved the system part of the way."""
-
-    system = _sevoflurane_at_one_mac()
     system.advance()
-    before = system.total_stored_agent_l
+    before = system.capture_state()
 
-    with pytest.raises(SimulationConfigurationError):
-        system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S * 2.0))
+    for simulation_step_s in (30.0, 0.1, 1, 1.0):
+        with pytest.raises(TypeError, match="advance") as raised:
+            system.advance(simulation_step_s)  # type: ignore[call-arg]
 
-    assert system.total_stored_agent_l == before
+        assert not isinstance(raised.value, AnesthesiaSimulationError)
+        assert system.capture_state() == before
+
     assert system.agent_simulation_validation.passes_validation
+    assert system.advance().agent_accounting.passes_validation
 
 
-def test_the_maximum_simulation_step_itself_is_accepted() -> None:
-    """The domain is closed at its endpoint, which is the step that ships."""
+def test_the_run_s_one_second_step_does_not_bind_a_bare_compartment() -> None:
+    """The one-second step belongs to the coupled system, not to any one compartment.
 
-    system = _sevoflurane_at_one_mac()
-
-    result = system.advance()
-
-    assert result.fresh_gas_exchange.delivered_agent_l > 0.0
-    assert result.agent_accounting.passes_validation
-
-
-def test_the_maximum_simulation_step_does_not_bind_a_bare_compartment() -> None:
-    """The bound belongs to the coupled system, not to any one compartment.
-
-    The bound states how long settings may be held constant, which is a property of a step
-    that the whole system takes. A compartment advanced alone against a fixed input has no
+    The step states how long settings are held constant, which is a property of a step that
+    the whole system takes. A compartment advanced alone against a fixed input has no
     settings to hold. `tests/unit/test_circuit.py` steps a circuit on its own by 60 s and
-    compares it against the analytic solution. Putting the guard on a compartment would
-    break that test, and it would also misstate what the bound is about.
+    compares it against the analytic solution. Fixing a compartment's step at one second
+    would break that test, and it would also misstate what the step is about.
     """
 
     circuit = BreathingCircuit(
@@ -474,70 +466,11 @@ def test_the_maximum_simulation_step_does_not_bind_a_bare_compartment() -> None:
     )
     step_s = 60.0
 
-    assert step_s > MAXIMUM_SIMULATION_STEP_S
+    assert step_s > SIMULATION_STEP_S
 
     circuit.advance_fresh_gas(step_s)
 
     assert circuit.inspired_partial_pressure_fraction > 0.0
-
-
-@pytest.mark.parametrize(
-    "simulation_step_s", [nextafter(MINIMUM_SIMULATION_STEP_S, 0.0), 1e-6, 1e-14, 5e-324]
-)
-def test_a_step_below_the_minimum_simulation_step_is_refused_and_changes_nothing(
-    simulation_step_s: float,
-) -> None:
-    """Each of these steps used to be taken, until PL-YZ17 declared a lower bound.
-
-    At 1e-14 s, rounding made what the step changed wrong by about a third, and the result
-    was returned as an ordinary step. A step of 5e-324 s, the smallest positive float, was
-    taken too. The refusal is a configuration error raised before the step begins, as the
-    upper bound's refusal is. So the run that the caller holds is the one it had. The
-    message says which step was refused and where the lower bound is argued.
-    """
-
-    system = _sevoflurane_at_one_mac()
-    system.advance()
-    before = system.capture_state()
-
-    with pytest.raises(SimulationConfigurationError, match="smallest supported step") as raised:
-        system.advance(SimulationStep(simulation_step_s))
-
-    assert not isinstance(raised.value, SimulationNumericalError)
-    assert system.capture_state() == before
-    assert f"{simulation_step_s} s" in str(raised.value)
-    assert '"Supported simulation step"' in str(raised.value)
-
-
-def test_the_minimum_simulation_step_itself_is_accepted() -> None:
-    """The domain is closed at its lower bound, as it is at its upper bound."""
-
-    system = _sevoflurane_at_one_mac()
-
-    result = system.advance(SimulationStep(MINIMUM_SIMULATION_STEP_S))
-
-    assert result.fresh_gas_exchange.delivered_agent_l > 0.0
-    assert result.agent_accounting.passes_validation
-
-
-@pytest.mark.parametrize("simulation_step_s", [0.0, -0.1, inf, nan])
-def test_an_invalid_step_is_a_configuration_error_and_changes_nothing(
-    simulation_step_s: float,
-) -> None:
-    """A bad argument is rejected before the step starts, so state is intact.
-
-    This is the case that must *not* be reported as a numerical failure:
-    nothing was miscalculated, so a caller has no reason to distrust the
-    state it already has.
-    """
-
-    system = _sevoflurane_at_one_mac()
-    before = system.total_stored_agent_l
-
-    with pytest.raises(SimulationConfigurationError, match="simulation_step_s"):
-        system.advance(SimulationStep(simulation_step_s))
-
-    assert system.total_stored_agent_l == before
 
 
 def test_a_rejected_setting_stays_a_configuration_error() -> None:
@@ -752,7 +685,7 @@ def test_a_failed_step_says_it_was_rolled_back_and_names_the_invariant() -> None
 
     assert "rolled back" in message
     assert "last completed step" in message
-    assert f"{MAXIMUM_SIMULATION_STEP_S} s" in message
+    assert "the simulation step of 1 s could not be completed" in message
     assert FAT_REFUSAL_TEXT in message
 
 
@@ -823,7 +756,7 @@ def test_a_failed_step_s_restated_refusal_is_pinned_whole() -> None:
     """The whole failure reason the "Simulation stopped" banner shows for a failed step.
 
     The test above matches phrases of the message, so it still passes when the step, the
-    rollback clause or a flow is wrong (`PL-79PK`). The step is the 0.1 s that the interface
+    rollback clause or a flow is wrong (`PL-79PK`). The step is the one second that every run
     takes. The tissue flows sum to 6.0 L/min against a cardiac output of 5.0 L/min, as
     above.
     """
@@ -836,7 +769,7 @@ def test_a_failed_step_s_restated_refusal_is_pinned_whole() -> None:
         system.advance()
 
     assert str(raised.value) == (
-        "the simulation step of 0.1 s could not be completed and was rolled back, leaving "
+        "the simulation step of 1 s could not be completed and was rolled back, leaving "
         "the state the last completed step produced: the tissue groups are perfused at "
         "6.0 L/min in total but cardiac output is 5.0 L/min; the venous balance returns "
         "what the tissues receive, so the two must agree"
@@ -938,7 +871,7 @@ def test_changing_circuit_volume_mid_run_does_not_break_the_next_step() -> None:
     The defect was reproduced against the shipped code before the fix. A sevoflurane system
     stepped for 60 s held agent in the circuit. `set_circuit_volume(3.0)` left exactly half
     of that agent, so a setter destroyed about 24 mL of equivalent agent gas. The next
-    `advance(0.1)` then raised `AgentSimulationValidationError`.
+    step then raised `AgentSimulationValidationError`.
 
     That failure mode is the reason this test belongs with the other failure tests, and not
     only with the circuit's unit tests. The step that failed was correct. What was wrong
@@ -952,7 +885,7 @@ def test_changing_circuit_volume_mid_run_does_not_break_the_next_step() -> None:
 
     system = _sevoflurane_at_one_mac()
 
-    for _ in range(600):
+    for _ in range(60 // SIMULATION_STEP_S):
         system.advance()
 
     circuit_agent_before_l = system.circuit.agent_amount_l
@@ -1053,7 +986,7 @@ def test_reset_still_anchors_at_zero_when_every_compartment_clears() -> None:
 
     system = _sevoflurane_at_one_mac()
 
-    for _ in range(100):
+    for _ in range(10 // SIMULATION_STEP_S):
         system.advance()
 
     assert system.total_stored_agent_l > 0.0
@@ -1098,7 +1031,7 @@ class _TissueGroupThatCanUnwindNonlocally(TissueGroup):
         super().set_partial_pressure_fraction(partial_pressure_fraction)
 
 
-def _a_run_that_can_unwind_nonlocally(steps_first: int = 100) -> AgentUptakeSystem:
+def _a_run_that_can_unwind_nonlocally(steps_first: int = 10) -> AgentUptakeSystem:
     """Return a sevoflurane run whose fat group can be armed to unwind."""
 
     system = _sevoflurane_at_one_mac()
