@@ -27,7 +27,7 @@ denied (`--permission-mode auto --permission-prompts none`), so nothing waits
 on a person and the classifier still reviews each action. Where auto mode is
 unavailable, as for a model that does not support it, Claude Code starts in
 Manual instead and every prompt is denied; the `denials` count in the run's
-record and its log shows that
+log shows that
 (https://code.claude.com/docs/en/permission-modes, read 2026-10-19).
 
 **The model and effort come from the project's one table.** Each run asks
@@ -38,19 +38,9 @@ sessions' (`PL-4N0K`). Without `--effort` every run took Opus 5.5's default,
 `medium` (`PL-KFJY`). `--model` still overrides the model for one batch, as a
 trial needs.
 
-**`--no-push` is enforced, not asked for.** `PL-6FX6`'s trial runs Sonnet and
-Haiku copies of an item whose work must never leave the machine. The clone's
-push URL is set to a name no remote answers to, so a push fails whatever the
-worker does.
-
-**A pushed run commits its record to its branch.** After a run whose branch
-reached the remote, the runner writes the run's record with
-`tools/worker_runs.py`, commits it as `<id>: record the headless run` and
-pushes it. The reviewing session adds the review's outcome, and `make check`
-fails until it does, so the repository says which items a headless worker did
-and how their reviews went (`PL-87BR`). The record is committed only where the
-clone's `HEAD` is the pushed branch, so nothing the worker left unpushed is
-published with it.
+**`--no-push` is enforced, not asked for.** A batch run with it keeps its
+work on the machine: the clone's push URL is set to a name no remote answers
+to, so a push fails whatever the worker does.
 
 **A clone is removed once nothing in it is only on this machine.** A run
 that succeeded and pushed its branch, where the remote's branch is the
@@ -122,7 +112,6 @@ from docket.vcs import REMOTE, call_git, default_base, is_shallow, read_git  # n
 
 sys.path.insert(0, str(ROOT / "tools"))
 
-import worker_runs  # noqa: E402
 from doc_check import GNU_MAKE_FLOOR  # noqa: E402
 from open_pull_requests import origin_url  # noqa: E402
 
@@ -185,10 +174,6 @@ class Run:
     cache_read_tokens: int | None = None
     cache_write_tokens: int | None = None
     output_tokens: int | None = None
-    #: The record committed to the branch, as a path in the repository.
-    record: str | None = None
-    #: Why a pushed run's record could not be committed and pushed.
-    record_failure: str | None = None
 
 
 def child_environment(environ: Mapping[str, str]) -> dict[str, str]:
@@ -541,9 +526,6 @@ def work(
         cache_write_tokens=whole(usage.get("cache_creation_input_tokens")),
         output_tokens=whole(usage.get("output_tokens")),
     )
-    if tip is not None:
-        run = commit_record(run, clone, tip)
-        tip = remote_tip(clone, branch)
     removed = reason is None and only_on_remote(clone, tip)
     if removed:
         shutil.rmtree(clone)
@@ -557,30 +539,6 @@ def whole(value: object) -> int | None:
     Messages API's (https://platform.claude.com/docs/en/api/messages, `usage`).
     """
     return value if isinstance(value, int) and not isinstance(value, bool) else None
-
-
-def commit_record(run: Run, clone: Path, tip: str) -> Run:
-    """Commit the run's record to its branch and push it, or say why that failed.
-
-    Only where the clone's `HEAD` is the pushed `tip`, so a commit the worker
-    left unpushed is never published by the runner.
-    """
-    head = call_git(["rev-parse", "HEAD"], clone)
-    if head.code != 0 or head.answer.strip() != tip:
-        return replace(run, record_failure="the clone's HEAD is not the branch it pushed")
-    path = worker_runs.write(clone, {name: getattr(run, name) for name in worker_runs.RUN_FIELDS})
-    relative = path.relative_to(clone).as_posix()
-    message = f"{run.item}: record the headless run"
-    for args in (
-        ["add", "--", relative],
-        ["commit", "-q", "-m", message, "--", relative],
-        ["push", "-q", REMOTE, f"HEAD:refs/heads/{run.branch}"],
-    ):
-        # The push goes to GitHub, which can take longer than git's local default.
-        call = call_git(args, clone, timeout=CLONE_TIMEOUT_S)
-        if call.code != 0:
-            return replace(run, record_failure=" ".join(call.reason.split())[:300])
-    return replace(run, record=relative)
 
 
 def failure_reason(
@@ -607,10 +565,6 @@ def describe(run: Run) -> str:
         f"{run.item} on {run.model} at {run.effort} effort: "
         f"{outcome}, {cost}, {where}, {run.branch}, {kept}"
     )
-    if run.record:
-        line += f"\n  record: {run.record}, to review before the branch merges"
-    elif run.record_failure:
-        line += f"\n  no record committed: {run.record_failure}"
     return f"{line}\n  why: {run.reason}" if run.reason else line
 
 

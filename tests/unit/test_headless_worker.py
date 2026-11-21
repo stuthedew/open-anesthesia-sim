@@ -195,35 +195,14 @@ def test_a_pushed_run_removes_its_clone_and_a_failed_run_keeps_it(
     assert ("clone removed, log in" in line, kept in line) == (removed, not removed)
 
 
-def test_a_pushed_run_commits_its_record_to_its_branch_for_review(
+def test_a_run_that_left_a_commit_unpushed_keeps_its_clone(
     origin: Path, fake_claude: Path, tmp_path: Path
 ) -> None:
-    """Nothing in the repository said which items a headless worker did (`PL-87BR`)."""
-    run = _work(origin, fake_claude, tmp_path, no_push=False)
-    stamp = run.started[:19].replace("-", "").replace(":", "")
-    assert run.record == f"docs/worker-runs/pl-b7k2-worker-{stamp}.json"
-    checkout = tmp_path / "checkout"
-    _git("clone", "-q", "-b", run.branch, str(origin), str(checkout), cwd=tmp_path)
-    subject = _git("log", "-1", "--format=%s", cwd=checkout).strip()
-    assert subject == "PL-B7K2: record the headless run"
-    record = json.loads((checkout / run.record).read_text(encoding="utf-8"))
-    assert record["review"] is None
-    assert "clone" not in record
-    assert (record["cost_usd"], record["effort"], record["turns"]) == (3.25, "high", 12)
-    tokens = ("input_tokens", "cache_read_tokens", "cache_write_tokens", "output_tokens")
-    assert [record[name] for name in tokens] == [40, 9000, 700, 1200]
-    assert f"record: {run.record}" in headless_worker.describe(run)
-
-
-def test_a_record_is_not_committed_over_work_the_worker_left_unpushed(
-    origin: Path, fake_claude: Path, tmp_path: Path
-) -> None:
-    """Pushing the record would also have published the worker's unpushed commit."""
+    """The unpushed commit exists only in the clone, so removing it would lose it."""
     run = _work(origin, fake_claude, tmp_path, no_push=False, output="unpushed")
-    assert run.record is None
-    assert run.record_failure == "the clone's HEAD is not the branch it pushed"
+    assert run.pushed
     assert not run.removed
-    assert "no record committed" in headless_worker.describe(run)
+    assert Path(run.clone).is_dir()
 
 
 def test_a_checkout_that_is_a_linked_worktree_can_still_clone(

@@ -16,13 +16,6 @@ items_dir = "docs/items"
 # tool's.
 notes_file = "docs/WORKING_NOTES.md"
 
-# Where the headless worker runner commits one record per run (`PL-87BR`).
-# `docket verify` treats a record the branch added here, naming the item under
-# review, as a sanctioned edit (`PL-4WFK`), and `tools/worker_runs.py` reads
-# the folder from this line, so it is spelled once. Not a package default, for
-# the reason `notes_file` gives.
-worker_runs_dir = "docs/worker-runs"
-
 # Subject matter that may not sit in the lower bands however small the task
 # looks, per CLAUDE.md's safety-critical standard.
 safety_classes = ["safety", "science"]
@@ -337,7 +330,6 @@ workflow_paths = [
   "docs/session-ledger.tsv",
   "docs/stress-2026-09-25",
   "docs/worker.md",
-  "docs/worker-runs",
   "docs/hook-blocks",
   "model-evidence.toml",
   "bin",
@@ -371,7 +363,6 @@ workflow_paths = [
   "tests/unit/test_glyph_check.py",
   "tests/unit/test_headless_worker.py",
   "tests/unit/test_hook_blocks.py",
-  "tests/unit/test_worker_runs.py",
   "tests/unit/test_type_ignore_check.py",
   "tests/unit/test_main_ci_status.py",
   "tests/unit/test_model_doc_review.py",
