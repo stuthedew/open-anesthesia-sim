@@ -3,12 +3,14 @@ id: PL-TPXK
 title: Review the four streamlining decisions of 2026-11-20 independently, and put the corrected whole-second stepping facts back to the owner
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: housekeeping
 feature: standing-weight
 touches: docs/items
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science; it reviews how four workflow and design decisions were recorded, so the release does not wait on it
 added: 2026-11-21
+closed: 2026-11-21
+pr: 2180
 ---
 
 **Problem.** Review the four streamlining decisions of 2026-11-20 independently, and put the corrected whole-second stepping facts back to the owner
@@ -85,6 +87,8 @@ added: 2026-11-21
 **Decision needed.** Should runs still be computed at whole seconds, now that the figures are corrected? The choice is the owner's, because it changes what a learner sees at 1x and 5x, and because the owner ratified it on the wrong figures. The build of `PL-SZ6G` continues on whole-second time while the question is open, and it publishes no text about 1x or 5x until the answer.
 
 **Recommendation: keep whole seconds.** The corrected figures change how large the cost is and not which design is better. The run a learner sees is still exact for the changes as recorded, the fastest time constant of the model is 6 s, and the worst figure needs an 18% desflurane dial with the ventilator off for five minutes. Tenths of a second keep today's timing at 1x and 5x, and cost ten times the memory and time: 62 MB and about 4 s for each 24-hour run.
+
+**Answered 2026-11-21: keep whole seconds** (project owner, 2026-11-21, ratified, over tenths of a second at every rate). The owner answered "Agree with recs" at 16:56 UTC on the decision card that showed the corrected figures. The build of `PL-SZ6G` (whole-second time) may now publish its text about 1x and 5x.
 
 **Done when.** The owner has answered on the corrected figures, and the answer is recorded here and beside `PL-7CY5`'s recorded answer.
 
