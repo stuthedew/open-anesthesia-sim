@@ -239,7 +239,6 @@ from test_published_wash_in_and_elimination import (
     MODELLED_ELIMINATION_RATIOS,
     OPEN_CIRCUIT_ELIMINATION_RATIOS,
     PUBLISHED_MEASUREMENTS,
-    SIMULATION_STEP_S,
     WASH_IN_DURATION_S,
     PublishedMeasurement,
     _configured_system,
@@ -250,6 +249,7 @@ from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValid
 from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.numerical_envelope import PartitionCoefficient
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import MAXIMUM_STEP_COUNT
 from anesthesia_sim.core.units import MINUTES_PER_HOUR, SECONDS_PER_MINUTE
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
