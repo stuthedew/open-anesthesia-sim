@@ -341,13 +341,20 @@ class Preferences:
             ),
         )
 
+    @property
+    def holds_refused_entries(self) -> bool:
+        """Whether any entry refused when the file was read is still kept."""
+
+        return bool(self.refused_prices) or self.refused_unit is not None
+
     def without_refused_entries(self) -> Preferences:
         """Return these preferences with every refused entry discarded.
 
-        The interface offers this so that the reader can clear a refused entry
-        that no new value replaces, such as a price entry that names no agent.
-        Without it, such an entry would be written back at every save and
-        named in the notice at every launch.
+        The agent cost View offers this beside the notice that names the
+        refused entries, and asks the reader to confirm it (`PL-7KXN`). It lets
+        the reader clear a refused entry that no new value replaces, such as a
+        price entry that names no agent. Without it, such an entry would be
+        written back at every save and named in the notice at every launch.
         """
 
         return replace(self, refused_prices=(), refused_unit=None)

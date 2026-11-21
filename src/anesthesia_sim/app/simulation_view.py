@@ -654,6 +654,7 @@ class SimulationView(QWidget):
             compartment=self._handle_compartment_request,
             agent_cost_unit=self._handle_agent_cost_unit_request,
             agent_price=self._handle_agent_price_request,
+            refused_entries_discard=self._handle_refused_entries_discard_request,
             adjustment_start=self._handle_adjustment_start_request,
             setting=self._handle_setting_request,
             preview=self._handle_preview_request,
@@ -2174,6 +2175,16 @@ class SimulationView(QWidget):
             )
 
         self._change_preferences(self._preferences.with_price(price))
+
+    @halt_gate
+    def _handle_refused_entries_discard_request(self) -> None:
+        """Discard every refused entry of the preferences file, save, and draw at once.
+
+        The save then writes the file without them, so the next launch names
+        none of them. Every price and the unit in force are kept (`PL-7KXN`).
+        """
+
+        self._change_preferences(self._preferences.without_refused_entries())
 
     def _change_preferences(self, preferences: Preferences) -> None:
         """Put `preferences` in force, save them, and draw at once.

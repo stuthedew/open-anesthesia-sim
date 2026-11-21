@@ -27,7 +27,7 @@ from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QLabel, QLineEdit
 
 from anesthesia_sim.app import simulation_view as simulation_view_module
-from anesthesia_sim.app.agent_cost import NO_PRICE_TEXT
+from anesthesia_sim.app.agent_cost import DISCARD_REFUSED_WARNING, NO_PRICE_TEXT
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import (
     INTERPRETATION_DISCLAIMER_TEXT,
@@ -1061,3 +1061,102 @@ def test_filling_the_form_again_forgets_that_the_date_was_edited(application: QA
 
     assert entry.applies_on_edit.date() == QDate(2026, 1, 2)
     assert not entry.date_moved.isHidden()
+
+
+# --- discarding the refused entries of the preferences file (`PL-7KXN`) ---------
+
+_NAMELESS_PRICE = {key: value for key, value in _REFUSED_PRICE.items() if key != "agent"}
+
+
+def _refused_file(directory: Path) -> None:
+    """Write a preferences file whose one price names no agent, so no new price replaces it."""
+
+    (directory / PREFERENCES_FILE_NAME).write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "agent_cost_unit": "millilitres of liquid",
+                "agent_prices": [_NAMELESS_PRICE],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+def test_the_reader_can_discard_refused_entries_and_the_next_launch_names_none(
+    application: QApplication, shown: list[SimulationView], tmp_path: Path
+) -> None:
+    """The discard is asked for under the notice, confirmed there, and saved at once."""
+
+    _refused_file(tmp_path)
+    view = _dashboard(application, shown, SimulationController(), directory=tmp_path)
+    (cost_view,) = _cost_views(view)
+    discard = cost_view.refused_discard
+
+    assert "agent_prices[0]" in cost_view.preferences_notice.text()
+    assert not discard.isHidden()
+    assert not discard.offer_button.isHidden()
+    assert discard.warning.isHidden()
+    assert discard.discard_button.isHidden()
+    assert discard.keep_button.isHidden()
+
+    discard.offer_button.click()
+
+    assert discard.offer_button.isHidden()
+    assert discard.warning.text() == DISCARD_REFUSED_WARNING
+    assert not discard.warning.isHidden()
+    assert not discard.discard_button.isHidden()
+    assert not discard.keep_button.isHidden()
+
+    view.present(True)
+
+    assert not discard.warning.isHidden()
+    assert PreferencesStore(tmp_path).load().preferences.holds_refused_entries
+
+    discard.discard_button.click()
+
+    assert cost_view.preferences_notice.isHidden()
+    assert discard.isHidden()
+    assert discard.warning.isHidden()
+
+    loaded = PreferencesStore(tmp_path).load()
+
+    assert loaded.notice is None
+    assert not loaded.preferences.holds_refused_entries
+
+    relaunched = _dashboard(application, shown, SimulationController(), directory=tmp_path)
+    (cost_view,) = _cost_views(relaunched)
+
+    assert cost_view.preferences_notice.isHidden()
+    assert cost_view.refused_discard.isHidden()
+
+
+def test_keeping_the_refused_entries_changes_nothing(
+    application: QApplication, shown: list[SimulationView], tmp_path: Path
+) -> None:
+    _refused_file(tmp_path)
+    before = (tmp_path / PREFERENCES_FILE_NAME).read_text(encoding="utf-8")
+    view = _dashboard(application, shown, SimulationController(), directory=tmp_path)
+    (cost_view,) = _cost_views(view)
+    discard = cost_view.refused_discard
+    discard.offer_button.click()
+    discard.keep_button.click()
+
+    assert not discard.offer_button.isHidden()
+    assert discard.warning.isHidden()
+    assert discard.discard_button.isHidden()
+    assert "agent_prices[0]" in cost_view.preferences_notice.text()
+    assert (tmp_path / PREFERENCES_FILE_NAME).read_text(encoding="utf-8") == before
+
+
+def test_no_discard_is_offered_while_no_entry_is_refused(
+    application: QApplication, shown: list[SimulationView], tmp_path: Path
+) -> None:
+    view = _dashboard(application, shown, SimulationController(), directory=tmp_path)
+    (cost_view,) = _cost_views(view)
+
+    assert cost_view.refused_discard.isHidden()
+
+    _enter_price(cost_view, "isoflurane", "20.47", "100", "USD", date(2008, 3, 5))
+
+    assert cost_view.refused_discard.isHidden()

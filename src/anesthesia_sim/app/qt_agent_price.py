@@ -15,12 +15,16 @@ The form only asks for a change, through `ViewRequests.agent_price`. The
 dashboard holds the prices and saves them, so every agent cost View prices
 its runs at the same price. Every label and the layout are placeholders until
 the visual pass (`ROADMAP.md`, planned-milestone item 33).
+
+`RefusedEntriesDiscard` is the View's offer to discard the entries of the
+preferences file that were refused when the file was read (`PL-7KXN`).
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import date
+from functools import partial
 from typing import Final
 
 from PySide6.QtCore import QDate, QSignalBlocker
@@ -34,7 +38,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from anesthesia_sim.app.agent_cost import entry_date, price_from_entry
+from anesthesia_sim.app.agent_cost import (
+    DISCARD_REFUSED_CONFIRM_LABEL,
+    DISCARD_REFUSED_KEEP_LABEL,
+    DISCARD_REFUSED_LABEL,
+    DISCARD_REFUSED_WARNING,
+    entry_date,
+    price_from_entry,
+)
 from anesthesia_sim.app.display_units import DisplayUnit
 from anesthesia_sim.app.formatting import format_entered_figure
 from anesthesia_sim.app.preferences import AgentPrice, Preferences
@@ -55,7 +66,7 @@ from anesthesia_sim.app.theme import (
 )
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 
-__all__ = ["PRICE_ENTRY_HEADING", "PriceEntry"]
+__all__ = ["PRICE_ENTRY_HEADING", "PriceEntry", "RefusedEntriesDiscard"]
 
 #: The form's heading, and the labels of its fields and buttons. Every one is
 #: a placeholder. The bottle volume's label names its unit, so the reader is less
@@ -320,6 +331,81 @@ class PriceEntry(QWidget):
 
         self._show_refusal(None)
         self._request(self.agent_id, None)
+
+
+class RefusedEntriesDiscard(QWidget):
+    """The offer to discard the refused entries of the preferences file, and its question.
+
+    A refused entry is written back at every save and named at every launch
+    until the reader replaces it. An entry that names no agent can be replaced
+    by nothing, so this offer is the reader's way to clear it. The discard
+    cannot be undone, so the reader confirms it first. Pressing the offer
+    replaces it, in its own place, with a warning and two buttons. Nothing opens
+    over the View's values, and the run goes on. The button that keeps the
+    entries takes the keyboard focus, so a press made without reading keeps
+    them.
+
+    Args:
+        request: Asks the dashboard to discard every refused entry.
+    """
+
+    def __init__(self, request: Callable[[], None]) -> None:
+        super().__init__()
+        self._request = request
+        self.offer_button = QPushButton(DISCARD_REFUSED_LABEL)
+        self.offer_button.setStyleSheet(outlined_button_stylesheet())
+        self.offer_button.clicked.connect(partial(self._ask, True))
+        self.warning = styled_label(
+            DISCARD_REFUSED_WARNING, color=WARNING, size_px=METRIC_QUALIFIER_SIZE, wrap=True
+        )
+        self.discard_button = QPushButton(DISCARD_REFUSED_CONFIRM_LABEL)
+        self.discard_button.setStyleSheet(outlined_button_stylesheet())
+        self.discard_button.clicked.connect(self._handle_discard)
+        self.keep_button = QPushButton(DISCARD_REFUSED_KEEP_LABEL)
+        self.keep_button.setStyleSheet(filled_button_stylesheet())
+        self.keep_button.clicked.connect(partial(self._ask, False))
+        buttons = QHBoxLayout()
+        buttons.setSpacing(VIEW_HEADING_SPACING)
+        buttons.addWidget(self.offer_button)
+        buttons.addWidget(self.discard_button)
+        buttons.addWidget(self.keep_button)
+        buttons.addStretch(1)
+        column = QVBoxLayout(self)
+        column.setContentsMargins(0, 0, 0, 0)
+        column.setSpacing(VIEW_ROW_SPACING)
+        column.addWidget(self.warning)
+        column.addLayout(buttons)
+        self._ask(False)
+        self.setHidden(True)
+
+    def show_offer(self, offered: bool) -> None:
+        """Show the offer while a refused entry is kept, and withdraw it once none is.
+
+        An open question is left open while the offer still applies, so a frame
+        drawn while the reader reads the warning does not close it.
+        """
+
+        if not offered:
+            self._ask(False)
+
+        self.setHidden(not offered)
+
+    def _ask(self, asking: bool) -> None:
+        """Show the question in place of the offer, or the offer in place of the question."""
+
+        self.offer_button.setHidden(asking)
+
+        for part in (self.warning, self.discard_button, self.keep_button):
+            part.setHidden(not asking)
+
+        if asking:
+            self.keep_button.setFocus()
+
+    def _handle_discard(self) -> None:
+        """Close the question and ask for the refused entries to be discarded."""
+
+        self._ask(False)
+        self._request()
 
 
 def _fill_key(preferences: Preferences, agent_id: str) -> tuple[str, AgentPrice | None, bool]:

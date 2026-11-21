@@ -1163,7 +1163,9 @@ specifies what a price carries and what is refused. The project ships no price.
   place. A refused unit falls back to millilitres of liquid. Either way, the
   notice says what was refused and why. Until the reader replaces a refused
   entry, each save writes it back unchanged, and the agent cost View shows the
-  notice about it.
+  notice about it. Under the notice, the View offers to discard every refused
+  entry (`ViewRequests.refused_entries_discard`). The reader confirms the
+  discard first, because it cannot be undone (`PL-7KXN`).
 - **Who uses the preferences.** The dashboard holds the preferences, as it
   holds the compartment selection. It passes them to every View in each tick
   (`ViewTick`). Only the agent cost View uses them (`PL-B396`). It asks the
@@ -1171,8 +1173,9 @@ specifies what a price carries and what is refused. The project ships no price.
   cost Views always show the same unit.
 - **When the file is written.** The preferences store writes the whole file when
   asked (`PreferencesStore.save`). The dashboard saves as soon as the reader
-  picks the agent cost View's unit (`PL-B396`) or sets or removes a price
-  (`PL-1P15`), as Blender saves its preferences on change. Nothing is
+  picks the agent cost View's unit (`PL-B396`), sets or removes a price
+  (`PL-1P15`) or discards the refused entries (`PL-7KXN`), as Blender saves its
+  preferences on change. Nothing is
   written until the reader does one of these.
 - **How a save works.** A save takes the same atomic write as the saved
   Workspaces, through `user_files.py`. No previous version is kept,

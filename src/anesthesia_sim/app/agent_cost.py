@@ -82,6 +82,10 @@ __all__ = [
     "entry_date",
     "price_from_entry",
     "DELIVERED_LABEL_TEMPLATE",
+    "DISCARD_REFUSED_CONFIRM_LABEL",
+    "DISCARD_REFUSED_KEEP_LABEL",
+    "DISCARD_REFUSED_LABEL",
+    "DISCARD_REFUSED_WARNING",
     "LIQUID_CAPTION_TEMPLATE",
     "NOT_CONVERTED_TEXT",
     "UNIT_CHOICE_LABEL",
@@ -118,6 +122,18 @@ VAPOUR_CAPTION_TEMPLATE: Final = f"Vapour put out by the vaporizer, at {REFERENC
 #: The conversion fails only on a ratio or an amount that is not finite, which
 #: no supported run produces. The wording is a placeholder.
 NOT_CONVERTED_TEXT: Final = "Cannot show this as liquid: the conversion did not give a finite value"
+
+#: The offer to discard the entries of the preferences file that were refused,
+#: which the View shows under the notice that names them, and the question it
+#: asks before it discards them. The discard cannot be undone, so the reader
+#: confirms it, and the button that keeps the entries is the one that takes the
+#: keyboard focus. The wording is a placeholder (`PL-7KXN`).
+DISCARD_REFUSED_LABEL: Final = "Discard the refused entries"
+DISCARD_REFUSED_WARNING: Final = (
+    "Discarding removes the refused entries from the preferences file. This cannot be undone."
+)
+DISCARD_REFUSED_CONFIRM_LABEL: Final = "Discard them"
+DISCARD_REFUSED_KEEP_LABEL: Final = "Keep them"
 
 #: The label of the View's unit selector, and the name of each unit in it, in
 #: the order `AGENT_COST_VIEW_UNITS` lists them. The wording is a placeholder.

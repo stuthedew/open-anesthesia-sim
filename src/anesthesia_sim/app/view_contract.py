@@ -211,6 +211,8 @@ class ViewRequests:
             given one, in the reader's preferences.
         agent_price: Asks for the reader's price for the given agent to become
             the given one, or to be removed when it is None.
+        refused_entries_discard: Asks for every entry of the preferences file
+            that was refused when the file was read to be discarded.
         adjustment_start: Says that the reader pressed a dial of the given
             run, so the changes that follow are one new adjustment.
         setting: Asks for the given run's setting on the given control to
@@ -225,6 +227,7 @@ class ViewRequests:
     compartment: Callable[[RecordedQuantity, bool], None]
     agent_cost_unit: Callable[[AgentAmountUnit], None]
     agent_price: Callable[[str, AgentPrice | None], None]
+    refused_entries_discard: Callable[[], None]
     adjustment_start: Callable[[RunId], None]
     setting: Callable[[RunId, ControlInput, float], None]
     preview: Callable[[RunId, ControlInput, float], None]

@@ -5912,7 +5912,10 @@ these four cases:
 - no price is set for the agent;
 - the stored price was refused when the simulator read its preferences file.
   No default replaces it, and the readout says that no valid price is set for
-  the agent;
+  the agent. The View names each refused entry, and under that notice it offers
+  to discard them all. The reader confirms the discard first, because it cannot
+  be undone
+  (`test_the_reader_can_discard_refused_entries_and_the_next_launch_names_none`);
 - the price per millilitre is not a positive finite number, or the cost is not
   finite, which extreme entries can cause, such as a bottle price of 10 to the
   power 308 for a 0.5 mL bottle; or
