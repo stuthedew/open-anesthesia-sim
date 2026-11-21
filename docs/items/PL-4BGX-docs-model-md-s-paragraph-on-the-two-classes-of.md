@@ -118,3 +118,5 @@ to the variable-bypass response. The pass also found that calling the Tec 6
 "an injector" beside the sentence saying an injector into the circle is not
 bound by the 18% maximum could reverse that sentence's meaning, so the new
 paragraph calls it a gas–vapour blender only.
+
+Owner's read, 2026-11-21. Asked how firmly `docs/MODEL.md` should state what real vaporizers do at altitude, with this change recommended over keeping both classes stated as certain, the project owner answered "Agree with recs" (project owner, 2026-11-21, ratified, over the firmer wording that said the sevoflurane and isoflurane dials need no altitude correction).
