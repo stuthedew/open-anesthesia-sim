@@ -628,8 +628,9 @@ def test_the_settings_file_is_reported_as_a_check_ahead_of_an_unplaced_path() ->
     assert item.delegability(PLACED) == "touches the checks themselves: docket.toml"
 
 
-def test_an_item_without_a_verify_command_is_not_delegable() -> None:
-    assert _delegable(verify="").delegability(PATHS) == "no `verify:` command"
+def test_an_item_without_a_verify_command_is_delegable() -> None:
+    """An open item names no command: its tests are recorded when it closes (`PL-FN11`)."""
+    assert _delegable(verify="").delegability(PATHS) is None
 
 
 def test_an_item_declaring_no_touches_is_not_delegable() -> None:
