@@ -84,14 +84,13 @@ chained propagation covers more time. A span of 24 h is the supported run
 length under "Supported run length", so the second row is the worst that a
 supported run can reach at this column count.
 
-**The two quantities have separate bounds because their headroom differs by
-four orders of magnitude.** A fraction is displayed as a percent with two
-decimals, so "Displayed precision" resolves 1e-4, and the measurement is eight
-orders below that. `app/simulation_view.py` displays the accumulators to six
-decimals of a litre, which resolves 1e-6 L, and the measurement is less than
-three orders below *that*. Three orders is ample, but it is not fourteen, which
-is why the separation is enforced in code rather than left to a reader to
-observe.
+**The two quantities have separate bounds because they are in different
+units.** A fraction is displayed as a percent with two decimals, so "Displayed
+precision" resolves 1e-4, and the measurement is eight orders below that. The
+accounting View displays the run totals in litres of vapour to 0.1 L
+(`_RUN_TOTAL_LITRE_DECIMALS` in `app/formatting.py`), and the measurement,
+3.1e-9 L, is more than seven orders below that. The separation is enforced in
+code rather than left to a reader to observe.
 """
 
 from random import Random
