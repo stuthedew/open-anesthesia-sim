@@ -1052,7 +1052,9 @@ def _withheld_accounting() -> dict[str, object]:
     }
 
 
-def _fresh_run(seconds: int, agent_id: str = "sevoflurane", **settings: Any) -> SimulationController:
+def _fresh_run(
+    seconds: int, agent_id: str = "sevoflurane", **settings: Any
+) -> SimulationController:
     """A run built directly with `settings` and stepped for `seconds`, then paused.
 
     Each scenario below takes the step it expects from such a run, built without the

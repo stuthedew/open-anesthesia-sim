@@ -44,7 +44,7 @@ SCREENSHOT_PATH = Path("assets/screenshots/dashboard.png")
 
 #: At ten minutes the circuit is near its plateau while the alveolar and
 #: vessel-rich traces are still rising, so the image shows uptake in progress.
-SIMULATED_S = 600.0
+SIMULATED_S = 600
 
 #: Wide enough for the readout row and the settings panel to sit side by side,
 #: and tall enough for the whole page to fit without the scroll area cutting it.
@@ -59,10 +59,10 @@ def main() -> None:
     from PySide6.QtWidgets import QApplication, QPushButton
 
     from anesthesia_sim.app.controller import BranchedCase, SimulationController
-    from anesthesia_sim.app.dashboard_frame import SIMULATION_STEP_S
     from anesthesia_sim.app.qt_widgets import declare_application_colours
     from anesthesia_sim.app.simulation_view import SimulationView
     from anesthesia_sim.app_metadata import APP_BUILD_VERSION
+    from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 
     app = QApplication([])
     declare_application_colours(app)
@@ -74,7 +74,7 @@ def main() -> None:
     view.present(False)
 
     next(b for b in view.findChildren(QPushButton) if b.text() == "Start").click()
-    for _ in range(round(SIMULATED_S / SIMULATION_STEP_S)):
+    for _ in range(SIMULATED_S // SIMULATION_STEP_S):
         case.trunk.advance()
 
     view.present(False)

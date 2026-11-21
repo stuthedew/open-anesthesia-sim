@@ -20,8 +20,10 @@ What frame cost *should* be is a judgment, and it belongs in the item that
 asks the question.
 
 Both configurations, the one-run dashboard and the trunk-and-branch one,
-run at 1x over a short warm-up, so the suite pays a few frames rather than
-the seconds a real measurement takes.
+run at 5x over a short warm-up, so the suite pays a few frames rather than
+the seconds a real measurement takes. 5x is the slowest rate at which every
+frame takes a step. At 1x two frames take no step, and the harness's check
+that every run advanced would then pass for a run that had halted.
 
 `frame_cost` imports as a bare module because this directory has no
 `__init__.py`. In pytest's default `prepend` import mode, pytest looks upward
@@ -48,10 +50,11 @@ from PySide6.QtWidgets import QApplication, QScrollArea, QVBoxLayout, QWidget
 from anesthesia_sim.app.dashboard_frame import (
     MAX_DISPLAYED_RUNS,
     RENDER_INTERVAL_S,
-    SIMULATION_TICK_INTERVAL_S,
+    SIMULATION_TICK_INTERVAL_MS,
 )
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
+from anesthesia_sim.core.units import MILLISECONDS_PER_SECOND
 
 #: Simulated seconds of warm-up. Long enough that the dashboard has history
 #: to draw, short enough that this suite is not a benchmark.
@@ -67,14 +70,14 @@ _STAGES = ("advance_s", "present_s", "paint_s", "settled_s")
 def measurement() -> Measurement:
     """One short run of the harness at its default run count, shared by every test here."""
 
-    return measure(multiplier=1, frames=_FRAMES, warm_up_s=_WARM_UP_S)
+    return measure(multiplier=5, frames=_FRAMES, warm_up_s=_WARM_UP_S)
 
 
 @pytest.fixture(scope="module")
 def two_run_measurement() -> Measurement:
     """One short run of the harness over a trunk and a branch on one chart."""
 
-    return measure(multiplier=1, frames=_FRAMES, warm_up_s=_WARM_UP_S, runs=2)
+    return measure(multiplier=5, frames=_FRAMES, warm_up_s=_WARM_UP_S, runs=2)
 
 
 # ------------------------------------------------------- the cadence maths
@@ -86,25 +89,27 @@ def test_steps_per_frame_is_the_render_interval_at_the_playback_rate() -> None:
     The expected value is written from the definition rather than from the
     arithmetic the harness uses. So a change to either constant has to agree
     with what the rate means: `multiplier` simulated seconds per real second,
-    over `RENDER_INTERVAL_S` real seconds, in steps of `SIMULATION_STEP_S`.
+    over `RENDER_INTERVAL_S` real seconds, in steps of `SIMULATION_STEP_S`. At
+    1x that is a fifth of a step, which the run loop carries from frame to
+    frame until a whole step is owed.
     """
 
     for multiplier in (1, 5, 20, 60, 300):
         simulated_s = multiplier * RENDER_INTERVAL_S
 
-        assert steps_per_frame(multiplier) == round(simulated_s / SIMULATION_STEP_S)
+        assert steps_per_frame(multiplier) == pytest.approx(simulated_s / SIMULATION_STEP_S)
 
 
-def test_the_top_rate_advances_six_hundred_steps_a_frame() -> None:
-    """This pins the number that the harness's own docstring and `PL-ZG5J` quote."""
+def test_the_top_rate_advances_sixty_steps_a_frame() -> None:
+    """This pins the number that the harness's own docstring quotes."""
 
-    assert steps_per_frame(DEFAULT_MULTIPLIER) == 600
+    assert steps_per_frame(DEFAULT_MULTIPLIER) == 60
 
 
 def test_a_frame_is_a_whole_number_of_simulation_ticks() -> None:
     """The render interval is a whole number of ticks, so a frame can be counted in them."""
 
-    ticks = RENDER_INTERVAL_S / SIMULATION_TICK_INTERVAL_S
+    ticks = RENDER_INTERVAL_S * MILLISECONDS_PER_SECOND / SIMULATION_TICK_INTERVAL_MS
 
     assert math.isclose(ticks, round(ticks), rel_tol=0.0, abs_tol=1e-9)
     assert round(ticks) >= 1
@@ -159,9 +164,11 @@ def test_the_frame_total_is_its_three_stages_and_excludes_the_control(
 def test_the_measurement_records_the_configuration_it_ran(measurement: Measurement) -> None:
     """The record of what was measured travels with the numbers, not with whoever ran it."""
 
-    assert measurement.multiplier == 1
+    assert measurement.multiplier == 5
     assert measurement.runs == 1
-    assert measurement.steps_per_frame == steps_per_frame(1)
+    # Five simulated seconds for each real second, over a frame of a fifth of
+    # a second, is one step of one second.
+    assert measurement.steps_per_frame == 1
     assert measurement.budget_s == RENDER_INTERVAL_S
     assert measurement.warm_up_s == _WARM_UP_S
 
@@ -207,7 +214,7 @@ def test_the_report_names_every_stage_and_the_configuration(measurement: Measure
         assert expected in printed
 
     assert f"{measurement.multiplier}x real time" in printed
-    assert f"{measurement.steps_per_frame} steps" in printed
+    assert f"{measurement.steps_per_frame:g} steps" in printed
     assert "not a frame rate" in printed
 
 

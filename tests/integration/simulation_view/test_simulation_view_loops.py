@@ -45,6 +45,7 @@ from anesthesia_sim.core.supported_ranges import FreshGasFlow
 from anesthesia_sim.layout.tree import AreaId
 from tests.integration.simulation_view.simulation_view_support import (
     _RUN_PANEL_VIEWS,
+    _TICKS_PER_STEP_AT_REAL_TIME,
     _accounting_of,
     _accounting_panel,
     _accounting_reading,
@@ -62,7 +63,6 @@ from tests.integration.simulation_view.simulation_view_support import (
     _StepFailingController,
     _steps,
     _ticks,
-    _TICKS_PER_STEP_AT_REAL_TIME,
 )
 
 # -------------------------------------------------------------- the loops

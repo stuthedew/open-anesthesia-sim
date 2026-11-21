@@ -42,7 +42,6 @@ from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.simulation import SimulationState
-from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
@@ -87,7 +86,7 @@ AGENT_IDS = ("sevoflurane", "isoflurane", "desflurane")
 # at 0.05 s (`PL-F67Q`). `test_the_shipped_step_reaches_the_pinned_reference_horizons` is
 # the gate that checks the 3600 s run. It samples only the endpoint. That is enough, because
 # at 3600 s the largest residual is at the endpoint, not inside a transient.
-HORIZONS_S = (60.0, 600.0, 3600.0)
+HORIZONS_S = (60, 600, 3600)
 
 # The historical operating point. It is kept because the pinned reference states
 # below are its solution. 5% is the highest concentration that all three shipped
@@ -163,7 +162,7 @@ class Phase:
     `OperatingPoint` covers only the runs in which nothing is ever changed.
     """
 
-    duration_s: float
+    duration_s: int
     point: OperatingPoint
 
 
@@ -254,7 +253,7 @@ def _ventilator_start(agent_id: str) -> tuple[Phase, ...]:
 
     return (
         Phase(
-            300.0,
+            300,
             OperatingPoint(
                 _max_dial(agent_id),
                 MAX_FRESH_GAS_FLOW_L_MIN,
@@ -263,7 +262,7 @@ def _ventilator_start(agent_id: str) -> tuple[Phase, ...]:
             ),
         ),
         Phase(
-            300.0,
+            300,
             OperatingPoint(
                 _max_dial(agent_id),
                 MAX_FRESH_GAS_FLOW_L_MIN,
@@ -319,7 +318,7 @@ def _unperfused_load_then_dial_off(agent_id: str) -> tuple[Phase, ...]:
 
     return (
         Phase(
-            600.0,
+            600,
             OperatingPoint(
                 _max_dial(agent_id),
                 MAX_FRESH_GAS_FLOW_L_MIN,
@@ -328,7 +327,7 @@ def _unperfused_load_then_dial_off(agent_id: str) -> tuple[Phase, ...]:
             ),
         ),
         Phase(
-            300.0,
+            300,
             OperatingPoint(
                 MIN_DELIVERED_CONCENTRATION_PERCENT,
                 MAX_FRESH_GAS_FLOW_L_MIN,
@@ -448,7 +447,7 @@ RANDOMISED_TRAJECTORY_SEEDS = (20260903, 20261101, 7919)
 # Each phase's length is drawn uniformly from one step to this many. So the controls move
 # every 10 s on average, and sometimes on consecutive steps. The hand-written trajectories
 # never test that case: two changes with only one step between them.
-RANDOMISED_PHASE_MAX_STEPS = 200
+RANDOMISED_PHASE_MAX_STEPS = 20
 
 # This is the probability that a moved control lands exactly on a limit of its range rather
 # than inside it. Zero ventilation, zero cardiac output and zero fresh gas flow each put the
@@ -497,7 +496,7 @@ def _randomised_trajectory(agent_id: str, seed: int) -> tuple[Phase, ...]:
         (MIN_CARDIAC_OUTPUT_L_MIN, MAX_CARDIAC_OUTPUT_L_MIN),
     )
     settings = [_randomised_value(rng, low, high) for low, high in ranges]
-    steps_left = round(ENVELOPE_HORIZON_S / SHIPPED_STEP_S)
+    steps_left = ENVELOPE_HORIZON_S // SHIPPED_STEP_S
     phases: list[Phase] = []
 
     while steps_left > 0:
@@ -537,7 +536,7 @@ def _randomised_trajectory(agent_id: str, seed: int) -> tuple[Phase, ...]:
 # happening, and the residual keeps growing for the whole hour. A maximum taken
 # over 600 s cannot see that growth. Only a longer run can, which is what
 # `test_the_shipped_step_reaches_the_pinned_reference_horizons` is for.
-ENVELOPE_HORIZON_S = 600.0
+ENVELOPE_HORIZON_S = 600
 
 # SHIPPED_STEP_S is the step the interface runs at
 # (`app.dashboard_frame.SIMULATION_STEP_S`). It is restated rather than imported
@@ -575,7 +574,7 @@ ENVELOPE_HORIZON_S = 600.0
 # old derivation no longer holds, and that the value is kept unchanged until
 # `PL-X9KD` is resolved. Until PL-VP7N, the step was restated here without any
 # check at all.
-SHIPPED_STEP_S = 0.1
+SHIPPED_STEP_S = 1
 
 # The oracle's own step, an eighth of the shipped one. It is deliberately not
 # 0.1 s, so that agreement can never be an artifact of the two solvers sharing a
@@ -641,6 +640,11 @@ SHIPPED_STEP_S = 0.1
 # it, and that tolerance is now bounded by platform variation rather than by the
 # oracle.
 ORACLE_STEP_S = 0.0125
+
+# How many steps the oracle takes while the shipped solver takes one.
+# `test_the_oracle_takes_a_whole_number_of_steps_in_each_shipped_step` checks that
+# this many oracle steps cover one shipped step exactly.
+ORACLE_STEPS_PER_SHIPPED_STEP = 80
 
 # `PL-X9KD` retired two constants, `SPLITTING_ERROR_BOUND_PER_STEP_SECOND = 2.8e-3` and
 # `EXACT_SOLUTION_FLOOR = 1e-12`, and the four tests that used them. The constants and the
@@ -984,9 +988,9 @@ ALLOWED_PACKAGE_IMPORTS = frozenset(
         "load_reference_circle_system_parameters",
         "AgentUptakeSystem",
         "SimulationState",
-        "SimulationStep",
         "dashboard_frame",
         "formatting",
+        "simulation_step",
         "supported_ranges",
     }
 )
@@ -1238,50 +1242,18 @@ def _shipped_states(system: AgentUptakeSystem) -> tuple[float, ...]:
     )
 
 
-def _run_shipped(
-    agent_id: str, duration_s: float, step_s: float, point: OperatingPoint
-) -> tuple[float, ...]:
+def _run_shipped(agent_id: str, duration_s: int, point: OperatingPoint) -> tuple[float, ...]:
     """Advance the implementation under test to the same simulated time."""
 
     system = _shipped_system(agent_id, point)
 
-    for _ in range(round(duration_s / step_s)):
-        system.advance(SimulationStep(step_s))
+    for _ in range(duration_s // SHIPPED_STEP_S):
+        system.advance()
 
     return _shipped_states(system)
 
 
-def _oracle_step_for(shipped_step_s: float) -> float:
-    """An eighth of the step under test.
-
-    The divisor has to meet two needs. Any divisor above one keeps the two
-    solvers off a shared step size, so that agreement cannot be an artifact of
-    them taking the same stride. A divisor of eight is what makes the oracle
-    *converged* at every step this module drives. At the coarsest supported
-    shipped step, 0.1 s, it puts the oracle at 0.0125 s, which is where
-    refining the oracle stops changing what the gates report (`ORACLE_STEP_S`
-    records the series of measurements). The rule was `/ 2` until `PL-B1WW`.
-    That rule left the oracle at 0.05 s through transients that needed
-    0.0125 s, so 86% to 99.8% of what the trajectory gates reported was the
-    oracle's own RK4 truncation rather than the shipped step's error.
-
-    The oracle step scales with the step under test rather than being a fixed
-    0.0125 s. So the finer shipped steps in
-    `test_the_disagreement_does_not_shrink_with_the_step` get a proportionally
-    finer oracle, and the convergence argument still applies at all three.
-
-    At the shipped 0.1 s step this returns `ORACLE_STEP_S`. A trajectory
-    driven here and a pinned reference state above are therefore integrated
-    identically, and `test_lockstep_oracle_step_matches_the_pinned_one` keeps
-    that coincidence true. The two must move together, or that test fails.
-    """
-
-    return shipped_step_s / 8.0
-
-
-def _worst_error_over_phases(
-    agent_id: str, phases: Sequence[Phase], shipped_step_s: float = SHIPPED_STEP_S
-) -> tuple[float, float, str]:
+def _worst_error_over_phases(agent_id: str, phases: Sequence[Phase]) -> tuple[float, int, str]:
     """Return the largest disagreement anywhere in the trajectory.
 
     Both solutions are driven through the same phase list, and both apply a
@@ -1316,11 +1288,9 @@ def _worst_error_over_phases(
 
     system = _empty_shipped_system(agent_id)
     reference = [0.0] * 6
-    oracle_step_s = _oracle_step_for(shipped_step_s)
-    oracle_steps_per_shipped_step = round(shipped_step_s / oracle_step_s)
 
     worst_error = 0.0
-    worst_time_s = 0.0
+    worst_time_s = 0
     worst_label = STATE_LABELS[0]
     step_index = 0
 
@@ -1328,18 +1298,18 @@ def _worst_error_over_phases(
         _apply_operating_point(system, phase.point)
         derivative = _build_derivative(agent_id, phase.point)
 
-        for _ in range(round(phase.duration_s / shipped_step_s)):
-            system.advance(SimulationStep(shipped_step_s))
+        for _ in range(phase.duration_s // SHIPPED_STEP_S):
+            system.advance()
 
-            for _ in range(oracle_steps_per_shipped_step):
-                reference = _rk4_step(derivative, reference, oracle_step_s)
+            for _ in range(ORACLE_STEPS_PER_SHIPPED_STEP):
+                reference = _rk4_step(derivative, reference, ORACLE_STEP_S)
 
             step_index += 1
             error, label = _worst_state_error(_shipped_states(system), tuple(reference))
 
             if error > worst_error:
                 worst_error = error
-                worst_time_s = step_index * shipped_step_s
+                worst_time_s = step_index * SHIPPED_STEP_S
                 worst_label = label
 
     return worst_error, worst_time_s, worst_label
@@ -1388,7 +1358,7 @@ def test_independent_solution_matches_pinned_reference_states(
 @pytest.mark.parametrize("agent_id", AGENT_IDS)
 @pytest.mark.parametrize("duration_s", HORIZONS_S)
 def test_the_shipped_step_reaches_the_pinned_reference_horizons(
-    agent_id: str, duration_s: float
+    agent_id: str, duration_s: int
 ) -> None:
     """The shipped step still lands where the pinned states say it should.
 
@@ -1424,7 +1394,7 @@ def test_the_shipped_step_reaches_the_pinned_reference_horizons(
 
     point = _default_operating_point()
     error, state_label = _worst_state_error(
-        _run_shipped(agent_id, duration_s, SHIPPED_STEP_S, point),
+        _run_shipped(agent_id, duration_s, point),
         _reference_state(agent_id, duration_s, point),
     )
 
@@ -1476,95 +1446,12 @@ def test_exact_step_matches_the_independent_solution_everywhere(
     assert error <= EXACT_STEP_ORACLE_TOLERANCE, (
         f"{agent_id} on the '{trajectory_name}' trajectory diverges from the "
         f"independent solution by {error:.3e} in the {state_label} fraction at "
-        f"{at_s:.1f} s, above the exact step's tolerance of "
+        f"{at_s} s, above the exact step's tolerance of "
         f"{EXACT_STEP_ORACLE_TOLERANCE:.3e}. That tolerance bounds accumulated "
         "rounding between two solutions that agree exactly in exact "
         "arithmetic, so exceeding it means the shipped step has stopped being "
         "an exact solution of the governing equations rather than that it has "
         "become slightly less accurate."
-    )
-
-
-@pytest.mark.parametrize("agent_id", AGENT_IDS)
-@pytest.mark.parametrize(
-    ("trajectory_name", "build_phases"),
-    ALL_GATE_TRAJECTORIES,
-    ids=[name for name, _ in ALL_GATE_TRAJECTORIES],
-)
-def test_the_disagreement_does_not_shrink_with_the_step(
-    agent_id: str, trajectory_name: str, build_phases: Callable[[str], tuple[Phase, ...]]
-) -> None:
-    """`EXACT_STEP_ORACLE_TOLERANCE` is met at every supported step, not just the shipped one.
-
-    This test does what the retired
-    `test_shipped_split_error_is_first_order_in_step` did for the split, but
-    inverted. There, the claim was that halving the step halved the error, so
-    bounding a coefficient at one step bounded it at all of them. Here, the
-    claim is that the step size does not change the result. An exact
-    propagator solves the same interval exactly however it is subdivided, so
-    the same absolute bound must be met at 0.1 s, 0.05 s and 0.025 s alike. A
-    method error of any order would be visibly larger at the coarsest step and
-    would shrink as the step shrinks, so it would fail this test at the
-    coarsest step.
-
-    **The setting-change trajectories are here because the retired test ran
-    them and this test at first did not (`PL-X9KD`).** That was the one
-    property of the retired test that did not transfer, and it matters. This
-    gate produces the largest residual of any gate trajectory, at the finest
-    step rather than the coarsest. It runs all five gate trajectories, the same
-    set as `test_exact_step_matches_the_independent_solution_everywhere`
-    (`PL-F67Q`). So that largest residual is a maximum over all five, not over
-    a subset of them.
-
-    **Refining the oracle changed what this test shows (`PL-B1WW`).** This
-    docstring used to say that held settings were worst at the finest step,
-    and that turning trajectories, whose settings change partway through, were
-    worst at the coarsest. Only the first half was ever about the shipped step.
-    The second half was about the oracle. The oracle ran at half the step under
-    test, so at the coarsest step, 0.1 s, it ran at 0.05 s through a transient
-    that needed 0.0125 s. The error that fell as the step shrank was the
-    oracle's own truncation error, not anything the shipped step did. With the
-    oracle at an eighth of the step (`_oracle_step_for`), the results are what
-    rounding predicts. That holds across all fifteen parametrizations at 0.1,
-    0.05 and 0.025 s (measured 2026-10-25, `PL-S86L`, `PL-F67Q`). Each triple
-    below gives the figures at 0.1, 0.05 and 0.025 s, in that order:
-
-      - Twelve of the fifteen are worst at the *finest* step. The finest step
-        takes four times as many steps as the coarsest, so it accumulates more
-        rounding. They grow by a factor of 3.6 to 21 from 0.1 s to 0.025 s.
-        Examples are 2.8935e-15, 1.3385e-14, 3.8337e-14 for sevoflurane at held
-        settings, and 1.3906e-14, 5.0099e-14, 5.8870e-14 for desflurane's
-        ventilator start. The last of these is the largest on any gate
-        trajectory.
-      - Desflurane at held settings and on ordinary use run the other way:
-        1.3427e-14, 1.1213e-14, 7.8756e-15, and 1.5786e-14, 1.3677e-14,
-        9.2287e-15. Each falls by a factor of 1.7 over the two halvings. That
-        is too little for a method error, which falls by at least 2 on every
-        halving, so by at least 4 over two.
-      - Isoflurane on the held envelope corner is worst at the middle step:
-        6.9077e-15, 1.9679e-14, 3.9829e-15. It rises from 0.1 s to 0.05 s, and
-        a method error never grows as the step shrinks.
-
-    Two independently accumulated rounding errors need not line up when one is
-    subtracted from the other. So in the three exceptions above, the
-    difference shifted by chance. The smaller step did not make the result more
-    accurate. The only claim this test makes is that no supported step exceeds
-    the tolerance. It deliberately does not assert which way the residual moves
-    as the step shrinks. The three exceptions that run against the trend show
-    why that restraint is still right.
-    """
-
-    phases = build_phases(agent_id)
-    errors = {
-        step_s: _worst_error_over_phases(agent_id, phases, step_s)[0]
-        for step_s in (0.1, 0.05, 0.025)
-    }
-
-    assert max(errors.values()) <= EXACT_STEP_ORACLE_TOLERANCE, (
-        f"{agent_id} on the '{trajectory_name}' trajectory exceeds the exact "
-        f"step's tolerance of {EXACT_STEP_ORACLE_TOLERANCE:.3e} at some "
-        "supported step: "
-        + ", ".join(f"{step_s} s -> {error:.3e}" for step_s, error in errors.items())
     )
 
 
@@ -1592,7 +1479,6 @@ def test_randomised_control_trajectories_keep_every_invariant(agent_id: str, see
 
     system = _empty_shipped_system(agent_id)
     state = SimulationState(uptake_system=system)
-    step = SimulationStep(SHIPPED_STEP_S)
     steps_taken = 0
 
     highest_delivered = 0.0
@@ -1606,8 +1492,8 @@ def test_randomised_control_trajectories_keep_every_invariant(agent_id: str, see
         # the rounding a step adds. A fraction never delivered stays exactly zero.
         ceiling = highest_delivered * (1.0 + RANDOMISED_FRACTION_ROUNDING)
 
-        for _ in range(round(phase.duration_s / SHIPPED_STEP_S)):
-            result = state.advance(step)
+        for _ in range(phase.duration_s // SHIPPED_STEP_S):
+            result = state.advance()
             steps_taken += 1
 
             assert result.agent_accounting.passes_validation, (
@@ -1622,7 +1508,7 @@ def test_randomised_control_trajectories_keep_every_invariant(agent_id: str, see
                     f"{highest_delivered!r}"
                 )
 
-    assert steps_taken == round(ENVELOPE_HORIZON_S / SHIPPED_STEP_S)
+    assert steps_taken == ENVELOPE_HORIZON_S // SHIPPED_STEP_S
     assert state.step_count == steps_taken
 
 
@@ -1655,7 +1541,7 @@ def test_exact_step_matches_the_independent_solution_on_randomised_trajectories(
     assert error <= EXACT_STEP_ORACLE_TOLERANCE, (
         f"{agent_id} on the randomised trajectory with seed {seed} diverges "
         f"from the independent solution by {error:.3e} in the {state_label} "
-        f"fraction at {at_s:.1f} s, above the exact step's tolerance of "
+        f"fraction at {at_s} s, above the exact step's tolerance of "
         f"{EXACT_STEP_ORACLE_TOLERANCE:.3e}"
     )
 
@@ -1750,23 +1636,28 @@ def test_modal_time_constants_are_the_pinned_ones(settings_name: str, agent_id: 
         assert period == pytest.approx(expected_period, rel=MODAL_RELATIVE_TOLERANCE), message
 
 
-def test_lockstep_oracle_step_matches_the_pinned_one() -> None:
-    """A trajectory and a pinned reference state are integrated identically.
+def test_the_oracle_takes_a_whole_number_of_steps_in_each_shipped_step() -> None:
+    """The oracle and the shipped solver stand at the same instant after every shipped step.
 
-    `_oracle_step_for` takes an eighth of whatever step is under test. At the
-    shipped step that is `ORACLE_STEP_S`, the step at which every pinned
-    reference state was computed. If the two drifted apart, what the gates
-    below measure would move while the pinned states stayed the same. So the
-    coincidence is checked rather than only described.
+    The trajectory gates advance the shipped solver by one step and the oracle
+    by `ORACLE_STEPS_PER_SHIPPED_STEP` steps of `ORACLE_STEP_S`, and then
+    compare the two. The comparison means something only if those oracle steps
+    cover the shipped step exactly. If `ORACLE_STEP_S` moved without the count,
+    the oracle would fall behind or run ahead by the same amount on every step,
+    and the gates would report that difference in time as a difference between
+    the solvers.
 
-    The equality is exact rather than approximate because 8 is a power of two.
-    0.1 is not representable in binary, but dividing whatever double it rounds
-    to by 8 only lowers the exponent, and the literal 0.0125 rounds to that
-    same scaled value. A divisor of 10 here would need `pytest.approx`, which
-    is worth knowing before changing this rule (`PL-B1WW`).
+    The equality is exact rather than approximate. `ORACLE_STEP_S` is the double
+    nearest to 1/80, and 80 times that double rounds to exactly 1.
+
+    Until `PL-SZ6G` the shipped solver took a step of a length that the caller
+    chose, and the oracle's step was an eighth of it. A test in this place
+    checked that the rule gave `ORACLE_STEP_S` at the shipped step. The shipped
+    step now has one length, so the oracle's step is `ORACLE_STEP_S` wherever
+    this module uses it, and this test replaces that one.
     """
 
-    assert _oracle_step_for(SHIPPED_STEP_S) == ORACLE_STEP_S
+    assert ORACLE_STEPS_PER_SHIPPED_STEP * ORACLE_STEP_S == SHIPPED_STEP_S
 
 
 def test_envelope_limits_match_the_supported_input_ranges() -> None:
@@ -1880,6 +1771,7 @@ def test_displayed_resolution_and_shipped_step_match_the_interface() -> None:
     """
 
     from anesthesia_sim.app import dashboard_frame
+    from anesthesia_sim.core import simulation_step
 
     assert (
         MIN_DELIVERED_CONCENTRATION_PERCENT,
@@ -1888,7 +1780,7 @@ def test_displayed_resolution_and_shipped_step_match_the_interface() -> None:
     ) == (
         dashboard_frame.MIN_DELIVERED_CONCENTRATION_PERCENT,
         formatting.CONCENTRATION_DISPLAY_DECIMALS,
-        dashboard_frame.SIMULATION_STEP_S,
+        simulation_step.SIMULATION_STEP_S,
     ), (
         "the interface's displayed resolution or simulation step has changed; "
         "re-run the trajectory sweeps and re-derive the measured figures in "
@@ -1964,21 +1856,20 @@ def test_displayed_ordering_reverses_only_at_a_crossing(
 
     system = _empty_shipped_system(agent_id)
     reference = [0.0] * 6
-    oracle_step_s = _oracle_step_for(SHIPPED_STEP_S)
     resolution_percent = 10.0**-CONCENTRATION_DISPLAY_DECIMALS
     widest_inverted_gap_percent = 0.0
-    worst: tuple[float, str, str] | None = None
+    worst: tuple[int, str, str] | None = None
     step_index = 0
 
     for phase in build_phases(agent_id):
         _apply_operating_point(system, phase.point)
         derivative = _build_derivative(agent_id, phase.point)
 
-        for _ in range(round(phase.duration_s / SHIPPED_STEP_S)):
+        for _ in range(phase.duration_s // SHIPPED_STEP_S):
             system.advance()
 
-            for _ in range(round(SHIPPED_STEP_S / oracle_step_s)):
-                reference = _rk4_step(derivative, reference, oracle_step_s)
+            for _ in range(ORACLE_STEPS_PER_SHIPPED_STEP):
+                reference = _rk4_step(derivative, reference, ORACLE_STEP_S)
 
             step_index += 1
             shipped_displayed = tuple(_displayed_percent(v) for v in _shipped_states(system))
@@ -2009,11 +1900,11 @@ def test_displayed_ordering_reverses_only_at_a_crossing(
     widest_in_counts = widest_inverted_gap_percent / resolution_percent
     # `worst` is None only when no inversion was found, and the threshold is
     # positive, so the fallback below can never reach a failure message.
-    at_s, left_label, right_label = worst if worst is not None else (0.0, "?", "?")
+    at_s, left_label, right_label = worst if worst is not None else (0, "?", "?")
 
     assert widest_in_counts <= MAX_INVERTED_GAP_IN_DISPLAY_COUNTS, (
         f"{agent_id} on the '{trajectory_name}' trajectory displays "
-        f"{left_label} and {right_label} in the wrong order at {at_s:.1f} s "
+        f"{left_label} and {right_label} in the wrong order at {at_s} s "
         f"while their true gap is {widest_in_counts:.3e} counts of the last "
         f"displayed digit, above the "
         f"{MAX_INVERTED_GAP_IN_DISPLAY_COUNTS:.3e} allowed. The shipped step "

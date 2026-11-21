@@ -1080,13 +1080,12 @@ def test_a_step_below_the_floor_is_refused_when_the_circuit_is_stepped_alone(
 ) -> None:
     """`PL-WP52`: the circuit stepped on its own refuses a step shorter than 1 ms.
 
-    Rounding grows as the step shrinks in the circuit stepped alone, as it does in
-    a run. Over 10 000 steps of 1e-14 s, a 6 L circuit's wash-in at 6 L/min was 4%
-    wrong. Both `advance_fresh_gas` and `advance` refuse the step, and the
-    inspired fraction does not change. The 1 ms minimum itself is accepted, and so
-    is a step of 1 s, longer than the run's 0.1 s maximum, which does not apply to
-    a compartment stepped alone. The expected minimum, 0.001 s, is written out here
-    rather than read from `MINIMUM_SIMULATION_STEP_S`.
+    Rounding grows as the step shrinks in the circuit stepped alone. Over 10 000
+    steps of 1e-14 s, a 6 L circuit's wash-in at 6 L/min was 4% wrong. Both
+    `advance_fresh_gas` and `advance` refuse the step, and the inspired fraction
+    does not change. The 1 ms minimum itself is accepted, and so is a step of 1 s.
+    The expected minimum, 0.001 s, is written out here rather than read from
+    `MINIMUM_COMPARTMENT_STEP_S`.
     """
 
     circuit = BreathingCircuit(

@@ -793,9 +793,7 @@ def _accepted(guard: Callable[[], None]) -> bool:
 
 
 @pytest.mark.parametrize("steps_past_the_limit", [-1, 0, 1])
-def test_the_step_count_and_the_case_instant_bound_the_same_span(
-    steps_past_the_limit: int,
-) -> None:
+def test_the_step_count_and_the_case_instant_bound_the_same_span(steps_past_the_limit: int) -> None:
     """The count guard accepts a count exactly where the instant guard accepts its instant.
 
     A branch at a bookmark is built from its parent's step count, and a branch

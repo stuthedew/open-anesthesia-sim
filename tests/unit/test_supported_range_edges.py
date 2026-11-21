@@ -563,9 +563,7 @@ def _require_finite(value: object, function: Function) -> None:
 
 
 def _drawings(
-    function: Function,
-    values: Mapping[type, object],
-    pools: Mapping[type, tuple[object, ...]],
+    function: Function, values: Mapping[type, object], pools: Mapping[type, tuple[object, ...]]
 ) -> Iterator[dict[str, object]]:
     """Yield each way to hand `function` what was drawn.
 

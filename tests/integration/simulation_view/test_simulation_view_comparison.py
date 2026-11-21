@@ -43,8 +43,8 @@ from tests.integration.simulation_view.simulation_view_support import (
     _settle,
     _shown_view,
     _steps,
-    _ticks,
     _take_fork,
+    _ticks,
 )
 
 
@@ -143,10 +143,7 @@ def test_a_refused_branch_does_not_survive_a_one_run_reset(application: QApplica
     panel = _fork_panel(view)
     panel.set_offer(
         fork_offer(
-            (CaseInstant(0), CaseInstant(30), CaseInstant(60)),
-            marks=(),
-            comparing=None,
-            here=None,
+            (CaseInstant(0), CaseInstant(30), CaseInstant(60)), marks=(), comparing=None, here=None
         ),
         None,
     )

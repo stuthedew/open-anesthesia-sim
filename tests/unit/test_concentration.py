@@ -340,13 +340,7 @@ def test_neither_conversion_takes_the_form_it_converts_to() -> None:
 
 @pytest.mark.parametrize(
     "other",
-    [
-        StepCount(1),
-        CaseInstant(1),
-        FreshGasFlow(2.0),
-        AlveolarVentilation(4.0),
-        CardiacOutput(5.0),
-    ],
+    [StepCount(1), CaseInstant(1), FreshGasFlow(2.0), AlveolarVentilation(4.0), CardiacOutput(5.0)],
     ids=lambda other: type(other).__name__,
 )
 def test_another_quantity_handed_in_as_a_concentration_is_refused_as_a_swapped_argument(
