@@ -1,8 +1,17 @@
 ---
 id: PL-WKKH
 title: Decide which streamlining ideas from the one-shot rewrite of 2026-11-14 to take: fewer instructions at launch, developer documents written as a requirement and its test, the 13 checks on the workflow's own records, done-conditions as test names, and one rule for computing a run
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: housekeeping
+feature: standing-weight
+touches: docs/items
 added: 2026-11-20
+closed: 2026-11-20
+pr: 2173
+payoff: the owner's five answers are on record, and each has an item or a line in an existing item that carries it
+verify: grep -qF 'Answered 2026-11-20' docs/items/PL-WKKH-decide-which-streamlining-ideas-from-the-one.md
 ---
 
 **Problem.** Decide which streamlining ideas from the one-shot rewrite of 2026-11-14 to take: fewer instructions at launch, developer documents written as a requirement and its test, the 13 checks on the workflow's own records, done-conditions as test names, and one rule for computing a run
@@ -51,3 +60,15 @@ The report's sixth idea needs no answer now. Agents, patients and machines could
 **One figure in the one-shot's appraisal does not reproduce.** It counts "15 faults in simulator code" in the blind reviews. `docs/blind-review-findings.tsv` has 35 rows coded `code-bug`, against 42 coded `doc-claim-wrong`.
 
 **Done when.** The owner has answered each of the five questions, and each yes has become an item of its own or a line in an existing item.
+
+**Answered 2026-11-20.** The owner wrote "Agree with recs" in the project thread at 5:58 PM CST. That ratifies the recommendation under each of the five questions (project owner, 2026-11-20, ratified, over the alternative that each follow-up item names).
+
+1. Instructions loaded at launch: yes. `PL-MR85` (sort every loaded paragraph into four groups, and bring the table to the owner) holds the work.
+2. Developer documents: yes. `PL-SY7G`, `PL-4H8Q` and `PL-N83Z` (sort the interface, verification and parameter documents by reader) each carry a paragraph dated 2026-11-20 with the form.
+3. Checks on the workflow's own records: count first. `PL-LY24` (count what each of the 13 checks caught) holds the count.
+4. Done-conditions: count first. `PL-LFJZ` (count what a done-condition written as a test name would have prevented) holds the count.
+5. One rule for computing a run: open the round. `PL-7CY5` (the design round on computing a run by one rule) holds it, and it comes before more work on `PL-GJ1W` (each comparison of computed values picks its own tolerance).
+
+The four new items carry the feature `standing-weight`, so `bin/docket feature standing-weight` says whether they are dealt with.
+
+**Generator check.** None: one instance. The item records a study that the owner asked for and the owner's answers, and no misread fact produced it.
