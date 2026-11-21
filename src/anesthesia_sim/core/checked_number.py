@@ -5,7 +5,6 @@ value against its own range when it is built. This module calls them checked
 types. They are:
 
 - `Fraction` and `Percent`, in `core/concentration.py`.
-- The run's step, `SimulationStep`, in `core/simulation_step.py`.
 - The three flows `FreshGasFlow`, `AlveolarVentilation` and `CardiacOutput`, the
   case instant `CaseInstant`, and the completed-step count `StepCount`, all in
   `core/supported_ranges.py`.
@@ -67,7 +66,8 @@ under the right type. This was measured on 2026-10-05 on `main` at
 `b67dace8`. `CaseInstant(StepCount(600))` was an instant of 600 s, and
 `CaseInstant(FreshGasFlow(5.0))` was one of 5 s.
 `FreshGasFlow(CaseInstant(5.0))` was a flow of 5 L/min,
-`SimulationStep(Fraction(0.05))` was a step of 0.05 s, and
+`SimulationStep(Fraction(0.05))` was a step of 0.05 s (the step was a checked
+type until `PL-SZ6G` fixed it at one second), and
 `Percent(FreshGasFlow(2.0))` was a dial at 2%. `mypy --strict` passed each
 call, because a checked `float` is a `float`. Only `Fraction` and `Percent`
 rejected each other. The stored-value checks, which check a value as it is
@@ -93,7 +93,7 @@ accepted, so an instant can be rebuilt from an instant as before. `Fraction`
 and `Percent` keep their own rejection of each other. Their message says to
 convert rather than to rebuild, because mixing up that pair is a missed
 conversion and not a swapped argument. The stored-value checks are
-`require_case_instant`, `require_step_count`, `require_simulation_step`, the
+`require_case_instant`, `require_step_count`, the
 flows' `require_*`, `require_fraction` and `require_percent`,
 `require_compartment_volume` and `require_coefficient`, and
 `require_perfusion_fraction`. They all read the class hierarchy in the same
@@ -114,10 +114,12 @@ type can store a minus zero, and the formatters need no rule of their own.
 
 `PL-7N8P` moved `CaseInstant` onto these checks, after `PL-LLMN` had found the
 same gaps in it. `StepCount` is built from an `int` alone, and since `PL-LLMN`
-it rejects anything that is not an `int`, with an error of the same form. The
+it rejects anything that is not an `int`, with an error of the same form.
+Since `PL-SZ6G` a `CaseInstant` is a whole number of seconds, built from an
+`int` alone in the same way. The
 sign and finiteness guards in `core/validation.py` had the same gaps. They are
 `require_positive_finite` and `require_nonnegative_finite`, and
-`SimulationStep` is built on the first of them. `PL-3800` moved both guards
+`require_compartment_step` is built on the first of them. `PL-3800` moved both guards
 onto these checks. They have no supported range against which to reject an
 `int` too large for a `float`. So they reject it by name, as outside the range
 a `float` can represent. Before, `math.isfinite` raised `OverflowError` while

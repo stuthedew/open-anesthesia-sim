@@ -64,6 +64,7 @@ from PySide6.QtWidgets import (
     QListWidget,
     QPushButton,
     QSlider,
+    QSpinBox,
     QStyle,
     QStyleOptionComboBox,
     QVBoxLayout,
@@ -82,8 +83,6 @@ from anesthesia_sim.app.dashboard_frame import (
     FORK_HEADING,
     FORK_POINT_LABEL,
     HEIGHT_FIELD_LABEL,
-    INSTANT_ENTRY_DECIMALS,
-    INSTANT_ENTRY_STEP_S,
     INSTANT_ENTRY_SUFFIX,
     INSTANT_FIELD_LABEL,
     MAC_TARGET_HEADING,
@@ -1674,13 +1673,11 @@ class BookmarkDialog(QDialog):
         declare_interface_colours(self)
         self.setMinimumWidth(BOOKMARK_DIALOG_WIDTH)
 
-        self.instant_spin = QDoubleSpinBox()
-        self.instant_spin.setDecimals(INSTANT_ENTRY_DECIMALS)
-        self.instant_spin.setSingleStep(INSTANT_ENTRY_STEP_S)
-        self.instant_spin.setRange(0.0, MAXIMUM_ELAPSED_SIMULATION_TIME_S)
+        self.instant_spin = QSpinBox()
+        self.instant_spin.setRange(0, MAXIMUM_ELAPSED_SIMULATION_TIME_S)
         self.instant_spin.setSuffix(INSTANT_ENTRY_SUFFIX)
         self.instant_preview = styled_label(
-            format_elapsed(0.0), color=MUTED, size_px=METRIC_QUALIFIER_SIZE
+            format_elapsed(0), color=MUTED, size_px=METRIC_QUALIFIER_SIZE
         )
         self.instant_spin.valueChanged.connect(self._refresh_instant_preview)
         self.time_label_edit = QLineEdit()
@@ -1767,7 +1764,7 @@ class BookmarkDialog(QDialog):
         actions.addWidget(self.close_button)
         column.addLayout(actions)
 
-    def _refresh_instant_preview(self, seconds: float) -> None:
+    def _refresh_instant_preview(self, seconds: int) -> None:
         """Restate the entered instant in the form the clock and the axis use."""
 
         self.instant_preview.setText(format_elapsed(seconds))

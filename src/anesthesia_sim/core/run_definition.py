@@ -466,9 +466,10 @@ class RunDefinition:
         count lands on: the instant of each step, or of a branch's fork
         (`app/controller.py`). `SimulationState.advance` refuses the step that
         would carry that count past the span. So no step already taken lands
-        on an instant that cannot be built. `maximum_step_count` decides which
-        step is the last from the time at which that step lands, and that time
-        is the instant passed here (`PL-8H2R`).
+        on an instant that cannot be built. `MAXIMUM_STEP_COUNT` in
+        `core/supported_ranges.py` is the last step's count, and the instant
+        at which that step lands is the end of the supported run length
+        (`PL-8H2R`).
 
         Raises:
             TypeError: `instant_s` is not a `CaseInstant`, so nothing has

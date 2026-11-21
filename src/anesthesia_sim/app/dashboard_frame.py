@@ -99,7 +99,6 @@ from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValid
 from anesthesia_sim.core.concentration import Fraction, Percent, fraction_from_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
-from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
@@ -111,39 +110,22 @@ from anesthesia_sim.core.supported_ranges import (
 from anesthesia_sim.core.units import MINUTES_PER_HOUR, SECONDS_PER_HOUR, SECONDS_PER_MINUTE
 from anesthesia_sim.layout.run_identity import RunId
 
-# The step that each simulation tick advances by. `core/` declares which steps
-# are *supported*: `core.simulation_step.MINIMUM_SIMULATION_STEP_S` and
-# `MAXIMUM_SIMULATION_STEP_S` are that declaration. `SimulationStep` rejects a
-# step outside them when it is built, which here happens at import, so no such
-# step reaches a run that is displayed. The value below is a choice of cadence
-# inside that range, and it sits at the ceiling deliberately. A finer step buys
-# nothing a reader could see: halving the step moves a displayed fraction by
-# around 1e-16. A coarser step costs control resolution. That the chosen step
-# equals the ceiling is a fact about this configuration, not an identity. So
-# the two are named separately, and
-# `test_the_shipped_step_is_within_the_maximum_simulation_step` checks the
-# relation. `docs/MODEL.md` § "Supported simulation step" and
-# `docs/INTERFACE.md` § "Displayed precision" give the two derivations
-# separately (`PL-X9KD`).
-SIMULATION_STEP_S: Final = SimulationStep(0.1)
-# How often the simulation timer fires, in *real* seconds. It is numerically
-# equal to the step but means something different. The playback multiplier is
-# the ratio between the two. A tick advances `rate.steps_per_tick(...)` steps
-# of `SIMULATION_STEP_S`. That is `multiplier` times faster than real time only
-# because a tick is one step long (`app/playback.py`,
-# `test_a_tick_is_one_simulation_step_of_real_time`). The interval is also the
-# interface's control resolution (`PL-NBWP`). A tick advances its whole burst
-# without interruption. So a setting changed while the run plays first takes
-# effect at a tick boundary, and tick boundaries are `multiplier` times this
-# interval apart in simulated time.
-SIMULATION_TICK_INTERVAL_S: Final = float(SIMULATION_STEP_S)
-# How often the display redraws, independent of the simulation step. It is
-# twice the tick, so a frame spans two control-grid steps at every playback
-# rate. That is why `PL-NBWP` left the grid where it is. The value is written
-# as its own number rather than derived from the tick, because a display
-# cadence and a timer cadence are separate decisions.
-# `test_a_frame_is_two_control_grid_steps_at_every_rate` checks the relation
-# instead.
+# How often the simulation timer fires, in milliseconds of real time. It is a
+# whole number, so the simulated time that a tick owes a run is a whole number
+# of milliseconds at every playback rate (`OwedSimulatedTime` in
+# `app/playback.py`). A tick is a tenth of the one-second step
+# (`core/simulation_step.py`). So at real time the run takes one step on every
+# tenth tick, and a press of Pause or a change of rate is acted on within a
+# tenth of a second. The interval also sets the interface's control resolution
+# at the fast rates (`PL-NBWP`). A tick takes all of its steps without
+# interruption, so a setting changed while the run plays first takes effect on
+# the next step the loop takes (`PlaybackRate.control_grid_s`).
+SIMULATION_TICK_INTERVAL_MS: Final = 100
+# How often the display redraws, in seconds of real time. It is twice the
+# tick, and it is written as its own number rather than derived from the tick,
+# because a display cadence and a timer cadence are separate decisions. At 1x
+# and 5x a step takes longer than a frame, so some frames redraw unchanged
+# values. `test_a_frame_is_two_ticks` checks the relation with the tick.
 RENDER_INTERVAL_S: Final = 0.2
 # How wide the chart is before the first frame is drawn. It is the narrowest
 # rung, which is the width "Fit run" chooses for a run that has recorded
@@ -648,15 +630,12 @@ HALT_FORK_LABEL_TEMPLATE: Final = "Branch here: {instant}, stopped on your mark"
 MARK_FORK_LABEL_TEMPLATE: Final = "{instant}, on your mark"
 
 # Each range below holds every value that one part of a clock reading can take
-# within the supported run. Hours are less than the run length in hours,
-# minutes and whole seconds are less than 60, and the tenth is nonzero. Each
-# range starts at 1, so that a reading built from them includes every part
-# (`PL-NC0D`).
+# within the supported run. Hours are less than the run length in hours, and
+# minutes and seconds are less than 60. Each range starts at 1, so that a
+# reading built from them includes every part (`PL-NC0D`).
 _CLOCK_HOURS: Final = range(1, int(MAXIMUM_ELAPSED_SIMULATION_TIME_S // SECONDS_PER_HOUR))
 _CLOCK_MINUTES: Final = range(1, int(MINUTES_PER_HOUR))
-_CLOCK_WHOLE_SECONDS: Final = range(1, int(SECONDS_PER_MINUTE))
-_TENTHS_PER_SECOND: Final = 10
-_CLOCK_TENTHS: Final = range(1, _TENTHS_PER_SECOND)
+_CLOCK_SECONDS: Final = range(1, int(SECONDS_PER_MINUTE))
 
 
 def displayed_run_count(run_count: int) -> RunCount:
@@ -698,7 +677,7 @@ def widest_fork_point_label(advance_px: Callable[[str], int]) -> str:
     run has passed is the widest kind of entry. It is the clock reading of a
     control event, followed by the words of `MARK_FORK_LABEL_TEMPLATE`. The
     widest clock reading is found by measuring, not by counting characters.
-    A proportional font gives its digits different widths, so 23h59m59.9s,
+    A proportional font gives its digits different widths, so 23h59m59s,
     the reading at the last step, is not the widest. Hours, minutes and
     seconds vary independently. So the widest value of each, put together,
     is the widest reading that `format_elapsed` writes within the supported
@@ -718,13 +697,8 @@ def widest_fork_point_label(advance_px: Callable[[str], int]) -> str:
     minutes = max(
         _CLOCK_MINUTES, key=lambda minute: advance_px(format_elapsed(minute * SECONDS_PER_MINUTE))
     )
-    whole, tenth = max(
-        ((whole, tenth) for whole in _CLOCK_WHOLE_SECONDS for tenth in _CLOCK_TENTHS),
-        key=lambda second: advance_px(format_elapsed(second[0] + second[1] / _TENTHS_PER_SECOND)),
-    )
-    instant_s = (
-        hours * SECONDS_PER_HOUR + minutes * SECONDS_PER_MINUTE + whole + tenth / _TENTHS_PER_SECOND
-    )
+    seconds = max(_CLOCK_SECONDS, key=lambda second: advance_px(format_elapsed(second)))
+    instant_s = hours * SECONDS_PER_HOUR + minutes * SECONDS_PER_MINUTE + seconds
 
     return MARK_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(instant_s))
 
@@ -743,11 +717,9 @@ MARK_NAME_PLACEHOLDER: Final = "Optional"
 # The unit is seconds rather than the compound form the clock shows, because a
 # spin box states one unit and the compound form has three. The dialog
 # restates the entered value in the compound form beside the control, so no
-# reader has to convert between them. One decimal place matches the
-# simulation step, which is the finest instant a run can stop at.
+# reader has to convert between them. The entry is a whole number of seconds,
+# because a run stands only on whole seconds (`core/simulation_step.py`).
 INSTANT_ENTRY_SUFFIX: Final = " s"
-INSTANT_ENTRY_DECIMALS: Final = 1
-INSTANT_ENTRY_STEP_S: Final = 1.0
 # The upper bound of the height control before an agent has been named. Every
 # shipped agent's vaporizer reaches at least this multiple of its own 1 MAC.
 # So this value is a lower bound on the real limit rather than a guess at it.
@@ -1242,18 +1214,12 @@ def readouts(snapshot: SimulationSnapshot, playback_rate: PlaybackRate) -> tuple
 # The widest string that each readout column can show, so a panel can reserve
 # its width once instead of moving as a value changes length (`PL-3355`).
 # The value line is the clock's reading just before the supported run length,
-# which has every part of the compound form, including tenths. The second
+# which has every part of the compound form. The second
 # line is the longest playback rate. A percent readout and a MAC multiple are
 # both shorter than these at every value the dial can reach. The strings are
 # chosen by character count from the formatters' own extremes, and the widget
 # measures the chosen string in its font.
-WIDEST_READOUT_VALUE: Final = max(
-    (
-        format_elapsed(MAXIMUM_ELAPSED_SIMULATION_TIME_S - tenth * SIMULATION_STEP_S)
-        for tenth in range(1, 11)
-    ),
-    key=len,
-)
+WIDEST_READOUT_VALUE: Final = format_elapsed(MAXIMUM_ELAPSED_SIMULATION_TIME_S - 1)
 WIDEST_READOUT_SECONDARY: Final = max(
     (format_playback_rate(rate.multiplier) for rate in SUPPORTED_PLAYBACK_RATES), key=len
 )

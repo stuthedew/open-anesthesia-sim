@@ -272,7 +272,7 @@ class VenousBloodCompartment:
             SimulationConfigurationError: `simulation_step_s` is outside the range that
                 `require_compartment_step` accepts (`PL-WP52`, `PL-YT3T`). The
                 step must be positive and finite, no shorter than
-                `MINIMUM_SIMULATION_STEP_S`, and no longer than the supported run
+                `MINIMUM_COMPARTMENT_STEP_S`, and no longer than the supported run
                 length, `MAXIMUM_ELAPSED_SIMULATION_TIME_S`. These checks run
                 before anything changes. The error is also raised when the amount
                 held is already more than the capacity. Only a write that bypasses

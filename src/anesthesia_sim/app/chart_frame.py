@@ -68,7 +68,6 @@ from types import MappingProxyType
 from typing import Final
 
 from anesthesia_sim.app.chart_time_base import (
-    CHART_GRID_RESOLUTIONS_S,
     ChartTimeBase,
     fit_to_run,
     fitted_window,
@@ -115,7 +114,6 @@ __all__ = [
     "CHART_COLUMN_BUDGET_PER_SERIES",
     "COMPARED_COMPARTMENT_CAP",
     "COMPARTMENT_TRACES",
-    "HOVER_INSTANT_RESOLUTION_S",
     "MAX_CHART_CONTROL_MARKS",
     "MAX_CHART_WASH_IN_SEGMENTS",
     "WASH_IN_AXIS_MAXIMUM",
@@ -232,8 +230,8 @@ WASH_IN_AXIS_MAXIMUM: Final = 1.15
 
 # How far past equilibrium the trace may be drawn, so that its ending lands on
 # the line rather than a step short of it. `wash_in_stretches` gives the whole
-# reasoning, including why the bound is stated rather than taken from the
-# measured 1.00235 that a 0.1 s step actually produces. It is set below
+# reasoning, including why the bound is stated rather than taken from a
+# measurement of how far one step carries the ratio past equilibrium. It is set below
 # `WASH_IN_AXIS_MAXIMUM` rather than at it, so that even the widest crossing it
 # allows still has clear space above it.
 WASH_IN_TERMINUS_CEILING: Final = 1.05
@@ -264,23 +262,6 @@ WASH_IN_HOVER_LABEL: Final = "Wash-in F_A/F_I (alveolar / modelled circuit)"
 # wash-in label, it would suggest that wash-in can go past completion. It would do so
 # at the dot that a reader is most likely to point at.
 WASH_IN_HOVER_PAST_EQUILIBRIUM_TEXT: Final = "Past equilibrium: not a wash-in fraction"
-
-# The resolution to which the hover rounds the instant it prints. It is the finest
-# grid that a drawn column can sit on, a hundredth of a second. So the instant
-# printed is the instant whose state is printed beside it (`PL-T5NJ`). Columns used
-# to sit wherever the plot's width put them, such as at 410.7383 s, and the hover
-# rounded that to the clock's tenth of a second. The state printed was still the
-# state at 410.7383 s, up to 0.05 s from the printed instant. Early in a fast
-# induction that difference matters. Desflurane at 18% and 10 L/min takes the
-# circuit from 2.68% at 6.00 s to 2.70% at 6.04 s. So the hover at "6s" could print
-# 2.70% while the readout row at 6 s showed 2.68%.
-# `chart_time_base.grid_spacing_s` now rounds the column spacing down onto whole
-# hundredths of a second. It rounds onto tenths instead wherever that adds few
-# columns. Every other drawn instant (a bound, a control event, a fork) falls on a
-# simulation step. Rounding to this resolution therefore removes only
-# floating-point noise. The value is read from the grid's own declaration rather
-# than written as a digit, so the two cannot drift apart.
-HOVER_INSTANT_RESOLUTION_S: Final = CHART_GRID_RESOLUTIONS_S[-1]
 
 # The word that opens every hover readout. It appears on every hover, not only
 # on the two compartments that have a measured twin, because the readout is
@@ -1769,12 +1750,12 @@ def _hover_agent(run: RunFrame) -> str:
 def _hover_instant(time_s: float) -> str:
     """Return a drawn point's instant, formatted the way the clock and the axis show time.
 
-    Every drawn instant is a whole multiple of `HOVER_INSTANT_RESOLUTION_S`. So the
-    rounding removes only floating-point noise, and the printed instant is the one
-    whose state the hover prints.
+    Every drawn instant is a whole number of seconds
+    (`SimulationController.drawn_window`). So the printed instant is the one whose
+    state the hover prints, and nothing is rounded here (`PL-T5NJ`, `PL-SZ6G`).
     """
 
-    return format_elapsed(round(time_s / HOVER_INSTANT_RESOLUTION_S) * HOVER_INSTANT_RESOLUTION_S)
+    return format_elapsed(time_s)
 
 
 def _hover_subject(quantity: RecordedQuantity) -> str:

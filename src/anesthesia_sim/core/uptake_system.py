@@ -56,7 +56,7 @@ from anesthesia_sim.core.parameters import (
     load_reference_circle_system_parameters,
 )
 from anesthesia_sim.core.patient import PatientCompartments, PatientCompartmentsState
-from anesthesia_sim.core.simulation_step import SimulationStep, require_simulation_step
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import (
     AlveolarVentilation,
     CardiacOutput,
@@ -129,7 +129,7 @@ class AgentUptakeSystem:
     _propagator_key: tuple[float, ...] | None = field(
         default=None, init=False, repr=False, compare=False
     )
-    """The step and the raw compartment values that the cached propagator was built for.
+    """The raw compartment values that the cached propagator was built for.
 
     `capture_state()` does not capture this key, and a rollback does not restore
     it. A propagator is a function of the settings. A step never writes the
@@ -229,7 +229,7 @@ class AgentUptakeSystem:
 
             The constructor, a copy and a pickle write each part onto a system
             that has none yet, so those writes are accepted. The cached
-            propagator and its key are not parts. `_propagator_for` writes them
+            propagator and its key are not parts. `_step_propagator` writes them
             at any step, and they are keyed by the settings they were built
             from.
 
@@ -402,8 +402,11 @@ class AgentUptakeSystem:
     def set_cardiac_output(self, cardiac_output_l_min: CardiacOutput) -> None:
         self.patient.set_cardiac_output(cardiac_output_l_min)
 
-    def advance(self, simulation_step_s: SimulationStep) -> UptakeStepResult:
-        """Advance the system by one conservative, validated step, or leave it unchanged.
+    def advance(self) -> UptakeStepResult:
+        """Advance the system by one validated step of one second, or leave it unchanged.
+
+        The step is `SIMULATION_STEP_S`, and a caller cannot ask for another
+        (`core/simulation_step.py`).
 
         The step is all-or-nothing. `_advance_step()` computes the whole step
         in one exact propagation, but it then writes the result into the
@@ -435,7 +438,7 @@ class AgentUptakeSystem:
         leaves the last completed step, which *is* a solution. So a caller that
         halts still holds a state that it can display and reason about. The
         diagnosis goes in the raised message instead. There it names the
-        invariant and the step size, which a reader can act on.
+        invariant, which a reader can act on.
 
         Rolling back does not make the run resumable. The model reached a state
         that it could not step from, so the same step would fail again. The
@@ -444,7 +447,7 @@ class AgentUptakeSystem:
         **This method also handles a settings record that the step cannot build. It raises
         that failure as a `SimulationNumericalError`, as it does for the failures described
         above.** When a setting has changed since the last step, `_advance_step` builds the
-        settings record through `_propagator_for`. The record rejects tissue blood flows that
+        settings record through `_step_propagator`. The record rejects tissue blood flows that
         do not sum to the cardiac output. No guarded way of changing a setting can leave the
         flows in that state. Each flow is the tissue's perfusion fraction of the patient's
         cardiac output (`PL-HQF5`). The patient rejects fractions that do not sum to 1, and a
@@ -459,16 +462,12 @@ class AgentUptakeSystem:
         cardiac output was set (`PL-M4M0`).
 
         Raises:
-            TypeError: `simulation_step_s` is not a `SimulationStep`, so
-                nothing has checked it against the supported range
-                (`core/simulation_step.py`). This is checked before anything
-                changes, so the system is untouched.
             SimulationNumericalError: the step began and could not be
                 completed. There are two causes. The first is that a value the
                 step itself produced was rejected: a fraction that
                 `_write_state_vector` builds as a `Fraction`, rejected under the
                 name of the compartment that would have held it. The exact
-                propagator cannot take a fraction below 0 for any step size,
+                propagator cannot take a fraction below 0,
                 because its matrix is Metzler, so every entry of the propagator
                 is nonnegative. A rounding error can carry a fraction above 1
                 only from a state within rounding of 1. The input ceiling of
@@ -485,13 +484,11 @@ class AgentUptakeSystem:
                 run must stop rather than continue from it.
         """
 
-        require_simulation_step(simulation_step_s)
-
         state_before_step = self.capture_state()
         step_completed = False
 
         try:
-            result = self._advance_step(simulation_step_s)
+            result = self._advance_step()
             step_completed = True
 
             return result
@@ -514,7 +511,7 @@ class AgentUptakeSystem:
             # rollback, and `finally` gives it to them without a separate
             # clause for each.
             raise SimulationNumericalError(
-                f"the simulation step of {simulation_step_s} s could not be completed "
+                f"the simulation step of {SIMULATION_STEP_S} s could not be completed "
                 "and was rolled back, leaving the state the last completed step "
                 f"produced: {error}"
             ) from error
@@ -566,7 +563,7 @@ class AgentUptakeSystem:
         self.patient.restore_state(state.patient)
         self.agent_simulation_validator.restore_state(state.agent_simulation_validator)
 
-    def _advance_step(self, simulation_step_s: SimulationStep) -> UptakeStepResult:
+    def _advance_step(self) -> UptakeStepResult:
         """Advance every compartment at once, by one exact propagation.
 
         The method writes each compartment as it goes and does not clean up
@@ -588,7 +585,7 @@ class AgentUptakeSystem:
         alveolar_agent_before_l = self.alveoli.agent_amount_l
         patient_agent_before_l = self.patient.total_agent_amount_l
 
-        advanced = propagate(self._propagator_for(simulation_step_s), self.state_vector())
+        advanced = propagate(self._step_propagator(), self.state_vector())
 
         self._write_state_vector(advanced)
 
@@ -667,8 +664,12 @@ class AgentUptakeSystem:
             ),
         )
 
-    def _propagator_for(self, simulation_step_s: SimulationStep) -> Matrix:
-        """Return `exp(A * simulation_step_s)`, rebuilding it if a setting changed.
+    def _step_propagator(self) -> Matrix:
+        """Return `exp(A * SIMULATION_STEP_S)`, rebuilding it if a setting changed.
+
+        The propagator is the exact solution of the governing equations over
+        one step. It is formed once for each stretch of constant settings and
+        applied at every step of that stretch.
 
         The cache is keyed on the settings themselves rather than cleared by
         the setters, and the key is the same object the matrix is built from.
@@ -682,7 +683,7 @@ class AgentUptakeSystem:
         on every step, against one matrix exponential for each settings change.
         The settings are constant for all but a few steps of a run.
 
-        **What is compared is `_propagator_cache_key()`, not
+        **What is compared is `settings_key()`, not
         `equation_settings()`** (`PL-R460`). Comparing either gives the same
         result, because the key is a bijection of the settings: equal keys mean
         equal settings. But building the settings object costs four frozen
@@ -699,22 +700,17 @@ class AgentUptakeSystem:
         rebuild below validates before it builds.
         """
 
-        key = self._propagator_cache_key(simulation_step_s)
+        key = self.settings_key()
 
         if self._propagator is None or self._propagator_key != key:
             settings = self.equation_settings()
-            propagator = matrix_exponential(build_system_matrix(settings), simulation_step_s)
+            propagator = matrix_exponential(build_system_matrix(settings), SIMULATION_STEP_S)
             self._propagator = propagator
             self._propagator_key = key
 
             return propagator
 
         return self._propagator
-
-    def _propagator_cache_key(self, simulation_step_s: SimulationStep) -> tuple[float, ...]:
-        """Return the step, followed by `settings_key()`."""
-
-        return (simulation_step_s, *self.settings_key())
 
     def settings_key(self) -> tuple[float, ...]:
         """Return every compartment value that the settings record holds, for comparison by value.
@@ -856,7 +852,7 @@ class AgentUptakeSystem:
         written, and the rollback undoes those writes.
 
         The cached propagator is neither rebuilt nor cleared, because
-        `_propagator_cache_key()` reads only the settings that the system matrix
+        `settings_key()` reads only the settings that the system matrix
         is built from, and this method writes none of them.
 
         Raises:

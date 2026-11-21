@@ -48,13 +48,13 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
-from math import ceil, isfinite
+from math import isfinite
 from types import MappingProxyType
 
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.core.concentration import MacMultiple
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
-from anesthesia_sim.core.simulation_step import SimulationStep, require_simulation_step
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CaseInstant, StepCount, require_case_instant
 
 __all__ = [
@@ -297,52 +297,26 @@ class TimeBookmark:
 
         return before_s < self.instant_s <= after_s
 
-    def steps_to_reach(self, simulation_step_s: SimulationStep) -> StepCount:
-        """How many steps a run at `simulation_step_s` must complete to reach this instant.
+    def steps_to_reach(self) -> StepCount:
+        """How many steps a run must complete to reach this instant.
 
-        This is `crossed_between` applied the other way round, on a run's own
-        step grid. The step that ends at this count is the one that
-        `crossed_between` says reaches the mark. So it is the step a halt stops
-        on. `count x step`, the product that `SimulationState.elapsed_s` forms,
-        is the instant at which a branch taken at the mark opens
-        (`SimulationController.resumed_at_mark`). The count is zero for a mark
-        at the case's opening, because a run stands on that mark before any
-        step and no step crosses it.
-
-        **The count comes from the rule, not from rounding** (`PL-W4XQ`). The
-        quotient `instant_s / simulation_step_s` is itself rounded, so its
-        ceiling can land one step late. For example, `0.30000000000000004 / 0.1`
-        is 3.0000000000000004, though the third step's own product equals that
-        instant. So the ceiling is only a first guess. The code then moves the
-        guess to the right step by applying the two comparisons that
-        `crossed_between` makes to the step products themselves. `round` would
-        be worse than late: it puts a mark that lies inside a step on the step
-        *before* it, and no halt stops there.
-
-        Args:
-            simulation_step_s: The simulation step that the run uses.
+        A run stands only on whole steps, and a mark is a whole number of
+        seconds. The step that ends at this count is the one that
+        `crossed_between` says reaches the mark, so it is the step a halt
+        stops on. `count x step`, the product that
+        `SimulationState.elapsed_s` forms, is the instant at which a branch
+        taken at the mark opens (`SimulationController.resumed_at_mark`). The
+        count is zero for a mark at the case's opening, because a run stands
+        on that mark before any step and no step crosses it.
 
         Returns:
             The number of completed steps at which the run first stands at or
             past this instant.
-
-        Raises:
-            TypeError: If `simulation_step_s` is not a `SimulationStep`, so
-                nothing has checked it against the supported range
-                (`core/simulation_step.py`).
         """
 
-        require_simulation_step(simulation_step_s)
-
-        count = ceil(self.instant_s / simulation_step_s)
-
-        while count > 0 and (count - 1) * simulation_step_s >= self.instant_s:
-            count -= 1
-
-        while count * simulation_step_s < self.instant_s:
-            count += 1
-
-        return StepCount(count)
+        # Ceiling division on whole numbers. It is exact, where the float
+        # quotient this method once formed needed correcting (`PL-W4XQ`).
+        return StepCount(-(-int(self.instant_s) // SIMULATION_STEP_S))
 
 
 @dataclass(frozen=True, slots=True)

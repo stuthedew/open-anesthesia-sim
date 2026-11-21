@@ -15,7 +15,7 @@ does not also depend on the controller.
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, fields, replace
-from math import isfinite
+from math import ceil, floor, isfinite
 from types import MappingProxyType
 
 from anesthesia_sim.app.bookmarks import (
@@ -72,7 +72,7 @@ from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.parameters import MacAwakeReference, load_agent_parameters
 from anesthesia_sim.core.run_definition import Keyframe, RunDefinition, RunSegment
 from anesthesia_sim.core.simulation import SimulationState
-from anesthesia_sim.core.simulation_step import SimulationStep
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ELAPSED_SIMULATION_TIME_S,
     AlveolarVentilation,
@@ -675,10 +675,6 @@ class ResumePoint:
             that the branch's clock continues the case's clock rather than
             restarting. The supported run length in `docs/INTERFACE.md`
             § "Supported run length" is measured against this count.
-        simulation_step_s: The step length the case has used, or `None` for
-            a fork from a run that has not stepped. A branch keeps its
-            parent's step length, and `SimulationState` rejects a different
-            one.
         accounting_anchor_l: The amount of agent present when the *case's*
             accounting period started. It is carried rather than derived
             again. `AgentUptakeSystem.resume_at` explains why deriving it is
@@ -702,7 +698,6 @@ class ResumePoint:
     segment: RunSegment
     fork: Keyframe
     step_count: StepCount
-    simulation_step_s: SimulationStep | None
     accounting_anchor_l: float
     stepped_from: Keyframe | None
 
@@ -712,14 +707,12 @@ class MarkForkPoint:
     """A marked instant that a run has passed, and the instant where a branch taken there opens.
 
     These two instants are in general not equal, which is why this record
-    carries both (`PL-W4XQ`). A mark that lies inside a step is reached at
-    the end of that step. So `bookmark.instant_s` is where the learner placed
-    the mark, and `fork_s` is the end of that step, where a branch opens. For
-    a mark typed as 45.3 s, with a step of 0.1 s, they are 45.3 and
-    45.300000000000004. Code that labels the offer to branch reads `fork_s`,
-    the instant that the branch will use. Code that takes the offer passes
-    back `bookmark`, the mark itself. So neither piece of code has a float
-    to get wrong.
+    carries both (`PL-W4XQ`). `bookmark.instant_s` is where the learner placed
+    the mark, and `fork_s` is the end of the step that reaches it, where a
+    branch opens. With a step of one second the two are equal, because a mark
+    is a whole number of seconds (`PL-SZ6G`). Code that labels the offer to
+    branch reads `fork_s`, the instant that the branch will use. Code that
+    takes the offer passes back `bookmark`, the mark itself.
 
     Attributes:
         bookmark: The mark, as the run holds it.
@@ -928,7 +921,7 @@ class SimulationController:
         self._run_definition = RunDefinition(
             uptake_system.equation_settings(),
             uptake_system.state_vector(),
-            opened_at_s=CaseInstant(0.0),
+            opened_at_s=CaseInstant(0),
         )
         self._note_recorded_settings()
         # A run built here is a trunk, so it opens at the case's own zero.
@@ -1120,9 +1113,7 @@ class SimulationController:
     def _reason_the_next_step_would_be_refused(self) -> str | None:
         """Return the reason `SimulationState.advance` would give for rejecting the next step.
 
-        The result is `None` when the next step would not be rejected. A run
-        that has not stepped has no step length to measure the span in, so it
-        is at no limit.
+        The result is `None` when the next step would not be rejected.
         """
 
         return self._reason_a_step_would_be_refused_after(self._state.step_count)
@@ -1130,23 +1121,16 @@ class SimulationController:
     def _reason_a_step_would_be_refused_after(self, step_count: StepCount) -> str | None:
         """Return the reason the core would give for rejecting a step taken after `step_count`.
 
-        The result is `None` when that step would not be rejected, or when
-        this run has not stepped and so has no step length to measure the span
-        in. The run's own limit and every fork use this one method
-        (`_resume_point`, `mark_fork_points`, `PL-VHQX`). It calls the core's
-        own guard rather than restating its rule. So the controller and the
-        stepper cannot disagree about which count is the last supported one.
-        `maximum_step_count` decides that once, on the product of the count
-        and the step length (`PL-8H2R`). The message is the guard's own.
+        The result is `None` when that step would not be rejected. The run's
+        own limit and every fork use this one method (`_resume_point`,
+        `mark_fork_points`, `PL-VHQX`). It calls the core's own guard rather
+        than restating its rule. So the controller and the stepper cannot
+        disagree about which count is the last supported one. The message is
+        the guard's own.
         """
 
-        simulation_step_s = self._state.simulation_step_s
-
-        if simulation_step_s is None:
-            return None
-
         try:
-            require_supported_run_length(step_count, simulation_step_s)
+            require_supported_run_length(step_count)
         except SimulationDomainLimitError as refusal:
             return str(refusal)
 
@@ -1575,7 +1559,7 @@ class SimulationController:
         never lived.
         """
 
-        return CaseInstant(0.0) if self._opened_from is None else self._opened_from.fork.instant_s
+        return CaseInstant(0) if self._opened_from is None else self._opened_from.fork.instant_s
 
     def resumed_at(self, instant_s: CaseInstant) -> SimulationController:
         """Open a second live run from this run's canonical state at `instant_s`.
@@ -2164,11 +2148,7 @@ class SimulationController:
         # `ResumePoint.fork` holds it in either case.
         system.resume_at(resume_point.fork.state, initial_agent_l=resume_point.accounting_anchor_l)
 
-        self._state = SimulationState(
-            uptake_system=system,
-            step_count=resume_point.step_count,
-            simulation_step_s=resume_point.simulation_step_s,
-        )
+        self._state = SimulationState(uptake_system=system, step_count=resume_point.step_count)
         # The run definition opens on the parent's own stretch, with its
         # keyframe and its settings, at that keyframe's own instant on the
         # case's time axis. That keeps the clock and the definition's reach
@@ -2426,34 +2406,19 @@ class SimulationController:
         )
 
     def _steps_to_reach(self, passed: TimeBookmark) -> StepCount:
-        """How many of this run's steps reach `passed`, a mark that the run is at or past.
+        """How many of this run's steps reach `passed`, a mark that the run is at or past."""
 
-        A run that has not stepped stands at its opening. So the only mark it
-        can have passed is a mark at the opening, which no step reaches.
-        """
-
-        simulation_step_s = self._state.simulation_step_s
-
-        if simulation_step_s is None:
-            return StepCount(0)
-
-        return passed.steps_to_reach(simulation_step_s)
+        return passed.steps_to_reach()
 
     def _instant_after(self, step_count: StepCount) -> CaseInstant:
         """The case instant where this run stands once `step_count` steps are complete.
 
-        It forms the same product as `SimulationState.elapsed_s`, in the same
-        way. So an instant derived here is, bit for bit, the one the
-        clock reads after that many steps, and it passes `_resume_point`'s
-        whole-step check.
+        It forms the same product as `SimulationState.elapsed_s`, a whole
+        number of seconds. So an instant derived here is the one the clock
+        reads after that many steps.
         """
 
-        simulation_step_s = self._state.simulation_step_s
-
-        if simulation_step_s is None:
-            return CaseInstant(0.0)
-
-        return CaseInstant(step_count * simulation_step_s)
+        return CaseInstant(step_count * SIMULATION_STEP_S)
 
     def _require_forkable(self) -> None:
         """Refuse a fork from a run that is a branch, or whose frame has failed.
@@ -2523,32 +2488,26 @@ class SimulationController:
                 run length, so the branch would have no step to take.
         """
 
-        simulation_step_s = self._state.simulation_step_s
+        step_count = StepCount(int(fork.instant_s) // SIMULATION_STEP_S)
 
-        if simulation_step_s is None:
-            step_count = StepCount(0)
-        else:
-            step_count = StepCount(round(fork.instant_s / simulation_step_s))
+        if step_count * SIMULATION_STEP_S != fork.instant_s:
+            raise SimulationConfigurationError(
+                f"{fork.instant_s} s is not a whole number of this run's "
+                f"{SIMULATION_STEP_S} s steps, so a branch could not continue the case's "
+                "step count exactly"
+            )
 
-            if step_count * simulation_step_s != fork.instant_s:
-                raise SimulationConfigurationError(
-                    f"{fork.instant_s} s is not a whole number of this run's "
-                    f"{simulation_step_s} s steps, so a branch could not continue the case's "
-                    "step count exactly"
-                )
-
-            if self._reason_a_step_would_be_refused_after(step_count) is not None:
-                raise SimulationConfigurationError(
-                    f"a branch at {fork.instant_s} s would open on the supported run length, "
-                    "where no step is left to take, so it could never be run; a setting change "
-                    "or a mark before it is still branched at with resumed_at or resumed_at_mark"
-                )
+        if self._reason_a_step_would_be_refused_after(step_count) is not None:
+            raise SimulationConfigurationError(
+                f"a branch at {fork.instant_s} s would open on the supported run length, "
+                "where no step is left to take, so it could never be run; a setting change "
+                "or a mark before it is still branched at with resumed_at or resumed_at_mark"
+            )
 
         return ResumePoint(
             segment=segment,
             fork=fork,
             step_count=step_count,
-            simulation_step_s=simulation_step_s,
             accounting_anchor_l=(
                 self._state.uptake_system.agent_simulation_validator.initial_agent_l
             ),
@@ -2590,8 +2549,9 @@ class SimulationController:
                 be before `start_s`.
             columns: The number of grid columns the axis is divided into, at
                 least two. The spacing this gives is rounded down onto whole
-                hundredths of a second, so the grid can have a few more
-                columns than this (`chart_time_base.grid_spacing_s`). The
+                seconds, so the grid can have a few more columns than this,
+                and it is never finer than one second
+                (`chart_time_base.grid_spacing_s`). The
                 points actually drawn are these columns plus the control
                 events inside the window and the two ends of the drawn range.
                 So this value sets the grid, not the number of points.
@@ -2611,8 +2571,11 @@ class SimulationController:
         # A branch begins at its fork, and the axis may legitimately extend to
         # the left of the fork. `RunDefinition` rejects an instant from before
         # a run existed, rather than returning a value from its nearest keyframe.
-        first_s = max(start_s, self.began_at_s)
-        last_s = min(stop_s, self._run_definition.reached_s)
+        # The drawn range also starts and ends on whole seconds, because the
+        # run holds no instant between them. So an axis edge that lies inside
+        # a second is moved inward to the nearest whole second.
+        first_s = max(ceil(start_s), self.began_at_s)
+        last_s = min(floor(stop_s), self._run_definition.reached_s)
 
         if last_s < first_s:
             # The axis and the run do not overlap. Two ordinary states cause
@@ -2626,9 +2589,7 @@ class SimulationController:
         # An axis of zero width is one instant, and it is still drawn. Both
         # bounds coincide, so no grid column can fall strictly between them,
         # and the spacing substituted here cannot place one there.
-        window = self._run_definition.evaluate_anchored(
-            first_s, last_s, spacing_s if spacing_s > 0.0 else 1.0
-        )
+        window = self._run_definition.evaluate_anchored(first_s, last_s, max(spacing_s, 1))
 
         return DrawnWindow(
             substance_id=self._agent_id, times_s=window.times_s, states=window.states
@@ -2751,7 +2712,7 @@ class SimulationController:
             return
 
         self._run_definition = RunDefinition(
-            settings, uptake_system.state_vector(), opened_at_s=CaseInstant(0.0)
+            settings, uptake_system.state_vector(), opened_at_s=CaseInstant(0)
         )
         self._note_recorded_settings()
         self._clear_control_timeline()
@@ -3015,7 +2976,7 @@ class SimulationController:
         spacing_s = _axis_spacing_s(start_s, stop_s, columns)
         settings = self.preview_settings(preview)
         reached_s = self._run_definition.reached_s
-        horizon_s = min(stop_s, MAXIMUM_ELAPSED_SIMULATION_TIME_S)
+        horizon_s = min(floor(stop_s), MAXIMUM_ELAPSED_SIMULATION_TIME_S)
 
         if horizon_s <= reached_s:
             return DrawnWindow(substance_id=self._agent_id, times_s=(), states=())
@@ -3024,9 +2985,7 @@ class SimulationController:
             settings, self._run_definition.state_at(reached_s), opened_at_s=reached_s
         )
         prediction.advance_to(CaseInstant(horizon_s))
-        window = prediction.evaluate_anchored(
-            reached_s, horizon_s, spacing_s if spacing_s > 0.0 else 1.0
-        )
+        window = prediction.evaluate_anchored(reached_s, horizon_s, max(spacing_s, 1))
 
         return DrawnWindow(
             substance_id=self._agent_id, times_s=window.times_s, states=window.states
@@ -3465,7 +3424,7 @@ class SimulationController:
             self._reached_instants_s |= _reached_instants(crossing)
             self._reached_crossings |= _reached_heights(crossing)
 
-    def advance(self, simulation_step_s: SimulationStep) -> None:
+    def advance(self) -> None:
         """Advance the state, record history and halt on a crossing, unless the run is paused.
 
         The run definition's reach, the time up to which it describes the run,
@@ -3476,14 +3435,13 @@ class SimulationController:
         the states, which are recovered from them on demand.
 
         **The crossing test is here because this is where each single step is
-        taken** (`PL-CTD7`). The interface advances a whole tick's worth of steps
-        between frames: `multiplier x tick_interval_s / simulation_step_s`
-        steps, which is 300 at 300x. A test applied once per frame would place
-        the halt up to `multiplier x simulation_step_s` past the value the
-        learner marked. That is 30 simulated seconds at 300x and 0.1 s at 1x,
-        while `docs/MODEL.md` states its tolerance in hundredths of a percentage
-        point. The same bookmark would then silently stop the run at a different
-        concentration depending on the playback speed. That is the
+        taken** (`PL-CTD7`). At a fast playback rate the interface takes
+        several steps on one tick, which is 30 at 300x
+        (`app/playback.py`). A test applied once per tick would place the halt
+        up to 30 simulated seconds past the value the learner marked at 300x,
+        and on the marked step at 1x. The same bookmark would then silently
+        stop the run at a different concentration depending on the playback
+        speed. That is the
         presentation-correctness failure that `CLAUDE.md` treats as
         safety-critical. It would also put two branches that were nominally
         taken "at 0.8 xMAC" at two different states. Because the test runs on
@@ -3551,13 +3509,13 @@ class SimulationController:
         self._leave_where_it_stopped()
 
         if self._bookmarks.is_empty:
-            self._state.advance(simulation_step_s)
+            self._state.advance()
             self._run_definition.advance_to(self._state.elapsed_s)
         else:
             before_s = self._state.elapsed_s
             before = self._compartment_mac_multiples(self._state.uptake_system.state_vector())
 
-            self._state.advance(simulation_step_s)
+            self._state.advance()
             # The clock and the run definition's reach are one quantity on one
             # time axis, on a branch as well as on a trunk. So the reach is the
             # clock, and no offset appears here or anywhere else.
@@ -3652,14 +3610,14 @@ def _opened_value(
     return control_value(stretch, control)
 
 
-def _axis_spacing_s(start_s: float, stop_s: float, columns: int) -> float:
+def _axis_spacing_s(start_s: float, stop_s: float, columns: int) -> int:
     """Return the spacing of an axis's grid columns, in simulated seconds, after checking the axis.
 
     `drawn_window` and `preview_window` both evaluate on this grid, so a
     prediction is drawn at the run's own resolution. The spacing is rounded
-    down onto a grid of whole hundredths of a second, so the chart's hover can
-    print each column's instant exactly (`chart_time_base.grid_spacing_s`,
-    `PL-T5NJ`). It is zero for an axis of zero width.
+    down onto whole seconds, and is never less than one second, because a run
+    stands only on whole seconds (`chart_time_base.grid_spacing_s`). It is
+    zero for an axis of zero width.
 
     Raises:
         SimulationConfigurationError: If `columns` is fewer than two, either
@@ -3683,7 +3641,7 @@ def _axis_spacing_s(start_s: float, stop_s: float, columns: int) -> float:
 
     span_s = stop_s - start_s
 
-    return grid_spacing_s(span_s / (columns - 1)) if span_s > 0.0 else 0.0
+    return grid_spacing_s(span_s / (columns - 1)) if span_s > 0.0 else 0
 
 
 class BranchedCase:
