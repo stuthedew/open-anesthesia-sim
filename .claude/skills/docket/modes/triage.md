@@ -552,6 +552,7 @@ the item records depends on its work:
    Python file is refused, because a test shows that work. In a developer
    document, a sentence that restates a fact of the tree is written as the
    requirement and then the test that checks it (`PL-WKKH`).
+   <!-- absent: docs/items/PL-K7QX-*.md -->
 3. **A result in the item's own brief.** An item that asks a question, takes
    a count or records a decision needs nothing in its front matter. Its brief
    holds a paragraph that opens with a bold label carrying the date, such as
