@@ -9,7 +9,11 @@ that a passage which grew gives its reader something they act on.
 reader table in `.claude/rules/plain-writing.md` names the file or its
 directory (`PL-22T5`). A row whose reader is in `UNEDITED_READERS` is ignored,
 so item briefs, the workflow's files, commit messages and replies are never
-compared.
+compared. The table keeps its five columns, because `reader_table` refuses a
+row with any other number of cells. Its two `README.md` rows are the readers
+that `README.md` § "What it is for" names. `docs/releases/` has no row, because
+`bin/docket release` writes each note from item titles, and an edit there
+would make a note disagree with its item.
 
 **What a unit is.** In a Python file, a unit is a docstring, a run of comment
 lines, or any other string literal. `docket.python.docstrings` decides which

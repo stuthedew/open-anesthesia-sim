@@ -1286,11 +1286,58 @@ def test_a_failing_verify_command_s_evidence_keeps_its_stdout(tmp_path: Path) ->
     assert check.lines[-3:] == ("FAILED tests/test_thing.py::test_b", "before", "after")
 
 
-def test_an_item_with_no_verify_command_cannot_be_verified(tmp_path: Path) -> None:
+def test_a_closed_item_that_records_nothing_cannot_be_verified(tmp_path: Path) -> None:
     root = _repo(tmp_path)
-    report = verify(root, _item(verify=""), _config(), "HEAD")
+    report = verify(
+        root, _item(verify="", status="done", closed=date(2026, 8, 2)), _config(), "HEAD"
+    )
     assert not report.passed
-    assert len(report.checks) == 1
+    assert [check.name for check in report.checks] == ["records what shows its work"]
+    assert report.stopped_early
+
+
+def test_an_open_item_with_no_command_is_read_all_the_same(tmp_path: Path) -> None:
+    """Its tests are named when it closes, so the audit says so and reads the diff."""
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX add a test",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+
+    report = verify(root, _item(verify=""), _config(), "HEAD~1")
+
+    first = report.checks[0]
+    assert first.name == "records what shows its work" and first.advisory
+    assert "named when it closes" in first.detail
+    assert not report.stopped_early
+
+
+def test_a_closed_item_s_recorded_test_is_read_against_the_branch(tmp_path: Path) -> None:
+    """A test the branch added shows the work, and one it left alone does not."""
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX add a test",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+    closed = dict(verify="", status="done", closed=date(2026, 8, 2))
+
+    added = verify(
+        root, _item(tests=("tests/test_thing.py::test_b",), **closed), _config(), "HEAD~1"
+    )
+    kept = verify(
+        root, _item(tests=("tests/test_thing.py::test_a",), **closed), _config(), "HEAD~1"
+    )
+
+    def shown(report: Verification) -> Check:
+        return next(c for c in report.checks if c.name == "the recorded tests show the work")
+
+    assert shown(added).passed
+    assert not shown(kept).passed
+    assert "neither added nor changed" in shown(kept).lines[0]
 
 
 def test_uncommitted_work_is_counted(tmp_path: Path) -> None:
@@ -1759,7 +1806,10 @@ def test_an_item_with_nothing_to_verify_does_not_hold_up_the_batch(tmp_path: Pat
         "tests/test_thing.py",
         KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
     )
-    items = [_item(identifier="PL-B2B2", path="PL-B2B2.md", verify=""), _item()]
+    nothing = _item(
+        identifier="PL-B2B2", path="PL-B2B2.md", verify="", status="done", closed=date(2026, 8, 2)
+    )
+    items = [nothing, _item()]
 
     reports = verify_batch(root, items, _config(check_command="echo ran >> runs.txt"), "HEAD~1")
 
@@ -3645,7 +3695,7 @@ def test_dropped_close_out_is_not_a_missing_command(tmp_path: Path) -> None:
 
     report = verify(root, _item(status="dropped", verify=""), _config(), "HEAD~1", self_audit=True)
 
-    command = _check(report, "has a `verify:` command")
+    command = _check(report, "records what shows its work")
     assert command.advisory and not command.blocks
     assert "a dropped item built nothing" in command.detail
     # The half a hard stop was throwing away: the other checks actually ran.
@@ -3706,7 +3756,7 @@ def test_a_not_delegable_item_close_out_is_not_a_missing_command(tmp_path: Path,
         self_audit=True,
     )
 
-    command = _check(report, "has a `verify:` command")
+    command = _check(report, "records what shows its work")
     assert command.advisory and not command.blocks
     assert "proving it means cutting a release" in command.detail
     assert not report.stopped_early
@@ -3730,7 +3780,7 @@ def test_a_done_item_with_no_command_and_no_reason_still_fails_hard(tmp_path: Pa
 
     report = verify(root, _item(status="done", verify=""), _config(), "HEAD~1", self_audit=True)
 
-    command = _check(report, "has a `verify:` command")
+    command = _check(report, "records what shows its work")
     assert command.blocks and not command.advisory
     assert report.stopped_early
     assert not report.passed
@@ -3866,7 +3916,7 @@ def test_a_not_delegable_line_does_not_excuse_a_command_the_base_holds(
         self_audit=True,
     )
 
-    command = _check(report, "has a `verify:` command")
+    command = _check(report, "records what shows its work")
     assert command.blocks
     assert "the branch's own word for skipping it" in command.detail
     assert f"HEAD~2 commissions: {LEAVES_A_MARK}" in command.lines
@@ -3904,7 +3954,7 @@ def test_a_not_delegable_line_excuses_nothing_where_the_base_cannot_be_read(tmp_
         self_audit=True,
     )
 
-    command = _check(report, "has a `verify:` command")
+    command = _check(report, "records what shows its work")
     assert command.blocks
     assert "no item store at HEAD~2:docs/queue" in command.detail
     assert not report.passed
