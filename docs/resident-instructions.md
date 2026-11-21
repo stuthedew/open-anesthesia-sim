@@ -2327,3 +2327,236 @@ and this rule never cuts one of those: a unit, a value, a condition or a citatio
 `.claude/rules/instruction-writing.md` decides the shape of a reply. Code,
 commands, paths and quoted output stay exactly as they are.
 ```
+
+### The procedures that the `docket` skill holds
+
+`PL-CYT1` moved the rows whose procedures the `docket` skill holds, or should
+hold. Each block below is the paragraph as it was loaded at launch before the
+move, and the line above it says what stays and which file of the skill holds
+the rest. Row 63, which leads into rows 64 and 65, is in one block with them.
+
+**Row 6, `CLAUDE.md`: the pause on new workflow mechanisms.** The rule stays in
+three lines. `.claude/skills/docket/modes/triage.md` § "Generators, how they
+rank, and the pause they set" already held the full rule.
+
+```text
+**While any open workflow-lane item carries `generator: live`, no new workflow
+mechanism is built** (project owner, 2026-09-22, ratified, and narrowed to the
+workflow lane 2026-10-17, ratified; the triage mode records what each was
+chosen over). The pause holds apparatus work unrelated to fixing the
+generators, both new features and housekeeping. A new command, check, field or
+rule of that kind, or a re-specification of the generator rule, is captured
+and not built, and is not offered as the answer to a finding. Work on the
+generators needs no lift: fixing a live generator, fixing a defect in what
+exists, or fixing the machinery that finds and ranks generators. The pause
+applies while `bin/docket generators` marks a workflow-lane head "still
+generating", not while `next` shows a generator tier (`PL-CT07`). A request
+from the project owner lifts it for that request, and the session says so
+(`PL-6Q9L`). `.claude/skills/docket/modes/triage.md` § "Generators, how they
+rank, and the pause they set" has the full rule and its history (`PL-6VJ3`).
+```
+
+**Row 38, `CLAUDE.md`: the reset at 150,000 tokens of spend.** One line stays.
+`.claude/skills/docket/modes/start.md` § "Check the spend before starting, and
+reset in place" already held the procedure.
+
+```text
+- Keep a session short and scoped to one topic; start a fresh one for an
+  unrelated topic rather than continuing or compacting a long one. **Reset at
+  150,000 tokens of spend, and check that budget with
+  `python3 tools/context_reading.py` before starting an item, not on reaching
+  it** (project owner, 2026-09-16; re-anchored to spend 2026-09-21, ratified). When
+  the item will not fit in what is left, or a session passes the budget anyway,
+  reset in place as `.claude/skills/docket/modes/start.md` § "Check the spend
+  before starting, and reset in place" says (`PL-Z90G`).
+```
+
+**Row 62, `CLAUDE.md`: capture, always.** The rule stays in four lines.
+`.claude/skills/docket/modes/capture.md` holds how to group the titles and when
+to update `docs/WORKING_NOTES.md`.
+
+```text
+- **Capture, always, and capture cheaply.** Any defect, risk, cleanup,
+  optimization, inconsistency, or idea identified in a session and not fixed in
+  that same session gets recorded before the session ends — findings the owner
+  raises and findings you make on your own alike. `bin/docket new "..."` is the
+  whole procedure: no id to allocate, no band to choose, nothing that can
+  conflict with another branch, and it takes several titles in one call because
+  ideas arrive in clusters.
+  **Where those titles are one problem, group them as you file them:**
+  `bin/docket new --feature <name> "..." "..."`. The session that diagnosed it
+  is the only one that knows they are one thing; the next reads separate
+  files. Name the group for what *completes*, and the `docket` skill has the
+  rest (`PL-N638`). Do not ask whether to record it — filing an item is
+  not a decision the owner needs to make. Where
+  a thread is still open when the session ends, update `docs/WORKING_NOTES.md`
+  too — but only for a thread spanning more than one item, outliving its item,
+  or having none. One item's own reasoning goes in that item, at any length.
+```
+
+**Row 63 to 65, `CLAUDE.md`: fixing a small defect in place.** Three lines
+stay, which name the paths where a defect is always filed.
+`.claude/skills/docket/modes/start.md` § "Fix a small defect in place" holds
+the four conditions, the limit of two per branch and the repairs that count
+against neither.
+
+```text
+- **Or fix it in place, now.** The exemption the capture rule states — "not
+  fixed in that same session" — opens for a small defect a session finds while
+  building an item, wherever in the tree it finds it (project owner,
+  2026-10-12, widening the door `PL-3MJH` built narrow on 2026-09-01; `PL-6B1Z`
+  carries the count and the decisions). All four hold, or the finding is filed:
+
+  1. **It is a defect, not a choice.** No reasonable person could prefer the
+     current state: a wrong answer against the code's own stated intent, a rule
+     this repository states, or plain fact. A rename, an extracted helper, a
+     check somebody might defend — that is a decision, and decisions are items.
+  2. **It is small: one defect, one commit, with its regression test.** The
+     fix carries the test a code change owes under both standards and nothing
+     more; one that wants a second commit, reaches a second mechanism, or
+     leaves anything to come back to is an item.
+  3. **It stays off the clinical floor and adds no read hold.** A defect in
+     `src/anesthesia_sim/core/`, `src/anesthesia_sim/data/`, `docs/MODEL.md` or
+     `docs/INTERFACE.md`,
+     or any finding the safety-critical standard reaches, is filed: the item is
+     what ranks it `P1`, offers it to the strongest model and stands as its
+     provenance. A fix that needs the owner's read (the `pull-request` skill
+     says which) is taken only where the branch already waits on that read, so a fix
+     never turns a pull request that would merge on green into one that waits
+     on the owner (project owner, 2026-10-12, ratified, over holding the pull
+     request for the read, and over opening the clinical paths with a
+     regression test).
+  4. **No open item already describes it.** Then it is that item's: claim it
+     alongside and close it under its own id, or leave it to the queue; a fix
+     under another id leaves the item open with its fix merged.
+
+  **Fix at most two per branch**, and the third means stop and file — or, where
+  the three are one mechanism, record the generator. A hard count rather than a
+  judgement call, because knowing when to call it a day is the judgement a
+  session is likeliest to rationalise past; it binds about one finder in 22.
+  Record each as its own commit led by the *current* item's id, and one line in
+  the pull request body saying what it fixed and where: no item file, no triage,
+  and the file is *not* added to the item's `touches`, which derive its lane
+  and feed `bin/docket concurrent`. `bin/docket verify --self` names the file
+  as outside `touches` and still `ACCEPT`s, the intended reading (`PL-6QZP`); a
+  delegated review refuses it, so this is a session's door and never a
+  delegated worker's (`docs/worker.md`). The separate commit is what makes this
+  safe to grant — the owner can drop it in a rebase — and why a session holding
+  no item cannot use the rule, having no id to lead it. A no-behaviour repair
+  to another item's file or to `docs/WORKING_NOTES.md` (drift, a stale status
+  sentence, a missing recommendation marker) is not a fix-now use at all:
+  declare the file in the current item's `touches`, and it rides the commit
+  already being made, counting against nothing (project owner, 2026-09-22,
+  ratified, over leaving that licence in the path-scoped citation-drift rule,
+  which loads only after the decision to file; eleven such repairs became items
+  in three days, `PL-G40Z`).
+```
+
+**Row 66, `CLAUDE.md`: housekeeping nobody filed.** One line stays.
+`.claude/skills/docket/modes/capture.md` § "Mode: housekeeping nobody filed"
+already held the rest.
+
+```text
+- **Housekeeping you are about to do yourself is filed before you do it.**
+  Repository work that no item names, such as resolving a merge, a docs sweep
+  or recovering a stranded item, gets `bin/docket new` and a claim before its
+  first commit. Deleting remote branches is never filed.
+  `.claude/skills/docket/modes/capture.md` § "Mode: housekeeping nobody filed"
+  has the reason, what is too small to file, and what a reply does about
+  branches instead (`PL-CP74`, `PL-Z90G`).
+```
+
+**Row 67, `CLAUDE.md`: a generator's two endings.** Two lines stay.
+`.claude/skills/docket/modes/triage.md` § "Generators, how they rank, and the
+pause they set" already held the rest.
+
+```text
+- **A generator takes one of two endings: fix it in this session, or end the
+  reply with a ready-to-paste prompt that starts a fresh session on it**
+  (project owner, 2026-09-17). A generator is a mechanism that causes three or
+  more items. The two endings bind a head recorded `generator: live`, and an
+  item recorded `impairs-generators:`, which is a defect in the machinery that
+  finds and ranks generators. Filing it and carrying on is not a third ending,
+  because an item alone changes nothing. Found in a product session, it takes
+  the prompt, after the product item, unless it blocks that item (project
+  owner, 2026-09-25, ratified, over fixing it in that session once the item is
+  done, `PL-2866`). A spent generator is ordinary work under the capture rule
+  above. How to record a generator, and why a live one ranks above everything
+  but `P0`, is in `.claude/skills/docket/modes/triage.md` § "Generators, how
+  they rank, and the pause they set" (`PL-6VJ3`).
+```
+
+**Row 75, `CLAUDE.md`: routing intent by how ready it is.** Two lines stay.
+`.claude/skills/docket/modes/ideas.md` already held the three routes as a
+table.
+
+```text
+- **Capture intent, and route it by how ready it is.** A **specific change** is
+  a queue item, written now. A **feature wanted but not yet ready to build** is
+  one unscoped line of intent in `ROADMAP.md` § "Planned milestones" — filing it
+  as an `L` queue item instead puts work in the queue that cannot be worked,
+  where every session reads past it. A **feature being designed right now** gets
+  the design round first and items only once the shape has settled, because an
+  idea changes most in its first exchange.
+```
+
+**Row 172i, `.claude/rules/instruction-writing.md`: the closing block is a
+handover.** Five lines stay. `.claude/skills/docket/modes/capture.md` § "Mode:
+housekeeping nobody filed" already held which branches a reply names.
+
+```text
+    - The block is a handover, not a store. It is carried in
+      `post_turn_summary.needs_action`, which a later session reads from the
+      `RUNNING` and `IDLE` rows alone, so archiving this session deletes every
+      outstanding request in it silently — `v0.3.8` sat untagged for hours that
+      way, and was caught only because a second session happened to raise the
+      same thing (`PL-H1JD`). So a line that could reasonably outlive this
+      sitting is `bin/docket new "..."` as well, and the block then points at
+      the item, though a list of remote branches to delete stays in the reply,
+      per the docket skill's housekeeping mode. Name a branch there only when
+      `python3 tools/branch_sweep.py` lists it under "Kept" with a reason other
+      than its grace period, and it should go anyway. A branch GitHub already
+      deleted, or one kept only by the grace period, is never named, because
+      nothing is left for the owner to do (`PL-TL6T`). That is `CLAUDE.md`'s capture rule
+      reaching the closing block, not a new obligation of its own. A line the
+      reader acts on in this sitting — a decision this reply waits on, a tag to
+      run now — needs nothing. Where the line asks them to decide something
+      **an item
+      already holds**, that item is the instrument and `bin/docket new` is
+      not: write your recommendation into its brief beside the question, and
+      mark it, before the block points at it. A reply is the one carrier
+      certain to be gone when the answer comes (`PL-M21Q`).
+```
+
+**Row 172n, `.claude/rules/instruction-writing.md`: checking other sessions
+before recommending work.** Three lines stay.
+`.claude/skills/docket/modes/picking.md` § "Check the other sessions before
+recommending work" holds the steps.
+
+```text
+    - Before recommending repository work - an item to start, or work that
+      carries no item id - check whether another session is already on it or
+      has asked for it. Every in-flight guard this project has reads a claim
+      on a *pushed* ref, so an item is invisible to all of them until its
+      session has claimed it and pushed the claim (`PL-0HPV` was reported
+      unstarted twenty minutes into another session's run, `PL-7TVT`), and a
+      release cut, a tag, a merge or a branch deletion has no id until somebody
+      starts it. Two
+      sessions cut v0.3.7 within the hour that way and the second was
+      discarded at the merge (`PL-66FP`, two sessions cut the same release
+      independently). One call answers it — `list_sessions` from the
+      `claude-code-remote` MCP server (`mine: true`, `limit: 8`) — whose
+      `post_turn_summary.needs_action` carries each session's own closing
+      block, written by the harness rather than by a rule anybody has to
+      follow, and cleared when a session is archived. Read the `RUNNING` and
+      `IDLE` rows; where one already asks for what you were about to, name
+      that session instead of repeating the request. It warns and never
+      certifies: the match is a judgment on another model's prose, a session
+      still mid-turn has not written its line yet, and two closing in the same
+      minute still collide. Finding nothing means nothing; finding something
+      is decisive. `list_sessions` lists no Projects thread (measured
+      2026-09-25): those, tagged `hearth-thread`, are left out with or without
+      `mine`, and the `tags` filter is refused inside a session. So while
+      `PL-NZC0`'s Projects trial runs, triage and start nothing its Order list
+      reserves (`PL-DR3G`).
+```
