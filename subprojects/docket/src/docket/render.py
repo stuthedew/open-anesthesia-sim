@@ -380,8 +380,7 @@ def format_delegable(report: Report, in_flight: FlightReport, delegation: Delega
                 None,
                 (
                     "Nothing is delegable right now.",
-                    "An item qualifies when it is ready, is not safety- or science-classed, "
-                    "names a `verify:` command,",
+                    "An item qualifies when it is ready, is not safety- or science-classed,",
                     "and declares `touches` outside both the protected paths and the "
                     "checks themselves, each placed by the lane lists. `docket list` shows "
                     "what is open.",
@@ -394,7 +393,8 @@ def format_delegable(report: Report, in_flight: FlightReport, delegation: Delega
     lines = [f"{len(candidates)} item(s) may be worked by a cheaper model, best-first:", ""]
     for item in candidates:
         lines.append(f"  {item.priority} {item.identifier:<{width}} {item.title}")
-        lines.append(f"  {'':<{width + 6}}verify: {item.verify}")
+        if item.verify:
+            lines.append(f"  {'':<{width + 6}}verify: {item.verify}")
         lines.append("")
     lines.append("Read each item's brief before starting it, and follow docs/worker.md.")
     lines.append("Anything not listed here is not yours to take, whatever its priority.")
@@ -3180,15 +3180,14 @@ def _triage_rules(report: Report, config: Config) -> list[str]:
             )
     if config.verify_required_at_close_from is not None:
         rules.append(
-            "an item set to `ready` must name a `verify:` command, or record in "
-            "`not-delegable` why no command can prove it. Run the command before "
-            "writing it down."
+            "an item set to `ready` names no command: its Done-when section says in "
+            "words what will be true. The tests that show the work are written into "
+            "`tests:` when the item closes."
         )
     if config.payoff_required_from is not None:
-        # Stated here rather than in `_unset`, which is where `verify:` is not
-        # stated either: both gates fire at `ready` rather than at capture, so
-        # listing them beside `priority` would mark as missing a field the item
-        # does not yet owe. What a triage pass needs is the warning before it
+        # Stated here rather than in `_unset`: the gate fires at `ready` rather
+        # than at capture, so listing it beside `priority` would mark as missing
+        # a field the item does not yet owe. What a triage pass needs is the warning before it
         # writes `--status ready`, which is this list.
         rules.append(
             "an item set to `ready` must carry a `payoff:` - one plain-language line of "
@@ -3204,7 +3203,7 @@ def _triage_rules(report: Report, config: Config) -> list[str]:
     if HOUSEKEEPING in config.vocabulary():
         rules.append(
             f"an item classed `{HOUSEKEEPING}` - a pass whose work *is* the queue "
-            f"edit - needs {REQUIRED_BRIEF[0]} only, and still needs its `verify:`. "
+            f"edit - needs {REQUIRED_BRIEF[0]} only. "
             "It may not carry a debt class as well. Stated here because this is "
             "where the cost is paid: the exemption is no use to a session that "
             "meets it after writing the brief."

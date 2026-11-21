@@ -1,7 +1,7 @@
 # docket: triage
 
 Read this when folding untriaged captures into the queue, on a grooming pass,
-when recording a generator, or when writing an item's `verify:` command.
+when recording a generator, or when closing an item needs what shows its work.
 
 Part of the `docket` skill. `.claude/skills/docket/SKILL.md` is its front
 page and decides which file a session reads.
@@ -262,8 +262,7 @@ beneath a `needs-decision` front matter is a question `bin/docket next` and
 the thread that builds it", and the owner saw it listed as waiting for three
 days after answering; 17 items sat that way on `main` before `bin/docket check`
 refused it (`PL-JNWS`). Where the answer leaves work, shaping it for `ready` -
-the `verify:` run and seen failing, the Done-when rewritten in the decided
-form - is part of recording it. Where a question is still open beneath a
+the Done-when rewritten in the decided form - is part of recording it. Where a question is still open beneath a
 partial answer, pose it below the answer under a `**Decision needed.**`
 heading: the check reads only the last question or answer label in the brief.
 
@@ -500,191 +499,83 @@ move one. `tools/dead_ends.py check --base` refuses a removal with neither
 record, so whichever you choose, the move has to be written down. "Nothing"
 is the common answer, and the reply says so.
 
-### The `verify:` command, and running it before writing it down
+### What shows an item is done, and when it is recorded
 
-Triaging an item to `ready` means naming the command that proves it done.
-`docket check` requires one at that status, because a `ready` item is a
-commitment to do work and "what would prove this?" is the first thing that
-becomes answerable.
+An item set to `ready` names no command. Its `**Done when.**` section says in
+words what will be true, closely enough that a later session can tell whether
+it is. For a code change, name the behaviour a test will show: "a test shows
+that the run refuses a step of 0 s".
 
-**Run the command before you write it into the item.** An unrun command fails
-after a worker has done the work, which costs a round trip and the owner's
-attention. On 2026-08-30 the six commands recorded so far had never been run,
-and all six were wrong in the same two ways. `--cov=` was given a file path
-where `pytest-cov` expects a dotted module, and the run was scoped to one test
-file. The list of admitted shapes below refuses both mistakes.
+**Reproduce the fault before the item is set to `ready`.** Run the one command
+that shows the defect itself, and write what it showed into the brief with its
+date. Measured 2026-09-19 across all 166 open workflow-lane items, five rested
+on a premise that was already false when they were filed: `PL-RZPX` asked for
+a report that had shipped in docket's first commit the day before, and
+`PL-T86P` said an item carried no `**Decision needed.**` section when it had
+one from creation. One `grep` would have caught each. The step costs one
+command per triaged item for about one catch in thirty-three. The alternative
+is the sweep that found them, which read 145,000 tokens of briefs across
+twelve agents (`PL-JB3Z`, project owner, 2026-09-19, ratified, over leaving it
+to a periodic sweep). Capture is untouched: this is triage's obligation, and
+the capture rule stays unconditional.
 
-**Run it and watch it fail, not merely run it.** A command that passes on a
-tree without the work proves nothing: `docket verify` accepts a delegated
-branch that did none of it, and nothing distinguishes a finished item from an
-unstarted one. The tools refuse that case before the push rather than after
-it. Since `PL-FTDB`, `bin/docket set --verify` runs the command it is writing
-and refuses one the replay would report as already passing; a line written
-by hand is an error at the next `make check`, which replays the items the
-branch has edited (`PL-0HPV`, `PL-71P4`). What neither reads is an ordinary
-failure's cause: a pattern misspelt so that it never matches exits 1 exactly
-as an unstarted item does, and goes on exiting 1 after the work. The one cause
-they do read is a phrase its file holds only across a line break, which is on
-no line for `grep` to find: `set --verify` names it where the phrase is already
-there, and `docket verify` once the work has written it (`PL-RR1N`). Where the
-work's text will wrap is not known yet, so grep for a few words rather than a
-sentence. So the step is still to see the command fail first, and to see that
-it fails for the reason you meant.
+**An item records what shows its work when it closes, and the record is read
+once, on the branch that closes it** (project owner, 2026-11-20, ratified,
+over changing the form for code items only, and over keeping a command that
+`make check` ran again on every later branch; `PL-LFJZ` has the counts). What
+the item records depends on its work:
 
-**Then reproduce the fault, because the command cannot.** Watching the
-`verify:` fail proves the *fix* is absent. It does not prove the *fault* is
-present, and those are different claims - a command tests for the presence of
-the fix, never for the presence of the fault (`PL-LKGL`). So run the one
-command that shows the defect itself, and write what it showed into the brief
-with its date. Measured 2026-09-19 across all 166 open workflow-lane items:
-five rested on a premise already false when they were filed, and **three of
-those five carried a `verify:` that was run and failed correctly** while the
-premise was false - `PL-RZPX` asked for a report that had shipped in docket's
-first commit the day before, `PL-T86P` said an item carried no
-`**Decision needed.**` section when it had one from creation. One `grep` would
-have caught each. It costs one command per triaged item for about one catch in
-thirty-three; the alternative is the sweep that found them, which read 145,000
-tokens of briefs across twelve agents (`PL-JB3Z`, project owner, 2026-09-19,
-ratified, over leaving it to a periodic sweep). Capture is untouched: this is
-triage's obligation, not the capture rule's, which stays unconditional.
-
-**Watch it fail for the right reason, and never a bare `-k`.** `pytest -k
-<name>` where no test yet carries that name does not fail; it *selects
-nothing*, collects nothing and exits 5. Non-zero, so it looks like the command
-failing as intended, and it goes on looking that way after the work too unless
-the test the work adds happens to match. It also specifies only that some test
-somewhere comes to be called `<name>` — not that any behavior holds. Measured
-against a scratch file, which is why these are the codes and not a memory:
-
-| Written as | Before the work | Reads as |
-| --- | --- | --- |
-| `pytest <file> -k no_such_name` | 5 | a command that correctly fails |
-| `pytest <file>::test_no_such` | 4 | a usage error, same as a typo'd path |
-| `pytest <file>` | 0 | already passing, proves nothing |
-| `grep -q 'def test_no_such' <file>` | 1 | an ordinary failure |
-
-So write the `grep` for the test the work adds, and nothing ahead of it. That
-exits 1, the code a failing test gives, so no reader has to know a special
-case, and the `grep` names the exact test the work owes. The file's suite is
-not the command's to prove: `docket verify` runs `make check` as a line of its
-own report, `docs/worker.md`'s loop runs it after the command, and CI runs it
-ahead of the replay - so a `pytest` clause ahead of the `grep` proved nothing
-twice, and it was what made a failure unreadable and 99.7% of the replay's
-serial cost (project owner, 2026-09-19, ratified, chosen over keeping the
-paired shape; `PL-6TP8` has the measurements).
-
-`docket verify` says so on the check line where a command selects nothing, and
-`docket check` reports it — separately from the commands that already pass —
-for the items `next` is about to offer, which is the first moment there is
-anybody to act on it. Reading one about your own item means: replace the
-selector with a `grep` for the test the work adds. The sentence carries how many open items across
-the store are in the same state, which is context rather than a backlog to
-clear in one pass — a command written away from its work is how every wrong one
-here came to exist, so each is repaired as its item is started.
-
-**What the exit status is read to mean once the command is recorded** is one
-contract - `subprojects/docket/README.md` § "What a `verify:` exit status
-proves, and to whom" - and two of its consequences fall on the author. Exit 0
-says the assertion holds, so the replay reports an open item whose command
-passes as an error whichever way that happened. A non-zero exit says only that
-the assertion did not hold *or was never evaluated*: the tools separate a kill
-at the limit, a command the shell cannot find and pytest's "selected nothing",
-and read nothing from any other failure, since a red prerequisite clause and an
-unstarted item both exit 1. So, first: a `grep` for a test name pins the
-*name*. On an item whose work may already exist under another `def`, check the
-code before writing it - the command fails identically whether the behaviour
-is absent or present under a different name, and no reading of the exit will
-ever say which (`PL-6TN8`, `PL-0M32`). Second: the discriminating clause goes
-green only for *this* item's work and reads a path the item's `touches`
-declares (`PL-3DXV`, `PL-LBW5`); a neighbour's work satisfying it turns the
-replay red against the wrong item.
-
-**Only these shapes are admitted** (`PL-1P5V`). From 2026-09-24 `docket set`
-will not write, and `docket check` errors on, any other command - on an item
-captured from that date, and on an older item's command wherever a branch
-writes or rewrites it, which is every command you write at triage or repair as
-an item starts. The error names the first thing no shape uses.
-
-| The item is | The command |
+| The item's work | What it records when it closes |
 | --- | --- |
-| Covering a module's untested paths | `uv run pytest --cov=anesthesia_sim.core.tissue --cov-fail-under=100`, alone |
-| A string, label, or single behavior | `grep -q 'def test_halted' tests/unit/test_simulation_view.py` |
-| Documentation only | `grep -qF 'the sentence the item adds' docs/MODEL.md` |
-| Removing a stale line | `! grep -qF 'the sentence the fix deletes' docs/WORKING_NOTES.md` |
+| Code | The tests the branch added or changed, in `tests:` |
+| A document, or a deletion | One search for fixed text, in `verify:` |
+| A question, a count or a decision whose result is in its own brief | A dated paragraph in the brief |
+| A release (`resource: release-train`) | The command it already carries |
 
-Several `grep` clauses may be joined by `&&`. A `grep` may carry `-F`, `-E`,
-`-r` and `-i`, and with `-r` an `--include=` or `--exclude=` *ahead of* the
-pattern; a path may glob, so a command reading an item file can name it by id
-alone and outlive a retitle; and `--` goes ahead of a pattern that starts with
-a dash. Where none of these can
-prove the item, say why in `not-delegable:` - that admits the command, and
-keeps the item from a worker whose `docket verify` would trust it.
+1. **Code.** Close the item with the pytest node ids of the tests that show
+   the work: `bin/docket set PL-K7QX --status done --closed 2026-11-21 --tests
+   tests/unit/test_run.py::test_refuses_a_zero_step`. `--tests` repeats or
+   takes a comma-separated list. Each entry names a whole test, as
+   `file.py::test_name` or `file.py::TestClass::test_name`. `bin/docket set`
+   and `bin/docket check` refuse an entry whose file the tree does not hold,
+   whose test the file does not define, or whose test the branch neither
+   added nor changed, since that test passed before the work. For simulator
+   code, the close-out audit's mutation check then shows that the branch's
+   tests detect a change to each line the branch changed (`PL-CZXN`).
+2. **A document, or a deletion.** Keep one search: `grep -qF 'a few words the
+   work adds' docs/MODEL.md`, or `! grep -qF 'the words the work removes'
+   docs/WORKING_NOTES.md src/anesthesia_sim/app/chart.py`. docket reads the
+   words and the files itself and runs no shell. It compares them with each
+   run of spaces and line breaks treated as one space, so a phrase that wraps
+   over two lines is found. A path may glob, so `docs/items/PL-K7QX-*.md`
+   names an item file by its id. A search for words that the work adds to a
+   Python file is refused, because a test shows that work. In a developer
+   document, a sentence that restates a fact of the tree is written as the
+   requirement and then the test that checks it (`PL-WKKH`).
+   <!-- absent: docs/items/PL-K7QX-*.md -->
+3. **A result in the item's own brief.** An item that asks a question, takes
+   a count or records a decision needs nothing in its front matter. Its brief
+   holds a paragraph that opens with a bold label carrying the date, such as
+   `**Answered 2026-11-21.**` or `**Counted 2026-11-21.**`, and states the
+   result.
+4. **A release.** A release item keeps the command it has.
 
-The last two are the same shape, and it is the one to reach for: a `grep` for
-what the work adds, alone. It fails until the work exists and nothing else can
-make it fail, which is what keeps its exit readable. Do not put a health check
-ahead of it - `doc_check.py check`, `bin/docket check`, the file's `pytest`
-run - and do not record one on its own: `doc_check.py check` passes whenever
-the docs are internally consistent, which they are before the item is started
-too, and five open items once shared exactly that command with none of them
-proving anything. The commands recorded before 2026-09-20 still carry such a
-clause, and each loses it as its item is started. One pass has run over them,
-and it removed nothing: it moved each deciding clause ahead of the health check
-(project owner, 2026-09-22, ratified, over replaying the commands as they
-stood, a replay that reorders clauses itself, or waiting for them to drain).
-Since `PL-0HPV`, `make check` replays the `verify:` commands a branch can have
-changed, and a test file or `doc_check.py check` run ahead of a `grep` that
-then fails was most of what that replay would have cost. So a legacy command
-now leads with its `grep` and runs the health check behind it, and what is
-stripped as its item starts is still that trailing clause.
+Where none of these can show the work, say why in `not-delegable:`.
 
-**The list admits none of these health checks.** `docket set` will not write,
-and `docket check` errors on, a new command that runs the file's `pytest`,
-`doc_check.py check` or `bin/docket check`. An item whose work is making one of
-the last two pass says so in `not-delegable:`.
+**An open item that still carries a command written before 2026-11-21 replaces
+it when it closes.** Where the command names a test, record the test and
+remove the command: `--tests tests/unit/test_run.py::test_refuses_a_zero_step
+--verify ''`. Where it searches a document for fixed text, it is already in
+the form above once it reads `grep -qF`.
 
-The coverage run is the one that goes wrong loudly, and the list refuses both
-ways it has. `--cov=` takes the **dotted module**
-(`anesthesia_sim.core.tissue`), never the path, and the run is the **whole
-suite** — no test file argument — because coverage of a module is the union of
-everything that exercises it.
-
-Some work has no command that can run beforehand: proving a release-time fix
-means cutting a release. Record that in `not-delegable:` rather than inventing
-a command to satisfy the checker. An item saying why it cannot be proven is
-better specified than one carrying a command nobody ran.
-
-**Closing an item asks for the command too, and that is an error.**
-`verify_required_at_close_from` holds any item *closed* on or after its date to
-the same rule, because the `ready` gate fires on `status == "ready"` alone and
-an item can go `needs-decision` to `done` in one commit without ever holding
-it. Nothing about it needs judgment — whether the field is present is
-decidable, and only what it should say is not — which is why it is a hard
-failure (`PL-J49T`). It is also what drained the set of `ready` items a second
-date, `verify_required_from`, once exempted for predating the rule; that date
-and its grooming advisory were retired at zero (`PL-Z34C`).
-
-There is no new burden in it if the command is written where the rule above
-already says to write it: at the moment the item is started, having been run.
-Reaching a close with nothing to record means the command was never run, and
-`not-delegable:` is the honest answer where none can be. Items closed before
-the cutover are untouched, deliberately — backfilling one onto merged work
-means writing a command with nothing left to run it against.
-
-**Once the item is closed the command is a record, and it is not rewritten.** A
-closed `verify:` says what was run — it failed before the work and passed after,
-on a tree that no longer exists — rather than what still runs today. It stops
-resolving as a matter of course. On 2026-09-04, 14 of the 179 closed items
-carrying one no longer resolved. Each of the 14 was later work correctly
-consuming what its predecessor established, four of them
-`grep '^blocked-by: PL-…'` commands
-written in the expectation of stopping. So a dead command on a closed item is
-not a defect and there is nothing to repair. Re-pointing one replaces the
-command that proved the work with one that never ran it, which is why `docket
-check` errors on the attempt and on backfilling a command onto an item closed
-without one. Where an item is genuinely not done, reopen it and the field is
-writable again; which tree the command passed on is recoverable from the item's
-`pr` (`PL-JZ1D`).
+**Nothing reads the record after its branch merges.** A test that is renamed
+or removed later is not a fault in the item that named it. Of 1,060 closed
+items whose command named a test, 109 named one that was later renamed or
+removed (`PL-LFJZ`). So a closed item's `tests:` and `verify:` say what showed
+the work on a tree that no longer exists, and they are not rewritten.
+`docket check` refuses a change to a closed item's command, and a command
+added to an item that closed without one. Where an item is not done, reopen
+it, and the fields are writable again.
 
 ### What the reply says, and what it must not
 
