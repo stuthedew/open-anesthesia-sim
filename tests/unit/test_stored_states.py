@@ -154,3 +154,74 @@ def test_a_copy_holds_the_same_states_and_grows_apart_from_the_original(
 
     assert record_copy.reached_s == 1_804
     assert record.reached_s == 1_803
+
+
+def test_each_fraction_is_returned_as_a_series_in_order_of_time() -> None:
+    record = _record_of_four(opened_at_s=1_800)
+
+    series = record.fraction_series(CaseInstant(1_800), CaseInstant(1_803))
+
+    # One series for each of the six fractions, and none for the two amounts
+    # or the constant one.
+    assert [list(values) for values in series] == [
+        [0.0, 0.011, 0.012, 0.013],
+        [0.0, 0.0052, 0.0061, 0.0068],
+        [0.0, 0.0007, 0.0009, 0.0011],
+        [0.0, 0.0013, 0.0016, 0.0019],
+        [0.0, 3.1e-05, 4.2e-05, 5.5e-05],
+        [0.0, 1.7e-06, 2.3e-06, 3.1e-06],
+    ]
+
+
+def test_a_series_can_cover_part_of_the_record_or_one_second() -> None:
+    record = _record_of_four(opened_at_s=1_800)
+
+    inner = record.fraction_series(CaseInstant(1_801), CaseInstant(1_802))
+    last = record.fraction_series(CaseInstant(1_803), CaseInstant(1_803))
+
+    assert list(inner[1]) == [0.0052, 0.0061]
+    assert list(inner[5]) == [1.7e-06, 2.3e-06]
+    assert [list(values) for values in last] == [
+        [0.013],
+        [0.0068],
+        [0.0011],
+        [0.0019],
+        [5.5e-05],
+        [3.1e-06],
+    ]
+
+
+def test_changing_a_returned_series_does_not_change_the_record() -> None:
+    record = _record_of_four(opened_at_s=0)
+    series = record.fraction_series(CaseInstant(0), CaseInstant(3))
+
+    series[0][1] = 0.5
+
+    assert record.state_at(CaseInstant(1)) == AFTER_ONE
+
+
+@pytest.mark.parametrize(
+    ("first_s", "last_s", "names"),
+    [
+        (1_802, 1_801, "from 1802 s to 1801 s ends before it begins"),
+        (1_799, 1_803, "from 1799 s to 1803 s"),
+        (1_800, 1_804, "from 1800 s to 1804 s"),
+    ],
+)
+def test_a_series_the_record_cannot_give_is_refused_and_named(
+    first_s: int, last_s: int, names: str
+) -> None:
+    record = _record_of_four(opened_at_s=1_800)
+
+    with pytest.raises(SimulationConfigurationError, match=names):
+        record.fraction_series(CaseInstant(first_s), CaseInstant(last_s))
+
+
+def test_a_series_refuses_an_instant_of_the_wrong_type() -> None:
+    record = _record_of_four(opened_at_s=0)
+
+    with pytest.raises(TypeError, match="CaseInstant"):
+        record.fraction_series(0, CaseInstant(3))  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="CaseInstant"):
+        record.fraction_series(CaseInstant(0), 3)  # type: ignore[arg-type]

@@ -102,9 +102,9 @@ COMPARTMENT_QUANTITIES: Final = (
 #: with one entry per compartment. It is the one place where a trace could come
 #: to carry another compartment's values. It replaces the same pairing that
 #: `_build_history_sample` made while the chart was drawn from recorded samples
-#: (`PL-2FM6`). The chart now evaluates the run definition instead, so a trace
-#: needs a position in `governing_equations`' state order, not a compartment
-#: accessor.
+#: (`PL-2FM6`). The chart now reads the states that the run stored
+#: (`core/stored_states.py`), so a trace needs a position in
+#: `governing_equations`' state order, not a compartment accessor.
 #:
 #: The three tissue groups are consecutive, starting at `FIRST_TISSUE_FRACTION`.
 #: They follow the order of `PatientCompartmentsState.tissues`, which is the
@@ -133,7 +133,7 @@ COMPARTMENT_STATE_INDEX: Final[Mapping[RecordedQuantity, int]] = MappingProxyTyp
 #:
 #: These are the names that `AgentUptakeSystem._write_state_vector` gives the
 #: same six quantities when a step writes them (`PL-SPN6`). The interface builds
-#: a checked `Fraction` for the snapshot's quotients, the MAC multiples and a
+#: a checked `Fraction` for the snapshot's fractions, the MAC multiples and a
 #: drawn column. A value rejected there is named as the step that computed it
 #: would have named it. So a reader of the halted-run notice learns which
 #: compartment failed, whichever of the two rejected it. `WASH_IN_RATIO` is
@@ -264,8 +264,8 @@ class DrawnWindow:
 
         While the run kept a history, `app/wash_in.py`'s rules ran once per
         *recorded sample*, and the stretches they produced were updated
-        incrementally. With no history to maintain, the stretches become a
-        property of the drawn column instead. The quotient is plain arithmetic
+        incrementally. The stretches are now a property of the drawn columns
+        instead. The quotient is plain arithmetic
         on the two fractions this window already carries, so it is formed for
         what is being plotted rather than for samples behind it.
 

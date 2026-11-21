@@ -23,6 +23,8 @@ from anesthesia_sim.app.chart_time_base import (
     SELECTABLE_TIME_BASES,
     TIME_BASE_LADDER,
     ChartTimeBase,
+    drawn_seconds,
+    extreme_seconds,
     fit_to_run,
     fitted_window,
     following_window,
@@ -307,3 +309,78 @@ def test_a_preview_window_keeps_the_width_and_centres_the_reach() -> None:
 def test_a_preview_window_refuses_a_reach_not_built_as_an_instant() -> None:
     with pytest.raises(TypeError):
         preview_window(time_base_for_span(1800.0), 300.0)  # type: ignore[arg-type]
+
+
+def test_a_window_draws_its_ends_its_grid_columns_and_each_setting_change() -> None:
+    """Columns fall on multiples of the spacing counted from the case's zero, not the window's."""
+
+    # A window from 7 s to 50 s with columns 10 s apart, and settings changed at 5, 23 and 50 s.
+    # The change at 5 s lies outside the window. The change at 50 s is the window's end.
+    assert drawn_seconds(7, 50, 10, events_s=(5, 23, 50)) == (7, 10, 20, 23, 30, 40, 50)
+
+
+def test_a_window_of_one_second_draws_that_second_once() -> None:
+    assert drawn_seconds(30, 30, 10, events_s=(30,)) == (30,)
+
+
+def test_a_window_whose_columns_are_one_second_apart_draws_every_second() -> None:
+    assert drawn_seconds(3, 8, 1, events_s=()) == (3, 4, 5, 6, 7, 8)
+
+
+@pytest.mark.parametrize(("first_s", "last_s", "spacing_s"), [(0, 10, 0), (0, 10, -1), (10, 9, 1)])
+def test_a_window_with_no_spacing_or_that_ends_before_it_begins_is_refused(
+    first_s: int, last_s: int, spacing_s: int
+) -> None:
+    with pytest.raises(ValueError, match=r"spacing|ends before it begins"):
+        drawn_seconds(first_s, last_s, spacing_s, events_s=())
+
+
+# One value for each second from 100 s to 112 s. The trace rises to a peak of
+# 9.0 at 103 s, falls to a trough of 1.0 at 107 s and rises again.
+TRACE_FROM_100_S = (2.0, 4.0, 7.0, 9.0, 8.0, 5.0, 3.0, 1.0, 2.5, 4.5, 6.0, 6.5, 7.0)
+
+
+def test_a_peak_and_a_trough_between_two_drawn_seconds_are_both_found() -> None:
+    assert extreme_seconds(100, TRACE_FROM_100_S, (100, 112)) == {103, 107}
+
+
+def test_each_stretch_is_searched_on_its_own() -> None:
+    """Columns at 100, 105 and 112 s leave the peak in one stretch and the trough in the next."""
+
+    assert extreme_seconds(100, TRACE_FROM_100_S, (100, 105, 112)) == {103, 107}
+    # With a column on the peak, only the trough is left to find.
+    assert extreme_seconds(100, TRACE_FROM_100_S, (100, 103, 112)) == {107}
+    # With a column on each, nothing is.
+    assert extreme_seconds(100, TRACE_FROM_100_S, (100, 103, 107, 112)) == set()
+
+
+def test_a_trace_that_only_rises_or_only_falls_across_a_stretch_adds_nothing() -> None:
+    rising = (0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6)
+    falling = tuple(reversed(rising))
+
+    assert extreme_seconds(0, rising, (0, 3, 6)) == set()
+    assert extreme_seconds(0, falling, (0, 3, 6)) == set()
+
+
+def test_a_value_that_only_equals_an_end_of_its_stretch_adds_nothing() -> None:
+    """The end is already drawn at that value, so the line already reaches it."""
+
+    level = (5.0, 5.0, 5.0, 5.0, 5.0)
+    back_to_the_start = (5.0, 3.0, 4.0, 5.0, 2.0)
+
+    assert extreme_seconds(0, level, (0, 4)) == set()
+    # The highest value inside is 5.0 at 3 s, which the left end already draws.
+    # The lowest inside is 3.0 at 1 s, which is above the right end's 2.0.
+    assert extreme_seconds(0, back_to_the_start, (0, 4)) == set()
+
+
+def test_a_peak_held_for_several_seconds_is_drawn_at_its_first_second() -> None:
+    flat_topped = (1.0, 6.0, 8.0, 8.0, 8.0, 4.0, 2.0)
+
+    assert extreme_seconds(40, flat_topped, (40, 46)) == {42}
+
+
+def test_neighbouring_drawn_seconds_have_nothing_between_them_to_search() -> None:
+    assert extreme_seconds(100, TRACE_FROM_100_S, tuple(range(100, 113))) == set()
+    assert extreme_seconds(100, TRACE_FROM_100_S, (100,)) == set()
+    assert extreme_seconds(100, TRACE_FROM_100_S, ()) == set()

@@ -1173,7 +1173,7 @@ def test_a_compartment_that_settles_on_a_target_halts_once() -> None:
     With no ventilation the patient takes up nothing, so the circuit settles
     on the delivered 2% of sevoflurane, which is 1.00 ×MAC. When the halt test
     compared the readings with the exact height, this run halted at the
-    target 965 times in its tenth minute, at the 0.1 s step that a run then
+    target 965 times in ten minutes, at the 0.1 s step that a run then
     took (`PL-QVBR`, 2026-11-01). The reading moved by one unit in the last
     place from step to step. A target's height is a narrow band
     (`HEIGHT_BAND` in `core/rounding.py`), so a reading that rounding moves

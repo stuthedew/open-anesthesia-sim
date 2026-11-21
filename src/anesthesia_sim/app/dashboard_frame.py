@@ -1062,7 +1062,7 @@ def status_word(status: RunStatus, *, stopped_on_mark: bool) -> StatusWord:
             (`SimulationSnapshot.stopped_on_mark`). A branch at its fork
             carries the parent step's halt record and is not stopped on a
             mark. It is a separate argument because a `RunStatus` does not
-            carry the halt record, which is worked out from the canonical
+            carry the halt record, which is worked out from the run's stored
             states (`SimulationController._halt_crossing`).
 
     Returns:

@@ -322,9 +322,10 @@ AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L: Final = 1e-12
 """A step also passes the agent balance when the unaccounted agent is within 1 picolitre of gas.
 
 A step passes on either limit. While a run has handled less than a millilitre
-of agent gas, this limit is the wider of the two. On 2026-09-06 the largest unaccounted amount in a
-3600 s run was 1.3e-11 L, for desflurane, and that run passed on the relative
-limit (`docs/MODEL.md` § "Selected method (as implemented)").
+of agent gas, this limit is the wider of the two. In the 3600 s runs of
+2026-11-21, the largest unaccounted amount was 1.1e-12 L, for isoflurane, and
+that step passed on the relative limit (`docs/MODEL.md` § "Selected method
+(as implemented)").
 """
 
 FLOW_FRACTION_TOLERANCE: Final = 1e-12
@@ -384,11 +385,11 @@ state.
 """
 
 LIVE_READING_GAP: Final = 1e-6
-"""How far a stepped reading and the canonical reading of one instant may differ, as a share of it.
+"""How far a stepped reading and a reading computed by formula may differ, as a share of it.
 
-The stepped reading has one propagator behind it for every step. The canonical
-reading has one propagator from the last setting change
-(`RunDefinition.state_at`). `PL-QVBR` measured the difference on 2026-11-01 for
+Both are readings of one instant. The stepped reading has one propagator
+behind it for every step. The computed reading has one propagator from the
+last setting change (`RunDefinition.state_at`). `PL-QVBR` measured the difference on 2026-11-01 for
 the three agents, in runs that included a setting change, at the steps that a
 run could then take. As a share of the reading, it was at most 1.4e-10 over
 24 h at the 0.1 s step, 2.9e-10 over 6 h at the 0.01 s step, and 1.2e-9 over
@@ -399,9 +400,12 @@ for that run is 1.5e-9, with the three squarings that a shipped agent's step
 needs at most. This allowance is about 650 times the bound and ten thousand
 times the measurement.
 
-`app/bookmarks.py` uses it to decide when a MAC target can be judged from the
-stepped readings alone. It is ten times finer than `HEIGHT_BAND`, so the zones
-around that band's two edges never meet.
+`MacTarget.reading_is_near_a_band_edge` in `app/bookmarks.py` reads it. That
+method decided when a MAC target could be judged from the stepped readings
+alone. Nothing in `src/` reaches the method since `PL-MH9J`, because a step
+now has one reading at each end, and `PL-Z6C8` removes this constant. It is
+ten times finer than `HEIGHT_BAND`, so the zones around that band's two edges
+never meet.
 """
 
 HEIGHT_BAND: Final = 1e-5
@@ -411,7 +415,7 @@ Two readings of one instant can lie about 1e-14 apart, on opposite sides of a
 height. A steady reading also moves by one unit in the last place from step to
 step. Compared with the exact height, the first let a run stop on a target
 that its branch showed as still running, and the second made a run with a
-target at 1.00 ×MAC halt 965 times in its tenth minute (`PL-QVBR`, measured
+target at 1.00 ×MAC halt 965 times in ten minutes (`PL-QVBR`, measured
 2026-11-01). `MacTarget` in `app/bookmarks.py` says how a crossing is decided
 with the band.
 

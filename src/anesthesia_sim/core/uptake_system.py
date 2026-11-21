@@ -798,7 +798,9 @@ class AgentUptakeSystem:
 
         The method is public, like `equation_settings`, and for the same
         reason. Its result is the state that a `RunDefinition` opens from
-        (`core/run_definition.py`).
+        (`core/run_definition.py`). It is not the state that a run stores for
+        a second. `case_state()` returns that state, which holds the case's
+        totals.
 
         The two accumulator states start each step at zero. So after one
         propagation they hold that step's own delivered and exhausted agent,
@@ -886,23 +888,23 @@ class AgentUptakeSystem:
         """Place this system at `state`, with its accounting anchored at `initial_agent_l`.
 
         This is the write counterpart of `state_vector()`. It is how a branch's
-        system comes to stand where its parent stood. `state` is a canonical
-        state: the result of `RunDefinition.state_at`, or the `Keyframe` that
-        result was composed from. So a branch opens from the trajectory that the
-        parent actually passed through, rather than from a re-derivation of it.
-        Nothing here advances anything. The system is positioned, and after
-        that it is stepped by the ordinary `advance()`, which is the only path
-        that moves a run forward.
+        system comes to stand where its parent stood. A branch passes the state
+        that its parent stored for the second of the fork
+        (`core/stored_states.py`). So the branch opens from the state that the
+        parent's step wrote, and not from fractions read back out of the
+        parent's compartments. Nothing here advances anything. The system is
+        positioned, and after that it is stepped by the ordinary `advance()`,
+        which is the only path that moves a run forward.
 
         **The two cumulative totals belong to the case, and they are carried
         over rather than derived.** `state_vector()` reports each step's own
         delivered and exhausted agent, because the propagator integrates them
-        over the interval it is given. A keyframe's totals are cumulative from
-        the start of the *case*. For a branch's keyframes, the start of the case
-        is earlier than the start of the run that holds them, because a branch
-        opens carrying its parent's running totals. Writing those totals in
-        continues the parent's mass-balance readout across the fork, instead of
-        restarting it at zero. A learner comparing two managements of one case
+        over the interval it is given. A stored state's totals are cumulative
+        from the start of the *case*. For a branch, the start of the case is
+        earlier than the start of the run, because a branch opens carrying
+        its parent's running totals. Writing those totals in continues the
+        parent's mass-balance readout across the fork, instead of restarting
+        it at zero. A learner comparing two managements of one case
         needs that, because the agent the patient has received belongs to the
         case and not to the branch.
 
@@ -912,8 +914,8 @@ class AgentUptakeSystem:
         rest on an invariant that it does not establish. Deriving it would mean
         taking the anchor as the value that makes `docs/MODEL.md`'s
         mass-balance identity close exactly. This method deliberately does not
-        do that, because the canonical path's own conservation residual has no
-        reason to fall on the positive side. On a 900 s sevoflurane run with
+        do that, because a state's own conservation residual has no reason
+        to fall on the positive side. On a 900 s sevoflurane run with
         two setting changes, the derived anchor was measured at -6.9e-14 L.
         That is a negative initial amount, which `AgentSimulationValidator`
         rightly rejects. When the anchor is carried over rather than derived,
@@ -933,14 +935,14 @@ class AgentUptakeSystem:
         is built from, and this method writes none of them.
 
         Raises:
-            SimulationConfigurationError: `state` did not come from the
-                canonical path, is not `STATE_SIZE` long, holds a non-finite
-                value, holds a fraction outside 0 to 1 or a cumulative total
-                outside 0 to `MAXIMUM_CUMULATIVE_AGENT_L`, or does not carry
-                exactly one at the `UNIT_STATE` position. All of these are
+            SimulationConfigurationError: `state` is not a tuple, is not
+                `STATE_SIZE` long, holds a non-finite value, holds a fraction
+                outside 0 to 1 or a cumulative total outside 0 to
+                `MAXIMUM_CUMULATIVE_AGENT_L`, or does not carry exactly one at
+                the `UNIT_STATE` position. All of these are
                 `require_canonical_state`'s checks, which a `RunDefinition`
-                applies to its opening state too. The error is also raised when
-                `initial_agent_l` is negative or not finite.
+                and a run's record of stored states apply too. The error is
+                also raised when `initial_agent_l` is negative or not finite.
         """
 
         require_canonical_state(state)
@@ -981,13 +983,14 @@ class AgentUptakeSystem:
         type does and does not guarantee.
 
         **The method does not check the vector's shape at all.** That is safe
-        for its two callers, and it would not be safe for a third.
+        for its three callers, and it would not be safe for a fourth.
         `_advance_step` passes it what `propagate` returned from this system's
-        own state. `resume_at` passes it a state that `require_canonical_state`
-        has already checked for length, finiteness, range and the constant
-        entry. A caller that reached this method with anything else would get
-        an `IndexError` from a short vector, a silent truncation from a long
-        one, and no error at all for a wrong `UNIT_STATE`. None of these is how
+        own state. `resume_at` and `stands_at` each pass it a state that
+        `require_canonical_state` has already checked for length, finiteness,
+        range and the constant entry. A caller that reached this method with
+        anything else would get an `IndexError` from a short vector, a silent
+        truncation from a long one, and no error at all for a wrong
+        `UNIT_STATE`. None of these is how
         the rest of `core/` rejects a value. So `resume_at` is the entry point
         for a state that this system did not produce itself.
         """

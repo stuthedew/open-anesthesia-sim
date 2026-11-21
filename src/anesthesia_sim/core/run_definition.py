@@ -1,12 +1,21 @@
-"""A run held as the settings it was computed under, rather than as samples of itself.
+"""The settings a run was computed under, and the states that a formula gives from them.
 
 The governing equations in `docs/MODEL.md` are linear and time-invariant while
 every setting stays constant. So `matrix_exponential` solves each such stretch
-exactly, over any horizon. A run is therefore described completely by the
-settings in force at each moment, which this module calls the run's
-*definition*. Every state the run passed through is a closed-form function of
-that definition and of the time asked for. No state has to be recorded for it
-to be recovered later.
+exactly, over any horizon. This module records the settings in force at each
+moment, which it calls the run's *definition*. It computes a state from that
+definition and the time asked for.
+
+**No value that the interface shows for a second the run has reached is
+computed here** (`PL-MH9J`). A run stores the state that each of its steps
+wrote (`core/stored_states.py`), and the readouts, the chart, the marks and
+a branch read that record. A state computed here can differ from the stored
+state of the same second in its last bits. The application reads three things
+from this module. They are the settings of each stretch, the instant at which
+each stretch opened, and the prediction that a preview draws past the second
+the run has reached (`evaluate_anchored`). `state_at` and `evaluate` have no
+caller in `src/`, and `PL-Z6C8` removes the evaluation paths that nothing
+reads.
 
 **What the name has to convey, and the term it replaced.** What is *stored* is
 the ordered list of settings and the time at which each took effect. What a
@@ -26,46 +35,50 @@ without a translation step, so the word was retired for the plain one
 score architecture. A reader arriving from those documents needs to know that
 the two words name one thing.
 
-This design has two consequences, and `PL-T691` exists for both of them:
+This design has two consequences for a definition, and `PL-T691` exists for
+both of them:
 
-- **Memory stops growing with the length of the run.** A recorded run costs
-  one sample per solver step. A run definition costs one segment per setting
-  change. As measured on 2026-09-05, a 30-day case with 50 changes a day needs
-  about 70 KiB for its definition and keyframes. The same run recorded as
-  samples today needs 3.16 GB.
-- **The cost of computing a window stops depending on the run's length.** A
-  window is computed from the keyframes that bracket it, not by scanning
-  everything that came before it. So 600 columns cost the same over 30 days as
-  over an hour.
+- **A definition's memory does not grow with the length of the run.** A
+  recorded run costs one sample per solver step. A run definition costs one
+  segment per setting change. As measured on 2026-09-05, a 30-day case with 50
+  changes a day needs about 70 KiB for its definition and keyframes. The same
+  run recorded as samples today needs 3.16 GB. The states that a run stores do
+  grow with the run, by one state for each second (`core/stored_states.py`).
+- **The cost of computing a window from a definition does not depend on the
+  run's length.** A window is computed from the keyframes that bracket it, not
+  by scanning everything that came before it. So 600 columns cost the same over
+  30 days as over an hour.
 
 **There are two evaluation paths, and they are not interchangeable.**
-`state_at` is the canonical path. It forms one matrix exponential per interval
-between events, and composes them in recording order from the run's opening.
-So two evaluations of the same definition at the same instant perform the
-identical sequence of operations and agree bit for bit. `evaluate` is the
-display path. Inside one segment it reuses a single propagator across
+`state_at` returns the state at one instant. It forms one matrix exponential
+per interval between events, and composes them in recording order from the
+run's opening. So two evaluations of the same definition at the same instant
+perform the identical sequence of operations and agree bit for bit. `evaluate`
+is the display path. Inside one segment it reuses a single propagator across
 uniformly spaced columns. That reuse is what makes a frame cheap, and it also
 composes the operations in a different order. So the two paths agree only to
 within floating-point composition error, not exactly.
 
-**The chart's path keeps the propagators it used from one call to the next.**
-Each frame asks `evaluate_anchored` for nearly the same propagators as the
-frame before it. A propagator is a function of a stretch's settings and an
-interval, and of nothing else. So a propagator kept under those two keys is,
-bit for bit, the matrix that forming it again would give. Which propagators
-are kept depends on the window drawn last, but no drawn value can depend on
-which propagators are kept. Only the last window's propagators are kept, so the store is not a
-record of the run (`.claude/rules/run-is-its-definition.md` says why that is
-where the line falls). `state_at` reads none of the store.
+**`evaluate_anchored` keeps the propagators it used from one call to the
+next.** A caller that draws one definition frame after frame asks for nearly
+the same propagators as in the frame before. A propagator is a function of a
+stretch's settings and an interval, and of nothing else. So a propagator kept
+under those two keys is, bit for bit, the matrix that forming it again would
+give. Which propagators are kept depends on the window drawn last, but no drawn
+value can depend on which propagators are kept. Only the last window's
+propagators are kept, so the store is not a record of the run
+(`.claude/rules/run-is-its-definition.md` says why that is where the line
+falls). `state_at` reads none of the store. The preview builds a new definition
+for each frame, so it finds no kept propagator
+(`SimulationController.preview_window`).
 
 `docs/INTERFACE.md` § "The canonical evaluation rule" states that separation as a
-guarantee. Every stored, exported, replayed or forked value is taken
-canonically. A display value may be drawn and used for nothing else. **This
-module enforces the rule rather than describing it.** `evaluate` returns its
-states wrapped in `DisplayState`. A `DisplayState` is not a state vector, and
-the canonical entry points refuse it by name. So a display value cannot become
-a keyframe, an export or a fork's opening state just because it has the same
-shape as one.
+guarantee. A display value may be drawn and used for nothing else. **This
+module enforces the rule rather than describing it.** `evaluate` and
+`evaluate_anchored` return their states wrapped in `DisplayState`. A
+`DisplayState` is not a state vector, and a `RunDefinition` refuses by name
+to open from one. So a display value cannot become a keyframe or a run's
+opening state just because it has the same shape as one.
 
 This module carries no compartment names, no units and no interface concepts.
 It composes the propagators that `matrix_exponential` produces from the
@@ -122,14 +135,19 @@ run's own record limits the events, not the request.
 
 @dataclass(frozen=True, slots=True)
 class Keyframe:
-    """The exact state at one segment boundary, computed canonically.
+    """A state of a run, and the instant of the case that it belongs to.
 
-    A run stores one keyframe at its opening and one at each setting change,
-    and no other state. Every state between two keyframes is recovered by
-    propagating the earlier one forward. That is why a keyframe is computed
-    canonically even though the values drawn from it are not. An error in a
-    keyframe is inherited by every value derived from it, while an error on
-    the display path affects one column of one frame.
+    A run definition holds one keyframe at its opening and one at each
+    setting change, and no other state. It computes every state between two
+    keyframes by propagating the earlier one forward. So it computes the
+    keyframe at a setting change as `state_at` computes a state, with one
+    propagation from the keyframe before it (`RunDefinition.record_change`).
+    An error in a keyframe is inherited by every value computed from it,
+    while an error on the display path affects one column of one frame.
+
+    The application also builds a keyframe from an instant and the state that
+    a run stored for it, to name a fork and each end of the step that reached
+    it (`SimulationController._stored_keyframe`).
 
     Attributes:
         instant_s: The instant at which this state was reached, in seconds,
@@ -200,7 +218,7 @@ class RunSegment:
 
 @dataclass(frozen=True, slots=True)
 class DisplayState:
-    """A state produced by the display path, which the canonical path refuses to accept.
+    """A state produced by the display path, which no run or system accepts as a state.
 
     It is a wrapper rather than a bare tuple, and deliberately not a tuple
     subclass. The separation that `docs/INTERFACE.md` § "The canonical evaluation
@@ -221,9 +239,9 @@ class DisplayState:
 
     Attributes:
         values: The state, in `governing_equations`' own state order,
-            `STATE_SIZE` entries long. It equals the canonical state at the
-            same instant only to within floating-point composition error, not
-            exactly. The measured difference is in `docs/MODEL.md`.
+            `STATE_SIZE` entries long. It equals the result of `state_at` at
+            the same instant only to within floating-point composition error,
+            not exactly. The measured difference is in `docs/MODEL.md`.
     """
 
     values: tuple[float, ...]
@@ -314,7 +332,7 @@ class RunDefinition:
     from, and is then told what happened. `advance_to` moves the time the run
     has reached. `record_change` closes the open segment at that time and
     opens a new one under new settings. Those two calls are the whole of what
-    a run *is*.
+    a definition records.
 
     **A change is recorded at the time the run has reached, and nowhere
     else.** `record_change` deliberately has no instant argument. A setting
@@ -373,10 +391,12 @@ class RunDefinition:
             opened_at_s: The case instant at which this run opens, in seconds.
                 It is zero for a run beginning at induction. For a branch, it
                 is the instant of the parent keyframe that the branch carries
-                as its `initial_state`. That keyframe is the fork itself for a
-                branch taken at a control event, and the keyframe before the
-                fork for a branch taken at a bookmark (`app/controller.py`,
-                `SimulationController._open_at`). It is a `CaseInstant`, so it
+                as its `initial_state`. That keyframe opens the parent's
+                stretch under which the step that reached the fork ran. It
+                lies before the fork, unless the fork is at the case's
+                opening (`app/controller.py`,
+                `SimulationController._open_at`). For a preview, it is the
+                second the run has reached. It is a `CaseInstant`, so it
                 is at or after induction and inside the supported run length.
                 That length belongs to the case, not to this run. A branch
                 inherits this instant as the origin of everything it reports,
@@ -445,8 +465,9 @@ class RunDefinition:
     def advance_to(self, instant_s: CaseInstant) -> None:
         """Move the time the run has reached to `instant_s`.
 
-        It records no state, because the states are already implied by the
-        settings and are recovered on demand. What it changes is how far the
+        It records no state. A run stores each step's state in a record of
+        its own (`core/stored_states.py`), and this definition computes a
+        state from its settings when it is asked for one. What it changes is how far the
         run definition may be evaluated. That limit is what stops a prediction
         from being drawn as if it were the run.
 
@@ -538,15 +559,20 @@ class RunDefinition:
         )
 
     def state_at(self, instant_s: float) -> tuple[float, ...]:
-        """The canonical state at `instant_s`, in `governing_equations`' state order.
+        """The state at `instant_s` that this definition gives, in `governing_equations`' order.
 
         It forms one matrix exponential over the interval from the keyframe
         that opens the segment containing `instant_s` to `instant_s` itself.
         Two calls with the same argument on the same definition perform the
         identical sequence of operations, so they return bit-identical values.
-        A keyframe, an export or a fork's starting state is taken from this
-        path. `docs/INTERFACE.md` § "The canonical evaluation rule" states the
+        `record_change` computes a keyframe by the same arithmetic.
+        `docs/INTERFACE.md` § "The canonical evaluation rule" states the
         guarantee that the path provides.
+
+        Nothing in `src/` calls this method since `PL-MH9J`. The state of a
+        second that a run has reached is read from the run's stored states
+        (`core/stored_states.py`), and the result here can differ from it in
+        the last bits. The module docstring says why the method remains.
 
         Its result is a function of the run definition and of nothing else. It
         uses no cache and no memory of earlier queries. So a run queried at
@@ -632,7 +658,7 @@ class RunDefinition:
         number of setting changes inside the window, and not to the run's
         length. Two matrix exponentials are formed for each segment in view.
         One covers the offset from the segment's keyframe to its first column,
-        and one covers the spacing. Taking each column canonically would
+        and one covers the spacing. Taking each column with `state_at` would
         instead form `columns` of them.
 
         That saving costs bit-identity with `state_at`. Chaining the propagator
@@ -640,7 +666,7 @@ class RunDefinition:
         the results need not match it to the last bit. Values from this method
         are for drawing. They come back as `DisplayState`, so that they cannot
         be stored, exported or forked from just because they have the same
-        shape as a canonical state. The module docstring explains why.
+        shape as a state vector. The module docstring explains why.
 
         Args:
             start_s: The window's first instant, in seconds.
@@ -719,8 +745,12 @@ class RunDefinition:
     def evaluate_anchored(self, start_s: float, stop_s: float, spacing_s: float) -> SampledWindow:
         """Return columns on an absolute grid over `[start_s, stop_s]`, and at each event in it.
 
-        This is the chart's own display path. It differs from `evaluate` in
-        two ways that a drawn trace needs and a bare window does not.
+        This is the display path that a drawn trace uses. Only the preview
+        calls it since `PL-MH9J` (`SimulationController.preview_window`). The
+        chart's own window reads the run's stored states, at seconds chosen
+        by the same rules (`chart_time_base.drawn_seconds`). This method
+        differs from `evaluate` in two ways that a drawn trace needs and a
+        bare window does not.
 
         **The grid is anchored to the case's zero, not to the window and not
         to `opened_at_s`.** Columns land on absolute multiples of `spacing_s`
@@ -736,9 +766,9 @@ class RunDefinition:
         **Do not re-anchor this grid to the run's own opening.** For a run
         opening at induction the two are the same number, so the distinction
         looks like pedantry. For a branch they differ, and anchoring each run
-        separately is precisely the defect that `PL-2R2C` recorded. That item
-        measured a branch forked at 55.3 s and drawn on a 13-column 120 s
-        axis. The branch shared 2 of its 8 columns with its trunk when
+        separately is precisely the defect that `PL-2R2C` recorded. Take a
+        branch forked at a setting change at 55 s and drawn on a 13-column
+        120 s axis. The branch shares 2 of its 8 columns with its trunk when
         anchored to its own opening, and 8 of 8 when anchored here. Two traces
         on one axis can be read against each other only at matched instants.
         So a difference trace or a shared tooltip built over per-run grids
@@ -755,9 +785,10 @@ class RunDefinition:
         propagator is formed for them. `docs/INTERFACE.md` § "What the chart
         draws" states the guarantee that these event columns provide.
 
-        Both bounds are always columns. In particular, the numeric readouts
-        show the state at `stop_s`. Drawing `stop_s` keeps the right-hand end
-        of the trace from disagreeing with the readout beside it.
+        Both bounds are always columns. A preview opens its definition at
+        the second the run has reached and draws from there. So its first
+        column is that definition's opening keyframe, which is the stored
+        state that the readouts show.
 
         The cost is that of `evaluate`, plus one propagator for each bound.
         Like `evaluate`, this method forms two matrix exponentials for each
@@ -781,7 +812,9 @@ class RunDefinition:
         the run forms the propagators for its two bounds. It forms the third
         only on a frame whose left edge has passed a column, and it forms
         those of any segment newly in view. A new spacing, from a new time
-        base or plot width, forms them all once more. `docs/INTERFACE.md` § "A
+        base or plot width, forms them all once more. A preview is drawn from
+        a definition built for that one frame, so each of its frames forms
+        every propagator it needs. `docs/INTERFACE.md` § "A
         run is stored as its settings and keyframes, and every state is
         computed from them" says how often that happens and what it costs
         (`PL-CNCF`).
@@ -1214,10 +1247,10 @@ def _require_state(state: tuple[float, ...] | DisplayState) -> None:
 
     if isinstance(state, DisplayState):
         raise SimulationConfigurationError(
-            "this state came from the display path, which composes its arithmetic in a "
-            "different order and so does not reproduce the canonical value bit for bit; "
-            "a state that is stored, exported, replayed or forked from is taken from "
-            "state_at"
+            "this state came from the display path (evaluate or evaluate_anchored), which "
+            "computes a state by formula to draw it; a state that a run opens from is one "
+            "that a step of the run wrote, and a run returns it from its stored states "
+            "(StoredStates.state_at)"
         )
 
     require_canonical_state(state)

@@ -197,6 +197,7 @@ LISTED: dict[str, dict[str, tuple[str, ...]]] = {
             "StoredStates.__deepcopy__(memo)",
             "StoredStates.__init__(opening)",
             "StoredStates.append(state)",
+            "StoredStates.fraction_series -> return",
             "StoredStates.restart_from(opening)",
             "StoredStates.state_at -> return",
         ),
@@ -373,8 +374,9 @@ BARE_NUMBERS: dict[str, str] = {
 # the squarings and the result of its two bounds on a propagator, and the instant,
 # the interval and the result of its bound on the clock (`PL-GJ1W`). The record
 # of a run's stored states added ten state vectors, which it passes, stores and
-# returns (`PL-MH9J`).
-MOST_BARE_NUMBERS = 178
+# returns (`PL-MH9J`), and the series of fractions that the chart reads
+# (`PL-BLZJ`).
+MOST_BARE_NUMBERS = 179
 
 
 def _names_a_bare_number(

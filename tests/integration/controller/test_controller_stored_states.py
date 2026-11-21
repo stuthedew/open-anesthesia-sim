@@ -7,6 +7,8 @@ the same seconds. So no expected value is read from the controller that the
 tests exercise.
 """
 
+import itertools
+
 from anesthesia_sim.app.bookmarks import MacTarget
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.formatting import mac_multiple
@@ -108,7 +110,12 @@ def test_the_readouts_and_the_chart_show_the_state_stored_for_each_second() -> N
 def test_a_chart_window_draws_stored_states_at_its_columns_its_ends_and_each_setting_change() -> (
     None
 ):
-    """A window wider than its columns reads whole seconds, and no value between two of them."""
+    """A window wider than its columns reads whole seconds, and no value between two of them.
+
+    Any other second it draws is one at which a compartment is above or below
+    both columns beside it. The tests of the overpressure run below check
+    those seconds.
+    """
 
     expected = _states_stepped_in_core()
     controller = SimulationController(agent_id=AGENT)
@@ -121,14 +128,27 @@ def test_a_chart_window_draws_stored_states_at_its_columns_its_ends_and_each_set
     # An axis from 3.5 s to 148.5 s in 11 columns has a spacing of 14.5 s,
     # which is rounded down to 14 s. The columns fall on multiples of 14 s
     # from the case's zero. The ends move inward to whole seconds.
-    drawn = _drawn_states(controller, 3.5, 148.5, 11)
-
-    assert sorted(drawn) == sorted(
+    columns = sorted(
         {4, 148, *range(14, 148, 14), DIAL_CHANGE_S, VENTILATION_CHANGE_S, FLOW_CHANGE_S}
     )
+    drawn = _drawn_states(controller, 3.5, 148.5, 11)
+
+    assert set(columns) <= set(drawn)
 
     for second, values in drawn.items():
         assert values == expected[int(second)][:6], second
+
+    for second in set(drawn) - set(columns):
+        left_s = max(column for column in columns if column < second)
+        right_s = min(column for column in columns if column > second)
+
+        assert any(
+            expected[int(second)][position]
+            > max(expected[left_s][position], expected[right_s][position])
+            or expected[int(second)][position]
+            < min(expected[left_s][position], expected[right_s][position])
+            for position in range(6)
+        ), second
 
 
 def test_a_run_halts_on_the_second_whose_stored_state_first_reaches_a_marked_height() -> None:
@@ -208,3 +228,102 @@ def test_a_branch_stores_its_parents_state_at_the_fork_and_steps_on_from_it() ->
 
         for field, position in SNAPSHOT_FIELD_POSITIONS:
             assert getattr(snapshot, field) == expected[second][position], (second, field)
+
+
+OVERPRESSURE_S = 120
+OVERPRESSURE_RUN_S = 600
+# A window from 0 to 600 s in five columns has a column every 150 s. The chart
+# also draws the second of the dial change, so these are the seconds it drew
+# before it searched each stretch for a peak (`PL-BLZJ`).
+OVERPRESSURE_COLUMNS_S = (0, OVERPRESSURE_S, 150, 300, 450, OVERPRESSURE_RUN_S)
+
+
+def _overpressure_stepped_in_core() -> list[tuple[float, ...]]:
+    """Return each second's state of 8% sevoflurane for 120 s and 1% after, stepped in core."""
+
+    state = SimulationState(uptake_system=AgentUptakeSystem.for_agent(AGENT))
+    state.uptake_system.set_delivered_concentration_percent(Percent(8.0))
+    states = [state.uptake_system.case_state()]
+
+    for second in range(1, OVERPRESSURE_RUN_S + 1):
+        states.append(state.advance().state)
+
+        if second == OVERPRESSURE_S:
+            state.uptake_system.set_delivered_concentration_percent(Percent(1.0))
+
+    return states
+
+
+def _overpressure_in_the_controller() -> SimulationController:
+    controller = SimulationController(agent_id=AGENT)
+    controller.set_delivered_concentration_percent(Percent(8.0))
+    controller.start()
+
+    for second in range(1, OVERPRESSURE_RUN_S + 1):
+        controller.advance()
+
+        if second == OVERPRESSURE_S:
+            controller.set_delivered_concentration_percent(Percent(1.0))
+
+    return controller
+
+
+def test_a_peak_between_two_chart_columns_is_drawn_at_its_stored_value() -> None:
+    """After an overpressure the alveolar fraction peaks between two columns, and is drawn there.
+
+    The alveoli keep filling for a few seconds after the dial is lowered at
+    120 s, so the alveolar fraction peaks after the change and before the
+    next column at 150 s. A chart that drew only its columns and the change
+    would show the alveolar trace about 0.05 percentage points below that
+    peak. The peak's second and height are found here in a run stepped in
+    `core/`.
+    """
+
+    expected = _overpressure_stepped_in_core()
+    alveolar = COMPARTMENT_STATE_INDEX[RecordedQuantity.ALVEOLAR]
+    peak_s = max(range(len(expected)), key=lambda second: expected[second][alveolar])
+
+    # The test is of a peak that no column draws.
+    assert OVERPRESSURE_S < peak_s < 150
+    assert expected[peak_s][alveolar] - expected[OVERPRESSURE_S][alveolar] > 0.0004
+
+    drawn = _drawn_states(_overpressure_in_the_controller(), 0.0, float(OVERPRESSURE_RUN_S), 5)
+
+    assert peak_s in drawn
+    assert drawn[peak_s] == expected[peak_s][:6]
+    assert max(values[1] for values in drawn.values()) == expected[peak_s][alveolar]
+
+
+def test_every_compartments_highest_and_lowest_value_in_each_column_is_drawn() -> None:
+    """Between two columns, the drawn points reach as high and as low as the run did.
+
+    Each stretch between two columns is compared with every second of a run
+    stepped in `core/`. For each compartment, the highest and the lowest of
+    the points drawn in the stretch equal the highest and the lowest stored
+    values in it. The chart adds at most two points to a stretch for each
+    compartment.
+    """
+
+    expected = _overpressure_stepped_in_core()
+    drawn = _drawn_states(_overpressure_in_the_controller(), 0.0, float(OVERPRESSURE_RUN_S), 5)
+
+    assert set(OVERPRESSURE_COLUMNS_S) <= set(drawn)
+    assert len(drawn) <= len(OVERPRESSURE_COLUMNS_S) + 2 * 6 * (len(OVERPRESSURE_COLUMNS_S) - 1)
+
+    for left_s, right_s in itertools.pairwise(OVERPRESSURE_COLUMNS_S):
+        stored = expected[left_s : right_s + 1]
+        points = [values for second, values in drawn.items() if left_s <= second <= right_s]
+
+        for position in range(6):
+            assert max(point[position] for point in points) == max(
+                state[position] for state in stored
+            ), (left_s, position)
+            assert min(point[position] for point in points) == min(
+                state[position] for state in stored
+            ), (left_s, position)
+
+
+def test_a_window_with_a_column_on_every_second_draws_no_other_point() -> None:
+    drawn = _drawn_states(_overpressure_in_the_controller(), 100.0, 160.0, 61)
+
+    assert sorted(drawn) == list(range(100, 161))

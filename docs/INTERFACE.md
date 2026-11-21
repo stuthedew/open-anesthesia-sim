@@ -2261,17 +2261,29 @@ The gaps grow with the spacing, so a narrower plot has larger gaps and a wider
 plot smaller ones. They bound the error in a trace's *shape* inside one pixel
 column, never in a displayed value.
 
-**Between two control changes, the drawn line can miss the top of a peak or
-the bottom of a trough.** Because the alveoli and the venous blood keep filling
-for a moment after the vaporizer is turned down, the run can peak between two
-drawn instants, above both drawn values. How far above depends on where the
-change falls between two drawn instants. Over five simulated runs that each
-change the dial at 600 s, the largest gap at a peak or a trough on any time
-base is 0.0094 pp, on the mixed venous trace at the desflurane dial-down on the
-eight-hour time base. That is just below the readout's resolution of 0.01 pp.
-The same dial-down at the reference adult's flows, made at 629 s, leaves a gap
-of 0.036 pp on the vessel-rich trace on the twelve-hour time base. Both gaps
-are for a plot 1 000 px wide, measured on 2026-11-21.
+**A compartment can peak or dip between two columns, and the chart draws that
+peak or trough too.** Because the alveoli and the venous blood keep filling
+for a moment after the vaporizer is turned down, a trace can peak between two
+columns, above its value at both. For each compartment, the chart also draws
+the second at which the compartment is highest between two columns and the
+second at which it is lowest, where that value lies outside its values at
+both columns. So each trace reaches the highest and the lowest value that the
+run stored between any two columns.
+
+A chart that drew only its columns fell short of such a peak. Over five
+simulated runs that each change the dial at 600 s, the largest gap on any time
+base was 0.0094 pp, on the mixed venous trace at the desflurane dial-down on the
+eight-hour time base. The gap depends on where the change falls between two
+columns: the same dial-down at the reference adult's flows, made at 629 s, left
+a gap of 0.036 pp on the vessel-rich trace on the twelve-hour time base, against
+a readout resolution of 0.01 pp. Both gaps are for a plot 1 000 px wide,
+measured on 2026-11-21.
+
+Two parts of the display still draw one value for each column. The predicted
+part of the chart, to the right of the second that a run has reached, can fall
+short of a predicted peak by the gaps above (`PL-Z6C8`). The F_A/F_I plot
+divides the two fractions at each drawn second, and the ratio can turn at a
+second where neither fraction does (`PL-DN13`).
 
 **The user chooses which compartment traces are drawn and how wide a window
 of the run the chart shows, and neither choice changes the run.** The two
@@ -2511,12 +2523,18 @@ The five simulated runs for the gap at a peak or a trough were sevoflurane
 2% to 4% and 4% to 0% at the fastest settings, the desflurane case at the
 fastest settings and at slow settings (FGF 0.5 L/min, V_A 2 L/min, Q 2 L/min),
 and the reference adult at 1 to 2 MAC. The run at the reference adult's flows
-moved the desflurane dial-down one second at a time from 600 s to 642 s. A test
-checks the gap at the peak in the desflurane dial-down case against half the
-readout's resolution, at a spacing of 43.2 s
-(`test_a_pixel_wide_chord_misses_an_extremum_by_under_the_readout_s_resolution`
-in `tests/unit/test_run_definition.py`). The twelve-hour time base on a
-1 000 px plot is drawn at 43 s, where the gap in that case is 0.0065 pp.
+moved the desflurane dial-down one second at a time from 600 s to 642 s. Two
+tests check that the chart draws a peak between two columns at its stored
+value, and that each compartment's highest and lowest values between two
+columns are drawn
+(`test_a_peak_between_two_chart_columns_is_drawn_at_its_stored_value` and
+`test_every_compartments_highest_and_lowest_value_in_each_column_is_drawn` in
+`tests/integration/controller/test_controller_stored_states.py`). For the
+predicted part of the chart, a test holds the gap at the peak in the
+desflurane dial-down case below the readout's resolution. That gap is
+0.0065 pp at 43 s, the spacing of the twelve-hour time base on a 1 000 px plot
+(`test_a_predicted_trace_misses_this_peak_by_less_than_the_readout_s_resolution`
+in `tests/unit/test_run_definition.py`).
 <!-- not-restated: 2 % -->
 
 Bounding the gap at a peak or a trough by the readout's resolution is

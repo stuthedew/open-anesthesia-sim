@@ -53,8 +53,10 @@ def _compensated_sum(total: float, compensation: float, addend: float) -> tuple[
     *Accuracy and Stability of Numerical Algorithms*, 2nd ed., SIAM, 2002,
     section 4.3, equation 4.8). The error of plain addition does grow with the
     run's length, by up to u per addition. `docs/MODEL.md` § "Mass-balance
-    identity" gives the error that each method gave over a 24 h run at the
-    step floor, the shortest step the model allows (`PL-XST1`).
+    identity" gives how far each method's totals drifted from the exact sum
+    over a 24 h run at the one-second step, and each method's worst
+    mass-balance residual in that run. It also gives how close plain addition
+    came to the halt threshold when this summation was adopted (`PL-XST1`).
 
     Neumaier's variant, which CPython's `sum` uses, keeps the plain running
     sum and adds the compensation only at the end. That would leave the stored

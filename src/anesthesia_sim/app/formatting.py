@@ -1072,9 +1072,9 @@ def format_playback_rate(multiplier: int) -> str:
     Args:
         multiplier: Simulated seconds advanced per second of real time, as
             `app/playback.py` defines it. It is a whole number by
-            construction. `app/playback.py` rejects a rate that does not
-            land on a whole number of simulation steps per tick, so such a
-            rate is never displayed here.
+            construction. `playback.PlaybackRate` refuses a multiplier that
+            is not a whole number of at least 1, so no other rate is
+            displayed here.
 
     Returns:
         The rate as the interface states it, using the multiplication sign

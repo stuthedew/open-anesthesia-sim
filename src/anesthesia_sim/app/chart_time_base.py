@@ -41,8 +41,9 @@ display would be asserting something false about what the reader is looking at.
 
 from __future__ import annotations
 
+import itertools
 import math
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Final
 
@@ -56,6 +57,7 @@ __all__ = [
     "TIME_BASE_LADDER",
     "ChartTimeBase",
     "drawn_seconds",
+    "extreme_seconds",
     "fit_to_run",
     "fitted_window",
     "following_window",
@@ -443,6 +445,63 @@ def drawn_seconds(
     seconds.update(int(event_s) for event_s in events_s if first_s < event_s < last_s)
 
     return tuple(CaseInstant(second) for second in sorted(seconds))
+
+
+def extreme_seconds(first_s: int, values: Sequence[float], drawn_s: Sequence[int]) -> set[int]:
+    """Return the seconds between drawn seconds at which a trace is highest or lowest.
+
+    A trace can turn between two drawn seconds. After the vaporizer is turned
+    down, the alveolar concentration keeps rising for a few seconds and then
+    falls. A line drawn through the two columns on either side of that peak
+    passes below it. So the chart also draws the second of the peak. Each
+    stretch between two neighbouring drawn seconds is searched for the
+    second with the highest value and the second with the lowest. Either one
+    is returned where its value lies outside both of the stretch's ends.
+    Where a trace only rises or only falls across a stretch, nothing is
+    returned for it.
+
+    With these seconds drawn as well, no stored value of the trace lies above
+    or below the drawn line's range in its own stretch, and each peak and
+    trough is drawn at its stored value (`PL-BLZJ`). This is the lowest and
+    the highest of the four points per column that M4 keeps: Jugel U, Jerzak
+    Z, Hackenbroich G, Markl V. M4: A Visualization-Oriented Time Series Data
+    Aggregation. Proc VLDB Endow. 2014;7(10):797-808. The first and the last
+    are the stretch's own ends.
+
+    Args:
+        first_s: The second of `values[0]`.
+        values: The trace's value at each second from `first_s`, one entry
+            per second (`StoredStates.fraction_series`).
+        drawn_s: The seconds already drawn, ascending, each within `values`
+            (`drawn_seconds`).
+
+    Returns:
+        The seconds to draw as well. Where a value is reached at several
+        seconds of one stretch, the first of them is returned. At most two
+        seconds are returned for each stretch.
+    """
+
+    found: set[int] = set()
+
+    for left_s, right_s in itertools.pairwise(drawn_s):
+        if right_s - left_s < 2:
+            continue
+
+        left = values[left_s - first_s]
+        right = values[right_s - first_s]
+        inside = values[left_s - first_s + 1 : right_s - first_s]
+
+        highest = max(inside)
+
+        if highest > left and highest > right:
+            found.add(left_s + 1 + inside.index(highest))
+
+        lowest = min(inside)
+
+        if lowest < left and lowest < right:
+            found.add(left_s + 1 + inside.index(lowest))
+
+    return found
 
 
 def grid_spacing_s(raw_spacing_s: float) -> int:

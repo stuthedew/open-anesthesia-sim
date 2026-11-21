@@ -26,7 +26,11 @@ from __future__ import annotations
 from array import array
 
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
-from anesthesia_sim.core.governing_equations import STATE_SIZE, require_canonical_state
+from anesthesia_sim.core.governing_equations import (
+    FRACTION_STATE_NAMES,
+    STATE_SIZE,
+    require_canonical_state,
+)
 from anesthesia_sim.core.supported_ranges import CaseInstant, require_case_instant
 
 
@@ -102,6 +106,59 @@ class StoredStates:
         first = (instant_s - self._opened_at_s) * STATE_SIZE
 
         return tuple(self._values[first : first + STATE_SIZE])
+
+    def fraction_series(
+        self, first_s: CaseInstant, last_s: CaseInstant
+    ) -> tuple[array[float], ...]:
+        """Return each compartment's fraction at every second from `first_s` to `last_s`.
+
+        The chart reads a window this way, to find the seconds at which a
+        fraction is highest and lowest between two drawn columns
+        (`PL-BLZJ`). Reading each second's whole state with `state_at` gives
+        the same numbers. Over a twelve-hour window it took 53 ms, against
+        2 ms for the six fractions read this way (measured 2026-11-21).
+
+        Args:
+            first_s: The first second to return.
+            last_s: The last second to return, which is not before `first_s`.
+
+        Returns:
+            One array for each fraction, in the order that
+            `FRACTION_STATE_NAMES` gives them in
+            `core/governing_equations.py`: inspired, alveolar, mixed venous
+            and the three tissue groups. Each array holds `last_s - first_s +
+            1` fractions of 1 atm in order of time, bit for bit as each step
+            wrote them. The arrays are new, so changing one does not change
+            the record.
+
+        Raises:
+            TypeError: `first_s` or `last_s` is not a `CaseInstant`.
+            SimulationConfigurationError: `last_s` is before `first_s`, or
+                the record holds no state for `first_s` or for `last_s`.
+        """
+
+        require_case_instant("first_s", first_s)
+        require_case_instant("last_s", last_s)
+
+        if last_s < first_s:
+            raise SimulationConfigurationError(
+                f"a series from {first_s} s to {last_s} s ends before it begins"
+            )
+
+        if first_s < self._opened_at_s or last_s > self.reached_s:
+            raise SimulationConfigurationError(
+                f"this run stores no state for every second from {first_s} s to {last_s} s: "
+                f"it stores one state for each second from {self._opened_at_s} s, where it "
+                f"opened, to {self.reached_s} s, the second it has reached"
+            )
+
+        start = (first_s - self._opened_at_s) * STATE_SIZE
+        stop = (last_s - self._opened_at_s + 1) * STATE_SIZE
+
+        return tuple(
+            self._values[start + position : stop : STATE_SIZE]
+            for position, _name in FRACTION_STATE_NAMES
+        )
 
     def __copy__(self) -> StoredStates:
         """Return a record with its own array, so that the two never grow as one.

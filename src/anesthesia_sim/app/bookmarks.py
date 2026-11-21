@@ -407,16 +407,17 @@ class MacTarget:
         return side_before != 0 and (side_after == 0 or side_after == -side_before)
 
     def reading_is_near_a_band_edge(self, reading: MacMultiple) -> bool:
-        """Return whether a live reading is within `LIVE_READING_GAP` of this target's band edges.
+        """Return whether a reading is within `LIVE_READING_GAP` of an edge of this target's band.
 
-        A live reading that is not near an edge lies on the same side of each
-        edge as the canonical reading of the same instant. So when neither of a
-        step's live readings is near an edge, `crossed_between` returns the same
-        result from the live readings as from the canonical ones. The step then
-        needs no canonical reading (`PL-QVBR`).
+        `BookmarkSet.needs_canonical_readings` used the result while a step
+        had two readings that agreed only to rounding. It decided whether a
+        step had to be tested a second time (`PL-QVBR`). A step now has one
+        reading at each end, taken from the run's stored states. Nothing in
+        `src/` calls `needs_canonical_readings` since `PL-MH9J`, so nothing
+        there reaches this method, and `PL-Z6C8` removes it.
 
         Args:
-            reading: A live reading of this target's compartment, as a multiple
+            reading: A reading of this target's compartment, as a multiple
                 of the running agent's 1 MAC.
         """
 
@@ -738,19 +739,20 @@ class BookmarkSet:
         before: Mapping[RecordedQuantity, MacMultiple],
         after: Mapping[RecordedQuantity, MacMultiple],
     ) -> bool:
-        """Return whether a step's live and canonical readings could cross a MAC target differently.
+        """Return whether a reading of a step lies near an edge of a MAC target's band.
 
-        It returns true when a live reading lies near an edge of a target's
-        band (`MacTarget.reading_is_near_a_band_edge`). Otherwise the live
-        readings give the same result as the canonical ones for every target.
-        Marked instants play no part. Whether a step reaches a marked instant
-        depends only on the times at which the step starts and ends, and the
-        live and canonical readings share those times.
+        It returns true when a reading lies near an edge of a target's band
+        (`MacTarget.reading_is_near_a_band_edge`). Marked instants play no
+        part. `SimulationController.advance` called this method while a step
+        had two readings that agreed only to rounding, to decide whether the
+        step had to be tested a second time (`PL-QVBR`). A step is now tested
+        once, from the two states that the run stored for its ends. Nothing
+        in `src/` calls this method since `PL-MH9J`, and `PL-Z6C8` removes
+        it.
 
         Args:
-            before: The live reading of every compartment a target could
-                name, before the step, as multiples of the running agent's
-                1 MAC.
+            before: The reading of every compartment a target could name,
+                before the step, as multiples of the running agent's 1 MAC.
             after: The same compartments after the step.
 
         Raises:
