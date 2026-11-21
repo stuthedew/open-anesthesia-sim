@@ -39,11 +39,13 @@ its parent's totals bit for bit (`PL-FST0`).
 from __future__ import annotations
 
 from array import array
+from dataclasses import dataclass
 
 from anesthesia_sim.core.agent_simulation_validation import (
     TotalsCompensation,
     require_totals_compensation,
 )
+from anesthesia_sim.core.checked_record import restore_through_checks
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.governing_equations import (
     FRACTION_STATE_NAMES,
@@ -54,6 +56,48 @@ from anesthesia_sim.core.supported_ranges import CaseInstant, require_case_insta
 
 COMPENSATION_SIZE = 2
 """How many compensation terms a second stores: one for each of the two running totals."""
+
+
+@dataclass(frozen=True, slots=True)
+class Keyframe:
+    """A state that a run stored, and the second of the case that it belongs to.
+
+    The application builds one from an instant and the state that a run
+    stored for it, to name a fork and each end of the step that reached it
+    (`SimulationController._stored_keyframe`). The two travel together so
+    that a state cannot be tested or resumed from under another second's
+    instant.
+
+    Attributes:
+        instant_s: The second for which the state was stored, on the case's
+            own axis. That axis is simulated time since induction. It is not
+            the time elapsed since the run holding the state began. A branch
+            forked at 900 s holds its fork's state at 900 s, although the
+            branch has taken no step.
+        state: The state, in `governing_equations`' own state order,
+            `STATE_SIZE` entries long. Its delivered and exhausted agent are
+            totals from the start of the *case*. A branch continues its
+            parent's totals, because the agent a patient has received belongs
+            to the case. A branch that restarted the count at zero would
+            report a mass balance for a patient who does not exist.
+
+    Raises:
+        TypeError: `instant_s` is not a `CaseInstant`, so nothing has checked
+            it against the supported run length (`core/supported_ranges.py`).
+            The state is not checked here. A `StoredStates` checked it when
+            it stored it.
+    """
+
+    instant_s: CaseInstant
+    state: tuple[float, ...]
+
+    def __post_init__(self) -> None:
+        require_case_instant("instant_s", self.instant_s)
+
+    def __setstate__(self, state: object) -> None:
+        """Restore an unpickled or copied record through the constructor's checks (`PL-8W1Q`)."""
+
+        restore_through_checks(self, state)
 
 
 class StoredStates:

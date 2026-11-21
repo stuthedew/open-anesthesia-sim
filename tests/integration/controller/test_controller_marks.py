@@ -249,10 +249,10 @@ def test_a_control_moved_before_a_bookmark_branch_steps_opens_a_segment_at_the_f
 
     branch.set_alveolar_ventilation(AlveolarVentilation(6.0))
 
-    assert [segment.opening.instant_s for segment in branch.run_segments] == [30.0, fork_s]
+    assert [segment.opened_at_s for segment in branch.run_segments] == [30.0, fork_s]
     assert branch.run_segments[1].opening.state == fork_state
     assert [change.elapsed_s for change in branch.snapshot().control_timeline] == [
-        segment.opening.instant_s for segment in branch.run_segments
+        segment.opened_at_s for segment in branch.run_segments
     ][1:]
     # And it is still drawn from the fork rather than from the earlier keyframe.
     assert branch.drawn_window(0.0, fork_s, 150).times_s == (fork_s,)
@@ -398,7 +398,7 @@ def test_a_setting_changed_while_halted_is_carried_by_the_halt_fork_and_the_keyf
     dialled = marked.snapshot().delivered_concentration_percent
     marked.set_delivered_concentration_percent(Percent(4.0))
 
-    assert [segment.opening.instant_s for segment in marked.run_segments] == [0.0, fork_s]
+    assert [segment.opened_at_s for segment in marked.run_segments] == [0.0, fork_s]
     assert marked.snapshot().bookmark_halt is not None
 
     here = marked.resumed_here()
@@ -460,7 +460,7 @@ def test_two_reversible_acts_in_either_order_leave_one_branch() -> None:
 
     for branch in (untouched, dialled_back_first, reset_first):
         assert branch.snapshot().cardiac_output_l_min == original
-        assert branch.run_segments[0].opening.instant_s == 30.0
+        assert branch.run_segments[0].opened_at_s == 30.0
         assert len(branch.run_segments) == 1
 
         branch.start()
@@ -498,7 +498,7 @@ def test_a_branch_reset_under_new_settings_records_them_at_its_fork() -> None:
     branch.set_cardiac_output(CardiacOutput(4.0))
     branch.reset()
 
-    assert [segment.opening.instant_s for segment in branch.run_segments] == [30.0, fork_s]
+    assert [segment.opened_at_s for segment in branch.run_segments] == [30.0, fork_s]
     assert branch.run_segments[0].settings == marked.run_segments[-1].settings
     assert branch.run_segments[1].opening.state == fork_state
     assert branch._run_definition.state_at(fork_s) == fork_state
@@ -520,9 +520,7 @@ def test_a_mark_set_behind_the_clock_can_be_returned_to() -> None:
     trunk = _trunk_paused_past_a_change()
     mark = TimeBookmark(CaseInstant(60), "what if")
     trunk.add_time_bookmark(mark)
-    keyframes = [
-        (segment.opening.instant_s, segment.opening.state) for segment in trunk.run_segments
-    ]
+    keyframes = [(segment.opened_at_s, segment.opening.state) for segment in trunk.run_segments]
 
     assert 60 not in [instant_s for instant_s, _state in keyframes]
 
@@ -542,9 +540,9 @@ def test_a_mark_set_behind_the_clock_can_be_returned_to() -> None:
     assert branch.snapshot().bookmark_standings.of_time_bookmark(mark) is MarkStanding.PASSED
     # The branch's definition opens at the trunk's own keyframe before the mark,
     # and nothing was recorded on the trunk to make one where it was marked.
-    assert branch.run_segments[0].opening.instant_s == 30.0
+    assert branch.run_segments[0].opened_at_s == 30.0
     assert [
-        (segment.opening.instant_s, segment.opening.state) for segment in trunk.run_segments
+        (segment.opened_at_s, segment.opening.state) for segment in trunk.run_segments
     ] == keyframes
     assert trunk.snapshot().elapsed_s == 180.0
 

@@ -243,7 +243,7 @@ def test_a_branch_opens_carrying_the_marks_of_the_case_it_continues() -> None:
     trunk.add_time_bookmark(TimeBookmark(CaseInstant(45), "the decision point"))
     trunk.add_mac_target(target)
 
-    branch = trunk.resumed_at(trunk.run_segments[-1].opening.instant_s)
+    branch = trunk.resumed_at(trunk.run_segments[-1].opened_at_s)
     marks = branch.snapshot().bookmarks
 
     assert marks.time_bookmarks == (TimeBookmark(CaseInstant(45), "the decision point"),)
@@ -251,7 +251,7 @@ def test_a_branch_opens_carrying_the_marks_of_the_case_it_continues() -> None:
     # The trunk's earlier changes do not carry over, because a branch inherits
     # the marks but not the timeline. The branch's timeline holds only the
     # change at the fork that the branch runs under (`PL-ZR49`).
-    fork_s = trunk.run_segments[-1].opening.instant_s
+    fork_s = trunk.run_segments[-1].opened_at_s
     timeline = branch.snapshot().control_timeline
     assert [change.elapsed_s for change in timeline] == [fork_s]
 
@@ -261,7 +261,7 @@ def test_marking_a_branch_does_not_mark_the_trunk_it_came_from() -> None:
     # are two managements, and a mark added to one is a question asked of that
     # one.
     trunk = _trunk_with_two_changes()
-    branch = trunk.resumed_at(trunk.run_segments[-1].opening.instant_s)
+    branch = trunk.resumed_at(trunk.run_segments[-1].opened_at_s)
     branch.add_time_bookmark(TimeBookmark(CaseInstant(600)))
 
     assert trunk.snapshot().bookmarks.is_empty
@@ -339,7 +339,7 @@ def test_a_branch_taken_at_a_bookmark_reproduces_its_parent_without_changing_it(
 
     # The premise: the trunk has no keyframe at the fork instant, so the
     # refused route would have had to record one there.
-    assert fork_s not in [segment.opening.instant_s for segment in marked.run_segments]
+    assert fork_s not in [segment.opened_at_s for segment in marked.run_segments]
 
     branch = marked.resumed_here()
 
@@ -360,8 +360,8 @@ def test_a_branch_taken_at_a_bookmark_reproduces_its_parent_without_changing_it(
     # that the unmarked run does not have.
     assert marked._state.step_count == unmarked._state.step_count
     assert marked.snapshot().elapsed_s == unmarked.snapshot().elapsed_s
-    assert [segment.opening.instant_s for segment in marked.run_segments] == [
-        segment.opening.instant_s for segment in unmarked.run_segments
+    assert [segment.opened_at_s for segment in marked.run_segments] == [
+        segment.opened_at_s for segment in unmarked.run_segments
     ]
     assert [segment.opening.state for segment in marked.run_segments] == [
         segment.opening.state for segment in unmarked.run_segments
@@ -406,10 +406,10 @@ def test_a_bookmark_fork_opens_its_definition_at_the_keyframe_before_it() -> Non
 
     # The definition opens earlier, at the trunk's own keyframe rather than at
     # the fork, and nothing was recorded on the trunk to make one there.
-    assert branch.run_segments[0].opening.instant_s == 30.0
-    assert branch.run_segments[0].opening.instant_s < fork_s
+    assert branch.run_segments[0].opened_at_s == 30.0
+    assert branch.run_segments[0].opened_at_s < fork_s
     assert branch.run_segments[0].opening.state == marked.run_segments[-1].opening.state
-    assert [segment.opening.instant_s for segment in marked.run_segments] == [0.0, 30.0]
+    assert [segment.opened_at_s for segment in marked.run_segments] == [0.0, 30.0]
 
 
 def test_a_branch_taken_at_a_bookmark_is_not_drawn_before_its_fork() -> None:
@@ -527,9 +527,7 @@ def test_a_paused_trunk_branches_where_it_stands() -> None:
     trunk = _trunk_with_two_changes()
     fork_s = trunk.snapshot().elapsed_s
     fork_steps = trunk._state.step_count
-    keyframes = [
-        (segment.opening.instant_s, segment.opening.state) for segment in trunk.run_segments
-    ]
+    keyframes = [(segment.opened_at_s, segment.opening.state) for segment in trunk.run_segments]
 
     # The premise: nothing is recorded where the trunk is paused.
     assert fork_s not in [instant_s for instant_s, _ in keyframes]
@@ -543,9 +541,9 @@ def test_a_paused_trunk_branches_where_it_stands() -> None:
     assert branch.opened_from is not None
     assert branch.opened_from.fork.state == trunk._state.stored_states.state_at(fork_s)
     assert branch.snapshot().bookmark_halt is None
-    assert branch.run_segments[0].opening.instant_s == trunk.run_segments[-1].opening.instant_s
+    assert branch.run_segments[0].opened_at_s == trunk.run_segments[-1].opened_at_s
     assert [
-        (segment.opening.instant_s, segment.opening.state) for segment in trunk.run_segments
+        (segment.opened_at_s, segment.opening.state) for segment in trunk.run_segments
     ] == keyframes
 
     trunk.start()
@@ -613,8 +611,8 @@ def test_a_failed_run_offers_no_place_to_branch_where_it_stands() -> None:
 
     assert "a step raised" in str(refusal.value)
     assert "resumed_at" in str(refusal.value)
-    assert trunk.resumed_at(trunk.run_segments[-1].opening.instant_s).began_at_s == (
-        trunk.run_segments[-1].opening.instant_s
+    assert trunk.resumed_at(trunk.run_segments[-1].opened_at_s).began_at_s == (
+        trunk.run_segments[-1].opened_at_s
     )
 
 
@@ -671,7 +669,7 @@ def test_a_branch_at_the_second_a_halted_run_stands_on_is_the_branch_taken_there
     marked = _trunk_halted_on_a_bookmark()
     halted_s = marked.snapshot().elapsed_s
 
-    assert halted_s not in [segment.opening.instant_s for segment in marked.run_segments]
+    assert halted_s not in [segment.opened_at_s for segment in marked.run_segments]
 
     named = marked.resumed_at(halted_s)
     here = marked.resumed_here()
@@ -728,7 +726,7 @@ def test_a_branch_of_a_bookmark_fork_is_refused_rather_than_silently_flattened()
     branch.add_time_bookmark(TimeBookmark(CaseInstant(600)))
 
     with pytest.raises(SimulationConfigurationError, match="branch of a branch"):
-        branch.resumed_at(branch.run_segments[0].opening.instant_s)
+        branch.resumed_at(branch.run_segments[0].opened_at_s)
 
 
 def test_a_case_forks_at_the_bookmark_its_trunk_is_standing_on() -> None:
@@ -773,7 +771,7 @@ def test_a_mark_between_a_bookmark_branch_s_definition_and_its_fork_is_unreachab
 
     # The premise: the definition reaches back past the mark, and the branch
     # does not.
-    assert branch.run_segments[0].opening.instant_s < 40.0 < fork_s
+    assert branch.run_segments[0].opened_at_s < 40.0 < fork_s
     assert branch.began_at_s == fork_s
 
     standings = branch.snapshot().bookmark_standings

@@ -68,7 +68,7 @@ def test_a_setting_change_opens_a_segment_where_the_run_saw_it() -> None:
     _run_with_two_changes(controller)
 
     timeline = controller.snapshot().control_timeline
-    openings = [segment.opening.instant_s for segment in controller.run_segments]
+    openings = [segment.opened_at_s for segment in controller.run_segments]
 
     assert [change.elapsed_s for change in timeline] == openings[1:]
     assert openings[0] == 0.0
@@ -646,7 +646,7 @@ def test_an_axis_entirely_before_a_branch_s_fork_draws_nothing() -> None:
     """
 
     trunk = _trunk_with_two_changes()
-    fork_s = trunk.run_segments[-1].opening.instant_s
+    fork_s = trunk.run_segments[-1].opened_at_s
     branch = trunk.resumed_at(fork_s)
 
     window = branch.drawn_window(0.0, fork_s / 2, 150)

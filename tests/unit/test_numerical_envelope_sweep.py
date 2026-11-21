@@ -43,7 +43,6 @@ from anesthesia_sim.core.concentration import Fraction, Percent, percent_from_fr
 from anesthesia_sim.core.exceptions import (
     AgentSimulationValidationError,
     SimulationConfigurationError,
-    SimulationNumericalError,
 )
 from anesthesia_sim.core.governing_equations import (
     DELIVERED_AGENT_L,
@@ -66,8 +65,8 @@ from anesthesia_sim.core.numerical_envelope import (
 )
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES
 from anesthesia_sim.core.patient import PatientCompartments
+from anesthesia_sim.core.prediction import predicted_states
 from anesthesia_sim.core.rounding import MACHINE_EPSILON, propagator_rounding, run_rounding
-from anesthesia_sim.core.run_definition import RunDefinition
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
@@ -313,55 +312,35 @@ def _require_what_the_equations_require(
     assert abs(unaccounted_l) <= tolerance * max(owed_l, 1e-300), state
 
 
-COLUMNS = 60
-"""How many columns the display path samples across the run, about 1464 s apart."""
-
-COLUMN_SPACING_S = MAXIMUM_ELAPSED_SIMULATION_TIME_S / (COLUMNS - 1)
-"""The interval between two columns, which the display path's chained propagator spans."""
+PREDICTED_SECONDS = 60
+"""How many seconds each run is predicted for, one step for each second."""
 
 
 def _require_the_run(corner: Corner) -> None:
-    """Evaluate a run across the supported run length at every flow corner.
+    """Predict a run for `PREDICTED_SECONDS` seconds at every flow corner.
 
     Each run is a wash-in, a washout or an equilibrium, from
-    `OPENINGS_AND_DIALS`, with the input ceiling as the highest fraction. Each
-    run is sampled
-    on the display path at `COLUMNS` columns. The display path composes one
-    propagator per column, so the `n`th column carries the error of `n`
-    propagators. Each run is also sampled on the canonical path at six
-    instants, from one millisecond to the end of the run. The
-    canonical path forms one propagator from the opening to each instant. At the
-    stiffest corners, the whole 86 400 s interval needs more than
-    `MAXIMUM_SQUARINGS` squarings. So the instant at the end of the run may be
-    refused there, with the simulator's own error naming the squarings. No
-    other refusal is accepted.
+    `OPENINGS_AND_DIALS`, with the input ceiling as the highest fraction.
+    `predicted_states` applies the propagator of one step once for each
+    second, as a preview does, so the state at second `n` carries the error
+    of `n` propagators. A run of the supported run length is predicted in
+    `test_a_state_at_the_fraction_ceiling_stays_within_one_atmosphere`, at
+    the two corners where rounding went furthest.
     """
 
     for flows in FLOW_CORNERS:
         for opening_fraction, dial_percent in OPENINGS_AND_DIALS:
             opening = _opening_state(opening_fraction)
             settings = _settings(corner, flows, dial_percent)
-            matrix = build_system_matrix(settings)
-            run = RunDefinition(settings, opening, opened_at_s=CaseInstant(0))
-            run.advance_to(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S))
-            window = run.evaluate(0.0, MAXIMUM_ELAPSED_SIMULATION_TIME_S, COLUMNS)
-            column_error = _propagator_error(matrix, COLUMN_SPACING_S)
+            step_error = _propagator_error(build_system_matrix(settings), SIMULATION_STEP_S)
+            predicted = predicted_states(
+                settings, opening, CaseInstant(0), CaseInstant(PREDICTED_SECONDS)
+            )
 
-            for column, drawn in enumerate(window.states, start=1):
-                _require_what_the_equations_require(
-                    corner, opening, drawn.values, column * column_error
-                )
+            assert len(predicted) == PREDICTED_SECONDS + 1
 
-            for instant_s in (1e-3, 0.1, 1.0, 60.0, 1440.0, 86_400.0):
-                try:
-                    state = run.state_at(instant_s)
-                except SimulationConfigurationError as refusal:
-                    assert instant_s == 86_400.0, refusal
-                    assert "squarings" in str(refusal), refusal
-                else:
-                    _require_what_the_equations_require(
-                        corner, opening, state, _propagator_error(matrix, instant_s)
-                    )
+            for second, state in enumerate(predicted[1:], start=1):
+                _require_what_the_equations_require(corner, opening, state, second * step_error)
 
 
 def _system(
@@ -622,11 +601,9 @@ def test_every_core_operation_holds_its_equations_at_every_envelope_corner(corne
 
     The corner fixes every volume and coefficient. At each corner, the flows run
     at zero, at the smallest float and at their supported maximums. The run opens
-    empty or at the input ceiling. One refusal is accepted, with the
-    simulator's own error: the canonical path's refusal of its single 86 400 s
-    interval at the stiffest corners. Before the input ceiling, a second refusal
-    was accepted: a step from a state at 1 that rounded a fraction past 1. A
-    state at the ceiling must never be refused that way.
+    empty or at the input ceiling. No refusal is accepted. Before the input
+    ceiling, one was: a step from a state at 1 that rounded a fraction past
+    1. A state at the ceiling must never be refused that way.
     """
 
     _require_the_run(corner)
@@ -658,15 +635,6 @@ def _build_step_count_of_a_supported_run(value: float) -> int:
 
 def _build_case_instant(value: float) -> CaseInstant:
     return CaseInstant(int(value))
-
-
-def _build_window_columns(value: float) -> int:
-    run = RunDefinition(
-        _settings(CORNERS[0], (0.0, 0.0, 0.0), 0.0), _opening_state(0.0), opened_at_s=CaseInstant(0)
-    )
-    run.evaluate(0.0, 0.0, int(value))
-
-    return int(value)
 
 
 def _build_dial_in_a_settings_record(value: float) -> UptakeEquationSettings:
@@ -706,15 +674,13 @@ EDGES = (
 """Every input with an interval of its own, and the interval that `docs/MODEL.md` records for it.
 
 The bounds are written out here rather than read from the modules that define
-them. So a bound that moves fails this test and is noticed. A case instant, a
-step count and a window's column count are whole numbers, so they are in
-`WHOLE_EDGES`.
+them. So a bound that moves fails this test and is noticed. A case instant and
+a step count are whole numbers, so they are in `WHOLE_EDGES`.
 """
 
 WHOLE_EDGES = (
     Edge("CaseInstant", _build_case_instant, 0, 86_400),
     Edge("StepCount of a supported run", _build_step_count_of_a_supported_run, 0, 86_400),
-    Edge("RunDefinition.evaluate columns", _build_window_columns, 1, 100_000),
 )
 
 
@@ -751,45 +717,10 @@ STIFFEST_DRAWN_CORNER = Corner(
 """Every volume at its floor, blood:gas at its ceiling and tissue:blood at its floor.
 
 From a state at 1 with the dial off, ventilation and cardiac output at their
-maximums and no fresh gas, the display path drew 1.000033 here, the largest
-drawn fraction in the sweep (measured 2026-10-31).
+maximums and no fresh gas, a state computed by formula across 24 hours reached
+1.000033 here, before the input ceiling. It was the largest fraction in the
+sweep (measured 2026-10-31).
 """
-
-
-def test_the_display_path_refuses_a_drawn_fraction_past_one_atmosphere() -> None:
-    """A window that would draw a fraction above 1 (the ambient pressure) is refused, not returned.
-
-    No supported opening reaches such a window. The stepped system refuses an
-    opening above `CEILING`, and so does a settings record's dial. A
-    `RunDefinition` opens from a state that a run passed through, which may lie
-    a rounding error above the ceiling, so it checks its opening only from 0
-    through 1. A caller can therefore still hand it a state at 1. Before
-    the input ceiling, both display paths then returned fractions above 1 at this
-    corner: 1.000033 across the whole run, and 1.0000000056 in the inspired
-    fraction over the first 1000 s sampled every 100 s (measured 2026-10-31).
-    Each now refuses the window with the simulator's own error, naming the
-    state position that left the range. The window is short because the
-    anchored path forms one propagator to its stop. At this corner, a propagator
-    longer than about 1610 s needs more squarings than the module allows.
-    """
-
-    flows = (0.0, MAXIMUM_ALVEOLAR_VENTILATION_L_MIN, MAXIMUM_CARDIAC_OUTPUT_L_MIN)
-    run = RunDefinition(
-        _settings(STIFFEST_DRAWN_CORNER, flows, 0.0),
-        _opening_state(1.0),
-        opened_at_s=CaseInstant(0),
-    )
-    run.advance_to(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S))
-    refusal = (
-        r"^the display path computed a value it cannot draw: state\[\d\] \([^)]*\) "
-        r"of 1\.0000\d+ is outside 0 to 1"
-    )
-
-    with pytest.raises(SimulationNumericalError, match=refusal):
-        run.evaluate(0.0, 1000.0, 11)
-
-    with pytest.raises(SimulationNumericalError, match=refusal):
-        run.evaluate_anchored(0.0, 1000.0, 100.0)
 
 
 OPENING_PARTS = (
@@ -892,29 +823,29 @@ ROUNDING_CORNERS = (
 )
 """The corners where a computed fraction went furthest past its inputs, measured 2026-10-31.
 
-The first drew the largest excess on the display path. The second, with the
+The first reached the largest excess in a state computed by formula across 24
+hours, a path that `PL-Z6C8` removed. The second, with the
 circuit and lung at their floors and the venous pool and tissues at their
 ceilings, took the largest excess in one step of the coupled system.
 """
 
 
 def test_a_state_at_the_fraction_ceiling_stays_within_one_atmosphere() -> None:
-    """From the input ceiling, a step and a drawn window both stay from 0 through 1.
+    """From the input ceiling, a step and a 24-hour prediction both stay from 0 through 1.
 
     A fraction is a partial pressure as a fraction of the ambient pressure, which
     the model fixes at one atmosphere. No gas's partial pressure can exceed the
     ambient pressure, so no fraction can exceed 1. Before the input ceiling, a state with every
     compartment at 1 could not be stepped reliably: one step rounded a fraction
     to 1.0000000000349965, the check refused it, and the run halted. The
-    display path drew 1.000033 from the same state. The coupled model now
-    starts from no more than `CEILING`, and the system refuses to be built
-    above it. This test steps the system and draws a 24-hour window at the two
-    corners where rounding went furthest, from each opening and dial in
-    `OPENINGS_AND_DIALS`. Where the agent balance check refuses the step for
-    rounding, the step is rolled back and the state checked is the opening
-    one. Every fraction must lie from 0 through 1, and none
-    may pass the ceiling by more than 1e-4 of it, about three times the largest
-    excess measured.
+    coupled model now starts from no more than `CEILING`, and the system
+    refuses to be built above it. This test steps the system, and predicts
+    every second of 24 hours, at the two corners where rounding went
+    furthest, from each opening and dial in `OPENINGS_AND_DIALS`. Where the
+    agent balance check refuses the step for rounding, the step is rolled
+    back and the state checked is the opening one. Every fraction must lie
+    from 0 through 1, and none may pass the ceiling by more than 1e-4 of it,
+    about three times the largest excess measured.
     """
 
     flows = (0.0, MAXIMUM_ALVEOLAR_VENTILATION_L_MIN, MAXIMUM_CARDIAC_OUTPUT_L_MIN)
@@ -928,16 +859,14 @@ def test_a_state_at_the_fraction_ceiling_stays_within_one_atmosphere() -> None:
         for fraction, dial_percent in OPENINGS_AND_DIALS:
             system = _system(corner, flows, fraction, dial_percent)
             _step_unless_the_balance_check_refuses(system)
-            run = RunDefinition(
+            predicted = predicted_states(
                 _settings(corner, flows, dial_percent),
                 _opening_state(fraction),
-                opened_at_s=CaseInstant(0),
+                CaseInstant(0),
+                CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S),
             )
-            run.advance_to(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S))
-            window = run.evaluate(0.0, MAXIMUM_ELAPSED_SIMULATION_TIME_S, COLUMNS)
-            drawn = [state.values for state in window.states]
 
-            for state in (system.state_vector(), *drawn):
+            for state in (system.state_vector(), *predicted):
                 for computed in state[:DELIVERED_AGENT_L]:
                     assert 0.0 <= computed <= 1.0, state
                     assert computed <= CEILING * (1.0 + 1e-4), state

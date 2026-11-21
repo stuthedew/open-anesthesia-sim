@@ -1868,7 +1868,7 @@ def test_a_bookmark_branch_is_marked_at_its_fork_and_not_at_its_definition_s_ope
     branch = case.fork_here()
 
     assert fork_s == 45
-    assert branch.run_segments[0].opening.instant_s == 30 < fork_s
+    assert branch.run_segments[0].opened_at_s == 30 < fork_s
 
     frame = assemble_chart_frame(
         (_input(trunk), _input(branch, run_index=1)),

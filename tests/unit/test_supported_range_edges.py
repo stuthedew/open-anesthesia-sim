@@ -117,9 +117,9 @@ from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.exceptions import AnesthesiaSimulationError
 from anesthesia_sim.core.governing_equations import UptakeEquationSettings
 from anesthesia_sim.core.patient import PatientCompartments
-from anesthesia_sim.core.run_definition import Keyframe, RunDefinition
+from anesthesia_sim.core.run_definition import RunDefinition
 from anesthesia_sim.core.simulation import SimulationState
-from anesthesia_sim.core.stored_states import StoredStates
+from anesthesia_sim.core.stored_states import Keyframe, StoredStates
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ELAPSED_SIMULATION_TIME_S,
     CardiacOutput,
@@ -138,9 +138,7 @@ Function = Callable[..., object]
 def _run_definition() -> RunDefinition:
     system = AgentUptakeSystem.default()
 
-    return RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
-    )
+    return RunDefinition(system.equation_settings(), opened_at_s=CaseInstant(0))
 
 
 def _equation_settings_at(cardiac_output_l_min: CardiacOutput) -> UptakeEquationSettings:
@@ -180,7 +178,7 @@ RECEIVERS: Mapping[type, Callable[[], object]] = {
     ControlChange: lambda: ControlChange(
         CaseInstant(0), 1, ControlInput.FRESH_GAS_FLOW, 6.0, 2.0, "L/min"
     ),
-    Keyframe: lambda: _run_definition().segments[0].opening,
+    Keyframe: lambda: Keyframe(CaseInstant(0), AgentUptakeSystem.default().case_state()),
     PatientCompartments: lambda: AgentUptakeSystem.default().patient,
     RunDefinition: _run_definition,
     SimulationController: SimulationController,

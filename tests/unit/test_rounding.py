@@ -7,7 +7,6 @@ of two and from the supported ranges, and not read back from the module.
 import ast
 import math
 from decimal import ROUND_CEILING, ROUND_FLOOR, Context, Decimal, localcontext
-from fractions import Fraction
 from pathlib import Path
 
 import pytest
@@ -34,14 +33,11 @@ from anesthesia_sim.core.matrix_exponential import (
 from anesthesia_sim.core.rounding import (
     AGENT_ACCOUNTING_RELATIVE_TOLERANCE,
     FLOW_FRACTION_TOLERANCE,
-    HEIGHT_BAND,
-    LIVE_READING_GAP,
     MACHINE_EPSILON,
     PROPAGATOR_ROUNDING_UNITS,
     RUNNING_TOTAL_ROUNDING,
     SMALLEST_FULL_PRECISION_MAGNITUDE,
     WHOLE_COUNT_TOLERANCE,
-    clock_rounding,
     propagator_rounding,
     run_rounding,
 )
@@ -274,7 +270,7 @@ def _propagator_error_in_leading_terms(
     module under test.
     """
 
-    system = _build(Plan(None, corner, 0.5, flows, 0.5, ONE_STEP, 0.0, 2))
+    system = _build(Plan(None, corner, 0.5, flows, 0.5, ONE_STEP))
     matrix = build_system_matrix(system.equation_settings())
     computed = matrix_exponential(matrix, step_s)
     exact = _decimal_exponential(matrix, str(Decimal(step_s)))
@@ -351,7 +347,7 @@ def test_a_step_drawn_across_the_envelope_stays_inside_the_derived_bound(
     """
 
     corner, flows, dial, step_s, fractions = drawn
-    system = _build(Plan(None, corner, 0.5, flows, dial, ONE_STEP, 0.0, 2))
+    system = _build(Plan(None, corner, 0.5, flows, dial, ONE_STEP))
     settings_now = system.equation_settings()
     matrix = build_system_matrix(settings_now)
     state = (*fractions, 0.0, 0.0, 1.0)
@@ -430,24 +426,6 @@ def test_a_count_of_the_wrong_type_is_named_by_its_type() -> None:
     assert str(refusal.value) == "squarings must be an int, not a float"
 
 
-@pytest.mark.parametrize(
-    ("instant_s", "interval_s", "message"),
-    [
-        (-1.0, 1.0, "instant_s must be finite and at least zero, and -1.0 is not"),
-        (math.inf, 1.0, "instant_s must be finite and at least zero, and inf is not"),
-        (1.0, 0.0, "interval_s must be finite and above zero, and 0.0 is not"),
-        (1.0, math.inf, "interval_s must be finite and above zero, and inf is not"),
-    ],
-)
-def test_a_refused_instant_or_interval_is_named_with_its_value(
-    instant_s: float, interval_s: float, message: str
-) -> None:
-    with pytest.raises(SimulationConfigurationError) as refusal:
-        clock_rounding(instant_s, interval_s)
-
-    assert str(refusal.value) == message
-
-
 def test_a_number_of_steps_not_built_as_a_step_count_is_refused() -> None:
     """A bare `int` carries no proof that it is whole and nonnegative, so it is refused."""
 
@@ -472,56 +450,6 @@ def test_a_run_is_bounded_by_the_sum_of_its_steps_bounds(squarings: int, steps: 
     assert run_rounding(squarings, StepCount(0)) == 0.0
 
 
-def test_clock_rounding_is_one_and_a_half_units_of_the_instant_over_the_interval() -> None:
-    """Near 238.2 s the floats are 2**-45 s apart, so over a 0.5 s interval the share is 3 * 2**-45.
-
-    One and a half units are 1.5 * 2**-45 s, and dividing by 0.5 s doubles
-    that. At an instant of zero the unit is the smallest float, 5e-324, and
-    one and a half of it rounds to two.
-    """
-
-    assert clock_rounding(238.2, 0.5) == 3.0 * 2.0**-45
-    assert clock_rounding(0.0, 1.0) == 1e-323
-
-
-@pytest.mark.parametrize(
-    ("step_s", "opened_at_step", "reached_step"), [(0.01, 2_356, 6_244), (0.1, 82_188, 326_590)]
-)
-def test_a_measured_interval_can_be_wrong_by_more_than_one_unit_of_the_later_instant(
-    step_s: float, opened_at_step: int, reached_step: int
-) -> None:
-    """Two intervals found by a blind review on 2026-11-11 are wrong by 1.25 and 1.17 units.
-
-    Each instant is a number of steps times the step, as the application
-    computed it while a run could step by a fraction of a second, and the
-    interval is their difference in floats. `RunDefinition.state_at` still
-    accepts such an instant. The exact
-    interval is worked out in rational arithmetic from the step as stored in
-    binary. The figure was one unit until that day, and these intervals
-    exceed it.
-    """
-
-    opened_at_s = opened_at_step * step_s
-    reached_s = reached_step * step_s
-    exact_s = (reached_step - opened_at_step) * Fraction(step_s)
-    error_s = abs(Fraction(reached_s - opened_at_s) - exact_s)
-    unit_s = Fraction(math.ulp(reached_s))
-
-    assert unit_s < error_s <= Fraction(3, 2) * unit_s
-    assert error_s / exact_s <= Fraction(clock_rounding(reached_s, float(exact_s)))
-
-
-@pytest.mark.parametrize(
-    ("instant_s", "interval_s"),
-    [(1.0, 0.0), (1.0, -1.0), (1.0, math.inf), (1.0, math.nan), (-1.0, 1.0), (math.inf, 1.0)],
-)
-def test_clock_rounding_refuses_an_instant_or_an_interval_it_cannot_bound(
-    instant_s: float, interval_s: float
-) -> None:
-    with pytest.raises(SimulationConfigurationError, match="must be finite"):
-        clock_rounding(instant_s, interval_s)
-
-
 def test_the_agent_balance_limit_is_two_thirds_of_the_summed_bound_of_the_longest_run() -> None:
     """The fixed limit of one part in 10**9 is below the summed bound for 86 400 shipped steps.
 
@@ -540,24 +468,6 @@ def test_the_agent_balance_limit_is_two_thirds_of_the_summed_bound_of_the_longes
     bound = run_rounding(MOST_SQUARINGS_IN_A_SHIPPED_STEP, StepCount(STEPS_IN_THE_LONGEST_RUN))
 
     assert 1.53 < bound / 1e-9 < 1.54
-
-
-def test_the_reading_allowance_is_650_times_the_summed_bound_of_the_longest_run() -> None:
-    """A stepped reading's allowance stays at least 500 times the bound for the longest run.
-
-    The bound is for steps that need three squarings, which is the most that a
-    shipped agent's step needs. The allowance must exceed the bound, and it is
-    651 times the bound today. The factor of 500 is a warning distance and has
-    no other source: a run limit or a squaring count that moves the bound by
-    more than 30% fails this test, and a person then chooses a new allowance.
-    The band around a MAC target must be wider than the allowance, or the
-    zones around its two edges would meet.
-    """
-
-    bound = run_rounding(MOST_SQUARINGS_IN_A_SHIPPED_STEP, StepCount(STEPS_IN_THE_LONGEST_RUN))
-
-    assert bound * 500.0 <= LIVE_READING_GAP
-    assert LIVE_READING_GAP * 10.0 <= HEIGHT_BAND * (1.0 + MACHINE_EPSILON)
 
 
 def test_the_perfusion_allowance_admits_rounding_and_refuses_a_transcription_error() -> None:

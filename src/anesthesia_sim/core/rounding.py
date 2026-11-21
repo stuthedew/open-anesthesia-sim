@@ -15,9 +15,8 @@ The module has two parts.
 **Bounds that follow from the arithmetic.** `propagator_rounding` bounds the
 rounding of one propagator, the matrix exponential that advances the state over
 one interval. A step applies one propagator, so it is also the bound for one
-step. `run_rounding` bounds a run of n steps. `clock_rounding` bounds what
-rounding of the clock adds, and `RUNNING_TOTAL_ROUNDING` bounds a compensated
-running total. Each is relative: a share of the value's own size, or of the
+step. `run_rounding` bounds a run of n steps, and `RUNNING_TOTAL_ROUNDING`
+bounds a compensated running total. Each is relative: a share of the value's own size, or of the
 scale that its docstring names.
 
 **Fixed allowances.** Each constant in the second part is the allowance of one
@@ -51,7 +50,6 @@ Two tolerances in `layout/` stay there: `BORDER_ALIGNMENT_TOLERANCE` and
 that its areas take, and no computed clinical value depends on them.
 """
 
-import math
 import sys
 from typing import Final
 
@@ -174,13 +172,6 @@ allowance within 51 steps (`PL-XST1`, replayed 2026-11-11).
 """
 
 
-CLOCK_ROUNDING_UNITS: Final = 1.5
-"""How many units in the last place of the later instant a measured interval can be wrong by.
-
-`clock_rounding` gives the three roundings that add up to it.
-"""
-
-
 def propagator_rounding(squarings: int) -> float:
     """Return the bound on one propagator's rounding, as a share of the state's scale.
 
@@ -242,49 +233,6 @@ def run_rounding(squarings: int, steps: StepCount) -> float:
     require_step_count(steps)
 
     return propagator_rounding(squarings) * steps
-
-
-def clock_rounding(instant_s: float, interval_s: float) -> float:
-    """Return how far rounding of the clock can move a reading, as a share of its range.
-
-    A run definition measures an interval as the difference of two rounded
-    instants. Each instant is within half a unit in the last place of its
-    exact value, and the subtraction rounds by at most half a unit more. So
-    the difference can be wrong by one and a half units in the last place of
-    the later instant. On 2026-11-11 the interval from step 2 356 to step
-    6 244 of a 0.01 s step, which a run could then take, was wrong by 1.25
-    units. A run's own instants are whole seconds since `PL-SZ6G`, and the
-    difference of two whole seconds is exact. The bound still applies to an
-    instant between two seconds, which `RunDefinition.state_at` and a chart
-    window accept. A reading is most
-    sensitive to an error in time when one of the system's time constants
-    equals the interval. Even then, the reading moves by less than the time
-    error divided by the interval. A total that grows in proportion to time,
-    such as the agent delivered at a constant setting, moves by exactly that
-    share. The figure returned is the time error divided by the interval.
-
-    Args:
-        instant_s: The later of the two instants, in seconds.
-        interval_s: The interval that the reading was propagated over, in
-            seconds.
-
-    Raises:
-        SimulationConfigurationError: `instant_s` is negative or not finite,
-            or `interval_s` is not finite or not above zero. A reading
-            propagated over no interval has no clock rounding to bound.
-    """
-
-    if not (math.isfinite(instant_s) and instant_s >= 0.0):
-        raise SimulationConfigurationError(
-            f"instant_s must be finite and at least zero, and {instant_s!r} is not"
-        )
-
-    if not (math.isfinite(interval_s) and interval_s > 0.0):
-        raise SimulationConfigurationError(
-            f"interval_s must be finite and above zero, and {interval_s!r} is not"
-        )
-
-    return CLOCK_ROUNDING_UNITS * math.ulp(instant_s) / interval_s
 
 
 # The fixed allowances. Each belongs to one kind of comparison.
@@ -384,44 +332,23 @@ the allowance is at least 1 000 times the rounding at each agent's settled
 state.
 """
 
-LIVE_READING_GAP: Final = 1e-6
-"""How far a stepped reading and a reading computed by formula may differ, as a share of it.
-
-Both are readings of one instant. The stepped reading has one propagator
-behind it for every step. The computed reading has one propagator from the
-last setting change (`RunDefinition.state_at`). `PL-QVBR` measured the difference on 2026-11-01 for
-the three agents, in runs that included a setting change, at the steps that a
-run could then take. As a share of the reading, it was at most 1.4e-10 over
-24 h at the 0.1 s step, 2.9e-10 over 6 h at the 0.01 s step, and 1.2e-9 over
-2 h at the 0.001 s step. It grows with the number of steps. At the one-second
-step it was at most 9.7e-11 over 24 h, for isoflurane in fat, in runs with a
-dial change and a ventilation change (2026-11-21, `PL-SZ6G`). `run_rounding`
-for that run is 1.5e-9, with the three squarings that a shipped agent's step
-needs at most. This allowance is about 650 times the bound and ten thousand
-times the measurement.
-
-`MacTarget.reading_is_near_a_band_edge` in `app/bookmarks.py` reads it. That
-method decided when a MAC target could be judged from the stepped readings
-alone. Nothing in `src/` reaches the method since `PL-MH9J`, because a step
-now has one reading at each end, and `PL-Z6C8` removes this constant. It is
-ten times finer than `HEIGHT_BAND`, so the zones around that band's two edges
-never meet.
-"""
-
 HEIGHT_BAND: Final = 1e-5
 """A reading within this share of a MAC target's height counts as at the height.
 
-Two readings of one instant can lie about 1e-14 apart, on opposite sides of a
-height. A steady reading also moves by one unit in the last place from step to
-step. Compared with the exact height, the first let a run stop on a target
-that its branch showed as still running, and the second made a run with a
-target at 1.00 ×MAC halt 965 times in ten minutes (`PL-QVBR`, measured
-2026-11-01). `MacTarget` in `app/bookmarks.py` says how a crossing is decided
-with the band.
+A steady reading moves by one unit in the last place from step to step.
+Compared with the exact height, such a reading made a run with a target at
+1.00 ×MAC halt 965 times in ten minutes (`PL-QVBR`, measured 2026-11-01, at
+the 0.1 s step that a run took then). `MacTarget` in `app/bookmarks.py` says
+how a crossing is decided with the band.
 
-The band is ten times `LIVE_READING_GAP`. It is also far finer than anything
-displayed. A percentage shown to two decimals resolves 0.01 percentage points,
-which is 0.5% of 1 MAC of sevoflurane, about five hundred times this band.
+The value was set as ten times an allowance for two readings of one instant
+that agreed only to rounding (`PL-QVBR`). A step now has one reading at each
+end, taken from the run's stored states, and that allowance is removed
+(`PL-Z6C8`). The band keeps its value. It is far wider than one unit in the
+last place of a reading, which is 2.2e-16 of the reading. It is also far
+finer than anything displayed. A percentage shown to two decimals resolves
+0.01 percentage points, which is 0.5% of 1 MAC of sevoflurane, about five
+hundred times this band.
 """
 
 WHOLE_COUNT_TOLERANCE: Final = 1e-9

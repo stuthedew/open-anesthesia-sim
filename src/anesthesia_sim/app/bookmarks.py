@@ -54,7 +54,7 @@ from types import MappingProxyType
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.core.concentration import MacMultiple
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
-from anesthesia_sim.core.rounding import HEIGHT_BAND, LIVE_READING_GAP
+from anesthesia_sim.core.rounding import HEIGHT_BAND
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CaseInstant, StepCount, require_case_instant
 
@@ -406,26 +406,6 @@ class MacTarget:
 
         return side_before != 0 and (side_after == 0 or side_after == -side_before)
 
-    def reading_is_near_a_band_edge(self, reading: MacMultiple) -> bool:
-        """Return whether a reading is within `LIVE_READING_GAP` of an edge of this target's band.
-
-        `BookmarkSet.needs_canonical_readings` used the result while a step
-        had two readings that agreed only to rounding. It decided whether a
-        step had to be tested a second time (`PL-QVBR`). A step now has one
-        reading at each end, taken from the run's stored states. Nothing in
-        `src/` calls `needs_canonical_readings` since `PL-MH9J`, so nothing
-        there reaches this method, and `PL-Z6C8` removes it.
-
-        Args:
-            reading: A reading of this target's compartment, as a multiple
-                of the running agent's 1 MAC.
-        """
-
-        height = self.mac_multiple
-        gap = LIVE_READING_GAP * height
-
-        return abs(abs(reading - height) - HEIGHT_BAND * height) <= gap
-
     def _side_of(self, reading: MacMultiple) -> int:
         """Return -1 for a reading below this target's band, 0 inside it, and 1 above it.
 
@@ -732,42 +712,6 @@ class BookmarkSet:
             return None
 
         return BookmarkCrossing(after_s, crossed_instants, crossed_heights)
-
-    def needs_canonical_readings(
-        self,
-        *,
-        before: Mapping[RecordedQuantity, MacMultiple],
-        after: Mapping[RecordedQuantity, MacMultiple],
-    ) -> bool:
-        """Return whether a reading of a step lies near an edge of a MAC target's band.
-
-        It returns true when a reading lies near an edge of a target's band
-        (`MacTarget.reading_is_near_a_band_edge`). Marked instants play no
-        part. `SimulationController.advance` called this method while a step
-        had two readings that agreed only to rounding, to decide whether the
-        step had to be tested a second time (`PL-QVBR`). A step is now tested
-        once, from the two states that the run stored for its ends. Nothing
-        in `src/` calls this method since `PL-MH9J`, and `PL-Z6C8` removes
-        it.
-
-        Args:
-            before: The reading of every compartment a target could name,
-                before the step, as multiples of the running agent's 1 MAC.
-            after: The same compartments after the step.
-
-        Raises:
-            SimulationConfigurationError: If either reading omits a compartment
-                that one of these targets names, as `crossings_between` does.
-        """
-
-        _require_readings(before, self.mac_targets, "before")
-        _require_readings(after, self.mac_targets, "after")
-
-        return any(
-            target.reading_is_near_a_band_edge(before[target.quantity])
-            or target.reading_is_near_a_band_edge(after[target.quantity])
-            for target in self.mac_targets
-        )
 
     def standings(
         self,

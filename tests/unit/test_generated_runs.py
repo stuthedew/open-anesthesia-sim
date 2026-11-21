@@ -16,13 +16,10 @@ what must hold for any run:
 3. Each running total equals the exactly rounded sum of its step amounts.
 4. The state agrees with the exact solution of the linear system over the
    action, evaluated at 50 digits.
-5. The stepped state agrees with the canonical state, the state that the run
-   definition gives for the same instant. The run definition records each
-   setting change.
-6. A sampled window holds the state at evenly spaced instants, one per column.
-   It ends exactly at the instant asked for, and its last column agrees with
-   the canonical state there.
-7. A run is never described as elimination when every compartment starts at
+5. A prediction that starts from the state before the action and takes the
+   action's steps (`core/prediction.py`) agrees with the same exact solution.
+   A preview draws such a prediction.
+6. A run is never described as elimination when every compartment starts at
    the same fraction, the flows never change and the dial only rises.
 
 The test then repeats the same actions on a fresh system and requires the same
@@ -60,10 +57,7 @@ from test_numerical_envelope_sweep import (
 
 from anesthesia_sim.app.wash_in import WashInDomain, read_wash_in
 from anesthesia_sim.core.concentration import Percent
-from anesthesia_sim.core.exceptions import (
-    AgentSimulationValidationError,
-    SimulationConfigurationError,
-)
+from anesthesia_sim.core.exceptions import AgentSimulationValidationError
 from anesthesia_sim.core.governing_equations import (
     ALVEOLAR_FRACTION,
     DELIVERED_AGENT_L,
@@ -76,17 +70,15 @@ from anesthesia_sim.core.governing_equations import (
     UptakeEquationSettings,
     build_system_matrix,
 )
-from anesthesia_sim.core.matrix_exponential import MAXIMUM_SQUARINGS, Matrix
+from anesthesia_sim.core.matrix_exponential import Matrix
 from anesthesia_sim.core.numerical_envelope import MAXIMUM_VOLUME_L, MINIMUM_VOLUME_L
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES
+from anesthesia_sim.core.prediction import predicted_states
 from anesthesia_sim.core.rounding import (
     RUNNING_TOTAL_ROUNDING,
     SMALLEST_FULL_PRECISION_MAGNITUDE,
-    clock_rounding,
-    propagator_rounding,
     run_rounding,
 )
-from anesthesia_sim.core.run_definition import RunDefinition
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
@@ -116,9 +108,6 @@ A run then takes at most 8 000 steps. Each step is one second, so that is
 8 000 s, a little over two hours. Growth that needs millions of steps is out of
 this test's reach.
 """
-
-MOST_COLUMNS = 60
-"""The most columns a sampled window has, as in `test_numerical_envelope_sweep.py`."""
 
 ACCOUNTING_RELATIVE_TOLERANCE = 1e-9
 """The agent balance must close to one part in 10**9 of the agent the run has to account for.
@@ -165,8 +154,6 @@ class Plan(NamedTuple):
     flows: tuple[float, float, float]
     dial: float
     actions: tuple[Action, ...]
-    window_start: float
-    columns: int
 
 
 _POSITIONS = st.sampled_from((0.0, 1.0)) | st.floats(0.0, 1.0)
@@ -225,8 +212,6 @@ def _plans(draw: st.DrawFn) -> Plan:
         flows=(draw(_POSITIONS), draw(_POSITIONS), draw(_POSITIONS)),
         dial=draw(_POSITIONS),
         actions=tuple(draw(st.lists(_ACTIONS, min_size=1, max_size=MOST_ACTIONS))),
-        window_start=draw(st.floats(0.0, 0.9)),
-        columns=draw(st.integers(2, MOST_COLUMNS)),
     )
 
 
@@ -348,14 +333,13 @@ class Residuals:
 
 
 class _Run:
-    """Keeps the stepped system, run definition and history of one generated run as it executes."""
+    """Keeps the stepped system and the history of one generated run as it executes."""
 
     def __init__(self, plan: Plan) -> None:
         self.plan = plan
         self.system = _build(plan)
         self.settings = self.system.equation_settings()
         opening = self.system.state_vector()
-        self.definition = RunDefinition(self.settings, opening, opened_at_s=CaseInstant(0))
         self.opening_held_l = _held_agent_l(self.settings, opening)
         self.dial_fraction = float(self.settings.delivered_concentration_percent) / 100.0
         fractions = opening[:DELIVERED_AGENT_L]
@@ -368,18 +352,9 @@ class _Run:
         self.steps = 0
         self.delivered_l: list[float] = []
         self.exhausted_l: list[float] = []
-        # A segment is a stretch of the run under one set of settings. The list has
-        # one entry for each segment: the instant it opened and its system matrix.
-        self.segments = [(0, build_system_matrix(self.settings))]
-        self.segment_opened_s = 0
-        self.closed_canonical_rounding = 0.0
-        self.stepped_rounding = 0.0
-
-    @property
-    def matrix(self) -> Matrix:
+        self.matrix: Matrix = build_system_matrix(self.settings)
         """The system matrix of the settings the run is under now."""
-
-        return self.segments[-1][1]
+        self.stepped_rounding = 0.0
 
     @property
     def elapsed_s(self) -> int:
@@ -392,7 +367,7 @@ class _Run:
 
         The system's state vector (`AgentUptakeSystem.state_vector`) leaves those
         two entries at zero, because the system keeps the running totals in its
-        validator. The run definition's states carry the totals since the run
+        validator. The states that a run stores carry the totals since the run
         opened, so this method returns the stepped state in the same form.
         """
 
@@ -403,21 +378,8 @@ class _Run:
 
         return tuple(state)
 
-    def _canonical_rounding_of_the_open_segment(self) -> float:
-        """Return the rounding allowed for the one propagator that spans the open segment.
-
-        A long segment at a stiff corner needs more squarings than the matrix
-        exponential module allows. The run definition refuses that propagator,
-        and the rounding module states no bound for it. The figure returned is
-        then infinite, and `check` requires the refusal.
-        """
-
-        squarings = _squarings(self.matrix, self.elapsed_s - self.segment_opened_s)
-
-        return propagator_rounding(squarings) if squarings <= MAXIMUM_SQUARINGS else math.inf
-
     def change(self, action: Action) -> None:
-        """Apply one action's setting, and record it in the run definition if it changed."""
+        """Apply one action's setting, and note the settings the run is now under."""
 
         _apply(self.system, action)
         changed = self.system.equation_settings()
@@ -432,21 +394,11 @@ class _Run:
         if dial_fraction <= self.dial_fraction:
             self.only_washes_in = False
 
-        self.definition.record_change(changed)
         self.settings = changed
+        self.matrix = build_system_matrix(changed)
         self.dial_fraction = dial_fraction
         self.lowest = min(self.lowest, dial_fraction)
         self.highest = max(self.highest, dial_fraction)
-
-        if self.elapsed_s == self.segment_opened_s:
-            # No step was taken under the settings this change replaces, so no
-            # propagator was formed from them.
-            self.segments[-1] = (self.segment_opened_s, build_system_matrix(changed))
-            return
-
-        self.closed_canonical_rounding += self._canonical_rounding_of_the_open_segment()
-        self.segment_opened_s = self.elapsed_s
-        self.segments.append((self.elapsed_s, build_system_matrix(changed)))
 
     def step(self, steps: int) -> bool:
         """Take `steps` steps. Return False where the run halts as `docs/MODEL.md` documents.
@@ -476,7 +428,6 @@ class _Run:
             self.steps += 1
 
         self.stepped_rounding += run_rounding(squarings, StepCount(steps))
-        self.definition.advance_to(CaseInstant(self.elapsed_s))
 
         return True
 
@@ -547,108 +498,32 @@ class _Run:
                 context,
             )
 
-        # The run definition measures each segment as the difference of two
-        # whole seconds, which is exact. So the canonical state covers the
-        # same time as the stepped run, and no allowance is made for the clock.
-        canonical_allowance = (
-            stepped
-            + self.closed_canonical_rounding
-            + self._canonical_rounding_of_the_open_segment()
+        # A prediction applies the same propagator once for each step, from
+        # the same state, so it is held to the same rounding as the stepped
+        # state. It is compared with the 50-digit solution and not with the
+        # stepped state, so an error that both share cannot pass.
+        predicted = predicted_states(
+            self.settings,
+            before,
+            CaseInstant(self.elapsed_s - action.steps * SIMULATION_STEP_S),
+            CaseInstant(self.elapsed_s),
         )
 
-        try:
-            canonical = self.definition.state_at(self.elapsed_s)
-        except SimulationConfigurationError as refusal:
-            # One propagator over a long stretch at a stiff corner needs more
-            # squarings than the module allows, and the refusal says so.
-            assert "squarings" in str(refusal), refusal
-            canonical = None
+        assert len(predicted) == action.steps + 1, context
 
-        if canonical is not None:
-            assert math.isfinite(canonical_allowance), (
-                f"the run definition gave a state from a propagator that needs more than "
-                f"{MAXIMUM_SQUARINGS} squarings; {context}"
+        for value, reference, scale in zip(predicted[-1], exact, scales, strict=True):
+            residuals.record(
+                "the predicted state against the 50-digit solution over the action",
+                float(abs(Decimal(value) - reference)),
+                over_the_action * scale,
+                context,
             )
-
-            for value, other, scale in zip(state, canonical, scales, strict=True):
-                residuals.record(
-                    "the stepped state against the canonical state",
-                    abs(value - other),
-                    canonical_allowance * scale,
-                    context,
-                )
-
-        self._check_the_window(canonical, canonical_allowance, scales, residuals, context)
 
         if self.only_washes_in:
             reading = read_wash_in(state[ALVEOLAR_FRACTION], state[INSPIRED_FRACTION])
 
             assert reading.domain is not WashInDomain.ELIMINATION, (
                 f"a run that only washes in is described as elimination; {context}"
-            )
-
-    def _check_the_window(
-        self,
-        canonical: tuple[float, ...] | None,
-        canonical_allowance: float,
-        scales: tuple[float, ...],
-        residuals: Residuals,
-        context: str,
-    ) -> None:
-        """Sample a window that ends where the run stands, and check its last column.
-
-        The window starts on a whole second, the last one at or before the
-        plan's share of the time the run has reached.
-        """
-
-        start_s = math.floor(self.plan.window_start * self.elapsed_s)
-        columns = self.plan.columns
-
-        try:
-            window = self.definition.evaluate(start_s, self.elapsed_s, columns)
-        except SimulationConfigurationError as refusal:
-            assert "squarings" in str(refusal), refusal
-            return
-
-        assert window.times_s[0] == start_s, context
-        assert window.times_s[-1] == self.elapsed_s, (
-            f"the last column is at {window.times_s[-1]!r} and not at the "
-            f"{self.elapsed_s!r} asked for; {context}"
-        )
-
-        if canonical is None:
-            return
-
-        spacing_s = (self.elapsed_s - start_s) / (columns - 1)
-        # Only a segment that ends after the window starts has a propagator in the window.
-        inside = [
-            matrix
-            for index, (_, matrix) in enumerate(self.segments)
-            if index + 1 == len(self.segments) or self.segments[index + 1][0] > start_s
-        ]
-        # A segment shorter than the spacing holds a propagator over its own
-        # length, which needs fewer squarings than the spacing would. The window
-        # was evaluated without a refusal, so none of its propagators needed
-        # more than the cap.
-        column_squarings = min(
-            max(_squarings(matrix, spacing_s) for matrix in inside), MAXIMUM_SQUARINGS
-        )
-        # The window chains one propagator per column, and one more at each
-        # setting change inside it. Its last column is pinned to the instant
-        # asked for, which can differ from the chained time by one unit in the
-        # last place of that instant.
-        allowance = (
-            canonical_allowance
-            + run_rounding(column_squarings, StepCount(columns + len(inside)))
-            + clock_rounding(self.elapsed_s, spacing_s)
-        )
-
-        for value, other, scale in zip(window.states[-1].values, canonical, scales, strict=True):
-            residuals.record(
-                "a window's last column against the canonical state",
-                abs(value - other),
-                allowance * scale,
-                context,
             )
 
 
@@ -690,7 +565,6 @@ STIFFEST_CORNER = SMALLEST_CORNER._replace(blood_gas=1e4, tissue_blood=1e-3)
 
 ONE_STEP = (Action(setting="hold", position=0.0, steps=1),)
 FIFTY_STEPS = (Action(setting="hold", position=0.0, steps=50),)
-LONG_HOLD = (Action(setting="hold", position=0.0, steps=1_700),)
 
 
 # The plans below set up conditions that the drawn plans reached only after
@@ -700,17 +574,17 @@ LONG_HOLD = (Action(setting="hold", position=0.0, steps=1_700),)
 @example(
     # `PL-N559`: with no flow at all, the alveolar fraction reads one rounding
     # error above the inspired fraction, at the opening and after one step.
-    Plan(None, SMALLEST_CORNER, 0.5 * CEILING, (0.0, 0.0, 0.0), 1.0, ONE_STEP, 0.0, 2)
+    Plan(None, SMALLEST_CORNER, 0.5 * CEILING, (0.0, 0.0, 0.0), 1.0, ONE_STEP)
 )
 @example(
     # `PL-9B1M`: every compartment at the input ceiling, at the corner where
     # one step with blood flow alone rounded a fraction upward.
-    Plan(None, SMALLEST_CORNER, CEILING, (0.0, 0.0, 1.0), 0.0, ONE_STEP, 0.0, 2)
+    Plan(None, SMALLEST_CORNER, CEILING, (0.0, 0.0, 1.0), 0.0, ONE_STEP)
 )
 @example(
     # `PL-D88N`: the same opening at the stiffest corner, where the run halts on
     # the agent balance at its third step.
-    Plan(None, STIFFEST_CORNER, CEILING, (0.0, 0.0, 1.0), 0.0, FIFTY_STEPS, 0.0, 2)
+    Plan(None, STIFFEST_CORNER, CEILING, (0.0, 0.0, 1.0), 0.0, FIFTY_STEPS)
 )
 @example(
     # The stiffest corner holding little agent. The run does not halt, because
@@ -719,7 +593,7 @@ LONG_HOLD = (Action(setting="hold", position=0.0, steps=1_700),)
     # 50 steps the balance is 2.5e-13 L out, which is 2.5e-8 of the agent held.
     # The run opens at 1e-7 of the ceiling. At 1e-6, where it opened while the
     # step was 0.1 s, a one-second step passes the absolute bound at step 21.
-    Plan(None, STIFFEST_CORNER, 1e-7 * CEILING, (0.0, 0.0, 1.0), 0.0, FIFTY_STEPS, 0.0, 2)
+    Plan(None, STIFFEST_CORNER, 1e-7 * CEILING, (0.0, 0.0, 1.0), 0.0, FIFTY_STEPS)
 )
 @example(
     # One step that needs 5 squarings, whose state lands 3.4 leading terms from
@@ -740,17 +614,7 @@ LONG_HOLD = (Action(setting="hold", position=0.0, steps=1_700),)
         (0.4428973210177197, 0.42985577848716605, 1.0),
         0.4200385149876751,
         ONE_STEP,
-        0.0,
-        2,
     )
-)
-@example(
-    # The stiffest corner held for 1 700 s, which is longer than any drawn plan.
-    # One propagator over that stretch needs 33 squarings, one more than the
-    # cap, so the run definition must refuse the canonical state. The run holds
-    # too little agent to halt on the agent balance (found by the blind review
-    # of the rounding module, 2026-11-11).
-    Plan(None, STIFFEST_CORNER, 1e-9 * CEILING, (0.0, 0.0, 1.0), 0.0, LONG_HOLD, 0.0, 2)
 )
 @settings(max_examples=EXAMPLES)
 @given(_plans())

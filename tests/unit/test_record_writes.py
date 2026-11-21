@@ -266,14 +266,7 @@ WRITES: dict[str, dict[str, Write]] = {
         field: Write(
             PRIVATE, why="Written only by the run definition's own methods, which hold its rules."
         )
-        for field in ("_last_window_propagators", "_reached_s", "_segments")
-    },
-    "run_definition._WindowPropagators": {
-        field: Write(
-            PRIVATE,
-            why="A private helper built and discarded inside one call to evaluate_anchored.",
-        )
-        for field in ("_kept", "used")
+        for field in ("_reached_s", "_segments")
     },
     "simulation.SimulationState": {
         "uptake_system": Write(ONCE, SimulationState),

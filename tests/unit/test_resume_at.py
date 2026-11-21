@@ -1,8 +1,9 @@
 """Tests that `AgentUptakeSystem.resume_at()` puts a live system at a state a run reached.
 
-`RunDefinition` returns the state at any instant of a run in closed form, but
-what it returns is a state vector rather than a running system.
-`resume_at()` turns the one into the other. It exists for `PL-J2TD`. A learner
+A run stores the state of every second it has reached
+(`core/stored_states.py`), but a stored state is a state vector rather than a
+running system. `resume_at()` turns the one into the other. It exists for
+`PL-J2TD`. A learner
 has to be able to *manage* a branch, which means advancing it, and advancing
 needs compartments rather than a curve.
 
@@ -14,7 +15,7 @@ way.**
   the first step. `ROADMAP.md` item 12 requires the history before the branch
   to be the same history, not a reproduction of it.
 - *The mass-balance accounting continues the case rather than restarting it.*
-  The two cumulative totals that a keyframe carries belong to the case: they
+  The two cumulative totals that a stored state carries belong to the case: they
   are what the patient has actually received. A branch that restarted them at
   zero would report a litre count that is correct about the branch and wrong
   about the patient. `CLAUDE.md`'s safety-critical standard counts that as a
@@ -22,11 +23,10 @@ way.**
   is carried for the same reason. The measurement in
   `test_the_accounting_anchor_is_carried_rather_than_derived` shows why the
   anchor is not derived instead.
-- *A state that the equations cannot be evaluated against is refused, before
-  anything is written.* `docs/INTERFACE.md` § "The canonical evaluation rule" says
-  that a drawn value may be drawn and used for nothing else. A partially
-  seeded system would be the "partial state" that `AgentUptakeSystem.advance()`
-  already exists to make unrepresentable, arriving by a second route.
+- *A state that the equations cannot be applied to is refused, before
+  anything is written.* A partially seeded system would be the "partial
+  state" that `AgentUptakeSystem.advance()` already exists to make
+  unrepresentable, arriving by a second route.
 
 This file does not test the clock a branch runs on. That clock belongs to the
 controller, and `tests/integration/controller/` tests it. Everything
@@ -35,7 +35,6 @@ here is true whichever clock a branch keeps.
 
 import math
 from collections.abc import Callable
-from dataclasses import replace
 
 import pytest
 
@@ -55,10 +54,13 @@ from anesthesia_sim.core.governing_equations import (
     STATE_SIZE,
     UNIT_STATE,
     VENOUS_FRACTION,
+    build_system_matrix,
 )
+from anesthesia_sim.core.matrix_exponential import matrix_exponential, propagate
 from anesthesia_sim.core.rounding import AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L
-from anesthesia_sim.core.run_definition import DisplayState, Keyframe, RunDefinition, RunSegment
+from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
+from anesthesia_sim.core.stored_states import Keyframe
 from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow
 from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
@@ -91,42 +93,37 @@ fractions of an induction, and it would say nothing about a displayed digit.
 
 
 def _run(
-    duration_s: int = 600, dial_at_s: int = 200, flow_at_s: int = 400
-) -> tuple[AgentUptakeSystem, RunDefinition]:
-    """Step a sevoflurane run across two setting changes, building its definition alongside.
+    duration_s: int = 600, dial_at_s: int = 200, flow_at_s: int = 400, fork_at_s: int | None = None
+) -> tuple[AgentUptakeSystem, Keyframe]:
+    """Step a sevoflurane run across two setting changes, and return the state stored at a fork.
 
-    The run lasts ten minutes by default. The dial moves at 200 s and the
-    fresh gas flow at 400 s.
+    The run lasts ten minutes by default. The dial moves to 0.8% at 200 s and
+    the fresh gas flow to 1 L/min at 400 s. The keyframe returned is a second
+    of the run and the state that the run stored for it, which is what a
+    branch taken there resumes at (`SimulationController._open_at`). The second
+    is `fork_at_s`, or the second of the flow change when it is not given.
 
-    The changes are applied the way `app/controller.py` applies them. The
-    setter runs first, so the core has accepted the value. Then the definition
-    records the change, reading the settings back off the compartments. So the
-    definition describes the run the system actually took.
-
-    The two instants are arguments because the conservation residual that a
-    fork inherits depends on them.
+    The instants are arguments because the conservation residual that a fork
+    inherits depends on them.
     `test_the_accounting_anchor_is_carried_rather_than_derived` is the one test
-    that needs a particular pair.
+    that needs a particular set.
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
-    definition = RunDefinition(
-        system.equation_settings(), system.state_vector(), opened_at_s=CaseInstant(0)
-    )
+    run = SimulationState(uptake_system=system)
 
     for step in range(1, duration_s // SIMULATION_STEP_S + 1):
-        system.advance()
-        definition.advance_to(CaseInstant(step * SIMULATION_STEP_S))
+        run.advance()
 
         if step * SIMULATION_STEP_S == dial_at_s:
             system.set_delivered_concentration_percent(Percent(0.8))
-            definition.record_change(system.equation_settings())
 
         if step * SIMULATION_STEP_S == flow_at_s:
             system.set_fresh_gas_flow(FreshGasFlow(1.0))
-            definition.record_change(system.equation_settings())
 
-    return system, definition
+    fork_s = CaseInstant(flow_at_s if fork_at_s is None else fork_at_s)
+
+    return system, Keyframe(fork_s, run.stored_states.state_at(fork_s))
 
 
 def _fresh_system() -> AgentUptakeSystem:
@@ -190,8 +187,7 @@ def test_a_resumed_system_holds_the_state_it_was_given() -> None:
     no longer happened to round-trip.
     """
 
-    system_parent, definition = _run()
-    opening = definition.segments[-1].opening
+    system_parent, opening = _run()
     system = _like(system_parent)
 
     system.resume_at(opening.state, initial_agent_l=0.0)
@@ -209,29 +205,27 @@ def test_a_resumed_system_holds_the_state_it_was_given() -> None:
 def test_a_resumed_system_steps_the_way_the_run_it_resumes_did() -> None:
     """A resumed system advances along the path a live run takes, which is the point of resuming.
 
-    The system is placed at a keyframe and then stepped by the ordinary
+    The system is placed at a stored state and then stepped by the ordinary
     `advance()`. The test adds no second way to move a run forward. The state
-    the system reaches is compared with the state that the definition gives
-    for the same settings over the same span. That is `docs/MODEL.md`
+    the system reaches after 60 steps is compared with one exact propagation
+    of the same state over 60 s, under the same settings. That is `docs/MODEL.md`
     § "Closed-form agreement test", applied to a system that did not step its
     way to its starting point.
     """
 
-    system_parent, definition = _run()
-    segment = definition.segments[-1]
-    opening = segment.opening
+    system_parent, opening = _run()
     system = _like(system_parent)
 
     system.resume_at(opening.state, initial_agent_l=0.0)
 
-    ahead = RunDefinition(segment.settings, opening.state, opened_at_s=CaseInstant(0))
-
-    for step in range(1, 60 // SIMULATION_STEP_S + 1):
+    for _ in range(60 // SIMULATION_STEP_S):
         system.advance()
-        ahead.advance_to(CaseInstant(step * SIMULATION_STEP_S))
 
     stepped = system.state_vector()
-    closed_form = ahead.state_at(60)
+    closed_form = propagate(
+        matrix_exponential(build_system_matrix(system_parent.equation_settings()), 60.0),
+        opening.state,
+    )
 
     for entry in FRACTION_STATES:
         assert abs(stepped[entry] - closed_form[entry]) < STEPPED_AGREEMENT, (
@@ -248,13 +242,12 @@ def test_two_systems_resumed_at_one_state_step_identically() -> None:
     caused.
     """
 
-    system_parent, definition = _run()
-    segment = definition.segments[-1]
+    system_parent, opening = _run()
     left = _like(system_parent)
     right = _like(system_parent)
 
     for system in (left, right):
-        system.resume_at(segment.opening.state, initial_agent_l=0.0)
+        system.resume_at(opening.state, initial_agent_l=0.0)
 
         for _ in range(30 // SIMULATION_STEP_S):
             system.advance()
@@ -274,8 +267,7 @@ def test_a_resumed_system_continues_the_case_s_cumulative_totals() -> None:
     describe the case the patient is actually in.
     """
 
-    system_parent, definition = _run()
-    opening = definition.segments[-1].opening
+    system_parent, opening = _run()
     system = _like(system_parent)
 
     system.resume_at(opening.state, initial_agent_l=0.0)
@@ -298,8 +290,7 @@ def test_a_resumed_system_still_balances() -> None:
     residual, which is reported rather than absorbed.
     """
 
-    system_parent, definition = _run()
-    opening = definition.segments[-1].opening
+    system_parent, opening = _run()
     system = _like(system_parent)
 
     system.resume_at(opening.state, initial_agent_l=0.0)
@@ -322,20 +313,19 @@ def test_the_accounting_anchor_is_carried_rather_than_derived() -> None:
     the derivation would refuse to open an ordinary branch over a rounding
     error, when nothing is wrong with the branch.
 
-    **This was measured, not only argued.** The survey covered 72 keyframes:
-    three agents, four dial instants and three flow instants, with one
-    keyframe per change. In 16 of them, 22%, the derived anchor was less than
-    zero, the worst at -1.1e-13 L. The run below is one of the 16, and it is
-    the smallest reproduction of the problem. When the anchor is carried
+    **This was measured, not only argued.** A 30-minute sevoflurane run, with
+    the dial at 0.8% from 300 s and the fresh gas flow at 1 L/min from 600 s,
+    stores 1 800 seconds after its opening. For 907 of them the derived anchor
+    was less than zero, the worst at -5.8e-14 L at 1 800 s (measured
+    2026-11-21 from the run's stored states). The fork below is at 1 200 s,
+    where the derived anchor is -1.8e-14 L. When the anchor is carried
     instead, the same residual stays within the accounting check, which is
     where a conservation error belongs.
     """
 
-    system_parent, definition = _run(duration_s=900, dial_at_s=300, flow_at_s=600)
-    segment = definition.segments[-1]
-    opening = segment.opening
+    system_parent, opening = _run(duration_s=1200, dial_at_s=300, flow_at_s=600, fork_at_s=1200)
 
-    assert opening.instant_s == 600
+    assert opening.instant_s == 1200
 
     system = _like(system_parent)
     system.resume_at(opening.state, initial_agent_l=0.0)
@@ -360,8 +350,7 @@ def test_the_accounting_anchor_is_carried_rather_than_derived() -> None:
 def test_a_carried_anchor_reaches_the_branch_s_own_accounting_period() -> None:
     """A non-zero anchor comes from the parent and is not quietly replaced by the stored agent."""
 
-    system_parent, definition = _run()
-    opening = definition.segments[-1].opening
+    system_parent, opening = _run()
     system = _like(system_parent)
 
     system.resume_at(opening.state, initial_agent_l=0.25)
@@ -372,21 +361,18 @@ def test_a_carried_anchor_reaches_the_branch_s_own_accounting_period() -> None:
 # --- What is refused, and what a refusal leaves behind ------------------------
 
 
-def test_a_drawn_value_cannot_resume_a_system() -> None:
-    """`resume_at` also enforces `docs/INTERFACE.md` § "The canonical evaluation rule".
+def test_nine_numbers_that_are_not_a_tuple_cannot_resume_a_system() -> None:
+    """A value with a state's nine numbers in a state's order is refused when it is not a tuple.
 
-    A drawn column and a fork's opening state are the same nine numbers in the
-    same order, so their contents cannot tell them apart. What separates them
-    is that a drawn column is structurally not a state vector.
+    A state vector is a tuple. A record that wraps the same numbers, or a
+    list of them, is refused by its structure, so a caller cannot resume a
+    system at a value that only resembles a state.
     """
 
-    _, definition = _run()
-    drawn = definition.evaluate(0.0, 600.0, 600).states[0]
-
-    assert isinstance(drawn, DisplayState)
+    _, opening = _run()
 
     with pytest.raises(SimulationConfigurationError, match="not a state vector"):
-        _fresh_system().resume_at(drawn, initial_agent_l=0.0)  # type: ignore[arg-type]
+        _fresh_system().resume_at(list(opening.state), initial_agent_l=0.0)  # type: ignore[arg-type]
 
 
 def test_a_state_of_the_wrong_length_cannot_resume_a_system() -> None:
@@ -434,8 +420,7 @@ def test_a_negative_cumulative_total_cannot_resume_a_system() -> None:
 def test_a_negative_anchor_cannot_resume_a_system() -> None:
     """The same rule applies to the anchor, which is also an amount of agent."""
 
-    _, definition = _run()
-    opening = definition.segments[-1].opening
+    _, opening = _run()
 
     with pytest.raises(SimulationConfigurationError, match="initial_agent_l"):
         _fresh_system().resume_at(opening.state, initial_agent_l=-1e-9)
@@ -464,8 +449,7 @@ def test_a_refused_resume_leaves_every_compartment_as_it_was(
     new value.
     """
 
-    system_parent, definition = _run()
-    opening = definition.segments[-1].opening
+    system_parent, opening = _run()
     system = _like(system_parent)
 
     system.resume_at(opening.state, initial_agent_l=0.0)
@@ -498,8 +482,7 @@ def test_a_refused_resume_leaves_the_accounting_period_as_it_was(
     the rollback restores the period through the same method.
     """
 
-    system_parent, definition = _run()
-    opening = definition.segments[-1].opening
+    system_parent, opening = _run()
     system = _like(system_parent)
 
     held = TotalsCompensation(delivered_l=3e-18, exhausted_l=-2e-18)
@@ -535,8 +518,7 @@ def test_a_refused_resume_leaves_the_accounting_period_as_it_was(
 def test_resuming_with_compensation_terms_puts_them_in_the_accounting() -> None:
     """The totals and their terms are the ones passed in, and the default terms are zero."""
 
-    system_parent, definition = _run()
-    opening = definition.segments[-1].opening
+    system_parent, opening = _run()
     system = _like(system_parent)
     terms = TotalsCompensation(delivered_l=6.9e-18, exhausted_l=-1.1e-18)
 
@@ -558,8 +540,7 @@ def test_resuming_with_compensation_terms_puts_them_in_the_accounting() -> None:
 def test_resuming_with_terms_not_built_as_a_totals_compensation_changes_nothing(
     terms: object,
 ) -> None:
-    system_parent, definition = _run()
-    opening = definition.segments[-1].opening
+    system_parent, opening = _run()
     system = _like(system_parent)
     before = system.capture_state()
 
@@ -602,15 +583,14 @@ def test_resuming_does_not_strand_the_cached_propagator() -> None:
     state as one resumed before any step built a cache.
     """
 
-    system_parent, definition = _run()
-    segment = definition.segments[-1]
+    system_parent, opening = _run()
 
     warmed = _like(system_parent)
     warmed.advance()
-    warmed.resume_at(segment.opening.state, initial_agent_l=0.0)
+    warmed.resume_at(opening.state, initial_agent_l=0.0)
 
     cold = _like(system_parent)
-    cold.resume_at(segment.opening.state, initial_agent_l=0.0)
+    cold.resume_at(opening.state, initial_agent_l=0.0)
 
     for _ in range(20 // SIMULATION_STEP_S):
         warmed.advance()
@@ -619,41 +599,12 @@ def test_resuming_does_not_strand_the_cached_propagator() -> None:
     assert warmed.state_vector() == cold.state_vector()
 
 
-def test_a_keyframe_resumes_a_system_without_being_unwrapped_first() -> None:
-    """The two forms a caller may hold are the same object, which is what makes this safe.
-
-    `Keyframe.state` and `RunDefinition.state_at` return the identical object
-    for an instant at which a run holds a keyframe. So a branch built from
-    either opens at the same place. This test pins that, because a future
-    keyframe that stored something else would make the two routes disagree
-    silently.
-    """
-
-    system_parent, definition = _run()
-    segment = definition.segments[-1]
-    opening = segment.opening
-
-    assert isinstance(opening, Keyframe)
-    assert definition.state_at(opening.instant_s) == opening.state
-
-    from_keyframe = _like(system_parent)
-    from_keyframe.resume_at(opening.state, initial_agent_l=0.0)
-
-    from_state_at = _like(system_parent)
-    from_state_at.resume_at(definition.state_at(opening.instant_s), initial_agent_l=0.0)
-
-    assert from_keyframe.state_vector() == from_state_at.state_vector()
-
-
-def test_a_definition_opens_from_the_keyframe_and_never_from_the_seeded_system() -> None:
+def test_a_compartment_does_not_always_read_back_the_fraction_written_to_it() -> None:
     """A trap when resuming, pinned here because nothing downstream would catch it.
 
-    `SimulationController._build_state` opens a run's definition from
-    `uptake_system.state_vector()`. That is right for a run that starts from a
-    system no state has been written into. Copying that line at a fork is
-    wrong, and silently so. A compartment stores an *amount* and derives its
-    fraction back from its own capacity. So writing a fraction in and reading
-    it out does not always return the same value.
+    A compartment stores an *amount* and derives its fraction back from its
+    own capacity. So writing a fraction in and reading it out does not always
+    return the same value.
 
     **This was measured on the shipped compartments**, over a 1e-6 grid across
     the first two percent of an atmosphere, which is the range a sevoflurane
@@ -662,13 +613,11 @@ def test_a_definition_opens_from_the_keyframe_and_never_from_the_seeded_system()
     circuit is exact over the same grid, so this defect can survive a spot
     check.
 
-    A branch whose definition opened from the seeded system would fail
-    `ROADMAP.md` item 12's element-wise reproduction on exactly those entries.
-    It would fail at a magnitude that no display resolves and no tolerance test
-    would report. The keyframe that the parent already holds costs nothing and
-    cannot drift. The second half of this test shows why that keyframe is
-    always available. For an instant at which a definition holds a keyframe,
-    the definition returns that keyframe's state itself.
+    That is why a branch's record ends with the state that its parent stored
+    for the fork, and never with a state read back from the seeded system
+    (`SimulationController._open_at`). A record that ended with the state
+    read back would show a value for the fork that differs from the parent's
+    in its last place.
     """
 
     system = _fresh_system()
@@ -698,29 +647,3 @@ def test_a_definition_opens_from_the_keyframe_and_never_from_the_seeded_system()
             "compartment does, the seam may open a definition from either and this "
             "test no longer says anything"
         )
-
-    _, definition = _run()
-
-    for segment in definition.segments:
-        assert definition.state_at(segment.opening.instant_s) == segment.opening.state
-
-
-def test_a_segment_and_its_opening_travel_together() -> None:
-    """Check the pairing that `RunSegment` exists to enforce, where a branch consumes it.
-
-    A branch is settings *and* the state they start from. Pairing one segment's
-    settings with another's opening would compute a stretch of the run under
-    settings it never had. So a branch takes the whole segment rather than its
-    two halves.
-    """
-
-    _, definition = _run()
-
-    for segment in definition.segments:
-        assert isinstance(segment, RunSegment)
-        assert segment.opening.state[UNIT_STATE] == 1.0
-
-    swapped = replace(definition.segments[0], opening=definition.segments[-1].opening)
-
-    assert swapped.settings == definition.segments[0].settings
-    assert swapped.opening is definition.segments[-1].opening

@@ -2603,9 +2603,7 @@ parts in 10¹².
 **For developers.** `core/rounding.py` defines every figure in the table, and each comparison in
 `core/` and `app/` reads its allowance from there. `propagator_rounding` is the bound for one
 step, `run_rounding` the bound for $`n`$ steps, and `RUNNING_TOTAL_ROUNDING` the bound for a
-running total. `clock_rounding` bounds one more term: a run definition measures an interval as
-the difference of two rounded instants, which moves a reading by at most one and a half units in
-the last place of the later instant, divided by the interval. `tests/unit/test_rounding.py` checks each
+running total. `tests/unit/test_rounding.py` checks each
 figure and that no other module in `core/` or `app/` defines an allowance.
 `tests/unit/test_generated_runs.py` holds generated runs to the bounds after every action, and
 `tests/unit/test_numerical_envelope_sweep.py` holds one step from each corner of the envelope to

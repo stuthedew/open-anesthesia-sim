@@ -171,29 +171,16 @@ LISTED: dict[str, dict[str, tuple[str, ...]]] = {
     },
     INSTANT_OR_WINDOW: {
         "matrix_exponential": ("matrix_exponential(interval_s)",),
-        "rounding": ("clock_rounding(instant_s)", "clock_rounding(interval_s)"),
         "run_definition": (
-            "RunDefinition.evaluate(columns)",
-            "RunDefinition.evaluate(start_s)",
-            "RunDefinition.evaluate(stop_s)",
-            "RunDefinition.evaluate_anchored(spacing_s)",
-            "RunDefinition.evaluate_anchored(start_s)",
-            "RunDefinition.evaluate_anchored(stop_s)",
             "RunDefinition.reaching_segment_at(instant_s)",
             "RunDefinition.segment_at(instant_s)",
-            "RunDefinition.state_at(instant_s)",
-            "SampledWindow.times_s",
         ),
     },
     STATE_VECTOR: {
         "matrix_exponential": ("propagate -> return", "propagate(state)"),
-        "run_definition": (
-            "DisplayState.values",
-            "Keyframe.state",
-            "RunDefinition.__init__(initial_state)",
-            "RunDefinition.state_at -> return",
-        ),
+        "prediction": ("predicted_states -> return", "predicted_states(opening)"),
         "stored_states": (
+            "Keyframe.state",
             "StoredStates.__deepcopy__(memo)",
             "StoredStates.__init__(opening)",
             "StoredStates.append(state)",
@@ -343,7 +330,6 @@ LISTED: dict[str, dict[str, tuple[str, ...]]] = {
             "PatientCompartments.total_perfusion_fraction -> return",
         ),
         "rounding": (
-            "clock_rounding -> return",
             "propagator_rounding -> return",
             "propagator_rounding(squarings)",
             "run_rounding -> return",
@@ -375,8 +361,10 @@ BARE_NUMBERS: dict[str, str] = {
 # the interval and the result of its bound on the clock (`PL-GJ1W`). The record
 # of a run's stored states added ten state vectors, which it passes, stores and
 # returns (`PL-MH9J`), and the series of fractions that the chart reads
-# (`PL-BLZJ`).
-MOST_BARE_NUMBERS = 179
+# (`PL-BLZJ`). Removing the states that a run definition computed by formula
+# took out twelve, and the prediction that a preview draws added two for the
+# state it starts from and the states it returns (`PL-Z6C8`).
+MOST_BARE_NUMBERS = 167
 
 
 def _names_a_bare_number(

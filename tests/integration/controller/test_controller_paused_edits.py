@@ -280,7 +280,7 @@ def test_a_trunk_change_at_a_forked_instant_keeps_the_branch_provenance_in_the_t
 
     assert branch.opened_from is not None
     assert branch.opened_from.segment in trunk.run_segments
-    assert [segment.opening.instant_s for segment in trunk.run_segments] == [0.0]
+    assert [segment.opened_at_s for segment in trunk.run_segments] == [0.0]
     assert branch.snapshot().delivered_concentration_percent == 4.0
     assert _described(branch.snapshot().control_timeline) == [
         (fork_s, ControlInput.DELIVERED, 2.0, 4.0)

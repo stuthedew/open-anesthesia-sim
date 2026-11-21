@@ -97,7 +97,7 @@ def test_a_fresh_branch_holds_nothing_to_destroy() -> None:
     """
 
     trunk = _trunk_with_two_changes()
-    fork_s = trunk.run_segments[-1].opening.instant_s
+    fork_s = trunk.run_segments[-1].opened_at_s
     branch = BranchedCase(trunk).fork_at(fork_s)
 
     snapshot = branch.snapshot()
@@ -127,7 +127,7 @@ def test_a_fresh_branch_taken_at_a_bookmark_holds_nothing_to_destroy() -> None:
 
 def test_a_branch_advanced_one_step_past_its_fork_holds_something_to_destroy() -> None:
     trunk = _trunk_with_two_changes()
-    branch = trunk.resumed_at(trunk.run_segments[-1].opening.instant_s)
+    branch = trunk.resumed_at(trunk.run_segments[-1].opened_at_s)
     branch.start()
     branch.advance()
 
@@ -138,7 +138,7 @@ def test_a_setting_changed_on_a_fresh_branch_is_something_to_destroy() -> None:
     """Check the timeline half on a branch: a change made at the fork is the learner's act."""
 
     trunk = _trunk_with_two_changes()
-    branch = trunk.resumed_at(trunk.run_segments[-1].opening.instant_s)
+    branch = trunk.resumed_at(trunk.run_segments[-1].opened_at_s)
     branch.set_fresh_gas_flow(FreshGasFlow(1.0))
 
     snapshot = branch.snapshot()
@@ -161,7 +161,7 @@ def test_resetting_a_branch_returns_it_to_holding_nothing_to_destroy() -> None:
     """
 
     trunk = _trunk_with_two_changes()
-    branch = trunk.resumed_at(trunk.run_segments[-1].opening.instant_s)
+    branch = trunk.resumed_at(trunk.run_segments[-1].opened_at_s)
     branch.start()
     _advance_for(branch, duration_s=5)
     branch.reset()

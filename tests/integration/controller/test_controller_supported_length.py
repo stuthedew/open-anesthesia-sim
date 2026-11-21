@@ -346,7 +346,7 @@ def test_no_dial_makes_a_keyframe_on_the_supported_run_length_to_branch_at(
     ):
         trunk.set_fresh_gas_flow(FreshGasFlow(6.0))
 
-    assert [segment.opening.instant_s for segment in trunk.run_segments] == [0]
+    assert [segment.opened_at_s for segment in trunk.run_segments] == [0]
 
     with pytest.raises(
         SimulationConfigurationError,

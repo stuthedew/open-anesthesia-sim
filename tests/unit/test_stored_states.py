@@ -12,7 +12,7 @@ import pytest
 
 from anesthesia_sim.core.agent_simulation_validation import TotalsCompensation
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
-from anesthesia_sim.core.stored_states import StoredStates
+from anesthesia_sim.core.stored_states import Keyframe, StoredStates
 from anesthesia_sim.core.supported_ranges import CaseInstant
 
 # Each state is six fractions of 1 atm, the delivered and the exhausted agent
@@ -343,3 +343,10 @@ def test_a_series_refuses_an_instant_of_the_wrong_type() -> None:
 
     with pytest.raises(TypeError, match="CaseInstant"):
         record.fraction_series(CaseInstant(0), 3)  # type: ignore[arg-type]
+
+
+def test_a_keyframe_refuses_an_instant_not_built_as_a_case_instant() -> None:
+    """A keyframe stores its instant, so it checks the type where it is built (`PL-CN5S`)."""
+
+    with pytest.raises(TypeError, match="instant_s of 5.0 was not built as CaseInstant"):
+        Keyframe(5.0, OPENING)  # type: ignore[arg-type]

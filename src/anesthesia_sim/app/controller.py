@@ -13,7 +13,7 @@ frame reads (`PL-RD3B`). Neither module imports this one, so code that reads eit
 does not also depend on the controller.
 """
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, fields, replace
 from math import ceil, floor, isfinite
 from types import MappingProxyType
@@ -65,15 +65,17 @@ from anesthesia_sim.core.exceptions import (
     SimulationExecutionError,
 )
 from anesthesia_sim.core.governing_equations import (
+    FRACTION_STATE_NAMES,
     TissueGroupEquationSettings,
     UptakeEquationSettings,
 )
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.parameters import MacAwakeReference, load_agent_parameters
-from anesthesia_sim.core.run_definition import Keyframe, RunDefinition, RunSegment
+from anesthesia_sim.core.prediction import predicted_states
+from anesthesia_sim.core.run_definition import RunDefinition, RunSegment
 from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
-from anesthesia_sim.core.stored_states import StoredStates
+from anesthesia_sim.core.stored_states import Keyframe, StoredStates
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ELAPSED_SIMULATION_TIME_S,
     AlveolarVentilation,
@@ -85,6 +87,9 @@ from anesthesia_sim.core.supported_ranges import (
 )
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 from anesthesia_sim.core.validation import require_nonnegative_finite
+
+_PredictionKey = tuple[str, UptakeEquationSettings, int, tuple[float, ...], int, int]
+"""Every input a preview's drawn window is computed from (`SimulationController.preview_window`)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -655,21 +660,21 @@ class ResumePoint:
     that timeline states the settings that the branch opened under. It does
     so for a fork at the case's opening too.
 
-    **`fork` and `segment.opening` are two instants, not one** (`PL-B8MK`).
-    After the case's opening, `segment` begins at a keyframe before the fork,
-    even when the fork is itself a keyframe. Taking a branch records nothing
-    on the trunk, so the trunk holds no keyframe at a bookmark or a pause. So
-    a branch opens its run definition at the keyframe where `segment` begins,
-    while the branch itself starts at the fork. Both are instants on the
+    **`fork` and `segment.opened_at_s` are two instants, not one**
+    (`PL-B8MK`). After the case's opening, `segment` begins at a keyframe
+    before the fork, even when the fork is itself a keyframe. Taking a branch
+    records nothing on the trunk, so the trunk holds no keyframe at a
+    bookmark or a pause. So a branch opens its run definition at the keyframe
+    where `segment` begins, while the branch itself starts at the fork. Both are instants on the
     case's own time axis, which has been the only time axis since `PL-ZMRT`.
     They are equal only for a fork at the case's opening.
 
     Attributes:
         segment: The parent's stretch that applied during the step that ends
-            at the fork. It carries both its settings and the keyframe they
-            start from. The branch's own run definition opens at that
-            keyframe, which lies before the fork. For a fork at the case's
-            opening, the keyframe is at the fork.
+            at the fork. It carries its settings and the second at which
+            it opened. The branch's own run definition opens at that second,
+            which lies before the fork. For a fork at the case's opening, it
+            is the fork.
         fork: The instant at which the branch was taken, and the state that
             the parent stored for that second
             (`SimulationState.stored_states`). The branch's own stored states
@@ -809,6 +814,10 @@ class SimulationController:
         self._preview_memo: (
             tuple[tuple[str, UptakeEquationSettings, SettingPreview], UptakeEquationSettings] | None
         ) = None
+        # The last preview's drawn window, kept so that a frame drawn again
+        # with nothing changed does not predict again (`preview_window`). The
+        # key holds every input the window is computed from.
+        self._prediction_memo: tuple[_PredictionKey, DrawnWindow] | None = None
         # The fields below record what this run has done with the marks, as
         # opposed to what is marked. They are what the run produced, not what
         # the learner asked about. So they are cleared wherever a new run
@@ -923,9 +932,7 @@ class SimulationController:
         # calls this method and builds a new history under the new agent's id.
         # So a run's recorded substance is always the one that produced its states.
         self._run_definition = RunDefinition(
-            uptake_system.equation_settings(),
-            uptake_system.state_vector(),
-            opened_at_s=CaseInstant(0),
+            uptake_system.equation_settings(), opened_at_s=CaseInstant(0)
         )
         self._note_recorded_settings()
         # A run built here is a trunk, so it opens at the case's own zero.
@@ -1536,8 +1543,8 @@ class SimulationController:
         `SimulationSnapshot.has_recorded_run` counts a run's own progress from
         it. That last use is why the snapshot carries it too.
 
-        **It is not `run_segments[0].opening.instant_s`. This property exists
-        to stop callers inferring it from there** (`PL-B8MK`). A branch opens
+        **It is not `run_segments[0].opened_at_s`. This property exists to
+        stop callers inferring it from there** (`PL-B8MK`). A branch opens
         its run definition where one of its parent's stretches opens. That
         stretch is the one that the step reaching the fork ran under. Its
         opening is a keyframe *before* the fork, unless the fork is at the
@@ -1578,13 +1585,6 @@ class SimulationController:
         equals the state that this run stored for the same second, in all
         nine numbers.
 
-        No method *restarts* a branch's run definition at the fork. A restart
-        would replace one propagation over an interval
-        with two propagations, one on each side of the fork. The result would
-        be a different rounding of the same exact solution. The difference was
-        measured at up to 5.3e-13 in an accumulator. A branch must reproduce
-        its parent element-wise (`PL-Z3W6`).
-
         **The branch's clock continues the case's clock**, because a branch is
         the same patient's case managed a second way, not a second patient.
         Three things follow, and each is a correctness property rather than a
@@ -1613,8 +1613,7 @@ class SimulationController:
         **The branch's run definition opens on the case's own time axis rather
         than at a zero of its own** (`PL-ZMRT`). So the branch's clock and the
         instants in its run definition are one quantity, and nothing converts
-        between them. `docs/INTERFACE.md` § "The canonical evaluation rule"
-        requires this. The branch's run definition opens at the
+        between them. The branch's run definition opens at the
         keyframe that starts the stretch before `instant_s`, as every branch's
         does. `_open_at` and `docs/INTERFACE.md` § "What this requires of a branch"
         explain why.
@@ -1731,11 +1730,6 @@ class SimulationController:
         system stand at the fork. `_open_at` does this. `docs/INTERFACE.md`
         § "What this requires of a branch" says which of that section's two
         conditions this relaxes, and why the element-wise guarantee survives.
-        The obvious route is to record a keyframe where the run stands. That
-        keeps the branch exact against its parent, but it changes the parent's
-        own later results. With that keyframe recorded, 48 of 54 elements
-        differ from the same case built without the mark. So pausing or
-        marking a run would change it.
 
         **The branch opens with the dials as they stand** (`PL-HSP8`,
         `PL-ZR49`). A setting changed while the run stands here is on the
@@ -2092,8 +2086,7 @@ class SimulationController:
         reaching the fork ran under (`ResumePoint.segment`). The settings in
         force are then recorded as a change at the fork. Where they match the
         stretch, `RunDefinition.record_change` records nothing. So the
-        branch's definition opens with the stretch and the keyframe that its
-        parent holds.
+        branch's definition opens with the stretch that its parent holds.
 
         **The run opens with its parent's stored states up to the fork, and
         the uptake system is placed at the last of them** (`PL-MH9J`,
@@ -2104,10 +2097,7 @@ class SimulationController:
         the compensation terms of the two running totals that were stored
         beside it. The branch then advances by the ordinary step. So while no
         setting differs, each state that the branch stores equals the state
-        that its parent stored for the same second, in all nine numbers. A
-        keyframe that `record_change` records at the fork holds the state
-        that the definition computes there by formula. Nothing that the
-        interface shows is read from that keyframe's state.
+        that its parent stored for the same second, in all nine numbers.
 
         **The control timeline opens with `opened_with`, kept as it was
         recorded** (`PL-ZR49`, `PL-K5BS`). On the first opening, these are the
@@ -2126,12 +2116,9 @@ class SimulationController:
         "dial, reset, dial back" leave the same branch, with the same settings,
         the same live state, the same run definition and the same control
         timeline. If the opening were chosen at reset time, the second sequence
-        would open its run definition at the fork rather than at the keyframe.
-        That branch's state would then come from two propagations where the
-        parent's comes from one, and the branch would stop reproducing the
-        parent. This was measured on 2026-09-20. Across five probes, 40 of 45
-        elements differed, the worst by 1.21e-15, and nothing on screen said
-        so. Recording the change instead lets the collapse rules of
+        would open its run definition at the fork rather than at the keyframe,
+        so the two branches would hold different stretches. Recording the
+        change instead lets the collapse rules of
         `record_change` and `_record_in_timeline` detect the dial-back. The
         fork segment returns to the settings that the branch opened under, or
         is removed where those match the stretch before it. The learner's
@@ -2163,17 +2150,14 @@ class SimulationController:
             opening_record=stored_through_fork,
         )
         # The run definition opens on the parent's own stretch, with its
-        # keyframe and its settings, at that keyframe's own instant on the
-        # case's time axis. That keeps the clock and the definition's reach
-        # one quantity.
-        self._run_definition = RunDefinition(
-            segment.settings, segment.opening.state, opened_at_s=segment.opening.instant_s
-        )
+        # settings, at the second that stretch opened on the case's time
+        # axis. That keeps the clock and the definition's reach one quantity.
+        self._run_definition = RunDefinition(segment.settings, opened_at_s=segment.opened_at_s)
         # The branch has reached the fork, because it is standing there. Where
         # the run definition opened earlier, the stretch in between belongs to
         # the *parent*, and the branch never lived it. So `drawn_window` clips
-        # it away. The reach is how far the branch may be evaluated, not where
-        # it may be drawn from.
+        # it away. The reach is the second the branch stands at, not where it
+        # may be drawn from.
         self._run_definition.advance_to(resume_point.fork.instant_s)
         self._opened_from = resume_point
         # Then record the settings in force at the fork. The run definition
@@ -2514,8 +2498,8 @@ class SimulationController:
 
         Args:
             segment: The stretch of this run under which the step that reaches
-                `fork` ran (`RunDefinition.reaching_segment_at`). Its opening is the
-                keyframe where the branch's own run definition opens.
+                `fork` ran (`RunDefinition.reaching_segment_at`). It opened at
+                the second where the branch's own run definition opens.
             fork: The instant at which the branch is taken, and the state that
                 this run stored for it.
 
@@ -2645,21 +2629,19 @@ class SimulationController:
             first_s,
             last_s,
             max(spacing_s, 1),
-            events_s=tuple(segment.opening.instant_s for segment in self._run_definition.segments),
+            events_s=tuple(segment.opened_at_s for segment in self._run_definition.segments),
         )
         stored_states = self._state.stored_states
 
-        # Where the columns are more than a second apart, a compartment can
-        # peak between two of them. The second of each such peak or trough is
-        # drawn too, so no trace is drawn below a peak that the run stored
-        # (`PL-BLZJ`). A window whose every second is a column needs no search.
+        # A window whose every second is a column has no second between two
+        # columns, so its fractions are not read a second time.
         if len(times_s) < last_s - first_s + 1:
-            extremes_s: set[int] = set()
-
-            for series in stored_states.fraction_series(CaseInstant(first_s), CaseInstant(last_s)):
-                extremes_s |= extreme_seconds(first_s, series, times_s)
-
-            times_s = tuple(CaseInstant(second) for second in sorted(extremes_s.union(times_s)))
+            times_s = _with_extremes(
+                first_s,
+                last_s,
+                times_s,
+                stored_states.fraction_series(CaseInstant(first_s), CaseInstant(last_s)),
+            )
 
         return DrawnWindow(
             substance_id=self._agent_id,
@@ -2787,11 +2769,7 @@ class SimulationController:
             return
 
         self._state.reset()
-        uptake_system = self._state.uptake_system
-
-        self._run_definition = RunDefinition(
-            settings, uptake_system.state_vector(), opened_at_s=CaseInstant(0)
-        )
+        self._run_definition = RunDefinition(settings, opened_at_s=CaseInstant(0))
         self._note_recorded_settings()
         self._clear_control_timeline()
 
@@ -3019,26 +2997,36 @@ class SimulationController:
 
         **This is a prediction, and it is computed as one.** The run stores
         no state past the second it has reached, so there is nothing there to
-        read. The prediction comes from a `RunDefinition` that this method
-        builds. That definition opens at the run's reach, from the state that
-        the run stored for that second, and runs under
-        `preview_settings(preview)`. It uses the same governing equations and
-        the same model version, and it is deterministic. Nothing in this run
-        is written.
+        read. `core.prediction.predicted_states` computes the states. It
+        starts from the state that the run stored for the second it has
+        reached, and continues under `preview_settings(preview)`. It uses the
+        same governing equations and the same model version, and it is
+        deterministic. Nothing in this run is written.
 
-        This is the one reader that computes its states by formula
-        (`RunDefinition.evaluate_anchored`). Its states are display values,
-        which may be drawn and used for nothing else (`docs/INTERFACE.md` §
-        "The canonical evaluation rule"). A run takes one step for each
-        second, so a predicted state can differ in its last bits from the
-        state that the run stores when it reaches that second. `PL-Z6C8`
-        decides what replaces the formula.
+        This is the one reader whose states no step wrote. They are drawn and
+        used for nothing else. The prediction takes one step for each second,
+        as the run does, and a predicted state can still differ in its last
+        bits from the state that the run stores when it reaches that second
+        (`core/prediction.py`).
 
-        The window is evaluated on the same grid as `drawn_window`, from the
-        same axis, so the prediction is drawn at the run's own resolution. It
-        ends at the axis's right edge, or at the end of the supported run
-        length if that comes first, because the model is not claimed to
-        represent a patient past it.
+        The prediction is drawn by the rule that `drawn_window` draws the run
+        by, on the same axis: at the grid seconds, at its two ends, and at
+        the second of each peak or trough between two of those
+        (`_with_extremes`). A trace can peak after the reach. With the
+        vaporizer turned down, the alveolar concentration keeps rising for
+        some seconds, and the venous and vessel-rich concentrations for a
+        minute or more. The prediction ends at the axis's right edge, or at
+        the end of the supported run length if that comes first, because the
+        model is not claimed to represent a patient past it.
+
+        **The last window is kept, and a frame with the same inputs draws it
+        again.** A prediction costs one step for each second it covers. Over
+        half of the widest chart window that is 43 200 seconds and about
+        0.1 s, so computing it on every frame of a held drag would stall the
+        interface. The key holds the agent, the preview's settings, the reach,
+        the state stored there, the right edge and the grid spacing, which are
+        every input the window is computed from. So a kept window is the
+        window that computing it again would give.
 
         Args:
             preview: The control and the value the reader is trying.
@@ -3065,20 +3053,38 @@ class SimulationController:
         if horizon_s <= reached_s:
             return DrawnWindow(substance_id=self._agent_id, times_s=(), states=())
 
-        prediction = RunDefinition(
-            settings, self._state.stored_states.state_at(reached_s), opened_at_s=reached_s
+        reached_state = self._state.stored_states.state_at(reached_s)
+        key: _PredictionKey = (
+            self._agent_id,
+            settings,
+            int(reached_s),
+            reached_state,
+            horizon_s,
+            spacing_s,
         )
-        prediction.advance_to(CaseInstant(horizon_s))
-        window = prediction.evaluate_anchored(reached_s, horizon_s, max(spacing_s, 1))
 
-        return DrawnWindow(
-            substance_id=self._agent_id,
-            times_s=window.times_s,
-            # A predicted state is unwrapped here, where it enters the one
-            # record that only the chart reads. It is drawn and used for
-            # nothing else.
-            states=tuple(state.values for state in window.states),
+        if self._prediction_memo is not None and self._prediction_memo[0] == key:
+            return self._prediction_memo[1]
+
+        predicted = predicted_states(settings, reached_state, reached_s, CaseInstant(horizon_s))
+        fractions = tuple(zip(*predicted, strict=True))
+        times_s = _with_extremes(
+            reached_s,
+            horizon_s,
+            drawn_seconds(reached_s, horizon_s, max(spacing_s, 1), events_s=()),
+            tuple(fractions[index] for index, _ in FRACTION_STATE_NAMES),
         )
+
+        window = DrawnWindow(
+            substance_id=self._agent_id,
+            times_s=times_s,
+            # The predicted states go into the one record that only the
+            # chart reads. They are drawn and used for nothing else.
+            states=tuple(predicted[instant_s - reached_s] for instant_s in times_s),
+        )
+        self._prediction_memo = (key, window)
+
+        return window
 
     def begin_control_adjustment(self) -> None:
         """Declare that the changes that follow are a new user adjustment.
@@ -3281,9 +3287,8 @@ class SimulationController:
         # `RunDefinition.record_change` correctly recorded nothing, because it
         # compares whole settings with the previous stretch and so does not
         # depend on order. The two records then disagreed about when the run
-        # changed, which is the one thing they are supposed to agree about. And
-        # `resumed_at` refuses to fork at a recorded control event with no
-        # keyframe behind it. This case can happen while the run is paused,
+        # changed, which is the one thing they are supposed to agree about.
+        # This case can happen while the run is paused,
         # when `advance()` does nothing and every control a learner touches
         # carries the same instant.
         for index in reversed(range(len(self._control_timeline))):
@@ -3708,6 +3713,44 @@ def _axis_spacing_s(start_s: float, stop_s: float, columns: int) -> int:
     return grid_spacing_s(span_s / (columns - 1)) if span_s > 0.0 else 0
 
 
+def _with_extremes(
+    first_s: int,
+    last_s: int,
+    drawn_s: tuple[CaseInstant, ...],
+    fractions: Sequence[Sequence[float]],
+) -> tuple[CaseInstant, ...]:
+    """Return `drawn_s` with the second of each peak and trough between two of them.
+
+    Where the columns are more than a second apart, a compartment can peak
+    between two of them. The second of each such peak or trough is drawn too,
+    so no trace is drawn below a peak or above a trough (`PL-BLZJ`,
+    `chart_time_base.extreme_seconds`). `drawn_window` and `preview_window`
+    both draw through this function, so a prediction and the run that
+    follows it are drawn by one rule.
+
+    Args:
+        first_s: The window's first second.
+        last_s: The window's last second.
+        drawn_s: The seconds already chosen, ascending, with both ends.
+        fractions: One series for each compartment, each holding that
+            compartment's fraction at every second from `first_s` to
+            `last_s`.
+
+    Returns:
+        The seconds to draw, ascending, each once.
+    """
+
+    if len(drawn_s) == last_s - first_s + 1:
+        return drawn_s
+
+    extremes_s: set[int] = set()
+
+    for series in fractions:
+        extremes_s |= extreme_seconds(first_s, series, drawn_s)
+
+    return tuple(CaseInstant(second) for second in sorted(extremes_s.union(drawn_s)))
+
+
 class BranchedCase:
     """One case, held as the run that happened and the branches taken from it.
 
@@ -3837,7 +3880,7 @@ class BranchedCase:
         if self._trunk.fork_refusal is not None:
             return ()
 
-        return tuple(segment.opening.instant_s for segment in self._trunk.run_segments)
+        return tuple(segment.opened_at_s for segment in self._trunk.run_segments)
 
     @property
     def mark_fork_points(self) -> tuple[MarkForkPoint, ...]:

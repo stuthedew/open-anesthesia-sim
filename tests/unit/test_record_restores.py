@@ -24,9 +24,8 @@ import pytest
 
 from anesthesia_sim import core
 from anesthesia_sim.core.checked_record import restore_through_checks
-from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.governing_equations import STATE_SIZE
-from anesthesia_sim.core.run_definition import DisplayState, Keyframe, SampledWindow
+from anesthesia_sim.core.stored_states import Keyframe
 from anesthesia_sim.core.supported_ranges import CaseInstant
 
 CORE = Path(core.__file__).resolve().parent
@@ -126,8 +125,8 @@ def test_the_walk_finds_the_checked_records_that_the_item_named() -> None:
     assert {
         "governing_equations.UptakeEquationSettings",
         "governing_equations.TissueGroupEquationSettings",
-        "run_definition.Keyframe",
-        "run_definition.SampledWindow",
+        "run_definition.RunSegment",
+        "stored_states.Keyframe",
         "circuit.BreathingCircuitState",
         "circuit.DeliverableFreshGasFlowRange",
         "liquid_agent.LiquidDensity",
@@ -177,19 +176,6 @@ def test_a_saved_keyframe_holding_a_bare_negative_instant_is_refused(
 
     with pytest.raises(TypeError, match="instant_s"):
         rebuild(_keyframe_holding(-50.0))
-
-
-def test_a_saved_sampled_window_whose_times_and_states_differ_in_length_is_refused() -> None:
-    """The relation between two fields is checked on a restore too, not only each field's type."""
-
-    state = DisplayState(_keyframe().state)
-    window = SampledWindow((0.0, 1.0, 2.0), (state, state, state))
-    broken = object.__new__(SampledWindow)
-    object.__setattr__(broken, "times_s", window.times_s)
-    object.__setattr__(broken, "states", (state, state))
-
-    with pytest.raises(SimulationConfigurationError, match="3 instants and 2 states"):
-        copy.copy(broken)
 
 
 def test_a_record_with_a_field_the_constructor_does_not_take_is_refused_by_name() -> None:
