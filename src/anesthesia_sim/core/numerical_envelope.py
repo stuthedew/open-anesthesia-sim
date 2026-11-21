@@ -37,15 +37,25 @@ in the system matrix sets the number of squarings. That rate is largest when a
 small volume meets a large flow. In the alveolar balance, a large blood:gas
 coefficient also multiplies the cardiac output. At every corner of the
 envelope, with every flow at zero or at the top of its supported range, the
-0.1 s step needs at most 19 squarings. That was measured on 2026-10-25 over
-2,560 corners. Nineteen is the number that the shipped parameters already need
-over the 24-hour horizon (`MAXIMUM_SQUARINGS` in `core/matrix_exponential.py`).
-So no step inside the envelope carries a larger error bound than a propagator
-that a shipped run already forms. The step is never refused either. Its 19
-squarings are 13 fewer than the cap of 32. So the fastest rate, or the step,
-could grow by a factor of 2**13 before the step needed more. A long interval
-can be refused. At the stiffest corner, one stretch of unchanged settings
-longer than about 1,610 s needs more than 32 squarings. So
+one-second step needs at most 22 squarings. That was measured on 2026-11-21
+over 2,560 corners. At the stiffest corner, the worst entry of the step's
+propagator was then 1.3e-9 from a 70-digit evaluation, as a share of the
+entry, and a wash-in stepped for 24 hours was 4.8e-5 from the exact state.
+
+The bounds were chosen on 2026-10-25, when a run took a step of 0.1 s. That
+step needed at most 19 squarings, the number that the shipped parameters need
+for one propagator over the 24-hour horizon (`MAXIMUM_SQUARINGS` in
+`core/matrix_exponential.py`). A volume floor of 1e-3 L was refused then,
+because it needed 22 squarings and left a run 4.9e-4 from the exact state
+after 24 hours. The one-second step needs the same 22 squarings at the floor
+of 1e-2 L, but a day holds a tenth as many steps, so the error after 24 hours
+is a tenth of the refused floor's. It is twice the 2.5e-5 that the 0.1 s step
+left at this corner (`PL-SZ6G`).
+
+The step is never refused. Its 22 squarings are 10 fewer than the cap of 32.
+So the fastest rate could grow by a factor of 2**10 before the step needed
+more. A long interval can be refused. At the stiffest corner, one stretch of
+unchanged settings longer than about 1,610 s needs more than 32 squarings. So
 `matrix_exponential` refuses that stretch rather than return a propagator for
 it. A run stepped at the stiffest corners is halted sooner, by the mass-balance
 check. There, the rounding from step after step passes the check's tolerance
@@ -59,7 +69,7 @@ coefficients, so two coefficients inside the envelope can form one far outside
 it. A tissue:gas coefficient of 1e-3 over a blood:gas coefficient of 1e4 makes a
 tissue:blood coefficient of 1e-7. In a 1e-3 L tissue receiving nearly all of the
 cardiac output, the wash-in rate was then 1.6e9 per second, and the 0.1 s step
-needed the full 32 squarings (measured 2026-10-25).
+that a run took at the time needed the full 32 squarings (measured 2026-10-25).
 `tissue_blood_partition_coefficient` below is the one place that forms the
 quotient, and it builds the result as a `PartitionCoefficient`. Each record
 that holds both factors calls it when either factor is written, because the
@@ -80,9 +90,9 @@ from anesthesia_sim.core.exceptions import SimulationConfigurationError
 #
 # The measurement in the module docstring sets this lower bound. With the alveolar
 # volume at this bound, a blood:gas coefficient of `MAXIMUM_PARTITION_COEFFICIENT` and
-# a cardiac output of 10 L/min, the fastest rate is 1.67e5 per second. The 0.1 s step
-# then needs 19 squarings. The first bound considered, 1e-3 L, needed 22 squarings
-# there, so its error bound was eight times larger. The bound is 122 times smaller
+# a cardiac output of 10 L/min, the fastest rate is 1.67e5 per second. The one-second
+# step then needs 22 squarings. The module docstring says why the first bound
+# considered, 1e-3 L, was refused. The bound is 122 times smaller
 # than the smallest shipped volume, the reference adult's venous pool of 1.222 L. A
 # patient profile with smaller volumes would bring smaller flows with it, which this
 # measurement does not include. A profile within a decade of this bound would need
@@ -100,7 +110,7 @@ MAXIMUM_VOLUME_L = 1e4
 #
 # It applies to a blood:gas, a tissue:gas and a tissue:blood coefficient alike.
 # The smallest tissue:blood coefficient makes the fastest tissue wash-in rate.
-# At this floor and a 1e-2 L tissue, the 0.1 s step needs 15 squarings, four
+# At this floor and a 1e-2 L tissue, the one-second step needs 18 squarings, four
 # fewer than the alveolar corner that sets `MINIMUM_VOLUME_L`. The floor is 420
 # times below the smallest shipped coefficient, desflurane's blood:gas
 # coefficient of 0.42.
