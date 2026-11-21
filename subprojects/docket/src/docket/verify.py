@@ -1596,9 +1596,9 @@ class Commission:
        `verify:` and `touches:`. A *prediction*: a command naming a test not
        yet written, a path list naming files not yet created. The base's copy
        is the commission and is what the branch is measured against. The
-       branch's copy is a *correction* of the prediction - it is the evidence
-       the audit runs and reads, and it is printed as a correction beside the
-       base's with the base's own result, never substituted silently. A
+       branch's copy is a *correction* of the prediction, and it is the
+       evidence the audit reads: the search for fixed text, and the tests the
+       item names when it closes. Nothing runs a command (`PL-QTZG`). A
        delegated audit refuses the correction outright, through
        `front_matter_check`.
     3. **What the work may waive** - `not-delegable:`. A *waiver* removes a
@@ -1609,9 +1609,9 @@ class Commission:
        was the other waiver, and went with the assertion check it folded
        (`PL-CZXN`).
 
-    In one sentence: a correction supplies evidence and is honoured and
-    printed; a waiver removes a refusal and is the base's; an outcome is the
-    branch's and excuses nothing. Each reader in `_check_item` names the kind
+    In one sentence: a correction supplies evidence and is honoured; a waiver
+    removes a refusal and is the base's; an outcome is the branch's and
+    excuses nothing. Each reader in `_check_item` names the kind
     it applies.
 
     Counted before the kinds were split, because one copy for every field was
@@ -2201,7 +2201,7 @@ def _check_item(
 
     # What a closed item records is read against the branch, as `docket check`
     # reads it: the tests it names, or its one search for fixed text
-    # (`PL-FN11`, `PL-N046`). No command is run.
+    # (`PL-FN11`, `PL-N046`). No command is run (`PL-QTZG`).
     if item.status == "done" and (item.tests or item.verify):
         fork = vcs.texts_at_fork(root, done.node_paths([item]), base=base)
         faults, unread = done.closing_faults(item, root, fork)
@@ -2215,6 +2215,22 @@ def _check_item(
                 (*faults, *(f"not read: {reason}" for reason in unread)),
             )
         )
+    elif item.is_open and item.verify and not done.keeps_its_command(item):
+        # A delegated worker leaves its item open, so an open item's search is
+        # read here, where the review of that work looks for it.
+        if isinstance(done.read_text_search(item.verify), done.TextSearch):
+            faults = done.search_faults(item.verify, root)
+            report.checks.append(Check(RECORD_SHOWS_WORK, not faults, item.verify, tuple(faults)))
+        else:
+            report.checks.append(
+                Check(
+                    RECORD_SHOWS_WORK,
+                    False,
+                    "not read: the item's `verify:` is a command, and nothing runs one. The "
+                    "tests that show the work are named when the item closes",
+                    advisory=True,
+                )
+            )
     return report
 
 

@@ -858,10 +858,7 @@ def _orphaned(args: argparse.Namespace) -> OrphanedReport | None:
 
 
 def _complete_report(
-    root: Path,
-    items: list[Item],
-    config: Config,
-    args: argparse.Namespace,
+    root: Path, items: list[Item], config: Config, args: argparse.Namespace
 ) -> Report:
     """The report behind a printed count, with every input asked for.
 
@@ -2003,11 +2000,24 @@ def cmd_set(args: argparse.Namespace) -> int:
     # item and one that says why no search can show it keep what they have.
     if (
         changes.get("verify")
-        and updated.resource != RELEASE_TRAIN
-        and not updated.not_delegable
+        and not done.keeps_its_command(updated)
         and isinstance(shape := done.read_text_search(updated.verify), str)
     ):
         print(f"{item.identifier}: nothing was written; its `verify:` {shape}")
+        return 1
+    # A search written onto an open item says what its work will change, so
+    # one that is true before the work is refused here (`PL-CBDX`).
+    if (
+        changes.get("verify")
+        and updated.is_open
+        and not done.keeps_its_command(updated)
+        and (
+            early := done.true_before_the_work(
+                updated.verify, _invocation(args).root, directory / item.path
+            )
+        )
+    ):
+        print(f"{item.identifier}: nothing was written; its `verify:` {early}")
         return 1
     # What the closing item records is read here as `check` will read it on the
     # branch, so a test the tree does not define, one the branch did not
@@ -2026,8 +2036,9 @@ def cmd_set(args: argparse.Namespace) -> int:
                 print(f"  {item.identifier}: closes on this branch, and {fault}")
             return 1
     # Then the writer's own read-back, before the file is touched: `analyze`
-    # reads the in-memory item, where a line break is one more character, and never the lines the file would split
-    # into, so a value holding one passed every rule above at exit 0 (`PL-0779`).
+    # reads the in-memory item, where a line break is one more character, and
+    # never the lines the file would split into, so a value holding one passed
+    # every rule above at exit 0 (`PL-0779`).
     # A rule that names the field's own fault has already spoken by here.
     try:
         render_item(updated)

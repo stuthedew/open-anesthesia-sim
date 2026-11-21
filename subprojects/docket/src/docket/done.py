@@ -225,6 +225,30 @@ def search_faults(command: str, root: Path) -> list[str]:
     return faults
 
 
+def true_before_the_work(command: str, root: Path, own: Path) -> str:
+    """Why an open item's search is true before its work, as a predicate for "its `verify:`".
+
+    The result is empty where the search is not yet true, or `command` is not
+    a search. `own` is the file of the item that keeps the search: that file
+    holds the search itself, so a search of it is always true. A search that
+    is true before the work shows nothing when the item closes.
+    """
+    search = read_text_search(command)
+    if isinstance(search, str):
+        return ""
+    if any(own.resolve() == path.resolve() for glob in search.paths for path in root.glob(glob)):
+        return (
+            "reads the item's own file, which holds the search itself, so the search "
+            "shows nothing about the work"
+        )
+    if search_faults(command, root):
+        return ""
+    return (
+        "is already true on this tree, so it shows nothing about the work. An open "
+        "item keeps a search that its work makes true"
+    )
+
+
 #: A bold label that carries a date and opens a paragraph, such as
 #: `**Answered 2026-11-20.**` or `**Counted 2026-11-21**`. The label may run
 #: on past the date, and the bold may close anywhere on the line.
@@ -264,15 +288,20 @@ def _tree_text(root: Path) -> Callable[[str], str | None]:
     return read
 
 
-def closing_faults(item: Item, root: Path, fork: ForkTexts) -> tuple[list[str], list[str]]:
-    """What is wrong with what `item` records to show its work, and what could not be read.
+def keeps_its_command(item: Item) -> bool:
+    """Whether `item` may keep a `verify:` that is not a search for fixed text.
 
     A release item keeps the command it has, because `bin/docket release`
-    writes the version and the notes. An item recording `not-delegable:` has
-    said why no search can show its work, so its command is not read either.
+    writes the version and the notes. An item that records `not-delegable:`
+    has said why no search can show its work. Nothing reads either command.
     """
+    return item.resource == RELEASE_TRAIN or bool(item.not_delegable)
+
+
+def closing_faults(item: Item, root: Path, fork: ForkTexts) -> tuple[list[str], list[str]]:
+    """What is wrong with what `item` records to show its work, and what could not be read."""
     faults, unread = test_faults(item.tests, _tree_text(root), fork)
-    if item.verify and item.resource != RELEASE_TRAIN and not item.not_delegable:
+    if item.verify and not keeps_its_command(item):
         faults += search_faults(item.verify, root)
     return faults, unread
 
