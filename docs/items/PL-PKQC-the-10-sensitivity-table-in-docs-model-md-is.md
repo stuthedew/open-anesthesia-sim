@@ -1,12 +1,21 @@
 ---
 id: PL-PKQC
 title: The 10% sensitivity table in docs/MODEL.md is dated the day before the venous pool changed, and two of its rows no longer reproduce to the last digit
-status: untriaged
+priority: P2
+effort: S
+status: blocked
+classes: defect
 feature: model-spec-accuracy
+touches: docs/MODEL.md, tests/reference/test_published_wash_in_and_elimination.py
+blocked-by: PL-SZ6G
+deferred-from: v0.7.0 - captured after the freeze by the check of docs/MODEL.md against the code; it changes no displayed value, and it is not safety or science
 added: 2026-11-21
+payoff: the table that says how large a coefficient error the published-data comparison can detect gives the figures the shipped model produces
 ---
 
 **Problem.** The 10% sensitivity table in docs/MODEL.md is dated the day before the venous pool changed, and two of its rows no longer reproduce to the last digit
+
+**Why it matters.** The table tells a reader how large a coefficient error the published-data comparison can detect. Two of its rows give figures that the model no longer produces, under a date that falls before the venous pool changed.
 
 **Found by.** `PL-RMNP`, the check of `docs/MODEL.md` against the code, on 2026-11-21.
 
@@ -16,4 +25,8 @@ added: 2026-11-21
 
 The docstring of `tests/reference/test_published_wash_in_and_elimination.py` carries the same table, and its line "+0.45 to +0.55" repeats one figure. A change under `tests/reference/` waits for the project owner's read.
 
+**Why it waits on `PL-SZ6G`** (a run's time as a whole number of seconds). That branch changes the step at which every figure in the table is computed, and it rewrites the test module that holds the table's copy. The table is to give the figures of the tree that ships, so measure once, after that branch merges. A change to an existing line of a test under `tests/reference/` also waits for the project owner's read.
+
 **Done when.** The table and the test module's copy give the figures of the tree that ships, with the date and the words "against each agent's first cohort".
+
+**Generator check.** Filed by `PL-RMNP` (the check of `docs/MODEL.md` against the code), a sweep that the owner asked for. The fact it misreads is whether a `docs/MODEL.md` sentence about what the model computes matches what it computes, which the head `PL-B6YV` (a document sentence about what the model computes, checked against the code) already states. It is counted under the sweep and is not a new head.

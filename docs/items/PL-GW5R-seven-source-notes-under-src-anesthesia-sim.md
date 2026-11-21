@@ -1,12 +1,20 @@
 ---
 id: PL-GW5R
 title: Seven source notes under src/anesthesia_sim/data/ still state what docs/MODEL.md corrected on 2026-11-21: four in reference_adult.json and the Mapleson note in each agent file
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect
 feature: model-spec-accuracy
+touches: src/anesthesia_sim/data/patients/reference_adult.json, src/anesthesia_sim/data/agents/sevoflurane.json, src/anesthesia_sim/data/agents/isoflurane.json, src/anesthesia_sim/data/agents/desflurane.json
+deferred-from: v0.7.0 - captured after the freeze by the check of docs/MODEL.md against the code; it changes no displayed value, and it is not safety or science
 added: 2026-11-21
+payoff: the source notes in the parameter files say what docs/MODEL.md says about which sources were read, the 3.30% figure and the roadmap item that moves the MAC
 ---
 
 **Problem.** Seven source notes under src/anesthesia_sim/data/ still state what docs/MODEL.md corrected on 2026-11-21: four in reference_adult.json and the Mapleson note in each agent file
+
+**Why it matters.** A `sources` note is the record that a reviewer reads to check a stored value. These seven say that sources are unread which were read, give a figure that the note's own numbers do not give, and name the wrong roadmap item. So the parameter files disagree with `docs/MODEL.md` about what the project has read and plans.
 
 **Found by.** `PL-RMNP`, the check of `docs/MODEL.md` against the code, on 2026-11-21. `PL-RMNP` corrected the sentences in `docs/MODEL.md`. The `sources` notes in the data files state the same things, and a data file under `src/anesthesia_sim/data/` is outside what a session may fix in place.
 
@@ -19,3 +27,5 @@ added: 2026-11-21
 5. `agents/sevoflurane.json`, `agents/isoflurane.json` and `agents/desflurane.json`, the Mapleson 1996 note: `ROADMAP.md` planned-milestone item 31 is "the route to primary values". Item 31 plans a primary-literature set of partition coefficients. Item 30 moves the MAC to Mapleson's age-40 values, which are tier 2, and no milestone plans a primary MAC. `PL-LBVN` (the default MAC moves to Mapleson's age-40 values) rewrites these three notes anyway, so correct them there if it comes first.
 
 **Done when.** Each note agrees with `docs/MODEL.md`, and each touched note names its route and how deeply the source was read, as `.claude/rules/citing-sources.md` requires.
+
+**Generator check.** Filed by `PL-RMNP` (the check of `docs/MODEL.md` against the code), a sweep that the owner asked for. The fact it misreads is whether a `docs/MODEL.md` sentence about what the model computes matches what it computes, which the head `PL-B6YV` (a document sentence about what the model computes, checked against the code) already states. It is counted under the sweep and is not a new head.
