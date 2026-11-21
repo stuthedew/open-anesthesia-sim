@@ -8,7 +8,7 @@ added: 2026-11-21
 
 **Problem.** docs/ARCHITECTURE.md gives the macOS directory of the saved Workspaces as ~/Library/Application Support/\<App>, which nobody has run on a Mac, and on Linux Qt adds the organization name
 
-**Checked 2026-11-21**, at `2452b9b4e`. Found by `PL-5FMC` (the check of `docs/INTERFACE.md` and the two documents beside it against the code). `docs/ARCHITECTURE.md` § "Where the saved Workspaces live" says "On macOS the directory is `~/Library/Application Support/<App>`." This check corrected the Linux path in the same paragraph to `~/.local/share/<Org>/<App>`, after Qt printed `<HOME>/.local/share/OpenAnesthesia/Open Anesthesia Simulator` there. The macOS path has the shape that the wrong Linux path had, and no session can run it. The comment on `APP_ORGANIZATION_NAME` in `src/anesthesia_sim/app_metadata.py` states only the Linux path.
+**Checked 2026-11-21**, at `2452b9b4e`. Found by `PL-5FMC` (the check of `docs/INTERFACE.md` and the two documents beside it against the code). `docs/ARCHITECTURE.md` § "User state: the saved Workspaces" says "On macOS the directory is `~/Library/Application Support/<App>`." This check corrected the Linux path in the same paragraph to `~/.local/share/<Org>/<App>`, after Qt printed `<HOME>/.local/share/OpenAnesthesia/Open Anesthesia Simulator` there. The macOS path has the shape that the wrong Linux path had, and no session can run it. The comment on `APP_ORGANIZATION_NAME` in `src/anesthesia_sim/app_metadata.py` states only the Linux path.
 
 **The owner can settle it with one command on the Mac**, from the repository root:
 

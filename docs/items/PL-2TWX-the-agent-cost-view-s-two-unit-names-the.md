@@ -8,7 +8,7 @@ added: 2026-11-21
 
 **Problem.** The agent cost View's two unit names, the accounting amounts' 'L' and the accounting caption's unit phrase are spelled outside app/display_units.py, which docs/INTERFACE.md says defines every spelling of an amount's unit
 
-**Checked 2026-11-21**, at `2452b9b4e`. Found by `PL-5FMC` (the check of `docs/INTERFACE.md` and the two documents beside it against the code). `docs/INTERFACE.md` § "One spelling for each unit" says "Each spelling of an amount's unit is defined once, in `app/display_units.py` (`DisplayUnit`). ... Every View reads its spellings from that file and defines none of its own." Three spellings are defined elsewhere:
+**Checked 2026-11-21**, at `2452b9b4e`. Found by `PL-5FMC` (the check of `docs/INTERFACE.md` and the two documents beside it against the code). `docs/INTERFACE.md` § "The compartment schematic: what its heights, amounts and share bar assert" says "Each spelling of an amount's unit is defined once, in `app/display_units.py` (`DisplayUnit`). ... Every View reads its spellings from that file and defines none of its own." Three spellings are defined elsewhere:
 
 - `UNIT_CHOICES` in `app/agent_cost.py` types "millilitres of liquid" and "litres of vapour" as literals. `DisplayUnit.AGENT_LIQUID_MILLILITRES.recorded` and `DisplayUnit.AGENT_VAPOUR_LITRES.recorded` hold the same two strings, and `AgentAmountUnit` in `app/formatting.py` holds them a third time. `tests/unit/test_agent_cost.py` asserts the literal.
 - `format_agent_volume` in `app/formatting.py` passes the literal `"L"`. No `DisplayUnit` member has the label "L".
