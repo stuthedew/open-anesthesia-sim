@@ -21,3 +21,5 @@ added: 2026-11-11
 9. `tests/reference/test_coupled_dynamics.py:1895`, an assertion message: "re-derive the measured figures in docs/MODEL.md". The figures are cited only in `docs/INTERFACE.md`.
 
 The line numbers are from `e278a80`.
+
+**Checked 2026-11-21**, by `PL-5FMC` (the check of `docs/INTERFACE.md` against the code), at `2452b9b4e`. These mentions of `docs/MODEL.md` mean a requirement that is now in `docs/INTERFACE.md`: the module docstring and two more places in `app/unconditional_set.py`; `required_reachable` and `required_kinds` in `app/view_registry.py`; `app/area_layout.py`; three places in `app/preferences.py` (§ "A cost at the reader's price"); `tests/unit/test_agent_cost.py`; `app/theme.py`; `tools/contrast_check.py`; `app/stylesheets.py`; the comment above `COMPARTMENT_TRACES` in `app/chart_frame.py`; and `DisplayState` in `core/run_definition.py`.
