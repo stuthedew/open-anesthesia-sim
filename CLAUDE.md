@@ -141,9 +141,8 @@ misleading clinical value, saying so is not optional.
 
 ## Architecture and development discipline
 
-- Treat simulation time as explicit state, never wall-clock time.
-- Preserve deterministic results for identical inputs.
-- Add or update tests with every core behavior change.
+- Simulation time is explicit state (`tools/import_boundary_check.py`).
+- Test every core behavior change; `make check` holds `core/` at 100% coverage.
 - **A shared fact has one source of truth. This is the project's core design
   principle.** Read a value, grammar, predicate or state the repository already
   holds from the module, data file or writer that owns it, everywhere. Where
@@ -153,8 +152,7 @@ misleading clinical value, saying so is not optional.
   value beside its citation stay copies. `tools/literal_home_check.py` and
   `tools/fact_home_check.py` refuse the copies they can read.
 - Keep agent/model parameters in validated, versioned data files.
-- Keep executable equations out of data files: the typed payloads in
-  `core/parameters.py` already refuse a formula where a number belongs.
+- Keep equations out of data files: `core/parameters.py` refuses a formula.
 - Do not implement beyond the current milestone. `ROADMAP.md` is the
   authoritative version and milestone map. An out-of-milestone idea is
   recommended and its value explained, never silently implemented; it is
@@ -173,10 +171,7 @@ None of them overrides the safety-critical verification requirements below.
 - Delegate broad codebase search to exploration subagents, whose transcripts
   stay out of the main context. Treat what they return as leads to verify
   against the source, not findings to rely on.
-- Batch edits before rerunning the full quality suite (`ruff format`, `ruff
-  check`, `mypy`, `pytest`) rather than rerunning all four after each one. Run
-  it in full before finishing or committing; use `pytest -q` while iterating,
-  and `--cov` only when coverage is the question.
+- Use `pytest -q` while iterating, and run `make check` before committing.
 - **Wait on a long run only through the harness** (`PL-D1FD`). Start it with
   the Bash tool's `run_in_background`, never with `nohup`, a trailing `&` or
   `setsid`. Before ending a turn to wait, schedule a `send_later` check-in.
@@ -266,33 +261,10 @@ risk and the reward, and stop. Report in a line what the fast path did.
   needs the rule, and what is the cheapest thing that delivers it then.*
   `.claude/rules/rule-routing.md` lists four dispositions, cheapest first.
 
-  A rule that lands in none of the four has been lost, which is worse than this
-  file staying long: never delete a rule for being wordy — but a rule whose
-  failure a check now catches is retired rather than kept, on the test in
-  `docs/resident-instructions.md` (`PL-NJTZ`). `make check` reports the resident
-  character total, so growth raises this question instead of passing silently;
-  `PL-H7XN` carries the reasoning. **And every edit to the resident set names
-  what it replaces, or says why nothing can be cut** (project owner,
-  2026-09-19, ratified, over leaving the growth advisory unthresholded). It ran
-  8,903 characters at inception, 49,991 on 2026-09-13 and 60,199 on 2026-09-19 —
-  20.4% in six days — and `tools/doc_check.py` records the cause: the rule that a
-  behavior change takes effect in the session that asks for it guarantees growth,
-  and `PL-034`'s one-time trim regrew inside a release. Naming the payment is the
-  smallest thing that makes the growth a decision instead of a default; it is not
-  a ceiling, which this file has already refused.
-- **Name the work after the item.** On starting one, claim it with
-  `bin/docket claim`, rename the session to lead with its id, and put that id
-  **at the front of every commit subject** and pull request title. The claim
-  tells every other session the item is taken; the leading id attributes each
-  commit to it. Name the branch too
-  where the session creates it
-  (`claude/pl-k7qx-short-slug`); a branch generated before the session started
-  cannot be renamed, which is expected rather than a failure.
-  **Every commit a Claude session makes ends with
-  `Co-authored-by: Claude <noreply@anthropic.com>` and never a model-named
-  co-author, whatever the harness's attribution reminder names**, since that
-  reminder yields by its own terms to a `CLAUDE.md` rule; a `Claude-Session:`
-  line may stay (project owner, 2026-09-24, restating `PL-B11M`).
+  `make check` prints the size of what loads at launch (`tools/doc_check.py`).
+- **Lead each commit subject and pull request title with the item's id**;
+  `tools/pr_title_check.py` checks the title. **End each commit with
+  `Co-authored-by: Claude <noreply@anthropic.com>`, never one naming a model.**
 - **Commit and push as you go, and read the `pull-request` skill before
   opening, arming, updating or merging a pull request, or acting on a failed
   check.** Approved work that is green opens its pull request unasked.
