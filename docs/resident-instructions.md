@@ -2709,3 +2709,133 @@ Write each part in whole sentences:
 "Reject a volume or tissue:gas partition coefficient that would make the
 tissue's capacity less than the amount of agent it already holds."
 ```
+
+### The procedures that the pull-request skill, the coordinator mode and the run-the-app skill hold
+
+`PL-T51K` moved the rows about pull requests, Projects threads and screenshots.
+Each block below is the paragraph as it was loaded at launch before the move,
+and the line above it says what stays and which file holds the rest.
+
+**Row 7, `CLAUDE.md`: product focus.** The rule stays in four lines.
+`.claude/skills/docket/modes/coordinator.md` § "Product focus and the Projects
+trial" holds who works a root cause while the trial runs, and how the focus
+ends.
+
+```text
+**Product focus, from 2026-09-25** (project owner, 2026-09-25, ratified, over
+a fix batch before the switch and over working each root cause in the owner's
+own sessions, `PL-2866`). A session given no particular work is a product
+session, and picks from `bin/docket next product`. An apparatus finding stops
+one only when it blocks it: a hard gate refusing correct work, a state answer
+that would lose or duplicate work, or a gap in a safety-floor guard. Any other
+is captured as always and the product item finished. Root causes are worked in
+parallel by the Projects trial's coordinator (`PL-NZC0`) while that trial runs,
+not in the owner's sessions. A product session that finds one
+while the trial is paused ends its reply with a ready-to-paste prompt for a
+fresh session on it, as the generator rule below says (`PL-0GWD`). It holds until the owner
+ends it. Ending it deletes this paragraph and `docket.toml`'s `focus` key, which
+points the digest's `Top:` line at the product lane (`PL-2CPD`).
+```
+
+**Row 45, `CLAUDE.md`: fill a long wait with work.** Nothing stays.
+`.claude/skills/docket/modes/coordinator.md` § "What every brief tells its
+thread" holds the rule, which applies to a Projects thread only.
+
+```text
+- **Fill a long wait with work** (project owner, 2026-10-25, ratified, over
+  leaving the coordinator to notice an idle thread). Before a thread goes idle
+  on a wait expected to last more than an hour, it runs `bin/docket next` in
+  its lane and takes any ready item inside the scope it was given. If there
+  is none, it tells the coordinator, so that the place can be filled
+  (`PL-D1FD`).
+```
+
+**Row 73, `CLAUDE.md`: commit and push as you go.** Three lines stay.
+`.claude/skills/pull-request/SKILL.md` already held the rest.
+
+```text
+- **Commit and push as you go, and read the `pull-request` skill before
+  opening, arming, updating or merging a pull request, or acting on a failed
+  check** (project owner, 2026-08-31; moved to
+  `.claude/skills/pull-request/SKILL.md` on 2026-10-24, `PL-S2NL`). The
+  container is ephemeral, so an uncommitted thought is one interruption from
+  gone and an unpushed commit dies with it. Once the owner has approved a piece
+  of work, its pull request opens as soon as the work is finished and green,
+  without asking. That standing request is the explicit ask the web harness
+  waits for. The skill holds when a pull request arms, when to bring `main` in,
+  when failed checks stop the session, and how to check a published body. The
+  push and pull request hooks name it at those moments.
+```
+
+**Row 167, `.claude/rules/instruction-writing.md`: rule 10, decision first.**
+Ten lines stay. `.claude/skills/run-the-app/SKILL.md` § "Compare interface
+approaches for the owner" holds the screenshot rule, and
+`.claude/skills/docket/modes/coordinator.md` § "What every brief tells its
+thread" holds which questions go to the coordinator.
+
+```text
+10. DECISION FIRST. A message asking the user to decide opens with the
+    question(s) and the recommendation, one line each. Supporting detail
+    follows; nothing precedes the questions.
+    **The reader must see on first reading what they are judging** (project
+    owner, 2026-10-19). This applies to every question, card and read ask.
+    Word the question in clinical or learner terms, not the code's or the
+    item's. Under each option, say what a learner sees or what changes for
+    them. Give the recommendation and its reason, and say why the choice is
+    theirs rather than the session's. A question about different approaches
+    to the interface carries one screenshot per option, of one concrete run,
+    annotated where the options differ. The run-the-app skill § "Compare
+    interface approaches for the owner" says how (`PL-KYTY`).
+    **A session running under a coordinator asks the coordinator, not the
+    owner** (project owner, 2026-10-19). This applies to a Projects thread and
+    to any other session that a coordinator session started. Such a session
+    sends a question the coordinator can answer to the coordinator, never to
+    the owner: what to work on next, which item to take, whether to carry on.
+    The coordinator decides it, or brings the owner only a real decision,
+    written to the standard above.
+```
+
+**Row 172d, `.claude/rules/instruction-writing.md`: a closing-block line whose
+answer makes a commit.** Two lines stay. `.claude/skills/pull-request/SKILL.md`
+§ "Ask `bin/docket arm` before arming and before every later push" holds how
+the item and the pull request wait for the answer.
+
+```text
+    - A line whose answer will produce a commit says so, and sorts as work
+      rather than as a question. Where that commit belongs in a branch another
+      line would merge or close, the decision line comes first. And while a
+      pull request is open on that branch, the item the answer goes into
+      stays claimed there at `needs-decision`, and the pull request is a
+      draft, until the answer is committed. `bin/docket arm` keeps a branch
+      with an open claim unarmed, so a merge from the pull request page
+      cannot land first and leave the answer on a merged branch (`PL-JHHC`).
+```
+
+**Row 194, `.claude/rules/plain-writing.md`: pull request titles.** One line
+stays. `.claude/skills/pull-request/SKILL.md` § "Write the title and body"
+holds the rule.
+
+```text
+**A pull request title names the change plainly and briefly.** The title
+becomes the squash commit's subject, the one line of `main`'s history that a
+reader sees for the change. After the item ids that the `pr-title` check
+requires, write a short phrase rather than a whole sentence: what the change
+does, to what, and the reason when it fits. Use names a reader of the
+repository already knows, such as a CI job, a check or a panel, not a term
+coined while building the change. Give each number the thing it counts. When a
+branch closes several items, name what they change together.
+```
+
+**Row 205 and 206, `.claude/rules/plain-writing.md`: the pull request body and
+title examples.** Nothing stays. `.claude/skills/pull-request/SKILL.md` §
+"Write the title and body" already held the two bodies, and now holds the
+title.
+
+```text
+**A pull request body.** `.claude/skills/pull-request/SKILL.md` § "Write the
+title and body" has two.
+
+**A pull request title.** The project owner chose this one, on `#1523`, on
+2026-10-17: "PL-ZWQS: rebalance the CI test split to offset part 1's lint
+steps". It names the change, what it changes and why.
+```
