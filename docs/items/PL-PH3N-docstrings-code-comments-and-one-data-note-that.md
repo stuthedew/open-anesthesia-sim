@@ -25,7 +25,7 @@ In `src/anesthesia_sim/app/`:
 In `src/anesthesia_sim/core/`:
 
 10. `run_definition.py`: the module docstring's "70 KiB" and "3.16 GB", the `opened_at_s` entry of `RunDefinition.__init__` ("the fork itself"), and `DisplayState`.
-11. `tissue.py`: a refusal message says the perfusion fractions are checked "only when it is built", and they are also checked when a tissue group is replaced. A message is on screen, so this one needs its test.
+11. `tissue.py`: a refusal message says the perfusion fractions are checked "only when it is built", and they are also checked when a tissue group is replaced. A message is on screen, so this one needs its test. `PL-XXXJ` (three refusal messages that pointed at the wrong section) corrected this message and the docstring beside it on pull request #2190, with a test of the whole message, so this entry needs no more work once #2190 has merged.
 
 In `src/anesthesia_sim/data/`:
 

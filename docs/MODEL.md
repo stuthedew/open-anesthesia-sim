@@ -246,8 +246,10 @@ simulator (§ "Parameter provenance" says which), whose structure matches this
 model's in two respects. In Gas Man,
 each tissue group exchanges agent only with blood, at a perfusion-limited rate,
 and arterial partial pressure is displayed without being tracked as a
-compartment. Gas Man tracks four compartments: alveolar gas and the vessel-rich,
-muscle, and fat groups. See:
+compartment. The *BMC Anesthesiology* paper below describes Gas Man's patient
+as four compartments, the lung and the vessel-rich, muscle and fat groups, with
+the circuit as a fifth. Gas Man's parameter file also gives a venous volume
+(§ "Parameter provenance"). See:
 
 - Philip JH. Gas Man Version 4.1 Teaches Inhalation Kinetics. Society for
   Technology in Anesthesia. <https://www.stahq.org/files/7913/2743/1066/Abstract_57.pdf>
