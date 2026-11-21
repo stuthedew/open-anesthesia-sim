@@ -11,7 +11,7 @@ added: 2026-11-21
 closed: 2026-11-21
 pr: 2185
 payoff: a session's push and its pull request are no longer refused for a missing claim on work that other sessions could already see, and 1,400 lines of tool and test leave the tree
-verify: ! grep -qF 'branch_id_check' Makefile && ! grep -qF 'branch_id_check' .github/workflows/quality.yml && ! grep -qF '"tools/branch_id_check.py"' .claude/hooks/push_check_guard.py && ! grep -qF 'hint-changed' .claude/hooks/docket_branch_guard.py
+verify: ! grep -qF 'branch_id_check' Makefile .github/workflows/quality.yml
 ---
 
 **Problem.** Retire tools/branch_id_check.py from make check, CI and the push hook

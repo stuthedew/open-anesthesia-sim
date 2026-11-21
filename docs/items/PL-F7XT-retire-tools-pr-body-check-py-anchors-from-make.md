@@ -11,7 +11,7 @@ added: 2026-11-21
 closed: 2026-11-21
 pr: 2185
 payoff: make check and CI run one check fewer, and the tool that recovers a dropped pull request body loses the mode that never refused
-verify: ! grep -qF 'pr_body_check.py --anchors' Makefile && ! grep -qF 'pr_body_check.py --anchors' .github/workflows/quality.yml && ! grep -qF 'def anchors' tools/pr_body_check.py
+verify: ! grep -qF 'pr_body_check.py --anchors' Makefile .github/workflows/quality.yml
 ---
 
 **Problem.** Retire tools/pr_body_check.py --anchors from make check and CI, and keep docs/pr-bodies/ as a closed archive

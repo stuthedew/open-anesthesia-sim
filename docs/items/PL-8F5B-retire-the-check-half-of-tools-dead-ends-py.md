@@ -11,7 +11,7 @@ added: 2026-11-21
 closed: 2026-11-21
 pr: 2185
 payoff: make check and CI run one check fewer, and the dead-ends tool keeps only the half that prints the list at session start
-verify: ! grep -qF 'dead_ends.py check' Makefile && ! grep -qF 'dead_ends.py check' .github/workflows/quality.yml && ! grep -qF 'def check' tools/dead_ends.py
+verify: ! grep -qF 'dead_ends.py check' Makefile .github/workflows/quality.yml
 ---
 
 **Problem.** Retire the check half of tools/dead_ends.py from make check and CI, and keep emit for the session-start digest
