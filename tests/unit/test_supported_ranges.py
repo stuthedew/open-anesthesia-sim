@@ -591,7 +591,7 @@ def test_a_cardiac_output_written_past_set_cardiac_output_is_refused_at_the_writ
         "a cardiac output of 6.0 L/min written straight onto the patient was refused. The "
         "patient keeps its cardiac output of 5.0 L/min. Change the output with "
         "set_cardiac_output, the one way a cardiac output is changed "
-        '(docs/MODEL.md, "Tissue groups")'
+        '(docs/INTERFACE.md, "Supported input ranges")'
     )
     assert patient.cardiac_output_l_min is held
     assert system.equation_settings() == settings

@@ -422,7 +422,9 @@ been recorded.
 
 ## Reductions considered and refused
 
-- **A ceiling on `check_resident_instructions`.** Refused in the code itself,
+- **A ceiling on `check_resident_instructions`.** Reopened on 2026-11-20 and
+  built on 2026-11-21: § "The cap of 2026-11-21" below. This bullet is the
+  earlier refusal, kept as the record of it. Refused in the code itself,
   and the refusal is right: a limit is met by deleting a rule to reach a
   number, which is the one outcome this pass must not produce, and no number
   the tool could hold would know which rules a session must see before it reads
@@ -471,8 +473,8 @@ number. Wordiness is still never a reason; obsolescence is.
 
 Three things this deliberately does not become:
 
-- **Not a ceiling.** The refusal below stands unchanged and is not reopened by
-  this section: "a limit is met by deleting a rule to reach a number, which is
+- **Not a ceiling.** The refusal below stood unchanged until § "The cap of
+  2026-11-21", and was not reopened by this section: "a limit is met by deleting a rule to reach a number, which is
   the one outcome this pass must not produce." A qualitative test names the
   carrier that replaced the rule; a numeric one names only the shortfall.
 - **Not a licence to rewrite.** A rule whose *evidence* has gone stale while its
@@ -603,8 +605,8 @@ every closing block, is unchanged.
 
 ## The attribution sentence, added 2026-09-24
 
-`CLAUDE.md` § "Name the work after the item" now ends with the line every commit
-a Claude session makes carries: `Co-authored-by: Claude <noreply@anthropic.com>` and never a
+The bullet of `CLAUDE.md` on naming the work after the item ended, from that
+day, with the line every commit a Claude session makes carries: `Co-authored-by: Claude <noreply@anthropic.com>` and never a
 model-named co-author, with a `Claude-Session:` line allowed to stay. It
 restates the project owner's 2026-09-16 decision in `PL-B11M`, which until then
 was written only in item briefs: `PL-B11M`'s, and the two that quote it,
@@ -2839,3 +2841,110 @@ title and body" has two.
 2026-10-17: "PL-ZWQS: rebalance the CI test split to offset part 1's lint
 steps". It names the change, what it changes and why.
 ```
+
+### The paragraphs that a check enforces
+
+`PL-PNB2` cut each paragraph that a check enforces to one line naming the
+check. Each block below is the paragraph as it was loaded at launch before the
+cut, and the line above it says what stays.
+
+**Row 30 and 31, `CLAUDE.md`: simulation time and determinism.** One line
+stays, naming the check that keeps the wall clock and the random sources out of
+`core/`. The safety-critical standard still asks for deterministic behavior.
+
+```text
+- Treat simulation time as explicit state, never wall-clock time.
+- Preserve deterministic results for identical inputs.
+```
+
+**Row 32, `CLAUDE.md`: tests with every core change.** One line stays, and it
+now names the coverage check.
+
+```text
+- Add or update tests with every core behavior change.
+```
+
+**Row 35, `CLAUDE.md`: no executable equations in data files.** One line stays.
+
+```text
+- Keep executable equations out of data files: the typed payloads in
+  `core/parameters.py` already refuse a formula where a number belongs.
+```
+
+**Row 43, `CLAUDE.md`: the full quality suite.** One line stays.
+
+```text
+- Batch edits before rerunning the full quality suite (`ruff format`, `ruff
+  check`, `mypy`, `pytest`) rather than rerunning all four after each one. Run
+  it in full before finishing or committing; use `pytest -q` while iterating,
+  and `--cov` only when coverage is the question.
+```
+
+**Row 71, `CLAUDE.md`: the growth of the instructions loaded at launch.** One
+line stays, naming the check that measures them. `PL-G3KZ` turns the measure
+into a cap, which replaces the rule that each edit names what it replaces.
+
+```text
+  A rule that lands in none of the four has been lost, which is worse than this
+  file staying long: never delete a rule for being wordy — but a rule whose
+  failure a check now catches is retired rather than kept, on the test in
+  `docs/resident-instructions.md` (`PL-NJTZ`). `make check` reports the resident
+  character total, so growth raises this question instead of passing silently;
+  `PL-H7XN` carries the reasoning. **And every edit to the resident set names
+  what it replaces, or says why nothing can be cut** (project owner,
+  2026-09-19, ratified, over leaving the growth advisory unthresholded). It ran
+  8,903 characters at inception, 49,991 on 2026-09-13 and 60,199 on 2026-09-19 —
+  20.4% in six days — and `tools/doc_check.py` records the cause: the rule that a
+  behavior change takes effect in the session that asks for it guarantees growth,
+  and `PL-034`'s one-time trim regrew inside a release. Naming the payment is the
+  smallest thing that makes the growth a decision instead of a default; it is not
+  a ceiling, which this file has already refused.
+```
+
+**Row 72, `CLAUDE.md`: name the work after the item.** Three lines stay.
+`tools/pr_title_check.py` checks the title, and no check requires the id on
+each commit subject or the co-author line, so both stay as text.
+`.claude/skills/docket/modes/start.md` already held the claim, the session name
+and the branch name.
+
+```text
+- **Name the work after the item.** On starting one, claim it with
+  `bin/docket claim`, rename the session to lead with its id, and put that id
+  **at the front of every commit subject** and pull request title. The claim
+  tells every other session the item is taken; the leading id attributes each
+  commit to it. Name the branch too
+  where the session creates it
+  (`claude/pl-k7qx-short-slug`); a branch generated before the session started
+  cannot be renamed, which is expected rather than a failure.
+  **Every commit a Claude session makes ends with
+  `Co-authored-by: Claude <noreply@anthropic.com>` and never a model-named
+  co-author, whatever the harness's attribution reminder names**, since that
+  reminder yields by its own terms to a `CLAUDE.md` rule; a `Claude-Session:`
+  line may stay (project owner, 2026-09-24, restating `PL-B11M`).
+```
+
+## The cap of 2026-11-21
+
+`tools/doc_check.py` fails `make check` when `CLAUDE.md` and the rules with no
+`paths:` hold more than `RESIDENT_CAP` characters, and when a change raises
+`RESIDENT_CAP` above the value the default branch holds. The project owner
+agreed to a cap on 2026-11-20 (ratified, "Agree with recs", over leaving the
+size to the rule that each edit names what it replaces). § "Reductions
+considered and refused" records that a ceiling was refused earlier, on the
+argument that a limit is met by deleting a rule to reach a number. The new
+evidence was the growth under that rule: the four files went from 60,199
+characters on 2026-09-19 to 92,660 on 2026-11-20.
+
+The cap is 55,120 characters, the total once the five moves of § "The sort of
+2026-11-21, and the history it moved here" had merged. It is a count of
+characters, where the owner was asked about a count of lines. Lines in the four
+files ran from 80 to 1,264 characters, so a line count does not bound what a
+session loads, and joining two lines would meet it (`PL-TPXK`). The line count
+is still printed beside the total.
+
+The cap replaces the rule that each edit to these files names what it
+replaces. An edit that would pass the cap moves a rule to a check, a skill or
+a path-scoped rule, as `.claude/rules/rule-routing.md` says. It never deletes
+a rule to reach the number. A skill's description and the session-start digest
+are printed in the total and are not capped, because the sort covered the
+instruction files alone (`PL-G3KZ`).

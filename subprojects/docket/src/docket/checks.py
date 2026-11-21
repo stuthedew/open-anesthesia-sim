@@ -29,7 +29,6 @@ from pathlib import Path
 from . import fences, markdown
 from .config import Config
 from .done import ClosingReport, node_refusal, shows_its_work
-from .grep import read_grep
 from .instructions import Assertion
 from .lines import split_lines
 from .markdown import SOFT_BREAK, statement_lines
@@ -40,11 +39,9 @@ from .model import (
     RESOURCES,
     STATUSES,
     Item,
-    covers,
     generator_defect_faults,
     generator_faults,
     is_generator,
-    is_under,
     live_recurrences,
     misread_faults,
     no_successor_faults,
@@ -74,7 +71,6 @@ from .release import (
     version_key,
 )
 from .roadmap import SENTENCE_BREAK, MilestoneStates, gate_status
-from .shell import COMMAND_ENDS, PIPES, Clause, Word, clause_commands, shell_words
 from .store import CITED_ID_RE, ID_PATTERN, ID_RE, declared_item_file, filename_for
 from .vcs import (
     DEFAULT_BRANCHES,
@@ -84,9 +80,7 @@ from .vcs import (
     LostReport,
     PullRequestHistory,
     RecordReport,
-    WrittenReport,
 )
-from .verify import LandedReport, file_arguments, never_fails, reads_check_output, reenters_verify
 
 REQUIRED_BRIEF = ("**Problem.**", "**Why it matters.**")
 DONE_WHEN = "**Done when.**"
@@ -616,13 +610,9 @@ class Report:
     errors: list[str] = field(default_factory=list)
     advisories: list[str] = field(default_factory=list)
     declined: list[str] = field(default_factory=list)
-    #: What running the items' own commands cost this run. Not a finding, and
-    #: kept out of the three lists above for that reason: nothing here asks to
-    #: be resolved. `_note_cost` says why it is reported at all.
-    cost: str = ""
-    #: Which settings governed this run. Not a finding either, and kept out of
-    #: the three lists for the same reason `cost` is. `_note_settings` says why
-    #: it is reported at all.
+    #: Which settings governed this run. Not a finding, and kept out of the
+    #: three lists above for that reason: nothing here asks to be resolved.
+    #: `_note_settings` says why it is reported at all.
     settings: str = ""
 
     @property
@@ -832,52 +822,6 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
                 "label carrying its date, such as `**Measured 2026-11-21.**`"
             )
 
-    # What the command may *be*, once it is present - the decidable half of the
-    # contract `PL-6TP8` settled, which until now was carried only by a table in
-    # the `docket` skill. Open items only: a closed command is a record of what
-    # was run on a tree that no longer exists, and rewriting one replaces the
-    # command that proved the work with one that never ran it.
-    if item.is_open and item.verify and _verify_prerequisite_refused(item, config):
-        redundant = _redundant_pytest_clause(item.verify, config.collected_test_paths)
-        if redundant is not None:
-            report.errors.append(
-                f"{where}: its `verify:` runs `{redundant}` beside a separate "
-                "discriminating clause, so it proves the tree twice - "
-                f"`{config.check_command}` already collects that target, and every "
-                "consumer of the field runs it. Record the discriminator alone"
-            )
-
-    # The first obligation that contract puts on a command, made mechanical
-    # (`PL-Q8RQ`): its failure before the work is an ordinary exit 1, never
-    # pytest's 5. A `-k` over the collected trees can give only 0 or 5, and a
-    # substring can be satisfied by another item's test; `_k_selector_clause`
-    # has the reasoning and what it leaves alone.
-    if item.is_open and item.verify and _verify_k_selector_refused(item, config):
-        selector = _k_selector_clause(item.verify, config.collected_test_paths)
-        if selector is not None:
-            report.errors.append(
-                f"{where}: its `verify:` clause `{selector}` narrows a pytest run with "
-                "`-k`, so it can never fail the ordinary way the field needs - over a "
-                f"tree `{config.check_command}` collects it selects tests that command "
-                "already proves (exit 0) or selects none (exit 5, which reads as a "
-                "correct failure until any test anywhere comes to carry the substring). "
-                "Record a `grep -q` for the `def` of the test the work adds instead"
-            )
-
-    # The rules above refuse one shape each; this refuses every shape nobody has
-    # argued for (`PL-1P5V`). `not-delegable` is the way out, as it is at `ready`:
-    # an item whose proof cannot be one of the admitted shapes says why, and is
-    # then not handed to a worker whose `docket verify` would trust the command.
-    if (
-        item.is_open
-        and item.verify
-        and not item.not_delegable
-        and _verify_allowlist_applies(item, config)
-    ):
-        refusal = verify_shape_refusal(item.verify)
-        if refusal is not None:
-            report.errors.append(_allowlist_error(where, refusal, config))
-
     # A safety class forces the top band, because that is where work able to
     # reach a wrong clinical value belongs. `blocked` earns a narrow exception:
     # a blocked item is not in the set `next` chooses from, so its band is a
@@ -974,48 +918,6 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
             "command runs with an argument nobody wrote: a `! grep -q` then passes on "
             "grep's exit 2. Put the whole command on the `verify:` line"
         )
-    # An error rather than an advisory because nothing here needs judgment:
-    # whether the command names `docket verify` is decidable, and there is no
-    # reading of it that is worth keeping. Running another item's command
-    # proves nothing about this one, and running this one's re-enters the
-    # command doing the running.
-    if item.verify and reenters_verify(item.verify):
-        report.errors.append(
-            f"{where}: its `verify:` command runs `docket verify`, which is the "
-            "command that executes an item's `verify:` field - so running it would "
-            "run this line again, one level per run, until the process table gives "
-            f"out. Prove the item another way: read the store (`grep` over "
-            f"{config.items_dir}), or pair a command that passes today with a "
-            "`grep` for what the work adds."
-        )
-    # Beside the refusal above and for the same reason: the question is
-    # decidable from the field, so the tier that runs the command has nothing to
-    # add. `--verify` found this one on `PL-4W2L`'s branch, where three items
-    # carried `verify: true` - but only after the push, and only in CI, because
-    # `make check` runs `docket check` bare. Both halves of what CI printed that
-    # day are answered here now: this one, and the shared command below
-    # (`PL-J3WK`).
-    if item.verify and never_fails(item.verify):
-        report.errors.append(
-            f"{where}: its `verify:` command is `{item.verify.strip()}`, which exits 0 "
-            "against every tree there has ever been, so it specifies nothing and "
-            "`docket verify` would ACCEPT a branch that did none of the work. Name "
-            "something only the work creates, and run the command and see it fail "
-            "before recording it"
-        )
-    # An advisory rather than an error, unlike the refusal above: whether a
-    # shell line reads a command's output is a judgment, and the exit-status
-    # form beside it is bounded at one level; since `PL-6TP8` the `grep` is
-    # written alone, with no health check ahead of it.
-    if item.verify and (shape := reads_check_output(item.verify)):
-        report.advisories.append(
-            f"{_where(item)}: its `verify:` command runs `docket check` and {shape}. "
-            "A nested run is told not to replay the open items' commands, so it never "
-            "prints the landed advisory - a `grep` for that answer matches nothing "
-            "whether the work is done or not, and an inverted one passes on the "
-            "strength of it. Write a `grep` for what the work adds instead, with "
-            "nothing ahead of it."
-        )
     if item.not_delegable and item.not_delegable.lower() in ("no", "yes", "true", "false"):
         report.errors.append(
             f"{where}: `not-delegable` holds the reason the item is withheld, not a "
@@ -1103,444 +1005,6 @@ def _verify_required_at_close(item: Item, config: Config) -> bool:
     if config.verify_required_at_close_from is None:
         return False
     return item.closed is not None and item.closed >= config.verify_required_at_close_from
-
-
-#: Options that make a pytest run select something narrower than the files
-#: named on its command line. Any of them, and the clause is no longer a whole
-#: file's suite proved twice, so the rule below leaves it alone. `--cov` is
-#: here because a coverage threshold is the one shape the `docket` skill
-#: prescribes pytest for. A `-k` discriminates nothing either, and
-#: `_k_selector_clause` refuses it on its own account.
-_PYTEST_SELECTORS = ("-k", "-m", "--cov", "--deselect", "--lf", "--ff")
-
-#: Options that consume the token after them, so that token is a value rather
-#: than a path to run. `--x=y` spellings consume nothing and need none of
-#: this. The selectors among them matter only to `_k_selector_clause`, which
-#: reads the paths past a `-k` where `_pytest_targets` returns at it.
-_PYTEST_VALUE_OPTIONS = frozenset(
-    {
-        "-k",
-        "-m",
-        "--deselect",
-        "-n",
-        "-p",
-        "-o",
-        "-c",
-        "-r",
-        "--dist",
-        "--maxfail",
-        "--durations",
-        "--rootdir",
-        "--ignore",
-    }
-)
-
-#: Shell operators after which a clause's exit status is no longer the pytest
-#: run's own: a pipeline answers with its last command's, `||` replaces a
-#: failure, and `;` or `&` discards it. `;&` and `;;&` go on to run another
-#: `case` clause's commands. `;;` ends a command too, but it ends the `case`
-#: as well, which then exits with the status of the last command it ran
-#: (Bash Reference Manual §3.2.5.2 "Conditional Constructs"). Both sets are
-#: `docket.shell`'s, so `verify` reads where a command ends as this does
-#: (`PL-RHPK`).
-_STATUS_REPLACED = PIPES | (COMMAND_ENDS - {";;"})
-
-
-def _after_pytest(clause: Clause, command: str) -> list[Word | str] | None:
-    """The tokens following the pytest executable, or `None` if nothing runs it.
-
-    `command` is the line `clause` was read from. pytest runs where a simple
-    command invokes it, by name or by path, past a wrapper or `uv run`, or as
-    `python -m pytest`, as `docket.shell.invocation` reads it, so a word
-    `pytest` handed to another program runs nothing (`PL-RHPK`).
-    """
-    for run in clause_commands(clause, command):
-        found = run.invokes()
-        if found is not None and found[0] == "pytest":
-            end = run.spans[found[1] - 1][1]
-            return [
-                token
-                for token, (start, _) in zip(clause.tokens, clause.spans, strict=True)
-                if start >= end
-            ]
-    return None
-
-
-def _texts(tokens: Sequence[Word | str]) -> list[str]:
-    """Each token as it reads: a word with its quotes removed, or the operator itself."""
-    return [token.text if isinstance(token, Word) else token for token in tokens]
-
-
-def _run_targets(arguments: Sequence[str]) -> list[str]:
-    """The paths among a pytest run's arguments, past every option and its value."""
-    targets: list[str] = []
-    skip = False
-    for token in arguments:
-        if skip:
-            skip = False
-            continue
-        if token in _PYTEST_VALUE_OPTIONS:
-            skip = True
-            continue
-        if not token.startswith("-"):
-            targets.append(token)
-    return targets
-
-
-def _pytest_targets(clause: Clause, command: str) -> list[str] | None:
-    """The paths a pytest clause runs, or `None` if it is not one to read.
-
-    `None` covers two cases that are both "this is not a redundant health
-    check": the clause does not invoke pytest at all, or it carries a
-    selector, which makes the run something narrower than a proof that a
-    file's suite is green. A command with an unbalanced quote has no clauses
-    to ask about, because `shell_words` cannot read it.
-
-    An operator after the run - a pipe, a `;`, a redirection - stays among the
-    arguments as it stands, where no collected tree holds it, so a run with
-    anything after it but its own arguments is left alone: whether that still
-    makes it a second proof is a shape nobody has asked this rule to judge.
-
-    An empty list is the meaningful answer rather than a missing one: a bare
-    `pytest` with no path runs the whole suite, which is exactly what
-    `check_command` runs.
-    """
-    rest = _after_pytest(clause, command)
-    if rest is None:
-        return None
-    arguments = _texts(rest)
-    if any(argument.startswith(_PYTEST_SELECTORS) for argument in arguments) or any(
-        "::" in argument for argument in arguments
-    ):
-        return None
-    return _run_targets(arguments)
-
-
-def _redundant_pytest_clause(command: str, collected: tuple[str, ...]) -> str | None:
-    """The clause that re-runs tests `check_command` already collects, if any.
-
-    The shape `PL-6TP8` retired, reduced to the half that needs no judgment.
-    A `verify:` command records the discriminator and nothing else, because
-    every consumer that needs the tree proven runs `check_command` itself -
-    `docket verify` as a line of its own report, `docs/worker.md` after the
-    command, CI ahead of the replay. So a pytest run over a tree that command
-    already collects proves the same thing twice, and `PL-FZ58` measured what
-    the second proof costs: three test files carrying 59% of a whole-store
-    replay's serial time, each re-run once per item whose command named it.
-
-    What makes it decidable is the *other* clause. Which half of a paired
-    command is the prerequisite is normally a question about the item's work -
-    an item whose work is making `doc_check` pass has `doc_check.py check` as
-    its discriminator, not as a preamble - and guessing at that is scripting
-    the judgment. Here the author has already answered it: a separate,
-    non-pytest clause is present, so the pytest run is not what discriminates,
-    whatever the item turns out to be about. A command whose only clause is
-    the pytest run says the opposite and is left alone.
-
-    Cut at `&&` alone, which is what every command in this store uses and the
-    only separator that carries the "and then" this reads - by `shell_words`,
-    the reading every rule over a command takes, so an `&&` inside quotes is
-    part of an argument rather than the end of a clause.
-    """
-    if not collected:
-        return None
-    clauses = shell_words(command).clauses
-    if len(clauses) < 2:
-        return None
-    pytest_clauses = [clause for clause in clauses if _pytest_targets(clause, command) is not None]
-    if not pytest_clauses or len(pytest_clauses) == len(clauses):
-        return None
-    for clause in pytest_clauses:
-        targets = _pytest_targets(clause, command) or []
-        if all(is_under(target, collected) for target in targets):
-            return clause.text
-    return None
-
-
-def _k_selector_clause(command: str, collected: tuple[str, ...]) -> str | None:
-    """The clause that narrows a pytest run with `-k` and answers with its status, if any.
-
-    `PL-6TP8`'s first obligation on a command, made mechanical (`PL-Q8RQ`): its
-    failure before the work is an evaluation - an ordinary exit 1 - and never
-    pytest's 5. Over a tree `check_command` collects, a `-k` run cannot be one.
-    Every test there passes or that command is red, so the run selects tests it
-    already proves (0) or selects none (5, or 4 for a path the work has yet to
-    create). Non-zero, so it reads as a command correctly failing, and it goes
-    on reading that way until any test anywhere comes to carry the substring:
-    `PL-S5YM`'s `-k covered` began passing when an unrelated merge added one,
-    and three sessions diagnosed the red `main` that followed inside four
-    minutes (`PL-99YZ`).
-
-    Refused wherever it stands in the `&&` chain, because position decides only
-    which half of the contract the clause breaks. Ahead of another clause, its
-    5 is the command's answer before the work and nothing behind it runs.
-    Behind one that fails first, it runs only once that clause passes, and
-    then re-proves what `check_command` proves - the prerequisite shape
-    `_redundant_pytest_clause` refuses, which leaves any run carrying `-k` to
-    this rule. `PL-W4XQ` was recorded in the first shape on that rule's first
-    day for exactly that reason.
-
-    Three runs are left alone, each because the reading above stops being true.
-    A run whose status an operator replaces - piped into a `grep` of its
-    output, as `PL-205P`'s was - answers with the other command's status. A run
-    carrying a coverage option can fail on a threshold, which `check_command`
-    does not measure. And a run over a tree `check_command` does not collect
-    may select a test that is failing today, so it can be an evaluation after
-    all; that is the condition that would falsify the rule, and why the trees
-    are declared rather than assumed.
-
-    `-m` narrows the same way and would fail the same way, but no command in
-    this store has ever carried one, so this reads `-k` alone rather than a
-    shape nobody writes. Clauses are read by `shell_words`, as
-    `_redundant_pytest_clause` reads them, so only an operator the shell would
-    act on replaces the status: a `|` inside quotes is part of a word.
-    """
-    if not collected:
-        return None
-    for clause in shell_words(command).clauses:
-        rest = _after_pytest(clause, command)
-        if rest is None or any(
-            isinstance(token, str) and token in _STATUS_REPLACED for token in rest
-        ):
-            continue
-        arguments = _texts(rest)
-        if not any(argument.startswith("-k") for argument in arguments):
-            continue
-        if any(argument.startswith("--cov") for argument in arguments):
-            continue
-        if all(is_under(target, collected) for target in _run_targets(arguments)):
-            return clause.text
-    return None
-
-
-def _verify_k_selector_refused(item: Item, config: Config) -> bool:
-    """Whether the `-k` rule applies to this item: captured on or after its cutover.
-
-    Anchored and grandfathered as `_verify_prerequisite_refused` is, for the
-    same reason - the commands already recorded are a closed set that drains as
-    each item is started - and leaking in the same bounded way. A date of its
-    own because the two rules close different sets: `PL-W4XQ` was captured on
-    the prerequisite rule's first day carrying a `-k`, which that rule does not
-    read, so sharing its date would refuse it the moment this landed.
-    """
-    if config.verify_k_selector_refused_from is None:
-        return False
-    return item.added is not None and item.added >= config.verify_k_selector_refused_from
-
-
-def _verify_prerequisite_refused(item: Item, config: Config) -> bool:
-    """Whether the shape rule applies to this item at all.
-
-    Anchored to the capture date, and grandfathering the commands already
-    recorded, for the reason `PL-6TP8` chose repair-as-started over a
-    one-pass strip: removing a clause from an item nobody has started writes
-    into a file against every branch in flight, and the bill falls as the
-    queue turns over anyway. The set this exempts is closed - nothing can
-    join it, since the test is the capture date - which is the property that
-    makes the grandfathering drain rather than persist.
-
-    It leaks in a bounded way: an item captured before the cutover can still
-    have a command written after it. The alternative is a second date written
-    by hand when the command is recorded, which is a field that can be wrong.
-    """
-    if config.verify_prerequisite_refused_from is None:
-        return False
-    return item.added is not None and item.added >= config.verify_prerequisite_refused_from
-
-
-# --- the admitted shapes of a `verify:` command -------------------------------
-#
-# `PL-1P5V`: every rule above refuses one shape, and each was written after its
-# shape had failed - a red `main`, a dead command, a finished item read as
-# absent. Seven arrived in the four days after `PL-6TP8` closed. A list of
-# refused shapes never closes, so this inverts it: a command is one of a few
-# shapes whose exit status is known to mean what the field needs, or it is
-# refused when it is written (project owner, 2026-09-23, ratified, over a
-# structured `verify:` field). A shape joins the list by an argument recorded
-# beside it, not by failing first. A `grep` clause's words are read by
-# `grep.read_grep`, which `grep.wrapped` reads them through too, and the options
-# a clause may carry are `grep.GREP_FLAGS`, with the reason beside them.
-
-# regex: a percentage from 0 to 100 with an optional decimal part, in ASCII
-# digits. `float` also reads `nan`, `inf`, exponents and values past 100.
-_PERCENT_RE = re.compile(r"(?:100|[1-9]?[0-9])(?:\.[0-9]+)?")
-_COVERAGE_RUN = ("uv", "run", "pytest")
-
-
-def _coverage_refusal(words: Sequence[Word]) -> str | None:
-    """Why a `uv run pytest` clause is not the whole-suite coverage run, if it is not.
-
-    The one `pytest` shape with an exit status of its own to give. A run of
-    tests `make check` collects re-proves that check, so it passes or selects
-    nothing (`PL-6TP8`, `PL-Q8RQ`); a coverage threshold is something that check
-    does not measure, so its failure is an evaluation. It takes the dotted
-    module, never the path, and no test path, because coverage of a module is
-    the union of everything that exercises it - the two ways all six commands
-    written here before the table existed were wrong.
-    """
-    options = [word.text for word in words[len(_COVERAGE_RUN) :]]
-    modules = [option for option in options if option.startswith("--cov=")]
-    thresholds = [option for option in options if option.startswith("--cov-fail-under=")]
-    for option in options:
-        if option not in modules and option not in thresholds and option != "-q":
-            return (
-                f"runs `pytest` with `{option}`, where the one admitted `pytest` shape is "
-                "the whole-suite coverage run: `--cov=`, `--cov-fail-under=` and `-q` "
-                "alone, and no test path, because coverage of a module is the union of "
-                "the whole suite"
-            )
-    if not modules:
-        return (
-            "runs `pytest` measuring no coverage, which re-proves what the project's "
-            "check proves: it passes, or selects nothing"
-        )
-    for option in modules:
-        module = option.split("=", 1)[1]
-        if not all(part.isidentifier() for part in module.split(".")):
-            return f"gives `{option}`, where `--cov=` takes the dotted module, never a path"
-    percent = thresholds[0].split("=", 1)[1] if len(thresholds) == 1 else ""
-    if not _PERCENT_RE.fullmatch(percent) or float(percent) == 0:
-        return (
-            "gives the coverage run no single `--cov-fail-under=` percentage above "
-            "zero, so it passes whenever the suite does"
-        )
-    return None
-
-
-def _grep_refusal(words: Sequence[Word]) -> str | None:
-    """Why a clause is not a `grep -q` or `! grep -q` for a pattern in named files, if it is not.
-
-    `! grep` is admitted, and the reason is the direction it fails in. A
-    `grep -q` for what the work adds fails quietly when it is wrong - a typo,
-    a file that moved (`PL-CWD4`) - because "never passes" reads as work not
-    started. A `! grep -q` for what the work removes passes when it is wrong: a
-    typo, a line another branch reworded, a file another branch deleted (grep's
-    2 negated to 0). A passing open command is already an error, and the
-    changed-path replay runs on the branch that edits the file it reads - so
-    every way `! grep` goes wrong is reported loudly, on the branch that caused
-    it. 25 open commands asserted an absence on 2026-09-23, most of them a
-    stale sentence a fix removes, and a `grep` for its replacement would
-    dictate the fix's wording.
-
-    A phrase the document wraps across a line break is the one such fault the
-    tree decides, in both directions - `grep` fails on it, and `! grep` passes
-    while it is there - so the replay and `docket verify` name it from
-    `grep.wrapped` rather than leaving it to read as either (`PL-RR1N`).
-    """
-    clause = read_grep(words)
-    return clause if isinstance(clause, str) else None
-
-
-def verify_shape_refusal(command: str) -> str | None:
-    """Why a `verify:` command is not one of the admitted shapes, or `None` when it is one.
-
-    The shapes are the ones the `docket` skill's triage table has prescribed
-    since `PL-6TP8`, and each is admitted for a reason its exit status carries:
-
-    - `grep -q '<pattern>' <file>...` for what the work adds - a test's `def`,
-      a sentence - which fails with an ordinary 1 until the work exists and
-      which nothing unrelated satisfies;
-    - `! grep -q '<pattern>' <file>...` for what the work removes, admitted for
-      the reason `_grep_refusal` gives;
-    - several of those joined by `&&`;
-    - `uv run pytest --cov=<module> --cov-fail-under=<N>`, alone, the one run
-      whose threshold the project's own check does not already prove.
-
-    The answer is a predicate for the sentence "its `verify:` ...", naming the
-    first thing found that no admitted shape uses. Every shape the rules above
-    refuse one at a time is outside the list, so the list refuses them too, as
-    it will refuse the next one - `-m`, which `_k_selector_clause` names as
-    unread, among them.
-    """
-    reading = shell_words(command)
-    if reading.refusal is not None:
-        return reading.refusal
-    # Nothing refused, so `&&` was the only operator, and the cut took each one.
-    clauses = [
-        [token for token in clause.tokens if isinstance(token, Word)] for clause in reading.clauses
-    ]
-    if any(not clause for clause in clauses):
-        return "has an `&&` with no clause on one side of it"
-    for clause in clauses:
-        if tuple(word.text for word in clause[: len(_COVERAGE_RUN)]) == _COVERAGE_RUN:
-            if len(clauses) > 1:
-                return (
-                    f"runs `{' '.join(word.text for word in clause)}` beside another clause, "
-                    "where the one admitted `pytest` shape - the whole-suite coverage run - "
-                    "stands alone"
-                )
-            return _coverage_refusal(clause)
-        refusal = _grep_refusal(clause)
-        if refusal is not None:
-            return refusal
-    return None
-
-
-def _verify_allowlist_applies(item: Item, config: Config) -> bool:
-    """Whether the admitted shapes bind this item by its capture date.
-
-    Grandfathered as the rules above are - the commands already recorded are a
-    closed set, repaired as each item is started - with one difference, which is
-    what the rest of `PL-1P5V` is for. Those rules leak an item captured before
-    their date that has its command written after it, and most commands written
-    in the weeks after a cutover are that case: the items waiting for triage,
-    and the legacy commands rewritten as their items start. `_check_written`
-    holds those to the list on the branch that writes them, and `docket set`
-    at the moment it does.
-    """
-    if config.verify_allowlist_from is None:
-        return False
-    return item.added is not None and item.added >= config.verify_allowlist_from
-
-
-def _allowlist_error(where: str, refusal: str, config: Config, written: bool = False) -> str:
-    subject = "its `verify:`, written on this branch," if written else "its `verify:`"
-    return (
-        f"{where}: {subject} {refusal}. Since {config.verify_allowlist_from} a new command "
-        "is one of the admitted shapes: a `grep -q` for what the work adds, a `! grep -q` "
-        "for what it removes, several of those joined by `&&`, or `uv run pytest "
-        "--cov=<dotted.module> --cov-fail-under=<N>` alone. Record one of them, or say in "
-        "`not-delegable` why none can prove this item"
-    )
-
-
-def _check_written(
-    report: Report, written: WrittenReport | None, config: Config, today: date
-) -> None:
-    """Hold a command written on this branch to the admitted shapes, whatever its item's age.
-
-    The capture date cannot say when a command was written; the branch that
-    changes it can. So an open item captured before `verify_allowlist_from`
-    whose command this branch wrote or rewrote is held to the list from that
-    date on, which reaches the triage of old items and the repair of legacy
-    commands as each item is started - the writes the capture date leaks. A
-    command the branch left as the base had it stays grandfathered, so a
-    session editing an old item for any other reason is asked for nothing.
-
-    One-sided, as `_check_records` is: a base that cannot be read declines, and
-    no branch is accused of a write it did not make.
-    """
-    if written is None or config.verify_allowlist_from is None:
-        return
-    if today < config.verify_allowlist_from:
-        return
-    if not written.known:
-        report.declined.append(
-            f"whether a `verify:` written here is one of the admitted shapes: {written.declined}"
-        )
-        return
-    for item in report.items:
-        if (
-            item.identifier not in written.identifiers
-            or not item.is_open
-            or not item.verify
-            or item.not_delegable
-            or _verify_allowlist_applies(item, config)  # `_check_item` has already judged it
-        ):
-            continue
-        refusal = verify_shape_refusal(item.verify)
-        if refusal is not None:
-            report.errors.append(_allowlist_error(_where(item), refusal, config, written=True))
 
 
 def _check_milestones(report: Report, version: str | None) -> None:
@@ -1846,283 +1310,11 @@ def _check_provenance(
             )
 
 
-#: The environment variable through which `tools/headless_worker.py` names the
-#: one item its worker is working (`PL-WJJ8`). On that branch the item's own
-#: `verify:` passing is the work done, not a stale item, and `docs/worker.md`
-#: leaves its closing to the reviewer, so `_check_landed` reports it as an
-#: advisory there instead of an error.
-WORKER_ITEM_ENV = "DOCKET_WORKER_ITEM"
-
-
-def _check_landed(report: Report, landed: LandedReport | None, worked: str | None = None) -> None:
-    """Say when an open item's own evidence of doneness already holds.
-
-    An item is closed by hand, so nothing notices work that merges without its
-    `status` being set. It keeps its place in `next`, `wave` and `gate` count
-    it open, and a session picks it up and re-derives what is already on
-    `main` before finding out.
-
-    An advisory rather than an error, and it names candidates rather than
-    reaching a verdict, because a passing command is consistent with two
-    findings this cannot tell apart: the work landed, or the command does not
-    discriminate and would have passed before the work too. Both want a
-    person; neither is the checker's to decide. Measured against this store on
-    2026-09-01 the second was every one of the eight it named, which is the
-    reason the wording leads with the possibility rather than the conclusion.
-
-    Both readings do close, which is what keeps this from becoming an advisory
-    that fires forever and is skimmed past: the first is discharged by setting
-    `status: done`, the second by giving the item a command that fails until
-    its work exists.
-
-    The two cases where the second reading is certain *before* anything runs are
-    no longer reported from here. A command shared with another open item, and
-    one that cannot fail at all, are both decidable by reading the store, so
-    `_check_shared_verify` and `_check_item` refuse them on a bare `docket
-    check` - the gate a session runs before it pushes. Reported here as well
-    they would be a second sentence about a defect the run had already refused,
-    and only for the subset that happened to pass (`PL-J3WK`).
-
-    A blocked item is the case where only one of the two readings survives, and
-    it is worded separately for that reason (`PL-RC0M`). Work nobody can start
-    has not landed, so a passing command there can only mean the command does
-    not discriminate - and telling that session to "close it" would send it at
-    the one repair that is certainly wrong. Blocked items reach this at all
-    only on a run narrowed to what a branch changed, so the finding arrives
-    where somebody is already editing the item rather than on a sweep of the
-    whole store.
-
-    A command that could not answer at all - killed at the limit, or not found
-    by the shell - is reported under "not checked" rather than as an advisory,
-    because there is no finding to report: the run looked and was stopped. The
-    distinction is the same one `landed.declined` draws for a whole run, made
-    per item, and it is what keeps `considered` honest. `PL-T940` carries the
-    case that made it necessary: without a status of its own a killed command
-    returned 1, which is what a failing test returns, so the item vanished
-    from every finding while the report stayed clean.
-
-    A command that reads past the tree is the one case where neither reading is
-    safe to assert, and it is an advisory for that reason (`PL-205P`). Its exit
-    status is a fact about the world at the moment it ran, so it can flip with
-    no commit behind it: `PL-8GQW`'s `git ls-remote --tags origin v0.4.30`
-    failed correctly when `#730` filed it, and began passing the moment the
-    project owner pushed the tag - reddening `main` across six commits by five
-    unrelated sessions while the repository had not changed. No branch could
-    have shown it, because no branch changed anything. `ROADMAP.md` settled the
-    same question at the other end of that window - a release whose tag has not
-    been pushed yet is an advisory "rather than an error: failing it would turn
-    `make check` red on every release branch" - and this is that window seen
-    from the far side.
-
-    A `grep` clause whose phrase its file holds only across a line break is
-    the one verdict here read from the tree rather than from the run
-    (`PL-RR1N`), so it is an error whatever the command exited with. `grep`
-    reads a line at a time, so such a clause fails however the work stands,
-    or under `!` passes, and neither reading above applies: the failure is
-    the case that otherwise reads as work not done.
-
-    This is the replay's clause of the `verify:` contract (`PL-6TP8`,
-    `subprojects/docket/README.md` § "What a `verify:` exit status proves, and to whom"): exit 0
-    is the finding, the never-evaluated statuses are refusals, and a plain
-    failure is not read as evidence that the item is open.
-    """
-    if landed is None:  # a caller that did not ask; every command but `check`
-        return
-    if not landed.known:
-        report.declined.append(f"open items' own `verify:` commands: {landed.declined}")
-        return
-
-    # Ahead of the `passing` guard below, because these are owed whether or not
-    # anything passed. An item whose command could not answer is not a finding
-    # about the item - it is this run saying it has nothing to say about it -
-    # so it belongs under "not checked" beside the runs that declined whole,
-    # and it must not be reachable only when some other item happens to pass.
-    if landed.timed_out:
-        one = len(landed.timed_out) == 1
-        report.declined.append(
-            f"{', '.join(landed.timed_out)}: `verify:` command killed at the "
-            f"{landed.limit:g}s limit, so nothing is claimed about "
-            f"{'it' if one else 'them'} - the command is either too slow for a "
-            "check that runs on every `make check`, or it hangs"
-        )
-    if landed.unavailable:
-        one = len(landed.unavailable) == 1
-        report.declined.append(
-            f"{', '.join(landed.unavailable)}: `verify:` command was not found by the "
-            f"shell, so nothing is claimed about {'it' if one else 'them'} - "
-            f"{'its' if one else 'their'} toolchain is missing here, or the command is "
-            "misspelled"
-        )
-
-    # An error rather than an advisory since `PL-71P4`, and the ordering is what
-    # made that affordable: `PL-L9JS` repaired the seven items that passed on a
-    # clean tree first, so the rule needed no cutover date, no grandfathered set
-    # and no second dated policy beside `verify_required_at_close_from`. Both states it
-    # reports are actionable and neither may sit - a command that passes without
-    # its work is the delegation gate open, and one whose work landed is an item
-    # that should have closed. The transient case, a session that ran the work
-    # before editing its item, resolves in the same commit the skill already
-    # requires: `status: done` travels with the work.
-    # Before the two findings below and subtracted from both. A command that
-    # reads the remote answers about the world rather than about this commit,
-    # so neither the error's "close it" nor the blocked clause's "the command
-    # does not discriminate" is safe to assert: the item may simply be open
-    # because the work it records landed somewhere no commit can show. It is
-    # still worth saying - these are exactly the items nobody remembers to
-    # close - so it is an advisory, which prints on every `docket check` a
-    # session runs, rather than an error on a default-branch run that by
-    # `PL-205P`'s own measurement nobody watches. `ROADMAP.md` decided the
-    # same question on the other side of the same window: the tag a release
-    # has not yet been given is an advisory "rather than an error: failing it
-    # would turn `make check` red on every release branch".
-    if landed.external:
-        one = len(landed.external) == 1
-        report.advisories.append(
-            f"{', '.join(landed.external)} {'is' if one else 'are'} open and "
-            f"{'its' if one else 'their'} `verify:` command now passes, but that "
-            f"command reads past the tree, so {'it' if one else 'they'} can have "
-            f"flipped with no commit behind {'it' if one else 'them'} - the work is "
-            f"the project owner's and the remote is where it shows. Close "
-            f"{'it' if one else 'them'} if the work is done; nothing here fails until "
-            f"you do"
-        )
-
-    if landed.blocked:
-        one = len(landed.blocked) == 1
-        report.errors.append(
-            f"{', '.join(landed.blocked)} {'is' if one else 'are'} blocked but "
-            f"{'its' if one else 'their'} `verify:` command already passes. An item "
-            "nobody can start has not had its work land, so the only reading left is "
-            "that the command does not discriminate and `docket verify` would ACCEPT a "
-            "branch that did none of it: rewrite it to name something only the work "
-            "creates, and run it and see it fail before recording it"
-        )
-
-    # A verdict read from the tree rather than from the run (`PL-RR1N`), so it is
-    # reported whatever the command exited with. Neither reading below is why
-    # such a command passes, and "close it" would send a session at the wrong
-    # repair: the sentence a `! grep` was to see gone is still there.
-    for identifier, wraps in landed.wrapped:
-        report.errors.append(
-            f"{identifier}'s `verify:` greps for a phrase its file holds only across a "
-            f"line break, and `grep` reads one line at a time: "
-            f"{'; '.join(wrap.describe() for wrap in wraps)}. Rewrite the command to a "
-            "phrase one line holds, rather than the document to suit the command"
-        )
-
-    # Everything below is the two-reading finding, so the blocked, external and
-    # wrapped ids are taken out of it rather than reported twice under a
-    # question one of them has already answered.
-    named = (
-        set(landed.blocked)
-        | set(landed.external)
-        | {identifier for identifier, _ in landed.wrapped}
-    )
-    startable = tuple(identifier for identifier in landed.passing if identifier not in named)
-    # The item a headless worker is working passes because the worker did it,
-    # and the worker may not close it, so on its branch it is the third reading
-    # and an advisory. Every other item still takes the two-reading error.
-    if worked is not None and worked in startable:
-        startable = tuple(identifier for identifier in startable if identifier != worked)
-        report.advisories.append(
-            f"{worked} is the item this headless worker is working, and its `verify:` "
-            "command now passes, which is the work done. Leave its status as it is: "
-            "the reviewing session closes it (docs/worker.md)"
-        )
-    if not startable:
-        return
-    one = len(startable) == 1
-    message = (
-        f"{', '.join(startable)} {'is' if one else 'are'} open but "
-        f"{'its' if one else 'their'} `verify:` command already passes "
-        f"({len(startable)} of {landed.considered} checked). Either the work landed "
-        "and the item was never closed - close it - or the command does not "
-        "discriminate and proves nothing, in which case `docket verify` would ACCEPT a "
-        "branch that did none of the work: rewrite it to name something only the work "
-        "creates, and run it and see it fail before recording it"
-    )
-    report.errors.append(message)
-
-
-def _check_selects_nothing(
-    report: Report, landed: LandedReport | None, offered: frozenset[str] | None
-) -> None:
-    """Say when an item about to be offered has a `verify:` command that selects no test.
-
-    The counterpart to the check above, and the harder of the two to see. That
-    one is about a command that returns 0 when it should not; this is about a
-    command that returns non-zero for the wrong reason. `-k` matched no test
-    name, so pytest deselected the file, collected nothing and exited 5 - and
-    5 is not 0, so every reader of an exit status, this module's own
-    already-passes check included, takes it for a command that correctly
-    fails. The item then looks exactly like one whose work is still to do, and
-    goes on looking like it after the work as well, unless a test name happens
-    to match. `PL-D2GW` carried one for its whole life; nothing noticed.
-
-    A verdict rather than a candidate, unlike the already-passes advisory,
-    because `verify.selects_no_test` reads pytest's own exit code and pytest
-    only returns 5 for the one reason. It once stopped short of the repair,
-    because a `-k` naming the test the work had yet to write was the shape the
-    `docket` skill recommended, so only the item's author could say whether a
-    selector was behaving as intended. That ended with `PL-6TP8`, whose
-    contract makes the failure before the work an ordinary exit 1, and
-    `_k_selector_clause` now refuses the `-k` itself on anything captured from
-    its cutover. What this reaches is the set that cutover grandfathers, and
-    the repair for each is the same `grep`, so the sentence names it. It stays
-    an advisory because those commands are repaired as their items are
-    started, and an error here would force the one-pass repair that refuses.
-
-    Reported against what is about to be offered rather than against the whole
-    backlog, for the reason `_groom` states in the same words a few functions
-    below: when this was written the recommended shape was `-k` naming the
-    test the work would add, so every unstarted item using it selected nothing
-    until its work landed, and naming all of them fired on every run against
-    eighteen of thirty-one open items. That is the advisory that cannot reach
-    zero, and its cost is not the items it names but the next advisory, which
-    gets read the same way.
-
-    Narrowing rather than softening. The moment an item is offered is the
-    first moment its selector can be held against work somebody is about to
-    do; before that there is nobody to act on it. The store-wide total rides
-    along in the sentence so the scale of the finding is not lost - it is what
-    `PL-5QKT` measured and the reason this check exists.
-
-    A caller that supplied no `offered` names nothing: an advisory that
-    depends on ranking the queue is not owed by one that did not ask for a
-    ranking.
-
-    A declined run says so once, in `_check_landed`: it is one execution of
-    one set of commands, and two lines reporting the same refusal would read
-    as two checks having failed to run.
-
-    Pytest's 5 is one of the three never-evaluated statuses the `verify:`
-    contract lets a consumer name (`PL-6TP8`); `_check_landed` reports the
-    other two as not checked.
-    """
-    if landed is None or not landed.known or not landed.vacuous:
-        return
-    due = [identifier for identifier in landed.vacuous if identifier in (offered or frozenset())]
-    if not due:
-        return
-    one = len(due) == 1
-    report.advisories.append(
-        f"{', '.join(due)} {'is' if one else 'are'} next to be offered and "
-        f"{'its' if one else 'their'} `verify:` command selects no test "
-        f"({len(due)} of {len(landed.vacuous)} open item(s) "
-        f"whose command selects nothing, {landed.considered} checked): "
-        "pytest collected nothing and exited 5, "
-        "which is not 0, so the command reads as one that correctly fails and will read "
-        "that way after the work too - replace the selector with a `grep -q` for the "
-        "`def` of the test the work adds, as each item is started"
-    )
-
-
 def _note_settings(report: Report, source: SettingsSource | None) -> None:
     """Name the settings this run was governed by, every run, as a fact.
 
-    `_note_cost`'s argument below, applied to policy rather than to runtime: not
-    a finding, nobody is asked to act on it, and it earns its line because a
-    *change* in it is the signal.
+    Not a finding, and nobody is asked to act on it. It earns its line because
+    a *change* in it is the signal.
 
     Here that change is a class of bug this project has already had. `_load`
     resolves settings from the root of the repository holding the store, so
@@ -2156,72 +1348,6 @@ def _note_settings(report: Report, source: SettingsSource | None) -> None:
         f"settings: no {source.path}, so library defaults govern this run rather than "
         "this project's - a finding below may be this store read under the wrong "
         "policy rather than a store that is wrong"
-    )
-
-
-def _note_cost(report: Report, landed: LandedReport | None) -> None:
-    """Say what running the items' own commands cost, every run, as a fact.
-
-    Deliberately not an advisory. `CLAUDE.md` holds that a check firing every
-    run without changing a decision is a defect in the check, and that is
-    right - but it is a rule about findings, which demand judgment and go
-    stale as a class. This is the same category as the open-item counts beside
-    it: a number the reader scans, nobody is asked to act on, and which is
-    worth its line only because a *change* in it is the signal.
-
-    That change is what this exists to expose. Two comments in `verify.py`
-    carried these figures by hand and both went stale inside a fortnight, and
-    the reason neither was caught is that the run reported nothing about
-    itself: on a healthy store `docket check` printed no cost at all, so the
-    pool going from 10.1s to 28.8s and the serial total from 34.9s to 175.5s
-    were invisible to every session that paid them (`PL-9NKK`). A figure
-    nobody can see cannot be noticed to have moved.
-
-    `serial` is on the line for the same reason and is the more important
-    half. Concurrency holds `elapsed` roughly flat while the queue grows, so
-    the number a session feels is the one that hides the growth; the serial
-    total is what the store actually asks for and it climbs with every item
-    triaged to `ready`.
-
-    The worst command is given against `limit` rather than alone, because that
-    margin is the whole question `LANDED_TIMEOUT` is set to answer, and it is
-    the one a bare duration cannot be read for. It names the command whatever
-    the rest of the pool looks like, which is now the whole of the project's
-    answer on cost: an advisory beside this one named a command 30x above the
-    pool's median, and it was retired 2026-09-19 because a store whose typical
-    `verify:` is a test-file run has no such outlier to find. Measured that
-    day, the ratio fired on zero of thirteen real branch scopes and on nothing
-    in a whole store holding a 67.4 s command - and the silence was right,
-    because 1458 s of serial work over eight workers is a 182 s floor against
-    204 s elapsed, so the queue is what the run waits for rather than any one
-    command. `verify.py`'s constants block carries the count (`PL-G6J5`).
-
-    Which leaves this line carrying the signal alone, and it is built for that:
-    `serial` is where a store that is uniformly heavy shows up, and the margin
-    between `slowest` and `limit` is where a single command closing on the
-    timeout does.
-
-    Silent where the run declined, where no caller asked, and where the store
-    holds no command to run - printing zeros would be this module's own
-    cardinal error, an empty result rendered as a measured one.
-    """
-    if landed is None or not landed.known:
-        return
-    # A scoped run says so even when it found nothing to run, which is the one
-    # case with no cost to report and the one where silence misleads: a reader
-    # who is not told the run was narrowed reads an absent line as a whole
-    # store with no commands in it (`PL-SDHR`).
-    if landed.slowest is None:
-        if landed.scope:
-            report.cost = f"verify: no command to run in {landed.scope}"
-        return
-    one = landed.considered == 1
-    scope = f", scoped to {landed.scope}" if landed.scope else ""
-    report.cost = (
-        f"verify: {landed.considered} {'command' if one else 'commands'} in "
-        f"{landed.elapsed:.1f}s ({landed.serial:.1f}s serially){scope}; slowest "
-        f"{landed.slowest.identifier} {landed.slowest.seconds:.1f}s "
-        f"against a {landed.limit:g}s limit"
     )
 
 
@@ -2887,47 +2013,6 @@ def _check_filenames(report: Report, config: Config) -> None:
             if coupled
             else ""
         )
-    )
-
-
-def _check_verify_reads_undeclared(report: Report, verify_files: frozenset[str] | None) -> None:
-    """Advise on an open item whose `verify:` reads a file its `touches` does not declare.
-
-    A neighbour's work on that file can flip the command, so the replay blames
-    the wrong item and `bin/docket concurrent` answers as if the two were
-    independent (`PL-3DXV`, `PL-LBW5`). Five such commands were repaired by
-    hand before this check existed (`PL-ZB82`).
-
-    It reads only a plain path argument that is a file in the tree
-    (`file_arguments`, `verify_files`). A file the work will create, and a
-    path written in quotes, are left unreported rather than guessed at. An
-    advisory, because declaring the file is not always right: the reader
-    judges whether the command should read a declared file instead.
-    """
-    if verify_files is None:
-        return
-    found = [
-        f"{item.identifier} reads {', '.join(paths)}"
-        for item in sorted(report.items, key=lambda i: i.identifier)
-        if item.is_open
-        and item.verify
-        and (
-            paths := sorted(
-                path
-                for path in file_arguments(item.verify)
-                if path in verify_files and not any(covers(entry, path) for entry in item.touches)
-            )
-        )
-    ]
-    if not found:
-        return
-    one = len(found) == 1
-    report.advisories.append(
-        f"{len(found)} open item{'' if one else 's'} run{'s' if one else ''} a `verify:` "
-        f"reading a file {'its' if one else 'their'} `touches` do{'es' if one else ''} not "
-        f"declare, so a neighbour's work could flip {'it' if one else 'them'} "
-        f"(`PL-ZB82`): {'; '.join(found)}. Declare the file, or point the command at "
-        "one the item declares"
     )
 
 
@@ -4441,105 +3526,6 @@ def _check_lost(report: Report, lost: LostReport | None) -> None:
         )
 
 
-def _discriminating_clauses(command: str, config: Config) -> list[str]:
-    """The clauses of a `verify:` command that could prove its own item done.
-
-    A command is one or more clauses cut at `&&`, and only some of them
-    discriminate: `python3 tools/doc_check.py check && git check-ignore -q
-    subprojects/docket/uv.lock` proves its item by the second clause, the first
-    being the health half every consumer runs anyway. Left out, in the order
-    they are decided: a clause that cannot fail (`never_fails`), one the
-    project spells in `health_clauses`, and a selector-less pytest run over the
-    trees `collected_test_paths` says `check_command` already collects - the
-    same reading `_redundant_pytest_clause` gives that shape. A pytest run the
-    project has not said is collected counts as discriminating, which errs
-    toward reporting rather than toward silence. Whitespace outside a clause is
-    dropped and nothing inside it is touched, so the exactness the check below
-    argues for holds within each clause.
-    """
-    found: list[str] = []
-    for clause in shell_words(command).clauses:
-        text = clause.text.strip()
-        if not text or never_fails(text) or text in config.health_clauses:
-            continue
-        targets = _pytest_targets(clause, command)
-        if (
-            targets is not None
-            and config.collected_test_paths
-            and all(is_under(target, config.collected_test_paths) for target in targets)
-        ):
-            continue
-        found.append(text)
-    return found
-
-
-def _check_shared_verify(report: Report, config: Config) -> None:
-    """One discriminating `verify:` clause recorded against two or more open items.
-
-    A command proves an item done by failing until that item's work exists. Two
-    open items recording the same clause cannot both be in that relation to it:
-    whichever is worked first makes it pass, and from then on the clause
-    accepts a branch that did none of the other's work. So this is the
-    non-discriminating reading of a passing command arrived at *with certainty*,
-    and it is reached by counting the store rather than by running anything.
-
-    It used to be reached only by running something. `already_passing` computed
-    the same count, but over the subset that had just passed, so the finding
-    needed the replay to produce it - which was CI only then, since `make check`
-    ran `docket check` bare. Three items triaged with one command on 2026-09-20
-    passed every local gate and turned CI red after review had started, and the
-    two sentences CI printed that day are the two rules that now run here
-    (`PL-J3WK`, `PL-4W2L`).
-
-    Keyed by clause rather than by the whole command since `PL-BGMK`, which
-    counted before widening it. `PL-1YDK` recorded `git check-ignore -q
-    subprojects/docket/uv.lock` and `PL-8PT6`, filed twelve days later for the
-    same defect, recorded the same clause behind `python3 tools/doc_check.py
-    check`; the whole strings differ, so both were worked and only the landed
-    replay on `main` said so. Measured 2026-09-30 over 308 open items: the
-    whole-string key and the clause key each report 0 pairs today, and over the
-    21 duplicate pairs the store has recorded the whole string catches 1 and
-    the clause catches 2 - that pair being the second. A key that counted the
-    health clauses too reports 497 pairs, every one sharing `doc_check.py
-    check`, `bin/docket check` or a whole-file pytest run, which is why
-    `_discriminating_clauses` leaves those out. Keying on the test a `grep`
-    half names catches 0 of the 21, and `touches` as a second condition on the
-    clause key filters nothing, both clause catches sharing a path already.
-
-    Exact text equality within a clause, and deliberately no normalization.
-    Collapsing runs of whitespace would be right for the words of a shell line
-    and wrong inside a quoted argument, where `grep -q 'a  b'` and `grep -q
-    'a b'` read different files - so a rule that normalized would report two
-    different commands as one and do it as a hard failure. Exactness costs the
-    case nobody writes and keeps the rule decidable.
-
-    Items whose command cannot fail at all are left out: `_check_item` has
-    already told each of them to write a command that discriminates, and the
-    sharing is a consequence of the placeholder rather than a second defect.
-    The subtraction is the one `_check_landed` makes between its own findings,
-    applied across two checks. A pair sharing two clauses is reported once,
-    under the first.
-    """
-    holders: dict[str, list[str]] = {}
-    for item in report.items:
-        if item.is_open and item.verify and not never_fails(item.verify):
-            for clause in dict.fromkeys(_discriminating_clauses(item.verify, config)):
-                holders.setdefault(clause, []).append(item.identifier)
-    reported: set[tuple[str, ...]] = set()
-    for clause, identifiers in holders.items():
-        group = tuple(sorted(identifiers))
-        if len(group) < 2 or group in reported:
-            continue
-        reported.add(group)
-        report.errors.append(
-            f"{', '.join(group)} are open and record the same `verify:` clause, "
-            f"`{clause}` - whichever is worked first makes it pass, so it cannot prove "
-            "any one of them done and `docket verify` would ACCEPT a branch that did "
-            "none of the others' work. Give each one a clause naming something only "
-            "its own work creates"
-        )
-
-
 def _normalized_feature(name: str) -> str:
     """A feature name with the differences that are never meaningful removed."""
     return name.strip().lower().replace("_", "-").replace(" ", "-")
@@ -4604,7 +3590,6 @@ def analyze(
     config: Config | None = None,
     history: PullRequestHistory | None = None,
     offered: OfferedReport | None = None,
-    landed: LandedReport | None = None,
     closures: ClosureReport | None = None,
     records: RecordReport | None = None,
     lost: LostReport | None = None,
@@ -4619,25 +3604,21 @@ def analyze(
     assertions: tuple[Assertion, ...] | None = None,
     unread_instructions: Sequence[str] = (),
     settings_source: SettingsSource | None = None,
-    written: WrittenReport | None = None,
     gone: GoneReport | None = None,
-    verify_files: frozenset[str] | None = None,
-    worked: str | None = None,
     closing: ClosingReport | None = None,
 ) -> Report:
     """Validate and groom in one pass.
 
-    `history`, `offered`, `landed`, `closures` and `records` are the inputs that
+    `history`, `offered`, `closures` and `records` are the inputs that
     cannot be read from the store, so they are passed in rather than fetched
     here: this module stays pure and testable, and the caller decides whether
-    asking git, ranking the queue or running the items' own commands is worth
-    it. Omitting any of them skips the check that needs it rather than failing
-    it.
+    asking git or ranking the queue is worth it. Omitting any of them skips
+    the check that needs it rather than failing it.
 
     `offered` is the ids `next` would suggest. It is supplied by the three
     commands that put advisories in front of a person - `check`, `digest` and
     `next` - and by nothing else, so no command reports a count another
-    command would contradict. Like the other three it can decline: the ranking
+    command would contradict. Like the others it can decline: the ranking
     reads what is in flight, and a checkout that could not walk every ref has
     settled which items come next only as far as the refs it could read.
 
@@ -4674,20 +3655,9 @@ def analyze(
     instruction file whose front matter that reading declined, by file and
     reason (`PL-J8ML`).
 
-    `written` is which open items' `verify:` this branch wrote rather than
-    inherited from the default base - the authoring moment the capture date
-    cannot give, read from git by `check` and supplied by `set` for the command
-    it is writing. A caller that does not supply it leaves a command written for
-    an item older than `verify_allowlist_from` unjudged, as before `PL-1P5V`.
-
     `gone` is which open items' declared paths the tree lacks and the history
     held (`PL-8JY7`), read from the filesystem and git, which this module reads
     neither of. A caller that does not supply it leaves the advisory unraised.
-
-    `verify_files` is which of the paths open items' `verify:` commands name
-    are files in the tree (`PL-ZB82`), read from the filesystem, which this
-    module does not read. A caller that does not supply it leaves the advisory
-    unraised.
 
     `settings_source` is which `docket.toml` the caller resolved `config` from,
     and whether it was there. It is the one input that says nothing about the
@@ -4695,10 +3665,6 @@ def analyze(
     derived here: `config` arrives already applied, and a `Config` holding
     library defaults is indistinguishable from a project that wrote those
     values down. A caller that does not supply it leaves the reading unnamed.
-
-    `worked` is the item a headless worker is working on this branch, which
-    the caller reads from `WORKER_ITEM_ENV` (`PL-WJJ8`). A caller that does not
-    supply it reports every open item whose command passes as an error.
 
     `closing` is what `done.read_closing` found wrong with the records of the
     items this checkout closes (`PL-FN11`). It reads the tree and git, so the
@@ -4715,24 +3681,18 @@ def analyze(
     _check_generator_band(report, settings)
     _check_feature_spellings(report)
     _check_retired_features(report, settings)
-    _check_shared_verify(report, settings)
     _check_touched_items(report, settings)
     _check_filenames(report, settings)
     _check_gone_touches(report, gone, settings)
-    _check_verify_reads_undeclared(report, verify_files)
     _check_milestones(report, version)
     _check_release_notes(report, notes, version)
     _check_notes_references(report, unreferenced, unread_notes)
     _check_cut_window(report, window, notes)
     _check_provenance(report, history, closures)
-    _check_landed(report, landed, worked)
-    _check_selects_nothing(report, landed, ids)
     _note_settings(report, settings_source)
-    _note_cost(report, landed)
     _check_closures(report, closures)
     _check_records(report, records)
     _check_closing(report, closing)
-    _check_written(report, written, settings, today)
     _check_lost(report, lost)
     _ready_before_its_date(report, today)
     _groom(

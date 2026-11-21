@@ -64,12 +64,13 @@ checked here, and never left to a session to remember:
   measurement on a day, not a property of the environment. See
   `check_host_claims`.
 
-One more thing is *reported* rather than checked:
+One more thing is measured on every run, and capped:
 
-- **Resident instructions.** How many lines every session loads before it has
-  read anything - `CLAUDE.md` plus the rules carrying no `paths:` frontmatter
-  - and whether that total has grown against the default branch. Nothing here
-  passes or fails; see `check_resident_instructions` for why it must not.
+- **Resident instructions.** How many characters every session loads before it
+  has read anything - `CLAUDE.md` plus the rules carrying no `paths:`
+  frontmatter - and whether that total has grown against the default branch.
+  The instruction files fail the check when they hold more than
+  `RESIDENT_CAP`, or when that cap is raised; see `check_resident_cap`.
 
 What is left to judgment - whether a statement is still *true*, whether a
 `must` in `docs/MODEL.md` still matches the code, whether a milestone's
@@ -420,6 +421,19 @@ DIGEST_HOOK = ".claude/hooks/docket-digest.sh"
 # hook bounds its own `--unshallow` at 60 s, so anything past this is a
 # failure rather than a slow container, and the measurement declines.
 DIGEST_TIMEOUT = 120
+
+#: The most characters the instruction files may hold: `CLAUDE.md` and each
+#: rule with no `paths:`, which `ResidentInstructions.instruction_total` sums.
+#: The project owner set a cap on 2026-11-20, at the total once `PL-MR85`'s
+#: sort had moved the history and the procedures out (ratified, over leaving
+#: the size to the rule that each edit names what it replaces). The files had
+#: grown from 60,199 characters on 2026-09-19 to 92,660 on 2026-11-20 under
+#: that rule. Only lower it: `check_resident_cap` refuses a value above the
+#: default branch's (`PL-G3KZ`).
+RESIDENT_CAP = 55120
+#: The file that holds `RESIDENT_CAP`, read at the default branch to see
+#: whether a change raised it.
+RESIDENT_CAP_HOME = "tools/doc_check.py"
 
 # Below this many characters, a change to a resident file is a wording fix
 # rather than a rule arriving or leaving, and the advisories below stay quiet
@@ -1483,9 +1497,10 @@ class ResidentFile:
     characters: int
     lines: int
     #: `False` for a skill's description, which is payload but no instruction
-    #: file. `CLAUDE.md`'s resident-growth series was taken on the instruction
-    #: files alone, before `PL-44DG` added the descriptions and the digest to
-    #: the total, so the printed line names that subtotal too (`PL-DXF0`).
+    #: file. The cap counts the instruction files alone, and so did the growth
+    #: series that `docs/resident-instructions.md` records, taken before
+    #: `PL-44DG` added the descriptions and the digest to the total. So the
+    #: printed line names that subtotal too (`PL-DXF0`).
     instruction_file: bool = True
 
 
@@ -1536,7 +1551,7 @@ class ResidentInstructions:
 
     @property
     def instruction_total(self) -> int:
-        """Characters in the instruction files alone, the basis of `CLAUDE.md`'s growth series."""
+        """Characters in the instruction files alone, the total that `RESIDENT_CAP` bounds."""
         return sum(row.characters for row in self.files if row.instruction_file)
 
     @property
@@ -1983,11 +1998,11 @@ def check_source_tiers(root: Path, report: Report) -> None:
 
     **The tier and the adoption are separate fields because rule 2 is
     otherwise vacuous.** Every agent file cites primary measurements it has
-    explicitly *not* adopted, and so does the reference patient - so a check
-    reading tier alone passes all four of this project's data files today
-    while every stored coefficient in them came from Gas Man, which is the
-    second of the same three rules stated as the failure it exists to
-    prevent.
+    explicitly *not* adopted, and so do the reference patient and the
+    reference machine - so a check reading tier alone passes all five of this
+    project's parameter files today, while the patient's and the machine's
+    files adopt no primary source at all. That is the second of the same
+    three rules stated as the failure it exists to prevent.
 
     **What this deliberately does not decide** is whether a citation declared
     `primary` really is a primary measurement of the quantity, which needs
@@ -2996,7 +3011,8 @@ def check_untied_restatements(root: Path, report: Report) -> None:
 
     `check_prose_provenance` holds a marked number to its home. This check
     finds the numbers nobody marked (`PL-JS6P`). It reads each figure in
-    `docs/MODEL.md` and `README.md` that equals a stored value in that value's
+    `docs/MODEL.md`, `docs/INTERFACE.md` and `README.md`, the three
+    `PROVENANCE_DOCUMENTS`, that equals a stored value in that value's
     unit (`stored_values`). The figure must sit under a marker that says what
     it is. A `provenance:` or `derived:` marker naming the value says it is
     the stored value, or was computed from it. A `not-restated:` marker
@@ -9029,13 +9045,6 @@ def _blanked_span(prose: str, span: re.Match[str]) -> str:
 #: into `make check`: cover it in CI too, or say in one line why the merge gate
 #: cannot ask it (`PL-PBP5`).
 GATE_ONLY: dict[str, tuple[str, str]] = {
-    "bin/docket check": (
-        "ci",
-        "the floor run: `quality.yml` runs it before `uv` exists, which is what proves "
-        "the store's own check needs no virtualenv under the 3.11 floor, and `make "
-        "check` asks everything it asks inside its `--verify` run, which only adds the "
-        "replay",
-    ),
     "bin/docket ci-scope --base --github-output": (
         "ci",
         "the item-only fast path's question: `quality.yml` asks it on a pull request "
@@ -9207,8 +9216,8 @@ def _mode(arguments: Sequence[str]) -> tuple[str, ...]:
     The subcommand is every word ahead of the first option - `check` in
     `bin/docket check` - and an option's name is the word as written, or its
     part before an `=`. The rest are values and are dropped, since
-    `--verify-base origin/main` locally and `--verify-base "$VERIFY_BASE"` in
-    CI are one mode handed two refs, and the names are sorted, since their order
+    `--base origin/main` locally and `--base "$CONTRAST_BASE"` in CI are one
+    mode handed two refs, and the names are sorted, since their order
     chooses nothing.
     """
     subcommand: list[str] = []
@@ -9840,6 +9849,62 @@ def _baseline(
     return str(ref), tuple(measured)
 
 
+def _cap_in(source: str) -> int | None:
+    """Return the whole number that `source` assigns to `RESIDENT_CAP`, or `None`.
+
+    `None` covers a file that does not parse and one that assigns no such
+    name, which is every default branch from before the cap.
+    """
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return None
+    for node in tree.body:
+        if not isinstance(node, ast.Assign) or not isinstance(node.value, ast.Constant):
+            continue
+        named = any(isinstance(t, ast.Name) and t.id == "RESIDENT_CAP" for t in node.targets)
+        value = node.value.value
+        if named and isinstance(value, int) and not isinstance(value, bool):
+            return value
+    return None
+
+
+def check_resident_cap(root: Path, resident: ResidentInstructions, report: Report) -> None:
+    """Refuse instruction files that hold more than `RESIDENT_CAP`, and a raised cap.
+
+    Two errors. The first compares `instruction_total` with the cap. Skill
+    descriptions and the session-start digest are printed in the total and are
+    not capped, because the sort that set the cap covered the instruction files
+    alone. The second compares the cap with the one that the default branch
+    holds, so that the cap only goes down. Where there is no default branch to
+    read, only the first comparison runs, and the printed total says that there
+    was none to compare against. A default branch that holds no cap yet has
+    nothing to compare.
+    """
+    total = resident.instruction_total
+    if total > RESIDENT_CAP:
+        report.errors.append(
+            f"the instruction files loaded at launch hold {total} characters, "
+            f"{total - RESIDENT_CAP} more than the cap of {RESIDENT_CAP} (`RESIDENT_CAP` in "
+            f"{RESIDENT_CAP_HOME}). Move a rule to a check, a skill or a path-scoped rule until "
+            "the total is at or below the cap: .claude/rules/rule-routing.md says how to choose. "
+            "Do not delete a rule to reach the number, and do not raise the cap. The project "
+            f"owner set it on 2026-11-20 and it only goes down (`PL-G3KZ`). {RESIDENT_LEDGER} "
+            "records each move."
+        )
+    ref = resident.baseline_ref
+    if ref is None:
+        return
+    source = _git_text(root, "show", f"{ref}:{RESIDENT_CAP_HOME}")
+    before = None if source is None else _cap_in(source)
+    if before is not None and RESIDENT_CAP > before:
+        report.errors.append(
+            f"`RESIDENT_CAP` in {RESIDENT_CAP_HOME} is {RESIDENT_CAP}, and {ref} holds {before}. "
+            "The cap on the instruction files loaded at launch only goes down (project owner, "
+            f"2026-11-20, `PL-G3KZ`), so set it to {before} or lower."
+        )
+
+
 def check_resident_instructions(root: Path, report: Report) -> None:
     """Report what every session loads before it has read anything.
 
@@ -9855,11 +9920,13 @@ def check_resident_instructions(root: Path, report: Report) -> None:
     moment does a session need this, and what is the cheapest thing that
     delivers it then - a check, the skill, a path-scoped rule, or resident.
 
-    Reported, never thresholded, and this is the deliberate half. A limit would
-    be met by deleting a rule to reach a number, which is the one outcome the
-    routing pass must not produce; and no number this tool could hold would
-    know which rules a session must see before it reads anything. Growth is a
-    fact about the files; whether it is justified is not, so the judgment is
+    Capped since 2026-11-21, by `check_resident_cap`. Until then the total was
+    reported and never thresholded, on the argument that a limit would be met
+    by deleting a rule to reach a number. The instruction files then grew from
+    60,199 characters on 2026-09-19 to 92,660 on 2026-11-20, while every edit
+    to them had to name what it replaced, and the project owner set a cap at
+    the total after `PL-MR85`'s sort. Below the cap, growth is still a fact
+    about the files and whether it is justified is not, so that judgment is
     left where `stranded` leaves its own.
 
     Both advisories read characters, and both stay quiet below
@@ -9871,12 +9938,13 @@ def check_resident_instructions(root: Path, report: Report) -> None:
     skim the line a real finding will appear on, which is the failure
     `CLAUDE.md` names when it says a check earns its place every run.
 
-    A net total cannot see the outcome a limit would have caused, though, which
-    is why the second advisory exists. A change that adds resident text and
-    trims other resident text to pay for it sums to nothing here, so the trim
-    never appears as growth and the diff reads as free. That is the forbidden
-    outcome arriving without a limit to blame, and it is decidable without
-    judgment: growth and shrinkage in the same change, whatever they sum to.
+    A net total cannot see text deleted to pay for an addition, which a cap
+    invites, and that is why the second advisory exists. A change that adds
+    resident text and trims other resident text to pay for it sums to nothing
+    here, so the trim
+    never appears as growth and the diff reads as free. That is decidable
+    without judgment: growth and shrinkage in the same change, whatever they
+    sum to.
     A routing pass that only moves text out still shrinks alone, and is still
     silent. `PL-BKQW` carries the reasoning; `PL-K6QR` records the project
     owner asking for text to be added without other text suffering for it.
@@ -9898,6 +9966,7 @@ def check_resident_instructions(root: Path, report: Report) -> None:
         baseline_files=None if baseline is None else baseline[1],
         runtime=() if digest is None else (digest,),
     )
+    check_resident_cap(root, report.resident, report)
     deltas = report.resident.deltas()
     if not deltas:
         return
@@ -10527,15 +10596,15 @@ def _format_measured(label: str, when: str, measured: ResidentInstructions) -> s
 def _format_resident(resident: ResidentInstructions) -> str:
     """One line: what every session loads, and how that compares to the base.
 
-    It also names the instruction files' subtotal. `CLAUDE.md`'s
-    resident-growth series is on that basis, so a reader compares it with
-    that subtotal rather than with the whole payload (`PL-DXF0`).
+    It also names the instruction files' subtotal beside `RESIDENT_CAP`,
+    because the cap bounds that subtotal and not the whole payload
+    (`PL-DXF0`, `PL-G3KZ`).
     """
     measured = _format_measured("resident instructions", "loaded at launch", resident)
     return (
         f"{measured}; the instruction files alone come to "
-        f"{_plural(resident.instruction_total, 'character', 'characters')}, the basis "
-        "of the resident-growth series in CLAUDE.md"
+        f"{_plural(resident.instruction_total, 'character', 'characters')}, against a "
+        f"cap of {RESIDENT_CAP}"
     )
 
 

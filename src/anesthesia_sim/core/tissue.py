@@ -125,15 +125,15 @@ class TissueGroup:
 
             The perfusion fraction is written once, when the group is built, and a later
             write is refused (`PL-Z0HN`). The patient checks that its three fractions sum
-            to 1 only when the patient is built, and a tissue group does not know which
-            patient it belongs to. A fraction changed afterwards would change the group's
-            blood flow, which is its fraction of the cardiac output. Nothing would then
-            check that the flows still add up to the cardiac output. The fraction is a
-            checked type, built only above 0 and at most 1 (`core/blood_flow.py`), so
-            this method checks its type and not its range. A later write checks the
-            type first, so a bare number gets the same error as it does when the
-            group is built. A copy and a pickle write the fraction onto a new group,
-            which has none yet, so both still work.
+            to 1 when the patient is built and when a group is replaced, and a tissue group
+            does not know which patient it belongs to. A fraction changed afterwards would
+            change the group's blood flow, which is its fraction of the cardiac output.
+            Nothing would then check that the flows still add up to the cardiac output. The
+            fraction is a checked type, built only above 0 and at most 1
+            (`core/blood_flow.py`), so this method checks its type and not its range. A
+            later write checks the type first, so a bare number gets the same error as it
+            does when the group is built. A copy and a pickle write the fraction onto a new
+            group, which has none yet, so both still work.
 
             Raises:
                 TypeError: the field written is `name` and `value` is not a `str`.
@@ -191,8 +191,9 @@ class TissueGroup:
                         f"the {self.name} tissue group's perfusion fraction of "
                         f"{self.perfusion_fraction} cannot be written again, as {value}, once "
                         "the group is built, because the patient checks that its tissue "
-                        "fractions sum to 1 only when it is built (docs/MODEL.md, "
-                        '"Tissue groups"): build a new patient with the new fractions'
+                        "fractions sum to 1 when it is built and when a group is replaced, and "
+                        "never when a fraction is written (see TissueGroup.__setattr__ in "
+                        "core/tissue.py): build a new patient with the new fractions"
                     )
             elif name == "tissue_gas_partition_coefficient":
                 require_coefficient(field, value)
@@ -215,8 +216,8 @@ class TissueGroup:
                         f"{self.tissue_gas_partition_coefficient} cannot be written again, as "
                         f"{value}, once the group is built, because the patient checks the "
                         "group's tissue:blood coefficient only when the group is put in its "
-                        'place (docs/MODEL.md, "Tissue groups"): replace the group with one '
-                        "built with the new coefficient"
+                        'place (docs/MODEL.md, "The numerical envelope"): replace the group '
+                        "with one built with the new coefficient"
                     )
             elif name == "agent_amount_l":
                 require_nonnegative_finite(field, value)

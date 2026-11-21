@@ -108,7 +108,7 @@ from anesthesia_sim.core.supported_ranges import (
     CaseInstant,
 )
 from anesthesia_sim.core.units import MINUTES_PER_HOUR, SECONDS_PER_HOUR, SECONDS_PER_MINUTE
-from anesthesia_sim.layout.run_identity import RunId
+from anesthesia_sim.layout.run_identity import RunId, SessionToken
 
 # How often the simulation timer fires, in milliseconds of real time. It is a
 # whole number, so the simulated time that a tick owes a run is a whole number
@@ -342,6 +342,15 @@ NO_TRACES_SHOWN_TEXT: Final = (
     "the readouts and the run itself are unaffected."
 )
 
+#: Where a notice in a chart's Area sends the reader for a compartment's value.
+#: This build draws one window, and the compartment readouts are in the region
+#: above every Area of it, however the Areas are laid out. So both notices that
+#: name the readouts use this one phrase (`PL-4246`). A second window would
+#: carry no compartment readouts (`docs/INTERFACE.md` § "What this list
+#: requires once the layout is the reader's"), so a chart in one could not use
+#: this phrase.
+READOUTS_PLACE_TEXT: Final = "the readouts above"
+
 # Shown when a drawn trace goes above the top of the plot, naming the traces
 # that do. A setting in common use exceeds the fixed axis
 # (`CHART_AXIS_TOP_MAC`): sevoflurane's 8% dial setting is 4.00 MAC. A trace
@@ -351,7 +360,7 @@ NO_TRACES_SHOWN_TEXT: Final = (
 # teach.
 OFF_SCALE_NOTICE_TEMPLATE: Final = (
     "Above the top of the plot: {compartments}. The axis stops at {top} and these "
-    "traces are cut off there — their values are in the readouts above, which are "
+    "traces are cut off there — their values are in " + READOUTS_PLACE_TEXT + ", which are "
     "not clipped."
 )
 
@@ -914,6 +923,10 @@ TRACE_LEGEND_LABEL_TEMPLATE: Final = "{label} ({line_style})"
 #: attribution if something else on screen also says "Run 2". That something
 #: is the panel holding the settings that produced the run.
 RUN_LABEL_TEMPLATE: Final = "Run {number}"
+#: What a Workspace's pinned run is called when an earlier session of the
+#: application placed it. Its number is left out, because a run that is open
+#: now can carry the same number and is a different run (`PL-7H9X`).
+EARLIER_SESSION_RUN_TEXT: Final = "a run from an earlier session"
 #: One drawn trace's legend words while more than one run is shown: the
 #: compartment's own words, then the run's. Every entry names both dimensions,
 #: which is what `PL-8PSW` asks of a legend once a curve carries two.
@@ -978,7 +991,7 @@ PREVIEW_LABEL_SUBJECT: Final = "Preview"
 #: A reader told only that a trace is gone has been told half of the story.
 COMPARED_CAP_NOTICE_TEMPLATE: Final = (
     "Two runs are shown, so the chart draws at most {cap} compartments at once. "
-    "Every compartment's value is in the readouts below, for both runs."
+    "Every compartment's value is in " + READOUTS_PLACE_TEXT + ", for both runs."
 )
 # What the wash-in plot is showing at this instant. A trace that stops has
 # to say at which of its two boundaries it stopped. "Nothing has reached the
@@ -997,8 +1010,10 @@ WASH_IN_UNDRAWN_SUFFIX_TEMPLATE: Final = " ({count} earlier stretch(es) not draw
 # it (`PL-2K1R`). The compartments this simulator exists to display are the
 # ones no monitor shows. So a reader has no measured value to check a trace
 # against, and the polish of the display suggests more accuracy than there
-# is. Each statement appears once, on the readout section's heading row,
-# because a repeated disclaimer stops being read.
+# is. The first is drawn once, as a line across the foot of the window,
+# because a repeated disclaimer stops being read. The second is drawn on the
+# readout section's heading row, and in the headings of the compartment
+# schematic View and the agent cost View.
 USE_DISCLAIMER_TEXT: Final = (
     "Educational simulation only. This idealized model is not a clinical prediction, "
     "monitoring, or dosing tool."
@@ -1045,9 +1060,13 @@ class StatusWord:
 def status_word(status: RunStatus, *, stopped_on_mark: bool) -> StatusWord:
     """Return the run's status word: failure, then supported limit, then running, then paused.
 
-    A failure outranks the supported run length for the reason `notice`
-    gives. The two cannot both arise from one run, and if a failure is
-    somehow recorded, it is the more serious statement. The word for a
+    A failure outranks the supported run length. One run can carry both: it
+    stops at the supported run length, and an error then arrives from
+    something other than a step or a setting, such as a frame that the
+    dashboard could not draw. The error is then the run's last event and the
+    more serious statement, so the word reports it. The row of a mark that
+    such a run did not reach reports the run length, which is why the mark was
+    not reached (`bookmarks._mac_target_standing`, `PL-3DHK`). The word for a
     paused run that a mark stopped says that a mark stopped it, so that the
     stop is not mistaken for the learner's own Pause
     (`STATUS_MARK_HALT_TEXT`, `PL-QBQX`).
@@ -3172,8 +3191,9 @@ def run_label(run: RunId) -> str:
     refers to is the panel carrying that run's settings.
 
     The name is the run's number alone. The identity also holds the session,
-    which tells two sessions' runs apart for a Workspace's pin. A reader never
-    sees two sessions' runs at once (`PL-7Z84`).
+    which tells two sessions' runs apart for a Workspace's pin (`PL-7Z84`).
+    Only a pin can name a run of an earlier session, and `pinned_run_label`
+    names it without its number.
 
     Args:
         run: The run's identity (`layout/run_identity.py`).
@@ -3191,6 +3211,37 @@ def run_label(run: RunId) -> str:
         raise TypeError(f"a run is named from its RunId, not from {type(run).__name__}")
 
     return RUN_LABEL_TEMPLATE.format(number=run.number)
+
+
+def pinned_run_label(pinned: RunId, session: SessionToken) -> str:
+    """Return what a Workspace's pinned run is called in the session `session`.
+
+    A saved Workspace keeps its pin, so the pinned run can be one that an
+    earlier session of the application placed. That run is never open, and a
+    run that is open can carry its number. So it is called
+    `EARLIER_SESSION_RUN_TEXT`, without its number (`PL-7H9X`). A run that
+    this session placed is called by `run_label`, whether or not it is still
+    open.
+
+    Args:
+        pinned: The pinned run's identity.
+        session: The token of the session that is running now
+            (`RunIdentities.session`).
+
+    Raises:
+        TypeError: If `pinned` is not a `RunId`, or `session` is not a
+            `SessionToken`.
+    """
+
+    if not isinstance(session, SessionToken):
+        raise TypeError(f"a session is a SessionToken, not {type(session).__name__}")
+
+    name = run_label(pinned)
+
+    if pinned.session != session:
+        return EARLIER_SESSION_RUN_TEXT
+
+    return name
 
 
 def trace_legend_label(style: TraceStyle) -> str:

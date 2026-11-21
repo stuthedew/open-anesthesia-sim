@@ -1,16 +1,13 @@
 #!/usr/bin/env python3
 """Say when the default branch's last quality run failed or was cancelled, and otherwise nothing.
 
-`.github/workflows/quality.yml` runs the whole-store `verify:` replay only on
-push to `main` — deliberately, because a pull request cannot have changed
-whether some *other* item's work merged, and replaying the whole store on every
-push to every branch costs more than it buys (`PL-SDHR`). The consequence is
-that this class of failure is discovered *after* the merge, on a push nobody is
-watching: `main` was red across three consecutive merges with every session
-believing the tree was clean, because nothing reads that run (`PL-0ZGK`).
+A pull request's checks run on its branch, and `main`'s quality run checks the
+merged tree, on a push nobody is watching. So `main` can fail after a merge
+whose pull request was green: it was red across three consecutive merges with
+every session believing the tree was clean, because nothing reads that run
+(`PL-0ZGK`).
 
-This closes the loop from the other end. Rather than making every branch pay to
-prevent the red, one HTTP call at session start reports it once it exists.
+This closes the loop from the other end: one HTTP call at session start reports it once it exists.
 
 **It speaks only when there is something to act on.** A green `main` prints
 nothing while CI's pytest step time stays inside its band (below). A checkout
@@ -34,68 +31,31 @@ Two consequences of that rule are worth stating, because both look like gaps:
   completed `main` push runs between 2026-09-05 and 2026-09-16 - 12.1% - were
   cancelled that way. A per-commit group ended the eviction, and none of the
   640 completed from its merge to 2026-10-01 was cancelled, so one now means a
-  hand cancellation or a lost runner, and its commit has no whole-store verdict
-  at all. Passing over it in silence reported an older commit's verdict as
-  `main`'s answer (`PL-JTHW`), so a cancelled run newer than every verdict
+  hand cancellation or a lost runner, and its commit has no verdict at all.
+  Passing over it in silence reported an older commit's verdict as `main`'s
+  answer (`PL-JTHW`), so a cancelled run newer than every verdict
   prints a line of its own, naming both runs and asking for a re-run. One older
-  than a verdict still prints nothing: the later run checked the whole store
-  again on a tree that contains it, so there is nothing to ask for, and a green
+  than a verdict still prints nothing: the later run checked a tree that
+  contains it, so there is nothing to ask for, and a green
   `main` prints nothing.
 - **Silence is not a green tree.** It means "no failing verdict, and no
   cancelled run newer than the verdict, was readable from here", which is also
   what a checkout with no GitHub remote gets. The line exists to surface a red
   nobody would otherwise see, never to certify a green one.
 
-**The line names the failing step, and that is the whole of what `PL-T83R`
-changed.** Attributed over all 819 completed `main` push runs from 2026-08-22
-to 2026-09-20, the 109 failures fall almost entirely into one step:
-
-| first failing step | runs | share |
-| --- | --- | --- |
-| `verify replay, the whole store` | 93 | 85.3% |
-| `bin/docket check` (the bare floor-section run) | 14 | 12.8% |
-| the pytest/coverage line | 1 | 0.9% |
-| no job ran (startup failure) | 1 | 0.9% |
-
-Reading the error text back out of each run's log agrees with that split
-exactly: 93 are `checks.py`'s "open but its `verify:` command already passes",
-14 are "marked done but records no `pr`", and the one pytest failure is
-`test_this_repository_records_a_disposition_for_every_open_debt_item`, which
-asserts on `ROADMAP.md` rather than on the simulator. **Not one of the 109 was
-a defect in `src/`.**
-
-In every one of the 93, the bare `bin/docket check` step earlier in the *same
-job* passed, as did `ruff`, `mypy` and the full suite at 100% branch coverage.
-The bare run is the same store validation without `--verify`, so a failure at
-the replay and not at it isolates the cause to the one report `--verify` adds:
-an open item whose own `verify:` command has flipped to passing. The tree was
-not broken in any of the 93. Over the window `PL-T83R` was filed on it was 73
-of 74 - the tree was never broken for the thirty-seven hours `main` was red,
-the store was.
-
-So the old line - which named no step - asked every reader to tell those 93
-from the 16 that were something else by opening the run, and a container whose
-egress policy blocks GitHub's log storage cannot open it at all. Naming the step
-is one extra request, paid only on the runs that were already going to print a
-line, and it separates "stop, the tree is broken" from "an item wants closing".
-It is about 330 ms in practice, and its worst case is a second `TIMEOUT_S` -
-so a session start reading a red `main` can wait 16 s rather than 8 s before the
+**The line names the failing step** (`PL-T83R`). A reader's question about a
+red `main` is which check failed, and a container whose egress policy blocks
+GitHub's log storage cannot open the run to find out. Naming the step is one
+extra request, about 330 ms in practice, paid only on the runs that were
+already going to print a line. Its worst case is a second `TIMEOUT_S`, so a
+session start reading a red `main` can wait 16 s rather than 8 s before the
 line appears, and spends two of the 60 requests an hour an unauthenticated
-caller gets rather than one. Both ceilings are paid only in the case the reader
-most needs the answer, and never on a green `main`, which is every session start
-but a few.
+caller gets rather than one.
 
-**Why the rate itself is left alone.** Over the narrower window `PL-T83R` was
-filed on - 2026-09-05 to 2026-09-16, holding 74 of the 109 failures above -
-`main` failed on 32.7% of the pushes that reached a verdict, which reads like a
-check firing so often that nobody could act on it. It is an artifact of counting merges: the 74
-failures are 8 episodes, and 2 of them - 37.7 h and 44.3 h - hold 87% of the
-red time, because merges keep arriving while `main` is red. Each of those two
-ended in a single cheap commit (`#432` closed two items whose work had landed;
-`#493` rewrote one command that did not discriminate). What was wrong was the
-time to green, not the count. Suppressing the class would have cost every one
-of the 93 findings, all of which were real and all of which somebody later
-fixed, so the rate is accepted and the line made precise instead.
+Until 2026-11-21 one step ran every open item's `verify:` command again, and
+its failure was 93 of the 109 failed `main` push runs from 2026-08-22 to
+2026-09-20. The line read that failure as an item to close and not a broken
+tree. `PL-QTZG` removed the step and that reading with it.
 
 **A run whose job no runner took is not a hang** (`PL-7WNJ`). GitHub cancels
 a queued job 15 minutes after it was created, the same cutoff `timeout-minutes`
@@ -221,44 +181,20 @@ DRIFT_RUNS = 10
 DRIFT_RED = frozenset({"failure", "timed_out", "cancelled", "startup_failure"})
 DRIFT_ANSWERS = DRIFT_RED | {"success"}
 
-# The name `.github/workflows/quality.yml` gives the whole-store replay step,
-# which is the one step whose failure is a fact about the queue rather than
-# about the tree. Matched as a literal because that is what the API returns;
-# `tests/unit/test_main_ci_status.py` holds it to the workflow file, so a rename
-# there fails a test rather than silently dropping this back to the plain line.
-REPLAY_STEP = "verify replay, the whole store"
-
-# The name GitHub derives from the bare `- run: bin/docket check` line, which
-# has no `name:` of its own. It is the same store validation without `--verify`,
-# and it runs earlier in the same job on the same tree, so its *passing* is what
-# narrows a replay failure to the one report `--verify` adds. Held to the
-# workflow by a test alongside `REPLAY_STEP`.
-BARE_CHECK_STEP = "Run bin/docket check"
-
 # The first step of the `checks` job, which needs both test parts and fails
 # unless both succeeded (`PL-T9X9`). It fails because a part did, so it names no
 # cause of its own, and `failing_steps` leaves it out whenever another step
-# failed. Held to the workflow by a test alongside `REPLAY_STEP`.
+# failed. `tests/unit/test_main_ci_status.py` holds the name to the workflow.
 PARTS_GATE_STEP = "both parts succeeded"
 
 # `skipped` is every step after the failure, and `cancelled` is a job that lost
 # its runner. Neither names a cause, and printing them would bury the one that
-# does. `timed_out` is a failure but not an answer - a step the 15-minute job
-# timeout killed says nothing about what it would have found - so it is read as
-# a failure and never as grounds for the queue reading below.
-#
-# Whether GitHub reports a timeout-killed step as `timed_out` or as `cancelled`
-# is an assumption rather than an observation: all 93 recorded replay failures
-# concluded `failure`, so the case has never occurred here. It is handled in the
-# direction that costs a sentence rather than the one that prints a false one -
-# under either answer the queue reading is withheld, since `cancelled` is not in
-# this tuple and so the replay does not read as the only failing step.
+# does. `timed_out` is a failure: the 15-minute job timeout killed the step.
 STEP_FAILURES = ("failure", "timed_out")
 
 # What a step whose name the payload does not carry is called. A name that is
-# not a string would otherwise be dropped, and dropping one *failing* step turns
-# two failures into the single failure the queue reading is conditioned on -
-# manufacturing the one shape that licenses the strongest sentence here.
+# not a string would otherwise be dropped, and the line would then name fewer
+# failing steps than the run had.
 UNNAMED_STEP = "(a step whose name could not be read)"
 
 # A step with no `name:` is named by GitHub after its whole `run:` line, and
@@ -332,15 +268,15 @@ def pick_run(runs: list[object]) -> dict[str, object] | None:
 def pick_unjudged(runs: list[object]) -> dict[str, object] | None:
     """Return the newest `UNJUDGED` run newer than every verdict, or None.
 
-    Its commit has no whole-store verdict, and whatever `pick_run` answers - or
+    Its commit has no verdict, and whatever `pick_run` answers - or
     the silence of a green answer - is about an older commit, which a reader
     would otherwise take as `main`'s (`PL-JTHW`). Several cancelled above the
-    verdict return the newest, because re-running it checks the whole store
+    verdict return the newest, because re-running it checks the whole tree
     again on a tree that contains the rest.
 
     A cancelled run *older* than a verdict returns None, which is the
     green-`main`-prints-nothing rule rather than a gap: the later run checked
-    the whole store on a tree that contains it, so a re-run would answer
+    a tree that contains it, so a re-run would answer
     nothing the verdict has not.
     """
     for run in runs:
@@ -421,8 +357,7 @@ def failing_steps(steps: tuple[tuple[str, str], ...]) -> tuple[str, ...]:
     """The names of the steps that did not pass, in run order.
 
     `PARTS_GATE_STEP` is left out when another step failed, because its failure
-    only repeats that one. Counted, it would also stop a replay failure from
-    ever being the only failing step, which `_is_queue_failure` requires. It
+    only repeats that one. It
     stays in when it is the only failure, since then it is the one clue the run
     gives, as when a part was cancelled.
     """
@@ -443,34 +378,6 @@ def _short_sha(run: dict[str, object]) -> str:
     return str(run.get("head_sha", ""))[:8] or "?"
 
 
-def _is_queue_failure(run: dict[str, object], steps: tuple[tuple[str, str], ...]) -> bool:
-    """Whether the replay failing is attributable to an item's own `verify:` command.
-
-    Three conditions, and every one is read from this run rather than assumed
-    from the base rate:
-
-    1. the run itself concluded `failure`, not `timed_out` or anything else;
-    2. the replay is the *only* step that did not pass, and it `failure`d rather
-       than being killed by the job timeout - a hung command says nothing about
-       what it would have found;
-    3. `bin/docket check` ran earlier in the same job, on the same tree, and
-       passed. That is the whole of the argument: the bare run is the same store
-       validation without `--verify`, so it has already ruled out every store
-       error that does not need the flag, and what is left is the one report the
-       flag adds.
-
-    Any of the three missing and the caller names the steps and interprets
-    nothing.
-    """
-    if run.get("conclusion") != "failure":
-        return False
-    if failing_steps(steps) != (REPLAY_STEP,):
-        return False
-    if any(name == REPLAY_STEP and conclusion != "failure" for name, conclusion in steps):
-        return False
-    return any(name == BARE_CHECK_STEP and conclusion == "success" for name, conclusion in steps)
-
-
 def advisory(
     run: dict[str, object], steps: tuple[tuple[str, str], ...] = (), idle: tuple[str, ...] = ()
 ) -> str | None:
@@ -478,21 +385,13 @@ def advisory(
 
     Only a non-`success` verdict earns a line. The head sha is included because
     a reader's first question is whether the failure is still `main`'s head or
-    something already pushed past; `steps` answers the second, which is whether
-    this is the tree or the queue.
-
-    **The queue reading says only what the run shows.** The replay was the
-    only step that failed, and `bin/docket check` passed above it on the same
-    tree. The replay is the last step of its job, and
-    `test_the_whole_store_replay_is_the_last_step_in_the_job` in
-    `tests/unit/test_quality_step_order.py` keeps it there. So its failure
-    skipped no check of that job.
+    something already pushed past; `steps` answers the second, which is what
+    failed.
 
     `idle` names the jobs no runner took, from `idle_jobs`. When no other step
     failed, they are the whole failure, and the line says the run judged
     nothing and asks for a re-run. Otherwise the line names the failing steps
-    and adds that those jobs ran nothing. The queue reading is withheld while
-    any job is idle, because a job that never ran checked nothing.
+    and adds that those jobs ran nothing.
     """
     conclusion = run.get("conclusion")
     if conclusion == "success":
@@ -513,13 +412,6 @@ def advisory(
         return (
             f"{head} because no runner took {_jobs_phrase(idle)}, so {ran}: re-run it "
             f"rather than fixing anything. {url}"
-        )
-    if not idle and _is_queue_failure(run, steps):
-        return (
-            f'{head} at "{REPLAY_STEP}", the only step that failed; `bin/docket check` passed '
-            "above it on the same tree, so this is an open item's `verify:` command that has "
-            "flipped to passing rather than the tree. `bin/docket check --verify` reproduces "
-            f"it here. {url}"
         )
     where = f" at {', '.join(_quoted(name) for name in failed)}" if failed else ""
     unran = (
@@ -551,7 +443,7 @@ def unjudged_advisory(cancelled: dict[str, object], verdict: dict[str, object] |
     ended = UNJUDGED.get(str(cancelled.get("conclusion")), "reached no verdict")
     return (
         f"main's quality run #{number} on {_short_sha(cancelled)} {ended}, so that "
-        f"commit has no whole-store verdict, {older}. Re-run it, unless a newer merge's run "
+        f"commit has no verdict, {older}. Re-run it, unless a newer merge's run "
         f"is still going: {url}"
     )
 

@@ -198,7 +198,10 @@ own wording, because a reader would otherwise mistake it for one of the others.
   a run stopped at the supported run length refuses every setting. So such a
   run ran out of supported time first, and the error came afterwards from
   something other than a step or a setting, such as a frame that the dashboard
-  could not draw.
+  could not draw. The run's status word and banner report the error, because
+  it is the run's last event. So such a run shows the error in its status, and
+  the supported run length on the row of each mark that it did not reach
+  (`test_a_run_at_the_supported_run_length_that_then_fails_gives_each_reason_in_its_place`).
 
 **Time bookmarks and MAC targets are reported in different words.** A run's
 clock only moves forward, and it never goes below the instant the run began. So
@@ -2835,6 +2838,10 @@ same number in a later session is therefore a different run. When the pinned
 run is not open, each of the Workspace's areas says so in place of its view
 ("Run 2 is not open."), with the run's name in the area's header. The areas
 never show another run in its place, and the simulation is left untouched.
+Where an earlier session placed the pinned run, the areas and the menu of the
+Workspace's tab call it "a run from an earlier session" and give no number,
+because a run that is open now can carry the same number
+(`test_a_pinned_run_that_is_not_open_is_stated_in_every_area_and_no_other_run_is_shown`).
 The reader sets and removes a pin from the menu of the Workspace's tab
 (`PL-2KXB`).
 

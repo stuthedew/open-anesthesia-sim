@@ -1065,11 +1065,19 @@ def test_require_canonical_state_refuses_a_fraction_outside_zero_to_one(
 
 
 @pytest.mark.parametrize("position", [DELIVERED_AGENT_L, EXHAUSTED_AGENT_L])
-def test_require_canonical_state_refuses_a_negative_amount_of_agent(position: int) -> None:
-    """A cumulative amount of agent below zero describes a run that never happened."""
+@pytest.mark.parametrize("value", [-1e-12, nextafter(0.0, -1.0)])
+def test_require_canonical_state_refuses_a_negative_amount_of_agent(
+    position: int, value: float
+) -> None:
+    """A cumulative amount of agent below zero describes a run that never happened.
+
+    The values include the nearest float below zero, as `docs/MODEL.md` § "The numerical
+    envelope" says. A check that refused -1e-12 and accepted a smaller negative amount would
+    pass a test that tried -1e-12 alone (`PL-076B`).
+    """
 
     with pytest.raises(SimulationConfigurationError) as raised:
-        require_canonical_state(_empty_state_with(position, -1e-12))
+        require_canonical_state(_empty_state_with(position, value))
 
     assert str(raised.value).startswith(f"state[{position}] (")
     assert "must be nonnegative" in str(raised.value)

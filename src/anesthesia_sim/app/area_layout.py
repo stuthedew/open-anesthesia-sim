@@ -194,6 +194,7 @@ from anesthesia_sim.app.view_registry import (
     UNBUILT_VIEW_TITLE,
     RegisteredView,
     RetiredTag,
+    at_sentence_start,
     missing_view_text,
     pinned_run_absent_text,
     pinned_run_absent_title,
@@ -2233,12 +2234,13 @@ class AreaFrame(QFrame):
 
         Args:
             run_name: The pinned run's name, or None where the Workspace pins
-                no run.
+                no run. A run of an earlier session has a name that starts in
+                lower case, so the header writes it as a sentence starts.
             absent: Whether the pinned run is not open. Only a pinned run can
                 be absent.
         """
 
-        self.pin_label.setText(run_name or "")
+        self.pin_label.setText(at_sentence_start(run_name or ""))
         self.pin_label.setVisible(run_name is not None)
         self._absent = absent and run_name is not None
         notice = self.absent_notice

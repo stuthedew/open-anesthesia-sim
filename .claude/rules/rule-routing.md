@@ -26,3 +26,9 @@ Four dispositions, cheapest first:
    fire before a first write, which it reaches only after that write.
 4. **Resident in `CLAUDE.md`**, only for what a session could violate before
    it would think to look anything up.
+
+**A rule that lands in none of the four has been lost**, which is worse than
+`CLAUDE.md` staying long. Never delete a rule for being wordy. A rule whose
+failure a check now catches is retired rather than kept, on the test in
+`docs/resident-instructions.md` § "When a resident rule is retired"
+(`PL-NJTZ`).

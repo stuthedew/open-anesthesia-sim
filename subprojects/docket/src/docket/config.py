@@ -109,66 +109,16 @@ class Config:
     #: is what `notes_file` and `open_pull_requests_command` are also empty to
     #: avoid.
     instruction_paths: tuple[str, ...] = ()
-    #: The `verify:` requirement, and the one setting that adopts it. An
-    #: item that reaches `ready` must name the command that proves it done,
-    #: whatever its capture date; an item *closed* on or after this date must
-    #: name one too, or a `not-delegable` reason, as an error rather than an
-    #: advisory. The closing half is what reaches an item that goes to `done`
-    #: without ever holding `ready`, and the date keeps the items closed before
-    #: it out of reach, since a command backfilled onto merged work has nothing
-    #: left to run against. `None` leaves both halves off, which is the right
-    #: default for a project that does not delegate work and therefore has
-    #: nothing riding on the field.
-    #:
-    #: A second date, `verify_required_from`, once grandfathered the `ready`
-    #: half for items captured before the rule. That set drained to zero and
-    #: the date was retired (`PL-Z34C`); a store adopting the rule late can
-    #: set this date and triage its `ready` items in the same commit.
+    #: The date from which an item that closes must record what shows its
+    #: work: the tests its branch added or changed, one search for fixed text,
+    #: a dated paragraph in its brief, or a `not-delegable` reason. `done` holds
+    #: the reading. The date keeps the items closed before it out of reach,
+    #: since a record added to merged work has nothing left to be read against.
+    #: `None` leaves the rule off.
     verify_required_at_close_from: date | None = None
-    #: The date from which a `verify:` command may no longer stand a pytest
-    #: run beside a separate discriminating clause. The field records the
-    #: discriminator and nothing else, so a pytest clause with a *different*
-    #: clause beside it proves the tree twice - once here, once in
-    #: `check_command`, which every consumer already runs. Anchored to the
-    #: capture date, so the commands already recorded are a closed set that
-    #: drains as each item is started rather than in one pass. `None` leaves
-    #: it off, and so does an empty `collected_test_paths`, which is what
-    #: says which pytest targets `check_command` already covers.
-    verify_prerequisite_refused_from: date | None = None
     #: The test trees `check_command` already runs, as the project spells
-    #: them for its own runner. Only a pytest target inside one of these is
-    #: provably redundant with `check_command`; one outside it is running
-    #: something no other consumer does, and is left alone. Empty means "this
-    #: project has not said", which leaves the rule above off rather than
-    #: guessing.
+    #: them for its own runner. `tools/model_home_check.py` reads it.
     collected_test_paths: tuple[str, ...] = ()
-    #: The clauses of a `verify:` command that prove the tree rather than the
-    #: item - the health half `check_command` already runs, spelled exactly as
-    #: the commands carry it. `docket check` keys its shared-clause rule on
-    #: the clauses outside this set and outside the pytest runs
-    #: `collected_test_paths` covers, so two items both carrying `python3
-    #: tools/doc_check.py check` are not thereby one finding, while two
-    #: carrying the same `grep` behind it are (`PL-BGMK`). Empty means "this
-    #: project has not said", and every clause then counts.
-    health_clauses: tuple[str, ...] = ()
-    #: The date from which a `verify:` command may no longer narrow a pytest
-    #: run with `-k`. Over a tree `collected_test_paths` names, such a run
-    #: either selects tests `check_command` already proves or selects none
-    #: and exits 5, so it can never be the ordinary failure the field owes -
-    #: and a substring is satisfied by whatever test later comes to carry it.
-    #: A date of its own rather than the prerequisite rule's, because the two
-    #: close different sets. `None` leaves it off, and so does an empty
-    #: `collected_test_paths`.
-    verify_k_selector_refused_from: date | None = None
-    #: The date from which a `verify:` command must be one of the admitted
-    #: shapes - a `grep -q` for what the work adds, a `! grep -q` for what it
-    #: removes, several of those joined by `&&`, or the whole-suite coverage
-    #: run - unless the item's `not-delegable` says why none can prove it.
-    #: The rules dated above each refuse one shape after it had failed; this
-    #: one refuses every shape nobody has argued for, when it is written.
-    #: Read against the capture date, and against the branch for a command
-    #: written after it on an item captured before it. `None` leaves it off.
-    verify_allowlist_from: date | None = None
     #: The date the `payoff:` requirement started applying: an item reaching
     #: `ready` must carry one plain-language line of what closing it buys.
     #: Dated for the reason `verify:` once was - a store written before
@@ -625,28 +575,10 @@ def load(root: Path) -> Config:
             defaults.verify_required_at_close_from,
             "verify_required_at_close_from",
         ),
-        verify_prerequisite_refused_from=_date(
-            section.get("verify_prerequisite_refused_from"),
-            defaults.verify_prerequisite_refused_from,
-            "verify_prerequisite_refused_from",
-        ),
         collected_test_paths=_tuple(
             section.get("collected_test_paths"),
             defaults.collected_test_paths,
             "collected_test_paths",
-        ),
-        health_clauses=_tuple(
-            section.get("health_clauses"), defaults.health_clauses, "health_clauses"
-        ),
-        verify_k_selector_refused_from=_date(
-            section.get("verify_k_selector_refused_from"),
-            defaults.verify_k_selector_refused_from,
-            "verify_k_selector_refused_from",
-        ),
-        verify_allowlist_from=_date(
-            section.get("verify_allowlist_from"),
-            defaults.verify_allowlist_from,
-            "verify_allowlist_from",
         ),
         payoff_required_from=_date(
             section.get("payoff_required_from"),

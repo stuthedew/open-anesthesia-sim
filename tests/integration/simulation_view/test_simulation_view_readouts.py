@@ -8,6 +8,7 @@ These tests cover the readouts, including one readout block at a laptop's width.
 from collections.abc import Sequence
 
 import pytest
+from PySide6.QtCore import QPoint
 from PySide6.QtWidgets import QApplication, QLabel
 
 from anesthesia_sim.app import control_timeline as control_timeline_module
@@ -29,7 +30,7 @@ from anesthesia_sim.app.qt_chart import TraceLegend
 from anesthesia_sim.app.qt_widgets import ReadoutRow
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.app.theme import AGENT_SELECTOR_WIDTH, CHART_HEIGHT
-from anesthesia_sim.app.unconditional_set import UnconditionalValue
+from anesthesia_sim.app.unconditional_set import UnconditionalValue, compartment_value
 from anesthesia_sim.app.view_registry import CONCENTRATION_CHART, PARAMETER_CONTROLS
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
@@ -361,6 +362,15 @@ def test_a_trace_above_the_axis_is_reported_on_the_run_that_drew_it(
     assert "Circuit" in line.text()
     assert "Alveolar" not in line.text()
     assert "readouts above" in line.text()
+    # The direction word is true of the window: the clipped compartment's
+    # readout is drawn above the notice (`PL-4246`).
+    circuit_readout = view.runs[0].unconditional_widgets()[
+        compartment_value(RecordedQuantity.CIRCUIT)
+    ]
+    assert (
+        circuit_readout.mapToGlobal(QPoint(0, circuit_readout.height())).y()
+        <= line.mapToGlobal(QPoint(0, 0)).y()
+    )
 
     _set_trace_shown(application, view, RecordedQuantity.CIRCUIT, False)
 

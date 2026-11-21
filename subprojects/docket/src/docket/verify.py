@@ -28,25 +28,19 @@ from __future__ import annotations
 import ast
 import configparser
 import json
-import os
 import re
 import shlex
 import subprocess
-import tempfile
-import time
 import tomllib
 import warnings
 from collections import Counter
 from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TypeVar
 
 from . import done, vcs
 from .config import Config
-from .gitargv import GIT_NETWORK_SUBCOMMANDS
-from .grep import Cache, Wrap, wrapped
 from .lines import ENCODING, file_text, split_lines
 from .model import (
     FrontMatterDeclines,
@@ -68,19 +62,6 @@ from .python import (
     refusal,
 )
 from .release import CODE_SPAN_PATTERN
-from .shell import (
-    COMMAND_ENDS,
-    PIPES,
-    Clause,
-    SimpleCommand,
-    Word,
-    basename,
-    clause_commands,
-    is_python,
-    python_operand,
-    shell_words,
-    simple_commands,
-)
 from .vcs import RECORDS
 
 # Suppressions matched as text. `noqa` is deliberately absent: a project whose
@@ -834,443 +815,14 @@ RESIDUAL = (
     "line and assert the wrong thing. Read the new test bodies."
 )
 
-# Pytest's own exit codes, which are what make "ran and matched nothing"
-# separable from "ran and something failed": 0 passed, 1 tests failed, 5 no
-# tests were collected. Only 5 is needed here, and only pytest promises it.
-NO_TESTS_COLLECTED = 5
-
 # A status no process can return, so a caller can tell a command killed at the
 # timeout from one that ran and failed. A shell reports an exit status in
 # 0-255 and a signal death as a small negative number, so a value outside both
-# collides with neither.
-#
-# It needs a status of its own because 1 is what a failing test returns.
-# Without one, a command killed part-way through is indistinguishable from one
-# that ran its assertions and correctly failed, and `already_passing` reports
-# that reading to a reader as fact - the "could not look" rendered as "looked,
-# found nothing" that the rest of this module exists to refuse (`PL-T940`).
+# collides with neither. It needs a status of its own because 1 is what a
+# failing check returns.
 TIMED_OUT = 1000
 
-# What an exit status may be read to mean is one contract, written where the
-# field is documented - `subprojects/docket/README.md` § "What a `verify:` exit status proves, and
-# to whom" (`PL-6TP8`) - and every reader of a status in this module and in
-# `checks.py` names the clause it applies. In short: 0 says the command's
-# assertion holds, and says nothing about the work being right; any other
-# status says the assertion did not hold *or was never evaluated*, and only
-# three never-evaluated cases are decidable from the run - `TIMED_OUT`, 127,
-# and `NO_TESTS_COLLECTED` above. A red prerequisite clause is not one of them
-# (`a && b` exits 1 either way), and work finished under a different name from
-# the one a `grep` pins is not decidable by anything that reads a status.
 
-
-def selects_no_test(command: str, status: int) -> bool:
-    """Whether a command ran and matched no test, rather than failing.
-
-    The two are the same shell exit as far as anything reading a status is
-    concerned - non-zero - and they mean opposite things. A command that fails
-    ran an assertion and the assertion did not hold, which is what an unstarted
-    item's command is supposed to do. A command that selects no test asserted
-    nothing at all: `-k` matched no name, pytest deselected the file and
-    exited 5, and the same 5 comes back after the work as before it unless a
-    test name happens to match. Nothing distinguishes such an item from a
-    finished one, and nothing ever will on its own.
-
-    The claim is made only about a command that names pytest, because pytest
-    is what promises 5 means "collected nothing". A shell exit of 5 from
-    anything else means whatever that program decided it means, and reading it
-    as an empty selection would be guessing - the error this check exists to
-    stop, made by the check itself.
-
-    A command names pytest where one of its simple commands runs it, as
-    `docket.shell.invocation` reads one: `pytest`, `uv run pytest`, `timeout
-    60 python -m pytest`. A `python3 -c` string that calls `pytest.main` runs
-    the interpreter, as `checks` reads it too, so neither classifies it
-    (`PL-RHPK`). False negatives are accepted and are silent: a suite run
-    from a string or a script, or a compound command whose last clause masks
-    the status, is not classified. A false positive would put a wrong
-    sentence in front of a reader, so the test is deliberately the narrow one.
-    """
-    if status != NO_TESTS_COLLECTED:
-        return False
-    return any(_invoked(run) == "pytest" for run in simple_commands(shell_words(command), command))
-
-
-def _invoked(run: SimpleCommand) -> str | None:
-    """The name of what `run` invokes, past wrappers, `uv run` and `python -m`, or `None`."""
-    found = run.invokes()
-    return None if found is None else found[0]
-
-
-# The one `docket` subcommand a `verify:` command must never name, and the other
-# one that executes a `verify:`. Both are read off the simple commands
-# `docket.shell` cuts, the one reading every rule over a command takes
-# (`PL-P7J7`), rather than matched as text. That is what keeps the shape the
-# recursion rule leaves allowed from tripping it: `grep -q 'docket verify'
-# docs/items/` runs `grep`, and the pattern is one quoted word. A
-# substitution's body is a command the shell runs, so `test -z "$(bin/docket
-# check)"` runs one too.
-
-
-def _docket_runs(clause: Clause, command: str, subcommand: str) -> list[int]:
-    """Where `docket <subcommand>` runs in a clause, as the end offset of each subcommand word.
-
-    `docket` is what a simple command invokes, as `docket.shell.invocation`
-    reads it and the gate guard reads it too: `bin/docket`, `uv run docket`,
-    `timeout 60 bin/docket` or `python3 -m docket` (`PL-RHPK`). It takes no
-    options before its subcommand, so the subcommand is the next word.
-    """
-    found: list[int] = []
-    for run in clause_commands(clause, command):
-        invoked = run.invokes()
-        if invoked is None or invoked[0] != "docket":
-            continue
-        at = invoked[1]
-        if at < len(run.words) and run.words[at] == subcommand:
-            found.append(run.spans[at][1])
-    return found
-
-
-#: The shell lines that exit 0 against every tree there has ever been. Exact
-#: spellings rather than a parse, because that is the half of "does this command
-#: discriminate" a script may answer: whether `true` can fail is a fact about
-#: the shell, while whether `grep -q 'delete just that one ref' <file>` can is a
-#: fact about the file it reads, and guessing at the second is the judgment half
-#: `CLAUDE.md` reserves for a person. The path spellings are here because they
-#: are the same program under another name, and `:` because it is the shell
-#: built-in whose whole purpose is to succeed.
-NEVER_FAILS = frozenset({"true", "/bin/true", "/usr/bin/true", ":", "exit 0"})
-
-
-def never_fails(command: str) -> bool:
-    """Whether this `verify:` command exits 0 whatever tree it is run against.
-
-    A `verify:` command is a specification of what would prove the item done,
-    so one that cannot fail specifies nothing: `docket verify` would ACCEPT a
-    branch that did none of the work, and the landed replay would report the
-    item as a candidate for closing forever. It is also the placeholder a
-    session reaches for while triaging in bulk - three items were given
-    `verify: true` on one branch on 2026-09-20, and the store had no way to say
-    so until CI ran the commands.
-
-    Decidable from the field alone, which is why it is here rather than behind
-    `--verify`: nothing about the tree can make `true` return anything else, so
-    the expensive tier has nothing to add. The rule is exact-match against
-    `NEVER_FAILS` and deliberately nothing cleverer - a command whose *effect*
-    is a no-op, like a `grep` for a string that is not in the file it reads, is
-    only answerable by running it, and that question stays where it is
-    (`PL-J3WK`).
-
-    The command is read by `shell_words` and must be one clause of words, a
-    trailing `;` dropped: a trailing comment is gone and quotes are removed as
-    bash removes them, so `'true'` is the program `true`, and none of the
-    three changes what the line does. Any other operator makes it a line
-    `NEVER_FAILS` does not spell.
-    """
-    reading = shell_words(command)
-    if len(reading.clauses) != 1:
-        return False
-    tokens = list(reading.clauses[0].tokens)
-    if tokens and tokens[-1] == ";":
-        tokens.pop()
-    words = [token.text for token in tokens if isinstance(token, Word)]
-    return len(words) == len(tokens) and " ".join(words) in NEVER_FAILS
-
-
-def reenters_verify(command: str) -> bool:
-    """Whether this `verify:` command runs the command that would be running it.
-
-    `docket verify` executes an item's own `verify:` field, so an item whose
-    command names it re-enters `verify_item` once per level and never stops.
-    Unlike the landed replay, which asks its question once and can be told not
-    to ask again, there is no level at which this one is finished: the command
-    *is* the deliverable, so every level has the same work to do. Each level
-    also gets a fresh timeout rather than a share of one, so what ends the
-    recursion is the process table rather than the clock.
-
-    Refused on the item rather than at the run, because the run is where it
-    cannot be reported: the outer command hangs, and nothing in its output
-    names the item that caused it.
-
-    `docket check` is deliberately not matched, and the asymmetry is the whole
-    of the rule. It executes a `verify:` only under `--verify`, and a nested run
-    is told not to ask, so `bin/docket check && grep -q ...` - the shape the
-    older commands record, before `PL-6TP8` retired the clause ahead of the
-    `grep` - is bounded at one level and proves what it claims.
-
-    Read over the command and every substitution's body, so the run is found
-    wherever bash would make it: behind an apostrophe inside double quotes,
-    which a quote regex once read as the start of a quoted span running to
-    the next one (`PL-P7J7`), or inside a `$( )` or backquotes.
-    """
-    return any(
-        _docket_runs(clause, command, "verify") for clause in shell_words(command).every_clause()
-    )
-
-
-def reads_check_output(command: str) -> str:
-    """How this command consumes `docket check`'s output, or "" if it does not.
-
-    The distinction is between reading the exit status and reading the text.
-    `docket check && grep -q ...` asks whether the store validates, which a
-    nested run answers correctly and which ten open items rely on. Piping the
-    output into a `grep` asks what the run *said*, and that is the question a
-    nested run is specifically unable to answer: it is told not to replay the
-    open items' commands, so the landed advisory it would be grepped for is
-    never printed. Such a command matches nothing whether the work is done or
-    not, and an inverted grep passes on the strength of it.
-
-    An advisory rather than an error, because "reads the output" is a judgment
-    about a shell line rather than an exact rule, and `CLAUDE.md` reserves hard
-    failure for the exact ones. The returned string is the shape found, so the
-    advisory can name it: a `docket check` inside a substitution's body
-    captures it, and one followed by a pipe before its command ends pipes it.
-    Where a command does both, the one standing first names the shape.
-
-    `docket.shell` names what ends a command, `COMMAND_ENDS`, and what pipes
-    it, `PIPES`: a `|` after `docket check` and before a command end pipes its
-    output, and one after the end belongs to the next command.
-    """
-    reading = shell_words(command)
-    found: list[tuple[int, str]] = []
-    for body in reading.substitutions:
-        for clause in body:
-            for end in _docket_runs(clause, command, "check"):
-                found.append((end, "captures its output in a command substitution"))
-    for clause in reading.clauses:
-        for end in _docket_runs(clause, command, "check"):
-            for token, (start, _) in zip(clause.tokens, clause.spans, strict=True):
-                if start < end or not isinstance(token, str):
-                    continue
-                if token in COMMAND_ENDS:
-                    break
-                if token in PIPES:
-                    found.append((end, "pipes its output into another command"))
-                    break
-    return min(found)[1] if found else ""
-
-
-# The shape a path is written in, and deliberately loose: it runs over the
-# *raw* clause, quoted spans included, so a path inside a `python3 -c "..."`
-# body or a `grep` pattern is a candidate like any other. Nothing is decided
-# from the shape alone - a candidate only matters where it matches a path the
-# branch actually changed - so a loose pattern costs a wasted comparison and a
-# strict one costs a missed replay.
-#
-# regex: a run of the characters a path is written with, found anywhere in the
-# raw text. `docket.shell` reads words and leaves out what is inside quotes,
-# which this must read.
-PATH_TOKEN_RE = re.compile(r"[A-Za-z0-9_.][A-Za-z0-9_./+-]*")
-
-# What a clause *runs*, as against what it reads, and this distinction is the
-# whole of `command_paths`. `python3 tools/doc_check.py check` names a path and
-# reads nothing: the path is the program, and the clause is the health half of
-# a command whose discriminating half is somewhere else. 54 of the 168 open
-# commands carrying that gate would otherwise replay behind any edit to it.
-# A path handed to something else - `grep -q … docs/MODEL.md`, `pytest
-# tests/unit/test_x.py` - is what the clause reads, and is what can change the
-# command's outcome while nobody touches the item.
-#
-# The program a command runs is the one `docket.shell` reads: past its
-# assignments, a reserved word or `time`, each wrapper `shell.WRAPPERS` names
-# and a `uv run`, as the guard hooks read it (`PL-RHPK`).
-
-#: Programs other than Python whose first non-flag argument is a script they
-#: execute, so that argument is a program too. Every other command takes its
-#: arguments as data. A Python interpreter's script is the one
-#: `shell.python_operand` finds, in any spelling `shell.is_python` names.
-SCRIPT_RUNNERS = frozenset({"bash", "sh", "zsh", "dash", "node", "perl", "ruby"})
-
-#: Their flags after which what follows is code rather than a script.
-INLINE_CODE = frozenset({"-c", "-m"})
-
-
-def _programs(command: str, run: SimpleCommand) -> set[int]:
-    """Where each path this command runs rather than reads starts, as an offset into `command`."""
-    at = run.runs(uv_run=True)
-    if at is None:
-        return set()
-    runs = [run.spans[at]]
-    name = basename(run.words[at])
-    if is_python(name):
-        kind, _, after = python_operand(run.words[at + 1 :])
-        if kind == "file":
-            runs.append(run.spans[at + after])
-    elif name in SCRIPT_RUNNERS:
-        for word, span in zip(run.words[at + 1 :], run.spans[at + 1 :], strict=True):
-            if word in INLINE_CODE:  # what follows is code, not a script
-                break
-            if word.startswith("-"):
-                continue
-            runs.append(span)
-            break
-    starts: set[int] = set()
-    for start, end in runs:
-        # A quoted word's path starts inside its quote rather than at the word.
-        match = PATH_TOKEN_RE.search(command, start, end)
-        if match is not None:
-            starts.add(match.start())
-    return starts
-
-
-def command_paths(command: str) -> frozenset[str]:
-    """Every path this `verify:` command reads, as against the programs it runs.
-
-    A command's outcome can change without its item being touched, and this is
-    what says which edits could do it: a branch that edits `docs/MODEL.md`
-    changes the answer of every open command that greps it, while editing none
-    of their items. Six recorded breaks were that case, and each was reported
-    only by the whole-store sweep after the merge (`PL-XMNC`).
-
-    Read by `shell_words`, and cut into simple commands where bash ends one,
-    a pipe included, because each command's program is a path it runs rather
-    than one it reads, and a substitution's body is cut the same way
-    (`shell.simple_commands`). Each clause is then scanned as written, from
-    its first token to its last, so a trailing comment, which bash never
-    reads, names no path.
-
-    Deliberately textual, and deliberately loose. Nothing here is asked of the
-    filesystem, so a path a branch is *creating* is matched like any other -
-    `test -f CONTRIBUTING.md` is one of the six, and the file existed nowhere
-    until the branch that broke it. What comes back is candidates rather than
-    a claim that any of them is a path; the caller compares them against paths
-    the branch really changed, which is where a token that is not one falls
-    out for free.
-
-    What it cannot read it over-reports rather than skipping. A quoted span is
-    scanned for paths even though the clause may only be matching the text; a
-    script run by a program `SCRIPT_RUNNERS` does not name counts as read; and a command the shell
-    cannot read at all reports every path-shaped token in it, its programs
-    included. Each puts an extra command in a replay, which costs a second;
-    the other direction costs the finding.
-    """
-    reading = shell_words(command)
-    if not reading.clauses:  # unreadable, so there is no program to tell apart
-        return frozenset(PATH_TOKEN_RE.findall(command))
-    runs: set[int] = set()
-    for run in simple_commands(reading, command):
-        runs |= _programs(command, run)
-    found: set[str] = set()
-    for clause in reading.clauses:
-        if not clause.spans:
-            continue
-        for match in PATH_TOKEN_RE.finditer(command, clause.spans[0][0], clause.spans[-1][1]):
-            if match.start() not in runs:
-                found.add(match.group())
-    return frozenset(found)
-
-
-def file_arguments(command: str) -> frozenset[str]:
-    """The paths this `verify:` command names as plain arguments: `command_paths`, held strict.
-
-    `command_paths` over-reports on purpose, for the replay. A check that
-    advises on a path has to name only real reads, so this keeps a candidate
-    only where it stands as a whole word that is neither quoted nor globbed.
-    A pattern such as `grep -qF '/.claude/rules/**'` is then a pattern, not a
-    path (`PL-ZB82`). A quoted path argument is missed, which costs an advisory
-    and never raises a false one.
-    """
-    candidates = command_paths(command)
-    reading = shell_words(command)
-    return frozenset(
-        token.text
-        for clause in reading.every_clause()
-        for token in clause.tokens
-        if isinstance(token, Word)
-        and not token.quoted
-        and not token.globbed
-        and token.text in candidates
-    )
-
-
-#: Command words whose answer is a fact about the world rather than about the
-#: tree: `git` followed by one of `GIT_NETWORK_SUBCOMMANDS`, or one of these
-#: alone. Kept as command words rather than substrings because a `verify:` may
-#: legitimately *search* for one - see `reaches_outside_tree`.
-NETWORK_COMMANDS = frozenset({"curl", "wget", "gh", "ssh", "scp", "rsync", "nc"})
-
-
-def reaches_outside_tree(command: str) -> bool:
-    """Whether this `verify:` command's answer depends on more than the tree.
-
-    `already_passing` reads exit 0 as a fact about the tree, and that holds
-    only where the command is a function of the tree. A command that asks the
-    remote is not: its answer is a fact about the world at the moment it ran,
-    so it can flip from failing to passing with no commit behind it, and the
-    commits the whole-store replay then names are innocent of it. Five items
-    have ever recorded one, four of them the same release-tag line - the work
-    they record is the project owner's and the remote is the only place it is
-    visible, so there is no hermetic substitute to prefer (`PL-205P`).
-
-    Read by `shell_words`, every word in any position, over the command and
-    every substitution's body, and a trailing `# …` is gone as bash drops it
-    rather than scanned for verbs. A pipe ends a word, so `a.md|curl` runs
-    `curl` (`PL-P7J7`).
-
-    **Tokenized rather than searched, which is the whole difficulty.** A
-    `verify:` may carry a network verb as a *search string* and be perfectly
-    hermetic: `PL-K2C8`'s is `grep -q 'git push origin --delete'
-    .claude/skills/docket/SKILL.md && …`, which reads one file and no socket.
-    The lexer reads that quoted argument as a single word, so it never matches
-    the bare `git` this looks for, where a substring scan calls it
-    non-hermetic and silently downgrades a finding that should stay an error.
-
-    **Wrong in the safe direction by construction.** An unreadable command -
-    an unbalanced quote, which bash refuses - answers `False`, and so does
-    anything this does not recognize. False means hermetic, which means the
-    finding keeps today's severity; only a command this is sure about is
-    softened. A predicate that guessed the other way would quietly turn real
-    findings into advisories, which is the failure worth being asymmetric
-    about.
-
-    The subcommand must follow `git` immediately, so `git -C some/path
-    ls-remote` reads as hermetic. That is the safe direction again rather than
-    an oversight: no recorded command has ever taken that shape, and widening
-    the scan to "a network subcommand appears anywhere after a `git`" would
-    catch `git log --grep fetch`, which touches nothing.
-
-    What it deliberately does not attempt: deciding whether a command *should*
-    reach the remote, or whether reaching it is correct. That is the judgment
-    half, and it stays with the reader.
-    """
-    for clause in shell_words(command).every_clause():
-        tokens = clause.tokens
-        for position, token in enumerate(tokens):
-            if not isinstance(token, Word):
-                continue
-            if token.text in NETWORK_COMMANDS:
-                return True
-            following = tokens[position + 1] if position + 1 < len(tokens) else None
-            if (
-                token.text == "git"
-                and isinstance(following, Word)
-                and following.text in GIT_NETWORK_SUBCOMMANDS
-            ):
-                return True
-    return False
-
-
-def reads_any(command: str, paths: Collection[str]) -> bool:
-    """Whether this command reads any of `paths`.
-
-    A directory named by the command covers everything under it - `grep -rq …
-    docs/items/` reads an item file the branch added - which is `is_under`'s
-    containment rule, the same one an item's `touches` is judged by.
-
-    Containment is offered only to a candidate carrying a `/`, and the rest
-    must match a changed path exactly. A bare word is far more often part of a
-    pattern than a directory: `grep -q 'src' …` would otherwise put the command
-    behind every edit under `src/`, while `grep -q … Makefile` still matches
-    the file it names.
-    """
-    named = command_paths(command)
-    directories = tuple(candidate for candidate in named if "/" in candidate)
-    return any(path in named or is_under(path, directories) for path in paths)
-
-
-#: Appended to a commission check's detail when it is reporting rather than
-#: refusing. Short, because it repeats on up to four lines of one report; the
-#: reasoning is in `verify_item`'s docstring, which is where a reader who wants
-#: it will look.
 COMMISSION_NOTE = " - reported, not refused: this is a self-audit, not a delegated review"
 
 
@@ -2044,9 +1596,9 @@ class Commission:
        `verify:` and `touches:`. A *prediction*: a command naming a test not
        yet written, a path list naming files not yet created. The base's copy
        is the commission and is what the branch is measured against. The
-       branch's copy is a *correction* of the prediction - it is the evidence
-       the audit runs and reads, and it is printed as a correction beside the
-       base's with the base's own result, never substituted silently. A
+       branch's copy is a *correction* of the prediction, and it is the
+       evidence the audit reads: the search for fixed text, and the tests the
+       item names when it closes. Nothing runs a command (`PL-QTZG`). A
        delegated audit refuses the correction outright, through
        `front_matter_check`.
     3. **What the work may waive** - `not-delegable:`. A *waiver* removes a
@@ -2057,9 +1609,9 @@ class Commission:
        was the other waiver, and went with the assertion check it folded
        (`PL-CZXN`).
 
-    In one sentence: a correction supplies evidence and is honoured and
-    printed; a waiver removes a refusal and is the base's; an outcome is the
-    branch's and excuses nothing. Each reader in `_check_item` names the kind
+    In one sentence: a correction supplies evidence and is honoured; a waiver
+    removes a refusal and is the base's; an outcome is the branch's and
+    excuses nothing. Each reader in `_check_item` names the kind
     it applies.
 
     Counted before the kinds were split, because one copy for every field was
@@ -2145,34 +1697,6 @@ def read_commission(root: Path, base: str, items_dir: str, item: Item) -> Commis
     if declined:
         return Commission(unread=f"{base}:{was} declines {declined}")
     return Commission(fields=fields)
-
-
-def commissioned_result(root: Path, base: str, commission: Commission, correction: str) -> str:
-    """The commissioned command run on this tree, printed beside the branch's correction of it.
-
-    `verify:` is a prediction, so the branch's command decides the check - but
-    a correction is honoured on the page, never substituted silently. Before
-    this the only trace of a rewritten command was the front-matter NOTE every
-    close-out prints, which `PL-KSV2` found readers skim, so a failing
-    commissioned command replaced by a weaker passing one reached `ACCEPT`
-    with nothing on the report to say so (`PL-PZ6T`). Now it reaches `ACCEPT`
-    only with this line under the check. The exit is read whichever way it
-    went: a commissioned command that still passes says the branch swapped a
-    working command for another, which is a different thing for a reviewer to
-    look at than one that fails.
-    """
-    status, _stdout, _stderr = _run([commission.verify], root, shell=True, env=_command_env())
-    if status == 0:
-        result = "passes on this tree"
-    elif status == TIMED_OUT:
-        result = "did not finish on this tree, killed at the limit"
-    elif selects_no_test(commission.verify, status):
-        result = "selects no test on this tree (pytest exit 5)"
-    else:
-        result = f"fails on this tree (exit {status})"
-    return (
-        f"commissioned: `{commission.verify}` - {result}; this branch runs `{correction}` instead"
-    )
 
 
 def front_matter_check(
@@ -2364,36 +1888,34 @@ def verify_item(
     So in self-audit the four **commission** checks report as advisories -
     still printed, still naming every path, with the reason they are not
     refusing - while the four **integrity** checks stay absolute: no
-    suppression added and the item's own command passes, here, and, once for
-    the branch in `verify`, the unit tests catch a mutation of each changed
-    line and the project's own checks pass. That line is the whole design. A
+    suppression added and what the item records shows its work, here, and,
+    once for the branch in `verify`, the unit tests catch a mutation of each
+    changed line and the project's own checks pass. That line is the whole
+    design. A
     session may legitimately re-scope its own commission; it may not weaken
     the thing that measures it, and it may not skip the test.
 
-    The command check has a **declared** exemption, which is not a relaxation
+    The record check has a **declared** exemption, which is not a relaxation
     of that line but the reason it can stay absolute. Which copy of the item
     each field behind it is read from follows one rule, stated on
     `Commission`: an outcome is the branch's and excuses nothing, a prediction
-    is measured against the base's with the branch's correction run and
-    printed, a waiver is the base's (`PL-B8HZ`).
+    is measured against the base's with the branch's correction read, a
+    waiver is the base's (`PL-B8HZ`).
 
-    - A `dropped` item, or one carrying `not-delegable:`, has no command to
-      run by construction, and the command check reports which applies
-      (`PL-L4KX`). A dropped item that still carries one has it printed and
-      not run, since it names work the drop says will not be done
-      (`PL-BX1C`). The drop is an outcome, read off the *branch's* copy as it
-      has to be: it is what the close-out writes, and it grants nothing - it
-      claims no work. A delegated audit refuses a worker's drop through the
+    - A `dropped` item, or one carrying `not-delegable:`, records nothing by
+      construction, and the record check reports which applies (`PL-L4KX`).
+      The drop is an outcome, read off the *branch's* copy as it has to be:
+      it is what the close-out writes, and it grants nothing - it claims no
+      work. A delegated audit refuses a worker's drop through the
       front-matter check; `--self` only reports it. The reason is a waiver
-      and is held to the base's copy: it excuses a command the base never
+      and is held to the base's copy: it excuses a record the base never
       commissioned, never one the branch deleted, so it cannot be written
-      beside the deletion to skip the test (`PL-KSV2`).
+      beside the deletion to skip the check (`PL-KSV2`).
     - `verify:` and `touches:` are predictions, and the branch's copy of each
       is honoured as a correction rather than substituted silently. The
-      command the branch records decides its check, with the base's command
-      run and its exit printed under it where the two differ (`PL-PZ6T`),
-      and the diff is measured against the base's `touches` with a path only
-      the branch's own widening declares named as that.
+      search the branch records is the one that is read, and the diff is
+      measured against the base's `touches` with a path only the branch's own
+      widening declares named as that.
 
     Without them the absolute checks had no passing route on close-outs the
     project's own instructions prescribe, and a session meeting one could only
@@ -2408,13 +1930,11 @@ def verify_item(
     checks, so offering the work would mean refusing it once done". That is a
     defect absorbed into policy, and this is the repair.
 
-    What this reads from the item's own command (`PL-6TP8`): exit 0 is the
-    commission's assertion holding, and every other status is a `REJECT` with
-    the reason on the line where the run can name it - re-entered `docket
-    verify`, selected no test, killed at the limit, or the command's own last
-    lines. Unlike `already_passing` this may not decline: the command is the
-    thing being asked about, so "could not run it" rejects the work rather than
-    abstaining. What exit 0 does not prove is that the work is right;
+    What this reads from the item's own record (`PL-FN11`, `PL-N046`): the
+    tests a closed item names, each defined in the tree and added or changed
+    on the branch, and one search for fixed text, read from the tree. A record
+    that could not be read rejects the work. Nothing runs a command an item
+    holds (`PL-QTZG`). The record does not show that the work is right:
     `mutation_check`, `project_check` and the reviewer's reading of the diff
     carry that.
 
@@ -2455,58 +1975,49 @@ def _check_item(
     commits = item_commits(root, base, item.identifier)
     paths = changed_paths(root, base, commits)
 
-    # "No command recorded" means the test was skipped, except in the two
-    # states where the store has already decided that no command can exist. A
-    # `dropped` item built nothing, so there is nothing for a command to prove;
-    # a `not-delegable` reason is what `docket check` accepts *instead of* a
-    # command, in those words. Refusing both here made the two tools disagree
-    # about the same item - `check` clean, `verify --self` REJECT - and left the
-    # close-out the skill prescribes with no passing state at all, since writing
-    # a `verify:` onto a closed item is separately refused (`PL-L4KX`,
-    # `PL-JZ1D`).
+    # An item that records nothing to show its work is refused, except in the
+    # states where the store has already decided that it records nothing. A
+    # `dropped` item built nothing. A `not-delegable` reason is what `docket
+    # check` accepts in place of a record. Refusing both here made the two
+    # tools disagree about the same item, and left the close-out the skill
+    # prescribes with no passing state (`PL-L4KX`, `PL-JZ1D`).
     #
-    # Read off the store rather than taken on the session's word, and neither
-    # state is free to reach for: a drop is a closure that owes a `reason` and a
-    # `closed` date, and a `not-delegable` line is the thing that withholds the
-    # item from delegation in the first place. `Commission` states which copy
-    # each is read from. The drop is an *outcome* and is the branch's: the
-    # close-out is what writes it, and it claims no work for a command to
-    # prove. The reason is a *waiver* and waives only what the base holds: it
-    # excuses a command the commission never held, and never one the branch
-    # removed. Read off the branch alone, it let a close-out delete its failing
-    # command, write a reason beside the deletion and ACCEPT with the command
-    # never run - and a reason can say who should do the work rather than that
-    # nothing can prove it (`PL-KSV2`). A base that cannot be read excuses
-    # nothing, since the waiver turns on what it holds.
+    # Both are read off the store. `Commission` states which copy each is read
+    # from. The drop is an *outcome* and is the branch's: the close-out writes
+    # it, and it claims no work. The reason is a *waiver* and waives only what
+    # the base holds: it excuses an item whose `verify:` the base never held,
+    # and never one the branch removed. Read off the branch alone, it let a
+    # close-out delete its `verify:`, write a reason beside the deletion and
+    # ACCEPT (`PL-KSV2`). A base that cannot be read excuses nothing, since
+    # the waiver turns on what it holds.
     #
-    # Advisory unconditionally rather than under `self_audit`, because what
-    # excuses the command is a fact about the item and not about who is asking.
-    # And it does not stop early: that no command was recorded says nothing
-    # about whether the diff stayed inside `touches` or whether a suppression
-    # arrived, which is the half a hard stop was throwing away.
+    # The check is advisory whoever asks, because what excuses the record is a
+    # fact about the item. It does not stop the audit: that nothing was
+    # recorded says nothing about whether the diff stayed inside `touches` or
+    # whether a suppression arrived.
     commission = read_commission(root, base, config.items_dir, item)
     exemption, missing = "", "none recorded"
     unexcused: tuple[str, ...] = ()
     if item.status == "dropped":
-        exemption = "a dropped item built nothing, so no command can prove it"
+        exemption = "a dropped item built nothing, so no record can show its work"
     elif item.not_delegable and commission.unread:
         missing += (
-            f": the `not-delegable:` reason excuses a command only where {base} "
-            f"commissioned none, and {commission.unread}"
+            f": the `not-delegable:` reason excuses an item only where {base} "
+            f"holds no `verify:` for it, and {commission.unread}"
         )
     elif item.not_delegable and commission.verify:
         missing += (
-            f": this branch deleted the command {base} commissions, so the "
+            f": this branch deleted the `verify:` that {base} holds, so the "
             "`not-delegable:` reason beside the deletion is the branch's own word "
             "for skipping it"
         )
         unexcused = (
             f"{base} commissions: {commission.verify}",
-            "restore it, or give the command that proves the work; where none can, "
+            "restore it, or record the tests or the search that show the work; where none can, "
             f"that is {base}'s copy to say, not this branch's",
         )
     elif item.not_delegable:
-        exemption = f"the item records why no command can prove it - {item.not_delegable}"
+        exemption = f"the item records why nothing can show its work - {item.not_delegable}"
     elif not item.is_open and done.dated_record(item.body):
         exemption = "the item's brief holds a dated paragraph that states its result"
     if not item.verify and not item.tests:
@@ -2675,113 +2186,43 @@ def _check_item(
         front_matter_check(root, base, config.items_dir, item, advisory=self_audit)
     )
 
-    # An exempt item reached here with no command; the advisory above already
-    # said which exemption applied, and there is nothing left to run.
-    if item.tests and item.status != "dropped":
+    # What a closed item records is read against the branch, as `docket check`
+    # reads it: the tests it names, or its one search for fixed text
+    # (`PL-FN11`, `PL-N046`). No command is run (`PL-QTZG`).
+    if item.status == "done" and (item.tests or item.verify):
         fork = vcs.texts_at_fork(root, done.node_paths([item]), base=base)
         faults, unread = done.closing_faults(item, root, fork)
-        if fork.declined:
+        if fork.declined and item.tests:
             unread.insert(0, fork.declined)
         report.checks.append(
             Check(
-                "the recorded tests show the work",
+                RECORD_SHOWS_WORK,
                 not faults and not unread,
-                ", ".join(item.tests),
+                ", ".join(item.tests) or item.verify,
                 (*faults, *(f"not read: {reason}" for reason in unread)),
             )
         )
-
-    if not item.verify:
-        return report
-
-    # A dropped item that still carries a command has it printed and not run
-    # (`PL-BX1C`). The command names work the drop says will not be done, so
-    # its exit status measures unrelated work rather than this closure: the
-    # test-name greps `PL-23C7` met REJECTed three drops on 2026-09-22, and
-    # would have ACCEPTed them once `#929` added those names. Deleting the
-    # field at close-out was the workaround, applied by hand and not every
-    # time - 38 of 191 dropped items still carried one on 2026-09-23.
-    #
-    # An *outcome*, read off the branch's copy like the drop above, and it has
-    # to be: the drop is what the close-out writes, so the base still holds the
-    # item open. That grants a session nothing. A drop claims no work for a command
-    # to prove, the integrity checks above have already run over the diff, and
-    # a delegated audit refuses a worker who drops its own item, through the
-    # front-matter check.
-    if item.status == "dropped":
-        report.checks.append(
-            Check(
-                "`verify:` command passes",
-                False,
-                item.verify,
-                (f"not run: {exemption}",),
-                advisory=True,
+    elif item.is_open and item.verify and not done.keeps_its_command(item):
+        # A delegated worker leaves its item open, so an open item's search is
+        # read here, where the review of that work looks for it.
+        if isinstance(done.read_text_search(item.verify), done.TextSearch):
+            faults = done.search_faults(item.verify, root)
+            report.checks.append(Check(RECORD_SHOWS_WORK, not faults, item.verify, tuple(faults)))
+        else:
+            report.checks.append(
+                Check(
+                    RECORD_SHOWS_WORK,
+                    False,
+                    "not read: the item's `verify:` is a command, and nothing runs one. The "
+                    "tests that show the work are named when the item closes",
+                    advisory=True,
+                )
             )
-        )
-        return report
-
-    if os.environ.get(VERIFY_GUARD):
-        report.checks.append(
-            Check(
-                "`verify:` command passes",
-                False,
-                item.verify,
-                (
-                    "not run: this command re-enters `docket verify`, which is what is "
-                    "running it. Each level would run the command again, so the "
-                    "recursion ends at the process table rather than at an answer.",
-                ),
-            )
-        )
-        return report
-
-    status, out, err = _run([item.verify], root, shell=True, env=_command_env())
-    lines = () if status == 0 else failure_evidence(out, err)
-    # A rejection either way, and for opposite reasons, so the report says
-    # which. "The command failed" sends a reviewer to look for the missing
-    # work; "the command selected no test" sends them to the command, which is
-    # where the fault is - the work may well be finished and unprovable.
-    if selects_no_test(item.verify, status):
-        lines = (
-            "this command selects no test (pytest exit 5, nothing collected), so it "
-            "proves neither that the work is done nor that it is missing",
-        ) + lines
-    # A phrase its file wraps across a line break is read from the tree, and
-    # it is the command at fault, not the work: the line says so, and a pass
-    # that rests on one is no pass, since a `! grep` cannot see the sentence
-    # the work was to remove (`PL-RR1N`).
-    wraps = wrapped(root, item.verify)
-    lines = (
-        *(
-            f"{wrap.describe()}: `grep` reads one line at a time, so rewrite the command "
-            "to a phrase one line holds"
-            for wrap in wraps
-        ),
-        *lines,
-    )
-    # `verify:` is a *prediction*, and the branch's copy is its correction: it
-    # is the command that decides this check, since a commissioned test can be
-    # reworded, moved or never have existed under that name - 163 of 1,437
-    # close-outs on `main` rewrote theirs, and every one was such a correction.
-    # A correction is honoured on the page, never substituted silently: where
-    # the base commissions a command and the branch's differs, the base's runs
-    # too and its exit is printed under the check (`PL-PZ6T`, `PL-B8HZ`). Where
-    # the base commissions none the line says the command is the branch's own -
-    # a suffix, since that is true of two close-outs in five and a line that
-    # fires that often is skimmed - and where the base could not be read it
-    # says that rather than guessing which.
-    detail = item.verify
-    if commission.unread:
-        detail += f" - whether {base} commissioned it could not be read: {commission.unread}"
-    elif not commission.verify:
-        detail += f" - this branch's own, since {base} commissions none"
-    elif commission.verify != item.verify:
-        lines = (commissioned_result(root, base, commission, item.verify), *lines)
-    passed = status == 0 and not any(wrap.negated for wrap in wraps)
-    report.checks.append(Check("`verify:` command passes", passed, detail, lines))
     return report
 
 
+#: The check that what a closed item records shows its work on the branch.
+RECORD_SHOWS_WORK = "the recorded tests or search show the work"
 #: The check that an item records something to show its work: the tests it
 #: added, in `tests:`, or a command, in `verify:` (`PL-FN11`).
 SHOWS_ITS_WORK = "records what shows its work"
@@ -2960,575 +2401,3 @@ def verify_batch(
         for report in outstanding:
             report.checks.extend(shared)
     return reports
-
-
-# `docket check` runs the commands below, and open items carry `verify:`
-# commands ending in `bin/docket check`. Without a guard the outer run would
-# re-enter itself once per such candidate, and each re-entry would do it
-# again. The child is told not to ask, which is the whole fix: it still
-# validates the store, it just does not recurse into this one question.
-LANDED_GUARD = "DOCKET_SKIP_LANDED"
-
-# The same problem for the other command that executes a `verify:`, and it
-# cannot take the same answer. `already_passing` declines its question and is
-# still useful, because the question is about the store; `verify_item` cannot
-# decline, because the command is the thing being asked about. So a nested run
-# reports the re-entry as a failed check, which is the honest reading: the
-# command was not run, and the item is therefore not verified.
-#
-# `checks.py` refuses such a command outright, so this is what stands between a
-# store nobody has checked yet and a recursion the process table ends.
-VERIFY_GUARD = "DOCKET_IN_VERIFY"
-
-
-def _command_env() -> dict[str, str]:
-    """The environment `docket verify` runs an item's command in: both guards set.
-
-    `already_passing` has always set both on its children. `verify_item` set
-    only its own, so an item whose command runs `docket check --verify` made
-    the audit replay every open item's command one level down - 111 commands
-    and 87 s on the quality job - to answer a question about the store rather
-    than about the branch (`PL-SHTR`). The commissioned command that
-    `commissioned_result` runs beside a corrected one is the same kind of
-    child, so it takes the same environment.
-    """
-    return {**os.environ, LANDED_GUARD: "1", VERIFY_GUARD: "1"}
-
-
-# Long enough for a project's own suite, short enough that one wedged command
-# cannot hang `make check`. The timeout bounds a single command, so the figure
-# that has to fit under it is the worst case rather than the total, and the
-# total is paid concurrently in any case.
-#
-# No measurement is recorded here any more, deliberately. Two were, and both
-# went stale inside a fortnight: a number hand-copied into a comment cannot
-# know that the queue doubled under it, and the comment kept asserting a cost
-# the run had left behind - 6.9s at worst where the run had reached 27.4s
-# (`PL-9NKK`). Re-writing it would buy the same fortnight again. So `check`
-# prints the count, the pool's wall clock, the serial total and the worst case
-# on every run instead, which is that reading taken now rather than in
-# September; `PL-LXR3` and `PL-9NKK` hold the dated ones, where a measurement
-# keeps its date and stays true.
-LANDED_TIMEOUT = 120.0
-
-
-def landed_workers() -> int:
-    """How many candidate commands to run at once.
-
-    Each is a subprocess that spends most of its life on interpreter startup
-    and imports rather than on the CPU, so more of them than there are cores is
-    the right shape: the knee sits at the core count and the tail beyond it is
-    the startup overlap, which is why this doubles rather than matching. Held
-    on two measurements a day apart, on four cores, over stores of 49 and 78
-    candidates - eight workers beat four in both, and beat sixteen and
-    twenty-four in the second.
-
-    Capped because the win is already spent by then and an uncapped pool on a
-    large machine would put dozens of pytest processes on one working tree for
-    no measured gain. The second measurement is what shows the cap is still
-    right rather than merely inherited: at 78 candidates sixteen workers and
-    twenty-four were both *slower* than eight, so the pool has stopped gaining
-    from width and the cap is now binding on nothing.
-
-    The two runs are in `PL-LXR3` and `PL-9NKK`, with their dates, rather than
-    quoted here - `LANDED_TIMEOUT` above carries why. What this shape costs
-    today is on `check`'s own headline, taken from the run in front of you.
-    """
-    return min(8, (os.cpu_count() or 1) * 2)
-
-
-# Statuses worth asking about. `done` and `dropped` are settled, and an
-# untriaged capture has not promised to do anything yet.
-LANDED_STATUSES = ("ready", "needs-decision")
-
-# Statuses asked about only when the run is narrowed to what a branch changed.
-#
-# A `blocked` item's command rots in silence, and the cost lands on somebody
-# else: `PL-N092`'s command was `doc_check check && ! grep -q '…' README.md`,
-# and when `PL-WB5K` deleted that file on 2026-09-05 `grep` began exiting 2,
-# which `!` inverts to success. From that moment the command passed on a tree
-# where none of the work had been done - the "would ACCEPT a branch that did
-# none of it" case - and it sat that way for a day, invisible, because the item
-# was blocked. Unblocking it reddened the very pull request that unblocked it.
-#
-# Sweeping these with the store was the obvious repair and is the wrong one:
-# the replay is the most expensive thing `docket check` does, and widening the
-# pool permanently would buy a finding about work nobody can start. So the
-# question is asked exactly where it is cheap and timely - on a branch that
-# edited the item, which is the one place a session is already looking at it
-# and where `changed_items` has computed the set for free (`PL-RC0M`,
-# recommending this over both widening the sweep and leaving the rot).
-SCOPED_ONLY_STATUSES = ("blocked",)
-
-# An outlier test lived here - a command 30x above the pool's median was named
-# as the one the check waited for - and it was retired 2026-09-19 on a count,
-# not on taste (`PL-G6J5`).
-#
-# The ratio was set against a store whose typical `verify:` was a `grep`: 46
-# commands, 0.65 s median, one full-suite `--cov` run at 88x. The typical
-# command is now `uv run pytest <file>`, and measured on the same store on
-# 2026-09-19 the median is **3.65 s** across 179 commands. At 30x that puts the
-# bar at 109.5 s against a `LANDED_TIMEOUT` of 120 s - and a command over the
-# limit is killed and excluded from the median, so once the median passes 4.0 s
-# the test cannot fire on anything at all. It already fires on nothing: zero of
-# thirteen real branch scopes taken from the last twenty-five merges, and
-# nothing on the whole store, which holds a 67.4 s command.
-#
-# Widening the denominator to the store's median, which is what `PL-G6J5` was
-# filed to propose, was measured and refuted: also zero of thirteen.
-#
-# The silence is the right answer rather than a tuning failure. 1458 s of
-# serial work across eight workers is a 182 s floor against 204 s elapsed, so
-# no single command is what the run waits for - the queue is. `_note_cost`
-# reports that, every run, and names the costliest command against the limit
-# whether or not it is an outlier.
-#
-# Those are one run of three taken that day, and the container's load moves
-# them: serial 1204-1458 s, slowest 48.9-67.4 s, wall 166-204 s. The figures
-# above are the heaviest run, which is the conservative end for this argument -
-# the floor is 150-182 s against 166-204 s elapsed either way, the slowest
-# command is far under it in all three, and a median falling with the pool only
-# lowers the bar the pool's own maximum then fails to reach. Read them as a
-# scale rather than as constants; `PL-FZ58` is where the total is tracked.
-
-
-@dataclass(frozen=True)
-class SlowCommand:
-    """One item's `verify:` command, and what it cost the run that executed it."""
-
-    identifier: str
-    seconds: float
-
-
-@dataclass(frozen=True)
-class LandedReport:
-    """What running every open item's own `verify:` command found, or why nothing did.
-
-    The question `verify` asks of a branch, asked of the store instead: not
-    "did this worker do what the item commissioned" but "does the item's own
-    evidence of doneness already hold, while the item is still open".
-
-    One run, two findings, because both are about a command that specifies
-    nothing and both are free once the commands have been executed. `passing`
-    is the command that already holds. `vacuous` is the command that never
-    ran an assertion at all - `-k` matched no test name, so pytest collected
-    nothing and exited 5. The second is invisible without asking, which is
-    the whole reason it is asked: 5 is not 0, so a command that selects
-    nothing reads to `passing` as one that correctly fails, and stays that
-    way for as long as the item is open.
-
-    Passing proves less than it looks like it proves, and the type is shaped
-    around saying so. It is consistent with two different findings - the work
-    landed and nobody set `status: done`, or the command does not discriminate
-    and would have passed before the work too - and no reading of an exit
-    status can separate them. So this reports candidates and never a verdict,
-    which is why nothing here sets a status or raises an error.
-
-    The decidable parts of the same question are not here at all, and that is
-    the point of where they live. A command recorded against more than one open
-    item cannot be proving any single one of them done, and one that exits 0
-    against every tree proves nothing about any - both are answered by reading
-    the store, so `checks.py` refuses them on a bare `docket check` and nothing
-    that reaches here can still be in either state (`PL-J3WK`). This field once
-    carried the shared half as a subset of `passing`, which meant the finding
-    arrived only in CI and only for the items that happened to pass.
-
-    `blocked` is the other decidable part, and for the mirror reason. It is the
-    subset of `passing` whose items nobody can start, so the first reading -
-    the work landed and nobody closed the item - is not available: what a
-    passing command means there is that the command does not discriminate. It
-    is only ever populated on a narrowed run, because `SCOPED_ONLY_STATUSES`
-    is only asked about there.
-
-    `external` is the third carved-out subset, and it is carved out for a
-    reason about the *commit* rather than about the item. `passing` means "the
-    tree satisfies this command"; that reading holds only while the command is
-    a function of the tree. One that asks the remote answers about the world at
-    the moment it ran, so it flips with no commit behind it and the commits a
-    whole-store replay then names had nothing to do with it. Those ids are
-    named here so `checks.py` can soften them, and they are taken out of
-    `blocked` for the same reason - see `reaches_outside_tree` and `PL-205P`.
-
-    `declined` carries the meaning it does everywhere else here: the check did
-    not run, and a caller must not read the empty `passing` - or the empty
-    `vacuous` - as a clean result.
-
-    `timed_out` and `unavailable` are the same refusal made per item rather
-    than for the whole run. A command killed at the limit, or one the shell
-    could not find, produced no evidence about its item, so it appears in
-    neither finding above and is left out of `considered` - which is rendered
-    to a reader as "checked", and would otherwise count a command that was
-    not. They are reported rather than merely subtracted: an item that
-    silently left the count would be the same failure in a quieter form.
-    """
-
-    passing: tuple[str, ...] = ()
-    #: The subset of `passing` whose items are at a `SCOPED_ONLY_STATUSES`
-    #: status, so the "work landed" reading is unavailable and only the
-    #: non-discriminating one is left (`PL-RC0M`).
-    blocked: tuple[str, ...] = ()
-    #: The subset of `passing` whose command reaches past the tree, so its exit
-    #: status is a fact about the world at the moment it ran rather than about
-    #: this commit. It can flip with no commit behind it, which is why it is
-    #: carried apart and rendered as an advisory: see `reaches_outside_tree`
-    #: and `PL-205P`. It takes precedence over `blocked`, whose "the command
-    #: does not discriminate" certainty does not survive a command that could
-    #: simply have been answered by a changed world.
-    external: tuple[str, ...] = ()
-    #: Open items whose command matched no test, so it asserted nothing. Unlike
-    #: `passing` this is a verdict rather than a candidate: `selects_no_test`
-    #: only says so where pytest's own exit code says so.
-    vacuous: tuple[str, ...] = ()
-    #: Open items whose command greps for a phrase its file holds only across a
-    #: line break, each with the clauses that do (`PL-RR1N`). A verdict, as
-    #: `vacuous` is, and read from the tree rather than from the run: such a
-    #: clause fails, or under `!` passes, however the work stands, so the
-    #: command proves the item neither done nor undone. Its ids are taken out
-    #: of `blocked` and `external`, whose readings do not apply to it.
-    wrapped: tuple[tuple[str, tuple[Wrap, ...]], ...] = ()
-    #: Open items whose command was killed at `limit` before it could answer.
-    timed_out: tuple[str, ...] = ()
-    #: Open items whose command the shell could not find, where others could be
-    #: run. Where none could, the whole run declines instead.
-    unavailable: tuple[str, ...] = ()
-    #: Candidates whose command ran to completion - not how many were offered.
-    considered: int = 0
-    #: The per-command limit these results were produced under, so a report can
-    #: name the number a reader would have to change.
-    limit: float = LANDED_TIMEOUT
-    #: The pool's own wall clock - what a session actually waited through.
-    elapsed: float = 0.0
-    #: What the same commands would have cost one after another. `elapsed` is
-    #: what a session waits through and this is what the queue actually asks
-    #: for, and the two diverge as the store grows: concurrency holds the first
-    #: roughly flat while the second climbs with every item triaged to `ready`.
-    #: Reported because the flat number is the one that hides the growth.
-    serial: float = 0.0
-    #: The costliest command that ran, held to no threshold. It answers "how
-    #: close is any one command to `limit`", which always has an answer, rather
-    #: than "did an outlier arrive", which the retired ratio test asked and
-    #: which this store answers no to even with a 67 s command in it
-    #: (`PL-G6J5`).
-    slowest: SlowCommand | None = None
-    #: How wide the pool that produced these numbers was. Carried because
-    #: `serial` cannot be read without it: what the remaining commands cost a
-    #: run is their total divided across the workers, and a report that knows
-    #: the total but not the divisor can only guess (`PL-FRGP`).
-    workers: int = 0
-    #: What this run was narrowed to, empty when it swept the whole store. Set
-    #: whenever `scoped_to` was given, on every path out - including a decline
-    #: and a scope holding nothing to run - because a narrowed run reporting no
-    #: findings is otherwise indistinguishable from a store with none, which is
-    #: this module's cardinal error read one level up (`PL-SDHR`).
-    scope: str = ""
-    declined: str = ""
-
-    @property
-    def known(self) -> bool:
-        return not self.declined
-
-
-def items_reading(items: Sequence[Item], paths: Collection[str]) -> frozenset[str]:
-    """Open items whose `verify:` command reads one of the paths a branch changed.
-
-    The second half of a pull request's replay scope. `vcs.changed_items` gives
-    the first - the items whose own file the branch edited - and on its own it
-    replays the command a branch *writes* and never the command it
-    *invalidates*, which is the case every recorded break was (`PL-XMNC`).
-
-    Closed items are left out. A closed `verify:` is a record of what was run
-    on a tree that no longer exists rather than an assertion about this one, so
-    replaying it would report a break in something already finished.
-    """
-    if not paths:
-        return frozenset()
-    return frozenset(
-        item.identifier
-        for item in items
-        if item.is_open and item.verify and reads_any(item.verify, paths)
-    )
-
-
-def already_passing(
-    root: Path,
-    items: Sequence[Item],
-    *,
-    statuses: tuple[str, ...] = LANDED_STATUSES,
-    scoped_only_statuses: tuple[str, ...] = SCOPED_ONLY_STATUSES,
-    timeout: float = LANDED_TIMEOUT,
-    workers: int | None = None,
-    scoped_to: Collection[str] | None = None,
-    reading: Collection[str] = (),
-    scope_base: str = "",
-) -> LandedReport:
-    """Run every open item's `verify:` command, and report what running it showed.
-
-    Two findings from the one run: the commands that already pass, and the
-    commands that selected no test and so asserted nothing. Both are ways an
-    item can be open while its own evidence of doneness proves nothing, and
-    neither is visible without executing the command.
-
-    An item is closed by hand, so work that merges without its `status` being
-    set leaves the item `ready` forever: it keeps its place in `next`, it is
-    counted open by `wave` and `gate`, and the next session re-derives work
-    that is already on `main`. Four instances are known, and in all four the
-    item's own command passed on the merged tree while the file still read
-    `ready`.
-
-    Running the commands is the signal rather than reading commit subjects,
-    which was measured and rejected: of the thirteen open items whose id led a
-    commit subject on `main`, eleven were capture or triage commits, and an
-    advisory wrong five times in six is one every session learns to skim.
-
-    The commands run concurrently, because `make check` pays this and the bill
-    grows with the queue: every item triaged to `ready` adds its command's
-    runtime permanently, so the serial cost rises as the store gets healthier.
-    Nothing about the answer changes - each command still runs, in the working
-    tree, against the current state - so this is wall clock only, which is why
-    it was preferred to caching a result or asking fewer items (`PL-LXR3`).
-
-    Two conditions decline rather than answer, both for the reason
-    `merged_pull_requests` declines on a shallow clone - an empty result that
-    means "could not look" must never render as "looked, found nothing":
-
-    - the guard is set, so this is a nested run and the outer one is asking;
-    - nothing ran to completion, which is what a bare checkout with no
-      virtualenv looks like from here, and what a box too loaded to finish a
-      command inside the limit looks like too. Every command returning "not
-      found", or every one killed at the limit, is indistinguishable from a
-      clean store unless it is reported as a refusal.
-
-    Where only some commands could not answer the run still reports, and names
-    them in `timed_out` and `unavailable` rather than counting them checked.
-
-    A `blocked` item is asked about only on a narrowed run, which is the whole
-    of `PL-RC0M`'s answer: its command can rot for as long as the item waits,
-    and the pull request that unblocks it is the one that then goes red. The
-    two rejected repairs were sweeping blocked items with the store - the
-    replay is already this check's largest cost, and that widens it forever to
-    ask about work nobody can start - and leaving the rot, which is a guard
-    reporting the store sound while holding a command that proves nothing. A
-    branch that edits the item is where the question is both cheap and timely,
-    and `scoped_to` is exactly that set.
-
-    `scoped_to` narrows the run to those ids, and exists because the cost of
-    sweeping the whole store is paid on every push to every open pull request
-    while the answer is about the store rather than about the commit. It is
-    `PL-P3B6`'s argument one step further: that item took the replay off `make
-    check` because a pre-commit gate cannot have changed whether some *other*
-    item's work merged, and a pull request cannot either. So CI scopes on
-    `pull_request` and sweeps everything on `push` to the default branch, where
-    the question is a fact about that branch. Measured 2026-09-05: 87 s of the
-    quality job's 152 s for 111 commands, against nine items changed by the
-    branch that measured it.
-
-    What a branch can have changed is *two* sets, and reading it as one was the
-    defect: the items it edited, and the items whose command reads a file it
-    edited. Only the first was ever in scope, so a command was replayed on the
-    pull request that wrote it and never on the pull request that invalidated
-    it - and all six recorded breaks were the second case, each reported only
-    by the whole-store sweep once it was already on `main`. `items_reading`
-    computes the second set and `reading` is the caller's word for which ids
-    came from it, carried so the cost line can say which of the two produced
-    its count (`PL-XMNC`).
-
-    A passing command that reads past the tree is reported in `external` rather
-    than suppressed, because the finding is real and these are precisely the
-    items nobody remembers to close - four of the five ever recorded are the
-    release-tag line, one per release. What changes is only where it lands:
-    `checks.py` renders it as an advisory a session sees on every run, instead
-    of an error on the default branch's run that nothing watches (`PL-205P`).
-
-    A scoped run says so in `scope`, and every path out of here carries it -
-    including the one where the scope holds nothing to run. A narrowed run
-    reporting nothing is indistinguishable from a whole store with nothing to
-    report unless it says which it was, which is the same rule the declines
-    below follow.
-
-    Cost is reported rather than judged. `elapsed`, `serial` and `slowest` say
-    what the run came to and which command came closest to `limit`; nothing
-    here decides whether any of it is too much. An outlier test used to - a
-    command 30x the pool's median was named as the one the check waited for -
-    and it was retired 2026-09-19 once measurement showed it firing on nothing:
-    zero of thirteen real branch scopes and nothing on the whole store, whose
-    slowest command is 67.4 s. The constants' own block above carries the
-    numbers and why the silence is the right answer (`PL-G6J5`).
-
-    What this reads from a status, and what it does not (`PL-6TP8`): exit 0 is
-    the finding; `TIMED_OUT`, 127 and pytest's 5 are refusals, reported per
-    item; and every other non-zero exit is read as nothing at all - not as
-    "the item is legitimately open", which a red prerequisite clause makes
-    indistinguishable from it. So `considered` counts a command as checked for
-    the one direction this can answer, and a plain failure appears in no
-    finding by design rather than by omission.
-    """
-    # Built before the guard returns, so a declined run still says what it
-    # would have covered. "Nothing was checked" and "nothing was checked, and
-    # it would have been nine items rather than the store" are different
-    # sentences to whoever reads the log.
-    # `reading` is the half of `scoped_to` that is in scope for the other
-    # reason, and the sentence names both: "9 items" on a branch that changed
-    # nine item files and one that changed one item file and a `docs/MODEL.md`
-    # eight commands grep are different runs, and a reader acting on the
-    # finding needs to know which they are looking at.
-    widened = set(reading) & set(scoped_to or ())
-    scope = (
-        ""
-        if scoped_to is None
-        else (
-            (
-                f"{len(scoped_to)} item(s) in scope: {len(scoped_to) - len(widened)} this "
-                f"branch changed and {len(widened)} whose `verify:` command reads a file it "
-                "changed"
-                if widened
-                else f"{len(scoped_to)} item(s) this branch changed"
-            )
-            + (f" against {scope_base}" if scope_base else "")
-        )
-    )
-    if os.environ.get(LANDED_GUARD):
-        return LandedReport(
-            declined="a `verify:` command re-entered `docket check`, which cannot "
-            "ask this question about itself",
-            scope=scope,
-        )
-    # `scoped_only_statuses` widens the pool only on a narrowed run, so the
-    # order here matters: the filter below removes everything the branch did
-    # not touch, which is what keeps a blocked item off the whole-store sweep.
-    asked = statuses + (scoped_only_statuses if scoped_to is not None else ())
-    candidates = [item for item in items if item.status in asked and item.verify]
-    if scoped_to is not None:
-        candidates = [item for item in candidates if item.identifier in scoped_to]
-    if not candidates:
-        return LandedReport(scope=scope)
-
-    child = {**os.environ, LANDED_GUARD: "1", VERIFY_GUARD: "1"}
-
-    with tempfile.TemporaryDirectory(prefix="docket-landed-") as scratch:
-
-        def probe(item: Item) -> tuple[int, float]:
-            # Coverage keeps its data in one file per run and reads it back to
-            # decide `--cov-fail-under`, so two `--cov` commands sharing the
-            # tree's default `.coverage` would race and one could fail on data
-            # the other truncated - a wrong answer introduced by running them
-            # at once rather than found by it. A path per child removes that by
-            # construction, and stops these probe runs overwriting the coverage
-            # data the tree's own suite wrote. Pytest's cache is left shared:
-            # it is only read by selectors no recorded command uses, so a lost
-            # entry cannot change an exit status.
-            env = {**child, "COVERAGE_FILE": str(Path(scratch) / f"coverage.{item.identifier}")}
-            started = time.monotonic()
-            status, _, _ = _run([item.verify], root, shell=True, timeout=timeout, env=env)
-            # Wall clock rather than CPU: what a session waits through is the
-            # question, and it is measured under the pool's own contention
-            # rather than standalone for the same reason. `dominant` reads the
-            # ratio between these rather than any one of them, which is what
-            # makes contention cancel instead of having to be corrected for.
-            return status, time.monotonic() - started
-
-        # `map` yields in the order it was given, which the findings below rely
-        # on: they are reported as lists of ids, and an order that varied run to
-        # run would make a stable store look like a changing one.
-        started = time.monotonic()
-        width = workers or landed_workers()
-        with ThreadPoolExecutor(max_workers=width) as pool:
-            results = list(pool.map(probe, candidates))
-        elapsed = time.monotonic() - started
-
-    passing: list[str] = []
-    vacuous: list[str] = []
-    timed_out: list[str] = []
-    unavailable: list[str] = []
-    for item, (status, _) in zip(candidates, results, strict=True):
-        # The two statuses that mean "no answer" are taken first, because both
-        # are otherwise read as one: 127 is not 0 and neither is `TIMED_OUT`,
-        # so either would fall through to `selects_no_test` and then out of
-        # every finding, leaving the item counted as checked and nothing said.
-        if status == TIMED_OUT:
-            timed_out.append(item.identifier)
-        elif status == 127:  # the shell could not find the command at all
-            unavailable.append(item.identifier)
-        elif status == 0:
-            passing.append(item.identifier)
-        elif selects_no_test(item.verify, status):
-            vacuous.append(item.identifier)
-
-    checked = len(candidates) - len(timed_out) - len(unavailable)
-    if not checked:
-        # Nothing ran to completion, so an empty `passing` is a fact about this
-        # machine rather than about the store - a bare checkout with no
-        # virtualenv, or a box too loaded to finish anything inside the limit.
-        # Both are the refusal the class docstring describes, and the counts go
-        # in the sentence because the two want different repairs.
-        why = [f"{len(unavailable)} not found by the shell"] if unavailable else []
-        if timed_out:
-            why.append(f"{len(timed_out)} killed at the {timeout:g}s limit")
-        return LandedReport(
-            declined="no `verify:` command ran to completion here "
-            f"({', '.join(why)}), so finding none passing would say only that the "
-            "toolchain is missing or the limit too low",
-            scope=scope,
-        )
-
-    # Only the commands that ran to completion. A killed one did not take its
-    # duration - it was stopped at the limit - and one the shell could not find
-    # returns instantly, so either would move the totals below without having
-    # cost what it appears to.
-    answered = [
-        (item, seconds)
-        for (item, (_, seconds)) in zip(candidates, results, strict=True)
-        if item.identifier not in timed_out and item.identifier not in unavailable
-    ]
-    serial = sum(seconds for _, seconds in answered)
-    worst = max(answered, key=lambda pair: pair[1], default=None)
-    slowest = SlowCommand(worst[0].identifier, worst[1]) if worst else None
-
-    # Reported apart from `passing` because only one of that finding's two
-    # readings is available here: an item nobody can start has not had its work
-    # land, so a passing command can only mean the command does not
-    # discriminate. `checks.py` words the two separately for that reason.
-    scoped_only = {item.identifier for item in candidates if item.status in scoped_only_statuses}
-    # Computed before `blocked` and subtracted from it. A blocked item is
-    # reported as certainly non-discriminating, and that certainty rests on the
-    # work not having landed - which a command reading the remote can no longer
-    # establish, since the world may simply have moved (`PL-205P`).
-    recorded = {item.identifier: item.verify for item in candidates}
-    # Read from the tree rather than from the run, so every candidate is asked
-    # whatever its command exited with: a phrase its file wraps makes the
-    # clause fail, or under `!` pass, however the work stands (`PL-RR1N`). One
-    # cache for the run, so a file several commands read is read once.
-    files: Cache = {}
-    wraps = tuple(
-        (item.identifier, found)
-        for item in candidates
-        if (found := wrapped(root, item.verify, files))
-    )
-    split = {identifier for identifier, _ in wraps}
-    external = tuple(
-        identifier
-        for identifier in passing
-        if reaches_outside_tree(recorded.get(identifier) or "") and identifier not in split
-    )
-    outside = set(external)
-    blocked = tuple(
-        identifier
-        for identifier in passing
-        if identifier in scoped_only and identifier not in outside and identifier not in split
-    )
-
-    return LandedReport(
-        passing=tuple(passing),
-        blocked=blocked,
-        external=external,
-        vacuous=tuple(vacuous),
-        wrapped=wraps,
-        timed_out=tuple(timed_out),
-        unavailable=tuple(unavailable),
-        considered=checked,
-        limit=timeout,
-        elapsed=elapsed,
-        serial=serial,
-        slowest=slowest,
-        workers=width,
-        scope=scope,
-    )
