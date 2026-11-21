@@ -117,7 +117,7 @@ src/anesthesia_sim/
 ├── app/                  # user interface - PySide6 and pyqtgraph since PL-25KS (ROADMAP.md § "Completed: v0.4.26 - the interface moves to Qt")
 │   ├── controller.py               # SimulationController: run controls, read-only snapshots; ResumePoint and BranchedCase: where a branch opened, and the trunk it belongs to
 │   ├── run_series.py               # the vocabulary a run's drawn values are addressed by, and the window one frame reads them from: RecordedQuantity, RecordedSeries, DrawnWindow; toolkit-independent
-│   ├── unconditional_set.py        # docs/MODEL.md's unconditional set as data: UnconditionalValue, its tiers, SubstanceInstance and INHALED_AGENT, read by the region that holds it (PL-NWTM); window_region, what each top-level window's region owes (PL-W54S); toolkit-independent
+│   ├── unconditional_set.py        # docs/INTERFACE.md's unconditional set as data: UnconditionalValue, its tiers, SubstanceInstance and INHALED_AGENT, read by the region that holds it (PL-NWTM); window_region, what each top-level window's region owes (PL-W54S); toolkit-independent
 │   ├── control_record.py           # what a run's settings are addressed by and the change a run records: ControlInput, CONTROL_INPUT_DISPLAY_UNITS and CONTROL_INPUT_UNITS, control_value (which settings field holds each control's value, PL-000W), ControlChange; toolkit-independent
 │   ├── display_units.py            # DisplayUnit: each unit the interface states, with its recorded spelling, the label beside a value and its chart axis title, so the record, the panel, the formatters and the chart read one member (PL-G84G); toolkit-independent
 │   ├── bookmarks.py                # what a learner marks a case at, held in two collections: TimeBookmark (an instant), MacTarget (a height on one compartment), BookmarkSet; toolkit-independent, and it detects a crossing between two readings it is handed (§ "What a branch is, and what it shares with its parent")
@@ -172,9 +172,11 @@ src/anesthesia_sim/
 ## Data files (`data/`)
 
 `data/` holds versioned, schema-validated parameter files (JSON) with
-citations. Every scientific constant that a shipped run uses comes from one of
-these files. § "Where new code belongs" says how to add an agent, patient or
-machine profile.
+citations. Every agent, patient and machine parameter that a shipped run uses
+comes from one of these files. The conversion of vapour to liquid agent uses
+physical constants and a 20 °C reference condition, which are defined in
+`core/liquid_agent.py`. § "Where new code belongs" says how to add an agent,
+patient or machine profile.
 
 Each value belongs in exactly one of three directories of `data/`, by what it
 describes:
@@ -182,7 +184,8 @@ describes:
 - `data/agents/` for what the drug does.
 - `data/patients/` for who is being anesthetized.
 - `data/machines/` for the apparatus that delivers the drug, namely the
-  breathing system's volume and the default fresh gas flow.
+  breathing system's volume, the default fresh gas flow and, where a profile
+  states one, the range of fresh gas flow that the machine can deliver.
 
 Filing a machine parameter in a file under `data/patients/` would misstate where
 it comes from (`PL-4YY1`).
@@ -272,8 +275,10 @@ data/machines/reference_circle_system.json  ──┴─> core/parameters.py
 does through `importlib.resources`. It checks each file before it constructs
 `AgentParameters` / `ReferenceAdultParameters` /
 `BreathingCircuitParameters`, and § "Data files (`data/`)" lists what the check
-rejects. Nothing downstream re-reads these values from disk or derives them
-again.
+rejects. `app/controller.py`, `app/dashboard_frame.py` and `app/run_view.py`
+also call `load_agent_parameters`, for values such as the agent's name and its
+1 MAC. Each call reads and checks the file again. Nothing downstream derives
+these values again.
 
 **Each simulation step**, `AgentUptakeSystem.advance()` advances the whole
 coupled system at once. It does so by one exact propagation, rather than by
@@ -289,9 +294,9 @@ integrator:
    rebuilt when one of those settings changes.
 3. One matrix-vector product, `matrix_exponential.propagate()`, advances the
    agent fraction in each of the six compartments. The same solution also
-   advances the cumulative delivered and exhausted amounts.
-4. The agent-accounting validator (`AgentSimulationValidator`) records those
-   amounts and checks mass balance. It raises
+   gives the agent delivered and the agent exhausted during the step.
+4. The agent-accounting validator (`AgentSimulationValidator`) adds those two
+   amounts to its running totals and checks mass balance. It raises
    `AgentSimulationValidationError` if the check fails. The error carries the
    failing check, because the step is then rolled back and the run's own
    accounting no longer holds the rejected step's totals (`PL-HF4B`).
@@ -304,8 +309,9 @@ arithmetic and no physiology.
 **The controller (`SimulationController`, in `app/controller.py`) stands
 between the interface and the core.** It owns a `SimulationState`. It exposes
 `start()` / `pause()` / `reset()` / per-parameter setters, and it produces an
-immutable `SimulationSnapshot` on request. It has no default values and no
-bounds of its own. Every unspecified setting comes from what
+immutable `SimulationSnapshot` on request. Its one default is the agent,
+sevoflurane. It has no default setting and no bounds of its own. Every
+unspecified setting comes from what
 `AgentUptakeSystem.for_agent()` built from the data files. When the core
 rejects a setting, such as a delivered concentration above the agent's
 vaporizer maximum, the error is raised out of the core. At this boundary, the
@@ -423,9 +429,15 @@ the traces themselves, in `chart_frame.COMPARTMENT_TRACES`. The unit conversion
 belongs to the layer that knows the axis. The six compartment traces are drawn
 in percent, and the wash-in ratio in its own dimensionless unit.
 
-`app/run_view.py` and `app/simulation_view.py` read only the snapshot and
-`drawn_window`. A `RunView` builds one run's controls, and it wires the slider
-and button callbacks through `_apply_setting` to the controller's setters. The
+`app/run_view.py` and `app/simulation_view.py` read a run through its
+controller. They read the snapshot, the narrower `status()`, `settings()` and
+`record()` readings of it, and the bookmark standings. They read the points at
+which a branch may open from the `BranchedCase`. `app/chart_frame.py` reads
+the chart's states, by calling `drawn_window`. A `RunView` builds one run's
+agent selector and transport controls. A dial moved in a View of the setting
+controls reaches `RunView.request_setting`. Each setting, an agent change and
+Start go through `_apply_setting` to the controller. Pause and Reset call the
+controller directly. The
 `SimulationView` drives the charts that every run shares. Each transformation
 that they apply is a module of its own: `app/formatting.py`,
 `app/chart_frame.py` with `app/qt_chart.py`, `app/dashboard_frame.py` with
@@ -616,8 +628,10 @@ reached by its own method of `BranchedCase` rather than through one list:
 
 The first is at any keyframe the trunk holds. These are listed by
 `BranchedCase.fork_points_s` and taken with `fork_at`. The keyframes are the
-trunk's opening at induction and every setting change the model was actually
-stepped under. Any *other* instant that a caller names to `fork_at` is refused
+trunk's opening at induction and each later instant at which a setting was
+changed. Such an instant is listed as soon as the change is made, and it
+leaves the list if the settings are put back before the next step runs. Any
+*other* instant that a caller names to `fork_at` is refused
 as belonging to another method, not as an instant a branch could not reproduce
 (`PL-54V0`). The two methods below both fork between keyframes and reproduce
 the trunk exactly. No method *restarts* a branch's definition at its fork.
@@ -669,8 +683,9 @@ a halt would have stopped the run on. The branch's state is the trunk's
 definition evaluated there, so the branch is the one the halt would have given.
 Unlike the paused point, this list does not end at the next step. A mark joins
 the list when the clock reaches it, or when a mark is set behind the clock. It
-leaves the list only when the learner unmarks it or the trunk starts over,
-which is the same lifetime that the keyframes have. A MAC target is not on the
+leaves the list when the learner unmarks it or the trunk starts over. Every
+mark leaves the list when the trunk's dashboard fails (§ "Failures and
+halts"). A MAC target is not on the
 list, because it has no instant. A fork at a height is taken through
 `fork_here`, where the height's halt stops the run.
 
@@ -715,8 +730,11 @@ is a property of the display, not of the model:
 
   Pausing records no keyframe, so the paused point adds nothing to
   `fork_points_s`. The selector therefore never loses a row as the run moves.
-  It gains a row as the clock passes a mark, and it loses a row only when the
-  learner unmarks that mark or the trunk starts over. The project owner chose
+  It gains a row when a setting is changed and when the clock passes a mark.
+  It loses a row when the learner unmarks that mark, when the settings changed
+  at a keyframe are put back before the next step runs, or when the trunk
+  starts over. It loses every row when the trunk's dashboard fails
+  (§ "Failures and halts"). The project owner chose
   this shape (2026-09-21, ratified, over one list that grows a row while the
   run is halted; and 2026-10-12, ratified, over a row at the top of the
   selector selected by default). The reasons are these. A row that vanishes
@@ -736,9 +754,11 @@ is a property of the display, not of the model:
   the case cannot take.
 - **`SimulationView.add_run` is how a run reaches the dashboard after
   construction** (`PL-VKJW`), so a branch taken during a session has
-  somewhere to be drawn. Both legends' run counts, the names the runs carry,
-  the setting sections and the agent locks are rewritten from the run set
-  whenever it changes. The cap is `MAX_DISPLAYED_RUNS`, which is two.
+  somewhere to be drawn. The names the runs carry and the agent locks are
+  rewritten from the run set whenever it changes
+  (`SimulationView._rename_runs`). Each legend learns the new run set from the
+  frame that the change requires, and each View learns the new names from the
+  tick that it requires. The cap is `MAX_DISPLAYED_RUNS`, which is two.
 - **One comparison at a time, and Reset is the way out.** There is no run
   selector, because `ROADMAP.md` § "Explicitly out of scope for v0.5.0" defers
   it. So a second branch could only replace the displayed one, while the first
@@ -850,9 +870,11 @@ different treatment:
   (`PL-3800`). A concentration that the display builds is not a setting. If one
   is refused there, the run halts. No supported setting causes such a refusal
   (`PL-7DJK`).
-- `SimulationExecutionError` means that a step began and could not be
-  completed, so the run must stop. The same holds for its subclasses,
-  `SimulationNumericalError` and `AgentSimulationValidationError`.
+- `SimulationExecutionError` means that the run cannot continue. Its
+  subclasses `SimulationNumericalError` and `AgentSimulationValidationError`
+  mean that a step began and could not be completed. Another subclass,
+  `SimulationDomainLimitError`, means that the run reached the supported run
+  length and that no further step was attempted.
   `AgentUptakeSystem.advance()` is what makes the distinction between the two
   kinds. It checks its own arguments first. Then it restates any guard failure
   raised during the step as a `SimulationNumericalError`, and it keeps the
@@ -911,9 +933,11 @@ One function (`run_presentation.halted_run`) states a halt from the run's
 record, a `RunRecord` that `SimulationController.record()` returns. It builds
 no compartment value, because the snapshot's own `Fraction`s are among the
 values that can cause a halt. The record and the snapshot both extend the run's
-status (`RunStatus`), which carries both halts. The banner that this function
-writes (`dashboard_frame.halt_notice`) says that no frame of the stopped run has
-been drawn. The first frame that draws replaces that banner (`PL-7DJK`).
+status (`RunStatus`), which carries both halts. For a failure, the banner that
+this function writes (`dashboard_frame.halt_notice`) says that no frame of the
+stopped run has been drawn. The first frame that draws replaces that banner
+(`PL-7DJK`). For a stop at the supported run length, the banner has the same
+wording whether or not a frame has drawn.
 
 A control used on a run whose snapshot cannot be built causes a halt, because
 the control's slot passes the halt gate. Without the gate, the toolkit would
@@ -1011,8 +1035,10 @@ differs from the one its view last wrote (`RunView.owes_a_frame`). It also
 draws when the set of runs differs from the set it last drew over. Each view
 stores the record at the moment it writes it, on a halt as on a frame. So a
 frame that keeps failing is attempted once rather than on every tick
-(`PL-X7D5`, `PL-T995`). Neither timer stops on either halt. Both timers are
-started once, when the window opens. A halted run leaves them firing and
+(`PL-X7D5`, `PL-T995`). Neither timer stops on either halt. The render timer
+and the trunk's step timer are started once, when the window opens. A branch's
+step timer is started when the branch is added (`SimulationView.add_run`). A
+halted run leaves them firing and
 finding nothing to do. So a run that is reset and started again is stepped
 without anything having to be restarted.
 
@@ -1022,9 +1048,9 @@ The application writes two things outside its own tree: the reader's saved
 Workspaces, and the reader's preferences, which § "User state: the reader's
 preferences" below describes. The store in `layout/store.py` keeps the whole
 set of Workspaces (`WorkspaceSet`) in a single JSON file, under one
-`schema_version`. For each Workspace, the set holds its layout and each View's
-saved state, including which run the View is pinned to. It also holds the
-order of the Workspaces and which one is active. No run's data is saved. A
+`schema_version`. For each Workspace, the set holds its layout, each View's
+saved state, and the run that the Workspace is pinned to, if any. It also holds
+the order of the Workspaces and which one is active. No run's data is saved. A
 pin names a run only by its identity, so in a later session the pinned run
 is absent (`PL-7Z84`). The design follows `PL-SSQW` (project owner, 2026-09-27,
 ratified) and question Q4 of `PL-WV9K` (project owner, 2026-09-27, specified).
@@ -1033,7 +1059,7 @@ ratified) and question Q4 of `PL-WV9K` (project owner, 2026-09-27, specified).
   `~/Library/Application Support/<App>`. On Windows it is
   `%APPDATA%\<Org>\<App>`, in the Roaming folder, because the file holds no
   window geometry and its sizes are fractions. On Linux it is
-  `~/.local/share/<App>`. In these paths, `<Org>` is the organization name
+  `~/.local/share/<Org>/<App>`. In these paths, `<Org>` is the organization name
   and `<App>` the application's display name, both defined in `app_metadata`
   (`APP_ORGANIZATION_NAME` and `APP_DISPLAY_NAME`). If a platform reports no
   directory, the session saves nothing and tells the reader so.
@@ -1091,7 +1117,16 @@ ratified) and question Q4 of `PL-WV9K` (project owner, 2026-09-27, specified).
   - *invalid at a version this build reads*: the launch sets the file aside
     unchanged as `workspaces.invalid-<UTC time>.json` (`_set_aside`). It loads
     `workspaces.json.previous` if that file validates, and the shipped set
-    otherwise. A notice says which one it loaded, and saving stays on.
+    otherwise. A notice says which one it loaded. Saving stays on, except in
+    two cases: the file could not be set aside, or a newer build wrote
+    `workspaces.json.previous`. In both, the launch turns saving off for the
+    session and says so.
+
+  One more case depends on `workspaces.json.previous` alone. When the launch
+  reads the saved file and a newer build wrote `workspaces.json.previous`, the
+  launch shows the saved set and turns saving off for the session, because a
+  save would overwrite that previous file (`WorkspaceStore._load`). A notice
+  says so.
 
   A saved View of a kind that this build has not registered is not a file
   error. The file loads, and `app/area_layout.py` draws a notice in the Area
@@ -1225,7 +1260,9 @@ specialist standard in `CLAUDE.md` that applies to this document (`PL-KRGY`).
   halt (`test_run_presentation.py`). Every
   operation and refusal of the area layout is tested in `test_layout_model.py`,
   `test_layout_serialization.py`, `test_layout_workspace.py`,
-  `test_layout_migrations.py` and `test_layout_store.py`, which runs against
+  `test_layout_migrations.py`, `test_layout_sizing.py`,
+  `test_layout_shipped.py`, `test_layout_run_identity.py` and
+  `test_layout_store.py`, which runs against
   `tmp_path`.
 - **`tests/integration/`** — components wired together as the app assembles
   them, such as the controller driving a full agent-uptake system
@@ -1258,15 +1295,15 @@ specialist standard in `CLAUDE.md` that applies to this document (`PL-KRGY`).
   solution, the sevoflurane patient reference scenario, and the from-scratch
   RK4 integration of the coupled system in `test_coupled_dynamics.py`.
   These are the regression tests referred to throughout the release gate in
-  `docs/MODEL.md`. A reference case may import the parameter loaders but must
-  not use a solver in `core/`, because its value is that it was derived
-  independently of the code it checks.
+  `docs/MODEL.md`. A reference case may import the parameter loaders, but it
+  must not take its expected value from a solver in `core/`. The expected value
+  is worth having because it was derived independently of the code it checks.
 - **`tests/benchmarks/`** — measurement harnesses, which the test runner does
   not collect. A harness that imports PySide6 and the simulator's package
   belongs here rather than in `tools/`, because it runs only inside the project
-  virtualenv. `make check`, CI and the hooks run `tools/` scripts with a bare
-  `python3` outside the virtualenv, so those scripts may use only the
-  standard library.
+  virtualenv. `make check`, CI and the hooks run some `tools/` scripts with a
+  bare `python3` outside the virtualenv, so every script there may import only
+  the standard library.
 
   One harness drives a real dashboard frame by frame under Qt's `offscreen`
   platform (`frame_cost.py`). For each frame it times the simulation
@@ -1318,6 +1355,9 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
   values that `docs/INTERFACE.md` § "Minimum displayed outputs" requires on screen
   at all times. The module docstring of `app/view_contract.py` states the
   contract, and `ConcentrationView` is the example to read from end to end.
+  What the View shows is computed in a module of its own under `app/` that
+  imports no toolkit and has a unit test, as `app/agent_cost.py` is. The widget
+  that draws it goes in a `qt_` module of its own, as `app/qt_agent_cost.py` is.
   Then give the View a tag, written as a literal in `app/view_registry.py`.
   Beside the tag, add a `RegisteredView` entry that names the class as its
   factory. Saved layouts name a View by its tag, so the tag never changes.
@@ -1355,8 +1395,9 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
   `SimulationView`. The bookmark editor is the worked example (`PL-LPLD`). It
   writes each mark to every displayed run, so that the copies the controllers
   hold stay equal. The branch control is the second example (`PL-VKJW`). The
-  instants it offers are the trunk's keyframes and the marks the trunk has
-  passed. A copy of it in each run would give a branch a control that could
+  instants it offers are the trunk's keyframes, the marks the trunk has
+  passed, and the instant at which the paused trunk stands. A copy of it in
+  each run would give a branch a control that could
   only refuse. The bookmarks and the branch control are shown in Views. The
   dashboard's shared part (`SimulationView`) builds a copy for each View that
   shows one, through `view_contract.CaseSurfaces`, and writes every copy
@@ -1429,7 +1470,9 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
   `ChartFrame.visible` is that selection narrowed by `compared_compartments` to
   `COMPARED_COMPARTMENT_CAP`. So `app/qt_chart.py` keeps one curve per run per
   trace and moves each curve to match. Nothing is edited directly. The *width*
-  of a curve comes from `chart_frame.run_trace_style`, not from the table.
+  of a curve is read through `chart_frame.run_trace_style`. That function takes
+  the width that the table declares for the compartment, and draws the first of
+  two runs wider.
   While two runs are drawn, that width is the run's own channel. The table
   records what a compartment looks like, so a new trace declares no width for a
   run.
