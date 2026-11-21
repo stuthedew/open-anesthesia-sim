@@ -38,23 +38,7 @@ after it is written, `PL-J1ZM`).
 | Item briefs in `docs/items/`; the workflow's files in `.claude/`, `tools/`, `subprojects/docket/src/`, `CLAUDE.md`, `docs/apparatus.md`, `docs/maintainer.md`, `docs/worker.md`, `docs/resident-instructions.md`, `docs/WORKING_NOTES.md`, `docs/dead-ends.md` and `docs/prose-review/README.md`; and commit messages | A later session, or the owner reading the history | Python, anesthesia, and this repository's rules. | What the writing session knew and did not write down. | Pick up the work, or find out why a change was made. |
 | Pull request titles and bodies, which the squash merge makes the commit message on `main` | The project owner deciding whether a change can merge, or anyone reading `main`'s history later | Python, anesthesia, and this repository's rules. | What the writing session knew and did not write down. | Decide whether the change can merge, or find out why it was made. |
 
-**Where the rest goes.** Decision history goes in the item. In `docs/MODEL.md`,
-detail of the numerical method goes in a note for developers at the end of its
-section, a paragraph that opens with "**For developers.**", because the
-document must specify the numerical method (`PL-TZ7R`). That note may name the
-tests for the paragraphs directly above it (`PL-W8FL`). State a model
-limitation only where it could change what a clinician concludes from a
-displayed value (`PL-BS6N`). `docs/INTERFACE.md` ends a section with the same
-note for developers, for the tests and code behind its requirements.
-
-**Take the reason for a chosen value from a record.** Where a docstring, a
-comment or a note for developers explains a chosen value, such as a tolerance
-or a limit, take the reason from the code or test that uses the value, or from
-a cited record. When the reason is not at hand, trace the value's history
-first, with `git log -S` and the items. Search for the value as the code
-writes it: a 0.5% tolerance was `5e-3` in the test that used it. When the
-trace finds no reason, file an item for the missing record, and say in the
-text what the trace found. Never state a reason that no record holds.
+**Where the rest goes.** Decision history goes in the item.
 
 1. **Write whole sentences.** Keep the small words that show how a sentence
    fits together: "a" and "the", "that", "which" and "who", and the verb.
@@ -123,30 +107,6 @@ unit, a value, a condition or a citation that `CLAUDE.md`'s safety-critical
 standard requires. Code, commands, paths and quoted output stay as they are.
 
 ## Examples
-
-**A paragraph of `docs/MODEL.md`**, for a clinician. The project owner accepted
-it on 2026-11-04 (`PL-ZDZ0`).
-
-"The smallest change the MAC readout can show is therefore 0.02
-percentage points of sevoflurane, 0.012 of isoflurane and 0.06 of desflurane,
-never less than the percent readout's. The two readouts round separately, so
-the MAC value can occasionally change while the percent stays the same."
-
-**A docstring**, for a developer. Say what the function returns or does, with
-its unit, then what it refuses, then anything a developer would get wrong
-without being told. Leave out what the signature, the body or a named type
-already shows.
-
-"Return this group's blood flow $`Q_i = f_iQ`$ at a cardiac output, in
-L/min. `docs/MODEL.md` § "Tissue groups" defines it. The group stores no flow
-of its own, so no write can leave its flow out of step with the cardiac output
-(`PL-HQF5`). Raises: TypeError: `cardiac_output_l_min` was not built as a
-`CardiacOutput` (`core/supported_ranges.py`)."
-
-Write each part in whole sentences:
-
-"Reject a volume or tissue:gas partition coefficient that would make the
-tissue's capacity less than the amount of agent it already holds."
 
 **A reply**, for the project owner. Lead with the result. Then give what
 differs from what the owner was told or expects. Then the closing block, with

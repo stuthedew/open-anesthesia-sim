@@ -162,8 +162,9 @@ between a pane and what it shows, not the fields of its structs.
 
 This section records the route to each source and how deeply it was read,
 because the project's rule for citing sources makes the same demand of a stored
-constant (`.claude/rules/citing-sources.md`). That rule covers only the data
-files, but its reasoning applies here unchanged. Without the record, a citation
+constant (`.claude/rules/citing-sources.md`). That rule is loaded only for the
+data files, `docs/MODEL.md`, `docs/INTERFACE.md` and `docs/references/`, but its
+reasoning applies here unchanged. Without the record, a citation
 read at the source could not later be told apart from one taken from a search
 summary. The study's two halves, Blender's source code and its documentation,
 have very different evidence grades.
@@ -279,7 +280,7 @@ screen and every area on the screen. The code in Blender's 21 editor directories
 
 ### How a layout is built, and how far the operations reach
 
-This project stores its layout as a tree of nested Qt splitters, and such a tree
+This project stores its layout as a tree of nested splits, and such a tree
 cannot express two of Blender's layout behaviours. The first is a drag that
 moves every border aligned with the dragged one, connected or not. The second is
 a merge of aligned edges. Whether a Blender user needs either is `PL-3J2P`'s
@@ -923,16 +924,18 @@ F_A/F_I chart. In Blender, each editor also saves and loads its own data
 (`SpaceType.blend_write` and `blend_read_data`). That delegation is the right
 way to save a workspace without the layout code knowing what an area holds.
 
-**Each area keeps a stack of the views previously open in it.** Switching the
-area to another view and back restores the first view's state. The roadmap's
-"induction workspace with the graph zoomed in" case depends on this restore
-(`ROADMAP.md` item 34). Blender restores a view by swapping lists of regions,
+**Each area keeps the state of each kind of view that was open in it.** Switching
+the area to another view and back restores the first view's state. The roadmap's
+induction workspace, which has the concentration graph zoomed in, depends on
+this kept state (`ROADMAP.md` § "Completed: v0.6.0 - the layout is the
+reader's", Required scope entry 13). Blender restores a view by swapping lists
+of regions,
 which hold each editor's state
 (§ "What survives a resize, a split, a join, and a swap"). This project copies
 the outcome, not the swapping. The part of Blender's design to copy is how it
 bounds an area's list without a cap. This project keeps one saved state for each View kind
-in each Area (`AreaLayout.view_states`), so the number of registered kinds
-bounds an Area's list.
+in each Area (`AreaLayout.view_states`), so an Area's list holds at most one
+entry for each kind.
 
 **A view kind is a tag looked up in a registry, never a subclass.** Nothing in
 the layout layer knows that any concrete view class exists. Each tag is written
@@ -957,9 +960,10 @@ stored as a tree of nested splitters.** They are `LayoutModel`'s `split`,
 decision (`PL-3J2P`, § "The measurement: what Blender's own shipped layouts
 actually contain").
 
-**From version 1 of the format, a saved file's root holds one or more windows,
-each with a tree of its own.** `layout/serialization.py` writes them as the
-`windows` list. This was decided on 2026-09-16, when the area model (roadmap
+**From version 1 of the format, the root of each saved layout holds one or more
+windows, each with a tree of its own.** `layout/serialization.py` writes them as
+the `windows` list in each Workspace's `layout`. This was decided on 2026-09-16,
+when the area model (roadmap
 item 34) was planned across two releases, with break-out into further windows in
 the second. The reason is that adding windows to the root later would mean
 migrating files in which learners have already saved their workspaces. Break-out
@@ -1004,8 +1008,9 @@ also hides the Topbar and the Status Bar. Maximize Area has no code yet
 2026-09-17, ratified - chosen over keeping Blender's `Editor`, and over
 `Component` and `Widget`). In Blender the word `Editor` fits, because its
 editors mostly *edit*, as the 3D viewport, the dope sheet and the text editor
-do. This project's Views are the concentration graph, the compartment table, the
-MAC readout and the control panel. One takes input, and the rest display
+do. This project's Views include the concentration graph, the F_A/F_I chart, the
+compartment schematic, the agent accounting and the setting controls. A few
+take input, and the rest display
 modelled values. Calling the displays editors would tell the user they can
 change values that they cannot, and the clinical-output standard in `CLAUDE.md`
 treats that as a presentation defect rather than a naming preference. `Widget`
@@ -1057,9 +1062,10 @@ The unconditional set (`app/unconditional_set.py`) sits outside the area system.
 Each top-level window keeps its own unconditional region outside its own area
 system, holding the invariant tier and the run that window shows (restated on
 2026-09-16, when the project settled what a broken-out window must display). The
-per-substance tier appears once, in a main window that cannot be closed while
-another window is open. `docs/MODEL.md` gives the rule that nothing may cover the
-unconditional values, and its one limit. They are cited here rather than
+per-substance tier appears once, in the main window, and must be in view
+whenever any window of the application is open. `docs/INTERFACE.md` § "What this
+list requires once the layout is the reader's" gives the rule that nothing may
+cover the unconditional values, and its one limit. They are cited here rather than
 restated, so that the safety rule is stated in one place. The limit is that an
 application can observe its own windows, but not what another application has
 drawn over them.
@@ -1083,8 +1089,7 @@ it draws, through `ViewContext` and `ViewTick`, and given no route to its
 container at all, so that Views stay interchangeable by construction. This
 narrows Blender's contract on purpose. Isolation is cheap to build now and
 expensive to add later, which is why the project's rule file for interface areas
-(`.claude/rules/ui-areas.md`) already asks for it in Views written before the
-area system exists.
+(`.claude/rules/ui-areas.md`) asks for it in every View.
 
 **A View's container sits behind a layout model of this project's own.** As with
 a View, the container's isolation has to be built (`PL-C842` has the
