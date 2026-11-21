@@ -156,12 +156,10 @@ fi
 # before. `PL-NB35`.
 python3 "$root/tools/dead_ends.py" emit 2>/dev/null || true
 
-# Near the end, and usually silent. The whole-store `verify:` replay runs only
-# on push to `main` (`PL-SDHR`: a pull request cannot have changed whether some
-# *other* item's work merged, and replaying the store on every branch costs more
-# than it buys), so when that replay fails it fails on a run no pull request
-# shows. `main` was red across three consecutive merges with every session
-# believing the tree was clean (`PL-0ZGK`).
+# Near the end, and usually silent. `main`'s quality run checks the merged
+# tree on a push that no pull request shows. `main` was red across three
+# consecutive merges with every session believing the tree was clean
+# (`PL-0ZGK`).
 #
 # This reads that verdict and prints a line only when it is a failure, or when a
 # newer run was cancelled before reaching one (`PL-JTHW`) - nothing when `main`

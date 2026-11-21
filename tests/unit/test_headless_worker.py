@@ -34,7 +34,7 @@ from headless_worker import (
 
 FAKE_CLAUDE = """\
 import json, os, subprocess, sys
-record = {"argv": sys.argv[1:], "worked": os.environ.get("DOCKET_WORKER_ITEM")}
+record = {"argv": sys.argv[1:]}
 open(os.environ["FAKE_RECORD"], "w").write(json.dumps(record))
 head = ["git", "rev-parse", "--abbrev-ref", "HEAD"]
 branch = subprocess.run(head, capture_output=True, text=True).stdout.strip()
@@ -165,8 +165,6 @@ def test_a_pushed_run_records_its_cost_and_the_remote_branch(
     assert argv[argv.index("--max-budget-usd") + 1] == "15.00"
     assert argv[argv.index("--output-format") + 1] == "json"
     assert "PL-B7K2" in argv[argv.index("-p") + 1]
-    # The worker's own `make check` reads its item's passing command as its work (`PL-WJJ8`).
-    assert record["worked"] == "PL-B7K2"
 
 
 @pytest.mark.parametrize(

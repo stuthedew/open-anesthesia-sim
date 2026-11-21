@@ -1890,10 +1890,9 @@ def shortfall_entries(source: str) -> dict[tuple[str, str], Shortfall]:
 def read_base(root: Path, ref: str) -> Base:
     """The palette and the shortfall entries at the merge base of `HEAD` and `ref`.
 
-    The merge base rather than `ref` itself, as `bin/docket check --verify-base`
-    takes its diff: a colour `ref` has changed since this branch left it is not
-    this change's, and read at `ref` it would look altered here. What is on
-    disk is compared with it, so a change not yet committed is part of the
+    The merge base rather than `ref` itself: a colour `ref` has changed since
+    this branch left it is not this change's, and read at `ref` it would look
+    altered here. What is on disk is compared with it, so a change not yet committed is part of the
     change, which is what a gate run before committing has to see.
 
     Raises:

@@ -35,8 +35,7 @@ from docket.config import Config
 from docket.model import parse_item, recurrence_count
 from docket.release import TAG_SCRIPT, notes_ids, tag_confirmation
 from docket.store import filename_for
-from docket.vcs import FETCHED, Fetch, commands_written_here, leading_ids, lost, records_on_base
-from docket.verify import LANDED_GUARD, GitUnanswered
+from docket.vcs import FETCHED, Fetch, leading_ids, lost, records_on_base
 
 READY = """---
 id: PL-B1B1
@@ -114,21 +113,6 @@ def _fetch_stub(fetched: list[Path]) -> Callable[..., Fetch]:
         return Fetch(FETCHED)
 
     return fetch
-
-
-@pytest.fixture(autouse=True)
-def _no_inherited_guard(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Clear the re-entry guard this suite may have inherited.
-
-    The same fixture `test_verify.py` carries, and needed here for the same
-    reason once `check --verify` became a thing CI runs: that run sets
-    `DOCKET_SKIP_LANDED` for every command it executes, and one of those
-    commands is `PL-P3B6`'s own `verify:`, which runs this file. Without this,
-    `test_check_replays_verify_commands_when_asked` reads the declined report
-    meant for a nested run and fails in CI while passing by hand - which is the
-    environment-dependent result the guard's own check exists to make visible.
-    """
-    monkeypatch.delenv(LANDED_GUARD, raising=False)
 
 
 @pytest.fixture(autouse=True)
@@ -1105,15 +1089,8 @@ def test_every_store_read_in_the_cli_goes_through_load() -> None:
     assert callers == ["_load"]
 
 
-#: A `ready` item - one of `LANDED_STATUSES` - whose `verify:` command leaves a
-#: file behind. Whether that file exists after a run is the only direct evidence
-#: that the command was executed, which is what the two tests below turn on.
-#:
-#: It fails after marking, deliberately. A command exiting 0 would be reported
-#: as already passing, which is an error, so the run's exit status would then
-#: answer "did the replay find something" rather than "did the replay happen" -
-#: and the marker is the thing under test. Failing is also the shape a `ready`
-#: item's command is supposed to have before its work exists.
+#: A `ready` item whose `verify:` is a command in the form written before
+#: 2026-11-21. The command leaves a file behind if anything runs it.
 MARKING = """---
 id: PL-M4RK
 title: An item whose command leaves a trace
@@ -1132,53 +1109,12 @@ added: 2026-08-01
 """
 
 
-def test_check_does_not_replay_verify_commands_unless_asked(tmp_path: Path) -> None:
-    """The store validation is the gate; the replay is not (`PL-P3B6`).
-
-    Running every open item's command was 31 s of `make check`'s 67 s, for a
-    finding about work that had already *merged* - which a pre-commit gate on a
-    feature branch cannot have changed. The command still runs in CI, which
-    passes `--verify`.
-    """
+def test_check_runs_no_item_s_command(tmp_path: Path) -> None:
+    """`check` reads an open item's command as text and never runs it (`PL-QTZG`)."""
     store = _store(tmp_path, MARKING)
 
     assert _run("check", "--items", str(store)) == 0
     assert not (tmp_path / "ran.marker").exists()
-
-
-def test_check_replays_verify_commands_when_asked(tmp_path: Path) -> None:
-    """The other half: `--verify` is what CI runs, so it has to still do it."""
-    store = _store(tmp_path, MARKING)
-
-    assert _run("check", "--verify", "--items", str(store)) == 0
-    assert (tmp_path / "ran.marker").exists()
-
-
-def test_verify_base_outside_a_repository_declines_the_replay(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """`--verify-base` is the flag CI passes on a pull request (`PL-SDHR`).
-
-    Outside a repository both of the replay's halves decline now, so it
-    declines whole and says why, rather than running nothing and reporting
-    clean. This test once asserted that as the flag narrowing, because
-    `changed_items` read `git diff`'s exit 1 there as git answering no. It
-    declines since `PL-19T3`, and `changed_paths` since `PL-9RFP`. Narrowing
-    proper, a base that resolves with nothing changed, is the first half of
-    `test_a_branch_that_invalidates_another_item_s_command_replays_it`.
-    """
-    store = _store(tmp_path, MARKING)
-
-    assert (
-        _run_with_git(
-            "check", "--verify", "--verify-base", "docket-no-such-ref", "--items", str(store)
-        )
-        == 0
-    )
-    printed = capsys.readouterr().out
-    assert not (tmp_path / "ran.marker").exists()
-    assert "not checked" in printed
-    assert "could not be read" in printed
 
 
 def test_verify_refuses_a_base_no_candidate_resolved(
@@ -1258,7 +1194,7 @@ def test_verify_names_self_when_the_claim_is_this_sessions_own(
     git("config", "user.name", "T")
     (root / "docket.toml").write_text('[docket]\ncheck_command = "true"\n', encoding="utf-8")
     item = store / "PL-K7QX-do-the-thing.md"
-    ready = READY.replace("PL-B1B1", "PL-K7QX").replace("added:", "verify: true\nadded:")
+    ready = READY.replace("PL-B1B1", "PL-K7QX")
     item.write_text(ready, encoding="utf-8")
     git("add", "-A")
     git("commit", "-qm", "base")
@@ -1274,7 +1210,8 @@ def test_verify_names_self_when_the_claim_is_this_sessions_own(
     item.write_text(
         ready.replace("status: ready", "status: done").replace(
             "added:", "closed: 2026-08-24\nadded:"
-        ),
+        )
+        + "\n**Built 2026-08-24.** The value is set.\n",
         encoding="utf-8",
     )
     git("add", "-A")
@@ -1299,172 +1236,6 @@ def test_verify_names_self_when_the_claim_is_this_sessions_own(
     monkeypatch.setenv(SESSION_VARIABLE, "cse_ours")
     assert main([*ran, "--self"]) == 0
     assert "this session's own" not in capsys.readouterr().out
-
-
-#: An item whose command reads a file, so that editing the file - and nothing
-#: else - can change what the command returns. `touch` runs first so the marker
-#: says the command was executed at all, which is the question the scope is
-#: being tested on.
-READING = """---
-id: PL-R34D
-title: An item whose command reads a file it does not own
-priority: P1
-effort: S
-status: ready
-classes: perf
-touches: a.py
-verify: touch ran.marker && grep -q sentinel README.md
-added: 2026-08-01
----
-
-**Problem.** x
-**Why it matters.** y
-**Done when.** z
-"""
-
-
-def _reading_repo(tmp_path: Path) -> tuple[Path, str]:
-    """A checkout holding `READING`, and the base its branch is measured against.
-
-    The file is named as the store names one - `<id>-<slug>.md` - because half
-    the replay's scope is read out of a diff, and `vcs.ITEM_FILE_RE` recovers
-    the id from the file name. Under any other name a branch that edits the
-    item is a branch that changed no item, which is not the store's behaviour
-    and would have hidden `PL-WF3X` from the test below.
-    """
-    root = tmp_path / "repo"
-    (root / "items").mkdir(parents=True)
-    (root / "items" / _filename(READING)).write_text(READING, encoding="utf-8")
-    (root / "README.md").write_text("nothing here yet\n", encoding="utf-8")
-    # A real checkout, for the reason `_release_repo` gives: the scope is read
-    # from a diff, so a stub would test the stub.
-    subprocess.run(["git", "init", "-q", str(root)], check=True, capture_output=True)
-    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
-        subprocess.run(["git", "config", name, value], cwd=root, check=True, capture_output=True)
-    subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
-    subprocess.run(["git", "commit", "-qm", "base"], cwd=root, check=True, capture_output=True)
-    base = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=root, check=True, capture_output=True, text=True
-    ).stdout.strip()
-    return root, base
-
-
-def test_a_branch_that_invalidates_another_item_s_command_replays_it(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """The end-to-end shape of `PL-XMNC`, through the flag CI actually passes.
-
-    The branch never opens `PL-R34D`'s item file; it writes the word its
-    command greps for. Scoped to the items a branch edited, that replayed
-    nothing and the break surfaced only on the whole-store sweep after the
-    merge - six recorded times.
-    """
-    root, base = _reading_repo(tmp_path)
-    store = str(root / "items")
-
-    # Nothing changed yet, so the command is out of scope and does not run.
-    assert _run_with_git("check", "--verify", "--verify-base", base, "--items", store) == 0
-    assert not (root / "ran.marker").exists()
-
-    (root / "README.md").write_text("sentinel\n", encoding="utf-8")
-
-    assert _run_with_git("check", "--verify", "--verify-base", base, "--items", store) == 1
-    assert (root / "ran.marker").exists()
-    printed = capsys.readouterr().out
-    assert "PL-R34D" in printed
-    assert "whose `verify:` command reads a file it changed" in printed
-
-
-def test_a_base_a_repository_cannot_resolve_declines_the_replay(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """The shape CI produces: a shallow clone whose base ref was never fetched.
-
-    Inside a repository `git diff --name-only <base>...HEAD` exits 128 for a
-    base that does not resolve, and the empty set that came back was
-    indistinguishable from a branch that changed no item file. The replay was
-    scoped to nothing, ran nothing, and the run reported a clean result - on
-    the gate a pull request is held to. The reason travels with the answer now
-    (`PL-ZPDM`), so the replay declines whole and the headline counts it.
-
-    Still exit 0, deliberately: "not checked" is not a finding about the store,
-    and `Report.declined` is the channel that keeps the two apart.
-    """
-    root, _ = _reading_repo(tmp_path)
-    store = str(root / "items")
-
-    assert (
-        _run_with_git("check", "--verify", "--verify-base", "docket-no-such-ref", "--items", store)
-        == 0
-    )
-
-    printed = capsys.readouterr().out
-    assert not (root / "ran.marker").exists()
-    assert "not checked" in printed
-    assert "scoped to what this branch changed against docket-no-such-ref" in printed
-    assert "could not be read" in printed
-
-
-def test_a_changed_file_list_git_does_not_answer_declines_the_replay(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """The replay's second half declines on its own read, not only on the first's.
-
-    `changed_items` can answer where `changed_paths` cannot, for example a
-    `git status` refused by a damaged index. The second half is the one that
-    replays a command the branch *invalidates*. Until `PL-9RFP` its failure
-    came back as git's complaint read as paths, which matched no command. That
-    scoped the half to nothing on exactly the branch below, which edits the
-    file `PL-R34D`'s command reads.
-    """
-    root, base = _reading_repo(tmp_path)
-    (root / "README.md").write_text("sentinel\n", encoding="utf-8")
-
-    def unanswered(*_: object) -> tuple[str, ...]:
-        raise GitUnanswered("`git status` exited 128: fatal: index file corrupt")
-
-    monkeypatch.setattr(cli, "changed_paths", unanswered)
-
-    assert (
-        _run_with_git("check", "--verify", "--verify-base", base, "--items", str(root / "items"))
-        == 0
-    )
-    printed = capsys.readouterr().out
-    assert not (root / "ran.marker").exists()
-    assert "not checked" in printed
-    assert "index file corrupt" in printed
-
-
-def test_the_replay_scope_reads_the_store_the_run_was_pointed_at(tmp_path: Path) -> None:
-    """The other half of the same addressing bug, on the scope rather than a count.
-
-    `cmd_check` took the replay's scope diff against `config.items_dir` while
-    `--items` decided which store was read, so a queue anywhere else had its
-    diff taken against a directory it does not live in: the branch's own item
-    came back unchanged, the replay was scoped to nothing, and a scoped
-    `--verify` run reported a clean result having replayed nothing
-    (`PL-WF3X`). The store here sits at `items/`, which is where the defect is
-    visible and where a store that is not this project's usually sits.
-
-    The marker is the evidence, because it is written by the command itself:
-    the branch edits `PL-R34D`'s own file and nothing else, so the item is in
-    scope through `changed_items` alone - `items_reading`, the other half,
-    matches a command against the paths a branch changed and this command
-    names only `README.md`, which is untouched here. Exit 0 with the command
-    having run is the open item's ordinary state: it greps for a sentinel the
-    README does not carry, so the replay finds nothing already passing.
-    """
-    root, base = _reading_repo(tmp_path)
-    store = root / "items"
-    item = store / _filename(READING)
-    item.write_text(
-        item.read_text(encoding="utf-8").replace("classes: perf", "classes: perf, defect"),
-        encoding="utf-8",
-    )
-
-    assert _run_with_git("check", "--verify", "--verify-base", base, "--items", str(store)) == 0
-
-    assert (root / "ran.marker").exists()
 
 
 def test_digest_is_silent_on_an_empty_store(
@@ -6843,8 +6614,9 @@ def test_record_needs_a_number(tmp_path: Path) -> None:
 def _owed_project(tmp_path: Path, *, store: str = "docs/items") -> Path:
     """A clone whose `origin/main` holds a shipped closure recording no `pr`, plus work.
 
-    And an open item whose `verify:` reads a file its `touches` omit, which is
-    what gives the grooming counts below an advisory. The missing `pr` was one
+    And an open item whose `touches` names a file the second commit removes,
+    which is what gives the grooming counts below an advisory, and one that a
+    git read stands behind. The missing `pr` was one
     when this was written and is the error `check` raises on a landed closure
     since `PL-HMZZ`. A drifted file name was the advisory after that, and is an
     error since `PL-3GKR`. It stays in
@@ -6878,15 +6650,14 @@ def _owed_project(tmp_path: Path, *, store: str = "docs/items") -> Path:
     )
     for key, value in (("user.email", "t@example.com"), ("user.name", "T")):
         git("config", key, value)
-    (items / _filename(READY)).write_text(
-        READY.replace("added:", "verify: grep -q z notes.md\nadded:"), encoding="utf-8"
-    )
-    (origin / "notes.md").write_text("z\n", encoding="utf-8")
+    (items / _filename(READY)).write_text(READY, encoding="utf-8")
+    (origin / "a.py").write_text("z = 1\n", encoding="utf-8")
     (items / closed).write_text(
         RECORD_ITEM.format(id="PL-K7QX", status="ready", extra=""), encoding="utf-8"
     )
     git("add", "-A")
     git("commit", "-qm", "PL-K7QX: capture it")
+    git("rm", "-q", "a.py")
     (items / closed).write_text(
         RECORD_ITEM.format(
             id="PL-K7QX", status="done", extra="closed: 2026-08-10\nmilestone: v0.1.0\n"
@@ -6960,10 +6731,7 @@ def test_every_command_that_prints_a_count_asks_the_same_questions(
 
     The name is what is compared, not the answer: a roadmap this checkout
     cannot read makes `milestones` `None` for all three alike, which is the
-    question asked and declined rather than the question skipped. `landed` is
-    the one input a command may differ on and it is passed either way - here
-    as `None`, because `--verify` is off and `make docket`, the command the
-    digest's line names, does not pass it either.
+    question asked and declined rather than the question skipped.
     """
     asked: dict[str, set[str]] = {}
     real = cli.analyze
@@ -7213,14 +6981,11 @@ def test_flight_shares_the_invocations_git_runner(
     assert all(runner is runners[0] for runner in runners)
 
 
-#: Every command, spelled to reach the reads it has: the scoped replay, the
-#: profile, each command that refreshes before it reads, and `record`. The
-#: writers come last because they change the store the readers above them
-#: read.
+#: Every command, spelled to reach the reads it has: the profile, each command
+#: that refreshes before it reads, and `record`. The writers come last
+#: because they change the store the readers above them read.
 NO_GIT_ARGV: tuple[tuple[str, ...], ...] = (
     ("check",),
-    ("check", "--verify"),
-    ("check", "--verify", "--verify-base", "main"),
     ("list",),
     ("digest",),
     ("digest", "--profile"),
@@ -7265,17 +7030,15 @@ def test_no_git_stops_every_git_read(
 
     The flag facet of `PL-NGBM`'s generator. Each command decided for itself
     whether the flag applied, so it held for branch detection and not for the
-    five reads behind a printed count, `check --verify-base`, `digest
-    --profile`, `flight`, `branch`, `verify`, `record`, and the fetch
-    `stranded` made before looking.
+    five reads behind a printed count, `digest --profile`, `flight`, `branch`,
+    `verify`, `record`, and the fetch `stranded` made before looking.
 
     A real repository, holding a branch with work on it, so that every read
     the flag failed to stop would succeed and be seen rather than fail early
     and hide the reads after it. `Popen` is where to watch, because
     `subprocess.run` constructs one: `vcs._run_git`, the `cat-file` batch and
     `verify._run` all arrive there. A shell command is the project's own
-    `verify:` and not docket's read, so it is left out - a bare `--verify`
-    still replays under the flag.
+    check and not docket's read, so it is left out.
 
     Every command in the parser is run, and the table is held to the parser,
     so a command added later cannot pass by not being listed.
@@ -8124,65 +7887,6 @@ OPEN_ITEM = (
 )
 
 
-def _written_repo(tmp_path: Path) -> Path:
-    """A checkout whose base holds one open item with a legacy command, and a branch."""
-    root = tmp_path / "repo"
-    (root / "docs" / "items").mkdir(parents=True)
-    (root / "docs" / "items" / _filename(OPEN_ITEM)).write_text(OPEN_ITEM, encoding="utf-8")
-    (root / "docket.toml").write_text(
-        '[docket]\nverify_allowlist_from = "2026-09-24"\n', encoding="utf-8"
-    )
-    subprocess.run(["git", "init", "-q", str(root)], check=True, capture_output=True)
-    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
-        subprocess.run(["git", "config", name, value], cwd=root, check=True, capture_output=True)
-    subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
-    subprocess.run(["git", "commit", "-qm", "base"], cwd=root, check=True, capture_output=True)
-    subprocess.run(["git", "checkout", "-qb", "work"], cwd=root, check=True, capture_output=True)
-    return root
-
-
-def _edit_item(root: Path, old: str, new: str) -> None:
-    path = root / "docs" / "items" / _filename(OPEN_ITEM)
-    path.write_text(path.read_text(encoding="utf-8").replace(old, new), encoding="utf-8")
-
-
-def test_a_command_the_branch_left_alone_is_not_written_here(tmp_path: Path) -> None:
-    # Editing an old item for any other reason asks nothing of its command.
-    root = _written_repo(tmp_path)
-    _edit_item(root, "effort: S", "effort: M")
-
-    report = commands_written_here(root, {"PL-K7QX": LEGACY_COMMAND})
-
-    assert report.known
-    assert report.identifiers == frozenset()
-
-
-def test_a_rewritten_command_is_written_here_committed_or_not(tmp_path: Path) -> None:
-    root = _written_repo(tmp_path)
-    _edit_item(root, LEGACY_COMMAND, "bin/docket check")
-
-    assert commands_written_here(root, {"PL-K7QX": "bin/docket check"}).identifiers == {"PL-K7QX"}
-    subprocess.run(["git", "commit", "-qam", "rewrite"], cwd=root, check=True, capture_output=True)
-    assert commands_written_here(root, {"PL-K7QX": "bin/docket check"}).identifiers == {"PL-K7QX"}
-
-
-def test_check_holds_a_command_written_for_an_old_item_to_the_admitted_shapes(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """End to end: the item predates the cutover, so only the branch dates its command."""
-    root = _written_repo(tmp_path)
-    store = str(root / "docs" / "items")
-    check = ["check", "--items", store, "--today", "2026-09-24"]
-    assert main(check) == 0
-    capsys.readouterr()
-
-    _edit_item(root, LEGACY_COMMAND, "bin/docket check")
-
-    assert main(check) == 1
-    out = capsys.readouterr().out
-    assert "its `verify:`, written on this branch, runs `bin/docket check`" in out
-
-
 def _trend_store(tmp_path: Path, *, lanes: bool = True) -> Path:
     """A store with closures on both sides of the boundary, a week apart."""
     items = tmp_path / "docs" / "items"
@@ -9019,93 +8723,51 @@ def test_set_refuses_a_debt_capture_with_no_gate_disposition(
     assert _run("check", "--items", str(store)) == 0
 
 
-def test_set_holds_a_command_it_writes_to_the_admitted_shapes_whatever_the_item_s_age(
+def test_set_refuses_a_search_that_is_true_before_the_work(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """`check` dates a command by its item's capture; `set` is the moment it is written.
+    """An open item's search says what its work will change (`PL-CBDX`, `PL-FTDB`).
 
-    The item predates `verify_allowlist_from`, so its legacy command stands and
-    another field can be written beside it. A command `set` writes onto it is
-    held to the list all the same - the triage of old items and the repair of
-    legacy commands, which a rule dated by capture alone never reaches
-    (`PL-1P5V`).
-    """
-    old = OPEN_ITEM.replace("id: PL-K7QX", "id: PL-F6F6")
-    store = _store(tmp_path, old, positional=True)
-    (tmp_path / "docket.toml").write_text(
-        '[docket]\nverify_allowlist_from = "2026-09-24"\n', encoding="utf-8"
-    )
-
-    def write(*fields: str) -> int:
-        return main(
-            ["set", "PL-F6F6", *fields, "--overwrite", "--items", str(store)]
-            + ["--no-git", "--today", "2026-09-24"]
-        )
-
-    assert write("--effort", "M") == 0
-    assert f"verify: {LEGACY_COMMAND}\n" in _item_text(store)
-    capsys.readouterr()
-
-    assert write("--verify", "bin/docket check") == 1
-    out = capsys.readouterr().out
-    assert "nothing was written" in out
-    assert "runs `bin/docket check`, which is neither a `grep` clause" in out
-    assert f"verify: {LEGACY_COMMAND}\n" in _item_text(store)
-
-    assert write("--verify", "grep -q 'def test_a' tests/unit/test_a.py") == 0
-    assert "verify: grep -q 'def test_a' tests/unit/test_a.py\n" in _item_text(store)
-
-
-def test_set_refuses_a_verify_that_already_passes(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """The replay's error, at the moment of writing rather than a `make check` later.
-
-    A `grep` for a string the command itself spells passes on its own
-    `verify:` line, so it proves nothing about the work. `set` wrote one and
-    exited 0, and the next `check --verify` refused it (`PL-CBDX`, `PL-FTDB`).
-    The command runs with the line written, which is the only tree it passes
-    on, and a refusal puts the file back as it was.
-    """
-    store = _store(tmp_path, OPEN_ITEM, positional=True)
-    probe = "grep -qF 'self-match-probe' items/item-0.md"
-
-    assert _run("set", "PL-K7QX", "--verify", probe, "--overwrite", "--items", str(store)) == 1
-    out = capsys.readouterr().out
-    assert "nothing was written" in out
-    assert "PL-K7QX is open but its `verify:` command already passes" in out
-    assert _item_text(store) == OPEN_ITEM
-
-    work = "grep -qF 'def test_the_work' tests/unit/test_work.py"
-    assert _run("set", "PL-K7QX", "--verify", work, "--overwrite", "--items", str(store)) == 0
-    assert f"verify: {work}\n" in _item_text(store)
-
-
-def test_set_refuses_a_verify_whose_phrase_its_file_wraps(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """`PL-RR1N`: the replay's reading of the tree, at the moment of writing.
-
-    A `grep` for a phrase the document already holds across a line break fails
-    whatever the work does, so it was written at exit 0; its `! grep` passes
-    and was refused as work already landed. Both are refused naming the lines.
+    A search of the item's own file finds the words on its own `verify:` line.
+    A search for words the document already holds, here across a line break,
+    is true whatever the work does. Both are refused when they are written.
     """
     store = _store(tmp_path, OPEN_ITEM, positional=True)
     (tmp_path / "docs").mkdir()
     (tmp_path / "docs" / "MODEL.md").write_text("It feeds two rates and\none volume.\n")
     write = ("set", "PL-K7QX", "--overwrite", "--items", str(store), "--verify")
 
-    for command in (
-        "grep -qF 'two rates and one volume' docs/MODEL.md",
-        "! grep -qF 'two rates and one volume' docs/MODEL.md",
+    for command, reason in (
+        ("grep -qF 'self-match-probe' items/item-0.md", "reads the item's own file"),
+        ("grep -qF 'two rates and one volume' docs/MODEL.md", "is already true on this tree"),
+        ("! grep -qF 'three rates' docs/MODEL.md", "is already true on this tree"),
     ):
         assert _run(*write, command) == 1
         out = capsys.readouterr().out
         assert "nothing was written" in out
-        assert "PL-K7QX's `verify:` greps for a phrase its file holds only across a line" in out
-        assert "in docs/MODEL.md" in out and "across lines 1-2" in out
-        assert "already passes" not in out
+        assert reason in out
         assert _item_text(store) == OPEN_ITEM
+
+    for command in (
+        "grep -qF 'three rates' docs/MODEL.md",
+        "! grep -qF 'two rates and one volume' docs/MODEL.md",
+    ):
+        assert _run(*write, command) == 0
+        assert f"verify: {command}\n" in _item_text(store)
+
+
+def test_set_refuses_a_command_that_is_not_one_search(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Nothing runs a command, so `set` writes only the one form that is read."""
+    store = _store(tmp_path, OPEN_ITEM, positional=True)
+    write = ("set", "PL-K7QX", "--overwrite", "--items", str(store), "--verify")
+
+    assert _run(*write, "bin/docket check") == 1
+    out = capsys.readouterr().out
+    assert "nothing was written" in out
+    assert "runs `bin/docket check`, where a closing item keeps one" in out
+    assert _item_text(store) == OPEN_ITEM
 
 
 def test_set_refuses_a_file_it_could_not_rewrite_faithfully(

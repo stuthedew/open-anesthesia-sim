@@ -294,7 +294,7 @@ FACTS: tuple[Fact, ...] = (
                 ".github/workflows/quality.yml",
                 r"^    timeout-minutes: (\d+)\n    # The fast path's answer",
             ),
-            Place("tools/main_ci_status.py", r"a step the (\d+)-minute job"),
+            Place("tools/main_ci_status.py", r"the (\d+)-minute job timeout killed"),
             Place(
                 "tools/main_ci_status.py", r"(\d+) minutes after it was created, the same cutoff"
             ),

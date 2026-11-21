@@ -56,7 +56,6 @@ from docket.vcs import (
     churn,
     closed_by,
     closures_on_base,
-    commands_written_here,
     cut_window,
     cuts_in_flight,
     default_base,
@@ -444,13 +443,6 @@ READS: tuple[Read, ...] = (
         "records_on_base",
         lambda r, g: records_on_base(r, {"PL-0CLS": "PL-0CLS-fixture.md"}, runner=g),
         _findings("records"),
-    ),
-    Read(
-        # The branch gives `PL-K7QX` a command its base copy lacks, which is the
-        # write this reads; which items are open is the caller's to say.
-        "commands_written_here",
-        lambda r, g: commands_written_here(r, {"PL-K7QX": "uv run pytest"}, runner=g),
-        _findings("identifiers"),
     ),
     Read(
         # `src/one.py` is on the base and the branch changed it, so the fork's
