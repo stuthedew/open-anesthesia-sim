@@ -52,6 +52,7 @@ from PySide6.QtGui import QColor, QFont, QFontMetrics, QPalette, QResizeEvent, Q
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
+    QDateEdit,
     QDialog,
     QDoubleSpinBox,
     QFrame,
@@ -1962,6 +1963,29 @@ class FocusedComboBox(QComboBox):
     its unit, or the agent whose price is shown, without meaning to
     (`PL-B396`). A click or the keyboard gives the
     selector focus, and the wheel then works as usual.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+
+    def wheelEvent(self, event: QWheelEvent) -> None:
+        if not self.hasFocus():
+            event.ignore()
+            return
+
+        super().wheelEvent(event)
+
+
+class FocusedDateEdit(QDateEdit):
+    """A date field that a mouse wheel changes only once it has focus.
+
+    Qt's date field steps its date on a wheel event even without focus, as its
+    combo box does (`FocusedComboBox`). The price form sits in a View that
+    scrolls. So a reader scrolling past the form would change the date of a
+    price without meaning to, and the form would then keep that date as one the
+    reader chose (`PL-8FSN`). A click or the keyboard gives the field focus,
+    and the wheel then works as usual.
     """
 
     def __init__(self) -> None:

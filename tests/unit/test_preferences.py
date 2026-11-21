@@ -420,6 +420,24 @@ def test_a_refused_entry_that_names_no_agent_is_dropped_only_when_the_reader_dis
     assert reloaded.preferences.agent_cost_unit is AgentAmountUnit.MILLILITRES_OF_LIQUID
 
 
+def test_preferences_say_whether_they_keep_a_refused_entry(tmp_path: Path) -> None:
+    """A refused price or a refused unit is a kept entry, and discarding leaves none (`PL-7KXN`)."""
+
+    nameless = {key: value for key, value in SEVOFLURANE_PRICE_ENTRY.items() if key != "agent"}
+    _write(tmp_path, _document([nameless]))
+    refused_price = PreferencesStore(tmp_path).load().preferences
+    _write(tmp_path, _document([], unit="mL"))
+    refused_unit = PreferencesStore(tmp_path).load().preferences
+
+    assert not Preferences().holds_refused_entries
+    assert refused_price.refused_unit is None
+    assert refused_price.holds_refused_entries
+    assert refused_unit.refused_prices == ()
+    assert refused_unit.holds_refused_entries
+    assert not refused_price.without_refused_entries().holds_refused_entries
+    assert not refused_unit.without_refused_entries().holds_refused_entries
+
+
 def test_a_refused_entry_nested_to_the_limit_is_kept_and_written_back(tmp_path: Path) -> None:
     """Six lists inside the price list, eight levels in all, is the deepest the store keeps."""
 

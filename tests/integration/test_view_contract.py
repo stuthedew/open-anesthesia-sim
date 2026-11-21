@@ -103,6 +103,7 @@ _REQUESTS = ViewRequests(
     compartment=lambda _quantity, _shown: None,
     agent_cost_unit=lambda _unit: None,
     agent_price=lambda _agent, _price: None,
+    refused_entries_discard=lambda: None,
     adjustment_start=lambda _run: None,
     setting=lambda _run, _control, _value: None,
     preview=lambda _run, _control, _value: None,

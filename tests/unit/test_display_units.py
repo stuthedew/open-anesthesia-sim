@@ -8,10 +8,18 @@ decision rather than unnoticed drift.
 
 from __future__ import annotations
 
+import ast
+from datetime import date
+from pathlib import Path
+
 import pytest
 
-from anesthesia_sim.app import dashboard_frame
-from anesthesia_sim.app.agent_cost import LIQUID_CAPTION_TEMPLATE, VAPOUR_CAPTION_TEMPLATE
+from anesthesia_sim.app import dashboard_frame, display_units
+from anesthesia_sim.app.agent_cost import (
+    LIQUID_CAPTION_TEMPLATE,
+    UNIT_CHOICES,
+    VAPOUR_CAPTION_TEMPLATE,
+)
 from anesthesia_sim.app.compartment_schematic import AMOUNT_CONDITION_LINES
 from anesthesia_sim.app.control_record import (
     CONTROL_INPUT_DISPLAY_UNITS,
@@ -28,7 +36,15 @@ from anesthesia_sim.app.display_units import (
     REFERENCE_TEMPERATURE_LABEL,
     DisplayUnit,
 )
-from anesthesia_sim.app.formatting import MAC_UNIT_SUFFIX, format_flow
+from anesthesia_sim.app.formatting import (
+    MAC_UNIT_SUFFIX,
+    AgentAmountUnit,
+    format_agent_residual,
+    format_agent_volume,
+    format_flow,
+)
+from anesthesia_sim.app.preferences import AgentPrice
+from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.liquid_agent import REFERENCE_PRESSURE_PA, REFERENCE_TEMPERATURE_CELSIUS
 
 
@@ -38,6 +54,15 @@ from anesthesia_sim.core.liquid_agent import REFERENCE_PRESSURE_PA, REFERENCE_TE
         (DisplayUnit.FLOW, "L/min", "L/min", "L/min"),
         (DisplayUnit.CONCENTRATION, "percent of 1 atm", "%", "% of 1 atm"),
         (DisplayUnit.MAC_MULTIPLE, "multiple of MAC", "×MAC", "×MAC"),
+        (DisplayUnit.AGENT_VAPOUR_MILLILITRES, "millilitres of vapour", "mL vapour", "mL vapour"),
+        (DisplayUnit.AGENT_VAPOUR_LITRES, "litres of vapour", "L vapour", "L vapour"),
+        (
+            DisplayUnit.AGENT_LIQUID_MILLILITRES,
+            "millilitres of liquid",
+            "mL of liquid",
+            "mL of liquid",
+        ),
+        (DisplayUnit.ACCOUNTED_AGENT_LITRES, "litres of equivalent pure agent gas", "L", "L"),
     ],
 )
 def test_each_unit_has_the_spellings_a_reader_meets(
@@ -75,6 +100,135 @@ def test_a_slider_label_follows_its_controls_member(monkeypatch: pytest.MonkeyPa
 def test_the_formatters_write_the_members_labels() -> None:
     assert format_flow(4.0) == "4.0 L/min"
     assert MAC_UNIT_SUFFIX == " ×MAC"
+    assert format_agent_volume(12.34) == "12.3 L"
+    assert format_agent_residual(0.0) == "0 L"
+    assert format_agent_residual(3e-13) == "<1e-12 L"
+    assert format_agent_residual(float("inf")) == "inf L"
+
+
+def test_the_cost_views_unit_names_are_the_members_full_spellings() -> None:
+    """The selector names each unit as its `DisplayUnit` member writes it in full (`PL-2TWX`)."""
+
+    assert UNIT_CHOICES == (
+        (AgentAmountUnit.MILLILITRES_OF_LIQUID, "millilitres of liquid"),
+        (AgentAmountUnit.LITRES_OF_VAPOUR, "litres of vapour"),
+    )
+
+
+def test_a_refused_bottle_volume_names_its_unit_from_the_member() -> None:
+    with pytest.raises(
+        SimulationConfigurationError, match="isoflurane bottle volume in millilitres of liquid"
+    ):
+        AgentPrice("isoflurane", 20.47, 0.0, "USD", date(2008, 3, 5))
+
+
+# --- no spelling of an agent amount's unit outside the units module (`PL-2TWX`) ---
+
+_APP = Path(display_units.__file__).parent
+
+#: Every spelling of an agent amount's unit that is long enough to find in a
+#: string without guessing. The accounting panel's bare "L" is not: a search for
+#: one letter would report most strings in the package.
+_AMOUNT_SPELLINGS = sorted(
+    {
+        spelling.casefold()
+        for unit in DisplayUnit
+        if "AGENT" in unit.name
+        for spelling in (unit.recorded, unit.label, unit.axis_title)
+        if len(spelling) > 1
+    }
+)
+
+
+def _typed_amount_units(source: str, *, skip_class: str | None = None) -> list[tuple[int, str]]:
+    """List each string in `source` that types an agent amount's unit, with its line.
+
+    Docstrings are left out, because they describe the code and are not shown.
+    Every other string is read, including each fixed part of an f-string. The
+    body of the class `skip_class` is left out when one is named.
+    """
+
+    tree = ast.parse(source)
+    prose: set[int] = set()
+    skipped: set[int] = set()
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant):
+            prose.add(id(node.value))
+
+        if isinstance(node, ast.ClassDef) and node.name == skip_class:
+            skipped.update(id(inner) for inner in ast.walk(node))
+
+    return sorted(
+        (node.lineno, node.value)
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Constant)
+        and isinstance(node.value, str)
+        and id(node) not in prose
+        and id(node) not in skipped
+        and any(spelling in node.value.casefold() for spelling in _AMOUNT_SPELLINGS)
+    )
+
+
+def test_the_search_for_a_typed_amount_unit_finds_one_in_each_kind_of_string() -> None:
+    """The search reads plain strings and f-strings, in any case, and leaves docstrings out."""
+
+    source = (
+        "def caption(amount: float) -> str:\n"
+        '    """Return the amount in litres of vapour."""\n'
+        '    return f"{amount} L vapour"\n'
+        'NAME = "Millilitres of liquid"\n'
+        'OTHER = "Show as"\n'
+        "class Stored:\n"
+        '    UNIT = "litres of vapour"\n'
+    )
+
+    assert _typed_amount_units(source) == [
+        (3, " L vapour"),
+        (4, "Millilitres of liquid"),
+        (7, "litres of vapour"),
+    ]
+    assert _typed_amount_units(source, skip_class="Stored") == [
+        (3, " L vapour"),
+        (4, "Millilitres of liquid"),
+    ]
+
+
+def test_no_agent_amount_unit_is_spelled_outside_the_units_module() -> None:
+    """Every module of `app/` reads an agent amount's unit from `DisplayUnit` (`PL-2TWX`).
+
+    `docs/INTERFACE.md` § "The compartment schematic: what its heights, amounts
+    and share bar assert" says that each spelling is defined once, in
+    `app/display_units.py`. A spelling typed in another module would stay as it
+    is when the member's spelling changes, and the two places would then name
+    one amount in two ways.
+
+    One class is left out. `AgentAmountUnit`'s values are the words that the
+    preferences file stores for a unit. They are not shown, and they must not
+    change when a spelling on screen does, or a saved file would stop being
+    read. The last assert fails if the class stops holding such words, so the
+    exception cannot outlive its reason.
+    """
+
+    typed = {
+        path.name: found
+        for path in sorted(_APP.glob("*.py"))
+        if path.name != "display_units.py"
+        and (
+            found := _typed_amount_units(
+                path.read_text(encoding="utf-8"),
+                skip_class="AgentAmountUnit" if path.name == "formatting.py" else None,
+            )
+        )
+    }
+
+    assert typed == {}
+
+    stored_words = _typed_amount_units((_APP / "formatting.py").read_text(encoding="utf-8"))
+
+    assert sorted(word for _, word in stored_words) == sorted(
+        member.value for member in AgentAmountUnit
+    )
 
 
 def test_the_fork_point_entry_is_sized_from_the_clocks_own_format() -> None:

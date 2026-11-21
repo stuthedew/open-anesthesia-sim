@@ -79,8 +79,13 @@ __all__ = [
     "WITHHELD_COST",
     "CostShown",
     "cost_shown",
+    "entry_date",
     "price_from_entry",
     "DELIVERED_LABEL_TEMPLATE",
+    "DISCARD_REFUSED_CONFIRM_LABEL",
+    "DISCARD_REFUSED_KEEP_LABEL",
+    "DISCARD_REFUSED_LABEL",
+    "DISCARD_REFUSED_WARNING",
     "LIQUID_CAPTION_TEMPLATE",
     "NOT_CONVERTED_TEXT",
     "UNIT_CHOICE_LABEL",
@@ -118,14 +123,25 @@ VAPOUR_CAPTION_TEMPLATE: Final = f"Vapour put out by the vaporizer, at {REFERENC
 #: no supported run produces. The wording is a placeholder.
 NOT_CONVERTED_TEXT: Final = "Cannot show this as liquid: the conversion did not give a finite value"
 
+#: The offer to discard the entries of the preferences file that were refused,
+#: which the View shows under the notice that names them, and the question it
+#: asks before it discards them. The discard cannot be undone, so the reader
+#: confirms it, and the button that keeps the entries is the one that takes the
+#: keyboard focus. The wording is a placeholder (`PL-7KXN`).
+DISCARD_REFUSED_LABEL: Final = "Discard the refused entries"
+DISCARD_REFUSED_WARNING: Final = (
+    "Discarding removes the refused entries from the preferences file. This cannot be undone."
+)
+DISCARD_REFUSED_CONFIRM_LABEL: Final = "Discard them"
+DISCARD_REFUSED_KEEP_LABEL: Final = "Keep them"
+
 #: The label of the View's unit selector, and the name of each unit in it, in
-#: the order `AGENT_COST_VIEW_UNITS` lists them. The wording is a placeholder.
+#: the order `AGENT_COST_VIEW_UNITS` lists them. Each name is the unit written
+#: in full, read from its `DisplayUnit` member (`PL-2TWX`). The wording is a
+#: placeholder.
 UNIT_CHOICE_LABEL: Final = "Show as"
 UNIT_CHOICES: Final[tuple[tuple[AgentAmountUnit, str], ...]] = tuple(
-    (unit, name)
-    for unit, name in zip(
-        AGENT_COST_VIEW_UNITS, ("millilitres of liquid", "litres of vapour"), strict=True
-    )
+    (unit, AGENT_AMOUNT_UNIT_DISPLAY[unit].recorded) for unit in AGENT_COST_VIEW_UNITS
 )
 
 
@@ -457,3 +473,34 @@ def price_from_entry(
         currency.strip(),
         applies_on,
     )
+
+
+def entry_date(
+    stored: AgentPrice, bottle_price: str, bottle_volume_ml: str, currency: str, today: date
+) -> date:
+    """Return the date the form shows for an agent with a stored price, until the reader edits it.
+
+    The date is the stored price's date while the texts still state the stored
+    bottle price, bottle volume and currency. Once one of them states something
+    else, the reader is entering another price, so the date is `today`, the
+    day of entry. A price saved under the stored date would be shown as older
+    than it is (`docs/INTERFACE.md` § "A cost at the reader's price", `PL-8FSN`).
+    A figure that cannot be read as a number states something else. The form
+    stops calling this once the reader has edited the date.
+    """
+
+    try:
+        figures = (
+            _entered_figure(bottle_price, "bottle price"),
+            _entered_figure(bottle_volume_ml, "bottle volume"),
+        )
+    except SimulationConfigurationError:
+        return today
+
+    if figures != (stored.bottle_price, stored.bottle_volume_ml):
+        return today
+
+    if currency.strip() != stored.currency:
+        return today
+
+    return stored.applies_on
