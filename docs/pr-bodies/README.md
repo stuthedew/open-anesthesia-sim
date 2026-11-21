@@ -15,9 +15,10 @@ commit hashes describe the tree at the pull request's merge, and the tree has
 moved since: a path that no longer exists, or a hash that no longer resolves,
 is the history rather than a defect, so it is not repaired and not filed. That
 is the reading `.claude/rules/citation-drift.md` gives a closed item's brief,
-for the same reason. The one field kept current is the header's `commit:`, the
-squash commit the body belongs to, which `tools/pr_body_check.py --anchors`
-checks in `make check`.
+for the same reason. The header's `commit:` names the squash commit the body
+belongs to. Nothing checks it after the record is written, because only a
+rewrite of `main`'s history could change that commit's hash, and the
+repository's rulesets refuse one (`PL-F7XT`).
 
 GitHub's view of a record shows two things that reading the raw file does not:
 

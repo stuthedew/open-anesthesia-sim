@@ -5499,8 +5499,7 @@ def cmd_flight(args: argparse.Namespace) -> int:
     spec): each row's kind and state, from the `Holdings` rather than the
     `FlightReport`, which has no field for them; lapsed claims on items the
     base holds open; and an `unclaimed:` row per work branch that claims
-    nothing, asked of the same
-    `claims.claims_nothing` CI refuses on. That last walks each branch again,
+    nothing, asked of `claims.claims_nothing`. That last walks each branch again,
     so it is asked here and by no command that only ranks against the report.
     """
     inv = _invocation(args)

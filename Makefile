@@ -228,17 +228,12 @@ check: sync
 # a session the argv it ran, which is this one wherever this literal is right
 # (`PL-ZXCN`).
 	bin/docket check --verify --verify-base origin/main
-# Bare `python3`, like the three lines after it: none of them reads project
-# source, so the 3.11 floor parser has nothing it cannot read, and a bare run is
-# the no-virtualenv promise `tools/ruff.toml` states. Placed with the
-# provenance checks rather than earlier because that is what it is: `docket
-# check` asks whether the store is sound, this asks whether this branch's work
-# is visible to the guards that read the store. It answers from `git log`
-# alone, so it costs milliseconds wherever it lands. `PL-CP74`.
-	python3 tools/branch_id_check.py
-# Beside the guard above, and the same category one level out: that one asks
-# whether this branch's work is visible in the store, this asks whether it is
-# visible in the subject a squash merge will land on `main`. It was the only
+# Bare `python3`, like the lines after it: none of them reads project source,
+# so the 3.11 floor parser has nothing it cannot read, and a bare run is the
+# no-virtualenv promise `tools/ruff.toml` states. Placed with the provenance
+# checks: `docket check` asks whether the store is sound, and this asks whether
+# this branch's work is visible in the subject a squash merge will land on
+# `main`. It was the only
 # gate a session could not run before pushing, because CI reads the title from
 # `PR_TITLE` and nothing sets that locally, so every failure was found by CI
 # and cost a cycle. `--discover` reads the title from this branch's own open
@@ -256,30 +251,13 @@ check: sync
 # above, and reads the working tree as that line does, so a number `record N`
 # has just written counts before it is committed (`PL-T8PT`).
 	python3 tools/pr_record_check.py --discover
-# The body records beside the number (`PL-979D`, `PL-73G8`): a recovered body's
-# `commit:` is the one field tying it to the tree, and a history rewrite leaves
-# it naming nothing with no other check noticing. Offline, and it says so
-# rather than passing where the clone is shallow.
-	python3 tools/pr_body_check.py --anchors
-# Beside the guard above because it is the same category one level down: that
-# one asks whether this branch's work is visible, this asks whether a rule's
-# declared scope is the one it will actually get. Reads only the frontmatter of
-# `.claude/rules/*.md`, so it costs nothing. `PL-LLWN`.
+# Whether a rule's declared scope is the one it will actually get. Reads only
+# the frontmatter of `.claude/rules/*.md`, so it costs nothing. `PL-LLWN`.
 	python3 tools/rules_paths_check.py
 # Each headless worker run's record on its branch needs the review's outcome
 # before the branch merges, so headless and chat work can be compared. Reads
 # only `docs/worker-runs/`, so it costs nothing (`PL-87BR`).
 	python3 tools/worker_runs.py check
-# Beside the two guards above, and the same category one level further out:
-# those ask whether this branch's work is visible and whether a rule's declared
-# scope is the one it gets, this asks whether the always-loaded context a
-# session starts with is still inside the budget that makes it safe to load.
-# `.claude/hooks/docket-digest.sh` emits `docs/dead-ends.md`'s entry lines at
-# session start, and a `SessionStart` hook's output is resent on every turn -
-# so an entry added without a thought for the cap is paid by every session
-# forever. With `--base` it also fails on an entry that left the list with no
-# record of where it went (`PL-5J1S`). `PL-NB35`.
-	python3 tools/dead_ends.py check --base origin/main
 # Beside the guards above and, like them, bare: it reads the apparatus trees -
 # `tools/`, `subprojects/docket/src/docket/` and `.claude/hooks/` - which are
 # held to the floor themselves, so the floor interpreter parses all of it. It

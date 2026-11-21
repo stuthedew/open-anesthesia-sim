@@ -82,7 +82,6 @@ SWALLOWED = (
     "uv run ruff check --no-cache . 2>&1 | head -30",
     "python3 tools/doc_check.py check | head -40",
     "uv run python tools/glyph_check.py 2>&1 | tail",
-    "python3 tools/dead_ends.py check | tail",
     # A leading `cd` or an environment assignment does not change the shape.
     "cd /tmp && make check 2>&1 | tail -3",
     "CI=1 make check 2>&1 | tail -3",
@@ -328,7 +327,6 @@ INTERPRETED = (
         False,
     ),
     ("python3 scratch.py tools/glyph_check.py | head", False),
-    ("python3 scratch.py tools/dead_ends.py check | tail", False),
     # The check itself, behind each kind of interpreter option: a flag, a run
     # of flags, a value in the next word or glued on, and the end of options.
     ("python3 tools/glyph_check.py | head", True),

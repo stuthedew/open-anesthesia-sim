@@ -188,8 +188,7 @@ NAMED = "named"
 #: to each session it starts, and `CLAUDE.md` asks a session naming its own
 #: branch to use it. The unclaimed-work question binds this namespace and no
 #: other, because a contributor has no queue and no `bin/docket` to claim with
-#: (`PL-8P6D`). Declared here since `flight`'s `unclaimed:` row asks it as well
-#: as `tools/branch_id_check.py`, and the two must read one definition
+#: (`PL-8P6D`). Declared here, where `flight`'s `unclaimed:` row asks it
 #: (`PL-FFR0`).
 AGENT_BRANCH_PREFIX = "claude/"
 
@@ -478,8 +477,7 @@ def named_id(name: str, stored: Callable[[str], bool]) -> str:
     own holds an id. The grammar alone is not enough, because it fits a word as
     well as an id - `HTML`, like `CTRL`, is in its alphabet - so
     `claude/fix-pl-html-export-abc123` held an item that does not exist
-    (`PL-WK57`). `PL-SN2T` gave `tools/branch_id_check.py`'s attribution the
-    same rule, which reads a name through this.
+    (`PL-WK57`).
     """
     match = BRANCH_ID_RE.search(name)
     if match is None:
@@ -923,11 +921,9 @@ def _finished_claim(hold: Hold) -> bool:
 
 
 # A work branch that claims nothing: `PL-MB2W`'s third "Forgetful session"
-# catch, asked by `tools/branch_id_check.py`, which refuses it in CI, and by
-# `flight`'s `unclaimed:` row, which counts it. One definition in this module
-# for both (`PL-FFR0`), because two spellings of one question are two answers
-# waiting to disagree, and the pre-registered 1-in-20 threshold is counted from
-# the row while CI refuses on the check.
+# catch, asked by `flight`'s `unclaimed:` row, which counts it (`PL-FFR0`). The
+# pre-registered 1-in-20 threshold is counted from the row. A CI check refused
+# such a branch on the same question until `PL-HS2T` retired it.
 
 
 def work_outside_queue(
