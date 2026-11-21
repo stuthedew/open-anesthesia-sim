@@ -276,13 +276,11 @@ def check_script(arguments: list[str]) -> str | None:
     run no script file and `-` reads one from stdin, so none of them runs a
     check here.
     """
-    kind, script, after = shell_split.python_operand(arguments)
+    kind, script, _ = shell_split.python_operand(arguments)
     if kind != "file":
         return None
     if base(script).endswith("_check.py"):
         return script
-    if base(script) == "dead_ends.py" and "check" in arguments[after:]:
-        return script + " check"
     return None
 
 

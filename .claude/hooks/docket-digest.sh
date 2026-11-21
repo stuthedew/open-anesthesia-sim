@@ -144,8 +144,8 @@ fi
 #
 # It prints the entry lines only, never `docs/dead-ends.md`'s preamble, which
 # is instructions for adding an entry rather than for reading one - the split
-# is what keeps the always-loaded half small, and `tools/dead_ends.py check`
-# holds the emitted half to 30 entries and 4,000 bytes. That cap exists because
+# is what keeps the always-loaded half small, and `tests/unit/test_dead_ends.py`
+# keeps the emitted half inside 30 entries and 4,000 bytes. That cap exists because
 # this text is resent on every turn: measured on an agent benchmark, add-all
 # memory curation reached 13.04% accuracy against strict selection's 38.86%
 # (Xu et al., ACL 2026), and on identical questions a focused ~300-token prompt

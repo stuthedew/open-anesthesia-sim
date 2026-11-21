@@ -263,25 +263,6 @@ jobs:
       # A headless worker's run record must carry its review before its branch
       # merges (`PL-87BR`).
       - run: python3 tools/worker_runs.py check
-      # 0.07 s, and it reads two files. It was `make check`-only from
-      # 2026-09-13, which meant the cap on the always-loaded session-start
-      # context - paid by every session, forever, once an entry is added
-      # without a thought for it - was enforced only where somebody remembered
-      # to run the local gate. `tools/doc_check.py`'s `check_gate_parity`
-      # refuses that asymmetry now rather than leaving it to be noticed
-      # (`PL-PBP5`).
-      #
-      # On a pull request it also reads the file at the base and fails on an
-      # entry that left the list with no record of where it went (`PL-5J1S`).
-      # A push to `main` compares nothing: the pull request's run was the gate.
-      - name: dead ends, with removals compared to the base
-        if: github.event_name == 'pull_request'
-        env:
-          DEAD_ENDS_BASE: origin/${{ github.base_ref }}
-        run: python3 tools/dead_ends.py check --base "$DEAD_ENDS_BASE"
-      - name: dead ends
-        if: github.event_name != 'pull_request'
-        run: python3 tools/dead_ends.py check
       # Bare for the same reason as the lines above, and the one tool here that
       # reads source with `ast` and still belongs at the floor: the apparatus
       # trees it reads are held to the floor themselves, where `src/` is not,

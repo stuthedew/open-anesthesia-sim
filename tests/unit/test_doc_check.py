@@ -11620,15 +11620,13 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     ),
     # `docs/dead-ends.md`, an entry at a time through docket's list walker (`PL-F5B9`).
     "dead ends, a title wrapped onto an indented line": (
-        lambda _: dead_ends.entries("- **One shared\n  queue document** — rejected.\n"),
-        [(1, "- **One shared queue document** — rejected.")],
+        lambda _: dead_ends.emitted("- **One shared\n  queue document** — rejected.\n"),
+        f"{dead_ends.HEADER}\n- **One shared queue document** — rejected.",
     ),
-    "dead ends, a title carried on from the margin is refused by name": (
-        lambda _: dead_ends.check("- **One shared\nqueue document** — rejected.\n"),
-        [
-            "docs/dead-ends.md:2: continuation of the entry above, carried on from the margin. "
-            "One line per entry - shorten it instead."
-        ],
+    "dead ends, a title carried on from the margin is named in its place": (
+        lambda _: dead_ends.emitted("- **One shared\nqueue document** — rejected.\n"),
+        f"{dead_ends.HEADER}\n- docs/dead-ends.md:1: not printed, since line 2 carries it on "
+        "from the margin and it would read short; read it in the file.",
     ),
     # A release's notes, a bullet at a time through the same walker (`PL-CL8R`).
     "release notes, a reference after a wrapped title": (
@@ -12481,21 +12479,7 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
 }
 
 
-#: The cases whose reader lists this checkout's item store: `dead_ends.check`
-#: reads the ids the store holds. CI's item-only fast path runs them
-#: (`PL-DXD4`).
-READS_THE_STORE = frozenset({"dead ends, a title carried on from the margin is refused by name"})
-
-
-@pytest.mark.parametrize(
-    "reader",
-    [
-        pytest.param(reader, marks=pytest.mark.reads_item_store)
-        if reader in READS_THE_STORE
-        else reader
-        for reader in sorted(CONTINUED_STATEMENTS)
-    ],
-)
+@pytest.mark.parametrize("reader", sorted(CONTINUED_STATEMENTS))
 def test_each_reader_reads_its_formats_continued_statement_whole(
     reader: str, tmp_path: Path
 ) -> None:
