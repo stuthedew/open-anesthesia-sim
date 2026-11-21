@@ -1,9 +1,17 @@
 ---
 id: PL-3DHK
 title: A run stopped at the supported run length that then meets an error names the error in its status word and the run length on its mark rows
-status: untriaged
+priority: P3
+effort: S
+status: done
+classes: defect
 feature: interface-matches-its-spec
+touches: src/anesthesia_sim/app/dashboard_frame.py, docs/INTERFACE.md, tests/integration/controller/test_controller_supported_length.py
 added: 2026-11-21
+closed: 2026-11-21
+pr: 2191
+payoff: A run that stops for two reasons shows each reason in a stated place, and a test keeps the two places in step
+tests: tests/integration/controller/test_controller_supported_length.py::test_a_run_at_the_supported_run_length_that_then_fails_gives_each_reason_in_its_place
 ---
 
 **Problem.** A run stopped at the supported run length that then meets an error names the error in its status word and the run length on its mark rows

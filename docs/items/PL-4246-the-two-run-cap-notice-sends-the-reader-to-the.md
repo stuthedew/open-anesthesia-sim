@@ -1,9 +1,17 @@
 ---
 id: PL-4246
 title: The two-run cap notice sends the reader to 'the readouts below', and the readouts are above the chart
-status: untriaged
+priority: P3
+effort: S
+status: done
+classes: defect
 feature: interface-matches-its-spec
+touches: src/anesthesia_sim/app/dashboard_frame.py, tests/integration/simulation_view/test_simulation_view_two_runs.py, tests/integration/simulation_view/test_simulation_view_readouts.py
 added: 2026-11-21
+closed: 2026-11-21
+pr: 2191
+payoff: The notice that sends a learner to the readouts for a hidden compartment's value points the right way
+tests: tests/integration/simulation_view/test_simulation_view_two_runs.py::test_the_cap_notice_sends_the_reader_to_readouts_that_are_above_it, tests/integration/simulation_view/test_simulation_view_readouts.py::test_a_trace_above_the_axis_is_reported_on_the_run_that_drew_it
 ---
 
 **Problem.** The two-run cap notice sends the reader to 'the readouts below', and the readouts are above the chart

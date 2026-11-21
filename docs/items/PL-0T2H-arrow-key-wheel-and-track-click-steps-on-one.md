@@ -1,9 +1,16 @@
 ---
 id: PL-0T2H
 title: Arrow-key, wheel and track-click steps on one dial are joined into one adjustment, so the chart marks only the first step and docs/INTERFACE.md says each step is an adjustment of its own: decide which a learner sees
-status: untriaged
+priority: P2
+effort: M
+status: blocked
+classes: defect
 feature: interface-matches-its-spec
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/chart_frame.py, docs/INTERFACE.md, tests/integration/controller/test_controller_control_timeline.py
+blocked-by: PL-Z6C8
+deferred-from: v0.7.0 - filed on 2026-11-21, after the gate froze; it builds after the whole-second stepping work, which changes when a setting takes effect
 added: 2026-11-21
+payoff: A learner who steps a dial up and later back with the keys sees a mark on the chart at each change
 ---
 
 **Problem.** Arrow-key, wheel and track-click steps on one dial are joined into one adjustment, so the chart marks only the first step and docs/INTERFACE.md says each step is an adjustment of its own: decide which a learner sees

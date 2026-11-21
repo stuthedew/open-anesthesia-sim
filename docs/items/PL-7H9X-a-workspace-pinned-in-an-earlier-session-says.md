@@ -1,9 +1,17 @@
 ---
 id: PL-7H9X
 title: A Workspace pinned in an earlier session says 'Run 1 is not open.' while this session's Run 1 is open and named directly above it
-status: untriaged
+priority: P3
+effort: S
+status: done
+classes: defect
 feature: interface-matches-its-spec
+touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/view_registry.py, src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/workspace_tabs.py, docs/INTERFACE.md, tests/unit/test_dashboard_frame.py, tests/integration/test_workspace_tabs.py
 added: 2026-11-21
+closed: 2026-11-21
+pr: 2191
+payoff: A learner who reopens the simulator is not told that Run 1 is not open under the readouts of a run called Run 1
+tests: tests/unit/test_dashboard_frame.py::test_a_pinned_run_of_an_earlier_session_is_named_without_its_number, tests/unit/test_dashboard_frame.py::test_a_pinned_run_is_named_only_beside_a_tuple_of_run_identities, tests/integration/test_workspace_tabs.py::test_a_pinned_run_that_is_not_open_is_stated_in_every_area_and_no_other_run_is_shown
 ---
 
 **Problem.** A Workspace pinned in an earlier session says 'Run 1 is not open.' while this session's Run 1 is open and named directly above it
