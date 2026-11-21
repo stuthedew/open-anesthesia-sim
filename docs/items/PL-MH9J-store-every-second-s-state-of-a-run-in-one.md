@@ -3,13 +3,16 @@ id: PL-MH9J
 title: Store every second's state of a run in one array, and have the chart, the readouts, the marks, the wash-in label and the export read that array
 priority: P1
 effort: L
-status: blocked
+status: done
 classes: refactor, safety
 feature: run-computed-one-way
 touches: src/anesthesia_sim/core, src/anesthesia_sim/app, tests, docs/MODEL.md, docs/INTERFACE.md, docs/ARCHITECTURE.md, .claude/rules/run-is-its-definition.md
 blocked-by: PL-SZ6G
 deferred-from: v0.7.0 - filed 2026-11-21, after the gate froze, as the build of the design the owner chose in PL-7CY5; each of the four pull requests leaves main releasable, so the release does not wait for the feature to finish
 added: 2026-11-21
+closed: 2026-11-21
+pr: 2180
+tests: tests/integration/controller/test_controller_stored_states.py::test_a_branch_stores_its_parents_state_at_the_fork_and_steps_on_from_it
 ---
 
 **Problem.** Store every second's state of a run in one array, and have the chart, the readouts, the marks, the wash-in label and the export read that array
@@ -50,3 +53,7 @@ added: 2026-11-21
 4. `SimulationController.bookmark_standings`' docstring says that none of its inputs builds a `Fraction`, and `_crossings_stood_on` builds them.
 5. `app/run_view.py`, `app/run_presentation.py` and `app/theme.py` mention refusals from `snapshot()` and were not checked.
 6. These figures in docstrings were measured on the earlier design and were left as they were: "6.9e-14 L" in `resume_at` (`core/uptake_system.py`); "about 70 KiB" against "3.16 GB", "6.2 us" and "1.29 ms" in `core/run_definition.py`; "up to 5.3e-13 in an accumulator" in `resumed_at`; "48 of 54 elements differ" in `resumed_here`; and "40 of 45 elements differed" and "11.7%" in `_open_at` (`app/controller.py`).
+
+**Closed 2026-11-21.** The leftovers this brief handed to `PL-Z6C8` were removed there: `needs_canonical_readings`, the near-edge check and `LIVE_READING_GAP`. The preview now steps one second at a time (`core/prediction.py`).
+
+**Documents checked, 2026-11-21, after `PL-Z6C8`.** `docs/INTERFACE.md` § "Halting on a marked crossing", § "A run stores the state of every second it reaches", § "Each second has one stored state", § "The shared history is identical by construction, not by measurement", § "What the chart draws" and § "A preview of an unapplied setting"; `docs/MODEL.md` § "The reproducibility guarantee", § "Supported simulation step", § "Supported input ranges", § "The numerical envelope", § "How far a computed value can be from the exact one", § "Step-refinement test", § "Prediction agreement test" and § "Stored-state test"; `docs/ARCHITECTURE.md`'s package map and its sections on the run record and on branching; `ROADMAP.md`'s item 12 entry; `.claude/rules/run-is-its-definition.md`. The remaining passages that `PL-5FMC` listed for this build are `PL-LZ54`'s.

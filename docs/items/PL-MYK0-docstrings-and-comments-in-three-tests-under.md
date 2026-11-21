@@ -3,10 +3,10 @@ id: PL-MYK0
 title: Docstrings and comments in three tests under tests/reference/ repeat five statements that docs/MODEL.md corrected on 2026-11-21
 priority: P2
 effort: S
-status: blocked
+status: ready
 classes: defect
 feature: model-spec-accuracy
-touches: tests/reference/test_late_washout_against_published_fits.py, tests/reference/test_published_wash_in_and_elimination.py, tests/reference/test_canonical_evaluation.py
+touches: tests/reference/test_late_washout_against_published_fits.py, tests/reference/test_published_wash_in_and_elimination.py
 blocked-by: PL-SZ6G
 deferred-from: v0.7.0 - captured after the freeze by the check of docs/MODEL.md against the code; it changes no displayed value, and it is not safety or science
 added: 2026-11-21
@@ -26,7 +26,7 @@ payoff: the docstrings of three published-data tests give the figures and reason
 5. `tests/reference/test_canonical_evaluation.py`, module docstring: the accumulators show "to six decimals of a litre", and the two bounds differ because "their headroom differs by four orders". `app/formatting.py` shows the three amounts to 0.1 L (`_RUN_TOTAL_LITRE_DECIMALS = 1`). What differs by about four orders is the measured difference, 8.0e-13 of an atmosphere against 3.1e-9 L.
 <!-- absent: tests/reference/test_canonical_evaluation.py -->
 
-**Why it waits on `PL-SZ6G`** (a run's time as a whole number of seconds). That branch rewrites all three files, so a correction made now would conflict with it. A change to an existing line of a test under `tests/reference/` also waits for the project owner's read.
+[superseded 2026-11-21] **Why it waits on `PL-SZ6G`** (a run's time as a whole number of seconds). That branch rewrites all three files, so a correction made now would conflict with it. A change to an existing line of a test under `tests/reference/` also waits for the project owner's read.
 
 **Done when.** Each of the five agrees with the code beside it and with `docs/MODEL.md`.
 

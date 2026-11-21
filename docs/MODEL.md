@@ -2190,14 +2190,13 @@ within the computer's last digit instead.
 
 The gap between 0.99 and 1 must exceed the largest overshoot that a run started at 0.99 computes.
 The overshoots below come from runs at all 96 corners, each with the 27 combinations
-of extreme flows, for a wash-in to 0.99, a washout from it and an equilibrium at it. The first
-row was computed on 2026-11-21 and the other two on 2026-10-31:
+of extreme flows, for a wash-in to 0.99, a washout from it and an equilibrium at it. Both rows
+were computed on 2026-11-21:
 
 | Path | Largest fraction computed from 0.99 | Overshoot above 0.99 |
 | --- | --- | --- |
 | One step of the whole model | 0.9900000011938722 | 1.2e-9 |
-| The canonical path, at five instants up to 86 400 s | 0.9900008107237728 | 8.1e-7 |
-| The display path, 60 columns across 86 400 s | 0.9900330968959383 | 3.3e-5 |
+| 86 400 one-second steps, as a preview takes them | 0.9901019652292411 | 1.0e-4 |
 <!-- provenance: core/supported_ranges.py MAXIMUM_INPUT_FRACTION = 0.99 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
@@ -2205,13 +2204,14 @@ At the hardest corners of the envelope, one step has a larger error bound than a
 that a shipped run makes. The note for developers below gives the bound, and says why the
 envelope's limits were kept.
 
-The largest excess is 0.0033 percentage points (computed 2026-10-31), less than half the smallest
-change the display shows, 0.01 percentage points at two decimals. The excess is error in the
-calculation itself, far more than rounding in the stored values could cause. It arises in a
-24-hour chart at the hardest corner, with every volume at 0.01 L, blood:gas at 10 000 and
-tissue:blood at 0.001. No shipped agent needs a calculation that hard over 24 hours. No run in the
-application produces that chart. A stepped run at the hardest corners stops on the mass-balance
-check within seconds, as shown below, so its chart never spans 24 hours.
+The largest excess is 0.010 percentage points (computed 2026-11-21), the size of the smallest
+change the display shows, 0.01 percentage points at two decimals. It is the rounding of each step
+added up over 86 400 steps: one step's excess of 1.2e-9, 86 400 times, is 1.0e-4. It arises at a
+corner with the alveolar gas, the venous pool and the tissues at 0.01 L, the circuit at
+10 000 L, blood:gas at 10 000 and tissue:blood at 0.001. No shipped agent needs a calculation that
+hard. No run in the application predicts it. A preview starts from a second that the run has
+stepped to, and a run stepped at that corner stops on the mass-balance check at its first step.
+At the hardest corners a stepped run stops within seconds, as shown below.
 <!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
@@ -2284,7 +2284,7 @@ the criterion allowed. The limits were kept on 2026-11-21 all the same, for four
 4. Nothing a learner sees depends on the choice.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-The 0.99 limit leaves a margin of 0.01, about 300 times the largest excess. Pushing a computed
+The 0.99 limit leaves a margin of 0.01, about 100 times the largest excess. Pushing a computed
 fraction back to 1 would hide an error the size of the largest excess instead of limiting it. The
 limit belongs to the model, not to one agent's vapour pressure, so a later gas delivered at a high
 fraction does not need a new limit.

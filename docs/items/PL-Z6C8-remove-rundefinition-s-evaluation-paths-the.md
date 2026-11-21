@@ -3,21 +3,36 @@ id: PL-Z6C8
 title: Remove RunDefinition's evaluation paths, the propagator store and the tolerance constants they needed, and rewrite the rule and the specification sections that describe a run as its definition
 priority: P1
 effort: L
-status: blocked
+status: done
 classes: refactor, safety
 feature: run-computed-one-way
 touches: src/anesthesia_sim/core, src/anesthesia_sim/app, tests, docs/MODEL.md, docs/INTERFACE.md, docs/ARCHITECTURE.md, .claude/rules/run-is-its-definition.md
 blocked-by: PL-FST0
 deferred-from: v0.7.0 - filed 2026-11-21, after the gate froze, as the build of the design the owner chose in PL-7CY5; each of the four pull requests leaves main releasable, so the release does not wait for the feature to finish
 added: 2026-11-21
+closed: 2026-11-21
+pr: 2180
+tests: tests/unit/test_prediction.py::test_each_predicted_second_matches_the_second_the_run_stepped
 ---
 
 **Problem.** Remove RunDefinition's evaluation paths, the propagator store and the tolerance constants they needed, and rewrite the rule and the specification sections that describe a run as its definition
 
 **Why it matters.** Once every reader reads the stored states, the closed-form evaluation paths and the allowances that reconcile them have no use, and keeping them leaves a second way to compute a state. The owner chose this design on 2026-11-21 in `PL-7CY5` (one rule for computing a run), which holds the counts, the measurements and the sources. The four items of the feature `run-computed-one-way` are built in this order: `PL-SZ6G`, `PL-MH9J`, `PL-FST0`, `PL-Z6C8`.
 
-**What it changes.** It removes `RunDefinition.state_at`, `evaluate`, `evaluate_anchored`, `DisplayState` and the kept propagators in `core/run_definition.py`; `LIVE_READING_GAP` and the two-readings half of `HEIGHT_BAND` in `app/bookmarks.py`; `_GRID_UNIT_COUNT_TOLERANCE` in `app/chart_time_base.py`; and `STEP_COUNT_TOLERANCE` in `app/playback.py` where the playback tick is held in whole milliseconds. It rewrites `docs/INTERFACE.md` § "The canonical evaluation rule" and the sections of `docs/MODEL.md` and `docs/ARCHITECTURE.md` that describe a run as its definition. `PL-GJ1W` (each comparison picks its own tolerance) then resumes on the allowances that remain.
+**What it changes.** It removes `RunDefinition.state_at`, `evaluate`, `evaluate_anchored`, `DisplayState` and the kept propagators in `core/run_definition.py`; `LIVE_READING_GAP` and the two-readings half of `HEIGHT_BAND` in `app/bookmarks.py`; `_GRID_UNIT_COUNT_TOLERANCE` in `app/chart_time_base.py`; and `STEP_COUNT_TOLERANCE` in `app/playback.py` where the playback tick is held in whole milliseconds. It rewrites the section of `docs/INTERFACE.md` on the canonical evaluation rule and the sections of `docs/MODEL.md` and `docs/ARCHITECTURE.md` that describe a run as its definition. `PL-GJ1W` (each comparison picks its own tolerance) then resumes on the allowances that remain.
 
 **Done when.** No module in `src/` computes a run's state except the step that stores it, the listed constants are gone or each states why it stays, and the documents describe the stored states.
 
 **Generator check.** Work the owner asked for on 2026-11-21, building the design that `PL-7CY5` decided. It is not a head. The fact is `PL-GJ1W`'s, how far a computed value can be from the exact one: it deletes the allowances that existed only to reconcile two routes to one state.
+
+**Built 2026-11-21.** `RunDefinition` now holds only the stretches of settings and the second each opened at. `state_at`, `evaluate`, `evaluate_anchored`, `DisplayState`, the kept propagators, `LIVE_READING_GAP`, the near-edge check of a MAC target, `_GRID_UNIT_COUNT_TOLERANCE`, `STEP_COUNT_TOLERANCE` and `clock_rounding` are gone, with `tests/reference/test_canonical_evaluation.py`. `HEIGHT_BAND` stays, and its docstring gives the reason that remains: a steady reading moves in its last digit from step to step.
+
+**How the preview is computed.** `core/prediction.py`'s `predicted_states` applies the propagator of one second once for each second past the reach, from the state stored there. The chart draws the prediction by the rule it draws a run by, with each peak and trough between two columns (`PL-BLZJ`). A predicted state can differ from the state the run later stores in its last bits, because a step reads each fraction back from the amount in its compartment. The widest window, 43 200 predicted seconds, took about 0.1 s, so the controller keeps the last predicted window and draws it again while none of its inputs change. The key holds every input: the agent, the preview's settings, the reach, the state stored there, the right edge and the grid spacing. Previewing was weighed against two alternatives in this session: keeping the closed form for the preview alone, which would keep a second route to a drawn value, and stepping the preview at a coarser interval, which would miss peaks between columns. Both earlier threads chose one-second steps independently.
+
+**Regression test.** `test_a_preview_after_turning_the_dial_off_draws_each_peak_the_run_would_reach` in `tests/unit/test_chart_frame.py`, run as a standalone copy against `59e586095` (a worktree, `uv run pytest tests/unit/test_preview_peak_variant.py`), fails three times with `assert 302 in {300: ...}`, `assert 379 in {300: ...}` and `assert 363 in {300: ...}`.
+
+**Measured afterwards.** A branch's readouts now equal its parent's in every digit at the same second, where `BRANCH_AGREEMENT` allowed 1e-14; the limit is removed and the test compares exactly.
+
+**The largest excess over the input ceiling, measured again 2026-11-21.** With the display path gone, the largest excess over 0.99 is now the rounding of 86 400 one-second steps. A prediction of 86 400 seconds at each of the 96 corners, with each of the 27 flow corners and each opening in `OPENINGS_AND_DIALS`, reached 0.9901019652292411, an excess of 1.0e-4 (1.03e-4 of the ceiling). It came at the corner with the circuit at 10 000 L and every other volume at 0.01 L, blood:gas at 10 000 and tissue:blood at 0.001, washing out from 0.99 with no fresh gas. The earlier figure was 3.3e-5, on the display path. One step's excess, 1.2e-9, times 86 400 is 1.0e-4, so the excess is each step's rounding summed, as `run_rounding` assumes. A run stepped at that corner stops on the agent balance check at its first step, so no preview can open there. The sweep test's limit of 1e-4 of the ceiling would have refused that state, so the test now takes its limit from `run_rounding` for 86 400 steps at each corner's squaring count (8.0e-4 at 22 squarings), and checks that corner as a third one. `docs/MODEL.md` § "The numerical envelope", `core/concentration.py`'s module docstring and `core/supported_ranges.py`'s docstrings now give 1.0e-4 and a margin of about 100 times.
+
+**Documents checked, 2026-11-21, after `PL-Z6C8`.** `docs/INTERFACE.md` § "Halting on a marked crossing", § "A run stores the state of every second it reaches", § "Each second has one stored state", § "The shared history is identical by construction, not by measurement", § "What the chart draws" and § "A preview of an unapplied setting"; `docs/MODEL.md` § "The reproducibility guarantee", § "Supported simulation step", § "Supported input ranges", § "The numerical envelope", § "How far a computed value can be from the exact one", § "Step-refinement test", § "Prediction agreement test" and § "Stored-state test"; `docs/ARCHITECTURE.md`'s package map and its sections on the run record and on branching; `ROADMAP.md`'s item 12 entry; `.claude/rules/run-is-its-definition.md`. The remaining passages that `PL-5FMC` listed for this build are `PL-LZ54`'s.

@@ -105,13 +105,12 @@ more than they do:
   the stepped system opens from must be at or below `MAXIMUM_INPUT_FRACTION`
   in `core/supported_ranges.py`, 0.99 of the ambient pressure (project owner,
   2026-10-31, ratified, over a fraction check that accepts a value slightly
-  above 1). The largest computed excess over that ceiling, measured at every
-  envelope corner, was 3.3e-5, so no computed fraction from a supported
-  opening comes near 1. No shipped vaporizer comes near the ceiling either:
-  the highest maximum is desflurane's 18%. The display path refuses a drawn
-  fraction outside 0 to 1 when it builds each `DisplayState`
-  (`core/run_definition.py`), and the interface builds each plotted value as a
-  `Fraction` again when the frame is assembled (`app/chart_frame.py`).
+  above 1). The largest computed excess over that ceiling, measured over
+  86 400 one-second steps at every envelope corner, was 1.0e-4 on
+  2026-11-21, so no computed fraction from a supported opening comes near 1.
+  No shipped vaporizer comes near the ceiling either: the highest maximum is
+  desflurane's 18%. The interface builds each plotted value as a `Fraction`
+  again when the frame is assembled (`app/chart_frame.py`).
 
 **Why one module rather than a convention.** Before `PL-WVSK`, the factor 100
 was written out twelve times across six modules. Six of the twelve were on the

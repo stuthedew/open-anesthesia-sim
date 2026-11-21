@@ -325,7 +325,7 @@ def _require_the_run(corner: Corner) -> None:
     second, as a preview does, so the state at second `n` carries the error
     of `n` propagators. A run of the supported run length is predicted in
     `test_a_state_at_the_fraction_ceiling_stays_within_one_atmosphere`, at
-    the two corners where rounding went furthest.
+    the three corners where rounding went furthest.
     """
 
     for flows in FLOW_CORNERS:
@@ -820,13 +820,25 @@ ROUNDING_CORNERS = (
         MAXIMUM_PARTITION_COEFFICIENT,
         MINIMUM_PARTITION_COEFFICIENT,
     ),
+    Corner(
+        MAXIMUM_VOLUME_L,
+        MINIMUM_VOLUME_L,
+        MINIMUM_VOLUME_L,
+        MINIMUM_VOLUME_L,
+        MAXIMUM_PARTITION_COEFFICIENT,
+        MINIMUM_PARTITION_COEFFICIENT,
+    ),
 )
-"""The corners where a computed fraction went furthest past its inputs, measured 2026-10-31.
+"""The corners where a computed fraction went furthest past its inputs.
 
 The first reached the largest excess in a state computed by formula across 24
-hours, a path that `PL-Z6C8` removed. The second, with the
-circuit and lung at their floors and the venous pool and tissues at their
-ceilings, took the largest excess in one step of the coupled system.
+hours, a path that `PL-Z6C8` removed (measured 2026-10-31). The second, with
+the circuit and lung at their floors and the venous pool and tissues at their
+ceilings, took the largest excess in one step of the coupled system (measured
+2026-10-31). The third, with the circuit at its ceiling and every other volume
+at its floor, took the largest excess over 86 400 one-second steps, 1.0e-4
+from a washout at the ceiling with no fresh gas (measured 2026-11-21, over all
+96 corners).
 """
 
 
@@ -840,12 +852,16 @@ def test_a_state_at_the_fraction_ceiling_stays_within_one_atmosphere() -> None:
     to 1.0000000000349965, the check refused it, and the run halted. The
     coupled model now starts from no more than `CEILING`, and the system
     refuses to be built above it. This test steps the system, and predicts
-    every second of 24 hours, at the two corners where rounding went
+    every second of 24 hours, at the three corners where rounding went
     furthest, from each opening and dial in `OPENINGS_AND_DIALS`. Where the
     agent balance check refuses the step for rounding, the step is rolled
     back and the state checked is the opening one. Every fraction must lie
-    from 0 through 1, and none may pass the ceiling by more than 1e-4 of it,
-    about three times the largest excess measured.
+    from 0 through 1. None may pass the ceiling by more than the rounding
+    bound for 86 400 steps at that corner, `run_rounding`, which is a
+    numerical limit derived from the arithmetic: each step's propagator
+    rounding, summed over the steps. Each corner takes 22 squarings, so the
+    bound is 8.0e-4 of the ceiling at each. The largest excess measured on
+    2026-11-21, at the third corner, was 1.03e-4 of it.
     """
 
     flows = (0.0, MAXIMUM_ALVEOLAR_VENTILATION_L_MIN, MAXIMUM_CARDIAC_OUTPUT_L_MIN)
@@ -859,17 +875,24 @@ def test_a_state_at_the_fraction_ceiling_stays_within_one_atmosphere() -> None:
         for fraction, dial_percent in OPENINGS_AND_DIALS:
             system = _system(corner, flows, fraction, dial_percent)
             _step_unless_the_balance_check_refuses(system)
+            settings = _settings(corner, flows, dial_percent)
             predicted = predicted_states(
-                _settings(corner, flows, dial_percent),
+                settings,
                 _opening_state(fraction),
                 CaseInstant(0),
                 CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S),
+            )
+            # A numerical limit: the bound on the rounding of every step of
+            # the prediction, as a share of the largest fraction it holds.
+            rounding = run_rounding(
+                _squarings(build_system_matrix(settings), SIMULATION_STEP_S),
+                StepCount(MAXIMUM_ELAPSED_SIMULATION_TIME_S),
             )
 
             for state in (system.state_vector(), *predicted):
                 for computed in state[:DELIVERED_AGENT_L]:
                     assert 0.0 <= computed <= 1.0, state
-                    assert computed <= CEILING * (1.0 + 1e-4), state
+                    assert computed <= CEILING * (1.0 + rounding), state
 
 
 SUPPORTED_SETTING_CORNERS = tuple(

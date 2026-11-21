@@ -3,13 +3,16 @@ id: PL-SZ6G
 title: Hold a run's time as a whole number of seconds and step it by one exact 1 s step, so a control change takes effect at the next whole second
 priority: P1
 effort: L
-status: ready
+status: done
 classes: feature, science
 feature: run-computed-one-way
 touches: src/anesthesia_sim/core, src/anesthesia_sim/app, tests, docs/MODEL.md, docs/INTERFACE.md, docs/ARCHITECTURE.md
 deferred-from: v0.7.0 - filed 2026-11-21, after the gate froze, as the build of the design the owner chose in PL-7CY5; each of the four pull requests leaves main releasable, so the release does not wait for the feature to finish
 added: 2026-11-21
+closed: 2026-11-21
+pr: 2180
 payoff: a control change lands on a whole second that the screen, the record and every branch agree on, and no chart column or last step can fall one rounding unit past where it belongs
+tests: tests/reference/test_control_resolution.py::test_the_displacement_per_grid_step_at_each_playback_rate
 verify: grep -qF 'next whole second' docs/MODEL.md && ! grep -rqF 'MINIMUM_SIMULATION_STEP_S' src/anesthesia_sim
 not-delegable: changes the step and the instant type in core/ and what a learner sees at 1x playback, so the project owner reads the pull request
 ---
@@ -77,4 +80,6 @@ The scripts are `whole_second_traj.py` and `whole_second_compare.py` in the proj
 
 Two test-only drivers act once per step, so their result depends on the step: the open-circuit elimination driver empties the circuit after every step, and the clamped wash-in resets the inspired fraction after every step. At one second the five-minute open-circuit ratios are 0.1548, 0.2396 and 0.0940 for sevoflurane, isoflurane and desflurane, against the 0.1541, 0.2388 and 0.0935 that `docs/MODEL.md` publishes from the 0.1 s driver. The driver is being changed to hold the inspired fraction at zero whatever the step, by emptying the circuit at discontinuation and setting it to the largest supported volume, 10 000 L. A prototype gave 0.1540, 0.2387 and 0.0934. Re-pinning the ratios at one second was refused, because the diagnostic's stated condition is an inspired fraction of zero and the one-second driver is ten times further from it. The two rounding limits in `tests/reference/test_coupled_dynamics.py` are left as they are, and `PL-GFQD` (derive those two limits) carries them.
 
-**Held.** The project owner is being asked whether runs stay at whole seconds on the corrected figures that `PL-TPXK` (the review of the four streamlining decisions) recorded. Until he answers, this item's pull request stays a draft and nothing about playback at 1x or 5x is published in `docs/MODEL.md` or `docs/INTERFACE.md`.
+**Answered 2026-11-21.** The project owner kept whole seconds at every rate on the corrected figures (`PL-TPXK`). `docs/MODEL.md` § "Supported simulation step" publishes the 1x and 5x rows: both on a 1 s grid, with a worst displacement of 1.3 pp from a desflurane ventilator start that stays above 0.5 pp for 8 s.
+
+**Documents checked, 2026-11-21, after `PL-Z6C8`.** `docs/INTERFACE.md` § "Halting on a marked crossing", § "A run stores the state of every second it reaches", § "Each second has one stored state", § "The shared history is identical by construction, not by measurement", § "What the chart draws" and § "A preview of an unapplied setting"; `docs/MODEL.md` § "The reproducibility guarantee", § "Supported simulation step", § "Supported input ranges", § "The numerical envelope", § "How far a computed value can be from the exact one", § "Step-refinement test", § "Prediction agreement test" and § "Stored-state test"; `docs/ARCHITECTURE.md`'s package map and its sections on the run record and on branching; `ROADMAP.md`'s item 12 entry; `.claude/rules/run-is-its-definition.md`. The remaining passages that `PL-5FMC` listed for this build are `PL-LZ54`'s.

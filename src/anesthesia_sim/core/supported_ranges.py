@@ -74,9 +74,9 @@ the inputs short of 1 rather than to widen the check (project owner,
 The model conserves agent, so with every input at or below the 0.99 ceiling, no
 computed fraction exceeds it by more than the propagator's error. That error
 grows with the number of times the propagator is squared
-(`core/matrix_exponential.py`). The largest excess in simulated runs across the
-envelope's corners was 3.3e-5, and `docs/MODEL.md` § "The numerical envelope"
-reports those runs.
+(`core/matrix_exponential.py`) and with the number of steps. The largest
+excess over 86 400 one-second steps across the envelope's corners was 1.0e-4,
+and `docs/MODEL.md` § "The numerical envelope" reports those runs.
 
 **Fresh gas flow has a second bound, set by the machine and held outside this
 module** (`PL-8PS6`). What a *machine* can deliver differs between machines: its
@@ -244,10 +244,10 @@ MAXIMUM_INPUT_FRACTION = 0.99
 It bounds two inputs: the delivered concentration, and each fraction of the
 state that the stepped system holds when it is built. The module docstring
 gives the reason (`PL-9B1M`). The ceiling sits 0.01 below 1. That margin is
-about 300 times the largest excess over the ceiling in runs that started at it.
+about 100 times the largest excess over the ceiling in runs that started at it.
 The excess was measured at every corner of the numerical envelope, and the
-largest was 3.3e-5, on the display path after 60 chained propagators
-(`docs/MODEL.md` § "The numerical envelope", 2026-10-31). The ceiling is above
+largest was 1.0e-4, after 86 400 one-second steps (`docs/MODEL.md` § "The
+numerical envelope", 2026-11-21). The ceiling is above
 every shipped vaporizer maximum, the highest of which is desflurane's 18%. It
 is tied to the envelope rather than to one agent, so a later gas delivered at a
 high fraction does not need a new ceiling.

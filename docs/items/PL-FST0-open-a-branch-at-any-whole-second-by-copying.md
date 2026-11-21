@@ -3,13 +3,16 @@ id: PL-FST0
 title: Open a branch at any whole second by copying its parent's stored states up to that second
 priority: P1
 effort: M
-status: blocked
+status: done
 classes: feature, safety
 feature: run-computed-one-way
 touches: src/anesthesia_sim/core, src/anesthesia_sim/app, tests, docs/INTERFACE.md
 blocked-by: PL-MH9J
 deferred-from: v0.7.0 - filed 2026-11-21, after the gate froze, as the build of the design the owner chose in PL-7CY5; each of the four pull requests leaves main releasable, so the release does not wait for the feature to finish
 added: 2026-11-21
+closed: 2026-11-21
+pr: 2180
+tests: tests/integration/controller/test_controller_stored_states.py::test_a_branch_repeats_its_trunks_delivered_and_exhausted_totals_for_nine_minutes
 ---
 
 **Problem.** Open a branch at any whole second by copying its parent's stored states up to that second
@@ -49,3 +52,7 @@ Two other routes to equal totals were weighed and not taken:
 **Left for the documents pass.** `docs/INTERFACE.md` and `docs/ARCHITECTURE.md` still say that a branch opens at a keyframe, a mark or a pause, and that it stores its parent's state at the fork as its first.
 
 **Left for `PL-Z6C8`.** `test_resume_at.py` and about 30 other callers place a system with `resume_at` at a state the run definition computed by formula, with the default terms of zero. They go with the evaluation paths. The validator's docstring still describes the 1 ms step floor.
+
+**Closed 2026-11-21.** The documents pass this brief left was done in `PL-Z6C8`, and a branch's readouts are now required to equal its parent's exactly (`test_a_branch_steps_to_where_its_parent_stepped`).
+
+**Documents checked, 2026-11-21, after `PL-Z6C8`.** `docs/INTERFACE.md` § "Halting on a marked crossing", § "A run stores the state of every second it reaches", § "Each second has one stored state", § "The shared history is identical by construction, not by measurement", § "What the chart draws" and § "A preview of an unapplied setting"; `docs/MODEL.md` § "The reproducibility guarantee", § "Supported simulation step", § "Supported input ranges", § "The numerical envelope", § "How far a computed value can be from the exact one", § "Step-refinement test", § "Prediction agreement test" and § "Stored-state test"; `docs/ARCHITECTURE.md`'s package map and its sections on the run record and on branching; `ROADMAP.md`'s item 12 entry; `.claude/rules/run-is-its-definition.md`. The remaining passages that `PL-5FMC` listed for this build are `PL-LZ54`'s.

@@ -215,13 +215,11 @@ def run_rounding(squarings: int, steps: StepCount) -> float:
     """Return the bound on the rounding of `steps` steps in a row, as a share of the state's scale.
 
     The bound is `steps` times `propagator_rounding(squarings)`: each step's
-    bound, summed. The module docstring says why it is the sum. A sampled
-    window chains one propagator per column, so the same figure bounds a chain
-    of that many propagators.
+    bound, summed. The module docstring says why it is the sum.
 
     Args:
         squarings: How many squarings each step's propagator takes.
-        steps: How many steps, or chained propagators, the value has behind it.
+        steps: How many steps the value has behind it.
 
     Raises:
         TypeError: `steps` was not built as a `StepCount`, or `squarings`
