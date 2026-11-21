@@ -422,7 +422,8 @@ def test_a_branch_at_the_case_s_opening_keeps_the_settings_it_opened_under() -> 
     trunk.set_delivered_concentration_percent(Percent(2.0))
 
     assert branch.opened_from is not None
-    assert branch.opened_from.fork == trunk.run_segments[0].opening
+    assert branch.opened_from.fork.instant_s == 0
+    assert branch.opened_from.fork.state == trunk._state.stored_states.state_at(CaseInstant(0))
     assert branch.opened_from.segment.settings.delivered_concentration_percent == 4.0
     assert branch.snapshot().delivered_concentration_percent == 4.0
     assert _described(branch.snapshot().control_timeline) == [

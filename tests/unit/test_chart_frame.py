@@ -12,6 +12,7 @@ from math import hypot, inf, nextafter
 from types import MappingProxyType
 
 import pytest
+from test_numerical_envelope import _squarings
 
 from anesthesia_sim.app.bookmarks import TimeBookmark
 from anesthesia_sim.app.chart_frame import (
@@ -75,8 +76,15 @@ from anesthesia_sim.app.theme import (
 )
 from anesthesia_sim.core.concentration import Fraction, MacPercent, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.governing_equations import (
+    ALVEOLAR_FRACTION,
+    FIRST_TISSUE_FRACTION,
+    VENOUS_FRACTION,
+    build_system_matrix,
+)
+from anesthesia_sim.core.rounding import run_rounding
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
-from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow
+from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow, StepCount
 from anesthesia_sim.layout.run_identity import RunId, SessionToken
 
 # The identities a dashboard gives the first runs it places, in order, which
@@ -1959,6 +1967,55 @@ def test_a_preview_matches_a_twin_run_that_applied_the_setting() -> None:
     # The run itself kept the setting in force: the preview applied nothing.
     assert previewed.settings().fresh_gas_flow_l_min != 6.0
     assert previewed.record().control_timeline == ()
+
+
+@pytest.mark.parametrize(
+    ("state_index", "peak_s"),
+    [(ALVEOLAR_FRACTION, 302), (VENOUS_FRACTION, 379), (FIRST_TISSUE_FRACTION, 363)],
+)
+def test_a_preview_after_turning_the_dial_off_draws_each_peak_the_run_would_reach(
+    state_index: int, peak_s: int
+) -> None:
+    """A preview of the dial at zero draws the alveolar, venous and vessel-rich peaks to come.
+
+    With sevoflurane at 2% for five minutes and the dial then turned off, the
+    alveolar fraction still rises for 2 s, the vessel-rich group's for 63 s
+    and the venous blood's for 79 s. The expected peak seconds are found in a
+    twin run that applies the setting and steps on (rule 2 of
+    `.claude/rules/test-oracles.md`), and the parameters check that the twin
+    still peaks there. Each peak lies between two grid seconds 30 s apart, so
+    a preview drawn only at the grid seconds misses all three
+    (`PL-BLZJ`, which this test was written for).
+
+    The limit is numerical. The prediction and the twin's steps each lie
+    within `run_rounding` of the exact solution, as a share of the dial's 2%,
+    so the two lie within twice that of each other.
+    """
+
+    previewed, applied = _run(300), _run(300)
+    preview = SettingPreview(ControlInput.DELIVERED, 0.0)
+    settings = previewed.preview_settings(preview)
+
+    window = previewed.preview_window(preview, 0.0, 1800.0, 60)
+
+    applied.set_delivered_concentration_percent(Percent(0.0))
+    _advance(applied, 900)
+    truth = applied.drawn_window(300.0, 1200.0, 900)
+    truth_by_second = dict(zip(truth.times_s, truth.states, strict=True))
+    assert truth.times_s == tuple(range(300, 1201))
+    assert max(truth.times_s, key=lambda t: truth_by_second[t][state_index]) == peak_s
+
+    drawn = dict(zip(window.times_s, window.states, strict=True))
+    assert peak_s % 30 != 0
+    assert peak_s in drawn
+    limit = (
+        2.0
+        * run_rounding(
+            _squarings(build_system_matrix(settings), SIMULATION_STEP_S), StepCount(peak_s - 300)
+        )
+        * 0.02
+    )
+    assert abs(drawn[peak_s][state_index] - truth_by_second[peak_s][state_index]) <= limit
 
 
 def test_a_preview_at_the_run_s_own_setting_coincides_with_what_the_run_then_draws() -> None:

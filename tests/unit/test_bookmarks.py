@@ -525,23 +525,6 @@ def test_a_reading_exactly_on_the_upper_edge_of_the_band_is_inside_it() -> None:
     assert target.crossed_between(just_above, upper_edge)
 
 
-def test_only_a_reading_near_an_edge_of_the_band_needs_a_canonical_reading() -> None:
-    """The live reading decides unless it lies within one part in a million of a band edge.
-
-    Away from an edge, a canonical reading within that gap of the live one
-    lies on the same side of the edge, so the two give one answer.
-    """
-
-    target = _target(multiple=1.0)
-
-    assert target.reading_is_near_a_band_edge(MacMultiple(1.0 + 1e-5))
-    assert target.reading_is_near_a_band_edge(MacMultiple(1.0 - 1e-5 + 0.5e-6))
-    assert target.reading_is_near_a_band_edge(MacMultiple(1.0 - 1e-5 - 0.5e-6))
-    assert not target.reading_is_near_a_band_edge(MacMultiple(1.0))
-    assert not target.reading_is_near_a_band_edge(MacMultiple(1.0 + 1e-5 + 2e-6))
-    assert not target.reading_is_near_a_band_edge(MacMultiple(0.99))
-
-
 def test_a_step_that_crossed_nothing_is_reported_as_no_crossing() -> None:
     marks = (
         BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(30))).with_mac_target(_target())

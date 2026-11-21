@@ -244,13 +244,13 @@ def test_a_control_moved_before_a_bookmark_branch_steps_opens_a_segment_at_the_f
 
     marked = _trunk_halted_on_a_bookmark()
     fork_s = marked.snapshot().elapsed_s
-    fork_state = marked._run_definition.state_at(fork_s)
+    fork_state = marked._state.stored_states.state_at(CaseInstant(fork_s))
     branch = marked.resumed_here()
 
     branch.set_alveolar_ventilation(AlveolarVentilation(6.0))
 
     assert [segment.opened_at_s for segment in branch.run_segments] == [30.0, fork_s]
-    assert branch.run_segments[1].opening.state == fork_state
+    assert branch._state.stored_states.state_at(branch.run_segments[1].opened_at_s) == fork_state
     assert [change.elapsed_s for change in branch.snapshot().control_timeline] == [
         segment.opened_at_s for segment in branch.run_segments
     ][1:]
@@ -351,7 +351,9 @@ def test_two_branches_may_be_taken_at_one_bookmark() -> None:
     assert first is not second
     assert case.branches == (first, second)
     assert first.began_at_s == second.began_at_s == fork_s
-    assert first.run_segments[0].opening.state == second.run_segments[0].opening.state
+    assert first._state.stored_states.state_at(
+        first.run_segments[0].opened_at_s
+    ) == second._state.stored_states.state_at(second.run_segments[0].opened_at_s)
     # The trunk is still stopped at its halt. It was read twice and written
     # neither time.
     assert marked.snapshot().elapsed_s == fork_s
@@ -469,14 +471,14 @@ def test_two_reversible_acts_in_either_order_leave_one_branch() -> None:
 
     for steps_past_fork in range(0, 61):
         case_s = fork_s + steps_past_fork * SIMULATION_STEP_S
-        expected = marked._run_definition.state_at(case_s)
+        expected = marked._state.stored_states.state_at(CaseInstant(case_s))
 
         for name, branch in (
             ("untouched", untouched),
             ("dialled back before the reset", dialled_back_first),
             ("dialled back after the reset", reset_first),
         ):
-            assert branch._run_definition.state_at(case_s) == expected, (
+            assert branch._state.stored_states.state_at(CaseInstant(case_s)) == expected, (
                 f"the branch {name} differs from its parent at {case_s} s"
             )
 
@@ -492,7 +494,7 @@ def test_a_branch_reset_under_new_settings_records_them_at_its_fork() -> None:
 
     marked = _trunk_halted_on_a_bookmark()
     fork_s = marked.snapshot().elapsed_s
-    fork_state = marked._run_definition.state_at(fork_s)
+    fork_state = marked._state.stored_states.state_at(CaseInstant(fork_s))
     branch = marked.resumed_here()
 
     branch.set_cardiac_output(CardiacOutput(4.0))
@@ -500,8 +502,8 @@ def test_a_branch_reset_under_new_settings_records_them_at_its_fork() -> None:
 
     assert [segment.opened_at_s for segment in branch.run_segments] == [30.0, fork_s]
     assert branch.run_segments[0].settings == marked.run_segments[-1].settings
-    assert branch.run_segments[1].opening.state == fork_state
-    assert branch._run_definition.state_at(fork_s) == fork_state
+    assert branch._state.stored_states.state_at(branch.run_segments[1].opened_at_s) == fork_state
+    assert branch._state.stored_states.state_at(CaseInstant(fork_s)) == fork_state
     assert branch.drawn_window(0.0, fork_s, 150).times_s == (fork_s,)
 
 
@@ -520,7 +522,10 @@ def test_a_mark_set_behind_the_clock_can_be_returned_to() -> None:
     trunk = _trunk_paused_past_a_change()
     mark = TimeBookmark(CaseInstant(60), "what if")
     trunk.add_time_bookmark(mark)
-    keyframes = [(segment.opened_at_s, segment.opening.state) for segment in trunk.run_segments]
+    keyframes = [
+        (segment.opened_at_s, trunk._state.stored_states.state_at(segment.opened_at_s))
+        for segment in trunk.run_segments
+    ]
 
     assert 60 not in [instant_s for instant_s, _state in keyframes]
 
@@ -542,7 +547,8 @@ def test_a_mark_set_behind_the_clock_can_be_returned_to() -> None:
     # and nothing was recorded on the trunk to make one where it was marked.
     assert branch.run_segments[0].opened_at_s == 30.0
     assert [
-        (segment.opened_at_s, segment.opening.state) for segment in trunk.run_segments
+        (segment.opened_at_s, trunk._state.stored_states.state_at(segment.opened_at_s))
+        for segment in trunk.run_segments
     ] == keyframes
     assert trunk.snapshot().elapsed_s == 180.0
 
@@ -553,7 +559,9 @@ def test_a_mark_set_behind_the_clock_can_be_returned_to() -> None:
     for steps_past_fork in range(0, 61):
         case_s = 60 + steps_past_fork * SIMULATION_STEP_S
 
-        assert branch._run_definition.state_at(case_s) == trunk._run_definition.state_at(case_s), (
+        assert branch._state.stored_states.state_at(
+            CaseInstant(case_s)
+        ) == trunk._state.stored_states.state_at(CaseInstant(case_s)), (
             f"the branch and the trunk it returned to differ at {case_s} s"
         )
 

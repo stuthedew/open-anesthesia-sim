@@ -68,8 +68,8 @@ def test_a_fork_opens_at_a_keyframe_on_the_case_s_own_axis() -> None:
     # And the state at the fork is the parent's keyframe, element for element.
     for entry in COMPARTMENT_STATE_INDEX.values():
         assert (
-            branch.run_segments[-1].opening.state[entry]
-            == (trunk.run_segments[-1].opening.state[entry])
+            branch._state.stored_states.state_at(branch.run_segments[-1].opened_at_s)[entry]
+            == (trunk._state.stored_states.state_at(trunk.run_segments[-1].opened_at_s)[entry])
         )
 
     # It is a live run: it advances by the path every run takes.
@@ -117,13 +117,10 @@ def test_a_branch_reproduces_its_parent_at_every_instant_they_share() -> None:
     """`ROADMAP.md` item 12, element-wise rather than within a tolerance.
 
     The parent and the branch are both advanced past the fork in the same way.
-    At every instant they share, they must agree entry for entry on the
-    canonical path. The instants probed are the case's own: a whole number of
-    steps times the step, which is the only way simulated time is ever formed
-    here. Both runs are asked for each instant directly. There is nothing to
-    convert. Since `PL-ZMRT`, the branch's definition opens at the fork on
-    that same axis, so parent and child form their intervals from the
-    identical pair of instants.
+    At every second from the fork on, the state each run stored must agree
+    entry for entry. The branch holds its parent's stored states up to the
+    fork and steps on from the state stored there with the same terms of its
+    totals (`PL-FST0`), so nothing is left for rounding to change.
     """
 
     trunk = _trunk_with_two_changes()
@@ -138,15 +135,12 @@ def test_a_branch_reproduces_its_parent_at_every_instant_they_share() -> None:
     _advance_for(branch, duration_s=20)
     branch.pause()
 
-    trunk_definition = trunk._run_definition
-    branch_definition = branch._run_definition
-
     for steps_past_fork in range(0, 21):
-        case_s = fork_s + steps_past_fork * SIMULATION_STEP_S
+        case_s = CaseInstant(fork_s + steps_past_fork * SIMULATION_STEP_S)
 
-        assert branch_definition.state_at(case_s) == trunk_definition.state_at(case_s), (
-            f"the branch and its parent differ at {case_s} s"
-        )
+        assert branch._state.stored_states.state_at(case_s) == (
+            trunk._state.stored_states.state_at(case_s)
+        ), f"the branch and its parent differ at {case_s} s"
 
 
 def test_a_branch_steps_to_where_its_parent_stepped() -> None:
@@ -306,7 +300,9 @@ def test_a_control_moved_before_a_branch_steps_replaces_the_stretch_at_its_fork(
 
     assert len(branch.run_segments) == 2
     assert branch.run_segments[-1].opened_at_s == fork_s
-    assert branch.run_segments[-1].opening.state == trunk.run_segments[-1].opening.state
+    assert branch._state.stored_states.state_at(
+        branch.run_segments[-1].opened_at_s
+    ) == trunk._state.stored_states.state_at(trunk.run_segments[-1].opened_at_s)
 
     # And the new settings are the ones the run is then computed under.
     branch.start()
@@ -710,7 +706,9 @@ def test_resetting_a_branch_returns_it_to_its_fork_rather_than_to_zero() -> None
         ControlInput.FRESH_GAS_FLOW
     ]
     assert after.changes_since_opening[0].new_value == 1.0
-    assert branch.run_segments[-1].opening.state == trunk.run_segments[-1].opening.state
+    assert branch._state.stored_states.state_at(
+        branch.run_segments[-1].opened_at_s
+    ) == trunk._state.stored_states.state_at(trunk.run_segments[-1].opened_at_s)
 
     for field in COMPARTMENT_SNAPSHOT_FIELDS:
         assert getattr(after, field) == getattr(at_fork, field)

@@ -363,23 +363,30 @@ def test_a_branch_taken_at_a_bookmark_reproduces_its_parent_without_changing_it(
     assert [segment.opened_at_s for segment in marked.run_segments] == [
         segment.opened_at_s for segment in unmarked.run_segments
     ]
-    assert [segment.opening.state for segment in marked.run_segments] == [
-        segment.opening.state for segment in unmarked.run_segments
+    assert [
+        marked._state.stored_states.state_at(segment.opened_at_s) for segment in marked.run_segments
+    ] == [
+        unmarked._state.stored_states.state_at(segment.opened_at_s)
+        for segment in unmarked.run_segments
     ]
 
     for steps in range(0, marked._state.step_count + 1):
         case_s = steps * SIMULATION_STEP_S
 
-        assert marked._run_definition.state_at(case_s) == unmarked._run_definition.state_at(
-            case_s
-        ), f"marking the run moved what it says at {case_s} s"
+        assert marked._state.stored_states.state_at(
+            CaseInstant(case_s)
+        ) == unmarked._state.stored_states.state_at(CaseInstant(case_s)), (
+            f"marking the run moved what it says at {case_s} s"
+        )
 
     # And the branch reproduces the parent it forked from, element for element,
     # at every instant the two share.
     for steps_past_fork in range(0, 31):
         case_s = (fork_steps + steps_past_fork) * SIMULATION_STEP_S
 
-        assert branch._run_definition.state_at(case_s) == marked._run_definition.state_at(case_s), (
+        assert branch._state.stored_states.state_at(
+            CaseInstant(case_s)
+        ) == marked._state.stored_states.state_at(CaseInstant(case_s)), (
             f"the branch and its parent differ at {case_s} s"
         )
 
@@ -408,7 +415,9 @@ def test_a_bookmark_fork_opens_its_definition_at_the_keyframe_before_it() -> Non
     # the fork, and nothing was recorded on the trunk to make one there.
     assert branch.run_segments[0].opened_at_s == 30.0
     assert branch.run_segments[0].opened_at_s < fork_s
-    assert branch.run_segments[0].opening.state == marked.run_segments[-1].opening.state
+    assert branch._state.stored_states.state_at(
+        branch.run_segments[0].opened_at_s
+    ) == marked._state.stored_states.state_at(marked.run_segments[-1].opened_at_s)
     assert [segment.opened_at_s for segment in marked.run_segments] == [0.0, 30.0]
 
 
@@ -527,7 +536,10 @@ def test_a_paused_trunk_branches_where_it_stands() -> None:
     trunk = _trunk_with_two_changes()
     fork_s = trunk.snapshot().elapsed_s
     fork_steps = trunk._state.step_count
-    keyframes = [(segment.opened_at_s, segment.opening.state) for segment in trunk.run_segments]
+    keyframes = [
+        (segment.opened_at_s, trunk._state.stored_states.state_at(segment.opened_at_s))
+        for segment in trunk.run_segments
+    ]
 
     # The premise: nothing is recorded where the trunk is paused.
     assert fork_s not in [instant_s for instant_s, _ in keyframes]
@@ -543,7 +555,8 @@ def test_a_paused_trunk_branches_where_it_stands() -> None:
     assert branch.snapshot().bookmark_halt is None
     assert branch.run_segments[0].opened_at_s == trunk.run_segments[-1].opened_at_s
     assert [
-        (segment.opened_at_s, segment.opening.state) for segment in trunk.run_segments
+        (segment.opened_at_s, trunk._state.stored_states.state_at(segment.opened_at_s))
+        for segment in trunk.run_segments
     ] == keyframes
 
     trunk.start()
@@ -557,7 +570,9 @@ def test_a_paused_trunk_branches_where_it_stands() -> None:
     for steps_past_fork in range(0, 31):
         case_s = (fork_steps + steps_past_fork) * SIMULATION_STEP_S
 
-        assert branch._run_definition.state_at(case_s) == trunk._run_definition.state_at(case_s), (
+        assert branch._state.stored_states.state_at(
+            CaseInstant(case_s)
+        ) == trunk._state.stored_states.state_at(CaseInstant(case_s)), (
             f"the branch and the trunk it was paused at differ at {case_s} s"
         )
 
@@ -684,7 +699,7 @@ def test_resetting_a_branch_taken_at_a_bookmark_returns_it_to_the_bookmark() -> 
 
     marked = _trunk_halted_on_a_bookmark()
     fork_s = marked.snapshot().elapsed_s
-    fork_state = marked._run_definition.state_at(fork_s)
+    fork_state = marked._state.stored_states.state_at(CaseInstant(fork_s))
     branch = marked.resumed_here()
 
     branch.start()
@@ -692,7 +707,7 @@ def test_resetting_a_branch_taken_at_a_bookmark_returns_it_to_the_bookmark() -> 
     branch.reset()
 
     assert branch.snapshot().elapsed_s == fork_s
-    assert branch._run_definition.state_at(fork_s) == fork_state
+    assert branch._state.stored_states.state_at(CaseInstant(fork_s)) == fork_state
 
 
 def test_a_branch_reset_under_new_settings_is_drawn_from_where_it_stands() -> None:
@@ -708,14 +723,14 @@ def test_a_branch_reset_under_new_settings_is_drawn_from_where_it_stands() -> No
 
     marked = _trunk_halted_on_a_bookmark()
     fork_s = marked.snapshot().elapsed_s
-    fork_state = marked._run_definition.state_at(fork_s)
+    fork_state = marked._state.stored_states.state_at(CaseInstant(fork_s))
     branch = marked.resumed_here()
 
     branch.set_delivered_concentration_percent(Percent(6.0))
     branch.reset()
 
     assert branch.snapshot().elapsed_s == fork_s
-    assert branch._run_definition.state_at(fork_s) == fork_state
+    assert branch._state.stored_states.state_at(CaseInstant(fork_s)) == fork_state
 
 
 def test_a_branch_of_a_bookmark_fork_is_refused_rather_than_silently_flattened() -> None:

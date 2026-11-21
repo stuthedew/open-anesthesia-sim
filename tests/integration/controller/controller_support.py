@@ -243,6 +243,8 @@ def _states_agree_after_the_fork(
     for steps_past_fork in range(steps + 1):
         case_s = fork_s + steps_past_fork * SIMULATION_STEP_S
 
-        assert run._run_definition.state_at(case_s) == expected._run_definition.state_at(case_s), (
+        assert run._state.stored_states.state_at(
+            CaseInstant(case_s)
+        ) == expected._state.stored_states.state_at(CaseInstant(case_s)), (
             f"the runs differ at {case_s} s"
         )
