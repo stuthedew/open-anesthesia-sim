@@ -3,6 +3,7 @@ id: PL-LZ54
 title: After whole-second stepping lands, correct each passage of docs/INTERFACE.md and docs/ARCHITECTURE.md that PL-5FMC found wrong and left for that build, wherever the build did not rewrite it
 status: untriaged
 feature: run-computed-one-way
+blocked-by: PL-Z6C8
 added: 2026-11-21
 ---
 
