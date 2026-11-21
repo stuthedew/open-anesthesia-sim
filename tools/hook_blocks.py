@@ -48,7 +48,7 @@ Standard library only and floor-parseable, like every tool under `tools/`.
 from __future__ import annotations
 
 import argparse
-import re
+import string
 import sys
 from collections import defaultdict
 from datetime import datetime
@@ -80,7 +80,7 @@ BURST_WINDOW_S = 120
 
 #: The characters a branch name may keep in its file name. Each other
 #: character, such as the `/` in `claude/x`, becomes `-`.
-UNSAFE_RE = re.compile(r"[^A-Za-z0-9_.-]")
+SAFE_CHARACTERS = frozenset(string.ascii_letters + string.digits + "_.-")
 
 
 def read_lines(text: str) -> list[str]:
@@ -122,7 +122,9 @@ def copy(log: Path, root: Path, branch: str) -> list[str]:
     }
     if not new:
         return []
-    target = root / BLOCKS_DIR / f"{UNSAFE_RE.sub('-', branch)}.tsv"
+    target = (
+        root / BLOCKS_DIR / f"{''.join(c if c in SAFE_CHARACTERS else '-' for c in branch)}.tsv"
+    )
     mine = set(read_lines(target.read_text(encoding="utf-8"))) if target.is_file() else set()
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text("\n".join([BLOCKS_HEADER, *sorted(mine | new)]) + "\n", encoding="utf-8")

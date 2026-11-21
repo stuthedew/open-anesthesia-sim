@@ -38,11 +38,10 @@ import pytest
 
 from docket.claims import SESSION_VARIABLE
 from docket.cli import main
-from docket.store import ID_PATTERN
+from docket.store import CITED_ID_RE, ID_PATTERN
 
 T0 = datetime(2026, 9, 25, 13, 0, tzinfo=UTC)
 ATTRIBUTION = "Co-Authored-By: T <t@example.com>"
-ID = re.compile(rf"\b{ID_PATTERN}")
 
 #: The three ready items the seed holds, which `next` offers at the start.
 X, Y, Z = "PL-X1X1", "PL-Y2Y2", "PL-Z3Z3"
@@ -212,7 +211,7 @@ class World:
     def capture(self, who: str, title: str) -> str:
         code, out = self.docket(who, "new", title)
         assert code == 0, out
-        (identifier,) = dict.fromkeys(ID.findall(out))
+        (identifier,) = dict.fromkeys(CITED_ID_RE.findall(out))
         self.git(who, "add", "-A", "docs/items")
         self.git(who, "commit", "-q", "-m", f"{identifier}: capture")
         return identifier
@@ -284,6 +283,7 @@ class World:
         _, out = self.docket(who, "flight")
         held: dict[str, list[str]] = {}
         for line in out.splitlines():
+            # regex: a row of the printed report, whose columns only spacing separates.
             row = re.match(rf"^({ID_PATTERN})  (\S+)\s+live\b", line)
             if row:
                 held.setdefault(row.group(1), []).append(row.group(2))
@@ -292,6 +292,7 @@ class World:
     def offered(self, who: str) -> list[str]:
         """The items `next` offers, in its order."""
         _, out = self.docket(who, "next", "--limit", "50")
+        # regex: each numbered line of the printed list, wherever it falls in the output.
         return [
             found.group(1) for found in re.finditer(rf"^\s+\d+\. P\d ({ID_PATTERN}) ", out, re.M)
         ]
@@ -299,6 +300,8 @@ class World:
     def holder(self, who: str, item: str) -> str:
         """The branch `show` names as holding `item`, or `""` where it names none."""
         _, out = self.docket(who, "show", item)
+        # regex: the branch named on either of two printed lines, found anywhere
+        # in the output.
         found = re.search(r"^\s+holds it\s+(\S+)", out, re.M) or re.search(
             r"IN FLIGHT on (?:this branch \()?([^\s,)]+)", out
         )
@@ -656,6 +659,7 @@ class RandomRun:
             return
         _, said = w.docket(actor, "arm", "--no-fetch")
         behind = int(w.git(actor, "rev-list", "--count", "HEAD..origin/main").strip())
+        # regex: the number that opens the printed verdict, whatever follows it.
         counted = re.match(r"behind (\d+)", said)
         if counted and int(counted.group(1)) != behind:
             self.violate(step, f"{actor}'s arm says behind {counted.group(1)}; git counts {behind}")

@@ -17,7 +17,6 @@ changed in a worker has to reach the controller.
 from __future__ import annotations
 
 import os
-import re
 import subprocess
 import sys
 import textwrap
@@ -127,7 +126,19 @@ _EXPECTED = {
     "test_import_unmarked.py": "ERROR",
 }
 
-_SUMMARY = re.compile(r"^(PASSED|FAILED|ERROR) (\S+)", re.MULTILINE)
+#: The outcomes that open a line of pytest's `-rA` summary, before the node.
+_OUTCOMES = frozenset({"PASSED", "FAILED", "ERROR"})
+
+
+def _outcomes(output: str) -> dict[str, str]:
+    """Each node that pytest's `-rA` summary in `output` reports, with its outcome."""
+    outcomes = {}
+    for line in output.splitlines():
+        outcome, _, rest = line.partition(" ")
+        node = rest.split(" ", 1)[0]
+        if outcome in _OUTCOMES and node:
+            outcomes[node] = outcome
+    return outcomes
 
 
 def _project(tmp_path: Path) -> Path:
@@ -177,8 +188,7 @@ def test_the_guard_fails_each_unmarked_read_of_the_store(
         timeout=120,
     )
 
-    outcomes = {node: outcome for outcome, node in _SUMMARY.findall(done.stdout)}
-    assert outcomes == _EXPECTED, done.stdout + done.stderr
+    assert _outcomes(done.stdout) == _EXPECTED, done.stdout + done.stderr
     assert (
         "test_cases.py::test_unmarked_open (call) read the item store "
         "(records/PL-B1C2-an-item.md) without the `reads_item_store` marker"

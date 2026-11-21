@@ -23,6 +23,8 @@ HEADER = (
     "Stored values by the tier of the source adopted for each, read from each sources "
     "entry's authority_for under src/anesthesia_sim/data/.\n"
 )
+# regex: the totals line is prose with five counts at fixed places, and the
+# test reads each count back from it to check that they add up.
 TOTALS_RE = re.compile(
     r"All files: (\d+) stored values? - (\d+) tier 1 \(primary\), (\d+) tier 2 \(secondary\), "
     r"(\d+) tier 3 \(reference implementation\), (\d+) with no adopted source\."

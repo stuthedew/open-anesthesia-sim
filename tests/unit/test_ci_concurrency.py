@@ -30,19 +30,28 @@ import re
 from pathlib import Path
 
 import pytest
+import yaml
 
 REPO = Path(__file__).resolve().parents[2]
 WORKFLOW = REPO / ".github" / "workflows" / "quality.yml"
 
 #: A `${{ … }}` interpolation, capturing what is inside it.
+# regex: GitHub's `${{ … }}` interpolation sits inside a YAML string, where no
+# parser here finds it, and a lazy match finds each one in turn.
 _EXPRESSION = re.compile(r"\$\{\{(.+?)\}\}")
 
+# The three expression forms `_evaluate` reads. Each is a flat run of tokens
+# from GitHub's expression syntax, which no parser here reads, and anything
+# else must fail rather than be guessed at.
 _PATH = r"[a-z_]+(?:\.[a-z_]+)*"
 _LITERAL = r"'[^']*'"
 _TERM = rf"(?:{_PATH}|{_LITERAL})"
-_COMPARISON = re.compile(rf"^({_PATH})\s*(==|!=)\s*({_LITERAL})$")
-_TERNARY = re.compile(rf"^({_PATH})\s*(==|!=)\s*({_LITERAL})\s*&&\s*({_TERM})\s*\|\|\s*({_TERM})$")
-_LOOKUP = re.compile(rf"^{_PATH}$")
+# regex: a comparison of a context with a literal, in GitHub's expression syntax.
+_COMPARISON = re.compile(rf"({_PATH})\s*(==|!=)\s*({_LITERAL})")
+# regex: `a == 'b' && c || d`, GitHub's spelling of a choice between two terms.
+_TERNARY = re.compile(rf"({_PATH})\s*(==|!=)\s*({_LITERAL})\s*&&\s*({_TERM})\s*\|\|\s*({_TERM})")
+# regex: a context's dotted name, such as `github.ref`.
+_LOOKUP = re.compile(_PATH)
 
 
 def _term(text: str, context: dict[str, str]) -> str:
@@ -70,15 +79,15 @@ def _evaluate(fragment: str, context: dict[str, str]) -> str | bool:
     been rewritten, which is the only moment they matter.
     """
     fragment = fragment.strip()
-    ternary = _TERNARY.match(fragment)
+    ternary = _TERNARY.fullmatch(fragment)
     if ternary is not None:
         left, operator, right, when_true, when_false = ternary.groups()
         chosen = when_true if _compare(left, operator, right, context) else when_false
         return _term(chosen, context)
-    comparison = _COMPARISON.match(fragment)
+    comparison = _COMPARISON.fullmatch(fragment)
     if comparison is not None:
         return _compare(*comparison.groups(), context)
-    if _LOOKUP.match(fragment) is not None:
+    if _LOOKUP.fullmatch(fragment) is not None:
         return _term(fragment, context)
     raise AssertionError(
         f"quality.yml's concurrency block uses an expression this test cannot "
@@ -88,22 +97,16 @@ def _evaluate(fragment: str, context: dict[str, str]) -> str | bool:
 
 
 def _concurrency() -> dict[str, str]:
-    """The `concurrency:` mapping's raw values, keyed by name.
+    """The `concurrency:` mapping's raw values, keyed by name, as PyYAML reads them.
 
-    A four-line block of a known shape, read without PyYAML because the project
-    environment does not carry it. Keys outside that block cannot reach here:
-    collection stops at the first line that is neither indented nor blank.
+    Each value must be text, so a value YAML reads as a boolean, such as a bare
+    `false`, fails here instead of being read as an expression.
     """
-    lines = WORKFLOW.read_text(encoding="utf-8").splitlines()
-    start = lines.index("concurrency:") + 1
-    block: dict[str, str] = {}
-    for line in lines[start:]:
-        if not line.strip():
-            continue
-        entry = re.match(r"^  ([a-z-]+): (.+)$", line)
-        if entry is None:
-            break
-        block[entry.group(1)] = entry.group(2).strip()
+    workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    block = workflow["concurrency"]
+    assert isinstance(block, dict), f"`concurrency:` should be a mapping, not {block!r}"
+    for name, value in block.items():
+        assert isinstance(value, str), f"`concurrency.{name}` should be text, not {value!r}"
     return block
 
 

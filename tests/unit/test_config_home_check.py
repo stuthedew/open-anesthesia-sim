@@ -21,6 +21,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 def _letters(text: str) -> str:
     """Return the single letters in `text`, sorted, as a fixture's compared form."""
 
+    # regex: a one-letter word can sit next to any punctuation in the fixture's
+    # prose, and a word boundary finds it where splitting on one separator would not.
     return ", ".join(sorted(set(re.findall(r"\b[a-z]\b", text))))
 
 

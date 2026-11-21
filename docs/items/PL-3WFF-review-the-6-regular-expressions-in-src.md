@@ -3,11 +3,13 @@ id: PL-3WFF
 title: Review the 6 regular expressions in src/anesthesia_sim/ that tools/regex_baseline.py lets stand without a reason, and replace each one a parser or string method does better or write its reason beside it
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: regex-review
 touches: src/anesthesia_sim/app/agent_cost.py, src/anesthesia_sim/app/currency_code.py, src/anesthesia_sim/app/preferences.py, src/anesthesia_sim/app/view_registry.py, src/anesthesia_sim/layout/run_identity.py, src/anesthesia_sim/layout/tree.py, tests/unit/test_view_registry.py, tools/regex_baseline.py
 added: 2026-11-03
+closed: 2026-11-16
+pr: 2169
 payoff: every regular expression in the simulator says why it is the right tool, and no comment claims the session token is a UUID version the check does not enforce
 verify: ! grep -qF '"src/anesthesia_sim/' tools/regex_baseline.py && ! grep -qF 'version 4 UUID' src/anesthesia_sim/layout/run_identity.py
 ---
@@ -72,3 +74,5 @@ So the work is small:
 **Generator check.** One-off; follows from PL-7JYV's baseline, which names what is left.
 
 **Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present in part when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. Three of the six patterns were in the tree at `817a4d88`, with the wrong "version 4 UUID" comment already beside one. The other three came with modules created after it.
+
+**Done 2026-11-16.** All six patterns are kept, as the 2026-11-03 review recommended, and each comment now starts with `regex:`, so `tools/regex_baseline.py` lists nothing under `src/`. The `run_identity.py` comment no longer calls the token a version 4 UUID: it says 32 lowercase hexadecimal digits, that `SessionToken.drawn` makes one from a random UUID, and that 32 zeros pass. As decided at triage, `_VERSION` in `app/view_registry.py` now refuses a leading zero, and its refusal message says so. The new test `test_a_release_number_has_no_leading_zero` in `tests/unit/test_view_registry.py` refuses "0.07.0", "00.7.0", "0.7.00" and "01.0.0", and a companion test accepts "0.0.0", "0.7.0" and "10.20.300". Run against the old pattern with `uv run pytest -q tests/unit/test_view_registry.py`, the four refusal cases failed with "DID NOT RAISE". `_CURRENCY_CODE_PATTERN` stays a shape check, and its comment says that a code such as QQQ passes. `uv run python tools/regex_check.py` reports 0 errors. Docs checked: `docs/INTERFACE.md`, `docs/ARCHITECTURE.md`, `docs/MODEL.md` and `README.md`, none of which states the release-number or session-token format.

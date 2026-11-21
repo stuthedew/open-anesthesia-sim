@@ -381,8 +381,9 @@ definition already holds, so no drawn value depends on whether it was kept
 `run_segments` hands out the record itself as frozen segments, which can be
 read but not advanced. So nothing above the controller can move the run
 definition's reach past where the run actually got to, and then have a
-prediction drawn back on the run's own axis. `docs/INTERFACE.md` § "The run is that
-record, and every state is derived from it" gives the measurements, and
+prediction drawn back on the run's own axis. `docs/INTERFACE.md` § "A run is stored
+as its settings and keyframes, and every state is computed from them" gives the
+measurements, and
 `docs/INTERFACE.md` § "The canonical evaluation rule" states which of the two
 evaluation paths a stored, exported, replayed or branched value may be taken
 from.

@@ -149,6 +149,7 @@ MAX_EMITTED_BYTES = 4000
 # with no slack to think.
 NUDGE_FRACTION = 0.8
 
+# regex: an entry is this file's own fixed line syntax: a bullet, a bold title, a dash and a reason.
 ENTRY = re.compile(r"^- \*\*(?P<what>.+?)\*\* [-—] (?P<why>.+)$")
 #: What an entry opens with, before its title is known to close: a bullet and a
 #: bolded approach. A bullet opening this way is held to the entry's rules even
@@ -157,6 +158,8 @@ ENTRY = re.compile(r"^- \*\*(?P<what>.+?)\*\* [-—] (?P<why>.+)$")
 #: CommonMark 0.31.2 opens (§ 5.2) counts - a dash, a plus or a star, after up
 #: to three spaces - though `ENTRY` reads only the dash at the margin, so any
 #: other form is refused by name rather than dropped (`PL-K02Q`).
+# regex: this finds the opening of an entry, a bullet and a bold run, wherever the title goes on to
+# wrap.
 OPENING = re.compile(r"^ {0,3}[-+*] \*\*")
 
 HEADER = (

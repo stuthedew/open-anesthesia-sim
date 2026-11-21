@@ -33,7 +33,7 @@ from docket.claims import SESSION_VARIABLE, Holdings
 from docket.cli import _run_forge_command, build_parser, main, merge_shared
 from docket.config import Config
 from docket.model import parse_item, recurrence_count
-from docket.release import TAG_SCRIPT, tag_confirmation
+from docket.release import TAG_SCRIPT, notes_ids, tag_confirmation
 from docket.store import filename_for
 from docket.vcs import FETCHED, Fetch, commands_written_here, leading_ids, lost, records_on_base
 from docket.verify import LANDED_GUARD, GitUnanswered
@@ -325,7 +325,7 @@ def test_new_records_the_filing_on_the_item_it_matched(
 
     matched = next(p for p in store.glob("*.md") if "PL-C1C1" in p.read_text())
     filed = next(p for p in store.glob("*.md") if p != matched)
-    identifier = re.search(r"^id: (PL-\S+)", filed.read_text(), re.M).group(1)
+    identifier = parse_item(filed.read_text()).identifier
     assert f"recurrences: 2026-08-24 {identifier}" in matched.read_text()
     assert "Recorded on PL-C1C1: 1 filing matched to it" in capsys.readouterr().out
 
@@ -351,9 +351,8 @@ def test_a_second_filing_extends_the_line_the_first_one_wrote(tmp_path: Path) ->
     assert _run("new", "--touches", "z.py", "delta epsilon zeta kappa", "--items", str(store)) == 0
 
     matched = next(p for p in store.glob("*.md") if "PL-G5G5" in p.read_text())
-    entries = re.search(r"^recurrences: (.+)$", matched.read_text(), re.M).group(1)
     assert matched.read_text().count("recurrences: ") == 1
-    assert len(entries.split(", ")) == 2
+    assert len(parse_item(matched.read_text()).recurrences) == 2
 
 
 MATCHED = """---
@@ -2641,12 +2640,7 @@ def test_a_cut_interrupted_inside_the_stamp_loop_is_resumed_whole(
     assert "Resuming an interrupted cut of v0.2.6: 3 of these 4 item(s)" in out
     assert "4 finished item(s)" in out
     notes = (root / "docs" / "releases" / "v0.2.6.md").read_text(encoding="utf-8")
-    assert sorted(re.findall(r"^- (PL-\S+)", notes, re.M)) == [
-        "PL-D1D1",
-        "PL-G0G0",
-        "PL-G1G1",
-        "PL-G2G2",
-    ]
+    assert sorted(notes_ids(notes)) == ["PL-D1D1", "PL-G0G0", "PL-G1G1", "PL-G2G2"]
     assert 'version = "0.2.6"' in (root / "pyproject.toml").read_text(encoding="utf-8")
 
 
@@ -3427,8 +3421,11 @@ def _lanes_gate_listed(printed: str) -> dict[str, str]:
     listed: dict[str, str] = {}
     lane = ""
     for line in printed.splitlines():
+        # regex: these two read lines of the command's printed report, a lane
+        # heading and an item line, whose fields only their spacing separates.
         if heading := re.match(r"  (\w+) - \d+ \(", line):
             lane = heading.group(1)
+        # regex: an item line of the printed report, as the comment above says.
         elif item := re.match(r"    P\d \S+ (PL-\w+) ", line):
             listed[item.group(1)] = lane
     return listed
@@ -6906,6 +6903,8 @@ def _grooming_counts(store: Path, capsys: pytest.CaptureFixture[str]) -> dict[st
     """What each command that prints a grooming count printed, on one store."""
 
     def count(pattern: str, text: str) -> int:
+        # regex: each caller passes a pattern for one count in a command's
+        # printed text, which has no reader of its own.
         found = re.search(pattern, text)
         return int(found.group(1)) if found else 0
 
@@ -8304,7 +8303,10 @@ def test_next_reports_the_same_open_count_as_status(
     assert _run("list", "--items", str(items)) == 0
     list_out = capsys.readouterr().out
 
+    # regex: the count inside a sentence each command prints, which has no
+    # reader of its own.
     from_next = re.search(r"(\d+) open\. Suggested next", next_out)
+    # regex: the count in the list's heading, for the same reason.
     from_list = re.search(r"Docket: (\d+) open", list_out)
     assert from_next and from_list, (next_out, list_out)
     assert from_next.group(1) == from_list.group(1) == "2", (next_out, list_out)
@@ -12844,11 +12846,14 @@ def test_flight_prints_each_hold_s_kind_and_state_the_lapsed_claims_and_the_uncl
     assert main(argv) == 0
     out = capsys.readouterr().out
 
+    # regex: the printed row pads the branch column to a width that depends on
+    # the other rows, so the test allows any run of spaces there.
     assert re.fullmatch(
         rf"PL-B1B1  {ARM_BRANCH}\s+live  claim  last commit 1 minute ago",
         _flight_row(out, "PL-B1B1"),
     )
     assert "1 claim has lapsed on an item the default branch holds open" in out
+    # regex: a whole printed row, matched in full so a longer row fails.
     assert re.fullmatch(
         r"PL-C2C2  claude/gone-a1b2c3  lapsed  claim  last commit 12 days ago",
         _flight_row(out, "PL-C2C2"),
@@ -12879,6 +12884,8 @@ def test_next_and_the_digest_say_what_holds_each_item_they_leave_out(
     digest = capsys.readouterr().out
 
     assert "Excluded, already in flight: PL-B1B1 (live claim)" in listed
+    # regex: the sentence holds an age that depends on when the test runs, which
+    # the pattern allows as any text without a comma or a bracket.
     assert re.search(
         r"In flight on a branch, by time since its last commit: "
         r"PL-B1B1 [^,(]+ \(live claim, this branch\)\.",

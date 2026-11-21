@@ -64,14 +64,19 @@ from .roadmap import SENTENCE_BREAK
 #: Where a paragraph ends inside one statement's text: a blank line, which no
 #: Markdown statement holds and a YAML value can, as a line break YAML keeps
 #: (1.2.2 § 6.5), a block scalar's included (§ 8.1).
+# regex: a run of blank lines, each of which may hold spaces or tabs. The text
+# is one statement, which the Markdown and front matter readers have already
+# cut, so no reader splits it further.
 PARAGRAPH_BREAK = re.compile(r"\n(?:[ \t]*\n)+")
 
-ISO_DATE_RE = re.compile(r"\b(20\d{2})-(\d{2})-(\d{2})\b")
+# regex: a date of a fixed shape found anywhere in free prose. `[0-9]` matches
+# only ASCII digits, where `\d` matches any script's digits.
+ISO_DATE_RE = re.compile(r"\b(20[0-9]{2})-([0-9]{2})-([0-9]{2})\b")
 """An ISO date written out in prose: `2026-09-21`.
 
 Bounded at both ends, so a timestamp (`2026-09-21T09:00`) and a version-like
 run of digits do not match something they merely begin with. Four digits
-beginning `20` rather than `\\d{4}`, because a bare `1999-01-01` in an
+beginning `20` rather than any four digits, because a bare `1999-01-01` in an
 instruction file is far likelier to be an example than a claim about now.
 """
 

@@ -58,6 +58,9 @@ _EXTENDED_SPECIAL = _BASIC_SPECIAL | frozenset("+?(){}|")
 #: A comment's or a quotation's marker at a line's start, outside Markdown,
 #: which holds a carried-on statement rather than belonging to its words: `#`
 #: with the `:` Sphinx gives an attribute's comment, `//`, and `>`.
+# regex: a run of `#` with an optional `:`, a run of `/`, or `>`. Three
+# alternatives of runs of any length are shorter as a pattern than as string
+# methods.
 _COMMENT_MARKER = re.compile(r"#+:?|//+|>")
 
 
@@ -256,6 +259,8 @@ def _phrase(clause: GrepClause) -> re.Pattern[str] | None:
         "[^\n]" if character == "." and not fixed else re.escape(character)
         for character in clause.pattern
     )
+    # regex: the grep clause's own pattern, translated character by character,
+    # so it matches here what grep would match.
     return re.compile(body, re.IGNORECASE if "i" in clause.letters else 0)
 
 

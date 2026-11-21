@@ -260,6 +260,8 @@ def test_the_interface_never_predicts_a_time_to_wake_up(application: QApplicatio
     strings = _interface_strings(_shown_view(application, controller))
     prose = " ".join(strings).lower()
 
+    # regex: a duration can appear anywhere in the interface's free text, in
+    # any of several unit spellings, which only a search through the text finds.
     duration = re.compile(
         r"\d+(?:\.\d+)?\s*(?:s|sec|secs|second|seconds|min|mins|minute|minutes|h|hr|hour|hours)\b"
     )

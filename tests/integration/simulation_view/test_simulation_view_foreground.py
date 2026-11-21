@@ -116,6 +116,8 @@ FOREGROUND_NOT_DECLARED: dict[str, str] = {
 
 #: A six-digit sRGB hex literal, the form every colour in `app/theme.py`
 #: takes and the form `QColor.name` returns.
+# regex: a hex colour is a token of fixed shape. `QColor.isValidColorName`
+# would also accept a colour name and the short and alpha forms.
 _HEX_COLOUR = re.compile(r"#[0-9A-Fa-f]{6}")
 
 #: A foreground colour that nothing in this interface declares, installed on

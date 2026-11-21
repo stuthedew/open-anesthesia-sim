@@ -76,7 +76,6 @@ Standard library only, like every tool here, so it runs in a bare checkout.
 from __future__ import annotations
 
 import argparse
-import re
 import sys
 from pathlib import Path, PurePosixPath
 
@@ -95,6 +94,7 @@ from docket.frontmatter import (  # noqa: E402
     unquote,
 )
 from docket.lines import split_lines  # noqa: E402
+from docket.release import code_spans  # noqa: E402
 
 from workflow_paths_check import declared_workflow_paths, tracked_under  # noqa: E402
 
@@ -424,7 +424,7 @@ def _prose_list(root: Path, name: str, opener: str, closer: str) -> list[str] | 
     end = text.find(closer, start)
     if end < 0:
         return f"{name}'s apparatus list is never closed by `{closer.strip()}`"
-    return re.findall(r"`([^`]+)`", text[start:end])
+    return [span["content"] for span in code_spans(text[start:end])]
 
 
 def _glob_path(entry: str) -> str | None:

@@ -780,9 +780,10 @@ class RunDefinition:
         the run forms the propagators for its two bounds. It forms the third
         only on a frame whose left edge has passed a column, and it forms
         those of any segment newly in view. A new spacing, from a new time
-        base or plot width, forms them all once more. `docs/INTERFACE.md` § "The
-        run is that record, and every state is derived from it" says how often
-        that happens and what it costs (`PL-CNCF`).
+        base or plot width, forms them all once more. `docs/INTERFACE.md` § "A
+        run is stored as its settings and keyframes, and every state is
+        computed from them" says how often that happens and what it costs
+        (`PL-CNCF`).
 
         Reuse cannot change a drawn value by even one bit. A propagator is a
         function of a segment's settings and an interval alone, and it is kept

@@ -58,12 +58,16 @@ def _ruff_target(text: str) -> str:
 def _quoted(text: str) -> str:
     """Return the quoted strings in a list or tuple literal, in order."""
 
+    # regex: a quoted string in a captured list is a flat token, and the capture comes from TOML and
+    # Python alike, so no one parser reads it.
     return ", ".join(re.findall(r'"([^"]*)"', text))
 
 
 def _paths(text: str) -> str:
     """Return the backticked paths in a span of prose or a list, without trailing slashes."""
 
+    # regex: a path in backticks or quotes is a flat token, searched for through a captured span of
+    # prose or a list.
     found = re.findall(r'[`"]([^`"\s]+)[`"]', text)
     return ", ".join(sorted({path.rstrip("/") for path in found}))
 
@@ -71,6 +75,7 @@ def _paths(text: str) -> str:
 def _tools(text: str) -> str:
     """Return the names of the scripts under `tools/` that a span names, sorted."""
 
+    # regex: a script's name before `.py` is a flat token, searched for through a captured span.
     names = re.findall(r"(\w+)\.py", text)
     return ", ".join(sorted({name for name in names if (ROOT / "tools" / f"{name}.py").is_file()}))
 
@@ -97,6 +102,8 @@ class Place:
         found = [
             match.group(1)
             for path in sorted(root.glob(self.path))
+            # regex: each `Place` states the line shape that holds its fact in one file, and those
+            # files are in several formats that no one parser reads.
             for match in re.finditer(self.pattern, path.read_text(encoding="utf-8"), self.flags)
         ]
 

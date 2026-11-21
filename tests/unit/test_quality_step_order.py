@@ -22,9 +22,8 @@ step it ran before, and an item-only one skips exactly the listed steps. Each
 step's `if:` is evaluated here for each case, and a condition in a form these
 tests cannot read fails them.
 
-The steps are split on the indentation the file uses rather than parsed as YAML,
-as `test_ci_concurrency.py` reads the same file. A reshaping this split cannot
-read fails the first test rather than passing the second.
+The workflow is read with PyYAML, which the tests alone depend on (`PL-R417`),
+so each step is a mapping of its keys wherever its lines put them.
 
 The fast path skips ruff's formatter, which formats fenced Python in Markdown.
 So the last test holds `pyproject.toml`'s exclusion of the store from that
@@ -39,60 +38,57 @@ import subprocess
 import sys
 import tomllib
 from pathlib import Path
+from typing import Any
 
 import pytest
+import yaml
 
 REPO = Path(__file__).resolve().parents[2]
 WORKFLOW = REPO / ".github" / "workflows" / "quality.yml"
 
-#: A step running the replay, scoped (`--verify-base`) or over the whole store.
-_REPLAY = re.compile(r"^\s+(?:- )?run: bin/docket check --verify\b", re.MULTILINE)
-
-#: A line indented less than a step's, which ends the job's step list.
-_PAST_THE_STEPS = re.compile(r"^ {0,4}\S")
+#: One step of a job, as PyYAML reads it.
+Step = dict[str, Any]
 
 
-#: A line opening a job: a key two spaces in.
-_JOB = re.compile(r"^  (?P<job>[\w-]+):$", re.MULTILINE)
+def _workflow() -> dict[str, Any]:
+    """`quality.yml` as PyYAML reads it."""
+    workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    assert isinstance(workflow, dict), "quality.yml should hold a mapping"
+    return workflow
 
 
-def _steps(text: str, job: str = "checks-part-1") -> list[str]:
-    """`job`'s steps in the order the job runs them, each with its own lines."""
-    lines = text.splitlines()
-    steps_at = lines.index("    steps:", lines.index(f"  {job}:"))
-    steps: list[str] = []
-    for line in lines[steps_at + 1 :]:
-        if _PAST_THE_STEPS.match(line):
-            break
-        if line.startswith("      - "):
-            steps.append(line)
-        elif steps and line.startswith("        "):
-            steps[-1] += "\n" + line
+def _steps(workflow: dict[str, Any], job: str = "checks-part-1") -> list[Step]:
+    """`job`'s steps in the order the job runs them."""
+    steps: list[Step] = workflow["jobs"][job]["steps"]
     return steps
+
+
+def _replays(step: Step) -> bool:
+    """Whether a step runs the replay, scoped (`--verify-base`) or over the whole store."""
+    return str(step.get("run", "")).split()[:3] == ["bin/docket", "check", "--verify"]
 
 
 def test_the_split_finds_the_whole_store_replay() -> None:
     """The step `main` runs is where the split looks, so the order test reads something."""
-    steps = _steps(WORKFLOW.read_text(encoding="utf-8"))
-    whole_store = [step for step in steps if _REPLAY.search(step) and "--verify-base" not in step]
+    steps = _steps(_workflow())
+    whole_store = [step for step in steps if _replays(step) and "--verify-base" not in step["run"]]
     assert len(whole_store) == 1, f"expected one whole-store replay step among {len(steps)}"
 
 
 def test_the_whole_store_replay_is_the_last_step_in_the_job() -> None:
     """No step follows either replay step, so a replay failure skips nothing."""
-    steps = _steps(WORKFLOW.read_text(encoding="utf-8"))
-    first = next(index for index, step in enumerate(steps) if _REPLAY.search(step))
-    after = [step.splitlines()[0].strip() for step in steps[first:] if not _REPLAY.search(step)]
+    steps = _steps(_workflow())
+    first = next(index for index, step in enumerate(steps) if _replays(step))
+    after = [_name(step) for step in steps[first:] if not _replays(step)]
     assert not after, f"these run after the verify replay, so its failure skips them: {after}"
 
 
 def test_checks_needs_every_other_job() -> None:
     """A job `checks` does not need could fail and still let a pull request merge."""
-    text = WORKFLOW.read_text(encoding="utf-8")
-    jobs = _JOB.findall(text[text.index("\njobs:\n") :])
-    needs = re.search(r"^  checks:\n    needs: \[(?P<needs>[^]]*)\]$", text, re.MULTILINE)
-    assert needs is not None, "`checks` should open with a one-line `needs:` list"
-    assert sorted(needs["needs"].split(", ")) == sorted(job for job in jobs if job != "checks")
+    jobs = _workflow()["jobs"]
+    needs = jobs["checks"].get("needs")
+    assert isinstance(needs, list), "`checks` should list the jobs it needs"
+    assert sorted(needs) == sorted(job for job in jobs if job != "checks")
 
 
 # --- the item-only fast path (`PL-DXD4`) --------------------------------------
@@ -101,36 +97,14 @@ def test_checks_needs_every_other_job() -> None:
 _PARTS = ("checks-part-1", "checks-part-2")
 _GATE = "checks"
 
-#: Where a step's own key starts: on the step's first line, or on one of its
-#: own at the step's indentation. A deeper key, such as a `name:` under
-#: `with:`, belongs to the action and not to the step.
-_KEY = r"^(?:      - |        )"
-
-#: A step's `if:` condition, its `run:` command or `uses:` action, and its `name:`.
-_CONDITION = re.compile(_KEY + r"if: (.+)$", re.MULTILINE)
-_RUN = re.compile(_KEY + r"run: (.+)$", re.MULTILINE)
-_USES = re.compile(_KEY + r"uses: (.+)$", re.MULTILINE)
-_NAME = re.compile(_KEY + r"name: (.+)$", re.MULTILINE)
-
-#: The step that asks the question, found by its `id:`.
-_SCOPE_ID = re.compile(_KEY + r"id: scope$", re.MULTILINE)
-
 #: A part's output, which carries its scope step's answer to `checks`.
-_OUTPUT = re.compile(
-    r"^    outputs:\n      scope: \$\{\{ steps\.scope\.outputs\.scope \}\}$", re.MULTILINE
-)
-
-#: The gate's variable, which says whether both parts answered `items`.
-_ITEMS_ONLY = re.compile(
-    r"^    env:\n      ITEMS_ONLY: \$\{\{ (?P<condition>.+) \}\}$", re.MULTILINE
-)
-
-#: The gate's variable, which says whether the second part skipped the costly tests.
-_COSTLY_SKIPPED = re.compile(r"^      COSTLY_SKIPPED: \$\{\{ (?P<condition>.+) \}\}$", re.MULTILINE)
+_OUTPUT = "${{ steps.scope.outputs.scope }}"
 
 #: One term of a condition: a context compared with a quoted literal. A
 #: condition is these terms joined by `&&`.
-_TERM = re.compile(r"^(?P<name>[\w.-]+) (?P<operator>==|!=) '(?P<literal>[a-z_]+)'$")
+# regex: a term is one flat token sequence of GitHub's expression syntax, which
+# no parser here reads, and the pattern refuses every other form outright.
+_TERM = re.compile(r"(?P<name>[\w.-]+) (?P<operator>==|!=) '(?P<literal>[a-z_]+)'")
 
 #: The steps an item-only pull request skips in each job, by the start of the
 #: name GitHub gives them. A step joins this list only if no item file can
@@ -170,11 +144,14 @@ FAST_PATH_STEP = "the tests that read the item store"
 UNGATED_COVERAGE_STEP = "coverage without the costly tests, printed and not held to 100%"
 
 
-def _job_head(text: str, job: str) -> str:
-    """`job`'s lines before its steps, which hold its `needs:`, `outputs:` and `env:`."""
-    lines = text.splitlines()
-    start = lines.index(f"  {job}:")
-    return "\n".join(lines[start : lines.index("    steps:", start)])
+def _expression(workflow: dict[str, Any], name: str) -> str:
+    """The condition inside the one `${{ … }}` that `checks` sets its variable `name` to."""
+    value = workflow["jobs"][_GATE].get("env", {}).get(name)
+    assert isinstance(value, str), f"`checks` should set `{name}`"
+    assert value.startswith("${{ ") and value.endswith(" }}"), (
+        f"`checks` should set `{name}` to one expression, not {value!r}"
+    )
+    return value.removeprefix("${{ ").removesuffix(" }}")
 
 
 def _holds(condition: str, values: dict[str, str]) -> bool:
@@ -185,7 +162,7 @@ def _holds(condition: str, values: dict[str, str]) -> bool:
     """
     holds = True
     for term in condition.split("&&"):
-        parsed = _TERM.match(term.strip())
+        parsed = _TERM.fullmatch(term.strip())
         assert parsed is not None, f"this test cannot read the condition {condition!r}"
         name = parsed["name"]
         assert name in values, f"this test does not know {name!r}, in {condition!r}"
@@ -193,26 +170,23 @@ def _holds(condition: str, values: dict[str, str]) -> bool:
     return holds
 
 
-def _runs(step: str, values: dict[str, str]) -> bool:
+def _runs(step: Step, values: dict[str, str]) -> bool:
     """Whether a step runs where the contexts its `if:` reads have their values in `values`."""
-    found = _CONDITION.search(step)
-    return found is None or _holds(found.group(1), values)
+    return "if" not in step or _holds(str(step["if"]), values)
 
 
-def _name(step: str) -> str:
+def _name(step: Step) -> str:
     """The name GitHub shows for a step: its `name:`, or `Run ` and its command or action."""
-    named = _NAME.search(step)
-    if named is not None:
-        return named.group(1)
-    for form in (_RUN, _USES):
-        found = form.search(step)
-        if found is not None:
-            return "Run " + found.group(1)
-    return step.splitlines()[0].strip()
+    if "name" in step:
+        return str(step["name"])
+    for key in ("run", "uses"):
+        if key in step:
+            return "Run " + str(step[key]).splitlines()[0]
+    raise AssertionError(f"a step with no name, command or action: {step}")
 
 
 def _run(
-    text: str, event: str, answer: str, second: str | None = None
+    workflow: dict[str, Any], event: str, answer: str, second: str | None = None
 ) -> dict[str, list[tuple[str, bool]]]:
     """Each job's steps by name, and whether each runs, on `event` when `ci-scope` answers `answer`.
 
@@ -227,46 +201,52 @@ def _run(
     values = {"github.event_name": event}
     scopes = {_GATE: ""}
     for part in _PARTS:
-        asks = [step for step in _steps(text, part) if _SCOPE_ID.search(step)]
+        asks = [step for step in _steps(workflow, part) if step.get("id") == "scope"]
         assert len(asks) == 1, f"{part} should ask `ci-scope` once"
         scopes[part] = answers[part] if _runs(asks[0], values) else ""
-        declared = _OUTPUT.search(_job_head(text, part)) is not None
+        declared = workflow["jobs"][part].get("outputs", {}).get("scope") == _OUTPUT
         values[f"needs.{part}.outputs.scope"] = scopes[part] if declared else ""
-    gate = _ITEMS_ONLY.search(_job_head(text, _GATE))
-    assert gate is not None, "`checks` should set `ITEMS_ONLY` from the parts' answers"
-    values["env.ITEMS_ONLY"] = "true" if _holds(gate["condition"], values) else "false"
-    skipped = _COSTLY_SKIPPED.search(_job_head(text, _GATE))
-    assert skipped is not None, "`checks` should set `COSTLY_SKIPPED` from the second part"
-    values["env.COSTLY_SKIPPED"] = "true" if _holds(skipped["condition"], values) else "false"
+    items_only = _holds(_expression(workflow, "ITEMS_ONLY"), values)
+    values["env.ITEMS_ONLY"] = "true" if items_only else "false"
+    costly_skipped = _holds(_expression(workflow, "COSTLY_SKIPPED"), values)
+    values["env.COSTLY_SKIPPED"] = "true" if costly_skipped else "false"
     return {
         job: [
             (_name(step), _runs(step, {**values, "steps.scope.outputs.scope": scopes[job]}))
-            for step in _steps(text, job)
+            for step in _steps(workflow, job)
         ]
         for job in (*_PARTS, _GATE)
     }
 
 
-def _gated(step: str) -> bool:
+def _gated(step: Step) -> bool:
     """Whether a step's `if:` reads the fast path's answer."""
-    found = _CONDITION.search(step)
-    return found is not None and any(
-        context in found.group(1) for context in ("steps.scope.outputs.scope", "env.ITEMS_ONLY")
+    return "if" in step and any(
+        context in str(step["if"]) for context in ("steps.scope.outputs.scope", "env.ITEMS_ONLY")
     )
 
 
-def _skippable(text: str, job: str) -> list[str]:
+def _skippable(workflow: dict[str, Any], job: str) -> list[str]:
     """The names of `job`'s steps that the fast path can skip: each gated step but its own."""
-    gated = [_name(step) for step in _steps(text, job) if _gated(step)]
+    gated = [_name(step) for step in _steps(workflow, job) if _gated(step)]
     return [name for name in gated if name != FAST_PATH_STEP]
+
+
+def _sets(node: object, key: str) -> bool:
+    """Whether any mapping anywhere in `node` holds `key`."""
+    if isinstance(node, dict):
+        return key in node or any(_sets(value, key) for value in node.values())
+    if isinstance(node, list):
+        return any(_sets(value, key) for value in node)
+    return False
 
 
 def test_the_scope_is_decided_before_any_step_reads_it() -> None:
     """In each part, the scope step comes before every step whose condition reads its answer."""
-    text = WORKFLOW.read_text(encoding="utf-8")
+    workflow = _workflow()
     for part in _PARTS:
-        steps = _steps(text, part)
-        decided = next(index for index, step in enumerate(steps) if _SCOPE_ID.search(step))
+        steps = _steps(workflow, part)
+        decided = next(index for index, step in enumerate(steps) if step.get("id") == "scope")
         early = [_name(step) for step in steps[:decided] if _gated(step)]
         assert not early, (
             f"in {part}, these read the scope before the step that decides it: {early}"
@@ -280,12 +260,12 @@ def test_a_push_to_main_runs_every_step_it_ran_before() -> None:
     push. Every step the fast path can skip still runs, and the fast path's
     own steps do not, so `main`'s run stays whole.
     """
-    text = WORKFLOW.read_text(encoding="utf-8")
-    push = _run(text, "push", answer="items")
+    workflow = _workflow()
+    push = _run(workflow, "push", answer="items")
 
     for job, steps in push.items():
         ran = [name for name, runs in steps if runs]
-        skippable = _skippable(text, job)
+        skippable = _skippable(workflow, job)
         assert len(skippable) == len(SKIPPED_ON_ITEMS[job]), (job, skippable)
         assert [name for name in skippable if name not in ran] == [], job
         assert SCOPE_STEP not in ran, job
@@ -299,12 +279,12 @@ def test_a_pull_request_reaching_past_the_store_runs_the_full_job(answer: str) -
     An empty answer is what a later step sees where the scope step wrote
     nothing, so it has to run the whole job too.
     """
-    text = WORKFLOW.read_text(encoding="utf-8")
-    run = _run(text, "pull_request", answer)
+    workflow = _workflow()
+    run = _run(workflow, "pull_request", answer)
 
     for job, steps in run.items():
         ran = [name for name, runs in steps if runs]
-        assert [name for name in _skippable(text, job) if name not in ran] == [], job
+        assert [name for name in _skippable(workflow, job) if name not in ran] == [], job
         assert FAST_PATH_STEP not in ran, job
 
 
@@ -314,9 +294,9 @@ def test_an_item_only_pull_request_skips_only_the_steps_no_item_file_can_change(
     The steps that read the store, which the item's done-when names, all still
     run in the first part.
     """
-    text = WORKFLOW.read_text(encoding="utf-8")
-    full = _run(text, "pull_request", "full")
-    items = _run(text, "pull_request", "items")
+    workflow = _workflow()
+    full = _run(workflow, "pull_request", "full")
+    items = _run(workflow, "pull_request", "items")
 
     added: dict[str, list[str]] = {}
     for job in full:
@@ -329,9 +309,9 @@ def test_an_item_only_pull_request_skips_only_the_steps_no_item_file_can_change(
     assert added == {"checks-part-1": [], "checks-part-2": [FAST_PATH_STEP], "checks": []}
 
     fast_path = next(
-        step for step in _steps(text, "checks-part-2") if _name(step) == FAST_PATH_STEP
+        step for step in _steps(workflow, "checks-part-2") if _name(step) == FAST_PATH_STEP
     )
-    assert "-m reads_item_store" in fast_path
+    assert "-m reads_item_store" in fast_path["run"]
     ran = [name for name, runs in items["checks-part-1"] if runs]
     for reader in (
         "Run python3 tools/doc_check.py check",
@@ -356,9 +336,9 @@ def test_an_apparatus_pull_request_skips_the_costly_tests_and_the_coverage_thres
     still combines coverage, and prints it without the threshold, because a
     gap it showed would come from an earlier product change.
     """
-    text = WORKFLOW.read_text(encoding="utf-8")
-    full = _run(text, "pull_request", "full")
-    apparatus = _run(text, "pull_request", "apparatus")
+    workflow = _workflow()
+    full = _run(workflow, "pull_request", "full")
+    apparatus = _run(workflow, "pull_request", "apparatus")
     for part in _PARTS:
         assert apparatus[part] == full[part], part
     changed = [
@@ -371,20 +351,21 @@ def test_an_apparatus_pull_request_skips_the_costly_tests_and_the_coverage_thres
         (UNGATED_COVERAGE_STEP, False, True),
     ]
     assert UNGATED_COVERAGE_STEP not in [
-        name for name, runs in _run(text, "push", "")[_GATE] if runs
+        name for name, runs in _run(workflow, "push", "")[_GATE] if runs
     ]
 
-    skip = "SKIP_COSTLY_TESTS: ${{ steps.scope.outputs.scope == 'apparatus' && '1' || '' }}"
+    skip = "${{ steps.scope.outputs.scope == 'apparatus' && '1' || '' }}"
     suites = {
-        part: [step for step in _steps(text, part) if _name(step).startswith("Run uv run pytest")]
+        part: [
+            step for step in _steps(workflow, part) if _name(step).startswith("Run uv run pytest")
+        ]
         for part in _PARTS
     }
-    assert [skip in step for step in suites["checks-part-2"]] == [True]
-    assert [skip in step for step in suites["checks-part-1"]] == [True]
-    assert all(
-        "--skip-costly" not in step.splitlines()[0] for steps in suites.values() for step in steps
-    )
-    assert not re.search(r"^\s*PYTEST_ADDOPTS:", text, re.MULTILINE)
+    for part in ("checks-part-2", "checks-part-1"):
+        asks = [step.get("env", {}).get("SKIP_COSTLY_TESTS") == skip for step in suites[part]]
+        assert asks == [True], part
+    assert all("--skip-costly" not in step["run"] for steps in suites.values() for step in steps)
+    assert not _sets(workflow, "PYTEST_ADDOPTS")
 
 
 def test_checks_fails_when_the_parts_answered_different_scopes() -> None:
@@ -395,12 +376,13 @@ def test_checks_fails_when_the_parts_answered_different_scopes() -> None:
     would run in neither part. The comparison has no `if:`, so it runs on a
     push to `main` too, where neither part asks and both answers are empty.
     """
-    text = WORKFLOW.read_text(encoding="utf-8")
-    [step] = [step for step in _steps(text, _GATE) if "both parts answered the same scope" in step]
-    assert _CONDITION.search(step) is None
-    assert "SCOPE_1: ${{ needs.checks-part-1.outputs.scope }}" in step
-    assert "SCOPE_2: ${{ needs.checks-part-2.outputs.scope }}" in step
-    assert 'run: test "$SCOPE_1" = "$SCOPE_2"' in step
+    workflow = _workflow()
+    name = "both parts answered the same scope"
+    [step] = [step for step in _steps(workflow, _GATE) if _name(step) == name]
+    assert "if" not in step
+    assert step["env"]["SCOPE_1"] == "${{ needs.checks-part-1.outputs.scope }}"
+    assert step["env"]["SCOPE_2"] == "${{ needs.checks-part-2.outputs.scope }}"
+    assert step["run"] == 'test "$SCOPE_1" = "$SCOPE_2"'
 
 
 @pytest.mark.parametrize(
@@ -416,7 +398,7 @@ def test_checks_combines_coverage_unless_both_parts_answered_items(first: str, s
     answer the other part did not give. Then `coverage combine` has to run and
     fail on the missing half, rather than let `checks` pass.
     """
-    gate = _run(WORKFLOW.read_text(encoding="utf-8"), "pull_request", first, second)[_GATE]
+    gate = _run(_workflow(), "pull_request", first, second)[_GATE]
     assert [name for name, runs in gate if not runs] == [UNGATED_COVERAGE_STEP]
 
 

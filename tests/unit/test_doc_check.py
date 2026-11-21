@@ -3607,7 +3607,7 @@ def test_a_missing_tags_statement_is_an_error(tmp_path: Path) -> None:
 
 
 def test_a_tags_claim_inside_a_container_is_read() -> None:
-    """`PL-8NPN`: `TAGS_MARK_RE` read a claim at its line's first column alone.
+    """`PL-8NPN`: a claim led by `TAGS_MARK` was read at its line's first column alone.
 
     In a block quote or a nested list item CommonMark renders the same bold
     lead, and the claim was reported missing; an indented code block's is a

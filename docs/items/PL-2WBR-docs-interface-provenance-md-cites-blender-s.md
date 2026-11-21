@@ -3,11 +3,13 @@ id: PL-2WBR
 title: docs/interface-provenance.md cites Blender's Copyright Rules handbook with no address or reading date, and the list of pages read leaves it out (copy editor structure read, 2026-11-05)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: interface-provenance-structure
 touches: docs/interface-provenance.md
 added: 2026-11-05
+closed: 2026-11-16
+pr: 2168
 payoff: a contributor checking the study protocol's rule on copying can open the Blender page it rests on and see when it was read
 verify: grep -qF 'handbook/communication/copyright_rules' docs/interface-provenance.md
 ---
@@ -27,3 +29,5 @@ verify: grep -qF 'handbook/communication/copyright_rules' docs/interface-provena
 **Generator check.** One-off: a finding from the `docs/interface-provenance.md` structure read (`PL-ZMBN`). The claim predates the first reading of any `blender.org` page and was never sourced.
 
 **Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** `git show 817a4d88:docs/interface-provenance.md` already cites "Blender's own Copyright Rules handbook" with no address or reading date (row 81). So the problem was present at the freeze, commit `817a4d88` (2026-10-24), and this finding belongs on v0.7.0's frozen list rather than deferred.
+
+**Done 2026-11-16.** The page at https://developer.blender.org/docs/handbook/communication/copyright_rules/ was downloaded whole with `curl` through the proxy (HTTP 200) and read as text in full. It does not say what the sentence claimed. It asks for original mockups and designs that build on Blender's own design history, bars copyrighted elements of proprietary software from Blender because they would breach that software's licence agreement, and asks contributors to avoid referring to proprietary software and keep to public information where a mention is essential. It says nothing about studying versus copying, nor about lifted prose or reading another program's source. So the sentence in § "Reading is not a restricted act; copying, translating and porting are" was corrected to what the page states, with its address and reading date, and now says plainly that the page does not draw this study's line between studying and copying. The page was paraphrased, not quoted, because it is CC-BY-SA 4.0 (§ "The prose is the encumbered half, not the source"). A new § "Pages read on 2026-11-16" at the end of the document lists it. Docs sweep: `grep -rn -i 'copyright rules'` outside `docs/items/` finds only `docs/interface-provenance.md` and this item's line on `ROADMAP.md`'s frozen list, which needs no change; `docs/interface-provenance.md` § "How this study was conducted, and where it could not reach" and § "What the code cannot answer: Blender's stated reasoning" were checked and still describe the 2026-10-25 reading correctly.

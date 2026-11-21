@@ -3,11 +3,13 @@ id: PL-HR4T
 title: docs/MODEL.md § 'Intended use' lists extreme-preserving decimation as an interface safety feature, but § 'Interface boundary' says the chart evaluates the run at column instants and selects no recorded extremes; one is stale (copy editor structure read, 2026-11-05)
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: model-md-structure
 touches: docs/MODEL.md
 added: 2026-11-05
+closed: 2026-11-16
+pr: 2168
 payoff: the safety-class section names the chart feature the safety argument actually rests on, so a reviewer checks the right code
 verify: ! grep -qF 'extreme-preserving decimation is a safety feature' docs/MODEL.md
 reenters: PL-4FBP
@@ -32,3 +34,14 @@ paragraph of `docs/ARCHITECTURE.md` and of the last chapter of
 prose of `docs/MODEL.md` outside that binding, for the reason its brief gives.
 This item's sentence is in that free prose, so it stays its own documentation
 fix.
+
+**Done 2026-11-16.** In `docs/MODEL.md` § "Software safety classification:
+Class C, for the whole application", the sentence that called the
+extreme-preserving decimation a safety feature now names the chart's current
+one: the rule for which instants the chart draws, under which the chart
+computes the run's exact state at each drawn instant and every control change
+is a drawn instant. It points to `docs/INTERFACE.md` § "Interface boundary",
+where that passage now lives, rather than to a section of `docs/MODEL.md`. No
+other sentence in `docs/MODEL.md` or `docs/INTERFACE.md` mentions decimation
+(`grep -n -i decimat`). Docs sweep: `docs/MODEL.md` § "Software safety
+classification" and `docs/INTERFACE.md` § "Interface boundary".

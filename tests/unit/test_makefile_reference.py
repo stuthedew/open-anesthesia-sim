@@ -90,9 +90,13 @@ def _gnu_make() -> str:
 
 #: make's message for the goal no Makefile here names, which is how the database is printed.
 NO_GOAL = "make: *** No rule to make target 'NO_SUCH_GOAL'.  Stop.\n"
-RECIPE_FROM = re.compile(r"#  recipe to execute \(from '.*', line (?P<line>\d+)\):")
+# regex: GNU make prints its database as free text with no machine format, and
+# this line holds a file name and a line number at fixed places.
+RECIPE_FROM = re.compile(r"#  recipe to execute \(from '.*', line (?P<line>[0-9]+)\):")
 #: A line make prints about its own progress, such as "Nothing to be done", which is no command.
-MAKE_MESSAGE = re.compile(r"make(\[\d+\])?: ")
+# regex: make writes `make: ` or, in a sub-make, `make[2]: `, and the level
+# varies, so no fixed prefix matches both.
+MAKE_MESSAGE = re.compile(r"make(\[[0-9]+\])?: ")
 
 TARGETS = ("check", "lint", "test", "build", "docs", "fmt")
 WORD = st.sampled_from(("ruff", "check", ".", "-q", "a#b", "'x y'", "src", "tests"))

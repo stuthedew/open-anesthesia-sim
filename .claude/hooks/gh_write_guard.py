@@ -160,7 +160,7 @@ def _api_reads(arguments: list[str], under_xargs: bool) -> bool:
         at += 1
     if method is None:
         method = "POST" if sends_body else "GET"
-    if endpoint is None or endpoint == "graphql" or shell_split.EXPANDS.search(method):
+    if endpoint is None or endpoint == "graphql" or shell_split.expands(method):
         return False
     return method.upper() in READ_METHODS
 

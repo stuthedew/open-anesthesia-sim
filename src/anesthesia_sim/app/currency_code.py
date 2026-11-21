@@ -16,8 +16,10 @@ from typing import Final
 
 __all__ = ["is_currency_code"]
 
-# Three capital letters, the form of an ISO 4217 alphabetic code. `[A-Z]` in
-# Python's `re` matches only the 26 ASCII capitals.
+# regex: three capital letters, the form of an ISO 4217 alphabetic code. `[A-Z]`
+# in Python's `re` matches only the 26 ASCII capitals. The pattern checks only
+# the shape, so a code that ISO 4217 does not assign, such as QQQ, passes. The
+# module docstring says why that is enough.
 _CURRENCY_CODE_PATTERN: Final = re.compile(r"[A-Z]{3}")
 
 

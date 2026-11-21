@@ -137,6 +137,37 @@ def test_a_number_keeps_its_sign_exponent_and_unit_and_a_list_ordinal_is_not_one
     assert gone == {"9.262e-14 L", "1.67e5", "−2.29", "1.32 L", "6L", "3 MAC"}
 
 
+def test_a_number_opening_a_paragraph_line_is_a_value_and_not_a_list_ordinal() -> None:
+    """A line inside a paragraph that starts with "43." does not start a list.
+
+    CommonMark lets only a list numbered 1 interrupt a paragraph, so this "43"
+    is a value in the sentence the line above began.
+    """
+    text = "The ratio of the two was\n43. It was 2 in the first run.\n"
+
+    numbers = {fact for kind, fact, _ in facts(text) if kind == "number"}
+
+    assert numbers == {"43", "2"}
+
+
+def test_a_code_span_wrapped_across_a_line_break_is_one_code_fact() -> None:
+    """A code span may wrap where the prose does, and a rewrite that drops it loses one fact."""
+    text = "Run `python3 tools/model_rewrite.py\nlost` before merging.\n"
+
+    codes = [fact for kind, fact, _ in facts(text) if kind == "code"]
+
+    assert codes == ["python3 tools/model_rewrite.py lost"]
+
+
+def test_a_code_span_written_with_two_backticks_is_one_code_fact() -> None:
+    """A span opened by two backticks holds a single backtick and ends at the next two."""
+    text = "Write ``like `this` one`` in the text.\n"
+
+    codes = [fact for kind, fact, _ in facts(text) if kind == "code"]
+
+    assert codes == ["like `this` one"]
+
+
 def test_gone_facts_counts_what_the_rewrite_holds_fewer_times_and_marks_the_moved() -> None:
     after = DOCUMENT.replace("of 6 L/min, measured 2026-10-03 in #1808.", "of 6 L/min.").replace(
         "```math\nF_A = 1 - e^{-t/\\tau}\n```\n", ""

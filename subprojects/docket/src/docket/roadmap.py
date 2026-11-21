@@ -35,6 +35,7 @@ from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 
 from . import markdown
+from .digits import whole_number
 from .lines import split_lines
 from .model import DATE_BLOCKER_RE, MILESTONE_BLOCKER_RE, SEMVER_PATTERN, split_deferred_from
 from .release import SEMVER_RE, version_key
@@ -52,6 +53,8 @@ LAZY_ENTRY = (
 )
 #: Where a sentence of prose ends: its stop, any closing emphasis, code,
 #: parenthesis or bracket, and the space after it. A soft break is a space.
+# regex: a stop, then any run of closing marks, then white space. The search
+# reads punctuation a writer typed, not what the sentence means.
 SENTENCE_BREAK = re.compile(r"[.!?][*`)\]]*\s")
 
 
@@ -120,13 +123,24 @@ VERSION_TABLE_HEADING = "Versioning decision"
 # same claim. `VersionRow.is_completed` is the one reading of it (`PL-5H48`).
 COMPLETED = "Completed"
 BASELINE_MARK = "current baseline"
+# regex: a fixed label and then a version, read by `SEMVER_PATTERN`, the one
+# grammar of a version.
 BASELINE_HEADING_RE = re.compile(rf"^Current baseline:\s*v?(?P<version>{SEMVER_PATTERN})\b")
 # The cell after the milestone that says how many items a release shipped,
 # such as `| 5 items |`. The release session writes it by hand from the same
 # items as the notes file, and `doc_check.check_release_row_item_count` holds the
 # two to each other (`PL-S9X7`). Every row has the cell since `PL-DWGC`; it is
 # empty for the releases before v0.2.3, which have no notes file.
-ITEM_COUNT_RE = re.compile(r"^(?P<count>\d+) items?$")
+ITEM_COUNT_WORDS = ("item", "items")
+
+
+def item_count(cell: str) -> int | None:
+    """The count in the version table's item cell, such as `5 items`, or `None` where it has none.
+
+    The number is read by `digits.whole_number`, so only ASCII digits count.
+    """
+    count, _, word = cell.partition(" ")
+    return whole_number(count) if word in ITEM_COUNT_WORDS else None
 
 
 @dataclass(frozen=True)
@@ -166,14 +180,9 @@ def parse_version_table(text: str) -> list[VersionRow]:
     for line, cells in table_rows(text, VERSION_TABLE_HEADING):
         if len(cells) < 2 or SEMVER_RE.match(cells[0]) is None:
             continue
-        counted = ITEM_COUNT_RE.match(cells[3].strip()) if len(cells) > 3 else None
+        counted = item_count(cells[3].strip()) if len(cells) > 3 else None
         rows.append(
-            VersionRow(
-                line=line,
-                version=cells[0].lstrip("v"),
-                status=cells[1],
-                items=None if counted is None else int(counted.group("count")),
-            )
+            VersionRow(line=line, version=cells[0].lstrip("v"), status=cells[1], items=counted)
         )
     return rows
 
@@ -230,17 +239,18 @@ TIMELINE_HEADING = "The timeline"
 # confident wrong answer.
 STEP_SEPARATOR = "—"
 
-BOLD_RE = re.compile(r"^\*\*(?P<label>.+)\*\*$")
+#: The marks a timeline step is wrapped in: it is written in bold.
+BOLD = "**"
+# regex: `v`, a version read by `SEMVER_PATTERN`, the step separator and a
+# name. The version's grammar is a pattern, so reading it needs one.
 MILESTONE_RE = re.compile(rf"^v{SEMVER_PATTERN} {STEP_SEPARATOR} (?P<name>\S.*)$")
+# regex: `v`, two numbers and `.x`, the step separator and a name. Each number
+# is written as `SEMVER_PATTERN` writes one: ASCII digits, and no leading zero.
 PATCH_TRACK_RE = re.compile(
-    rf"^v(?P<major>\d+)\.(?P<minor>\d+)\.x {STEP_SEPARATOR} (?P<name>\S.*)$"
+    rf"^v(?P<major>0|[1-9][0-9]*)\.(?P<minor>0|[1-9][0-9]*)\.x {STEP_SEPARATOR} (?P<name>\S.*)$"
 )
-GATE_RE = re.compile(r"^Gate (?P<number>\d+)$")
-ORDINAL_RE = re.compile(r"^(?P<number>\d+)\+?$")
-# A step that opens like a version but matches neither version form. Caught
-# separately so a typo (`v0.4` , `v0.4.0 - name`) fails loudly instead of
-# passing as a marker with an odd name.
-VERSIONISH_RE = re.compile(r"^v\d")
+#: How a gate's timeline step opens, before its number: `Gate 3`.
+GATE_LABEL = "Gate "
 
 
 @dataclass(frozen=True)
@@ -278,26 +288,27 @@ def parse_timeline(text: str) -> tuple[list[TimelineStep], list[str]]:
             continue
         ordinal_cell, step_cell = cells[0], cells[1]
 
-        bold = BOLD_RE.match(step_cell)
-        if bold is None:
+        wrapped = len(step_cell) > 2 * len(BOLD)
+        if not (wrapped and step_cell.startswith(BOLD) and step_cell.endswith(BOLD)):
             problems.append(f"line {line}: timeline step {step_cell!r} is not bold")
             continue
-        label = bold.group("label")
+        label = step_cell[len(BOLD) : -len(BOLD)]
 
         ordinal: int | None = None
         if ordinal_cell != STEP_SEPARATOR:
-            ordinal_match = ORDINAL_RE.match(ordinal_cell)
-            if ordinal_match is None:
+            ordinal = whole_number(ordinal_cell.removesuffix("+"))
+            if ordinal is None:
                 problems.append(
                     f"line {line}: timeline number {ordinal_cell!r} is neither a number,"
                     f" a number with '+', nor {STEP_SEPARATOR!r}"
                 )
                 continue
-            ordinal = int(ordinal_match.group("number"))
 
         milestone = MILESTONE_RE.match(label)
         patch_track = PATCH_TRACK_RE.match(label)
-        gate = GATE_RE.match(label)
+        gate = label.removeprefix(GATE_LABEL) if label.startswith(GATE_LABEL) else None
+        if gate is not None and whole_number(gate) is None:
+            gate = None
         if milestone is not None:
             version = (
                 int(milestone.group("major")),
@@ -309,8 +320,11 @@ def parse_timeline(text: str) -> tuple[list[TimelineStep], list[str]]:
             version = (int(patch_track.group("major")), int(patch_track.group("minor")), -1)
             kind, name = "patch-track", patch_track.group("name")
         elif gate is not None:
-            version, kind, name = None, "gate", gate.group("number")
-        elif VERSIONISH_RE.match(label):
+            version, kind, name = None, "gate", gate
+        # A step that opens like a version but matches neither version form.
+        # Caught separately so a typo (`v0.4`, `v0.4.0 - name`) fails loudly
+        # instead of passing as a marker with an odd name.
+        elif label.startswith("v") and whole_number(label[1:2]) is not None:
             problems.append(
                 f"line {line}: timeline step {label!r} opens like a version but matches"
                 f" neither 'vX.Y.Z {STEP_SEPARATOR} name' nor 'vX.Y.x {STEP_SEPARATOR} name'"
@@ -380,6 +394,9 @@ def _timeline_order(steps: Sequence[TimelineStep]) -> Iterator[str]:
 # words around it: this repository writes "Completed:", "Current baseline:",
 # "Next milestone:" and "Milestone after next:", and which prefix a milestone
 # carries is editorial. The version is the identity.
+#
+# regex: a version anywhere in a heading, read by `SEMVER_PATTERN`, the one
+# grammar of a version.
 SECTION_VERSION_RE = re.compile(rf"\bv{SEMVER_PATTERN}\b")
 # Punctuation a heading may put between the version and the milestone's name.
 SECTION_SEPARATORS = " -–—: "
@@ -449,6 +466,10 @@ REQUIRED_SUBSECTIONS = ("goal", SCOPE_SUBSECTION, "definition of done", "explici
 # *inside* the parenthetical is prose like any other: v0.5.0's fourth entry
 # reads "(queue item PL-8LXM, moved with `PL-2FM6` into the `v0.4.x` track on
 # 2026-09-08 and shipped there)" and declares one item.
+#
+# regex: the fixed words `(queue item` or `(queue items`, ended by a character
+# that is not part of a word, anywhere in a line. A writer types this label on
+# purpose to open a slot.
 DECLARATION_RE = re.compile(r"\(queue items?\b")
 
 

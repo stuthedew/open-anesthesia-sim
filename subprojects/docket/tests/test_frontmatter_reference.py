@@ -257,6 +257,7 @@ def front_matters(draw: st.DrawFn) -> list[str]:
         block.append(draw(DOCUMENT_END))
         block.extend(draw(st.lists(st.sampled_from(("", "# after", "  # indented")), max_size=2)))
     numbers = itertools.count()
+    # regex: each `&anchor` takes a number of its own, which `str.replace` cannot give.
     return [re.sub("&anchor", lambda _: f"&a{next(numbers)}", line) for line in block]
 
 

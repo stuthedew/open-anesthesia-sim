@@ -23,12 +23,23 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 from docket.model import Item
 from docket.store import new_id, write_item
 
+# The patterns below read the retired punch list's format, whose files are gone.
+# This conversion ran once and is kept as the record of the mapping, so they
+# are left as they ran rather than rewritten against a format nothing writes.
+#
+# regex: an entry heading of the retired format.
 ENTRY_RE = re.compile(r"^### (PL-(\d+)) (.+)$")
+# regex: a priority band's heading of the retired format.
 BAND_RE = re.compile(r"^## (P[0-3])\b")
+# regex: a resolved entry's line of the retired format.
 RESOLVED_RE = re.compile(r"^- (PL-\d+) (.+?)(?: — `([0-9a-f]{7,40})`)?$")
+# regex: each code span on a metadata line of the retired format.
 CODE_TOKEN_RE = re.compile(r"`([^`]+)`")
+# regex: the date the retired format wrote after `added`.
 ADDED_RE = re.compile(r"\badded (\d{4}-\d{2}-\d{2})\b")
+# regex: the date the retired format wrote after `closed`.
 CLOSED_RE = re.compile(r"\bclosed (\d{4}-\d{2}-\d{2})\b")
+# regex: a file name in a code span of the retired format's `Where` field.
 PATH_RE = re.compile(r"`([^`]+\.(?:py|json|md|toml|yml|yaml|sh|lock))`")
 PRIORITIES = ("P0", "P1", "P2", "P3")
 EFFORTS = ("S", "M", "L")
@@ -53,6 +64,7 @@ def resolve_path(raw: str, root: Path) -> str:
 
 def touches_from(body: str, root: Path) -> tuple[str, ...]:
     """Read the file list out of a `**Where.**` field written as prose."""
+    # regex: the retired format's `Where` field, up to the next bold heading.
     match = re.search(r"\*\*Where\.\*\*(.+?)(?=\n\*\*|\Z)", body, re.DOTALL)
     if match is None:
         return ()
@@ -61,8 +73,10 @@ def touches_from(body: str, root: Path) -> tuple[str, ...]:
 
 
 def blockers_from(body: str, identifier: str) -> tuple[str, ...]:
+    # regex: the retired format's `Blocked by` field, up to the next bold heading.
     match = re.search(r"\*\*Blocked by\.\*\*(.+?)(?=\n\*\*|\Z)", body, re.DOTALL)
     source = match.group(1) if match else ""
+    # regex: each sequential id that field names, the only id form it held.
     return tuple(sorted({ref for ref in re.findall(r"PL-\d+", source) if ref != identifier}))
 
 
@@ -101,6 +115,8 @@ def convert_open(text: str, root: Path) -> list[Item]:
         tokens = CODE_TOKEN_RE.findall(metadata)
         body = "\n".join(body_lines[1:]).strip()
         added = ADDED_RE.search(metadata)
+        # regex: the status below is a whole word in retired metadata, which
+        # a hyphen or a word character must not touch on either side.
         items.append(
             Item(
                 identifier=identifier,
@@ -195,6 +211,7 @@ def convert_inbox(directory: Path, taken: set[str], root: Path) -> list[Item]:
             (line[2:].strip() for line in text.splitlines() if line.startswith("# ")), path.stem
         )
         body = text.split("\n", 1)[1].strip() if "\n" in text else ""
+        # regex: the date that opens a retired inbox note's file name.
         captured = re.match(r"(\d{4}-\d{2}-\d{2})", path.name)
         identifier = new_id(taken)
         taken.add(identifier)

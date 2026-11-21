@@ -42,14 +42,20 @@ if TYPE_CHECKING:  # `roadmap` reads this module's version grammar, so the
 #: TOML, so a declaration this cannot reach, or a line it reaches that is not
 #: the declaration, is refused there rather than a different line rewritten
 #: (`PL-3DD9`, `PL-6KHQ`).
+# regex: the standard library reads TOML but cannot write it, so the bump
+# rewrites the declaration's one line in place, and `prepare_bump` reads the
+# result back as TOML to prove that the right line changed.
 VERSION_RE = re.compile(r'^(version\s*=\s*")([^"]+)(")', re.M)
-SEMVER_RE = re.compile(rf"^v?{SEMVER_PATTERN}$")
+# regex: a whole version, with or without its `v`, built on `SEMVER_PATTERN`,
+# the one grammar of a version. `\Z` ends the match at the end of the text,
+# where `$` would also allow a trailing newline.
+SEMVER_RE = re.compile(rf"^v?{SEMVER_PATTERN}\Z")
 
 #: What `SEMVER_RE` accepts, in the words a refusal of anything else uses, so
 #: the grammar a reader is told and the one enforced sit on adjacent lines.
 SEMVER_GRAMMAR = (
-    "three whole numbers joined by dots, MAJOR.MINOR.PATCH, with an optional "
-    "leading v, such as 0.5.12 or v0.5.12"
+    "three whole numbers joined by dots, MAJOR.MINOR.PATCH, with no leading zero "
+    "and an optional leading v, such as 0.5.12 or v0.5.12"
 )
 
 #: Where the generated notes are written, and therefore where a release
@@ -333,6 +339,8 @@ def notes_claims(text: str) -> tuple[str, str]:
 #: every id in the file made 20 of this project's 37 healthy releases look
 #: inconsistent; reading the bullet's leader makes 36 of the 37 agree exactly,
 #: and the 37th predates the notes directory.
+# regex: a dash and an item id at the start of a bullet. `store.ID_PATTERN` is
+# the one grammar of an id, and this only anchors it after the marker.
 NOTES_ENTRY_RE = re.compile(rf"^- ({ID_PATTERN})", re.M)
 
 
@@ -663,6 +671,9 @@ def release_notes(milestone: Milestone, today: date) -> str:
 #: pattern's to read, so a reader of a whole document applies it a statement
 #: at a time, as `markdown.statement_lines` cuts them (`PL-FP7J`).
 CODE_SPAN = r"(?P<run>`+)(?!`)(?P<content>(?:(?!\n[ \t]*\n)[\s\S])+?)(?<!`)(?P=run)(?!`)"
+# regex: these patterns are the tokens of docket's reader of inline Markdown,
+# which no standard library module parses. Each is a flat token that CommonMark
+# 0.31.2 defines, and the tests compare the reader with markdown-it-py.
 CODE_SPAN_AT = re.compile(CODE_SPAN)
 
 #: An autolink (CommonMark 0.31.2 § 6.5): a URI, or an email address, in angle
@@ -672,6 +683,7 @@ AUTOLINK = (
     r"|[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?"
     r"(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*)>"
 )
+# regex: an autolink token of the inline Markdown reader, as CODE_SPAN_AT says.
 AUTOLINK_RE = re.compile(AUTOLINK)
 #: An attribute of an HTML tag (§ 6.6): its name, and a value where one is given.
 HTML_ATTRIBUTE = (
@@ -688,6 +700,7 @@ RAW_HTML = (
     r"|<![A-Za-z][^>]*>"
     r"|<!\[CDATA\[[\s\S]*?\]\]>"
 )
+# regex: a raw HTML token of the inline Markdown reader, as CODE_SPAN_AT says.
 RAW_HTML_RE = re.compile(RAW_HTML)
 
 #: Where a span may open, as a left-to-right scan finds it (CommonMark 0.31.2
@@ -707,6 +720,7 @@ CODE_SPAN_PATTERN = rf"\\[\s\S]|{CODE_SPAN}|`+"
 #: inline reader reads the two from here, so each has one copy. They are kept
 #: out of `CODE_SPAN_PATTERN` because `verify` blanks Python with it, and
 #: `RAW_HTML` matches `<b and c>` in `if a<b and c>d:`.
+# regex: the inline Markdown reader's table of tokens, scanned left to right.
 CODE_SPAN_SCAN = re.compile(rf"{AUTOLINK}|{RAW_HTML}|{CODE_SPAN_PATTERN}")
 
 
@@ -728,6 +742,8 @@ def replace_code_spans(replacement: str | Callable[[re.Match[str]], str], text: 
 
 
 #: An opening angle bracket no backslash already escapes.
+# regex: a `<` with no backslash before it. `str.replace` cannot leave alone the
+# ones a backslash already escapes.
 UNESCAPED_LT_RE = re.compile(r"(?<!\\)<")
 
 
@@ -782,12 +798,17 @@ def reference(item: Item) -> str:
 #: an equality test while its missing number stayed exactly as recoverable.
 #: Measured 2026-09-21 over this project's 1,412 items, no title ends in a tail
 #: this could mistake for a reference.
-REFERENCED_RE = re.compile(r" — (#\d+|`[0-9a-f]{7,40}`)$")
+# regex: the reference `reference` writes at the end of a line, a pull request
+# number or a commit hash. `[0-9]` matches only ASCII digits, and `\Z` ends the
+# match at the end of the text, where `$` would also allow a trailing newline.
+REFERENCED_RE = re.compile(r" — (#[0-9]+|`[0-9a-f]{7,40}`)\Z")
 
 #: A notes bullet split into the id it claims and everything after it, which is
 #: the title plus whatever reference the bullet carries. `NOTES_ENTRY_RE`
 #: extended rather than restated, so the two cannot anchor differently: titles
 #: quote other ids, so only the leader says which item a bullet is about.
+# regex: `NOTES_ENTRY_RE` with the rest of the line captured, so the two
+# cannot read a bullet's leading id differently.
 NOTES_BULLET_RE = re.compile(rf"{NOTES_ENTRY_RE.pattern}(.*)$", re.M)
 
 

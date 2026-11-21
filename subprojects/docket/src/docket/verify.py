@@ -176,6 +176,9 @@ SUPPRESSIONS = (
 #: `@skipif`, `mark.skip` finds `mark.skipif`, `unittest.skip` finds `skipIf`
 #: and `skipUnless`, and `collect_ignore` finds `collect_ignore_glob`, each of
 #: which is the thing this looks for rather than a collision with it.
+# regex: one search for any of the listed tokens, each with a word boundary on
+# its left only where it opens with a word character. `in` cannot test that
+# boundary.
 _SUPPRESSION_RE = re.compile(
     "|".join(
         (r"\b" if text[0].isalnum() or text[0] == "_" else "")
@@ -239,6 +242,9 @@ QUOTING_SUFFIXES = SOURCE_SUFFIXES
 #: An unterminated span - the opening line of a wrapped string, which is what
 #: a diff supplies - matches nothing and is left whole, so the line is
 #: reported rather than guessed at.
+# regex: a lexer's table of the string, comment and code-span tokens on one
+# line of a diff. `tokenize` refuses a line that opens a string it does not
+# close, which a diff supplies, so it cannot read these lines.
 NON_CODE_RE = re.compile(
     r'"""(?:[^"\\]|\\.|"(?!""))*"""'  # a triple-quoted span opening and closing on one line
     r"|'''(?:[^'\\]|\\.|'(?!''))*'''"
@@ -401,6 +407,7 @@ def _parses(source: str) -> bool:
 def _short(spec: str) -> str:
     """The revision half of a `<rev>:<path>` spec, a full object id abbreviated."""
     revision = spec.partition(":")[0]
+    # regex: a full object id is a token with a fixed shape, 40 to 64 hexadecimal digits.
     return revision[:12] if re.fullmatch(r"[0-9a-f]{40,64}", revision) else revision
 
 
@@ -1048,6 +1055,10 @@ def reads_check_output(command: str) -> str:
 # from the shape alone - a candidate only matters where it matches a path the
 # branch actually changed - so a loose pattern costs a wasted comparison and a
 # strict one costs a missed replay.
+#
+# regex: a run of the characters a path is written with, found anywhere in the
+# raw text. `docket.shell` reads words and leaves out what is inside quotes,
+# which this must read.
 PATH_TOKEN_RE = re.compile(r"[A-Za-z0-9_.][A-Za-z0-9_./+-]*")
 
 # What a clause *runs*, as against what it reads, and this distinction is the
@@ -1512,6 +1523,8 @@ def _diff_text(root: Path, base: str, commits: tuple[str, ...]) -> str:
 #: header this cannot read yields `""`, which `is_suppression_line` reads as
 #: "could be code" rather than as "is not" - an unreadable header stays on the
 #: reporting side.
+# regex: git writes either side of the header quoted or bare, and two paths
+# joined by a space can be split only by these four forms.
 DIFF_HEADER_RE = re.compile(
     r'^diff --git (?:"a/(?:[^"\\]|\\.)*"|a/.*) (?P<quoted>"b/(?:[^"\\]|\\.)*")$'
     r"|^diff --git a/(?:.*) b/(?P<path>.*)$"
@@ -1519,7 +1532,15 @@ DIFF_HEADER_RE = re.compile(
 
 #: A merge's file header in the combined diff `git show` writes for one, and
 #: the path git names, quoted as a two-way header's is (`PL-W6ZD`).
-COMBINED_HEADER_RE = re.compile(r"^diff --(?:cc|combined) (?P<path>.*)$")
+COMBINED_HEADERS = ("diff --cc ", "diff --combined ")
+
+
+def _combined_header_path(line: str) -> str | None:
+    """The path a merge's `COMBINED_HEADERS` line names, as written, or `None` for another line."""
+    for header in COMBINED_HEADERS:
+        if line.startswith(header):
+            return line.removeprefix(header)
+    return None
 
 
 def _header_path(header: re.Match[str] | None) -> str:
@@ -1614,8 +1635,8 @@ def _net_line_changes(root: Path, base: str, commits: tuple[str, ...]) -> list[t
             # below, so the fold runs across both spellings of one file.
             current = f"diff --git a/{path} b/{path}" if path and line.endswith('"') else line
             continue
-        if merged := COMBINED_HEADER_RE.match(line):
-            path = vcs.unquoted_path(merged.group("path"))
+        if (merged := _combined_header_path(line)) is not None:
+            path = vcs.unquoted_path(merged)
             # Keyed as the file's two-way patches are, so the fold runs across both.
             current, combined = f"diff --git a/{path} b/{path}" if path else line, True
             continue

@@ -81,8 +81,9 @@ IEC 62304, for software.
 ### Intended use
 
 This is a teaching simulator for volatile-agent uptake and distribution. It is
-not a clinical prediction, dosing tool, patient monitor, or medical device. It is
-intended for anesthesia clinicians, trainees, and students. It helps them
+not intended for clinical prediction, dosing, monitoring a patient, or any other
+use as a medical device. It is intended for anesthesia clinicians, trainees,
+and students. It helps them
 build intuition about how agent concentration moves between the breathing
 circuit, alveolar gas, blood, and the tissue groups, under management that the
 learner chooses. In particular, it makes visible the compartments that no
@@ -149,8 +150,10 @@ integration testing.
 Code that looks cosmetic cannot be split off into a lower class, because it
 carries clinical meaning. The chart's frame (`app/chart_frame.py`) decides what
 a chart line claims about a run. The styling file (`app/theme.py`) defines the
-ISO 5360 agent colours. The extreme-preserving decimation is a safety feature of
-the interface.
+ISO 5360 agent colours. The rule for which instants the chart draws is a safety
+feature of the interface. The chart computes the run's exact state at each
+instant that it draws, and every control change is one of those instants
+(`docs/INTERFACE.md` § "Interface boundary").
 
 A split would pay off only where the exempted part is large, genuinely
 non-clinical and costly to verify. None of those holds now.
@@ -1461,7 +1464,8 @@ scale if larger, so it never divides by zero before agent is delivered. A step
 that fails both bounds stops the run. These thresholds mark where the model
 refuses to show a number, not the standard the shipped model is held to.
 
-**The release gate is the relative residual alone.** The reference runs in
+**The mass-balance tolerance, which a release must meet, bounds the relative
+residual alone.** The reference runs in
 `tests/reference/test_multi_agent.py` and
 `tests/reference/test_sevo_patient.py` assert it, and they restate it as
 `MASS_BALANCE_RELATIVE_GATE`:
@@ -1470,8 +1474,8 @@ refuses to show a number, not the standard the shipped model is held to.
 MASS_BALANCE_RELATIVE_GATE = 1e-10
 ```
 
-The gate is relative because the residual is rounding error that accumulates
-once per step. The residual therefore scales with how much agent a run has
+The mass-balance tolerance is relative because the residual is rounding error
+that accumulates once per step. The residual therefore scales with how much agent a run has
 handled. An absolute bound would measure the delivered concentration and the
 run length instead of conservation. The values below come from runs on
 2026-09-06 with the shipped exact step, over 600 s of wash-in followed by
@@ -1489,8 +1493,8 @@ run length instead of conservation. The values below come from runs on
 Halving the dial setting halves the absolute residual exactly. It leaves the
 relative residual unchanged to four significant figures.
 
-The gate value comes from the table below. The table gives the worst relative
-residual at any step, computed on the same day at two sets of settings. The
+The value of the mass-balance tolerance comes from the table below. The table
+gives the worst relative residual at any step, computed on the same day at two sets of settings. The
 first set is the reference runs' own settings. The second set is the corner of
 the supported envelope: fresh gas 10 L/min, alveolar ventilation 12 L/min,
 cardiac output 10 L/min, and each agent at its calibrated dial maximum.
@@ -1505,11 +1509,11 @@ cardiac output 10 L/min, and each agent at its calibrated dial maximum.
 | 4 h | 3.75e-12 | 2.88e-12 |
 | 8 h | 5.05e-12 | 6.36e-12 |
 
-The gate of 1e-10 leaves about 450x headroom at the horizon that the reference
-runs use, and about 16x at 8 h. So neither moving a dial nor lengthening a
-case changes what the gate certifies. The gate is an order of magnitude
-stricter than the 1e-9 halt threshold. Passing the gate therefore says
-strictly more than that the run did not stop. A real conservation defect would
+The mass-balance tolerance of 1e-10 leaves about 450x headroom at the horizon
+that the reference runs use, and about 16x at 8 h. So neither moving a dial nor
+lengthening a case changes what the tolerance certifies. The tolerance is an
+order of magnitude stricter than the 1e-9 halt threshold. A run that meets the
+tolerance has therefore shown strictly more than that it did not stop. A real conservation defect would
 raise the residual by orders of magnitude, not by factors of two.
 
 **The delivered and exhausted totals are kept by a summation that stops
@@ -5166,29 +5170,29 @@ so the gap cannot grow past +2.5 SD without a test failing.
 #### What the published-data gate can and cannot resolve
 
 **For most stored values, passing the published-data gate rules out only large
-errors** (from model runs on 2026-10-18). The gate is the set of checks that
+errors** (from model runs on 2026-10-18). The published-data gate is the set of checks that
 compare the model with published measurements in people. A pass does rule out a
 model whose structure is wrong.
 
-The gate contains the early wash-in points from 1 to 25 minutes, run with F_I
+The published-data gate contains the early wash-in points from 1 to 25 minutes, run with F_I
 held at the airway (§ "The early wash-in curve against the published figures"
 above). It also contains the 30-minute wash-in band for each cohort at every
 fresh gas flow from 1 to 10 L/min, the sign of the elimination disagreement for
 each cohort, and both solubility orderings.
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 
-The regression pins are not part of the gate, because they compare the model
+The regression pins are not part of the published-data gate, because they compare the model
 with its own output. They include the 5-minute elimination pin above and the
 late-washout tables. A pin fails on any change at all, so it catches an
 accidental edit. It cannot show whether a comparison with published data would
 have caught a wrong stored value.
 
 Each cell of the table below covers one stored parameter for one agent. It gives
-the lower and upper edges of the range of change over which the gate still
+the lower and upper edges of the range of change over which the published-data gate still
 passes (from model runs on 2026-10-18). Each parameter was varied from a tenth
 to four times its stored value, with every other value unchanged. The edges
 were found to the nearest half a percentage point. An edge marked "past", such
-as "past −90%", means that the gate still passed at a tenth or at four times the
+as "past −90%", means that the published-data gate still passed at a tenth or at four times the
 stored value.
 
 | Stored parameter | Sevoflurane | Isoflurane | Desflurane |
@@ -5215,44 +5219,44 @@ were wrong.
 A tissue's volume and its tissue:gas coefficient give the same edges, because a
 run depends only on their product, the tissue's capacity.
 
-**Two tests keep the table in step with the code.** One fails if the gate stops
-detecting a change that it detects today. The other fails if the gate starts to
+**Two tests keep the table in step with the code.** One fails if the published-data gate stops
+detecting a change that it detects today. The other fails if the published-data gate starts to
 detect a change that this section says it cannot.
 
-**The table supports these conclusions about a pass of the gate:**
+**The table supports these conclusions about a pass of the published-data gate:**
 
 - **A narrow edge is not a narrow uncertainty.** Most of the narrowest edges
   come from the 12.5- and 15-minute points, where the shipped model already sits
   at +0.75 to +0.94 SD. There, a change that raises the curve by a few tenths of
-  an SD takes it past the gate's limit of +1 SD. So isoflurane's −1% edge for
+  an SD takes it past the published-data gate's limit of +1 SD. So isoflurane's −1% edge for
   blood:gas means that the shipped model has little room left there, not that
   the stored coefficient is known to 1%. The published figure can be read to
   about 0.3 SD, so an edge reached by a smaller movement of the curve is within
   the reading error.
-- **For sevoflurane and isoflurane, the gate detects both a rise and a fall in
+- **For sevoflurane and isoflurane, the published-data gate detects both a rise and a fall in
   blood:gas and in the vessel-rich group.** The edges lie between 1% and 15%.
   The 12.5- and 15-minute points set every lower edge. The 2- and 3-minute
   points set isoflurane's upper blood:gas edge and both agents' upper
   vessel-rich edges. The 30-minute wash-in band at 1 L/min sets the other upper
   edges, and most of desflurane's.
-- **The gate detects an alveolar gas volume that is too large.** Making the
+- **The published-data gate detects an alveolar gas volume that is too large.** Making the
   volume a fifth to a third larger slows the first minute of wash-in enough to
   take it outside one SD for every agent. Doubling the volume moves
   sevoflurane's 1-minute F_A/F_I from 0.537 to 0.429, which is −2.85 SD. The
-  gate does not detect a smaller volume for sevoflurane.
+  published-data gate does not detect a smaller volume for sevoflurane.
 - **Desflurane's edges reflect its disagreement with the published data.**
   Its points from 1 to 10 minutes sit at +1.7 to +2.1 SD. They are checked
   only against a looser regression band, which ends at +2.5 SD. So its −8% lower edge for
   alveolar gas volume is set by that band, not by a limit of one published SD.
-- **The gate detects no change at all in fat for sevoflurane or isoflurane.**
+- **The published-data gate detects no change at all in fat for sevoflurane or isoflurane.**
   That is expected of checks that cover 30 minutes of wash-in and 5 minutes of
   washout. Fat solubility and fat volume set the hours-long tail of washout,
   from which a learner judges emergence. Nothing here checks them against a
   measurement. § "The first 24 hours of elimination against the published
   mean curves" compares that tail with the published fits, but does not
   require the two to agree.
-- **The gate constrains muscle only loosely.**
-- **The gate does not detect a smaller circuit** for sevoflurane or isoflurane,
+- **The published-data gate constrains muscle only loosely.**
+- **The published-data gate does not detect a smaller circuit** for sevoflurane or isoflurane,
   down to a tenth of the stored value. The early points are run with F_I held
   at the airway, so the circuit does not affect them.
 
@@ -5285,14 +5289,14 @@ offset fixed by the reference settings.
 in `tests/reference/test_coupled_dynamics.py` (`PINNED_REFERENCE_STATES`). No
 pin may be cited as validation of a stored value.
 
-The test that expects the gate to fail checks every agent at blood:gas ×0.90
+The test that expects the published-data gate to fail checks every agent at blood:gas ×0.90
 and ×1.15, vessel-rich tissue:gas ×0.80 and ×1.75, and alveolar gas volume
 ×1.50 (`test_the_published_data_gate_fails_at_a_stated_perturbation`). It does
 not use ×1.10 for blood:gas, because that is too close to desflurane's edge at
 ×1.097.
 <!-- not-restated: 1.10 -->
 
-The test that expects the gate to pass checks every agent at fat tissue:gas
+The test that expects the published-data gate to pass checks every agent at fat tissue:gas
 ×0.50 and ×2.00, fat volume ×2.00, muscle tissue:gas ×1.50 and circuit volume
 ×0.50 (`test_the_published_data_gate_passes_at_a_stated_perturbation`). It also
 checks alveolar gas volume ×0.50 for sevoflurane, venous pool volume ×0.50 for
@@ -5300,14 +5304,14 @@ sevoflurane and desflurane, and venous pool volume ×2.00 for desflurane. The
 other agents have an edge at or inside those factors.
 
 Each factor in the two tests sits well clear of its edge, because a test placed
-at an edge would be 0.01 to 0.03 SD from flipping. Both tests run the gate at
+at an edge would be 0.01 to 0.03 SD from flipping. Both tests run the published-data gate at
 its shipped limit (`AGREEMENT_TOLERANCE_SD`). The limit is the published
 spread, not the band.
 
 #### The first 24 hours of elimination against the published mean curves
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-**This subsection compares the model's late washout with the published curves, alongside the gate above. It is not
+**This subsection compares the model's late washout with the published curves, alongside the published-data gate above. It is not
 a second gate** (2026-09-27). Caveat 4 keeps the five-minute comparison out of
 the papers' multi-day curves, because over those hours a compartment that this model lacks
 carries the measured washout. So a comparison there shows an omission rather than a
@@ -5328,11 +5332,12 @@ SD of every coefficient in its Tables 1 and 2 (*Anesth Analg* p. 321,
 *Anesthesiology* pp. 494-95). The curve built from the mean coefficients is compared as
 published. Its amplitudes sum to 0.912 to 0.937 rather than 1 at discontinuation, because they
 are means of per-subject fits. Scaling them to sum to 1 would raise every fitted value by 7 to
-10%, and lower every ratio below by 7 to 10%. The model runs the gate's own protocol: the
+10%, and lower every ratio below by 7 to 10%. The model runs the protocol of the five-minute elimination comparison in
+§ "Published wash-in and elimination validation test": the
 shipped 30-minute wash-in at the reference settings, then the vaporizer closed for 23.5 hours.
-So the run ends at the supported run length of 24 hours. Its fifth minute matches the gate's
-pinned five-minute ratios, so the tables continue the gate's comparison rather than starting a
-second protocol. The comparison uses the gate's two conditions and no others. *Shipped* is the
+So the run ends at the supported run length of 24 hours. Its fifth minute matches the five-minute
+ratios that the elimination regression pins hold, so the tables continue that comparison rather than starting a
+second protocol. The comparison uses the same two conditions as those pins and no others. *Shipped* is the
 rebreathing circuit at 10 L/min, which gives the tail that the chart draws. *Open circuit* is
 the test-only condition that discards the circuit's contents after every step, and no setting
 of the simulator can produce it. The table times are the papers' own sampling times within the
@@ -5399,7 +5404,7 @@ tail is a third to a half of the mean curve in every cohort (0.34 to 0.46).
 <!-- not-restated: 0.34 -->
 
 **Read in stretches.** The shipped tail sits above the fitted curve at five
-minutes. That excess is the apparatus term that the gate records. The tail
+minutes. That excess is the apparatus term that the five-minute elimination comparison records. The tail
 falls below the curve from 6 to 13 minutes until 0.8 to 2.0 hours. At the
 widest, around 15 to 25 minutes, it is 15 to 44% below. It then runs above
 the curve until 3.4 hours for desflurane and 6.9 to 8.4 hours for the other
@@ -5512,7 +5517,8 @@ already falling on its fat term's.
    of two, and no better.
 3. *The published subjects breathed nitrous oxide throughout, and the
    parameters under test descend from the lineage of the data.* These are
-   caveats 1 and 2 of the gate, unchanged.
+   caveats 1 and 2 of § "Published wash-in and elimination validation test",
+   unchanged.
 
 **How much of the gap sevoflurane's missing metabolism could account for:
 little, and in the wrong direction over the middle stretch.** This model has no
@@ -5544,7 +5550,7 @@ that § "Mass-balance identity" remains true with the sink in place.
 <!-- not-restated: 5 %, 5.0 %, 1.3 -->
 
 **What a learner sees of it: nothing on screen, and the record gains the
-number.** The departures above are in $`F_A/F_{A0}`$. At the gate's 1% dial,
+number.** The departures above are in $`F_A/F_{A0}`$. At the 1% dial of these runs,
 $`F_{A0}`$ is 0.805, 0.672 and 0.876% of an atmosphere for sevoflurane,
 isoflurane and desflurane. So the shipped alveolar trace falls below the
 readouts' 0.01 percentage points (`docs/INTERFACE.md` § "Displayed precision") at 2.8, 4.2 and 1.9
@@ -5572,7 +5578,7 @@ as page images. `test_the_published_coefficients_sum_below_one_at_discontinuatio
 their sum. The model runs at the shipped 0.1 s step, sampled once a minute.
 `test_the_run_ends_at_the_supported_run_length` checks the run's length, and
 `test_the_twenty_four_hour_run_opens_from_the_five_minute_gate_s_own_ratio` checks that its
-fifth minute matches the gate's ratios to four decimal places. The model's terms are the
+fifth minute matches the ratios that the elimination regression pins hold, to four decimal places. The model's terms are the
 exponential modes of its open-circuit system, decomposed from its state at discontinuation.
 `test_the_model_s_apparent_muscle_and_fat_terms_against_the_fitted_ones` checks them. The
 modes match the stepped open-circuit run to within 0.08% at every minute from the fifth. The
@@ -5586,7 +5592,7 @@ checks the result of lowering the muscle group's coefficient.
 Long wash-in, steady-delivery, and washout simulations must satisfy either
 condition below. These are the run-time thresholds that § "Mass-balance
 identity" gives, and the relative residual must also stay within that
-section's release gate:
+section's mass-balance tolerance:
 
 $$
 |\varepsilon_M|
@@ -6782,7 +6788,7 @@ patients is weakest.
   unread. It is the authority for nothing stored in this project.
 
 **For developers.** The inert circuit is `BreathingCircuit`. The directional
-gates in `tests/reference/test_sevo_patient.py` assert that a higher cardiac
+checks in `tests/reference/test_sevo_patient.py` assert that a higher cardiac
 output slows the rise of $`F_A`$. The MAC-multiple display divides by each
 agent's tier-3 `mac_percent`, and the Datex-Ohmeda 1–18% range is desflurane's
 `max_delivered_concentration_percent`. `reference_adult.json` carries both
@@ -6790,7 +6796,8 @@ fat-flow comparisons. Its Heinonen et al. note gives both figures and the
 volume-to-mass conversion between them, and its Frayn and Karpe entry records
 that fat depots differ. The default cardiac output is
 `default_cardiac_output_l_min`, and no equation reads `weight_kg`. The
-reference-condition gap leaves the release gate's relative residual untouched.
+reference-condition gap leaves the relative residual, which the mass-balance
+tolerance bounds, untouched.
 `core/liquid_agent.py` is where an amount leaves the unit. It converts a
 delivered or exhausted amount exactly and reads a store 5.8 % high
 (`test_the_reference_condition_gap_is_the_ratio_of_molar_volumes`), and its
@@ -6807,17 +6814,21 @@ A release is complete only when:
 
 - all parameter values and sources are present;
 - no scientific `TBD` markers remain;
-- simulated wash-in passes validation against published data for every agent
-  and cohort;
-- mass balance closes within the documented tolerance;
+- the model passes every check of the published-data gate, for every agent and
+  cohort, the sign of the elimination disagreement included (§ "What the
+  published-data gate can and cannot resolve" lists the checks);
+- mass balance closes within the mass-balance tolerance (§ "Mass-balance
+  identity");
 - deterministic replay passes (§ "Deterministic replay test");
 - changing a setting during a case keeps the simulation's current state;
 - the interface contains the educational and non-clinical warning; and
 - this document describes the behavior actually present in the tagged release.
 
-The comparison of simulated elimination with earlier versions is not a
-condition of release. It checks only that the results have not changed, and
-does not show that they agree with published data.
+The elimination regression pins compare simulated elimination with the model's
+own earlier output. They run with the test suite, so a failing pin still stops
+a release, but they are not among the published-data checks above. They check
+only that the results have not changed, and do not show that they agree with
+published data.
 
 **For developers.** A release also needs these checks to pass:
 
@@ -6829,8 +6840,8 @@ does not show that they agree with published data.
 - pytest; and
 - GitHub Actions.
 
-The comparison of simulated elimination with earlier versions is in the same
-test module as the wash-in validation.
+The five-minute elimination pin is in the same test module as the
+published-data gate. The late-washout tables are in a test module of their own.
 
 ## How this document is held to the tree
 

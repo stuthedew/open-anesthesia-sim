@@ -388,6 +388,17 @@ PREVIEW_OFF_SCALE_NOTICE_TEMPLATE: Final = (
 # fixed panel beside a chart rather than a scrolling history. It lists a
 # limited number of changes and says how many it left out.
 NO_CONTROL_CHANGES_TEXT: Final = "No settings changed yet in this run."
+# No record gives the reason for 12. The number first appears in the change
+# that recorded the control-input timeline (`PL-DR1Z`, #301, 2026-09-04), in
+# the Flet interface's `app/simulation_view.py`, and the PySide6 port (#588)
+# kept it. That change's commit message, its item and its documents say what
+# the limit does, but not why it is 12 (traced for `PL-N8G4`). The panel lists
+# the newest changes and counts the rest. So raising the limit lists more
+# changes and makes the panel taller. The panel sits in the record column of
+# the part of the page that is always on screen, outside the Areas. That column
+# is held as tall as the run rows beside it, and scrolls when its content is
+# taller (`SimulationView`, in `app/simulation_view.py`). Lowering the limit
+# moves more changes into the count.
 MAX_LISTED_ADJUSTMENTS: Final = 12
 CONTROL_TIMELINE_HEADING: Final = "Control changes"
 CONTROL_TIMELINE_CAPTION: Final = (

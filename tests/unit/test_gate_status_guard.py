@@ -22,6 +22,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import string
 import subprocess
 from pathlib import Path
 
@@ -418,10 +419,11 @@ def test_the_tracked_makefile_runs_no_recipe_under_a_dry_run() -> None:
     recipes = [line[1:] for line in makefile.splitlines() if line.startswith("\t")]
     assert recipes, "no recipe line read from the Makefile"
     for recipe in recipes:
-        prefix = re.match(r"[\s@+-]*", recipe)
-        assert prefix is not None
-        assert "+" not in prefix.group(), f"runs under make -n: {recipe!r}"
+        prefix = recipe[: len(recipe) - len(recipe.lstrip("@+-" + string.whitespace))]
+        assert "+" not in prefix, f"runs under make -n: {recipe!r}"
         if "$(MAKE)" in recipe or "${MAKE}" in recipe:
+            # regex: a sub-make line is a flat run of tokens, `$(MAKE)` and then
+            # target names, which no reader here parses as make reads them.
             assert re.fullmatch(r"[\s@-]*\$[({]MAKE[)}](?:\s+\w[\w.-]*)*\s*", recipe), (
                 f"runs more than a sub-make under make -n: {recipe!r}"
             )

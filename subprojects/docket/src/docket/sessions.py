@@ -37,15 +37,22 @@ LEDGER_NAME = "docs/session-ledger.tsv"
 #: A session's link, as a commit trailer or a pull request body writes it.
 #: The id is read from the link and not from a bare `session_` word, which
 #: prose about sessions also contains.
+# regex: a link of a fixed shape, found anywhere in a commit message or a pull
+# request body.
 SESSION_URL_RE = re.compile(r"claude\.ai/code/(session_[A-Za-z0-9]+)")
 
 #: A cost as the ledger writes it: dollars, in plain decimal digits.
+# regex: a whole value of ASCII digits with an optional decimal part. `float`
+# also accepts `nan`, `inf` and exponents, which this refuses.
 COST_RE = re.compile(r"[0-9]+(\.[0-9]+)?")
 #: A context-window suffix on a model id, such as the `[1m]` on
 #: `claude-opus-5-5[1m]`. It names the window, not the model, so a configured
 #: model that differs from the served one by it alone ran on that model.
 #: 292 of the ledger's 327 differing rows differed only by it (`PL-YF16`).
-CONTEXT_WINDOW_SUFFIX_RE = re.compile(r"\[[^\[\]]*\]$")
+# regex: one bracketed part at the very end of the id, with no bracket inside
+# it. `\Z` ends the match at the end of the id, where `$` would also allow a
+# trailing newline.
+CONTEXT_WINDOW_SUFFIX_RE = re.compile(r"\[[^\[\]]*\]\Z")
 
 #: The ledger columns this module reads. A ledger missing one is refused.
 LEDGER_COLUMNS = ("session_id", "configured_model", "last_served_model", "effort_level", "cost_usd")

@@ -166,19 +166,36 @@ class Table:
 
 
 # Each pattern is matched where a line's containers end, so its indent is
-# counted from there.
+# counted from there. Each is passed one line, with no line break, so `$`
+# matches only at the line's end.
+#
+# regex: these patterns are this module's table of the line tokens that
+# CommonMark 0.31.2 defines, which is how the module reads Markdown without a
+# third-party parser. Each token is flat, and the tests compare the reader with
+# markdown-it-py.
 _QUOTE = re.compile(r" {0,3}>")
-_LIST_MARKER = re.compile(r" {0,3}(?:[-+*]|(?P<number>\d{1,9})[.)])(?=[ \t]|$)")
+# regex: a list marker, a token of the table above. CommonMark's ordered-list
+# number is one to nine ASCII digits, so `[0-9]`, where `\d` matches any
+# script's digits.
+_LIST_MARKER = re.compile(r" {0,3}(?:[-+*]|(?P<number>[0-9]{1,9})[.)])(?=[ \t]|$)")
+# regex: a heading's opening hashes, a token of the table above.
 _ATX = re.compile(r" {0,3}(?P<hashes>#{1,6})(?:[ \t]|$)")
+# regex: a heading's optional closing hashes, a token of the table above.
 _ATX_CLOSE = re.compile(r"(?:^|[ \t]+)#+[ \t]*$")
+# regex: a thematic break, a token of the table above.
 _BREAK = re.compile(r" {0,3}(?:(?:-[ \t]*){3,}|(?:\*[ \t]*){3,}|(?:_[ \t]*){3,})$")
+# regex: a setext heading's underline, a token of the table above.
 _SETEXT = re.compile(r" {0,3}(?P<rule>=+|-+)[ \t]*$")
 #: A backtick fence's info string holds no backtick (§ 4.5), which is what
 #: keeps a code span wrapped to a line's start from opening one.
+# regex: a fence that opens a code block, a token of the table above.
 _FENCE_OPEN = re.compile(r" {0,3}(?P<fence>`{3,}(?=[^`]*$)|~{3,})")
+# regex: a fence that closes a code block, a token of the table above.
 _FENCE_CLOSE = re.compile(r" {0,3}(?P<fence>`{3,}|~{3,})[ \t]*$")
 #: § 4.6's kinds 1 to 5: the line opening each, and the marker ending it, which
 #: may sit on the opening line itself, as `<!-- absent: ... -->` does.
+# regex: the opening and closing tokens of five kinds of HTML block, from the
+# table above. The closing ones are patterns too, so each pair is read alike.
 _HTML_ENDED = (
     (
         re.compile(r" {0,3}<(?i:pre|script|style|textarea)(?:[ \t>]|$)"),
@@ -190,6 +207,7 @@ _HTML_ENDED = (
     (re.compile(r" {0,3}<!\[CDATA\["), re.compile(r"\]\]>")),
 )
 #: Kind 6, a block-level tag, which runs to a blank line.
+# regex: a block-level HTML tag, a token of the table above.
 _HTML_BLOCK_TAG = re.compile(
     r" {0,3}</?(?i:address|article|aside|basefont|base|blockquote|body|caption|center"
     r"|colgroup|col|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer"
@@ -202,6 +220,7 @@ _HTML_BLOCK_TAG = re.compile(
 #: `style` and `textarea` are kept from an open tag alone, which kind 1 reads;
 #: a closing tag of any name opens one, so `</pre>` alone on its line is an
 #: HTML block rather than a paragraph (`PL-B83V`).
+# regex: a complete HTML tag alone on its line, a token of the table above.
 _HTML_TAG_LINE = re.compile(
     r" {0,3}(?:<(?!(?i:pre|script|style|textarea)(?![A-Za-z0-9-]))[A-Za-z][A-Za-z0-9-]*"
     r"(?:[ \t]+[A-Za-z_:][A-Za-z0-9_.:-]*"
@@ -213,8 +232,11 @@ _HTML_TAG_LINE = re.compile(
 #: The characters a block's start can open with, past its indent; a line
 #: opening with any other carries a paragraph on or opens one.
 _STARTS = frozenset("#`~<>-+*_=0123456789")
+# regex: a cell of a table's delimiter row, a token of the table above.
 _DELIMITER_CELL = re.compile(r":?-+:?")
 #: A pipe no backslash escapes, which is where a table row splits.
+# regex: a `|` with no backslash before it. `str.split` would also split at an
+# escaped one.
 _CELL_BREAK = re.compile(r"(?<!\\)\|")
 _SETEXT_LEVEL = "setext"
 
