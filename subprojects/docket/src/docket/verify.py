@@ -43,7 +43,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TypeVar
 
-from . import vcs
+from . import done, vcs
 from .config import Config
 from .gitargv import GIT_NETWORK_SUBCOMMANDS
 from .grep import Cache, Wrap, wrapped
@@ -2507,13 +2507,22 @@ def _check_item(
         )
     elif item.not_delegable:
         exemption = f"the item records why no command can prove it - {item.not_delegable}"
-    if not item.verify:
+    elif not item.is_open and done.dated_record(item.body):
+        exemption = "the item's brief holds a dated paragraph that states its result"
+    if not item.verify and not item.tests:
+        if item.is_open and not unexcused:
+            # The tests that show the work are named when the item closes
+            # (`PL-FN11`), so an open item's branch has nothing to read yet.
+            exemption = exemption or (
+                "the item is still open, and the tests that show its work are named when "
+                "it closes, where `docket check` reads them"
+            )
         if not exemption:
-            report.checks.append(Check("has a `verify:` command", False, missing, unexcused))
+            report.checks.append(Check(SHOWS_ITS_WORK, False, missing, unexcused))
             report.stopped_early = True
             return report
         report.checks.append(
-            Check("has a `verify:` command", False, f"none recorded: {exemption}", advisory=True)
+            Check(SHOWS_ITS_WORK, False, f"none recorded: {exemption}", advisory=True)
         )
 
     # An empty diff is not verified work. Every path check below would pass on
@@ -2668,6 +2677,20 @@ def _check_item(
 
     # An exempt item reached here with no command; the advisory above already
     # said which exemption applied, and there is nothing left to run.
+    if item.tests and item.status != "dropped":
+        fork = vcs.texts_at_fork(root, done.node_paths([item]), base=base)
+        faults, unread = done.closing_faults(item, root, fork)
+        if fork.declined:
+            unread.insert(0, fork.declined)
+        report.checks.append(
+            Check(
+                "the recorded tests show the work",
+                not faults and not unread,
+                ", ".join(item.tests),
+                (*faults, *(f"not read: {reason}" for reason in unread)),
+            )
+        )
+
     if not item.verify:
         return report
 
@@ -2760,6 +2783,9 @@ def _check_item(
 
 
 #: The mutation check's name on the page.
+#: The check that an item records something to show its work: the tests it
+#: added, in `tests:`, or a command, in `verify:` (`PL-FN11`).
+SHOWS_ITS_WORK = "records what shows its work"
 MUTATION_CHECK = "the unit tests catch a mutation of each changed line"
 #: How long the mutation run may take before the check says it has no answer.
 #: On four cores on 2026-10-24 a run spent about five minutes before its first

@@ -3645,7 +3645,7 @@ def test_dropped_close_out_is_not_a_missing_command(tmp_path: Path) -> None:
 
     report = verify(root, _item(status="dropped", verify=""), _config(), "HEAD~1", self_audit=True)
 
-    command = _check(report, "has a `verify:` command")
+    command = _check(report, "records what shows its work")
     assert command.advisory and not command.blocks
     assert "a dropped item built nothing" in command.detail
     # The half a hard stop was throwing away: the other checks actually ran.
@@ -3706,7 +3706,7 @@ def test_a_not_delegable_item_close_out_is_not_a_missing_command(tmp_path: Path,
         self_audit=True,
     )
 
-    command = _check(report, "has a `verify:` command")
+    command = _check(report, "records what shows its work")
     assert command.advisory and not command.blocks
     assert "proving it means cutting a release" in command.detail
     assert not report.stopped_early
@@ -3730,7 +3730,7 @@ def test_a_done_item_with_no_command_and_no_reason_still_fails_hard(tmp_path: Pa
 
     report = verify(root, _item(status="done", verify=""), _config(), "HEAD~1", self_audit=True)
 
-    command = _check(report, "has a `verify:` command")
+    command = _check(report, "records what shows its work")
     assert command.blocks and not command.advisory
     assert report.stopped_early
     assert not report.passed
@@ -3866,7 +3866,7 @@ def test_a_not_delegable_line_does_not_excuse_a_command_the_base_holds(
         self_audit=True,
     )
 
-    command = _check(report, "has a `verify:` command")
+    command = _check(report, "records what shows its work")
     assert command.blocks
     assert "the branch's own word for skipping it" in command.detail
     assert f"HEAD~2 commissions: {LEAVES_A_MARK}" in command.lines
@@ -3904,7 +3904,7 @@ def test_a_not_delegable_line_excuses_nothing_where_the_base_cannot_be_read(tmp_
         self_audit=True,
     )
 
-    command = _check(report, "has a `verify:` command")
+    command = _check(report, "records what shows its work")
     assert command.blocks
     assert "no item store at HEAD~2:docs/queue" in command.detail
     assert not report.passed

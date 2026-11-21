@@ -85,6 +85,7 @@ from .vcs import (
     RecordReport,
     WrittenReport,
 )
+from .done import ClosingReport, node_refusal, shows_its_work
 from .verify import LandedReport, file_arguments, never_fails, reads_check_output, reenters_verify
 
 REQUIRED_BRIEF = ("**Problem.**", "**Why it matters.**")
@@ -560,9 +561,7 @@ def brief_gaps(
         # `**Problem.**` alone, which `docket new` writes from the title. The
         # two that go are the two a housekeeping pass cannot answer without
         # restating the category: "why it matters" is the standing rule that
-        # made the pass necessary, and "done when" is the `verify:` command in
-        # prose. The command still has to be there - the exemption is the
-        # argument, never the proof.
+        # made the pass necessary, and "done when" is the queue edit itself.
         required = [REQUIRED_BRIEF[0]]
     else:
         required = list(REQUIRED_BRIEF) + ([] if blocked else [DONE_WHEN])
@@ -781,40 +780,27 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
         if stub:
             report.errors.append(stub_error(where, stub))
 
-    # The `verify:` gate sits at `ready` rather than at capture, and the
-    # placement is the whole of the rule. Demanding a command at the moment an
-    # idea occurs is the same tax as demanding a priority, and the block above
-    # exists to refuse it. `ready` is where the item has stopped being an idea
-    # and become a commitment to do work, which is the first point at which
-    # "what would prove this done" is answerable at all.
-    #
-    # `not-delegable` satisfies the requirement in place of a command, because
-    # some work genuinely has no check that can run beforehand - proving a
-    # release-time fix means cutting a release - and an item saying so is
-    # better specified than one carrying a command invented to satisfy a
-    # checker. What is refused is silence.
-    #
-    # Every item is held to it, whatever its capture date. The set captured
-    # before the rule was grandfathered from 2026-08-30 until it drained to
-    # zero on 2026-10-01, and the date that grandfathered it went with it
-    # (`PL-Z34C`). The closing gate's date is the one that stays, so it is also
-    # what says the project has adopted the rule at all.
-    if item.status == "ready" and config.verify_required_at_close_from is not None:
-        if not item.verify and not item.not_delegable:
-            report.errors.append(
-                f"{where}: is ready but names no `verify:` command; give the command "
-                "that would prove it done, or record in `not-delegable` why no command can"
-            )
+    # `ready` asks for no command. The brief's **Done when.** section, which
+    # `brief_gaps` requires above, says in words what will be true, and what
+    # shows it is recorded when the item closes (`PL-FN11`). A test named
+    # before the work exists is a guess at its name.
+    if item.is_open and item.tests:
+        report.errors.append(
+            f"{where}: is {item.status or 'untriaged'} and records `tests:`; the tests that "
+            "show an item's work are named when it closes, in the write that sets "
+            "`status: done`, because a test named before the work is a guess at its name"
+        )
+    for entry in item.tests:
+        if refusal := node_refusal(entry):
+            report.errors.append(f"{where}: its `tests:` entry {refusal}")
 
-    # `payoff:` sits at the same status as the gate above, and the placement
-    # carries the same argument: an idea being captured owes nothing, and
+    # `payoff:` sits at `ready`: an idea being captured owes nothing, and
     # `ready` is where the item has become a commitment to do work and "what
     # does closing this buy?" has an answer.
     #
-    # No escape hatch, unlike `not-delegable` above. Some work genuinely has
-    # no command that can run beforehand; no work has no consequence, and an
-    # item nobody can say that much about is a finding about the item rather
-    # than a case for an exemption.
+    # No escape hatch. No work has no consequence, and an item nobody can say
+    # that much about is a finding about the item rather than a case for an
+    # exemption.
     #
     # Presence and nothing else. Whether the line states a *consequence* or
     # merely restates the title is exactly the judgment this project refuses
@@ -828,25 +814,22 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
                 "what closing it buys - the consequence, not a restatement of the title"
             )
 
-    # The same requirement at the other end of the item's life, and the half
-    # that is permanent. The gate above fires on `status == "ready"`, so an
-    # item that goes `needs-decision` to `done` in one commit is never asked
-    # by it - `PL-VYXP`, `PL-BNPY` and `PL-H1JD` all did - and this is what
-    # asks it. It is also what drained the set the gate above once
-    # grandfathered (`PL-J49T`, `PL-Z34C`): closing an item is the moment the
-    # work exists and what proved it is known, so it is the first moment the
-    # command can be written *having been run*.
-    #
-    # An error rather than an advisory because nothing here needs judgment.
-    # Whether the field is present is decidable; only what it should say is
-    # not, and this refuses silence without guessing at the sentence.
-    # `dropped` is excluded: an item that will not be done carries a `reason`,
-    # not a command for work nobody did.
+    # A closed item records what shows its work, and `done` says what each
+    # kind of work records: the tests it added, in `tests:`; one search for
+    # fixed text, in `verify:`; or a dated paragraph of its brief that states
+    # its result. `not-delegable` says why none can. An error rather than an
+    # advisory, because whether a record is present is decidable.
+    # `done.closing_faults` reads what the record says, once, on the branch
+    # that closes the item. `dropped` is excluded: an item that will not be
+    # done carries a `reason`.
     if item.status == "done" and _verify_required_at_close(item, config):
-        if not item.verify and not item.not_delegable:
+        if not shows_its_work(item):
             report.errors.append(
-                f"{where}: is done but names no `verify:` command; give the command "
-                "that proved it, or record in `not-delegable` why no command can"
+                f"{where}: is done but records nothing that shows its work; name the tests "
+                "the work added in `tests:`, keep one `grep -qF` or `! grep -qF` in "
+                "`verify:` for a document or a deletion, or, where the work is a result "
+                "written into this brief, open the paragraph that states it with a bold "
+                "label carrying its date, such as `**Measured 2026-11-21.**`"
             )
 
     # What the command may *be*, once it is present - the decidable half of the
@@ -1103,7 +1086,7 @@ def _recommendation_required(item: Item, config: Config) -> bool:
 
 
 def _verify_required_at_close(item: Item, config: Config) -> bool:
-    """Whether the closing `verify:` rule applies to this item.
+    """Whether the rule that a closed item records what shows its work applies to this item.
 
     Anchored to `closed:` rather than `added:`, which is what let it reach the
     items captured before the `ready` gate began - exempt there until that set
@@ -3829,6 +3812,19 @@ def _check_closures(report: Report, closures: ClosureReport | None) -> None:
         )
 
 
+def _check_closing(report: Report, closing: ClosingReport | None) -> None:
+    """Report what is wrong with what each item this checkout closes records to show its work."""
+    if closing is None:
+        return
+    if closing.declined:
+        report.declined.append(
+            f"whether what each item closed here records shows its work: {closing.declined}"
+        )
+    for item in report.items:
+        for fault in closing.faults.get(item.identifier, ()):
+            report.errors.append(f"{_where(item)}: closes on this branch, and {fault}")
+
+
 def _check_records(report: Report, records: RecordReport | None) -> None:
     """Hold a closed item's `verify:` to the command that was actually run.
 
@@ -4627,6 +4623,7 @@ def analyze(
     gone: GoneReport | None = None,
     verify_files: frozenset[str] | None = None,
     worked: str | None = None,
+    closing: ClosingReport | None = None,
 ) -> Report:
     """Validate and groom in one pass.
 
@@ -4702,6 +4699,10 @@ def analyze(
     `worked` is the item a headless worker is working on this branch, which
     the caller reads from `WORKER_ITEM_ENV` (`PL-WJJ8`). A caller that does not
     supply it reports every open item whose command passes as an error.
+
+    `closing` is what `done.read_closing` found wrong with the records of the
+    items this checkout closes (`PL-FN11`). It reads the tree and git, so the
+    caller supplies it, and a caller that does not leaves those records unread.
     """
     settings = config or Config()
     ids = offered.ids if offered is not None else None
@@ -4730,6 +4731,7 @@ def analyze(
     _note_cost(report, landed)
     _check_closures(report, closures)
     _check_records(report, records)
+    _check_closing(report, closing)
     _check_written(report, written, settings, today)
     _check_lost(report, lost)
     _ready_before_its_date(report, today)
