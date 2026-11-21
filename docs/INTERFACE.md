@@ -1465,8 +1465,8 @@ the rebreathing circuit and the muscle group's slow return hold it up. At 23.5 h
 elimination it runs above them again, by 12 to 24%, or by a factor of 2.1 for desflurane.
 That is because this model's fat group returns more agent than the fitted fat term. In
 that subsection's open-circuit run, which has no rebreathing, the tissue return alone falls
-to a third to a half of the mean curve at its lowest, near hour 8 for desflurane and near
-hour 13 for the others.
+after the first hour as low as a third to a half of the mean curve, near hour 8 for
+desflurane and near hour 13 for the others.
 <!-- not-restated: 2.1 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
