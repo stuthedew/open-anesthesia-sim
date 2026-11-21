@@ -18,6 +18,14 @@ page and decides which file a session reads.
    because a squash-merge discards the branch commit while the pull request
    number outlives it.
 
+   **Record what shows the work in the same call.** For code, name the tests
+   the branch added or changed: `--tests tests/unit/test_run.py::test_name`.
+   For a document or a deletion, keep one search for fixed text in `--verify`.
+   An item whose brief states its result under a dated bold label records
+   nothing more. `.claude/skills/docket/modes/triage.md` § "What shows an item
+   is done, and when it is recorded" has each form. `set` writes nothing where
+   a named test is one the branch neither added nor changed (`PL-FN11`).
+
    **Retitle an open pull request to lead with the same ids, and do it
    before pushing the closure.** `pr-title` runs on `synchronize` as well as
    `edited`, so a closure pushed under the old title is checked against a
@@ -68,7 +76,7 @@ page and decides which file a session reads.
    request cannot go green until all of them have left it (`PL-2349`). You are
    holding the context the judgment needs, which a later grooming pass would
    not be. Read each against the tree and either `bin/docket set <id> --status
-   ready` with its `--verify` and `--payoff` written for the end state, or
+   ready` with its `--payoff` written for the end state, or
    write what is really holding it into `blocked-by` - an item for the
    condition, per `PL-0H5D` - in this branch's commit. Of 13 items reached
    this way across the two passes that preceded the print, 6 were genuinely
@@ -114,7 +122,8 @@ page and decides which file a session reads.
 5. **Audit the branch: `bin/docket verify --self <id>`**, naming every id the
    closing commit leads with, since the diff is selected per id from the
    commits that name it. **Do step 8's check of the branch's text first.** Its fixes
-   change files that this audit reads. It runs the item's own `verify:` command and `make
+   change files that this audit reads. It reads the tests the item records against
+   the branch, runs the item's `verify:` command where it has one, and runs `make
    check`, so it *is* the close-out's proof rather than a step beside one -
    re-run it until it says `ACCEPT`. A `REJECT` that stopped early ran
    neither.

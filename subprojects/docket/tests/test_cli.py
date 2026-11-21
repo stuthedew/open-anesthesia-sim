@@ -13820,3 +13820,65 @@ def test_flight_says_nothing_of_the_owner_when_no_pull_request_waits(
     out = capsys.readouterr().out
     assert "with no question recorded" not in out
     assert "could not be read:" not in out
+
+
+# --- what a closing item records, read at the write and on the branch --------
+
+
+def _closing_repo(root: Path) -> Path:
+    """A branch that added `test_new` beside `test_old`, and the store holding `PL-0001`."""
+    git = _repo_with_items(root)
+    (root / "tests").mkdir()
+    (root / "tests" / "test_thing.py").write_text("def test_old():\n    assert 1\n")
+    git("add", "-A")
+    git("commit", "-qm", "a test on main")
+    git("checkout", "-q", "-b", "work")
+    (root / "tests" / "test_thing.py").write_text(
+        "def test_old():\n    assert 1\n\n\ndef test_new():\n    assert 2\n"
+    )
+    git("commit", "-qam", "PL-0001 add a test")
+    return root / "items"
+
+
+def _close(store: Path, *recorded: str) -> int:
+    closing = ("--status", "done", "--closed", "2026-08-24")
+    return _run_with_git("set", "PL-0001", *closing, *recorded, "--items", str(store))
+
+
+def test_closing_an_item_records_the_test_its_branch_added(tmp_path: Path) -> None:
+    store = _closing_repo(tmp_path)
+
+    assert _close(store, "--tests", "tests/test_thing.py::test_new") == 0
+
+    written = (store / "PL-0001-on-main.md").read_text()
+    assert "tests: tests/test_thing.py::test_new\n" in written
+
+
+def test_closing_an_item_on_a_test_its_branch_left_alone_writes_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Refused at the write that names the test, where the session can still name another."""
+    store = _closing_repo(tmp_path)
+    before = (store / "PL-0001-on-main.md").read_text()
+
+    assert _close(store, "--tests", "tests/test_thing.py::test_old") == 1
+
+    assert "neither added nor changed" in capsys.readouterr().out
+    assert (store / "PL-0001-on-main.md").read_text() == before
+
+
+def test_check_reads_what_an_item_closed_on_this_branch_records(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The same reading, for a closure written by hand or by an earlier commit."""
+    store = _closing_repo(tmp_path)
+    assert _close(store, "--tests", "tests/test_thing.py::test_new") == 0
+    path = store / "PL-0001-on-main.md"
+    path.write_text(path.read_text().replace("::test_new", "::test_old"))
+    capsys.readouterr()
+
+    _run_with_git("check", "--items", str(store))
+
+    out = capsys.readouterr().out
+    assert "closes on this branch, and" in out
+    assert "neither added nor changed" in out

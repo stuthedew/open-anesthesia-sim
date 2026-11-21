@@ -1637,7 +1637,7 @@ def test_a_blocked_item_whose_every_blocker_has_closed_is_an_error() -> None:
     report = analyze([done, blocked], TODAY)
 
     assert _has(report.errors, "sits at `blocked` though every blocker has closed (PL-B1B1)")
-    assert _has(report.errors, "move it to `ready` with its `verify:` and `payoff:`")
+    assert _has(report.errors, "move it to `ready` with its `payoff:` written")
     assert _has(report.errors, "record what really holds it in `blocked-by`")
     assert not _has(report.advisories, "every blocker has closed")
 

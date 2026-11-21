@@ -2383,7 +2383,7 @@ def _say_unblocked(
         "every blocker has closed. Not promoted for you: a closed blocker is not evidence "
         "that nothing else holds an item, and 7 of 13 measured this way were held by "
         "something the field could not see. Read each against the tree, then `docket set "
-        "<id> --status ready` with its `--verify` and `--payoff`, or write what is really "
+        "<id> --status ready` with its `--payoff`, or write what is really "
         "holding it into `blocked-by` - an item for the condition, as `PL-0H5D` settled."
     )
 

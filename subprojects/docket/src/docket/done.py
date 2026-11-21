@@ -103,8 +103,9 @@ def test_faults(
     """What is wrong with each test `entries` names, and what could not be read.
 
     `read` gives a path's text in the working tree, or `None` where it is no
-    file, and may raise `ValueError` for text it cannot decode. A test shows the work where the tree defines it and the branch added
-    or changed it, measured against `fork`.
+    file, and may raise `ValueError` for text it cannot decode. A test shows
+    the work where the tree defines it and the branch added or changed it,
+    measured against `fork`.
     """
     faults: list[str] = []
     unread: list[str] = []

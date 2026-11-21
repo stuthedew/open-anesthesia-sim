@@ -28,6 +28,7 @@ from pathlib import Path
 
 from . import fences, markdown
 from .config import Config
+from .done import ClosingReport, node_refusal, shows_its_work
 from .grep import read_grep
 from .instructions import Assertion
 from .lines import split_lines
@@ -85,7 +86,6 @@ from .vcs import (
     RecordReport,
     WrittenReport,
 )
-from .done import ClosingReport, node_refusal, shows_its_work
 from .verify import LandedReport, file_arguments, never_fails, reads_check_output, reenters_verify
 
 REQUIRED_BRIEF = ("**Problem.**", "**Why it matters.**")
@@ -791,8 +791,8 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
             "`status: done`, because a test named before the work is a guess at its name"
         )
     for entry in item.tests:
-        if refusal := node_refusal(entry):
-            report.errors.append(f"{where}: its `tests:` entry {refusal}")
+        if unreadable := node_refusal(entry):
+            report.errors.append(f"{where}: its `tests:` entry {unreadable}")
 
     # `payoff:` sits at `ready`: an idea being captured owes nothing, and
     # `ready` is where the item has become a commitment to do work and "what
@@ -3356,7 +3356,7 @@ def stale_blocked_error(item: Item) -> str:
     """
     return (
         f"{_where(item)}: sits at `blocked` though every blocker has closed "
-        f"({', '.join(item.blocking_items)}); move it to `ready` with its `verify:` and "
+        f"({', '.join(item.blocking_items)}); move it to `ready` with its "
         "`payoff:` written, or record what really holds it in `blocked-by` - an item for "
         "the condition, as `PL-0H5D` settled - in the pull request that closed the last one"
     )
