@@ -171,10 +171,7 @@ def test_recovery_header_says_the_record_is_historical(
     assert pr_body_check.NOTE.startswith("historical record")
     assert "docs/pr-bodies/README.md" in pr_body_check.NOTE
     assert ":" not in pr_body_check.NOTE
-    parsed = pr_body_check.parse_record(text)
-    assert parsed is not None
-    assert parsed[0]["note"] == pr_body_check.NOTE
-    assert parsed[1] == body
+    assert text.endswith(f"---\n\n{body}")
 
 
 def test_a_body_unreadable_from_the_api_is_left_for_a_later_run(
@@ -701,15 +698,13 @@ def test_compare_is_its_own_mode_and_exits_zero(
 def _git_serving(
     monkeypatch: pytest.MonkeyPatch, records: list[tuple[str, str, str]], shallow: str = "false"
 ) -> None:
-    """`_install`'s history, plus whether the clone is shallow and the line `--anchors` reads."""
+    """`_install`'s history, plus whether the clone is shallow."""
     _install(monkeypatch, records)
     served = pr_body_check._git
 
     def fake(*args: str) -> str:
         if args[:2] == ("rev-parse", "--is-shallow-repository"):
             return f"{shallow}\n"
-        if args[0] == "rev-list":
-            return "".join(f"{sha}\n" for sha, _, _ in records)
         return served(*args)
 
     monkeypatch.setattr(pr_body_check, "_git", fake)
@@ -737,91 +732,14 @@ def test_a_clean_history_says_so_and_a_shallow_one_says_what_it_read(
     assert "only the commits it holds were read" in capsys.readouterr().out
 
 
-def test_a_recovery_file_whose_commit_sha_no_longer_resolves_is_reported(
-    monkeypatch: pytest.MonkeyPatch, tmp_path, capsys: pytest.CaptureFixture[str]
+def test_the_readme_beside_the_records_is_not_counted_as_one(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:
-    """`PL-73G8`: an anchor a history rewrite left naming nothing fails, and says what it is now.
-
-    The 2026-09-06 signing rewrite remapped every hash on `main` once, and
-    `PL-TDBT` counted 30 unresolvable shas across the corpus with nothing
-    reporting one as it was written. A record made before the merge has no
-    anchor to check.
-    """
-    recovery = tmp_path / "pr-bodies"
-    recovery.mkdir()
-    (recovery / "768.md").write_text(f"---\npr: 768\ncommit: {'0' * 40}\n---\n\nBody.\n")
-    (recovery / "769.md").write_text(f"---\npr: 769\ncommit: {'b' * 40}\n---\n\nBody.\n")
-    (recovery / "1059.md").write_text("---\npr: 1059\nrecorded: 2026-09-26\n---\n\nBody.\n")
-    monkeypatch.setattr(pr_body_check, "RECOVERY_DIR", recovery)
-    _git_serving(
-        monkeypatch,
-        [("a" * 40, "PL-8PS6: a title (#768)", ""), ("b" * 40, "PL-8PS6: another (#769)", "")],
-    )
-
-    assert pr_body_check.anchors("origin/main") == 1
-    err = capsys.readouterr().err
-    assert "768.md: commit 000000000000; its squash commit there is " + "a" * 40 in err
-    assert "769.md" not in err
-    assert "1059.md" not in err
-
-
-def test_anchors_name_a_record_whose_commit_they_cannot_read(
-    monkeypatch: pytest.MonkeyPatch, tmp_path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """`PL-4ZVH`: a record whose `commit:` reads as nothing is named, never passed in silence.
-
-    Without failing: nothing says its anchor dangles, only that it went
-    unread. A `recorded:` record never carried one and stays unnamed, and a
-    `commit:` wrapped onto an indented line is read whole and checked.
-    """
-    recovery = tmp_path / "pr-bodies"
-    recovery.mkdir()
-    (recovery / "768.md").write_text("Body with no front matter.\n")
-    (recovery / "769.md").write_text("---\npr: 769\ncommit:\n---\n\nBody.\n")
-    (recovery / "770.md").write_text(f"---\npr: 770\ncommit:\n  {'a' * 40}\n---\n\nBody.\n")
-    (recovery / "1059.md").write_text("---\npr: 1059\nrecorded: 2026-09-26\n---\n\nBody.\n")
-    monkeypatch.setattr(pr_body_check, "RECOVERY_DIR", recovery)
-    _git_serving(monkeypatch, [("a" * 40, "PL-8PS6: a title (#770)", "")])
-
-    assert pr_body_check.anchors("origin/main") == 0
-    printed = capsys.readouterr()
-    assert printed.out.splitlines() == [
-        "pr-body: docs/pr-bodies/768.md: anchor not checked: no front matter is read.",
-        "pr-body: docs/pr-bodies/769.md: anchor not checked: its `commit:` holds no value.",
-    ]
-    assert printed.err == ""
-
-
-def test_anchors_pass_over_the_readme_beside_the_records(
-    monkeypatch: pytest.MonkeyPatch, tmp_path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """`PL-TDBT`: the directory's README is not a record, so `make check` says nothing of it.
-
-    Read as one it holds no front matter, and `--anchors` would name it as an
-    anchor not checked on every run: a line nobody can act on, in the region
-    where a real one appears.
-    """
+    """`PL-TDBT`: the directory's README says what a record is, and is named for no number."""
     recovery = tmp_path / "pr-bodies"
     recovery.mkdir()
     (recovery / "README.md").write_text("# Recovered pull request bodies\n")
     (recovery / "768.md").write_text(f"---\npr: 768\ncommit: {'a' * 40}\n---\n\nBody.\n")
     monkeypatch.setattr(pr_body_check, "RECOVERY_DIR", recovery)
-    _git_serving(monkeypatch, [("a" * 40, "PL-8PS6: a title (#768)", "")])
 
-    assert pr_body_check.anchors("origin/main") == 0
-    assert capsys.readouterr() == ("", "")
     assert pr_body_check.recovered() == {768}
-
-
-def test_anchors_on_a_shallow_clone_say_nothing_was_checked(
-    monkeypatch: pytest.MonkeyPatch, tmp_path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """A clone cut short cannot tell a dangling anchor from one past its graft, so it says so."""
-    recovery = tmp_path / "pr-bodies"
-    recovery.mkdir()
-    (recovery / "768.md").write_text(f"---\npr: 768\ncommit: {'0' * 40}\n---\n\nBody.\n")
-    monkeypatch.setattr(pr_body_check, "RECOVERY_DIR", recovery)
-    _git_serving(monkeypatch, [("a" * 40, "PL-8PS6: a title (#768)", "")], shallow="true")
-
-    assert pr_body_check.anchors("origin/main") == 0
-    assert "not checked" in capsys.readouterr().out

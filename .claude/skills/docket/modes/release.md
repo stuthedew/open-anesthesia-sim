@@ -244,7 +244,7 @@ python3 tools/pr_body_check.py --recover  # only where it named any
 ```
 
 `--recover` reads the public API with no token and writes one file per body,
-which `make check`'s `--anchors` then holds to its squash commit. Commit them
+whose `commit:` names its squash commit. Commit them
 with the release's other edits: they ride its pull request, and `bin/docket
 verify` counts each as a `record` rather than as work outside `touches`. A body
 the API could not serve is named and left, and the next release picks it up.

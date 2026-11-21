@@ -251,15 +251,8 @@ check: sync
 # above, and reads the working tree as that line does, so a number `record N`
 # has just written counts before it is committed (`PL-T8PT`).
 	python3 tools/pr_record_check.py --discover
-# The body records beside the number (`PL-979D`, `PL-73G8`): a recovered body's
-# `commit:` is the one field tying it to the tree, and a history rewrite leaves
-# it naming nothing with no other check noticing. Offline, and it says so
-# rather than passing where the clone is shallow.
-	python3 tools/pr_body_check.py --anchors
-# Beside the guard above because it is the same category one level down: that
-# one asks whether this branch's work is visible, this asks whether a rule's
-# declared scope is the one it will actually get. Reads only the frontmatter of
-# `.claude/rules/*.md`, so it costs nothing. `PL-LLWN`.
+# Whether a rule's declared scope is the one it will actually get. Reads only
+# the frontmatter of `.claude/rules/*.md`, so it costs nothing. `PL-LLWN`.
 	python3 tools/rules_paths_check.py
 # Each headless worker run's record on its branch needs the review's outcome
 # before the branch merges, so headless and chat work can be compared. Reads

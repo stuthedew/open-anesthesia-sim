@@ -9994,12 +9994,6 @@ def _item_copy(body: str) -> str:
     return f"---\nid: PL-K7QX\ntitle: An item\nstatus: ready\n---\n\n{body}"
 
 
-def _recovered_commit(text: str) -> str | None:
-    """The `commit:` `pr_body_check` reads from a recovered record, or None where it reads none."""
-    parsed = pr_body_check.parse_record(text)
-    return parsed[0].get("commit") if parsed else None
-
-
 def _provenance_under(above: str) -> tuple[list[tuple[int, list[str]]], str]:
     """What `_provenance_rows` reads of its section holding `above`, then the table."""
     return doc_check._provenance_rows(
@@ -12161,12 +12155,7 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
         lambda _: docket_vcs._standing(_item_copy(TWO_TABLES), _item_copy(TWO_TABLES_JOINED)),
         "ahead",
     ),
-    # `tools/pr_body_check.py` (`PL-4ZVH`): a recovered record's front matter
-    # is the item convention's, and git folds a trailer as RFC 822 does.
-    "recovered records, a commit continued on an indented line": (
-        lambda _: _recovered_commit(f"---\npr: 768\ncommit:\n  {'a' * 40}\n---\n\nBody.\n"),
-        "a" * 40,
-    ),
+    # `tools/pr_body_check.py` (`PL-4ZVH`): git folds a trailer as RFC 822 does.
     "appended trailers, a trailer folded onto a second line": (
         lambda _: pr_body_check.normalise(
             "Why.\n\nCo-authored-by: A Long Name\n <a@example.com>\n"

@@ -3,11 +3,13 @@ id: PL-F7XT
 title: Retire tools/pr_body_check.py --anchors from make check and CI, and keep docs/pr-bodies/ as a closed archive
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra
 feature: standing-weight
 touches: Makefile, .github/workflows/quality.yml, tools/pr_body_check.py, tests/unit/test_pr_body_check.py, tools/doc_check.py, tests/unit/test_doc_check.py, docs/apparatus.md, docs/pr-bodies/README.md, .claude/skills/docket/modes/release.md
 added: 2026-11-21
+closed: 2026-11-21
+pr: 2185
 payoff: make check and CI run one check fewer, and the tool that recovers a dropped pull request body loses the mode that never refused
 verify: ! grep -qF 'pr_body_check.py --anchors' Makefile && ! grep -qF 'pr_body_check.py --anchors' .github/workflows/quality.yml && ! grep -qF 'def anchors' tools/pr_body_check.py
 ---
@@ -25,3 +27,7 @@ verify: ! grep -qF 'pr_body_check.py --anchors' Makefile && ! grep -qF 'pr_body_
 `docs/pr-bodies/README.md` says that `--anchors` keeps `commit:` current, so that sentence changes. No record changes.
 
 **Generator check.** One-off. It is the removal that the owner decided in `PL-KGPR` from `PL-LY24`'s count, and no fact was misread to cause it.
+
+**Done 2026-11-21.** `make check` and `.github/workflows/quality.yml` no longer run `--anchors`. `tools/pr_body_check.py` loses the mode and `parse_record`, the record reader that only the mode used. Their tests go with them. One test stays in a new form: `docs/pr-bodies/README.md` is not counted as a record. The default mode, `--recover`, `--compare` and `--screen-push` are unchanged, and so is the release step that runs the first two.
+
+Documents checked, and changed where they said the mode runs: `docs/pr-bodies/README.md` (the sentence on `commit:`), `.claude/skills/docket/modes/release.md` (the recovery step), `docs/apparatus.md` (the tool list and the floor commands), and two docstrings in `tools/doc_check.py`. Checked and left: `docs/maintainer.md` and `docs/resident-instructions.md` name the tool's default mode and `--recover` only. The `Makefile` comment above `tools/rules_paths_check.py` still pointed at the branch-id check that `PL-HS2T` removed, and is corrected here.
