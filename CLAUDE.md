@@ -2,20 +2,9 @@
 
 These instructions apply to all AI coding agents working on this repository.
 
-Everything here is resident: it loads at launch, in every session, before
-anything has been read. It is therefore limited to what a session could get
-wrong *before* it would think to look anything up. The rest of the working
-agreement is routed to where it fires — `.claude/skills/docket/SKILL.md` for
-the queue workflows, `.claude/rules/instruction-writing.md` for the shape of a
-reply, `.claude/rules/expert-review.md` for the standard every approach is
-judged against (resident too, since an approach is chosen in a reply),
-`.claude/rules/plain-writing.md` for how a sentence is worded (resident too),
-`.claude/rules/core-domain.md` and `.claude/rules/apparatus-standard.md` for
-the bars that apply to particular parts of the tree, and
-`docs/maintainer.md` for what only the project owner can act on. Nothing was
-dropped in that routing; adding to it follows the same test, below, and
-`docs/resident-instructions.md` records what each block that stayed was tested
-against.
+This file and the three rules in `.claude/rules/` with no `paths:` load at
+launch. Queue workflows are in the `docket` skill, the owner's own tasks are in
+`docs/maintainer.md`, and `docs/resident-instructions.md` records each move.
 
 ## What this project is
 
@@ -40,16 +29,8 @@ of it, that the effort belongs on the product instead — is answered here, and
 raising it again spends a reply re-deriving what this section already settles
 (`PL-9J2W`).
 
-**That answers the level, not the trend** (project owner, 2026-09-19). The
-apparatus was effectively the product while it was being built, so the
-refutation above was written about a period that has ended, and it cannot tell
-two claims apart. "There is too much apparatus, the effort belongs on the
-product" stays refused. "Apparatus inflow should be declining now that the
-functionality is settled, and if it is not, something is generating work we
-should go and find" was never asked, is live, and is a diagnostic expectation
-rather than a ratio — no ratio is tracked or enforced. `PL-04KR` (the
-pre-registered apparatus-convergence baseline) holds its numbers and
-predictions; `bin/docket release` names any that break (`PL-WXKD`).
+**That answers the level, not the trend.** Apparatus inflow should now decline,
+and if it does not, find what generates the work (`PL-04KR`, `PL-WXKD`).
 
 **While any open workflow-lane item carries `generator: live`, no new workflow
 mechanism is built** (project owner, 2026-09-22, ratified, and narrowed to the
@@ -118,9 +99,7 @@ So, before building what was described:
   that is green, choosing between approaches with little between them, and
   anything not yet actionable. Each is settled below, in § "The queue", or by
   `.claude/rules/instruction-writing.md` rule 14, which gives the last of them
-  three dispositions and makes all three yours. None returns here as a
-  question. This list is here rather than only at those five places because a
-  session that retains one sentence of this section retains the bolded one.
+  three dispositions and makes all three yours. None returns here as a question.
 - Put the case in a form that can be decided in one read: what was asked for,
   what would be built instead, why it is better, and what it costs. Give a
   recommendation, not a survey of the field — name the one worth taking.
@@ -174,35 +153,19 @@ asked for in their own words is firmer. Four consequences:
   clinical value is not a preference either kind of decision can settle.
 
 **`.claude/rules/instruction-writing.md` decides the shape of a reply, and it
-wins.** It loads in every session and applies unasked, so it never needs to be
-named in a prompt — including its rule 14, the closing block of what the owner
-has to do, which every reply ends with. Where it and another instruction —
-this file, a skill, an item's brief — describe the same message differently,
-the rules file decides *shape* and the other decides *content*: what the reply
-must contain, in what words, with what judgment, is theirs; what comes first is
-the rules file's. Being the more specific document does not carry the format
-question. A prescribed opening that cannot survive that is edited, not obeyed —
-say so and fix it, per the behavior-change rule below. This file states no
-reply format of its own, deliberately: two documents specifying one thing is
-the hazard that rule exists to remove.
+wins.** It applies unasked, rule 14's closing block included. Any other
+instruction decides what a reply contains, never what comes first. Edit a
+prescribed opening that conflicts with it, and say so.
 
-The ask-gate in this section, which stops for an answer before building a
-deliverable that differs from the one described, governs the deliverable,
-not the session. Ordinary judgment inside an
-approach already agreed — naming, structure, where a thing lives, how it is
-tested, whether the work continues here or moves to a fresh session — stays
-yours. The trigger is a deliverable that would differ materially from the one
-described, not every decision taken while building it.
+The ask-gate governs the deliverable, not the session. Ordinary judgment inside
+an approach already agreed stays yours: naming, structure, where a thing lives,
+how it is tested, and whether the work continues here or in a fresh session.
 
-Nor is the ask-gate a license to redefine the goal, widen the scope, or substitute a
-more interesting problem. The end state is theirs; only the route to it is
-open to argument. The bar for proposing something other than the named
-mechanism is that the alternative is clearly superior *for the same goal* —
-not that it is the one you would have picked. And the safety-critical
-standard below is a floor rather than a preference: where the described
-approach would produce a wrong or misleading clinical value, that is not a
-mechanism preference to be weighed but a correctness problem, and saying so
-is not optional.
+Nor is the ask-gate a license to redefine the goal, widen the scope, or
+substitute a more interesting problem. The end state is theirs; only the route
+to it is open to argument, and only for an alternative that is clearly superior
+*for the same goal*. Where the described approach would produce a wrong or
+misleading clinical value, saying so is not optional.
 
 ## Architecture and development discipline
 
@@ -210,30 +173,13 @@ is not optional.
 - Preserve deterministic results for identical inputs.
 - Add or update tests with every core behavior change.
 - **A shared fact has one source of truth. This is the project's core design
-  principle** (project owner, 2026-10-12: "a hard coding principle", and "make
-  sure this happens. However the best approach"; 2026-10-19: "one source of
-  truth everywhere", "a core design principle", "fix this structurally
-  everywhere"). A value, grammar, predicate, state or reading the repository
-  already holds is read from the one module, data file or writer that owns
-  it. That applies in the simulator, its documents and the apparatus alike,
-  and the fact is never derived again beside it. Before writing a reader of a
-  fact, ask whether a module or document already states it: read that one,
-  or, where none does, write the one record and read it, never a sharper
-  heuristic. **Fix a second copy by its shape, not as one instance.** Replace
-  it with a read of the home, then make the next copy fail through a checked
-  type, a single writer or a check. File the copies a sweep finds under the
-  `one-source-of-truth` feature (`PL-2LB5`). Two copies stay copies: a test's
-  expected value, which `.claude/rules/test-oracles.md` takes from a source
-  independent of the code under test, and a published value restated beside
-  its citation. `tools/literal_home_check.py` refuses a second
-  copy of a number under `src/`, and `tools/fact_home_check.py` refuses a
-  reader of git, the tree, the GitHub API, the default branch or a shell
-  command outside the module that owns it, a constant defined in two
-  apparatus files, and a hand test of an item's status set or `pr:` number
-  outside `docket.model`. What neither check reaches is this sentence's to catch,
-  which is why it is resident (`PL-4S6C`).
-  `.claude/rules/apparatus-standard.md` § "Read the fact from its record;
-  where none exists, write one" has the three shapes a new reader takes.
+  principle.** Read a value, grammar, predicate or state the repository already
+  holds from the module, data file or writer that owns it, everywhere. Where
+  nothing states it, write the one record and read it. **Fix a second copy by
+  its shape**: read the home, then make the next copy fail through a checked
+  type, a single writer or a check. A test's expected value and a published
+  value beside its citation stay copies. `tools/literal_home_check.py` and
+  `tools/fact_home_check.py` refuse the copies they can read.
 - Keep agent/model parameters in validated, versioned data files.
 - Keep executable equations out of data files: the typed payloads in
   `core/parameters.py` already refuse a formula where a number belongs.
@@ -245,11 +191,8 @@ is not optional.
 
 ## Session and tool-use efficiency
 
-Session cost is turns times context, because the whole conversation is resent
-every turn. So the practices below work by keeping context small — and none of
-them overrides the safety-critical verification requirements below: trimming
-applies to routine iteration, never to skipping a check before a commit or
-before finishing.
+Session cost is turns times context, so the practices below keep context small.
+None of them overrides the safety-critical verification requirements below.
 
 - Keep a session short and scoped to one topic; start a fresh one for an
   unrelated topic rather than continuing or compacting a long one. **Reset at
@@ -265,23 +208,14 @@ before finishing.
 - Delegate broad codebase search to exploration subagents, whose transcripts
   stay out of the main context. Treat what they return as leads to verify
   against the source, not findings to rely on.
-- Editing this file or a resident rule mid-session invalidates no cache. The
-  resident set is sent once, at launch, as a user message; an edit on disk
-  changes nothing already sent, so this session keeps its launch copy until a
-  re-read, such as compaction, sends the changed file as a new message
-  (`PL-038`).
 - Batch edits before rerunning the full quality suite (`ruff format`, `ruff
   check`, `mypy`, `pytest`) rather than rerunning all four after each one. Run
   it in full before finishing or committing; use `pytest -q` while iterating,
   and `--cov` only when coverage is the question.
-- **Wait on a long run only through the harness** (project owner,
-  2026-10-25). Start any command you will wait on with the Bash tool's
-  `run_in_background`, never with `nohup`, a trailing `&` or `setsid`. A
-  detached process does not wake the session when it ends, and a container
-  restart kills it without a trace. Before ending a turn to wait, schedule a
-  `send_later` check-in as a fallback. After a gap, run `uptime` before
-  trusting that a run is still going. A hook cannot carry this rule, because
-  the repository's hooks do not run in project threads (`PL-D1FD`).
+- **Wait on a long run only through the harness** (`PL-D1FD`). Start it with
+  the Bash tool's `run_in_background`, never with `nohup`, a trailing `&` or
+  `setsid`. Before ending a turn to wait, schedule a `send_later` check-in.
+  After a gap, run `uptime` before trusting that a run is still going.
 - **Fill a long wait with work** (project owner, 2026-10-25, ratified, over
   leaving the coordinator to notice an idle thread). Before a thread goes idle
   on a wait expected to last more than an hour, it runs `bin/docket next` in
@@ -289,34 +223,24 @@ before finishing.
   is none, it tells the coordinator, so that the place can be filled
   (`PL-D1FD`).
 
-Which model a session runs is the owner's lever rather than a session's, so it
-lives in `docs/maintainer.md` along with the settings that support it.
-
 ## Prefer deterministic tooling over repeated model work
 
-The section above keeps one session cheap; this one keeps every later session
-cheap, and is the higher-leverage of the two. Work moved out of the model is
-paid for once and then runs free; work left to the model is re-derived at full
-context in every session that needs it. `tools/doc_check.py` and
-`subprojects/docket/` are the worked examples. So, when building a mechanism:
+Work moved out of the model is paid for once and then runs free, and work left
+to it is re-derived in every session. So, when building a mechanism:
 
 - **Find the decidable part and put it in code.** Anything answerable by
   reading the tree, a data file, or a diff belongs in a script wired into `make
-  check`, a hook, or CI. Prefer this without being asked — it is standing
-  approval, needing no case put for it each time. The generator pause in
-  § "What this project is" suspends it while any open workflow-lane item
-  carries `generator: live`.
+  check`, a hook, or CI. Prefer this without being asked. The generator pause
+  in § "What this project is" suspends it.
 - **Do not script the judgment.** `tools/doc_check.py` decides whether a cited
   path exists, never whether the sentence around it is still true. A tool that
   guesses at the judgment half is worse than no tool, because its output looks
   authoritative and is not. Where that line falls is the design work.
 - **Use the cheapest sufficient tier:** an existing tool, then a
   standard-library script under `tools/`, then a subagent whose transcript
-  stays out of the main context, then the session itself — the last by a wide
-  margin the most expensive.
+  stays out of the main context, then the session itself.
 - **Summarizing counts, not only deciding.** Printing the few lines a decision
-  needs, instead of loading the documents that hold them, is the same win as
-  answering the question outright.
+  needs is the same win as answering the question outright.
 - **The gate is whether it will genuinely run again.** Build where the work
   recurs and the answer is deterministic. Not for a one-off, not around what a
   linter already does, and not where upkeep would cost more than the passes it
@@ -334,20 +258,11 @@ context in every session that needs it. `tools/doc_check.py` and
   is fluff and goes. Nobody reading it is the symptom, not the test (project
   owner, 2026-10-01, ratified, over an item of its own, `PL-1XZD`). `PL-ZBJ0` carries the evidence.
 
-A script answers identically every
-run and states its rule where a reviewer can read it, which is the
-safety-critical standard's determinism and auditability arriving free.
-
 ## The queue, and how the project owner works
 
 `docs/items/` is the queue: one file per item, read and written through
-`bin/docket <command>`, which runs from a bare checkout with no virtualenv.
-`ROADMAP.md` holds releases; `docs/WORKING_NOTES.md` holds narrative behind
-open threads. **Invoke the `docket` skill for any queue workflow** — picking
-what to work on, triaging, freezing a debt gate, shipping a release, closing an
-item out — rather than reconstructing it from here; `subprojects/docket/README.md`
-carries the item format. The rules below stay resident only because a session
-acts on them before it would have any reason to load the skill.
+`bin/docket <command>`. **Invoke the `docket` skill for any queue workflow.**
+The rules below are those a session acts on before it would load the skill.
 
 **The project owner works in two modes, and they have opposite cost profiles.**
 Recognizing which one is happening is the difference between being useful and
@@ -373,20 +288,12 @@ the briefs is the job being delegated, so propose an answer and invite
 correction rather than handing the question back.
 
 **The trigger for involving them is a real trade-off, not the size of the
-change** (project owner, 2026-09-19). A recurring observed issue, or a cheaper
-route to behavior the project already has, is yours to fix and report —
-including new non-user-facing machinery, and whether or not anyone asked for it.
-It becomes theirs when something genuinely has to be weighed: a major refactor,
-a material risk of breaking what works, an increase in complexity, or a change
-that opens a class of follow-on work. Then put the risk and the reward, and
-stop. Report what the fast path did, in a line, every time — a fast path nobody
-can audit is indistinguishable from a session doing as it likes. A hard count
-on the fast path was considered and refused: any bright line drawn at "adds a
-standing mechanism" would have blocked the convergence check the owner asked
-for three times in the same conversation (`PL-04KR`, the pre-registered
-apparatus-convergence baseline). Nothing was cut to pay for this block; no
-existing sentence grants it, and the ask-gate above turns on a different axis —
-deviating from a described deliverable, not acting without one.
+change.** A recurring issue, or a cheaper route to behavior the project already
+has, is yours to fix and report — including new non-user-facing machinery, and
+whether or not anyone asked for it. It becomes theirs when something has to be
+weighed: a major refactor, a material risk of breaking what works, an increase
+in complexity, or a change that opens a class of follow-on work. Then put the
+risk and the reward, and stop. Report in a line what the fast path did.
 
 - **Capture, always, and capture cheaply.** Any defect, risk, cleanup,
   optimization, inconsistency, or idea identified in a session and not fixed in
@@ -535,17 +442,12 @@ deviating from a described deliverable, not acting without one.
   waits for. The skill holds when a pull request arms, when to bring `main` in,
   when failed checks stop the session, and how to check a published body. The
   push and pull request hooks name it at those moments.
-- **Read only means read only** (project owner, 2026-09-27). Told "read
-  only", or anything meaning look but change nothing, a session writes nothing
-  until the owner lifts it: no file, commit, push, pull request, comment, claim
-  or merge. What it already set going stops unasked - it disarms auto-merge on
-  its own armed pull requests at once and says so, and a check-in it scheduled
-  only reads and reports - because letting it finish is a write nobody
-  approved, and the owner should never have to confirm a hold to prevent a
-  merge. The capture rule and the `pull-request` skill's item-only auto-merge are suspended
-  while it holds; a finding goes into the reply, to be filed once the mode
-  lifts. `#1213` merged after "Read only for now" because its session left it
-  armed and offered a hold (`PL-LK62`).
+- **Read only means read only** (`PL-LK62`). Told "read only", or anything
+  meaning look but change nothing, a session writes nothing until the owner
+  lifts it: no file, commit, push, pull request, comment, claim or merge. What
+  it already set going stops unasked: it disarms auto-merge on its own armed
+  pull requests at once and says so, and a check-in it scheduled only reads and
+  reports. A finding goes into the reply, to be filed once the mode lifts.
 - **Capture intent, and route it by how ready it is.** A **specific change** is
   a queue item, written now. A **feature wanted but not yet ready to build** is
   one unscoped line of intent in `ROADMAP.md` § "Planned milestones" — filing it
@@ -554,30 +456,19 @@ deviating from a described deliverable, not acting without one.
   the design round first and items only once the shape has settled, because an
   idea changes most in its first exchange.
 - **Friction that compounds is recommended the moment it is found, not filed.**
-  Some process findings are paid again by every remaining piece of work. Say so
-  in the reply that finds it, with a recommendation to do it first — recording
-  it and moving on is not enough, because the owner cannot act on what only
-  reached the queue. A finding earns that interruption on any one of four
-  tests and on nothing else: it **gives a wrong answer silently**, so a check
-  passes while the guarantee it stands for is void; it **is being routed
-  around**, a warning or advisory firing so routinely that nobody reads it;
-  it **sits upstream of everything**, in the store or the gate that every other
-  command reads from; or it **is paid on every run, session or commit, at a
-  measured cost** - seconds per CI run, tokens per turn, a step per release -
-  so each day it waits for its band pays it again (project owner, 2026-10-17,
-  ratified, over the three tests as they stood: `PL-4Z5Y` waited 20 days at
-  about 15 minutes of CI a day, `PL-KBVW`). The tests are properties, not
-  enthusiasm: work that is
-  merely valuable, cleaner or more interesting makes no remaining item cheaper
-  and waits for the roadmap.
+  Say so in the reply that finds it, with a recommendation to do it first,
+  because the owner cannot act on what only reached the queue. A finding earns
+  that interruption on any of four tests: it **gives a wrong answer silently**,
+  so a check passes while the guarantee it stands for is void; it **is being
+  routed around**, a warning or advisory firing so routinely that nobody reads
+  it; it **sits upstream of everything**, in the store or the gate that every
+  other command reads from; or it **is paid on every run, session or commit, at
+  a measured cost**. Merely valuable work waits for the roadmap.
 
 **Sweep the docs before calling an item done, and list in the item the files
-you checked.** Landing a change is not finishing it, and stale documentation is
-a safety issue here rather than tidiness: a reader who trusts a wrong statement
-about which agent is running, what a value means, or what the interface
-displays can reach a wrong clinical conclusion from a correct number. The
-`docket` skill's close-out carries what `make check` decides for you and what
-it cannot.
+you checked.** Stale documentation is a safety issue here: a reader who trusts
+a wrong statement about what a value means can reach a wrong clinical
+conclusion from a correct number. The `docket` skill's close-out has the steps.
 
 ## Safety-critical clinical-output standard
 

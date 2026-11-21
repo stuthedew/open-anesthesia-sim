@@ -273,11 +273,10 @@ def _apparatus(
     tmp_path: Path,
     *,
     claude: str = "`tools/`, `docs/worker.md`",
-    review: str = "`tools/`, `docs/worker.md`",
     globs: tuple[str, ...] = ("/tools/**", "/docs/worker.md"),
     workflow: tuple[str, ...] = ("tools", "docs/worker.md", "Makefile"),
 ) -> Path:
-    """A root holding the apparatus set's three copies and a `docket.toml`."""
+    """A root holding the apparatus set's two copies and a `docket.toml`."""
     (tmp_path / "CLAUDE.md").write_text(
         "The workflow apparatus that exists so agent sessions can be productive — "
         f"{claude} — is held to a lower bar.\n",
@@ -285,9 +284,6 @@ def _apparatus(
     )
     rules = tmp_path / ".claude" / "rules"
     rules.mkdir(parents=True)
-    (rules / "expert-review.md").write_text(
-        f"It is not the bar for the\napparatus ({review}), which is held lower.\n", encoding="utf-8"
-    )
     (rules / "apparatus-standard.md").write_text(_frontmatter(*globs), encoding="utf-8")
     listed = "".join(f'  "{entry}",\n' for entry in workflow)
     (tmp_path / "docket.toml").write_text(
@@ -302,20 +298,19 @@ def lane_only(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.mark.usefixtures("lane_only")
-def test_three_copies_that_agree_with_workflow_paths_pass(tmp_path: Path) -> None:
+def test_two_copies_that_agree_with_workflow_paths_pass(tmp_path: Path) -> None:
     assert rules_paths_check.apparatus_set_problems(_apparatus(tmp_path)) == []
 
 
 @pytest.mark.usefixtures("lane_only")
 def test_a_path_missing_from_one_copy_is_named(tmp_path: Path) -> None:
     """The incident shape: `docs/maintainer.md` was in none of them, `.github/` once in two."""
-    root = _apparatus(tmp_path, review="`tools/`")
+    root = _apparatus(tmp_path, claude="`tools/`")
 
     found = rules_paths_check.apparatus_set_problems(root)
 
     assert found == [
-        "apparatus set: .claude/rules/expert-review.md does not name docs/worker.md, "
-        "which another copy of the set names"
+        "apparatus set: CLAUDE.md does not name docs/worker.md, which another copy of the set names"
     ]
 
 
@@ -336,7 +331,6 @@ def test_a_directory_listed_by_a_path_beneath_it_is_placed(tmp_path: Path) -> No
     root = _apparatus(
         tmp_path,
         claude="`subprojects/docket/`",
-        review="`subprojects/docket/`",
         globs=("/subprojects/docket/**",),
         workflow=("subprojects", "Makefile"),
     )

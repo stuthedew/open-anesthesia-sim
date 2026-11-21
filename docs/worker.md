@@ -78,7 +78,8 @@ to be picked up cold; if it is not enough, see **When a brief is unclear**.
    its one item, so work on that branch instead.
 2. For each item, in turn:
    - Do exactly what the brief says.
-   - Run the item's `verify:` command from its front matter. It must pass.
+   - Where the item's front matter carries a `verify:` command, run it. It
+     must pass.
    - Run `make check`. It must pass, **and its own exit status is what says
      so** — see below.
    - Add a `**Worked.**` line to the item's file (see below).

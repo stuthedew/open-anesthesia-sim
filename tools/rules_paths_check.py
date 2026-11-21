@@ -53,14 +53,14 @@ other ([memory](https://code.claude.com/docs/en/memory), read 2026-10-12).
 `tools/doc_check.py` measures the resident set through it, so a nested rule is
 never measured as resident here and left unread there (`PL-9NZ3`).
 
-**A third rule holds the apparatus set's three copies to each other**
-(`PL-21RC`). `CLAUDE.md` names the paths the apparatus standard governs,
-`.claude/rules/expert-review.md` restates them so the scope is read on sight,
-and `.claude/rules/apparatus-standard.md`'s `paths:` is the copy that loads the
-rule. `PL-1KTV` corrected all three by hand when `.github/` was missing from
-them, and `docs/maintainer.md` then went missing from all three the same way.
-Whether the three lists name the same paths needs no judgment, so it is a hard
-rule. So is whether each apparatus path is in `docket.toml`'s
+**A third rule holds the apparatus set's two copies to each other**
+(`PL-21RC`). `CLAUDE.md` names the paths the apparatus standard governs, and
+`.claude/rules/apparatus-standard.md`'s `paths:` is the copy that loads the
+rule. `.claude/rules/expert-review.md` held a third copy until `PL-2PJ6` cut
+its scope paragraph to the simulator's paths. `PL-1KTV` corrected all three by
+hand when `.github/` was missing from them, and `docs/maintainer.md` then went
+missing from all three the same way. Whether the lists name the same paths
+needs no judgment, so it is a hard rule. So is whether each apparatus path is in `docket.toml`'s
 `workflow_paths`, the lane the path's items take.
 
 Whether a `workflow_paths` entry belongs in the apparatus set is the judgment,
@@ -108,16 +108,16 @@ DEAD_PREFIX = "./"
 #: The rule whose `paths:` is the apparatus set's loading copy.
 APPARATUS_RULE = ".claude/rules/apparatus-standard.md"
 
-#: The prose copies of the apparatus set. Each is a file, the words just before
-#: the list, and the words that end it. Whitespace is collapsed before matching,
-#: so a line break inside either phrase does not matter.
+#: The prose copies of the apparatus set, of which there is now one. Each is a
+#: file, the words just before the list, and the words that end it. Whitespace
+#: is collapsed before matching, so a line break inside either phrase does not
+#: matter.
 APPARATUS_LISTS = (
     (
         "CLAUDE.md",
         "The workflow apparatus that exists so agent sessions can be productive — ",
         " —",
     ),
-    (".claude/rules/expert-review.md", "It is not the bar for the apparatus (", ")"),
 )
 
 #: The `workflow_paths` entries outside the apparatus set, so that a session
@@ -442,7 +442,7 @@ def _glob_path(entry: str) -> str | None:
 
 
 def apparatus_set_problems(root: Path) -> list[str]:
-    """Every disagreement between the apparatus set's three copies and `workflow_paths`."""
+    """Every disagreement between the apparatus set's two copies and `workflow_paths`."""
     found: list[str] = []
     copies: dict[str, set[str]] = {}
     for name, opener, closer in APPARATUS_LISTS:
@@ -490,7 +490,7 @@ def apparatus_set_problems(root: Path) -> list[str]:
         if not placed:
             found.append(
                 f"apparatus set: workflow_paths' {entry} is in neither the apparatus set nor "
-                "LANE_ONLY; add it to the three copies of the set, or to LANE_ONLY with its reason"
+                "LANE_ONLY; add it to both copies of the set, or to LANE_ONLY with its reason"
             )
     for entry in LANE_ONLY:
         if entry not in workflow:

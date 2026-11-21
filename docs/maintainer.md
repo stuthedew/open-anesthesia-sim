@@ -171,8 +171,7 @@ lineup it captured **75%**.
 
 **`delegable` is an offer, never an instruction.** It is derived from
 `Item.delegability`. An item qualifies when it is `ready`, has no `safety` or
-`science` class and no open decision, and has a `verify:` command that proves
-it done. Its `touches` must also be declared and lie wholly outside
+`science` class and no open decision. Its `touches` must also be declared and lie wholly outside
 `protected_paths` and `gate_paths`, where a directory holding one of those
 paths counts as inside it. Each `touches` path outside `tests/` must also be
 placed by `workflow_paths` or `product_paths`, and its effort must be `S` or
