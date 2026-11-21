@@ -264,6 +264,12 @@ def test_a_previous_generation_a_newer_build_wrote_turns_saving_off(tmp_path: Pa
     with_invalid_current = a_store(tmp_path).load(SHIPPED)
 
     assert (without_current.workspaces, without_current.writable) == (SHIPPED, False)
+    assert without_current.notice == (
+        f"there is no {tmp_path / WORKSPACES_FILE_NAME}, and {tmp_path / PREVIOUS_FILE_NAME} "
+        f"was written at schema version {LAYOUT_SCHEMA_VERSION + 1} by a newer build, which "
+        "the second save from this build would overwrite; the shipped Workspaces are shown "
+        "and nothing will be saved this session"
+    )
     assert with_invalid_current.workspaces == SHIPPED
     assert not with_invalid_current.writable
     assert with_invalid_current.set_aside is not None
