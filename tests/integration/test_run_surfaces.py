@@ -137,8 +137,8 @@ def _shown_view(application: QApplication, controller: SimulationController) -> 
     return view
 
 
-def _advance(controller: SimulationController, seconds: float) -> None:
-    for _ in range(round(seconds / SIMULATION_STEP_S)):
+def _advance(controller: SimulationController, seconds: int) -> None:
+    for _ in range(seconds // SIMULATION_STEP_S):
         controller.advance()
 
 

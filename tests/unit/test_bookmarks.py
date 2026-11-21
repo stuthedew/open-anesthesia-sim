@@ -63,7 +63,7 @@ def _target(
 def test_a_time_bookmark_holds_its_instant_and_no_name_by_default() -> None:
     bookmark = TimeBookmark(CaseInstant(600))
 
-    assert bookmark.instant_s == 600.0
+    assert bookmark.instant_s == 600
     assert bookmark.label is None
 
 
@@ -106,7 +106,7 @@ def test_a_time_bookmark_refuses_an_instant_not_built_as_a_case_instant(instant_
 
 
 def test_the_case_opening_itself_is_a_markable_instant() -> None:
-    assert TimeBookmark(CaseInstant(0)).instant_s == 0.0
+    assert TimeBookmark(CaseInstant(0)).instant_s == 0
 
 
 def test_a_blank_name_is_refused_rather_than_read_as_no_name() -> None:
@@ -188,9 +188,7 @@ def test_a_fresh_set_is_empty_in_both_collections() -> None:
 
 def test_the_two_kinds_are_listed_apart_rather_than_filtered_out_of_one_list() -> None:
     marks = (
-        BookmarkSet()
-        .with_time_bookmark(TimeBookmark(CaseInstant(600)))
-        .with_mac_target(_target())
+        BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(600))).with_mac_target(_target())
     )
 
     assert marks.time_bookmarks == (TimeBookmark(CaseInstant(600)),)
@@ -213,7 +211,7 @@ def test_marks_are_listed_in_the_order_they_were_added() -> None:
         .with_time_bookmark(TimeBookmark(CaseInstant(120)))
     )
 
-    assert [bookmark.instant_s for bookmark in marks.time_bookmarks] == [600.0, 120.0]
+    assert [bookmark.instant_s for bookmark in marks.time_bookmarks] == [600, 120]
 
 
 def test_an_instant_already_marked_may_not_be_marked_again() -> None:
@@ -266,9 +264,7 @@ def test_the_same_height_on_another_compartment_is_a_different_crossing() -> Non
 
 def test_removing_a_time_bookmark_leaves_the_targets_alone() -> None:
     marks = (
-        BookmarkSet()
-        .with_time_bookmark(TimeBookmark(CaseInstant(600)))
-        .with_mac_target(_target())
+        BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(600))).with_mac_target(_target())
     )
     after = marks.without_time_bookmark(TimeBookmark(CaseInstant(600)))
 
@@ -381,9 +377,7 @@ def test_every_instant_a_learner_can_type_is_reached_on_the_step_the_halt_names(
     """
 
     misses = [
-        instant_s
-        for instant_s in range(3_601)
-        if not _reaching_step_is_the_crossing_one(instant_s)
+        instant_s for instant_s in range(3_601) if not _reaching_step_is_the_crossing_one(instant_s)
     ]
 
     assert misses == []
@@ -568,9 +562,7 @@ def test_a_step_that_crossed_nothing_is_reported_as_no_crossing() -> None:
 
 def test_one_step_can_cross_a_marked_instant_and_a_marked_height_at_once() -> None:
     target = _target(multiple=0.8)
-    marks = (
-        BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(30))).with_mac_target(target)
-    )
+    marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(30))).with_mac_target(target)
 
     crossing = marks.crossings_between(
         before_s=CaseInstant(29),
@@ -1181,7 +1173,7 @@ def test_a_step_whose_two_readings_straddle_a_band_edge_halts_where_a_branch_doe
     run.start()
     previous_live = previous_canonical = MacMultiple(0.0)
 
-    for _ in range(3000):
+    for _ in range(300):
         run.advance()
         run.pause()
         live = _alveolar_mac_multiple(run)
@@ -1193,7 +1185,7 @@ def test_a_step_whose_two_readings_straddle_a_band_edge_halts_where_a_branch_doe
         previous_live, previous_canonical = live, canonical
         run.start()
     else:
-        pytest.fail("no step of the first 3 000 has two alveolar readings that differ")
+        pytest.fail("no step of the first 300 has two alveolar readings that differ")
 
     straddling_s = run.snapshot().elapsed_s
     edge = (live + canonical) / 2
@@ -1207,7 +1199,7 @@ def test_a_step_whose_two_readings_straddle_a_band_edge_halts_where_a_branch_doe
     trunk = SimulationController()
     trunk.add_mac_target(target)
     trunk.start()
-    halt = _step_until_halt(trunk, limit=3050)
+    halt = _step_until_halt(trunk, limit=305)
 
     assert halt is not None
 
@@ -1233,8 +1225,8 @@ def test_a_target_marked_at_a_paused_run_s_reading_does_not_halt_it_on_the_next_
     halted on the same target again. The test steps the default run until its
     live reading lies below the canonical one on the rising curve. At such a
     step, the live readings would cross the height again on the next step.
-    Such steps are rare. A measurement on 2026-11-01 found 18 of them in the
-    first 3 000 steps, the first at 75.1 s. Pausing and starting a run does
+    Such steps are rare. A measurement on 2026-11-21 found 10 of them in the
+    first 300 steps, the first at 69 s. Pausing and starting a run does
     not change its trajectory, so the run that found the step is the one
     tested.
     """
@@ -1242,7 +1234,7 @@ def test_a_target_marked_at_a_paused_run_s_reading_does_not_halt_it_on_the_next_
     run = SimulationController()
     run.start()
 
-    for _ in range(3000):
+    for _ in range(300):
         run.advance()
         run.pause()
         canonical = _alveolar_mac_multiple(run.resumed_here())
@@ -1252,7 +1244,7 @@ def test_a_target_marked_at_a_paused_run_s_reading_does_not_halt_it_on_the_next_
 
         run.start()
     else:
-        pytest.fail("no step of the first 3 000 has its live reading below the canonical one")
+        pytest.fail("no step of the first 300 has its live reading below the canonical one")
 
     target = MacTarget(RecordedQuantity.ALVEOLAR, canonical)
     run.add_mac_target(target)
@@ -1261,7 +1253,7 @@ def test_a_target_marked_at_a_paused_run_s_reading_does_not_halt_it_on_the_next_
 
     run.start()
 
-    assert _step_until_halt(run, limit=20) is None
+    assert _step_until_halt(run, limit=2) is None
     assert run.bookmark_standings().of_mac_target(target) is MarkStanding.REACHED
 
 
@@ -1273,10 +1265,11 @@ def test_a_compartment_that_settles_on_a_target_halts_once_and_asks_little(
     With no ventilation the patient takes up nothing, so the circuit settles
     on the delivered 2% of sevoflurane, which is 1.00 ×MAC. When the halt test
     compared the canonical readings with the exact height, this run halted at
-    the target 965 times in its tenth minute (`PL-QVBR`, 2026-11-01). The
-    canonical reading moved by one unit in the last place from step to step.
-    For about a hundred steps after the halt, the reading still lies near the
-    band's edge, and each of those steps is tested from the canonical
+    the target 965 times in its tenth minute, at the 0.1 s step that a run
+    then took (`PL-QVBR`, 2026-11-01). The canonical reading moved by one unit
+    in the last place from step to step. For about ten seconds after the
+    halt, the reading still lies near the band's edge, and each of those
+    steps is tested from the canonical
     readings. Once the reading has settled inside the band, the run's steps
     are decided from the live readings and cost no matrix exponential.
     """
@@ -1289,7 +1282,7 @@ def test_a_compartment_that_settles_on_a_target_halts_once_and_asks_little(
     run.add_mac_target(target)
     run.start()
 
-    halt = _step_until_halt(run, limit=30_000)
+    halt = _step_until_halt(run, limit=3_000)
 
     assert halt is not None
     assert halt.mac_targets == (target,)
@@ -1303,11 +1296,11 @@ def test_a_compartment_that_settles_on_a_target_halts_once_and_asks_little(
 
     run.start()
 
-    assert _step_until_halt(run, limit=3_000) is None
+    assert _step_until_halt(run, limit=300) is None
 
     monkeypatch.setattr(RunDefinition, "state_at", counting_state_at)
 
-    assert _step_until_halt(run, limit=3_000) is None
+    assert _step_until_halt(run, limit=300) is None
     assert asked == []
     assert run.bookmark_standings().of_mac_target(target) is MarkStanding.REACHED
 

@@ -341,7 +341,7 @@ def test_a_drag_of_one_slider_is_marked_and_listed_once(application: QApplicatio
 
     slider.setSliderDown(False)
     view.present(False)
-    released_at_s = 10.0 + 3 * SIMULATION_STEP_S
+    released_at_s = 10 + 3 * SIMULATION_STEP_S
 
     assert len(run._control_timeline_text.text().splitlines()) == 1
     assert controller.record().control_timeline[0].new_value == 4.0

@@ -14,7 +14,6 @@ from anesthesia_sim.app.controller import BranchedCase, HereForkPoint, Simulatio
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.core.concentration import MacMultiple, Percent
 from anesthesia_sim.core.governing_equations import UptakeEquationSettings
-from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import (
     AlveolarVentilation,
     CardiacOutput,
@@ -57,10 +56,10 @@ def test_every_door_at_a_paused_instant_agrees_after_an_edit_made_there() -> Non
     """Every way of branching at one instant uses the same two stretches (`PL-ZR49`).
 
     The trunk runs at 2% and a mark at 30 s halts it. While the trunk is
-    halted there, the learner turns the vaporizer to 4%, removes the mark and
-    adds it back under another label, and marks an instant inside the halting
-    step. Before those edits, branches are taken where the trunk is halted and
-    at the mark. Only those two ways are used, since no keyframe exists at
+    halted there, the learner turns the vaporizer to 4%, and removes the mark
+    and adds it back under another label. Before those edits, branches are
+    taken where the trunk is halted and at the mark. Only those two ways are
+    used, since no keyframe exists at
     30 s yet. After the edits, all three ways of branching are used. Once the
     trunk has run on past 30 s, branches are taken at the mark and at the
     keyframe again. Each branch is then reset.
@@ -87,8 +86,6 @@ def test_every_door_at_a_paused_instant_agrees_after_an_edit_made_there() -> Non
     trunk.start()
     _advance_until_halted(trunk, limit_s=31)
     fork_s = trunk.snapshot().elapsed_s
-    inside_s = fork_s - SIMULATION_STEP_S / 2
-    inside = TimeBookmark(CaseInstant(inside_s), "inside the step")
 
     branches = {
         "here, before the edits": trunk.resumed_here(),
@@ -98,7 +95,6 @@ def test_every_door_at_a_paused_instant_agrees_after_an_edit_made_there() -> Non
     trunk.set_delivered_concentration_percent(Percent(4.0))
     trunk.remove_time_bookmark(first)
     trunk.add_time_bookmark(relabelled)
-    trunk.add_time_bookmark(inside)
 
     branches |= {
         "here, after the edits": trunk.resumed_here(),
@@ -153,7 +149,7 @@ def test_every_door_at_a_paused_instant_agrees_after_an_edit_made_there() -> Non
     # The trunk standing there, and every branch taken after the edits, name
     # the marks as they now are. A branch taken before the edits holds the
     # marks that the trunk held when the branch was taken.
-    now_marked = {(30.0, "relabelled"), (inside_s, "inside the step")}
+    now_marked = {(30, "relabelled")}
     assert named(halt_on_the_trunk) == now_marked
     assert here_on_the_trunk == HereForkPoint(fork_s, stopped_on_mark=True)
 
@@ -161,11 +157,11 @@ def test_every_door_at_a_paused_instant_agrees_after_an_edit_made_there() -> Non
         snapshot = branch.snapshot()
 
         if name.endswith("before the edits"):
-            assert named(snapshot.bookmark_halt) == {(30.0, "first")}, name
+            assert named(snapshot.bookmark_halt) == {(30, "first")}, name
             continue
 
         assert named(snapshot.bookmark_halt) == now_marked, name
-        assert snapshot.bookmark_standings.of_time_bookmark(inside) is MarkStanding.PASSED, name
+        assert snapshot.bookmark_standings.of_time_bookmark(relabelled) is MarkStanding.PASSED, name
 
     # A branch's reset reopens it on the same record.
     for name, branch in branches.items():
@@ -190,7 +186,7 @@ def test_every_door_at_a_paused_instant_agrees_after_an_edit_made_there() -> Non
         branch.start()
         _advance_for(branch, duration_s=10)
         _states_agree_after_the_fork(
-            branch, trunk if runs_under_the_change(name) else never_changed, fork_s, steps=100
+            branch, trunk if runs_under_the_change(name) else never_changed, fork_s, steps=10
         )
 
 
@@ -251,13 +247,13 @@ def test_a_change_made_on_the_halt_opens_every_branch_taken_after_it() -> None:
     before_the_change.start()
     _advance_for(before_the_change, duration_s=10)
 
-    _states_agree_after_the_fork(before_the_change, never_changed, halt_s, steps=100)
+    _states_agree_after_the_fork(before_the_change, never_changed, halt_s, steps=10)
 
     for branch in after_the_change.values():
         branch.start()
         _advance_for(branch, duration_s=10)
 
-        _states_agree_after_the_fork(branch, trunk, halt_s, steps=100)
+        _states_agree_after_the_fork(branch, trunk, halt_s, steps=10)
 
 
 def test_a_trunk_change_at_a_forked_instant_keeps_the_branch_provenance_in_the_trunk() -> None:
@@ -343,7 +339,7 @@ def test_a_branch_reset_after_a_setting_change_keeps_its_record_and_provenance_i
     built_directly.start()
     _advance_for(built_directly, duration_s=10)
 
-    _states_agree_after_the_fork(branch, built_directly, fork_s, steps=100)
+    _states_agree_after_the_fork(branch, built_directly, fork_s, steps=10)
 
 
 def test_a_branch_taken_at_a_keyframe_keeps_a_record_of_the_setting_it_opened_under() -> None:
@@ -834,7 +830,7 @@ def test_branch_here_opens_with_the_dials_as_they_stand() -> None:
         branch.start()
         _advance_for(branch, duration_s=10)
 
-        _states_agree_after_the_fork(branch, expected, fork_s, steps=100)
+        _states_agree_after_the_fork(branch, expected, fork_s, steps=10)
 
 
 def test_a_passed_mark_opens_under_the_settings_the_trunk_left_its_instant_under() -> None:
@@ -896,4 +892,4 @@ def test_a_passed_mark_opens_under_the_settings_the_trunk_left_its_instant_under
         _advance_for(branch, duration_s=10)
         expected = never_changed if mark is at_opening else trunk
 
-        _states_agree_after_the_fork(branch, expected, points[mark], steps=100)
+        _states_agree_after_the_fork(branch, expected, points[mark], steps=10)

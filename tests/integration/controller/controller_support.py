@@ -125,9 +125,9 @@ in fractions of one atmosphere rather than as a relative bound. A relative
 bound would tighten without limit on the near-zero fat fraction of a 120 s
 run, and it would say nothing about a displayed digit.
 
-Measured on 2026-09-14 on the run below, the worst disagreement across all six
-compartments is 2.7e-16, about one unit in the last place. The two cumulative
-accumulators agree to 1.6e-15 L. The bound is set two orders of magnitude
+Measured on 2026-11-21 on the run below, the worst disagreement across all six
+compartments is 2.0e-16, about one unit in the last place. The two cumulative
+accumulators agree to 2.4e-15 L. The bound is set two orders of magnitude
 above that, so an ordinary floating-point wobble does not fail the suite. It
 is also ten orders of magnitude below the 1e-4 that a two-decimal percent
 readout can show, so a real divergence still fails it.

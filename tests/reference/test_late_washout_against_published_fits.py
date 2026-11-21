@@ -38,7 +38,7 @@ to 10%.
 
 The model runs the same protocol as the gate. It runs the shipped 30-minute
 wash-in at the reference operating point that `_configured_system()` sets up,
-and then closes the vaporizer. It uses the shipped 0.1 s step and is sampled
+and then closes the vaporizer. It uses the shipped one-second step and is sampled
 once a minute. The elimination lasts 23.5 hours. Together with the 30 minutes
 of wash-in, that makes 24 hours of case time. This is the supported run
 length, so the run ends where the model's claim ends
@@ -250,7 +250,7 @@ from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValid
 from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.numerical_envelope import PartitionCoefficient
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
-from anesthesia_sim.core.supported_ranges import maximum_step_count
+from anesthesia_sim.core.supported_ranges import MAXIMUM_STEP_COUNT
 from anesthesia_sim.core.units import MINUTES_PER_HOUR, SECONDS_PER_MINUTE
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
@@ -272,9 +272,9 @@ MUSCLE_VARIATION_DURATION_MIN = 360
 
 # Sampling once a minute is fine enough to place a crossing to the tenth of an
 # hour, and coarse enough to keep a day of samples small. Every step in between
-# is still the shipped 0.1 s, so nothing about the model is coarsened.
-SAMPLE_INTERVAL_S = 60.0
-STEPS_PER_SAMPLE = round(SAMPLE_INTERVAL_S / SIMULATION_STEP_S)
+# is still the shipped one second, so nothing about the model is coarsened.
+SAMPLE_INTERVAL_S = 60
+STEPS_PER_SAMPLE = SAMPLE_INTERVAL_S // SIMULATION_STEP_S
 
 # The papers' own sampling times inside the first day (*Anesth Analg* p. 317).
 # Using them means the fitted curve is evaluated where a measured sample
@@ -641,14 +641,19 @@ OPEN_CIRCUIT_STATES = ("alveolar", "mixed venous", "vessel-rich group", "muscle 
 # How closely the open circuit's modes must reproduce the stepped open-circuit
 # run, as a share of the run, at every minute from `RECONSTRUCTION_FROM_MINUTE`
 # on. The difference between them comes from the driver.
-# `_discard_circuit_contents()` empties the circuit only after each 0.1 s step,
-# so within a step the patient re-breathes a little of what the patient
-# exhaled. As a result, the stepped run lies above the modes by up to 0.08%.
-# Halving the step halved that difference for sevoflurane: from 0.052 to 0.026%
-# at five minutes, and from 0.061 to 0.030% at four hours (measured once,
-# 2026-10-03, `PL-921Y`). Before the fifth minute the fast terms carry the
-# curve, and the stepped run departs from the modes by up to 1.6%, at the first
-# minute.
+# `_discard_circuit_contents()` empties the circuit only after each step, so
+# within a step the patient re-breathes a little of what the patient exhaled.
+# As a result, the stepped run lies above the modes. The tolerance was set when
+# the step was 0.1 s and the run lay above the modes by up to 0.08%. Halving
+# that step halved the difference for sevoflurane: from 0.052 to 0.026% at five
+# minutes, and from 0.061 to 0.030% at four hours (measured once, 2026-10-03,
+# `PL-921Y`). Before the fifth minute the fast terms carry the curve, and the
+# stepped run then departed from the modes by up to 1.6%, at the first minute.
+# At the one-second step the run lies above the modes by up to 0.76% from the
+# fifth minute on (2026-11-21), ten times as far. So
+# `test_the_model_s_apparent_muscle_and_fat_terms_against_the_fitted_ones`
+# fails at this tolerance until the driver holds the open circuit more closely
+# or the tolerance is set again.
 MODE_RECONSTRUCTION_TOLERANCE = 0.0008
 RECONSTRUCTION_FROM_MINUTE = 5
 
@@ -837,7 +842,7 @@ def _metabolise(system: AgentUptakeSystem, rate_constant_per_min: float) -> floa
     The sink is applied after each step, which makes it an operator split. The
     loss over the step is taken at the end of the step rather than inside the
     propagator. The error is second order in the rate times the step, and that
-    product is 1.6 × 10⁻⁵ here.
+    product is 1.6 × 10⁻⁴ here.
 
     The removed agent is recorded through `record_external_agent_transfer()`
     as exhausted agent, because the validator has no column for a metabolic
@@ -904,7 +909,7 @@ def _washout_curve(
         )
     metabolised = 0.0
 
-    for _ in range(round(WASH_IN_DURATION_S / SIMULATION_STEP_S)):
+    for _ in range(WASH_IN_DURATION_S // SIMULATION_STEP_S):
         system.advance()
         if hepatic_elimination_rate_constant_per_min:
             metabolised += _metabolise(system, hepatic_elimination_rate_constant_per_min)
@@ -957,7 +962,7 @@ def washout_curve(
 ) -> Callable[..., WashoutCurve]:
     """`_washout_curve()`, computed once per pytest run however many xdist workers read it.
 
-    A curve takes 846,000 steps after the wash-in, about 17 s on one core.
+    A curve takes 84,600 steps after the wash-in, about 3 s on one core.
     `_washout_curve()`'s cache lives in one process, so every xdist worker
     that ran a test needing a curve used to compute it again. That came to 18
     computations of the 8 distinct curves (`PL-F08Y`). Now the first worker
@@ -1275,7 +1280,7 @@ def test_the_twenty_four_hour_run_opens_from_the_five_minute_gate_s_own_ratio(
 def test_the_run_ends_at_the_supported_run_length() -> None:
     """The wash-in and the elimination together take every step the supported run length allows.
 
-    `maximum_step_count` is the simulator's own count of the steps that fit
+    `MAXIMUM_STEP_COUNT` is the simulator's own count of the steps that fit
     inside the supported run length. So the test checks the run against that
     count, not against a number of seconds written here. Fewer steps would end
     the run, and its last stated minute, short of the boundary at which the
@@ -1286,9 +1291,9 @@ def test_the_run_ends_at_the_supported_run_length() -> None:
     1440 minutes, and the run went 30 minutes past the boundary (`PL-RXW0`).
     """
 
-    wash_in_steps = round(WASH_IN_DURATION_S / SIMULATION_STEP_S)
+    wash_in_steps = WASH_IN_DURATION_S // SIMULATION_STEP_S
     elimination_steps = ELIMINATION_DURATION_MIN * STEPS_PER_SAMPLE
-    supported_steps = maximum_step_count(SIMULATION_STEP_S)
+    supported_steps = MAXIMUM_STEP_COUNT
 
     assert wash_in_steps + elimination_steps == supported_steps, (
         f"the run takes {wash_in_steps} steps of wash-in and {elimination_steps} steps of "

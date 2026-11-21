@@ -100,7 +100,7 @@ from anesthesia_sim.app.dashboard_frame import (
     RESET_EXIT_TEXT,
     RESET_LABEL,
     RUNNING_AGENT_LOCK_TEXT,
-    SIMULATION_TICK_INTERVAL_S,
+    SIMULATION_TICK_INTERVAL_MS,
     STATUS_FAILED_TEXT,
     STATUS_PAUSED_TEXT,
     STATUS_RUNNING_TEXT,
@@ -219,11 +219,7 @@ from anesthesia_sim.core.parameters import (
     parse_breathing_circuit_parameters,
 )
 from anesthesia_sim.core.run_definition import DisplayState
-from anesthesia_sim.core.simulation_step import (
-    MAXIMUM_SIMULATION_STEP_S,
-    MINIMUM_SIMULATION_STEP_S,
-    SIMULATION_STEP_S,
-)
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
@@ -544,7 +540,7 @@ def _compared_frame(*controllers: Any) -> ChartFrame:
 
 
 def _run_history(sample_count: int, substance_id: str = _DEFAULT_AGENT) -> tuple[_Sample, ...]:
-    """A run of `sample_count` samples at the real 0.1 s simulation step."""
+    """A run of `sample_count` samples at the real one-second simulation step."""
 
     return tuple(
         _sample(
@@ -578,10 +574,10 @@ def _control_change(
     )
 
 
-def _advance_to(controller: SimulationController, elapsed_s: float) -> None:
-    """Step a started controller to `elapsed_s` at the shipped step size."""
+def _advance_to(controller: SimulationController, elapsed_s: int) -> None:
+    """Step a started controller to `elapsed_s` by the one-second step."""
 
-    while controller.snapshot().elapsed_s < elapsed_s - SIMULATION_STEP_S / 2.0:
+    while controller.snapshot().elapsed_s < elapsed_s:
         controller.advance()
 
 
@@ -618,43 +614,41 @@ def _settings_by_control(snapshot: SimulationSnapshot) -> dict[ControlInput, Any
 # --- cadence constants --------------------------------------------------------
 
 
-def test_the_shipped_step_is_within_the_maximum_simulation_step() -> None:
-    """The interface may not run the model outside its supported domain.
+def test_the_shipped_tick_is_the_100_ms_that_the_playback_tests_restate() -> None:
+    """The run loop wakes every 100 ms of real time, as a whole number of milliseconds.
 
-    `SIMULATION_STEP_S` is the dashboard's cadence. `MAXIMUM_SIMULATION_STEP_S`
-    is the control-resolution tolerance that `core/` declares. They are
-    separate decisions that happen to be equal today, and this test stops
-    them from drifting apart unnoticed. The test uses `<=` rather than
-    equality on purpose. A numerical method that supported a coarser step
-    would not make a coarser step a good render cadence. The test also checks
-    the other end of the domain, `MINIMUM_SIMULATION_STEP_S` (`PL-YZ17`),
-    although no cadence a display would want comes near it.
+    `tests/unit/test_playback.py` and `tests/reference/test_control_resolution.py`
+    restate this value as `TICK_INTERVAL_MS = 100`, because neither loads this
+    module. This test checks the shipped constant against the same value, so a
+    change to the constant fails here. The interval is an `int`, so that the
+    simulated time a tick owes a run is a whole number of milliseconds at
+    every playback rate.
     """
 
-    assert SIMULATION_STEP_S <= MAXIMUM_SIMULATION_STEP_S
-    assert SIMULATION_STEP_S >= MINIMUM_SIMULATION_STEP_S
+    assert type(SIMULATION_TICK_INTERVAL_MS) is int
+    assert SIMULATION_TICK_INTERVAL_MS == 100
 
 
-def test_a_tick_is_one_simulation_step_of_real_time() -> None:
-    """Check the equality from which every displayed playback rate is derived.
+def test_a_tick_is_a_tenth_of_the_one_second_step() -> None:
+    """At real time a run takes one step on every tenth tick.
 
-    A tick advances `steps_per_tick` steps, and calling that "N times real
-    time" is true only because one tick is one step long.
+    A tick owes a run its own length of simulated time at 1x, and a step is
+    one second. So ten ticks owe exactly one step, and a press of Pause or a
+    change of rate is acted on within a tenth of a second.
     """
 
-    assert SIMULATION_TICK_INTERVAL_S == SIMULATION_STEP_S
+    assert SIMULATION_STEP_S == 1
+    assert 10 * SIMULATION_TICK_INTERVAL_MS == SIMULATION_STEP_S * 1_000
 
 
-def test_a_frame_is_two_control_grid_steps_at_every_rate() -> None:
-    """Check the premise on which the argument in `PL-NBWP` was settled.
+def test_a_frame_is_two_ticks() -> None:
+    """The display redraws once for every two ticks of the run loop.
 
-    At every rate the ladder offers, a reader sees the run at half the
-    resolution at which they can act on it. `docs/MODEL.md` § "Supported
-    simulation step" argues from this ratio, so this test checks the ratio
-    directly rather than deriving it.
+    The render interval is written as its own number, in seconds, and the
+    tick in milliseconds. This test checks the relation between the two.
     """
 
-    assert RENDER_INTERVAL_S == 2.0 * SIMULATION_TICK_INTERVAL_S
+    assert RENDER_INTERVAL_S * 1_000 == 2 * SIMULATION_TICK_INTERVAL_MS
 
 
 def test_the_dashboard_displays_at_most_two_runs() -> None:
@@ -1619,14 +1613,14 @@ def test_every_readout_holds_its_gloss_and_second_unit_lines_open() -> None:
 def test_the_widest_readout_strings_are_the_formatters_own_extremes() -> None:
     """`PL-3355`: a panel reserves width for the widest value it can show.
 
-    The clock just before the supported run length gives the widest value
-    line, because every component of the compound form is present, with
-    tenths. The longest playback rate gives the widest second line. Both are derived
+    The clock one second before the supported run length gives the widest
+    value line, because every component of the compound form is present. The
+    longest playback rate gives the widest second line. Both are derived
     from the formatters rather than measured, so a change to either form
     moves the reservation with it.
     """
 
-    assert WIDEST_READOUT_VALUE == format_elapsed(MAXIMUM_ELAPSED_SIMULATION_TIME_S - 0.1)
+    assert WIDEST_READOUT_VALUE == format_elapsed(MAXIMUM_ELAPSED_SIMULATION_TIME_S - 1)
     assert len(WIDEST_READOUT_VALUE) >= len(format_percent(Fraction(1.0)))
     assert WIDEST_READOUT_SECONDARY == max(
         (format_playback_rate(rate.multiplier) for rate in SUPPORTED_PLAYBACK_RATES), key=len
@@ -3686,12 +3680,11 @@ def _offered_labels(offer: ForkOffer) -> tuple[str, ...]:
 
 
 #: A mark the trunk has passed, as `BranchedCase.mark_fork_points` lists it.
-#: 45.35 s lies inside the step that ends at 454 x 0.1 s. The instant the
-#: learner marked and the instant at which a branch taken there opens are
-#: therefore two different numbers, and a test can tell which one an entry
-#: carries.
-_MARK_INSIDE_A_STEP = MarkForkPoint(
-    TimeBookmark(CaseInstant(45.35), "the decision point"), CaseInstant(454 * 0.1)
+#: A mark is a whole number of seconds and a step is one second. So the
+#: instant the learner marked is the instant at which a branch taken there
+#: opens, and no control event of the offers below stands at it.
+_PASSED_MARK = MarkForkPoint(
+    TimeBookmark(CaseInstant(45), "the decision point"), CaseInstant(45)
 )
 
 
@@ -3967,23 +3960,23 @@ def test_fork_offer_lists_each_passed_mark_among_the_keyframes_by_instant() -> N
 
 
 def test_a_mark_s_entry_is_labelled_with_the_instant_its_branch_opens_at() -> None:
-    """A mark inside a step is reached at the step's end, and the entry names that instant.
+    """A mark is reached on a whole second, and the entry names that instant.
 
     `BranchedCase.fork_at_mark` opens the branch at `MarkForkPoint.fork_s`, so
-    that is the instant the entry must carry. A label with the typed 45.35 s
-    would name a time at which the branch does not open. That is the wrong
-    label on a correct value, which `CLAUDE.md`'s safety-critical standard
-    counts as a failure of the value. The words are restated rather than built from the
-    template, so an edit to the template cannot move both sides at once.
+    that is the instant the entry must carry. It is also the instant the
+    learner marked, because a mark never lies inside a step (`PL-SZ6G`). A
+    label naming any other time would be the wrong label on a correct value,
+    which `CLAUDE.md`'s safety-critical standard counts as a failure of the
+    value. The words are restated rather than built from the template, so an
+    edit to the template cannot move both sides at once.
     """
 
-    offer = fork_offer((CaseInstant(0),), marks=(_MARK_INSIDE_A_STEP,), comparing=None, here=None)
+    offer = fork_offer((CaseInstant(0),), marks=(_PASSED_MARK,), comparing=None, here=None)
     entry = offer.points[-1]
 
-    assert entry.label == "45.4s, on your mark"
-    assert format_elapsed(45.35) not in entry.label
-    assert entry.instant_s == _MARK_INSIDE_A_STEP.fork_s
-    assert entry.instant_s != _MARK_INSIDE_A_STEP.bookmark.instant_s
+    assert entry.label == "45s, on your mark"
+    assert entry.instant_s == 45
+    assert entry.instant_s == _PASSED_MARK.fork_s == _PASSED_MARK.bookmark.instant_s
 
 
 def test_a_control_event_is_listed_before_a_mark_at_the_same_instant() -> None:
@@ -4031,16 +4024,16 @@ def test_each_entry_carries_the_door_it_is_taken_through() -> None:
 
     A control event is taken at its instant. A mark's entry carries the mark
     rather than an instant, because `fork_at_mark` takes the mark and finds
-    the step itself. A caller that passed back an entry's float instead would
-    ask for 45.4 s where the learner marked 45.35 s, and `fork_at` refuses
-    that because no keyframe is there. The mark is the same object the case
+    the step itself. A caller that passed back the entry's instant instead
+    would ask `fork_at` for 45 s, and `fork_at` refuses that because no
+    keyframe is there. The mark is the same object the case
     listed, name and all, so nothing between the frame and the press builds
     it again.
     """
 
     offer = fork_offer(
         (CaseInstant(0), CaseInstant(60)),
-        marks=(_MARK_INSIDE_A_STEP,),
+        marks=(_PASSED_MARK,),
         comparing=None,
         here=None,
     )
@@ -4049,7 +4042,7 @@ def test_each_entry_carries_the_door_it_is_taken_through() -> None:
 
     assert [point.instant_s for point in control_events] == [0.0, 60.0]
     assert len(marks) == 1
-    assert marks[0].mark is _MARK_INSIDE_A_STEP.bookmark
+    assert marks[0].mark is _PASSED_MARK.bookmark
 
 
 def test_a_locked_offer_stays_locked_whatever_marks_the_trunk_has_passed() -> None:
@@ -4066,7 +4059,7 @@ def test_a_locked_offer_stays_locked_whatever_marks_the_trunk_has_passed() -> No
 
     unmarked = fork_offer(keyframes, marks=(), comparing=COMPARED, here=here, refusal=refusal)
     marked = fork_offer(
-        keyframes, marks=(_MARK_INSIDE_A_STEP,), comparing=COMPARED, here=here, refusal=refusal
+        keyframes, marks=(_PASSED_MARK,), comparing=COMPARED, here=here, refusal=refusal
     )
 
     for offer in (unmarked, marked):

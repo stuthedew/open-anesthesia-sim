@@ -132,12 +132,12 @@ from tests.integration.simulation_view.simulation_view_support import (
 # very frame that this path never asked for.
 
 #: How long a real-timer test waits for its condition before it fails rather
-#: than hangs. It is ample beside the half second of play that each test needs.
+#: than hangs. It is ample beside the one second of play that each test needs.
 _REAL_TIMER_BUDGET_S = 10.0
 
-#: Half a second of 1x play past the 60 s at which `_branched_case` pauses, so
-#: the step timer reaches it in five ticks.
-_TIMED_STOP_S = 60.5
+#: One second of 1x play past the 60 s at which `_branched_case` pauses, so
+#: the step timer reaches it in ten ticks.
+_TIMED_STOP_S = 61
 
 
 def _render_ticks(view: SimulationView) -> list[None]:
@@ -298,21 +298,19 @@ def test_a_run_that_arrives_at_the_supported_run_length_under_its_own_timers_is_
     `SimulationController.advance` halts a run on the step that lands it on
     the supported run length, and raises nothing. So `RunView._halt_run`, the
     one branch of `step_tick` that asked for a frame, is never reached
-    (`PL-T995`). The span is shortened to end half a second past the trunk's
-    pause. The timers would take a day to reach the real span, and stepping a
-    run to one step short of it takes about 27 s. `maximum_step_count` is the
-    one count from which the controller and the core both read the span, so
-    the two agree on the shortened span. Where a run stops on the real span is
+    (`PL-T995`). The span is shortened to end one second past the trunk's
+    pause, because the timers would take a day to reach the real span.
+    `MAXIMUM_STEP_COUNT` is the one count from which the controller and the
+    core both read the span, so the two agree on the shortened span. Where a
+    run stops on the real span is
     tested by
     `test_a_run_standing_on_the_supported_run_length_reads_as_stopped_from_the_arriving_step`.
     """
 
     case = _branched_case()
     view = _case_view(application, case)
-    last_step = round(_TIMED_STOP_S / SIMULATION_STEP_S)
-    monkeypatch.setattr(
-        supported_ranges_module, "maximum_step_count", lambda simulation_step_s: last_step
-    )
+    last_step = _TIMED_STOP_S // SIMULATION_STEP_S
+    monkeypatch.setattr(supported_ranges_module, "MAXIMUM_STEP_COUNT", last_step)
 
     _play_until_it_stops(view, case.trunk)
 
@@ -1311,16 +1309,14 @@ def _a_dial_moved_at_the_supported_run_length(
 ) -> tuple[RunView, _GroupReadings]:
     """A run stopped at a shortened supported run length, then had its cardiac output dial moved.
 
-    The supported run length here ends at 300 s, as `maximum_step_count` reads it,
+    The supported run length here ends at 300 s, as `MAXIMUM_STEP_COUNT` states it,
     for the reason that
     `test_a_run_that_arrives_at_the_supported_run_length_under_its_own_timers_is_redrawn`
     gives. Every group describes the step the run stopped on (`PL-3B34`).
     """
 
-    last_step = round(300.0 / SIMULATION_STEP_S)
-    monkeypatch.setattr(
-        supported_ranges_module, "maximum_step_count", lambda simulation_step_s: last_step
-    )
+    last_step = 300 // SIMULATION_STEP_S
+    monkeypatch.setattr(supported_ranges_module, "MAXIMUM_STEP_COUNT", last_step)
     controller = SimulationController()
     controller.start()
     _advance(controller, 300)
@@ -1795,10 +1791,8 @@ def test_a_setting_refused_at_the_supported_run_length_names_a_branch_only_while
     `_a_dial_moved_at_the_supported_run_length` gives.
     """
 
-    last_step = round(300.0 / SIMULATION_STEP_S)
-    monkeypatch.setattr(
-        supported_ranges_module, "maximum_step_count", lambda simulation_step_s: last_step
-    )
+    last_step = 300 // SIMULATION_STEP_S
+    monkeypatch.setattr(supported_ranges_module, "MAXIMUM_STEP_COUNT", last_step)
     refused = f"{_CARDIAC_OUTPUT_REFUSED_ON_A_STOPPED_RUN}. "
     reset_alone = refused + "Reset to start a new run, which keeps every setting."
 
@@ -1852,10 +1846,8 @@ def test_a_setting_refused_after_the_dashboard_failed_at_the_supported_run_lengt
     `_a_dial_moved_at_the_supported_run_length` gives.
     """
 
-    last_step = round(300.0 / SIMULATION_STEP_S)
-    monkeypatch.setattr(
-        supported_ranges_module, "maximum_step_count", lambda simulation_step_s: last_step
-    )
+    last_step = 300 // SIMULATION_STEP_S
+    monkeypatch.setattr(supported_ranges_module, "MAXIMUM_STEP_COUNT", last_step)
     controller = SimulationController()
     controller.start()
     _advance(controller, 300)
@@ -2571,9 +2563,15 @@ def test_a_resize_while_paused_redraws_the_frame_for_the_new_width(
     is right for that width only. On a paused run with no frame owed, nothing
     would redraw after a resize. The columns drawn for the narrow plot would
     then stay on the wide plot, at twice the chord.
+
+    The run is 30 minutes long, so its axis shows more seconds than the plot
+    has pixels across it at both widths. A chart column is drawn only at a
+    whole second. So on a one-minute axis both frames would hold a column at
+    every second, more than a pixel apart, and the test could not tell one
+    frame from the other.
     """
 
-    controller = _paused_run_with_history()
+    controller = _paused_run_with_history(1800)
     view = _shown_view(application, controller, width_px=800)
     presented = view.presented_frames
 

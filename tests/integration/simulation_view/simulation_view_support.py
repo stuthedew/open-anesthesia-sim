@@ -457,8 +457,8 @@ def _setting_sections(view: SimulationView) -> list[QWidget]:
 
 
 #: How many ticks of the run loop pass for each step of a run played at real
-#: time. `test_the_run_loop_takes_one_step_on_every_tenth_tick_at_real_time`
-#: checks the count against a literal.
+#: time. `test_simulation_view_loops.py` checks the count against a literal,
+#: in its test of the run loop at real time.
 _TICKS_PER_STEP_AT_REAL_TIME: Final = (
     SIMULATION_STEP_S * MILLISECONDS_PER_SECOND // SIMULATION_TICK_INTERVAL_MS
 )

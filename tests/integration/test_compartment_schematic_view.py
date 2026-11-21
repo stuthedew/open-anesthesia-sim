@@ -89,7 +89,7 @@ _WINDOW_HEIGHT_PX = 1000
 # so an edit there cannot move both sides of an assertion at once.
 _NAMES = ("Circuit", "Alveolar", "Mixed venous", "Vessel-rich group", "Muscle", "Fat")
 
-SECONDS_PER_MINUTE = 60.0
+SECONDS_PER_MINUTE = 60
 
 
 @pytest.fixture(scope="module")
@@ -218,13 +218,13 @@ def _two_figures(millilitres: float) -> str:
     return f"{rounded:.{max(decimals, 0)}f} mL vapour"
 
 
-def _advance(controller: SimulationController, seconds: float) -> None:
-    for _ in range(round(seconds / SIMULATION_STEP_S)):
+def _advance(controller: SimulationController, seconds: int) -> None:
+    for _ in range(seconds // SIMULATION_STEP_S):
         controller.advance()
 
 
-def _advance_to(controller: SimulationController, elapsed_s: float) -> None:
-    while controller.snapshot().elapsed_s < elapsed_s - SIMULATION_STEP_S / 2.0:
+def _advance_to(controller: SimulationController, elapsed_s: int) -> None:
+    while controller.snapshot().elapsed_s < elapsed_s:
         controller.advance()
 
 
@@ -269,7 +269,7 @@ def test_patient_inputs_reach_the_drawn_circuit_label_through_the_model(
     check itself.
     """
 
-    dial_percent, flow_l_min, seconds = 4.0, 8.0, 30.0
+    dial_percent, flow_l_min, seconds = 4.0, 8.0, 30
     controller = SimulationController(agent_id="sevoflurane")
     controller.set_alveolar_ventilation(AlveolarVentilation(0.0))
     controller.set_fresh_gas_flow(FreshGasFlow(flow_l_min))
@@ -397,16 +397,16 @@ def test_a_branch_taken_at_a_mark_behind_the_clock_draws_that_instant(
     trunk.pause()
     case = BranchedCase(trunk)
     view = _dashboard(application, shown, trunk, case, _SCHEMATIC_AND_BRANCH)
-    trunk.add_time_bookmark(TimeBookmark(CaseInstant(75.05), "what if"))
+    trunk.add_time_bookmark(TimeBookmark(CaseInstant(75), "what if"))
     view.present(False)
     selector = _branch_control(view).point_selector
-    selector.setCurrentIndex(selector.findText(f"{format_elapsed(751 * 0.1)}, on your mark"))
+    selector.setCurrentIndex(selector.findText(f"{format_elapsed(75)}, on your mark"))
     _branch_control(view).take_button.click()
     _settle(application)
     view.present(False)
 
     assert len(view.runs) == 2
-    assert view.runs[1].controller.snapshot().elapsed_s == pytest.approx(75.1)
+    assert view.runs[1].controller.snapshot().elapsed_s == 75
     _assert_every_label_matches_its_run(view)
     trunk_readings, branch_readings = (
         schematic.canvas.readings for schematic in _schematic(view).schematics
@@ -736,12 +736,12 @@ def test_the_share_bar_is_painted_to_each_share_and_named_in_text(
     another. So the test checks the bar at that instant as well as at one hour.
     """
 
-    for seconds in (10.0, 60 * SECONDS_PER_MINUTE):
+    for seconds in (10, 60 * SECONDS_PER_MINUTE):
         _check_the_share_bar(application, shown, seconds)
 
 
 def _check_the_share_bar(
-    application: QApplication, shown: list[SimulationView], seconds: float
+    application: QApplication, shown: list[SimulationView], seconds: int
 ) -> None:
     controller = SimulationController()
     controller.start()

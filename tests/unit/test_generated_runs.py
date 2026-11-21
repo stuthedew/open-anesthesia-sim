@@ -579,7 +579,9 @@ class _Run:
         # whole seconds, which is exact. So the canonical state covers the
         # same time as the stepped run, and no allowance is made for the clock.
         canonical_allowance = (
-            stepped + self.closed_canonical_rounding + self._canonical_rounding_of_the_open_segment()
+            stepped
+            + self.closed_canonical_rounding
+            + self._canonical_rounding_of_the_open_segment()
         )
 
         try:
@@ -707,12 +709,13 @@ ONE_STEP = (Action(setting="hold", position=0.0, steps=1),)
 FIFTY_STEPS = (Action(setting="hold", position=0.0, steps=50),)
 
 
-# The three plans below set up conditions that the drawn plans reach only after
-# 300 to 1 000 draws (measured 2026-11-11, `PL-GJ1W`). They are listed so that
-# every pass of the suite covers them.
+# The plans below set up conditions that the drawn plans reached only after
+# 300 to 1 000 draws (measured 2026-11-11, `PL-GJ1W`, when a plan also drew a
+# step of 1 ms to 0.1 s). They are listed so that every pass of the suite covers
+# them. What each one does at the one-second step was measured on 2026-11-21.
 @example(
-    # `PL-N559`: with no flow at all, one step moves the alveolar fraction above
-    # the inspired fraction by one rounding error.
+    # `PL-N559`: with no flow at all, the alveolar fraction reads one rounding
+    # error above the inspired fraction, at the opening and after one step.
     Plan(None, SMALLEST_CORNER, 0.5 * CEILING, (0.0, 0.0, 0.0), 1.0, ONE_STEP, 0.0, 2)
 )
 @example(
@@ -722,14 +725,17 @@ FIFTY_STEPS = (Action(setting="hold", position=0.0, steps=50),)
 )
 @example(
     # `PL-D88N`: the same opening at the stiffest corner, where the run halts on
-    # the agent balance within about 24 steps.
+    # the agent balance at its third step.
     Plan(None, STIFFEST_CORNER, CEILING, (0.0, 0.0, 1.0), 0.0, FIFTY_STEPS, 0.0, 2)
 )
 @example(
     # The stiffest corner holding little agent. The run does not halt, because
     # its balance is inside the absolute bound of 1e-12 L while outside the
-    # relative one (found by the blind review of this test, 2026-11-11).
-    Plan(None, STIFFEST_CORNER, 1e-6 * CEILING, (0.0, 0.0, 1.0), 0.0, FIFTY_STEPS, 0.0, 2)
+    # relative one (found by the blind review of this test, 2026-11-11). After
+    # 50 steps the balance is 2.5e-13 L out, which is 2.5e-8 of the agent held.
+    # The run opens at 1e-7 of the ceiling. At 1e-6, where it opened while the
+    # step was 0.1 s, a one-second step passes the absolute bound at step 21.
+    Plan(None, STIFFEST_CORNER, 1e-7 * CEILING, (0.0, 0.0, 1.0), 0.0, FIFTY_STEPS, 0.0, 2)
 )
 @settings(max_examples=EXAMPLES)
 @given(_plans())

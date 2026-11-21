@@ -895,10 +895,8 @@ def test_a_stopped_run_names_a_branch_only_while_an_area_shows_the_branch_contro
     gives.
     """
 
-    last_step = round(300.0 / SIMULATION_STEP_S)
-    monkeypatch.setattr(
-        supported_ranges_module, "maximum_step_count", lambda simulation_step_s: last_step
-    )
+    last_step = 300 // SIMULATION_STEP_S
+    monkeypatch.setattr(supported_ranges_module, "MAXIMUM_STEP_COUNT", last_step)
     refused = f"{_CARDIAC_OUTPUT_REFUSED_ON_A_STOPPED_RUN}. "
     controller = SimulationController()
     controller.start()

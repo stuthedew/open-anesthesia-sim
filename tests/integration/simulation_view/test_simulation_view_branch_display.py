@@ -35,7 +35,6 @@ from anesthesia_sim.app.unconditional_set import (
 )
 from anesthesia_sim.app.views import BranchView, ConcentrationView
 from anesthesia_sim.core.concentration import Percent
-from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CaseInstant, FreshGasFlow
 from anesthesia_sim.layout.tree import AreaId, Split
 from tests.integration.simulation_view.simulation_view_support import (
@@ -224,7 +223,7 @@ def test_the_branch_is_drawn_beside_the_trunk_on_one_time_axis(application: QApp
 
     assert min(trunk_times) == pytest.approx(0.0)
     assert min(branch_times) == pytest.approx(60.0)
-    assert max(branch_times) <= max(trunk_times) + SIMULATION_STEP_S
+    assert max(branch_times) <= max(trunk_times)
 
 
 @pytest.mark.parametrize("door", ["keyframe", "here", "mark"])

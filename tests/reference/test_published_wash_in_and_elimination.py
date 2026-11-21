@@ -340,12 +340,13 @@ WASH_IN_DURATION_S = 1800
 # below washes in first rather than taking a system from `_wash_in_system()`.
 ELIMINATION_DURATION_S = 300
 
-# The step is imported rather than restated as 0.1, so this module measures the
-# model as shipped, not a finer version of it that no user ever sees. Raising
-# the supported step is a safety-critical change to every displayed value
-# (docs/MODEL.md, "Supported simulation step"). If the step is ever raised,
-# this validation should move with it and be re-measured. It should not keep
-# running quietly at a step the interface no longer uses.
+# The step is `SIMULATION_STEP_S`, imported rather than restated, so this
+# module steps the model as the interface does. The step was 0.1 s until
+# `PL-SZ6G` made it one second. The comparisons at the shipped settings do not
+# depend on its length, because each step solves the equations exactly. The two
+# test-only drivers below do depend on it. Each driver sets the circuit back
+# once a step, so the circuit drifts between two settings by an amount that is
+# proportional to the step, and that drift is now ten times what it was.
 
 # The operating point. Alveolar ventilation and cardiac output are *not*
 # chosen here. The code below reads them from the reference-patient data file,
@@ -418,7 +419,12 @@ ELIMINATION_RATIO_PIN_TOLERANCE = 1e-4
 MODELLED_ELIMINATION_RATIOS = {"sevoflurane": 0.2328, "isoflurane": 0.3227, "desflurane": 0.1626}
 
 # The same ratios with the rebreathing circuit taken away, produced by
-# `_eliminate_without_rebreathing()` and measured on 2026-09-07. They are kept
+# `_eliminate_without_rebreathing()` and measured on 2026-09-07, when that
+# driver emptied the circuit every 0.1 s. The driver now empties it every
+# second and gives 0.1548, 0.2396 and 0.0940 (2026-11-21), so
+# `test_five_minute_elimination_ratio_without_rebreathing_regression_pin`
+# fails. `docs/MODEL.md` prints the values below, so they are left as they are
+# until that document's table is measured again. They are kept
 # in a second dictionary rather than as a third column of one. These values
 # come from a condition that the shipped simulator has no setting for, while
 # the values above come from the condition it ships in. A reader who took a
@@ -1344,16 +1350,16 @@ def _eliminate_without_rebreathing(
     **It is an open circuit to within one step, not exactly.** Settings are
     held constant across a step, so within each step the circuit refills from
     the alveoli. F_I rises from zero to at most `V_A * step / circuit volume`
-    times the F_A at the start of the step. That is 1.1e-3 at the shipped
+    times the F_A at the start of the step. That is 1.1e-2 at the one-second
     step, against the 0.30 to 0.32 that the same run settles at with
-    rebreathing. The residual is first-order in the step. It was measured at
-    1.111e-3, 1.111e-4 and 5.555e-5 at steps of 0.1, 0.01 and 0.005 s. Its
-    effect on the result was measured the same way on 2026-09-07.
-    Sevoflurane's ratio moves from 0.154059 at the shipped 0.1 s step to
-    0.153984 at 0.005 s, which is 0.004 published SD, and the other two agents
-    move less. So the numbers this driver produces match the F_I = 0 limit to
-    about three parts in ten thousand. The residual is reported rather than
-    assumed away, and
+    rebreathing. The residual is first-order in the step. On 2026-09-07, when
+    a run could take a shorter step, it was measured at 1.111e-3, 1.111e-4
+    and 5.555e-5 at steps of 0.1, 0.01 and 0.005 s, and sevoflurane's ratio
+    was 0.154059 at 0.1 s and 0.153984 at 0.005 s. At the one-second step
+    sevoflurane's ratio is 0.154773 (2026-11-21). That is 0.04 published SD
+    above the 0.005 s value, and the other two agents sit 0.03 to 0.05 SD
+    above theirs. So the numbers this driver produces match the F_I = 0 limit
+    to within 0.7%. The residual is reported rather than assumed away, and
     `test_the_open_circuit_driver_holds_the_inspired_fraction_near_zero`
     fails if it grows.
 
@@ -1471,7 +1477,7 @@ def _clamped_wash_in(
     **It holds F_I fixed to within one step, not exactly.** Within a step the
     patient exhales into the circuit at the alveolar ventilation, so F_I
     drifts toward F_A by at most `V_A * step / circuit volume` of F_I. That
-    is 1.1e-3 at the shipped 4 L/min, 0.1 s and 6 L, and
+    is 1.1e-2 at the shipped 4 L/min, one second and 6 L, and
     `test_the_inspired_clamp_holds_the_inspired_fraction` fails if it grows.
 
     `change` is the resolving-power tests' override, and
@@ -1480,8 +1486,10 @@ def _clamped_wash_in(
 
     system = _configured_system(agent_id, change=change)
     inspired_fraction = fraction_from_percent(Percent(DELIVERED_PERCENT))
+    # Every published sample time is a whole number of seconds, and a run
+    # takes one step each second.
     sample_steps = {
-        round(time_min * SECONDS_PER_MINUTE / SIMULATION_STEP_S): time_min
+        round(time_min * SECONDS_PER_MINUTE) // SIMULATION_STEP_S: time_min
         for time_min in EARLY_WASH_IN_SAMPLE_TIMES_MIN
     }
     ratios: dict[float, float] = {}
@@ -1772,6 +1780,15 @@ def test_early_wash_in_matches_published_human_measurement(point: PublishedTimeP
     makes the gate fail. A doubled alveolar gas volume moves sevoflurane's
     1-minute F_A/F_I from 0.537 to 0.429, -2.85 SD, so the early points catch
     the error the 30-minute comparison at 10 L/min could not.
+
+    **The figures above date from the 0.1 s step**, when the clamp set F_I
+    back ten times a second. At the one-second step the circuit drifts further
+    between two settings. Each distance in the table is then 0.02 to 0.08 SD
+    lower. Desflurane runs 0.032 to 0.041 above its curve from 1 to 10
+    minutes. A doubled alveolar gas volume moves sevoflurane's 1-minute
+    F_A/F_I from 0.536 to 0.427, -2.88 SD (all measured 2026-11-21).
+    `docs/MODEL.md` prints the earlier figures, so they are kept here until
+    both are measured again.
     """
 
     failure = _early_wash_in_failure(point)
@@ -1805,8 +1822,8 @@ def test_the_inspired_clamp_holds_the_inspired_fraction(agent_id: str) -> None:
     of the distance between them, which is at most F_I itself. The fresh gas
     carries the same fraction, so it does not move F_I. The bound is
     computed here from the parameter files the run uses. As measured on
-    2026-10-18, the peak is 1.1075e-3 against a bound of 1.1111e-3 for each
-    agent.
+    2026-11-21, the peak is 1.0754e-2 to 1.0755e-2 against a bound of
+    1.1111e-2.
     """
 
     patient_parameters = load_reference_adult_parameters()
@@ -2320,8 +2337,8 @@ def test_elimination_is_dominated_by_the_rebreathing_circuit(agent_id: str) -> N
     From one end of the sweep to the other, that is a movement of 11.5 to
     21.6 published SD.
     `test_the_open_circuit_elimination_does_not_depend_on_fresh_gas_flow` is
-    the counterpart: with the circuit discarded each step, the same sweep
-    moves the ratio by 4e-6 SD.
+    the counterpart: with the circuit discarded every 0.1 s, the same sweep
+    moved the ratio by 4e-6 SD.
 
     `docs/MODEL.md` § "Model boundary" gives the mechanism. Inspired gas is
     circuit gas, and the circuit is a closed recirculating path except for
@@ -2845,8 +2862,8 @@ def test_the_open_circuit_driver_holds_the_inspired_fraction_near_zero(
     circuit fills from the alveoli at the alveolar ventilation, so
     dF_I/dt <= (V_A / V_circuit) F_A(t). F_A does not rise during a washout,
     so F_I at the end of the step is at most `V_A * step / V_circuit` of F_A
-    at the *start* of the step. That is 1.11e-3 at the shipped 4 L/min, 0.1 s
-    and 6 L. The bound is computed here from the same parameter files the run
+    at the *start* of the step. That is 1.11e-2 at the shipped 4 L/min, one
+    second and 6 L. The bound is computed here from the same parameter files the run
     uses rather than written down, so a change to any of the three moves the
     assertion with it.
 
@@ -2855,13 +2872,13 @@ def test_the_open_circuit_driver_holds_the_inspired_fraction_near_zero(
     the 10 L/min that the run keeps, the old test passed with a relative
     margin of 1.5e-4 to 4.8e-4. At lower elimination flows a correct driver
     exceeded the bound, by a factor of 1.000911 to 1.001237 at 0 L/min
-    (measured 2026-10-17). So the test also runs at 0 L/min, the flow closest
-    to the bound. Measured on 2026-10-17 with the starting F_A, the peak is
-    0.99785 to 0.99790 of the bound at the run's own flow, and 0.99924 to
-    0.99931 of it at 0 L/min. The driver is about 280 times closer to an open
-    circuit than the shipped condition, which settles at 0.30 to 0.32. The
-    residual is first-order in the step, so a shorter step gets
-    proportionally closer.
+    (measured 2026-10-17, at the 0.1 s step). So the test also runs at
+    0 L/min, the flow closest to the bound. Measured on 2026-11-21 with the
+    starting F_A, the peak is 0.9787 to 0.9795 of the bound at the run's own
+    flow, and 0.9924 to 0.9931 of it at 0 L/min. The driver is about 28 times
+    closer to an open circuit than the shipped condition, which settles at
+    0.30 to 0.32. The residual is first-order in the step, so it was a tenth
+    of this when the step was 0.1 s.
     """
 
     patient_parameters = load_reference_adult_parameters()
@@ -2931,9 +2948,13 @@ def test_the_open_circuit_elimination_does_not_depend_on_fresh_gas_flow(
     settles at `V_A/(V_A + fresh gas flow)` of F_A, and the published ratio has
     no term to divide that out. This test runs the same sweep with the circuit
     discarded each step, over the whole supported flow range including zero.
-    It finds a spread of 4e-6 published SD (2026-09-07), against the 11.5 to
+    It found a spread of 4e-6 published SD (2026-09-07), against the 11.5 to
     21.6 SD that the shipped condition moves over the narrower range of 1 to
-    10 L/min.
+    10 L/min. The circuit was then discarded every 0.1 s. It is now discarded
+    every second, so it refills for ten times as long, and the fresh gas
+    carries off part of what refilled it. The spread is 2.8e-4 to 3.7e-4 SD
+    (2026-11-21), above the 1e-4 that this test allows, so the test fails at
+    the one-second step.
 
     That is the strongest single piece of evidence that the driver removes the
     apparatus term rather than shrinking it. It is stronger than the residual
