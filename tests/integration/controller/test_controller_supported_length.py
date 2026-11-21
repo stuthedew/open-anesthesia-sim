@@ -12,9 +12,12 @@ import pytest
 from anesthesia_sim.app.bookmarks import MacTarget, MarkStanding, TimeBookmark
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import (
+    MARK_STANDING_TEXT,
     RESET_EXIT_TEXT,
+    STATUS_FAILED_TEXT,
     SUPPORTED_LIMIT_NOTICE_TEMPLATE,
     notice,
+    status_word,
     transport,
 )
 from anesthesia_sim.app.formatting import format_supported_run_length
@@ -87,6 +90,38 @@ def test_the_first_supported_limit_reason_is_the_one_kept() -> None:
     controller.halt_at_supported_limit("reached 86400 s again")
 
     assert controller.snapshot().supported_limit_reason == "reached 86400 s of simulated time"
+
+
+def test_a_run_at_the_supported_run_length_that_then_fails_gives_each_reason_in_its_place() -> None:
+    """`PL-3DHK`: the status word gives the error, and an unreached mark gives the run length.
+
+    A run can carry both records. It stops at the supported run length, and
+    an error then arrives from something other than a step or a setting, such
+    as a frame that the dashboard could not draw. The error is the run's last
+    event, so the status word reports it. The run length is why the mark was
+    not reached, so the mark's row reports that (`docs/INTERFACE.md`
+    § "Halting on a marked crossing").
+    """
+
+    target = MacTarget(RecordedQuantity.FAT, MacMultiple(3.0), "never")
+    controller = SimulationController()
+    controller.add_mac_target(target)
+    controller.start()
+    controller.advance(SimulationStep(0.1))
+    controller.halt_at_supported_limit("reached 86400 s of simulated time")
+    controller.fail("RuntimeError: the frame could not be drawn")
+
+    snapshot = controller.snapshot()
+
+    assert snapshot.supported_limit_reason == "reached 86400 s of simulated time"
+    assert snapshot.failure_reason == "RuntimeError: the frame could not be drawn"
+    assert (
+        status_word(snapshot, stopped_on_mark=snapshot.stopped_on_mark).text == STATUS_FAILED_TEXT
+    )
+    assert (
+        MARK_STANDING_TEXT[snapshot.bookmark_standings.of_mac_target(target)]
+        == "not reached within the supported run length"
+    )
 
 
 def test_reset_clears_the_supported_limit_and_restores_a_startable_session() -> None:

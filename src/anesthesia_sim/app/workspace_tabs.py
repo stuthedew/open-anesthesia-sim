@@ -91,7 +91,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from anesthesia_sim.app.dashboard_frame import run_label
+from anesthesia_sim.app.dashboard_frame import pinned_run_label, run_label
 from anesthesia_sim.app.qt_widgets import (
     declare_interface_colours,
     lay_out_question,
@@ -328,10 +328,14 @@ def _moves(workspaces: WorkspaceSet, index: int) -> tuple[TabOperation, TabOpera
 def _pins(
     workspaces: WorkspaceSet, index: int, workspace: Workspace, open_runs: tuple[RunId, ...]
 ) -> tuple[TabOperation, ...]:
-    """Return an entry to unpin the pinned run, or one entry to pin each open run."""
+    """Return an entry to unpin the pinned run, or one entry to pin each open run.
+
+    The unpin entry names the pinned run as `pinned_run_label` does, so a run
+    of an earlier session is not called by a number that an open run carries.
+    """
 
     if workspace.pinned_run is not None:
-        label = _UNPIN_TEMPLATE.format(run=run_label(workspace.pinned_run))
+        label = _UNPIN_TEMPLATE.format(run=pinned_run_label(workspace.pinned_run, open_runs))
 
         return (TabOperation(label, workspaces.replace(index, workspace.pinned_to(None))),)
 

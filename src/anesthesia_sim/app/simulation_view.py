@@ -137,6 +137,7 @@ from anesthesia_sim.app.dashboard_frame import (
     displayed_run_count,
     fork_offer,
     kept_fork_selection,
+    pinned_run_label,
     refused_setting_notice,
     run_label,
     trunk_reset_question,
@@ -1746,7 +1747,7 @@ class SimulationView(QWidget):
         shown = self._workspaces.current.shown_runs(self._open_runs())
 
         if isinstance(shown, PinnedRunAbsent):
-            self._areas.show_pin(run_label(shown.pinned), absent=True)
+            self._areas.show_pin(pinned_run_label(shown.pinned, self._open_runs()), absent=True)
 
             return None
 

@@ -13,3 +13,7 @@ added: 2026-11-21
 **Why it matters.** The notice tells the learner where the hidden compartments' values are, and it points the wrong way.
 
 **Done when.** The notice says where the readouts are, and a test compares the notice's direction word with the positions of the notice and the readout row.
+
+**Built 2026-11-21.** `READOUTS_PLACE_TEXT` in `app/dashboard_frame.py` holds the phrase "the readouts above", and the two-run cap notice and the off-scale notice both take it from there. `test_the_cap_notice_sends_the_reader_to_readouts_that_are_above_it` compares the phrase's direction word with where the window draws each compartment's readout and the notice, for both runs. The off-scale notice's test makes the same comparison for the clipped compartment.
+
+**Generator check.** One-off. The fact is where the compartment readouts are drawn relative to a notice in a chart's Area. Two notices each spelled it, and one was wrong. Both now read one constant, and a test compares it with the window. Found by `PL-5FMC`, the check of the interface documents that the project owner asked for.

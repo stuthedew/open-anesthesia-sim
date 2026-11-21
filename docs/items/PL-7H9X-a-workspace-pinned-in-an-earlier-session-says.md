@@ -15,3 +15,7 @@ added: 2026-11-21
 **Decided here, as a placeholder** (wording, 2026-11-21): when the pinned run belongs to an earlier session, the notice says so, for example "This Workspace is pinned to a run from an earlier session, which is not open." It does not print that run's number.
 
 **Done when.** An Area of a Workspace pinned in an earlier session names no run number that an open run carries, and the test above checks the new wording.
+
+**Built 2026-11-21.** `pinned_run_label` in `app/dashboard_frame.py` names a Workspace's pinned run beside the runs that are open. A run of an earlier session is called "a run from an earlier session", without its number. The Area's notice, the Area's header and the Unpin entry of the Workspace tab's menu all take the name from it. The notice reads "A run from an earlier session is not open." and "This Workspace is pinned to a run from an earlier session, so its Views show no run. Unpin it from the Workspace's tab to show the runs that are open." The wording is a placeholder. A run of this session that has closed keeps its name ("Run 2 is not open."), because no number is given out twice in a session. `docs/INTERFACE.md` says so beside its description of the pin.
+
+**Generator check.** One-off. The fact is which session a run's number belongs to. `run_label` renders the number alone, which is right for an open run, and the pin was the one caller that can hold a run of another session. Found by `PL-5FMC`, the check of the interface documents that the project owner asked for.

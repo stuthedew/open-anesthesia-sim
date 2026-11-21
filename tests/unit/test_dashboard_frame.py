@@ -146,6 +146,7 @@ from anesthesia_sim.app.dashboard_frame import (
     readout_row_width,
     readouts,
     refused_reset_exit,
+    pinned_run_label,
     refused_setting_notice,
     rejected_step_accounting,
     run_label,
@@ -4117,6 +4118,26 @@ def test_a_run_is_named_by_its_number_in_its_session() -> None:
     assert run_label(RunId(TEST_SESSION, 1)) == "Run 1"
     assert run_label(RunId(TEST_SESSION, 3)) == "Run 3"
     assert run_label(RunId(SessionToken("f" * 32), 3)) == "Run 3"
+
+
+def test_a_pinned_run_of_an_earlier_session_is_named_without_its_number() -> None:
+    """`PL-7H9X`: an open run can carry the number of a run pinned in an earlier session."""
+
+    earlier = RunId(SessionToken("f" * 32), 1)
+    open_runs = (RunId(TEST_SESSION, 1), RunId(TEST_SESSION, 2))
+
+    assert pinned_run_label(earlier, open_runs) == "a run from an earlier session"
+    # A run of this session keeps its name, whether it is open or has closed.
+    assert pinned_run_label(RunId(TEST_SESSION, 2), open_runs) == "Run 2"
+    assert pinned_run_label(RunId(TEST_SESSION, 3), open_runs) == "Run 3"
+    # With no run open, no open run can be mistaken for the pinned one.
+    assert pinned_run_label(earlier, ()) == "Run 1"
+
+
+@pytest.mark.parametrize("open_runs", [[RunId(TEST_SESSION, 1)], (1,), None])
+def test_a_pinned_run_is_named_only_beside_a_tuple_of_run_identities(open_runs: object) -> None:
+    with pytest.raises(TypeError, match="tuple of RunIds"):
+        pinned_run_label(RunId(TEST_SESSION, 1), open_runs)  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize("position", [0, 1, True])

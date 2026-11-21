@@ -713,7 +713,12 @@ def test_a_pinned_run_dropped_while_every_frame_fails_is_stated_as_not_open(
 def test_a_pinned_run_that_is_not_open_is_stated_in_every_area_and_no_other_run_is_shown(
     application: QApplication, shown: list[SimulationView]
 ) -> None:
-    """A run from an earlier session with the same number is a different run (`PL-7Z84`)."""
+    """A run from an earlier session with the same number is a different run (`PL-7Z84`).
+
+    The open run is Run 1, and so was the pinned run in its own session. No
+    text about the pin gives that number, because the reader would take it for
+    the open run (`PL-7H9X`).
+    """
 
     earlier = RunId(SessionToken("f" * 32), 1)
     shipped = shipped_workspaces()
@@ -725,8 +730,18 @@ def test_a_pinned_run_that_is_not_open_is_stated_in_every_area_and_no_other_run_
         notice = frame.absent_notice
         assert notice is not None
         assert notice.isVisible()
-        assert notice.title_label.text() == "Run 1 is not open."
+        assert notice.title_label.text() == "A run from an earlier session is not open."
+        assert notice.body_label.text() == (
+            "This Workspace is pinned to a run from an earlier session, so its Views show "
+            "no run. Unpin it from the Workspace's tab to show the runs that are open."
+        )
+        assert frame.pin_label.isVisible()
+        assert frame.pin_label.text() == "A run from an earlier session"
         assert not frame.content.isVisible()
+
+    assert "Unpin a run from an earlier session" in [
+        operation.label for operation in view.tab_strip.operations(0)
+    ]
 
     # The region still shows the open run, which the pin never touches.
     assert view.runs[0].run_id == _RUN_1

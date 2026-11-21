@@ -15,3 +15,7 @@ added: 2026-11-21
 **Decided here** (2026-11-21): the two places keep their order, because the error is the run's last event and the run length is why a mark was not reached. The docstring of `status_word` is wrong and is corrected, and the document's sentence names both places.
 
 **Done when.** A test builds a run that stopped at the supported run length and then failed, and checks the status word and a mark row together. The docstring of `status_word` and the document's sentence say what the two places show.
+
+**Built 2026-11-21.** No code path changed. `test_a_run_at_the_supported_run_length_that_then_fails_gives_each_reason_in_its_place` builds a controller that records the supported run length and then an error, and checks that the status word reports the error and that the row of an unreached mark reports the run length. The docstring of `status_word` now says that one run can carry both records and why each place reports the one it does. `docs/INTERFACE.md` § "Halting on a marked crossing" says what the status word and the mark row show for such a run.
+
+**Generator check.** One-off. The fact is whether one run can carry both stop records. The document said it can and the docstring of `status_word` said it cannot. Found by `PL-5FMC`, the check of the interface documents that the project owner asked for.
