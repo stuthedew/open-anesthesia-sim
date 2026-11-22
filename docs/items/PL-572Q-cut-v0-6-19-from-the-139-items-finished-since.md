@@ -1,13 +1,12 @@
 ---
 id: PL-572Q
-title: Cut v0.6.19 from the 134 items finished since v0.6.18
+title: Cut v0.6.19 from the 139 items finished since v0.6.18
 status: untriaged
 resource: release-train
 added: 2026-11-22
-verify: grep -qF '## Current baseline: v0.6.19' ROADMAP.md
 ---
 
-**Problem.** Cut v0.6.19 from the 134 items finished since v0.6.18
+**Problem.** Cut v0.6.19 from the 139 items finished since v0.6.18
 
 **The cut, 2026-11-22.** The version is 0.6.19 and the notes are in
 `docs/releases/v0.6.19.md`, with 134 items stamped. The first cut ran on a
@@ -39,3 +38,9 @@ stepped readings, halts and 24-hour runs is unchanged. Results:
 `#2180` measured the same comparison against `main` at `c478e2b18` and found
 461 delivered-volume readouts that differ. This comparison finds 543, and the
 82 more were not traced to a cause.
+
+**Re-cut, 2026-11-22.** `#2206`, `#2207`, `#2208` and `#2210` merged on `main`
+after the cut, closing six items, and `#2206` changed `src/`. The cut was
+reopened, `main` merged, and `make release VERSION=0.6.19` re-run: 139 items.
+`core/`, `data/` and `tests/reference/` did not move, so the trajectory
+comparison stands.
