@@ -10,6 +10,7 @@ touches: src/anesthesia_sim/app/simulation_view.py, tests/integration/simulation
 deferred-from: v0.7.0 - present at the freeze, but it waits on PL-RF2S, whose third pull request fixes it and which is itself deferred to the next gate; each value shown is right for its own step, so it shows no wrong value
 added: 2026-11-11
 closed: 2026-11-22
+pr: 2257
 payoff: Every part of the screen shows the same step after a dial click, so a readout never disagrees with the chart beside it.
 tests: tests/integration/simulation_view/test_simulation_view_controls.py::test_one_input_on_a_dial_of_a_running_run_draws_every_part_of_the_screen_at_one_step
 ---

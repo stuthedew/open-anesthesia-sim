@@ -4,6 +4,7 @@ title: Deleting a View that is its own window makes the time axis title raise 'A
 status: done
 added: 2026-11-22
 closed: 2026-11-22
+pr: 2257
 filed-pr: 2249
 tests: tests/integration/test_qt_chart.py::test_deleting_a_chart_s_window_leaves_its_time_axis_title_writing_nothing
 ---
