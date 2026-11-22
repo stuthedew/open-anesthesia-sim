@@ -189,7 +189,7 @@ fourth apply to the elimination alone.
    reliable during wash-in, which is the direction this module's first
    comparison examines. Gas Man's own published agreement with patients is
    materially worse during wash-in than during maintenance (docs/MODEL.md,
-   "Known limitations").
+   "Gas Man in patients").
 3. *The breathing systems differ, and the difference is larger than the
    measurement's own spread.* The paragraphs above measure its effect at 3.5
    to 4.2 published standard deviations per cohort. Any statement that this
@@ -2439,10 +2439,10 @@ def test_elimination_is_dominated_by_the_rebreathing_circuit(agent_id: str) -> N
 
 
 # Desflurane's five-minute F_A/F_A0 at the shipped circuit's default fresh gas
-# flow, which `docs/MODEL.md` § "Known limitations" quotes in its paragraph on
-# desflurane's five-minute washout. It is this model's own output, measured on
-# 2026-11-21, not a published value. It is pinned to
-# `ELIMINATION_RATIO_PIN_TOLERANCE`, for the reason given there. The figure at
+# flow, which `docs/MODEL.md` § "Elimination at five minutes: does not agree"
+# quotes in its paragraph on desflurane's five-minute washout. It is this
+# model's own output, measured on 2026-11-21, not a published value. It is
+# pinned to `ELIMINATION_RATIO_PIN_TOLERANCE`, for the reason given there. The figure at
 # 10 L/min that the same paragraph quotes is `MODELLED_ELIMINATION_RATIOS`.
 DESFLURANE_ELIMINATION_RATIO_AT_THE_DEFAULT_FRESH_GAS_FLOW = 0.2852
 
@@ -2450,26 +2450,29 @@ DESFLURANE_ELIMINATION_RATIO_AT_THE_DEFAULT_FRESH_GAS_FLOW = 0.2852
 def test_desflurane_washout_at_the_default_fresh_gas_flow_regression_pin() -> None:
     """Pin desflurane's five-minute washout at the default fresh gas flow.
 
-    `docs/MODEL.md` § "Known limitations" quotes this figure to show a learner
-    how much the circle system slows the washout on screen. The flow is read
-    from the shipped circuit's parameter file, so a change to the default is a
-    change to the setting this test measures. A change to the circuit, the
-    patient or the stepping that moves the figure fails here, so the paragraph
-    is re-measured rather than left describing a model that no longer exists.
+    `docs/MODEL.md` § "Elimination at five minutes: does not agree" quotes this
+    figure to show a learner how much the circle system slows the washout on
+    screen. The flow is read from the shipped circuit's parameter file, so a
+    change to the default is a change to the setting this test measures. A
+    change to the circuit, the patient or the stepping that moves the figure
+    fails here, so the paragraph is re-measured rather than left describing a
+    model that no longer exists.
     """
 
     default_flow = load_reference_circle_system_parameters().default_fresh_gas_flow_l_min
     assert default_flow is not None, (
         "the shipped circuit names no default fresh gas flow, so docs/MODEL.md's "
-        "Known limitations quotes a default washout that no setting defines"
+        "'Elimination at five minutes: does not agree' quotes a default washout that no "
+        "setting defines"
     )
     ratio = _eliminate("desflurane", fresh_gas_flow_l_min=default_flow).ratio
     expected = DESFLURANE_ELIMINATION_RATIO_AT_THE_DEFAULT_FRESH_GAS_FLOW
 
     assert abs(ratio - expected) <= ELIMINATION_RATIO_PIN_TOLERANCE, (
         f"desflurane eliminates to F_A/F_A0 {ratio:.5f} at 5 min at the default fresh gas "
-        f"flow of {default_flow} L/min, against the {expected} that docs/MODEL.md's Known "
-        f"limitations quotes; re-measure that paragraph rather than widening the pin"
+        f"flow of {default_flow} L/min, against the {expected} that docs/MODEL.md's "
+        f"'Elimination at five minutes: does not agree' quotes; re-measure that paragraph "
+        f"rather than widening the pin"
     )
 
 
@@ -2485,10 +2488,10 @@ HIGH_FLOW_RAISED_VENTILATION_L_MIN = 8.0
 def test_desflurane_washout_at_a_high_flow_and_raised_ventilation_regression_pin() -> None:
     """Pin desflurane's five-minute washout at a high flow and a raised ventilation.
 
-    `docs/MODEL.md` § "Known limitations" quotes this figure as a setting at
-    which the washout on screen falls faster than the volunteers' did. The
-    test also asserts that it is below their mean, because that is the claim
-    the paragraph makes with it.
+    `docs/MODEL.md` § "Elimination at five minutes: does not agree" quotes this
+    figure as a setting at which the washout on screen falls faster than the
+    volunteers' did. The test also asserts that it is below their mean, because
+    that is the claim the paragraph makes with it.
     """
 
     ratio = _eliminate(
@@ -2501,15 +2504,15 @@ def test_desflurane_washout_at_a_high_flow_and_raised_ventilation_regression_pin
     assert abs(ratio - expected) <= ELIMINATION_RATIO_PIN_TOLERANCE, (
         f"desflurane eliminates to F_A/F_A0 {ratio:.5f} at 5 min at {FRESH_GAS_FLOW_L_MIN} "
         f"L/min of fresh gas and {HIGH_FLOW_RAISED_VENTILATION_L_MIN} L/min of alveolar "
-        f"ventilation, against the {expected} that docs/MODEL.md's Known limitations "
-        f"quotes; re-measure that paragraph rather than widening the pin"
+        f"ventilation, against the {expected} that docs/MODEL.md's 'Elimination at five "
+        f"minutes: does not agree' quotes; re-measure that paragraph rather than widening the pin"
     )
     measurement = next(m for m in PUBLISHED_MEASUREMENTS if m.agent_id == "desflurane")
     assert ratio < measurement.elimination_mean, (
         f"desflurane's five-minute F_A/F_A0 of {ratio:.5f} at a high flow and raised "
         f"ventilation is no longer below the volunteers' mean of "
-        f"{measurement.elimination_mean}, so docs/MODEL.md's Known limitations is wrong "
-        f"to quote it as a faster fall"
+        f"{measurement.elimination_mean}, so docs/MODEL.md's 'Elimination at five minutes: "
+        f"does not agree' is wrong to quote it as a faster fall"
     )
 
 

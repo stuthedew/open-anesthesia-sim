@@ -20,7 +20,7 @@ recurrences: 2026-11-21 PL-HQQZ withdrawn 2026-11-21 PL-RMNP
 
 **Why it matters.** A clinician who compares the two sets sees two figures for one tissue, 42 h and 46 h, and cannot tell which the simulator runs on, or whether one is an error. A developer who checks the 24-hour run-length argument ("about 0.6 of the time constant") against the table gets 0.52 instead. The conclusion survives, but the reader cannot confirm it.
 
-**Done when.** Each of the three places that give 135 min and 42 h calls them the tissue's own time constant and points to the equation in § "Tissue uptake and return". § "Alveolar gas" or one of those places says in one sentence that the coupled system's slowest terms, 172 min and 46 h at the default flows, are longer for the reason above.
+**Done when.** Each of the three places that give 135 min and 42 h calls them the tissue's own time constant and points to the equation in § "Tissue uptake and return". § "Time constants" or one of those places says in one sentence that the coupled system's slowest terms, 172 min and 46 h at the default flows, are longer for the reason above.
 
 **Generator check.** One-off: a finding from the `docs/MODEL.md` structure-read sweep. Two kinds of time constant are given under one name. No head's `misread:` states that fact.
 

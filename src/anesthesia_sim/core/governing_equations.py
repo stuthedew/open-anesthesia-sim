@@ -1,8 +1,8 @@
 """The governing equations of `docs/MODEL.md`, assembled as one system matrix.
 
 This file is a transcription and nothing else. Every entry that
-`build_system_matrix` writes is one term of one balance equation in that
-document's "Governing equations" or "Conservation of agent mass" section. The
+`build_system_matrix` writes is one term of one balance equation in
+`docs/MODEL.md` § "Equations" or `docs/VERIFICATION.md` § "Conservation of agent mass". The
 rows are written in the order of the state vector described below, each under
 a comment that gives its equation in the document's symbols. So a reader who
 knows the standard variables can check the model against the code without a

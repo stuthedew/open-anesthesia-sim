@@ -382,7 +382,7 @@ state for every second from the run's opening to the second it has reached.
 settings are the four controls above, together with the patient and agent
 parameters that the equations use. They are kept as *stretches*: a stretch
 holds one set of settings and the second at which it took effect. Flows are
-stored as they were set, in liters per minute (`docs/MODEL.md` § "Time"
+stored as they were set, in liters per minute (`docs/VERIFICATION.md` § "Time"
 explains why). The settings record says which settings were in force at a
 second, which is what a branch records as where it came from. The
 control-input timeline above is a third record, kept to show and group the
@@ -960,7 +960,7 @@ fails on purpose (`test_envelope_limits_match_the_supported_input_ranges` in
 `tests/reference/test_coupled_dynamics.py`). Re-run that file's envelope and trajectory sweeps at
 the new limits. Update its limit constants, and the most that the exact step may differ from the
 independent solution (`EXACT_STEP_ORACLE_TOLERANCE`). Then re-derive every figure computed at the
-flow maxima: the fastest time constant in `docs/MODEL.md` § "Alveolar gas" and `docs/VERIFICATION.md` § "Supported simulation step",
+flow maxima: the fastest time constant in `docs/MODEL.md` § "Time constants" and `docs/VERIFICATION.md` § "Supported simulation step",
 the corner sweeps in `docs/VERIFICATION.md` § "The numerical envelope" and `tests/unit/test_numerical_envelope.py`, and
 the figures below.
 
@@ -1702,7 +1702,7 @@ setting it differently in the two runs is legitimate. But a patient who differs
 in cardiac output differs in compartment volumes too, and this model keeps
 those volumes fixed. So changing cardiac output alone shifts every tissue time
 constant $`V_i \lambda_{i:b} / Q_i`$ in a direction that flow and volume
-changing together need not take. `docs/MODEL.md` § "Known limitations" gives the size of this
+changing together need not take. `docs/PARAMETERS.md` § "The evidence behind the known limitations" gives the size of this
 artifact for a cardiac output scaled to body weight with the volumes kept fixed,
 and the same arithmetic applies here.
 
@@ -1721,7 +1721,7 @@ first is about variability.
   reference").
 - **"twelve minutes"**: a duration read between two curves inherits every
   limitation of the model that drew them, and this model does not claim to get
-  a difference in emergence time right to the minute (`docs/MODEL.md` § "Known limitations").
+  a difference in emergence time right to the minute (`docs/MODEL.md` § "Comparing two runs").
 
 ### What the interface may assert about a comparison
 
@@ -4582,7 +4582,7 @@ The panel labels the unit as litres of equivalent pure agent gas, the unit this
 document uses, because a bare "L" beside an anaesthetic agent invites a reader
 to take it as litres of liquid. The label also names the reference condition of
 `docs/MODEL.md` § "Agent amount", and says that the amounts held in the body
-read high at it (`docs/MODEL.md` § "Known limitations").
+read high at it (`docs/MODEL.md` § "Units and symbols").
 
 **A run total is shown in steps of 0.1 L, and can differ between patients by
 many steps.** As with the readouts, the spread between patients does not set the
@@ -4730,7 +4730,7 @@ product miss the cost by up to about half a millilitre's price, and the readout
 says that the figures are rounded (§ "A cost at the reader's price").
 
 **The stored total has no precision in millilitres of liquid, and is refused in
-that unit.** A store converted to liquid reads 5.8% high (`docs/MODEL.md` § "Known limitations").
+that unit.** A store converted to liquid reads 5.8% high (`docs/MODEL.md` § "Units and symbols").
 That error grows with the amount. At 17 mL of liquid it is already a whole step
 of 1 mL, and in a long run it is several steps. No number of decimals can make a
 figure with a known bias of several steps read correctly, so the stored total
@@ -4744,7 +4744,7 @@ vapour with another agent's ratio. Using desflurane's ratio would misstate
 sevoflurane by about 13 %.
 
 **The simulator derives each agent's vapour-to-liquid ratio, as the first table
-in `docs/MODEL.md` § "Agent amount" does.** It stores the liquid density and the molar mass,
+in `docs/PARAMETERS.md` § "Agent amount" does.** It stores the liquid density and the molar mass,
 each with its source, and the temperature at which the density was measured. It
 refuses to load a density measured at any temperature other than 20 °C, because
 it has no temperature correction. It computes the molar volume from the gas
@@ -5549,7 +5549,7 @@ inputs, at the price that the book prints beside the costs of Exercise 14-1,
 60 min, the readout could show "39 mL of liquid x USD 0.2047 per mL of liquid =
 USD 8.07, at your price of USD 20.47 per 100 mL bottle, as of 2008-03-05". The
 wording and the layout are placeholders. The book prints $8.06, because Gas Man
-rounds isoflurane's vapour-to-liquid ratio to 196 (`docs/MODEL.md` § "Agent amount").
+rounds isoflurane's vapour-to-liquid ratio to 196 (`docs/PARAMETERS.md` § "Agent amount").
 
 **The figures beside a cost are rounded, and the readout says so.** It says
 that the figures may therefore not multiply exactly. The cost is computed from
@@ -5653,7 +5653,7 @@ these four cases:
 - the price per millilitre is not a positive finite number, or the cost is not
   finite, which extreme entries can cause, such as a bottle price of 10 to the
   power 308 for a 0.5 mL bottle; or
-- the delivered amount cannot be converted to liquid (`docs/MODEL.md` § "Agent amount").
+- the delivered amount cannot be converted to liquid (`docs/PARAMETERS.md` § "Agent amount").
 
 The readout never shows a cost of zero in place of one of these cases. Nor does
 it show a cost left over from an earlier instant, another agent or an earlier
@@ -5763,7 +5763,7 @@ including the share bar (`PL-S79P`) and the agent cost View (`PL-B396`).
 "mL".** Millilitres of vapour and millilitres of liquid differ by a factor of
 about 180 to 210, depending on the agent. At the reference condition, 1 mL of
 liquid gives about 183 mL of sevoflurane vapour or about 210 mL of desflurane
-vapour (`docs/MODEL.md` § "Agent amount"). A vapour amount is written "mL vapour", as in
+vapour (`docs/PARAMETERS.md` § "Agent amount"). A vapour amount is written "mL vapour", as in
 "38 mL vapour". A liquid amount is written "mL of liquid", as in
 "4 mL of liquid". The model holds no liquid, so a liquid amount is worked
 out from a vapour amount, as the volume of liquid agent that would give that
@@ -5801,7 +5801,7 @@ into fat, a route between tissues that this model omits (`PL-RNYV`).
 
 **No container is drawn for arterial blood.** The model sets arterial tension
 equal to alveolar tension at every instant ($`F_a \equiv F_A`$,
-`docs/MODEL.md` § "How much agent each compartment holds"), so it gives arterial blood no volume, capacity or
+`docs/MODEL.md` § "What the model represents"), so it gives arterial blood no volume, capacity or
 amount of its own. The alveolar container therefore shows arterial tension as
 well. Gas Man's Picture draws an arterial container. Here such a container
 would show agent that the model does not hold.

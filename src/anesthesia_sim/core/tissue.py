@@ -336,8 +336,8 @@ class TissueGroup:
     ) -> float:
         """Return the perfusion-limited tissue time constant $`\\tau_i = V_i\\lambda_{i:b}/Q_i`$.
 
-        `docs/MODEL.md` § "Tissue groups" defines it. That section
-        also gives the zero-flow case, for which this method returns `inf`. An
+        `docs/MODEL.md` § "Tissue groups" defines it. `docs/MODEL.md` § "The four controls"
+        gives the zero-flow case, for which this method returns `inf`. An
         unperfused tissue exchanges nothing, so it never reaches equilibrium.
         The method also returns `inf` where the flow is above zero but so small
         that the quotient is larger than any `float`. The largest tissue the

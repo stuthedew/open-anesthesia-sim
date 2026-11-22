@@ -1607,7 +1607,7 @@ def test_exact_step_matches_the_independent_solution_on_randomised_trajectories(
 # ascending order. It also holds the period of the system's fastest complex pair, or `None`
 # where the two fastest modes are real. The values are computed from the oracle's own
 # transcription of the equations, so they do not depend on `build_system_matrix`
-# (`PL-JDX0`). `docs/MODEL.md` § "Alveolar gas" prints them to three significant figures.
+# (`PL-JDX0`). `docs/MODEL.md` § "Time constants" prints them to three significant figures.
 # Measured 2026-11-01.
 MODAL_TIME_CONSTANTS_S: dict[tuple[str, str], tuple[tuple[float, ...], float | None]] = {
     ("defaults", "sevoflurane"): ((15.819, 15.819, 63.114, 365.17, 10344.0, 166740.0), 753.39),
@@ -1666,7 +1666,7 @@ def _modal_time_constants(
 def test_modal_time_constants_are_the_pinned_ones(settings_name: str, agent_id: str) -> None:
     """The coupled system's modes are still the ones that `docs/MODEL.md` prints.
 
-    `docs/MODEL.md` § "Alveolar gas" gives the six time constants at the default flows and
+    `docs/MODEL.md` § "Time constants" gives the six time constants at the default flows and
     at the corner of the supported settings. They describe every timescale the model can
     show, so a parameter change that moves them must also change that table. This test
     fails first, and its failure message says that the table must change too. Its
@@ -1680,7 +1680,7 @@ def test_modal_time_constants_are_the_pinned_ones(settings_name: str, agent_id: 
         f"{agent_id} at the {settings_name} flows: the modes moved to "
         f"{', '.join(f'{tau:.5g}' for tau in time_constants)} s, period "
         f"{period if period is None else f'{period:.5g}'}. Re-derive this table and "
-        "the one in docs/MODEL.md section 'Alveolar gas' together"
+        "the one in docs/MODEL.md section 'Time constants' together"
     )
 
     assert time_constants == pytest.approx(expected_constants, rel=MODAL_RELATIVE_TOLERANCE), (

@@ -55,8 +55,9 @@ from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
 
 #: Each agent's liquid density at 20 °C in g/mL and molar mass in g/mol,
-#: transcribed from `docs/PARAMETERS.md` § "Agent amount", the table under "Why
-#: 20 °C". The densities are Laster, Fang and Eger's.
+#: transcribed from `docs/PARAMETERS.md` § "Agent amount", the table under "Three
+#: reasons favour a 20 °C reference condition". The densities are Laster, Fang and
+#: Eger's.
 _DENSITY_AND_MOLAR_MASS = {
     "sevoflurane": (1.5203, 200.05),
     "isoflurane": (1.5019, 184.49),

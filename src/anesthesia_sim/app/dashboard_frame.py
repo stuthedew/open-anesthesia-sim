@@ -843,7 +843,7 @@ ACCOUNTING_WITHHELD_DETAIL_TEXT: Final = "No frame has been drawn since the run 
 # The unit of every amount on the accounting panel, with the temperature and
 # pressure the amounts are stated at (`PL-HQPF`). The amounts held in the body
 # are at body temperature, and are stated at this condition so that the panel's
-# amounts add up (`docs/MODEL.md` § "Known limitations"). So the last two lines
+# amounts add up (`docs/MODEL.md` § "Units and symbols"). So the last two lines
 # say that the stored amount reads high. The caption is four short lines rather
 # than wrapped text, because Qt leaves a wrapped label's extra lines out of the
 # panel's minimum size. Each line fits in the width the panel had before the

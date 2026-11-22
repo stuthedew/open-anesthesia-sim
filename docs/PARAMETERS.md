@@ -53,7 +53,7 @@ decision, under the rule set out after the three tiers.
    recover from the program which measurement each number descends from, or
    what was adjusted to make the set consistent. **Gas Man's behavior has been
    compared with measurements in patients**, and the agreement is materially
-   worse during wash-in than during maintenance. `docs/MODEL.md` § "Known limitations" gives
+   worse during wash-in than during maintenance. `docs/MODEL.md` § "Gas Man in patients" gives
    the figures and the limits they set.
 
 **A tier-2 or tier-3 source may be adopted, but never silently.** The ranking
@@ -177,12 +177,12 @@ flow with no published counterpart.
 
 **Of all the stored values, MAC (`mac_percent`) is the only one used as a
 divisor for a displayed concentration.** The liquid density is the divisor for
-the displayed millilitres of liquid agent (`docs/MODEL.md` § "Agent amount"). The three stored
+the displayed millilitres of liquid agent (§ "Agent amount"). The three stored
 MAC values are the ones that
 De Wolf et al. state they used in their Gas Man simulations. MAC divides every
 value shown in MAC multiples, so its tier affects a displayed clinical value as
 well as a starting dial position. § "Delivery-limit and MAC parameters" states
-what that costs, and `docs/MODEL.md` § "Known limitations" records it. Two tier-2 sources are
+what that costs, and `docs/MODEL.md` § "MAC multiples" records it. Two tier-2 sources are
 cited beside the MAC values but not adopted: Mapleson's 1996 meta-analysis and
 the age-related iso-MAC charts built on it.
 
@@ -214,7 +214,7 @@ the age-related iso-MAC charts built on it.
 6. **Three molar masses**, ChEMBL's formula masses, adopted the same day. They
    are tier 2 because a molar mass is computed from the molecular formula and the
    standard atomic weights, not measured on the agent, so no tier-1 source exists
-   for one (`docs/MODEL.md` § "Agent amount").
+   for one (§ "Agent amount").
 
 **Each agent's data file cites primary blood:gas measurements beside its tier-3
 blood:gas value, and marks each one as not adopted.** The sources are Strum and
@@ -396,7 +396,7 @@ volume and the stored 0.76 perfusion fraction is kidney + heart + brain + liver,
 at 8.6% of body weight. On ICRP's own rows those four organs are **5.36%, which
 is 3.75 L at 70 kg**, 38% below what is stored. **No stored value changes
 because of this, and none should.** Lumping the splanchnic bed into the liver
-compartment is ordinary modelling. `docs/MODEL.md` § "How much agent each compartment holds" already treats
+compartment is ordinary modelling. `docs/MODEL.md` § "The reference adult" already treats
 the vessel-rich group as one lumped tissue. Nothing here is sourced to ICRP.
 <!-- provenance: data/patients/reference_adult.json tissue_groups.vessel_rich.volume_l = 6 -->
 <!-- provenance: data/patients/reference_adult.json tissue_groups.vessel_rich.perfusion_fraction = 0.76 -->
@@ -536,7 +536,7 @@ for its worked prime dose as $`2M^{3/4}`$ dl/min, "or 63.25 dl" for the 100 kg
 patient. That is 0.2 times body mass to the three-quarter power in L/min. The
 stored 5.0 would need 73.1 kg. The worked value of 63.25 dl determines the
 exponent on its own, without reading a superscript off a scan. The stored
-cardiac output stays a fixed 5.0, and `docs/MODEL.md` § "Known limitations" gives the
+cardiac output stays a fixed 5.0, and § "The evidence behind the known limitations" gives the
 reasoning.
 <!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
 <!-- provenance: data/patients/reference_adult.json default_cardiac_output_l_min = 5 -->
@@ -567,8 +567,8 @@ measurement:
 So $`0.2M^{3/4}`$ is Brody's mammalian metabolic allometry divided by an
 arteriovenous difference that is assumed constant across mammals. **4.84 L/min
 at 70 kg is therefore a derived interspecies extrapolation and must not be
-treated as a measured human cardiac output.** This matters in `docs/MODEL.md` § "Known
-limitations", the only place in that document that sets the figure beside
+treated as a measured human cardiac output.** This matters in `docs/MODEL.md` § "The
+reference adult", the only place in that document that sets the figure beside
 Cattermole et al.'s measured median.
 <!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
 
@@ -675,7 +675,7 @@ them.
 Each row names the file and the exact key path that locates its value in that
 file, so a row traces to one stored value, not to a file that happens to
 contain a matching number. A check compares each row's key path and value with
-its file, as `docs/VERIFICATION.md` § "How this document is held to the tree" describes. A row for a
+its file, as § "The provenance table, and the markers over restated values" describes. A row for a
 derived value states the stored value beside it. The tissue:blood coefficients
 are computed from the tissue:gas and blood:gas values when a file is loaded, so
 their rows name the key path of the stored tissue:gas value and show the
@@ -749,7 +749,7 @@ Workbook's own page-168 table, which gives the vessel-rich relative flow as
 0.76 (read at the source on 2026-09-06). The twelve partition coefficients come
 from De Wolf et al. 2012. Their Table 1 prints 75.8, and 75.8 + 18 + 6 = 99.8.
 The model requires the flow fractions to sum to 1 within the tolerance that
-`docs/MODEL.md` § "Tissue groups" gives, so the published set could not be stored as printed,
+`docs/MODEL.md` § "Blood flow to the tissue groups" gives, so the published set could not be stored as printed,
 even if it were preferred. The difference changes the vessel-rich time constant
 by 0.26%, below the resolution of anything a learner reads off the curve. The
 De Wolf entry in the reference patient's data file (`reference_adult.json`)
@@ -921,7 +921,7 @@ partition coefficient for that anesthetic" (p. 1023). Yasuda, Targ and Eger
 computed their own tissue:blood table the same way, as the next subsection
 records. Both papers were read in full text from the private reference corpus.
 Eger and Saidman's p. 1023 was read on 2026-10-25. The full citation of Eger
-and Saidman is in `docs/MODEL.md` § "Known limitations".
+and Saidman is in `docs/MODEL.md` § "References".
 
 Baker and Farmery's 2011 review publishes the results as well as the
 operation. Its Table 2 (p. 572) prints two sets of tissue:blood coefficients
@@ -985,7 +985,7 @@ from these.
 unbracketed figures are "Data from Fiserova-Bergerova and Diaz (26)", a 1986
 paper. They come with their own blood:gas values, 0.6 for sevoflurane and 1.4
 for isoflurane, and they differ from the derived rows by far more than
-rounding. `docs/MODEL.md` § "Known limitations" gives the differences.
+rounding. § "The evidence behind the known limitations" gives the differences.
 
 The citations of Baker and Farmery 2011, Eger and Shafer 2005 and
 Fiserova-Bergerova and Diaz 1986 were checked in PubMed on 2026-10-25 (PMIDs
@@ -996,7 +996,7 @@ and its full citation is in `docs/references/README.md`.
 loaded and checked to be positive and finite, and nothing else reads it.
 
 Two checks each reject a set of flow fractions whose sum differs from 1.0 by
-more than the tolerance in `docs/MODEL.md` § "Tissue groups" (`FLOW_FRACTION_TOLERANCE`). One
+more than the tolerance in `docs/MODEL.md` § "Blood flow to the tissue groups" (`FLOW_FRACTION_TOLERANCE`). One
 runs on the reference patient's data file
 (`_ReferenceAdultPayload._perfusion_fractions_must_sum_to_one`), and the other
 runs when the patient's compartments are built (`PatientCompartments.__post_init__`).
@@ -1024,7 +1024,7 @@ Sevoflurane, isoflurane and desflurane share one set of equations, compartments 
 adult patient (`docs/MODEL.md` § "Equations"). An agent enters those equations only through its four
 partition coefficients: one blood:gas and three tissue:gas. Its other stored values, such as its
 MAC and its vaporizer's maximum, set a control or convert a displayed amount, and the equations do
-not use them (§ "Delivery-limit and MAC parameters", `docs/MODEL.md` § "Agent amount"). All twelve coefficients
+not use them (§ "Delivery-limit and MAC parameters", § "Agent amount"). All twelve coefficients
 come from one table, so the three agents' values can be compared directly. The table is De Wolf
 et al. 2012, Table 1, from the paper already cited for sevoflurane.
 
@@ -1155,7 +1155,7 @@ coefficients, read `docs/VERIFICATION.md` § "Desflurane's residual, and why the
 
 This section specifies two of an agent's stored values that play no part in the model's
 equations: its maximum delivered concentration and its MAC. A value that a clinician could read or
-act on is safety-critical whether or not the model uses it. `docs/MODEL.md` § "Agent amount" specifies the
+act on is safety-critical whether or not the model uses it. `docs/PARAMETERS.md` § "Agent amount" specifies the
 agent's molar mass and liquid density, and `docs/INTERFACE.md` § "MAC-awake as a chart reference"
 specifies its MAC-awake.
 
@@ -1185,7 +1185,7 @@ the circle, is not bound by it.
 variable-bypass vaporizers: the dial splits the fresh gas between a bypass and a chamber in which
 the gas flows over the liquid agent and leaves saturated with vapour. The Tec 6 is not a
 variable-bypass vaporizer. Dosch and Tharp call it a gas–vapour blender, which heats desflurane
-and adds pure vapour to the fresh gas (`docs/MODEL.md` § "Known limitations" gives their full
+and adds pure vapour to the fresh gas (`docs/MODEL.md` § "References" gives their full
 citation). Johnston et al. 1994, the source of desflurane's maximum, describe it in their abstract
 as "an electrically heated, pressurized, electromechanically coupled dual-circuit blender". The two
 designs behave differently away from sea level (`docs/MODEL.md` § "Known limitations"). The model fixes
@@ -1240,7 +1240,7 @@ stored values with them.
 Because the errors run in opposite directions for sevoflurane and desflurane, a comparison of the
 two in MAC multiples differs by about 22% between the stored MACs and Mapleson's. Comparing
 agents is what the MAC-multiple display exists for. The 22% is larger than the confidence limits
-of Mapleson's values. It is a limitation of the display, listed in `docs/MODEL.md` § "Known limitations".
+of Mapleson's values. It is a limitation of the display, listed in `docs/MODEL.md` § "MAC multiples".
 
 **The stored MACs are kept** (project owner, 2026-09-04, ratified, over adopting Mapleson's
 age-40 values). Mapleson's values are not adopted, for three reasons:
@@ -1315,13 +1315,13 @@ unit**, into moles, mass, or the millilitres of liquid that a vaporizer is fille
 from. Every governing equation works with dimensionless fractions and physical
 volumes, and every partition coefficient is a ratio. So the condition changes no
 concentration curve, mass balance or displayed concentration, and no other
-number under `docs/MODEL.md` § "Equations" or "Conservation of agent mass", or
+number under `docs/MODEL.md` § "Equations", under `docs/VERIFICATION.md` § "Conservation of agent mass", or
 under `docs/INTERFACE.md` § "Minimum displayed outputs". The ideal-gas molar volume is 25.450 L/mol at
 37 °C, so declaring 37 °C instead would change each converted amount by a
 factor of 1.058.
 
 **Converting an alveolar, venous or tissue amount at 20 °C overstates it by
-5.8 %** (§ "Known limitations", under `docs/MODEL.md` § "Units and symbols").
+5.8 %** (`docs/MODEL.md` § "Units and symbols").
 <!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 **Three reasons favour a 20 °C reference condition.**
@@ -1586,8 +1586,8 @@ only general solution is to build a more elaborate model which incorporates
 direct representations of metabolism (which would be straightforward) and
 intercompartment diffusion (which would be more complex)" (p. 290).
 
-The time constants in the table's last column, the ratios and the crossing
-times were computed on 2026-09-26 from the published means above and this
+The time constants in the last column of the table in `docs/MODEL.md` § "Intertissue diffusion: the missing fourth compartment", the ratios and the crossing
+times were computed on 2026-09-26 from the published means in that table and this
 model's parameters as stored then. None of the sources below is the authority
 for a stored value:
 
@@ -1735,7 +1735,7 @@ These figures were computed on 2026-09-19, at the parameters stored then,
 against the published means and standard deviations. The table's factor is
 712.88/760, from the computed 47.12 mmHg.
 
-**No altitude correction factor is stored, and the $`1/P`$ form above must
+**No altitude correction factor is stored, and the $`1/P`$ form in `docs/MODEL.md` § "Altitude" must
 not become one.** $`\%_\mathrm{cal} \times P_\mathrm{cal} / P_1`$ is the
 dilute-vapour limit of the flow-splitting physics. The fuller form is
 $`F \approx k\,\mathrm{SVP}/(P - \mathrm{SVP})`$, where SVP is the saturated
@@ -1747,7 +1747,7 @@ steady: on that arithmetic alone, about 16% high at 585 mmHg, where the
 $`1/P`$ form predicts a flat line
 (`test_the_variable_bypass_overshoot_at_altitude_follows_from_the_fuller_form`).
 The Tec 6's response rests on its manufacturer's instruction and on Andrews and
-Johnston's description of its mechanism, both quoted above. How large the
+Johnston's description of its mechanism, both quoted in `docs/MODEL.md` § "Altitude". How large the
 variable-bypass response is, and whether its dial needs correcting, is less
 settled. Dosch and Tharp call the effect of altitude on vaporizer performance
 "controversial". They write that "Some sources state that variable bypass types
@@ -1777,7 +1777,7 @@ value:
   it is not the source for that behaviour.
 - Andrews JJ, Johnston RV. The new Tec6 desflurane vaporizer. *Anesth Analg*
   1993;76:1338–1341. Primary. It is the source of the flow-ratio mechanism
-  quoted above, which appears in the abstract.
+  quoted in `docs/MODEL.md` § "Altitude", which appears in the abstract.
 - James MF, White JF. Anesthetic considerations at moderate altitude. *Anesth
   Analg* 1984;63:1097–1105. Primary. It is the source of the case for
   reasoning in partial pressures rather than percentages at altitude, and of
@@ -1785,7 +1785,7 @@ value:
   class only.
 - Datex-Ohmeda. *Tec 6 Plus Vaporizer* specification sheet AN3307-A/1100,
   © 2000 Datex-Ohmeda Division, Instrumentarium Corp. A manufacturer
-  statement, quoted above. It also gives a 1–18% concentration range, whose upper
+  statement, quoted in `docs/MODEL.md` § "Altitude". It also gives a 1–18% concentration range, whose upper
   end is the 18% that this model stores as desflurane's maximum delivered
   concentration. Read in full.
   **Owner-attested**: see the note below.
@@ -1844,7 +1844,7 @@ clinician and names no test. The paragraphs above name the tests behind most of
 its figures. These tests compute the rest:
 
 1. `test_the_muscle_group_equilibrates_in_the_minutes_printed`: the muscle
-   group's 85 to 135 minutes, in § "Intertissue diffusion: the missing fourth
+   group's 85 to 135 minutes, in `docs/MODEL.md` § "Intertissue diffusion: the missing fourth
    compartment".
 2. `test_the_fourth_compartment_is_the_largest_term_over_the_recorded_hours`:
    the hours over which the missing fourth compartment is the largest term of
@@ -1852,7 +1852,7 @@ its figures. These tests compute the rest:
 3. `test_the_stored_set_differs_from_yasudas_means_by_the_percents_printed` and
    `test_yasudas_fat_spreads_are_the_percents_printed`: how far the stored
    coefficients sit from Yasuda, Targ and Eger's means, and how widely their fat
-   measurements spread, in § "The tissue:gas coefficients are carried as
+   measurements spread, in `docs/MODEL.md` § "The tissue:gas coefficients are carried as
    exact".
 
 The lung store's share of the fast pool, the fat fractions of 13 to 20% and

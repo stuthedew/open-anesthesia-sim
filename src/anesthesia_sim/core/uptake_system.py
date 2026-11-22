@@ -650,8 +650,8 @@ class AgentUptakeSystem:
 
         Flows are passed on in litres per minute, the unit that the compartments
         hold and that a clinician sets. Nothing here converts them. The
-        settings record derives the litres per second in which `docs/MODEL.md`
-        § "Equations" is written. So the value that a run records is
+        settings record derives the litres per second in which `docs/VERIFICATION.md`
+        § "Time" is written. So the value that a run records is
         the value that was set (`PL-SM5V`). For the same reason, the delivered
         concentration is passed on in the percent to which it was dialled, and
         the settings record derives the fraction (`PL-NJPB`). The vaporizer

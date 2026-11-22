@@ -33,7 +33,7 @@ M_{\mathrm{exhausted}}(t) = \int_0^t \dot V_FF_I\,dt
 $$
 
 A machine with its surplus gas valve shut sends no agent to the exhaust. It
-needs a different model. See `docs/MODEL.md` § "Breathing circuit".
+needs a different model. See `docs/MODEL.md` § "Low flow and the closed circuit".
 
 ### Stored amount
 
@@ -59,8 +59,8 @@ where $`\varepsilon_M`$ is the numerical mass-balance residual.
 The identity is a bookkeeping statement over whatever terms the model
 includes. It would therefore still hold, unchanged, if
 $`M_{\mathrm{exhausted}} \equiv 0`$. What would no longer hold is the
-interpretation of that term as agent lost from the system. The section
-"Breathing circuit" explains why a shut surplus gas valve is not this model
+interpretation of that term as agent lost from the system.
+`docs/MODEL.md` § "Low flow and the closed circuit" explains why a shut surplus gas valve is not this model
 with its exhaust switched off.
 
 Equivalently:
@@ -456,7 +456,7 @@ resolved to one second. A change made and reversed between two steps never reach
 all.
 
 **The step is about a sixth of the fastest process in the model.** That process has a time
-constant of 5.83 s, the shortest anywhere in the supported settings (`docs/MODEL.md` § "Alveolar gas" gives the
+constant of 5.83 s, the shortest anywhere in the supported settings (`docs/MODEL.md` § "Time constants" gives the
 settings at which it occurs). In one step, the fastest process closes about 16% of its remaining
 gap. So a control change that takes effect one step late can move a fast-changing value by an
 amount a reader can see, and the tables below give that amount.
@@ -1161,7 +1161,7 @@ show a percentage to two decimals.
 | Agent held, delivered and exhausted (§ "Mass-balance identity") | One part in 10⁹ of the agent handled, or 1e-12 L | Fixed |
 | $`F_A/F_I`$ above 1 in a run that is still washing in (`docs/INTERFACE.md` § "F_A/F_I as a displayed ratio") | 1e-6 | Fixed |
 | A reading at the height of a MAC target (`docs/INTERFACE.md` § "Halting on a marked crossing") | 1e-5 of the height | Fixed |
-| The tissue perfusion fractions, against a sum of 1 (`docs/MODEL.md` § "Tissue groups") | 1e-12 | Fixed |
+| The tissue perfusion fractions, against a sum of 1 (`docs/MODEL.md` § "Blood flow to the tissue groups") | 1e-12 | Fixed |
 | The tissue blood flows, against cardiac output | One part in 10⁹ of cardiac output, plus 1e-12 L/s | Fixed |
 | A count of ticks on the chart's percent axis, against a whole number | 1e-9 of the count | Fixed |
 
@@ -1292,7 +1292,7 @@ The simulator must always meet the following conditions:
 - all volumes are finite and positive;
 - fresh gas flow, alveolar ventilation, cardiac output, and tissue flows are finite and nonnegative;
 - partition coefficients are finite and positive;
-- tissue flow fractions sum to one within tolerance (`docs/MODEL.md` § "Tissue groups");
+- tissue flow fractions sum to one within tolerance (`docs/MODEL.md` § "Blood flow to the tissue groups");
 - stored agent amounts remain finite and nonnegative;
 - derived partial-pressure-equivalent fractions remain finite and within 0 through 1;
 - no compartment creates agent spontaneously;
@@ -1943,7 +1943,7 @@ four belong beside any statement of this result, wherever it is restated.
    described as more. The intent itself is least reliable in the wash-in
    direction, which is where this comparison looks. Gas Man's own published
    agreement with patients is materially worse during wash-in than during
-   maintenance (see `docs/MODEL.md` § "Known limitations").
+   maintenance (see `docs/MODEL.md` § "Gas Man in patients").
 3. *The breathing systems differ, and by more than the measurement's own
    spread.* The simulated results above put the difference at 3.5 to 4.2
    published standard deviations per cohort. Any statement that this model
@@ -2976,8 +2976,8 @@ real measurement. Conservation then gives $`V_A = V_C(F_1-F_2)/F_2`$, where
 $`F_1`$ is the circuit's fraction when it is closed and $`F_2`$ is the fraction
 that the circuit and lungs share once they have mixed.
 
-The first procedure is not the closed-circuit technique that `docs/MODEL.md` § "Breathing
-circuit" says this model does not represent. That technique needs fresh gas
+The first procedure is not the closed-circuit technique that `docs/MODEL.md` § "Low flow and the
+closed circuit" says this model does not represent. That technique needs fresh gas
 matched to the patient's uptake. The procedure has no fresh gas and, at zero
 cardiac output, no uptake.
 
@@ -3163,9 +3163,9 @@ and the guidance "Policy for Device Software Functions and Mobile Medical
 Applications"). Whether software is excluded depends on its intended use, not
 on which physiologic parameters it accepts. To qualify, the software must not
 support a health professional's assessment of a *specific patient*. That is why
-the intended-use boundary above is drawn at a specific patient's data.
+the intended-use boundary in `docs/MODEL.md` § "What the simulator is for" is drawn at a specific patient's data.
 
-Using this simulator outside the intended use above is **reasonably foreseeable
+Using this simulator outside the intended use in `docs/MODEL.md` § "What the simulator is for" is **reasonably foreseeable
 misuse** under ISO 14971:2019, the risk-management standard for medical devices.
 Its clause 5.2 requires documenting such misuse. The hazard table
 (`docs/VERIFICATION.md` § "Reasonably foreseeable misuse, and the hazards the presentation carries")
@@ -3181,7 +3181,7 @@ the clause numbers cited here do. The project read the FDA material at the sourc
 ### The model boundary in the code
 
 **For developers.** Before extending the model to a multi-limb system, record
-the change in this document. Such a system separates inspired gas from mean
+the change in `docs/MODEL.md` § "What the model represents". Such a system separates inspired gas from mean
 circuit gas, as Lerou and Booij's three-part model does. The two would then be
 tracked separately, and this model's single $`F_I`$ would no longer describe
 both.
@@ -3418,7 +3418,7 @@ symbol.
 | $`V_A`$ | Modeled alveolar gas volume | L gas | `AlveolarCompartment.gas_volume_l` |
 | $`V_v`$ | Venous blood-pool volume | L blood | `VenousBloodCompartment.volume_l` |
 | $`V_i`$ | Volume of tissue group $`i`$ | L tissue | `TissueGroup.volume_l` |
-| $`\dot V_F`$ | Fresh gas flow at the common gas outlet: carrier gas plus the vapour the vaporizer added, not the flowmeter setting (see § "Breathing circuit") | L gas/min | `BreathingCircuit.fresh_gas_flow_l_min` |
+| $`\dot V_F`$ | Fresh gas flow at the common gas outlet: carrier gas plus the vapour the vaporizer added, not the flowmeter setting (see `docs/MODEL.md` § "Breathing circuit") | L gas/min | `BreathingCircuit.fresh_gas_flow_l_min` |
 | $`\dot V_A`$ | Alveolar ventilation | L gas/min | `AlveolarCompartment.alveolar_ventilation_l_min` |
 | $`Q`$ | Cardiac output | L blood/min | `PatientCompartments.cardiac_output_l_min` |
 | $`Q_i`$ | Blood flow to tissue group $`i`$, formed as $`f_iQ`$ and never stored | L blood/min | `TissueGroup.blood_flow_l_min_at` |
@@ -3520,7 +3520,7 @@ check confirms).
 <!-- derived: 49.5 s from data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4.0 -->
 
 Closed-circuit operation needs both a variable alveolar volume and a patient who
-consumes oxygen, so it is not among the three entries in § "Known limitations"
+consumes oxygen, so it is not among the three entries in `docs/MODEL.md` § "Nitrous oxide and the fixed alveolar volume"
 that come from the fixed alveolar volume alone.
 
 Setting only the exhaust's removal rate to zero does not model a closed circuit.

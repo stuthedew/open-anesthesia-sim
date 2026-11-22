@@ -1493,7 +1493,7 @@ see a wrong value from it now.
      and a liquid-equivalent amount name their units. The schematic labels its
      amounts in millilitres of vapour. The agent cost View gives millilitres
      of liquid equivalent. About 183 mL of sevoflurane vapour come from 1 mL
-     of liquid (§ "Agent amount"), so neither may show a bare "mL".
+     of liquid (`docs/PARAMETERS.md` § "Agent amount"), so neither may show a bare "mL".
    - The subsection says what the share bar shows: each compartment's amount
      as a share of all the agent the run holds, circuit included.
    - The subsection derives the displayed precision of a per-compartment
@@ -1507,7 +1507,7 @@ see a wrong value from it now.
      amount read as liquid.
    - The subsection also records why no container is drawn for arterial
      blood. This model gives arterial blood no amount of its own, because
-     $`F_a \equiv F_A`$ (§ "How much agent each compartment holds"). A container drawn for
+     $`F_a \equiv F_A`$ (`docs/MODEL.md` § "What the model represents"). A container drawn for
      arterial blood would show agent that the model does not hold.
 
 2. **Each compartment's amount passed to the display** (queue item `PL-KFTM`).
@@ -1626,7 +1626,7 @@ see a wrong value from it now.
     are not converted to 37 °C for display (project owner, 2026-11-10,
     ratified, over converting them). The accounting panel sums the delivered,
     exhausted and stored amounts, and they add up only when all three are
-    stated at one condition. `docs/MODEL.md` § "Known limitations" already
+    stated at one condition. `docs/MODEL.md` § "Units and symbols" already
     says that the 20 °C label overstates the alveolar, venous and tissue
     stores by 5.8%, because they are held at body temperature.
 
@@ -2289,9 +2289,9 @@ vapour-to-liquid ratio. `PL-KZ99` (2026-10-26) stored each agent's molar
 mass and its liquid density, with the density's measurement temperature,
 in `data/agents/sevoflurane.json`, `data/agents/isoflurane.json` and
 `data/agents/desflurane.json`. `core/liquid_agent.py` derives the ratio from
-them in one place (`docs/MODEL.md` § "Agent amount"). It is exact for the
+them in one place (`docs/PARAMETERS.md` § "Agent amount"). It is exact for the
 delivered amount, which is the one a cost needs, and reads a compartment
-store 5.8 % high (`docs/MODEL.md` § "Known limitations").
+store 5.8 % high (`docs/MODEL.md` § "Units and symbols").
 
 *The exhausted/stored split keeps its own labels.* The split is the uptake
 curve in mass form, and it is worth drawing. It is simply not the
@@ -2447,7 +2447,7 @@ comparison (item 11) shipped in v0.5.0, on the two-run rendering that the
 decomposition of the run view (`PL-B9PY`) made possible in v0.4.25. So
 this item's payoff is available as soon as it ships.
 
-*This item removes a safeguard that `docs/MODEL.md` names (`PL-DXJR`).*
+*This item removes a safeguard that `docs/VERIFICATION.md` names (`PL-DXJR`).*
 The fixed reference adult is one of the two safeguards in `docs/VERIFICATION.md`
 § "What keeps a real patient's data out of a run". Once age, sex and
 weight are inputs, a run can be built from a real patient's data. So this
@@ -2985,7 +2985,7 @@ effect also changes with time at a fixed dose. A single monotonic,
 time-invariant relation therefore cannot be supported. The hard part of
 scoping this is not the arithmetic. It is deciding what the option
 *asserts* and how its uncertainty is shown to the reader.
-`docs/MODEL.md` § "Known limitations" records the measurements, the
+`docs/PARAMETERS.md` § "The evidence behind the known limitations" records the measurements, the
 citations and the consequence for the tissue time constants.
 
 *Resting tissue blood flow is itself uncertain.* The regional half of the
@@ -4031,7 +4031,7 @@ findings and `safety`/`science` findings, which re-enter this gate.
   A step that differs from the one a run has already taken is refused rather
   than counted, and a reset frees the run to take a different step. The
   interface's own cadence is still 0.1 s. A step-refinement study can still
-  take a whole run at a smaller step. `docs/MODEL.md` states the guarantee,
+  take a whole run at a smaller step. `docs/VERIFICATION.md` states the guarantee,
   and the four things it does not cover, under § "The reproducibility
   guarantee".
 - **A playback multiplier** (queue item PL-SN2C). It offers five rates (1, 5,
