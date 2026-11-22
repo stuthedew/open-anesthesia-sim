@@ -1596,12 +1596,16 @@ circuit adds for sevoflurane and isoflurane.
 
 ### Lung tissue and pulmonary blood
 
-Together these are an omitted store worth about a fifth of the fast pool. On
-round figures (1 kg of lung tissue with a tissue:blood ratio of 1.2, and 1.8 L
-of pulmonary and arterial blood), it is 20.1% of desflurane's fast pool, 19.7%
-of sevoflurane's and 23.4% of isoflurane's. It takes up agent in the first
-minutes of wash-in and equilibrates within about thirty minutes, so it barely
-changes $`F_A/F_I`$ at 30 minutes. It acts mainly early in an elimination.
+Together these are an omitted store about a fifth the size of the fast pool,
+which is the alveolar gas, the venous blood and the vessel-rich group. The
+sizes used here are round figures, not measurements from a source: 1 kg of
+lung tissue with a tissue:blood ratio of 1.2, and 1.8 L of pulmonary and
+arterial blood. On them the store is 20.1% of desflurane's fast pool, 19.7% of
+sevoflurane's and 23.4% of isoflurane's. The store stays at the alveolar
+partial pressure, so it takes up agent only while $`F_A`$ is rising. Added to
+the alveolar gas as extra capacity, it lowers $`F_A/F_I`$ by 0.08 to 0.10 at
+one minute of wash-in, but by only 0.001 to 0.005 at 30 minutes. It acts
+mainly early in an elimination.
 
 ### Dead space
 
@@ -1695,13 +1699,14 @@ compartment's. The muscle group equilibrates in 85 to 135 minutes, so nothing
 in the model has a time constant on the fourth compartment's scale. Leaving it
 out biases four things:
 
-- **Fat holds too little agent.** If the fourth compartment is fat at the
-  model's stored fat solubility, then over any case from half an hour to four
-  hours it takes up 0.9 to 2.2 times as much agent as the model's whole fat
+- **Fat holds too little agent.** Suppose the fourth compartment is fat at the
+  model's stored fat solubility, and that it and the fat group fill from a
+  steady arterial partial pressure. Then over any case from half an hour to
+  four hours it takes up 0.9 to 2.2 times as much agent as the model's whole fat
   group, or 2.6 to 5.6 times as much as the studies' fitted fat group. The
   missing store is as large as the modeled fat group's uptake, or larger.
-- **The fat trace shows only the slowly filling fat.** Fat lying against
-  well-perfused tissue runs at four to six and a half times the trace's
+- **The fat trace shows only the slowly filling fat.** On the same
+  assumptions, fat lying against well-perfused tissue runs at four to six and a half times the trace's
   partial pressure throughout such a case. After an hour it is at 13 to 20% of
   arterial, against the trace's 2.3 to 3.9%.
 - **The late washout loses its largest measured term.** After a 30-minute
@@ -1796,8 +1801,9 @@ has an answer in it, whether it concerns an HME or a heated humidifier.
 
 Ambient pressure is fixed at 760 mmHg. At sea level, both classes of vaporizer
 deliver the same partial pressure at a given dial position, so no displayed
-number is wrong there. A user in Denver (about 630 mmHg) or Mexico City (about
-585 mmHg) who sets 6% desflurane in the simulator and 6% on the real device is
+number is wrong there. A user in Denver (about 630 mmHg; Banchero et al. 1976,
+Julian et al. 2014) or Mexico City (about 585 mmHg; Hernández-Zenteno et al.
+2002) who sets 6% desflurane in the simulator and 6% on the real device is
 not delivering the same anesthetic, and nothing else in the simulator says so.
 
 **Sevoflurane and isoflurane come from variable-bypass vaporizers** (Dräger
@@ -1852,6 +1858,9 @@ and Lowe's tissue coefficients (in Yasuda, Targ and Eger 1989, p. 373).
 
 - Andrews JJ, Johnston RV. The new Tec6 desflurane vaporizer. *Anesth Analg*
   1993;76:1338-1341.
+- Banchero N, Gimenez M, Rostami A, Eby SH. Effects of simulated altitude on
+  O2 transport in dogs. *Respir Physiol* 1976;27(3):305-21. PMID 973049,
+  doi:10.1016/0034-5687(76)90060-8.
 - Boumphrey S, Marshall N. Understanding vaporizers. *Contin Educ Anaesth Crit
   Care Pain* 2011;11:199-203.
 - Candries E, De Wolf AM, Hendrickx JFA. Prospective validation of Gas Man
@@ -1918,6 +1927,9 @@ and Lowe's tissue coefficients (in Yasuda, Targ and Eger 1989, p. 373).
 - Hendrickx JFA, Lemmens HJM, Shafer SL. Do distribution volumes and
   clearances relate to tissue volumes and blood flows? A computer simulation.
   *BMC Anesthesiol* 2006;6:7. PMID 16772041, doi:10.1186/1471-2253-6-7.
+- Hernández-Zenteno RJ, Pérez-Padilla R, Vázquez JC. Normal breathing during
+  sleep at an altitude of 2240 meters. *Arch Med Res* 2002;33(5):489-94.
+  PMID 12459322, doi:10.1016/s0188-4409(02)00398-3.
 - Hudgel DW, Devadatta P. Decrease in functional residual capacity during
   sleep in normal humans. *J Appl Physiol* 1984;57(5):1319-1322.
   doi:10.1152/jappl.1984.57.5.1319.
@@ -1936,6 +1948,10 @@ and Lowe's tissue coefficients (in Yasuda, Targ and Eger 1989, p. 373).
 - Jones HM, Rowland-Yeo K. Basic concepts in physiologically based
   pharmacokinetic modeling in drug discovery and development.
   *CPT Pharmacometrics Syst Pharmacol* 2013;2:e63. doi:10.1038/psp.2013.41.
+- Julian CG, Subudhi AW, Hill RC, Wilson MJ, Dimmen AC, Hansen KC, Roach RC.
+  Exploratory proteomic analysis of hypobaric hypoxia and acute mountain
+  sickness in humans. *J Appl Physiol* 2014;116(7):937-44. PMID 24265281,
+  doi:10.1152/japplphysiol.00362.2013.
 - Katoh T, Suguro Y, Kimura T, Ikeda K. Cerebral awakening concentration of
   sevoflurane and isoflurane predicted during slow and fast alveolar washout.
   *Anesth Analg* 1993;77(5):1012-1017.

@@ -24,6 +24,8 @@ from anesthesia_sim.core.rounding import (
     AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L,
     AGENT_ACCOUNTING_RELATIVE_TOLERANCE,
 )
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
+from anesthesia_sim.core.supported_ranges import MAXIMUM_STEP_COUNT
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 # These are the three constants that set how far a run's numbers may drift
@@ -356,28 +358,27 @@ def test_a_copy_of_the_validator_is_held_to_the_same_checks() -> None:
         pickle.loads(pickle.dumps(smuggled))
 
 
-# At desflurane's 18% vaporizer maximum and 10 L/min of fresh gas, one step at
-# the 1 ms step floor delivers 0.18 * 10 L/min * (1 ms / 60,000 ms/min) = 3e-5 L.
-# The step floor is the shortest step the model allows. A longer step transfers
-# more, but the floor gives a 24 h run the most steps, and so the most additions
-# that can round. That makes it the worst case for the running totals. The
-# value is computed here rather than read from the model.
-WORST_CASE_TRANSFER_PER_STEP_L = 0.18 * 10.0 / 60_000.0
+# At desflurane's 18% vaporizer maximum and 10 L/min of fresh gas, one 1 s step
+# delivers 0.18 * 10 L/min * (1 s / 60 s/min) = 0.03 L. No supported setting
+# transfers more in a step. The value is computed here rather than read from the
+# model.
+WORST_CASE_TRANSFER_PER_STEP_L = 0.18 * 10.0 * SIMULATION_STEP_S / 60.0
 
-# Delivering that amount at every step for 24 h adds up to 2592 L. These cases
-# start the totals at 2500 L, because rounding loses the most when the totals
-# are largest. At 2500 L, one unit in the last place is 4.5e-13 L.
-LATE_IN_A_DAY_LONG_RUN_L = 2500.0
+# A run is supported for this many steps, 24 h of 1 s steps, so the totals reach
+# at most 2592 L. The case runs the whole day, so it ends at that largest total.
+STEPS_IN_THE_LONGEST_RUN = MAXIMUM_STEP_COUNT
 
-# 200,000 steps keeps the case under a second. Over that many steps from
-# 2500 L, plain addition drifted 1.2e-11 relative to the exact sum, measured
-# 2026-10-25 (`PL-XST1`).
-STEPS_IN_THE_SAMPLE = 200_000
+# A numerical limit on the plain sum, used only to show that the case can tell
+# plain addition from compensated summation. Plain addition of these transfers
+# drifted 7.7e-13 relative to the exact sum over the whole day, measured
+# 2026-11-22, which is about 3,500 times `COMPENSATED_SUM_BOUND`. A thousand times
+# leaves room for a platform that rounds a little more kindly.
+PLAIN_SUM_DRIFT_FLOOR_IN_BOUNDS = 1_000
 
 # Kahan summation's error bound is 2u + O(n u^2) relative to the sum of the
 # addends, where u = 2**-53 (Higham, *Accuracy and Stability of Numerical
-# Algorithms*, 2nd ed., SIAM, 2002, equation 4.8). Over the 8.64e7 steps of a
-# day, the O(n u^2) term is about 1e-24, so 2u is the bound at every supported
+# Algorithms*, 2nd ed., SIAM, 2002, equation 4.8). Over the 86 400 steps of a
+# day, the O(n u^2) term is about 1e-27, so 2u is the bound at every supported
 # run length. That bound is about 450,000 times smaller than a tenth of
 # `DOCUMENTED_RELATIVE_TOLERANCE`.
 COMPENSATED_SUM_BOUND = 2 * 2.0**-53
@@ -393,36 +394,31 @@ def test_the_running_agent_totals_stay_within_a_tenth_of_the_accounting_toleranc
     Until `PL-XST1`, each step's transfer was added to its total with a plain
     `+=`. Each addition could then round by up to half a unit in the last
     place, always in the same direction for a nearly constant transfer. Over a
-    24 h run at the 1 ms step floor, that drift brought the residual of a
-    correct run within a few percent of the relative tolerance at which the
-    run is halted (`docs/VERIFICATION.md` § "Mass-balance identity"). The residual is
-    the gap between the two sides of the accounting identity. The expected
-    sums are computed exactly, with `Fraction`, rather than by the code under
-    test. The test also computes the plain sum of the same transfers, which
-    drifts from the exact sum by many orders of magnitude more than the bound.
-    This shows that the test would fail if the code returned to plain addition.
+    24 h run at the 1 ms step that the model then allowed, that drift brought
+    the residual of a correct run within a few percent of the relative
+    tolerance at which the run is halted (`docs/VERIFICATION.md` §
+    "Mass-balance identity"). The residual is the gap between the two sides of
+    the accounting identity. The case runs a whole supported day at the
+    largest transfer, so it reaches the largest totals a run can hold. The
+    expected sums are computed exactly, with `Fraction`, rather than by the
+    code under test. The test also computes the plain sum of the same
+    transfers, which drifts from the exact sum by thousands of times the
+    bound. This shows that the test would fail if the code returned to plain
+    addition.
     """
 
     validator = AgentSimulationValidator()
-    validator.record_external_agent_transfer(
-        delivered_agent_l=LATE_IN_A_DAY_LONG_RUN_L, exhausted_agent_l=LATE_IN_A_DAY_LONG_RUN_L
-    )
     exhausted_per_step_l = WORST_CASE_TRANSFER_PER_STEP_L * 0.97
-    plain_delivered_l = LATE_IN_A_DAY_LONG_RUN_L
+    plain_delivered_l = 0.0
 
-    for _ in range(STEPS_IN_THE_SAMPLE):
+    for _ in range(STEPS_IN_THE_LONGEST_RUN):
         validator.record_external_agent_transfer(
             delivered_agent_l=WORST_CASE_TRANSFER_PER_STEP_L, exhausted_agent_l=exhausted_per_step_l
         )
         plain_delivered_l += WORST_CASE_TRANSFER_PER_STEP_L
 
-    exact_delivered_l = (
-        Fraction(LATE_IN_A_DAY_LONG_RUN_L)
-        + Fraction(WORST_CASE_TRANSFER_PER_STEP_L) * STEPS_IN_THE_SAMPLE
-    )
-    exact_exhausted_l = (
-        Fraction(LATE_IN_A_DAY_LONG_RUN_L) + Fraction(exhausted_per_step_l) * STEPS_IN_THE_SAMPLE
-    )
+    exact_delivered_l = Fraction(WORST_CASE_TRANSFER_PER_STEP_L) * STEPS_IN_THE_LONGEST_RUN
+    exact_exhausted_l = Fraction(exhausted_per_step_l) * STEPS_IN_THE_LONGEST_RUN
 
     assert _relative_drift(validator.delivered_agent_l, exact_delivered_l) <= (
         COMPENSATED_SUM_BOUND
@@ -430,7 +426,9 @@ def test_the_running_agent_totals_stay_within_a_tenth_of_the_accounting_toleranc
     assert _relative_drift(validator.exhausted_agent_l, exact_exhausted_l) <= (
         COMPENSATED_SUM_BOUND
     )
-    assert _relative_drift(plain_delivered_l, exact_delivered_l) > 1e4 * COMPENSATED_SUM_BOUND
+    assert _relative_drift(plain_delivered_l, exact_delivered_l) > (
+        PLAIN_SUM_DRIFT_FLOOR_IN_BOUNDS * COMPENSATED_SUM_BOUND
+    )
     assert COMPENSATED_SUM_BOUND < DOCUMENTED_RELATIVE_TOLERANCE / 10
 
 

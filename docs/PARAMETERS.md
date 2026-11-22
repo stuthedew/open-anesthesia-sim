@@ -1410,8 +1410,9 @@ the age the paragraph above uses for Katoh's equations.
 
 Every compartment stores its agent as an equivalent gas volume, in litres of
 pure agent gas at one reference condition: **20 °C and 760 mmHg, dry**. At that
-condition the ideal-gas molar volume is 24.055 L/mol. The condition defines the
-unit only. It does not mean that any of the agent is physically at 20 °C and
+condition the ideal-gas molar volume is 24.055 L/mol
+(`test_the_reference_molar_volume_is_codatas_at_0_celsius_scaled_to_20_celsius`).
+The condition defines the unit only. It does not mean that any of the agent is physically at 20 °C and
 760 mmHg. $`M_x`$ is the equivalent gas volume of the agent stored in
 compartment $`x`$.
 <!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
@@ -1426,7 +1427,7 @@ number under `docs/MODEL.md` § "Equations", which includes its conservation of
 agent, or under `docs/INTERFACE.md` § "Minimum displayed outputs". The ideal-gas
 molar volume is 25.450 L/mol at
 37 °C, so declaring 37 °C instead would change each converted amount by a
-factor of 1.058.
+factor of 1.058 (`test_the_agent_amount_section_prints_what_its_inputs_give`).
 <!-- derived: 1.058 from core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 **Three reasons favour a 20 °C reference condition.**
@@ -1437,8 +1438,8 @@ factor of 1.058.
    obtained from 1 mL of liquid. The table below gives Biro's. The same number
    can be derived from the liquid's measured density, its molar mass and the
    molar volume. At 20 °C the
-   derivation reproduces all three within 0.7 %. At 37 °C it runs 5.1–6.3 %
-   high:
+   derivation reproduces all three within 0.7 %. At 37 °C it runs 5.1–6.2 %
+   high (`test_the_agent_amount_section_prints_what_its_inputs_give`):
 
    | Agent | Liquid density at 20 °C, g/mL | Molar mass, g/mol | Derived mL vapour per mL liquid, 20 °C | Biro's constant | Derived, 37 °C |
    | --- | --- | --- | --- | --- | --- |
@@ -1446,8 +1447,8 @@ factor of 1.058.
    | Isoflurane | 1.5019 | 184.49 | 195.8 | 195 | 207.2 |
    | Desflurane | 1.4651 | 168.04 | 209.7 | 210 | 221.9 |
 
-   The densities are those of Laster, Fang and Eger, measured in four 50-mL
-   volumetric flasks at 20 °C, with a temperature coefficient of
+   The densities are those of Laster, Fang and Eger (*Anesth Analg*
+   1994;78(6):1152-3), measured in four 50-mL volumetric flasks at 20 °C, with a temperature coefficient of
    −0.00250 ± 0.00014 g/mL per °C over 0–25 °C. The molar masses are formula
    masses, which the ChEMBL chemistry database gives to two decimals.
 
@@ -1512,6 +1513,15 @@ factor of 1.058.
 <!-- derived: 195.8 from data/agents/isoflurane.json liquid_density.g_ml = 1.5019, molar_mass_g_mol = 184.49 -->
 <!-- derived: 209.7 from data/agents/desflurane.json liquid_density.g_ml = 1.4651, molar_mass_g_mol = 168.04 -->
 
+**For developers.** The code must use the one reference condition everywhere,
+and must never add gas fractions, dissolved blood concentrations and tissue
+concentrations directly. It works in litres. Two tests compute the figures in
+this section. `test_the_reference_molar_volume_is_codatas_at_0_celsius_scaled_to_20_celsius`
+checks the 24.055 L/mol against CODATA's molar volume at 0 °C.
+`test_the_agent_amount_section_prints_what_its_inputs_give` recomputes the
+25.450 L/mol and the factor of 1.058, both tables, the ranges stated beside
+them, the 5.5 % and the sevoflurane example.
+
 The sources for this section are listed below, with the route by which each
 was read.
 
@@ -1549,10 +1559,6 @@ was read.
   in `docs/references/README.md` § "Philip — *Workbook for Gas Man*". The
   workbook is tier 3 under `docs/PARAMETERS.md` § "Source hierarchy": it defines what Gas Man does,
   and it measures nothing.
-
-**For developers.** The code must use the one reference condition everywhere,
-and must never add gas fractions, dissolved blood concentrations and tissue
-concentrations directly. It works in litres.
 
 ## The evidence behind the known limitations
 
@@ -1943,6 +1949,27 @@ Nothing stored depends on any of them. A reader who wants to verify one has to
 reach the document itself.
 <!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 
+**Sources for the ambient pressures in `docs/MODEL.md` § "Altitude".** Each
+was read as its PubMed abstract on 2026-11-22.
+
+- Hernández-Zenteno RJ, Pérez-Padilla R, Vázquez JC. Normal breathing during
+  sleep at an altitude of 2240 meters. *Arch Med Res* 2002;33(5):489-94.
+  doi:10.1016/s0188-4409(02)00398-3. The abstract gives Mexico City "a mean
+  barometric pressure of 585 mmHg" at 2240 m.
+- Banchero N, Gimenez M, Rostami A, Eby SH. Effects of simulated altitude on
+  O2 transport in dogs. *Respir Physiol* 1976;27(3):305-21.
+  doi:10.1016/0034-5687(76)90060-8. Its measurements were made "in Denver at
+  a PB of 635 mm Hg". The subjects were dogs, but the figure is the
+  laboratory's ambient pressure.
+- Julian CG, Subudhi AW, Hill RC, Wilson MJ, Dimmen AC, Hansen KC, Roach RC.
+  Exploratory proteomic analysis of hypobaric hypoxia and acute mountain
+  sickness in humans. *J Appl Physiol* 2014;116(7):937-44.
+  doi:10.1152/japplphysiol.00362.2013. Its baseline samples were taken at
+  "1,609 m; barometric pressure = 625 mmHg". The abstract does not name the
+  city, and the first author's affiliation is the University of Colorado
+  Denver. The "about 630 mmHg" given for Denver lies between this figure and
+  Banchero et al.'s.
+
 ### The tests and code behind this section
 
 **For developers.** The inert circuit is `BreathingCircuit`. The directional
@@ -1981,9 +2008,17 @@ its figures. These tests compute the rest:
    measurements spread, in `docs/MODEL.md` § "The tissue:gas coefficients are carried as
    exact".
 
-The lung store's share of the fast pool, the fat fractions of 13 to 20% and
-2.3 to 3.9% after an hour, and the ambient pressures of Denver and Mexico City
-have no test yet (`PL-LP96`).
+4. `test_the_omitted_lung_store_is_the_share_of_the_fast_pool_printed` and
+   `test_the_omitted_lung_store_lowers_the_wash_in_by_the_amounts_printed`:
+   the lung store's share of each agent's fast pool, and how much it would
+   lower $`F_A/F_I`$ at one and at 30 minutes, in `docs/MODEL.md` § "Lung
+   tissue and pulmonary blood".
+5. `test_the_fourth_compartment_and_the_fat_group_fill_as_printed`: the model's
+   fat time constants in the table, and the fat fractions, partial-pressure
+   ratios and uptake ratios, in `docs/MODEL.md` § "Intertissue diffusion: the
+   missing fourth compartment".
+
+The ambient pressures of Denver and Mexico City are cited in § "Altitude".
 
 ## The provenance table, and the markers over restated values
 

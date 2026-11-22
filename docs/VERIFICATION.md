@@ -178,8 +178,9 @@ second half, as the reference runs do.
 | 4 h | 1.94e-12 | 2.97e-12 |
 | 8 h | 3.32e-12 | 4.50e-12 |
 
-The mass-balance tolerance of 1e-10 leaves about 250x headroom at the horizon
-that the reference runs use, and about 22x at 8 h. So neither moving a dial nor
+On those measurements of 2026-11-21, the mass-balance tolerance of 1e-10 is
+256 times the worst residual at the horizon that the reference runs use, and
+22 times the worst at 8 h. So neither moving a dial nor
 lengthening a case changes what the tolerance certifies. The tolerance is an
 order of magnitude stricter than the 1e-9 halt threshold. A run that meets the
 tolerance has therefore shown strictly more than that it did not stop. A real conservation defect would
@@ -192,6 +193,8 @@ transfer it rounds the same way step after step, so the error grows with the
 number of steps. The largest totals in the supported settings come from
 desflurane at its 18% vaporizer maximum and 10 L/min of fresh gas. That
 delivers 0.03 L per step, and 2592 L over the 86 400 steps of a 24 h run.
+`test_the_running_agent_totals_stay_within_a_tenth_of_the_accounting_tolerance`
+runs that day and checks both totals against their exact sums.
 <!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
@@ -426,8 +429,10 @@ The check on agent accounting (`check_agent_accounting`) accepts an error within
 limits: a fixed 1 picolitre, set in `AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L`, or a share of the
 agent handled. A step passes on either limit, so the fixed limit can only admit an error, never
 refuse one. It is the wider limit only while less than 1 mL of agent has been handled, and the
-share limit decides after that. The rounding error is a thousand times smaller than the share
-limit, so no accuracy is lost.
+share limit decides after that. The largest share measured above, 3.8e-13, is more than a
+thousand times smaller than the share limit, so no accuracy is lost.
+`test_the_accounting_tolerances_are_the_documented_halt_thresholds` holds both limits, and
+`test_a_residual_inside_the_absolute_tolerance_passes_on_the_absolute_branch` holds the fixed one.
 
 In litres, though, that error scales with the largest amount in play: about 14 L of delivered
 agent over an hour at desflurane's 1 MAC dial setting. A long run therefore routinely exceeds the fixed
@@ -2248,7 +2253,8 @@ The fourth row's volumes are round physiologic figures: 1 kg of lung tissue at
 a tissue:blood ratio of 1.2, and 1.8 L of pulmonary and arterial blood. They only set how large
 the added capacity is. They are not proposed as parameters. The added capacity equals 20.1% of
 desflurane's fast pool, 19.7% of sevoflurane's and 23.4% of isoflurane's, about the same share
-for all three. But closing the residuals needs +2.41 gas-equivalent litres for desflurane and
+for all three. The fast pool is the alveolar gas, the venous blood and the vessel-rich group, and
+`test_the_omitted_lung_store_is_the_share_of_the_fast_pool_printed` computes the three shares. But closing the residuals needs +2.41 gas-equivalent litres for desflurane and
 −1.32 for isoflurane. The conclusion does not need precise volumes. Any capacity that scales
 with blood solubility is the same *fraction* of every agent's fast pool. So adding it moves all
 three rows together, and it cannot produce a residual in one agent alone.
@@ -3454,7 +3460,8 @@ $$
 \text{percent} = 100F
 $$
 
-For example, $`F = 0.02`$ represents a 2% gas-phase concentration.
+For example, $`F = 0.02`$ represents a 2% gas-phase concentration
+(`test_the_two_forms_convert_both_ways`).
 
 The conversion has only two uses. Where the equations need $`F_D`$, the model
 derives it from the dial's percent. The screen converts for display. The model
@@ -3504,7 +3511,8 @@ run's dial is set in `AgentUptakeSystem.for_agent()`.
 
 On a 0 to 8% dial in 0.01% steps, multiplying a fraction by 100 fails to return
 the percent it came from for 126 of the 801 settings. The first failure is at
-0.23%, and 0.9% comes back as 0.9000000000000001.
+0.23%, and 0.9% comes back as 0.9000000000000001
+(`test_a_round_trip_through_a_fraction_misses_the_dialled_percent_at_126_of_801_positions`).
 <!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
 
 The agent's MAC is stored as a `MacPercent`, a `Percent` that rejects zero when
