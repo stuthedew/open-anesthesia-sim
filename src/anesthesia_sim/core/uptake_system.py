@@ -30,6 +30,7 @@ from anesthesia_sim.core.agent_simulation_validation import (
     require_totals_compensation,
 )
 from anesthesia_sim.core.alveolar import AlveolarCompartment, AlveolarCompartmentState
+from anesthesia_sim.core.checked_record import require_state_by_name, restored_through_checks
 from anesthesia_sim.core.circuit import (
     TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN,
     BreathingCircuit,
@@ -70,10 +71,16 @@ from anesthesia_sim.core.supported_ranges import (
 )
 from anesthesia_sim.core.validation import require_nonnegative_finite
 
-_PART_FIELDS = ("circuit", "alveoli", "patient", "agent_simulation_validator")
-"""The fields of `AgentUptakeSystem` that hold its parts, each written once, when it is built."""
+_PART_TYPES: dict[str, type] = {
+    "circuit": BreathingCircuit,
+    "alveoli": AlveolarCompartment,
+    "patient": PatientCompartments,
+    "agent_simulation_validator": AgentSimulationValidator,
+}
+"""The fields of `AgentUptakeSystem` that hold its parts, each written once, and their types."""
 
 
+@restored_through_checks
 @dataclass(frozen=True, slots=True)
 class UptakeStepResult:
     """Validation and transfer results from one complete step.
@@ -103,6 +110,7 @@ class UptakeStepResult:
     compensation: TotalsCompensation
 
 
+@restored_through_checks
 @dataclass(frozen=True, slots=True)
 class AgentUptakeSystemState:
     """Every dynamic value that one simulation step can change.
@@ -159,6 +167,66 @@ class AgentUptakeSystem:
     settings and a rollback never changes them, so the cache is still correct
     for whatever state the rollback left.
     """
+
+    def __getstate__(self) -> dict[str, object]:
+        """Return the system's four parts by name, for a pickle or a copy (`PL-HXNL`).
+
+        The cached propagator and its key are left out. They are a cache,
+        and the next step builds them again from the settings.
+        """
+
+        return {name: getattr(self, name) for name in _PART_TYPES}
+
+    def __setstate__(self, state: object) -> None:
+        """Restore the system's parts, then check what a built system holds at every step.
+
+        The constructor is not run. It anchors the agent accounting to the
+        agent that the parts hold, which is right for a new system. A restored
+        system continues the accounting that was saved with it, so anchoring
+        it again would hide any agent the saved parts gained or lost. Each part
+        restores through its own checks. This method then makes the two checks
+        that relate the parts, and that hold at every step of a run:
+
+        - The dial is at or below `MAXIMUM_INPUT_FRACTION`, as
+          `set_delivered_concentration_percent` requires. The circuit has
+          already checked it against the vaporizer's maximum.
+        - The accounting balances: the agent the parts hold equals the agent
+          at the anchor, plus the agent delivered and minus the agent
+          exhausted since, within the tolerances that each step's check
+          applies (`AgentSimulationValidator.check_agent_accounting`).
+
+        Raises:
+            TypeError: `state` is not a dict holding exactly the four part
+                names (`require_state_by_name`), or a part is not of its type
+                (`__setattr__`).
+            SimulationConfigurationError: a part refuses a saved value, the
+                dial is above the input ceiling, or the accounting does not
+                balance.
+        """
+
+        by_name = require_state_by_name(self, state, _PART_TYPES)
+
+        for name in _PART_TYPES:
+            setattr(self, name, by_name[name])
+
+        self._propagator = None
+        self._propagator_key = None
+
+        require_within_input_ceiling(
+            "delivered_concentration_percent", self.circuit.delivered_concentration_percent
+        )
+        check = self.agent_simulation_validator.check_agent_accounting(
+            currently_stored_agent_l=self.total_stored_agent_l
+        )
+
+        if not check.passes_validation:
+            raise SimulationConfigurationError(
+                "the restored system's agent accounting does not balance: its parts hold "
+                f"{check.currently_stored_agent_l:.6e} L, and its accounting leaves "
+                f"{check.unaccounted_agent_l:.6e} L unaccounted for (initial "
+                f"{check.initial_agent_l:.6e} L, delivered {check.delivered_agent_l:.6e} L, "
+                f"exhausted {check.exhausted_agent_l:.6e} L)"
+            )
 
     def __post_init__(self) -> None:
         """Anchor the agent accounting to what the parts hold when the system is built.
@@ -251,7 +319,8 @@ class AgentUptakeSystem:
             store.
 
             The constructor, a copy and a pickle write each part onto a system
-            that has none yet, so those writes are accepted. The cached
+            that has none yet, so those writes are accepted if the part has
+            the right type. The cached
             propagator and its key are not parts. `_step_propagator` writes them
             at any step, and they are keyed by the settings they were built
             from.
@@ -259,14 +328,25 @@ class AgentUptakeSystem:
             Raises:
                 SimulationConfigurationError: `name` names a part, and the
                     system already has that part. Nothing is written.
+                TypeError: `name` names a part, and `value` is not of that
+                    part's type. Nothing is written.
             """
 
-            if name in _PART_FIELDS and hasattr(self, name):
-                raise SimulationConfigurationError(
-                    f"the system's {name} cannot be replaced once the system is built, "
-                    "because its agent accounting is anchored to the agent its parts held "
-                    "when it was built: build a new AgentUptakeSystem from the new part"
-                )
+            if name in _PART_TYPES:
+                if hasattr(self, name):
+                    raise SimulationConfigurationError(
+                        f"the system's {name} cannot be replaced once the system is built, "
+                        "because its agent accounting is anchored to the agent its parts held "
+                        "when it was built: build a new AgentUptakeSystem from the new part"
+                    )
+
+                part_type = _PART_TYPES[name]
+
+                if not isinstance(value, part_type):
+                    raise TypeError(
+                        f"the system's {name} has type {type(value).__name__}, "
+                        f"not {part_type.__name__}"
+                    )
 
             super().__setattr__(name, value)
 
