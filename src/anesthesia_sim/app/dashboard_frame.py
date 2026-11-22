@@ -945,12 +945,7 @@ ACCOUNTING_UNIT_CAPTION: Final = (
 #: residual is shown once, as "Unaccounted": the panel prints a residual only as the
 #: power of ten it lies below, without its sign, so an absolute-error line would read
 #: the same string (project owner, 2026-10-03, ratified, `PL-XFWG`).
-ACCOUNTING_AMOUNT_NAMES: Final = (
-    "Delivered",
-    "Exhausted",
-    "Stored",
-    "Unaccounted",
-)
+ACCOUNTING_AMOUNT_NAMES: Final = ("Delivered", "Exhausted", "Stored", "Unaccounted")
 
 # The transport row's labels, and the two selector captions beside it.
 START_LABEL: Final = "Start"
@@ -2339,11 +2334,7 @@ def rejected_step_accounting(rejected: AgentSimulationValidationResult) -> Accou
 
 
 def _accounting_amounts(
-    *,
-    delivered_l: float,
-    exhausted_l: float,
-    stored_l: float,
-    unaccounted_l: float,
+    *, delivered_l: float, exhausted_l: float, stored_l: float, unaccounted_l: float
 ) -> str:
     """The accounting panel's four amount lines, from one step's totals, in litres."""
 

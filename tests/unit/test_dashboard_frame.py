@@ -2372,10 +2372,7 @@ def test_refresh_view_reports_valid_agent_accounting() -> None:
     assert panel.status.emphasis is Emphasis.ACCENT
     assert "still accounts for all delivered agent" in panel.detail
     assert panel.amounts == (
-        "Delivered: <0.1 L\n"
-        "Exhausted: <0.1 L\n"
-        "Stored: <0.1 L\n"
-        "Unaccounted: <10⁻¹² L"
+        "Delivered: <0.1 L\nExhausted: <0.1 L\nStored: <0.1 L\nUnaccounted: <10⁻¹² L"
     )
 
 
@@ -2495,9 +2492,7 @@ def test_the_panel_after_an_accounting_halt_shows_the_rejected_step_s_residuals_
     rejected = raised.value.check
     assert rejected is not None
 
-    assert rejected_step_accounting(rejected).amounts.splitlines()[3:] == [
-        "Unaccounted: <10¹ L",
-    ]
+    assert rejected_step_accounting(rejected).amounts.splitlines()[3:] == ["Unaccounted: <10¹ L"]
 
 
 def test_the_accounting_panel_refuses_names_and_amounts_that_differ_in_number(
