@@ -115,8 +115,8 @@ import sys
 import tempfile
 import tomllib
 from collections import Counter
-from concurrent.futures import ThreadPoolExecutor
 from collections.abc import Iterable, Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import TypeGuard

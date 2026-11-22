@@ -445,7 +445,7 @@ def test_settle_reruns_each_mutant_whose_pytest_run_raised(
 def test_settle_reruns_the_mutants_at_once_on_every_worker(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """Hundreds of mutants can raise at import, and one rerun after another took 20 minutes (`PL-SGBT`).
+    """One rerun after another took over 20 minutes for 238 raised mutants (`PL-SGBT`).
 
     Each stubbed run waits until three are under way, so the reruns pass only
     if three run at the same time. One after another, the first waits out the
