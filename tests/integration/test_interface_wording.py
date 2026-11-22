@@ -80,10 +80,12 @@ from anesthesia_sim.core.concentration import MacMultiple, Percent
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow
 from anesthesia_sim.layout.model import LayoutModel
+from anesthesia_sim.layout.run_identity import RunId, SessionToken
 from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, ViewKind, Window
 from anesthesia_sim.layout.workspace import Origin, Workspace, WorkspaceName, WorkspaceSet
 from tests.integration.simulation_view.simulation_view_support import (
     _delete_shown_views,
+    _fork_panel,
     _halted_branch_view,
     _mark_editor,
     _real_step_failure,
@@ -433,6 +435,40 @@ def _in_the_run_state_scenario(
     return strings
 
 
+def _branched_in_a_pinned_workspace(
+    application: QApplication, _patch: pytest.MonkeyPatch
+) -> list[str]:
+    """A branch taken in a Workspace pinned to a run of an earlier session (`PL-YQ5J`).
+
+    The trunk is paused at 1 min, and "Branch here" opens a branch there.
+    The Workspace draws neither run, so the Branch View's caption says why.
+    """
+
+    trunk = SimulationController()
+    _run_to(trunk, 60.0)
+    layout = _every_view_in_one_column()
+    earlier = RunId(SessionToken("f" * 32), 1)
+    view = SimulationView(
+        (trunk,),
+        case=BranchedCase(trunk),
+        workspaces=layout.replace(0, layout.current.pinned_to(earlier)),
+    )
+
+    try:
+        view.resize(_WINDOW_WIDTH_PX, _WINDOW_HEIGHT_PX)
+        view.show()
+        application.processEvents()
+        view.present(False)
+        _fork_panel(view).here_button.click()
+        return _strings_of(application, view)
+    finally:
+        view.stop_timers()
+        view.close()
+        view.deleteLater()
+        application.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+        application.processEvents()
+
+
 #: Each state that only an event brings up, and how the test brings it about.
 #: The run-state tests' "drawn frame" is a default run, which `RECORDED_POINTS`
 #: already covers.
@@ -445,6 +481,7 @@ EVENT_POINTS: Final[Mapping[str, Callable[[QApplication, pytest.MonkeyPatch], li
     "price set": _with_a_price_set,
     "setting refused": _a_refused_setting,
     "supported run length reached": _at_the_supported_run_length,
+    "branched in a pinned Workspace": _branched_in_a_pinned_workspace,
     **{
         name: _in_the_run_state_scenario(name)
         for name in _ONE_STATE_SCENARIOS
