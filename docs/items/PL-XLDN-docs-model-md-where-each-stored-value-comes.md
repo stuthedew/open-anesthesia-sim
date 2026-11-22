@@ -40,3 +40,5 @@ fixed in passing.
 **Blocked on the replacement of `docs/MODEL.md`.** The owner decided on 2026-11-11 to split `docs/MODEL.md` by reader (`PL-P3GZ`), and `PL-48MX` replaces what is left of it with the clinician's model description. A one-word edit now would land in text that `PL-48MX` rewrites.
 
 **Generator check.** A one-off: a pointer by position that a restructure moved. Naming the rule by its words removes the position.
+
+**Checked 2026-11-22** against `d4e8200`: still applies, and still blocked. `docs/MODEL.md` line 2810 still reads "which is the second of the three rules below", and the list that opens "Three rules apply to an entry under `sources`:" is still above it, at line 2714. The blocker `PL-48MX` is still open, and two earlier stages of the split of `docs/MODEL.md` must finish before it can start.

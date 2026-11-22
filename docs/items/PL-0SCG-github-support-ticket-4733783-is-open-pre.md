@@ -201,3 +201,5 @@ instead of filling a silence.
 
 **Still owed:** Support finishing `refs/pull/298/head`, and the closing date
 written into that section.
+
+**Checked 2026-11-22** against `d4e8200`: partly done: the exposure itself now looks closed, and the record of it is left. `git ls-remote origin 'refs/pull/*/head'` lists 2 114 pull heads and no longer lists `refs/pull/298/head`, the one survivor of 2026-09-19. No ref points at the pre-rewrite commit `66279b3293728a7d34fd60a64b40ad85ad12c1c1`. GitHub's API returns "No commit found" (HTTP 422) for that commit, and also for the contents of `docs/references` at it, while the same API returns `d4e8200`. Pull request 298's record still names that commit as its head, but the commit is no longer served. What is left is the closing sentence and its date in `docs/references/README.md` § "Redistribution". That section still says that one pull head serves both works. Support's written confirmation has not been seen. The tree-reading scan in this brief was not run, because it fetches every pull head.

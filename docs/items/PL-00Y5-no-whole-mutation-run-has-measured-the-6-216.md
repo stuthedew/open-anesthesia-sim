@@ -26,3 +26,5 @@ sweep: survivors of a whole mutation run over the modules PL-19M4 added to the r
 **Done when.** `docs/mutation-testing.md` § "Baselines" holds a dated table with a row for each added module, and each survivor that is a real gap has a test or an item.
 
 **Generator check.** A one-off. It is the measurement that `PL-19M4`'s change of rule left to do, and `PL-19M4` is itself a one-off under `CLAUDE.md`'s rule that a shared fact has one source of truth. No head's `misread:` line states it: `bin/docket generators --misread` was searched on 2026-11-11 for "list", "module", "import", "hand" and "covers" when `PL-19M4` was triaged.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `docs/mutation-testing.md` § "Baselines" still holds only the 2026-10-18 and 2026-10-17 runs, and has no row for `layout/model.py` or any other module that `PL-19M4` added.

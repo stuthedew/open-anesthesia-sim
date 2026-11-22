@@ -23,3 +23,5 @@ reenters: PL-GTH6
 **Done when.** A test loads two runs that differ in agent and in settings, and for every View that shows two runs checks each displayed value against the value of the run it is shown under. The Views come from the registry, as in `PL-B8DL` (the test layout built from the registry), so a new View is included without being listed.
 
 **Generator check.** An instance of `PL-GTH6`'s fact, filed after that head closed on 2026-10-25. The head's verdict rests on no filing having arrived, not on a check.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `test_two_runs_share_one_readout_block_whose_values_name_their_runs` in `tests/integration/simulation_view/test_simulation_view_readouts.py` still checks only that the labels read "Run 1" and "Run 2". No test in `test_simulation_view_comparison.py`, `test_simulation_view_readouts.py`, `test_compartment_schematic_view.py` or `test_agent_cost_view.py` compares a shown value with the run it sits under. `PL-RF2S` (one value for the whole screen) still has its third pull request to build, the one that makes each run's name travel with its values.

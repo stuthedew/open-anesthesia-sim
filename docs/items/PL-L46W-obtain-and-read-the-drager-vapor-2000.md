@@ -48,3 +48,5 @@ say the source was not read or not checked. If a source does not state the
 stored value, that is a finding against the data file instead. Reading Dräger's
 own data sheet may also show that `sevoflurane.json` should cite it rather
 than a distributor's page; that change would add the data file to `touches`.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `test_vaporizer_maximum_matches_its_cited_specification` in `tests/unit/test_parameters.py` still says "the specification itself was not read" and "was not checked here". One part of the premise has changed. On 2026-11-22 `www.draeger.com` answered 302 and `zurichcorp.com` answered 200, so the Dräger specification may now be read directly. `onlinelibrary.wiley.com` answered 403, so Kelly and Kong 2011 still needs the private corpus or the owner.

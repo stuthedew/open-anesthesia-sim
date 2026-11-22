@@ -50,3 +50,5 @@ learner only after they repeat a mark.
 with its unit in seconds, and the MAC target as its multiple and compartment, as
 `without_mac_target` does. Both messages are pinned whole in
 `tests/unit/test_bookmarks.py`.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `_refuse_repeats` in `app/bookmarks.py` still formats the key with `{key!r}`, so a repeated MAC target still prints the enum repr. A repeated instant now prints "naming 600" rather than "600.0", because instants are whole seconds since #2180, but it still has no unit, as `test_the_repeated_instant_refusal_is_pinned_whole` pins it.

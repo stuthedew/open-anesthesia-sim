@@ -34,3 +34,5 @@ payoff: the docstrings of three published-data tests give the figures and reason
 
 **Checked 2026-11-21:** point 5 no longer applies. `PL-Z6C8` deleted `tests/reference/test_canonical_evaluation.py`, so only the other files remain.
 <!-- absent: tests/reference/test_canonical_evaluation.py -->
+
+**Checked 2026-11-22** against `d4e8200`: partly done. The blocker `PL-SZ6G` closed with #2180. Point 3 is fixed: the docstring of `test_early_wash_in_matches_published_human_measurement` now reads "0.032 to 0.042". Point 5 went with the deleted file. Points 1, 2 and 4 are left. `tests/reference/test_late_washout_against_published_fits.py` still gives "0.912-0.937" in its module docstring and "0.912 to 0.937" in the docstring and failure message of `test_the_published_coefficients_sum_below_one_at_discontinuation`, and its module docstring still says "Between 8 and 13 hours it is a third to a half". `tests/reference/test_published_wash_in_and_elimination.py` still has both comments of point 4. The tail ratios of point 2 are model output, so measure them again on the whole-second tree before writing them.

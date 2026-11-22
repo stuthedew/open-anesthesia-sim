@@ -124,3 +124,5 @@ MAC reference labels are now computed captions (`:458`,
 `mac_reference_caption(frame)`). So shape 1's allowlist has to be re-keyed onto
 the Qt label builders, and whoever starts this has to find which module now
 carries the screen's standing text before writing the check.
+
+**Checked 2026-11-22** against `d4e8200`: partly done. `PL-86VL` (#2140) now holds every string the dashboard shows on a default run to `tests/integration/approved_interface_strings.json`, so a new standing sentence fails `tests/integration/test_interface_wording.py` until a person approves it in the diff. What is left is what that list does not do: it is keyed on the string rather than on the element, it records no reason for each entry, it measures no amount of standing text, and `.claude/rules/ui-reader.md` names neither it nor any tool. No `tools/standing_text_check.py` exists. The head this item was filed under, `PL-J1ZM` (prose over-explains), was dropped on 2026-11-14, so a session should first decide whether the approved list already meets the need.

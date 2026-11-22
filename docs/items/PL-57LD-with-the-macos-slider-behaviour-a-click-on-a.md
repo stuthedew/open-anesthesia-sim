@@ -1,9 +1,14 @@
 ---
 id: PL-57LD
 title: With the macOS slider behaviour, a click on a slider's track applies the setting and then draws it as a preview labelled 'not applied', and a press on the handle away from its centre applies a change before any drag
-status: untriaged
+priority: P1
+effort: M
+status: ready
+classes: defect, safety
 feature: interface-matches-its-spec
+touches: src/anesthesia_sim/app/qt_widgets.py, tests/integration/simulation_view/test_simulation_view_controls.py, docs/INTERFACE.md
 added: 2026-11-21
+payoff: A learner on a Mac who clicks a setting slider sees either an applied change or a labelled preview, never an applied value marked not applied.
 ---
 
 **Problem.** With the macOS slider behaviour, a click on a slider's track applies the setting and then draws it as a preview labelled 'not applied', and a press on the handle away from its centre applies a change before any drag
@@ -87,3 +92,7 @@ With the macOS hints, a press on the handle 3 px to the right of its centre, rel
 **The owner can confirm it in a minute.** On a paused run on the Mac, click the fresh gas flow slider's track well away from the handle. If the value jumps to the pointer, and not by one step, the macOS style behaves as above.
 
 **Done when.** A click on the track and a press on the handle give the same result under the macOS hints as under Fusion, in whichever form `docs/INTERFACE.md` § "A preview of an unapplied setting" then states, and a test runs both gestures under a proxy style that returns the macOS hints.
+
+**Checked 2026-11-22**, at `d4e8200c`. The code is as it was. `git grep -n -E '\.setStyle\(|QStyleFactory|Fusion|SH_Slider' -- src` still finds nothing, so the application still takes the host platform's slider hints. `ParameterSlider` in `app/qt_widgets.py` still turns tracking off, connects `sliderPressed` to the start of a preview, and connects `valueChanged` to the applied value. The preview did not exist at the freeze; it came in with `PL-5B1N` (the preview a held control draws). It has still not been run on macOS.
+
+**Generator check.** A one-off. The misread fact is which pointer gestures a slider turns into an applied value on each host platform's style: the tests run only under Fusion, and nothing models the macOS hints. `PL-KRZW` (closed: which palette roles a widget takes from the host platform) states a neighbouring fact about colour, not input, and `PL-YZ9L` (open: heavier lettering under macOS Dark) is a second item about a host-platform difference that the offscreen tests cannot see. Two items do not make a generator.

@@ -115,3 +115,5 @@ The two options as they were put:
   `docket.toml`, the file goes in `workflow_paths` (it is addressed to
   participants in the build, as `docs/worker.md` and `docs/maintainer.md`
   are), and a chat session works it, because no worker may edit a gate path.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `docs/workflow.md` does not exist, and neither `README.md` nor `docs/consultant-brief.md` links to one. The owner's decision of 2026-10-24 on where the document lives still applies.

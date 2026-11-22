@@ -1,9 +1,15 @@
 ---
 id: PL-C3K1
 title: tools/rules_paths_check.py keeps the apparatus path set in two copies that a new apparatus path must be added to by hand
-status: untriaged
+priority: P3
+effort: M
+status: ready
+classes: defect
 feature: standing-weight
+touches: tools/rules_paths_check.py, tests/unit/test_rules_paths_check.py, CLAUDE.md, .claude/rules/apparatus-standard.md
+deferred-from: v0.7.0 - present at the freeze, with three copies then, but a workflow check with no connection to anything on the frozen list or in v0.7.0 Required scope, and it changes nothing a learner sees
 added: 2026-11-21
+payoff: a new apparatus path costs one edit instead of a red run and two more edits
 ---
 
 **Problem.** tools/rules_paths_check.py keeps the apparatus path set in two copies that a new apparatus path must be added to by hand
@@ -15,3 +21,7 @@ added: 2026-11-21
 **What to do.** Read the apparatus path set from one home, and derive the other use from it.
 
 **Done when.** A new path added to `docket.toml`'s `workflow_paths` needs no second edit, and the check still refuses a misanchored glob.
+
+**Checked 2026-11-22.** The two copies are still there. `APPARATUS_LISTS` in `tools/rules_paths_check.py` names the list in `CLAUDE.md`, the check reads `.claude/rules/apparatus-standard.md`'s `paths:` as the other copy, and its refusal still says "add it to both copies of the set". At the freeze the check held three copies (`git show 0947408:tools/rules_paths_check.py`).
+
+**Generator check.** The fact misread is which paths the apparatus standard governs. Two files state it, and a check holds them to each other instead of both reading one record. No head states this fact. `PL-8ZGY` states which lane each tracked path is in, a different fact that this set is checked against. This is a one-off.

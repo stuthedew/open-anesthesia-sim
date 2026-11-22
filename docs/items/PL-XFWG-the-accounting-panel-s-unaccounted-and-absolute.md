@@ -52,3 +52,5 @@ in `tests/unit/test_dashboard_frame.py` pins the single line instead; and a test
 named `test_the_accounting_panel_prints_the_residual_once` asserts that no
 residual is printed twice. The failure notice keeps its signed six-figure
 values.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. The answer of 2026-10-03 is recorded, but nothing has been built. `ACCOUNTING_AMOUNT_NAMES` in `src/anesthesia_sim/app/dashboard_frame.py` still lists "Absolute error". The docstring of `format_agent_residual` in `src/anesthesia_sim/app/formatting.py` still says both lines use the same form. `tests/unit/test_dashboard_frame.py` still pins `Absolute error: <1e-12 L` and two other "Absolute error" lines.

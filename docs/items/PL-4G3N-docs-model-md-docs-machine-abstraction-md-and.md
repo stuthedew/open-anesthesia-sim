@@ -1,9 +1,14 @@
 ---
 id: PL-4G3N
 title: docs/MODEL.md, docs/machine-abstraction.md and the model description draft repeat claims about Fukuda et al. 2006 and Shin et al. 2017 that the sources do not support
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, docs
+feature: anesthesia-machine
 touches: docs/MODEL.md, docs/machine-abstraction.md, docs/prose-review/model-description-draft.md
 added: 2026-11-11
+payoff: A clinician reading what the model leaves out is told only what Fukuda and Shin actually measured, not a stronger claim the sources do not make.
 ---
 
 **Problem.** docs/MODEL.md, docs/machine-abstraction.md and the model description draft cite Fukuda et al. 2006 for a rise in F_I/F_D at a fixed circuit volume and on every machine, which its abstract does not support. docs/machine-abstraction.md also gives a list of Shin et al.'s reasons that the paper does not support.
@@ -33,3 +38,7 @@ All three copy the survey's headline as it stood before `PL-KZ60`. `PL-4DCG` wro
 **Why it matters.** `docs/MODEL.md` is what a reader trusts about what the model leaves out. The overstated sentence tells a clinician that inlet position alone, at the same volume, changes the inspired fraction on every machine tested. The source supports less than that. No displayed value changes.
 
 **Done when.** The Fukuda passages say what the abstract supports, the Shin passage says what the paper supports, or a full-text reading of Fukuda et al. supports the stronger sentence and its route is recorded. `docs/MODEL.md` is held for restructuring until `PL-48MX` closes, but a fact fix may land.
+
+**Checked 2026-11-22**, at `d4e8200c`. All four passages are still there. `docs/MODEL.md` § "Where each stored value comes from" still says "Fukuda et al. moved only the fresh gas inlet, with the machine and the volume held fixed". `docs/machine-abstraction.md` still says "moving only the fresh gas inlet significantly raised the inspired/delivered ratio of isoflurane and of sevoflurane", still counts "the two that Fukuda et al. instrumented", and § "Question 5" still says "Shin et al. attributed the remaining difference to inlet position, decoupling, ventilator drive and delivery mode". The draft's § "6.4 The breathing circuit" still carries the Fukuda sentence. The `docs/MODEL.md` and `docs/machine-abstraction.md` Fukuda sentences were present at the freeze (`git show 0947408:docs/MODEL.md` and `git show 0947408:docs/machine-abstraction.md`). The Shin sentence was not.
+
+**Generator check.** The misread fact is what a cited source supports, at the depth this project read it. Here a later document copied the survey's headline without reading the source again. No head's `misread:` line states that fact. `PL-4BGX` (closed 2026-11-20: `docs/MODEL.md` stated the vaporizers' altitude response more firmly than its sources) and `PL-XGLH` (open: values read from an abstract cited as if from the full text) misread the same fact, so it is a candidate generator. It is reported to the coordinator rather than recorded here, because no open item holds a fix to its cause.

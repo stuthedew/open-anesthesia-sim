@@ -3,13 +3,13 @@ id: PL-7R8S
 title: docs/MODEL.md § Displayed precision judges the cost's significant figures against one SD of the density while every other agent amount, the liquid volume beside the cost included, is judged against a seventh of an SD, so the section applies two limits to figures with the same relative uncertainty
 priority: P3
 effort: S
-status: needs-decision
-classes: defect
+status: ready
+classes: defect, ux
 feature: model-claims-held-by-tests
 touches: docs/MODEL.md, tests/unit/test_formatting.py, docs/INTERFACE.md
 deferred-from: v0.7.0 - a new problem: the cost display and its three-significant-figures paragraph came with 7baae320 (2026-11-02), after the freeze
 added: 2026-11-04
-payoff: every agent amount and the cost beside it are judged against one limit, so the section gives no reason its own rule contradicts
+payoff: a learner reads a cost as an ordinary money figure, to the cent, and the document gives a reason that agrees with the display
 verify: ! grep -qF 'At four it would be 0.010 %' docs/INTERFACE.md
 ---
 
@@ -26,8 +26,14 @@ verify: ! grep -qF 'At four it would be 0.010 %' docs/INTERFACE.md
 
 **Recommendation: A.** It fixes the inconsistency in the reason without changing the display, and a cost at the reader's own price is read to a few figures, not to the cent on a long case.
 
-**Done when.** The paragraph that opens "A cost is shown to three significant figures" judges the cost's count of figures against the same limit as the other agent amounts, in the form the owner chooses, and `test_the_cost_s_and_the_price_s_precisions_follow_from_the_density_and_the_cost` computes that limit.
+[superseded 2026-11-22: the owner's answer below replaced this done-when] **Done when.** The paragraph that opens "A cost is shown to three significant figures" judges the cost's count of figures against the same limit as the other agent amounts, in the form the owner chooses, and `test_the_cost_s_and_the_price_s_precisions_follow_from_the_density_and_the_cost` computes that limit.
 
 **Generator check.** Stock of `PL-B6YV`'s fact. The paragraph dates from `PL-1P15`, before that head closed on 2026-11-02, so this is not a re-entry.
 
 **Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem began after Gate 3 froze at `817a4d88`, so the item stays deferred to the next gate, and its `deferred-from:` names the commit that began it. The cost display and its three-significant-figures paragraph came with `7baae320` (2026-11-02).
+
+**Checked 2026-11-22** against `d4e8200`: still applies, and still waits on the owner's choice between keeping three significant figures (A, recommended) and showing four (B). The paragraph that opens "A cost is shown to three significant figures" in `docs/INTERFACE.md` still says "At four it would be 0.010 %, finer than" one SD of the density.
+
+**Answered 2026-11-22.** Neither option. A cost reads as a standard money figure, in whole units and cents, such as USD 12.34 or USD 123.45 (project owner, 2026-11-22: "Just make it look like standard money readout dollars and cents."). The density's uncertainty no longer sets how a cost is shown. A cost is not a value that patient care turns on, and a reader of a price expects it to the cent. A cost is shown to its currency's own minor unit, as CLDR's currency data gives it, read through a maintained library rather than a table written here: two decimals for USD and EUR, none for JPY. Babel's `format_currency` does this by default ("currency_digits – use the currency's number of decimal digits", default True; its example formats 1099.98 JPY as "¥1,100"; Babel documentation, numbers API page, read 2026-11-22: https://babel.readthedocs.io/en/latest/api/numbers.html). Babel is not yet a dependency, so the building session chooses the library and says what it does with a three-letter code CLDR does not know. The owner also said the app will have one currency throughout, which the reader can change (2026-11-22); that setting is its own item.
+
+**Done when.** The agent cost View shows every cost to the cent, so USD 12.34 reads USD 12.34 and USD 123.45 reads USD 123.45. `docs/INTERFACE.md`'s paragraph that opens "A cost is shown to three significant figures" is rewritten to say a cost is shown as a money figure to its currency's minor unit, and no longer judges it against the density's SD. A test shows a cost above USD 100 printed with two decimals, and one in JPY printed with none.

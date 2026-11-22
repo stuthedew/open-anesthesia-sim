@@ -58,3 +58,5 @@ The check parses `src/` and `tests/`, which are 3.14 source, so it runs under
 and `quality.yml`, which gate parity requires. Whether it infers an argument's
 type or flags every overloaded call with a way to mark the safe ones is the
 implementing session's choice; the Done-when above holds either way.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `tools/qbytearray_pointer_check.py` does not exist, and no file under `src/` or `tests/` calls any of the six entry points. The first likely site that the brief names, a drag payload for `PL-2KXB`'s Area swap, did not appear: `PL-2KXB` is done and nothing under `src/` uses `QDrag` or `QMimeData`. So the hazard is still only possible, not present.

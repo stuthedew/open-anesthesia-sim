@@ -70,3 +70,5 @@ whether to edit it, and whether an edit carries a dated line saying what
 changed. **Recommended:** a visible dated correction, because the page's own
 position is that its numbers are attached to be checked. The item stays open
 until he decides.
+
+**Checked 2026-11-22** against `d4e8200`: still applies, and the remaining choice is the owner's. A read of the artifact on 2026-11-22 found its closing paragraph unchanged: it still says "nine lines, about 2 KB" and "The instrumentation went in last week and has no data yet." Today `tools/dead_ends.py emit` prints 7 lines and 2,249 bytes at session start. The read-side instrumentation is still gone since `PL-3HQ6`.
