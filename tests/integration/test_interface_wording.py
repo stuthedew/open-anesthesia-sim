@@ -46,8 +46,11 @@ unit of a clinical value; whether a value reads as modeled or measured; what
 a warning, halt, refusal or stated limitation tells a learner about a value
 or what to do; or wording that reads as a recommendation. The pull request's
 `Owner-read:` record says which it is, as for any other change to the
-simulator. A control's or View's name, a layout notice, a document pointer,
-punctuation or a corrected typo merges on green (`PL-NRP7`).
+simulator. Any other change merges on green, such as a layout notice, a
+document pointer, punctuation, a corrected typo, or the name of a control or
+View that names no clinical value. Where a change fits both lists, it waits
+for the owner: renaming the "Cardiac output" control names a clinical value
+(`PL-NRP7`).
 
 The application's version is written into one string, and changes with every
 commit. It is replaced by `{version}` before its digits are masked.

@@ -78,11 +78,14 @@ as for any other simulator change. A change of wording needs the owner when it
 changes clinical meaning: the name, label or unit of a clinical value; whether
 a value reads as modeled or measured; what a warning, halt, refusal or stated
 limitation tells a learner about a value or what to do; or any wording that
-reads as a recommendation. A control's or View's name, a layout notice, a
-document pointer, punctuation and a corrected typo merge on green. The
+reads as a recommendation. Any other change merges on green, such as a
+layout notice, a document pointer, punctuation, a corrected typo, or the name
+of a control or View that names no clinical value. Where a change fits both,
+it waits for the owner. The
 forbidden-phrase checks in `tests/integration/simulation_view/` still run on
-every change. Decided by this session on the sources above, as the owner's
-standing instruction to apply best practice asks (`PL-NRP7`).
+every change. This session recommends it on the sources above. It reopens
+how `PL-86VL` was read, and it changes a rule sessions run under, so it waits
+for the owner's answer before it merges.
 
 **Why it matters.** The owner's attention goes to the wording only a
 clinician can judge, and a wording change with no clinical effect no longer
@@ -98,3 +101,10 @@ the four kinds above.
 **Generator check.** Not a generator: one pull request held so far (`#2222`).
 The fact sessions misread is who "a person" in the test's docstring is, and
 this item states it where the test is read.
+
+**Blind review, 2026-11-22.** One pass found three things. It held that the
+change needs the owner's answer, because it changes a rule sessions run under
+that he did not ask for in his own words; the pull request now records that
+and asks him. It found that a control's name can also name a clinical value,
+so the text now says the kinds that wait for the owner win. And it found the
+list copied into `docs/maintainer.md`, which now points to the docstring.
