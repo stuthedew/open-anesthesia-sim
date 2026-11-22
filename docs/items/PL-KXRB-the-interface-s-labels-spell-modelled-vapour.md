@@ -53,3 +53,4 @@ at `817a4d88`, `dashboard_frame.py` already held "Modelled" seven times and
 
 **Found by** the 2026-11-09 triage pass, while checking `PL-SRXT`.
 
+**Checked 2026-11-22** against `d4e8200`: still applies. `COMPARTMENT_SUBSTANCE_TEMPLATE` in `src/anesthesia_sim/app/dashboard_frame.py` still reads "Modelled concentrations: {agent}", and `formatting.py` still spells the unit `"litres of vapour"`. A search of quoted strings under `src/anesthesia_sim/app/` finds 43 with a British form and none with a US form. Since #2109, most quotations of these labels are in `docs/INTERFACE.md`, which the done-when does not yet name beside `docs/MODEL.md` and `README.md`.

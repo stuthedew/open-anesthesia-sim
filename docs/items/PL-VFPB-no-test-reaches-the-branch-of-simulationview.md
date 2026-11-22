@@ -19,3 +19,5 @@ verify: grep -rq 'def test_a_region_placed_inside_the_layout_container_is_refuse
 **Done when.** `tests/integration/simulation_view/` has `test_a_region_placed_inside_the_layout_container_is_refused`, which puts the region, or a widget already in it, inside `_areas` and fails if the second branch of `_require_unconditional_values` is deleted.
 
 **Found by.** `PL-TBQS` reviewer replay on #1585, finding r02 F3, checked against main on 2026-10-25 by reading the guard and the test.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `SimulationView._require_unconditional_values` in `src/anesthesia_sim/app/simulation_view.py` still has both branches, and the second one (`_within(widget, self._areas)`) is still reached by no test. Since #2152 split the dashboard tests, the refusal test is `test_a_run_whose_region_lacks_a_declared_value_is_refused` in `tests/integration/simulation_view/test_simulation_view_branch_display.py`. Its second case still points the 1 MAC value at the first View in the splitter tree, which fails through the first branch. No test of the name in the done-when exists.

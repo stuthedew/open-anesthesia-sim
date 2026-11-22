@@ -21,3 +21,5 @@ verify: grep -qF 'told apart from the fat trace' tools/contrast_check.py
 **Found by.** `PL-TBQS` reviewer replay on #288, findings r03 F2 and r06 F1. Checked against main on 2026-10-25; ratio computed from the theme constants.
 
 **Generator check.** Shares one fact with `PL-GT8W`: `tools/contrast_check.py` measures each chart series only against `PANEL`, never against another series or a composite background the chart draws. Two items are not a generator, and a third would make one.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `ONE_MAC_LINE_COLOR = MUTED` (`#59728A`) and `FAT_COLOR = "#64748B"` in `src/anesthesia_sim/app/theme.py` still measure 1.05:1 against each other, computed with the WCAG relative-luminance formula on 2026-11-22. The 1 MAC line's dash is still `[16, 8]`. `tools/contrast_check.py` has no requirement between the two colours, and nothing in it says "told apart from the fat trace".

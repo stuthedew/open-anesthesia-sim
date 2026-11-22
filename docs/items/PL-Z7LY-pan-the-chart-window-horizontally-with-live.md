@@ -49,3 +49,5 @@ reset mid-pan, agent switch mid-pan.
 
 **Done when.** The window can be moved across the run, and whether it is live
 or holding position is unmistakable at a glance and reversible in one click.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. The docstring of `following_window` in `src/anesthesia_sim/app/chart_time_base.py` still says panning away from the right edge is a separate item. `_plot` in `src/anesthesia_sim/app/qt_chart.py` still turns off mouse drag and wheel. The window is now computed in `src/anesthesia_sim/app/chart_frame.py`, which `touches:` does not name.

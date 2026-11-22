@@ -101,3 +101,5 @@ The reasoning that put both halves in `blocked-by` rather than the version alone
 was right and is why this did not promote early: `blocked-by: <version>`
 resolves as soon as a milestone is scoped, and the port was scoped long before
 it was built.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `ROADMAP.md` § "20. Accessibility" still promises screen-reader support with no statement of what the toolkit delivers, and `QAccessible` appears nowhere in `src/`. Only three files under `src/anesthesia_sim/app/` set an accessible name. One fault in the front matter: the `verify:` search `grep -A6 '^20\. '` now matches a different numbered list near the end of `ROADMAP.md` ("20. **The look and the edge states..."), not the heading `#### 20. Accessibility`. So it could pass on the wrong text.

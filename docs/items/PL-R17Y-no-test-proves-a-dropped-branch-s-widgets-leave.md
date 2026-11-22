@@ -51,3 +51,5 @@ Read the item as "no test proves the dropped branch's widgets leave", not as
 placed widgets are gone from the shared layouts they were put into - the
 splitter sections included, which is `PL-RS3Z`'s half of the same count read
 from the other direction.
+
+**Checked 2026-11-22** against `d4e8200`: partly done. `test_dropping_a_branch_takes_its_values_out_of_the_shared_block` (in `tests/integration/simulation_view/test_simulation_view_readouts.py`) now shows that a dropped branch's readings leave the trunk's readout panels. Nothing yet shows that the rest of what `_place_run` puts in `_RunSlots.placed` leaves: the branch's transport row, its notice and its control record. `test_resetting_the_trunk_ends_the_comparison` (now in `test_simulation_view_comparison.py`) still asserts nothing about them. The brief's "eight widgets" and "splitter sections" describe the layout before the Areas of #1592. The branch's setting controls now live in the parameter-controls View, outside `_RunSlots`.

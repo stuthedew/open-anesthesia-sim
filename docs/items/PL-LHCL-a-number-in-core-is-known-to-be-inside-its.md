@@ -268,3 +268,5 @@ positive value.
   times a step costs about 0.6 us and does not move the step. Step (e) should
   measure the agent amounts the same way before typing them, because a step
   reads and writes those far more often.
+
+**Checked 2026-11-22** against `d4e8200`: partly done. Steps (a) to (c) have landed: (a) the walking test `tests/unit/test_bare_numbers.py` (#2099), (b) the blood-flow type (#2114), and (c) restores that run each record's checks, which `PL-8W1Q` built in #2166 rather than this item. Steps (d) and (e) are left. `tests/unit/test_supported_range_edges.py` still finds a quantity through its `require_supported_*` guard rather than from each checked type. The bare list has grown rather than shrunk: `MOST_BARE_NUMBERS` was 165 after step (b), 172 after #2121 and is 169 at `d4e8200`.

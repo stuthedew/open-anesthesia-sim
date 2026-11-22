@@ -3,12 +3,14 @@ id: PL-FTGM
 title: docs/MODEL.md states one simulated figure two ways: a correct 24-hour run stays 'at least 25 times inside' one part in 10^9 in Numerical method but '27 times below' (3.73e-11) in Conservation, and the one-SD shift is 9x10^-4 pp in Supported simulation step but 8.7x10^-4 pp in two other places (copy editor structure read, 2026-11-05)
 priority: P3
 effort: S
-status: ready
+status: dropped
 classes: defect, docs
 feature: model-md-structure
 touches: docs/MODEL.md
 deferred-from: v0.7.0 - not present at the freeze (817a4d88): introduced after it by 662ed2f3 (#1826) and 7ca66f0b (#1947)
 added: 2026-11-05
+closed: 2026-11-22
+reason: Already done by #2180 (d4e8200c): neither 'at least 25 times' nor '27 times below' remains in docs/MODEL.md, and the 24-hour residual is now stated once in the limits list and once in the rounding section, which agree; the one-SD half was fixed earlier by #2054
 payoff: the 24-hour residual's margin reads the same in every chapter, so a reader does not mistake one run for two or suspect an error
 verify: ! grep -qF 'at least 25 times a correct 24-hour run' docs/MODEL.md
 ---

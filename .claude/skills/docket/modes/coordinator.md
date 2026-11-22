@@ -97,18 +97,17 @@ put to the owner at once, with a recommendation.
   its lane and takes any ready item inside the scope it was given. If there is
   none, it tells the coordinator, so that the place can be filled (`PL-D1FD`).
 - Run `uv run pytest -q tests/unit/test_line_splits.py | tail -1` as the
-  first command. A Projects thread does not load `.claude/` (`PL-CR81`), and
-  only the setup script in `docs/maintainer.md` gives it the repository's
-  hooks. When the hooks are loaded, the gate-status guard refuses that
-  command. When it prints a test count instead, the thread has no guard hooks
-  and no session-start digest.
-  It then says so in its first reply and records it in `PL-CR81`.
-- Read a skill by its path, `.claude/skills/<name>/SKILL.md`, wherever a rule
-  says to use it. A thread's Skill tool lists none of the repository's skills,
-  even when the setup script has given it the hooks (`PL-876V`).
+  first command. A Projects thread does not load `.claude/settings.json`
+  (`PL-CR81`), and only the setup script in `docs/maintainer.md` gives it the
+  repository's hooks. When the hooks are loaded, the gate-status guard refuses
+  that command. When it prints a test count instead, the thread has no guard
+  hooks and no session-start digest. It then says so in its first reply and
+  files it with `bin/docket new`, naming `PL-4J4H` as the last fix.
 
-Drop the last two lines once Projects threads load `.claude/` themselves, or
-once a plugin carries the hooks and skills (`PL-XFDQ`).
+Drop the last line once Projects threads load `.claude/settings.json`
+themselves, or once a plugin carries the hooks (`PL-XFDQ`). A thread does load
+the repository's skills now: Claude Code's Projects documentation lists them as
+loaded, and a thread's Skill tool listed `docket` on 2026-11-22 (`PL-4J4H`).
 
 ## Reporting to the owner
 

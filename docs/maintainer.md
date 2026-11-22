@@ -1229,7 +1229,9 @@ uses that file to give a thread the hooks (`PL-X6VN`).
 
 The setup script below adds one `SessionStart` entry to the user settings. At
 each session start in a Projects thread, that entry runs `thread_hooks.py` from
-the checkout. The hook copies the repository's `hooks` block into the user
+the checkout. It looks in the directory the thread started in and one level
+below it, because a thread can start in `/home/user`, above its checkout
+(`PL-4J4H`). The hook copies the repository's `hooks` block into the user
 settings, and Claude Code applies the copy from its next tool call on. In any
 other session the hook does nothing, because those sessions load the
 repository's settings themselves. The script holds no copy of the hooks, so a
@@ -1246,24 +1248,14 @@ To add it:
    environment's row and select the settings icon on its right.
 3. Select the **Setup script** row. If it holds a line that runs
    `tools/effort_trial.py`, delete that line. The line drew the effort trial's
-   arm until 2026-10-24 and now does nothing. Paste the script below at the end
-   of what the box already holds, and select **Save changes**.
+   arm until 2026-10-24 and now does nothing. If it holds the earlier version
+   of this script, the block from `mkdir -p ~/.claude` to the line `EOF`,
+   delete that block too. Paste the line below at the end of what the box
+   holds, and select **Save changes**. The line also replaces an earlier
+   entry in the settings file, so it is safe to paste over an old one.
 
 ```bash
-mkdir -p ~/.claude
-python3 - <<'EOF' || true
-import json, pathlib
-path = pathlib.Path.home() / ".claude" / "settings.json"
-try:
-    data = json.loads(path.read_text())
-except (OSError, ValueError):
-    data = {}
-group = {"hooks": [{"type": "command", "command": "test -f \"$CLAUDE_PROJECT_DIR/.claude/hooks/thread_hooks.py\" && python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/thread_hooks.py\" || true"}]}
-starts = data.setdefault("hooks", {}).setdefault("SessionStart", [])
-if group not in starts:
-    starts.append(group)
-path.write_text(json.dumps(data, indent=2) + "\n")
-EOF
+mkdir -p ~/.claude && python3 -c 'import json, pathlib; p = pathlib.Path.home() / ".claude" / "settings.json"; d = json.loads(p.read_text()) if p.exists() else {}; s = d.setdefault("hooks", {}).setdefault("SessionStart", []); s[:] = [g for g in s if "thread_hooks.py" not in json.dumps(g)]; s.append({"hooks": [{"type": "command", "command": "for f in \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/thread_hooks.py \"$CLAUDE_PROJECT_DIR\"/*/.claude/hooks/thread_hooks.py; do if [ -f \"$f\" ]; then python3 \"$f\"; break; fi; done; true"}]}); p.write_text(json.dumps(d, indent=2) + "\n")' || true
 ```
 
 Changes to the environment reach new threads, not the ones already running.

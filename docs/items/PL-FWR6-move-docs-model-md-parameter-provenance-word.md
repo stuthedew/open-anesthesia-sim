@@ -65,3 +65,5 @@ ways, and `make check` passes.
 the repository named no home but `docs/MODEL.md` for a test's description,
 an interface requirement or a value's source history, so each change added
 them there. No new head.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `docs/MODEL.md` still has `## Parameter provenance` at line 2577, and no parameter document exists under `docs/`. The blocker `PL-6PPZ` (the move of the six verification sections) is still open and was claimed by another session at 00:45 UTC on 2026-11-22. `PL-CTXZ` (the interface move) merged as #2109 on 2026-11-13, so this item waits only on `PL-6PPZ`.

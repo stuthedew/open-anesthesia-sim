@@ -30,3 +30,5 @@ beside the plot, it holds across runs and across both runs of a comparison,
 nothing rescales on its own, and `docs/MODEL.md` records the ladder, the mode
 display and the refusal of continuous auto-scale beside § "Why the axis is
 fixed rather than fitted".
+
+**Checked 2026-11-22** against `d4e8200`: still applies. The chart still has one fixed ceiling, `CHART_AXIS_TOP_MAC` in `app/formatting.py`, and no control chooses another. The section the brief names, "Why the axis is fixed rather than fitted", does not exist. The reasoning it means is the paragraph "The chart's vertical range is set in MAC, and fixed" in `docs/INTERFACE.md` § "MAC multiples as a display unit", which is where the ladder and the refusal of auto-scale belong now.

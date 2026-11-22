@@ -1,9 +1,14 @@
 ---
 id: PL-1WFW
 title: A dial preview held across an agent change still reads the earlier agent in its delivered line, and one held across a Reset that drops the branch still reads Run 1 preview, on main as on the PL-RF2S branch
-status: untriaged
+priority: P1
+effort: S
+status: ready
+classes: defect, safety
 feature: every-view-in-run-state-tests
+touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, tests/integration/simulation_view
 added: 2026-11-11
+payoff: A preview never names an agent or a run that is no longer on screen, so a learner cannot read a dotted trajectory as belonging to the wrong agent.
 ---
 
 **Problem.** A dial preview held across an agent change still reads the earlier agent in its delivered line, and one held across a Reset that drops the branch still reads Run 1 preview, on main as on the PL-RF2S branch
@@ -30,3 +35,11 @@ does not outlive the session.
 travel with its values. A preview's line is built from the run's name and
 agent at the moment the thumb is pressed, so it is the same fault: a value
 shown without the state it was built from.
+
+**Checked 2026-11-22**, at `d4e8200c`. The code that builds the label is unchanged in kind. `RunView.request_preview` in `app/run_view.py` builds the preview's label once, from `self.controller.settings().agent_display_name` and `self._run_name` at that moment, and stores it in `self._preview`. `self._preview` is written only there and in `end_preview`, so neither an agent change nor `set_run_name` rebuilds it while the thumb stays still. The preview did not exist at the freeze; it came in with `PL-5B1N` (the preview a held control draws).
+
+**Why it matters.** The preview's label is the words that say what the dotted trajectory would be. After an agent change it names an agent that is no longer running, such as "Delivered sevoflurane 3.00%" on a desflurane run. After a Reset that drops the branch it names "Run 1", though the screen holds one run and names none. A learner reading the label is told the wrong agent or the wrong run for the curve beside it. Reaching it needs an action taken while the thumb is held, such as a key press or a second input device.
+
+**Done when.** While a dial's thumb is held, a change of agent or a Reset that changes the run set leaves the preview's label naming the agent and run that are shown, or ends the preview. A test drives both sequences and reads the label.
+
+**Generator check.** An instance of the fact that `PL-RF2S` states, "Which widgets state a run's current state, and that each is restated on every path that changes it": the label is a value shown without the state it was built from. `PL-RF2S` is still open, so this is a member of that head rather than a re-entry.

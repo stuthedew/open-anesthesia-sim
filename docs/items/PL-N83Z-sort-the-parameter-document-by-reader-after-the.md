@@ -59,3 +59,5 @@ an interface requirement or a value's source history, so each change added
 them there. No new head.
 
 **Added 2026-11-20.** Write each requirement or claim in this document as the requirement, followed by the test that checks it. Where the document holds a parameter table, a test compares the table with its data file. History stays in the item (project owner, 2026-11-20, ratified, "Agree with recs", over leaving the form to each sorting item). `PL-WKKH` (the streamlining questions from the study of the one-shot rewrite) holds the measurements and the sources.
+
+**Checked 2026-11-22** against `d4e8200`: still applies and is still blocked. Its blocker `PL-48MX` (stage 2 of the split) is itself still blocked, because neither stage 1 move has merged: the move of § "Parameter provenance" and the move of the verification sections. No parameter document exists under `docs/`, and § "Parameter provenance" is still in `docs/MODEL.md`. It now holds 13,403 words by `wc -w`, not 13,176.

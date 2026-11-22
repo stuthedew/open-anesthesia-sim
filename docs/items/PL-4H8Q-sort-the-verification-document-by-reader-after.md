@@ -59,3 +59,5 @@ an interface requirement or a value's source history, so each change added
 them there. No new head.
 
 **Added 2026-11-20.** Write each requirement or claim in this document as the requirement, followed by the test that checks it. Where the document holds a parameter table, a test compares the table with its data file. History stays in the item (project owner, 2026-11-20, ratified, "Agree with recs", over leaving the form to each sorting item). `PL-WKKH` (the streamlining questions from the study of the one-shot rewrite) holds the measurements and the sources.
+
+**Checked 2026-11-22** against `d4e8200`: still applies, and still blocked. Its blocker `PL-48MX` is itself blocked, behind `PL-FWR6` and then `PL-6PPZ` (move the six verification sections), which is ready and has not moved them, so the verification document this item sorts does not exist yet. The reverse outline it reads, `docs/prose-review/model-reverse-outline.tsv`, is still in the tree.

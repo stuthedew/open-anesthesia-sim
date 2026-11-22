@@ -28,3 +28,5 @@ and needs the owner's approval as a feature before a layout relies on it.
 **Why it matters.** The interface pass styles a layout only after the layout works for the learner's tasks. Drawing the layouts without colour keeps the two questions apart, so a finding about where a value sits is not mixed up with one about how it looks.
 
 **Done when.** Each of the four tasks in `PL-8Q1P` has a grey-box layout of the Default Workspace, recorded in this item beside the heuristic-evaluation findings it answers.
+
+**Checked 2026-11-22** against `d4e8200`: still applies, and still blocked. Its blocker `PL-8Q1P` (the heuristic evaluation) is open and blocked itself, and no grey-box layout is recorded here.

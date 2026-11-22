@@ -74,3 +74,5 @@ item waits on `PL-48MX`. The three items that then sort each document
 (`PL-SY7G`, `PL-4H8Q`, `PL-N83Z`) apply this item's findings for the
 sections they hold, and the session that applies the last of them closes
 this item.
+
+**Checked 2026-11-22** against `d4e8200`: still applies, and still blocked. Its blocker `PL-48MX` (replace what is left of `docs/MODEL.md` with the accepted description) is itself blocked, behind `PL-FWR6` and then `PL-6PPZ`, which is ready. The finding this item names is still present: `grep -n "must demonstrate" docs/MODEL.md` finds "The “Sevo works” milestone (v0.1.0) must demonstrate:" in § "Purpose". The chapter reads are still not in this container, because `/mnt/project-files` does not exist here.

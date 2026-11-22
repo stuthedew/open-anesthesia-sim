@@ -1,9 +1,11 @@
 ---
 id: PL-58PP
 title: tests/reference/test_control_resolution.py and tests/unit/test_playback.py restate the interface tick as 0.1 s, citing Flet as the reason and a dashboard test that checks the copy, and no test compares the copy with SIMULATION_TICK_INTERVAL_S
-status: untriaged
+status: dropped
 feature: one-source-of-truth
 added: 2026-11-14
+closed: 2026-11-22
+reason: Already done by #2180 (d4e8200c): neither test file cites Flet any more, both name app/dashboard_frame.py beside TICK_INTERVAL_MS = 100, and tests/unit/test_dashboard_frame.py::test_the_shipped_tick_is_the_100_ms_that_the_playback_tests_restate fails when the shipped tick changes and names both copies
 ---
 
 **Problem.** tests/reference/test_control_resolution.py and tests/unit/test_playback.py restate the interface tick as 0.1 s, citing Flet as the reason and a dashboard test that checks the copy, and no test compares the copy with SIMULATION_TICK_INTERVAL_S
@@ -13,3 +15,5 @@ added: 2026-11-14
 **Recommendation.** Import `SIMULATION_TICK_INTERVAL_S` from `anesthesia_sim.app.dashboard_frame` in both files, delete the two copies and the comments that justify them, and check that neither test file needs Qt as a result. Where a test needs the value independently of the code, as `.claude/rules/test-oracles.md` allows for an expected value, keep the copy and add the missing comparison instead.
 
 **Why it matters.** A comment that promises a check that does not exist leaves a copy that can drift unseen. A change to the tick would leave the playback and control-resolution tests passing against the old value.
+
+**Generator check.** Not owed an answer beyond this: the work landed elsewhere before triage, so it is closed rather than worked.

@@ -30,3 +30,5 @@ The owner recruits the residents.
 **Why it matters.** A heuristic evaluation by two evaluators finds only part of the problems, and it cannot show what a learner misreads. Rounds with residents check both, and their score of values misread is the measure closest to the safety-critical standard.
 
 **Done when.** At least two rounds of five residents have done the four tasks, and this item records each round's tasks completed and values misread. Each problem found is filed as an item or names the open item that holds it.
+
+**Checked 2026-11-22** against `d4e8200`: still applies, and still blocked. Its blocker `PL-MF90` (the token and component set) is open and blocked, and no resident round is recorded here.
