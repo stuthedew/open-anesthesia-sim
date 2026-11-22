@@ -98,7 +98,11 @@ _CURRENCY_LENGTH: Final = 3
 class PriceEntry(QWidget):
     """The form in which the reader sets or removes their price for one agent.
 
-    The agent selector starts on the first displayed run's agent. Choosing an
+    The agent selector follows the first displayed run's agent until the
+    reader uses the form: picks an agent in it, types in a field, edits the
+    date or presses Set price. From then on it keeps the agent the reader was
+    working on, so a change of the run's agent never discards what they typed
+    or moves a refusal under another agent's name (`PL-FBKK`). Choosing an
     agent fills the fields with its stored price, or empties them when it has
     none. The fields are filled again only when the stored price for the
     chosen agent changes, so a frame drawn while the reader types never
@@ -131,7 +135,8 @@ class PriceEntry(QWidget):
         # price, and whether a refused entry for the agent is in the file. The
         # last of the three decides only whether Remove is offered.
         self._filled_from: tuple[str, AgentPrice | None, bool] | None = None
-        self._agent_chosen = False
+        # Whether the reader has picked an agent in the selector by hand.
+        self._reader_used_form = False
         # Whether the reader has edited the date since the fields were filled.
         self._date_edited = False
         self.agent_selector = FocusedComboBox()
@@ -231,14 +236,14 @@ class PriceEntry(QWidget):
         Args:
             preferences: The reader's preferences on this frame.
             first_run_agent_id: The first displayed run's agent, which the
-                selector starts on, or None while its values are withheld.
+                selector shows until the reader uses the form, or None while
+                its values are withheld.
         """
 
         self._preferences = preferences
 
-        if not self._agent_chosen and first_run_agent_id is not None:
+        if not self._reader_used_form and first_run_agent_id is not None:
             self.agent_selector.setCurrentIndex(self.agent_selector.findData(first_run_agent_id))
-            self._agent_chosen = True
 
         key = _fill_key(preferences, self.agent_id)
 
@@ -300,10 +305,13 @@ class PriceEntry(QWidget):
         """Keep the date the reader chose, whatever they type in the other fields afterwards."""
 
         self._date_edited = True
+        self._reader_used_form = True
         self.date_moved.setHidden(True)
 
     def _handle_price_edit(self, _text: str) -> None:
         """Date the replacement of a stored price at the day of entry, as `entry_date` decides."""
+
+        self._reader_used_form = True
 
         if self._filled_from is None or self._date_edited:
             return
@@ -329,13 +337,14 @@ class PriceEntry(QWidget):
     def _handle_agent_pick(self, _index: int) -> None:
         """Show the chosen agent's stored price, and drop any refusal shown for another agent."""
 
-        self._agent_chosen = True
+        self._reader_used_form = True
         self._show_refusal(None)
         self._fill(self.agent_id)
 
     def _handle_set(self) -> None:
         """Ask for the price the fields hold, or say why it is refused and change nothing."""
 
+        self._reader_used_form = True
         entered = self.applies_on_edit.date()
 
         try:

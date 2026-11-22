@@ -6,10 +6,11 @@ These tests cover the page and its window.
 """
 
 import pytest
-from PySide6.QtCore import QPoint
+from PySide6.QtCore import QEvent, QObject, QPoint
 from PySide6.QtWidgets import QApplication, QLabel, QScrollArea, QSlider, QWidget
 
 from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import PARAMETER_SLIDER_LEAST_LENGTH
 from anesthesia_sim.app.view_registry import (
@@ -333,6 +334,43 @@ def _shipped_view_at(
     return view
 
 
+class _NarrowPaints(QObject):
+    """Record each paint of a View that is narrower than its least width when it paints."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.view: SimulationView | None = None
+        self.narrow: list[tuple[str, int, int]] = []
+        self.paints = 0
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        if event.type() != QEvent.Type.Paint or self.view is None:
+            return False
+
+        areas = self.view.layout_container
+
+        for area in areas.model.areas():
+            frame = areas.frame(area.id)
+            content = frame.content
+
+            if isinstance(watched, QWidget) and (
+                watched is content or content.isAncestorOf(watched)
+            ):
+                self.paints += 1
+                least = content.minimumSizeHint().width()
+                # The reader sees the narrower of the View and the Area's window
+                # onto it: a View wider than its window is cut off at the edge.
+                seen = content.width()
+
+                if frame.view_scroll is not None:
+                    seen = min(seen, frame.view_scroll.viewport().width())
+
+                if seen < least:
+                    self.narrow.append((area.view, seen, least))
+
+        return False
+
+
 def _shipped_workspace_names() -> tuple[str, ...]:
     from anesthesia_sim.layout.shipped import shipped_workspaces
 
@@ -368,6 +406,50 @@ def test_no_shipped_workspace_scrolls_the_page(
         assert frame.view_scroll.horizontalScrollBar().maximum() == 0, (
             f"the {area.view} View scrolls sideways in its Area"
         )
+        least = frame.content.minimumSizeHint().width()
+        seen = min(frame.content.width(), frame.view_scroll.viewport().width())
+        assert seen >= least, (
+            f"the {area.view} View is shown {seen} px wide, narrower than "
+            f"its least width of {least} px"
+        )
+
+
+@pytest.mark.parametrize(("width_px", "height_px"), _COMMON_SCREENS_PX)
+@pytest.mark.parametrize("workspace", _shipped_workspace_names())
+def test_no_view_paints_narrower_than_its_least_width_after_a_workspace_switch(
+    application: QApplication, workspace: str, width_px: int, height_px: int
+) -> None:
+    """`PL-2NNM`: a View is never drawn squeezed while the Areas settle after a switch.
+
+    A View's least width can grow when its first frame is drawn, as the
+    compartment schematic's does, and the Areas then settle again. Until they
+    have, the View is narrower than its least width. At 1366 by 768 the
+    schematic in Maintenance is 663 px wide against a least width of 706 px
+    for one pass of the event loop after the switch. A View drawn at such a
+    width cuts off or overlaps what it shows, and so does an Area whose window
+    onto the View is narrower than the View. The test records every paint of
+    every View from the switch until the dashboard has settled after its next
+    frame, and compares the narrower of the two widths with the least width.
+    The scroll bar that the test above reads is checked only once the
+    dashboard has settled.
+    """
+
+    view = _shipped_view_at(application, "Default", width_px, height_px)
+    watch = _NarrowPaints()
+    watch.view = view
+    application.installEventFilter(watch)
+
+    try:
+        view.tab_strip.activate(view.workspaces.position_of(WorkspaceName(workspace)))
+        _settle(application)
+        view.present(False)
+        _settle(application)
+    finally:
+        application.removeEventFilter(watch)
+
+    # Paints were seen, or the test shows nothing about them.
+    assert watch.paints > 0
+    assert watch.narrow == [], watch.narrow[:5]
 
 
 def test_a_view_taller_than_its_area_scrolls_inside_the_area(application: QApplication) -> None:
@@ -824,3 +906,41 @@ def test_the_screen_walk_reads_the_mac_awake_entry_whole_where_its_words_wrap(
     assert "\n" in band.text()
     assert words in view.visible_strings()
     assert band.text() not in view.visible_strings()
+
+
+def test_an_advisory_above_the_concentration_plot_grows_its_area_and_keeps_the_plot_whole(
+    application: QApplication,
+) -> None:
+    """`PL-S6CP`: in Induction on a laptop, the plot's time axis never scrolls out of sight.
+
+    A second run adds the notice that the chart draws at most two compartments
+    per run, and hiding every trace adds the advisory that none is shown. Each
+    sits above the plot. The chart's Area grows by their height, so the plot
+    stays whole and its time axis stays in sight (project owner, 2026-11-22,
+    ratified). Keeping room for every advisory all the time would leave the
+    Areas unmoved, but at this size one advisory with one run already makes
+    the page scroll 47 px in Induction, so there is no room to keep. Whether
+    the page scrolls with two runs is `PL-5J1X`'s question, not this test's.
+    """
+
+    view = _shipped_view_at(application, "Induction", 1366, 768, branched=True)
+    areas = view.layout_container
+    (chart_area,) = (area for area in areas.model.areas() if area.view == CONCENTRATION_CHART)
+    frame = areas.frame(chart_area.id)
+    chart_view = frame.content
+    assert isinstance(chart_view, ConcentrationView)
+    assert not chart_view.capped_traces_text.isHidden()
+    before_px = frame.height()
+
+    for quantity in RecordedQuantity:
+        view._handle_compartment_request(quantity, False)
+
+    _settle(application)
+    scroll = frame.view_scroll
+    assert scroll is not None
+
+    assert not chart_view.hidden_traces_text.isHidden()
+    assert frame.height() > before_px
+    assert scroll.verticalScrollBar().maximum() == 0
+    plot = chart_view.chart.geometry()
+    assert plot.bottom() < scroll.viewport().height(), (plot, scroll.viewport().height())

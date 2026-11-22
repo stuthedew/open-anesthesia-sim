@@ -94,7 +94,8 @@ class ParameterControls(QWidget):
     to, so the View that holds the row can ask for a change to that setting.
 
     Attributes:
-        adjustment_started: Emitted when the reader presses any slider's thumb.
+        adjustment_started: Emitted at the start of each input on any slider
+            (`ParameterSlider.adjustment_started`).
         setting_requested: Emitted with the control and the value a slider
             was moved to. The run applies it or refuses it, and the next
             `show_settings` writes the value in force.

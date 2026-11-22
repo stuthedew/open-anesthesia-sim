@@ -3,14 +3,17 @@ id: PL-0T2H
 title: Arrow-key, wheel and track-click steps on one dial are joined into one adjustment, so the chart marks only the first step and docs/INTERFACE.md says each step is an adjustment of its own: decide which a learner sees
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: interface-matches-its-spec
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/chart_frame.py, docs/INTERFACE.md, tests/integration/controller/test_controller_control_timeline.py
 blocked-by: PL-Z6C8
 deferred-from: v0.7.0 - filed on 2026-11-21, after the gate froze; it builds after the whole-second stepping work, which changes when a setting takes effect
 added: 2026-11-21
+closed: 2026-11-22
+pr: 2228
 payoff: A learner who steps a dial up and later back with the keys sees a mark on the chart at each change
+tests: tests/integration/controller/test_controller_control_timeline.py::test_declared_steps_of_one_control_at_three_instants_are_three_adjustments, tests/integration/simulation_view/test_simulation_view_controls.py::test_each_step_of_a_dial_at_a_new_instant_is_marked_and_listed
 ---
 
 **Problem.** Arrow-key, wheel and track-click steps on one dial are joined into one adjustment, so the chart marks only the first step and docs/INTERFACE.md says each step is an adjustment of its own: decide which a learner sees
@@ -84,3 +87,11 @@ Three wheel notches and three clicks on the track gave the same single line unde
 **Done when.** A key press, a wheel notch and a click on the track each open an adjustment of their own when they take effect at a different simulated instant, a test presses a key on a slider at two simulated instants and checks the marks, and `docs/INTERFACE.md` § "The control-input timeline" and the docstring of `begin_control_adjustment` say what the code does. Build this after the whole-second stepping work (`PL-SZ6G`, `PL-MH9J`, `PL-FST0`, `PL-Z6C8`), which changes when a setting takes effect.
 
 **Checked 2026-11-22** against `d4e8200`: still applies, and its blocker `PL-Z6C8` closed with #2180. `SimulationController._record_in_timeline` in `app/controller.py` still opens a new adjustment only when `control is not self._open_adjustment_control`. `ParameterSlider` in `app/qt_widgets.py` still emits `adjustment_started` only on `sliderPressed`. `docs/INTERFACE.md` § "The control-input timeline" still says each key press, wheel notch or track click "is an adjustment of its own". No test presses a key on a slider.
+
+**Done 2026-11-22.** The slider announces the start of each input before it changes the value: a mouse press, a key press that is not a held key's repeat, and a wheel notch (`_SettingSlider.input_started` in `app/qt_widgets.py`). The announcement reaches `SimulationController.begin_control_adjustment` by the route a press on the handle already took, so each such input opens an adjustment of its own. `_record_in_timeline` keeps its rule: a change joins the open adjustment when it is to the same control and nothing was announced since.
+
+The first build opened a new adjustment at each new simulated instant instead. Both blind review passes found that a held arrow key then became one adjustment per second of simulated time it spanned, so at a fast playback rate one hold filled the list's 12 lines and the chart's 24 marks and pushed the learner's earlier marks off both. That is `PL-PXTT`, fixed here by the announcement design: a held key's repeats announce nothing, so a hold is one adjustment over an interval. The second pass also found that the instant rule left `begin_control_adjustment` with no effect a test could see, and the announcement design gives it its purpose back.
+
+On the code before the fix, each of `test_each_step_of_a_dial_at_a_new_instant_is_marked_and_listed[arrow key]`, `[wheel notch]` and `[click on the track]` failed with "AssertionError: assert 1 == 3" (one list line where three were required), and `test_a_held_arrow_key_is_one_adjustment_and_the_next_press_another` failed with "assert [1, 1, 1, 1] == [1, 1, 1, 2]". The controller tests `test_declared_steps_of_one_control_at_three_instants_are_three_adjustments` and `test_unannounced_steps_of_one_control_at_three_instants_are_one_adjustment` replace `test_consecutive_changes_to_one_control_are_one_adjustment`, and `test_changes_to_one_control_at_one_instant_are_one_adjustment` covers a paused run.
+
+**Docs checked.** `docs/INTERFACE.md` § "The control-input timeline": the paragraph on how the interface declares an adjustment now names each input and the held key, and says that a change from code joins the adjustment open on its control. The per-input sentence already said each input is an adjustment of its own. The dashboard's list of what it shows still holds, and its interval form now shows a held key. The docstrings of `begin_control_adjustment`, `RunView.start_adjustment`, `SimulationView._handle_adjustment_start_request`, `ViewRequests.adjustment_start`, `RunSurfaces.adjustment_started` and `ParameterSlider.adjustment_started`. `docs/ARCHITECTURE.md`, `docs/VERIFICATION.md` and `README.md` say nothing about adjustments.

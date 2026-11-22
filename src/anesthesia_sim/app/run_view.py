@@ -1125,9 +1125,9 @@ class RunView(QWidget):
         """Close any open adjustment, so that the changes that follow start a new one.
 
         The dashboard calls this method when a View says that the reader
-        pressed one of this run's dials. It does not go through
+        began an input on one of this run's dials. It does not go through
         `_apply_setting`, because it records nothing and changes no state.
-        Without it, two drags of one dial would be one adjustment on the
+        Without it, two inputs on one dial would be one adjustment on the
         record.
         """
 

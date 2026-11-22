@@ -184,18 +184,70 @@ def test_the_same_control_changed_across_two_steps_records_both() -> None:
     assert (second.previous_value, second.new_value) == pytest.approx((3.0, 4.0))
 
 
-def test_consecutive_changes_to_one_control_are_one_adjustment() -> None:
-    """One drag of one slider counts as one adjustment, however many steps it spans."""
+def test_changes_to_one_control_at_one_instant_are_one_adjustment() -> None:
+    """Changes made while the run is paused take effect at one instant, so they are one input.
+
+    Three changes to the fresh gas flow on a paused run leave one entry, from
+    the first value to the last, in one adjustment.
+    """
 
     controller = SimulationController()
+
+    controller.set_fresh_gas_flow(FreshGasFlow(5.0))
+    controller.set_fresh_gas_flow(FreshGasFlow(6.0))
+    controller.set_fresh_gas_flow(FreshGasFlow(7.0))
+
+    (change,) = controller.snapshot().control_timeline
+    assert change.adjustment == 1
+    assert (change.previous_value, change.new_value) == (4.0, 7.0)
+
+
+def _step_flow_at_10_40_and_100_s(controller: SimulationController, *, declared: bool) -> None:
+    """Step the fresh gas flow up by 0.1 L/min at 10 s, 40 s and 100 s.
+
+    With `declared`, each step is announced as a new input first, as the
+    interface announces a key press, a wheel notch or a press on the track.
+    """
+
     controller.start()
 
-    controller.set_fresh_gas_flow(FreshGasFlow(3.0))
-    _advance_for(controller, 1)
-    controller.set_fresh_gas_flow(FreshGasFlow(2.0))
+    for elapsed_s, flow in ((10, 4.1), (40, 4.2), (100, 4.3)):
+        _advance_for(controller, int(elapsed_s - controller.snapshot().elapsed_s))
+
+        if declared:
+            controller.begin_control_adjustment()
+
+        controller.set_fresh_gas_flow(FreshGasFlow(flow))
+
+
+def test_declared_steps_of_one_control_at_three_instants_are_three_adjustments() -> None:
+    """Each announced input on one dial is an adjustment of its own, however long after the last.
+
+    `docs/INTERFACE.md` § "The control-input timeline" requires it, so that the
+    chart marks a dial stepped back later in the run (`PL-0T2H`).
+    """
+
+    controller = SimulationController()
+    _step_flow_at_10_40_and_100_s(controller, declared=True)
 
     timeline = controller.snapshot().control_timeline
-    assert {change.adjustment for change in timeline} == {1}
+    assert [change.elapsed_s for change in timeline] == [10, 40, 100]
+    assert [change.adjustment for change in timeline] == [1, 2, 3]
+
+
+def test_unannounced_steps_of_one_control_at_three_instants_are_one_adjustment() -> None:
+    """Changes to one dial with no input announced between them are one adjustment.
+
+    A held key's repeats arrive this way, so a hold is one adjustment and does
+    not fill the chart's marks (`PL-PXTT`).
+    """
+
+    controller = SimulationController()
+    _step_flow_at_10_40_and_100_s(controller, declared=False)
+
+    timeline = controller.snapshot().control_timeline
+    assert [change.elapsed_s for change in timeline] == [10, 40, 100]
+    assert [change.adjustment for change in timeline] == [1, 1, 1]
 
 
 def test_a_declared_boundary_separates_two_drags_of_one_control() -> None:
