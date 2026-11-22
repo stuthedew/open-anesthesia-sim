@@ -3997,12 +3997,14 @@ class BranchedCase:
         instant of every setting change that `RunDefinition.record_change`
         keeps. A change is listed from the moment it is made, before any step
         runs under it. That is what
-        `PL-TFX5` means by "any recorded control-input-timeline event", and it
-        is the scope of `fork_at`. `fork_at` rejects any other instant. The
-        reason is not that a branch could not reproduce the trunk there. It is
-        that another method covers that instant (`PL-54V0`). A marked instant
-        goes through `fork_at_mark`, from `mark_fork_points`. The place where
-        the paused trunk stands goes through `fork_here`, from
+        `PL-TFX5` means by "any recorded control-input-timeline event".
+
+        This list is the set of instants that the interface offers to
+        `fork_at`. `fork_at` itself accepts any whole second that the trunk has
+        reached (`PL-FST0`), so this list does not limit what it accepts. The other
+        instants the interface offers go through their own methods. A marked
+        instant goes through `fork_at_mark`, from `mark_fork_points`. The place
+        where the paused trunk stands goes through `fork_here`, from
         `here_fork_point`.
 
         Induction is included rather than filtered out. A fork at zero is a

@@ -337,7 +337,7 @@ bounded this way" gives the argument.
 The snapshot is the run's state at one instant. It holds a fixed number of
 values, however long the run has been going. Values across the run are
 returned separately, by `drawn_window(start_s, stop_s, columns)`. That method
-evaluates the states at the instants that a chart is about to plot, across the
+reads the stored states at the seconds that a chart is about to plot, across the
 axis the caller names, and returns them as a `DrawnWindow`. So the amount of
 data that passes from the controller to the view is limited by the display, not
 by the length of the run. The snapshot once carried every sample that the run
@@ -488,10 +488,12 @@ case's own clock, so no clock is re-based and no conversion is performed.
 
 Five things in `app/controller.py` implement a branch:
 
-- `SimulationController.resumed_at(instant_s)` makes a branch at one of the
-  trunk's keyframes. It builds a second controller through the ordinary
-  constructor, with the settings of the trunk's stretch that opens at
-  `instant_s`, so the branch runs under the change recorded there. It then
+- `SimulationController.resumed_at(instant_s)` makes a branch at any whole
+  second that the trunk has reached (`PL-FST0`). The interface passes it only
+  the trunk's keyframes: the opening and each setting change. It builds a
+  second controller through the ordinary constructor, with the settings of the
+  trunk's stretch still open at `instant_s`, so the branch runs under a change
+  recorded there. It then
   gives the new controller the trunk's stored states up to `instant_s`
   (`StoredStates.through`), places its system at the state stored there with
   the stored compensation terms, and returns the controller paused. The trunk is read and never written. So
@@ -531,9 +533,9 @@ Five things in `app/controller.py` implement a branch:
   and its Reset would return it to the same stop (`PL-VHQX`).
 - `ResumePoint` records where the branch came from. It holds the trunk stretch
   that the step reaching the fork ran under, the fork's instant and the
-  stored state there, the case's step count at the fork, the step that ends
-  at the fork, and the agent that the branch's accounting period started from.
-  It holds no crossing, because a crossing stored with the marks it named would
+  stored state there, the case's step count at the fork, and the amount of
+  agent present when the case's accounting period started. It holds no
+  crossing, because a crossing stored with the marks it named would
   go on naming a mark that was removed and added back (`PL-XV0D`). So at each
   read, the branch asks again what the step ending at its fork crossed.
   `opened_from` is `None` on a trunk and a `ResumePoint` on a branch, so every
@@ -613,12 +615,12 @@ The first is at any keyframe the trunk holds. These are listed by
 `BranchedCase.fork_points_s` and taken with `fork_at`. The keyframes are the
 trunk's opening at induction and each later instant at which a setting was
 changed. Such an instant is listed as soon as the change is made, and it
-leaves the list if the settings are put back before the next step runs. Any
-*other* instant that a caller names to `fork_at` is refused
-as belonging to another method, not as an instant a branch could not reproduce
-(`PL-54V0`). The two methods below fork at any other whole second the trunk
-has reached, and reproduce the trunk exactly, because every method opens from
-the trunk's stored states.
+leaves the list if the settings are put back before the next step runs.
+`fork_at` itself accepts any whole second that the trunk has reached
+(`PL-FST0`), and the interface passes it only these instants. The two methods
+below fork at a marked second and where the paused trunk stands. Every method
+reproduces the trunk exactly, because every method opens from the trunk's
+stored states.
 
 The second is **where the paused trunk stands**, with `fork_here` (`PL-Y2SL`).
 A learner who pauses to think tries something else from that instant in one
@@ -651,8 +653,8 @@ is what a learner paused at three hours does after marking the one-hour point.
 The instant is behind the clock. The trunk holds no keyframe there and is not
 standing on it, and nothing in the bookmark fork's construction needed either.
 The branch opens on the step on which the mark is reached, which is the instant
-a halt would have stopped the run on. The branch's state is the trunk's
-definition evaluated there, so the branch is the one the halt would have given.
+a halt would have stopped the run on. The branch opens from the state the trunk
+stored for that second, so the branch is the one the halt would have given.
 Unlike the paused point, this list does not end at the next step. A mark joins
 the list when the clock reaches it, or when a mark is set behind the clock. It
 leaves the list when the learner unmarks it or the trunk starts over. Every
@@ -802,9 +804,9 @@ fork, if any. So the difference between two runs after the fork is the
 difference between two control timelines. The inheritance list above is the
 audit of that claim, not a convenience.
 
-**The shared history is the same object, not a reproduction of one.** A branch's
-`RunDefinition` carries the trunk's own `Keyframe`, and both runs sit in the case's
-single time frame. So the runs agree before the fork by construction, not
+**The shared history is the same object, not a reproduction of one.** A branch
+holds a copy of the trunk's stored states up to the fork (`StoredStates.through`),
+and both runs sit in the case's single time frame. So the runs agree before the fork by construction, not
 because they meet a tolerance. `docs/INTERFACE.md` § "What this requires of a
 branch" is where that is stated and measured, and the residual it leaves is
 zero. The structure does *not* supply any bound on what happens after the fork.
