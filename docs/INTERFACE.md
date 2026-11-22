@@ -4865,7 +4865,7 @@ Each agent's file in `data/agents/` stores the density, with its SD and
 measurement temperature, as `liquid_density`, and the molar mass as
 `molar_mass_g_mol`. The density's source entry (`sources`) is a tier-1
 measurement. The molar mass's entry says why no tier-1 source
-(`docs/PARAMETERS.md` § "Source hierarchy") exists. The vapour-to-liquid ratio is derived in
+(`docs/PARAMETERS.md` § "Source hierarchy") exists. The vapor-to-liquid ratio is derived in
 `core/liquid_agent.py` and checked against Biro's and Gas Man's constants in
 `tests/reference/test_published_vapour_to_liquid.py`
 (`test_the_derived_ratio_is_within_one_percent_of_biros_published_constant` and

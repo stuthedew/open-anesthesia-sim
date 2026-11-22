@@ -391,7 +391,7 @@ The test of a stepped run against the exact solution is
 `tests/unit/test_generated_runs.py` (§ "Step-refinement test").
 
 **A test against an independent solution checks that the result is right.** It compares all six
-modelled fractions with that solution of the governing equations (§ "Independent-solution test").
+modeled fractions with that solution of the governing equations (§ "Independent-solution test").
 The comparison of the two calculations cannot show that the result is right, because a wrong
 transfer rate would give the same error in both. Nor can a check that no agent goes unaccounted for, because
 every transfer between compartments adds exactly what it removes.
