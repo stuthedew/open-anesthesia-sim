@@ -767,7 +767,7 @@ makes the Stop hook demand a push. That push would recreate a dead branch
 identical to `main`. The corrected check counts the commits that no remote ref
 holds instead. The correction is a hook rather than a patch the project owner
 applies, because the file is not theirs to change. A container rewrites the
-file at every start. User-level settings never apply to a cloud session. An
+file at every start. The user settings on the owner's own machine never reach a cloud session. An
 environment setup script runs before Claude Code launches, and it is skipped
 once the environment cache exists. The patch script matches one whole line,
 and it rewrites nothing if that line is absent or appears twice. So an
