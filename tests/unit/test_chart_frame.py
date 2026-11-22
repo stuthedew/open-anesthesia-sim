@@ -1114,7 +1114,7 @@ def test_two_compartments_within_one_hover_radius_answer_under_their_own_names()
 
 
 @pytest.mark.parametrize("agent_id", ["sevoflurane", "isoflurane", "desflurane"])
-def test_fat_trace_first_hour_spans_under_4_px_at_1_mac_and_under_12_px_at_the_vaporizer_maximum(
+def test_at_opening_settings_fat_first_hour_spans_under_4_px_at_1_mac_and_12_px_at_vaporizer_maximum(
     agent_id: str,
 ) -> None:
     """Hold the fat-trace figure in the hazard row on traces drawn on top of each other.
@@ -1127,8 +1127,11 @@ def test_fat_trace_first_hour_spans_under_4_px_at_1_mac_and_under_12_px_at_the_v
     empty and only rises at a fixed dial, so its value at 60 min is the whole
     first hour's span.
 
-    Each run is built directly: the reference adult, the dial held from
-    t = 0, one-second steps. The height used is `theme.CHART_HEIGHT`, the
+    Each run is built directly: the reference adult at its opening
+    ventilation, cardiac output and fresh gas flow, the dial held from t = 0,
+    and one-second steps. The row states those settings, because raising any
+    of them spreads the trace further: a blind review on 2026-11-22 measured
+    up to 21.9 px at the vaporizer maximum with all three at their highest. The height used is `theme.CHART_HEIGHT`, the
     whole chart. The percent axis is a part of that height, so the pixel
     figure here is an upper bound on the one a reader sees. The 12 px is the
     hover radius (`HOVER_RADIUS_PIXELS` in `app/qt_chart.py`). Below it, every
