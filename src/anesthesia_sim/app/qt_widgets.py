@@ -81,7 +81,6 @@ from anesthesia_sim.app.dashboard_frame import (
     COMPARTMENT_FIELD_LABEL,
     DEFAULT_MAXIMUM_TARGET_MAC,
     EDIT_BOOKMARKS_LABEL,
-    FORK_HEADING,
     FORK_POINT_LABEL,
     HEIGHT_FIELD_LABEL,
     INSTANT_ENTRY_SUFFIX,
@@ -1431,7 +1430,6 @@ class ForkPanel(QWidget):
     trunk stands, so a press has no instant that it could name wrongly.
 
     Attributes:
-        heading_label: What the section is called.
         point_selector: The points a branch may be opened at: the recorded
             control events and the marks the trunk has passed.
         take_button: Takes the branch; `clicked` is connected by the view.
@@ -1445,7 +1443,6 @@ class ForkPanel(QWidget):
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.heading_label = styled_label(FORK_HEADING, color=INK, bold=True)
         self.point_selector = QComboBox()
         self.point_selector.setStyleSheet(selector_stylesheet())
         # The selector has a fixed width because its entries grow as the trunk runs. A
@@ -1479,7 +1476,8 @@ class ForkPanel(QWidget):
         column = QVBoxLayout(self)
         column.setContentsMargins(0, 0, 0, 0)
         column.setSpacing(BOOKMARK_ROW_SPACING)
-        column.addWidget(self.heading_label)
+        # The panel has no heading of its own: the Area header above it says
+        # "Branch", and so does the button (`PL-8LMY`).
         controls = QHBoxLayout()
         controls.setSpacing(CONTROL_ROW_SPACING)
         controls.addWidget(self._point_label)
