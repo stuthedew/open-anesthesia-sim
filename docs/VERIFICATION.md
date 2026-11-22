@@ -844,22 +844,35 @@ corner, each volume is at one of its limits, and the two coefficients are at one
 corners of the region allowed by their own limits and the tissue:blood quotient's limits. Each
 flow is set to zero, to the smallest positive number a computer can hold and to its maximum. The
 test steps the whole model once, steps each compartment alone
-at its own limits, and predicts every second of a 60 s run in one-second steps. At the two
-corners where rounding went furthest it predicts every second of 24 hours. Each run washes in
+at its own limits, and predicts every second of a 60 s run in one-second steps. At the three
+corners where rounding went furthest,
+`test_a_state_at_the_fraction_ceiling_stays_within_one_atmosphere` also predicts every second of
+24 hours. Each run washes in
 to the 0.99 limit, washes out from it, or sits at it. Stepped alone, a tissue group and the venous pool run at zero flow, at the
 smallest positive flow and at the largest supported cardiac output, and each result stays
 finite and between its start and its equilibrium.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 Each result of the first test must be finite. Each fraction must lie from 0 through 1, with no
-allowance. It must also lie at or below 0.99, and the agent balance must close, both to within
-the error bound of the propagators that produced the result (`propagator_rounding` in
-`core/rounding.py`). That bound uses the squarings each propagator actually needed, with a margin
-of 8, so the bound at a corner that needs few squarings is a few rounding errors. The worst
-result, from runs on 2026-10-26, reached 2.5 times the bound's leading term,
-$`2^{s} \cdot 2^{-52}`$ for $`s`$ squarings.
+allowance. What else a result must meet depends on how it was computed.
 
-One step of the whole model must also pass the simulator's own mass-balance check, which allows
+1. **A predicted run.** Each fraction must also lie at or below 0.99, and the agent balance must
+   close, both to within the error bound of the propagators that produced the state
+   (`propagator_rounding` in `core/rounding.py`). That bound uses the squarings that a step at
+   that corner and those flows actually needs, with a margin of 8, so the bound at a corner that needs few squarings is
+   a few rounding errors. The worst result, from runs on 2026-10-26, reached 2.5 times the
+   bound's leading term, $`2^{s} \cdot 2^{-52}`$ for $`s`$ squarings. The 24-hour predictions
+   are held to the 0.99 limit in the same way, by `run_rounding`, and not to the agent balance.
+2. **One step of the whole model.** Each fraction must lie at or below 0.99 to within the bound
+   for 22 squarings, the most that any corner's step needs (`MOST_SQUARINGS` in
+   `tests/unit/test_numerical_envelope.py`), whatever the corner needs itself. The agent balance
+   is held to the simulator's own check, described next.
+3. **A compartment stepped alone.** It is advanced by its own exact solution, not by a
+   propagator, so no propagator bound applies. Each amount must lie between its starting value
+   and its equilibrium, and the circuit's agent balance must close to within four rounding
+   errors.
+
+One step of the whole model must pass the simulator's own mass-balance check, which allows
 one part in 10⁹. A step that needs 22 squarings may be refused by that check instead. The test
 accepts the refusal only when the imbalance is within the error bound for 22 squarings and the
 step was undone. On 2026-11-21 the check refused 76 of the 864 first steps that need 22
