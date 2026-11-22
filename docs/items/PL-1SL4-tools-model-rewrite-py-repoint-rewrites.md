@@ -19,7 +19,7 @@ change it made was reverted by hand.
 2. It re-pointed a citation of "Governing equations" to `docs/VERIFICATION.md`.
    The old heading was in neither document, and the moved developer text in
    `docs/VERIFICATION.md` held the words, so the second rule of `repoint`
-   applied. The equations are in `docs/MODEL.md` § "Equations". The rule
+   applied. The equations stay in `docs/MODEL.md`. The rule
    assumes the section moved whole, and a section rewritten in place breaks
    that assumption. "Model boundary" was re-pointed the same way.
 

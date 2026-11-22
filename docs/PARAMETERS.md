@@ -115,7 +115,7 @@ against the source itself. `docs/references/` holds no full text. It records
 each source's full citation, in `docs/references/README.md`, and notes of the
 values taken from it. Baker and Farmery's 2011 *Comprehensive
 Physiology* review of inert gas transport in blood and tissues is the closest
-published statement of what this document specifies. For any individual number
+published statement of what `docs/MODEL.md` specifies. For any individual number
 in it, the review is still a tier-2 synthesis.
 
 **Republication does not promote a value between tiers.** A peer-reviewed
@@ -568,7 +568,7 @@ So $`0.2M^{3/4}`$ is Brody's mammalian metabolic allometry divided by an
 arteriovenous difference that is assumed constant across mammals. **4.84 L/min
 at 70 kg is therefore a derived interspecies extrapolation and must not be
 treated as a measured human cardiac output.** This matters in `docs/MODEL.md` § "Known
-limitations", the only place in this document that sets the figure beside
+limitations", the only place in that document that sets the figure beside
 Cattermole et al.'s measured median.
 <!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
 
@@ -863,7 +863,7 @@ beside the patient (*J Anesth* 2006;20(4):268–73, read from its abstract).
 During low-flow anesthesia on two decoupling-style machines, the
 inspired/delivered ratio rose significantly for sevoflurane, and for isoflurane
 on the one machine where it was compared. A third machine showed no significant
-change. That ratio, $`F_I/F_D`$, is what the circuit equation above computes,
+change. That ratio, $`F_I/F_D`$, is what the circuit equation in `docs/MODEL.md` § "Breathing circuit" computes,
 and this model does not represent where the inlet sits. The abstract does not
 say whether moving the inlet changed the circuit's volume, so it does not show
 on its own that volume was not the cause. Shin et al. show a difference that
