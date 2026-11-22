@@ -49,3 +49,5 @@ the agent cost View in a wide Area and finds no price field wider than the cap.
 **Regression run.** The two new tests were run against the code before the fix, with the cap written as the literal 320: the reason test failed with `assert 22 < 22` (the reason's font against the amount's), and the width test with every field wider than the cap.
 
 **Docs swept 2026-11-22.** `docs/INTERFACE.md`, `docs/ARCHITECTURE.md` and `README.md`, searched for the changed wording and for the element's look; none states it, so none changed.
+
+**Blind review 2026-11-22.** One pass, one optional finding: the cost line was restyled on every frame. Fixed on this branch, so the label is restyled only when it changes between a cost and a reason.
