@@ -167,9 +167,14 @@ with Mapleson's MAC was removed, because the stored MAC is now Mapleson's.
 
 **Reviews.** Blind pass 1's optional finding (the chart compared only the
 agent) is fixed. Blind pass 2's should-fix finding, that "6.60%" adds a digit
-Mapleson does not give, is rejected and put to the owner: the line prints the
-exact divisor in the dial's and readouts' two decimals, and rounding it to
-"6.6%" would make the line and the dial at 1 MAC disagree in form. Pass 2's
+Mapleson does not give, is fixed. It was first rejected and put to the owner,
+who answered on 2026-11-22 that such calls follow best practice, researched
+rather than recalled. The GUM (JCGM 100:2008, 7.2.6, read from BIPM's PDF)
+rounds an estimate to be consistent with its uncertainty, and the Joint
+Commission's "Do Not Use" list (read from a mirrored copy of the official
+list, because jointcommission.org refused the client with a 403) allows a
+trailing zero only where it shows the precision of the value reported. So the
+1 MAC line drops a trailing zero and reads 1.8%, 1.17% and 6.6%. Pass 2's
 optional finding, that `mac_for_patient` reads nothing from the patient, is
 recorded in `PL-8F9D`'s brief, which is the work that makes it read the age.
 The adversarial review's findings: the documents now say once that the
