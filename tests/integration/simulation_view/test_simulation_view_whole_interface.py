@@ -8,9 +8,10 @@ These tests cover the whole interface walked at once.
 import re
 
 import pytest
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QAccessible, QColor
 from PySide6.QtWidgets import QApplication
 
+from anesthesia_sim.app.chart_frame import WASH_IN_HOVER_LABEL
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import INTERPRETATION_DISCLAIMER_TEXT
 from anesthesia_sim.app.formatting import format_mac_awake_reference, format_mac_reference
@@ -194,7 +195,33 @@ def test_the_wash_in_plot_says_what_its_denominator_is(application: QApplication
 
     assert "not the vaporizer dial" in prose
     assert "denominator moving" in prose
-    assert "Equilibrium, F_A = F_I" in prose
+    assert "Equilibrium, F<sub>A</sub> = F<sub>I</sub>" in prose
+
+
+def test_the_wash_in_view_writes_its_fractions_with_subscripts(application: QApplication) -> None:
+    """`PL-35L9`: the View writes F with A and I set as subscripts, never with an underscore.
+
+    The underscore is a programmer's notation. Assistive technology reads the
+    subscripted name as "FA/FI", which is how the abstract of Yasuda et al.
+    1991 writes the ratio in plain text (doi:10.1097/00000542-199103000-00017).
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 60)
+    view = _shown_view(application, controller)
+    strings = view.interface_strings()
+    state = _wash_in(view).states.lines[0]
+    spoken = QAccessible.queryAccessibleInterface(state).text(QAccessible.Text.Name)
+
+    assert [value for value in strings if "F_A" in value or "F_I" in value] == []
+    assert "F<sub>A</sub>/F<sub>I</sub>" in strings, "the walk did not reach the axis title"
+    assert spoken.startswith("Now: FA/FI = "), spoken
+    assert "<" not in spoken, spoken
+    # The hover readout is plain text, so it writes the ratio as the abstract
+    # does. The expected line is the example in `docs/INTERFACE.md` § "Which
+    # series answer a hover, and which do not".
+    assert WASH_IN_HOVER_LABEL == "Wash-in FA/FI (alveolar / modelled circuit)"
 
 
 def test_the_screen_says_a_control_mark_is_an_input_not_a_measurement(
