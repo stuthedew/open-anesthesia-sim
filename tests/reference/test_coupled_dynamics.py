@@ -1694,7 +1694,8 @@ def test_displayed_resolution_and_shipped_step_match_the_interface() -> None:
     ), (
         "the interface's displayed resolution or the simulation step has changed; "
         "re-run the trajectory sweeps and re-derive the measured figures in "
-        "docs/INTERFACE.md section 'Displayed precision'"
+        "docs/INTERFACE.md section 'Displayed precision' and docs/VERIFICATION.md "
+        "section 'Independent-solution test'"
     )
 
 

@@ -2844,8 +2844,8 @@ def test_no_measured_tissue_solubility_reaches_desflurane_s_published_eliminatio
         f"published SD below the {measurement.elimination_mean} +/- "
         f"{measurement.elimination_standard_deviation} measured in "
         f"{measurement.cohort_size} volunteers ({measurement.source}). This module and "
-        f"docs/MODEL.md section 'Elimination at five minutes: does not agree' say the "
-        f"residual is out of reach of any vessel-rich solubility "
+        f"docs/VERIFICATION.md section 'Desflurane's residual, and why the parameter file "
+        f"was not changed' say the residual is out of reach of any vessel-rich solubility "
         f"the human tissue measurements support, and that is what has changed - re-open "
         f"the question rather than raising the shipped coefficient to meet it"
     )

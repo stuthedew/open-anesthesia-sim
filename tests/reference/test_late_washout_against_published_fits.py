@@ -317,9 +317,9 @@ CONDITIONS: tuple[Condition, ...] = ("shipped", "open circuit")
 # agreement. The ratio band is one percent of the ratio. The crossing band is a
 # tenth of an hour, on a crossing placed to the minute. A parameter change that
 # moves the tail by more than that fails. The tail must then be re-measured here,
-# in `docs/VERIFICATION.md` § "The first 24 hours of elimination against the published mean curves"
-# and in `docs/MODEL.md` § "The first 24 hours of elimination". The change is never absorbed by
-# widening the band.
+# in `docs/VERIFICATION.md` § "The first 24 hours of elimination against the published mean curves",
+# in `docs/MODEL.md` § "The first 24 hours of elimination" and in `docs/INTERFACE.md`
+# § "The washout tail inside the limit". The change is never absorbed by widening the band.
 RATIO_REGRESSION_TOLERANCE = 0.01
 CROSSING_TOLERANCE_H = 0.1
 METABOLISED_SHARE_TOLERANCE = 0.002
@@ -1284,8 +1284,9 @@ def test_the_first_24_hours_of_elimination_against_the_published_mean_curves(
             f"{curve.ratio_at(minutes):.5f} against the fitted {fit.ratio_at(minutes):.5f}, a "
             f"ratio of {ratio:.3f} where this module recorded {expected}. "
             "Re-measure this module's tables, and those in docs/VERIFICATION.md section "
-            "'The first 24 hours of elimination against the published mean curves' and "
-            "docs/MODEL.md section 'The first 24 hours of elimination', rather than "
+            "'The first 24 hours of elimination against the published mean curves', "
+            "docs/MODEL.md section 'The first 24 hours of elimination' and "
+            "docs/INTERFACE.md section 'The washout tail inside the limit', rather than "
             "widening the band"
         )
 
@@ -1297,8 +1298,9 @@ def test_the_first_24_hours_of_elimination_against_the_published_mean_curves(
         f"{fit.label}, {condition}: the model now crosses the fitted curve at "
         f"{tuple(round(h, 2) for h in crossings)} h where this module recorded "
         f"{recorded.crossing_hours}; the stretches that the module docstring, docs/MODEL.md "
-        "section 'The first 24 hours of elimination' and docs/VERIFICATION.md section "
-        "'The first 24 hours of elimination against the published mean curves' describe have moved"
+        "section 'The first 24 hours of elimination', docs/VERIFICATION.md section "
+        "'The first 24 hours of elimination against the published mean curves' and "
+        "docs/INTERFACE.md section 'The washout tail inside the limit' describe have moved"
     )
 
 
@@ -1351,8 +1353,9 @@ def test_the_run_ends_at_the_supported_run_length() -> None:
         f"the supported run length allows {supported_steps}. Set ELIMINATION_DURATION_MIN so "
         "that the run ends at that boundary, then re-measure this module's tables, and "
         "those in docs/VERIFICATION.md section 'The first 24 hours of elimination "
-        "against the published mean curves' and docs/MODEL.md section 'The first 24 "
-        "hours of elimination'"
+        "against the published mean curves', docs/MODEL.md section 'The first 24 "
+        "hours of elimination' and docs/INTERFACE.md section 'The washout tail inside "
+        "the limit'"
     )
 
 
