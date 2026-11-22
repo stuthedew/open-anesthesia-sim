@@ -222,3 +222,17 @@ owner is asked about that paragraph alone, quoted before and after. The rest
 is not put to the owner, who said on 2026-11-02 that a reply cannot let them
 re-check a rewording that reviews already checked (`PL-BGN1`), and on
 2026-11-22 asked threads to put to them only what needs a clinician.
+
+*The owner's answer, 2026-11-22.* The owner answered "do best practice
+approach", then "research best practice approach". The control-delay
+paragraph keeps the comparison with each coefficient's spread (project owner,
+2026-11-22, ratified, over giving the timing figures alone). ASME V&V 20-2009
+splits a simulation's error into the model's error, the numerical error and the
+error from uncertain inputs, estimates each separately, and combines the
+numerical and input uncertainties into one validation uncertainty. This was
+read in NIST's summary of the standard, NISTIR 8298 (Yeo 2020, pp. 13-15),
+because only the standard's contents pages could be fetched. The National
+Research Council's *Assessing the Reliability of Complex Models* (2012,
+chapter 5, § 5.1) says a solution error that could matter to a prediction
+"must also be captured in some way". A timing error stated without the input
+uncertainty beside it gives a reader half of that budget.
