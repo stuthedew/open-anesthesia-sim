@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect, ux
-feature: branch-run-set-integrity
+feature: scenario-branching
 milestone: v0.5.0
 touches: src/anesthesia_sim/app/simulation_view.py, tests/integration/test_simulation_view.py
 added: 2026-09-20

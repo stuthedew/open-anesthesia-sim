@@ -5,7 +5,7 @@ priority: P1
 effort: S
 status: ready
 classes: defect, safety
-feature: numbers-outside-their-valid-range
+feature: floating-point-domain
 touches: src/anesthesia_sim/core/rounding.py
 deferred-from: v0.7.0 - continues PL-GJ1W (every rounding bound stated in one place), a frozen entry this gate deferred, and is worked with it. Hazard not live, checked 2026-11-22 at d4e8200c: the 1 picolitre limit governs only while a run has handled less than a millilitre of agent gas, and the largest unaccounted amount in the 3600 s runs (1.1e-12 L) passed on the relative limit, so no displayed value depends on the missing reason
 added: 2026-11-21

@@ -5,7 +5,7 @@ priority: P2
 effort: M
 status: done
 classes: defect, infra
-feature: verify-assertion-evidence
+feature: verify-false-reject
 milestone: v0.5.23
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
 added: 2026-09-20

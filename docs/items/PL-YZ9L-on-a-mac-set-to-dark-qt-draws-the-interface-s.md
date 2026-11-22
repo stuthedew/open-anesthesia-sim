@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: ready
 classes: ux, defect
-feature: platform-palette
+feature: chrome-colour-audit
 touches: src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/main.py
 deferred-from: v0.7.0 - present at the freeze, with no real connection to the frozen list or to v0.7.0's Required scope: a lettering weight under the Mac's Dark appearance changes no value and no layout the milestone builds, and its fix needs a Mac
 added: 2026-11-11

@@ -5,7 +5,7 @@ priority: P2
 effort: M
 status: dropped
 classes: defect
-feature: inflight-verdict
+feature: carrier-detection
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, .claude/skills/docket/SKILL.md
 added: 2026-09-16
 closed: 2026-09-21

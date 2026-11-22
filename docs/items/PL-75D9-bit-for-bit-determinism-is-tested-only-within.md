@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: infra
-feature: test-effectiveness-measurement
+feature: tests-detect-wrong-values
 milestone: v0.5.26
 touches: tests/integration/test_cross_process_determinism.py, .github/workflows/drift.yml, pyproject.toml, uv.lock, ROADMAP.md
 added: 2026-10-17

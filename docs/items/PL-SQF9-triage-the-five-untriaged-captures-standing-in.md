@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: housekeeping
-feature: stranded-triage-sweep
+feature: stranded-recovery
 milestone: v0.5.0
 touches: docs/items
 added: 2026-09-21

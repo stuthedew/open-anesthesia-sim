@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect
-feature: landing-deletions
+feature: landed-elsewhere
 milestone: v0.6.17
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 deferred-from: v0.7.0 - found 2026-11-11 after the freeze; apparatus, and it changes no displayed value, so the release does not wait on it

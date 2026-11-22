@@ -29,6 +29,7 @@ from .claims import CLAIM, DISPOSITION, LEASE_TERM, LIVE, NAMED, Hold, Holdings,
 from .concurrency import undeclared
 from .config import CONFIG_NAME, Config
 from .duplicates import Candidate
+from .feature_match import Match
 from .inflow import UNBANDED, Inflow
 from .lines import split_lines
 from .model import (
@@ -3443,6 +3444,7 @@ def format_status(
     plan: Wave | None = None,
     interrupted: str = "",
     cuts: CutsInFlight | None = None,
+    descriptions: Mapping[str, str] | None = None,
 ) -> str:
     """The whole project at feature altitude, which is the altitude decisions happen at.
 
@@ -3452,8 +3454,21 @@ def format_status(
     have not started, and what is urgent enough to ignore all of that. So this
     leads with features, names only the next item inside each, and keeps the
     individually-urgent work in a section of its own.
+
+    `descriptions` is the feature registry. Each underway or unstarted
+    feature's description is printed on the line below it, so a reader learns
+    what the group is for without opening its items (`PL-Q3BN`). The finished
+    features stay one line of names, because listing what each one was would
+    bury the open work under the history.
     """
     from .plan import features as group_features
+
+    described = descriptions or {}
+
+    def about(feature: Feature) -> list[str]:
+        """The registry's line for one feature, indented under its row."""
+        text = described.get(feature.name, "")
+        return [f"    {text}"] if text else []
 
     flight = in_flight or FlightReport()
     grouped = group_features(report.items)
@@ -3493,12 +3508,14 @@ def format_status(
             lines.append(
                 f"  {feature.name:<20} {len(feature.done)}/{len(feature.items)}  {next_in(feature)}"
             )
+            lines.extend(about(feature))
     if not_started:
         lines.append("")
         lines.append("Not started")
         for feature in sorted(not_started, key=lambda f: f.name):
             efforts = ", ".join(sorted({i.effort for i in feature.open_items if i.effort}))
             lines.append(f"  {feature.name:<20} 0/{len(feature.items)}  ({efforts})")
+            lines.extend(about(feature))
 
     loose = [
         i
@@ -4478,4 +4495,63 @@ def format_git_profile(profile: GitProfile) -> str:
     lines += [
         f"    {name:<52}{ahead:>5} commits{edits:>5} items" for name, ahead, edits in walk.refs
     ]
+    return "\n".join(lines)
+
+
+def format_feature_suggestions(identifier: str, matches: Sequence[Match]) -> str:
+    """What `docket new` prints for a capture filed with no feature (`PL-LRWK`).
+
+    The suggestions are ranked by shared words, which put an item's own
+    feature in the top three for 71% of past items, so the line asks the
+    session to judge rather than telling it which to take.
+    """
+    if not matches:
+        return (
+            f"{identifier} has no feature, and no feature in the registry shares its words. "
+            "Leave it without one unless a goal it shares with another item needs a name."
+        )
+    names = ", ".join(match.name for match in matches)
+    return (
+        f"{identifier} has no feature. The features its title reads most like: {names}. "
+        f"If one covers it, run `docket set {identifier} --feature NAME`; a lone finding "
+        "can stay without one."
+    )
+
+
+def format_similar_features(
+    pairs: Sequence[tuple[str, str, float]],
+    matches: Sequence[tuple[Item, Match]],
+    loose: Sequence[tuple[Item, Item, tuple[str, ...]]],
+    lone: Sequence[Item],
+) -> str:
+    """`docket feature --similar`: the four lists a grooming pass regroups features from.
+
+    Ranked by shared words, strongest first. Nothing here is a finding: a
+    session reads the items of each pair and decides whether they are one
+    goal (`PL-LRWK`).
+    """
+    lines = ["Ranked by shared words. Each line is a suggestion to judge, not a finding."]
+    lines.append("")
+    lines.append("Features that read alike - merge where they are one goal:")
+    lines.extend(f"  {score:.2f}  {one} ~ {other}" for one, other, score in pairs)
+    if not pairs:
+        lines.append("  none")
+    lines.append("")
+    lines.append("Open items with no feature, beside the feature they read most like:")
+    lines.extend(f"  {item.identifier} -> {match.name}  {item.title}" for item, match in matches)
+    if not matches:
+        lines.append("  none")
+    lines.append("")
+    lines.append("Open items with no feature that declare a path in common - a group to name?")
+    lines.extend(
+        f"  {one.identifier} + {other.identifier} share {', '.join(shared)}"
+        for one, other, shared in loose
+    )
+    if not loose:
+        lines.append("  none")
+    lines.append("")
+    lines.append("Open items that are the only item in their feature:")
+    lines.extend(f"  {item.identifier} {item.feature}  {item.title}" for item in lone)
+    if not lone:
+        lines.append("  none")
     return "\n".join(lines)

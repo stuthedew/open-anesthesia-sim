@@ -5,7 +5,7 @@ priority: P1
 effort: S
 status: done
 classes: science, docs, test
-feature: late-washout-evidence
+feature: validation-resolving-power
 milestone: v0.5.23
 touches: docs/MODEL.md, tests/reference/test_late_washout_against_published_fits.py, pyproject.toml, uv.lock, docs/ARCHITECTURE.md, docs/WORKING_NOTES.md
 added: 2026-10-03
