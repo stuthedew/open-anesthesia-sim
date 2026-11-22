@@ -72,6 +72,11 @@ first push and arms auto-merge, as `.claude/skills/pull-request/SKILL.md` says.
 **A diagnosis that produces more than one item files them under one
 `feature:`, in the same call.**
 
+`docs/features.toml` lists every feature with one line on what belongs in it.
+Read it before naming a feature, and join an existing one where the work fits.
+A new name needs its own line there first, because `docket new` and `docket
+check` refuse a feature the file does not list (`PL-Q3BN`).
+
 ```bash
 docket new --feature session-start-cost \
   "Attribute the session-start hook's wall-clock cost to a stage" \

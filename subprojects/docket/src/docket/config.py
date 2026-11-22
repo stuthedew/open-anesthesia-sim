@@ -182,6 +182,13 @@ class Config:
     #: carrying one; a closed item keeps its own, so the history stays readable
     #: and the name reports as finished. Empty retires nothing (`PL-S0MB`).
     retired_features: tuple[str, ...] = ()
+    #: The project's feature registry: a TOML file, relative to the project
+    #: root, of `name = "description"` lines, one per feature any item
+    #: carries. `docket status` and `docket feature` print the description
+    #: beside the name, and `docket check` errors on an item whose feature is
+    #: not listed and on a listed name no item carries. Empty keeps no
+    #: registry, and then nothing is printed or checked (`PL-Q3BN`).
+    features_file: str = ""
     #: Paths holding the checks themselves. A delegated diff that edits one
     #: has changed the thing measuring it, so the measurement means nothing.
     gate_paths: tuple[str, ...] = (
@@ -379,12 +386,19 @@ class Config:
     #: Empty where the file is absent or holds no entry, and then nothing a
     #: session sees changes (`PL-3R6L`).
     model_evidence: tuple[ModelEvidence, ...] = ()
+    #: The rows of `features_file`, as (name, description) pairs in the file's
+    #: order. Empty where no registry is named (`PL-Q3BN`).
+    feature_descriptions: tuple[tuple[str, str], ...] = ()
     #: The `[models]` table: which model and effort each kind of work uses
     #: (`PL-0XDM`). A table of its own beside `[docket]` rather than a setting
     #: in it, because tools outside this package read it too. `None` where the
     #: file has no such table, and then `next` and `show` name no model.
     models: ModelTable | None = None
     extra: dict[str, object] = field(default_factory=dict)
+
+    def describe_feature(self, name: str) -> str:
+        """The registry's description of a feature, or "" where none is listed."""
+        return dict(self.feature_descriptions).get(name, "")
 
     def vocabulary(self) -> frozenset[str]:
         """Every class an item may carry, declared or derived.
@@ -491,10 +505,40 @@ def _int(value: object, fallback: int, name: str) -> int:
 
 
 #: The keys `load` reads, which are the fields of `Config` but `extra`,
-#: `model_evidence` and `models`. A project sets `extra` in code. The evidence
-#: comes from `MODEL_EVIDENCE_NAME`, and `models` from its own `[models]` table
-#: rather than from `[docket]`.
-SETTINGS = frozenset(f.name for f in fields(Config)) - {"extra", "model_evidence", "models"}
+#: `model_evidence`, `feature_descriptions` and `models`. A project sets
+#: `extra` in code. The evidence comes from `MODEL_EVIDENCE_NAME`, the
+#: descriptions from the file `features_file` names, and `models` from its own
+#: `[models]` table rather than from `[docket]`.
+SETTINGS = frozenset(f.name for f in fields(Config)) - {
+    "extra",
+    "model_evidence",
+    "feature_descriptions",
+    "models",
+}
+
+
+def load_feature_descriptions(root: Path, features_file: str) -> tuple[tuple[str, str], ...]:
+    """Read the feature registry that `features_file` names.
+
+    A named file that is missing, or a row that is not a non-empty string, is
+    refused rather than read as an empty registry: the check would then pass
+    every item while the setting reads as applied (`PL-Q3BN`).
+    """
+    if not features_file.strip():
+        return ()
+    path = root / features_file
+    if not path.is_file():
+        raise ValueError(f"{CONFIG_NAME}: features_file names {features_file}, which does not exist")
+    with path.open("rb") as handle:
+        data = tomllib.load(handle)
+    rows: list[tuple[str, str]] = []
+    for name, description in data.items():
+        if not isinstance(description, str) or not description.strip():
+            raise ValueError(
+                f"{features_file}: feature {name!r} needs a one-line description as a string"
+            )
+        rows.append((name, description.strip()))
+    return tuple(rows)
 
 
 def load_model_evidence(root: Path) -> tuple[ModelEvidence, ...]:
@@ -532,6 +576,7 @@ def load(root: Path) -> Config:
     if unknown:
         raise ValueError(f"{CONFIG_NAME}: no setting is named {', '.join(unknown)}")
     defaults = Config()
+    features_file = _str(section.get("features_file"), defaults.features_file, "features_file")
     return Config(
         items_dir=_store_dir(section.get("items_dir"), defaults.items_dir, "items_dir"),
         safety_classes=_tuple(
@@ -639,6 +684,8 @@ def load(root: Path) -> Config:
         version_policy=_str(
             section.get("version_policy"), defaults.version_policy, "version_policy"
         ),
+        features_file=features_file,
+        feature_descriptions=load_feature_descriptions(root, features_file),
         model_evidence=evidence,
         models=models,
     )

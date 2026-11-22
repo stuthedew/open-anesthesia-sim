@@ -1330,7 +1330,17 @@ def cmd_new(args: argparse.Namespace) -> int:
     a resource is filed only while nobody else holds it, and one title at a
     time, because the check is what the field exists for (`_train_refusal`).
     """
-    directory, items, _ = _load(args)
+    directory, items, config = _load(args)
+    # Refused with nothing written, as `set` refuses it, rather than captured
+    # for `check` to refuse at the commit: the message names the line to add,
+    # and the capture is one retry away (`PL-Q3BN`).
+    if args.feature and config.features_file and not config.describe_feature(args.feature):
+        print(
+            f"new: nothing was written; feature '{args.feature}' is not in "
+            f"{config.features_file}. Use a feature listed there, or add the line "
+            f'{args.feature} = "<what belongs in it, in one sentence>" and run this again.'
+        )
+        return 1
     # The `--touches` order that used to fail loudly now parses, so the one way
     # left to lose a path is to space-separate it and have it land in the title.
     # Refused rather than written, because the alternative is a silently captured
@@ -2860,6 +2870,7 @@ def cmd_status(args: argparse.Namespace) -> int:
         plan,
         interrupted=interrupted,
         cuts=_cuts(root, config, args) if ready.shippable and not interrupted else None,
+        descriptions=dict(config.feature_descriptions),
     )
     print(rendered if rendered else "Nothing open.")
     _say_read_from_base(args, replaced)
@@ -3534,8 +3545,12 @@ def cmd_gate(args: argparse.Namespace) -> int:
 
 
 def cmd_feature(args: argparse.Namespace) -> int:
-    """Progress by feature, so a half-finished one is visible as such."""
-    items, _, replaced = _load_to_read(args)
+    """Progress by feature, so a half-finished one is visible as such.
+
+    Each feature's line in the registry follows its heading, so the answer
+    says what the group is for as well as how far it has got (`PL-Q3BN`).
+    """
+    items, config, replaced = _load_to_read(args)
     groups = features(items)
     if not groups:
         print("no items are assigned to a feature")
@@ -3548,6 +3563,9 @@ def cmd_feature(args: argparse.Namespace) -> int:
     for feature in sorted(wanted, key=lambda f: (-f.progress, f.name)):
         state = "complete" if feature.is_complete else f"{len(feature.open_items)} left"
         print(f"{feature.name}: {len(feature.done)}/{len(feature.items)} done ({state})")
+        description = config.describe_feature(feature.name)
+        if description:
+            print(f"  {description}")
         for item in feature.items:
             print(f"  [{render.progress_mark(item)}] {item.identifier} {item.title}")
     _say_read_from_base(args, replaced)

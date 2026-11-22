@@ -4111,6 +4111,7 @@ recommendation_required_from = 2026-09-21   # a `needs-decision` brief
 minor_classes = ["feature"]
 retired_features = []              # feature names `check` refuses on an open
                                    # item; closed items keep theirs
+features_file = ""                 # the feature registry; empty = none
 protected_paths = []
 gate_paths = ["Makefile", "pyproject.toml", ".github", ".claude", "docket.toml"]
 code_paths = ["src", "tests"]      # what `docket trend` counts as code
@@ -4120,6 +4121,19 @@ notes_file = ""                    # a threads file `docket show` points into
 version_file = "pyproject.toml"
 roadmap_file = "ROADMAP.md"
 ```
+
+### The feature registry
+
+`features_file` names a TOML file of `name = "description"` lines, one for each
+feature any item carries, relative to the project root. `docket status` prints
+each underway or unstarted feature's description on the line below it, and
+`docket feature` prints it below the feature's heading. `docket check` errors on
+an item whose feature the file does not list, closed items included, and on a
+listed name that no item carries. A write by `docket new` or `docket set` that
+would add either error is refused. So a new feature is a line in the registry
+first, then the item that carries it. A named file that is missing, or a line
+whose description is not a non-empty string, stops every command rather than
+being read as an empty registry (`PL-Q3BN`).
 
 ### Where the settings are resolved from, and why the run says so
 

@@ -56,6 +56,41 @@ def test_retired_features_are_read_from_the_config(tmp_path: Path) -> None:
     assert load(tmp_path).retired_features == ("dev-tooling", "queue-hygiene")
 
 
+def test_the_feature_registry_is_read_from_the_file_the_config_names(tmp_path: Path) -> None:
+    """`PL-Q3BN`: no setting keeps no registry, and a named one is read in its order."""
+    assert load(tmp_path).feature_descriptions == ()
+    (tmp_path / "docket.toml").write_text(
+        '[docket]\nfeatures_file = "docs/features.toml"\n', encoding="utf-8"
+    )
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "features.toml").write_text(
+        'chart-readout = "The chart."\n"v0.6.0-done-check" = "Gaps found at v0.6.0."\n',
+        encoding="utf-8",
+    )
+
+    config = load(tmp_path)
+
+    assert config.feature_descriptions == (
+        ("chart-readout", "The chart."),
+        ("v0.6.0-done-check", "Gaps found at v0.6.0."),
+    )
+    assert config.describe_feature("chart-readout") == "The chart."
+    assert config.describe_feature("unlisted") == ""
+
+
+def test_a_feature_registry_that_is_missing_or_undescribed_is_refused(tmp_path: Path) -> None:
+    """Read as empty, either would pass every item while the setting looks applied."""
+    (tmp_path / "docket.toml").write_text(
+        '[docket]\nfeatures_file = "features.toml"\n', encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="does not exist"):
+        load(tmp_path)
+
+    (tmp_path / "features.toml").write_text('chart-readout = ""\n', encoding="utf-8")
+    with pytest.raises(ValueError, match="needs a one-line description"):
+        load(tmp_path)
+
+
 def test_protected_paths_default_to_empty_which_disables_delegation(tmp_path: Path) -> None:
     """Fail closed: a project that never configured the partition gets no lane."""
     assert load(tmp_path).protected_paths == ()

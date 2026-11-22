@@ -3443,6 +3443,7 @@ def format_status(
     plan: Wave | None = None,
     interrupted: str = "",
     cuts: CutsInFlight | None = None,
+    descriptions: Mapping[str, str] | None = None,
 ) -> str:
     """The whole project at feature altitude, which is the altitude decisions happen at.
 
@@ -3452,8 +3453,21 @@ def format_status(
     have not started, and what is urgent enough to ignore all of that. So this
     leads with features, names only the next item inside each, and keeps the
     individually-urgent work in a section of its own.
+
+    `descriptions` is the feature registry. Each underway or unstarted
+    feature's description is printed on the line below it, so a reader learns
+    what the group is for without opening its items (`PL-Q3BN`). The finished
+    features stay one line of names, because listing what each one was would
+    bury the open work under the history.
     """
     from .plan import features as group_features
+
+    described = descriptions or {}
+
+    def about(feature: Feature) -> list[str]:
+        """The registry's line for one feature, indented under its row."""
+        text = described.get(feature.name, "")
+        return [f"    {text}"] if text else []
 
     flight = in_flight or FlightReport()
     grouped = group_features(report.items)
@@ -3493,12 +3507,14 @@ def format_status(
             lines.append(
                 f"  {feature.name:<20} {len(feature.done)}/{len(feature.items)}  {next_in(feature)}"
             )
+            lines.extend(about(feature))
     if not_started:
         lines.append("")
         lines.append("Not started")
         for feature in sorted(not_started, key=lambda f: f.name):
             efforts = ", ".join(sorted({i.effort for i in feature.open_items if i.effort}))
             lines.append(f"  {feature.name:<20} 0/{len(feature.items)}  ({efforts})")
+            lines.extend(about(feature))
 
     loose = [
         i
