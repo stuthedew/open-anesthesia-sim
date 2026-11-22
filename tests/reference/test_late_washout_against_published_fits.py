@@ -143,7 +143,8 @@ constant equals the fitted one, which brings its apparent time constant to
 before the second hour, in both conditions and every cohort, and the tail at
 four hours is 24 to 60% lower
 (`test_the_muscle_group_s_slow_return_places_the_tail_s_rise_in_hours_2_to_4`;
-`docs/MODEL.md` has the numbers).
+`docs/VERIFICATION.md` § "The first 24 hours of elimination against the
+published mean curves" has the numbers).
 
 The late excess is the model's fat term. Its amplitude is 1.5 to 2.1 times the
 fitted fat term's small amplitude, which is 0.028 to 0.080%, with SDs of 53 to
@@ -315,8 +316,10 @@ CONDITIONS: tuple[Condition, ...] = ("shipped", "open circuit")
 # Regression bands around this module's own measurements, not claims of
 # agreement. The ratio band is one percent of the ratio. The crossing band is a
 # tenth of an hour, on a crossing placed to the minute. A parameter change that
-# moves the tail by more than that fails. The tail must then be re-measured here
-# and in `docs/MODEL.md`, and the change is never absorbed by widening the band.
+# moves the tail by more than that fails. The tail must then be re-measured here,
+# in `docs/VERIFICATION.md` § "The first 24 hours of elimination against the published mean curves",
+# in `docs/MODEL.md` § "The first 24 hours of elimination" and in `docs/INTERFACE.md`
+# § "The washout tail inside the limit". The change is never absorbed by widening the band.
 RATIO_REGRESSION_TOLERANCE = 0.01
 CROSSING_TOLERANCE_H = 0.1
 METABOLISED_SHARE_TOLERANCE = 0.002
@@ -702,8 +705,9 @@ RECONSTRUCTION_FROM_MINUTE = 5
 # A band around values that the stored parameters fix exactly. These values are
 # eigenvalues of a matrix built from the parameters and a decomposition of one
 # stepped state, not samples of a stepped run. So the band can be tighter than
-# the curve's 1% and still check every value that `docs/MODEL.md` prints from
-# them, to three figures.
+# the curve's 1% and still check every value that `docs/VERIFICATION.md`
+# § "The first 24 hours of elimination against the published mean curves" prints from them, to
+# three figures.
 APPARENT_TERM_TOLERANCE = 0.002
 
 
@@ -1279,7 +1283,11 @@ def test_the_first_24_hours_of_elimination_against_the_published_mean_curves(
             f"{fit.label}, {condition}: at {minutes} min the model's F_A/F_A0 is "
             f"{curve.ratio_at(minutes):.5f} against the fitted {fit.ratio_at(minutes):.5f}, a "
             f"ratio of {ratio:.3f} where this module recorded {expected}. "
-            "Re-measure this module's tables and docs/MODEL.md's rather than widening the band"
+            "Re-measure this module's tables, and those in docs/VERIFICATION.md section "
+            "'The first 24 hours of elimination against the published mean curves', "
+            "docs/MODEL.md section 'The first 24 hours of elimination' and "
+            "docs/INTERFACE.md section 'The washout tail inside the limit', rather than "
+            "widening the band"
         )
 
     crossings = _crossing_hours(curve, fit)
@@ -1289,8 +1297,10 @@ def test_the_first_24_hours_of_elimination_against_the_published_mean_curves(
     ), (
         f"{fit.label}, {condition}: the model now crosses the fitted curve at "
         f"{tuple(round(h, 2) for h in crossings)} h where this module recorded "
-        f"{recorded.crossing_hours}; the stretches the module docstring and "
-        "docs/MODEL.md describe have moved"
+        f"{recorded.crossing_hours}; the stretches that the module docstring, docs/MODEL.md "
+        "section 'The first 24 hours of elimination', docs/VERIFICATION.md section "
+        "'The first 24 hours of elimination against the published mean curves' and "
+        "docs/INTERFACE.md section 'The washout tail inside the limit' describe have moved"
     )
 
 
@@ -1341,8 +1351,11 @@ def test_the_run_ends_at_the_supported_run_length() -> None:
         f"the run takes {wash_in_steps} steps of wash-in and {elimination_steps} steps of "
         f"elimination at {SIMULATION_STEP_S} s, {wash_in_steps + elimination_steps} in all, where "
         f"the supported run length allows {supported_steps}. Set ELIMINATION_DURATION_MIN so "
-        "that the run ends at that boundary, then re-measure this module's tables and "
-        "docs/MODEL.md's"
+        "that the run ends at that boundary, then re-measure this module's tables, and "
+        "those in docs/VERIFICATION.md section 'The first 24 hours of elimination "
+        "against the published mean curves', docs/MODEL.md section 'The first 24 "
+        "hours of elimination' and docs/INTERFACE.md section 'The washout tail inside "
+        "the limit'"
     )
 
 
@@ -1509,7 +1522,9 @@ def test_the_muscle_group_s_slow_return_places_the_tail_s_rise_in_hours_2_to_4(
         ), (
             f"{fit.label}, {condition}, {which}: the rise toward the curve now peaks at "
             f"{ratio:.3f} at {hours:.2f} h where this module recorded {expected_ratio} at "
-            f"{expected_hours} h; re-measure it here and in docs/MODEL.md"
+            f"{expected_hours} h; re-measure it here, in docs/VERIFICATION.md section "
+            "'The first 24 hours of elimination against the published mean curves' and "
+            "in docs/MODEL.md section 'The first 24 hours of elimination'"
         )
     assert rise_varied[0] < 2.0 < rise_as_stored[0], (
         f"{fit.label}, {condition}: the rise toward the curve peaks at {rise_as_stored[0]:.2f} h "
@@ -1574,7 +1589,8 @@ def test_the_model_s_apparent_muscle_and_fat_terms_against_the_fitted_ones(
     things against what was measured on 2026-10-03: both terms, the isolated
     constants, and the apparent muscle constant at the coefficient that
     `test_the_muscle_group_s_slow_return_places_the_tail_s_rise_in_hours_2_to_4`
-    runs. Last, it asserts the reading that `docs/MODEL.md` gives. The muscle
+    runs. Last, it asserts the reading that `docs/VERIFICATION.md`
+    § "The first 24 hours of elimination against the published mean curves" gives. The muscle
     term is slower and smaller than the fitted one, and the fat term is slower
     and larger. Each isolated constant is shorter than the apparent one. The
     varied coefficient takes the apparent muscle constant most of the way to
@@ -1656,7 +1672,8 @@ def test_the_model_s_apparent_muscle_and_fat_terms_against_the_fitted_ones(
     ):
         assert abs(measured - expected) <= APPARENT_TERM_TOLERANCE * expected, (
             f"{fit.label}: the {name} is now {measured:.5g} where this module measured "
-            f"{expected} on 2026-10-03; re-measure it here and in docs/MODEL.md"
+            f"{expected} on 2026-10-03; re-measure it here and in docs/VERIFICATION.md section "
+            "'The first 24 hours of elimination against the published mean curves'"
         )
 
     fitted_muscle_min = fit.time_constants_min[MUSCLE_GROUP]
