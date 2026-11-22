@@ -2772,6 +2772,37 @@ def _untied_figures(prose: str, raw: str) -> Iterator[tuple[str, str | None]]:
             yield found.group("number"), unit
 
 
+#: A number that ends a line, whose unit may open the next one.
+# regex: a plain decimal number at the end of a line, with no digit or point before it.
+LINE_END_NUMBER_RE = re.compile(r"(?<![\d.])(?P<number>\d+(?:\.\d+)?)\s*$")
+
+
+def _wrapped_figure(prose: list[str], index: int, skipped: set[int]) -> list[tuple[str, str | None]]:
+    """The figure whose number ends line `index` and whose unit opens the next line, if any.
+
+    A paragraph may break its line between a number and its unit, as "2.5" and
+    then "L". Read one line at a time, that figure has no unit on the first
+    line and no number on the second, so it was never asked about (`PL-LPV0`).
+    The two parts are joined and read as `_untied_figures` reads a line. A
+    blank next line ends the paragraph, so it joins nothing.
+    """
+    found = LINE_END_NUMBER_RE.search(prose[index])
+    following = index + 1
+    if found is None or following >= len(prose) or following in skipped:
+        return []
+    head = prose[following].lstrip()
+    if not head:
+        return []
+    number = found.group("number")
+    joined = f"{number} {head}"
+    return [
+        (written, unit)
+        for match in PROSE_FIGURE_RE.finditer(joined)
+        if match.start() == 0 and (written := match.group("number")) == number
+        and (unit := match.group("unit")) is not None
+    ]
+
+
 #: A figure a `not-restated:` marker lists, such as `4 L/min` or `0.65`.
 # regex: a figure in a `not-restated:` marker is a flat token, a number and an optional unit.
 LISTED_FIGURE_RE = re.compile(r"^(?P<number>\d+(?:\.\d+)?)(?:[ \u00a0]?×?(?P<unit>\S+))?$")
@@ -3089,7 +3120,9 @@ def check_untied_restatements(root: Path, report: Report) -> None:
     thousands, such as "86 400 s", is read whole (`PL-TCD3`). It does not read
     any other number in a math span, a figure in a code span, or a number in
     e-notation, such as "1e-12 L". A restatement written in one of those forms
-    is not checked. It reads a line at a time,
+    is not checked. A figure whose number ends one line and whose unit opens
+    the next, such as "2.5" and then "L", is read as one figure on the first
+    line (`_wrapped_figure`, `PL-LPV0`). Otherwise it reads a line at a time,
     so a math span split across two lines gives it no figure. That form never
     passes, though: the split span renders as literal text, and
     `check_math_delimiters` refuses it until it is joined onto one line, where
@@ -3112,7 +3145,7 @@ def check_untied_restatements(root: Path, report: Report) -> None:
             if index in fenced or index in hidden:
                 continue
             raw = INLINE_COMMENT_RE.sub("", lines[index])
-            for written, unit in _untied_figures(line, raw):
+            for written, unit in [*_untied_figures(line, raw), *_wrapped_figure(prose, index, fenced | hidden)]:
                 figure = _prose_figure(written, unit)
                 matching = [home for home in homes if _matches(figure, home, written)]
                 if not matching:

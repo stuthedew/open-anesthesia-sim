@@ -24,6 +24,7 @@ from pathlib import Path
 import pr_record_check
 import pr_title_check
 import pytest
+from open_pull_requests import PullRequest
 
 ITEM = "---\nid: {id}\ntitle: T\nstatus: {status}\n{extra}---\n"
 
@@ -49,6 +50,22 @@ def _tree(**refs: dict[str, str]):
 
 def _install(monkeypatch: pytest.MonkeyPatch, **refs: dict[str, str]) -> None:
     monkeypatch.setattr(pr_title_check, "_git", _tree(**refs))
+
+
+@pytest.fixture(autouse=True)
+def _forge(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No test here asks GitHub: the forge answers that nothing is open unless a test says more."""
+    monkeypatch.setattr(pr_title_check, "repo_slug", lambda: "owner/repo")
+    monkeypatch.setattr(pr_title_check, "open_pull_requests", lambda slug, head=None: ())
+
+
+def _open_pulls(monkeypatch: pytest.MonkeyPatch, answer: tuple[int, ...] | None) -> None:
+    """Make the forge answer that these pull requests are open, or that it could not be asked."""
+    pulls = None if answer is None else tuple(
+        PullRequest(number=number, title="T", head=f"branch-{number}", base="main")
+        for number in answer
+    )
+    monkeypatch.setattr(pr_title_check, "open_pull_requests", lambda slug, head=None: pulls)
 
 
 def _run(monkeypatch: pytest.MonkeyPatch, number: str | None, *flags: str) -> int:
@@ -101,6 +118,43 @@ def test_a_closure_recording_another_number_is_refused(
         base={"PL-K7QX-a.md": ITEM.format(id="PL-K7QX", status="ready", extra="")},
         head={"PL-K7QX-a.md": ITEM.format(id="PL-K7QX", status="done", extra="pr: 1049\n")},
     )
+
+    assert _run(monkeypatch, "1050") == 1
+    assert "records `pr: 1049`" in capsys.readouterr().err
+
+
+def test_a_stacked_branch_owes_no_number_for_the_lower_pull_request_s_closure(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A branch built on #1049's branch holds #1049's closure, and #1049 is still open (`PL-6LJS`)."""
+    _install(
+        monkeypatch,
+        base={
+            "PL-K7QX-a.md": ITEM.format(id="PL-K7QX", status="ready", extra=""),
+            "PL-B2C3-b.md": ITEM.format(id="PL-B2C3", status="ready", extra=""),
+        },
+        head={
+            "PL-K7QX-a.md": ITEM.format(id="PL-K7QX", status="done", extra="pr: 1049\n"),
+            "PL-B2C3-b.md": ITEM.format(id="PL-B2C3", status="done", extra="pr: 1050\n"),
+        },
+    )
+    _open_pulls(monkeypatch, (1049, 1050))
+
+    assert _run(monkeypatch, "1050") == 0
+    out = capsys.readouterr().out
+    assert "PL-K7QX records #1049, which is still open" in out
+    assert "PL-B2C3 records #1050" in out
+
+
+def test_a_closure_of_another_pull_request_is_held_where_the_forge_cannot_be_asked(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _install(
+        monkeypatch,
+        base={"PL-K7QX-a.md": ITEM.format(id="PL-K7QX", status="ready", extra="")},
+        head={"PL-K7QX-a.md": ITEM.format(id="PL-K7QX", status="done", extra="pr: 1049\n")},
+    )
+    _open_pulls(monkeypatch, None)
 
     assert _run(monkeypatch, "1050") == 1
     assert "records `pr: 1049`" in capsys.readouterr().err

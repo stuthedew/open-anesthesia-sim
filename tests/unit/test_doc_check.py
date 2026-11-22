@@ -1029,6 +1029,21 @@ def test_a_figure_that_cannot_restate_a_stored_value_is_not_asked_about(
     assert _untied(root) == []
 
 
+def test_a_figure_whose_unit_opens_the_next_line_is_asked_about(tmp_path: Path) -> None:
+    """A number at a line's end and its unit at the next line's start are one figure (`PL-LPV0`)."""
+    root = _with_step(_repo(tmp_path, model=_model_with("The run advances one step every 0.1\ns, as stored.")))
+
+    (untied,) = _untied(root)
+    assert "0.1 s equals core/thing.py STEP_S = 0.1" in untied
+
+
+def test_a_number_ending_a_paragraph_joins_no_unit_from_the_next(tmp_path: Path) -> None:
+    """A blank line ends the paragraph, so a unit after it belongs to nothing above."""
+    root = _with_step(_repo(tmp_path, model=_model_with("The ratio was 0.1\n\ns are counted below.")))
+
+    assert _untied(root) == []
+
+
 def test_a_not_restated_marker_clears_a_figure_that_only_coincides(tmp_path: Path) -> None:
     root = _with_step(
         _repo(

@@ -104,10 +104,14 @@ put to the owner at once, with a recommendation.
   hooks and no session-start digest. It then says so in its first reply and
   files it with `bin/docket new`, naming `PL-4J4H` as the last fix.
 
-Drop the last line once Projects threads load `.claude/settings.json`
-themselves, or once a plugin carries the hooks (`PL-XFDQ`). A thread does load
-the repository's skills now: Claude Code's Projects documentation lists them as
-loaded, and a thread's Skill tool listed `docket` on 2026-11-22 (`PL-4J4H`).
+What a Projects thread loads, as last observed on 2026-11-22: `CLAUDE.md` and
+the three resident rules at launch, each path-scoped rule when it reads a
+matching file, and the repository's skills in its Skill tool (`PL-KMXJ`,
+`PL-4J4H`). It gets the guard hooks only from the setup script. On 2026-11-22
+the thread "Finish all open defects", started after the setup script was
+updated, had them: the gate-status guard refused the first command. Drop the
+last line of the list above once Projects threads load `.claude/settings.json`
+themselves, or once a plugin carries the hooks (`PL-XFDQ`).
 
 ## Reporting to the owner
 

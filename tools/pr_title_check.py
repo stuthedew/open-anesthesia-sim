@@ -22,6 +22,12 @@ satisfy this very check never landed (`PL-M7W1`, on `#868`). Both now cost a
 `git log` reader a stale line and nothing else, which is the claim this
 docstring is kept to.
 
+A closure that another open pull request carries, because this branch was
+built on that pull request's branch before it merged, is not owed in this title
+(`PL-6LJS`). `carried_by_other_pulls` decides it, for this check and for
+`pr_record_check.py`, from the number the closure records and the forge's list
+of open pull requests.
+
 Deliberately not checked: whether the title says anything *else* useful, and
 whether ids appear that the branch does not close. A pull request may lead with
 an id it merely captures, and judging prose is not this tool's business.
@@ -93,6 +99,7 @@ from docket.store import read_items  # noqa: E402
 from docket.vcs import GitUnanswered as GitUnanswered  # noqa: E402
 from docket.vcs import _items_at, default_base, head_branch, leading_ids, read_git  # noqa: E402
 
+from docket.model import pr_number  # noqa: E402
 from open_pull_requests import open_pull_requests, repo_slug  # noqa: E402
 
 #: The store, where `docket.toml` puts it, as docket reads it (`PL-WCHF`).
@@ -173,6 +180,42 @@ def closes(base: str, head: str) -> list[str]:
     cannot read either tree, rather than comparing against nothing.
     """
     return sorted(set(closed_items_at(head)) - set(closed_items_at(base)))
+
+
+def carried_by_other_pulls(closing: dict[str, Item], number: int) -> dict[str, int]:
+    """The closures that another open pull request carries, as id to that pull request's number.
+
+    A branch built on another pull request's branch before it merged holds that
+    pull request's closures, and comparing the branch with the base reads them
+    as this branch's own (`PL-6LJS`). Such a closure already records the lower
+    pull request's number, and that pull request is still open. Both checks
+    leave it out.
+
+    A closure recording the number of a pull request that is no longer open is
+    not left out: a pull request closed unmerged and reopened under a new
+    number leaves its old number behind, and that is a wrong record. The forge
+    is asked only when some closure records another number. Where it cannot be
+    asked, nothing is left out, so the check stays as strict as it was.
+    """
+    others = {
+        identifier: recorded
+        for identifier, item in closing.items()
+        if (recorded := pr_number(item.pr)) is not None and recorded != number
+    }
+    if not others:
+        return {}
+    slug = repo_slug()
+    found = open_pull_requests(slug) if slug else None
+    if found is None:
+        return {}
+    still_open = {pull.number for pull in found}
+    return {identifier: recorded for identifier, recorded in others.items() if recorded in still_open}
+
+
+def report_left_out(check: str, carried: dict[str, int]) -> None:
+    """Say which closures another open pull request carries, so leaving them out is not silent."""
+    for identifier, recorded in sorted(carried.items()):
+        print(f"{check}: {identifier} records #{recorded}, which is still open, so it is that pull request's closure")
 
 
 def _branch() -> str | None:
@@ -264,7 +307,9 @@ def main() -> int:
     # standard GitHub Actions script-injection hole.
     title = os.environ.get("PR_TITLE")
     discovered = title is None and args.discover
-    number = None
+    # CI passes the number beside the title, so a closure that another open
+    # pull request carries can be told from this one's own (`PL-6LJS`).
+    number = pr_number(os.environ.get("PR_NUMBER", "").strip())
     if discovered:
         # Before `closes()`, which costs a `git show` per item file at both
         # ends of the range. A branch with nothing open pays one request.
@@ -289,6 +334,17 @@ def main() -> int:
 
     led = {identifier.upper() for identifier in leading_ids(title)}
     missing = [identifier for identifier in closing if identifier.upper() not in led]
+    if missing and number is not None:
+        at_head = closed_items_at(head)
+        carried = carried_by_other_pulls(
+            {identifier: at_head[identifier] for identifier in missing}, number
+        )
+        report_left_out("pr-title", carried)
+        missing = [identifier for identifier in missing if identifier not in carried]
+        closing = [identifier for identifier in closing if identifier not in carried]
+    if not closing:
+        print("pr-title: every closure here is another open pull request's; no id is owed")
+        return 0
     if not missing:
         print(f"pr-title: leads with {', '.join(closing)}")
         return 0
