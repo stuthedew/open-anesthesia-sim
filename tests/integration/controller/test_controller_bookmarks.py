@@ -24,9 +24,9 @@ from anesthesia_sim.app.run_series import (
 )
 from anesthesia_sim.core.concentration import Fraction, MacMultiple, Percent, fraction_from_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
-from anesthesia_sim.core.governing_equations import STATE_SIZE
-from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CaseInstant, FreshGasFlow
+from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 from tests.integration.controller.controller_support import (
     _advance_for,
     _advance_until_halted,
@@ -51,7 +51,7 @@ def test_a_fresh_run_is_marked_at_nothing() -> None:
 
 def test_a_mark_reaches_a_reader_through_the_snapshot() -> None:
     controller = SimulationController()
-    controller.add_time_bookmark(TimeBookmark(CaseInstant(600.0), "intubation"))
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(600), "intubation"))
     controller.add_mac_target(MacTarget(RecordedQuantity.VESSEL_RICH, MacMultiple(0.8), "wash-in"))
 
     marks = controller.snapshot().bookmarks
@@ -62,9 +62,9 @@ def test_a_mark_reaches_a_reader_through_the_snapshot() -> None:
 
 def test_the_two_collections_are_added_to_and_removed_from_independently() -> None:
     controller = SimulationController()
-    controller.add_time_bookmark(TimeBookmark(CaseInstant(600.0)))
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(600)))
     controller.add_mac_target(MacTarget(RecordedQuantity.FAT, MacMultiple(0.5)))
-    controller.remove_time_bookmark(TimeBookmark(CaseInstant(600.0)))
+    controller.remove_time_bookmark(TimeBookmark(CaseInstant(600)))
 
     marks = controller.snapshot().bookmarks
 
@@ -77,7 +77,7 @@ def test_a_snapshot_taken_before_a_mark_was_added_does_not_acquire_it() -> None:
     # snapshot from an earlier tick must not come to describe a later run.
     controller = SimulationController()
     before = controller.snapshot()
-    controller.add_time_bookmark(TimeBookmark(CaseInstant(600.0)))
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(600)))
 
     assert before.bookmarks.is_empty
     assert not controller.snapshot().bookmarks.is_empty
@@ -85,10 +85,10 @@ def test_a_snapshot_taken_before_a_mark_was_added_does_not_acquire_it() -> None:
 
 def test_a_marked_instant_cannot_be_marked_twice_through_the_controller() -> None:
     controller = SimulationController()
-    controller.add_time_bookmark(TimeBookmark(CaseInstant(600.0)))
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(600)))
 
     with pytest.raises(SimulationConfigurationError, match="marked once"):
-        controller.add_time_bookmark(TimeBookmark(CaseInstant(600.0), "and again"))
+        controller.add_time_bookmark(TimeBookmark(CaseInstant(600), "and again"))
 
     assert len(controller.snapshot().bookmarks.time_bookmarks) == 1
 
@@ -98,12 +98,12 @@ def test_resetting_a_run_keeps_its_marks() -> None:
     # learner was asking about. So the marks stay with the settings rather
     # than with the state.
     controller = SimulationController()
-    controller.add_time_bookmark(TimeBookmark(CaseInstant(600.0)))
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(600)))
     controller.start()
-    _advance_for(controller, duration_s=30.0)
+    _advance_for(controller, duration_s=30)
     controller.reset()
 
-    assert controller.snapshot().bookmarks.time_bookmarks == (TimeBookmark(CaseInstant(600.0)),)
+    assert controller.snapshot().bookmarks.time_bookmarks == (TimeBookmark(CaseInstant(600)),)
 
 
 def test_changing_agent_keeps_the_marks_although_it_destroys_the_run() -> None:
@@ -115,7 +115,7 @@ def test_changing_agent_keeps_the_marks_although_it_destroys_the_run() -> None:
     target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.8))
     controller.add_mac_target(target)
     controller.start()
-    _advance_for(controller, duration_s=30.0)
+    _advance_for(controller, duration_s=30)
     controller.set_agent("desflurane")
 
     after = controller.snapshot()
@@ -136,8 +136,8 @@ def _run_to_halt(
 
     mac_fraction = float(fraction_from_percent(controller.snapshot().agent_mac_percent))
     before = float(reading_of(controller.snapshot())) / mac_fraction
-    for _ in range(round(60.0 / MAXIMUM_SIMULATION_STEP_S)):
-        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    for _ in range(60 // SIMULATION_STEP_S):
+        controller.advance()
         snapshot = controller.snapshot()
         if snapshot.bookmark_halt is not None:
             return before, snapshot
@@ -181,21 +181,25 @@ def test_a_circuit_target_halts_within_one_step_of_its_mark_and_can_show_one_cou
     ) == (f"0.11{MAC_UNIT_SUFFIX}")
 
 
-def test_an_alveolar_target_can_halt_two_counts_past_its_mark_when_ventilation_resumes() -> None:
-    """In one simulation step, a reading can move more than one display count past its mark.
+def test_an_alveolar_target_can_halt_many_counts_past_its_mark_when_ventilation_resumes() -> None:
+    """In one simulation step, a reading can move many display counts past its mark.
 
-    A display count is one unit of the last digit shown. This test is the second example in
-    `docs/INTERFACE.md` § "Halting on a marked crossing". After 120 s with no alveolar
-    ventilation, the circuit has filled but the alveolar reading is still zero. When
-    ventilation is restored to 12 L/min, the alveolar reading rises fast enough that a
-    0.10 ×MAC alveolar target halts showing 0.12 ×MAC.
+    A display count is one unit of the last digit shown. This test is the second case that
+    `docs/INTERFACE.md` § "Halting on a marked crossing" describes. After 120 s with no
+    alveolar ventilation, the circuit has filled but the alveolar reading is still zero. When
+    ventilation is restored to 12 L/min, the alveolar reading rises in the next one-second
+    step from zero to 0.29 ×MAC. So a 0.10 ×MAC alveolar target halts showing 0.29 ×MAC,
+    nineteen display counts past its mark.
+
+    The expected reading comes from an uptake system built directly from the core, with no
+    controller and no mark. It is given the same settings and takes the same 121 steps.
     """
 
     controller = _sevoflurane_at_8_percent_and_10_l_min()
     controller.set_alveolar_ventilation(AlveolarVentilation(0.0))
     controller.start()
-    for _ in range(round(120.0 / MAXIMUM_SIMULATION_STEP_S)):
-        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    for _ in range(120 // SIMULATION_STEP_S):
+        controller.advance()
     assert controller.snapshot().alveolar_partial_pressure_fraction == 0.0
     mark = MacMultiple(0.10)
     controller.add_mac_target(MacTarget(RecordedQuantity.ALVEOLAR, mark))
@@ -205,11 +209,27 @@ def test_an_alveolar_target_can_halt_two_counts_past_its_mark_when_ventilation_r
         controller, lambda snapshot: snapshot.alveolar_partial_pressure_fraction
     )
 
+    never_marked = AgentUptakeSystem.for_agent("sevoflurane")
+    never_marked.set_fresh_gas_flow(FreshGasFlow(10.0))
+    never_marked.set_delivered_concentration_percent(Percent(8.0))
+    never_marked.set_alveolar_ventilation(AlveolarVentilation(0.0))
+    for _ in range(120 // SIMULATION_STEP_S):
+        never_marked.advance()
+    never_marked.set_alveolar_ventilation(AlveolarVentilation(12.0))
+    never_marked.advance()
+
     mac_fraction = float(fraction_from_percent(halted.agent_mac_percent))
+    assert halted.elapsed_s == 121
     assert before < mark <= float(halted.alveolar_partial_pressure_fraction) / mac_fraction
+    # The arithmetic is the same on both sides, so the comparison is exact.
+    unmarked_reading = never_marked.alveoli.partial_pressure_fraction
+    assert halted.alveolar_partial_pressure_fraction == unmarked_reading
+    # The unmarked system reads 0.2888 ×MAC of sevoflurane at 121 s, which a
+    # two-decimal readout shows as 0.29 (measured 2026-11-21).
+    assert round(unmarked_reading / mac_fraction, 2) == 0.29
     assert format_mac_multiple(
         halted.alveolar_partial_pressure_fraction, halted.agent_mac_percent
-    ) == (f"0.12{MAC_UNIT_SUFFIX}")
+    ) == (f"0.29{MAC_UNIT_SUFFIX}")
 
 
 def test_a_branch_opens_carrying_the_marks_of_the_case_it_continues() -> None:
@@ -220,18 +240,18 @@ def test_a_branch_opens_carrying_the_marks_of_the_case_it_continues() -> None:
     # compare two branches at two different heights, with nothing to show it.
     trunk = _trunk_with_two_changes()
     target = MacTarget(RecordedQuantity.MUSCLE, MacMultiple(0.3))
-    trunk.add_time_bookmark(TimeBookmark(CaseInstant(45.0), "the decision point"))
+    trunk.add_time_bookmark(TimeBookmark(CaseInstant(45), "the decision point"))
     trunk.add_mac_target(target)
 
-    branch = trunk.resumed_at(trunk.run_segments[-1].opening.instant_s)
+    branch = trunk.resumed_at(trunk.run_segments[-1].opened_at_s)
     marks = branch.snapshot().bookmarks
 
-    assert marks.time_bookmarks == (TimeBookmark(CaseInstant(45.0), "the decision point"),)
+    assert marks.time_bookmarks == (TimeBookmark(CaseInstant(45), "the decision point"),)
     assert marks.mac_targets == (target,)
     # The trunk's earlier changes do not carry over, because a branch inherits
     # the marks but not the timeline. The branch's timeline holds only the
     # change at the fork that the branch runs under (`PL-ZR49`).
-    fork_s = trunk.run_segments[-1].opening.instant_s
+    fork_s = trunk.run_segments[-1].opened_at_s
     timeline = branch.snapshot().control_timeline
     assert [change.elapsed_s for change in timeline] == [fork_s]
 
@@ -241,8 +261,8 @@ def test_marking_a_branch_does_not_mark_the_trunk_it_came_from() -> None:
     # are two managements, and a mark added to one is a question asked of that
     # one.
     trunk = _trunk_with_two_changes()
-    branch = trunk.resumed_at(trunk.run_segments[-1].opening.instant_s)
-    branch.add_time_bookmark(TimeBookmark(CaseInstant(600.0)))
+    branch = trunk.resumed_at(trunk.run_segments[-1].opened_at_s)
+    branch.add_time_bookmark(TimeBookmark(CaseInstant(600)))
 
     assert trunk.snapshot().bookmarks.is_empty
     assert len(branch.snapshot().bookmarks.time_bookmarks) == 1
@@ -261,7 +281,7 @@ def test_a_mark_changes_nothing_the_run_computes() -> None:
     # the same trajectory element-wise. A halt costs the run no simulated time
     # and changes no state. It only declines to take the next step until asked.
     marked = SimulationController()
-    marked.add_time_bookmark(TimeBookmark(CaseInstant(45.0)))
+    marked.add_time_bookmark(TimeBookmark(CaseInstant(45)))
     marked.add_mac_target(MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.8)))
     unmarked = SimulationController()
 
@@ -276,27 +296,25 @@ def test_a_mark_changes_nothing_the_run_computes() -> None:
         window = marked.drawn_window(0.0, marked.snapshot().elapsed_s, 50)
         same = unmarked.drawn_window(0.0, unmarked.snapshot().elapsed_s, 50)
 
-        assert [state.values[position] for state in window.states] == [
-            state.values[position] for state in same.states
+        assert [state[position] for state in window.states] == [
+            state[position] for state in same.states
         ]
 
 
 def _the_same_case_never_marked(steps: int) -> SimulationController:
     """`_trunk_halted_on_a_bookmark`'s case without the mark, run the same distance.
 
-    The run is driven by step count rather than by duration. The marked run
-    stops partway through a step budget. A second run told to advance "45.3 s"
-    would take a different number of steps, and so it would stop at a
-    different float.
+    The run takes the number of steps that the marked run has completed, so
+    both runs stand at the same instant.
     """
 
     controller = SimulationController()
     controller.start()
-    _advance_for(controller, duration_s=30.0)
+    _advance_for(controller, duration_s=30)
     controller.set_delivered_concentration_percent(Percent(4.0))
 
     for _ in range(steps - controller._state.step_count):
-        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        controller.advance()
 
     return controller
 
@@ -321,16 +339,16 @@ def test_a_branch_taken_at_a_bookmark_reproduces_its_parent_without_changing_it(
 
     # The premise: the trunk has no keyframe at the fork instant, so the
     # refused route would have had to record one there.
-    assert fork_s not in [segment.opening.instant_s for segment in marked.run_segments]
+    assert fork_s not in [segment.opened_at_s for segment in marked.run_segments]
 
     branch = marked.resumed_here()
 
     marked.start()
-    _advance_for(marked, duration_s=30.0)
+    _advance_for(marked, duration_s=30)
     marked.pause()
 
     branch.start()
-    _advance_for(branch, duration_s=30.0)
+    _advance_for(branch, duration_s=30)
     branch.pause()
 
     unmarked = _the_same_case_never_marked(steps=marked._state.step_count)
@@ -342,26 +360,33 @@ def test_a_branch_taken_at_a_bookmark_reproduces_its_parent_without_changing_it(
     # that the unmarked run does not have.
     assert marked._state.step_count == unmarked._state.step_count
     assert marked.snapshot().elapsed_s == unmarked.snapshot().elapsed_s
-    assert [segment.opening.instant_s for segment in marked.run_segments] == [
-        segment.opening.instant_s for segment in unmarked.run_segments
+    assert [segment.opened_at_s for segment in marked.run_segments] == [
+        segment.opened_at_s for segment in unmarked.run_segments
     ]
-    assert [segment.opening.state for segment in marked.run_segments] == [
-        segment.opening.state for segment in unmarked.run_segments
+    assert [
+        marked._state.stored_states.state_at(segment.opened_at_s) for segment in marked.run_segments
+    ] == [
+        unmarked._state.stored_states.state_at(segment.opened_at_s)
+        for segment in unmarked.run_segments
     ]
 
     for steps in range(0, marked._state.step_count + 1):
-        case_s = steps * MAXIMUM_SIMULATION_STEP_S
+        case_s = steps * SIMULATION_STEP_S
 
-        assert marked._run_definition.state_at(case_s) == unmarked._run_definition.state_at(
-            case_s
-        ), f"marking the run moved what it says at {case_s} s"
+        assert marked._state.stored_states.state_at(
+            CaseInstant(case_s)
+        ) == unmarked._state.stored_states.state_at(CaseInstant(case_s)), (
+            f"marking the run moved what it says at {case_s} s"
+        )
 
     # And the branch reproduces the parent it forked from, element for element,
     # at every instant the two share.
-    for steps_past_fork in range(0, 301):
-        case_s = (fork_steps + steps_past_fork) * MAXIMUM_SIMULATION_STEP_S
+    for steps_past_fork in range(0, 31):
+        case_s = (fork_steps + steps_past_fork) * SIMULATION_STEP_S
 
-        assert branch._run_definition.state_at(case_s) == marked._run_definition.state_at(case_s), (
+        assert branch._state.stored_states.state_at(
+            CaseInstant(case_s)
+        ) == marked._state.stored_states.state_at(CaseInstant(case_s)), (
             f"the branch and its parent differ at {case_s} s"
         )
 
@@ -388,10 +413,12 @@ def test_a_bookmark_fork_opens_its_definition_at_the_keyframe_before_it() -> Non
 
     # The definition opens earlier, at the trunk's own keyframe rather than at
     # the fork, and nothing was recorded on the trunk to make one there.
-    assert branch.run_segments[0].opening.instant_s == 30.0
-    assert branch.run_segments[0].opening.instant_s < fork_s
-    assert branch.run_segments[0].opening.state == marked.run_segments[-1].opening.state
-    assert [segment.opening.instant_s for segment in marked.run_segments] == [0.0, 30.0]
+    assert branch.run_segments[0].opened_at_s == 30.0
+    assert branch.run_segments[0].opened_at_s < fork_s
+    assert branch._state.stored_states.state_at(
+        branch.run_segments[0].opened_at_s
+    ) == marked._state.stored_states.state_at(marked.run_segments[-1].opened_at_s)
+    assert [segment.opened_at_s for segment in marked.run_segments] == [0.0, 30.0]
 
 
 def test_a_branch_taken_at_a_bookmark_is_not_drawn_before_its_fork() -> None:
@@ -427,21 +454,6 @@ def test_a_branch_taken_at_a_bookmark_is_not_drawn_before_its_fork() -> None:
     assert marked.drawn_window(0.0, fork_s - 5.0, 150).times_s != ()
 
 
-WORST_SHARED_COLUMN_DIVERGENCE = 1e-13
-"""Bound the difference between the trunk's and the branch's drawn values at a shared column.
-
-The trunk is the parent run, and the branch is the run forked from one of its bookmarks. A
-column is one of the sampled points that the plot draws.
-
-The divergence was measured at or below 2.8e-15 on the case below. The bound is about 36 times
-that, roughly one and a half orders of magnitude. That margin keeps an ordinary floating-point
-wobble from failing the suite. The bound is also nine orders of magnitude below 1e-4, the
-smallest difference that the display resolves according to `docs/INTERFACE.md` § "Displayed
-precision". That gap is the point of the measurement: the two runs differ by far less than the
-display can show.
-"""
-
-
 def test_a_bookmark_branch_and_its_parent_agree_at_every_column_they_share() -> None:
     """`PL-Z3W6`: a branch agrees with its parent at every sampled point a learner sees.
 
@@ -451,32 +463,22 @@ def test_a_bookmark_branch_and_its_parent_agree_at_every_column_they_share() -> 
     traces. A divergence before the fork would make it impossible to attribute a
     difference after the fork to the one setting that was changed.
 
-    Three things are asserted, and they are three different claims:
+    Two things are asserted:
 
-    - **The branch adds exactly one column that the trunk does not draw, and that
-      column is the fork.** A fork at a control event adds none, because a control
-      event is a column on every run that has one. A bookmark's instant is not a
-      column on the trunk, so the branch draws it as the left end of its own clipped
-      range. That vertex marks where the two stop being one run.
-    - **Evaluated by the canonical rule, they agree element for element at every
-      column they share.** This is the guarantee, checked at the drawn instants
-      rather than at the solver's steps: 0 of 2 259 elements differ over 251 shared
-      columns.
-    - **The drawn values at those columns do not agree exactly.** 2 000 of the same
-      2 259 elements differ, the worst by 5.3e-16. This was measured on 2026-10-26,
-      after `PL-T5NJ` put the columns on whole hundredths of a second. Before that,
-      1 909 of 2 160 elements over 240 columns differed, the worst by 2.7e-15. The
-      values differ because `evaluate_anchored` chains one propagator across
-      consecutive columns and breaks the chain at a bound. So
-      the trunk chains through the fork, while the branch restarts there. Without
-      this third claim, a display path that had quietly become the canonical one
-      would satisfy the first two. `docs/INTERFACE.md` § "The canonical evaluation
-      rule" would then be enforcing a separation that no longer existed.
-
-    The third claim is why the second is worth asserting at all. A reader who
-    subtracts one drawn trace from the other sees a few units in the last place
-    here, where two identical runs should show zero. The canonical agreement is
-    what shows that the case did not disagree with itself.
+    - **The branch draws no column that the trunk does not draw.** This axis has a
+      column at every whole second, and the mark is a whole second. So the fork is a
+      column on both runs, and it is the left end of the branch's clipped range. On
+      an axis whose columns are further apart, the fork can be the one column that
+      the branch adds, which
+      `test_a_bookmark_branch_draws_one_column_its_parent_does_not_and_it_is_the_fork`
+      covers.
+    - **The drawn compartment values agree bit for bit at every column they share.**
+      Each run draws the states it stored. The branch's first stored state is the
+      one its parent stored for the fork, and with no setting changed each later
+      step repeats its parent's (`PL-MH9J`). So a reader who subtracts one drawn
+      trace from the other sees zero. Before `PL-MH9J` the chart computed each
+      column by formula, and 183 of the 279 drawn elements at these columns
+      differed in their last bits (measured 2026-11-21).
     """
 
     marked = _trunk_halted_on_a_bookmark()
@@ -484,11 +486,11 @@ def test_a_bookmark_branch_and_its_parent_agree_at_every_column_they_share() -> 
     branch = marked.resumed_here()
 
     marked.start()
-    _advance_for(marked, duration_s=30.0)
+    _advance_for(marked, duration_s=30)
     marked.pause()
 
     branch.start()
-    _advance_for(branch, duration_s=30.0)
+    _advance_for(branch, duration_s=30)
     branch.pause()
 
     span_s = marked.snapshot().elapsed_s
@@ -496,34 +498,26 @@ def test_a_bookmark_branch_and_its_parent_agree_at_every_column_they_share() -> 
     branch_window = branch.drawn_window(0.0, span_s, 601)
     shared = sorted(set(trunk_window.times_s) & set(branch_window.times_s))
 
-    assert tuple(sorted(set(branch_window.times_s) - set(trunk_window.times_s))) == (fork_s,)
-    assert len(shared) == 251
+    assert set(branch_window.times_s) <= set(trunk_window.times_s)
+    assert branch_window.times_s[0] == fork_s
+    # The fork is at 45 s and both runs reach 75 s. The columns are one second
+    # apart, so the two runs share the 31 columns from 45 s to 75 s.
+    assert len(shared) == 31
 
     trunk_drawn = dict(zip(trunk_window.times_s, trunk_window.states, strict=True))
     branch_drawn = dict(zip(branch_window.times_s, branch_window.states, strict=True))
-    elements = drawn_differing = 0
+
+    elements = 0
 
     for elapsed_s in shared:
-        assert branch._run_definition.state_at(elapsed_s) == marked._run_definition.state_at(
-            elapsed_s
-        ), f"the branch and its parent differ at the column drawn at {elapsed_s} s"
-
-        for entry in range(STATE_SIZE):
+        for position in COMPARTMENT_STATE_INDEX.values():
             elements += 1
-            trunk_value = trunk_drawn[elapsed_s].values[entry]
-            branch_value = branch_drawn[elapsed_s].values[entry]
-            drawn_differing += trunk_value != branch_value
 
-            assert abs(trunk_value - branch_value) < WORST_SHARED_COLUMN_DIVERGENCE, (
-                f"the two drawn columns at {elapsed_s} s diverged further than measured"
+            assert trunk_drawn[elapsed_s][position] == branch_drawn[elapsed_s][position], (
+                f"the two drawn columns at {elapsed_s} s differ"
             )
 
-    assert elements == 251 * STATE_SIZE
-    assert drawn_differing > 0, (
-        "the drawn values at every shared column agreed bit for bit, so the display path "
-        "has become the canonical one and the separation docs/MODEL.md enforces no longer "
-        "costs or buys anything"
-    )
+    assert elements == 31 * len(COMPARTMENT_QUANTITIES)
 
 
 def test_a_paused_trunk_branches_where_it_stands() -> None:
@@ -543,7 +537,8 @@ def test_a_paused_trunk_branches_where_it_stands() -> None:
     fork_s = trunk.snapshot().elapsed_s
     fork_steps = trunk._state.step_count
     keyframes = [
-        (segment.opening.instant_s, segment.opening.state) for segment in trunk.run_segments
+        (segment.opened_at_s, trunk._state.stored_states.state_at(segment.opened_at_s))
+        for segment in trunk.run_segments
     ]
 
     # The premise: nothing is recorded where the trunk is paused.
@@ -556,25 +551,28 @@ def test_a_paused_trunk_branches_where_it_stands() -> None:
     assert branch.began_at_s == branch.snapshot().elapsed_s == fork_s
     assert branch._state.step_count == fork_steps
     assert branch.opened_from is not None
-    assert branch.opened_from.fork.state == trunk._run_definition.state_at(fork_s)
+    assert branch.opened_from.fork.state == trunk._state.stored_states.state_at(fork_s)
     assert branch.snapshot().bookmark_halt is None
-    assert branch.run_segments[0].opening.instant_s == trunk.run_segments[-1].opening.instant_s
+    assert branch.run_segments[0].opened_at_s == trunk.run_segments[-1].opened_at_s
     assert [
-        (segment.opening.instant_s, segment.opening.state) for segment in trunk.run_segments
+        (segment.opened_at_s, trunk._state.stored_states.state_at(segment.opened_at_s))
+        for segment in trunk.run_segments
     ] == keyframes
 
     trunk.start()
-    _advance_for(trunk, duration_s=30.0)
+    _advance_for(trunk, duration_s=30)
     trunk.pause()
 
     branch.start()
-    _advance_for(branch, duration_s=30.0)
+    _advance_for(branch, duration_s=30)
     branch.pause()
 
-    for steps_past_fork in range(0, 301):
-        case_s = (fork_steps + steps_past_fork) * MAXIMUM_SIMULATION_STEP_S
+    for steps_past_fork in range(0, 31):
+        case_s = (fork_steps + steps_past_fork) * SIMULATION_STEP_S
 
-        assert branch._run_definition.state_at(case_s) == trunk._run_definition.state_at(case_s), (
+        assert branch._state.stored_states.state_at(
+            CaseInstant(case_s)
+        ) == trunk._state.stored_states.state_at(CaseInstant(case_s)), (
             f"the branch and the trunk it was paused at differ at {case_s} s"
         )
 
@@ -594,7 +592,7 @@ def test_resuming_past_a_bookmark_turns_its_fork_into_the_paused_point() -> None
     assert marked.here_fork_point == HereForkPoint(halted_s, stopped_on_mark=True)
 
     marked.start()
-    marked.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    marked.advance()
 
     assert marked.here_fork_point is None
 
@@ -628,8 +626,8 @@ def test_a_failed_run_offers_no_place_to_branch_where_it_stands() -> None:
 
     assert "a step raised" in str(refusal.value)
     assert "resumed_at" in str(refusal.value)
-    assert trunk.resumed_at(trunk.run_segments[-1].opening.instant_s).began_at_s == (
-        trunk.run_segments[-1].opening.instant_s
+    assert trunk.resumed_at(trunk.run_segments[-1].opened_at_s).began_at_s == (
+        trunk.run_segments[-1].opened_at_s
     )
 
 
@@ -643,52 +641,57 @@ def test_a_run_at_its_opening_offers_no_place_to_branch_where_it_stands() -> Non
     with pytest.raises(SimulationConfigurationError, match="opening"):
         trunk.resumed_here()
 
-    assert trunk.resumed_at(CaseInstant(0.0)).began_at_s == 0.0
+    assert trunk.resumed_at(CaseInstant(0)).began_at_s == 0.0
 
 
-def test_a_mark_added_inside_the_halting_step_reads_passed_on_the_branch() -> None:
+def test_a_mark_added_on_the_halting_step_reads_passed_on_the_branch() -> None:
     """A mark the halting step crossed shows as passed on the branch, however late (`PL-2N43`).
 
-    A 45.35 s mark halts the run at the end of the step that reaches it, at
-    45.4 s. A 45.33 s mark added while the run is stopped there lies inside
-    that same step. The halt's record names only what was marked when the run
-    stopped. So a branch started from that record opened just past a mark it
-    had no record of. It showed the mark as before the branch, while the trunk
-    and `resumed_at_mark` showed it as passed. When the step's crossing is
-    computed from the current marks, it names both.
+    A 0.3 ×MAC alveolar target halts the run at the end of the step that
+    crosses it. A time mark added at that instant while the run is stopped
+    there was crossed by that same step. The halt's record names only what
+    was marked when the run stopped. So a branch started from that record
+    would open with no record of the time mark. When the step's crossing is
+    computed from the current marks, it names both, and the trunk, the branch
+    and `resumed_at_mark` agree.
     """
 
     trunk = SimulationController()
-    trunk.add_time_bookmark(TimeBookmark(CaseInstant(45.35), "the decision point"))
+    trunk.add_mac_target(MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.3)))
     trunk.start()
-    _advance_until_halted(trunk, limit_s=60.0)
-    added = TimeBookmark(CaseInstant(45.33), "added while standing")
+    _advance_until_halted(trunk, limit_s=400)
+    halted_s = trunk.snapshot().elapsed_s
+    added = TimeBookmark(CaseInstant(halted_s), "added while standing")
     trunk.add_time_bookmark(added)
-
-    assert trunk.snapshot().elapsed_s == 454 * MAXIMUM_SIMULATION_STEP_S
 
     branch = trunk.resumed_here()
 
+    assert branch.began_at_s == halted_s
     assert branch.snapshot().bookmark_standings.of_time_bookmark(added) is MarkStanding.PASSED
     assert trunk.snapshot().bookmark_standings.of_time_bookmark(added) is MarkStanding.PASSED
     assert trunk.resumed_at_mark(added).opened_from == branch.opened_from
 
 
-def test_an_instant_between_keyframes_is_refused_even_where_the_run_stands_on_it() -> None:
-    """`resumed_at` keeps its keyframe rule unchanged, halt or no halt.
+def test_a_branch_at_the_second_a_halted_run_stands_on_is_the_branch_taken_there() -> None:
+    """`resumed_at` and `resumed_here` open one branch where the run is halted (`PL-FST0`).
 
-    `PL-B8MK` added a second fork method rather than widening this one, and
-    `PL-Z3W6` did not widen it either. Every instant at which a run can be
-    halted is already reachable through `resumed_here`. A marked instant that
-    the run has gone past is reachable too, through `resumed_at_mark`
-    (`PL-W4XQ`). That is a third method, and it leaves this method's scope
-    unchanged.
+    Until `PL-FST0`, `resumed_at` opened only at the run's start or at a
+    setting change, and it refused the second of a halt. The run stores a
+    state for every second, so naming the second now gives the branch that
+    `resumed_here` gives: the same provenance and the same snapshot.
     """
 
     marked = _trunk_halted_on_a_bookmark()
+    halted_s = marked.snapshot().elapsed_s
 
-    with pytest.raises(SimulationConfigurationError, match="holds no keyframe"):
-        marked.resumed_at(marked.snapshot().elapsed_s)
+    assert halted_s not in [segment.opened_at_s for segment in marked.run_segments]
+
+    named = marked.resumed_at(halted_s)
+    here = marked.resumed_here()
+
+    assert named.opened_from == here.opened_from
+    assert named.began_at_s == halted_s
+    assert named.snapshot() == here.snapshot()
 
 
 def test_resetting_a_branch_taken_at_a_bookmark_returns_it_to_the_bookmark() -> None:
@@ -696,15 +699,15 @@ def test_resetting_a_branch_taken_at_a_bookmark_returns_it_to_the_bookmark() -> 
 
     marked = _trunk_halted_on_a_bookmark()
     fork_s = marked.snapshot().elapsed_s
-    fork_state = marked._run_definition.state_at(fork_s)
+    fork_state = marked._state.stored_states.state_at(CaseInstant(fork_s))
     branch = marked.resumed_here()
 
     branch.start()
-    _advance_for(branch, duration_s=10.0)
+    _advance_for(branch, duration_s=10)
     branch.reset()
 
     assert branch.snapshot().elapsed_s == fork_s
-    assert branch._run_definition.state_at(fork_s) == fork_state
+    assert branch._state.stored_states.state_at(CaseInstant(fork_s)) == fork_state
 
 
 def test_a_branch_reset_under_new_settings_is_drawn_from_where_it_stands() -> None:
@@ -720,14 +723,14 @@ def test_a_branch_reset_under_new_settings_is_drawn_from_where_it_stands() -> No
 
     marked = _trunk_halted_on_a_bookmark()
     fork_s = marked.snapshot().elapsed_s
-    fork_state = marked._run_definition.state_at(fork_s)
+    fork_state = marked._state.stored_states.state_at(CaseInstant(fork_s))
     branch = marked.resumed_here()
 
     branch.set_delivered_concentration_percent(Percent(6.0))
     branch.reset()
 
     assert branch.snapshot().elapsed_s == fork_s
-    assert branch._run_definition.state_at(fork_s) == fork_state
+    assert branch._state.stored_states.state_at(CaseInstant(fork_s)) == fork_state
 
 
 def test_a_branch_of_a_bookmark_fork_is_refused_rather_than_silently_flattened() -> None:
@@ -735,10 +738,10 @@ def test_a_branch_of_a_bookmark_fork_is_refused_rather_than_silently_flattened()
 
     marked = _trunk_halted_on_a_bookmark()
     branch = marked.resumed_here()
-    branch.add_time_bookmark(TimeBookmark(CaseInstant(600.0)))
+    branch.add_time_bookmark(TimeBookmark(CaseInstant(600)))
 
     with pytest.raises(SimulationConfigurationError, match="branch of a branch"):
-        branch.resumed_at(branch.run_segments[0].opening.instant_s)
+        branch.resumed_at(branch.run_segments[0].opened_at_s)
 
 
 def test_a_case_forks_at_the_bookmark_its_trunk_is_standing_on() -> None:
@@ -771,23 +774,23 @@ def test_a_mark_between_a_bookmark_branch_s_definition_and_its_fork_is_unreachab
     """
 
     marked = SimulationController()
-    marked.add_time_bookmark(TimeBookmark(CaseInstant(40.0), "passed on the way"))
-    marked.add_time_bookmark(TimeBookmark(CaseInstant(45.3), "the decision point"))
+    marked.add_time_bookmark(TimeBookmark(CaseInstant(40), "passed on the way"))
+    marked.add_time_bookmark(TimeBookmark(CaseInstant(45), "the decision point"))
     marked.start()
-    _advance_until_halted(marked, limit_s=60.0)
+    _advance_until_halted(marked, limit_s=60)
     marked.start()
-    _advance_until_halted(marked, limit_s=60.0)
+    _advance_until_halted(marked, limit_s=60)
 
     fork_s = marked.snapshot().elapsed_s
     branch = marked.resumed_here()
 
     # The premise: the definition reaches back past the mark, and the branch
     # does not.
-    assert branch.run_segments[0].opening.instant_s < 40.0 < fork_s
+    assert branch.run_segments[0].opened_at_s < 40.0 < fork_s
     assert branch.began_at_s == fork_s
 
     standings = branch.snapshot().bookmark_standings
 
-    assert standings.of_time_bookmark(TimeBookmark(CaseInstant(40.0), "passed on the way")) is (
+    assert standings.of_time_bookmark(TimeBookmark(CaseInstant(40), "passed on the way")) is (
         MarkStanding.BEFORE_THIS_BRANCH
     )

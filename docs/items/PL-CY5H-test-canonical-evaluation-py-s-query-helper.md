@@ -3,11 +3,13 @@ id: PL-CY5H
 title: test_canonical_evaluation.py's _query helper probes from a hard-coded 0.0 rather than the definition's own opening, so it cannot be pointed at a branch-shaped definition
 priority: P3
 effort: S
-status: ready
+status: dropped
 classes: test
 feature: scenario-branching
 touches: tests/reference/test_canonical_evaluation.py
 added: 2026-09-14
+closed: 2026-11-21
+reason: PL-Z6C8 deleted the test file this item would change
 verify: ! grep -q 'probe from a hard-coded 0.0' tests/reference/test_canonical_evaluation.py && grep -q 'definition.opened_at_s' tests/reference/test_canonical_evaluation.py && uv run pytest tests/reference/test_canonical_evaluation.py
 ---
 
@@ -29,3 +31,6 @@ exactly the branch case.
 **Done when.** `_query` probes from the definition's own `opened_at_s` rather
 than from `0.0`, so the same assertions run against a branch-shaped definition,
 and `tests/reference/test_canonical_evaluation.py` exercises one.
+
+**Checked 2026-11-21: nothing left to do.** `PL-Z6C8` deleted `tests/reference/test_canonical_evaluation.py` with the evaluation paths it tested, so the helper this item would have changed no longer exists.
+<!-- absent: tests/reference/test_canonical_evaluation.py -->

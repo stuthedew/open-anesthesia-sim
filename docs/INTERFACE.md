@@ -36,8 +36,9 @@ identical results, so a case played at sixty times real time is the same run
 watched faster.
 
 **The playback rate does decide when an input acts.** A control changed *during*
-a run first acts at the next tick, so the same slider moves made at two playback
-rates produce different runs. `docs/MODEL.md` § "Supported simulation step" quantifies this.
+a run first acts on the next step that the run takes. The faster rates take
+several steps at a time, so the same slider moves made at two playback rates can
+produce different runs. `docs/MODEL.md` § "Supported simulation step" quantifies this.
 
 **For developers.** § "Interface boundary" sets the constraints on the
 interface's own settings. `docs/MODEL.md` § "The reproducibility guarantee" rules out treating
@@ -55,17 +56,18 @@ the values that an unmarked run computes, element for element. The only thing a 
 the run stops.
 
 **The run halts on the simulation step that crossed a mark, at every playback
-rate.** Every step is tested for a crossing. In this one respect a halt is finer
-than anything a learner can do while the run plays. A setting changed during
-play first acts at the next point of a grid whose spacing is the playback rate
-times 0.1 s (`docs/MODEL.md` § "Supported simulation step"): 0.1 s at 1x and 30 simulated
-seconds at 300x. A halt is not on that grid. It lands on the crossing step
+rate.** Every step is tested for a crossing. At the faster rates, a halt is
+finer than anything a learner can do while the run plays. A setting changed
+during play first acts on the next step that the run takes. At 1x and 5x that
+step begins at the next whole second. At 20x, 60x and 300x the run takes 2, 6
+and 30 steps at a time, so a change can act only at instants 2, 6 and 30
+simulated seconds apart (`docs/MODEL.md` § "Supported simulation step"). A halt
+is not on that grid. It lands on the crossing step
 itself, at every playback rate. If the crossing were tested once per screen
 update instead, the same bookmark would stop at a different concentration
 depending on how fast the case was played, and nothing on screen would say so.
 Two runs both branched off the case "at 0.8 ×MAC" would then start from two
 different states.
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 **A halt leaves the run paused until the learner resumes it.** No step is taken
 while the run is paused, and a setting changed then applies at once. So the
@@ -91,9 +93,10 @@ sevoflurane and a fresh gas flow of 10 L/min, a 0.10 ×MAC target on the circuit
 halts showing 0.11 ×MAC. The change can be larger on other compartments. Run
 the same settings for 120 s with alveolar ventilation at 0 L/min, so that the
 alveolar reading stays at zero while the circuit fills. Restoring ventilation
-to 12 L/min then makes a 0.10 ×MAC alveolar target halt showing 0.12 ×MAC, two
-display counts past its mark. A value one or more display counts past the mark
-is therefore correct, and is not a fault in detecting the crossing.
+to 12 L/min then raises the alveolar reading from zero to 0.29 ×MAC in the next
+one-second step. So a 0.10 ×MAC alveolar target halts showing 0.29 ×MAC,
+nineteen display counts past its mark. A value one or more display counts past
+the mark is therefore correct, and is not a fault in detecting the crossing.
 <!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
@@ -227,31 +230,19 @@ wrong.
 **For developers.** Nothing marked enters a governing equation, opens a segment
 or moves a keyframe.
 
-Crossings are decided from the canonical readings, each of which is one matrix
-exponential. A running trunk also holds live readings, carried forward step by
-step. These can lie about 1e-14 from the canonical readings, on the other side
-of a height, which is why the trunk does not decide a crossing from them.
+A crossing is decided from the two states that the run stored for the ends of
+the step: the second before and the second the step reached
+(`SimulationController._step_ending_here`, § "Each second has one stored
+state"). Each end has one reading, so the run, a branch and a later review of
+the halt all decide from the same two numbers.
 
 The height band (`HEIGHT_BAND` in `core/rounding.py`) is there because a steady
-compartment's canonical reading moves in its last digit from step to step. When
+compartment's reading moves in its last digit from step to step. When
 crossings were tested at the exact height, a run with no ventilation and a
 target on the circuit at 1.00 ×MAC of a 1 MAC dial halted 965 times in ten
-minutes (2026-11-01).
-
-A canonical reading costs about 2 ms, and a whole step about 60 µs, so the live
-readings screen each step. A step is tested again from the canonical readings
-when its live readings cross a mark, or when either live reading differs from
-the height of a band edge by less than 1e-6 of that height
-(`LIVE_READING_GAP` in `core/rounding.py`). Any other step is let through, because its
-canonical readings lie on the same side of each band edge as its live readings.
-So the run halts only on a crossing that its halt record names. The widest gap
-between the live and canonical readings in a 2 h run at the 0.001 s step
-(2026-11-01) was 1.2e-9 of the reading. Scaled linearly to 24 h, the supported
-run length, it is 1.4e-8, about a seventieth of the 1e-6 allowance. A marked
-instant needs no canonical reading, because whether a step crosses it depends
-only on the step's two instants.
-<!-- provenance: core/simulation_step.py MINIMUM_SIMULATION_STEP_S = 0.001 -->
-<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+minutes (2026-11-01, when a run stepped every 0.1 s). A marked instant needs
+no reading, because whether a step crosses it depends only on the step's two
+seconds.
 
 ### The control-input record
 
@@ -360,7 +351,7 @@ would do.
 
 Capping the timeline would not bound memory use, because the run itself holds
 one stretch and one keyframe for each accepted change and has no limit either
-(§ "A run is stored as its settings and keyframes, and every state is computed from them").
+(§ "A run stores the state of every second it reaches").
 
 The timeline can be unlimited because it grows with the number of settings
 changed, not with the length of the run. Until a drag was recorded only on its
@@ -377,257 +368,90 @@ about three hours of unbroken dragging under the old behaviour, and the
 timeline would then be smaller than 9 MB.
 <!-- provenance: app/dashboard_frame.py RENDER_INTERVAL_S = 0.2 -->
 
-#### A run is stored as its settings and keyframes, and every state is computed from them
+#### A run stores the state of every second it reaches
 
-**A run is stored as a record of the settings in force at each moment and the
-state at each change.** The settings are the four controls above, together with
-the patient and agent parameters that the equations use. Each change has one
-*keyframe*, the state at the instant that change took effect. Flows are stored
-as they were set, in liters per minute (`docs/MODEL.md` § "Time" explains
-why). Nothing else
-about the run is stored. The chart is drawn from the stored settings and
-keyframes, so there is no second record that could disagree with them. The
-control-input timeline above is a separate record, kept to show and group the
-changes, and the program computes no state from it.
+**A run takes one step for each second of simulated time, and stores the state
+that the step wrote.** A state is the six fractions (inspired, alveolar, mixed
+venous and the three tissue groups), the agent delivered and the agent
+exhausted since induction, and the constant one that the equations read their
+inputs against. The method in `docs/MODEL.md` § "Selected method (as
+implemented)" computes each step. The run's record of stored states holds one
+state for every second from the run's opening to the second it has reached.
 
-**The program computes the state at a single instant in one calculation.** The
-settings stay constant over a *stretch*, the time between two changes. The
-calculation starts from the keyframe that opens the stretch containing the
-instant, so no value need have been stored for the state to be recovered. Within
-a stretch, the method in `docs/MODEL.md` § "Selected method (as implemented)" solves the
-equations exactly over any length of time, not only over one simulation step.
-Each keyframe is computed the same way from the keyframe before it, starting at
-the beginning of the run.
+**A run also records its settings, and computes no state from them.** The
+settings are the four controls above, together with the patient and agent
+parameters that the equations use. They are kept as *stretches*: a stretch
+holds one set of settings and the second at which it took effect. Flows are
+stored as they were set, in liters per minute (`docs/MODEL.md` § "Time"
+explains why). The settings record says which settings were in force at a
+second, which is what a branch records as where it came from. The
+control-input timeline above is a third record, kept to show and group the
+changes.
 
-**The chart's values are computed a second way, and agree with the state
-calculated at a single instant well within the last displayed digit.** To draw
-the chart, the program computes the state at evenly spaced instants, one per
-column, each from the one before it while the settings stay the same. On
-2026-09-07, both ways were compared with a step-by-step run of the simulation.
-Their differences from it were about ten orders of magnitude below 0.01%, the
-smallest difference that the two-decimal percent readout can show
-(§ "Displayed precision"). A test checks the record against the step-by-step
-simulation that advances the run. § "The canonical evaluation rule" below
-states which of the two ways a stored, exported or branched value may be
-taken from.
+**A run of the supported length fits in memory.** A run of 24 h, the longest
+that § "Supported run length" allows, holds 86 401 states in about 6.2 MB. The
+compensation terms of its two running totals take 1.4 MB more (measured
+2026-11-21).
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-**For developers.** The record is defined in `core/run_definition.py`. The
-method is exact because the equations are linear and time-invariant while every
-setting is held constant.
+**For developers.** The stored states are `StoredStates` in
+`core/stored_states.py`, and the settings record is `RunDefinition` in
+`core/run_definition.py`. The memory figures are measured in the docstring of
+`core/stored_states.py`.
 
-The step-by-step run used for the 2026-09-07 comparison simulated 600 s of
-sevoflurane with two setting changes and reached a fraction of 0.0316. The
-state at a single instant stayed within 1.8e-14 of that run, and the drawn
-chart within 3.7e-15, both as absolute differences in a fraction of one
-atmosphere. The test of the record against the step-by-step simulation is the
-"Closed-form agreement test".
+#### Each second has one stored state
 
-Storing the run as a record keeps it small. At one sample per fixed 0.1 s
-step, a 30-day case takes 3.16 GiB: 25 920 000 samples of 130.8 bytes each
-(measured over 20 000 samples of a live run). Stored as its settings and their
-changes, the same case takes 1.6 MiB, about two thousand times less. The
-1.6 MiB assumes that every day is a busy ICU day with 50 setting changes, which
-gives 1 501 stretches over the case.
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+**Every value that is shown, compared, exported or branched from is read from
+the state stored for its second.** The readouts show the state stored for the
+second the run has reached. The chart draws the stored states of the seconds it
+draws (§ "What the chart draws"). A mark is tested against the states stored
+for the two ends of a step (§ "Halting on a marked crossing"). A branch opens
+from the state stored for its fork. Nothing computes the state of a reached
+second again, so two readers of one second always get the same numbers.
 
-With the run stored as a record, the time to draw a chart window does not grow
-with the run's length. A one-hour window at 600 columns cost 10.6 ms to draw on
-a two-hour run and 13.0 ms on a thirty-day run. Drawing from per-step samples
-cost 62.6 ms at four hours and 207.7 ms at twelve.
+**No value between two seconds is shown.** The record holds no state between
+two seconds, and nothing interpolates one. A chart point, a readout and a mark
+each fall on a whole second.
 
-The number of changes in view does raise the cost of a frame, because each
-stretch in view needs its own *propagator*: the matrix that carries the state
-across one interval at fixed settings. When no propagators were kept from an
-earlier frame, a window spanning the whole thirty-day run at 600 columns cost
-14.2 ms with two changes in view, 231 ms with sixty and about 1.1 s with six
-hundred. Once the changes outnumber the columns, sampling 600 instants is the
-wrong way to draw the run. What to draw instead is a question for the interface.
-
-The number of changes in view sets the cost of the first frame only. Drawing a
-window keeps the propagators it used (`RunDefinition.evaluate_anchored`), and
-the next window can reuse them. All but three of them cover an interval that
-the grid fixes: either the column spacing, set by the time base, or a stretch's
-offset to its first grid column, set by the anchoring. The three that change
-are the two for the window's bounds and the one for the offset in the stretch
-where the window opens. In that stretch, the first grid column is the first one
-past the window's left edge. For a window that follows the run, the program
-therefore forms two new propagators every frame, and the third only when the
-window's left edge has passed a grid column since the frame before. It also
-forms those of any stretch newly in view. When the column spacing changes, it
-forms every propagator again.
-
-Only the last window's propagators are kept. Each is about 3.1 KB, and six
-hundred take 1.8 MiB, so their memory is bounded by one window and does not grow
-with the run. A kept propagator is identical, bit for bit, to one formed again
-from the same inputs, because it is looked up by all of them: the settings and
-the interval. Which propagators are kept depends on the window drawn last, but
-no drawn value can depend on that. The kept propagators are therefore not a
-second record of the run, and the function that returns the state at an instant
-(`state_at`) reads none of them.
-
-The first-frame and later costs were measured on 2026-10-04 on a 24-hour run,
-the longest that § "Supported run length" allows, with every setting distinct.
-The window spanned the whole run at 600 columns, with its left edge fixed at the
-run's opening. With two, sixty and six hundred changes in view, it cost 13.2 ms,
-179 ms and 819 ms on its first frame, and 6.3 ms, 5.9 ms and 8.3 ms on each
-frame after.
-
-At the dashboard's settings, with kept propagators, the column count sets the
-cost of a frame and the number of changes in view does not (measured
-2026-10-04). The dashboard redraws every 200 ms (`RENDER_INTERVAL_S` in
-`app/dashboard_frame.py`) and shows at most two runs (`MAX_DISPLAYED_RUNS`). It
-draws each run with one call (`SimulationController.drawn_window`) at
-`max(150, plot width in pixels + 1)` columns (`chart_columns` in
-`app/chart_frame.py`). Each cell of the table gives one run's cost per frame
-without kept propagators, then with them. The costs are medians of 40 frames,
-with a 15-minute window following a 30-minute run at 1x:
-<!-- provenance: app/dashboard_frame.py RENDER_INTERVAL_S = 0.2 -->
-
-| Changes in view | 150 columns | 1 069 columns | 2 401 columns |
-| --- | --- | --- | --- |
-| None | 6.6 ms → 3.9 ms | 12.3 ms → 10.1 ms | 20.3 ms → 18.6 ms |
-| Ten | 25.0 ms → 3.5 ms | 28.6 ms → 9.4 ms | 35.5 ms → 18.0 ms |
-| Sixty | 135 ms → 3.7 ms | 119 ms → 9.1 ms | 129 ms → 18.8 ms |
-
-With kept propagators, three costs are left. The propagators for the window's
-two bounds cost about 1.4 ms each on every frame. Each column costs one chained
-product, at about 7 µs. The third cost is forming the propagator for the offset
-in the stretch where the window opens. At 1x, it is formed on about one frame in
-forty at 150 columns, one in four at 1 069 and one in two at 2 401. From 5x up,
-at 1 069 columns or more, it is formed on nearly every frame.
-
-Even so, playing faster adds little. In a later measurement of one run with
-sixty changes in view, a frame at 1 069 columns cost 13.0 ms at 20x against
-12.0 ms at 1x. At 2 401 columns, it cost 23.9 ms against 22.8 ms. That
-measurement's times ran about a quarter above the table's.
-
-Two runs at 2 401 columns therefore take about 40-50 ms of the 200 ms between
-redraws. Without kept propagators, two runs with sixty changes in view at
-1 069 columns take about 240 ms, which is longer than the time between redraws.
-<!-- provenance: app/dashboard_frame.py RENDER_INTERVAL_S = 0.2 -->
-
-#### The canonical evaluation rule
-
-**The state at an instant has one value, whatever route the program took to
-it.** A run's states are calculated, and the same state can be reached by more
-than one sequence of arithmetic. A fixed 0.1 s step allows only one sequence,
-because every calculation must take that step. A calculation that is exact over
-an interval of any length lifts that limit, and with it the guarantee of a
-single sequence. The rule below restores that guarantee.
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
-
-The program computes a state on one of two paths:
-
-- **The canonical path.** A run is divided into stretches, each under one set
-  of settings, and the state at the opening of a stretch is its keyframe. The
-  state at an instant is one calculation forward from the keyframe that opens
-  the stretch containing the instant, over the interval between the two. Each
-  keyframe is computed the same way: one calculation per stretch, in recording
-  order from the start of the run. So working out one run's state at one instant
-  twice does exactly the same arithmetic in the same order. Both results are
-  identical to the last digit, not merely equal within a tolerance.
-- **The display path.** To draw a chart's evenly spaced columns, the program
-  reuses one calculation across the columns inside a stretch, chaining from the
-  first column. This reuse makes the cost of each redraw depend on the window of
-  columns drawn rather than on the length of the run. The path solves the same
-  equations exactly, but does the arithmetic in a different order.
-
-**What each path may be used for.** Every value that is stored, exported,
-replayed, compared against another run, or used as the state a branch opens from
-is taken from the canonical path. A value from the display path may be drawn,
-and it may be used for nothing else. It may not be a keyframe, an exported
-figure or a branch's opening state.
-
-**The program enforces the limits on display values.** Anything that takes a
-state rejects a value from the display path. A run also refuses one as its
-opening state, with an error that says which path the value came from.
-
-**The canonical and display paths differ by far less than the screen can show
-for any amount, but by enough to change the agent-accounting panel's residual
-lines, which is why the rule is enforced rather than trusted.** In a run of the
-model on 2026-09-07, the difference grew with the time that the chart's 600
-columns spanned, so it was largest over 24 h, the longest supported run
-(§ "Supported run length"). A fraction is shown as a two-decimal percent, and
-the paths differ by about a hundred-millionth of its 0.01% step. The
-agent-accounting panel displays its three amounts to 0.1 L, and the paths'
-running totals differ by less than a ten-millionth of that. But the panel's two
-residual lines print the power of ten that a residual lies below, and a
-residual is formed from those running totals. At 30 minutes and over 24 h, the
-paths' running totals differ by as much as an ordinary passing residual. So a
-display value that reached the mass-balance readout would change the power of
-ten it prints, and the wrong one would look exactly like an ordinary passing
-residual.
+**A preview is the one computed state, and it is only drawn.** A preview shows
+seconds the run has not reached yet (§ "A preview of an unapplied setting"). It
+starts from the state stored for the second the run has reached. For its first
+hour it takes one-second steps as the run does, under the previewed settings.
+After the first hour it predicts only the seconds the chart draws (§ "What the
+chart draws"). A predicted
+state can differ in its last digits from the state that the run later stores
+for the same second. A run's step reads each fraction back from the amount of
+agent in its compartment, and a prediction carries the fractions directly.
+Over 24 h of one-second steps, the two routes differed by at most 9.7e-11
+of the fraction (measured 2026-11-21). A sevoflurane fraction of 0.02 then
+differs by 2e-12, which is fifty million times smaller than the 0.01% that the
+percent readout resolves. A predicted state is never stored, compared or
+branched from.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **What this requires of a branch.** The roadmap asks that a branched run
 reproduce its parent exactly, not merely within a tolerance (`ROADMAP.md` item
-12). A run's *definition* is the record its states are computed from: its
-stretches and their keyframes. The rule above gives exact reproduction under
-two conditions on how a branch is built:
-
-- **A branch opens at a keyframe.** If a branch restarted from the canonical
-  state at an instant where the parent has no keyframe, it would compute in two
-  calculations what the parent computed in one, and round the same exact
-  solution differently. Opening at the start of a stretch reproduces the parent
-  to the last digit. A restart's differences depend on where the fork is and how
-  far past it one looks, so any figure for them is an example, not a bound. The
-  route the program actually takes is bounded, and that bound is zero.
-- **The branch's definition opens *at* the fork instant, on the case's own time
-  axis**, carrying the parent's keyframe. Parent and child then name the same
-  instant of the case. Each computes its interval as that instant minus the
-  opening of the stretch that holds it, from the same keyframe by the same
-  subtraction. So the reproduction follows from how the branch is built, not
-  from the code that asks for a state converting time correctly.
-
-Each condition rules out a defect that a plausible way of building branches
-would introduce. The first rules out a restart between keyframes. The second
-rules out a definition that opens at a zero of its own. All code that asks for
-the branch's state at an instant would then reach that instant by subtracting
-the fork instant from the case's time, and that subtraction can change the last
-digit. The branch would compute over a slightly different interval from its
-parent, and give a result that differs in its last digit.
+12). A branch holds a copy of its parent's stored states up to the fork. It
+steps on from the state stored for the fork, together with the compensation
+terms of the running totals stored beside it. So while no setting differs,
+every state the branch stores equals its parent's in every digit, the
+delivered and exhausted totals included. A branch can be taken at any whole
+second its parent has reached: at a control change, at a mark, or wherever a
+paused run stands. Taking a branch records nothing on the parent, so marking a
+run or branching from it never changes the parent's later states.
 
 **A branch's simulated time is the case's time, measured from induction.** It
 continues the parent's time rather than restarting at the fork. This one time
 is what the clock displays and what stamps every recorded setting change. The
-chart's axis, the supported run length and the times of the definition's
-stretches and keyframes are measured in it too. Nothing anywhere converts
-between two times, so there is no conversion to get wrong. Continuing the case's
-time is also a matter of correctness, because uptake and distribution depend on
-the time since induction. A branch that counted from zero would place the
-patient at the wrong point on the uptake curve, on the clock, the control marks
-and the axis at once. That is the correct value shown under the wrong patient
-context, which the project's safety-critical standard (`CLAUDE.md`) counts as a
-failure in its own right.
-
-**A fork at a bookmark cannot open its definition both at a keyframe and at the
-fork.** A control event, a change of a setting, is a keyframe, so a fork there
-could meet both conditions. A bookmark is a mark the learner sets at an
-instant, and the run halts when it reaches the mark. A bookmark's instant
-usually is not a keyframe. On a 120 s run with two control changes, only 3 of
-the 1 201 instants where a halt could land are keyframes. Meeting both
-conditions there would mean *recording* a keyframe where the run halts. That
-makes the branch exact against its parent, but it changes the parent's later
-results: 48 of 54 values differ from the same case built without the mark.
-Marking a run would then change the run, which the project's determinism
-requirement (`CLAUDE.md`) forbids.
-
-**So every fork opens its definition at the keyframe at or before the fork
-instant.** This keeps the first condition and relaxes the second. The branch's
-clock and its running simulation are still at the fork. Exact reproduction
-still holds, because it never depended on the definition opening *at* the fork.
-It depends on parent and child computing each interval from the same keyframe
-by the same subtraction, and opening where the parent's own stretch opens gives
-exactly that. The one time axis is not relaxed: the definition still opens at an
-instant of the case's own time, and the clock still continues the parent's. So
-code that asks for a state still never subtracts the fork instant, which is the
-subtraction that can change the last digit. The only change is that the
-definition now opens earlier than the fork instant, on the same axis. On
-2026-09-14, exact reproduction held on a 3 600 s sevoflurane run of the model
-with changes at 300 s and 600 s, forked at a bookmark at 655.3 s. Across nine
-state values at six times out to an hour, 0 of 54 differed. The trunk, the
-case's main run, stayed exactly identical to the same case built without the
-bookmark.
+chart's axis, the supported run length, the seconds of the stored states and
+the stretches of the settings record are measured in it too. Nothing anywhere
+converts between two times, so there is no conversion to get wrong. Continuing
+the case's time is also a matter of correctness, because uptake and
+distribution depend on the time since induction. A branch that counted from
+zero would place the patient at the wrong point on the uptake curve, on the
+clock, the control marks and the axis at once. That is the correct value shown
+under the wrong patient context, which the project's safety-critical standard
+(`CLAUDE.md`) counts as a failure in its own right.
 
 **A branch taken where a run is paused or stopped runs under the settings the
 dials show there, and records the settings the run had on its way there as
@@ -638,56 +462,50 @@ while the run is paused. Take a sevoflurane run at 2% that is paused at
 3% starts a new stretch at 10 min that has not run yet. Any change made during
 the pause goes into that new stretch, so turning the dial again before the
 next step replaces the 3%. A change during the pause never adds a second
-stretch at the same instant. Below, the *reaching stretch* is the stretch that
-ran up to the instant, the 2% one here. The *stretch in force* is the stretch
-that runs from the instant on, the 3% one here. Where nothing changed at the
-instant, the two are the same stretch. The halt record lists the marks a run
-stopped on. The three ways of branching (at a keyframe, where a paused run
-stands, and at a mark), a branch's reset and the halt record all follow one
-rule:
+stretch at the same second. Below, the *reaching stretch* is the stretch that
+ran up to the second, the 2% one here. The *stretch in force* is the stretch
+that runs from the second on, the 3% one here. Where nothing changed at the
+second, the two are the same stretch. The halt record lists the marks a run
+stopped on. The three ways of branching (at a control change, where a paused
+run stands, and at a mark), a branch's reset and the halt record all follow
+one rule:
 <!-- not-restated: 2 % -->
 
 - **A branch's provenance, the record of where it came from, is the reaching
-  stretch.** A fork at a control event is built the same way as a fork at a
-  bookmark, so the construction above serves every fork. Except at the case's
-  opening, which the paragraph after this list covers, nothing the parent later
-  does at the fork can replace the stretch that the branch records as its
-  provenance.
+  stretch.** Except at the case's opening, which the paragraph after this list
+  covers, nothing the parent later does at the fork can replace the stretch
+  that the branch records as its provenance.
 - **All three ways of branching run under the stretch in force at the fork,
   which is what the dial says.** So "Branch here" opens with the dials as they
-  stand when it is taken. A branch at an instant that the trunk has already
-  passed runs under the settings the trunk had as it left that instant,
-  including a change made at that instant and no change made later. On a run
+  stand when it is taken. A branch at a second that the trunk has already
+  passed runs under the settings the trunk had as it left that second,
+  including a change made at that second and no change made later. On a run
   that a mark has halted, a branch taken before the learner changes a setting
   there runs under the old setting. A branch taken after that change runs under
-  the new one, as do the branches taken from that instant's mark and keyframe
-  entries in the "From" selector. A branch opens at what the dial says and does
-  not go back to the previous setting.
+  the new one, as do the branches taken from that second's mark and control
+  change entries in the "From" selector. A branch opens at what the dial says
+  and does not go back to the previous setting.
 - **The branch's timeline opens with the parent's changes at the fork.** The
-  branch's definition records, as a change at the fork, each setting it runs
-  under that differs from its provenance. Its control timeline opens with a
-  copy of each change the parent recorded at the fork. After the case's
-  opening, those copies are the settings that differ between the reaching
-  stretch and the stretch in force, so the definition and the control timeline
-  agree. At the case's opening, the copies are the changes the parent made
-  before Start, each shown from the value the parent's timeline starts at.
-  Either way, the branch's timeline shows the settings it opened under,
-  whatever the trunk later does at the fork instant. No later change merges
-  into a copied entry or removes it, and a change the learner makes at the fork
-  is recorded after the copies.
+  branch's settings record opens with its parent's reaching stretch, and
+  records as a change at the fork each setting it runs under that differs from
+  that stretch. Its control timeline opens with a copy of each change the
+  parent recorded at the fork. After the case's opening, those copies are the
+  settings that differ between the reaching stretch and the stretch in force,
+  so the settings record and the control timeline agree. At the case's
+  opening, the copies are the changes the parent made before Start, each shown
+  from the value the parent's timeline starts at. Either way, the branch's
+  timeline shows the settings it opened under, whatever the trunk later does at
+  the fork. No later change merges into a copied entry or removes it, and a
+  change the learner makes at the fork is recorded after the copies.
 - **A reset branch keeps its settings and the entries it opened with.** Reset
-  keeps the settings, restores the fork state and reopens the branch at the fork
-  on the same provenance. An entry the branch opened with records where the
-  branch began, not something done to it since. A branch reset after the learner
-  has dialled something new stands at the fork state under settings its parent
-  never used. Because the definition still opens at the parent's keyframe under
-  the parent's settings, the new setting is recorded as a change at the fork, in
-  the definition and in the branch's control timeline. The keyframe that change
-  opens is the fork's own state. So the trace starts where the readouts say the
-  branch is, and the parent's stretch stays the parent's. § "Reset behavior"
-  describes the timeline of a reset branch, and
-  § "Discarding a run, and the questions that guard it" says which entries
-  count when the trunk's Reset asks before discarding it.
+  keeps the settings, restores the stored states up to the fork and reopens the
+  branch at the fork on the same provenance. An entry the branch opened with
+  records where the branch began, not something done to it since. A setting
+  dialled since then is recorded as a change at the fork, in the settings
+  record and in the branch's control timeline, so the trace starts where the
+  readouts say the branch is. § "Reset behavior" describes the timeline of a
+  reset branch, and § "Discarding a run, and the questions that guard it" says
+  which entries count when the trunk's Reset asks before discarding it.
 - **The halt record names the marks as they are.** A run's halt record lists
   the marks crossed by the step it stopped on: the step that halted a trunk, or
   the step that reached a branch's fork. The record is worked out again against
@@ -698,288 +516,156 @@ At the case's opening no step has run yet, so the opening stretch is both the
 reaching stretch and the stretch in force. A change the trunk makes at the
 opening still replaces the opening stretch, even after a branch was taken
 there. The branch's provenance then names settings the trunk no longer opens
-under. That provenance is still true, because the opening keyframe is a state
-that no setting produced, and the branch did run under those settings from
-there. Its own timeline still states them, as its copy of the trunk's changes
-made before Start.
+under. That provenance is still true, because no setting produced the opening
+state, and the branch did run under those settings from there. Its own
+timeline still states them, as its copy of the trunk's changes made before
+Start.
 
-**Returning to a mark the run has already passed is a bookmark fork, taken
-late.** Consider a learner paused at three hours who marks the one-hour point
-and goes back to it. The run holds no keyframe at that instant and is not
-standing on it, so neither branching at a keyframe nor branching where the run
-stands applies. Building a bookmark fork needs neither a keyframe at the
-instant nor a run standing on it. The state at any instant the run has reached
-is the run's definition evaluated there, and standing on a halt only ever
-served to name the fork instant. So returning to a mark builds a bookmark fork
-at the step that reached the mark. Such a branch has six properties:
+**Returning to a mark the run has already passed is a branch taken at the
+mark's second.** Consider a learner paused at three hours who marks the
+one-hour point and goes back to it. The run stored a state for that second, so
+a branch can open there although the run is not standing on it. Such a branch
+has six properties:
 
-- **It reproduces the case's state at the mark in every value.** The branch
-  opens from the canonical state there, inside the parent's own stretch. Every
-  later instant is one calculation from the same keyframe that the parent
-  calculates from, until the branch's own settings change. On a run marked at
-  60 s after its clock reached 180 s, the branch agrees with its trunk at all
-  601 instants from the mark to a minute past it.
+- **It reproduces the case at the mark in every value.** It holds the trunk's
+  stored states up to the mark, and steps on from the state stored there. On a
+  run marked at 60 s after its clock reached 180 s, the branch agrees with its
+  trunk at all 61 whole seconds from the mark to a minute past it.
 - **It is the branch the halt would have given.** A mark set before the run
   passed it halts the run, and the run is forked at the halt. The same mark set
   after the clock went past it is forked here. The two branches' whole
-  provenance is equal: stretch, fork state, step count and the step the fork
-  ends. Taken at the same moment, both run under the same settings, including a
-  change the trunk made while it stood on the halt. The branch also stays the
-  halt's branch for a mark added later. Every run checks which marks were
-  crossed by the step it opened on or stands on, against the marks as they are
-  whenever its mark outcomes are read. So a mark added inside that step is
-  treated the same on the trunk and on the branch, whether it was added before
-  the branch or after. Every way of forking checks that step in the same way,
-  including a fork at a control event. So a branch taken at a keyframe the
-  trunk halted on opens on the marks that the halting step crossed, as a branch
-  taken where the run stands does.
-- **It leaves the trunk unchanged.** Nothing is recorded where the mark is.
-  That is what kept the bookmark fork from changing the run it marks.
-- **It does not open at the typed instant.** The fork is the end of the step
-  that reaches the mark, at the mark or one step past it: the instant a halt
-  would have stopped on. For a typed 45.3 s at the 0.1 s step the fork is at
-  45.300000000000004 s, and for a typed 45.35 s it is at 45.400000000000006 s.
-  The rule that decides which step crosses a mark finds the fork, and the
-  typed value is not rounded. Rounding would put a mark that lies inside a step
-  onto the step before it. The branch treats its mark as passed, not as "before
-  this branch opened", even when the fork is one step past the mark, because
-  the branch opens standing on the step that crossed the mark.
+  provenance is equal: stretch, fork state, step count and the step that ends
+  at the fork. Taken at the same moment, both run under the same settings,
+  including a change the trunk made while it stood on the halt. Every run
+  checks which marks were crossed by the step it opened on or stands on,
+  against the marks as they are whenever its mark outcomes are read. So a mark
+  that this step crossed is treated the same on the trunk and on the branch,
+  whether it was added before the branch or after. Every way of branching
+  checks that step in the same way.
+- **It leaves the trunk unchanged.** Nothing is recorded on the trunk.
+- **It opens at the marked second.** A mark is a whole number of seconds, and
+  a step ends on every whole second. So the fork is the end of the step that
+  reaches the mark, which is the second a halt would have stopped on. The
+  branch treats its mark as passed, not as "before this branch opened",
+  because the branch opens standing on the step that crossed the mark.
 - **It does not replay what the trunk did afterwards.** The branch continues
-  under the settings the trunk had as it left the mark's instant, until the
+  under the settings the trunk had as it left the mark's second, until the
   learner changes something. Its own control record holds only a change the
-  trunk made at that instant, if there was one. The trunk's later changes stay
+  trunk made at that second, if there was one. The trunk's later changes stay
   the trunk's. The reference simulator's rewind works differently. It returns
   to time zero, keeps the recorded settings and plays them back as it runs
   (Philip JH, *Workbook for Gas Man®*, Med Man Simulations, appendix E,
   "Replaying Simulations", printed pages 186-87). So it takes the trunk back and
   truncates it at the mark. Returning to a mark here forks instead, so the run
   that happened stays on the axis beside the alternative.
-- **It opens with the canonical state's readouts, not the ones the trunk showed
-  when it stood there.** A running case displays its live state, calculated one
-  step at a time from the opening. Every branch opens from the canonical state.
-  Over three hours of a run of the model on 2026-10-12, the two agreed to less
-  than a billionth of the 0.01% that a two-decimal percent can show, so no
-  reader can see the difference. The same holds for a fork at a control event
-  or at a halt.
-
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+- **It opens with the readouts the trunk showed at that second**, because
+  both read the one state stored for it.
 
 A mark still ahead of the clock is refused rather than reached. The case holds
 no state there yet, and a fork there would be a prediction drawn as if it were
 a run. The learner reaches such a mark by running on, and the halt there is
 then the fork.
 
-**A branch taken where a paused run stands is built as a bookmark fork, with
-the clock naming the instant.** The clock always stands on a whole number of
-steps, and the construction above reproduces the case at any instant the run
-has reached. So a branch can be taken wherever the trunk is paused, on a halt
-or anywhere else. It forks from the canonical state there, inside the parent's
-own stretch, and records nothing on the trunk. The branch opens standing on the
-marks crossed by the step that ends there. Those are checked again against the
-marks as they are now, as for a return to a mark. The halt record is worked out
-from the current marks in the same way, whenever it is read. Four
-kinds of run are refused. A running run is refused, because where it stands
-moves with every step. A failed run is refused, because a failure is not a
-pause. A run at the supported run length is refused, because it has no step
-left for a branch to take. A run that stands at its opening is refused, because
-it has recorded nothing to branch from. A branch at the opening is taken at the
-opening keyframe instead.
+**A branch can be taken wherever a paused run stands.** The clock always
+stands on a whole second, and the run stored a state for it. So a branch can
+be taken wherever the trunk is paused, on a halt or anywhere else. It opens
+from the state stored there and records nothing on the trunk. The branch opens
+standing on the marks crossed by the step that ends there. Those are checked
+again against the marks as they are now, as for a return to a mark. The halt
+record is worked out from the current marks in the same way, whenever it is
+read. Four kinds of run are refused. A running run is refused, because where it
+stands moves with every step. A failed run is refused, because a failure is
+not a pause. A run at the supported run length is refused, because it has no
+step left for a branch to take. A run that stands at its opening is refused,
+because it has recorded nothing to branch from. A branch at the opening is
+taken from the "From" selector's opening entry instead.
 
 **So no divergence is left over to bound, and there is nothing to show a
 learner.** The roadmap's definition of done for v0.5.0 asks this document for
-"the bound on any divergence that could not be eliminated" (`ROADMAP.md`). On
-the canonical path, no such divergence survives. A branch and its parent agree
-exactly at every instant they share, for a fork on a keyframe and for a fork
-between two keyframes. Two divergences do exist. One is the display path's,
-and the program refuses that path's values for anything but drawing. The other
-is a restart between keyframes, and no branch this program builds restarts
-that way. A bound of zero drawn on screen would tell a learner there is
-something to watch where there is nothing. § "What a branch comparison
-asserts, and what it does not" says what a comparison of the two drawn runs
-may claim, and the zero bound is one of those claims.
+"the bound on any divergence that could not be eliminated" (`ROADMAP.md`). A
+branch and its parent hold the same stored state at every second they share,
+until a setting differs. The one computed value is the preview, and it is only
+drawn. A bound of zero drawn on screen would tell a learner there is something
+to watch where there is nothing. § "What a branch comparison asserts, and what
+it does not" says what a comparison of the two drawn runs may claim, and the
+zero bound is one of those claims.
 
-**A branch's chart starts at the fork, not at the earlier keyframe where its
-definition opens.** Every fork therefore carries the fork instant explicitly,
-and the chart clips the branch's drawn range there. Clipping at the
-definition's opening would draw the branch back across time it never lived
-through, showing the trunk's course under the branch's name. That would put
-the right numbers in the wrong patient context, a presentation failure that the
-safety-critical standard names. The fork instant also decides that a mark is
-out of the branch's reach.
+**A branch's chart starts at the fork.** The branch holds its parent's states
+before the fork, but it did not live through them. Every fork therefore
+carries the fork second explicitly, and the chart clips the branch's drawn
+range there. Drawing the earlier seconds would show the trunk's course under
+the branch's name. That would put the right numbers in the wrong patient
+context, a presentation failure that the safety-critical standard names. The
+fork second also decides that a mark is out of the branch's reach.
 
 **One time axis puts a trunk and its branch on the same columns.** Drawn
 columns sit on multiples of the column spacing in the case's own time
 (§ "What the chart draws"). So a trunk and a branch are drawn at the same
-instants without the display path being told anything. On 2026-09-14, the
-program drew a 120 s sevoflurane run and a branch of it on a 13-column axis
-spanning 120 s, with the fork deliberately off the grid at 55.3 s. All 8 of the
-branch's columns were instants that the trunk also draws. With the branch
-anchored to its own zero, it drew 55.3, 65.3, 75.3 … and shared 2 of 8, so the
-two traces could not be read against each other at matched points.
+seconds. Take a 120 s sevoflurane run and a branch of it, drawn on a 13-column
+axis spanning 120 s, with the fork deliberately off the grid at a control
+change at 55 s. All 8 of the branch's columns are seconds that the trunk also
+draws. With the branch anchored to its own zero, it would draw 55, 65, 75 …
+and share 2 of 8, so the two traces could not be read against each other at
+matched points.
 
-**A bookmark branch draws exactly one column that its trunk does not, the fork
-itself** (run of the model on 2026-09-20, on a 120 s axis at 150 columns). The
-55.3 s fork above lands on the trunk's own columns, because a control event is
-drawn on every run that has one. A bookmark's instant is not a control event,
-so the trunk draws it only if it happens to fall on the grid. The branch always
-draws it, because it is the left end of the branch's drawn range. Everywhere
-else, the two traces can still be read against each other. The value at that
-one column is the case's own state there, which both runs contain. So the extra
-column marks the instant at which the two stop being the same run, not a
-disagreement about that instant.
+**A branch taken at a mark draws at most one column that its trunk does not,
+the fork itself.** The 55 s fork above lands on the trunk's own columns,
+because a control change is drawn on every run that has one. A mark's second
+is not a control change, so the trunk draws it only if it falls on the grid.
+Where the columns are one second apart it always does, because a mark is a
+whole number of seconds. On a 120 s axis at 13 columns, which are 10 s apart,
+the trunk does not draw a mark at 45 s. The branch always draws its fork,
+because it is the left end of the branch's drawn range. Everywhere else, the
+two traces can still be read against each other. The value at that one column
+is the case's own state there, which both runs hold. So the extra column marks
+the second at which the two stop being the same run, not a disagreement about
+that second.
 
-**At the columns they share, a bookmark branch's drawn values can differ from
-the trunk's in the last digits, while a control-event branch's are exact.** The
-display path chains one calculation across consecutive columns. It restarts at
-the edge of the drawn range or at an event column, so a branch restarts from
-its keyframe at its own left edge. For a fork at a control event, that instant
-also opens a stretch on the trunk, and both restart there. A bookmark's instant
-does not open a stretch on the trunk. So the trunk chains straight through it
-while the branch restarts, and the same exact solution comes out of arithmetic
-in a different order. On 2026-09-20, the program forked the 3 600 s case above
-at the 655.3 s bookmark, advanced both runs 1 200 s, and drew both on a
-601-column axis from zero to 1 800 s. Of the 3 438 values at the 382 columns
-the two runs share, 2 977 differed. The worst difference in a fraction was
-eleven orders of magnitude below the 0.01% to which § "Displayed precision"
-resolves a fraction. The worst difference in a running total was twelve orders
-below the 0.1 L to which the agent-accounting panel displays an amount. A
-branch forked at the 600 s control event instead differs at none of the
-columns it shares.
+**At the columns they share, a branch and its parent draw the same values in
+every digit** while no setting differs, because each draws the states it
+stored.
 
-**Branches still reproduce their parent exactly, because that guarantee rests
-on the canonical path and not on the display path.** Calculated on the
-canonical path at those 382 instants, the two runs agree exactly, with 0 values
-differing. On the 45.3 s case above, across the 240 columns that the two runs
-share, 0 of 2 160 canonical values differ, while 1 909 of the same 2 160 drawn
-values do, and the fork is the one extra column. § "What a branch comparison
-asserts, and what it does not" says what this means for a trace of the
-difference between two runs.
+**For developers.** The three ways of branching are
+`SimulationController.resumed_at()` at a stored second,
+`resumed_here()` where a paused run stands, and `resumed_at_mark()` at a mark.
+Each records the reaching stretch as `ResumePoint.segment` (from
+`RunDefinition.reaching_segment_at`), and the fork second and the state stored
+there as `ResumePoint.fork`. The stretch in force comes from
+`RunDefinition.segment_at`. The branch's stored states are its parent's,
+copied up to the fork by `StoredStates.through`, and its live system is placed
+at the fork state with the stored compensation terms
+(`AgentUptakeSystem.resume_at`). The copies of the parent's changes at the
+fork are `RunRecord.opened_with`. The rule that decides which step crosses a
+mark is `TimeBookmark.steps_to_reach`. A mark's second is a `CaseInstant`,
+which is a whole number of seconds, so a mark at N seconds is reached by
+step N.
 
-**For developers.** The canonical path is `RunDefinition.state_at` in
-`core/run_definition.py`. The display path is `RunDefinition.evaluate`, and
-the chart's version of it is `RunDefinition.evaluate_anchored`. Each
-calculation over an interval uses a matrix for that interval, its propagator.
-The chart's version also keeps the propagators it used, for the next frame. A
-kept propagator is the matrix that forming it again would give. So keeping
-them changes no drawn value, and the canonical path reads none of them.
+The controller reads the fork second as `SimulationController.began_at_s`:
+zero on a trunk, the fork second on a branch. Drawing (`drawn_window()`) clips
+the window's lower bound there, with
+`first_s = max(ceil(start_s), self.began_at_s)` in `app/controller.py`. The
+bookmark code (`app/bookmarks.py`) is also given the fork second, to decide
+that a mark is unreachable. The fork second is kept apart from the settings
+record, so that no code infers it from where that record opens
+(`run_segments[0].opened_at_s`), which is the opening of the reaching stretch.
 
-Code that takes a state rejects a display value because the display path
-returns its states wrapped in a type that is not a state vector
-(`DisplayState`). The run definition's check of an opening state looks for that
-type by name, so its error names the path instead of reporting a length
-mismatch. The wrapper is not a subclass of the state tuple, because some code
-that will take a state has not been written yet. Code without a check of its
-own rejects only a value whose shape is not a state's, and a subclass would
-pass it.
+A setting dialled before a reset is recorded as a change at the fork, and a
+dial moved and moved back before a step ran cancels out
+(`RunDefinition.record_change`). So the sequences *dial, dial back, reset* and
+*dial, reset, dial back* leave the same branch: the same settings record, live
+state and displayed values.
 
-The table gives the worst absolute difference between the canonical and the
-display result at the same instant, over the 600-column window a chart draws.
-The run is the sevoflurane run with four setting changes in
-`tests/reference/test_canonical_evaluation.py`, simulated on 2026-09-07. That
-test checks both quantities against bounds an order of magnitude above these
-values:
-
-| Span | Six compartment fractions | Two cumulative accumulators |
-| --- | --- | --- |
-| 1800 s | 1.0e-14, of 0.0301 | 3.1e-12 L, of 2.06 L |
-| 24 h | 8.0e-13, of 0.0300 | 3.1e-09 L, of 30.26 L |
-
-<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
-
-A wider span is worse because its columns are further apart, so each chained
-calculation covers a longer interval. The second row is therefore the worst
-that a supported run reaches at this column count.
-
-The three ways of branching are `SimulationController.resumed_at()` at a
-keyframe, `resumed_here()` where a paused run stands, and `resumed_at_mark()`
-at a mark. Each opens the branch's definition at the keyframe of the reaching
-stretch, which it records as `ResumePoint.segment` (from
-`RunDefinition.reaching_segment_at`). The stretch in force comes from
-`RunDefinition.segment_at`. The copies of the parent's changes at the fork are
-`RunRecord.opened_with`. The rule that decides which step crosses a mark is
-`TimeBookmark.steps_to_reach`. In the first hour, 12 767 of the 36 001
-one-decimal instants are not a whole number of steps in binary, as 45.3 s is
-not. Stepping (`advance()`) and drawing (`drawn_window()`) pass case time
-straight through to the definition.
-
-Continuing the case's time keeps simulated time to the single multiplication
-that `docs/MODEL.md` § "Simulated time is a count of steps, not a running total" describes. A
-branch's instants, in its run definition and on its clock, are the case's step
-count times the step, not the fork instant plus a second total.
-
-The fork instant is stored with the branch's provenance (`ResumePoint.fork`),
-and the controller reads it as `SimulationController.began_at_s`: zero on a
-trunk, the fork instant on a branch. Drawing (`drawn_window()`) clips the
-window's lower bound there, with `first_s = max(start_s, self.began_at_s)` in
-`app/controller.py`. The bookmark code (`app/bookmarks.py`) is also given the
-fork instant, to decide that a mark is unreachable. The fork instant is kept
-apart from the definition so that no code infers it from where the definition
-opens (`opened_at_s`, `run_segments[0].opening.instant_s`), the keyframe at or
-before the fork.
-
-A setting dialled before a reset is recorded as a change because choosing the
-definition's opening from the settings at the reset would depend on the order
-of two reversible acts. The sequences *dial, dial back, reset* and *dial,
-reset, dial back* leave the same branch: the same settings, live state and
-displayed values. If the opening were chosen at the reset, the second sequence
-would open the definition at the fork rather than at the keyframe. That branch
-would then compute in two calculations where the parent took one, and silently
-stop reproducing the parent. On 2026-09-20, 40 of 45 values differed across
-five probes, the worst by 1.21e-15. When the dial is recorded as a change, the
-dial-back is collapsed by a rule the run definition already has: a dial moved
-and moved back before a step ran cancels out. The branch is then where it
-started. After a reset that *kept* the new setting, the remaining difference is
-0.000249 on the same probes. That is a different management of the case, not
-rounding, and recording the dial as a change keeps the two apart.
-
-These are the figures behind the statements above:
-
-- **Headroom against the screen and the residual lines.** A two-decimal percent
-  resolves 1e-4 (§ "Displayed precision"). That section records passing
-  residuals below 2.1e-11 L, from branches simulated for 30 minutes. The
-  display path's accumulator difference at 1800 s is 3.1e-12 L. Over 24 h the
-  worst simulated relative residual was 3.08e-12, which on amounts of tens of
-  litres is of the order of 1e-10 L. The accumulator difference at 24 h is
-  3.1e-9 L.
-- **A restart off a keyframe.** On the run in
-  `tests/reference/test_canonical_evaluation.py`, a restart at 1 234.5 s
-  changed 1 109 of the 1 269 state values in their last digits. At the 141
-  instants at or past the fork (2026-09-21), the worst difference was 7.8e-15
-  as a fraction and 1.9e-12 L on an accumulator. An earlier restart on the same
-  run differed by up to 5.3e-13 in an accumulator (2026-09-07).
-- **The subtraction.** With a fork at 900 s, `(900.0 + 1e-6) - 900.0` is
-  9.999999974752427e-07 and not 1e-6. So a child asked for its own `1e-6`
-  would land one unit in the last place away.
-- **One time axis (2026-09-14).** A branch of a 120 s sevoflurane run, forked
-  at the 60 s keyframe and advanced 60 s further, agrees with its parent at all
-  601 case instants that the two share. Both are given the same number, the
-  case's own `steps × step`, and neither does arithmetic on it. A definition
-  opened at a zero of its own, and asked for its own `steps × step`, differs
-  from the parent at 354 of those 601. Both are exact solutions of the same
-  equations, but only the first is the same sequence of floating-point
-  operations, which is the sameness `ROADMAP.md` item 12 asks for. A
-  definition opened at its own zero could match too, but only if every caller
-  subtracted the fork instant itself, and nothing enforced that. With one time
-  axis, the 354 mismatches cannot arise.
-- **Drawn values at a bookmark fork (2026-09-20).** The worst differences were
-  7.70e-16 as a fraction and 8.17e-14 L on an accumulator.
-- **Drawn values of two identical runs.** The worst of the differing drawn
-  elements was 2.7e-15.
-- **A branch's opening readouts.** Over three hours (2026-10-12), they agreed
-  with the trunk's to 4.9e-14 as a fraction.
-- **Tests.** The test of the canonical path
-  (`tests/reference/test_canonical_evaluation.py`) checks that a fork at a
-  stretch boundary reproduces the parent bit for bit. It checks forks on and
-  between keyframes over 207 instants, against a restart at the fork, which
-  does not agree. The controller's tests (`tests/integration/controller/`)
-  check the same over 201, 301 and 601 case instants, and over the 240 drawn
-  columns that a trunk and a bookmark branch share. Their run marked at 60 s after
-  the clock reached 180 s is the return-to-a-mark example. The controller's tests
-  also check the 45.3 s case, where the canonical values agree and the drawn
-  values differ. Both files test the two results of 2026-09-14: the reproduction
-  at 601 instants and the 8 shared columns.
-<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
-<!-- not-restated: 900 s -->
+The tests are in `tests/integration/controller/test_controller_stored_states.py`,
+`tests/integration/controller/test_controller_bookmarks.py` and
+`tests/integration/controller/test_controller_marks.py`. A branch with no
+setting moved repeats its trunk's later states in every number
+(`test_a_branch_with_no_setting_moved_repeats_its_trunks_later_states_in_every_number`),
+and its delivered and exhausted totals for nine minutes
+(`test_a_branch_repeats_its_trunks_delivered_and_exhausted_totals_for_nine_minutes`).
+A branch taken at a mark agrees with its trunk at every drawn column they share
+(`test_a_bookmark_branch_and_its_parent_agree_at_every_column_they_share`), and
+draws one column its trunk does not, the fork
+(`test_a_bookmark_branch_draws_one_column_its_parent_does_not_and_it_is_the_fork`).
 
 ### Supported input ranges
 
@@ -1074,8 +760,7 @@ passed to any of the five ways in is refused, whatever its value, with a `TypeEr
 the type to build. So no way in has to remember the check. The control timeline's fields are
 declared as plain `float` and are not checked, so a setting read back from it is rebuilt as its
 type. Arithmetic on a flow
-returns a plain `float`, so a value calculated from a flow is never taken as checked. The
-simulation step is a checked type in the same way (`SimulationStep`).
+returns a plain `float`, so a value calculated from a flow is never taken as checked.
 
 A tissue group's perfusion fraction and its blood flow have checked types too, in
 `core/blood_flow.py`. The perfusion fraction (`PerfusionFraction`) is checked as above 0 and at
@@ -1289,17 +974,18 @@ which declares no deliverable range. A profile that declares one narrows the fre
 slider to the overlap on purpose (§ "The model's envelope and a machine's deliverable range are
 two claims").
 
-**The simulation step has limits of its own, separate from the supported input ranges.** A user
-does not set the step, but every call that advances the model takes it (`advance()`). Two
-constants set its minimum and maximum (`MINIMUM_SIMULATION_STEP_S`, `MAXIMUM_SIMULATION_STEP_S`),
-and `docs/MODEL.md` § "Supported simulation step" gives the reasons for both. The step's maximum is a
+**The simulation step is fixed, and is separate from the supported input ranges.** Neither a
+user nor a caller sets the step. Every call that advances a run (`advance()`) takes one step of
+1 s (`SIMULATION_STEP_S` in `core/simulation_step.py`), and `docs/MODEL.md` § "Supported
+simulation step" gives the reasons for that length. The step is a
 declared limit, in seconds, on how long a change to a control may go unseen by the model. The
 input ranges are a claim about where the compartment structure represents a patient. Neither is
 calculated from the other. Widening a range means re-running the reference tests at the new
-extreme setting, without revisiting the step. The step's limits are checked at the run, not at
-the compartment, because a step is an argument to one call. A compartment advanced alone is
-calculated exactly at any step, so checking it against the maximum step would refuse an exact
-calculation (`docs/MODEL.md` § "Supported simulation step").
+extreme setting, without revisiting the step. A compartment advanced alone is calculated
+exactly at any step, so it still takes a step of any length from 1 ms to the supported run
+length (`require_compartment_step` in `core/supported_ranges.py`).
+<!-- provenance: core/simulation_step.py SIMULATION_STEP_S = 1 -->
+<!-- provenance: core/supported_ranges.py MINIMUM_COMPARTMENT_STEP_S = 0.001 -->
 
 #### What a setting outside the range costs
 
@@ -1409,14 +1095,14 @@ The run length differs from the flow ranges only in that it is reached rather th
 is a setting, and a value outside its range is refused. Because the run length is how far a
 run has gone, it is checked as each step is taken, and otherwise only where a run opens with
 time already elapsed. The supported span includes its end, so a run may complete the step that
-lands on 24 hours. At the shipped 0.1 s step, the last step ends exactly there. A run that has
+lands on 24 hours. A step is 1 s, so the last step ends exactly there. A run that has
 stopped at the limit rests on a point that the model accepts as the state of a run, and the
 model refuses only the step from that point. The interface opens no branch there, because
 such a branch could never step. A point past 24 hours can also be given directly rather than
 reached, as the opening of a branch or a point to which a run is moved. It is refused before
 any run is placed there. A time bookmark past 24 hours cannot be made at all, because a
 bookmark accepts only a time that has already been checked against the limit.
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+<!-- provenance: core/simulation_step.py SIMULATION_STEP_S = 1 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 | Quantity | Limit | Declared and refused by |
@@ -1559,7 +1245,7 @@ carry a run past the limit is refused in `SimulationState.advance()` with a
 failure, and the interface (`app/`) checks for it to choose its wording. A value past the
 limit that is handed in is itself what is wrong, so it is refused with a
 `SimulationConfigurationError` before any run holds it. A step count past the limit is refused
-where the simulation state (`SimulationState`) pairs it with its step, and an instant past the
+where the simulation state (`SimulationState`) stores it, and an instant past the
 limit where it is built as a `CaseInstant`.
 
 No separate check makes a branch share the case's 24 hours. Every check on the limit reads
@@ -1569,10 +1255,11 @@ its parent. So the arithmetic that limits the original run also limits every bra
 
 **Each instant and each step count is a type, checked once where it is built**, as
 § "Supported input ranges" describes for the flows. Every instant at which a run is opened,
-moved, keyframed, marked or branched is a `CaseInstant`, a subclass of `float`. Only its
+moved, keyframed, marked or branched is a `CaseInstant`, a subclass of `int` that holds a
+whole number of seconds. Only its
 constructor runs the check (`require_supported_case_instant`). The constructor accepts only
-an `int` or a `float`, and stores minus zero as zero, as the flows do. It refuses an `int`
-too large for a `float` as past the run length. The places that keep an instant, or move a
+an `int`. It refuses a `float` whatever its value, because a run moves only by the one-second
+step, and it refuses a `bool`. The places that keep an instant, or move a
 run to one, require the type and refuse anything else with a `TypeError`, whatever its
 value. These places are the opening of a run and every point it is advanced to
 (`RunDefinition`), each `Keyframe`, a `TimeBookmark` and the `BookmarkCrossing` that a run
@@ -1588,28 +1275,25 @@ nothing again, such as a snapshot and the instants at which a branch is offered.
 
 A count of completed steps is a `StepCount`, a subclass of `int`. It is checked only for what
 a count can be checked for alone: it must be whole and not negative, and a `bool` is refused.
-How many steps fit in 24 hours depends on the step. So the simulation state checks the count
-and the step together against the last supported count (`maximum_step_count`, through
-`require_supported_step_count`). That check relates two fields, so the state makes it at
-every write to either field, in `__setattr__`. The constructor's checks and messages therefore
-also apply to a count or a step assigned straight onto a built state, and a refused value
+How many steps a run may complete is the run's limit and not the count's. So the simulation
+state checks the count against the last supported count (`MAXIMUM_STEP_COUNT`, through
+`require_supported_step_count`). The state makes that check at
+every write to the field, in `__setattr__`. The constructor's checks and messages therefore
+also apply to a count assigned straight onto a built state, and a refused value
 leaves the field unchanged. The type checker (`mypy`) refuses such an assignment in `src/`. A
-plain `int` count or a plain `float` step is refused with a `TypeError`. A count above zero
-with no step, or a pair past the run length, is refused with a `SimulationConfigurationError`.
+plain `int` count is refused with a `TypeError`. A count past the run length is refused with a
+`SimulationConfigurationError`.
 A flow written onto its compartment is treated the same way (§ "Supported input ranges"). The
 state's uptake system is written once, when the state is built, because the count says how
 far that one system has been advanced. A later write is refused with a
 `SimulationConfigurationError`.
-<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-The step's check and the state's own check take the last supported count from one function,
-`maximum_step_count`. It returns the largest count whose simulated time, `elapsed_s`, is no
-later than 24 hours. That time is the count times the step, rounded once, and the state
-builds it as a `CaseInstant`. The count is decided on that product, not on 24 hours divided
-by the step. At some computed steps, that quotient rounds a whole step either way. It then
-gives a last step that lands a rounding error past 24 hours, or one that stops a step short
-of 24 hours. Deciding on the product means that a count is accepted exactly when the instant
-it stands at is accepted. So the simulated time is never refused as a `CaseInstant`, and a
+The step's check and the state's own check read the last supported count from one constant,
+`MAXIMUM_STEP_COUNT`. A step is one second, so that count is the 24 hours in seconds, and it
+is exact. The simulated time, `elapsed_s`, is the count times the step, which the state
+builds as a `CaseInstant`. Both are whole numbers, so nothing is rounded, and a count is
+accepted exactly when the instant it stands at is accepted. So the simulated time is never
+refused as a `CaseInstant`, and a
 branch is built or refused alike, whether it is taken from its parent's count or from its
 parent's instant.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
@@ -1617,7 +1301,7 @@ parent's instant.
 An instant that a run is only *asked* about stays a plain `float`, such as the instant passed
 to `RunDefinition.state_at` and the ends of a drawn window. The run's own opening and end
 bound such an instant, and the run checks that relation. Arithmetic on either type returns a
-plain `float` or `int`, so a calculated instant or count is never taken as checked.
+plain `int`, so a calculated instant or count is never taken as checked.
 
 **Whether a run is at the limit is decided from the run, never from a refused step alone.** A
 run comes to rest on 24 hours only by stepping onto the last supported count, and that step
@@ -1692,14 +1376,13 @@ value and saying so is the stronger claim, not the weaker one.
 
 **What a wrong volume would be wrong for.** The argument is about physiology, as it is for
 the four controls, not about numerical error. On 2026-09-06, with sevoflurane at the
-shipped 0.1 s simulation step, a 0.005 L alveolar compartment and a 10 000 L circuit both
+0.1 s simulation step then shipped, a 0.005 L alveolar compartment and a 10 000 L circuit both
 ran without incident. The agent balance held. So each gave an
 arithmetically correct answer to a question that physiology does not ask. The model has
 since been given a numerical envelope, and it now refuses the 0.005 L volume
 (`docs/MODEL.md` § "The numerical envelope"). A 5 mL alveolus
 is not a lung. This model's few compartments, its fixed tissue volumes and its constant
 partition coefficients are claimed to represent a patient only near the shipped values.
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 <!-- not-restated: 10000 L -->
 
 **What is left open, stated plainly.** Python code written against `core/` can still build
@@ -1731,7 +1414,7 @@ Reset pauses the simulation and keeps the user's selected settings. It also:
 run, rather than to zero.** A branch is a run taken from a point in a parent
 run, and that point is called the fork. The branch's simulation time, state and
 accounting go back to the fork, because a branch never held the case's induction
-(§ "The canonical evaluation rule"). Its timeline of control inputs then holds
+(§ "Each second has one stored state"). Its timeline of control inputs then holds
 the entries that the branch first opened with, followed by each setting that
 Reset kept and that differs from the one the branch opened under.
 
@@ -1755,12 +1438,11 @@ keeps that earlier failure as the reason, and the banner's advice on recovery
 mentions the refusal.
 
 **For developers.** Reset sets simulation time to zero by clearing the count of
-steps taken. It releases the step length that the run was using, so that a fresh
-run may use a different one. It discards the run by opening a fresh run
+steps taken. It discards the run by opening a fresh run
 definition at the cleared state, under the user's settings. A run definition is
 the stored record of a run: the settings in force at each moment, and the state
 at each change of setting, from which every other state is computed
-(§ "A run is stored as its settings and keyframes, and every state is computed from them"). The timeline
+(§ "A run stores the state of every second it reaches"). The timeline
 of control inputs is cleared because it belongs to the run that recorded it.
 
 On a branch, the fresh run definition opens instead on the stretch of the parent
@@ -1864,7 +1546,7 @@ and the Workspace strip's questions.
 **A difference between two runs is real, but a comparison does not say what it
 means for a patient.** The difference does not come from rounding, from the
 order of the program's arithmetic, from the playback rate or from the computer
-(`docs/MODEL.md` § "The reproducibility guarantee", `docs/INTERFACE.md` § "The canonical evaluation rule"). A
+(`docs/MODEL.md` § "The reproducibility guarantee", `docs/INTERFACE.md` § "Each second has one stored state"). A
 comparison can teach only the mechanism: which way a curve moves when one thing
 changes, why it moves that way, and roughly how fast, in a model whose
 structure makes the reason easy to see.
@@ -1892,8 +1574,8 @@ guarantees that both runs share the following:
   from the same program.
 - **The circuit volume.** The branch takes the trunk's circuit volume, which
   cannot be changed during a run.
-- **The simulation step.** The branch uses the trunk's step, and a fork between
-  two steps is refused rather than approximated.
+- **The simulation step.** Every run takes the same step of one second, and a
+  fork is a whole second, so no fork lies between two steps.
 - **Every setting up to the fork.** The branch's settings are replayed from the
   trunk's record of setting changes, then checked against the trunk's own
   settings at the fork.
@@ -1941,14 +1623,13 @@ The code enforces what the two runs share as follows:
 - The circuit volume is a build-time parameter with no live setter
   (`test_the_circuit_volume_is_a_build_time_parameter_with_no_live_setter`).
   It is applied to a branch before any state is.
-- A branch carries the trunk's step in its resume point (`ResumePoint`), and a
-  test checks this
-  (`test_a_branch_continues_the_case_s_step_count_so_the_envelope_is_the_case_s`).
-  `SimulationController._resume_point` refuses a fork between two steps. No
-  test reaches that refusal, because every fork the program offers lies on a
-  whole step. Exact reproducibility is
-  not guaranteed between runs at different steps (`docs/MODEL.md` § "The reproducibility
-  guarantee"), so carrying the step keeps a comparison within the guarantee.
+- Every run takes the one step that the core defines (`SIMULATION_STEP_S`), so
+  a branch cannot step differently from its trunk. A test checks that a branch
+  steps to where its trunk stepped
+  (`test_a_branch_steps_to_where_its_parent_stepped`). A fork instant is a
+  `CaseInstant`, which is built only from a whole number of seconds, and a
+  fork instant that was not built as one is refused
+  (`test_a_fork_instant_not_built_as_a_case_instant_is_refused`).
 - A test checks the replayed settings
   (`test_a_branch_inherits_its_parent_s_settings_at_the_fork`).
 - A test checks that a branch carries the trunk's bookmarks
@@ -1956,7 +1637,7 @@ The code enforces what the two runs share as follows:
 - Each column of the chart stands for an instant at which it draws a value. A
   test checks that a branch uses the trunk's columns
   (`test_a_branch_is_drawn_on_the_same_columns_as_the_run_it_forked_from`). A
-  fork at a bookmark adds exactly one column, the fork itself
+  fork at a bookmark adds at most one column, the fork itself
   (`test_a_bookmark_branch_draws_one_column_its_parent_does_not_and_it_is_the_fork`).
 
 In the code, a run's record of setting changes is its control timeline. Two
@@ -1974,49 +1655,24 @@ which differences they had caused.
 
 ### The shared history is identical by construction, not by measurement
 
-**Before the fork, a branch and its trunk are exactly equal.** The branch
-repeats the trunk's arithmetic, operation for operation, at every instant they
-share. This holds for every branch the program builds
-(§ "What this requires of a branch"). There is no error to allow for, and none
-is shown.
-
-**A branch's exact equality with its trunk applies to the values the model
-computes, and not always to the values the chart draws.** Where the fork was at
-a setting change, the two drawn traces agree exactly at every point they share.
-Where it was at a bookmark, they can differ by a rounding error that is orders
-of magnitude too small to move any displayed digit
-(§ "The canonical evaluation rule", § "Displayed precision").
+**Before the fork, a branch and its trunk are exactly equal.** The branch holds
+a copy of the trunk's stored states up to the fork, and from the fork on it
+repeats the trunk's steps until a setting differs. This holds for every branch
+the program builds (§ "What this requires of a branch"). There is no error to
+allow for, and none is shown. The chart draws stored states, so the two drawn
+traces agree in every digit at every point they share, wherever the branch was
+taken (§ "Each second has one stored state").
 
 **A branch's equality with its trunk before the fork sets no bound on anything
 after it.** Only the settings and the model decide how far the two runs
 diverge, in which direction, how quickly, and whether they converge again.
 
-**For developers.** A keyframe is the state at the instant a setting change
-took effect, and a segment is the stretch of a run between two changes
-(§ "A run is stored as its settings and keyframes, and every state is computed from them"). A branch's
-run definition carries the trunk's own keyframe. It forms each propagation
-interval as the instant minus the start of that instant's segment.
-The branch repeats the trunk's arithmetic because both use the same keyframe
-and the same subtraction. § "What this requires of a branch" sets out this
-construction as a rule with two conditions, and says which condition a fork
-at a bookmark relaxes. A branch that restarts at the fork would not reproduce
-its trunk
-(`test_a_fork_opening_at_the_instant_it_was_taken_does_not_reproduce_its_parent`).
-No branch that this program builds takes that route.
-
-Exact equality rests on the shared keyframe and subtraction, and the tests only
-detect when it breaks. Two cover a fork on a keyframe and a fork between two
-keyframes (`test_a_fork_opening_from_a_keyframe_reproduces_its_parent`,
-`test_a_fork_opening_between_two_keyframes_reproduces_its_parent`). Two more
-test both through the controller, at case instants and at drawn columns
+**For developers.** The tests check equality through the controller, at each
+stored second and at the drawn columns
 (`test_a_branch_reproduces_its_parent_at_every_instant_they_share`,
-`test_a_bookmark_branch_and_its_parent_agree_at_every_column_they_share`).
-The last of these tests compares the 251 columns that a branch forked at a
-bookmark shares with its trunk. On 2026-10-26, the worst difference over those
-columns was 5.3e-16, a rounding error from the order of the floating-point
-operations. Before the columns were put on whole hundredths of a second
-(`PL-T5NJ`), it was 2.7e-15 over 240 columns, the figure
-§ "The canonical evaluation rule" tabulates.
+`test_a_bookmark_branch_and_its_parent_agree_at_every_column_they_share`), and
+for a branch taken at any whole second
+(`test_a_branch_at_any_whole_second_holds_its_trunks_states_up_to_that_second`).
 
 ### Neither run is a prediction for a patient
 
@@ -2189,23 +1845,25 @@ averages or otherwise makes up a plotted value. The model computes each point
 from the run's definition, which gives the run's state at any instant directly,
 by formula. No stored series of values lies behind a trace, so none can disagree
 with it. The values that a chart draws are for display only, and the program
-prevents their use for anything else (§ "The canonical evaluation rule" above).
+prevents their use for anything else (§ "Each second has one stored state" above).
 
 **The chart draws the run's state at one instant for each pixel boundary of
-its widest plot, and never at fewer than 150 instants.** A trace need not draw
-every instant, because the run advances one step every 0.1 s of simulated time,
-more often than a chart can resolve. The instant that the numeric readouts show
+its widest plot, and never at fewer than 150 instants, unless that would put
+two drawn instants less than one second apart.** A run stands only on whole
+seconds, so the chart draws no instant between two of them. On an axis that
+shows more seconds than the plot has pixels, a trace need not draw every
+second, because a second is narrower than a pixel there. The instant that the
+numeric readouts show
 is always drawn, so the end of a trace always agrees with the readouts beside
 it. When a plot becomes wider, after the user resizes the application window or
 drags an area's border, it is redrawn at its new width on the next screen
 update, whether the run is running or paused. Two rules set where the drawn
 instants fall:
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 
 - **The drawn instants lie on a grid that starts at the case's time zero.**
   A run branched from another therefore draws at the same instants as the run
   it branched from, and the two can be compared point for point. Each drawn
-  instant falls on a whole hundredth of a second, so the hover readout can give
+  instant falls on a whole second, so the hover readout can give
   the exact time of the state it shows.
 - **Every control change inside the window is a drawn instant.** Between
   control changes each compartment's value is a sum of exponentials, with
@@ -2219,8 +1877,10 @@ instants fall:
 **Between control changes, the drawn line is never further from the run than the
 time that one pixel of the plot spans, except at a peak or a trough.** It passes
 through the run's exact state at every drawn instant, and drawn instants are no
-more than a pixel apart. The only exception to that spacing is a one-minute axis
-more than 6000 px wide, where drawn instants a hundredth of a second apart span
+more than a pixel apart. The exception to that spacing is an axis that shows
+fewer seconds than the plot has pixels across it: a one-minute axis on a plot
+wider than 60 px, and a fifteen-minute axis on one wider than 900 px. There the
+chart draws every second, and the line segment between two drawn instants spans
 more than a pixel. Where the run only rises or only falls between two drawn
 instants, the run and the straight segment drawn between them cross every level
 inside the same pixel. This one-pixel guarantee is in time, not in percentage
@@ -2230,18 +1890,21 @@ hover readout included (§ "The chart's hover readout").
 
 The straight segment between two drawn instants starts and ends on the run's
 curve, but can lie above or below the curve in between. The table gives that
-vertical gap at its largest in a segment, in percentage points (pp), computed on
+vertical gap where it is largest, in percentage points (pp), computed on
 a plot 1 000 px wide. A time base is a window width that the chart offers, and
-the spacing between drawn instants is that width divided by 1 000.
+the spacing between drawn instants is that width divided by 1 000, rounded down
+to a whole second and never less than one second.
 
 | Time base | Spacing | Sevoflurane 2% to 4%, worst trace | Desflurane 0% to 12% to 6%, worst trace | Desflurane, alveolar |
 | --- | ---: | ---: | ---: | ---: |
-| 15 min | 0.9 s | 0.0004 pp | 0.0025 pp | 0.0025 pp |
-| 1 h | 3.6 s | 0.0052 pp | 0.032 pp | 0.032 pp |
-| 4 h | 14.4 s | 0.048 pp (circuit) | 0.28 pp (circuit) | 0.21 pp |
-| 12 h | 43.2 s | 0.21 pp (circuit) | 1.21 pp (circuit) | 0.26 pp |
+| 15 min | 1 s | 0.0005 pp | 0.0031 pp | 0.0031 pp |
+| 1 h | 3 s | 0.0038 pp | 0.023 pp | 0.023 pp |
+| 4 h | 14 s | 0.046 pp (circuit) | 0.27 pp (circuit) | 0.21 pp |
+| 12 h | 43 s | 0.21 pp (circuit) | 1.20 pp (circuit) | 0.26 pp |
 
 <!-- provenance: app/chart_time_base.py SELECTABLE_TIME_BASE_FLOOR_S = 900 -->
+
+<!-- provenance: core/simulation_step.py SIMULATION_STEP_S = 1 -->
 
 <!-- not-restated: 2 %, 6 % -->
 
@@ -2249,13 +1912,38 @@ The gaps grow with the spacing, so a narrower plot has larger gaps and a wider
 plot smaller ones. They bound the error in a trace's *shape* inside one pixel
 column, never in a displayed value.
 
-**Between two control changes, the drawn line can miss the top of a peak or
-the bottom of a trough.** Because the alveoli and the venous blood keep filling
-for a moment after the vaporizer is turned down, the run can peak between two
-drawn instants, above both drawn values. Over five simulated runs, the largest
-gap at a peak or a trough on any time base is 0.0028 pp, on the mixed venous
-trace at the desflurane dial-down on the twelve-hour time base. That is less
-than a third of the readout's resolution of 0.01 pp.
+**A compartment can peak or dip between two columns, and the chart draws that
+peak or trough too.** Because the alveoli and the venous blood keep filling
+for a moment after the vaporizer is turned down, a trace can peak between two
+columns, above its value at both. For each compartment, the chart also draws
+the second at which the compartment is highest between two columns and the
+second at which it is lowest, where that value lies outside its values at
+both columns. So each trace reaches the highest and the lowest value that the
+run stored between any two columns.
+
+A chart that drew only its columns fell short of such a peak. Over five
+simulated runs that each change the dial at 600 s, the largest gap on any time
+base was 0.0094 pp, on the mixed venous trace at the desflurane dial-down on the
+eight-hour time base. The gap depends on where the change falls between two
+columns: the same dial-down at the reference adult's flows, made at 629 s, left
+a gap of 0.036 pp on the vessel-rich trace on the twelve-hour time base, against
+a readout resolution of 0.01 pp. Both gaps are for a plot 1 000 px wide,
+measured on 2026-11-21.
+
+A preview is drawn by the same rule for its first hour, with the second of
+each predicted peak and trough between two columns. After its first hour it
+draws one value for each column and its right edge. Turning a setting causes
+the sharp peaks, and they come within the first hour. Measured for each
+shipped agent under eight setting changes, with columns from 43 s to 579 s
+apart, a preview drawn one value per column fell short of a peak by up to
+0.17 pp in the first hour, and by at most 0.000002 pp after it (`PL-Z6C8`,
+measured 2026-11-21). Predicting every
+second to the right edge of a 12-hour axis took 0.26 s, so a drag on a dial
+stuttered. The preview now takes about 0.03 s on any axis.
+
+The F_A/F_I plot still draws one value for each column. It divides the two
+fractions at each drawn second, and the ratio can turn at a second where
+neither fraction does (`PL-DN13`).
 
 **The user chooses which compartment traces are drawn and how wide a window
 of the run the chart shows, and neither choice changes the run.** The two
@@ -2342,15 +2030,21 @@ the model computes.
 screen.** Real time is too slow to watch the two compartments that make uptake
 and distribution worth teaching. At the reference settings, sevoflurane's
 muscle group has a time constant of about 135 min, and fat one of about 42 h.
-The interface advances the run in ticks, one every 0.1 s, and at real time each
-tick takes one step. To play a run faster, it takes more steps per tick, under
-three conditions of different kinds.
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+The interface advances the run in ticks, one every 100 ms of real time. Each
+tick adds the playback rate times 100 ms to the simulated time that the run is
+owed, and the run takes one step for each whole second owed. At real time the
+run therefore takes one step on every tenth tick, so the clock and the readouts
+change once a second. At 5× it takes one step on every second tick. At 20×,
+60× and 300× it takes 2, 6 and 30 steps on every tick. Faster playback is
+allowed under three conditions of different kinds.
+<!-- provenance: app/dashboard_frame.py SIMULATION_TICK_INTERVAL_MS = 100 -->
 
-The first condition is arithmetic. The interface refuses a rate that does not
-come to a whole number of steps per tick, because rounding it would give either
-a step of a different size or a run advancing at a rate other than the one
-displayed. So faster playback stays within "The reproducibility guarantee":
+The first condition is arithmetic. A rate is a whole number of simulated
+seconds for each real second, and the simulated time owed is counted in whole
+milliseconds. So nothing is rounded: the part of a second left over after a
+tick is carried to the next tick, and the run advances at the displayed rate to
+within one step. The step itself is the same at every rate. So faster playback
+stays within "The reproducibility guarantee":
 identical inputs still produce identical run definitions, and two learners
 comparing the same case at different speeds are comparing the same arithmetic.
 
@@ -2358,10 +2052,13 @@ The second condition is control resolution, and it limits that last claim. The
 two learners are comparing the same *case* only if neither of them touches a
 control. The same slider moves made at two rates land at two different
 simulated instants and produce two different runs. The runs differ because the
-inputs differed, not because the arithmetic did. `docs/MODEL.md` § "Supported simulation step"
-gives the grid of tick boundaries for each rate, and how far a delay of one tick
-can shift a displayed compartment. It also gives the route that is exact at
-every rate: pause, change the setting, then resume.
+inputs differed, not because the arithmetic did. A change made during play can
+act only at instants 1, 1, 2, 6 and 30 simulated seconds apart at 1×, 5×, 20×,
+60× and 300×. `docs/MODEL.md` § "Supported simulation step" gives that grid
+and how far a delay of one grid step can shift a displayed compartment. It also
+gives the route that places a change on a chosen whole second at every rate:
+pause, change the setting, then resume. No route places a change between two
+whole seconds.
 
 The third condition is human factors, and it is why the rate is a required
 display rather than a preference. A rate is a mode. A clock is easy to misread
@@ -2374,9 +2071,9 @@ interface is playing the run. It implies nothing about the model or the
 patient, and it is not a second reading of the clock beside it.
 
 **The rate label shows the rate that was set: the multiple of real time chosen
-with the playback control.** The interface computes the steps per tick from
-that setting, so the label always agrees with the number of steps each tick
-takes. The simulated clock is exact at every rate, because simulated time is a
+with the playback control.** The interface computes the simulated time that
+each tick owes the run from that setting, so the label always agrees with the
+steps the run takes. The simulated clock is exact at every rate, because simulated time is a
 count of the steps taken. Whether the run keeps pace with real time depends on
 the computer. When the computer cannot run a tick in time, the tick is lost,
 and no extra steps make it up. The **delivered rate** is the set rate times the
@@ -2425,23 +2122,22 @@ than mutable compartment objects.
 
 A function sets the number of drawn instants (`chart_columns` in
 `app/chart_frame.py`, `PL-GS3R`). The spacing is the time base divided by that
-number. It is rounded down onto whole hundredths of a second, and onto whole
-tenths of a second where that adds at most 10% more instants (`grid_spacing_s`
-in `app/chart_time_base.py`, `PL-T5NJ`). Rounding down is what keeps drawn
-instants no more than a pixel apart, except on a one-minute axis more than
-6000 px wide. Where the spacing is 1 s or more, rounding onto tenths puts each
-drawn instant on a time that the clock also shows. A plot is redrawn when it
+number. It is rounded down onto whole seconds, and a spacing of less than 1 s
+is raised to 1 s (`grid_spacing_s` in `app/chart_time_base.py`). Rounding down
+is what keeps drawn instants no more than a pixel apart, wherever the axis
+shows at least as many seconds as the plot has pixels. Each drawn instant is a
+time that the clock also shows. A plot is redrawn when it
 grows wider than the width its frame was sampled for (`resample_owed`,
 `PL-9LNF`).
-<!-- not-restated: 1 s -->
+<!-- provenance: core/simulation_step.py SIMULATION_STEP_S = 1 -->
 
 The two rules for where drawn instants fall are requirements of this document,
 not optimisations. The grid sits at absolute multiples of the spacing, so a
 window that follows the run keeps every drawn instant it had and gains at most
 one, and a steady trace is not redrawn on every frame. A grid anchored to the
 viewport would move on every scroll and resize, and rewrite the whole chart on
-every frame. A grid anchored to each run's own start put a branch forked at
-55.3 s on 55.3, 65.3, 75.3 … while the run it branched from drew 0, 10, 20 ….
+every frame. A grid anchored to each run's own start would put a branch forked
+at 55 s on 55, 65, 75 … while the run it branched from draws 0, 10, 20 ….
 
 Each control change is a drawn instant because the run has a kink there: the
 derivative of the circuit fraction is discontinuous. Without a drawn instant
@@ -2476,20 +2172,30 @@ spacing on the desflurane case: 21 601 drawn instants across twelve hours. No
 hardware this project has measured can draw that many in the time one frame
 allows. All of the fixed budget's error lies within 1 800 s of a dial change,
 and beyond that the 290 s spacing itself is within 0.0024 pp. These values were
-computed on 2026-09-14 against the run's exact state every 0.1 s, the step the
-run advances by, over five twelve-hour runs built by formula.
+computed on 2026-09-14 against the model's exact solution every 0.1 s, over
+five twelve-hour runs built by formula.
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10 -->
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
 <!-- not-restated: 2 %, 6 % -->
 
 The five simulated runs for the gap at a peak or a trough were sevoflurane
 2% to 4% and 4% to 0% at the fastest settings, the desflurane case at the
 fastest settings and at slow settings (FGF 0.5 L/min, V_A 2 L/min, Q 2 L/min),
-and the reference adult at 1 to 2 MAC. A test checks that the gap at the peak
-in the desflurane dial-down case stays below half the readout's resolution
-(`tests/unit/test_run_definition.py`).
+and the reference adult at 1 to 2 MAC. The run at the reference adult's flows
+moved the desflurane dial-down one second at a time from 600 s to 642 s. Two
+tests check that the chart draws a peak between two columns at its stored
+value, and that each compartment's highest and lowest values between two
+columns are drawn
+(`test_a_peak_between_two_chart_columns_is_drawn_at_its_stored_value` and
+`test_every_compartments_highest_and_lowest_value_in_each_column_is_drawn` in
+`tests/integration/controller/test_controller_stored_states.py`). A preview
+is drawn by the same rule, so its peaks and troughs are drawn too. With
+sevoflurane at 2% for five minutes and the dial then turned off, a preview
+draws the alveolar peak 2 s later, the vessel-rich peak 63 s later and the
+venous peak 79 s later, each between two columns 30 s apart
+(`test_a_preview_after_turning_the_dial_off_draws_each_peak_the_run_would_reach`
+in `tests/unit/test_chart_frame.py`).
 <!-- not-restated: 2 % -->
 
 Bounding the gap at a peak or a trough by the readout's resolution is
@@ -2504,20 +2210,22 @@ in a displayed compartment.
 
 The code enforces a displayed ratio's domain in one place.
 
-The steps per tick are derived in `app/playback.py`, and a precise timer starts
+The steps that each tick takes are derived in `app/playback.py`
+(`OwedSimulatedTime`), and a precise timer starts
 each tick (`PreciseTimer`, `RunView.step_tick`). A count of more than 1 000
 steps per tick is refused (`PL-T6P0`). A tick takes all of its steps before the
 interface can respond, so a count with no bound would freeze the application
 with no error. The bound is set by time: one step took about 53 microseconds
-when measured on 2026-10-26, so 1 000 steps take about half of the 0.1 s tick.
-A tick lasts as long in real time as one step does in simulated time, so the
-fastest offered rate, 300×, takes 300 steps per tick whatever the step size.
+when measured on 2026-10-26, so 1 000 steps take about half of the 100 ms tick.
+The fastest offered rate, 300×, takes 30 steps per tick. A test checks the grid
+of instants that a change can reach at each rate
+(`test_the_control_grid_at_each_rate_is_the_one_two_documents_publish`).
 <!-- provenance: app/playback.py MAXIMUM_STEPS_PER_TICK = 1000 -->
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+<!-- provenance: app/dashboard_frame.py SIMULATION_TICK_INTERVAL_MS = 100 -->
 
 The 2026-09-27 measurement used the real dashboard on the offscreen platform,
 with both timers running, and the tick period stayed at 100 ms to within 4 ms.
-<!-- not-restated: 100 ms -->
+<!-- provenance: app/dashboard_frame.py SIMULATION_TICK_INTERVAL_MS = 100 -->
 
 Showing only the set rate is a decision (project owner, 2026-09-27, ratified,
 over qualifying the label as "up to 300×", which trades a precise claim that is
@@ -3659,13 +3367,13 @@ beside it would undo that, because readers act on the number and not on the
 disclaimer.
 
 The washout figures come from simulating sevoflurane uptake
-(`AgentUptakeSystem.for_agent("sevoflurane")`) at 0.1 s steps. Since the
+(`AgentUptakeSystem.for_agent("sevoflurane")`) in steps of 1 s. Since the
 2026-10-31 run, each crossing time is interpolated between the two steps on
 either side of it. The automated test reads the protocol and its figures from
 this section (`tests/reference/test_mac_awake_washout_figures.py`), so a
 parameter change that moves a figure fails it, and so does an edit to the
 protocol or to a figure on its own.
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+<!-- provenance: core/simulation_step.py SIMULATION_STEP_S = 1 -->
 
 ### F_A/F_I as a displayed ratio
 
@@ -3827,9 +3535,12 @@ start or end only at an instant that the chart plots (`app/chart_frame.py`,
 PL-2FM6).
 
 The column at which the $`F_A/F_I`$ curve crosses equilibrium has a ceiling,
-because the ratio can jump. In runs stepped at 0.1 s, the first value above
-equilibrium is at most 1.00235, across every shipped agent and every supported
-alveolar ventilation and cardiac output, at the maximum fresh gas flow.
+because the ratio can jump. In runs stepped at 1 s, the first value above
+equilibrium is at most 1.0281, across every shipped agent and the supported
+alveolar ventilations and cardiac outputs, at the maximum fresh gas flow
+(2 646 runs, measured 2026-11-21). The largest case has no cardiac output and
+little ventilation. There the inspired fraction falls for one second while the
+alveolar fraction barely moves.
 Changing the circuit volume (`BreathingCircuit.set_circuit_volume`), however,
 keeps the agent in the circuit and changes the volume it is divided by.
 Doubling the volume between two steps therefore halves $`F_I`$ and doubles the
@@ -3837,7 +3548,7 @@ ratio. No interface control changes the circuit volume today, but the plot
 should not rely on that. The ceiling is 1.05 (`WASH_IN_TERMINUS_CEILING` in
 `app/chart_frame.py`), below the axis top of 1.15 (`WASH_IN_AXIS_MAXIMUM`), so
 even the highest crossing column it allows still has clear space above it.
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+<!-- provenance: core/simulation_step.py SIMULATION_STEP_S = 1 -->
 <!-- provenance: app/chart_frame.py WASH_IN_TERMINUS_CEILING = 1.05 -->
 <!-- provenance: app/chart_frame.py WASH_IN_AXIS_MAXIMUM = 1.15 -->
 
@@ -4488,7 +4199,7 @@ the sevoflurane and isoflurane fat fractions read `0.0%` for the whole hour
 first 19.3 minutes and reaches 0.2%. Muscle reads `0.0%` for its first 2.9
 minutes with desflurane, 8.5 minutes with sevoflurane and 14.8 minutes with
 isoflurane. At two decimals, at 1 MAC with default flows, muscle first shows a
-nonzero value at 57, 125 and 190 seconds and fat at 237, 781 and 1477 seconds,
+nonzero value at 57, 126 and 191 seconds and fat at 237, 782 and 1478 seconds,
 for desflurane, sevoflurane and isoflurane in that order. Three tests check
 these figures against the model:
 `test_the_fat_fractions_at_one_hour_match_the_model`,
@@ -4540,8 +4251,8 @@ small positive reading. The model cannot hold a negative concentration
 something upstream is wrong, and the display refuses it.
 
 **For developers.** The readout's decimal count must not feed back into the
-model, and nothing in the `core/` directory reads it. The maximum simulation
-step (`MAXIMUM_SIMULATION_STEP_S`) is a tolerance in seconds, and the supported
+model, and nothing in the `core/` directory reads it. The simulation
+step (`SIMULATION_STEP_S`) is a tolerance in seconds, and the supported
 input ranges are intervals in L/min. Both are derived without reference to the
 readout, in `docs/MODEL.md` § "Supported simulation step" and `docs/INTERFACE.md` § "Supported input ranges". A
 future change to one decimal has to answer the objection to it given under the
@@ -4611,9 +4322,9 @@ fit.
 When a reader compares two readouts, the simulator's calculation error could mislead them
 only by reversing which of the two is shown as higher. A test compared every pair of the
 six readouts at every time step, for all three agents, in every run that
-`docs/MODEL.md` § "Independent-solution test" describes: 1 485 000 pairs of readings in all. The
+`docs/MODEL.md` § "Independent-solution test" describes: 148 500 pairs of readings in all. The
 simulator's readings **never** disagreed with those of the independent solution about
-which compartment is higher, even where the gap was tiny (checked 2026-10-17).
+which compartment is higher, even where the gap was tiny (checked 2026-11-21).
 
 This result comes from runs on one computer platform and is not a guarantee.
 Because rounding to a fixed number of decimals never reverses the order of two
@@ -4621,9 +4332,11 @@ values, the display can show two compartments in the wrong order only where the
 simulator and the independent solution put them in opposite order. Such a reversal needs
 a true gap smaller than the two compartments' calculation errors added together. In
 every run, the simulator's gap between any two compartments differed from the
-independent solution's by at most $`1.1\times10^{-12}`$ as a fraction, not a
-percent. True gaps that small do occur while two compartments cross, so a reversal
-is arithmetically possible there.
+independent solution's by at most $`1.6\times10^{-14}`$ as a fraction, not a
+percent. A true gap is that small only in the moment when two compartments cross, so a
+reversal is arithmetically possible there. None of these runs was compared that close
+to a crossing: the smallest nonzero gap between two compartments at any compared instant
+was $`2.7\times10^{-11}`$.
 
 **A gap that a reader works out from two readings can differ from the true gap by
 up to one count of the last displayed digit.** Each reading is rounded to that
@@ -4641,11 +4354,11 @@ a lower percent (`test_format_percent_preserves_order` in
 `tests/unit/test_formatting.py`). It covers the "<0.01%" reading below the display
 resolution and both sides of every value at which the last displayed digit changes.
 Together the two tests mean that no reversal can occur at a true gap above twice the
-first test's tolerance: $`1.0\times10^{-7}`$ counts of the last displayed digit. A
+first test's tolerance: $`8.0\times10^{-9}`$ counts of the last displayed digit. A
 third test makes the comparisons described above, reading each value through the
 interface's formatter (`test_displayed_ordering_reverses_only_at_a_crossing`). It
 allows a reversal where the true gap is below the first two tests' threshold of
-$`1.0\times10^{-7}`$ counts, because one is possible at a crossing. It fails only when
+$`8.0\times10^{-9}`$ counts, because one is possible at a crossing. It fails only when
 one of those tests fails, so it records the result and adds no evidence of its own.
 
 The claim about a gap's calculation error rests on one property of the model: within one
@@ -4773,17 +4486,18 @@ control-change record (`wrapping_between_parts`).
 
 #### Time, flows and the chart
 
-**Simulated time is displayed to 0.1 s, which is exactly one simulation step.**
+**Simulated time is displayed in whole seconds, and one simulation step is
+exactly 1 s.**
 Every recorded control change is stamped at that same resolution, so the
 timeline and the clock never show one time in two different forms.
-<!-- provenance: app/dashboard_frame.py SIMULATION_STEP_S = 0.1 -->
+<!-- provenance: core/simulation_step.py SIMULATION_STEP_S = 1 -->
 
 The screen shows time in one form. The displayed clock, the time stamp on each
 recorded control change and the chart's axis ticks are all durations. Each part
-of a duration carries its own unit: `45s`, `1m30s`, `1h23m45.6s`, `24h`. A part
-that is zero is left out. Tenths of a second appear only where there are some.
-The time axis never shows them, because every tick it can place falls on a
-whole second.
+of a duration carries its own unit: `45s`, `1m30s`, `1h23m45s`, `24h`. A part
+that is zero is left out. No part carries a fraction of a second, because a run
+stands only on whole seconds and every tick that the time axis can place falls
+on one.
 
 There are two exceptions, and both are written out in words. One is the time
 span that the chart draws, such as `15 minutes` above an axis whose last tick
@@ -4795,15 +4509,12 @@ run at it, `24 hours`.
 from the clock's, and why the span is written in words.
 
 **For developers.** The clock and the stamps use the time axis's form
-because all three are on screen together. A control mark stamped `5400.0 s` on
+because all three are on screen together. A control mark stamped `5400 s` on
 an axis reading `1h30m` would leave the reader to convert between the two by
 hand. At the supported 24-hour run length, a clock in seconds would read
-`86400.0 s`, which shows false precision for a limit that this document states
-in hours. The tenths of a second are there so that a stamp identifies the
-simulation step (`SIMULATION_STEP_S`) at which it was taken. The time axis needs
-no tenths because it marks a span that a reader scans, not an instant that they
-read off. Tenths on every label would also spend width on a digit that is zero
-at every tick spacing that the axis offers. The span's wording does not have to
+`86400 s`, a count of seconds for a limit that this document states
+in hours. A stamp names a whole second, so it identifies the
+simulation step (`SIMULATION_STEP_S`) at which it was taken. The span's wording does not have to
 fit in a tick's width, because neither the selector nor the caption is a tick
 label.
 
@@ -5203,7 +4914,7 @@ late, because the number has already been read.
    the instant.** "Modelled" appears in every box, not only for the compartments
    that a monitor also measures. The agent is there because one percentage means
    different things under different agents: 1.43% is 0.71 MAC of sevoflurane and
-   0.24 MAC of desflurane. The instant is printed to the hundredth of a second, in
+   0.24 MAC of desflurane. The instant is printed in whole seconds, in
    the form that the clock, the time axis and the time stamp of each control change
    also use, such as `20m8s`. It is the exact instant of the value in the box, not a
    rounded one.
@@ -5233,10 +4944,9 @@ The qualifiers come first because of the general rule in
 `.claude/rules/expert-review.md`: prefer an interface that prevents an error to one
 that warns after it.
 
-The instant that the box prints is exact, because the chart's columns fall on whole
-hundredths of a second (`PL-T5NJ`) and every other drawn instant falls on a
-simulation step. The box rounds each instant to a hundredth of a second
-(`HOVER_INSTANT_RESOLUTION_S`), which removes only floating-point noise.
+The instant that the box prints is exact, because every drawn instant is a whole
+number of seconds (`SimulationController.drawn_window`, `PL-T5NJ`). The box rounds
+nothing (`_hover_instant` in `app/chart_frame.py`).
 
 #### The hover and the run it belongs to
 
@@ -5573,7 +5283,8 @@ of a hoverable point with a function (`tip`) whose default is
 instants of the first hour in two ways: with `.3g`, as that scatter plot would apply it,
 and with this application's percent formatter (`format_percent`). The values come from
 a run on 2026-09-14 on the reference adult, with sevoflurane delivered at 0.02 (1 MAC)
-and the shipped number of columns over a one-hour axis.
+and the columns that the chart then drew over a one-hour axis, which fell between whole
+seconds.
 
 | Instant | Compartment | `.3g` on the drawn y | This readout |
 | --- | --- | ---: | ---: |
@@ -5709,7 +5420,7 @@ pattern, because those tell the six compartments apart.
    the press and is gone from the frame drawn at release.
 
 **The preview comes from the same model and version as the run.** It starts from
-the run's state at its current time, as § "The canonical evaluation rule"
+the run's state at its current time, as § "Each second has one stored state"
 defines that state. The value goes through the same checks as when it is
 applied. A new cardiac output moves every tissue flow exactly as applying it
 would. The same inputs always give the same preview. Computing a preview changes
@@ -5744,9 +5455,15 @@ above the top of the concentration axis is cut off there, as a run's curve is.
 The off-scale notice then names each preview curve that is cut off, with its
 highest value in view, because the readouts give only the run's values.
 
-**For developers.** The preview has a run definition of its own
-(`SimulationController.preview_window`) and is evaluated on the same time grid as
-the run. A branch is a run taken from another run. The preview's settings are
+**For developers.** The preview's states come from `core/prediction.py`
+(`SimulationController.preview_window`). For `PREVIEW_EXACT_S` seconds past the
+reach, `predicted_states` takes one-second steps from the state stored for the
+second the run has reached, and the window is drawn on the run's time grid with
+the second of each peak and trough between two columns. After that,
+`predicted_states_at` predicts each grid second and the right edge from the one
+before. The controller keeps the last predicted window and draws it again while
+none of its inputs change. `test_a_preview_past_its_first_hour_draws_the_grid_seconds_and_its_right_edge_only`
+in `tests/unit/test_chart_frame.py` checks the split. A branch is a run taken from another run. The preview's settings are
 built the way a branch's are (`SimulationController.preview_settings`). A trial
 run is rebuilt from the settings in force and checked to match the run in every
 value. The trial run then takes the new value through the same setter that

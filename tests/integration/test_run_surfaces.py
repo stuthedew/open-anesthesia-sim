@@ -23,12 +23,7 @@ from PySide6.QtCore import QEvent
 from PySide6.QtWidgets import QApplication
 
 from anesthesia_sim.app.controller import SimulationController
-from anesthesia_sim.app.dashboard_frame import (
-    ACCOUNTING_HEADING,
-    SIMULATION_STEP_S,
-    accounting,
-    slider_position,
-)
+from anesthesia_sim.app.dashboard_frame import ACCOUNTING_HEADING, accounting, slider_position
 from anesthesia_sim.app.formatting import FLOW_DISPLAY_DECIMALS, format_flow
 from anesthesia_sim.app.run_surfaces import AccountingPanel, ParameterControls
 from anesthesia_sim.app.simulation_view import SimulationView
@@ -40,6 +35,7 @@ from anesthesia_sim.app.view_registry import (
 )
 from anesthesia_sim.app.views import AccountingView, ConcentrationView, ParameterControlsView
 from anesthesia_sim.core.concentration import Percent
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, Window
 from anesthesia_sim.layout.workspace import Origin, Workspace, WorkspaceName, WorkspaceSet
@@ -141,9 +137,9 @@ def _shown_view(application: QApplication, controller: SimulationController) -> 
     return view
 
 
-def _advance(controller: SimulationController, seconds: float) -> None:
-    for _ in range(round(seconds / SIMULATION_STEP_S)):
-        controller.advance(SIMULATION_STEP_S)
+def _advance(controller: SimulationController, seconds: int) -> None:
+    for _ in range(seconds // SIMULATION_STEP_S):
+        controller.advance()
 
 
 def _drawn(panel: AccountingPanel) -> tuple[str, str, str, str]:
@@ -196,7 +192,7 @@ def test_two_accounting_views_of_one_run_both_draw(application: QApplication) ->
 
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     view = _shown_view(application, controller)
 
     view.layout_container.choose_view(AreaId(3), AGENT_ACCOUNTING)
@@ -207,7 +203,7 @@ def test_two_accounting_views_of_one_run_both_draw(application: QApplication) ->
     assert _drawn(second) == _expected(controller)
     assert _drawn(first) == _expected(controller)
 
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     view.present(False)
 
     assert _drawn(first) == _expected(controller)
@@ -253,7 +249,7 @@ def test_replacing_one_of_two_views_leaves_the_other_drawing(application: QAppli
 
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     view = _shown_view(application, controller)
     view.layout_container.choose_view(AreaId(3), AGENT_ACCOUNTING)
     _settle(application)
@@ -265,7 +261,7 @@ def test_replacing_one_of_two_views_leaves_the_other_drawing(application: QAppli
 
     assert _accounting_panels(view) == [kept]
 
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     view.present(False)
 
     assert _drawn(kept) == _expected(controller)
@@ -287,9 +283,9 @@ def test_each_chart_names_only_the_clipped_traces_its_own_window_shows(
     controller = SimulationController()
     controller.start()
     controller.set_delivered_concentration_percent(Percent(8.0))
-    _advance(controller, 600.0)
+    _advance(controller, 600)
     controller.set_delivered_concentration_percent(Percent(0.0))
-    _advance(controller, 1500.0)
+    _advance(controller, 1500)
     view = _shown_view(application, controller)
     view.layout_container.choose_view(AreaId(3), CONCENTRATION_CHART)
     charts = [

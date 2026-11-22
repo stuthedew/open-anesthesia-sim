@@ -92,7 +92,7 @@ def test_removing_a_mark_on_a_run_whose_snapshot_refuses_restates_the_halt(
     """
 
     controller = _paused_run_with_history()
-    time_mark = TimeBookmark(CaseInstant(30.0), "check")
+    time_mark = TimeBookmark(CaseInstant(30), "check")
     target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.5))
     controller.add_time_bookmark(time_mark)
     controller.add_mac_target(target)
@@ -177,32 +177,33 @@ def test_unmarking_the_mark_the_trunk_stopped_on_leaves_the_fork_here(
 
 
 def test_a_branch_the_case_refuses_is_reported_and_adds_no_run(application: QApplication) -> None:
-    """`resumed_at` refuses an instant that is not a keyframe rather than approximating.
+    """`resumed_at` refuses a second the run has not reached rather than approximating.
 
-    The control cannot offer such an instant, because `fork_offer` builds the
-    offer from `fork_points_s`. So the test hands the panel an offer that
-    lists one, the way a frame hands it the real offer, to reach the guard
-    behind it. A refusal leaves the case and the display untouched and says
-    which instant was refused.
+    The trunk is paused at 60 s, so it stores no state for 90 s. The control
+    cannot offer such an instant, because `fork_offer` builds the offer from
+    `fork_points_s`. So the test hands the panel an offer that lists one, the
+    way a frame hands it the real offer, to reach the guard behind it. A
+    refusal leaves the case and the display untouched and says which instant
+    was refused.
     """
 
     case = _branched_case()
     view = _case_view(application, case)
     panel = _fork_panel(view)
-    unkeyframed = ForkPoint(CaseInstant(30.0), format_elapsed(30.0), None)
+    unreached = ForkPoint(CaseInstant(90), format_elapsed(90.0), None)
     panel.set_offer(
         fork_offer(
-            (CaseInstant(0.0), unkeyframed.instant_s, CaseInstant(60.0)),
+            (CaseInstant(0), CaseInstant(60), unreached.instant_s),
             marks=(),
             comparing=None,
             here=None,
         ),
         None,
     )
-    panel.point_selector.setCurrentIndex(panel.point_selector.findData(30.0))
+    panel.point_selector.setCurrentIndex(panel.point_selector.findData(90.0))
 
-    assert panel.selected_point() == unkeyframed
-    assert unkeyframed.instant_s not in case.fork_points_s
+    assert panel.selected_point() == unreached
+    assert case.trunk.snapshot().elapsed_s == 60
 
     panel.take_button.click()
 
@@ -210,7 +211,7 @@ def test_a_branch_the_case_refuses_is_reported_and_adds_no_run(application: QApp
     assert case.branches == ()
     notice = panel.notice.notice()
     assert notice is not None
-    assert "30" in notice
+    assert "90" in notice
 
 
 def test_a_mark_branch_the_case_refuses_is_reported_and_adds_no_run(
@@ -229,17 +230,17 @@ def test_a_mark_branch_the_case_refuses_is_reported_and_adds_no_run(
     case = _branched_case()
     view = _case_view(application, case)
     panel = _fork_panel(view)
-    unmarked = TimeBookmark(CaseInstant(30.0), "since removed")
+    unmarked = TimeBookmark(CaseInstant(30), "since removed")
     panel.set_offer(
         fork_offer(
             case.fork_points_s,
-            marks=(MarkForkPoint(unmarked, CaseInstant(300 * 0.1)),),
+            marks=(MarkForkPoint(unmarked, CaseInstant(30)),),
             comparing=None,
             here=None,
         ),
         None,
     )
-    _select_fork_entry(view, f"{format_elapsed(30.0)}, on your mark")
+    _select_fork_entry(view, f"{format_elapsed(30)}, on your mark")
 
     selected = panel.selected_point()
     assert selected is not None
@@ -252,7 +253,7 @@ def test_a_mark_branch_the_case_refuses_is_reported_and_adds_no_run(
     assert case.branches == ()
     notice = panel.notice.notice()
     assert notice is not None
-    assert "no time bookmark stands at 30.0 s" in notice
+    assert "no time bookmark stands at 30 s" in notice
 
 
 def test_a_branch_control_with_nothing_selected_says_so(application: QApplication) -> None:

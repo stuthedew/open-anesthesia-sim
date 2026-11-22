@@ -16,3 +16,5 @@ Three examples from the first list: "One calculation produces both the caption a
 **Why it matters.** `docs/INTERFACE.md` is the authoritative statement of what the interface shows and does. A contributor reads each of these sentences as true.
 
 **Done when.** Each of the ten groups in `PL-5FMC`'s first list is either rewritten by the build or corrected here, each passage in its second list has been read against the code after the build, and this item records the result for each group. This item waits on `PL-Z6C8`, the last item of the build.
+
+**Checked 2026-11-21:** the build landed in pull request 2180. It rewrote `docs/INTERFACE.md` § "Halting on a marked crossing", the two sections on how a run is stored and how branches reproduce (now § "A run stores the state of every second it reaches" and § "Each second has one stored state"), § "The shared history is identical by construction, not by measurement" and the preview's developer note, and `docs/ARCHITECTURE.md`'s sections on the run record and on branching. The other passages in `PL-5FMC`'s two lists are still this item's to read against the code.

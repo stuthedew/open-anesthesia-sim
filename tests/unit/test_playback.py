@@ -1,91 +1,176 @@
-"""Unit tests for the playback rate: a rate is steps per tick, never a step.
+"""Unit tests for the playback rate: a rate is how often a run steps, never a step.
 
-The one safety property that this module must enforce is that playing a
-run faster changes how many steps a tick takes, and nothing about a step.
-These tests pin the conversion in both directions. A supported rate lands on
-the step count it claims, and a rate that would need a fractional step is
-refused rather than rounded to a whole one.
+The one safety property that this module must enforce is that playing a run
+faster changes how many one-second steps are taken per second of real time,
+and nothing about a step. These tests pin the conversion from a rate and a
+tick interval to steps: the simulated time each tick owes, the steps that are
+due on each tick, and the grid of instants that a live control change can
+reach.
 """
 
 import dataclasses
-from math import nextafter
 
 import pytest
 
 from anesthesia_sim.app.playback import (
     DEFAULT_PLAYBACK_RATE,
+    MAXIMUM_STEPS_PER_TICK,
     SUPPORTED_PLAYBACK_RATES,
+    OwedSimulatedTime,
     PlaybackRate,
     playback_rate_for,
 )
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
-from anesthesia_sim.core.simulation_step import MINIMUM_SIMULATION_STEP_S, SimulationStep
 
-#: The intervals that the interface ships. They are restated here rather than
-#: imported from `app/simulation_view.py`, which needs Flet.
-#: `tests/integration/simulation_view/` checks the shipped constants against these values,
-#: so a change there fails there.
-TICK_INTERVAL_S = 0.1
-SIMULATION_STEP_S = SimulationStep(0.1)
+#: The tick interval that the interface ships, in milliseconds of real time.
+#: It is restated here rather than imported from `app/dashboard_frame.py`, so
+#: that a change there fails `tests/unit/test_dashboard_frame.py`, which checks
+#: the shipped constant against this value.
+TICK_INTERVAL_MS = 100
+
+#: One real second of ticks at the shipped interval.
+TICKS_PER_REAL_SECOND = 10
+
+#: For each rate, the steps taken on each of ten consecutive ticks from a
+#: fresh start. Each row is worked out by hand: a tick owes `multiplier x 100`
+#: ms, and one step is taken for each whole 1 000 ms owed. At 1x the tenth
+#: tick brings the owed time to 1 000 ms. At 5x every second tick does.
+STEPS_ON_EACH_OF_TEN_TICKS = {
+    1: (0, 0, 0, 0, 0, 0, 0, 0, 0, 1),
+    5: (0, 1, 0, 1, 0, 1, 0, 1, 0, 1),
+    20: (2,) * 10,
+    60: (6,) * 10,
+    300: (30,) * 10,
+}
 
 
 @pytest.mark.parametrize("rate", SUPPORTED_PLAYBACK_RATES, ids=lambda rate: f"{rate.multiplier}x")
-def test_a_supported_rate_is_that_many_steps_per_tick(rate: PlaybackRate) -> None:
-    """At the shipped intervals a tick is one step, so the two numbers agree.
+def test_a_supported_rate_takes_its_steps_on_the_ticks_worked_out_by_hand(
+    rate: PlaybackRate,
+) -> None:
+    """Each tick takes the steps that the hand-worked row gives for it."""
 
-    This is not a tautology. The derivation runs through the tick interval
-    and the step size. The multiplier and the step count coincide only
-    because a tick is exactly one step of real time. Asserting the
-    coincidence is what would fail if either interval were re-tuned without
-    the other. That is the moment when "60x real time" would stop being true.
-    """
-
-    assert (
-        rate.steps_per_tick(tick_interval_s=TICK_INTERVAL_S, simulation_step_s=SIMULATION_STEP_S)
-        == rate.multiplier
+    owed = OwedSimulatedTime()
+    steps = tuple(
+        owed.steps_due(rate, tick_interval_ms=TICK_INTERVAL_MS)
+        for _ in range(TICKS_PER_REAL_SECOND)
     )
 
+    assert steps == STEPS_ON_EACH_OF_TEN_TICKS[rate.multiplier]
 
-#: For each rate, the simulated seconds between the instants at which a live
-#: control change can first act. A tick advances its whole burst without
-#: interruption, so this is the number of steps in that burst times the step.
-#: It is the grid that `PL-NBWP` made the module docstring and `docs/MODEL.md`
-#: § "Supported simulation step" publish.
+
+@pytest.mark.parametrize("rate", SUPPORTED_PLAYBACK_RATES, ids=lambda rate: f"{rate.multiplier}x")
+def test_one_real_second_of_ticks_advances_the_run_by_the_multiplier(rate: PlaybackRate) -> None:
+    """Ten 100 ms ticks take `multiplier` one-second steps, which is what the label claims.
+
+    "60x real time" is a claim about the clock on screen. It is true when a
+    real second of ticks advances the run by 60 simulated seconds, and nothing
+    is left owed at the end of that second.
+    """
+
+    owed = OwedSimulatedTime()
+    steps = sum(
+        owed.steps_due(rate, tick_interval_ms=TICK_INTERVAL_MS)
+        for _ in range(TICKS_PER_REAL_SECOND)
+    )
+
+    assert steps == rate.multiplier
+    assert owed.owed_ms == 0
+
+
+def test_a_change_of_rate_keeps_the_part_of_a_second_already_owed() -> None:
+    """The remainder is simulated time, so it carries over when the rate changes.
+
+    Three ticks at 1x owe 300 ms. One tick at 5x adds 500 ms, which is still
+    less than a step. The next 5x tick brings the total to 1 300 ms, so one
+    step is due and 300 ms stay owed.
+    """
+
+    owed = OwedSimulatedTime()
+
+    for _ in range(3):
+        assert owed.steps_due(PlaybackRate(1), tick_interval_ms=TICK_INTERVAL_MS) == 0
+
+    assert owed.steps_due(PlaybackRate(5), tick_interval_ms=TICK_INTERVAL_MS) == 0
+    assert owed.steps_due(PlaybackRate(5), tick_interval_ms=TICK_INTERVAL_MS) == 1
+    assert owed.owed_ms == 300
+
+
+def test_a_tick_that_owes_one_and_a_half_steps_takes_one_step_then_two() -> None:
+    """A rate that owes a fraction of a step per tick is played exactly, not refused or rounded.
+
+    15x with a 100 ms tick owes 1 500 ms per tick. The steps alternate between
+    one and two, and four ticks take six steps.
+    """
+
+    owed = OwedSimulatedTime()
+    steps = [owed.steps_due(PlaybackRate(15), tick_interval_ms=TICK_INTERVAL_MS) for _ in range(4)]
+
+    assert steps == [1, 2, 1, 2]
+
+
+def test_clearing_the_owed_time_owes_nothing() -> None:
+    """A run that starts over owes no part of a second from the run before it."""
+
+    owed = OwedSimulatedTime()
+    owed.steps_due(PlaybackRate(1), tick_interval_ms=TICK_INTERVAL_MS)
+
+    assert owed.owed_ms == 100
+
+    owed.clear()
+
+    assert owed.owed_ms == 0
+
+
+#: For each rate, the longest simulated time between two instants at which a
+#: live control change can first act. It is the grid that the module docstring
+#: of `app/playback.py` and `docs/MODEL.md` § "Supported simulation step"
+#: publish.
 #:
 #: The values are written out rather than computed from the multipliers,
 #: because computing them would restate the implementation and pass whatever
 #: it did. These are the numbers a reader is told, so they are the numbers to
 #: fail against.
-PUBLISHED_CONTROL_GRID_S = {1: 0.1, 5: 0.5, 20: 2.0, 60: 6.0, 300: 30.0}
+PUBLISHED_CONTROL_GRID_S = {1: 1, 5: 1, 20: 2, 60: 6, 300: 30}
 
 
 @pytest.mark.parametrize("rate", SUPPORTED_PLAYBACK_RATES, ids=lambda rate: f"{rate.multiplier}x")
 def test_the_control_grid_at_each_rate_is_the_one_two_documents_publish(rate: PlaybackRate) -> None:
     """Check the published timing claim, in the place where the rate ladder can change it.
 
-    Two documents state that a setting changed while the run plays first
-    acts at a tick boundary. They give the resulting grid for each rate,
-    against a measured cost in percentage points of a displayed compartment.
-    Adding a rung to the ladder, or re-tuning either interval, changes those
-    numbers, and nothing else would notice. The prose would keep asserting
-    the old grid while the interface offered a different one. `PL-NBWP`
-    fixed that failure once, and this test keeps it fixed.
-
-    Exact equality is deliberate and is not fragile here. Every product of
-    the shipped step and a supported multiplier is exact in binary. A
-    tolerance would only hide the case that this test guards against: a rung
-    whose grid is a number nobody has published.
+    Two documents state the grid of instants that a setting changed during
+    play can reach at each rate, against a measured cost in percentage points
+    of a displayed compartment. Adding a rung to the ladder, or changing the
+    tick interval, changes those numbers, and nothing else would notice
+    (`PL-NBWP`).
     """
-
-    steps = rate.steps_per_tick(
-        tick_interval_s=TICK_INTERVAL_S, simulation_step_s=SIMULATION_STEP_S
-    )
 
     assert rate.multiplier in PUBLISHED_CONTROL_GRID_S, (
         f"{rate.multiplier}x is offered but its control grid is published nowhere; "
         "add it to app/playback.py and docs/MODEL.md 'Supported simulation step' first"
     )
-    assert steps * SIMULATION_STEP_S == PUBLISHED_CONTROL_GRID_S[rate.multiplier]
+    assert (
+        rate.control_grid_s(tick_interval_ms=TICK_INTERVAL_MS)
+        == PUBLISHED_CONTROL_GRID_S[rate.multiplier]
+    )
+
+
+@pytest.mark.parametrize("rate", SUPPORTED_PLAYBACK_RATES, ids=lambda rate: f"{rate.multiplier}x")
+def test_the_control_grid_is_the_most_steps_any_tick_takes(rate: PlaybackRate) -> None:
+    """The published grid agrees with the loop: no tick takes more steps than the grid states.
+
+    The grid is checked here against the steps that the accumulator hands
+    out over a real second of ticks, which is a second route to the same
+    number.
+    """
+
+    owed = OwedSimulatedTime()
+    most_steps = max(
+        owed.steps_due(rate, tick_interval_ms=TICK_INTERVAL_MS)
+        for _ in range(TICKS_PER_REAL_SECOND)
+    )
+
+    assert rate.control_grid_s(tick_interval_ms=TICK_INTERVAL_MS) == max(most_steps, 1)
 
 
 def test_every_published_control_grid_belongs_to_an_offered_rate() -> None:
@@ -131,40 +216,18 @@ def test_the_fastest_supported_rate_plays_a_three_hour_case_in_minutes() -> None
     assert three_hours_s / fastest <= 5.0 * 60.0
 
 
-def test_the_step_size_is_an_input_to_the_conversion_and_never_an_output() -> None:
-    """Halving the step doubles the steps per tick, and it never halves the rate.
+def test_a_faster_rate_takes_more_steps_and_never_a_longer_one() -> None:
+    """Doubling the rate doubles the simulated time a tick owes, in whole one-second steps.
 
-    This one assertion carries the whole of the item's safety argument. A run
-    played at 60x takes six hundred 0.1 s steps a second, never six 10 s
-    steps. So two learners comparing the same case at different speeds are
-    comparing the same arithmetic.
+    This assertion carries the item's safety argument. A run played at 60x
+    takes sixty one-second steps for each real second, never six 10 s steps.
+    So two learners comparing the same case at different speeds are comparing
+    the same arithmetic.
     """
 
-    rate = PlaybackRate(60)
-
-    assert rate.steps_per_tick(tick_interval_s=0.1, simulation_step_s=SimulationStep(0.1)) == 60
-    assert rate.steps_per_tick(tick_interval_s=0.1, simulation_step_s=SimulationStep(0.05)) == 120
-    assert rate.steps_per_tick(tick_interval_s=0.2, simulation_step_s=SimulationStep(0.1)) == 120
-
-
-def test_a_rate_needing_a_fractional_step_is_refused() -> None:
-    """The rate is refused, never rounded, because rounding would play at a rate nobody displayed.
-
-    A tick that "took 1.5 steps" has only two possible implementations, and
-    both are the failure this module exists to prevent. One is a step of a
-    different size. The other is a run advancing at a rate other than the one
-    on screen.
-    """
-
-    with pytest.raises(SimulationConfigurationError, match="not a whole number of steps"):
-        PlaybackRate(3).steps_per_tick(tick_interval_s=0.05, simulation_step_s=SimulationStep(0.1))
-
-
-def test_a_rate_that_would_take_no_step_at_all_is_refused() -> None:
-    """A tick shorter than a step cannot advance the run and must say so."""
-
-    with pytest.raises(SimulationConfigurationError):
-        PlaybackRate(1).steps_per_tick(tick_interval_s=0.01, simulation_step_s=SimulationStep(0.1))
+    assert PlaybackRate(60).simulated_ms_per_tick(tick_interval_ms=100) == 6_000
+    assert PlaybackRate(120).simulated_ms_per_tick(tick_interval_ms=100) == 12_000
+    assert PlaybackRate(60).simulated_ms_per_tick(tick_interval_ms=200) == 12_000
 
 
 @pytest.mark.parametrize("multiplier", [0, -1, -60])
@@ -188,124 +251,72 @@ def test_a_multiplier_that_is_not_a_whole_number_is_refused(multiplier: object) 
         PlaybackRate(multiplier)  # type: ignore[arg-type]
 
 
-@pytest.mark.parametrize("interval", [0.0, -0.1, float("nan"), float("inf")])
-def test_an_unusable_interval_is_refused(interval: float) -> None:
-    """A non-positive or non-finite interval has no step count to give."""
+@pytest.mark.parametrize("interval_ms", [0, -100])
+def test_a_tick_interval_below_one_millisecond_is_refused(interval_ms: int) -> None:
+    """A tick that takes no real time owes the run nothing, so it is refused."""
 
-    with pytest.raises(SimulationConfigurationError, match="tick_interval_s"):
-        PlaybackRate(1).steps_per_tick(
-            tick_interval_s=interval, simulation_step_s=SimulationStep(0.1)
-        )
+    with pytest.raises(SimulationConfigurationError, match="at least 1 ms"):
+        PlaybackRate(1).simulated_ms_per_tick(tick_interval_ms=interval_ms)
+
+
+@pytest.mark.parametrize("interval_ms", [True, 100.0, "100", None])
+def test_a_tick_interval_that_is_not_a_whole_number_is_refused(interval_ms: object) -> None:
+    """The interval is a whole number of milliseconds, so that the owed time stays exact.
+
+    A `float` interval would bring back the rounded sum that whole
+    milliseconds remove. `True` is refused although Python counts it as 1.
+    """
+
+    with pytest.raises(TypeError, match="tick_interval_ms"):
+        PlaybackRate(1).simulated_ms_per_tick(tick_interval_ms=interval_ms)  # type: ignore[arg-type]
+
+
+def test_a_refused_tick_adds_nothing_to_the_owed_time() -> None:
+    """A tick whose interval is refused leaves the owed time as it was."""
+
+    owed = OwedSimulatedTime(owed_ms=300)
 
     with pytest.raises(SimulationConfigurationError):
-        PlaybackRate(1).steps_per_tick(
-            tick_interval_s=0.1, simulation_step_s=SimulationStep(interval)
-        )
+        owed.steps_due(PlaybackRate(1), tick_interval_ms=0)
+
+    assert owed.owed_ms == 300
 
 
-@pytest.mark.parametrize("interval", [True, "0.1"])
-def test_a_tick_interval_that_is_not_a_number_is_refused(interval: object) -> None:
-    """The interval passes the same number check as every core quantity (`PL-F9TC`).
-
-    `True` was accepted as an interval of 1 s before the check was read from
-    `core.validation`.
-    """
-
-    with pytest.raises(TypeError, match="tick_interval_s"):
-        PlaybackRate(1).steps_per_tick(
-            tick_interval_s=interval,  # type: ignore[arg-type]
-            simulation_step_s=SimulationStep(0.1),
-        )
-
-
-@pytest.mark.parametrize(
-    "simulation_step_s", [5e-324, nextafter(MINIMUM_SIMULATION_STEP_S, 0.0), 0.2]
-)
-def test_a_step_outside_the_supported_range_is_refused(simulation_step_s: float) -> None:
-    """The step that a tick counts in is a run's step, so it has the run's bounds.
-
-    5e-324 s reached `round()` as an infinite step count and raised a bare
-    `OverflowError`, outside the simulator's own exceptions (`PL-YZ17`).
-    """
-
-    with pytest.raises(SimulationConfigurationError, match="supported step"):
-        PlaybackRate(1).steps_per_tick(
-            tick_interval_s=0.1, simulation_step_s=SimulationStep(simulation_step_s)
-        )
-
-
-def test_a_step_count_too_large_to_count_is_refused() -> None:
-    """An enormous tick gives an infinite count, which is refused rather than rounded."""
-
-    with pytest.raises(SimulationConfigurationError, match="more than the 1000 one tick"):
-        PlaybackRate(300).steps_per_tick(
-            tick_interval_s=1e307, simulation_step_s=SimulationStep(0.1)
-        )
-
-
-@pytest.mark.parametrize(
-    ("multiplier", "tick_interval_s", "simulation_step_s"),
-    [(1_001, 0.1, 0.1), (300, 1e300, MINIMUM_SIMULATION_STEP_S)],
-    ids=["one past the bound", "a count of 3e305"],
-)
-def test_a_tick_past_the_most_steps_one_tick_may_take_is_refused(
-    multiplier: int, tick_interval_s: float, simulation_step_s: float
-) -> None:
+def test_a_tick_past_the_most_steps_one_tick_may_take_is_refused() -> None:
     """A tick runs all its steps before the interface can respond, so its count has a bound.
 
-    A finite count used to be returned however large it was. The 300x rate with
-    a 1e300 s tick and a 1 ms step returned about 3e305 steps, and the run loop
-    would have stepped for ever (`PL-T6P0`).
+    A 100 ms tick at 10 001x would owe 1 000.1 steps, which is more than the
+    bound of 1 000 (`PL-T6P0`).
     """
+
+    assert MAXIMUM_STEPS_PER_TICK == 1_000
 
     with pytest.raises(SimulationConfigurationError, match="more than the 1000 one tick"):
-        PlaybackRate(multiplier).steps_per_tick(
-            tick_interval_s=tick_interval_s, simulation_step_s=SimulationStep(simulation_step_s)
-        )
+        PlaybackRate(10_001).simulated_ms_per_tick(tick_interval_ms=TICK_INTERVAL_MS)
 
 
-@pytest.mark.parametrize(
-    ("tick_interval_s", "simulation_step_s"),
-    [(0.1, 0.01), (0.07, 0.007)],
-    ids=["exactly 1 000", "a rounding error above 1 000"],
-)
-def test_a_tick_at_the_most_steps_one_tick_may_take_is_played(
-    tick_interval_s: float, simulation_step_s: float
-) -> None:
-    """A count of exactly 1 000, at the bound itself, is played rather than refused.
+def test_a_tick_at_the_most_steps_one_tick_may_take_is_played() -> None:
+    """A tick that owes exactly 1 000 steps, the bound itself, is played."""
 
-    The second ratio is 1000.0000000000001 in floating point. The intended count
-    is exactly 1 000, and binary division misses it by one rounding error. So
-    the tick is played rather than refused.
-    """
+    owed = OwedSimulatedTime()
 
-    steps = PlaybackRate(100).steps_per_tick(
-        tick_interval_s=tick_interval_s, simulation_step_s=SimulationStep(simulation_step_s)
-    )
-
-    assert steps == 1_000
+    assert owed.steps_due(PlaybackRate(10_000), tick_interval_ms=TICK_INTERVAL_MS) == 1_000
 
 
-@pytest.mark.parametrize(
-    "simulation_step_s", [MINIMUM_SIMULATION_STEP_S, SIMULATION_STEP_S], ids=["1 ms", "0.1 s"]
-)
-def test_the_most_steps_one_tick_may_take_covers_every_rate_at_a_one_step_tick(
-    simulation_step_s: float,
-) -> None:
-    """Every offered rate plays when the tick is one step long, as the interface sets it.
+def test_the_most_steps_one_tick_may_take_covers_every_rate() -> None:
+    """Every offered rate plays at the shipped tick, and the fastest takes 30 steps per tick.
 
-    The interface defines its tick as one step, so a tick takes as many steps as
-    the rate's multiplier, whatever the step. The fastest rate, 300x, takes 300.
-    If a faster rate would need more steps than the bound, this test fails. The
-    bound can then be reconsidered before a learner ever meets the refusal.
+    If a faster rate would need more steps than the bound, this test fails.
+    The bound can then be reconsidered before a learner ever meets the
+    refusal.
     """
 
     for rate in SUPPORTED_PLAYBACK_RATES:
-        steps = rate.steps_per_tick(
-            tick_interval_s=simulation_step_s, simulation_step_s=SimulationStep(simulation_step_s)
-        )
+        rate.simulated_ms_per_tick(tick_interval_ms=TICK_INTERVAL_MS)
 
-        assert steps == rate.multiplier
+    fastest = max(SUPPORTED_PLAYBACK_RATES, key=lambda rate: rate.multiplier)
+
+    assert fastest.control_grid_s(tick_interval_ms=TICK_INTERVAL_MS) == 30
 
 
 def test_a_rate_is_looked_up_by_multiplier() -> None:

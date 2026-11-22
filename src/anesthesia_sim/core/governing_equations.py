@@ -180,9 +180,8 @@ FRACTION_STATE_NAMES = (
 The names describe the position in the state vector, because that is all that
 `require_canonical_state` knows. The tissue groups are numbered in the order of
 their states. Their names, such as "fat", are defined in `patient.py`. The record is
-public because two checks read it: `require_canonical_state`, and the check in
-`core/run_definition.py` that the display path applies to each state it computes
-(`PL-9B1M`).
+public because other modules pick a state's fractions with it, among them
+`core/stored_states.py` and `app/controller.py` (`PL-9B1M`).
 """
 
 _ACCUMULATOR_STATE_NAMES = (
@@ -218,24 +217,17 @@ and nine above the noise (`PL-M4M0`).
 def require_canonical_state(state: object) -> None:
     """Reject a state vector that the equations cannot be applied to.
 
-    Two kinds of object open from a state that a run passed through: a
-    `RunDefinition`, and the live system into which a branch resumes. This
-    docstring calls each of them a sink. This function is the entry guard that
-    both sinks share, so the two cannot come to disagree about what a state
-    is. The guard lives here because each condition below is a statement about
-    the state vector that this module defines, not about either caller.
+    Three readers take a state from outside the step that wrote it: the
+    record of stored states, the live system into which a branch resumes,
+    and a prediction that opens from the state stored at the reach. This
+    function is the entry guard that all three share, so they cannot come to
+    disagree about what a state is. The guard lives here because each
+    condition below is a statement about the state vector that this module
+    defines, not about any one caller.
 
-    **The first check tests structure, not the type's name.** A value from the
-    display path carries the same nine numbers in the same order as a
-    canonical state, so nothing in its contents tells them apart. What does
-    tell them apart is that the display path wraps its results in something
-    that is not a tuple. `docs/INTERFACE.md` § "The canonical evaluation rule"
-    argues for exactly this test. Even a sink that never thought to check
-    rejects a value that is structurally not a state, and only such a value.
-    A structural test also works for wrappers that this module has never
-    heard of. `core/run_definition.py` rejects `DisplayState` by name before
-    it calls this function, because that module knows the type. The message
-    raised here is what a sink outside that module still gets.
+    **The first check tests structure.** A state is a tuple of `STATE_SIZE`
+    numbers. A value of another type, even one holding the same numbers, is
+    refused, and the message says where a state comes from.
 
     `state` is typed as `object` rather than as the tuple, deliberately. The
     values that this function rejects are exactly the ones that a caller
@@ -266,9 +258,9 @@ def require_canonical_state(state: object) -> None:
 
     if not isinstance(state, tuple):
         raise SimulationConfigurationError(
-            f"a {type(state).__name__} is not a state vector; a state that is stored, "
-            "exported, replayed or forked from is taken from RunDefinition.state_at, "
-            "whose answers compose their arithmetic in the canonical order"
+            f"a {type(state).__name__} is not a state vector; a state is a tuple of "
+            f"{STATE_SIZE} numbers that a step of the run wrote, and a run returns it from "
+            "its stored states (StoredStates.state_at)"
         )
 
     if len(state) != STATE_SIZE:

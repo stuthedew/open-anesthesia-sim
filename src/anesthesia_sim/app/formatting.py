@@ -978,7 +978,7 @@ def format_elapsed(elapsed_s: float) -> str:
     """Render simulated time as the interface states it everywhere.
 
     It uses the compound, self-describing form, such as `45s`, `1m30s`,
-    `1h23m45.6s` or `24h`. So the clock, every recorded control change
+    `1h23m45s` or `24h`. So the clock, every recorded control change
     stamped against it, and the chart's own axis state one quantity in one
     way.
 
@@ -988,7 +988,7 @@ def format_elapsed(elapsed_s: float) -> str:
     the stamp away". That is not true of the compound form that shipped.
     `_duration_components` returns the seconds as a float, and the label
     formats them with `:g`, so the tenth of a second that the simulation
-    steps at survives, as in `1h23m45.6s`. Both forms met the stamp's
+    then stepped at survived, as in `1h23m45.6s`. Both forms met the stamp's
     requirement, so the only argument left for two forms was that one of
     them had been written first.
 
@@ -1080,9 +1080,9 @@ def format_playback_rate(multiplier: int) -> str:
     Args:
         multiplier: Simulated seconds advanced per second of real time, as
             `app/playback.py` defines it. It is a whole number by
-            construction. `app/playback.py` rejects a rate that does not
-            land on a whole number of simulation steps per tick, so such a
-            rate is never displayed here.
+            construction. `playback.PlaybackRate` refuses a multiplier that
+            is not a whole number of at least 1, so no other rate is
+            displayed here.
 
     Returns:
         The rate as the interface states it, using the multiplication sign
@@ -1124,10 +1124,10 @@ def _format_duration_compound(duration_s: float, *, zero: str) -> str:
     a minute to half a day. A bare number would then mean seconds on one
     scale and hours on another, while looking identical on both.
 
-    Seconds are formatted with `:g`, which keeps a tenth where there is one
-    and drops a trailing `.0` where there is not. So a stamp resolves the
-    `0.1 s` step that the simulation advances by, and a tick on a whole
-    number of seconds is not padded with a digit that says nothing.
+    Seconds are formatted with `:g`, which keeps a fraction of a second where
+    there is one and drops a trailing `.0` where there is not. A run's
+    instants are whole seconds (`PL-SZ6G`), so a clock reading, a stamp and a
+    tick are not padded with a digit that says nothing.
 
     Args:
         duration_s: A duration in seconds.
@@ -1182,11 +1182,10 @@ def format_chart_time_label(elapsed_s: float) -> str:
     The form is the same as `format_elapsed`'s, on purpose. A reader looking
     for a control mark stamped `1h30m` on this axis reads the stamp and the
     tick in one register, rather than converting between two (`PL-Q4M4`).
-    Both show a tenth of a second only where one is present. That is right
-    for the axis because the ladder in `app/chart_time_base.py` places every
-    tick on a whole number of seconds, so a trailing `.0` on every label
-    would be noise. It is right for `format_elapsed` because a stamp has to
-    resolve the `0.1 s` step that the simulation advances by.
+    Neither shows a fraction of a second. The ladder in
+    `app/chart_time_base.py` places every tick on a whole number of seconds,
+    and a run's instants are whole seconds (`PL-SZ6G`), so a trailing `.0` on
+    a label would be noise.
 
     Args:
         elapsed_s: Simulated time of the tick, in seconds since the run

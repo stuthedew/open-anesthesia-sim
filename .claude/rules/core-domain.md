@@ -64,9 +64,9 @@ https://www.iti.illinois.edu/credc/publications/seven-turrets-babel-taxonomy-lan
 range, and the settings record a run is built from was a way in that checked
 none of them, until `PL-0YYV` made each flow a type only its guard builds.
 
-**The instance is `SimulationStep`, in
-`src/anesthesia_sim/core/simulation_step.py`; read it before writing another.**
-A `float` subclass whose `__new__` runs the range check; `require_simulation_step`
+**The instance is `FreshGasFlow`, in
+`src/anesthesia_sim/core/supported_ranges.py`; read it before writing another.**
+A `float` subclass whose `__new__` runs the range check; `require_fresh_gas_flow`
 at each public entry point, refusing anything else with `TypeError`, because
 Python enforces no annotation at run time; and `mypy --strict` refusing a bare
 `float` where the type is expected. Two facts about Python are part of the
@@ -101,5 +101,6 @@ perfusion fraction and blood flow, `PerfusionFraction` and `BloodFlow` in
 venous one by where it is held, so its constructor takes the name a refusal
 gives it from the caller that builds it. The count is where this stops, in
 the code: built, it is checked for what a count is alone, whole and
-nonnegative, and how many steps fit is a relation with the step it multiplies,
-which `SimulationState`, holding both, checks.
+nonnegative. How many steps fit in a run is checked where a run takes a step
+or is handed a count, by `require_supported_run_length` and
+`require_supported_step_count` beside it.

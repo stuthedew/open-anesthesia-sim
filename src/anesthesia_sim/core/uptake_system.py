@@ -22,9 +22,12 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from anesthesia_sim.core.agent_simulation_validation import (
+    UNCOMPENSATED,
     AgentSimulationValidationResult,
     AgentSimulationValidator,
     AgentSimulationValidatorState,
+    TotalsCompensation,
+    require_totals_compensation,
 )
 from anesthesia_sim.core.alveolar import AlveolarCompartment, AlveolarCompartmentState
 from anesthesia_sim.core.circuit import (
@@ -56,7 +59,7 @@ from anesthesia_sim.core.parameters import (
     load_reference_circle_system_parameters,
 )
 from anesthesia_sim.core.patient import PatientCompartments, PatientCompartmentsState
-from anesthesia_sim.core.simulation_step import SimulationStep, require_simulation_step
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import (
     AlveolarVentilation,
     CardiacOutput,
@@ -72,12 +75,31 @@ _PART_FIELDS = ("circuit", "alveoli", "patient", "agent_simulation_validator")
 
 @dataclass(frozen=True, slots=True)
 class UptakeStepResult:
-    """Validation and transfer results from one complete step."""
+    """Validation and transfer results from one complete step.
+
+    Attributes:
+        fresh_gas_exchange: The agent delivered and exhausted during the step.
+        circuit_to_alveolar_agent_l: The agent that ventilation carried from
+            the circuit to the alveoli during the step, in litres.
+        patient_agent_change_l: The change in the agent that the patient
+            holds, in litres.
+        agent_accounting: The mass-balance check made at the end of the step.
+        state: The state at the end of the step, as a run stores it
+            (`core/stored_states.py`). Each fraction is the value that the
+            step wrote to its compartment. The two amounts are the delivered
+            and the exhausted agent since the case began.
+        compensation: The compensation terms of the delivered and the
+            exhausted totals at the end of the step
+            (`AgentUptakeSystem.accounting_compensation`). A run stores them
+            beside `state`.
+    """
 
     fresh_gas_exchange: FreshGasExchange
     circuit_to_alveolar_agent_l: float
     patient_agent_change_l: float
     agent_accounting: AgentSimulationValidationResult
+    state: tuple[float, ...]
+    compensation: TotalsCompensation
 
 
 @dataclass(frozen=True, slots=True)
@@ -129,7 +151,7 @@ class AgentUptakeSystem:
     _propagator_key: tuple[float, ...] | None = field(
         default=None, init=False, repr=False, compare=False
     )
-    """The step and the raw compartment values that the cached propagator was built for.
+    """The raw compartment values that the cached propagator was built for.
 
     `capture_state()` does not capture this key, and a rollback does not restore
     it. A propagator is a function of the settings. A step never writes the
@@ -229,7 +251,7 @@ class AgentUptakeSystem:
 
             The constructor, a copy and a pickle write each part onto a system
             that has none yet, so those writes are accepted. The cached
-            propagator and its key are not parts. `_propagator_for` writes them
+            propagator and its key are not parts. `_step_propagator` writes them
             at any step, and they are keyed by the settings they were built
             from.
 
@@ -402,8 +424,11 @@ class AgentUptakeSystem:
     def set_cardiac_output(self, cardiac_output_l_min: CardiacOutput) -> None:
         self.patient.set_cardiac_output(cardiac_output_l_min)
 
-    def advance(self, simulation_step_s: SimulationStep) -> UptakeStepResult:
-        """Advance the system by one conservative, validated step, or leave it unchanged.
+    def advance(self) -> UptakeStepResult:
+        """Advance the system by one validated step of one second, or leave it unchanged.
+
+        The step is `SIMULATION_STEP_S`, and a caller cannot ask for another
+        (`core/simulation_step.py`).
 
         The step is all-or-nothing. `_advance_step()` computes the whole step
         in one exact propagation, but it then writes the result into the
@@ -435,7 +460,7 @@ class AgentUptakeSystem:
         leaves the last completed step, which *is* a solution. So a caller that
         halts still holds a state that it can display and reason about. The
         diagnosis goes in the raised message instead. There it names the
-        invariant and the step size, which a reader can act on.
+        invariant, which a reader can act on.
 
         Rolling back does not make the run resumable. The model reached a state
         that it could not step from, so the same step would fail again. The
@@ -444,7 +469,7 @@ class AgentUptakeSystem:
         **This method also handles a settings record that the step cannot build. It raises
         that failure as a `SimulationNumericalError`, as it does for the failures described
         above.** When a setting has changed since the last step, `_advance_step` builds the
-        settings record through `_propagator_for`. The record rejects tissue blood flows that
+        settings record through `_step_propagator`. The record rejects tissue blood flows that
         do not sum to the cardiac output. No guarded way of changing a setting can leave the
         flows in that state. Each flow is the tissue's perfusion fraction of the patient's
         cardiac output (`PL-HQF5`). The patient rejects fractions that do not sum to 1, and a
@@ -459,16 +484,12 @@ class AgentUptakeSystem:
         cardiac output was set (`PL-M4M0`).
 
         Raises:
-            TypeError: `simulation_step_s` is not a `SimulationStep`, so
-                nothing has checked it against the supported range
-                (`core/simulation_step.py`). This is checked before anything
-                changes, so the system is untouched.
             SimulationNumericalError: the step began and could not be
                 completed. There are two causes. The first is that a value the
                 step itself produced was rejected: a fraction that
                 `_write_state_vector` builds as a `Fraction`, rejected under the
                 name of the compartment that would have held it. The exact
-                propagator cannot take a fraction below 0 for any step size,
+                propagator cannot take a fraction below 0,
                 because its matrix is Metzler, so every entry of the propagator
                 is nonnegative. A rounding error can carry a fraction above 1
                 only from a state within rounding of 1. The input ceiling of
@@ -485,13 +506,11 @@ class AgentUptakeSystem:
                 run must stop rather than continue from it.
         """
 
-        require_simulation_step(simulation_step_s)
-
         state_before_step = self.capture_state()
         step_completed = False
 
         try:
-            result = self._advance_step(simulation_step_s)
+            result = self._advance_step()
             step_completed = True
 
             return result
@@ -514,7 +533,7 @@ class AgentUptakeSystem:
             # rollback, and `finally` gives it to them without a separate
             # clause for each.
             raise SimulationNumericalError(
-                f"the simulation step of {simulation_step_s} s could not be completed "
+                f"the simulation step of {SIMULATION_STEP_S} s could not be completed "
                 "and was rolled back, leaving the state the last completed step "
                 f"produced: {error}"
             ) from error
@@ -566,7 +585,7 @@ class AgentUptakeSystem:
         self.patient.restore_state(state.patient)
         self.agent_simulation_validator.restore_state(state.agent_simulation_validator)
 
-    def _advance_step(self, simulation_step_s: SimulationStep) -> UptakeStepResult:
+    def _advance_step(self) -> UptakeStepResult:
         """Advance every compartment at once, by one exact propagation.
 
         The method writes each compartment as it goes and does not clean up
@@ -588,7 +607,7 @@ class AgentUptakeSystem:
         alveolar_agent_before_l = self.alveoli.agent_amount_l
         patient_agent_before_l = self.patient.total_agent_amount_l
 
-        advanced = propagate(self._propagator_for(simulation_step_s), self.state_vector())
+        advanced = propagate(self._step_propagator(), self.state_vector())
 
         self._write_state_vector(advanced)
 
@@ -616,6 +635,8 @@ class AgentUptakeSystem:
             circuit_to_alveolar_agent_l=circuit_to_alveolar_agent_l,
             patient_agent_change_l=patient_agent_change_l,
             agent_accounting=accounting_check,
+            state=self._with_case_totals(advanced),
+            compensation=self.accounting_compensation(),
         )
 
     def equation_settings(self) -> UptakeEquationSettings:
@@ -667,8 +688,12 @@ class AgentUptakeSystem:
             ),
         )
 
-    def _propagator_for(self, simulation_step_s: SimulationStep) -> Matrix:
-        """Return `exp(A * simulation_step_s)`, rebuilding it if a setting changed.
+    def _step_propagator(self) -> Matrix:
+        """Return `exp(A * SIMULATION_STEP_S)`, rebuilding it if a setting changed.
+
+        The propagator is the exact solution of the governing equations over
+        one step. It is formed once for each stretch of constant settings and
+        applied at every step of that stretch.
 
         The cache is keyed on the settings themselves rather than cleared by
         the setters, and the key is the same object the matrix is built from.
@@ -682,7 +707,7 @@ class AgentUptakeSystem:
         on every step, against one matrix exponential for each settings change.
         The settings are constant for all but a few steps of a run.
 
-        **What is compared is `_propagator_cache_key()`, not
+        **What is compared is `settings_key()`, not
         `equation_settings()`** (`PL-R460`). Comparing either gives the same
         result, because the key is a bijection of the settings: equal keys mean
         equal settings. But building the settings object costs four frozen
@@ -699,22 +724,17 @@ class AgentUptakeSystem:
         rebuild below validates before it builds.
         """
 
-        key = self._propagator_cache_key(simulation_step_s)
+        key = self.settings_key()
 
         if self._propagator is None or self._propagator_key != key:
             settings = self.equation_settings()
-            propagator = matrix_exponential(build_system_matrix(settings), simulation_step_s)
+            propagator = matrix_exponential(build_system_matrix(settings), SIMULATION_STEP_S)
             self._propagator = propagator
             self._propagator_key = key
 
             return propagator
 
         return self._propagator
-
-    def _propagator_cache_key(self, simulation_step_s: SimulationStep) -> tuple[float, ...]:
-        """Return the step, followed by `settings_key()`."""
-
-        return (simulation_step_s, *self.settings_key())
 
     def settings_key(self) -> tuple[float, ...]:
         """Return every compartment value that the settings record holds, for comparison by value.
@@ -787,7 +807,9 @@ class AgentUptakeSystem:
 
         The method is public, like `equation_settings`, and for the same
         reason. Its result is the state that a `RunDefinition` opens from
-        (`core/run_definition.py`).
+        (`core/run_definition.py`). It is not the state that a run stores for
+        a second. `case_state()` returns that state, which holds the case's
+        totals.
 
         The two accumulator states start each step at zero. So after one
         propagation they hold that step's own delivered and exhausted agent,
@@ -809,29 +831,121 @@ class AgentUptakeSystem:
 
         return tuple(state)
 
-    def resume_at(self, state: tuple[float, ...], initial_agent_l: float) -> None:
+    def case_state(self) -> tuple[float, ...]:
+        """Return the state that a run stores for the second this system stands at.
+
+        The fractions are read out of the compartments, as `state_vector()`
+        reads them. The two amounts are the delivered and the exhausted agent
+        since the case began, which the validator holds. A run stores this
+        state when it opens (`core/simulation.py`). Each later state that it
+        stores is the one its step wrote (`UptakeStepResult.state`).
+        """
+
+        return self._with_case_totals(self.state_vector())
+
+    def accounting_compensation(self) -> TotalsCompensation:
+        """Return the compensation terms of the delivered and the exhausted totals.
+
+        A run stores the pair beside each state, so that a branch opened from
+        that state adds to the totals exactly as its parent did (`resume_at`).
+        """
+
+        return self.agent_simulation_validator.compensation
+
+    def stands_at(self, state: tuple[float, ...], compensation: TotalsCompensation) -> bool:
+        """Return whether placing this system at `state` would leave it exactly as it is.
+
+        It is true where every compartment already holds the amount that
+        `state`'s fraction writes to it, the delivered and exhausted agent
+        since the case began are `state`'s, and the totals' compensation
+        terms are `compensation`. A run uses it to accept a record of
+        stored states that it did not build from this system
+        (`core/simulation.py`).
+
+        The fractions cannot be compared with `state_vector()` instead. A
+        compartment holds an amount, and the fraction read back from it can
+        differ in its last bit from the fraction that was written. So the
+        state is written, the system is compared with what it held, and what
+        it held is put back.
+
+        Raises:
+            TypeError: `compensation` is not a `TotalsCompensation`.
+            SimulationConfigurationError: `state` is not a state that the
+                equations can be applied to (`require_canonical_state`).
+        """
+
+        require_canonical_state(state)
+        require_totals_compensation(compensation)
+
+        held = self.capture_state()
+
+        try:
+            self._write_state_vector(state)
+            written = self.capture_state()
+        finally:
+            self.restore_state(held)
+
+        return (
+            written == held
+            and state[DELIVERED_AGENT_L] == self.agent_simulation_validator.delivered_agent_l
+            and state[EXHAUSTED_AGENT_L] == self.agent_simulation_validator.exhausted_agent_l
+            and compensation == self.accounting_compensation()
+        )
+
+    def _with_case_totals(self, state: tuple[float, ...]) -> tuple[float, ...]:
+        """Return `state` with the case's delivered and exhausted agent in place of a step's.
+
+        A propagated state holds the agent delivered and exhausted during its
+        own step. A stored state holds the totals since the case began, so
+        that a branch opened from it continues the case's accounting
+        (`resume_at`).
+        """
+
+        with_totals = list(state)
+        with_totals[DELIVERED_AGENT_L] = self.agent_simulation_validator.delivered_agent_l
+        with_totals[EXHAUSTED_AGENT_L] = self.agent_simulation_validator.exhausted_agent_l
+
+        return tuple(with_totals)
+
+    def resume_at(
+        self,
+        state: tuple[float, ...],
+        initial_agent_l: float,
+        compensation: TotalsCompensation = UNCOMPENSATED,
+    ) -> None:
         """Place this system at `state`, with its accounting anchored at `initial_agent_l`.
 
         This is the write counterpart of `state_vector()`. It is how a branch's
-        system comes to stand where its parent stood. `state` is a canonical
-        state: the result of `RunDefinition.state_at`, or the `Keyframe` that
-        result was composed from. So a branch opens from the trajectory that the
-        parent actually passed through, rather than from a re-derivation of it.
-        Nothing here advances anything. The system is positioned, and after
-        that it is stepped by the ordinary `advance()`, which is the only path
-        that moves a run forward.
+        system comes to stand where its parent stood. A branch passes the state
+        that its parent stored for the second of the fork
+        (`core/stored_states.py`). So the branch opens from the state that the
+        parent's step wrote, and not from fractions read back out of the
+        parent's compartments. Nothing here advances anything. The system is
+        positioned, and after that it is stepped by the ordinary `advance()`,
+        which is the only path that moves a run forward.
 
         **The two cumulative totals belong to the case, and they are carried
         over rather than derived.** `state_vector()` reports each step's own
         delivered and exhausted agent, because the propagator integrates them
-        over the interval it is given. A keyframe's totals are cumulative from
-        the start of the *case*. For a branch's keyframes, the start of the case
-        is earlier than the start of the run that holds them, because a branch
-        opens carrying its parent's running totals. Writing those totals in
-        continues the parent's mass-balance readout across the fork, instead of
-        restarting it at zero. A learner comparing two managements of one case
+        over the interval it is given. A stored state's totals are cumulative
+        from the start of the *case*. For a branch, the start of the case is
+        earlier than the start of the run, because a branch opens carrying
+        its parent's running totals. Writing those totals in continues the
+        parent's mass-balance readout across the fork, instead of restarting
+        it at zero. A learner comparing two managements of one case
         needs that, because the agent the patient has received belongs to the
         case and not to the branch.
+
+        **Each total's compensation term is carried over with it**
+        (`PL-FST0`). A branch passes the pair that its parent stored for the
+        fork (`StoredStates.compensation_at`). The branch's next step then
+        adds to each total exactly as its parent's next step did, so the
+        branch's totals equal its parent's bit for bit while no setting
+        differs. The default, `UNCOMPENSATED`, holds a term of zero for each
+        total. That is the exact term of a total that was written whole and
+        not summed, which is what a state from any other source holds. A run
+        built on a record checks the system's terms against that record
+        (`SimulationState`).
 
         `initial_agent_l` is the anchor of that same accounting period: the
         amount that the *parent's* period started from. It is passed in rather
@@ -839,8 +953,8 @@ class AgentUptakeSystem:
         rest on an invariant that it does not establish. Deriving it would mean
         taking the anchor as the value that makes `docs/MODEL.md`'s
         mass-balance identity close exactly. This method deliberately does not
-        do that, because the canonical path's own conservation residual has no
-        reason to fall on the positive side. On a 900 s sevoflurane run with
+        do that, because a state's own conservation residual has no reason
+        to fall on the positive side. On a 900 s sevoflurane run with
         two setting changes, the derived anchor was measured at -6.9e-14 L.
         That is a negative initial amount, which `AgentSimulationValidator`
         rightly rejects. When the anchor is carried over rather than derived,
@@ -856,32 +970,38 @@ class AgentUptakeSystem:
         written, and the rollback undoes those writes.
 
         The cached propagator is neither rebuilt nor cleared, because
-        `_propagator_cache_key()` reads only the settings that the system matrix
+        `settings_key()` reads only the settings that the system matrix
         is built from, and this method writes none of them.
 
         Raises:
-            SimulationConfigurationError: `state` did not come from the
-                canonical path, is not `STATE_SIZE` long, holds a non-finite
-                value, holds a fraction outside 0 to 1 or a cumulative total
-                outside 0 to `MAXIMUM_CUMULATIVE_AGENT_L`, or does not carry
-                exactly one at the `UNIT_STATE` position. All of these are
+            SimulationConfigurationError: `state` is not a tuple, is not
+                `STATE_SIZE` long, holds a non-finite value, holds a fraction
+                outside 0 to 1 or a cumulative total outside 0 to
+                `MAXIMUM_CUMULATIVE_AGENT_L`, or does not carry exactly one at
+                the `UNIT_STATE` position. All of these are
                 `require_canonical_state`'s checks, which a `RunDefinition`
-                applies to its opening state too. The error is also raised when
-                `initial_agent_l` is negative or not finite.
+                and a run's record of stored states apply too. The error is
+                also raised when `initial_agent_l` is negative or not finite.
+            TypeError: `compensation` is not a `TotalsCompensation`.
         """
 
         require_canonical_state(state)
         require_nonnegative_finite("initial_agent_l", initial_agent_l)
+        require_totals_compensation(compensation)
 
         state_before = self.capture_state()
         resumed = False
 
         try:
             self._write_state_vector(state)
-            self.agent_simulation_validator.reset(initial_agent_l=initial_agent_l)
-            self.agent_simulation_validator.record_external_agent_transfer(
-                delivered_agent_l=state[DELIVERED_AGENT_L],
-                exhausted_agent_l=state[EXHAUSTED_AGENT_L],
+            self.agent_simulation_validator.restore_state(
+                AgentSimulationValidatorState(
+                    initial_agent_l=initial_agent_l,
+                    delivered_agent_l=state[DELIVERED_AGENT_L],
+                    exhausted_agent_l=state[EXHAUSTED_AGENT_L],
+                    delivered_compensation_l=compensation.delivered_l,
+                    exhausted_compensation_l=compensation.exhausted_l,
+                )
             )
             resumed = True
         finally:
@@ -908,13 +1028,14 @@ class AgentUptakeSystem:
         type does and does not guarantee.
 
         **The method does not check the vector's shape at all.** That is safe
-        for its two callers, and it would not be safe for a third.
+        for its three callers, and it would not be safe for a fourth.
         `_advance_step` passes it what `propagate` returned from this system's
-        own state. `resume_at` passes it a state that `require_canonical_state`
-        has already checked for length, finiteness, range and the constant
-        entry. A caller that reached this method with anything else would get
-        an `IndexError` from a short vector, a silent truncation from a long
-        one, and no error at all for a wrong `UNIT_STATE`. None of these is how
+        own state. `resume_at` and `stands_at` each pass it a state that
+        `require_canonical_state` has already checked for length, finiteness,
+        range and the constant entry. A caller that reached this method with
+        anything else would get an `IndexError` from a short vector, a silent
+        truncation from a long one, and no error at all for a wrong
+        `UNIT_STATE`. None of these is how
         the rest of `core/` rejects a value. So `resume_at` is the entry point
         for a state that this system did not produce itself.
         """

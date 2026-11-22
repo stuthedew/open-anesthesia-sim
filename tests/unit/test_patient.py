@@ -16,7 +16,6 @@ from anesthesia_sim.core.parameters import (
 )
 from anesthesia_sim.core.patient import PatientCompartments
 from anesthesia_sim.core.rounding import FLOW_FRACTION_TOLERANCE
-from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import MAXIMUM_CARDIAC_OUTPUT_L_MIN, CardiacOutput
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
@@ -188,7 +187,7 @@ def test_replace_leaves_the_original_perfused_at_its_own_output() -> None:
         10.0 * 0.76
     )
     _assert_perfused_at_5_l_min(patient)
-    system.advance(SimulationStep(0.1))
+    system.advance()
 
 
 def test_a_deep_copy_takes_another_output_without_the_original() -> None:
@@ -202,7 +201,7 @@ def test_a_deep_copy_takes_another_output_without_the_original() -> None:
 
     assert copied.cardiac_output_l_min == 10.0
     _assert_perfused_at_5_l_min(patient)
-    system.advance(SimulationStep(0.1))
+    system.advance()
 
 
 def test_a_compartment_blood_flow_is_the_patients_output_and_nothing_else() -> None:

@@ -19,7 +19,6 @@ from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import (
     BRANCH_RUN_INDEX,
     FORK_NOTHING_SELECTED_TEXT,
-    SIMULATION_STEP_S,
     STATUS_FAILED_TEXT,
     TRUNK_RUN_INDEX,
     run_label,
@@ -55,6 +54,7 @@ from anesthesia_sim.app.views import (
     ParameterControlsView,
 )
 from anesthesia_sim.core import supported_ranges as supported_ranges_module
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CaseInstant
 from anesthesia_sim.layout.run_identity import RunId
 from anesthesia_sim.layout.tree import AreaId, ViewKind
@@ -383,7 +383,7 @@ def test_a_view_that_raises_on_a_halt_leaves_no_dial_on_a_setting_the_run_refuse
     View that showed 2.0 L/min (blind review of `PL-RF2S`).
     """
 
-    controller = _paused_run_with_history(60.0)
+    controller = _paused_run_with_history(60)
     view = _shown_view(application, controller)
     view.layout_container.choose_view(AreaId(3), PARAMETER_CONTROLS)
     _settle(application)
@@ -543,7 +543,7 @@ def test_a_view_chosen_while_frames_fail_does_not_ask_again_every_tick(
     Views, and a View owes one again only once the Views change.
     """
 
-    controller = _paused_run_with_history(60.0)
+    controller = _paused_run_with_history(60)
     view = _shown_view(application, controller)
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
     halts: list[Exception] = []
@@ -580,7 +580,7 @@ def test_a_held_thumb_previews_the_setting_without_applying_it(application: QApp
 
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     controller.pause()
     held_flow = controller.settings().fresh_gas_flow_l_min
     view = _shown_view(application, controller)
@@ -617,7 +617,7 @@ def test_a_preview_is_drawn_only_inside_its_region_with_its_label(
 ) -> None:
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     controller.pause()
     view = _shown_view(application, controller)
     control = _dials(view.runs[0])._cardiac_output_slider
@@ -648,7 +648,7 @@ def test_a_preview_is_drawn_only_inside_its_region_with_its_label(
 def test_the_hover_never_answers_from_a_preview(application: QApplication) -> None:
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     controller.pause()
     view = _shown_view(application, controller)
     control = _dials(view.runs[0])._delivered_concentration_slider
@@ -667,7 +667,7 @@ def test_the_hover_never_answers_from_a_preview(application: QApplication) -> No
 def test_a_stopped_run_draws_no_preview_while_its_thumb_is_held(application: QApplication) -> None:
     controller = SimulationController()
     controller.start()
-    _advance(controller, 60.0)
+    _advance(controller, 60)
     controller.fail("a failure the test injects")
     view = _shown_view(application, controller)
     control = _dials(view.runs[0])._fresh_gas_flow_slider
@@ -684,7 +684,7 @@ def test_only_the_compared_run_whose_thumb_is_held_previews_and_its_label_names_
 ) -> None:
     case = _branched_case()
     view = _case_view(application, case)
-    view.add_run(case.fork_at(CaseInstant(60.0)))
+    view.add_run(case.fork_at(CaseInstant(60)))
     view.present(False)
     branch = view.runs[BRANCH_RUN_INDEX]
     control = _dials(branch)._fresh_gas_flow_slider
@@ -739,7 +739,7 @@ def test_every_bookmarks_view_lists_the_case_s_marks_and_follows_a_new_one(
     """
 
     case = _branched_case()
-    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30.0), "first look"))
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30), "first look"))
     view = _case_view(application, case)
     _show_in_three_areas(application, view, BOOKMARKS)
     panels = _marks_panels(view)
@@ -750,7 +750,7 @@ def test_every_bookmarks_view_lists_the_case_s_marks_and_follows_a_new_one(
     for panel in panels:
         assert any("first look" in text for text in _strings_of(panel.times, ()))
 
-    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(45.0), "second look"))
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(45), "second look"))
     view.present(False)
 
     for panel in panels:
@@ -770,7 +770,7 @@ def test_every_branch_view_shows_the_one_selected_point_and_a_press_branches_at_
     """
 
     case = _branched_case()
-    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30.0), "check"))
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30), "check"))
     view = _case_view(application, case)
     _show_in_three_areas(application, view, BRANCH)
     panels = _fork_panels(view)
@@ -860,7 +860,7 @@ def test_a_cleared_branch_selection_stays_clear_when_the_branch_view_is_rebuilt(
     """
 
     case = _branched_case()
-    mark = TimeBookmark(CaseInstant(30.0), "check")
+    mark = TimeBookmark(CaseInstant(30), "check")
     case.trunk.add_time_bookmark(mark)
     view = _case_view(application, case)
     selector = _fork_panel(view).point_selector
@@ -895,14 +895,12 @@ def test_a_stopped_run_names_a_branch_only_while_an_area_shows_the_branch_contro
     gives.
     """
 
-    last_step = round(300.0 / SIMULATION_STEP_S)
-    monkeypatch.setattr(
-        supported_ranges_module, "maximum_step_count", lambda simulation_step_s: last_step
-    )
+    last_step = 300 // SIMULATION_STEP_S
+    monkeypatch.setattr(supported_ranges_module, "MAXIMUM_STEP_COUNT", last_step)
     refused = f"{_CARDIAC_OUTPUT_REFUSED_ON_A_STOPPED_RUN}. "
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     view = _case_view(application, BranchedCase(controller))
     trunk = view.runs[0]
     view.layout_container.choose_view(AreaId(6), AGENT_ACCOUNTING)
@@ -979,7 +977,7 @@ def test_a_halt_that_cannot_restate_the_marks_hides_them_in_every_copy_and_in_a_
     """
 
     controller = _paused_run_with_history()
-    controller.add_time_bookmark(TimeBookmark(CaseInstant(600.0), "check"))
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(600), "check"))
     view = _shown_view(application, controller)
     _show_in_three_areas(application, view, BOOKMARKS)
     panels = _marks_panels(view)
@@ -1053,7 +1051,7 @@ def test_a_case_view_chosen_after_a_failing_halt_shows_the_halted_words(
     """
 
     case = _branched_case()
-    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30.0), "first look"))
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30), "first look"))
     view = _case_view(application, case)
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
     view.present(False)
@@ -1091,7 +1089,7 @@ def test_the_case_views_of_a_dashboard_whose_first_frame_fails_show_the_halted_c
     """
 
     case = _branched_case()
-    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30.0), "first look"))
+    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30), "first look"))
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
     view = _case_view(application, case)
 

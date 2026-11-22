@@ -7,21 +7,12 @@ of two and from the supported ranges, and not read back from the module.
 import ast
 import math
 from decimal import ROUND_CEILING, ROUND_FLOOR, Context, Decimal, localcontext
-from fractions import Fraction
 from pathlib import Path
 
 import pytest
 from hypothesis import given, settings, target
 from hypothesis import strategies as st
-from test_generated_runs import (
-    _COEFFICIENTS,
-    _POSITIONS,
-    _STEPS_S,
-    _VOLUMES_L,
-    ONE_STEP,
-    Plan,
-    _build,
-)
+from test_generated_runs import _COEFFICIENTS, _POSITIONS, _VOLUMES_L, ONE_STEP, Plan, _build
 from test_numerical_envelope import _decimal_exponential, _squarings
 from test_numerical_envelope_sweep import CEILING, Corner
 
@@ -42,24 +33,42 @@ from anesthesia_sim.core.matrix_exponential import (
 from anesthesia_sim.core.rounding import (
     AGENT_ACCOUNTING_RELATIVE_TOLERANCE,
     FLOW_FRACTION_TOLERANCE,
-    HEIGHT_BAND,
-    LIVE_READING_GAP,
     MACHINE_EPSILON,
     PROPAGATOR_ROUNDING_UNITS,
     RUNNING_TOTAL_ROUNDING,
     SMALLEST_FULL_PRECISION_MAGNITUDE,
     WHOLE_COUNT_TOLERANCE,
-    clock_rounding,
     propagator_rounding,
     run_rounding,
 )
-from anesthesia_sim.core.simulation_step import MINIMUM_SIMULATION_STEP_S
-from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S, StepCount
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
+from anesthesia_sim.core.supported_ranges import (
+    MAXIMUM_STEP_COUNT,
+    MINIMUM_COMPARTMENT_STEP_S,
+    StepCount,
+)
 
 SOURCE_ROOT = Path(__file__).resolve().parents[2] / "src" / "anesthesia_sim"
 
-STEPS_IN_THE_LONGEST_RUN = round(MAXIMUM_ELAPSED_SIMULATION_TIME_S / MINIMUM_SIMULATION_STEP_S)
-"""The most steps a run can take: the longest supported run at the shortest supported step."""
+STEPS_IN_THE_LONGEST_RUN = int(MAXIMUM_STEP_COUNT)
+"""The most steps a run can take: one for each second of the longest supported run."""
+
+MOST_SQUARINGS_IN_A_SHIPPED_STEP = 3
+"""The most squarings that a shipped agent's one-second step needs.
+
+`tests/unit/test_numerical_envelope_sweep.py` counts them at every corner of
+the supported flows and fails when a shipped agent needs more.
+"""
+
+_INTERVALS_S = st.sampled_from(
+    (float(SIMULATION_STEP_S), 0.1, MINIMUM_COMPARTMENT_STEP_S)
+) | st.floats(MINIMUM_COMPARTMENT_STEP_S, float(SIMULATION_STEP_S))
+"""The interval of one propagator, from a millisecond to the one-second step that a run takes.
+
+A run steps by one second, and `RunDefinition.state_at` forms a propagator
+over any interval. The bound is stated for a propagator, so these steps are
+drawn across the intervals that the envelope was measured for.
+"""
 
 
 def test_the_arithmetic_constants_are_those_of_a_64_bit_float() -> None:
@@ -241,8 +250,10 @@ WORST_STEPS_FOUND = (
 """The steps with the largest propagator error among 240 000 drawn across the numerical envelope.
 
 Each entry gives the volumes and coefficients, the three flows as shares of
-their supported ranges, and the step in seconds. The comment on each gives the
-squarings the step needs and its error on 2026-11-11, in leading terms.
+their supported ranges, and the propagator's interval in seconds. The comment
+on each gives the squarings that the propagator needs and its error on
+2026-11-11, in leading terms. The intervals are those of the search, which
+drew them from 1 ms to 0.1 s.
 """
 
 
@@ -259,7 +270,7 @@ def _propagator_error_in_leading_terms(
     module under test.
     """
 
-    system = _build(Plan(None, corner, 0.5, flows, 0.5, step_s, ONE_STEP, 0.0, 2))
+    system = _build(Plan(None, corner, 0.5, flows, 0.5, ONE_STEP))
     matrix = build_system_matrix(system.equation_settings())
     computed = matrix_exponential(matrix, step_s)
     exact = _decimal_exponential(matrix, str(Decimal(step_s)))
@@ -302,11 +313,12 @@ def test_the_worst_steps_found_pass_three_leading_terms_and_stay_inside_the_deri
 def _one_step_from_a_drawn_state(
     draw: st.DrawFn,
 ) -> tuple[Corner, tuple[float, float, float], float, float, tuple[float, ...]]:
-    """Draw a system inside the numerical envelope, a step and a state of its fractions.
+    """Draw a system inside the numerical envelope, an interval and a state of its fractions.
 
-    The volumes, coefficients, flows, dial and step are drawn as the generated
-    runs draw them. Each fraction is drawn on its own, from 0 to the input
-    ceiling, so the state need not be one that a run reaches.
+    The volumes, coefficients, flows and dial are drawn as the generated runs
+    draw them, and the interval from `_INTERVALS_S`. Each fraction is drawn on
+    its own, from 0 to the input ceiling, so the state need not be one that a
+    run reaches.
     """
 
     corner = Corner(
@@ -315,7 +327,7 @@ def _one_step_from_a_drawn_state(
     flows = (draw(_POSITIONS), draw(_POSITIONS), draw(_POSITIONS))
     fractions = tuple(draw(_POSITIONS) * CEILING for _ in range(DELIVERED_AGENT_L))
 
-    return corner, flows, draw(_POSITIONS), draw(_STEPS_S), fractions
+    return corner, flows, draw(_POSITIONS), draw(_INTERVALS_S), fractions
 
 
 @settings(max_examples=200)
@@ -335,7 +347,7 @@ def test_a_step_drawn_across_the_envelope_stays_inside_the_derived_bound(
     """
 
     corner, flows, dial, step_s, fractions = drawn
-    system = _build(Plan(None, corner, 0.5, flows, dial, step_s, ONE_STEP, 0.0, 2))
+    system = _build(Plan(None, corner, 0.5, flows, dial, ONE_STEP))
     settings_now = system.equation_settings()
     matrix = build_system_matrix(settings_now)
     state = (*fractions, 0.0, 0.0, 1.0)
@@ -414,24 +426,6 @@ def test_a_count_of_the_wrong_type_is_named_by_its_type() -> None:
     assert str(refusal.value) == "squarings must be an int, not a float"
 
 
-@pytest.mark.parametrize(
-    ("instant_s", "interval_s", "message"),
-    [
-        (-1.0, 1.0, "instant_s must be finite and at least zero, and -1.0 is not"),
-        (math.inf, 1.0, "instant_s must be finite and at least zero, and inf is not"),
-        (1.0, 0.0, "interval_s must be finite and above zero, and 0.0 is not"),
-        (1.0, math.inf, "interval_s must be finite and above zero, and inf is not"),
-    ],
-)
-def test_a_refused_instant_or_interval_is_named_with_its_value(
-    instant_s: float, interval_s: float, message: str
-) -> None:
-    with pytest.raises(SimulationConfigurationError) as refusal:
-        clock_rounding(instant_s, interval_s)
-
-    assert str(refusal.value) == message
-
-
 def test_a_number_of_steps_not_built_as_a_step_count_is_refused() -> None:
     """A bare `int` carries no proof that it is whole and nonnegative, so it is refused."""
 
@@ -456,87 +450,24 @@ def test_a_run_is_bounded_by_the_sum_of_its_steps_bounds(squarings: int, steps: 
     assert run_rounding(squarings, StepCount(0)) == 0.0
 
 
-def test_clock_rounding_is_one_and_a_half_units_of_the_instant_over_the_interval() -> None:
-    """Near 238.2 s the floats are 2**-45 s apart, so over a 0.5 s interval the share is 3 * 2**-45.
-
-    One and a half units are 1.5 * 2**-45 s, and dividing by 0.5 s doubles
-    that. At an instant of zero the unit is the smallest float, 5e-324, and
-    one and a half of it rounds to two.
-    """
-
-    assert clock_rounding(238.2, 0.5) == 3.0 * 2.0**-45
-    assert clock_rounding(0.0, 1.0) == 1e-323
-
-
-@pytest.mark.parametrize(
-    ("step_s", "opened_at_step", "reached_step"), [(0.01, 2_356, 6_244), (0.1, 82_188, 326_590)]
-)
-def test_a_measured_interval_can_be_wrong_by_more_than_one_unit_of_the_later_instant(
-    step_s: float, opened_at_step: int, reached_step: int
-) -> None:
-    """Two intervals found by a blind review on 2026-11-11 are wrong by 1.25 and 1.17 units.
-
-    Each instant is a number of steps times the step, as the application
-    computes it, and the interval is their difference in floats. The exact
-    interval is worked out in rational arithmetic from the step as stored in
-    binary. The figure was one unit until that day, and these intervals
-    exceed it.
-    """
-
-    opened_at_s = opened_at_step * step_s
-    reached_s = reached_step * step_s
-    exact_s = (reached_step - opened_at_step) * Fraction(step_s)
-    error_s = abs(Fraction(reached_s - opened_at_s) - exact_s)
-    unit_s = Fraction(math.ulp(reached_s))
-
-    assert unit_s < error_s <= Fraction(3, 2) * unit_s
-    assert error_s / exact_s <= Fraction(clock_rounding(reached_s, float(exact_s)))
-
-
-@pytest.mark.parametrize(
-    ("instant_s", "interval_s"),
-    [(1.0, 0.0), (1.0, -1.0), (1.0, math.inf), (1.0, math.nan), (-1.0, 1.0), (math.inf, 1.0)],
-)
-def test_clock_rounding_refuses_an_instant_or_an_interval_it_cannot_bound(
-    instant_s: float, interval_s: float
-) -> None:
-    with pytest.raises(SimulationConfigurationError, match="must be finite"):
-        clock_rounding(instant_s, interval_s)
-
-
-def test_the_agent_balance_limit_is_below_the_summed_bound_of_the_longest_run() -> None:
-    """The fixed limit of one part in 10**9 is about a 190th of the summed bound for 8.64e7 steps.
+def test_the_agent_balance_limit_is_two_thirds_of_the_summed_bound_of_the_longest_run() -> None:
+    """The fixed limit of one part in 10**9 is below the summed bound for 86 400 shipped steps.
 
     The limit is written here as a literal, so that a change to it fails this
-    test. `docs/MODEL.md` § "Mass-balance identity" publishes it. The ratio is
-    10 times 8.64e7 times 2**-52 over 1e-9, which is 191.8. A longer run limit or
-    a shorter step floor moves it, and the statement in `core/rounding.py` that
-    the balance does not use the summed bound must then be read again.
+    test. `docs/MODEL.md` § "Mass-balance identity" publishes it. A shipped
+    agent's step needs at most three squarings, so the bound for the longest
+    run is 10 times 2**3 times 86 400 times 2**-52, which is 1.53e-9 and 1.53
+    times the limit. A longer run limit or a fourth squaring moves the ratio,
+    and the statement in `core/rounding.py` that the balance does not use the
+    summed bound must then be read again.
     """
 
     assert AGENT_ACCOUNTING_RELATIVE_TOLERANCE == 1e-9
-    assert STEPS_IN_THE_LONGEST_RUN == 86_400_000
+    assert STEPS_IN_THE_LONGEST_RUN == 86_400
 
-    ratio = run_rounding(0, StepCount(STEPS_IN_THE_LONGEST_RUN)) / 1e-9
+    bound = run_rounding(MOST_SQUARINGS_IN_A_SHIPPED_STEP, StepCount(STEPS_IN_THE_LONGEST_RUN))
 
-    assert 191.0 < ratio < 192.0
-
-
-def test_the_reading_allowance_is_five_times_the_summed_bound_of_the_longest_run() -> None:
-    """A stepped reading's allowance stays at least five times the bound for the longest run.
-
-    The bound is for steps that need no squaring, which is every shipped
-    agent's step (`tests/unit/test_numerical_envelope_sweep.py` fails when one
-    needs a squaring). The allowance must exceed the bound. The factor of five
-    is a warning distance and has no other source: the allowance is 5.2 times
-    the bound today, so a run limit or a step floor that moves the bound by
-    more than 4% fails this test, and a person then chooses a new allowance.
-    The band around a MAC target must be wider than the allowance, or the
-    zones around its two edges would meet.
-    """
-
-    assert run_rounding(0, StepCount(STEPS_IN_THE_LONGEST_RUN)) * 5.0 <= LIVE_READING_GAP
-    assert LIVE_READING_GAP * 10.0 <= HEIGHT_BAND * (1.0 + MACHINE_EPSILON)
+    assert 1.53 < bound / 1e-9 < 1.54
 
 
 def test_the_perfusion_allowance_admits_rounding_and_refuses_a_transcription_error() -> None:

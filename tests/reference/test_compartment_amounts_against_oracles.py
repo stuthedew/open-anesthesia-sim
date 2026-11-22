@@ -41,12 +41,8 @@ from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
-from anesthesia_sim.core.simulation_step import SimulationStep
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
-
-# The shipped step, restated rather than imported for the reason
-# `test_coupled_dynamics.py` gives for its own `SHIPPED_STEP_S`.
-SHIPPED_STEP_S = 0.1
 
 # `PINNED_REFERENCE_STATES` was computed at this operating point: a 5% dial,
 # 4.0 L/min of fresh gas into a 6.0 L circuit, and the reference adult's default
@@ -68,8 +64,8 @@ STATE_ORDER = (
 # Partial-pressure fractions transcribed from `PINNED_REFERENCE_STATES` in
 # `tests/reference/test_coupled_dynamics.py`, as re-derived from the RK4 oracle
 # on 2026-09-07 (`PL-8ZJQ`).
-ORACLE_FRACTIONS: dict[tuple[str, float], tuple[float, ...]] = {
-    ("desflurane", 60.0): (
+ORACLE_FRACTIONS: dict[tuple[str, int], tuple[float, ...]] = {
+    ("desflurane", 60): (
         2.028404136125e-02,
         9.281420915853e-03,
         7.876663535405e-04,
@@ -77,7 +73,7 @@ ORACLE_FRACTIONS: dict[tuple[str, float], tuple[float, ...]] = {
         4.697597715896e-05,
         2.667678019825e-06,
     ),
-    ("desflurane", 600.0): (
+    ("desflurane", 600): (
         4.315734014009e-02,
         3.701331546615e-02,
         2.624076126831e-02,
@@ -85,7 +81,7 @@ ORACLE_FRACTIONS: dict[tuple[str, float], tuple[float, ...]] = {
         2.964053373816e-03,
         1.752741904675e-04,
     ),
-    ("isoflurane", 60.0): (
+    ("isoflurane", 60): (
         1.979040100781e-02,
         6.424722270858e-03,
         4.911457693498e-04,
@@ -93,7 +89,7 @@ ORACLE_FRACTIONS: dict[tuple[str, float], tuple[float, ...]] = {
         2.349820689350e-05,
         1.148589299382e-06,
     ),
-    ("isoflurane", 600.0): (
+    ("isoflurane", 600): (
         3.617208687621e-02,
         2.299235500822e-02,
         1.518165093660e-02,
@@ -101,7 +97,7 @@ ORACLE_FRACTIONS: dict[tuple[str, float], tuple[float, ...]] = {
         1.209506966652e-03,
         6.075357967569e-05,
     ),
-    ("sevoflurane", 60.0): (
+    ("sevoflurane", 60): (
         2.012553561074e-02,
         8.326553885664e-03,
         5.694784215021e-04,
@@ -109,7 +105,7 @@ ORACLE_FRACTIONS: dict[tuple[str, float], tuple[float, ...]] = {
         2.706958058365e-05,
         1.452557155924e-06,
     ),
-    ("sevoflurane", 600.0): (
+    ("sevoflurane", 600): (
         4.021622895670e-02,
         3.116010711424e-02,
         2.067189318209e-02,
@@ -146,17 +142,17 @@ def _capacities_l(agent_id: str) -> tuple[float, ...]:
     )
 
 
-def _run_for(controller: SimulationController, duration_s: float) -> None:
-    """Start `controller` and advance it by `duration_s` in shipped steps."""
+def _run_for(controller: SimulationController, duration_s: int) -> None:
+    """Start `controller` and advance it by `duration_s`, a whole number of seconds."""
 
     controller.start()
 
-    for _ in range(round(duration_s / SHIPPED_STEP_S)):
-        controller.advance(SimulationStep(SHIPPED_STEP_S))
+    for _ in range(duration_s // SIMULATION_STEP_S):
+        controller.advance()
 
 
 @pytest.mark.parametrize(("agent_id", "duration_s"), sorted(ORACLE_FRACTIONS))
-def test_each_amount_matches_the_coupled_oracle(agent_id: str, duration_s: float) -> None:
+def test_each_amount_matches_the_coupled_oracle(agent_id: str, duration_s: int) -> None:
     """Each compartment's amount equals its oracle fraction times its capacity."""
 
     patient = load_reference_adult_parameters()
@@ -175,7 +171,7 @@ def test_each_amount_matches_the_coupled_oracle(agent_id: str, duration_s: float
         STATE_ORDER, ORACLE_FRACTIONS[(agent_id, duration_s)], _capacities_l(agent_id), strict=True
     ):
         assert amounts.of(compartment) == pytest.approx(fraction * capacity_l, rel=1e-9), (
-            f"{agent_id} at {duration_s:.0f} s: the {compartment.value} amount "
+            f"{agent_id} at {duration_s} s: the {compartment.value} amount "
             f"{amounts.of(compartment)!r} L differs from the oracle's "
             f"{fraction * capacity_l!r} L"
         )
@@ -190,9 +186,9 @@ CLOSED_FORM_TIME_CONSTANT_S = 60.0
 CLOSED_FORM_FULL_CIRCUIT_L = 0.12
 
 
-@pytest.mark.parametrize("elapsed_s", [30.0, 60.0, 300.0])
+@pytest.mark.parametrize("elapsed_s", [30, 60, 300])
 def test_without_ventilation_only_the_circuit_holds_agent_and_it_fills_in_closed_form(
-    elapsed_s: float,
+    elapsed_s: int,
 ) -> None:
     """The circuit fills as $`M_C = V_C F_D (1 - e^{-t/\\tau_C})`$, and the patient stays empty.
 

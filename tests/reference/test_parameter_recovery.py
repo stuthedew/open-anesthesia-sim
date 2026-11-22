@@ -38,7 +38,7 @@ from anesthesia_sim.core.parameters import (
     load_reference_adult_parameters,
     load_reference_circle_system_parameters,
 )
-from anesthesia_sim.core.simulation_step import SimulationStep
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
@@ -48,8 +48,6 @@ AGENT_IDS = ("sevoflurane", "isoflurane", "desflurane")
 # `test_coupled_dynamics.py` gives: a factor taken from the code under test
 # would check that code against itself.
 SECONDS_PER_MINUTE = 60.0
-
-STEP_S = 0.1
 
 # The dilution fills the circuit, closes it, and then lets it mix with the lungs.
 # The circuit fills for 300 s while ventilation is stopped. At the initial fresh
@@ -61,8 +59,8 @@ STEP_S = 0.1
 # about 26 s. Here V_C is the circuit volume, V_A the alveolar volume and V_dot_A
 # the alveolar ventilation. So 900 s is about 34 time constants, and after it the
 # two fractions differ only by rounding.
-DILUTION_FILL_S = 300.0
-DILUTION_MIXING_S = 900.0
+DILUTION_FILL_S = 300
+DILUTION_MIXING_S = 900
 
 # The bound below is the largest gap allowed between the circuit and alveolar
 # fractions when the final reading is taken, relative to the circuit's fraction.
@@ -80,20 +78,53 @@ DILUTION_RELATIVE_TOLERANCE = 1e-11
 # The washin's length. At 1800 s, muscle and fat hold enough agent that their
 # fractions sit far above rounding, and the run still takes under a second per
 # agent.
-WASHIN_HORIZON_S = 1800.0
+WASHIN_HORIZON_S = 1800
 
 # The bound below is how far a recovered tissue volume may differ from the stored
-# one, relative to the stored one. The test integrates the uptake by the
-# trapezoidal rule over the 0.1 s samples, so the residual is that rule's
-# integration error. On 2026-10-25, the worst measured residual was 7.9e-11, in
-# isoflurane's vessel-rich group, so the bound allows about twelve times that.
+# one, relative to the stored one. It is a numerical limit on the test's own
+# integration of the uptake, and the residual is that integration's error. The
+# bound was set on 2026-10-25, when the test integrated samples 0.1 s apart by
+# the trapezoidal rule. The worst residual was then 7.9e-11, in isoflurane's
+# vessel-rich group, so the bound allowed about twelve times that. The samples
+# are now one second apart. The trapezoidal rule's error grows with the square
+# of the spacing, and at one second it leaves a residual of 8.2e-9, above the
+# bound. The test therefore integrates by Boole's rule (`_boole_integral`). On
+# 2026-11-21 the worst residual was 3.8e-12, in the same group, so the unchanged
+# bound now allows about 260 times the residual.
 WASHIN_RELATIVE_TOLERANCE = 1e-9
 
 
-def _advance(system: AgentUptakeSystem, duration_s: float) -> None:
-    step = SimulationStep(STEP_S)
-    for _ in range(round(duration_s / STEP_S)):
-        system.advance(step)
+def _advance(system: AgentUptakeSystem, duration_s: int) -> None:
+    for _ in range(duration_s // SIMULATION_STEP_S):
+        system.advance()
+
+
+def _boole_integral(samples: list[float]) -> float:
+    """Integrate samples taken one step apart by the composite Boole's rule.
+
+    The rule fits a fourth-degree polynomial through each group of four
+    neighbouring intervals:
+
+    $$
+    \\int f\\,dt \\approx \\frac{2h}{45}
+    \\bigl(7f_0 + 32f_1 + 12f_2 + 32f_3 + 14f_4 + \\dots + 32f_{n-1} + 7f_n\\bigr)
+    $$
+
+    where $`h`$ is the spacing of the samples and $`n`$, the number of
+    intervals, is a multiple of four. With these weights the rule integrates
+    every polynomial of degree five or less exactly, which a calculation in
+    exact fractions over one group of four intervals confirms.
+    """
+
+    interval_count = len(samples) - 1
+    assert interval_count % 4 == 0, "Boole's rule needs a multiple of four intervals"
+
+    weighted_sum = 7.0 * (samples[0] + samples[-1])
+    weighted_sum += 32.0 * sum(samples[1:-1:2])
+    weighted_sum += 12.0 * sum(samples[2:-1:4])
+    weighted_sum += 14.0 * sum(samples[4:-1:4])
+
+    return (2.0 * SIMULATION_STEP_S / 45.0) * weighted_sum
 
 
 @pytest.mark.parametrize("agent_id", AGENT_IDS)
@@ -208,8 +239,8 @@ def _volumes_recovered_from_washin(agent_id: str) -> dict[str, float]:
 
     where $`Q_i`$ is the group's blood flow, $`F_a`$ is the arterial fraction and
     $`F_{v,i}`$ is the fraction in the blood leaving the group. The run samples
-    both fractions after every step. The trapezoidal rule then integrates the
-    rate into the total uptake $`U_i`$. At the end of the run, each litre of
+    both fractions after every step. Boole's rule then integrates the rate
+    into the total uptake $`U_i`$. At the end of the run, each litre of
     tissue holds $`\\lambda_{i:g}F_i`$ litres of agent vapour, where $`F_i`$ is
     the tissue's own fraction. That is what the tissue:gas partition coefficient
     $`\\lambda_{i:g}`$ means. The tissue's volume is therefore:
@@ -240,15 +271,15 @@ def _volumes_recovered_from_washin(agent_id: str) -> dict[str, float]:
             for name, tissue in tissues.items()
         }
 
-    step = SimulationStep(STEP_S)
-    uptake_l = dict.fromkeys(stored, 0.0)
-    previous_rates_l_s = uptake_rates_l_s()
-    for _ in range(round(WASHIN_HORIZON_S / STEP_S)):
-        system.advance(step)
-        rates_l_s = uptake_rates_l_s()
-        for name in uptake_l:
-            uptake_l[name] += 0.5 * STEP_S * (previous_rates_l_s[name] + rates_l_s[name])
-        previous_rates_l_s = rates_l_s
+    sampled_rates_l_s = [uptake_rates_l_s()]
+    for _ in range(WASHIN_HORIZON_S // SIMULATION_STEP_S):
+        system.advance()
+        sampled_rates_l_s.append(uptake_rates_l_s())
+
+    uptake_l = {
+        name: _boole_integral([rates_l_s[name] for rates_l_s in sampled_rates_l_s])
+        for name in stored
+    }
 
     return {
         name: uptake_l[name]

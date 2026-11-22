@@ -39,7 +39,8 @@ agent's dial maximum and 10 L/min. The settings do not change during a run, so
 the propagator over any interval is exact (`docs/MODEL.md` § "Selected method
 (as implemented)"). The runs are therefore read every second for the first
 hour and every minute from then to 24 h, the longest run the simulator
-supports, without stepping through the 0.1 s steps in between.
+supports, without taking the one-second steps between two minutes one at a
+time.
 
 **What these tests hold, and what they do not.** They pin the document's
 figures to the model as shipped, so their expected values are the model's own

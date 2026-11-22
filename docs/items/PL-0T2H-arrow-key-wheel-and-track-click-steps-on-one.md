@@ -3,7 +3,7 @@ id: PL-0T2H
 title: Arrow-key, wheel and track-click steps on one dial are joined into one adjustment, so the chart marks only the first step and docs/INTERFACE.md says each step is an adjustment of its own: decide which a learner sees
 priority: P2
 effort: M
-status: blocked
+status: ready
 classes: defect
 feature: interface-matches-its-spec
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/chart_frame.py, docs/INTERFACE.md, tests/integration/controller/test_controller_control_timeline.py
@@ -77,7 +77,7 @@ Three wheel notches and three clicks on the track gave the same single line unde
 
 **Decided 2026-11-21: A, as an obvious call in the round.** `docs/INTERFACE.md` § "The control-input timeline" already requires it: "A key press, one notch of the scroll wheel or a click on the slider away from its handle is a single input, and is an adjustment of its own." So the code is the defect, and the document is not changed. B would lower a requirement of the document to match the code. The coordinator of the v0.7.0 project asked for the call to be taken on this ground on 2026-11-21. The project owner was told in the thread the same day and can overrule it. The session took the call, so it is not recorded as the owner's.
 
-**Waits on the whole-second stepping build.** `PL-SZ6G`, `PL-MH9J`, `PL-FST0` and `PL-Z6C8` change when a setting takes effect, and they were in flight on `origin/claude/project-thread-er38tc` on 2026-11-21. This item is blocked on the last of them, `PL-Z6C8`, and it is deferred from v0.7.0's gate because it was filed after that gate froze.
+[superseded 2026-11-21] **Waits on the whole-second stepping build.** `PL-SZ6G`, `PL-MH9J`, `PL-FST0` and `PL-Z6C8` change when a setting takes effect, and they were in flight on `origin/claude/project-thread-er38tc` on 2026-11-21. This item is blocked on the last of them, `PL-Z6C8`, and it is deferred from v0.7.0's gate because it was filed after that gate froze.
 
 **Generator check.** One-off. The fact is what one adjustment is. The document states it per input, and `SimulationController._record_in_timeline` opens an adjustment per control. `test_consecutive_changes_to_one_control_are_one_adjustment` checks the controller's reading, and no test pressed a key on a slider at two simulated instants. `PL-41YP` (assert every required displayed output reaches the rendered view) describes the wider gap. Found by `PL-5FMC`, the check of the interface documents that the project owner asked for.
 

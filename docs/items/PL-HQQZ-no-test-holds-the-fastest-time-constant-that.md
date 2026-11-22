@@ -3,7 +3,7 @@ id: PL-HQQZ
 title: No test holds the fastest time constant that docs/MODEL.md prints, 5.83 s at an alveolar ventilation of 9.32 L/min
 priority: P2
 effort: S
-status: blocked
+status: ready
 classes: defect
 feature: model-spec-accuracy
 touches: docs/MODEL.md, tests/unit/test_governing_equations.py

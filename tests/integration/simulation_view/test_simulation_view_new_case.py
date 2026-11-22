@@ -79,7 +79,7 @@ def test_an_open_new_case_question_follows_a_running_run(application: QApplicati
     against any later path that moves a run under an open question.
     """
 
-    controller = _paused_run_with_history(60.0)
+    controller = _paused_run_with_history(60)
     controller.start()
     view = _shown_view(application, controller)
     run = view.runs[0]
@@ -89,7 +89,7 @@ def test_an_open_new_case_question_follows_a_running_run(application: QApplicati
     assert dialog is not None
     opened_warning = dialog.body_labels[1].text()
 
-    _advance_to(controller, 120.0)
+    _advance_to(controller, 120)
     view.present(False)
     snapshot = controller.snapshot()
     question = new_case_question(snapshot, "Desflurane", len(run.adjustments(snapshot)))
@@ -172,7 +172,7 @@ def test_an_agent_chosen_in_the_selector_runs_as_a_fresh_run_of_that_agent(
     }
     controller = SimulationController(agent_id="sevoflurane", **settings)
     controller.start()
-    _advance_to(controller, 90.0)
+    _advance_to(controller, 90)
     controller.pause()
     view = _shown_view(application, controller)
     run = view.runs[0]
@@ -187,7 +187,7 @@ def test_an_agent_chosen_in_the_selector_runs_as_a_fresh_run_of_that_agent(
 
     for each in (controller, fresh):
         each.start()
-        _advance_to(each, 300.0)
+        _advance_to(each, 300)
 
     assert fresh.snapshot().alveolar_partial_pressure_fraction > 0.0
     assert controller.snapshot() == fresh.snapshot()
@@ -316,7 +316,7 @@ def test_the_dialog_quotes_the_time_and_the_changes_the_panel_shows(
 ) -> None:
     """What is about to be lost is stated in the run's own displayed terms."""
 
-    controller = _paused_run_with_history(elapsed_s=125.0)
+    controller = _paused_run_with_history(elapsed_s=125)
     snapshot = controller.snapshot()
     run = _shown_view(application, controller).runs[0]
 

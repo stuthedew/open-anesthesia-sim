@@ -740,7 +740,7 @@ class BreathingCircuit:
             SimulationConfigurationError: `simulation_step_s` is outside the range
                 that `require_compartment_step` accepts (`PL-WP52`, `PL-YT3T`). The
                 step must be positive and finite, no shorter than
-                `MINIMUM_SIMULATION_STEP_S`, and no longer than the supported run
+                `MINIMUM_COMPARTMENT_STEP_S`, and no longer than the supported run
                 length, `MAXIMUM_ELAPSED_SIMULATION_TIME_S`. Nothing changes when
                 the step is refused.
         """

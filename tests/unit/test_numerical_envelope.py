@@ -11,8 +11,9 @@ it.
 These tests probe each envelope at both edges and one representable value past
 each. They check the tissue:blood quotient, which can fall outside the envelope
 even when both of its coefficients are inside it. They also pin the measurement
-that set the bounds: at every corner of the envelope, the 0.1 s step needs no
-more squarings than a shipped run needs over 24 hours.
+that the bounds rest on: at every corner of the envelope, the one-second step
+needs at most 22 squarings, and its propagator at the stiffest corner agrees
+with a high-precision evaluation.
 """
 
 import re
@@ -54,6 +55,7 @@ from anesthesia_sim.core.parameters import (
     load_reference_circle_system_parameters,
     load_sevoflurane_parameters,
 )
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
@@ -66,14 +68,18 @@ from anesthesia_sim.core.supported_ranges import (
 from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
-LONGEST_STEP_S = 0.1
-"""The 0.1 s step that the interface takes, the longest that a run supports."""
+MOST_SQUARINGS = 22
+"""The most squarings that the one-second step needs at any envelope corner, measured on 2026-11-21.
 
-MOST_SQUARINGS = 19
-"""The most squarings that the 0.1 s step needs at any envelope corner, measured on 2026-10-25.
+The 0.1 s step that a run took until `PL-SZ6G` needed 19 there.
+`docs/MODEL.md` § "The numerical envelope" states the count.
+"""
 
-It is also the most that the shipped parameters need over the 24-hour
-horizon. `docs/MODEL.md` § "The numerical envelope" states both counts.
+SHIPPED_DAY_SQUARINGS = 19
+"""The squarings that one propagator over the 24-hour horizon needs for shipped sevoflurane.
+
+The flows are at the top of their supported ranges. `RunDefinition.state_at`
+forms that propagator when a run's settings do not change for 24 hours.
 """
 
 
@@ -469,19 +475,20 @@ def _shipped_settings() -> UptakeEquationSettings:
     )
 
 
-def test_no_corner_needs_more_squarings_at_the_step_than_a_shipped_run_needs_over_a_day() -> None:
-    """At every corner, the 0.1 s step's error bound is no larger than a shipped run's over 24 h.
+def test_the_step_needs_at_most_22_squarings_at_any_envelope_corner() -> None:
+    """At every corner, the one-second step needs at most 22 squarings, 10 below the cap of 32.
 
     Each squaring can double the rounding error, so the number of squarings
     sets the accuracy (`core/matrix_exponential.py`, "What it costs"). The
-    shipped sevoflurane system at the widest supported flows needs 19
-    squarings over the 24-hour horizon. The stiffest corner, a 1e-2 L alveolar
-    volume with a blood:gas coefficient of 1e4, needs 19 at the 0.1 s step. A
-    lower volume bound of 1e-3 L needed 22 there (measured 2026-10-25).
+    stiffest corner, a 1e-2 L alveolar volume with a blood:gas coefficient of
+    1e4, needs 22 at the one-second step (measured 2026-11-21). That is three
+    more than the 19 that the shipped sevoflurane system needs for one
+    propagator over the 24-hour horizon at the widest supported flows.
+    `core/numerical_envelope.py` says what the three extra squarings cost.
     """
 
     corners = _corner_settings()
-    most = max(_squarings(build_system_matrix(corner), LONGEST_STEP_S) for corner in corners)
+    most = max(_squarings(build_system_matrix(corner), SIMULATION_STEP_S) for corner in corners)
     shipped_day = _squarings(
         build_system_matrix(_shipped_settings()), MAXIMUM_ELAPSED_SIMULATION_TIME_S
     )
@@ -489,7 +496,7 @@ def test_no_corner_needs_more_squarings_at_the_step_than_a_shipped_run_needs_ove
     # Each tissue:blood edge pairs with one blood:gas edge, so 8 of 64 tissue
     # combinations survive at each blood:gas edge: 8 volumes x 2 x 8.
     assert len(corners) == 128
-    assert (most, shipped_day) == (MOST_SQUARINGS, MOST_SQUARINGS)
+    assert (most, shipped_day) == (MOST_SQUARINGS, SHIPPED_DAY_SQUARINGS)
 
 
 def _decimal_exponential(matrix: Matrix, interval_s: str) -> list[list[Decimal]]:
@@ -532,11 +539,11 @@ def _decimal_exponential(matrix: Matrix, interval_s: str) -> list[list[Decimal]]
 
 
 def test_the_step_at_the_stiffest_corner_agrees_with_a_high_precision_evaluation() -> None:
-    """The stiffest corner's 0.1 s propagator is accepted, and is accurate to its stated bound.
+    """The stiffest corner's one-second propagator is accepted, and is accurate to its stated bound.
 
     After `s` squarings the module bounds the error at about `2**s` times
-    double precision's 2**-52. At 19 squarings that is 1.2e-10, and on
-    2026-10-25 the worst entry measured 7.5e-11. The test allows three times
+    double precision's 2**-52. At 22 squarings that is 9.3e-10, and on
+    2026-11-21 the worst entry measured 1.3e-9. The test allows three times
     the bound, because the module's own measurement found errors of 0.6 to 2.7
     times the bound (`MAXIMUM_SQUARINGS`).
     """
@@ -550,10 +557,10 @@ def test_the_step_at_the_stiffest_corner_agrees_with_a_high_precision_evaluation
     )
     matrix = build_system_matrix(stiffest)
 
-    assert _squarings(matrix, LONGEST_STEP_S) == MOST_SQUARINGS
+    assert _squarings(matrix, SIMULATION_STEP_S) == MOST_SQUARINGS
 
-    propagator = matrix_exponential(matrix, LONGEST_STEP_S)
-    exact = _decimal_exponential(matrix, "0.1")
+    propagator = matrix_exponential(matrix, SIMULATION_STEP_S)
+    exact = _decimal_exponential(matrix, str(SIMULATION_STEP_S))
     bound = 3 * 2.0**MOST_SQUARINGS * 2.0**-52
 
     worst = max(

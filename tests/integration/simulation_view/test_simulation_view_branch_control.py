@@ -20,7 +20,6 @@ from anesthesia_sim.app.dashboard_frame import (
     HALT_FORK_LABEL_TEMPLATE,
     HERE_FORK_LABEL_TEMPLATE,
     MARK_STANDING_COMPARED_TEXT,
-    SIMULATION_STEP_S,
     STATUS_FAILED_TEXT,
     comparing_fork_lock_text,
     fork_offer,
@@ -35,7 +34,6 @@ from anesthesia_sim.core.supported_ranges import (
 )
 from anesthesia_sim.core.units import SECONDS_PER_HOUR, SECONDS_PER_MINUTE
 from tests.integration.simulation_view.simulation_view_support import (
-    _BEHIND_MARK_FORK_S,
     _BEHIND_MARK_LABEL,
     _BEHIND_MARK_S,
     _HALT_MARK_S,
@@ -139,61 +137,22 @@ def test_the_fork_here_says_which_instant_it_will_open_the_branch_at(
 
     A bare "Branch here" beside the permanent button would leave two
     identical buttons doing different things. The instant is the one at which
-    the branch opens, not the one the learner marked. Those differ whenever a
-    mark lies inside a step, and naming the wrong one would put a correct
-    control under a wrong label.
+    the branch opens. A mark is a whole second, so the run stops exactly on
+    the mark, and the label names the instant the learner marked (`PL-TYWQ`).
     """
 
     case, view = _halted_trunk_case(application)
     halt = case.trunk.snapshot().bookmark_halt
     assert halt is not None
+    assert halt.instant_s == _HALT_MARK_S
 
     label = _fork_panel(view).here_button.text()
 
-    assert label == HALT_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(halt.instant_s))
+    assert label == HALT_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(_HALT_MARK_S))
 
     _fork_panel(view).here_button.click()
 
-    assert case.branches[0].snapshot().elapsed_s == pytest.approx(halt.instant_s)
-
-
-def test_a_mark_inside_a_step_branches_where_the_run_stopped_not_where_it_was_marked(
-    application: QApplication,
-) -> None:
-    """The safety-relevant half of the label, end to end (`PL-TYWQ`).
-
-    A mark that does not land on the step grid halts the run at the step's
-    end. So the instant a learner marked and the instant at which a branch
-    can open are two different numbers. The branch opens at the second one,
-    because it is the only one for which the run holds state. So the button
-    has to show the second one. Showing the first would put a correct control
-    under a label naming a time at which nothing happens.
-    `CLAUDE.md`'s safety-critical standard counts that as a failure of the
-    value rather than of its presentation.
-    """
-
-    marked_s = 80.05
-    halted_s = 80.1
-    case = _branched_case()
-    view = _case_view(application, case)
-    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(marked_s), "mid-step"))
-    case.trunk.start()
-    _advance_to(case.trunk, halted_s)
-    view.present(False)
-
-    halt = case.trunk.snapshot().bookmark_halt
-    assert halt is not None
-    assert halt.instant_s == pytest.approx(halted_s)
-    assert halt.instant_s != pytest.approx(marked_s)
-
-    label = _fork_panel(view).here_button.text()
-
-    assert format_elapsed(halted_s) in label
-    assert format_elapsed(marked_s) not in label
-
-    _fork_panel(view).here_button.click()
-
-    assert case.branches[0].snapshot().elapsed_s == pytest.approx(halted_s)
+    assert case.branches[0].snapshot().elapsed_s == _HALT_MARK_S
 
 
 def test_the_fork_here_is_on_the_panel_whenever_the_trunk_stops_and_off_it_while_it_goes(
@@ -242,7 +201,7 @@ def test_the_fork_here_is_on_the_panel_whenever_the_trunk_stops_and_off_it_while
     assert offered_on_the_halt == [*offered_before, halt.instant_s]
 
     case.trunk.start()
-    case.trunk.advance(SIMULATION_STEP_S)
+    case.trunk.advance()
     view.present(False)
 
     assert case.trunk.snapshot().bookmark_halt is None
@@ -383,7 +342,7 @@ def test_a_trunk_halted_by_a_failing_frame_offers_no_branch_at_all(
     """
 
     case = _branched_case()
-    mark = TimeBookmark(CaseInstant(30.0), "check")
+    mark = TimeBookmark(CaseInstant(30), "check")
     case.trunk.add_time_bookmark(mark)
     view = _case_view(application, case)
     panel = _fork_panel(view)
@@ -407,7 +366,7 @@ def test_a_trunk_halted_by_a_failing_frame_offers_no_branch_at_all(
     with pytest.raises(
         SimulationConfigurationError, match="the dashboard this run is drawn in failed"
     ):
-        case.fork_at(CaseInstant(60.0))
+        case.fork_at(CaseInstant(60))
 
     with pytest.raises(
         SimulationConfigurationError, match="the dashboard this run is drawn in failed"
@@ -432,7 +391,7 @@ def test_a_trunk_failed_on_its_own_step_keeps_its_earlier_keyframes_branchable(
     view = _case_view(application, case)
     trunk = case.trunk
 
-    def failing_advance(simulation_step_s: float) -> NoReturn:
+    def failing_advance() -> NoReturn:
         raise _real_step_failure()
 
     trunk.start()
@@ -505,7 +464,7 @@ def test_a_failing_frame_withdraws_the_last_frames_bookmark_standings(
 
     controller = _paused_run_with_history()
     # Ahead of the paused clock, so the run has not reached it yet.
-    controller.add_time_bookmark(TimeBookmark(CaseInstant(600.0), "check"))
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(600), "check"))
     view = _shown_view(application, controller)
     ahead = _marks_panel(view).times.text()
     assert ahead == "10m – check", "the mark is not listed as still to come"
@@ -564,7 +523,7 @@ def test_a_bookmark_panel_that_cannot_be_restated_on_a_halt_lists_no_standing(
     """
 
     controller = _paused_run_with_history()
-    controller.add_time_bookmark(TimeBookmark(CaseInstant(600.0), "check"))
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(600), "check"))
     view = _shown_view(application, controller)
     panel = _marks_panel(view)
     assert panel.times.isHidden() is False
@@ -603,7 +562,7 @@ def test_a_vanished_fork_instant_leaves_nothing_selected(application: QApplicati
 
     trunk = SimulationController()
     trunk.start()
-    _advance_to(trunk, 60.0)
+    _advance_to(trunk, 60)
     trunk.pause()
     original_flow = trunk.snapshot().fresh_gas_flow_l_min
     trunk.set_fresh_gas_flow(FreshGasFlow(original_flow + 2.0))
@@ -646,7 +605,7 @@ def test_a_fork_instant_still_offered_stays_selected_when_the_offer_grows(
 
     trunk = SimulationController()
     trunk.start()
-    _advance_to(trunk, 60.0)
+    _advance_to(trunk, 60)
     trunk.pause()
     original_flow = trunk.snapshot().fresh_gas_flow_l_min
     trunk.set_fresh_gas_flow(FreshGasFlow(original_flow + 2.0))
@@ -656,7 +615,7 @@ def test_a_fork_instant_still_offered_stays_selected_when_the_offer_grows(
     panel.point_selector.setCurrentIndex(panel.point_selector.findData(60.0))
 
     trunk.start()
-    _advance_to(trunk, 120.0)
+    _advance_to(trunk, 120)
     trunk.pause()
     trunk.set_fresh_gas_flow(FreshGasFlow(original_flow))
     view.present(False)
@@ -683,7 +642,7 @@ def test_a_cleared_fork_selection_stays_cleared_when_the_list_next_changes(
 
     trunk = SimulationController()
     trunk.start()
-    _advance_to(trunk, 60.0)
+    _advance_to(trunk, 60)
     trunk.pause()
     original_flow = trunk.snapshot().fresh_gas_flow_l_min
     trunk.set_fresh_gas_flow(FreshGasFlow(original_flow + 2.0))
@@ -697,7 +656,7 @@ def test_a_cleared_fork_selection_stays_cleared_when_the_list_next_changes(
     assert panel.selected_point() is None
 
     trunk.start()
-    _advance_to(trunk, 90.0)
+    _advance_to(trunk, 90)
     trunk.pause()
     trunk.set_fresh_gas_flow(FreshGasFlow(original_flow + 2.0))
     view.present(False)
@@ -721,9 +680,8 @@ def test_a_mark_set_behind_the_trunk_s_clock_is_offered_and_branched_at(
     The mark was set after the clock had passed it. So no step crossed it,
     the trunk holds no keyframe there, and the trunk is not on a halt. The
     other two ways of taking a branch refuse this case. The mark is offered
-    beside the control events. It is labelled with the instant at which the
-    branch will open, not the instant typed. The branch opens there, and the
-    trunk stays as it was.
+    beside the control events, labelled with its instant. The branch opens at
+    that instant, and the trunk stays as it was.
     """
 
     case, view, mark = _rewind_case(application)
@@ -732,20 +690,19 @@ def test_a_mark_set_behind_the_trunk_s_clock_is_offered_and_branched_at(
     keyframes = case.fork_points_s
 
     assert case.trunk.snapshot().bookmark_halt is None
-    assert _BEHIND_MARK_FORK_S not in keyframes
+    assert _BEHIND_MARK_S not in keyframes
     assert labels == [
         format_elapsed(keyframes[0]),
         format_elapsed(keyframes[1]),
         _BEHIND_MARK_LABEL,
     ]
-    assert format_elapsed(_BEHIND_MARK_S) not in _BEHIND_MARK_LABEL
 
     _select_fork_entry(view, _BEHIND_MARK_LABEL)
 
     selected = panel.selected_point()
     assert selected is not None
     assert selected.mark == mark
-    assert selected.instant_s == _BEHIND_MARK_FORK_S
+    assert selected.instant_s == _BEHIND_MARK_S
 
     panel.take_button.click()
 
@@ -753,8 +710,8 @@ def test_a_mark_set_behind_the_trunk_s_clock_is_offered_and_branched_at(
     assert len(case.branches) == 1
     branch = case.branches[0]
     assert view.runs[1].controller is branch
-    assert branch.began_at_s == _BEHIND_MARK_FORK_S
-    assert branch.snapshot().elapsed_s == _BEHIND_MARK_FORK_S
+    assert branch.began_at_s == _BEHIND_MARK_S
+    assert branch.snapshot().elapsed_s == _BEHIND_MARK_S
     assert panel.notice.notice() is None
     # The trunk is read and not written: no keyframe is recorded where it was
     # branched, and its clock stays where it was paused.
@@ -771,7 +728,7 @@ def test_a_mark_still_ahead_of_the_trunk_s_clock_is_not_offered(application: QAp
     """
 
     case, view, behind = _rewind_case(application)
-    ahead = TimeBookmark(CaseInstant(600.0), "later")
+    ahead = TimeBookmark(CaseInstant(600), "later")
     case.trunk.add_time_bookmark(ahead)
     view.present(False)
 
@@ -801,7 +758,7 @@ def test_a_selected_mark_is_cleared_not_moved_when_the_learner_unmarks_it(
     """
 
     case, view, mark = _rewind_case(application)
-    later = TimeBookmark(CaseInstant(100.0))
+    later = TimeBookmark(CaseInstant(100))
     case.trunk.add_time_bookmark(later)
     view.present(False)
     panel = _fork_panel(view)
@@ -831,7 +788,7 @@ def _widest_mark_entry_fits(application: QApplication) -> tuple[int, int]:
     The widest entry is found here rather than taken from
     `widest_fork_point_label`, so the test does not check that function
     against its own result. The font spaces its digits proportionally, so
-    23h59m59.9s, the reading at the last step, is not the widest reading.
+    23h59m59s, the reading at the last step, is not the widest reading.
     Hours, minutes and seconds vary independently, so the widest value of
     each, put together, is the widest clock reading that `format_elapsed`
     can write. The test passes the entry through `fork_offer` and reads it
@@ -848,14 +805,12 @@ def _widest_mark_entry_fits(application: QApplication) -> tuple[int, int]:
     metrics = panel.point_selector.fontMetrics()
     hours = max((f"{hour}h" for hour in range(10, 24)), key=metrics.horizontalAdvance)
     minutes = max((f"{minute}m" for minute in range(10, 60)), key=metrics.horizontalAdvance)
-    seconds = max(
-        (f"{whole}.{tenth}s" for whole in range(10, 60) for tenth in range(1, 10)),
-        key=metrics.horizontalAdvance,
-    )
+    seconds = max((f"{second}s" for second in range(10, 60)), key=metrics.horizontalAdvance)
+    # The two unit constants are floats, and an instant is a whole number of
+    # seconds, so the exact product is converted before the instant is built.
     instant = CaseInstant(
-        int(hours[:-1]) * SECONDS_PER_HOUR
-        + int(minutes[:-1]) * SECONDS_PER_MINUTE
-        + float(seconds[:-1])
+        int(int(hours[:-1]) * SECONDS_PER_HOUR + int(minutes[:-1]) * SECONDS_PER_MINUTE)
+        + int(seconds[:-1])
     )
 
     assert format_elapsed(instant) == hours + minutes + seconds
@@ -863,7 +818,7 @@ def _widest_mark_entry_fits(application: QApplication) -> tuple[int, int]:
 
     panel.set_offer(
         fork_offer(
-            (CaseInstant(0.0),),
+            (CaseInstant(0),),
             marks=(MarkForkPoint(TimeBookmark(instant), instant),),
             comparing=None,
             here=None,
@@ -903,7 +858,7 @@ def test_the_branch_selector_fits_its_widest_entry_in_a_wider_face(
 
     The application sets no font of its own, so the selector draws in the
     platform's default face and size. In DejaVu Sans at 16 px, the widest
-    entry needs 228 px. The fixed 230 px width that this replaced left a
+    entry needs 213 px. The fixed 230 px width that this replaced left a
     text field of only 196 px, so the words "on your mark" were cut. The
     width is now measured from the selector's own font when it is built.
     """

@@ -9,20 +9,19 @@ from anesthesia_sim.app.control_record import ControlChange
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.core.blood_flow import PerfusionFraction
 from anesthesia_sim.core.concentration import Percent
-from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CaseInstant, FreshGasFlow
 
 
-def _advance_for(controller: SimulationController, duration_s: float) -> None:
-    """Advance a running controller to `duration_s` at the largest supported step.
+def _advance_for(controller: SimulationController, duration_s: int) -> None:
+    """Advance a running controller by `duration_s` whole seconds, one step at a time.
 
-    The helper reaches the simulated time by taking many supported steps, not
-    by asking for one large step. `MAXIMUM_SIMULATION_STEP_S` is the declared
-    control-resolution tolerance, and the controller refuses a longer step.
+    A run moves only by `SIMULATION_STEP_S`, which is one second, so the
+    helper takes one step for each second.
     """
 
-    for _ in range(round(duration_s / MAXIMUM_SIMULATION_STEP_S)):
-        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    for _ in range(duration_s // SIMULATION_STEP_S):
+        controller.advance()
 
 
 def _with_stale_tissue_flows(controller: SimulationController, cardiac_output_l_min: float) -> None:
@@ -63,7 +62,7 @@ def _with_the_tissue_fractions_put_back(controller: SimulationController) -> Non
         object.__setattr__(tissue, "perfusion_fraction", PerfusionFraction(fraction))
 
 
-def _advance_through_halts(controller: SimulationController, duration_s: float) -> None:
+def _advance_through_halts(controller: SimulationController, duration_s: int) -> None:
     """Advance `duration_s`, resuming wherever a marked crossing halts the run.
 
     A marked run halts on the step that crosses one of its marks (`PL-CTD7`),
@@ -74,22 +73,22 @@ def _advance_through_halts(controller: SimulationController, duration_s: float) 
     for a caller with no marks this helper behaves exactly like `_advance_for`.
     """
 
-    for _ in range(round(duration_s / MAXIMUM_SIMULATION_STEP_S)):
+    for _ in range(duration_s // SIMULATION_STEP_S):
         if not controller.is_running:
             controller.start()
 
-        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        controller.advance()
 
 
 def _run_with_two_changes(controller: SimulationController) -> None:
     """Drive 120 s through the controller, moving two controls on the way."""
 
     controller.start()
-    _advance_through_halts(controller, duration_s=30.0)
+    _advance_through_halts(controller, duration_s=30)
     controller.set_delivered_concentration_percent(Percent(4.0))
-    _advance_through_halts(controller, duration_s=30.0)
+    _advance_through_halts(controller, duration_s=30)
     controller.set_alveolar_ventilation(AlveolarVentilation(6.0))
-    _advance_through_halts(controller, duration_s=60.0)
+    _advance_through_halts(controller, duration_s=60)
 
 
 # `PL-J2TD`: a fork resumes into a live run. The tests below check the seam
@@ -115,25 +114,6 @@ the snapshot field is `inspired_partial_pressure_fraction`. The state is named
 for the clinical quantity, but the container is still the circuit.
 """
 
-BRANCH_AGREEMENT = 1e-14
-"""How far a branch's live state may differ from its parent's, in fractions of 1 atm.
-
-The two reach the same instant by different routes. The parent steps the whole
-way from induction. The branch is placed at a keyframe that the canonical path
-computed, and steps only from there. `docs/MODEL.md` § "Closed-form agreement
-test" governs that comparison. It also gives the reason for stating the bound
-in fractions of one atmosphere rather than as a relative bound. A relative
-bound would tighten without limit on the near-zero fat fraction of a 120 s
-run, and it would say nothing about a displayed digit.
-
-Measured on 2026-09-14 on the run below, the worst disagreement across all six
-compartments is 2.7e-16, about one unit in the last place. The two cumulative
-accumulators agree to 1.6e-15 L. The bound is set two orders of magnitude
-above that, so an ordinary floating-point wobble does not fail the suite. It
-is also ten orders of magnitude below the 1e-4 that a two-decimal percent
-readout can show, so a real divergence still fails it.
-"""
-
 
 def _trunk_with_two_changes() -> SimulationController:
     """A 120 s sevoflurane run with two setting changes, so it has three keyframes."""
@@ -145,7 +125,7 @@ def _trunk_with_two_changes() -> SimulationController:
     return controller
 
 
-def _advance_until_halted(controller: SimulationController, limit_s: float) -> None:
+def _advance_until_halted(controller: SimulationController, limit_s: int) -> None:
     """Step a running controller until a mark halts it, or raise if no mark does.
 
     A bookmark fork is taken at the halt. A test that silently ran past the
@@ -153,8 +133,8 @@ def _advance_until_halted(controller: SimulationController, limit_s: float) -> N
     assert nothing about the case it was meant to test.
     """
 
-    for _ in range(round(limit_s / MAXIMUM_SIMULATION_STEP_S)):
-        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    for _ in range(limit_s // SIMULATION_STEP_S):
+        controller.advance()
 
         if controller.snapshot().bookmark_halt is not None:
             return
@@ -166,18 +146,18 @@ def _trunk_halted_on_a_bookmark() -> SimulationController:
     """A run stopped where a mark lies between two of its keyframes.
 
     The run has one setting change, at 30 s, so it has keyframes at 0 s and
-    30 s and nowhere else. The mark is at 45.3 s, which is neither of them.
+    30 s and nowhere else. The mark is at 45 s, which is neither of them.
     That is the ordinary case, not a contrived one. On the 120 s run that the
-    other fork tests use, 3 of the 1 201 instants a halt could land on are
+    other fork tests use, 3 of the 121 instants a halt could land on are
     keyframes.
     """
 
     controller = SimulationController()
-    controller.add_time_bookmark(TimeBookmark(CaseInstant(45.3), "the decision point"))
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(45), "the decision point"))
     controller.start()
-    _advance_for(controller, duration_s=30.0)
+    _advance_for(controller, duration_s=30)
     controller.set_delivered_concentration_percent(Percent(4.0))
-    _advance_until_halted(controller, limit_s=60.0)
+    _advance_until_halted(controller, limit_s=60)
 
     return controller
 
@@ -193,7 +173,7 @@ def _trunk_halted_on_a_bookmark() -> SimulationController:
 # it takes.
 
 
-def _trunk_paused_past_a_change(past_s: float = 180.0) -> SimulationController:
+def _trunk_paused_past_a_change(past_s: int = 180) -> SimulationController:
     """The item's case at a minute's scale: a setting change at 30 s, then on to `past_s`.
 
     The run has keyframes at 0 s and 30 s and nowhere else. So the trunk has
@@ -204,9 +184,9 @@ def _trunk_paused_past_a_change(past_s: float = 180.0) -> SimulationController:
 
     controller = SimulationController()
     controller.start()
-    _advance_for(controller, duration_s=30.0)
+    _advance_for(controller, duration_s=30)
     controller.set_fresh_gas_flow(FreshGasFlow(1.0))
-    _advance_for(controller, duration_s=past_s - 30.0)
+    _advance_for(controller, duration_s=past_s - 30)
     controller.pause()
 
     return controller
@@ -237,15 +217,15 @@ def _described(changes: tuple[ControlChange, ...]) -> list[tuple[object, ...]]:
 
 
 def _states_agree_after_the_fork(
-    run: SimulationController, expected: SimulationController, fork_s: float, steps: int
+    run: SimulationController, expected: SimulationController, fork_s: int, steps: int
 ) -> None:
     """Assert that two runs hold bit-identical canonical states for `steps` steps past `fork_s`."""
 
-    fork_steps = round(fork_s / MAXIMUM_SIMULATION_STEP_S)
-
     for steps_past_fork in range(steps + 1):
-        case_s = (fork_steps + steps_past_fork) * MAXIMUM_SIMULATION_STEP_S
+        case_s = fork_s + steps_past_fork * SIMULATION_STEP_S
 
-        assert run._run_definition.state_at(case_s) == expected._run_definition.state_at(case_s), (
+        assert run._state.stored_states.state_at(
+            CaseInstant(case_s)
+        ) == expected._state.stored_states.state_at(CaseInstant(case_s)), (
             f"the runs differ at {case_s} s"
         )
