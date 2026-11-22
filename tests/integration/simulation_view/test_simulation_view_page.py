@@ -6,7 +6,7 @@ These tests cover the page and its window.
 """
 
 import pytest
-from PySide6.QtCore import QPoint
+from PySide6.QtCore import QEvent, QObject, QPoint
 from PySide6.QtWidgets import QApplication, QLabel, QScrollArea, QSlider, QWidget
 
 from anesthesia_sim.app.controller import SimulationController
@@ -333,6 +333,36 @@ def _shipped_view_at(
     return view
 
 
+class _NarrowPaints(QObject):
+    """Record each paint of a View that is narrower than its least width when it paints."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.view: SimulationView | None = None
+        self.narrow: list[tuple[str, int, int]] = []
+        self.paints = 0
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        if event.type() != QEvent.Type.Paint or self.view is None:
+            return False
+
+        areas = self.view.layout_container
+
+        for area in areas.model.areas():
+            content = areas.frame(area.id).content
+
+            if isinstance(watched, QWidget) and (
+                watched is content or content.isAncestorOf(watched)
+            ):
+                self.paints += 1
+                least = content.minimumSizeHint().width()
+
+                if content.width() < least:
+                    self.narrow.append((area.view, content.width(), least))
+
+        return False
+
+
 def _shipped_workspace_names() -> tuple[str, ...]:
     from anesthesia_sim.layout.shipped import shipped_workspaces
 
@@ -368,6 +398,45 @@ def test_no_shipped_workspace_scrolls_the_page(
         assert frame.view_scroll.horizontalScrollBar().maximum() == 0, (
             f"the {area.view} View scrolls sideways in its Area"
         )
+        assert frame.content.width() >= frame.content.minimumSizeHint().width(), (
+            f"the {area.view} View is {frame.content.width()} px wide, narrower than "
+            f"its least width of {frame.content.minimumSizeHint().width()} px"
+        )
+
+
+@pytest.mark.parametrize(("width_px", "height_px"), _COMMON_SCREENS_PX)
+@pytest.mark.parametrize("workspace", _shipped_workspace_names())
+def test_no_view_paints_narrower_than_its_least_width_after_a_workspace_switch(
+    application: QApplication, workspace: str, width_px: int, height_px: int
+) -> None:
+    """`PL-2NNM`: a View is never drawn squeezed while the Areas settle after a switch.
+
+    A View's least width can grow when its first frame is drawn, as the
+    compartment schematic's does, and the Areas then settle again. Until they
+    have, the View is narrower than its least width. At 1366 by 768 the
+    schematic in Maintenance is 663 px wide against a least width of 706 px
+    for one pass of the event loop after the switch. A View drawn at such a
+    width cuts off or overlaps what it shows, so the test records every paint
+    of every View from the switch until the dashboard has settled after its
+    next frame. The scroll bar that the test above reads cannot see a squeeze.
+    """
+
+    view = _shipped_view_at(application, "Default", width_px, height_px)
+    watch = _NarrowPaints()
+    watch.view = view
+    application.installEventFilter(watch)
+
+    try:
+        view.tab_strip.activate(view.workspaces.position_of(WorkspaceName(workspace)))
+        _settle(application)
+        view.present(False)
+        _settle(application)
+    finally:
+        application.removeEventFilter(watch)
+
+    # Paints were seen, or the test shows nothing about them.
+    assert watch.paints > 0
+    assert watch.narrow == [], watch.narrow[:5]
 
 
 def test_a_view_taller_than_its_area_scrolls_inside_the_area(application: QApplication) -> None:
