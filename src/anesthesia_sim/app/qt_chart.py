@@ -520,6 +520,13 @@ def _plot(background: str) -> Any:
         axis.setPen(pg.mkPen(GRIDLINE))
         axis.setTextPen(pg.mkPen(MUTED))
 
+    # Each axis's range ends at a labelled tick, and a label is centred on its
+    # tick. With pyqtgraph's 1 px top margin, the top label's upper half fell
+    # outside the widget and was cut off, so a "6" could read as a "0"
+    # (`PL-571L`). Half a line of the plot's font above the plot keeps it whole.
+    top_px = ceil(QFontMetrics(plot.font()).height() / 2)
+    item.layout.setContentsMargins(1, max(1, top_px), 1, 1)
+
     return plot
 
 
@@ -711,7 +718,11 @@ class _HoverReadout:
         # (`PL-9BVQ`). A plot shorter than the box's height on both sides of
         # the anchor, as a View at its least height can leave it, gets the box
         # with its top at the plot's top, so the box stays inside the plot
-        # where the plot is at least as tall as the box (`PL-CBYS`).
+        # where the plot is at least as tall as the box (`PL-CBYS`). There the
+        # box is almost as tall as the plot. Beside the anchor it hid the curve
+        # on that side, which is what the value is read against, so it goes to
+        # the far edge of the plot instead, on the side away from the anchor
+        # (`PL-YJ7N`).
         anchor = target.anchor
         past_middle = anchor.time_s > (x_range[0] + x_range[1]) / 2.0
         box_height_px = self._box_height_px()
@@ -726,8 +737,11 @@ class _HoverReadout:
             self._text.setAnchor((horizontal, 0))
             self._text.setPos(anchor.time_s, anchor.value)
         else:
-            self._text.setAnchor((horizontal, 0))
-            self._text.setPos(anchor.time_s, self._top_value())
+            # Past the middle the anchor is in the right half, so the box takes
+            # the left edge, and the other way round.
+            far_side = 0 if past_middle else 1
+            self._text.setAnchor((far_side, 0))
+            self._text.setPos(x_range[far_side], self._top_value())
 
         self._dot.show()
         # This uses `setVisible` rather than `show`. `show` goes straight to
@@ -1298,6 +1312,11 @@ class ConcentrationChart(QWidget):
 
         return _axis_ticks(self._plot.getPlotItem().getAxis(name))
 
+    def tick_label_rects(self, name: str) -> tuple[tuple[str, QRectF], ...]:
+        """Each tick label one axis paints, with its box in the pixels of `painted`."""
+
+        return _tick_label_rects(self._plot, name)
+
     def axis_titles(self) -> tuple[str, ...]:
         """The titles of the chart's axes, so a walk over the whole interface finds them."""
 
@@ -1719,6 +1738,11 @@ class WashInChart(QWidget):
 
         return _axis_ticks(self._plot.getPlotItem().getAxis(name))
 
+    def tick_label_rects(self, name: str) -> tuple[tuple[str, QRectF], ...]:
+        """Each tick label one axis paints, with its box in the pixels of `painted`."""
+
+        return _tick_label_rects(self._plot, name)
+
     def axis_titles(self) -> tuple[str, ...]:
         """The titles of the plot's axes, so a walk over the whole interface finds them."""
 
@@ -1921,6 +1945,23 @@ def _axis_ticks(axis: Any) -> tuple[tuple[float, str], ...]:
         return ()
 
     return tuple((float(position), str(label)) for position, label in ticks[0])
+
+
+def _tick_label_rects(plot: Any, name: str) -> tuple[tuple[str, QRectF], ...]:
+    """Each tick label one axis paints, with its box in the widget's pixels."""
+
+    axis = plot.getPlotItem().getAxis(name)
+    image = QImage(1, 1, QImage.Format.Format_ARGB32)
+    painter = QPainter(image)
+    painter.setFont(plot.font())
+    try:
+        _, _, texts = axis.generateDrawSpecs(painter)
+    finally:
+        painter.end()
+    transform = plot.viewportTransform()
+    return tuple(
+        (str(text), QRectF(transform.mapRect(axis.mapRectToScene(rect)))) for rect, _, text in texts
+    )
 
 
 def _render(widget: QWidget) -> QImage:

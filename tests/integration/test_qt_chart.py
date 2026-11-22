@@ -20,7 +20,7 @@ from collections.abc import Iterator
 
 import numpy as np
 import pytest
-from PySide6.QtCore import QDeadlineTimer, QEvent, QPoint, QPointF, Qt
+from PySide6.QtCore import QDeadlineTimer, QEvent, QPoint, QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QImage, QMouseEvent, QPainter, QPalette, QPen
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QCheckBox, QLabel, QWidget
@@ -321,6 +321,34 @@ def test_the_wash_in_axis_is_ruled_at_quarters_and_the_window_is_the_chart_s(
         (tick, format_chart_time_label(tick)) for tick in frame.tick_times_s
     )
     assert chart.equilibrium_line() == WASH_IN_EQUILIBRIUM_RATIO
+
+
+@pytest.mark.parametrize(
+    ("make", "height", "names"),
+    [
+        (ConcentrationChart, 480, ("left", "right", "bottom")),
+        (WashInChart, 300, ("left", "bottom")),
+    ],
+)
+def test_every_tick_label_is_painted_whole_inside_the_chart(
+    application: QApplication, make, height: int, names: tuple[str, ...]
+) -> None:
+    """The top label of each axis sits on the plot's top edge, and was cut in half (`PL-571L`).
+
+    The lower half of a "6" can read as a "0", so a learner could misjudge the scale.
+    """
+
+    frame = _frame(_run_with_a_dial_change(), span_s=900.0)
+    chart = _shown(application, make(), height)
+    chart.draw(frame)
+    application.processEvents()
+    bounds = QRectF(chart.rect())
+
+    for name in names:
+        labels = chart.tick_label_rects(name)
+        assert labels, f"the {name} axis painted no label"
+        cut = [text for text, rect in labels if not bounds.contains(rect)]
+        assert cut == [], f"the {name} axis's labels {cut} reach outside the chart"
 
 
 # ------------------------------------------------------------ the references
