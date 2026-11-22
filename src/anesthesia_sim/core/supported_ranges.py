@@ -286,7 +286,7 @@ refusing it would bring back the halt that this ceiling exists to remove.
 # already lacks its largest measured term. That term is the fourth
 # compartment that human washout needs and this model lacks, and it is the
 # largest term from about the third hour of elimination.
-# § "Supported run length" records this. It limits what the late tail is
+# `docs/INTERFACE.md` § "Supported run length" records this. It limits what the late tail is
 # worth, not how long a run may be.
 #
 # Sevoflurane is the agent that sets the limit. Between 2% and 5% of its

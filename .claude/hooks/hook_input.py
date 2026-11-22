@@ -170,7 +170,7 @@ def output(
     a refusal from any guard still stops a rewritten call (`PL-X4MD`). This is
     the one place a hook's output is built, and `verdict` the one place it is
     read, so `guard.py` can merge what several guards return (`PL-9KSJ`). The
-    fields are the ones https://code.claude.com/docs/en/hooks § "PreToolUse
+    fields are the ones https://code.claude.com/docs/en/hooks section "PreToolUse
     decision control" documents, read 2026-11-03.
     """
     fields: dict[str, object] = {"hookEventName": event}

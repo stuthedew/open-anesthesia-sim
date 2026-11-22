@@ -29,7 +29,7 @@ FLOW_CHANGE_S = 120
 
 # The snapshot's field for each compartment, beside the position of that
 # compartment's fraction in a stored state. The positions are written out from
-# `docs/MODEL.md` § "State vector", in the order circuit, alveoli, mixed
+# `core/governing_equations.py` § "The state vector", in the order circuit, alveoli, mixed
 # venous blood, vessel-rich group, muscle, fat.
 SNAPSHOT_FIELD_POSITIONS = tuple(zip(COMPARTMENT_SNAPSHOT_FIELDS, range(6), strict=True))
 
