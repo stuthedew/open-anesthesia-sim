@@ -2386,6 +2386,46 @@ def test_desflurane_washout_at_the_default_fresh_gas_flow_regression_pin() -> No
     )
 
 
+# Desflurane's five-minute F_A/F_A0 at 10 L/min of fresh gas and 8 L/min of
+# alveolar ventilation, which the same paragraph quotes to show that the ratio
+# on screen can fall below the volunteers' mean of 0.14. It is this model's own
+# output, measured on 2026-11-22, not a published value, and it is pinned to
+# `ELIMINATION_RATIO_PIN_TOLERANCE`.
+DESFLURANE_ELIMINATION_RATIO_AT_A_HIGH_FLOW_AND_RAISED_VENTILATION = 0.1054
+HIGH_FLOW_RAISED_VENTILATION_L_MIN = 8.0
+
+
+def test_desflurane_washout_at_a_high_flow_and_raised_ventilation_regression_pin() -> None:
+    """Pin desflurane's five-minute washout at a high flow and a raised ventilation.
+
+    `docs/MODEL.md` § "Known limitations" quotes this figure as a setting at
+    which the washout on screen falls faster than the volunteers' did. The
+    test also asserts that it is below their mean, because that is the claim
+    the paragraph makes with it.
+    """
+
+    ratio = _eliminate(
+        "desflurane",
+        fresh_gas_flow_l_min=FRESH_GAS_FLOW_L_MIN,
+        alveolar_ventilation_l_min=HIGH_FLOW_RAISED_VENTILATION_L_MIN,
+    ).ratio
+    expected = DESFLURANE_ELIMINATION_RATIO_AT_A_HIGH_FLOW_AND_RAISED_VENTILATION
+
+    assert abs(ratio - expected) <= ELIMINATION_RATIO_PIN_TOLERANCE, (
+        f"desflurane eliminates to F_A/F_A0 {ratio:.5f} at 5 min at {FRESH_GAS_FLOW_L_MIN} "
+        f"L/min of fresh gas and {HIGH_FLOW_RAISED_VENTILATION_L_MIN} L/min of alveolar "
+        f"ventilation, against the {expected} that docs/MODEL.md's Known limitations "
+        f"quotes; re-measure that paragraph rather than widening the pin"
+    )
+    measurement = next(m for m in PUBLISHED_MEASUREMENTS if m.agent_id == "desflurane")
+    assert ratio < measurement.elimination_mean, (
+        f"desflurane's five-minute F_A/F_A0 of {ratio:.5f} at a high flow and raised "
+        f"ventilation is no longer below the volunteers' mean of "
+        f"{measurement.elimination_mean}, so docs/MODEL.md's Known limitations is wrong "
+        f"to quote it as a faster fall"
+    )
+
+
 @pytest.mark.parametrize("agent_id", AGENT_IDS)
 def test_a_larger_circuit_can_only_slow_the_elimination(agent_id: str) -> None:
     """Check whether a store of agent in the breathing circuit speeds or slows the elimination.

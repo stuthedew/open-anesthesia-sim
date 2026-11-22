@@ -5970,11 +5970,16 @@ published standard deviations too *fast*. No setting of the simulator removes
 the circuit. Yasuda's volunteers breathed through a non-rebreathing circuit,
 so a washout on screen cannot be compared with theirs directly. On screen, the
 circle system returns exhaled desflurane to the patient, and that slows the
-washout far more than the model's error speeds it. After a 30-minute
-administration with the fresh gas flow left unchanged, desflurane's
-five-minute ratio is 0.285 at the default fresh gas flow of 4 L/min and 0.163
-at 10 L/min, against 0.0935 with the circuit removed (simulated 2026-11-21).
-The model's error is present at every setting. If the published measurement is
+washout by an amount that depends on the fresh gas flow and the ventilation.
+The figures below follow a 30-minute administration with every setting left
+unchanged, and they are the model's own output. At the default alveolar
+ventilation of 4 L/min and cardiac output of 5 L/min, desflurane's five-minute
+ratio is 0.285 at the default fresh gas flow of 4 L/min and 0.163 at 10 L/min,
+against 0.0935 with the circuit removed. At a high fresh gas flow with a raised
+ventilation, the ratio on screen can fall below the volunteers' mean of 0.14.
+It is 0.105 at 10 L/min of fresh gas and 8 L/min of alveolar ventilation. The
+model's error was measured only at the settings of the published protocol. If
+the error is present at other settings too, and the published measurement is
 right, a real patient breathing through the same circuit at the same settings
 would wash desflurane out more slowly than the screen shows. A learner should
 not take early desflurane washout on screen as a prediction of how fast a
@@ -5984,12 +5989,15 @@ gives what was ruled out. The one hypothesis left is the published value itself,
 so the disagreement is left uncorrected.
 
 <!-- provenance: data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4 -->
+<!-- provenance: data/patients/reference_adult.json default_cardiac_output_l_min = 5, default_alveolar_ventilation_l_min = 4 -->
 <!-- not-restated: 10 L/min -->
 
 **For developers.** `test_desflurane_washout_at_the_default_fresh_gas_flow_regression_pin`
 in `tests/reference/test_published_wash_in_and_elimination.py` pins the figure
 at the default fresh gas flow, reading that flow from the circuit's parameter
-file. `test_five_minute_elimination_ratio_regression_pin` pins the figure at
+file. `test_desflurane_washout_at_a_high_flow_and_raised_ventilation_regression_pin`
+pins the figure at 10 L/min of fresh gas and 8 L/min of alveolar ventilation.
+`test_five_minute_elimination_ratio_regression_pin` pins the figure at
 10 L/min, and
 `test_five_minute_elimination_ratio_without_rebreathing_regression_pin` the
 figure with the circuit removed.
