@@ -899,10 +899,7 @@ HELD_RUN_ROUNDING_BOUND = 1e-12
 # because the first bracket is negative and the gate above bounds every |e|.
 # Converting to counts of the last displayed digit gives the expression below:
 # 8e-9 counts. Measured, the widest gap that any inversion occupies is 0.0,
-# because there are no inversions at all over 1 485 000 pair comparisons. The
-# largest pairwise differential |e[left] - e[right]| anywhere is 2.06e-14 in
-# fraction, or 2.06e-10 counts, which is 39 times less than this bound
-# (measured 2026-11-21). An
+# because there are no inversions at all over 1 485 000 pair comparisons. An
 # error-injection sweep confirms the shape: displacing the states by ±ε produces
 # a widest inverted gap that approaches 2ε from below at every scale and never
 # exceeds it.
@@ -915,11 +912,10 @@ HELD_RUN_ROUNDING_BOUND = 1e-12
 # shipped formatter gives on real trajectories, compared pair by pair. Until
 # `PL-0M7K` this test used a test-local `round()` instead, so it could not see
 # the formatter at all. The gate keeps its gap-threshold shape rather than
-# asserting zero inversions. Crossings really are sampled at gaps smaller than
-# the differential: the smallest nonzero true gap seen is 1.12e-15 in fraction,
-# below the 2.06e-14 differential. So an inversion is arithmetically possible
-# there, and whether a zero-inversion assertion passed would depend on the
-# platform.
+# asserting zero inversions. Crossings really are sampled at true gaps smaller
+# than the pairwise differential |e[left] - e[right]|, so an inversion is
+# arithmetically possible there, and whether a zero-inversion assertion passed
+# would depend on the platform.
 MAX_INVERTED_GAP_IN_DISPLAY_COUNTS = (
     2.0 * EXACT_STEP_ORACLE_TOLERANCE * 100.0 * 10.0**CONCENTRATION_DISPLAY_DECIMALS
 )
@@ -1952,11 +1948,9 @@ def test_displayed_ordering_reverses_only_at_a_crossing(
     Measured, there are no inversions at all: zero over 1 485 000 pair
     comparisons. The test keeps its gap-threshold shape rather than asserting
     zero inversions, because crossings really are sampled at gaps below the
-    arithmetic bound. The smallest nonzero true gap seen is 1.12e-15 in
-    fraction, below the 2.06e-14 worst pairwise differential (measured
-    2026-11-21). So an inversion
-    is possible there, and a zero-inversion assertion would turn a different
-    libm into a failure.
+    arithmetic bound, and some are smaller than the pairwise differential
+    between two compartments' errors. So an inversion is possible there, and a
+    zero-inversion assertion would turn a different libm into a failure.
 
     `docs/INTERFACE.md` § "Displayed precision" quotes this test's count of pair
     comparisons. It cites the absolute gate and the unit test as the support
