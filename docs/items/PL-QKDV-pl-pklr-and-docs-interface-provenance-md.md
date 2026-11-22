@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: docs
-feature: interface-provenance-adoptions
+feature: interface-areas
 milestone: v0.6.19
 touches: docs/interface-provenance.md
 added: 2026-11-11

@@ -2,7 +2,7 @@
 id: PL-3K13
 title: Copy edit docs/machine-abstraction.md and docs/machine-survey.md with the fixed copy editor, section by section, keeping every fact a contributor needs
 status: done
-feature: repo-copy-edit
+feature: copy-editor
 milestone: v0.6.17
 touches: docs/machine-abstraction.md, docs/machine-survey.md
 added: 2026-11-07

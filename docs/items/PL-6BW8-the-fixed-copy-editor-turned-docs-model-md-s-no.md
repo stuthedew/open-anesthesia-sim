@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: dropped
 classes: docs
-feature: repo-copy-edit
+feature: copy-editor
 touches: docs/MODEL.md
 deferred-from: v0.7.0 - not present at the freeze (817a4d88) or now: the loss is from a copy-editor test run of 2026-11-09, in no commit
 added: 2026-11-09

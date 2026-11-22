@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect
-feature: claim-integrity
+feature: claim-record
 milestone: v0.5.13
 touches: subprojects/docket/src/docket/claiming.py, subprojects/docket/tests/test_claiming.py
 blocked-by: PL-MT3R

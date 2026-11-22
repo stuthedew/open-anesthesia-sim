@@ -4,7 +4,7 @@ title: tools/headless_worker.py records a failed run with no reason: it drops cl
 priority: P2
 effort: S
 status: done
-feature: api-credit-runs
+feature: worker-runs
 milestone: v0.6.0
 touches: tools/headless_worker.py, tests/unit/test_headless_worker.py
 added: 2026-10-19

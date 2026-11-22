@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: defect, docs
-feature: repo-copy-edit
+feature: copy-editor
 milestone: v0.6.19
 touches: src/anesthesia_sim/core/liquid_agent.py, ROADMAP.md
 added: 2026-11-09

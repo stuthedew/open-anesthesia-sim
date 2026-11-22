@@ -5,7 +5,7 @@ priority: P2
 effort: M
 status: ready
 classes: defect
-feature: generator-measurement
+feature: generator-heads
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests, .claude/skills/docket/modes/triage.md
 deferred-from: v0.7.0 - found by the 2026-11-10 audit after the freeze; apparatus, and it changes no displayed value, so the release does not wait on it
 added: 2026-11-10

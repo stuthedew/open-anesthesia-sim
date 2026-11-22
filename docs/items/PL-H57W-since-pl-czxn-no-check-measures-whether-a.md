@@ -5,7 +5,7 @@ priority: P1
 effort: L
 status: done
 classes: defect, safety
-feature: test-effectiveness-measurement
+feature: tests-detect-wrong-values
 milestone: v0.6.8
 touches: tools/diff_mutation.py, tests/unit/test_diff_mutation.py, docs/mutation-testing.md
 blocked-by: PL-7FPD

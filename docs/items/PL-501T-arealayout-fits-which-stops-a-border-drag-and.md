@@ -5,7 +5,7 @@ priority: P2
 effort: M
 status: done
 classes: defect
-feature: area-layout-sizing
+feature: interface-areas
 milestone: v0.6.19
 touches: src/anesthesia_sim/app/area_layout.py, tests/integration/test_layout_adapter.py
 added: 2026-11-01

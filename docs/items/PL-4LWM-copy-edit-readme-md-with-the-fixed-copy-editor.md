@@ -2,7 +2,7 @@
 id: PL-4LWM
 title: Copy edit README.md with the fixed copy editor: apply its structure read, then line-edit each section except the blind-test section 'What it is for'
 status: done
-feature: repo-copy-edit
+feature: copy-editor
 milestone: v0.6.16
 touches: README.md
 added: 2026-11-05

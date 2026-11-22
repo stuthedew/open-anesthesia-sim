@@ -5,7 +5,7 @@ priority: P2
 effort: M
 status: dropped
 classes: infra, test
-feature: compartment-trace-legibility
+feature: chart-readout
 touches: docs/items/PL-1K9G-which-grid-column-a-trace-answers-a-hover-at-is.md
 added: 2026-09-20
 closed: 2026-10-11

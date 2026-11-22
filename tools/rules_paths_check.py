@@ -143,6 +143,9 @@ LANE_ONLY = (
     "docs/model-review.md",
     "model-evidence.toml",
     "docs/hook-blocks",
+    # The feature registry: one description per feature name, like the item
+    # store it describes (`PL-Q3BN`).
+    "docs/features.toml",
     # Prose-review records: prose, no code.
     "docs/prose-review",
     # Configuration, which carries no prose a standard could apply to.

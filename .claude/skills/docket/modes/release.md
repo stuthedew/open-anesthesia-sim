@@ -117,6 +117,10 @@ abandoned, run `bin/docket stranded` before dropping the ref. **By this
 branch, through the item it names:** cut under that item rather than filing
 again - claiming it anew where its claim lapsed or was yielded.
 
+**Regroup the features once per cut**, as the triage grooming pass does with
+`bin/docket feature --similar`, so names that drifted apart during the release
+are merged before its notes list what it completed (`PL-LRWK`).
+
 **Close the release item after the cut, never before it.** A closed item
 releases its claim, so closing it first makes the cut refuse. After `make
 release` and the edits below, close it in its own commit (`bin/docket set ID
