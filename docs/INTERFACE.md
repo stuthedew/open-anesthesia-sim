@@ -758,7 +758,7 @@ type's constructor runs the range check, and nothing else produces a value of th
 is therefore checked once, when its value is made, not where it is stored or used. A flow
 outside its range raises a `SimulationConfigurationError`, so a script, a notebook and a test
 meet the same error as the interface. The error marks a refused argument, which
-`docs/VERIFICATION.md` § "Supported simulation step" distinguishes from a step that broke down.
+`docs/VERIFICATION.md` § "Step atomicity" distinguishes from a step that broke down.
 
 A flow is kept from one step to the next, and it can enter the simulation five ways: through a
 setter of the agent uptake system (`AgentUptakeSystem`), through the setter of the compartment
