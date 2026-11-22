@@ -2785,7 +2785,9 @@ def _wrapped_figure(
     `_untied_figures` joins them. So a number after a letter or a comma, or in
     e-notation, is still read as no figure. Only a figure whose number ends the
     first line and whose unit is on the second is returned. A blank next line
-    ends the paragraph, so it joins nothing.
+    ends the paragraph, so it joins nothing. Three forms are not joined: a list
+    joined by slashes, a math span, and a grouped number split by the break
+    itself.
     """
     following = index + 1
     if following >= len(prose) or following in skipped:

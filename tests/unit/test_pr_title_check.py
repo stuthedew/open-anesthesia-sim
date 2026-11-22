@@ -50,9 +50,6 @@ def _tree(**refs: dict[str, str]):
         if args[0] == "show":
             ref, _, path = args[1].partition(":")
             return refs.get(ref, {}).get(path.split("/")[-1], "")
-        if args[0] == "merge-base":
-            # Where this branch and another met: the tree a test names `meet`.
-            return "meet\n"
         return ""
 
     return fake
@@ -60,39 +57,6 @@ def _tree(**refs: dict[str, str]):
 
 def _install(monkeypatch: pytest.MonkeyPatch, **refs: dict[str, str]) -> None:
     monkeypatch.setattr(pr_title_check, "_git", _tree(**refs))
-
-
-def test_a_stacked_branch_need_not_name_the_lower_pull_request_s_closure(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """A branch built on #1049's branch holds #1049's closure, and #1049 is still open.
-
-    `PL-6LJS`.
-    """
-    lower = "---\nid: PL-K7QX\ntitle: T\nstatus: done\npr: 1049\n---\n"
-    own = "---\nid: PL-B2C3\ntitle: T\nstatus: done\npr: 1050\n---\n"
-    _install(
-        monkeypatch,
-        base={"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX", status="ready")},
-        head={"PL-K7QX-a.md": lower, "PL-B2C3-b.md": own},
-        meet={"PL-K7QX-a.md": lower},
-    )
-    monkeypatch.setattr(pr_title_check, "repo_slug", lambda: "owner/repo")
-    pulls = tuple(
-        open_pull_requests.PullRequest(number=n, title="T", head=f"b{n}", base="main")
-        for n in (1049, 1050)
-    )
-    monkeypatch.setattr(pr_title_check, "open_pull_requests", lambda slug, head=None: pulls)
-    monkeypatch.setenv("PR_NUMBER", "1050")
-    monkeypatch.setenv("PR_TITLE", "PL-B2C3: the upper branch's work")
-    monkeypatch.setattr("sys.argv", ["pr_title_check.py", "--base", "base", "--head", "head"])
-
-    assert pr_title_check.main() == 0
-    assert "PL-K7QX records #1049, which is still open" in capsys.readouterr().out
-
-    # Once #1049 is no longer open, its closure here is this branch's to name.
-    monkeypatch.setattr(pr_title_check, "open_pull_requests", lambda slug, head=None: ())
-    assert pr_title_check.main() == 1
 
 
 def test_a_branch_that_closes_an_item_needs_its_id(monkeypatch: pytest.MonkeyPatch) -> None:

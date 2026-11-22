@@ -25,14 +25,6 @@ hold never fires. `bin/docket claim` opens the pull request as a draft, and
 `bin/docket set --status done` writes its number in the closing commit
 (`PL-86DN`).
 
-**A closure another open pull request carries is left out** (`PL-6LJS`). A
-branch built on another pull request's branch before it merged holds that pull
-request's closures, already recording its number. Where the forge says that
-number is still open, the closure is that pull request's, and the run says it
-left it out. Where the number is not open, or the forge cannot be asked, the
-closure is held to this number as before, because a pull request closed
-unmerged and reopened leaves a wrong number behind.
-
 Only `done` closures are held to it. A drop records no `pr`, as the store's
 released drops never have, and `docket check` asks nothing of one.
 
@@ -74,10 +66,8 @@ from docket.vcs import landed_closure  # noqa: E402
 from pr_title_check import (  # noqa: E402
     GitUnanswered,
     arguments,
-    carried_by_other_pulls,
     closed_items_at,
     discovered_pull_request,
-    report_left_out,
     report_unread_trees,
     where_read,
 )
@@ -139,19 +129,6 @@ def main() -> int:
         return 0
 
     owed = {identifier: pr for identifier, pr in closing.items() if pr != str(number)}
-    if owed:
-        at_head = closed_items_at(head)
-        carried = carried_by_other_pulls(
-            {identifier: at_head[identifier] for identifier in owed}, number, head
-        )
-        report_left_out("pr-record", carried)
-        owed = {identifier: pr for identifier, pr in owed.items() if identifier not in carried}
-        closing = {
-            identifier: pr for identifier, pr in closing.items() if identifier not in carried
-        }
-    if not closing:
-        print("pr-record: every closure here is another open pull request's; no number is owed")
-        return 0
     if not owed:
         print(f"pr-record: {', '.join(closing)} record{'s' if len(closing) == 1 else ''} #{number}")
         return 0
@@ -160,12 +137,24 @@ def main() -> int:
         for identifier, pr in owed.items()
     )
     closer, where = where_read(head)
+    # A closure recording another number is most often one this branch took
+    # from the branch it was built on. Passing it would let this pull request
+    # merge first and land that work under its own commit, so the check still
+    # refuses it and says how the stack clears (`PL-6LJS`).
+    stacked = (
+        "\n  A closure that records another pull request's number may come from the branch "
+        "this one was built on. Then set this pull request's base to that branch until it "
+        "merges, or wait for it to merge and merge main into this branch."
+        if any(owed.values())
+        else ""
+    )
     print(
         f"pr-record: {closer} closes {', '.join(closing)}{where}, but #{number} is not "
         f"recorded on {recorded}.\n"
         f"  The pull request that closed an item is written on the branch, before the merge, "
         f"and nothing recovers it afterwards.\n"
-        f"  Run `bin/docket record {number}` on this branch, commit what it wrote, and push.",
+        f"  Run `bin/docket record {number}` on this branch, commit what it wrote, and push."
+        f"{stacked}",
         file=sys.stderr,
     )
     return 1

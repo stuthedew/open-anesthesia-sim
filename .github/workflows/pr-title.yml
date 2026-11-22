@@ -31,12 +31,8 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# `pull-requests: read` lets both checks ask which pull requests are open, so a
-# closure that a stacked branch's lower pull request carries is not read as
-# this one's (`PL-6LJS`).
 permissions:
   contents: read
-  pull-requests: read
 
 jobs:
   # **This job's name is load-bearing outside the tree**, exactly as
@@ -106,9 +102,7 @@ jobs:
       - name: pull request title names the items it closes
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_BASE: origin/${{ github.event.pull_request.base.ref }}
-          GH_TOKEN: ${{ github.token }}
         run: python3 tools/pr_title_check.py
 
       # The same two trees, asked the question provenance rests on (`PL-HMZZ`):
@@ -122,5 +116,4 @@ jobs:
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_BASE: origin/${{ github.event.pull_request.base.ref }}
-          GH_TOKEN: ${{ github.token }}
         run: python3 tools/pr_record_check.py
