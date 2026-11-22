@@ -1489,7 +1489,7 @@ class WashInChart(QWidget):
 
     The plot is a View of its own, and it keeps its own time window
     (`PL-L59K`). It shows the compartment chart's alveolar and circuit traces
-    as one number, so the Induction Workspace places it under that chart.
+    as one number, so the Induction Workspace places it beside that chart.
     While the two plots show the same window, they draw the same `ChartFrame`
     (`AreaLayout.frame_requests`), so they show the same instants.
     """

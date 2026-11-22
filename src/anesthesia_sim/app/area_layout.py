@@ -1487,22 +1487,34 @@ class AreaLayout(QWidget):
         Its height is the minimum height that the View's registry entry
         declares (`app/view_registry.py`). An Area with that height shows its
         View, and the reader scrolls the View up and down where its content is
-        taller than the Area (`ViewScroll`). Its width is the larger of the
-        declared minimum width and the least width Qt would hold the View's
-        widget to, with room beside the View for the scroll bar. So a View is
-        never scrolled sideways, and a row of controls is never cut off at the
-        Area's edge.
+        taller than the Area (`ViewScroll`). Where the entry carries `whole`,
+        the height is instead the larger of that minimum and the least height
+        of the View's content, so the View never scrolls up and down
+        (`PL-D5J4`). That height counts every line of a label that wraps, as
+        `ViewScroll` does when it sizes the View, at the Area's least width,
+        where a wrapped label takes the most lines. It is measured there, and
+        not at the width the Area is drawn, so the need does not depend on the
+        last layout and one settle gives the same sizes as the next. Its width is the
+        larger of the declared minimum width and the least width Qt would hold
+        the View's widget to, with room beside the View for the scroll bar. So
+        a View is never scrolled sideways, and a row of controls is never cut
+        off at the Area's edge.
         """
 
         kind, view = self._views[area_id]
-        declared = self._registered[kind].minimum
-        content_width, _ = _least_size(_widget(view))
+        entry = self._registered[kind]
+        declared = entry.minimum
+        widget = _widget(view)
+        content_width, _ = _least_size(widget)
         scroll = self._frames[area_id].view_scroll
         assert scroll is not None, "an Area that holds a View holds it in a scroll box"
+        height = declared.height_px
 
-        return PixelSize(
-            max(declared.width_px, content_width + scroll.bar_width()), declared.height_px
-        )
+        if entry.whole:
+            least_width = max(declared.width_px, content_width)
+            height = max(height, _least_height_at(widget, least_width))
+
+        return PixelSize(max(declared.width_px, content_width + scroll.bar_width()), height)
 
     def _lay_out(self, splitter: _AreaSplitter) -> None:
         """Give `splitter`'s children the sizes that the last settle worked out for its split."""
@@ -2435,14 +2447,9 @@ class ViewScroll(QScrollArea):
             return
 
         room = self.viewport().size()
-        least_width, least_height = _least_size(view)
+        least_width, _ = _least_size(view)
         width = max(room.width(), least_width)
-        layout = view.layout()
-
-        if layout is not None and layout.hasHeightForWidth():
-            least_height = max(least_height, layout.totalMinimumHeightForWidth(width))
-
-        view.resize(width, max(room.height(), least_height))
+        view.resize(width, max(room.height(), _least_height_at(view, width)))
 
         if self._kept_position is not None and self.isVisible():
             # The View's resize above has set the scroll range for this size.
@@ -3124,6 +3131,24 @@ def _least_size(widget: QWidget) -> tuple[int, int]:
     hint = widget.minimumSizeHint()
 
     return (widget.minimumWidth() or hint.width(), widget.minimumHeight() or hint.height())
+
+
+def _least_height_at(widget: QWidget, width_px: int) -> int:
+    """Return the least height that holds all of `widget`'s content when it is `width_px` wide.
+
+    A label that wraps takes more lines in a narrower widget, and the widget's
+    minimum size hint counts it as one line. So where the widget's layout has
+    a height that depends on its width, this is the larger of that height and
+    the height `_least_size` reads.
+    """
+
+    _, least_height = _least_size(widget)
+    layout = widget.layout()
+
+    if layout is not None and layout.hasHeightForWidth():
+        least_height = max(least_height, layout.totalMinimumHeightForWidth(width_px))
+
+    return least_height
 
 
 def _structural_minimum(frame: AreaFrame) -> tuple[int, int]:

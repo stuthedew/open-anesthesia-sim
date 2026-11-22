@@ -347,8 +347,9 @@ def test_the_region_and_the_use_disclaimer_stay_in_the_viewport(
     region off the top. Now only the part between them scrolls. The test
     checks the window in three states: when it opens, when the scrolling part
     is scrolled to its end, and after a branch is taken, which scrolls to the
-    chart. The disclaimer is found by its text, so the test also runs against
-    the code before the fix.
+    chart. Maintenance has no branch control, so there the branch is taken in
+    Default before the reader returns. The disclaimer is found by its text, so
+    the test also runs against the code before the fix.
     """
 
     from anesthesia_sim.app.dashboard_frame import USE_DISCLAIMER_TEXT
@@ -385,7 +386,17 @@ def test_the_region_and_the_use_disclaimer_stay_in_the_viewport(
     application.processEvents()
     assert_in_view("scrolled to the end")
 
-    _take_fork(view, 60.0)
+    if workspace == "Maintenance":
+        # Maintenance leaves out the branch control (`PL-D5J4`), so the branch
+        # is taken in Default and the reader comes back.
+        view.tab_strip.activate(view.workspaces.position_of(WorkspaceName("Default")))
+        _settle(application)
+        _take_fork(view, 60.0)
+        _settle(application)
+        view.tab_strip.activate(view.workspaces.position_of(WorkspaceName(workspace)))
+    else:
+        _take_fork(view, 60.0)
+
     _settle(application)
     assert len(view.runs) == 2
     assert_in_view("after taking a branch")
