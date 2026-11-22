@@ -2167,7 +2167,7 @@ class AreaFrame(QFrame):
         self._column.addWidget(rule)
         self.view_scroll = None if isinstance(content, AreaNotice) else ViewScroll(content)
         # A row that the View must keep on screen wherever any of the View is,
-        # such as the wash-in plot's "Modelled, not measured", sits above the
+        # such as the wash-in plot's statement that it is modelled, sits above the
         # scroll box rather than in it (`PL-26BZ`).
         self.pinned_row = None if self.view_scroll is None else pinned_row(content)
 

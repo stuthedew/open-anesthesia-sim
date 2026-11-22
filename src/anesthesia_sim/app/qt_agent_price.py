@@ -57,6 +57,7 @@ from anesthesia_sim.app.theme import (
     INK,
     METRIC_QUALIFIER_SIZE,
     MUTED,
+    PRICE_FIELD_MAX_WIDTH,
     VIEW_HEADING_SPACING,
     VIEW_ROW_SPACING,
     WARNING,
@@ -188,6 +189,9 @@ class PriceEntry(QWidget):
             (CURRENCY_FIELD_LABEL, self.currency_edit),
             (APPLIES_ON_FIELD_LABEL, self.applies_on_edit),
         ):
+            # A field holds a few characters, so it stops growing at a set
+            # width rather than stretching across a wide Area (`PL-PZD9`).
+            field.setMaximumWidth(PRICE_FIELD_MAX_WIDTH)
             form.addRow(styled_label(label, color=MUTED, wrap=True), field)
 
         buttons = QHBoxLayout()
