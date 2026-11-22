@@ -6,8 +6,9 @@ the report to put back a fact that an edit dropped by mistake, and to check
 that a passage which grew gives its reader something they act on.
 
 **Which files are read.** A Markdown or Python file is read when a row of the
-reader table in `.claude/rules/plain-writing.md` names the file or its
-directory (`PL-22T5`). A row whose reader is in `UNEDITED_READERS` is ignored,
+reader tables in `.claude/rules/plain-writing.md` and
+`.claude/rules/document-readers.md` names the file or its directory
+(`PL-22T5`, `PL-7YHK`). A row whose reader is in `UNEDITED_READERS` is ignored,
 so item briefs, the workflow's files, commit messages and replies are never
 compared. The table keeps its five columns, because `reader_table` refuses a
 row with any other number of cells. Its two `README.md` rows are the readers
@@ -79,8 +80,13 @@ STRING_KIND = "string"
 #: applies only to string units, and every other row applies to every other kind,
 #: so an interface notice and the docstring beside it get different readers.
 STRING_ROW_WORDS = "string literals"
-#: The rule whose table names the readers of each kind of text.
+#: The rule whose table names the readers of each kind of text a session
+#: writes without opening a document first.
 RULE = ROOT / ".claude" / "rules" / "plain-writing.md"
+#: The rule whose table names the readers of each document. It was part of
+#: `RULE`'s table until `PL-7YHK` moved it to a rule that loads with the
+#: documents, so that the instructions loaded at launch stay under their cap.
+DOCUMENT_RULE = ROOT / ".claude" / "rules" / "document-readers.md"
 #: The header of that table, which is how the tool finds it in the rule.
 READER_HEADER = (
     "Kind of text",
@@ -180,8 +186,18 @@ UNEDITED_READERS = (
 
 
 def whole_rule_table() -> list[Reader]:
-    """Every row of the plain-writing rule's reader table, including the unedited readers."""
-    return reader_table(RULE.read_text(encoding="utf-8"))
+    """Every row of both reader tables, including the unedited readers.
+
+    Raises `ValueError`, naming the rule, where either rule holds no reader
+    table or a row of one has the wrong number of cells.
+    """
+    table = []
+    for rule in (RULE, DOCUMENT_RULE):
+        try:
+            table.extend(reader_table(rule.read_text(encoding="utf-8")))
+        except ValueError as error:
+            raise ValueError(f"{rule.name}: {error}") from error
+    return table
 
 
 def rule_table() -> list[Reader]:
@@ -605,7 +621,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 1
         print(compare_report(compare(root, base, table)))
     except ValueError as error:
-        print(f"new_prose: no answer: {RULE.name}: {error}", file=sys.stderr)
+        print(f"new_prose: no answer: {error}", file=sys.stderr)
         return 1
     except (GitUnanswered, OSError) as error:
         print(f"new_prose: no answer: {error!r}", file=sys.stderr)

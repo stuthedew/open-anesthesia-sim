@@ -160,6 +160,17 @@ def test_a_rule_without_the_reader_table_is_refused() -> None:
         reader_table("| Kind | Reader |\n| --- | --- |\n| `a` | b |\n")
 
 
+def test_a_document_rule_without_the_reader_table_is_refused_by_name(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The document readers moved to a rule of their own, so losing that table must fail."""
+    rule = tmp_path / "document-readers.md"
+    rule.write_text("# Who reads each document\n", encoding="utf-8")
+    monkeypatch.setattr(new_prose, "DOCUMENT_RULE", rule)
+    with pytest.raises(ValueError, match="^document-readers.md: no table headed"):
+        new_prose.whole_rule_table()
+
+
 @pytest.mark.parametrize(
     "path",
     [
@@ -208,7 +219,7 @@ UNREVIEWED_PRODUCT_DOCUMENTS = ("docs/releases",)
 
 def test_every_product_document_has_a_reader_except_the_release_notes() -> None:
     """A product document added without a row would be left out of the comparison."""
-    table = reader_table(RULE.read_text(encoding="utf-8"))
+    table = new_prose.whole_rule_table()
     unread = []
     for entry in load(ROOT).product_paths:
         if entry in UNREVIEWED_PRODUCT_DOCUMENTS:
@@ -224,7 +235,7 @@ def test_every_product_document_has_a_reader_except_the_release_notes() -> None:
 
 def test_no_row_names_the_release_notes() -> None:
     """A release note is written from item titles, so no reader row names it."""
-    table = reader_table(RULE.read_text(encoding="utf-8"))
+    table = new_prose.whole_rule_table()
     assert not readers_of(table, "docs/releases/v0.6.14.md")
 
 

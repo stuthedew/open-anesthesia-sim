@@ -63,6 +63,7 @@ preceded by a read.
 | "A commit closing more than one item leads with all of them, comma-separated", and its reason, that `docket check` recovers a closed item's pull request from the newest subject naming it | 272 characters, the naming bullet in § "The queue" | `tools/pr_title_check.py`, run in the required `pr-title` job and by `make check`, which refuses a pull request whose title does not lead with every id it closes. Its tests `test_the_incident_this_exists_for_is_refused`, `test_an_id_mentioned_but_not_leading_does_not_count` and `test_a_title_leading_with_every_id_passes` pin that. Step 1 of `.claude/skills/docket/modes/close-out.md` states the rule when the closing commit is written | A squash merge makes the pull request title the only subject that reaches `main`, and the check holds that title to every closed id. The stated reason had also stopped being true. Since `PL-HMZZ`, `bin/docket record` writes the pull request number onto the item, and `tools/pr_record_check.py` refuses a closure without it, so nothing recovers a number from a subject. The three tests passed on 2026-10-24 (`PL-JRVV`). |
 | The context-budget reset procedure: what spend is, why `get_session` cannot read it, the reset in place and its Projects-thread variant, what compaction keeps, the case of a session past the budget, and the measurement against trimming instead | the budget bullet in § "Session and tool-use efficiency" after its first sentence | `.claude/skills/docket/modes/start.md` § "Check the spend before starting, and reset in place" | A reset happens when an item starts or a session runs long. The resident sentence keeps the budget, the command and the moment to check, and points to the procedure. § "The reset procedure and the housekeeping rule, routed to the docket skill 2026-10-24". |
 | Why housekeeping is filed first, what is too small to file, and the two ratified records on deleting remote branches | the housekeeping bullet in § "The queue", after its first sentence | `.claude/skills/docket/modes/capture.md` § "Mode: housekeeping nobody filed", which already held most of it | The mode applies when a session files work that no item names. The resident sentence keeps the rule, the branch exception and a pointer. Same section. |
+| The readers of each document: the rows of the reader table for `docs/MODEL.md`, `docs/INTERFACE.md`, `README.md`, the design records, `docs/machine-survey.md` and `docs/references/`, `ROADMAP.md` and `docs/consultant-brief.md` | nine rows of `.claude/rules/plain-writing.md`'s table, 2,450 characters net of the sentence that points to them, 2026-11-22 | `.claude/rules/document-readers.md`, which loads with those documents, and which `tools/new_prose.py` reads beside the resident table | A session writes in a document only after opening it, so the rule reaches that moment every time. The rows for docstrings, comments, string literals, replies, item briefs, commit messages and pull requests stay resident, because a session writes those without opening a document first. § "The document readers, routed out 2026-11-22" has the count (`PL-7YHK`). |
 
 Net: 548 resident lines to 541, and 39613 characters to 38845. Both units are
 here because they answer different questions and `PL-QV1F` made characters the
@@ -2948,3 +2949,27 @@ a path-scoped rule, as `.claude/rules/rule-routing.md` says. It never deletes
 a rule to reach the number. A skill's description and the session-start digest
 are printed in the total and are not capped, because the sort covered the
 instruction files alone (`PL-G3KZ`).
+
+## The document readers, routed out 2026-11-22
+
+`PL-6PPZ` added `docs/VERIFICATION.md` to the specification. That put a path
+in three resident lists that `tools/config_home_check.py` holds to
+`SPECIFICATION_DOCS`, a clause in `CLAUDE.md`'s sentence on the authoritative
+specification, and a row in the reader table, which
+`test_every_product_document_has_a_reader_except_the_release_notes` requires.
+`main` held 55,114 characters against the cap of 55,120, so the move could not
+land, and `PL-FWR6` will add as much again.
+
+**The carrier test.** § "The reader table, added 2026-11-02" kept the table
+resident because the moment is any write of prose. For a document, that write
+follows a read of the document, and a rule scoped to the document's path loads
+on that read. The rows for texts a session writes without opening a document
+first stay resident: docstrings and comments, string literals, replies, item
+briefs and the workflow's files, commit messages, and pull requests.
+`tools/new_prose.py` reads both tables, so the comparison uses the same
+readers.
+
+**What it cost.** `.claude/rules/plain-writing.md` went from 11,482 characters
+on `main` to 9,032. The new rule holds the nine rows it moved, unchanged, and
+a short opening (`PL-7YHK`).
+
