@@ -1,8 +1,16 @@
 ---
 id: PL-YZ9L
 title: On a Mac set to Dark, Qt draws the interface's lettering heavier than under Light, though the interface declares light colours
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: ux, defect
+feature: platform-palette
+touches: src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/main.py
+deferred-from: v0.7.0 - present at the freeze, with no real connection to the frozen list or to v0.7.0's Required scope: a lettering weight under the Mac's Dark appearance changes no value and no layout the milestone builds, and its fix needs a Mac
 added: 2026-11-11
+payoff: The interface's lettering reads the same on a Mac set to Dark as under Light, as the declared appearance promises.
+reenters: PL-KRZW
 ---
 
 **Problem.** On a Mac set to the Dark appearance, the interface's lettering
@@ -34,3 +42,11 @@ is Light, so that the text drawing agrees with the declared colours.
 `qt_widgets.declare_application_colours` records that
 `styleHints().setColorScheme` was ignored on 2026-09-20 in the container.
 Nobody has tried it on a Mac.
+
+**Checked 2026-11-22**, at `d4e8200c`. `grep -rn "setColorScheme\|NSAppearance\|NSRequiresAquaSystemAppearance" src/anesthesia_sim/` finds only the docstring in `qt_widgets.py` that explains why `declare_application_colours` uses a palette instead, so nothing yet tells Qt or macOS that this application's appearance is Light. The fault itself shows only on a Mac, so no session here can reproduce it.
+
+**Why it matters.** The interface promises one appearance whatever the host is set to. Lettering drawn heavier under Dark breaks that promise, and if the change is visible at life size it alters how every label and value reads on the owner's own screen.
+
+**Done when.** On a Mac set to Dark, the interface's lettering is drawn the same as under Light, or the item records, from a view at life size on a Mac, that the difference cannot be seen and why it is left.
+
+**Generator check.** An instance of the fact that `PL-KRZW` (which palette roles each widget takes from the declared theme, and which from the host platform) names, filed after that head closed on 2026-09-22: Qt's text drawing still takes its fill colour from the host's appearance, which the declared palette does not reach.

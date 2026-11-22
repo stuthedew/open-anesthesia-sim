@@ -1,9 +1,14 @@
 ---
 id: PL-CHX0
 title: The marks editor is a window that opens over required readouts while a run plays, and nothing applies the occlusion rule of docs/INTERFACE.md to it: decide where it may sit
-status: untriaged
+priority: P1
+effort: M
+status: ready
+classes: safety, ux
 feature: interface-matches-its-spec
+touches: src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/views.py, tests/integration/test_qt_widgets.py, tests/integration/simulation_view, docs/INTERFACE.md
 added: 2026-11-21
+payoff: no window of the application can cover a required readout while a run plays, on any platform
 ---
 
 **Problem.** The marks editor is a window that opens over required readouts while a run plays, and nothing applies the occlusion rule of docs/INTERFACE.md to it: decide where it may sit
@@ -37,3 +42,7 @@ The position is the offscreen platform's. A desktop may place the editor elsewhe
 **Answered 2026-11-21: B.** The marks editor's fields move into the Bookmarks View, and `BookmarkDialog` is deleted, so no window of the application can cover a required readout (project owner, 2026-11-21, ratified, by the decision card in the interface spec check's thread, over A, a window kept off the readouts that Wayland cannot enforce, C, an exemption, and D, a blocking editor during which every run waits).
 
 **Done when.** No window opens to edit marks: the Bookmarks View holds both forms and their add and remove buttons, `BookmarkDialog` is gone, a test builds the dashboard with a run playing and finds no top-level window but the main one after the reader edits a mark, and `docs/INTERFACE.md` says the marks are edited in the Bookmarks View and drops the sentence that runs go on while the bookmark editor is open.
+
+**Checked 2026-11-22.** `BookmarkDialog` is still in `app/qt_widgets.py`, `SimulationView._open_bookmark_dialog` still calls `show()` on it, and `docs/INTERFACE.md` still says the bookmark editor does not block the window, so runs go on while it is open. The dialog existed at the freeze too (`git show 0947408:src/anesthesia_sim/app/qt_widgets.py`).
+
+**Generator check.** The fact misread is whether a value that the application treats as shown can be seen, which `_seen_by_reader` decides from visibility alone. No head states it. The marks editor is the one window of the application that a run plays under, so this is a one-off.

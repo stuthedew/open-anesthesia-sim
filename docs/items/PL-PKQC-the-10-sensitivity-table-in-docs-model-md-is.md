@@ -30,3 +30,5 @@ The docstring of `tests/reference/test_published_wash_in_and_elimination.py` car
 **Done when.** The table and the test module's copy give the figures of the tree that ships, with the date and the words "against each agent's first cohort".
 
 **Generator check.** Filed by `PL-RMNP` (the check of `docs/MODEL.md` against the code), a sweep that the owner asked for. The fact it misreads is whether a `docs/MODEL.md` sentence about what the model computes matches what it computes, which the head `PL-B6YV` (a document sentence about what the model computes, checked against the code) already states. It is counted under the sweep and is not a new head.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. The table in `docs/MODEL.md` § "Published wash-in and elimination validation test" and its copy in the module docstring of `tests/reference/test_published_wash_in_and_elimination.py` both still give the 2026-09-06 figures, with "+0.09 to +0.17" and "+0.45 to +0.55". The blocker `PL-SZ6G` closed with #2180, so the table can now be measured once on the tree that ships.

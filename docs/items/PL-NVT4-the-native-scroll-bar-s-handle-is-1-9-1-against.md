@@ -62,3 +62,5 @@ groove, the section claims a conformance the interface does not have, which is a
 false statement in the authoritative specification. If the criterion does not
 reach it, the section should say so. Otherwise a reader who measures the bar
 finds 1.9:1 under a claim that reads as covering it.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. No requirement in `tools/contrast_check.py` measures the native scroll bar's handle, and `docs/INTERFACE.md` still lists SC 1.4.11 as held. One obstacle is gone. On 2026-11-22 the Understanding page for SC 1.4.11 at `www.w3.org` answered 200, and `tools/contrast_check.py` has read the same document in the W3C's GitHub repository since 2026-11-09, so the reading this item starts with can now be done.

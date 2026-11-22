@@ -19,3 +19,5 @@ verify: grep -rq 'def test_a_refused_branch_names_the_on_screen_control_and_a_fo
 **Done when.** A refused branch press shows a message that names the on-screen control, formats each instant with `format_elapsed`, and is not prefixed "Setting refused". `tests/integration/controller/` has `test_a_refused_branch_names_the_on_screen_control_and_a_formatted_instant`.
 
 **Found by.** `PL-TBQS` reviewer replay on #1451, finding 1451 r01 F2, and the `PL-ZWXD` addendum entry for #1451, checked against main on 2026-10-25 by reading the code.
+
+**Checked 2026-11-22** against `d4e8200`: partly done. Since `PL-SZ6G` (#2180) an instant is a `CaseInstant`, which is an `int`, so a refusal can no longer print a raw float such as 45.300000000000004. The rest is still there. `_refusal_here` and `_resume_point_at_mark` in `app/controller.py` still name `resumed_here`, `resumed_at` and `resumed_at_mark` and print the instant as "{elapsed_s} s" rather than through `format_elapsed`. `SimulationView._handle_fork` still shows the refusal through `refused_setting_notice`, whose `REFUSED_SETTING_TEMPLATE` opens "Setting refused —".

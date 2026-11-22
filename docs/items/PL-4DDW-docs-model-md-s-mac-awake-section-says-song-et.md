@@ -32,3 +32,5 @@ safety-critical standard asks the project not to imply.
 
 **Done when.** The sentence states Song's standard deviation, or the size of
 error the comparison can detect, beside the 2.17%.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `docs/INTERFACE.md` § "MAC-awake as a chart reference" still gives the band centre of 2.16% beside "Song et al. measured 2.17%" and does not state Song's standard deviation of 0.25%, or the size of error the comparison could detect.

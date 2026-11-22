@@ -3,11 +3,13 @@ id: PL-SRR7
 title: No test checks v0.5.0's definition-of-done claim that the memory a run holds is bounded by its number of control events; only the rule file run-is-its-definition.md guards it
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: test, perf
 touches: tests/unit/test_run_definition.py
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science; the bound holds today and only a later change could break it
 added: 2026-11-10
+closed: 2026-11-22
+reason: Obsolete by design: since PL-MH9J (#2180) and the owner's ratified choice in PL-7CY5, a run stores one state per second, so its memory is bounded by the supported run length (core/stored_states.py: a 24-hour run holds 86 401 states, about 6.2 MB) rather than by its control events; the v0.5.0 claim it would test no longer describes the code, and ROADMAP's completed v0.5.0 section is a historical record
 payoff: a change that makes a long case grow memory without limit fails a test instead of shipping
 verify: grep -q 'def test_the_memory_a_run_holds_grows_with_its_control_events_not_its_length' tests/unit/test_run_definition.py
 ---

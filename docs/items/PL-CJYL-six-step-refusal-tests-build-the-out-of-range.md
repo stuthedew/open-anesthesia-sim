@@ -3,11 +3,13 @@ id: PL-CJYL
 title: Six step-refusal tests build the out-of-range SimulationStep inside pytest.raises, so the constructor raises before advance() or steps_per_tick() is called, the entry point they are named for is never exercised, and their "nothing moved" assertions cannot fail, while test_simulation_step.py's docstring says they still pin the refusal at each entry point
 priority: P3
 effort: S
-status: ready
+status: dropped
 classes: test
 feature: replay-findings
 touches: tests/unit/test_uptake_system_failure.py, tests/unit/test_simulation.py, tests/unit/test_playback.py, tests/unit/test_simulation_step.py
 added: 2026-10-25
+closed: 2026-11-22
+reason: Already done by #2180 (d4e8200c): the step is now a fixed one second and SimulationStep is no longer built by callers, so none of the six step-refusal tests exists under tests/ and test_simulation_step.py's docstring no longer says entry-point tests pin the refusals
 payoff: a reader of the tests no longer credits each entry point with a step refusal that no test exercises
 verify: ! grep -qF 'still pin them' tests/unit/test_simulation_step.py && ! grep -q 'def test_a_refused_maximum_simulation_step_leaves_the_run_untouched' tests/unit/test_uptake_system_failure.py
 ---

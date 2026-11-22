@@ -23,3 +23,5 @@ reenters: PL-J5GC
 **Done when.** The schematic's paint code reads its strings from one function that returns the text it is about to paint. The run-state tests read that function for a painted View. A test fails when a painted string is left from an earlier run after a Reset, an agent change or a halt. Work it after `PL-B8DL`, the item that puts the schematic into the test layout.
 
 **Generator check.** An instance of the fact `PL-X7D5` and `PL-J5GC` state (which widgets state a run's current state), filed after `PL-J5GC` closed on 2026-10-27: that head's guard reads widget text, and a painted value has none.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `src/anesthesia_sim/app/qt_schematic.py` still paints its amounts with `painter.drawText` (line 303). `_widget_state` in `tests/integration/simulation_view/simulation_view_support.py` still records only the text of a label, a button, a combo box and a slider, so a painted string is in no run-state test. No test named in `verify:` exists. The order in the brief still holds: `PL-B8DL` (the test layouts) is open and comes first.

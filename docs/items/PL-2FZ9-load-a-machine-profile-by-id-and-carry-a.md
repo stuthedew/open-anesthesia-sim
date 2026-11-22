@@ -117,3 +117,5 @@ instead. The registry and the id cross-check survive either way; only the
 `for_agent` signature is at risk. It would also be falsified if machines were
 selected by filename rather than by id, but that contradicts the profile
 already carrying an `id` field and the agent precedent beside it.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `src/anesthesia_sim/core/parameters.py` has no `MACHINE_DATA_FILENAMES` and no `load_machine_parameters`. `load_reference_circle_system_parameters()` (line 1599) still reads one fixed file and takes no argument. `AgentUptakeSystem.for_agent(cls, agent_id: str)` (`core/uptake_system.py` line 296) still calls it directly. `src/anesthesia_sim/data/machines/` holds one profile. `for_agent` now has 12 callers under `src/` and 104 under `tests/`, so a default argument is still the way to avoid editing them. `core/run_definition.py` does not name a machine, so the condition the brief gives for choosing a different seam has not arisen.

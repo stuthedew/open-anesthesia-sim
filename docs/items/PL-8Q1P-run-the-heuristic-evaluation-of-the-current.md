@@ -101,3 +101,5 @@ resident rounds in `PL-DSXJ` are the check on what this misses.
 **Why it matters.** This is the second step of the interface pass that the owner agreed on 2026-11-10 (`PL-HS9M`). Its findings say what the grey-box layouts (`PL-2V6V`) must fix, so every later step of the pass waits on it.
 
 **Done when.** The merged list of violations, sorted by severity with both evaluators' ratings averaged, is recorded in this item beside the commit evaluated. Each violation rated 3 or higher is an item, or names the open item that holds it.
+
+**Checked 2026-11-22** against `d4e8200`: still applies, and still blocked. Of its three blockers, `PL-9YPR` and `PL-CBYS` are done and `PL-4JCC` is still open. The work left in `PL-4JCC` is smaller than the reason given here for waiting on it. Its own measurement of 2026-11-14 says the Parameters Area is about 180 px taller than its controls at 1920 by 1080, which no longer changes where every panel sits. No evaluation is recorded here.

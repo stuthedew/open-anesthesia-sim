@@ -25,3 +25,5 @@ reenters: PL-R417
 **Generator check.** An instance of `PL-R417`'s fact, filed after that head closed on 2026-10-11: where one statement ends, in a format that lets a statement continue across lines (`reenters: PL-R417`).
 
 **Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem began after Gate 3 froze at `817a4d88`, so the item stays deferred to the next gate, and its `deferred-from:` names the commit that began it. `check_untied_restatements` came with `5ec0ee9b` (2026-10-25 06:17), with its line-by-line loop.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `check_untied_restatements` in `tools/doc_check.py` still loops `for index, line in enumerate(prose)`, one line at a time, and its docstring still says it reads a line at a time. `tests/unit/test_doc_check.py` has no test of a unit on the next line.

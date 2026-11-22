@@ -35,3 +35,5 @@ fixture follows `main()`.
 **Done when.** The dashboard fixture builds the view as `main()` does - a `BranchedCase`, `case=`, and `declare_application_colours` first - the module's assertions pass over it, and the docstring names `.claude/skills/run-the-app/SKILL.md` for the screenshot procedure.
 
 **Reproduced 2026-10-01.** `grep -c 'case=' tests/integration/test_qt_rendering.py` prints 0; the fixture at line 88 builds `SimulationView((controller,))`.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. Both dashboards in `tests/integration/test_qt_rendering.py` are still built as `SimulationView((controller,), workspaces=_EVERY_VIEW)`, with no `case=` and no `declare_application_colours` call. `open_dashboard` in `app/main.py` builds `SimulationView((case.trunk,), case=case, ...)` after `main()` declares the colours. With no case, the dashboard draws no branch control. The module docstring still names `docs/worker.md` for the screenshot, and `.claude/skills/run-the-app/SKILL.md` already builds with `BranchedCase`.

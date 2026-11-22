@@ -120,3 +120,5 @@ merges now land as `Author: Stuart Feichtinger` with a `Co-authored-by: Claude`
 trailer. So `git shortlog` and blame no longer say what this brief says they
 say, and the disclosure has to be written from the trailer scheme rather than
 from the author field.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `grep -rniE 'AI-written|written by Claude|Reviewed-by|attribution|co-authored-by' README.md CONTRIBUTING.md` finds nothing, so the disclosure and the trailer scheme are still unwritten. The wording still needs the project owner's approval before the item closes.

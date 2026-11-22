@@ -78,3 +78,5 @@ pointers:
 <!-- absent: .claude/agents/copy-editor.md -->
 
 **Added 2026-11-20.** Write each requirement or claim in this document as the requirement, followed by the test that checks it. Where the document holds a parameter table, a test compares the table with its data file. History stays in the item (project owner, 2026-11-20, ratified, "Agree with recs", over leaving the form to each sorting item). `PL-WKKH` (the streamlining questions from the study of the one-shot rewrite) holds the measurements and the sources.
+
+**Checked 2026-11-22** against `d4e8200`: still applies, and still blocked: `PL-48MX` (replace what is left of `docs/MODEL.md` with the accepted description) is itself still blocked. `docs/INTERFACE.md` exists, since `PL-CTXZ` moved its sections (#2109). `PL-5FMC` (#2181) then corrected what it says the code does, but that work changed facts and did not sort paragraphs by reader, so none of this item's four steps has been done.

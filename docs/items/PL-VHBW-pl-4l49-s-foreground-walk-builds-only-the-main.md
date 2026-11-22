@@ -50,3 +50,5 @@ controls `PL-RKRY`, `PL-7W9N` and `PL-0NVN` found by hand.
 **Premise re-read 2026-09-22 (`PL-14QR`, triage).** The walk at
 `tests/integration/simulation_view/:2952` calls `_content_painters(view)`
 on the `SimulationView` alone.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. The walk is now `_content_painters` in `tests/integration/simulation_view/test_simulation_view_foreground.py`, and it still collects only the `SimulationView` and its children. Neither `NewCaseDialog` nor `BookmarkDialog` is built in that file. The two dialogs are still covered only by the widget kinds that `tests/integration/test_dark_appearance.py` names.

@@ -106,3 +106,5 @@ mark and a pressed state on these three buttons can land alone.
 **Done when.** Start, Pause and Reset each draw a pressed state and a keyboard-focus mark that differ from the resting state. A test grabs each button at rest, pressed and focused under the Fusion style, finds the three images different, and fails on today's `main`.
 
 **Generator check.** A one-off so far. The fact is which states a button styled by a style sheet draws. The earlier fix that added the disabled state to `transport_button_stylesheet`, after declaring `:enabled` only, is a first instance, so a third would make this a generator. No head's `misread:` states it.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `transport_button_stylesheet` in `src/anesthesia_sim/app/stylesheets.py` still declares only the enabled and disabled states. The two `:focus` rules in that file belong to tool buttons (the View chooser and the Workspace tabs), not to Start, Pause and Reset. No test named in `verify:` exists. The only commit since 2026-11-11 to touch that file was #2134, and it did not add a state.

@@ -21,3 +21,5 @@ verify: grep -qF 'the MAC-awake band composite' tools/contrast_check.py
 **Found by.** `PL-TBQS` reviewer replay on #288, finding r05 F2. Checked against main on 2026-10-25 with the WCAG relative-luminance formula on the theme constants. Run `tools/contrast_check.py` to confirm once the composite is declared.
 
 **Generator check.** Shares one fact with `PL-6W49`: `tools/contrast_check.py` measures each chart series only against `PANEL`, never against another series or a composite background the chart draws. Two items are not a generator, and a third would make one.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `MAC_AWAKE_BAND_FILL_OPACITY` in `app/theme.py` is still 0.14 over `INK` (`#243B53`), and the composite on white is `#E0E4E7`. Recomputed with the WCAG formula, `ALVEOLAR_COLOR` (`#159789`) measures 3.61:1 on `PANEL` and 2.82:1 on the composite, and `MUSCLE_COLOR` (`#D17206`) 3.43:1 and 2.68:1. `tools/contrast_check.py` still measures every trace only on `PANEL`. The contrast section this item would update is now in `docs/INTERFACE.md`, not `docs/MODEL.md`.

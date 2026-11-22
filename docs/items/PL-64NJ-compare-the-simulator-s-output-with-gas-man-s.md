@@ -1,14 +1,20 @@
 ---
 id: PL-64NJ
 title: Compare the simulator's output with Gas Man's own engine, now that its source is public (rasman/gasmanonline, GPL-3.0)
-status: untriaged
+priority: P1
+effort: L
+status: ready
+classes: science, test
 feature: gas-man-open-source
+touches: tests/reference, docs/MODEL.md
+deferred-from: v0.7.0 - not live: checked 2026-11-22, the item adds a comparison and names no wrong value on screen; the six tensions are still held by the published-data tests in tests/reference/, and the known differences from Gas Man are deliberate
 added: 2026-11-14
+payoff: Each difference between our curves and Gas Man for the same case is either explained in the model specification or found and fixed, so a learner using both tools knows why they differ.
 ---
 
 **Problem.** Compare the simulator's output with Gas Man's own engine, now that its source is public (rasman/gasmanonline, GPL-3.0)
 
-**Why.** `docs/MODEL.md` § "Source hierarchy" calls Gas Man this project's
+**Why it matters.** `docs/MODEL.md` § "Source hierarchy" calls Gas Man this project's
 reference implementation, whose parameter set "defines Gas Man's behavior, so
 this simulator can be compared with it". No test makes that comparison. The
 independent-solution test cannot stand in for it, because the independent
@@ -59,3 +65,7 @@ says what the comparison shows and what it cannot show.
 recommendation (project owner, 2026-11-14, ratified, over leaving the
 comparison unfiled). The thread's full comparison is in the project's shared
 folder, `v0.7.0/gasman-comparison/report.md` and `grading.md`.
+
+**Checked 2026-11-22**, at `d4e8200c`. No comparison exists yet. `grep -rli 'gasmanonline\|gasman_run' tests src docs/MODEL.md` finds nothing, and `tests/reference/` holds no test that reads Gas Man's output.
+
+**Generator check.** A one-off. The comparison became possible only when Gas Man's source was published, so no fact was misread. No head's `misread:` line applies.

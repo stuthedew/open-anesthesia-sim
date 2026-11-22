@@ -30,3 +30,5 @@ this result decides whether to build on them or delete them.
 
 **Generator check.** One-off. It records a measurement the owner asked for
 (`PL-SQV9`), and does not misread a fact that causes other items.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `.claude/thread-probe-plugin/` and `.claude-plugin/marketplace.json` are still on `main`, `docs/maintainer.md` still points to this item, and no paragraph opens "Run in a thread". The probe still needs the owner to add the plugin in Project settings > Plugins and then start a new thread.

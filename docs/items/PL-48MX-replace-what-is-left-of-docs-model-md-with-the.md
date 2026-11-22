@@ -93,3 +93,5 @@ together, and step 1's `git log` picks both up. Neither is a restructure.
    "measured" were read on 2026-11-14 and all describe real measurements. One
    use of the verb does not: "This comparison measures an omission and claims
    no agreement", which `docs/MODEL.md` now words as "shows an omission".
+
+**Checked 2026-11-22** against `d4e8200`: still applies, and step 1 has grown. `docs/prose-review/model-description-draft.md` is still a separate draft, and `docs/MODEL.md` still holds the developer sections. Its one blocker, `PL-FWR6` (the parameter move), is still open and still blocked, so nothing about the order has changed. Since the note of 2026-11-14, `docs/MODEL.md` has taken 14 more commits that step 1 must carry into the draft. The largest are #2183 (62 statements the code contradicted, corrected), #2180 (a run now steps in whole seconds, and every shown value is read from stored states) and #2121 (the rounding bounds in `core/rounding.py`). #2181 (the interface documents corrected) also changed two lines of the draft, so the draft is no longer exactly as written at `50af1a2e`.

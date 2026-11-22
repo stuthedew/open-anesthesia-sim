@@ -44,3 +44,5 @@ usually to screen-reader users.
 **Done when.** The agent's standard color name and its ISO 5360 source are
 discoverable from the interface without reading the source, and the chosen
 surface works for keyboard and touch users.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. Outside `app/theme.py`, nothing under `src/` reads `standard_color_name` or `standard_color_munsell`, so the interface still does not say that the agent colour is the ISO 5360 one.

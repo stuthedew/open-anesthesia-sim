@@ -52,3 +52,5 @@ test-writing project. Reading every invariant and required test against the
 suite on 2026-09-19 found 36 of 38 held by a test whose body asserts the
 statement directly, 2 held in part and none unheld, so the declared-none form
 is expected to be needed nowhere.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `docs/MODEL.md` § "Required invariants" has 21 bullets and none names a test. `BOUND_FAMILIES` in `tools/doc_check.py` lists the hazard table, § "Minimum displayed outputs" and § "Required tests", but not § "Required invariants". `PL-6PPZ` (the move of the six verification sections to a new document) moves this section and is in flight, so the annotation pass should land after it and edit the new document.

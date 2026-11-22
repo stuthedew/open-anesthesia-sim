@@ -136,3 +136,5 @@ machine**, under the route this item writes down, and the check `PL-4DCG`'s
 `not-delegable:` line asks for runs against a held page for that machine's
 values alone. Nothing about the finding weakens in the meantime; it simply has
 no bill to pay until a profile is on the table.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `docs/references/README.md` § "Where owner-supplied full texts live now" (line 633) does not say that a machine manual is requested one at a time, as the profile that needs it is built. Nor does it say how to request one. No sentence in the file mentions a machine manual.

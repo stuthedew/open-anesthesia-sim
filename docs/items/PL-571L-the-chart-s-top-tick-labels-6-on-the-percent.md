@@ -21,3 +21,5 @@ verify: grep -q 'def test_every_tick_label_is_drawn_whole_inside_the_plot' tests
 **Done when.** A test grabs the chart and finds every tick label on both axes drawn whole inside the plot widget, and the test fails on today's `main`.
 
 **Generator check.** A one-off. The plot's top margin is set without room for half a label's height, and no head's `misread:` states a fact about how a chart's margins are laid out.
+
+**Checked 2026-11-22** against `d4e8200`: still applies, as far as the code shows. No test named in `verify:` exists. Since the reproduction of 2026-11-11, the four commits that touched `src/anesthesia_sim/app/qt_chart.py` (#2109, #2134, #2200, #2180) changed no margin, padding or axis range. The chart was not grabbed again in this check.

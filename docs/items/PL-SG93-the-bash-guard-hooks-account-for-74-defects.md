@@ -152,3 +152,5 @@ verdict session owes one step more:
   tools/pr_body_check.py --screen ... | tail`, of `python3
   tools/branch_id_check.py --hint ... | cut`, and of a timing of
   `tools/doc_check.py` with its output sent to `/dev/null` (`PL-9PPJ`).
+
+**Checked 2026-11-22** against `d4e8200`: still applies, and its read is due from today. `python3 tools/hook_blocks.py count` now reads the tracked files under `docs/hook-blocks/` and prints counts and bursts for `floor-interpreter-guard`, `gate-status-guard`, `git-ref-guard`, `owner_ask_guard` and `push-check-guard`. The guard list in the brief is out of date. #1991 moved the refusal of ref deletions into git's own `reference-transaction` hook, which logs as `git-ref-guard`. `PL-39Y1` (#2096) removed `direct-merge-guard` and moved its refusals to GitHub's rules. `gh-write-guard`, `docket-branch-guard` and `regex-guard` were added, as `GROUPS` in `.claude/hooks/guard.py` shows. So the verdicts are owed for the guards that `GROUPS` wires today, Of the two guards the brief keeps whatever the count, the prune guard is now the `reference-transaction` hook under `.claude/hooks/git/`, and the merge guard no longer exists.

@@ -1132,7 +1132,7 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-HQPF (M) The accounting panel's unit caption ('Litres of equivalent pure agent gas') and the schematic's unit ('mL vapour') do not name the condition an agent amount is stated at, 20 °C and 1 atm, so a learner cannot tell that an amount held in the body is stated at room temperature and reads 5.8% high
 - PL-RJN9 (S) The agent cost View's two captions in src/anesthesia_sim/app/agent_cost.py write '20 degrees C' as text, a second copy of core/liquid_agent.py's REFERENCE_TEMPERATURE_CELSIUS, so a change to the reference temperature would leave the captions naming the old one
 
-**Cleared before v0.7.0's implementation begins, unless deferred - 172 entries**
+**Cleared before v0.7.0's implementation begins, unless deferred - 189 entries**
 
 - PL-H57W (L) Since PL-CZXN no check measures whether a branch that changes no core function weakens a core unit test, because PL-7FPD's route compares only the display modules' mutants; the same comparison over core's mutants took 538 to 968 s for one changed test file
 - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
@@ -1306,6 +1306,23 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-GKG4 (M) Blood flow is a bare float checked by hand at three places in core (blood.py, tissue.py, governing_equations.py) and is not a checked type as cardiac output is, so the next function that takes one can skip the check
 - PL-LHCL (L) A number in core/ is known to be inside its valid range only where a checked type holds it, and 151 parameters and fields are still bare float or int, so each sweep (PL-ZGYX) finds the ones someone listed and the next arrives after it closes: a blood flow of 5e-324 L/min is accepted (PL-GKG4) and a restored Keyframe holds instant_s = -50.0 (PL-8W1Q)
 - PL-RF2S (L) Every widget, painted canvas and chart keeps the last value written to it, and three separate paths each write a part of the screen, so a value from an earlier run or the other compared run stays wherever a path does not reach: the cause under PL-X7D5, PL-J5GC, PL-5JTH and PL-GTH6, whose four fixes each added a test over a hand-kept list
+- PL-LBVN (L) Gas Man's released settings file holds MAC 2.1% sevoflurane and 1.1% isoflurane; we store De Wolf's 2.0% and 1.2%. Decide which MAC values to store
+- PL-CHX0 (M) The marks editor is a window that opens over required readouts while a run plays, and nothing applies the occlusion rule of docs/INTERFACE.md to it: decide where it may sit
+- PL-CPF2 (S) While two runs are compared, the setting controls View shows two rows of dials and neither row names its run
+- PL-DN13 (M) The F_A/F_I plot can draw a turn of the ratio low or high where it falls between two chart columns
+- PL-1WFW (S) A dial preview held across an agent change still reads the earlier agent in its delivered line, and one held across a Reset that drops the branch still reads Run 1 preview, on main as on the PL-RF2S branch
+- PL-57LD (M) With the macOS slider behaviour, a click on a slider's track applies the setting and then draws it as a preview labelled 'not applied', and a press on the handle away from its centre applies a change before any drag
+- PL-4G3N (S) docs/MODEL.md, docs/machine-abstraction.md and the model description draft repeat claims about Fukuda et al. 2006 and Shin et al. 2017 that the sources do not support
+- PL-PX7N (S) README.md says 'This is an educational simulator, not a medical device', the device-status claim PL-32QH removed from docs/MODEL.md's Intended use because the project makes no regulatory claim; say what it is not intended for instead
+- PL-4G79 (M) The approved interface wording list records only default runs, so a string shown only after a setting change, with a bookmark or price, or in a halt or failure notice is held by no approved list
+- PL-64NJ (L) Compare the simulator's output with Gas Man's own engine, now that its source is public (rasman/gasmanonline, GPL-3.0)
+- PL-8F9D (M) When patient age becomes an input (ROADMAP planned-milestone item 30), age-adjust the MAC divisor, the 1 MAC line and the dial's 1 MAC start with Mapleson 1996's equation, MAC(age) = MAC at 40 x 10^(-0.00269 x (age - 40))
+- PL-FV44 (S) Record why the agent accounting's absolute tolerance is 1e-12 L, which no item, comment or commit message states
+- PL-LP96 (M) docs/MODEL.md § "Known limitations" states three sets of figures that no test computes and no source gives: the lung store's share of the fast pool (20.1%, 19.7%, 23.4%) and its thirty-minute equilibration, the intertissue-diffusion fat fractions (13 to 20% against the trace's 2.3 to 3.9%), and the ambient pressures in Denver and Mexico City
+- PL-SD5V (S) docs/MODEL.md states figures computed from the 20 °C reference temperature (the 5.8 % store bias, 5.5 % fewer moles, 24.055 L/mol, the 17 mL step) with no derived: marker naming REFERENCE_TEMPERATURE_CELSIUS, so changing the reference temperature leaves them stale with no refusal
+- PL-TLKY (S) At the one-second step the agent balance's fixed limit of one part in 10**9 is below one propagator's derived rounding bound at the stiffest envelope corners (9.3e-9 at 22 squarings), so the check refuses the first step at 8 of the 96 corners, and it is two thirds of the derived bound for a shipped agent's longest run (1.5e-9); decide whether the limit should widen by what squarings add, which PL-D88N recorded as the shape for the day a shipped step first needed a squaring
+- PL-VS4V (S) No record says why the perfusion-fraction allowance is 1e-12 or the cardiac-output allowance is one part in 10**9: core/rounding.py states both values, what each is measured against and how far above rounding each sits, but git log -S traces them only to v0.1.0 (875ba085) and to the matrix-exponential change (d8deea50), neither of which gives a reason
+- PL-XGLH (S) docs/MODEL.md's citation of Yasuda, Targ and Eger 1989 in § "Desflurane's residual, and why the parameter file was not changed" says its brain:blood values were read from the abstract on 2026-09-08, while § "Known limitations" and § "Parameter provenance" rely on the paper's p. 373 and Tables 1 and 2 in full text; check those values against the full text and record that reading beside the citation (first blind review pass on PL-52KB, 2026-11-11)
 
 ### Captures after the cut
 
@@ -1460,6 +1477,28 @@ seventh is `PL-RF2S`, which draws every View whole from one value. It is the
 cause under `PL-0G2P`, `PL-B8DL` and `PL-G2WC`, and it was filed on
 2026-11-11. The six that are still open are deferred to the next gate. Each
 item's `deferred-from` field records the check that its hazard is not live.
+
+**Eight items joined the frozen list on 2026-11-22, after the freeze.** The
+triage pass of that day placed them. Six are classed `safety` or `science`, and
+each shows a learner a wrong or stale value on `main` at `d4e8200`, so none can
+be deferred. `PL-LBVN` stores the MAC values the owner chose on 2026-11-14.
+`PL-CHX0` keeps the marks editor off required readouts. `PL-CPF2` names the run
+each row of dials belongs to in compare mode. `PL-DN13` stops the F_A/F_I plot
+missing a turn of the ratio between columns. `PL-1WFW` rebuilds a held dial's
+preview line when the agent or the run changes. `PL-57LD` is the macOS slider
+click that applies a setting and labels it "not applied"; nobody has checked it
+on a Mac, so it cannot be shown not live. The other two were present at the
+freeze and continue frozen entries that have closed: `PL-4G3N` corrects source
+claims as `PL-4BGX` did, and `PL-PX7N` removes from `README.md` the device-status
+claim that `PL-32QH` removed from `docs/MODEL.md`.
+
+**Nine more `safety` and `science` items joined the frozen list on 2026-11-22,
+deferred to the next gate.** The same triage pass placed them, because an item
+of either class re-enters this gate whatever its date, and a deferred one stays
+written on the list. They are `PL-4G79`, `PL-64NJ`, `PL-8F9D`, `PL-FV44`,
+`PL-LP96`, `PL-SD5V`, `PL-TLKY`, `PL-VS4V` and `PL-XGLH`. Each item's
+`deferred-from` records the check, made against `d4e8200`, that no learner can
+see a wrong value from it now.
 
 ### Required scope
 
