@@ -638,8 +638,9 @@ def test_a_cardiac_output_written_past_set_cardiac_output_is_refused_at_the_writ
 # setting. It is regression cover for a limit that was declared in conversation
 # on 2026-08-25, recorded in a dropped item, and enforced nowhere. A run could
 # reach day 45 of a cap set at 30 days and go on displaying two-decimal
-# concentrations, in a regime over which `docs/MODEL.md` already declines to
-# validate the model.
+# concentrations, in a regime over which `docs/VERIFICATION.md` § "Published
+# wash-in and elimination validation test" already declines to validate the
+# model.
 #
 # The boundary is pinned in both directions on purpose. A guard that refused
 # one step early would take the endpoint out of the closed interval, although
@@ -659,8 +660,8 @@ def test_the_supported_run_length_is_twenty_four_hours() -> None:
     This is the one test meant to fail when the number changes. The tests that
     check text or counts derived from the limit read
     `MAXIMUM_ELAPSED_SIMULATION_TIME_S` rather than restating it (`PL-T5J5`).
-    So a deliberate change edits the constant, this test and that section of
-    `docs/MODEL.md`.
+    So a deliberate change edits the constant, this test, that section of
+    `docs/INTERFACE.md` and `docs/MODEL.md` § "Run length".
     """
 
     assert MAXIMUM_ELAPSED_SIMULATION_TIME_S == 86_400

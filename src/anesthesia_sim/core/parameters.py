@@ -272,8 +272,8 @@ class MacAwakeReference:
     value to whichever MAC its own population was measured against.
     Desflurane's 2.60% is anchored to a MAC of 7.25%, and this project stores
     6.0%. The absolute figure divided by the stored MAC would therefore give
-    0.433, against a published 0.36. `docs/INTERFACE.md` § "MAC-awake as a chart
-    reference" records that comparison.
+    0.433, against a published 0.36. `docs/PARAMETERS.md` § "The MAC-awake
+    fractions" records that comparison.
 
     `mac_reference_basis` is prose rather than a number, because the two
     denominators are not the same kind of thing. Katoh's denominator is each
@@ -1259,8 +1259,9 @@ class _BreathingCircuitPayload(_StrictPayload):
     circuit whose own volume is stated. Stored bare, a Perseus A500's 2.1 L gives a circuit time
     constant of 31.5 s at 4.0 L/min, where its assembled 3.3 L gives 49.5 s.
     Nothing here can tell the two apart. Both are positive finite volumes, and
-    `check_provenance` asks only that a stored number has a row in
-    `docs/MODEL.md`. That document states the rule under "Breathing circuit".
+    `check_provenance` asks only that a stored number has a row in the table of
+    `docs/PARAMETERS.md` § "The stored values, by data file and key".
+    `docs/MODEL.md` § "Breathing circuit" states the rule.
 
     `default_fresh_gas_flow_l_min` is checked here only as positive and
     finite, not against `core/supported_ranges.py`. The reference patient's

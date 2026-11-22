@@ -375,8 +375,9 @@ class TraceStyle:
 # rhythm at once. The one genuinely confusable pair of styles in the set is the
 # 2 px dots against the 4 px short dash. That pair is assigned to mixed venous
 # against muscle, the second widest colour separation of any pair of these six
-# (1.45, after circuit against alveolar at 1.62). `docs/MODEL.md` carries the
-# matrix these choices were taken from.
+# (1.45, after circuit against alveolar at 1.62). `docs/INTERFACE.md`
+# § "The six compartment traces: what separates them" carries the matrix these
+# choices were taken from.
 #
 # The vessel-rich trace's equal mark and gap is a rhythm that no other trace
 # here has, because the other four dashed traces all draw more ink than gap.
@@ -1640,8 +1641,9 @@ def format_compared_trace_hover(
 ) -> str:
     """Return what a hover shows where more than one drawn point is within the pointer's reach.
 
-    `docs/INTERFACE.md` § "The chart's hover readout" -> "Where more than one
-    trace answers" is the specification, and `PL-JVHL` is why there is one.
+    `docs/INTERFACE.md` § "The chart's hover readout" -> "When more than one
+    trace is within reach" is the specification, and `PL-JVHL` is why there is
+    one.
     With the three-line form, the run a reader was shown depended on which
     drawn point was marginally nearer, so a 2 px hand movement could swap it
     silently. Instead, every run inside the radius is reported, and the box
@@ -1845,8 +1847,9 @@ def _hover_contended_value(
     readings shared one compartment. A value line that did not name it would leave the
     reader to infer which trace it came from, and `PL-0RZ0` found that a 2 px
     hand movement made that inference wrong. The line keeps the gloss that
-    `_hover_subject` gives the compartment. `docs/MODEL.md` requires that
-    hedge wherever the compartment is named, and a form that dropped it to
+    `_hover_subject` gives the compartment. `docs/INTERFACE.md` § "When more
+    than one trace is within reach" requires that hedge wherever the compartment
+    is named, and a form that dropped it to
     stay narrow would be trading a required qualifier for a column of
     whitespace.
 
@@ -1993,8 +1996,8 @@ def nearest_trace_point(
     not to the nearest of the trace's points. So every value reported is at
     that instant *and* within reach of the pointer. The cost is that a reader
     must aim more carefully beside a steep segment, but no drawn instant
-    becomes unreachable. `docs/INTERFACE.md` § "Where more than one trace
-    answers" has the measurement.
+    becomes unreachable. `docs/INTERFACE.md` § "The instant each value is
+    reported at" states the rule, and `PL-1K9G` has the measurement.
 
     **Distance does not decide between traces either.** Every run and every
     compartment whose point is inside the radius is reported. So no hand

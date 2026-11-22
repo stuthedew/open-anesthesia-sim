@@ -148,9 +148,10 @@ class RunStatus:
 
     This field is separate from `failure_reason` because the interface must
     not present the two states alike. If the simulator stopped exactly where
-    `docs/MODEL.md` says it should, telling a reader that it broke would
-    misrepresent a correct model as a defective one. The reverse mistake
-    would be worse. Both fields are `None` for a run that is merely paused.
+    `docs/INTERFACE.md` § "What happens when a run reaches the limit" says it should,
+    telling a reader that it broke would misrepresent a correct model as a
+    defective one. The reverse mistake would be worse. Both fields are `None`
+    for a run that is merely paused.
     """
     failure_reason: str | None
     """Why the run stopped abnormally, or `None` if it did not.
@@ -1639,8 +1640,10 @@ class SimulationController:
         instants in its run definition are one quantity, and nothing converts
         between them. The branch's run definition opens at the
         keyframe that starts the stretch before `instant_s`, as every branch's
-        does. `_open_at` and `docs/INTERFACE.md` § "What this requires of a branch"
-        explain why.
+        does. `_open_at` does this. `docs/INTERFACE.md` § "What this requires
+        of a branch" states the rule: a branch records as its provenance the
+        stretch that ran up to its fork. For a fork after the case's opening,
+        nothing the trunk later does at the fork can replace that stretch.
 
         **The branch runs under the change made at `instant_s`, and records
         that change in its own timeline** (`PL-ZR49`). A keyframe is a setting
@@ -1752,8 +1755,10 @@ class SimulationController:
         stands. The branch's run definition opens at the keyframe where the
         parent's own stretch opens, while the branch's clock and its live
         system stand at the fork. `_open_at` does this. `docs/INTERFACE.md`
-        § "What this requires of a branch" says which of that section's two
-        conditions this relaxes, and why the element-wise guarantee survives.
+        § "What this requires of a branch" states this rule. It also says why
+        the branch still equals its parent in every digit while no setting
+        differs: the branch copies its parent's stored states up to the fork
+        and steps on from the state stored there.
 
         **The branch opens with the dials as they stand** (`PL-HSP8`,
         `PL-ZR49`). A setting changed while the run stands here is on the
@@ -2802,8 +2807,8 @@ class SimulationController:
     # when this controller builds the system, and no interface control changes
     # it after that. The setter that used to be here was public and unbounded.
     # So it gave every caller of the app layer a way to set a circuit volume
-    # outside anything `docs/MODEL.md` verifies, for a control that no teaching
-    # case has asked for. `BreathingCircuit.set_circuit_volume` stays, because
+    # outside the verified domain, for a control that no teaching case has
+    # asked for. `BreathingCircuit.set_circuit_volume` stays, because
     # it is the only way `_build_state()` can pass the parameter to the circuit.
     # What was removed is the app-level passthrough, not the core primitive.
     # `docs/INTERFACE.md` § "What is not bounded this way" gives the argument.

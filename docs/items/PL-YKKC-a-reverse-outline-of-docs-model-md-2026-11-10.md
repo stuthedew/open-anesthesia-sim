@@ -3,13 +3,16 @@ id: PL-YKKC
 title: A reverse outline of docs/MODEL.md (2026-11-10) found structural problems to weigh in the next structure pass: the model's own sections are about 11% of the document, several headings do not name what they hold, terms are used before they are defined, and developer notes sit mid-section or fill half of one
 priority: P3
 effort: M
-status: blocked
+status: done
 classes: docs
 feature: model-md-structure
 touches: docs/MODEL.md
-blocked-by: PL-N83Z, PL-4H8Q, PL-SY7G
+blocked-by: PL-1VXY
 added: 2026-11-10
+closed: 2026-11-22
+pr: 2235
 payoff: the replaced model document is checked for the structural problems the old one had, so they are not carried over
+verify: grep -qF 'Record 2026-11-22: the five points checked against the split documents' docs/items/PL-YKKC-a-reverse-outline-of-docs-model-md-2026-11-10.md
 ---
 
 **Problem.** A reverse outline of docs/MODEL.md (2026-11-10) found structural problems to weigh in the next structure pass: the model's own sections are about 11% of the document, several headings do not name what they hold, terms are used before they are defined, and developer notes sit mid-section or fill half of one
@@ -107,4 +110,60 @@ already `PL-DQD8`, and the misdirected "rules below" pointer is `PL-XLDN`.
 
 **Generator check.** `PL-P3GZ` found the cause: an instance of the fact that `PL-J1ZM` states, that no rule says what a reader can do without.
 
-**Checked 2026-11-22** against `d4e8200`: still applied, and was still blocked on `PL-48MX`, which was then open behind two earlier stages of the split of `docs/MODEL.md`. Part of the outline is out of date. #2109 (`PL-CTXZ`) moved Runtime controls, Interface boundary and Minimum displayed outputs to `docs/INTERFACE.md`, so the points about those sections now concern that document. By `##` headings, the sections from Model boundary to Conservation of agent mass are now about 20% of the 7,044-line `docs/MODEL.md`, not 11%. Required tests is about 24%, Parameter provenance 18% and Known limitations 15%. The committed outline that the done-when names exists at `docs/prose-review/model-reverse-outline.tsv` (`PL-9RLM` is done).
+[superseded 2026-11-22] **Checked 2026-11-22** against `d4e8200`: still applied, and was still blocked on `PL-48MX`, which was then open behind two earlier stages of the split of `docs/MODEL.md`. Part of the outline is out of date. #2109 (`PL-CTXZ`) moved Runtime controls, Interface boundary and Minimum displayed outputs to `docs/INTERFACE.md`, so the points about those sections now concern that document. By `##` headings, the sections from Model boundary to Conservation of agent mass are now about 20% of the 7,044-line `docs/MODEL.md`, not 11%. Required tests is about 24%, Parameter provenance 18% and Known limitations 15%. The committed outline that the done-when names exists at `docs/prose-review/model-reverse-outline.tsv` (`PL-9RLM` is done).
+
+**Record 2026-11-22: the five points checked against the split documents.**
+Checked on branch `wip-chain` after `PL-1VXY`'s commit, against
+`docs/MODEL.md`, `docs/INTERFACE.md`, `docs/VERIFICATION.md`,
+`docs/PARAMETERS.md` and `docs/prose-review/model-reverse-outline.tsv`. None
+of the five still holds as a structural problem, so nothing was fixed or
+filed under this item.
+
+1. Proportion: no longer holds. The new `docs/MODEL.md` (2,014 lines) holds
+   only the model. By `##` section, Equations is 11.8%, What the model
+   represents 5.2%, Parameters 16.2% and Known limitations 18.0%. The interface
+   and test material that filled the old document is in `docs/INTERFACE.md`
+   and `docs/VERIFICATION.md`. The breathing circuit is still the longest
+   subsection of Equations, because it explains the fresh gas flow label and
+   the circuit volume; it no longer carries the closed-circuit material.
+2. Headings: no longer holds. Known limitations in `docs/MODEL.md` has 13
+   subheadings. Runtime controls in `docs/INTERFACE.md` has an opening about
+   the controls (`PL-SY7G`). Branching has its own § "What this requires of a
+   branch". "Supported simulation step" in `docs/VERIFICATION.md` has its own
+   subheadings (`PL-4H8Q`). Interface boundary has subheadings, with its code
+   in § "The code and tests behind the interface boundary". The v0.1.0
+   milestone text is gone from `docs/MODEL.md`.
+3. Terms before definitions: holds no longer, with one residue that is not
+   structural. "Canonical" no longer appears in `docs/INTERFACE.md`, and
+   "stretch" is defined where it is first used. Both `docs/VERIFICATION.md`
+   and `docs/PARAMETERS.md` introduce the hidden markers in their opening
+   paragraphs. § "Required tests" now has an opening that says each test is
+   verification except the published-data test. The residue is "keyframe" in
+   the code note of `docs/INTERFACE.md` § "Interface boundary": "The stored
+   state drawn at a control change is a keyframe, not one propagated from an
+   earlier instant." It is one of the three statements that `PL-SY7G`
+   recorded as contradicting the code, which is a factual correction, not a
+   structural one. No item on this branch holds those three statements yet;
+   `PL-SY7G` says they are being filed separately.
+4. Restatement: no longer holds. F_a ≡ F_A appears in `docs/MODEL.md` at its
+   definition, in the symbol table and in the reason for the display, and
+   `docs/INTERFACE.md` cites `docs/MODEL.md` for it. The closed circuit is one
+   list item and one section in `docs/MODEL.md`, with the code note in
+   `docs/VERIFICATION.md`. `PL-4H8Q` grouped the 0.99 limit's arguments.
+   Trunk, branch and fork are defined once in `docs/INTERFACE.md`
+   (`PL-SY7G`).
+5. Two readers mixed: no longer holds. The split gave each document one
+   reader (`PL-P3GZ`). `docs/VERIFICATION.md` is a developer's document with
+   no developer labels (`PL-4H8Q`). `docs/PARAMETERS.md`'s notes close their
+   subsections (`PL-N83Z`). The long note in § "Supported input ranges"
+   was cut to one paragraph of pointers to the code (`PL-SY7G`). The note
+   under "What this list requires once the layout is the reader's" is
+   about a third of its section, in a document whose reader is a contributor.
+
+The committed outline records `docs/MODEL.md` at `50af1a2e`, before the
+split, and the three sorting items dispositioned its rows. It stays as the
+record of that text.
+
+*Files checked:* `docs/MODEL.md`, `docs/INTERFACE.md`,
+`docs/VERIFICATION.md`, `docs/PARAMETERS.md` and
+`docs/prose-review/model-reverse-outline.tsv`.

@@ -951,9 +951,9 @@ class AgentUptakeSystem:
         amount that the *parent's* period started from. It is passed in rather
         than derived, for the reason that `reset()` gives: a check must not
         rest on an invariant that it does not establish. Deriving it would mean
-        taking the anchor as the value that makes `docs/MODEL.md`'s
-        mass-balance identity close exactly. This method deliberately does not
-        do that, because a state's own conservation residual has no reason
+        taking the anchor as the value that makes the mass-balance identity of
+        `docs/MODEL.md` § "Conservation of agent" close exactly. This method
+        deliberately does not do that, because a state's own conservation residual has no reason
         to fall on the positive side. On a 900 s sevoflurane run with
         two setting changes, the derived anchor was measured at -6.9e-14 L.
         That is a negative initial amount, which `AgentSimulationValidator`

@@ -21,7 +21,8 @@ code that reads and writes the file. Nothing in it imports Qt.
 The project ships no price. A reader with no file has no prices and the
 default unit.
 
-**Two choices that `docs/MODEL.md` left to this module** (`PL-93B3`, 2026-11-01):
+**Two choices that `docs/INTERFACE.md` § "Setting a price" left to this module**
+(`PL-93B3`, 2026-11-01):
 
 - A currency is refused unless it is three capital letters. It is not also
   checked against the list of codes that ISO 4217 assigns. That list changes
@@ -176,7 +177,7 @@ class AgentPrice:
     applies_on: date
 
     def __post_init__(self) -> None:
-        """Refuse a price that `docs/MODEL.md` says the store refuses.
+        """Refuse a price that `docs/INTERFACE.md` § "Setting a price" says the store refuses.
 
         Raises:
             SimulationConfigurationError: If the agent is not a shipped agent,

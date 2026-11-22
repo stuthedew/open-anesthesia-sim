@@ -165,8 +165,9 @@ def selector_stylesheet() -> str:
     """A combo box a reader reads rather than merely operates: PANEL fill, MUTED edge, INK text.
 
     The playback-rate and time-base selectors name the rate at which the
-    clock is advancing and how much of the run is on screen. `docs/MODEL.md`
-    requires both to be displayed (`PL-SN2C`), so their surface is set here
+    clock is advancing and how much of the run is on screen.
+    `docs/INTERFACE.md` § "Minimum displayed outputs" requires both to be
+    displayed (`PL-SN2C`), so their surface is set here
     rather than left to the platform style. `tools/contrast_check.py`
     measures INK on PANEL for the text, and MUTED against each selector's own
     surroundings for the border. Both measurements are valid only because

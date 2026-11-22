@@ -398,8 +398,8 @@ def test_a_bookmark_fork_opens_its_definition_at_the_keyframe_before_it() -> Non
     opens at the keyframe *at or before* that instant, with that keyframe's
     own state. Every instant after the fork is then one propagation from the
     same keyframe that the trunk propagates from. `docs/INTERFACE.md` § "What this
-    requires of a branch" relaxes the second of its two conditions to exactly
-    that.
+    requires of a branch" states the rule: a branch's settings record opens
+    with the stretch that its parent ran up to the fork.
     """
 
     marked = _trunk_halted_on_a_bookmark()

@@ -33,7 +33,8 @@ the current kind checked (`PL-RBXL`). Choosing an entry calls
 `LayoutModel.set_view` for that Area and draws the result. The menu takes its
 list from the registry and not from the Workspace. So any registered kind,
 including the agent accounting, can be brought into any Area of any layout.
-That is what `docs/MODEL.md` means by reachable.
+That is what `docs/INTERFACE.md` § "Values that must stay reachable" means by
+reachable.
 
 **Each Area's View kind is looked up in the View registry, and its View is
 built by the entry's factory** (`PL-R1WQ`, `PL-TH35`). The factory is called
@@ -2137,9 +2138,10 @@ class AreaFrame(QFrame):
     the panel surface, with a 1px `GRIDLINE` rule under it, and `PL-MS34`
     decided this design. The chooser is the header's first control, and empty
     stretching space follows it. While the Workspace is pinned to a run, the
-    run's name follows the chooser, because `docs/MODEL.md` asks a View to
-    name its run while it is pinned to one (`PL-7Z84`). The header never gets
-    shorter than that row. A right-click anywhere on the header opens the Area
+    run's name follows the chooser, because `docs/INTERFACE.md` § "Naming the
+    run in a comparison" asks a View to name its run while it is pinned to one
+    (`PL-7Z84`). The header never gets shorter than that row. A right-click
+    anywhere on the header opens the Area
     menu, as a right-click on a header does in Blender (`PL-R5G4`).
 
     **An Area of a Workspace whose pinned run is not open shows a notice in

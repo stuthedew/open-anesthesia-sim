@@ -1,4 +1,4 @@
-"""Tests of the declaration of `docs/MODEL.md`'s unconditional set, without a widget toolkit.
+"""Tests of the declaration of the unconditional set, without a widget toolkit.
 
 Each expected value below is transcribed from `docs/INTERFACE.md` § "Minimum
 displayed outputs" -> "What this list requires once the layout is the
@@ -80,7 +80,8 @@ def test_a_run_with_no_volatile_agent_owes_no_vaporizer_circuit_or_mac_value() -
     """The tier is chosen by the substance, so none of the inhaled instance leaks into the set.
 
     The instance is a hypothetical intravenous drug with no tier of its own
-    written yet: `docs/MODEL.md` says that such a run's own values "are named
+    written yet: `docs/INTERFACE.md` § "The unconditional values" says that
+    such a run's own values "are named
     where its substance's model is specified", and no such model is
     specified. This test checks that nothing outside the
     instance, meaning the invariant tier and the record, carries a value that
@@ -125,7 +126,10 @@ def test_every_compartment_readout_carries_a_value_of_the_inhaled_tier() -> None
 
 
 def test_the_wash_in_ratio_is_not_a_readout_value() -> None:
-    """F_A/F_I is a chart surface, which `docs/MODEL.md` makes conditional."""
+    """F_A/F_I is a chart surface, so it is not a readout value.
+
+    `docs/INTERFACE.md` § "Values required only with their chart" makes it conditional.
+    """
 
     with pytest.raises(KeyError):
         compartment_value(RecordedQuantity.WASH_IN_RATIO)

@@ -156,8 +156,9 @@ class RegisteredView:
         title: The View's name as a reader sees it.
         factory: Builds the View from its context, for each Area that shows
             the kind (`PL-TH35`).
-        required_reachable: Whether `docs/MODEL.md` requires the View to stay
-            reachable in every layout. `required_kinds` checks this field
+        required_reachable: Whether `docs/INTERFACE.md` § "Values that must stay
+            reachable" requires the View to stay reachable in every layout.
+            `required_kinds` checks this field
             against `REQUIRED_REACHABLE`.
         minimum: The least size the View is shown at, in logical pixels,
             below the Area's header. The adapter never shows the View in a
@@ -332,8 +333,9 @@ def required_kinds(
 ) -> tuple[ViewKind, ...]:
     """Return the kinds in `required`, once `registered` marks each as required to stay reachable.
 
-    `docs/MODEL.md` requires some Views to stay reachable in every layout and
-    not to be removable from the application. The chooser lists every
+    `docs/INTERFACE.md` § "Values that must stay reachable" requires some Views
+    to stay reachable in every layout and not to be removable from the
+    application. The chooser lists every
     registered kind, so what can make one unreachable is a build that no
     longer registers it. This check is run on the shipped registry when this
     module is imported, so such a build fails before it draws anything.

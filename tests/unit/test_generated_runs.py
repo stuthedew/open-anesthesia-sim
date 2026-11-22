@@ -401,8 +401,10 @@ class _Run:
         self.highest = max(self.highest, dial_fraction)
 
     def step(self, steps: int) -> bool:
-        """Take `steps` steps. Return False where the run halts as `docs/MODEL.md` documents.
+        """Take `steps` steps. Return False where the mass-balance check halts the run.
 
+        `docs/VERIFICATION.md` § "The mass-balance check at the hardest corners"
+        documents that halt.
         A halt on the agent balance is accepted only where the rounding of the
         steps taken so far can explain it: the summed bound of their
         propagators has reached the balance's relative tolerance (`PL-D88N`).

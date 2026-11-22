@@ -1249,8 +1249,9 @@ class SimulationView(QWidget):
         Raises:
             RuntimeError: A declared value has no widget, or its widget is
                 outside the region or inside the layout container. Either is
-                a layout that could take a value `docs/MODEL.md` requires
-                off the screen, so the dashboard is not built.
+                a layout that could take a value that `docs/INTERFACE.md`
+                § "The unconditional values" requires off the screen, so the
+                dashboard is not built.
         """
 
         widgets = run.unconditional_widgets()
@@ -1281,11 +1282,11 @@ class SimulationView(QWidget):
         A lone run is given no name, because there is nothing to tell it
         apart from. When there are two runs, each is named by `run_label`
         from its identity, which is also what the legend entries call it.
-        `docs/MODEL.md` requires a value's run to be named whenever another
-        run is drawn anywhere. Until a run can be drawn outside this
-        dashboard, every run is drawn in it. So another run is drawn
-        somewhere exactly when this dashboard holds more than one run
-        (`PL-7Z84`).
+        `docs/INTERFACE.md` § "Naming the run in a comparison" requires a
+        value's run to be named whenever another run is drawn anywhere. Until
+        a run can be drawn outside this dashboard, every run is drawn in it.
+        So another run is drawn somewhere exactly when this dashboard holds
+        more than one run (`PL-7Z84`).
 
         Each run reads its name from here whenever it builds a presentation,
         so the name travels with the run's values to the run's own panel and

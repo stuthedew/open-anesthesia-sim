@@ -33,19 +33,17 @@ from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 # tests would move with that constant wherever it moved, so it could never
 # catch a change to it. That was the whole defect in `PL-B7ZV`. Moving one of
 # the constants in `core/` therefore fails
-# `test_the_accounting_tolerances_are_the_documented_release_tolerances`,
+# `test_the_accounting_tolerances_are_the_documented_halt_thresholds`,
 # which is the only place that compares the two sets of values.
 # `tests/reference/test_coupled_dynamics.py` uses the same idiom twice: for
 # the model's supported input ranges and for the interface's displayed
 # resolution.
 #
 # `docs/VERIFICATION.md` § "Mass-balance identity" lists all three as the run-time
-# halt thresholds, and keeps them apart from its release gate, which bounds the
-# relative residual alone. The third is a minimum scale: the relative error
-# divides by the starting plus delivered amount, or by 1e-15 L if that is
-# larger, so it stays finite before any agent has been delivered. The test that
-# checks these values keeps its older name, "release tolerances", because a closed
-# item's verification searches for that name (`PL-B7ZV`).
+# halt thresholds, and keeps them apart from the mass-balance tolerance, which
+# bounds the relative residual alone. The third is a minimum scale: the relative
+# error divides by the starting plus delivered amount, or by 1e-15 L if that is
+# larger, so it stays finite before any agent has been delivered.
 DOCUMENTED_ABSOLUTE_TOLERANCE_L = 1e-12
 DOCUMENTED_RELATIVE_TOLERANCE = 1e-9
 DOCUMENTED_MINIMUM_RELATIVE_SCALE_L = 1e-15
@@ -553,7 +551,7 @@ def test_a_refused_reset_changes_nothing(initial_agent_l: float) -> None:
     assert astuple(validator) == held
 
 
-def test_the_accounting_tolerances_are_the_documented_release_tolerances() -> None:
+def test_the_accounting_tolerances_are_the_documented_halt_thresholds() -> None:
     """The guard's three sensitivity constants are the ones the model documents.
 
     `require_valid_agent_accounting()` stops a run whose numbers can no longer

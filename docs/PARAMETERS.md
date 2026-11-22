@@ -1148,11 +1148,11 @@ coefficients, read `docs/VERIFICATION.md` § "Desflurane's residual, and why the
 
 ### Delivery-limit and MAC parameters
 
-This section specifies two of an agent's stored values that play no part in the model's
-equations: its maximum delivered concentration and its MAC. A value that a clinician could read or
-act on is safety-critical whether or not the model uses it. § "Agent amount" gives the sources of the
-agent's molar mass and liquid density, and `docs/INTERFACE.md` § "MAC-awake as a chart reference"
-specifies its MAC-awake.
+This section specifies three of an agent's stored values that play no part in the model's
+equations: its maximum delivered concentration, its MAC and its MAC-awake. A value that a clinician
+could read or act on is safety-critical whether or not the model uses it. § "Agent amount" gives the
+sources of the agent's molar mass and liquid density. `docs/INTERFACE.md` § "MAC-awake as a chart
+reference" specifies how the chart draws the MAC-awake band.
 
 #### The maximum delivered concentration
 
@@ -1277,6 +1277,133 @@ records the citation, the tier, the Mapleson value that was not adopted, and how
 value differs from it.
 
 
+#### The MAC-awake fractions
+
+Each agent stores its MAC-awake as a fraction of its MAC
+(`mac_awake.fraction_of_mac`), with a standard deviation in the same unit
+(`mac_awake.standard_deviation_fraction_of_mac`). The chart draws them as the
+MAC-awake band, which `docs/INTERFACE.md` § "MAC-awake as a chart reference"
+specifies. The sources are Katoh et al. 1993 for sevoflurane and isoflurane,
+and Chortkoff et al. 1995 for desflurane (§ "Where this project stands"). This
+subsection records how those sources were read, and why the stored values are
+the ones the band needs.
+
+**The trace that the band is read against decides which published MAC-awake
+value is correct.** Katoh et al. determined sevoflurane and isoflurane MAC-awake
+by a slow, equilibrated washout and by a fast one, and the two methods disagree.
+Slow washout gave 0.34 of MAC for sevoflurane and 0.31 for isoflurane, against
+0.22 for both by fast washout. Katoh attributes the disagreement to
+end-tidal-to-arterial and arterial-to-cerebral anesthetic differences. This
+model represents those differences as the gap between the alveolar and
+vessel-rich traces. The stored values are the slow-washout ones, and they belong
+against the vessel-rich trace.
+<!-- provenance: data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34 -->
+<!-- provenance: data/agents/isoflurane.json mac_awake.fraction_of_mac = 0.31 -->
+
+Katoh also estimated the brain concentration at awakening. That estimate is not
+a measurement, because cerebral concentration cannot be sampled in these
+patients. The abstract says the brain concentrations were "calculated with
+end-tidal anesthetic concentrations", and the title calls them "predicted".
+So they come from Katoh's own model of brain uptake (`PL-YDRT`), which treats
+the brain as one well-mixed compartment perfused by arterial blood. Katoh's
+equation 1 (p. 1013) is:
+
+$$
+\frac{dP_{Brain}}{dt} = \frac{CBF \cdot \lambda_{B/G} \cdot (P_{Art} - P_{Brain})}{V_{Brain} \cdot \lambda_{T/G}}
+$$
+
+This is the perfusion-limited form that `docs/MODEL.md` § "Tissue groups" uses for
+each tissue group. Katoh's compartment is the brain alone, though, while this
+model's vessel-rich group pools the brain with the heart, liver, kidney and
+viscera.
+
+Katoh computed every patient's flow and volume from the same formulas. Cerebral
+blood flow $`CBF`$ is 14.3% of a cardiac output set by a cardiac index of
+3.5 L/min/m², so it scales with body surface area. Brain volume $`V_{Brain}`$
+is 21 mL/kg, so it scales with body weight. The brain's time constant therefore
+varied a little from patient to patient. The coefficients were the same for
+everyone. The blood:gas coefficient $`\lambda_{B/G}`$ is 0.63 for sevoflurane
+and 1.36 for isoflurane, and the brain:gas coefficient $`\lambda_{T/G}`$ is
+1.15 and 2.09.
+
+During fast washout, Katoh's calculated brain concentration at first eye opening
+does not differ significantly from the slow-washout values, under either of two
+estimates of the arterial partial pressure. Katoh did not measure that pressure.
+Equation 2 sets it equal to the end-tidal value. Equation 3 (p. 1016) corrects
+the end-tidal value for 20% dead-space gas, as
+$`P_{Art} = (P_{ET} - 0.2\,P_I)/0.8`$. During fast washout, the calculated
+brain concentration at first eye opening was 0.30 of MAC for sevoflurane and
+0.26 for isoflurane under equation 2 (Table 1, p. 1014).
+Under equation 3 it was 0.34 and 0.30 (Table 3, p. 1016). The abstract quotes
+the equation 3 figures and calls them
+"nearly equal to MAC-Awake obtained by slow alveolar washout". So the stored
+values and the choice of the vessel-rich trace rest on a modelled estimate that
+agrees with an equilibrated measurement. That is weaker evidence than a direct
+measurement of the brain would be.
+
+<!-- not-restated: 0.34 -->
+
+**The MAC-awake fractions for isoflurane, sevoflurane and desflurane were not
+determined by one method.** Katoh's slow-washout arm is *descending*. Chortkoff
+and Song et al. both determined desflurane MAC-awake by *ascending* stepwise
+equilibration. All of these are equilibrated determinations, not fast-washout
+ones, so all three fractions belong against the vessel-rich trace. But ascending
+and descending determinations are not interchangeable, and no descending-washout
+MAC-awake for desflurane was found. The three fractions (0.31 isoflurane, 0.34
+sevoflurane, 0.36 desflurane) sit in a narrow range. Each agent still carries
+its own value rather than one fraction covering all three. Isoflurane and
+sevoflurane were each measured in Katoh's slow-washout arm, and their fractions
+differ. Desflurane's was determined by the other method, so a shared fraction
+would mix ascending and descending determinations.
+<!-- provenance: data/agents/isoflurane.json mac_awake.fraction_of_mac = 0.31 -->
+<!-- provenance: data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34 -->
+
+<!-- provenance: data/agents/desflurane.json mac_awake.fraction_of_mac = 0.36 -->
+
+**MAC-awake is stored as a fraction of MAC, never as a percent of one
+atmosphere.** Each source expresses MAC-awake as a ratio to MAC, and Katoh does so explicitly, "as a ratio to
+age-adjusted MAC". A published *percent*, by contrast, is tied to whichever MAC
+its own population was measured against. Desflurane shows the risk. Chortkoff's
+MAC-awake of 2.60% is 36% of a MAC of about 7.25%, Rampil's figure for ages
+18-30. The stored MAC equals Rampil's figure for ages 31-65, 6.0%. Dividing 2.60% by
+6.0% would give 0.433 instead of the published 0.36, so the band would be drawn
+20% too high and crossed too soon. Storing the fraction avoids that error. For desflurane, storing the fraction allows an
+independent check. The band's centre is 0.36 of the stored 6.0%, or 2.16%, and
+Song et al. measured 2.17% in the non-jaundiced control arm of a population that
+Rampil's 31-65 year MAC describes.
+
+<!-- derived: 0.433 from data/agents/desflurane.json mac_percent = 6, mac_awake.fraction_of_mac = 0.36 -->
+<!-- derived: 2.16 percent from data/agents/desflurane.json mac_awake.fraction_of_mac = 0.36, mac_percent = 6 -->
+
+**The comparison with Katoh's own MAC at age 40 points the same way as the
+comparison with Mapleson's** in `docs/INTERFACE.md` § "MAC-awake as a chart
+reference": the band sits slightly high, so it teaches a slightly early
+wake-up (`PL-P319`). Katoh's fractions are ratios to each patient's
+age-adjusted MAC, which comes from two linear equations on p. 1013. For
+isoflurane it is 1.43 − 0.0061 × age (yr) percent, and for sevoflurane
+2.56 − 0.0156 × age (yr) percent. The paper cites four MAC studies for the
+equations but does not say how the equations were derived from those studies.
+At age 40 the equations give 1.94% for sevoflurane and 1.19% for isoflurane.
+The stored MAC is 3.3% above Katoh's for sevoflurane and 1.2% above it for
+isoflurane, so the band sits above Katoh's own age-40 awakening concentration
+by the same proportions. The drawn centres are 0.68% sevoflurane and 0.372%
+isoflurane, against 0.658% and 0.368% from Katoh's fractions times Katoh's
+age-40 MAC. Both differences are much less than the standard deviation of
+Katoh's fractions, 0.05 of MAC. Katoh's slow-washout patients themselves woke
+at a mean end-tidal 0.63 ± 0.11% sevoflurane and 0.36 ± 0.08% isoflurane
+(Table 1, p. 1014). Those figures are lower than the band mostly because the
+patients were older, with mean ages of 45.9 and 45.1 years, so they are not a
+like-for-like check of the band. The band is drawn on a single adult MAC whose
+source states no age, and which lies close to Katoh's MAC at age 40.
+<!-- not-restated: 0.36 -->
+<!-- provenance: data/agents/sevoflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.05 -->
+<!-- provenance: data/agents/isoflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.05 -->
+<!-- derived: 3.3% from data/agents/sevoflurane.json mac_percent = 2 -->
+<!-- derived: 1.2% from data/agents/isoflurane.json mac_percent = 1.2 -->
+<!-- derived: 0.68 percent from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_percent = 2 -->
+<!-- derived: 0.372 percent from data/agents/isoflurane.json mac_awake.fraction_of_mac = 0.31, mac_percent = 1.2 -->
+
+
 ## Agent amount
 
 Every compartment stores its agent as an equivalent gas volume, in litres of
@@ -1303,9 +1430,9 @@ factor of 1.058.
 
 1. **The published vapour-to-liquid constants are 20 °C constants.** The
    consumption literature quotes one number per agent, the vapour volume
-   obtained from 1 mL of liquid. Biro gives isoflurane 195 mL, sevoflurane
-   184 mL and desflurane 210 mL. The same number can be derived from the
-   liquid's measured density, its molar mass and the molar volume. At 20 °C the
+   obtained from 1 mL of liquid. The table below gives Biro's. The same number
+   can be derived from the liquid's measured density, its molar mass and the
+   molar volume. At 20 °C the
    derivation reproduces all three within 0.7 %. At 37 °C it runs 5.1–6.3 %
    high:
 
@@ -1754,7 +1881,8 @@ of its own. None is stored today.
 <!-- not-restated: 20 °C -->
 
 **Sources for the altitude notes above.** None of them is the authority for a stored
-value:
+value. Two of the six are **owner-attested**: they were read from the project
+owner's copies, and no other reader can check them. The six are these:
 
 - Weiskopf RB, Sampson D, Moore MA. The desflurane (Tec 6) vaporizer: design,
   design considerations and performance evaluation. *Br J Anaesth*
@@ -1778,13 +1906,13 @@ value:
   statement, quoted in `docs/MODEL.md` § "Altitude". It also gives a 1–18% concentration range, whose upper
   end is the 18% that this model stores as desflurane's maximum delivered
   concentration. Read in full.
-  **Owner-attested**: see the note below.
+  **Owner-attested.**
 - Boumphrey S, Marshall N. Understanding vaporizers. *Contin Educ Anaesth
   Crit Care Pain* 2011;11:199–203. **Tier 2** under `docs/PARAMETERS.md` § "Source hierarchy". It
   is a secondary synthesis, taken here for the shape of the explanation and
   the worked example, and never as the authority for a number. Its "Altitude"
   section describes both classes side by side. Read in full.
-  **Owner-attested**: see the note below.
+  **Owner-attested.**
 - Dosch MP, Tharp D. *The Anesthesia Gas Machine*, chapter 5, "Processing:
   Vaporizers". University of Detroit Mercy, revised February 2026.
   https://healthprofessions.udmercy.edu/academics/na/agm/05. **Tier 2** under
@@ -1796,14 +1924,11 @@ value:
 
 <!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 
-**Two of those six are owner-attested: they were read from the project
-owner's copies, and no other reader can check them.** They are the
-Datex-Ohmeda specification sheet and the Boumphrey and Marshall article. Any
-reader can reach the three journal articles above through their DOI or PMID,
-and Dosch and Tharp's chapter at its address.
-`docs/references/` cannot hold copies of these two, because the repository is
+Any reader can reach the three journal articles above through their DOI or
+PMID, and Dosch and Tharp's chapter at its address. `docs/references/` cannot
+hold copies of the two owner-attested sources, because the repository is
 public (`docs/references/README.md` § "Redistribution"). So three things rest
-on that reading alone: the passage quoted from Datex-Ohmeda, the 1–18% range
+on the owner's copies alone: the passage quoted from Datex-Ohmeda, the 1–18% range
 beside it, and the worked example attributed to Boumphrey and Marshall.
 Nothing stored depends on any of them. A reader who wants to verify one has to
 reach the document itself.

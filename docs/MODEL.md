@@ -36,7 +36,7 @@ intended for entering, importing or reproducing an identifiable patient's
 values, or for informing the management of a specific patient. Keeping the
 simulator open on a computer during a case is ordinary teaching use. A run
 built from a particular patient's weight, age and cardiac output is a
-prediction about that patient, whatever the window is labelled.
+prediction about that patient, whatever the window is labeled.
 
 A learner can still set cardiac output or alveolar ventilation to a value
 measured in a real patient, because changing them is a core teaching feature.
@@ -168,12 +168,12 @@ fraction and a partial pressure differ only by that factor: $`F_A = 0.02`$ is
 <!-- not-restated: 2 % -->
 
 **Agent amount.** Every compartment stores its agent as an equivalent gas
-volume: litres of pure agent gas at 20 °C and 760 mmHg, dry. The ideal-gas
+volume: liters of pure agent gas at 20 °C and 760 mmHg, dry. The ideal-gas
 molar volume at that condition is 24.055 L/mol. The condition defines the unit
 only, and does not mean that any of the agent is physically at 20 °C. The
 agent in blood and fat is dissolved, so the volume expresses an amount of
 agent and not gas present in the body. The condition matters only when an
-amount is converted into moles, mass or millilitres of liquid. It changes no
+amount is converted into moles, mass or milliliters of liquid. It changes no
 concentration, because every equation works with fractions, physical volumes
 and partition coefficients, which are ratios.
 <!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
@@ -330,7 +330,7 @@ At 2% delivered, $`\dot V_F`$ is 2% above the flowmeter setting. At the top of
 the desflurane dial, 18%, it is 22% above, so flowmeters set to 2 L/min
 deliver about 2.44 L/min. A reader who takes the simulator's fresh gas flow
 control for a flowmeter setting misjudges the circuit time constant by the
-same factor. So the control is labelled "Fresh gas flow" with "common gas
+same factor. So the control is labeled "Fresh gas flow" with "common gas
 outlet" on the line below it, because "Fresh gas flow" alone is the name on a
 real machine's flowmeter bank.
 <!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
@@ -381,6 +381,11 @@ so each tissue group's time constant is
 $$
 \tau_i = \frac{V_i\lambda_{i:b}}{Q_i}
 $$
+
+This is the group's isolated time constant: the one it would have if the
+arterial concentration stayed fixed. In the whole model the arterial
+concentration moves with what the groups take up and return, so every group
+changes more slowly than this (§ "Time constants").
 
 ### Venous blood
 
@@ -451,6 +456,16 @@ flows, with the 6 L circuit.
   9.32 L/min of cardiac output. Nothing in the model changes faster.
 - The slowest is the fat group's, at 47 000 s (13 hours) to 187 000 s
   (52 hours).
+- Every group changes more slowly than its isolated time constant
+  (§ "Tissue groups"). For sevoflurane at the default flows, the two slowest
+  terms are about 172 minutes and 46 hours, against isolated time constants of
+  135 minutes for muscle and 42 hours for fat. The vessel-rich group's isolated
+  time constant is about 2.7 minutes, and no term of the model runs at that
+  pace: the nearest are about 1 minute and 6 minutes. The arterial blood
+  that reaches a group is never free of agent. During washout the lungs do not
+  exhale all of the agent that a group returns, the circuit sends part of what
+  they exhale back to the lungs, and the rest goes round again. So a group
+  empties more slowly than its own blood flow alone would empty it.
 - In five of the six rows, the two fastest terms form one oscillation, because
   agent circulates from circuit to alveoli to tissues and back. It cannot be
   seen. Its period is 384 to 1 540 s, and over half a period it shrinks by a
@@ -459,6 +474,12 @@ flows, with the 6 L circuit.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
 <!-- derived: 13.7 s from data/agents/isoflurane.json blood_gas_partition_coefficient = 1.3, tissue_gas_partition_coefficients.vessel_rich = 2.1, tissue_gas_partition_coefficients.muscle = 4.5, tissue_gas_partition_coefficients.fat = 70 -->
 <!-- derived: 16.6 s from data/agents/desflurane.json blood_gas_partition_coefficient = 0.42, tissue_gas_partition_coefficients.vessel_rich = 0.54, tissue_gas_partition_coefficients.muscle = 0.97, tissue_gas_partition_coefficients.fat = 13 -->
+<!-- derived: 2.7 minutes from data/patients/reference_adult.json tissue_groups.vessel_rich.volume_l = 6, tissue_groups.vessel_rich.perfusion_fraction = 0.76, default_cardiac_output_l_min = 5 -->
+<!-- derived: 2.7 minutes from data/agents/sevoflurane.json tissue_gas_partition_coefficients.vessel_rich = 1.1, blood_gas_partition_coefficient = 0.65 -->
+<!-- derived: 135 minutes from data/patients/reference_adult.json tissue_groups.muscle.volume_l = 33, tissue_groups.muscle.perfusion_fraction = 0.18, default_cardiac_output_l_min = 5 -->
+<!-- derived: 135 minutes from data/agents/sevoflurane.json tissue_gas_partition_coefficients.muscle = 2.4, blood_gas_partition_coefficient = 0.65 -->
+<!-- derived: 42 hours from data/patients/reference_adult.json tissue_groups.fat.volume_l = 14.5, tissue_groups.fat.perfusion_fraction = 0.06, default_cardiac_output_l_min = 5 -->
+<!-- derived: 42 hours from data/agents/sevoflurane.json tissue_gas_partition_coefficients.fat = 34, blood_gas_partition_coefficient = 0.65 -->
 
 ### How the equations are solved
 
@@ -504,7 +525,7 @@ was measured there. The project ranks sources in three tiers:
 Only a tier-1 source is an authority on its own. A tier-2 or tier-3 value may
 be adopted when no primary measurement of that quantity in that population
 exists, or when the value belongs to a set whose internal consistency is part
-of what is modelled. In both cases the data file records the primary
+of what is modeled. In both cases the data file records the primary
 measurements and how far the stored value sits from them.
 
 **Of the 49 stored values, 27 are tier 1, four are tier 2, 16 are tier 3, and
@@ -631,9 +652,9 @@ the circle, is not bound by 18%.
 These vaporizers work in two different ways. The sevoflurane and isoflurane
 vaporizers are variable-bypass vaporizers: the dial splits the fresh gas
 between a bypass and a chamber in which the gas flows over the liquid agent
-and leaves saturated with vapour. The Tec 6 is not a variable-bypass
-vaporizer. Dosch and Tharp call it a gas–vapour blender, which heats
-desflurane and adds pure vapour to the fresh gas. Johnston et al. (1994)
+and leaves saturated with vapor. The Tec 6 is not a variable-bypass
+vaporizer. Dosch and Tharp call it a gas–vapor blender, which heats
+desflurane and adds pure vapor to the fresh gas. Johnston et al. (1994)
 describe it as "an electrically heated, pressurized, electromechanically
 coupled dual-circuit blender". The two designs behave differently away from
 sea level (§ "Altitude"). The model fixes ambient pressure at 760 mmHg, so it does
@@ -658,7 +679,7 @@ concentration at awakening during fast washout (0.30 and 0.26 of MAC with
 arterial pressure set equal to end-tidal, 0.34 and 0.30 with a correction for
 20% dead-space gas) was calculated from a one-compartment brain model and was
 not measured. So the stored values, and the choice of the vessel-rich trace,
-rest on a modelled estimate that agrees with an equilibrated measurement.
+rest on a modeled estimate that agrees with an equilibrated measurement.
 <!-- provenance: data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34 -->
 <!-- provenance: data/agents/isoflurane.json mac_awake.fraction_of_mac = 0.31 -->
 
@@ -674,7 +695,7 @@ published percent is tied to the MAC of its own population. Chortkoff's
 desflurane MAC-awake of 2.60% is 36% of a MAC of about 7.25%, the figure of
 Rampil et al. (1991) for ages 18-30. Dividing 2.60% by the stored 6.0%
 (Rampil's figure for ages 31-65) would give 0.433, and the band would be drawn
-20% too high. At 0.36 of 6.0% the band's centre is 2.16%, and Song et al.
+20% too high. At 0.36 of 6.0% the band's center is 2.16%, and Song et al.
 measured 2.17% in a population that Rampil's 31-65 year MAC describes.
 <!-- provenance: data/agents/desflurane.json mac_percent = 6 -->
 <!-- provenance: data/agents/desflurane.json mac_awake.fraction_of_mac = 0.36 -->
@@ -888,7 +909,7 @@ converge: it is 1.0 percentage points three seconds after the change and 0.5
 after eight seconds. The figure is desflurane's, with the dial at its 18%
 maximum, the ventilator off for five minutes and ventilation then started at
 12 L/min. It is about a fifth of desflurane's 1 MAC of 6.0%. The same
-manoeuvre gives 0.59 percentage points for sevoflurane and 0.36 for
+maneuver gives 0.59 percentage points for sevoflurane and 0.36 for
 isoflurane.
 <!-- not-restated: 1.3, 12 L/min, 0.36 -->
 <!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
@@ -900,14 +921,14 @@ program takes several steps at once, so a setting changed during playback
 first acts up to 2 s later at 20×, 6 s at 60× and 30 s at 300×. The same
 slider moves made at two playback rates are therefore different inputs and
 produce different runs. An ordinary dial change costs far less than the worst
-abrupt manoeuvre: about 20 times less at 1× and 5×, 19 times at 20×, 16 times
+abrupt maneuver: about 20 times less at 1× and 5×, 19 times at 20×, 16 times
 at 60× and about 7 times at 300×, where it reaches 1.5 percentage points.
 
 - Each recorded control change carries the simulated second at which it
   acted, so the record is exact to the step at every rate.
 - An exact route exists at every rate: pause, change, resume. A setting
   changed during a pause acts from the second on which the run resumes. Use
-  this route to time a manoeuvre, and use faster playback to watch one.
+  this route to time a maneuver, and use faster playback to watch one.
 
 ### Run length
 
@@ -953,7 +974,7 @@ model is wrong. Supporting it needs metabolism first.
 
 ### Reading a concentration
 
-The alveolar readout is labelled "Alveolar", with "end-tidal-equivalent"
+The alveolar readout is labeled "Alveolar", with "end-tidal-equivalent"
 below. It shows the concentration in the model's one well-mixed alveolar
 compartment, which is the value a monitor's end-tidal reading estimates in a
 patient. The model has no dead space, airway sampling delay or shunt, so the
@@ -1041,7 +1062,7 @@ the value they would use.
 The compartment chart carries two horizontal references for the agent in use.
 A **band** marks MAC-awake, the concentration at which half of a population
 responds to verbal command. A **line** marks the nominal 1 MAC. Neither is
-modelled. Both are published constants drawn on the chart's percent axis.
+modeled. Both are published constants drawn on the chart's percent axis.
 
 The gap between them shows the decrement required for arousal. Chortkoff et
 al. state that "along with pharmacokinetics, the ratio of the awakening
@@ -1102,16 +1123,16 @@ fractions, 0.05 of MAC.
 
 ### The $`F_A/F_I`$ plot
 
-A second plot draws the modelled alveolar fraction divided by the modelled
+A second plot draws the modeled alveolar fraction divided by the modeled
 inspired fraction, on a fixed axis from 0 to 1. It is a view of its own, with
 its own time window. Of the workspaces supplied with the simulator, only
 Induction shows it. The uptake literature is taught from this curve, so the
 plot can be laid beside a published figure.
 
-- **The ratio is a modelled value.** It has the alveolar compartment's limits:
+- **The ratio is a modeled value.** It has the alveolar compartment's limits:
   no airway sampling delay and no dead space. It is not a depth of anesthesia,
   a time to any endpoint, or a prediction for a patient.
-- **The denominator is the modelled inspired concentration and not the
+- **The denominator is the modeled inspired concentration and not the
   vaporizer dial.** The circuit approaches the delivered concentration only
   over its own time constant, so early in a run the two differ substantially.
 - **The curve is the textbook wash-in curve only while the inspired
@@ -1132,7 +1153,7 @@ plot can be laid beside a published figure.
 | Simulated time | 1 s, one step |
 | Fresh gas flow, alveolar ventilation, cardiac output | 0.1 L/min |
 | A run's delivered, exhausted or stored total | 0.1 L of equivalent pure agent gas |
-| One compartment's amount, in the schematic | Two significant figures of millilitres of vapour, and never finer than 0.01 mL |
+| One compartment's amount, in the schematic | Two significant figures of milliliters of vapor, and never finer than 0.01 mL |
 | The delivered or exhausted total, in the cost view | 1 mL of liquid |
 <!-- not-restated: 0.06 -->
 <!-- provenance: core/simulation_step.py SIMULATION_STEP_S = 1 -->
@@ -1140,7 +1161,7 @@ plot can be laid beside a published figure.
 A positive concentration that would round to `0.00%` is displayed as
 `<0.01%`, so `0.00%` means that no agent has arrived. Each slider moves in
 steps of its display resolution, so the value applied to the model is exactly
-the value printed beside the control. An amount of agent gas is labelled "L
+the value printed beside the control. An amount of agent gas is labeled "L
 vapour" or "mL vapour", and an amount of liquid "mL of liquid", because a bare
 "L" or "mL" beside an anesthetic invites a reader to take it as liquid.
 
@@ -1189,7 +1210,7 @@ difference means for a patient.
 
 - **The model has one patient and no variability around it.** No equation
   takes weight, age, sex or body composition. The two runs are two
-  trajectories of one modelled patient. They are not two patients, two samples
+  trajectories of one modeled patient. They are not two patients, two samples
   from a population, or a range. The difference carries no interval, because
   the model contains nothing that could supply one.
 - **A branch that differs in cardiac output is still not a second patient.** A
@@ -1437,7 +1458,7 @@ prospective study measured how closely Gas Man tracks end-expired sevoflurane
 in patients (Candries, De Wolf and Hendrickx 2022; abstract read). Twenty-eight
 ASA I-II adults having gynecologic or urologic surgery were maintained on
 sevoflurane in O₂/air, fourteen on a Dräger Zeus and fourteen on a Getinge
-FLOW-i. Fresh gas flow was re-randomised every fifteen minutes over 0.2 to 6
+FLOW-i. Fresh gas flow was re-randomized every fifteen minutes over 0.2 to 6
 L/min. Each case was re-run in Gas Man with the patient's weight and the same
 flows, vaporizer settings and minute ventilation, and with cardiac output at
 the Gas Man default. Over the whole hour Gas Man tracked both workstations to
@@ -1533,7 +1554,7 @@ looks plausible and is wrong by tens of percent through induction.
 
 **The model's exhaust vents whenever fresh gas flows, at exactly the fresh-gas
 rate.** Both gas compartments have fixed volumes and the modeled patient takes
-up no net volume, so every litre admitted has to leave.
+up no net volume, so every liter admitted has to leave.
 
 **A real circle spills less than it is given**, by the volume the patient
 removes: the oxygen consumed, the vapor taken up, and any nitrous oxide. The
@@ -1691,7 +1712,7 @@ out biases four things:
   model's stored fat solubility, then over any case from half an hour to four
   hours it takes up 0.9 to 2.2 times as much agent as the model's whole fat
   group, or 2.6 to 5.6 times as much as the studies' fitted fat group. The
-  missing store is as large as the modelled fat group's uptake, or larger.
+  missing store is as large as the modeled fat group's uptake, or larger.
 - **The fat trace shows only the slowly filling fat.** Fat lying against
   well-perfused tissue runs at four to six and a half times the trace's
   partial pressure throughout such a case. After an hour it is at 13 to 20% of
@@ -1798,9 +1819,9 @@ vaporizing chamber is saturated at a vapor pressure that temperature sets and
 ambient pressure does not. As ambient pressure falls, the output rises in
 volumes percent while the delivered partial pressure is approximately
 preserved. Boumphrey and Marshall give
-$`\%_1 = \%_\mathrm{cal} \times P_\mathrm{cal} / P_1`$: isoflurane dialled to
+$`\%_1 = \%_\mathrm{cal} \times P_\mathrm{cal} / P_1`$: isoflurane dialed to
 2% at 101.3 kPa delivers 4.05% at 50 kPa, which is 2.026 kPa either way
-(Boumphrey and Marshall 2011). That form holds only where the agent's vapour
+(Boumphrey and Marshall 2011). That form holds only where the agent's vapor
 pressure is small against ambient pressure. Isoflurane's is about 240 mmHg at
 20 °C, and with it carried through, the delivered partial pressure overshoots
 rather than holds steady, by about 16% at 585 mmHg.

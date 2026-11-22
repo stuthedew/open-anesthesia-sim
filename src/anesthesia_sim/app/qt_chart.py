@@ -646,8 +646,8 @@ class _HoverReadout:
     It keeps the last pointer position, so a frame drawn under a resting
     pointer shows a fresh readout rather than going blank. At high playback
     speed the reported value moves as the run does. `docs/INTERFACE.md` § "When
-    it answers" says that this is correct, not a defect to design around. It
-    keeps `None` once the pointer has left the plot, so a frame drawn after
+    the hover readout appears" says that this is correct, not a defect to
+    design around. It keeps `None` once the pointer has left the plot, so a frame drawn after
     that shows no readout (`PL-LTKL`).
     """
 
