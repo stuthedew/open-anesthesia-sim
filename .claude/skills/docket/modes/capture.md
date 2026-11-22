@@ -73,9 +73,13 @@ first push and arms auto-merge, as `.claude/skills/pull-request/SKILL.md` says.
 `feature:`, in the same call.**
 
 `docs/features.toml` lists every feature with one line on what belongs in it.
-Read it before naming a feature, and join an existing one where the work fits.
-A new name needs its own line there first, because `docket new` and `docket
-check` refuse a feature the file does not list (`PL-Q3BN`).
+Join an existing feature when its line covers the work. Start a new one only
+for a goal that two or more items share, named for what finishing it looks
+like, and add its line to the file first, because `docket new` and `docket
+check` refuse a feature the file does not list (`PL-Q3BN`). Give a lone finding
+no feature. `docket new` with no `--feature` prints the three features the
+title reads most like; take one only where its line fits (project owner,
+2026-11-22, `PL-LRWK`).
 
 ```bash
 docket new --feature session-start-cost \

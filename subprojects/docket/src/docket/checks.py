@@ -3594,7 +3594,10 @@ def _check_registered_features(report: Report, config: Config) -> None:
     message names. Matched on the literal name, because the registry's
     spelling is the one to use and `_check_feature_spellings` already reports
     the variants. Closed items count too: they keep their names, and
-    `docket feature` still describes a finished feature (`PL-Q3BN`).
+    `docket feature` still describes a finished feature (`PL-Q3BN`). A name
+    the registry redirects is refused with the name it was merged into, and is
+    never "listed but unused", since no item carrying it is the point of a
+    merge (`PL-LRWK`).
     """
     if not config.features_file:
         return
@@ -3604,7 +3607,13 @@ def _check_registered_features(report: Report, config: Config) -> None:
         if not item.feature:
             continue
         carried.add(item.feature)
-        if item.feature not in listed:
+        merged = config.feature_redirect(item.feature)
+        if merged:
+            report.errors.append(
+                f"{_where(item)}: feature '{item.feature}' was merged into '{merged}' in "
+                f"{config.features_file}; use `docket set --feature {merged}`"
+            )
+        elif item.feature not in listed:
             report.errors.append(
                 f"{_where(item)}: feature '{item.feature}' is not in {config.features_file}. "
                 f"Use a feature listed there, or add the line "

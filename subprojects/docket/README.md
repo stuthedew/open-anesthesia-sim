@@ -34,6 +34,7 @@ docket withdraw PL-K7QX PL-B2B2 --because PL-34BG   # disown a recorded filing w
 docket concurrent PL-K7QX    # what can be worked alongside it, and what a live branch is already changing
 docket concurrent --in-scope --limit 4   # four that can run at once from the step's scope: the gate's entries while one is open
 docket feature halted-step   # progress on one feature
+docket feature --similar     # features that read alike, and items with none
 docket gate --feature x      # every open debt item, split by feature and lane: a freeze's first cut
 docket release v0.3.0        # verify, bump the version, write the notes
 docket delegable             # what a cheaper model may work, and what proves it
@@ -4134,6 +4135,16 @@ would add either error is refused. So a new feature is a line in the registry
 first, then the item that carries it. A named file that is missing, or a line
 whose description is not a non-empty string, stops every command rather than
 being read as an empty registry (`PL-Q3BN`).
+
+A name merged into another stays as `old = { use = "new" }`. `docket new`
+refuses the folded name with the one to use, and `docket check` errors on an
+item that still carries it. `docket new` with no `--feature` prints the three
+listed features whose items, name and description share most of the title's
+words. `docket feature --similar` lists the feature pairs that read most
+alike, open items with no feature beside the feature each reads like, pairs of
+such items that declare a path in common, and open items alone in their
+feature. Both rank by weighted shared words and decide nothing; the
+measurement behind them is in `docket.feature_match` (`PL-LRWK`).
 
 ### Where the settings are resolved from, and why the run says so
 

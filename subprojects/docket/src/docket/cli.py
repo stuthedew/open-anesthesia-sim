@@ -55,6 +55,14 @@ from .config import CONFIG_NAME, Config
 from .config import load as load_config
 from .digits import whole_number
 from .duplicates import anchor, near_duplicates
+from .feature_match import (
+    lone_features,
+    similar_features,
+    suggest,
+    unfeatured_matches,
+    unfeatured_pairs,
+)
+from .feature_match import profiles as feature_profiles
 from .inflow import INFLOW_FEATURE
 from .inflow import analyze as analyze_inflow
 from .inflow import missed as missed_inflow
@@ -1334,6 +1342,13 @@ def cmd_new(args: argparse.Namespace) -> int:
     # Refused with nothing written, as `set` refuses it, rather than captured
     # for `check` to refuse at the commit: the message names the line to add,
     # and the capture is one retry away (`PL-Q3BN`).
+    merged = config.feature_redirect(args.feature) if args.feature else ""
+    if merged:
+        print(
+            f"new: nothing was written; feature '{args.feature}' was merged into "
+            f"'{merged}' in {config.features_file}. Run this again with --feature {merged}."
+        )
+        return 1
     if args.feature and config.features_file and not config.describe_feature(args.feature):
         print(
             f"new: nothing was written; feature '{args.feature}' is not in "
@@ -1374,6 +1389,9 @@ def cmd_new(args: argparse.Namespace) -> int:
     # Several findings filed with one `--touches` value matched each other this
     # way, and that is how `PL-0889` came to look filed twice (`PL-8MRM`).
     held = _claimed_here(args) | _filed_here(args)
+    # Offered only where a registry describes the features: without one there
+    # is no description to judge a suggestion by (`PL-LRWK`).
+    groups = feature_profiles(items, config) if config.features_file else {}
     captures: list[Item] = []
     for title in args.title:
         captures.append(_captured(new_id(taken), title, args))
@@ -1406,6 +1424,8 @@ def cmd_new(args: argparse.Namespace) -> int:
             onto = anchor(found)
             if onto is not None:
                 items = _record_recurrence(directory, items, onto.item, identifier, args)
+        if groups and not capture.feature:
+            print(render.format_feature_suggestions(identifier, suggest(capture.title, groups)))
     return 0
 
 
@@ -3551,6 +3571,13 @@ def cmd_feature(args: argparse.Namespace) -> int:
     says what the group is for as well as how far it has got (`PL-Q3BN`).
     """
     items, config, replaced = _load_to_read(args)
+    if args.similar:
+        if args.name:
+            print("`--similar` lists across every feature and takes no name.")
+            return 1
+        print(_similar_report(items, config, _invocation(args).tracked))
+        _say_read_from_base(args, replaced)
+        return 0
     groups = features(items)
     if not groups:
         print("no items are assigned to a feature")
@@ -3570,6 +3597,22 @@ def cmd_feature(args: argparse.Namespace) -> int:
             print(f"  [{render.progress_mark(item)}] {item.identifier} {item.title}")
     _say_read_from_base(args, replaced)
     return 0
+
+
+def _similar_report(items: list[Item], config: Config, items_dir: str) -> str:
+    """The grooming pass's three lists for regrouping features (`PL-LRWK`).
+
+    Each is a ranked suggestion and decides nothing: which pairs are one goal
+    is the judgment half, and `feature_match`'s docstring gives the measured
+    rate at which the ranking is right.
+    """
+    groups = feature_profiles(items, config)
+    return render.format_similar_features(
+        similar_features(groups),
+        unfeatured_matches(items, groups),
+        unfeatured_pairs(items, items_dir),
+        lone_features(items, config),
+    )
 
 
 def cmd_generators(args: argparse.Namespace) -> int:
@@ -6340,6 +6383,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     feature = add("feature", "progress by feature")
     feature.add_argument("name", nargs="?")
+    feature.add_argument(
+        "--similar",
+        action="store_true",
+        help="list features that read alike, open items with no feature, and lone features",
+    )
     feature.set_defaults(func=cmd_feature)
 
     generators = add("generators", "how much of each generator's cluster is still open")

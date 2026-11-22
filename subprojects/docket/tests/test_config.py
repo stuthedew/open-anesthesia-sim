@@ -91,6 +91,30 @@ def test_a_feature_registry_that_is_missing_or_undescribed_is_refused(tmp_path: 
         load(tmp_path)
 
 
+def test_a_folded_feature_redirects_only_to_a_described_one(tmp_path: Path) -> None:
+    """`PL-LRWK`: a merged name points at the one to use, which must itself be listed."""
+    (tmp_path / "docket.toml").write_text(
+        '[docket]\nfeatures_file = "features.toml"\n', encoding="utf-8"
+    )
+    registry = tmp_path / "features.toml"
+    registry.write_text(
+        'chart-readout = "The chart."\nchart-axes = { use = "chart-readout" }\n', encoding="utf-8"
+    )
+
+    config = load(tmp_path)
+
+    assert config.feature_aliases == (("chart-axes", "chart-readout"),)
+    assert config.feature_redirect("chart-axes") == "chart-readout"
+    assert config.describe_feature("chart-axes") == ""
+
+    registry.write_text('chart-axes = { use = "chart" }\n', encoding="utf-8")
+    with pytest.raises(ValueError, match="which it does not describe"):
+        load(tmp_path)
+    registry.write_text('chart-axes = { into = "chart" }\n', encoding="utf-8")
+    with pytest.raises(ValueError, match="must be a description string or"):
+        load(tmp_path)
+
+
 def test_protected_paths_default_to_empty_which_disables_delegation(tmp_path: Path) -> None:
     """Fail closed: a project that never configured the partition gets no lane."""
     assert load(tmp_path).protected_paths == ()

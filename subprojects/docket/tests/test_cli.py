@@ -1517,6 +1517,37 @@ def test_new_refuses_a_feature_the_registry_does_not_list(
     assert listed == 0
 
 
+def test_new_redirects_a_folded_feature_and_suggests_one_when_none_is_given(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-LRWK`: a merged name is refused with the name to use, and a bare capture is offered
+    the features its title reads like, without being refused."""
+    grouped = READY.replace("status: ready", "status: ready\nfeature: chart-readout").replace(
+        "title: A ready item", "title: The chart axis tick labels are cut"
+    )
+    store = _store(tmp_path, grouped)
+    (tmp_path / "docket.toml").write_text(
+        '[docket]\nfeatures_file = "features.toml"\n', encoding="utf-8"
+    )
+    (tmp_path / "features.toml").write_text(
+        'chart-readout = "The chart\'s axes."\nchart-axes = { use = "chart-readout" }\n',
+        encoding="utf-8",
+    )
+
+    refused = _run("new", "--no-git", "--items", str(store), "--feature", "chart-axes", "A")
+    redirect = capsys.readouterr().out
+    filed = _run("new", "--no-git", "--items", str(store), "The chart axis labels overlap")
+    suggestion = capsys.readouterr().out
+    _run("feature", "--similar", "--items", str(store))
+    similar = capsys.readouterr().out
+
+    assert refused == 1
+    assert "was merged into 'chart-readout'" in redirect
+    assert filed == 0
+    assert "The features its title reads most like: chart-readout." in suggestion
+    assert "-> chart-readout  The chart axis labels overlap" in similar
+
+
 def test_release_refuses_to_invent_a_version_under_a_manual_policy(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

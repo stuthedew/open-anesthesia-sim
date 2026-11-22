@@ -58,6 +58,11 @@ over each feature's item titles, name and description), in a scratch script:
 So the score is good enough to suggest and too weak to decide, which is the
 split the duplicate-report literature draws.
 
+Re-measured through the shipped `docket.feature_match`, whose inverse document
+frequency is smoothed as log(1 + N/n): 48% first, 71% in the top three and 79%
+in the top five over the same 399 items, and 43 of the 58 merges in the top
+three, 51 in the top five.
+
 **Recommendation (the session's, for the owner to approve).**
 
 1. **At filing.** Join an existing feature when its description covers the
@@ -73,3 +78,10 @@ split the duplicate-report literature draws.
    feature or each other, and the open features with one item. It decides
    nothing. The triage skill's grooming pass runs it and records each merge
    it takes, and the release cut runs it once.
+
+**Decided.** The project owner asked that every question needing him be
+settled by researched best practice (project owner, 2026-11-22, "For items
+that need me, research best practice for all"), so the recommendation above is
+built as written, in `PL-Q3BN`'s pull request. One change from it: the
+"later" list is `bin/docket feature --similar` rather than a new command, so
+progress and regrouping stay under one command.

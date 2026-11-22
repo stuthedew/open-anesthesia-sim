@@ -2942,9 +2942,26 @@ def test_an_item_whose_feature_the_registry_does_not_list_is_an_error() -> None:
 
 def test_a_listed_feature_that_no_item_carries_is_an_error() -> None:
     """The registry lists what is in use, so a stale line is caught rather than kept."""
-    errors = analyze([_item(feature=None)], TODAY, REGISTRY).errors
+    errors = analyze([_item(feature="")], TODAY, REGISTRY).errors
 
     assert _has(errors, "feature 'chart-readout' is listed but no item carries it")
+
+
+def test_an_item_carrying_a_folded_feature_is_told_the_name_to_use() -> None:
+    """`PL-LRWK`: the merge's whole point, and a folded line is never "unused"."""
+    folded = Config(
+        features_file="docs/features.toml",
+        feature_descriptions=(("chart-readout", "The chart."),),
+        feature_aliases=(("chart-axes", "chart-readout"),),
+    )
+    errors = analyze(
+        [_item(feature="chart-axes"), _item("PL-BBB2", feature="chart-readout")], TODAY, folded
+    ).errors
+    clean = analyze([_item(feature="chart-readout")], TODAY, folded).errors
+
+    assert _has(errors, "feature 'chart-axes' was merged into 'chart-readout'")
+    assert not _has(errors, "is not in docs/features.toml")
+    assert not _has(clean, "chart-axes")
 
 
 def test_a_registered_feature_raises_nothing_and_no_registry_checks_nothing() -> None:
