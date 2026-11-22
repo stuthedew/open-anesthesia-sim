@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: docs
 feature: model-md-structure
-touches: docs/MODEL.md, docs/VERIFICATION.md, docs/INTERFACE.md
+touches: docs/MODEL.md, docs/VERIFICATION.md, docs/INTERFACE.md, docs/items/PL-KXRB-the-interface-s-labels-spell-modelled-vapour.md
 added: 2026-11-08
 closed: 2026-11-22
 payoff: the specification reads as one edited document in the project's US spelling, while every quoted interface label still matches the screen

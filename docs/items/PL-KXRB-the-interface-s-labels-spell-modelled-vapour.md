@@ -5,7 +5,7 @@ priority: P3
 effort: M
 status: ready
 classes: ux
-touches: src/anesthesia_sim/app, tests/unit, tests/integration, docs/MODEL.md, README.md
+touches: src/anesthesia_sim/app, tests/unit, tests/integration, docs/MODEL.md, docs/INTERFACE.md, README.md
 added: 2026-11-09
 payoff: A learner sees one spelling across the interface and the documents that quote it, so a label quoted in docs/MODEL.md still matches the screen once PL-SRXT moves that document to US spelling
 verify: ! grep -qF '"Modelled concentrations' src/anesthesia_sim/app/dashboard_frame.py && ! grep -qF '"litres of vapour"' src/anesthesia_sim/app/formatting.py
@@ -35,8 +35,8 @@ two different things.
 
 **Done when.** Every string in `src/anesthesia_sim/app/` that a learner can
 read uses US spelling: modeled, vapor, liter and milliliter. The tests that
-assert those strings, and every quotation of them in `docs/MODEL.md` and
-`README.md`, change in the same branch, so a quoted label still matches the
+assert those strings, and every quotation of them in `docs/MODEL.md`,
+`docs/INTERFACE.md` and `README.md`, change in the same branch, so a quoted label still matches the
 screen. Docstrings and comments are outside this item. The wording and the
 units shown do not change, only the spelling.
 
