@@ -731,9 +731,7 @@ def test_a_run_whose_region_lacks_a_declared_value_is_refused(
         SimulationView((SimulationController(),))
 
 
-def test_a_region_placed_inside_the_layout_container_is_refused(
-    application: QApplication,
-) -> None:
+def test_a_region_placed_inside_the_layout_container_is_refused(application: QApplication) -> None:
     """A region moved into the Areas is refused, though every value is still inside it.
 
     The test above fails each of its cases through the guard's first check,
