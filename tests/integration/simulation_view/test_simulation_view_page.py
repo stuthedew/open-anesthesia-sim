@@ -7,7 +7,7 @@ These tests cover the page and its window.
 
 import pytest
 from PySide6.QtCore import QPoint
-from PySide6.QtWidgets import QApplication, QLabel, QPushButton, QScrollArea, QSlider, QWidget
+from PySide6.QtWidgets import QApplication, QLabel, QScrollArea, QSlider, QWidget
 
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.simulation_view import SimulationView
@@ -403,22 +403,20 @@ def test_a_view_taller_than_its_area_scrolls_inside_the_area(application: QAppli
         assert top + chart.height() <= area.viewport().height(), "the plot runs below a scroll box"
 
 
-#: What each shipped Workspace must show whole at 1366 by 768 (`PL-D5J4`). The
-#: wash-in curve is Induction's lesson. The share bar is Maintenance's
-#: (`PL-PR1W`), with the lines under it that name each segment, so that no
-#: segment is told apart by colour alone. The Edit bookmarks button opens the
-#: bookmarks editor, in each Workspace that shows the bookmarks.
+#: What each Workspace named for a task must show whole at 1366 by 768
+#: (`PL-D5J4`). The wash-in curve is Induction's lesson. The share bar is
+#: Maintenance's (`PL-PR1W`), with the lines under it that name each segment,
+#: so that no segment is told apart by colour alone. The bookmark editor sits
+#: in the Bookmarks View since `PL-CHX0`, and it scrolls inside its Area.
 _LESSONS_WHOLE_AT_1366: dict[str, frozenset[str]] = {
-    "Default": frozenset({"Edit bookmarks"}),
-    "Induction": frozenset({"wash-in plot", "Edit bookmarks"}),
+    "Induction": frozenset({"wash-in plot"}),
     "Maintenance": frozenset({"share bar", "share lines"}),
 }
 
 
 def _lesson_widgets(view: SimulationView) -> dict[str, QWidget]:
-    """The shown wash-in plot, share bar, share lines and Edit bookmarks button, by name."""
+    """The shown wash-in plot, share bar and share lines, by name."""
 
-    from anesthesia_sim.app.dashboard_frame import EDIT_BOOKMARKS_LABEL
     from anesthesia_sim.app.qt_schematic import RunSchematic
 
     found: dict[str, QWidget] = {}
@@ -432,10 +430,6 @@ def _lesson_widgets(view: SimulationView) -> dict[str, QWidget]:
             found["share bar"] = schematic.share_bar
             found["share lines"] = schematic.share_text
 
-    for button in view.findChildren(QPushButton):
-        if button.isVisible() and button.text() == EDIT_BOOKMARKS_LABEL:
-            found["Edit bookmarks"] = button
-
     return found
 
 
@@ -446,12 +440,11 @@ def test_each_shipped_workspace_shows_its_lesson_whole_at_1366_by_768(
     """`PL-D5J4`: a Workspace named for a task shows that task's View whole on a laptop screen.
 
     Before the fix, at 1366 by 768, Induction's wash-in curve started at its
-    Area's lower edge, Maintenance's share bar and the lines under it were
-    below the schematic's Area, and the Edit bookmarks button was cut by the
-    Bookmarks Area's lower edge in all three Workspaces. Each widget must be
-    shown, and wholly inside every scroll box around it, without the reader
-    scrolling. The set of widgets each Workspace must show is written out, so
-    a Workspace cannot pass by leaving its lesson out.
+    Area's lower edge, and Maintenance's share bar and the lines under it were
+    below the schematic's Area. Each widget must be shown, and wholly inside
+    every scroll box around it, without the reader scrolling. The set of
+    widgets each Workspace must show is written out, so a Workspace cannot
+    pass by leaving its lesson out.
     """
 
     view = _shipped_view_at(application, workspace, 1366, 768)

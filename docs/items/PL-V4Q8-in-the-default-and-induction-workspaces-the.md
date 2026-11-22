@@ -119,3 +119,10 @@ Induction),
 `src/anesthesia_sim/data/workspaces/__init__.py` (each Workspace's
 arrangement), `docs/ARCHITECTURE.md` and `docs/interface-provenance.md` (no
 statement about the shipped arrangements or the card layout).
+
+**After `PL-CHX0` merged, 2026-11-22.** `PL-CHX0` replaced the Edit bookmarks
+button with an editor inside the Bookmarks View, below the two lists. That
+View's content is then about 660 px tall, so it scrolls inside its Area at
+1366 by 768 in Default and Induction (504 and 517 px), as an editor taller
+than its Area does. The lesson test no longer names the button, and Default
+has no entry in it. `PL-G1JM` now records the editor's position.
