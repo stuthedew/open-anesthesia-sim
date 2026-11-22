@@ -12,6 +12,7 @@ deferred-from: v0.7.0 - a new problem: d130a946 (2026-10-25 03:44, after the fre
 added: 2026-11-03
 closed: 2026-11-09
 pr: 2076
+filed-pr: 1964
 payoff: a developer reading which values are checked types is told the control record's instants are checked, as the code makes them
 verify: ! grep -qF 'instants are still annotated' src/anesthesia_sim/core/supported_ranges.py
 reenters: PL-RCYZ

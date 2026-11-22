@@ -11,6 +11,7 @@ deferred-from: v0.7.0 - present at the freeze, with no real connection to v0.7.0
 added: 2026-11-11
 closed: 2026-11-22
 pr: 2237
+filed-pr: 2112
 payoff: A contributor writing a machine profile is told to look for the machine's own startup flow rather than assuming none is published.
 verify: grep -qF 'No source the survey reached gives a startup fresh gas flow for any machine' src/anesthesia_sim/data/machines/reference_circle_system.json
 reenters: PL-4FBP

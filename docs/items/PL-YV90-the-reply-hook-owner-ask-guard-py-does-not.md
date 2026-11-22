@@ -11,6 +11,7 @@ touches: .claude/hooks/owner_ask_guard.py, tests/unit/test_owner_ask_guard.py, s
 added: 2026-10-19
 closed: 2026-10-24
 pr: 1721
+filed-pr: 1688
 payoff: a bare read or merge ask relayed by the coordinator is refused before it reaches the owner, as one from a thread already is
 verify: grep -q 'def renders_owner_ask' subprojects/docket/src/docket/arming.py && grep -q 'ask_decision|post_message' .claude/settings.json
 reenters: PL-TLPH

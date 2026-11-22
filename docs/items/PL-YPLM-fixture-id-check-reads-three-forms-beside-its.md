@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-10
 closed: 2026-10-12
 pr: 1437
+filed-pr: 1391
 payoff: fixture_id_check reads a front matter's edges, a quoted scalar's start and a settings.json hook command as their formats do, so a malformed id there is neither missed nor falsely reported
 verify: grep -q 'def test_the_front_matter_joins_find_its_edges_through_docket' tests/unit/test_fixture_id_check.py && grep -q 'def test_a_comma_ending_a_plain_scalar_opens_no_quoted_scalar' tests/unit/test_fixture_id_check.py && grep -q 'def test_a_settings_json_hook_command_is_read_decoded' tests/unit/test_fixture_id_check.py
 reenters: PL-KGYT

@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-10
 closed: 2026-10-12
 pr: 1436
+filed-pr: 1391
 payoff: doc_check stops reporting a gate difference it could not read and stops aborting on a malformed pyproject.toml, so its Makefile, fence and workflow answers hold for the forms make, bash and YAML accept
 verify: grep -q 'def test_gate_parity_reports_no_difference_once_a_make_check_line_is_declined' tests/unit/test_doc_check.py && grep -q 'def test_a_tab_only_line_under_a_rule_is_no_recipe' tests/unit/test_doc_check.py && grep -q 'def test_a_pyproject_that_is_not_toml_is_reported_not_raised' tests/unit/test_doc_check.py && ! grep -q 'def _git(' tools/doc_check.py
 reenters: PL-0HPV

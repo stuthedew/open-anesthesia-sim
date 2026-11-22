@@ -11,6 +11,7 @@ deferred-from: v0.7.0 - not live: checked 2026-11-22 at d4e8200c: REFERENCE_TEMP
 added: 2026-11-11
 closed: 2026-11-22
 pr: 2237
+filed-pr: 2142
 payoff: A change to the reference temperature can no longer leave the documents giving a clinician the wrong size for the liquid-conversion bias.
 verify: grep -qF 'derived: 17 mL from core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20' docs/INTERFACE.md
 reenters: PL-5L84

@@ -11,6 +11,7 @@ deferred-from: v0.7.0 - present at the freeze and not on the frozen list; found 
 added: 2026-11-10
 closed: 2026-11-11
 pr: 2114
+filed-pr: 2090
 payoff: a blood flow is checked once where it is built, so a new function that takes one cannot skip the check
 verify: grep -rq 'class BloodFlow' src/anesthesia_sim/core
 reenters: PL-ZGYX

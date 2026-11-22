@@ -11,6 +11,7 @@ deferred-from: v0.7.0 - captured after the freeze; an apparatus defect in the wo
 added: 2026-10-27
 closed: 2026-11-01
 pr: 1907
+filed-pr: 1872
 payoff: an approved pull request whose required check failed is named as failed where sessions look, instead of waiting a day while every report calls it open
 verify: grep -q 'def test_flight_names_an_armed_pull_request_whose_required_check_failed' subprojects/docket/tests/test_vcs.py && grep -q 'def armed_failing' tools/open_pull_requests.py
 reenters: PL-WNCT

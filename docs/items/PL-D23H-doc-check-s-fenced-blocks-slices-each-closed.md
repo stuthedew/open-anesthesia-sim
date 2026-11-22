@@ -11,6 +11,7 @@ touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-10-12
 closed: 2026-10-12
 pr: 1436
+filed-pr: 1435
 payoff: a fence its list item or block quote closes keeps its last line, so the package-map tree and the make-target reader see every line the fence holds
 verify: grep -qF "a list item's fence its item's end closes" tests/unit/test_doc_check.py && ! grep -qF 'lines[block.start + 1 : block.end]' tools/doc_check.py
 reenters: PL-R417

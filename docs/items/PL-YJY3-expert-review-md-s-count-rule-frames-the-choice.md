@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-04
 closed: 2026-10-18
 pr: 1539
+filed-pr: 1341
 payoff: a recommendation to build the durable route only once another instance turns up has to carry the count first, so a deferral like PL-51B7's is priced before it reaches the owner instead of being refused by them
 verify: grep -qF 'another instance' .claude/rules/expert-review.md
 reenters: PL-0GMC

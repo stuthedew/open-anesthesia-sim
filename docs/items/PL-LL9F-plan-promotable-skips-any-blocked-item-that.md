@@ -11,6 +11,7 @@ touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/ch
 added: 2026-10-24
 closed: 2026-10-25
 pr: 1768
+filed-pr: 1726
 payoff: closing an item's last blocker always names or refuses its dependents, whichever blocker cleared first
 verify: grep -q 'def test_an_item_whose_milestone_cleared_first_is_promotable' subprojects/docket/tests/test_plan.py
 reenters: PL-6T44

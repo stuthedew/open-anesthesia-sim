@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-26
 closed: 2026-09-27
 pr: 1133
+filed-pr: 1118
 payoff: bin/docket branch stops telling a session whose pull request is still open that it merged and should restart, whenever the branch restores a file to an earlier version
 verify: grep -q 'def test_a_restore_to_content_main_held_before_the_fork_is_not_landed' subprojects/docket/tests/test_vcs.py
 reenters: PL-GHHW, PL-R808, PL-BHVM

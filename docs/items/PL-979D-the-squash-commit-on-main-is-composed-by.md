@@ -13,6 +13,7 @@ deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25
 closed: 2026-09-26
 pr: 1068
+filed-pr: 1023
 payoff: the reasoning behind each merged change survives however it was merged, and a new merge path's rewrite stops producing an item
 verify: grep -q -- '--record' tools/pr_body_check.py
 root-cause-of: PL-Y1W0, PL-BZHX, PL-PNJF, PL-M7W1, PL-HZ0M

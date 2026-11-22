@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket
 added: 2026-10-25
 closed: 2026-10-25
 pr: 1802
+filed-pr: 1761
 payoff: a blocked-by naming a milestone that has shipped no longer makes a gate entry read as waiting on unscheduled work, and docket check names the stale edge
 verify: uv run pytest -q subprojects/docket/tests/test_roadmap.py subprojects/docket/tests/test_checks.py -k shipped
 reenters: PL-8QMD

@@ -11,6 +11,7 @@ touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/
 added: 2026-10-19
 closed: 2026-10-24
 pr: 1738
+filed-pr: 1712
 payoff: docket verify and docket check give the same answer about a pr: value of 0 or 07
 verify: ! grep -qE '(PR_VALUE_RE|RECORD_NAME_RE) = re.compile' subprojects/docket/src/docket/verify.py
 reenters: PL-4DK2

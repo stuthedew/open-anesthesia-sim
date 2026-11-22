@@ -12,6 +12,7 @@ deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-11-02
 closed: 2026-11-02
 pr: 1931
+filed-pr: 1928
 payoff: an ask to read or merge that a thread writes into a post, an edit or a decision card is checked again, and a renamed Projects tool is checked rather than skipped
 verify: grep -q 'NOT_TO_THE_OWNER' .claude/hooks/owner_ask_guard.py && grep -qF '"matcher": "^mcp__hearthbot__.*$"' .claude/settings.json
 reenters: PL-TLPH

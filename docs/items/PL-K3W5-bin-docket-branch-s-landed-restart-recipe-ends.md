@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-27
 closed: 2026-10-01
 pr: 1273
+filed-pr: 1147
 payoff: a session restarting a branch whose pull request merged is told how to push over the old remote branch, instead of choosing between a pull that brings the merged history back and an unsanctioned force push
 verify: grep -rq 'def test_the_restart_recipe_says_what_the_push_meets' subprojects/docket/tests/
 reenters: PL-MT3R

@@ -13,6 +13,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-26
 closed: 2026-09-26
 pr: 1119
+filed-pr: 1024
 payoff: a claim is never withdrawn in favour of a rival branch GitHub has deleted, so no item is left held by nobody
 verify: grep -q 'def test_a_rival_whose_branch_the_remote_deleted_does_not_withdraw_the_claim' subprojects/docket/tests/test_claiming.py
 reenters: PL-4Q9B

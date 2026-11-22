@@ -10,6 +10,7 @@ touches: tools/doc_check.py, tests/unit/test_doc_check.py, .claude/rules/ui-calc
 added: 2026-11-09
 closed: 2026-11-09
 pr: 2072
+filed-pr: 2070
 payoff: A sentence in docs/MODEL.md, docs/ARCHITECTURE.md or docs/interface-provenance.md that describes the code names what it describes, so the change that alters that code lists the sentence for review instead of leaving it to be found stale one item at a time
 verify: grep -qF 'docs/interface-provenance.md' tools/doc_check.py
 root-cause-of: PL-LNFG, PL-D1LR, PL-PTDZ, PL-KSLX, PL-LKX7, PL-4CZW, PL-6G7N, PL-G1J9, PL-GSPR, PL-HLTR, PL-HR4T, PL-N3SK, PL-Y9F0, PL-GPTN, PL-97S1

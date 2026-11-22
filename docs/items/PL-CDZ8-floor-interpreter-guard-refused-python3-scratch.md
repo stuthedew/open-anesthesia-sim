@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-11
 closed: 2026-10-17
 pr: 1500
+filed-pr: 1412
 payoff: a session running its own script with a tree path as an argument is let through, while a real floor parse of src or tests is still refused
 verify: grep -q 'def test_a_scripts_own_argument_naming_a_tree_is_left_alone' tests/unit/test_floor_interpreter_guard.py
 reenters: PL-61FT

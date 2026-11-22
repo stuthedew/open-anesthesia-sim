@@ -12,6 +12,7 @@ deferred-from: v0.7.0 - present-or-not unmeasured, deferred on a stated reason: 
 added: 2026-11-14
 closed: 2026-11-22
 pr: 2226
+filed-pr: 2134
 payoff: A Workspace switch never draws a View cut short of its least width, and the fit test would catch a change that made it do so.
 tests: tests/integration/simulation_view/test_simulation_view_page.py::test_no_shipped_workspace_scrolls_the_page, tests/integration/simulation_view/test_simulation_view_page.py::test_no_view_paints_narrower_than_its_least_width_after_a_workspace_switch
 reenters: PL-YJ21

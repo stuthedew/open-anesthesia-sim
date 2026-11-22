@@ -12,6 +12,7 @@ deferred-from: v0.7.0 - workflow tooling outside the schematic release
 added: 2026-11-03
 closed: 2026-11-03
 pr: 1973
+filed-pr: 1964
 payoff: a thread can withdraw a read ask, so the owner's list of what they owe stays current
 verify: grep -q 'def test_a_withdrawn_read_ask_passes' tests/unit/test_owner_ask_guard.py
 reenters: PL-GPJ7

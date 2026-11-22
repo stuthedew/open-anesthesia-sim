@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-01
 closed: 2026-10-01
 pr: 1271
+filed-pr: 1270
 payoff: the recovery record pr_body_check writes into the store reads pr:, id: and a subject's ids the way the store does, so a long front matter or a cited id cannot write a wrong record
 verify: ! grep -qF '[:2000]' tools/pr_body_check.py && ! grep -qF 're.findall(ID_PATTERN, subject)' tools/pr_body_check.py
 reenters: PL-PVW2

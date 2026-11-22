@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-12
 closed: 2026-10-18
 pr: 1546
+filed-pr: 1464
 payoff: docket and the tools find the same code spans CommonMark does where an autolink or a tag holds a backtick, so a cited path is checked and a title escaped by what renders, with one answer where there were two
 verify: grep -q 'def test_an_autolink_or_raw_html_opening_first_takes_the_backtick_inside_it' subprojects/docket/tests/test_release.py && grep -q 'def test_a_comparison_shaped_like_a_tag_is_still_read_as_code' subprojects/docket/tests/test_verify.py && ! grep -qF 'which `code_spans` does not read' subprojects/docket/tests/test_markdown_reference.py
 reenters: PL-5DZ8

@@ -12,6 +12,7 @@ deferred-from: v0.7.0 - captured after the freeze; a guard-hook defect in the wo
 added: 2026-11-03
 closed: 2026-11-03
 pr: 1991
+filed-pr: 1980
 payoff: no spelling of a command can delete a remote-tracking ref that may be the only copy of an item
 verify: grep -q 'def test_a_command_that_deletes_a_remote_tracking_ref_is_refused_with_every_ref_kept' tests/unit/test_git_hooks.py
 reenters: PL-61FT

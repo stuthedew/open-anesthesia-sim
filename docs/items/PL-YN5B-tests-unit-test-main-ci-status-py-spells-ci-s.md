@@ -11,6 +11,7 @@ touches: tests/unit/test_main_ci_status.py
 added: 2026-10-19
 closed: 2026-10-25
 pr: 1760
+filed-pr: 1712
 payoff: the test no longer teaches a reader a CI command that was removed
 verify: ! grep -qF -- '--cov-branch --cov-fail-under=100"' tests/unit/test_main_ci_status.py
 reenters: PL-T9X9

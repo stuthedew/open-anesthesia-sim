@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-26
 closed: 2026-09-26
 pr: 1116
+filed-pr: 1057
 payoff: what the remote holds is one record every command reads, so a new reader stops taking a clone's copy for the remote's and costing an item
 verify: grep -q 'def test_holdings_reads_no_hold_from_a_branch_the_remote_deleted' subprojects/docket/tests/test_claims.py
 root-cause-of: PL-WX87, PL-KX73, PL-C3MN, PL-21KN

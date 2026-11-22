@@ -107,6 +107,7 @@ from .plan import (
     features,
     gate,
     generator_defects,
+    held_back_by_gate,
     is_new_work,
     longest_waiting,
     offerable,
@@ -1416,9 +1417,10 @@ def cmd_new(args: argparse.Namespace) -> int:
     # Offered only where a registry describes the features: without one there
     # is no description to judge a suggestion by (`PL-LRWK`).
     groups = feature_profiles(items, config) if config.features_file else {}
+    filed_pr = _filing_pull_request(args)
     captures: list[Item] = []
     for title in args.title:
-        captures.append(_captured(new_id(taken), title, args))
+        captures.append(with_fields(_captured(new_id(taken), title, args), filed_pr=filed_pr))
         taken.add(captures[-1].identifier)
     # Every capture's file is read back before the first is written, so a value
     # the reader would not read as typed - a title holding a line break, most
@@ -1451,6 +1453,30 @@ def cmd_new(args: argparse.Namespace) -> int:
         if groups and not capture.feature:
             print(render.format_feature_suggestions(identifier, suggest(capture.title, groups)))
     return 0
+
+
+def _filing_pull_request(args: argparse.Namespace) -> str:
+    """The pull request open on this branch, as `filed-pr:` records it, or `""`.
+
+    Asked once per call, since every capture in it is filed from one branch.
+    It is the moment the fact is known: the pull request that adds a capture
+    is the one open on the branch that writes it, which `claim` opens as a
+    draft before any work. Nothing else records it, and the squash commit's
+    subject is no record (`PL-C47M`). A branch with no pull request open, or a
+    forge that could not be asked, leaves the field empty, and `docket inflow`
+    then counts the filing's re-entries as it always did and says how many it
+    could not check.
+    """
+    inv = _invocation(args)
+    opened = _open_pull_requests(args, inv.root, inv.config)
+    if opened is None or inv.git is None:
+        return ""
+    branch = head_branch(inv.root, inv.git)
+    if not branch:
+        return ""
+    answer = opened()
+    number = answer.get(branch) if answer else None
+    return str(number) if number is not None else ""
 
 
 def _train_refusal(args: argparse.Namespace) -> int:
@@ -1891,6 +1917,7 @@ SET_FIELDS: tuple[tuple[str, str], ...] = (
     ("impairs-generators", "impairs_generators"),
     ("reenters", "reenters"),
     ("no-successor", "no_successor"),
+    ("filed-pr", "filed_pr"),
     ("sweep", "sweep"),
 )
 
@@ -2994,10 +3021,19 @@ def cmd_next(args: argparse.Namespace) -> int:
     pending = awaiting_decision(
         items, flight.ids, effort=args.effort, lane=lane, workflow_paths=config.workflow_paths
     )
+    held = held_back_by_gate(
+        items,
+        flight.ids,
+        scope=plan.scope if plan is not None else None,
+        effort=args.effort,
+        lane=lane,
+        workflow_paths=config.workflow_paths,
+    )
     today = args.today or date.today()
     where = f" in the {lane} lane" if lane else ""
     if not picks:
         print(f"Nothing is ready to start{where}.")
+        _say_held_back(held, plan, args.limit)
         _say_decisions(pending, today, args.limit, NAMED_NOT_OFFERED)
         if report.untriaged:
             print(f"{len(report.untriaged)} untriaged item(s) are waiting: `docket list`.")
@@ -3012,6 +3048,7 @@ def cmd_next(args: argparse.Namespace) -> int:
     print(f"{render.open_count(report)} open. Suggested next{where}:\n")
     for index, pick in enumerate(picks, start=1):
         print(f"  {index}. {pick.describe()}\n")
+    _say_held_back(held, plan, args.limit)
     _say_decisions(pending, today, args.limit, NAMED_NOT_OFFERED)
     if flight.ids:
         print(render.format_excluded(flight.ids, _holdings(args)))
@@ -3110,6 +3147,25 @@ NAMED_NOT_AGED = (
 #: `next`'s default `--limit`, and the cut on the decisions line a bare
 #: `concurrent` prints, so the two name the same decisions.
 NEXT_LIMIT = 3
+
+
+def _say_held_back(held: list[Item], plan: Wave | None, limit: int) -> None:
+    """Name the milestone work `next` did not offer because the gate is not yet clear.
+
+    Named rather than hidden, for the reason `_say_decisions` names a decision:
+    the work exists and is startable, and the roadmap is what holds it
+    (`plan.held_back`, `PL-JF22`).
+    """
+    if not held or plan is None or plan.scope is None:
+        return
+    shown = ", ".join(item.identifier for item in held[:limit])
+    rest = len(held) - limit
+    more = f", and {rest} more" if rest > 0 else ""
+    print(
+        f"Held back until the gate clears ({len(held)}): {shown}{more}. Each is in "
+        f'{plan.scope.anchor}\'s Required scope, and ROADMAP.md § "The cadence" clears the '
+        "gate before the milestone is built; `docket picks` says what waits on each."
+    )
 
 
 def _say_decisions(decisions: list[Item], today: date, limit: int, because: str) -> None:
@@ -6297,6 +6353,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     new.add_argument("--feature", default=None, help="group this with related work")
     new.add_argument(
+        "--no-remote",
+        action="store_true",
+        default=False,
+        help="do not ask the forge which pull request is open on this branch, so no "
+        "filed-pr: is written; for an offline checkout",
+    )
+    new.add_argument(
         "--resource",
         choices=RESOURCES,
         default=None,
@@ -6370,6 +6433,11 @@ def build_parser() -> argparse.ArgumentParser:
     setter.add_argument("--impairs-generators", metavar="WHY")
     setter.add_argument(
         "--sweep", metavar="WHAT", help="record that this item's work is a deliberate sweep"
+    )
+    setter.add_argument(
+        "--filed-pr",
+        metavar="N",
+        help="the pull request that added this item, where `new` could not ask the forge",
     )
     setter.add_argument(
         "--overwrite", action="store_true", help="replace a value the item already records"

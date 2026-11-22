@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-11
 closed: 2026-10-12
 pr: 1431
+filed-pr: 1401
 payoff: stranded stops printing its all-clear over a branch it could not read, so a shallow clone names the unread ref and what would let it be read instead of counting it as checked
 verify: grep -q 'def test_stranded_names_a_ref_whose_fork_point_a_shallow_clone_lacks' subprojects/docket/tests/test_cli.py
 reenters: PL-9RFP

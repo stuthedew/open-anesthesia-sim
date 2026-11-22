@@ -12,6 +12,7 @@ deferred-from: v0.7.0 - present at the freeze, deferred on a stated reason: it i
 added: 2026-11-21
 closed: 2026-11-22
 pr: 2224
+filed-pr: 2176
 payoff: A branch stacked on another open pull request goes green for the work it carries, so no session has to work around a required check that blames it for another branch.
 tests: tests/unit/test_pr_record_check.py::test_a_closure_recording_another_number_is_refused
 reenters: PL-HMZZ

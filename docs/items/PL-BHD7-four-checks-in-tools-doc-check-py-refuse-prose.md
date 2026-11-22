@@ -12,6 +12,7 @@ deferred-from: v0.7.0 - present at the freeze, but a workflow check with no conn
 added: 2026-11-16
 closed: 2026-11-22
 pr: 2224
+filed-pr: 2169
 payoff: a correct sentence under the timeline or beside a host name is no longer refused for one word, so sessions stop rewording true sentences to pass a check
 reenters: PL-GPJ7
 ---

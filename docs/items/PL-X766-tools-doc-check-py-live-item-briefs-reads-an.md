@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-01
 closed: 2026-10-01
 pr: 1271
+filed-pr: 1270
 payoff: the doc checks read an item's status the way docket does, so a quoted or wrapped value cannot put a closed brief under the live checks
 verify: ! grep -qF 'ITEM_STATUS_RE' tools/doc_check.py
 reenters: PL-PVW2

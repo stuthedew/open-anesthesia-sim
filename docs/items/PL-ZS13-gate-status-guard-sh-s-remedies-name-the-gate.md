@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-27
 closed: 2026-09-27
 pr: 1152
+filed-pr: 1145
 payoff: a session refused for piping a check it runs through python3 or uv run is offered a line that runs that same check with its arguments, not one that exits 126 or runs another suite, so the retry the refusal asks for is the whole of its price
 verify: grep -q 'def test_the_remedy_runs_the_gate_the_command_ran' tests/unit/test_gate_status_guard.py
 reenters: PL-61FT
