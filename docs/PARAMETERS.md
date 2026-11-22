@@ -25,12 +25,12 @@ No scientific parameter may be added without:
 - where the source is not a primary measurement, what the primary literature
   reports and how far that differs from the source's value.
 
-Two of these requirements are checked on every build. The provenance table
+The build checks part of two of these requirements. The provenance table
 below must give each stored value, as § "The provenance table, and the markers
-over restated values" describes. Each entry under `sources` in a data file must
-declare its source's tier, as § "What the data-file format requires of a
-`sources` entry" describes. No check reads the other requirements, so a
-reviewer checks them.
+over restated values" describes, but the check reads the value and not its
+unit. Each entry under `sources` in a data file must declare its source's tier,
+as § "What the data-file format requires of a `sources` entry" describes. A
+reviewer checks each unit and every other requirement.
 
 ### Source hierarchy: what may be cited as the authority for a value
 
@@ -160,12 +160,18 @@ Three rules apply to an entry under `sources`:
    tier-3 citation presented as settled is neither legitimate nor marked for
    fixing.
 
-A check enforces the second and third rules on every build. No check reads the
-note that the first rule asks for, so a reviewer checks it.
+A check on every build enforces part of the second and third rules. For the
+second, it checks that each entry declares which stored values rest on it, but
+not that a source declared primary and adopted really is where the number came
+from. It enforces the third rule only for a file that adopts no primary source
+at all. In a file that adopts some, such as each agent file, it does not see
+whether each value that rests on no primary source is recorded as a gap. No
+check reads the note that the first rule asks for. A reviewer checks that note,
+the truth of each declaration, and the third rule value by value.
 
 **For developers.** § "What the data-file format requires of a `sources` entry"
-names the field of a data file that records each of these, and the check that
-enforces each rule.
+names the field of a data file that records each of these, and the exact rules
+its check enforces.
 
 ### Where each stored value comes from
 
@@ -1334,7 +1340,7 @@ factor of 1.058.
 
 3. **Gas Man's own constants are 20 °C constants, and its litres carry no
    condition at all.** This model takes its partition coefficients, MACs and
-   reference patient from Gas Man (`docs/PARAMETERS.md` § "Source hierarchy"), so its amounts follow
+   reference patient from Gas Man (`docs/PARAMETERS.md` § "Where this project stands"), so its amounts follow
    Gas Man's arithmetic. A different reference condition would make this
    model's litre and Gas Man's litre different quantities, although every
    parameter behind them is shared.
