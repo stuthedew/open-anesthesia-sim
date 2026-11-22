@@ -648,10 +648,10 @@ three options and refused one. Besides the decline above, they are:
 **Declining is not merely the cheap option: it is needed under *either*
 answer.** Even once planned-milestone item 39 is built, a machine whose inlet
 position is unknown still needs the interface's statement that inlet position
-is not modelled. Every surveyed machine is such a machine, except the Dräger
-Fabius GS. It is the one machine in the survey's table that Fukuda et al.
-instrumented, and the other two they studied are not in it. Building item 39
-first would change which machines
+is not modelled. The survey records an inlet position for few machines. Shin
+et al. describe where the inlet joins the circle on three Dräger machines, and
+Fukuda et al. compared two positions on the Dräger Fabius GS without saying
+which one the machine ships with. Building item 39 first would change which machines
 the statement covers, not whether the statement is required.
 
 ## Question 5: naming a real machine in the interface

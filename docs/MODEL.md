@@ -3433,16 +3433,18 @@ During low-flow anesthesia on two decoupling-style machines, the
 inspired/delivered ratio rose significantly for sevoflurane, and for isoflurane
 on the one machine where it was compared. A third machine showed no significant
 change. That ratio, $`F_I/F_D`$, is what the circuit equation above computes,
-so on two machines the inlet's position changed it through a property this
-model does not represent: the layout of its internal gas paths. The abstract
-does not say whether moving the inlet changed the circuit's volume. Shin et
-al.'s measurements show a difference at a known volume: the Perseus A500 and
-the Zeus IE have nearly the same assembled volume, 3.3 and 3.2 L, and their
-times to target still differed significantly. A future per-machine circuit volume
-(`circuit_volume_l`) will therefore reproduce only part of the difference
-between machines, and must not be described as reproducing all of it. The
-model will not fold that layout into an effective volume either, because that
-would attribute to volume a difference that volume did not cause. The survey
+and this model does not represent where the inlet sits. The abstract does not
+say whether moving the inlet changed the circuit's volume, so it does not show
+on its own that volume was not the cause. Shin et al. show a difference that
+volume does not explain. In their test-lung study the Perseus A500 and the
+Zeus IE in its fresh gas mode come to nearly the same circuit volume, 3.3 and
+3.2 L, and their times to target still differed significantly. Those volumes
+are Dräger's stated apparatus volumes plus Shin et al.'s 1.2 L patient circuit,
+not measurements. A future per-machine circuit volume (`circuit_volume_l`) will
+therefore reproduce only part of the difference between machines, and must not
+be described as reproducing all of it. The model will not fold the rest into an
+effective volume either, because that would attribute to volume a difference
+that volume did not cause. The survey
 sets out the consequence for modelling several machines.
 
 **A search for a published source of the default fresh gas flow found a
