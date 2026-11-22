@@ -40,12 +40,20 @@ run and writes the whole widget from that run's presentation on every tick. It
 finds a run's widget by `RunPresentation.run_id`, and it deletes the widget of
 a run that the tick no longer names.
 
+A run's name travels in its presentation with its values (`RunPresentation.name`).
+A View writes the name and the values of one run from one presentation, in
+one call, so it has no way to pair one run's name with another run's number.
+The tick carries no run's snapshot. A value that every displayed run shares
+is read from the frame, which refuses runs that disagree on it
+(`chart_frame.assemble_chart_frame`).
+
 The dashboard also hands every View a tick when no frame can be drawn: on a
-halt, and at once after a dial is dragged. That tick carries no frame and no
-snapshots. Its presentations hold the values of the last frame that drew, or
-withhold them when the run has started over since that frame. A chart draws
-nothing from such a tick, and only drops its lines for the runs that the tick
-no longer names.
+halt, and at once after a dial is dragged. Its presentations hold the values
+of the last frame that drew, or withhold them when the run has started over
+since that frame. Each chart is given the last frame drawn for its window,
+kept while every run is still the one it drew, and withheld otherwise
+(`run_presentation.ShownFrame`). A chart draws a withheld frame as an empty
+plot with the reason.
 
 Every View is handed a tick with no frame, even when a View before it in
 reading order raises on that tick. The first exception is raised once the last
@@ -134,15 +142,13 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Final, Protocol, runtime_checkable
 
-from anesthesia_sim.app.chart_frame import ChartFrame
 from anesthesia_sim.app.chart_time_base import ChartTimeBase
 from anesthesia_sim.app.compartment_selection import CompartmentSelection
 from anesthesia_sim.app.control_record import ControlInput
-from anesthesia_sim.app.controller import SimulationSnapshot
 from anesthesia_sim.app.formatting import AgentAmountUnit
 from anesthesia_sim.app.preferences import AgentPrice, Preferences
 from anesthesia_sim.app.qt_widgets import BookmarksPanel, ForkPanel
-from anesthesia_sim.app.run_presentation import RunPresentation
+from anesthesia_sim.app.run_presentation import RunPresentation, ShownFrame
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.layout.run_identity import RunId
 
@@ -281,23 +287,19 @@ class ViewTick:
     """What one View is shown on one tick, whether or not a frame was drawn for it.
 
     Attributes:
-        frame: The chart frame assembled for the window this View asked for
-            through `View.frame_request`, over every displayed run. None for
-            a View that asked for none, and for every View on a tick that no
-            frame was drawn for.
-        snapshots: Each displayed run's snapshot, in drawing order. Every
-            frame of the tick was assembled from these same snapshots. Empty
-            on a tick that no frame was drawn for.
+        frame: The chart frame for the window this View asked for through
+            `View.frame_request`, over every displayed run: drawn this tick,
+            kept from the last tick that drew, or withheld. None for a View
+            that asked for none.
         runs: What each displayed run's panel shows on this tick, in drawing
-            order. On a tick with a frame, each was built from that run's
-            snapshot in `snapshots`.
+            order. On a tick with a frame, each was built from the snapshot
+            that the frame was assembled from.
         selection: The compartment selection every frame was assembled from.
         preferences: The reader's preferences, and any notice about them.
         case: The displayed case's panels, which no run owns.
     """
 
-    frame: ChartFrame | None
-    snapshots: tuple[SimulationSnapshot, ...]
+    frame: ShownFrame | None
     runs: tuple[RunPresentation, ...]
     selection: CompartmentSelection
     preferences: PreferencesInForce

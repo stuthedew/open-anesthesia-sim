@@ -235,8 +235,8 @@ def test_a_fork_from_the_default_selection_draws_one_frame(
     The default selection is wider than `COMPARED_COMPARTMENT_CAP`, so the
     second run reduces it (`CompartmentSelection.with_run_count`), and the
     legend is shown the reduction. The reduction used to announce itself as a
-    reader's change. The dashboard then drew a frame for it from inside
-    `_rename_runs`, before the press drew its own frame. At that point the
+    reader's change. The dashboard then drew a frame for it from inside the
+    method that renamed the runs, before the press drew its own frame. At that point the
     wash-in legend still counted one run, and neither run had been named.
     That made two assemblies for one discrete action, where `PL-R2YM` says
     one (`PL-B1R9`). Both legends are now told what a frame drew once it has
@@ -262,7 +262,10 @@ def test_a_fork_from_the_default_selection_draws_one_frame(
     assemble = view._refresh_view
 
     def recording_assemble() -> None:
-        told.append(tuple(run._run_name_text.text() for run in view.runs))
+        # Each run reads its name from the dashboard when the frame builds its
+        # presentation, so the name a run would be given now is the name the
+        # frame carries (`PL-RF2S`).
+        told.append(tuple(view._run_name(run.run_id) or "" for run in view.runs))
         assemble()
 
     monkeypatch.setattr(view, "_refresh_view", recording_assemble)
@@ -365,7 +368,8 @@ def test_the_wash_in_state_and_off_scale_lines_name_their_run(application: QAppl
 def test_a_lone_run_leaves_the_shared_chart_lines_unnamed(application: QApplication) -> None:
     """One run has nothing to be told apart from, so the column carries no name.
 
-    The run panels and both legends already follow this rule (`_rename_runs`).
+    The run panels and both legends already follow this rule
+    (`SimulationView._run_name`).
     The test checks it here, so that the attribution `PL-25DD` adds does not
     become standing chrome on the display a learner opens.
     """
@@ -471,13 +475,14 @@ def test_a_banner_standing_when_a_branch_opens_is_named_from_that_frame(
     branch appears on, not on some later tick (`PL-TSZM`).
 
     The presentation that `_handle_fork` drives delivers the name. It
-    rewrites every run's banner through `show_presentation` after `_rename_runs`
-    has named the runs. A rewrite attached to `set_run_name` would not be the
-    mechanism. Such a rewrite was written and then removed. The fork's own
-    presentation and the Reset that drops a branch both already rewrite the
-    banner. So no scenario could tell that rewrite from its absence, and a
-    guarantee that nothing can make fail is not a guarantee. This test is
-    what keeps the presentation in that role.
+    rewrites every run's banner and name through `show_presentation`, from
+    the name the presentation carries (`PL-RF2S`). A rewrite attached to a
+    separate name write would not be the mechanism. Such a rewrite was
+    written and then removed. The fork's own presentation and the Reset that
+    drops a branch both already rewrite the banner. So no scenario could
+    tell that rewrite from its absence, and a guarantee that nothing can make
+    fail is not a guarantee. This test is what keeps the presentation in that
+    role.
     """
 
     case = _branched_case()
@@ -503,7 +508,8 @@ def test_a_banner_standing_when_a_branch_opens_is_named_from_that_frame(
 def test_a_lone_run_leaves_the_notice_banner_unnamed(application: QApplication) -> None:
     """One run has nothing to be told apart from, so the banner is not named.
 
-    `_rename_runs` applies this rule to the run panels and both legends. The
+    `SimulationView._run_name` applies this rule to the run panels and both
+    legends. The
     test checks it here, so that the attribution does not become standing
     chrome on the display a learner opens.
     """
@@ -771,8 +777,8 @@ def test_a_run_refused_for_a_missing_unconditional_value_leaves_no_widgets(
 def test_a_lone_run_leaves_the_sidebar_panel_headings_unnamed(application: QApplication) -> None:
     """One run has nothing to be told apart from, so neither heading gains a name.
 
-    `_rename_runs` already applies this rule to the run panels and both
-    legends. The test checks it here, so that `PL-C3GS`'s attribution does not
+    `SimulationView._run_name` already applies this rule to the run panels
+    and both legends. The test checks it here, so that `PL-C3GS`'s attribution does not
     become standing chrome on the display a learner opens.
     """
 

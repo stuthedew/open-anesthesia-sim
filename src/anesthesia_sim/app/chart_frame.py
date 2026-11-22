@@ -109,9 +109,15 @@ from anesthesia_sim.app.theme import (
     PREVIEW_WIDTH_STEP,
     VESSEL_RICH_COLOR,
 )
-from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO, is_wash_in
+from anesthesia_sim.app.wash_in import (
+    WASH_IN_EQUILIBRIUM_RATIO,
+    WashInReading,
+    is_wash_in,
+    read_wash_in,
+)
 from anesthesia_sim.core.concentration import Fraction, MacPercent, Percent, percent_from_fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.parameters import MacAwakeReference
 from anesthesia_sim.core.rounding import WHOLE_COUNT_TOLERANCE
 from anesthesia_sim.core.supported_ranges import CaseInstant, require_case_instant
 
@@ -814,6 +820,10 @@ class RunFrame:
             not the cursor readouts (`PL-7DJK`).
         wash_in: The F_A/F_I stretches drawn, oldest first. They are the most
             recent stretches that fit the pool.
+        wash_in_now: The F_A/F_I reading at `elapsed_s`, from the snapshot's
+            own alveolar and inspired fractions. The wash-in plot's line for
+            this run states it. It is held here, beside the run's name, so the
+            line cannot be written from another run's snapshot (`PL-RF2S`).
         undrawn_wash_in_stretches: How many stretches inside the window the
             pool could not draw. The display shows this count rather than
             hiding it.
@@ -836,6 +846,7 @@ class RunFrame:
     times_s: tuple[float, ...]
     fractions: Mapping[RecordedQuantity, tuple[Fraction, ...]]
     wash_in: tuple[WashInStretch, ...]
+    wash_in_now: WashInReading
     undrawn_wash_in_stretches: int
     control_marks_s: tuple[float, ...]
     undrawn_control_marks: int
@@ -899,6 +910,10 @@ class ChartFrame:
             text).
         one_mac_percent: Where the 1 MAC line is drawn.
         mac_awake_band_percent: The MAC-awake band's lower and upper edges.
+        mac_awake: The agent's published MAC-awake fraction and its standard
+            deviation, which the band was placed from. The legend states it.
+            Every run of a frame is on one agent, so the frame holds the
+            value once (`PL-RF2S`).
         visible: Which compartments are drawn, in table order. This is
             presentation state only, and the simulation never reads it. With
             more than one run, it is the reader's selection limited by
@@ -926,6 +941,7 @@ class ChartFrame:
     mac_ticks: tuple[tuple[float, str], ...]
     one_mac_percent: float
     mac_awake_band_percent: tuple[float, float]
+    mac_awake: MacAwakeReference
     visible: tuple[RecordedQuantity, ...]
     undrawn_compartments: int
     runs: tuple[RunFrame, ...]
@@ -1137,6 +1153,7 @@ def assemble_chart_frame(
             standard_deviation_fraction_of_mac=mac_awake.standard_deviation_fraction_of_mac,
             mac_percent=mac_percent,
         ),
+        mac_awake=mac_awake,
         visible=drawn,
         undrawn_compartments=capped,
         runs=tuple(_run_frame(run, start_s, stop_s, columns) for run in runs),
@@ -1202,6 +1219,9 @@ def _run_frame(run: RunInput, start_s: float, stop_s: float, columns: int) -> Ru
         times_s=window.times_s,
         fractions=MappingProxyType(fractions),
         wash_in=stretches[-MAX_CHART_WASH_IN_SEGMENTS:],
+        wash_in_now=read_wash_in(
+            snapshot.alveolar_partial_pressure_fraction, snapshot.inspired_partial_pressure_fraction
+        ),
         undrawn_wash_in_stretches=max(0, len(stretches) - MAX_CHART_WASH_IN_SEGMENTS),
         control_marks_s=marks,
         undrawn_control_marks=len(inside) - len(marks),
