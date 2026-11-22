@@ -40,7 +40,7 @@ the other's.
 
 **A deadline is a backstop.** Claude Code cancels a hook at its `timeout` and
 discards its output, so a guard still running then would let the call through
-with nothing said (https://code.claude.com/docs/en/hooks § "Timeouts", read
+with nothing said (https://code.claude.com/docs/en/hooks, section "Timeouts", read
 2026-11-03). Each guard therefore gets its own deadline, and the `timeout` of
 each wiring must cover the deadlines of every guard in its group, which the
 test checks. A guard that waits on something slow keeps a shorter deadline of

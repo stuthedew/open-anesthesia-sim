@@ -154,7 +154,7 @@ def _sevoflurane_at_8_percent_and_10_l_min() -> SimulationController:
 
 
 def test_a_circuit_target_halts_within_one_step_of_its_mark_and_can_show_one_count_past() -> None:
-    """The simulation halts within one simulation step of the mark, as `docs/MODEL.md` now says.
+    """The simulation halts within one simulation step of the mark, as `docs/INTERFACE.md` now says.
 
     A mark is the target value that the learner sets for a reading. The simulation halts when
     the reading crosses it. § "Halting on a marked crossing" used to say that the value

@@ -717,7 +717,7 @@ def triggers(lines: Sequence[str]) -> dict[str, Trigger]:
 def _branch_pattern(pattern: str, unread: Undecidable) -> re.Pattern[str]:
     """The expression a branch filter's pattern stands for, or `unread` raised.
 
-    As *Workflow syntax for GitHub Actions* § "Filter pattern cheat sheet"
+    As *Workflow syntax for GitHub Actions*, section "Filter pattern cheat sheet",
     documents them (docs.github.com, read 2026-10-05): `*` matches a run of
     anything but `/`, `**` a run of anything, `?` and `+` zero or one and one or
     more of the character before, `[]` one of the letters, digits and `a-z`,

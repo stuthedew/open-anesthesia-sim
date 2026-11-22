@@ -648,7 +648,7 @@ def test_a_frame_is_two_ticks() -> None:
 
 
 def test_the_dashboard_displays_at_most_two_runs() -> None:
-    """`ROADMAP.md` § "v0.5.0 - the case you can branch": never more than two.
+    """`ROADMAP.md` § "Completed: v0.5.0 - the case you can branch": never more than two.
 
     The constructor's refusal belongs to `SimulationView` and is tested with
     the widget. The number itself belongs to the frame. `PL-HLD5`'s two-level

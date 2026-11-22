@@ -149,7 +149,7 @@ class PreferencesFileError(Exception):
 
 @dataclass(frozen=True, slots=True)
 class AgentPrice:
-    """The reader's price for one agent, with the fields that `docs/MODEL.md` specifies.
+    """The reader's price for one agent, with the fields that `docs/INTERFACE.md` specifies.
 
     § "A cost at the reader's price" lists the fields and what is refused.
 
