@@ -148,9 +148,10 @@ readout near 1 MAC of sevoflurane. A reading inside the band is at the height,
 and the transition rule above applies to the band.
 
 **A crossing is decided from the same readings on every branch and on the
-trunk, the run that branches are taken from.** When the trunk halted at a
-target's exact height on readings that it carries forward step by step, a branch
-opened on the halting step could show that target as still running.
+trunk, the run that branches are taken from.** If the trunk and a branch
+decided a crossing from two calculations of the same step, a trunk that halted
+at a target's exact height could leave a branch opened on the halting step
+showing that target as still running.
 
 **For developers.** A crossing is decided from the two states that the run
 stored for the ends of the step: the second before and the second the step
@@ -1249,7 +1250,7 @@ parent's instant.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 An instant that a run is only *asked* about stays a plain `float`, such as the instant passed
-to `RunDefinition.state_at` and the ends of a drawn window. The run's own opening and end
+to `RunDefinition.segment_at` and the ends of a drawn window. The run's own opening and end
 bound such an instant, and the run checks that relation. Arithmetic on either type returns a
 plain `int`, so a calculated instant or count is never taken as checked.
 
@@ -1381,7 +1382,7 @@ Reset pauses the simulation and keeps the user's selected settings. It also:
 
 - sets simulation time to zero;
 - clears the agent amounts in the circuit, alveoli, blood and tissues;
-- discards the run, so that none of its states can be computed or drawn;
+- discards the run, so that none of its states can be read or drawn;
 - clears the recorded timeline of control inputs;
 - sets the cumulative amounts delivered and exhausted, and the mass-balance
   residual, back to zero; and
@@ -1416,16 +1417,16 @@ keeps that earlier failure as the reason, and the banner's advice on recovery
 mentions the refusal.
 
 **For developers.** Reset sets simulation time to zero by clearing the count of
-steps taken. It discards the run by opening a fresh run
-definition at the cleared state, under the user's settings. A run definition is
-the stored record of a run: the settings in force at each moment, and the state
-at each change of setting, from which every other state is computed
+steps taken. It discards the run's stored states, which then hold only the
+cleared state at second 0, and opens a fresh run definition under the user's
+settings. A run definition is the run's settings record: the settings in force
+in each stretch, and the second at which each stretch opened
 (§ "A run stores the state of every second it reaches"). The timeline
 of control inputs is cleared because it belongs to the run that recorded it.
 
-On a branch, the fresh run definition opens instead on the stretch of the parent
-run that the branch was taken from, and the user's settings are recorded in it as
-a change at the fork. The branch's timeline and provenance then agree on its
+On a branch, the stored states are cut back to the fork, and the fresh run
+definition opens instead on the stretch of the parent run that the branch was
+taken from. The user's settings are recorded in it as a change at the fork. The branch's timeline and provenance then agree on its
 settings (`PL-K5BS`, `PL-ZR49`).
 
 Reset is refused when it cannot build the settings record that the fresh run
@@ -1477,8 +1478,8 @@ dial to the new agent's 1 MAC
 ## Discarding a run, and the questions that guard it
 
 Beginning a new run **discards the current one**. All a user can look back at
-is the run's definition, its timeline of control changes and the simulated time
-it reached. Nothing in the simulator saves them and there is no undo, so the
+is the run's stored states, its timeline of control changes and the simulated
+time it reached. Nothing in the simulator saves them and there is no undo, so the
 interface must follow these rules:
 
 - Before the interface discards a run that has any elapsed simulated time or
@@ -1771,10 +1772,10 @@ of setting changes.**
 `src/anesthesia_sim/app/chart_frame.py` and
 `src/anesthesia_sim/app/qt_chart.py`.
 
-A difference trace would mislead even before the fork, where the two runs are
-identical. If the fork was at a bookmark, the trace would show a tiny nonzero
-difference there instead of zero, and a reader would take that for a
-disagreement about the case.
+Before the fork a difference trace would read exactly zero, because the two
+runs hold the same stored states there (§ "The shared history is identical by
+construction, not by measurement"). Its fault is after the fork, where it
+would state the conclusion that the paragraph above rules out.
 
 ## Interface boundary
 
@@ -1798,8 +1799,8 @@ of the model's calculations. It may:
 
 Under the conditions set out below, it may also:
 
-- draw the run's states over a window of time, computed by the model at
-  instants that the interface chooses;
+- draw the states that the run stored, at the seconds of a window of time
+  that the interface chooses;
 - choose how wide a window of the run the chart shows, and how its time axis
   is ruled;
 - draw only some of the compartment traces, when the user asks;
@@ -1887,7 +1888,7 @@ instants fall:
   bounded curvature and no hidden transients, so every sharp feature of a run
   is at a control change. A grid that stepped over one would draw a straight
   line through the very instant that the user is looking for. The point drawn
-  there is the state that the run's definition stores for that instant. The
+  there is the state that the run stored for that second. The
   chart therefore shows every control change exactly, to the last digit the
   readouts display.
 
@@ -2159,9 +2160,9 @@ beside the identifier and display name of the agent they belong to
 exposes immutable snapshots, and immutable windows onto the recorded run, rather
 than mutable compartment objects.
 
-A function sets the number of drawn instants (`chart_columns` in
-`app/chart_frame.py`, `PL-GS3R`). The spacing is the time base divided by that
-number. It is rounded down onto whole seconds, and a spacing of less than 1 s
+A function sets the number of grid columns that the time axis is divided into
+(`chart_columns` in `app/chart_frame.py`, `PL-GS3R`). The spacing is the time
+base divided by one less than that number. It is rounded down onto whole seconds, and a spacing of less than 1 s
 is raised to 1 s (`grid_spacing_s` in `app/chart_time_base.py`). Rounding down
 is what keeps drawn instants no more than a pixel apart, wherever the axis
 shows at least as many seconds as the plot has pixels. Each drawn instant is a
@@ -2192,10 +2193,13 @@ The one-pixel guarantee works in pixel columns, as Jugel, Jerzak, Hackenbroich
 and Markl do for recorded data. They prove that a line chart is fixed by at most
 four values per pixel column (M4: A Visualization-Oriented Time Series Data
 Aggregation, *Proceedings of the VLDB Endowment* 2014;7(10):797-808). Their
-method of selecting values from a store is not used, because a selection of
+method of selecting values from a store is not used on its own, because a selection of
 recorded extremes could not guarantee that every control change is a drawn
-instant whatever the pixel width (`PL-4RBD`). The run is evaluated at the drawn
-instants instead.
+instant whatever the pixel width (`PL-4RBD`). The chart reads the run's stored
+state at each grid column and each control change instead. It then adds the
+second of each compartment's highest and lowest stored value between two drawn
+seconds, which are two of the four values that M4 keeps
+(`extreme_seconds` in `app/chart_time_base.py`, `PL-BLZJ`).
 
 The one-pixel guarantee (`PL-GS3R`, decided 2026-09-14) replaced a fixed budget
 of 150 drawn instants at every width. That count stays as the minimum, because
@@ -3580,8 +3584,10 @@ at the point marker, where a reader is most likely to look.
 blank.** While the trace is drawn, the caption gives the value at its
 right-hand end. "No agent has reached the circuit yet" and "the patient is
 returning agent" are opposite situations, and an absent trace alone cannot show
-which applies. One calculation produces both the caption and the trace, so they
-cannot disagree.
+which applies. The caption and the trace are computed separately, from the same
+stored state. The caption reads the state that the run stored for the second it
+has reached, and the trace's right-hand end is drawn from that same state by the
+same division, so the two show the same ratio.
 
 **The gridlines and labels run from 0 to 1, with a little space above them.**
 Every published wash-in figure uses a scale of 0 to 1, and matching those
@@ -3622,11 +3628,14 @@ The rounding allowance of 1e-6 (`WASH_IN_ROUNDING_ALLOWANCE`, `PL-N559`) is
 there because, at zero cardiac output, the stepped run settles on a
 floating-point fixed point within about 1e-13 of the exact solution. A fixed
 point is a state that every later step returns unchanged. In some runs that
-state has $`F_A`$ above $`F_I`$. An isoflurane run at a fresh gas flow of
-10 L/min settles at a ratio of 1 + 2.2e-14, which the plot once captioned as
-the patient returning agent. Because later steps return the same state, the
-overshoot does not grow with run length. On 2026-10-26 it was the same at 96 h
-as at 1 h. A test checks the fixed point against the exact solution for each
+state has $`F_A`$ above $`F_I`$. At the 0.1 s step that a run took until
+2026-11-21, an isoflurane run at a fresh gas flow of 10 L/min settled at a ratio
+of 1 + 2.2e-14, which the plot once captioned as the patient returning agent.
+Which side of 1 a run settles on changes with the step. At the one-second step,
+isoflurane at 6 L/min settles at 1 + 4.7e-15, and every shipped agent at the
+fastest fresh gas flow settles below 1 (measured 2026-11-21). Because later
+steps return the same state, the overshoot does not grow with run length. On
+2026-10-26 it was the same at 96 h as at 1 h. A test checks the fixed point against the exact solution for each
 shipped agent
 (`test_a_zero_cardiac_output_steady_state_is_not_read_as_elimination`).
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
@@ -3644,7 +3653,8 @@ the run-length limit, the ventilation limit and the data files, so extending
 any of them fails it
 (`test_the_rounding_allowance_hides_no_clinical_change_over_a_whole_run`). The
 allowance is also about 10 million times the largest overshoot seen in a run,
-9.6e-14.
+9.6e-14, which was measured on 2026-10-26, before a run stepped in whole
+seconds.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
@@ -4384,8 +4394,9 @@ something upstream is wrong, and the display refuses it.
 
 **For developers.** The readout's decimal count must not feed back into the
 model, and nothing in the `core/` directory reads it. The simulation
-step (`SIMULATION_STEP_S`) is a tolerance in seconds, and the supported
-input ranges are intervals in L/min. Both are derived without reference to the
+step (`SIMULATION_STEP_S`) is a tolerance in seconds. Three of the four supported
+input ranges are intervals in L/min, and the fourth, the delivered concentration,
+is an interval in percent. Both are derived without reference to the
 readout, in `docs/VERIFICATION.md` § "Supported simulation step" and `docs/INTERFACE.md` § "Supported input ranges". A
 future change to one decimal has to answer the objection to it given under the
 lower limit above. The negative concentrations that the model cannot hold
@@ -4545,8 +4556,8 @@ widest percent and MAC multiple. The clock therefore widens no other column.
 In every arrangement each
 panel keeps that width, so no value is wrapped away from its unit. The widths at
 which the row steps down depend on the font and the display scale. With the font
-that the project's tests use, for example, the row is seven across from 1005 px,
-four across from 591 px and two across from 310 px (measured 2026-10-18). Those
+that the project's tests use, for example, the row is seven across from 985 px,
+four across from 571 px and two across from 290 px (measured 2026-11-22). Those
 figures illustrate the rule and do not specify it.
 
 When fewer panels share a line, both reasons given above for the row still
@@ -4625,15 +4636,17 @@ the reference design that the interface follows (`docs/interface-provenance.md`
 
 With the tests' font, a 1366 px window gives the region 1334 px (measured
 2026-11-14). The right column takes 238 px and the left column 1084 px, which is
-79 px more than the 1005 px that seven across needs. Two tests check that a
+99 px more than the 985 px that seven across needs (measured 2026-11-22). Two tests check that a
 1366 px window opens the row seven across, with one run and in compare mode
 (`test_a_1366_px_window_opens_one_run_s_readout_row_on_seven_columns` and
 `test_two_runs_share_one_readout_block_whose_values_name_their_runs` in `tests/integration/simulation_view/test_simulation_view_readouts.py`). A 1280 px
 window gives the region 1248 px. The left column takes at least its share,
 1014 px. With the font in the container where the tests were written, that is
-9 px more than seven across needs. With the font on the CI runner, seven across
-needs 1068 px and the row gets 1060 px, so it opens on four (both measured
-2026-11-14). Two tests check that a 1280 px window opens the row seven across
+29 px more than seven across needs (measured 2026-11-22). With the font on the
+CI runner, seven across needed 1068 px on 2026-11-14 and the row got 1060 px, so
+it opened on four. The clock's widest reading was then `23h59m59.9s`. It is now
+`23h59m59s`, which narrows the clock's column by 20 px with the tests' font, so
+the row on the CI runner may now open seven across. Two tests check that a 1280 px window opens the row seven across
 where seven fit and four across otherwise, with one run and with two
 (`test_a_1280_px_window_opens_one_run_s_readout_row_on_seven_or_four_columns`
 and
@@ -4982,9 +4995,12 @@ and `test_a_two_figure_amount_s_finest_step_is_a_thirty_first_of_an_sd` in `test
 **A compartment's share of the agent is shown in whole percent.** A positive
 share below 0.5% reads `<1%`, so a compartment that holds agent never reads as
 holding none. A share of 99.5% or more that is not the whole reads `>99%`, so no
-compartment reads as holding all of the agent while another holds some. In a
-desflurane run, the circuit holds more than 99.5% of the agent for about the
-first second. One SD of a coefficient moves a compartment's share by at most 13
+compartment reads as holding all of the agent while another holds some. A run
+holds no agent when it opens, and its next stored state is one second later.
+At the settings that a run opens with, the circuit then holds 99.45% of the agent with each agent
+the simulator offers, and its share reads `99%` (measured 2026-11-22). The
+circuit holds more than 99.5% only inside that first second, which no display
+shows. One SD of a coefficient moves a compartment's share by at most 13
 percentage points, in isoflurane's muscle at 8 h 43 min
 (`test_one_sd_moves_a_compartment_s_share_by_at_most_thirteen_percentage_points` in `tests/integration/test_parameter_uncertainty.py`). So
 a share can differ between patients by up to 13 steps of 1 percentage point.
@@ -5270,9 +5286,11 @@ built.
 
 **The pointer's position along the time axis sets the instant reported, and the
 hover radius decides only which traces are in reach** (`PL-1K9G`, 2026-09-22). The
-chart draws each run as columns of points: one column every 4 s on a 60-minute
-axis and every 48 s on a 12-hour axis, plus a column at each of that run's control
-changes. A branch draws no columns before its fork. Each run is reported at its
+chart draws each run as columns of points. The spacing between columns follows the
+plot's width: on a plot 900 px wide, it is 4 s on a 60-minute axis and 48 s on a
+12-hour axis. Each run also draws a point at each of its control changes and at
+each peak or trough between two columns (§ "What the chart draws"). A branch
+draws no columns before its fork. Each run is reported at its
 drawn instant nearest the pointer in time, and a tie goes to the earlier instant.
 Each of that run's compartments is reported if its point at that instant is
 inside the radius, so every compartment of one run is reported at one instant.
@@ -5280,7 +5298,10 @@ Moving the pointer up or down can change what is in reach, but never the instant
 printed. The wash-in plot follows the same rule.
 
 Each value line prints its own instant, because two runs' nearest instants can
-differ by up to one column, and the printed form shows the difference. One
+differ, and the printed form shows the difference. They differ by up to one
+column where one run draws an instant that the other does not, such as a
+control change. Beside a branch's fork, or past the end of the shorter run, they
+can differ by up to the hover radius, 12 px along the time axis. One
 instant above several values would claim that they are simultaneous when they may
 not be.
 
