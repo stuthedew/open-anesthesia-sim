@@ -3536,7 +3536,13 @@ exponential terms is $`e^{\lambda_k t}`$ for one eigenvalue $`\lambda_k`$ of
 $`A_6`$, with time constant $`\tau_k = -1/\operatorname{Re}\lambda_k`$. The
 5.83 s figure comes from a search over a grid of 11 fresh gas flows, 13
 ventilations and 21 cardiac outputs for each agent, refined along cardiac
-output.
+output. The fastest point is isoflurane's at the largest fresh gas flow and
+ventilation, and the refined cardiac output is 9.325 L/min. The time constant
+there differs from its value at 9.32 or 9.33 L/min by less than 0.00001 s, so
+`docs/MODEL.md` gives the cardiac output as about 9.3 L/min.
+`test_the_fastest_time_constant_is_the_one_the_model_document_prints` in
+`tests/unit/test_governing_equations.py` repeats the search on the shipped
+system matrix and holds both figures to the ones `docs/MODEL.md` prints.
 
 Many numerical methods need steps short compared with the fastest time constant
 to keep their errors from growing. The slowest time constant is about 5 700 to
