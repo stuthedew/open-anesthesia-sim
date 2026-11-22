@@ -207,6 +207,55 @@ def test_marking_one_instant_twice_is_refused_and_says_why(application: QApplica
     assert len(controller.snapshot().bookmarks.time_bookmarks) == 1
 
 
+def test_a_refused_target_says_why_under_the_target_s_own_add_button(
+    application: QApplication,
+) -> None:
+    """A target that every run refuses is explained under the Add button of the target form.
+
+    The refusal comes from the runs, not from the form, so it reaches the
+    editor through the code that writes a mark to every run. That code shows
+    it under the button that asked (`PL-CHX0`). Shown under the time form, it
+    would be out of sight of the button the reader pressed.
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    editor = _mark_editor(view)
+    editor.height_spin.setValue(1.0)
+    editor.add_target_button.click()
+    editor.add_target_button.click()
+
+    notice = editor.add_target_notice.notice()
+
+    assert notice is not None
+    assert "marked once" in notice
+    assert editor.add_time_notice.notice() is None
+    assert len(controller.snapshot().bookmarks.mac_targets) == 1
+
+
+def test_an_accepted_mark_clears_the_refusal_before_it(application: QApplication) -> None:
+    """Once an edit is accepted, the refusal of the edit before it is no longer shown.
+
+    A refusal left on screen after the next mark was added would tell the
+    reader that the mark they just added was refused.
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    editor = _mark_editor(view)
+    editor.instant_spin.setValue(600)
+    editor.add_time_button.click()
+    editor.add_time_button.click()
+
+    assert editor.add_time_notice.notice() is not None
+
+    editor.instant_spin.setValue(900)
+    editor.add_time_button.click()
+
+    assert editor.add_time_notice.notice() is None
+    assert [mark.instant_s for mark in controller.bookmarks.time_bookmarks] == [600.0, 900.0]
+
+
 def test_a_mark_edited_after_a_fork_reaches_the_branch_too(application: QApplication) -> None:
     """The invariant the marks panel now rests on, in the one shape `main` produces.
 
@@ -594,6 +643,11 @@ def test_a_rebuilt_bookmarks_view_shows_the_entry_and_the_refusal_the_reader_lef
     dashboard, so a reader who closed it found their entry where they had left
     it. The dashboard keeps the entry and the refusal for the same reason
     (`PL-CHX0`).
+
+    The height is 3.7 times the agent's MAC, which sevoflurane can reach and
+    which is above the bound a new height control starts with. A new copy
+    must take the running agent's bound before it shows the kept entry, or
+    the control would cut the height down to its starting bound.
     """
 
     controller = SimulationController()
@@ -607,9 +661,11 @@ def test_a_rebuilt_bookmarks_view_shows_the_entry_and_the_refusal_the_reader_lef
     editor.compartment_combo.setCurrentIndex(
         editor.compartment_combo.findData(RecordedQuantity.FAT.value)
     )
+    editor.height_spin.setValue(3.7)
     editor.time_list.setCurrentRow(0)
     refusal = editor.add_time_notice.notice()
     assert refusal is not None
+    assert editor.height_spin.value() == 3.7
 
     view.layout_container.choose_view(AreaId(5), AGENT_ACCOUNTING)
     _settle(application)
@@ -625,6 +681,7 @@ def test_a_rebuilt_bookmarks_view_shows_the_entry_and_the_refusal_the_reader_lef
     assert rebuilt.instant_preview.text() == "25m"
     assert rebuilt.time_label_edit.text() == "emergence"
     assert rebuilt.compartment_combo.currentData() == RecordedQuantity.FAT.value
+    assert rebuilt.height_spin.value() == 3.7
     assert rebuilt.time_list.currentRow() == 0
     assert rebuilt.add_time_notice.notice() == refusal
 
