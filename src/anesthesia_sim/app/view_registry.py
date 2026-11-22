@@ -50,9 +50,10 @@ instead of showing the View (`layout/sizing.py`). The declared height is the
 least height in which the View is worth showing, and it may be less than the
 View's content needs. In an Area shorter than the content, the reader scrolls
 the View up and down inside the Area (`area_layout.ViewScroll`, `PL-CBYS`).
-The width a View needs is the larger of the declared width and the least
-width of the View's widget, so no View is scrolled sideways. The shipped
-sizes are placeholders.
+An entry that sets `whole` needs the height of its whole content instead,
+so its View never scrolls (`PL-D5J4`). The width a View needs is the larger
+of the declared width and the least width of the View's widget, so no View is
+scrolled sideways. The shipped sizes are placeholders.
 """
 
 from __future__ import annotations
@@ -162,11 +163,17 @@ class RegisteredView:
             shorter Area, and never in an Area narrower than the larger of
             this width and the least width of the View's widget (`PL-K285`,
             `PL-CBYS`).
+        whole: Whether the adapter holds the View's Area at the least height
+            of the View's whole content where that is more than `minimum`,
+            so the View never scrolls up and down inside its Area. A View
+            sets it where a row scrolled out of sight would mislead: the
+            Parameters View, whose rows are each run's dials, and the
+            Branch View, whose one row is its control (`PL-D5J4`).
 
     Raises:
         TypeError: `kind` is not a `ViewKind`, `title` is not a `str`,
-            `factory` cannot be called, `required_reachable` is not a
-            `bool`, or `minimum` is not a `PixelSize`.
+            `factory` cannot be called, `required_reachable` or `whole` is
+            not a `bool`, or `minimum` is not a `PixelSize`.
         ValueError: `title` is empty or only spaces.
     """
 
@@ -175,6 +182,7 @@ class RegisteredView:
     factory: ViewFactory
     required_reachable: bool = False
     minimum: PixelSize = NO_DECLARED_MINIMUM
+    whole: bool = False
 
     def __post_init__(self) -> None:
         if not isinstance(self.kind, ViewKind):
@@ -202,6 +210,12 @@ class RegisteredView:
             raise TypeError(
                 f"the View of kind {self.kind!r} declares a minimum that is not a PixelSize: "
                 f"{type(self.minimum).__name__}"
+            )
+
+        if not isinstance(self.whole, bool):
+            raise TypeError(
+                "whether a View's Area holds its whole content is a bool, not "
+                f"{type(self.whole).__name__}"
             )
 
 
@@ -377,9 +391,20 @@ _LEAST_HEIGHT_PX: Final = 110
 # up the room (`PL-CBYS`, project owner, 2026-11-11: the long plot is kept).
 _CHART_LEAST_HEIGHT_PX: Final = 280
 
-# The Parameters View's least height, which is one run's row of controls. A
-# row of sliders cut off at the Area's edge reads as a row with no values.
-_CONTROLS_LEAST_HEIGHT_PX: Final = 160
+# The Parameters View's least height, which is one run's row of controls. The
+# row was measured at 106 px with the offscreen font and rounded up (`PL-4JCC`).
+# The View's entry carries `whole`, so its Area also grows to hold a second
+# run's row. A shipped Workspace that gives the View a small share holds its
+# Area at that height at every window size, and its neighbours take the rest.
+_CONTROLS_LEAST_HEIGHT_PX: Final = 110
+
+# The Branch View's least height, which is its heading and its one row of
+# controls. It was measured at 57 px with the offscreen font and rounded up.
+# It is less than `_LEAST_HEIGHT_PX`, so that the Maintenance Workspace can
+# show the View under the compartment schematic in a 768 px tall window
+# (`PL-D5J4`). The entry carries `whole`, so the Area grows when the View
+# shows more than its row.
+_BRANCH_LEAST_HEIGHT_PX: Final = 60
 
 #: Every View kind this build can draw, in the order the View chooser lists
 #: them. The titles and the minimum sizes are placeholders.
@@ -396,6 +421,7 @@ REGISTERED: Final = registry(
         "Parameters",
         ParameterControlsView,
         minimum=PixelSize(220, _CONTROLS_LEAST_HEIGHT_PX),
+        whole=True,
     ),
     RegisteredView(
         AGENT_ACCOUNTING,
@@ -414,7 +440,13 @@ REGISTERED: Final = registry(
         AGENT_COST, "Agent cost", AgentCostView, minimum=PixelSize(320, _LEAST_HEIGHT_PX)
     ),
     RegisteredView(BOOKMARKS, "Bookmarks", BookmarksView, minimum=PixelSize(220, _LEAST_HEIGHT_PX)),
-    RegisteredView(BRANCH, FORK_HEADING, BranchView, minimum=PixelSize(220, _LEAST_HEIGHT_PX)),
+    RegisteredView(
+        BRANCH,
+        FORK_HEADING,
+        BranchView,
+        minimum=PixelSize(220, _BRANCH_LEAST_HEIGHT_PX),
+        whole=True,
+    ),
 )
 
 #: The View kinds `docs/INTERFACE.md` § "Minimum displayed outputs" requires to

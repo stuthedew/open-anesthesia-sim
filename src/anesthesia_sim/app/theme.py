@@ -610,6 +610,16 @@ CONTROL_ROW_SPACING = 8
 # The gap between the four setting sliders, in px.
 PARAMETER_SLIDER_SPACING = 12
 
+# The least length of a setting slider's groove, in px. A short slider spread
+# over its whole range moves several steps for each pixel the pointer moves,
+# so a reader dragging it cannot land on the value they want. At 90 px each
+# flow slider moves one or two steps of its readout per pixel. The delivered
+# concentration has finer steps, which the arrow keys set one at a time. The
+# length is a placeholder that `PL-V4Q8` chose. A longer one makes the
+# Parameters View wider than the Maintenance Workspace leaves it beside the
+# compartment schematic in a 1366 px window.
+PARAMETER_SLIDER_LEAST_LENGTH = 90
+
 # This gap, in px, separates a run's readout heading from the row of readouts
 # under it. The heading names the substance, says the values are modelled, and
 # gives the delivered concentration and 1 MAC. The gap is small, so the heading

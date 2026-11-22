@@ -1457,7 +1457,10 @@ class AreaLayout(QWidget):
         Its height is the minimum height that the View's registry entry
         declares (`app/view_registry.py`). An Area with that height shows its
         View, and the reader scrolls the View up and down where its content is
-        taller than the Area (`ViewScroll`). Its width is the larger of the
+        taller than the Area (`ViewScroll`). Where the entry carries `whole`,
+        the height is instead the larger of that minimum and the least height
+        of the View's content, so the View never scrolls up and down
+        (`PL-D5J4`). Its width is the larger of the
         declared minimum width and the least width Qt would hold the View's
         widget to, with room beside the View for the scroll bar. So a View is
         never scrolled sideways, and a row of controls is never cut off at the
@@ -1465,14 +1468,14 @@ class AreaLayout(QWidget):
         """
 
         kind, view = self._views[area_id]
-        declared = self._registered[kind].minimum
-        content_width, _ = _least_size(_widget(view))
+        entry = self._registered[kind]
+        declared = entry.minimum
+        content_width, content_height = _least_size(_widget(view))
         scroll = self._frames[area_id].view_scroll
         assert scroll is not None, "an Area that holds a View holds it in a scroll box"
+        height = max(declared.height_px, content_height) if entry.whole else declared.height_px
 
-        return PixelSize(
-            max(declared.width_px, content_width + scroll.bar_width()), declared.height_px
-        )
+        return PixelSize(max(declared.width_px, content_width + scroll.bar_width()), height)
 
     def _lay_out(self, splitter: _AreaSplitter) -> None:
         """Give `splitter`'s children the sizes that the last settle worked out for its split."""

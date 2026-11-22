@@ -7,12 +7,23 @@ These tests cover the page and its window.
 
 import pytest
 from PySide6.QtCore import QPoint
-from PySide6.QtWidgets import QApplication, QLabel, QScrollArea, QWidget
+from PySide6.QtWidgets import QApplication, QLabel, QPushButton, QScrollArea, QSlider, QWidget
 
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.simulation_view import SimulationView
-from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING, BOOKMARKS, WASH_IN
-from anesthesia_sim.app.views import AccountingView, ConcentrationView, WashInView
+from anesthesia_sim.app.theme import PARAMETER_SLIDER_LEAST_LENGTH
+from anesthesia_sim.app.view_registry import (
+    AGENT_ACCOUNTING,
+    COMPARTMENT_SCHEMATIC,
+    PARAMETER_CONTROLS,
+    REGISTERED,
+)
+from anesthesia_sim.app.views import (
+    AccountingView,
+    ConcentrationView,
+    ParameterControlsView,
+    WashInView,
+)
 from anesthesia_sim.layout.tree import AreaId
 from anesthesia_sim.layout.workspace import WorkspaceName
 from tests.integration.simulation_view.simulation_view_support import (
@@ -31,6 +42,7 @@ from tests.integration.simulation_view.simulation_view_support import (
     _record_panels,
     _settle,
     _shown_view,
+    _take_fork,
     _wash_in,
 )
 
@@ -281,7 +293,11 @@ _COMMON_SCREENS_PX = ((1366, 768), (1920, 1080))
 def _shipped_view_at(
     application: QApplication, workspace: str, width_px: int, height_px: int
 ) -> SimulationView:
-    """A dashboard over the shipped Workspaces, on `workspace`, at 300 s of one run."""
+    """A dashboard over the shipped Workspaces, on `workspace`, at 300 s of one run.
+
+    The dashboard draws a frame again after the switch, as its render timer
+    would, so the Views that the switch built show the run.
+    """
 
     from anesthesia_sim.layout.shipped import shipped_workspaces
 
@@ -296,6 +312,8 @@ def _shipped_view_at(
     application.processEvents()
     view.present(False)
     view.tab_strip.activate(view.workspaces.position_of(WorkspaceName(workspace)))
+    _settle(application)
+    view.present(False)
     _settle(application)
 
     return view
@@ -339,20 +357,20 @@ def test_no_shipped_workspace_scrolls_the_page(
 
 
 def test_a_view_taller_than_its_area_scrolls_inside_the_area(application: QApplication) -> None:
-    """`PL-CBYS`: the wash-in chart on a laptop is shown whole, by scrolling its own Area.
+    """`PL-CBYS`: the compartment schematic on a laptop is shown whole, by scrolling its own Area.
 
-    In the Induction Workspace at 1366 by 768 the concentration chart takes
-    the room its plot needs, and the wash-in chart's Area is shorter than the
-    wash-in View's content. The View stays shown, with no notice in its
-    place, and its Area's scroll bar covers the height the View does not get.
-    The concentration plot is wholly on screen, so the long time axis that
-    the project owner chose for Induction is visible on opening.
+    In the Maintenance Workspace at 1366 by 768 the schematic's Area holds the
+    containers and the share bar, and is shorter than the lines under the
+    bar. The View stays shown, with no notice in its place, and its Area's
+    scroll bar covers the height the View does not get. The concentration plot
+    is wholly on screen in its own Area. Until `PL-D5J4` the wash-in chart in
+    Induction was the View that scrolled at this size.
     """
 
-    view = _shipped_view_at(application, "Induction", 1366, 768)
+    view = _shipped_view_at(application, "Maintenance", 1366, 768)
     areas = view.layout_container
-    (wash_in,) = (area for area in areas.model.areas() if area.view == WASH_IN)
-    frame = areas.frame(wash_in.id)
+    (schematic,) = (area for area in areas.model.areas() if area.view == COMPARTMENT_SCHEMATIC)
+    frame = areas.frame(schematic.id)
     scroll = frame.view_scroll
 
     assert scroll is not None
@@ -369,6 +387,142 @@ def test_a_view_taller_than_its_area_scrolls_inside_the_area(application: QAppli
         top = chart.mapTo(area.viewport(), QPoint(0, 0)).y()
         assert 0 <= top, f"the plot's top is {-top} px above a scroll box"
         assert top + chart.height() <= area.viewport().height(), "the plot runs below a scroll box"
+
+
+#: What each shipped Workspace must show whole at 1366 by 768 (`PL-D5J4`). The
+#: wash-in curve is Induction's lesson and the share bar is Maintenance's
+#: (`PL-PR1W`). The Edit bookmarks button opens the bookmarks editor, in each
+#: Workspace that shows the bookmarks.
+_LESSONS_WHOLE_AT_1366: dict[str, frozenset[str]] = {
+    "Default": frozenset({"Edit bookmarks"}),
+    "Induction": frozenset({"wash-in plot", "Edit bookmarks"}),
+    "Maintenance": frozenset({"share bar"}),
+}
+
+
+def _lesson_widgets(view: SimulationView) -> dict[str, QWidget]:
+    """The shown wash-in plot, share bar and Edit bookmarks button, by name, where each is shown."""
+
+    from anesthesia_sim.app.dashboard_frame import EDIT_BOOKMARKS_LABEL
+    from anesthesia_sim.app.qt_schematic import ShareBar
+
+    found: dict[str, QWidget] = {}
+
+    for wash_in in view.findChildren(WashInView):
+        if wash_in.isVisible():
+            found["wash-in plot"] = wash_in.chart
+
+    for bar in view.findChildren(ShareBar):
+        if bar.isVisible():
+            found["share bar"] = bar
+
+    for button in view.findChildren(QPushButton):
+        if button.isVisible() and button.text() == EDIT_BOOKMARKS_LABEL:
+            found["Edit bookmarks"] = button
+
+    return found
+
+
+@pytest.mark.parametrize("workspace", sorted(_LESSONS_WHOLE_AT_1366))
+def test_each_shipped_workspace_shows_its_lesson_whole_at_1366_by_768(
+    application: QApplication, workspace: str
+) -> None:
+    """`PL-D5J4`: a Workspace named for a task shows that task's View whole on a laptop screen.
+
+    Before the fix, at 1366 by 768, Induction's wash-in curve started at its
+    Area's lower edge, Maintenance's share bar was below the schematic's Area,
+    and the Edit bookmarks button was cut by the Bookmarks Area's lower edge
+    in all three Workspaces. Each widget must be shown, and wholly inside
+    every scroll box around it, without the reader scrolling. The set of
+    widgets each Workspace must show is written out, so a Workspace cannot
+    pass by leaving its lesson out.
+    """
+
+    view = _shipped_view_at(application, workspace, 1366, 768)
+    found = _lesson_widgets(view)
+
+    assert set(found) == _LESSONS_WHOLE_AT_1366[workspace]
+
+    for name, widget in found.items():
+        assert _wholly_in_view(view, widget), f"the {name} is not wholly on screen in {workspace}"
+
+
+@pytest.mark.parametrize(("width_px", "height_px"), _COMMON_SCREENS_PX)
+@pytest.mark.parametrize("workspace", _shipped_workspace_names())
+def test_the_parameters_area_is_not_far_taller_than_its_controls(
+    application: QApplication, workspace: str, width_px: int, height_px: int
+) -> None:
+    """`PL-4JCC`: on a laptop or desktop screen, the Parameters Area holds its controls and no more.
+
+    Before the fix, at 1920 by 1080, the Area below its header was 239 px tall
+    in Default and Induction for about 90 px of controls, and that height was
+    lost to the Views beside it. Below its header the Area is now no taller
+    than the View's declared least height. The whole row of controls is inside
+    it, with no scroll bar, because a row cut at the Area's edge reads as a
+    row with no values.
+    """
+
+    view = _shipped_view_at(application, workspace, width_px, height_px)
+    areas = view.layout_container
+    (parameters,) = (area for area in areas.model.areas() if area.view == PARAMETER_CONTROLS)
+    scroll = areas.frame(parameters.id).view_scroll
+
+    assert scroll is not None
+    assert scroll.height() <= REGISTERED[PARAMETER_CONTROLS].minimum.height_px
+    assert scroll.verticalScrollBar().maximum() == 0
+
+
+@pytest.mark.parametrize(("width_px", "height_px"), _COMMON_SCREENS_PX)
+@pytest.mark.parametrize("workspace", _shipped_workspace_names())
+def test_the_parameters_area_shows_both_runs_dials_once_a_branch_is_taken(
+    application: QApplication, workspace: str, width_px: int, height_px: int
+) -> None:
+    """`PL-D5J4`: once a branch is taken, no run's row of dials scrolls out of the Parameters Area.
+
+    The View shows one row of dials for each run. Before the fix, the Area
+    kept the height of one row, so the second run's dials were hidden below
+    its edge. A reader could then move the first run's dials while believing
+    they were looking at the branch's. The Area now grows to hold every row,
+    and the whole of the View is inside it.
+    """
+
+    view = _shipped_view_at(application, workspace, width_px, height_px)
+    _take_fork(view, 60.0)
+    _settle(application)
+    view.present(False)
+    _settle(application)
+    areas = view.layout_container
+    (parameters,) = (area for area in areas.model.areas() if area.view == PARAMETER_CONTROLS)
+    scroll = areas.frame(parameters.id).view_scroll
+    (controls,) = (shown for shown in view.findChildren(ParameterControlsView) if shown.isVisible())
+
+    assert scroll is not None
+    assert len(controls.findChildren(QSlider)) == 8
+    assert scroll.verticalScrollBar().maximum() == 0
+
+
+@pytest.mark.parametrize("workspace", _shipped_workspace_names())
+def test_every_parameter_slider_is_long_enough_to_drag_at_1366_by_768(
+    application: QApplication, workspace: str
+) -> None:
+    """`PL-V4Q8`: no setting slider is too short for a reader to drag to a chosen value.
+
+    Before the fix, in Default and Induction at every window size, the four
+    sliders were 52, 85, 54 and 43 px long, so a drag moved several steps for
+    each pixel. The value now has a row of its own above the slider, and the
+    slider has a least length, so every slider is at least that long and
+    wholly on screen.
+    """
+
+    view = _shipped_view_at(application, workspace, 1366, 768)
+    (controls,) = (shown for shown in view.findChildren(ParameterControlsView) if shown.isVisible())
+    sliders = controls.findChildren(QSlider)
+
+    assert len(sliders) == 4
+
+    for slider in sliders:
+        assert slider.width() >= PARAMETER_SLIDER_LEAST_LENGTH
+        assert _wholly_in_view(view, slider)
 
 
 @pytest.mark.parametrize("workspace", ("Default", "Induction"))
@@ -518,29 +672,29 @@ def test_a_view_kept_across_a_rebuild_keeps_its_scroll_position(application: QAp
     """`PL-CBYS`: splitting one Area does not scroll a View in another Area back to its top.
 
     Each rebuild of the layout gives every View a new frame and a new scroll
-    box. In the Default Workspace at 1366 by 768 the Bookmarks View scrolls
-    inside its Area. Before the fix, a reader who had scrolled it to the end
-    found it back at the top after splitting a different Area, though the
-    same View was kept. Before `PL-CBYS` the scroll sat inside the View and
-    moved with it.
+    box. In the Maintenance Workspace at 1366 by 768 the compartment
+    schematic scrolls inside its Area. Before the fix, a reader who had
+    scrolled such a View to the end found it back at the top after splitting a
+    different Area, though the same View was kept. Before `PL-CBYS` the scroll
+    sat inside the View and moved with it.
     """
 
     from anesthesia_sim.app.area_layout import SPLIT_SIDE_BY_SIDE_LABEL
 
-    view = _shipped_view_at(application, "Default", 1366, 768)
+    view = _shipped_view_at(application, "Maintenance", 1366, 768)
     areas = view.layout_container
-    (bookmarks,) = (area for area in areas.model.areas() if area.view == BOOKMARKS)
-    kept = areas.frame(bookmarks.id).content
-    scroll = areas.frame(bookmarks.id).view_scroll
+    (scrolled,) = (area for area in areas.model.areas() if area.view == COMPARTMENT_SCHEMATIC)
+    kept = areas.frame(scrolled.id).content
+    scroll = areas.frame(scrolled.id).view_scroll
     assert scroll is not None
     bar = scroll.verticalScrollBar()
-    assert bar.maximum() > 0, "the Bookmarks View does not scroll at this size"
+    assert bar.maximum() > 0, "the schematic does not scroll at this size"
     bar.setValue(bar.maximum())
     scrolled_to = bar.value()
     other = next(
         area
         for area in areas.model.areas()
-        if area.id != bookmarks.id
+        if area.id != scrolled.id
         and any(
             operation.label == SPLIT_SIDE_BY_SIDE_LABEL and operation.available
             for operation in areas.operations(area.id)
@@ -555,7 +709,7 @@ def test_a_view_kept_across_a_rebuild_keeps_its_scroll_position(application: QAp
     areas.perform(split)
     _settle(application)
 
-    frame = areas.frame(bookmarks.id)
+    frame = areas.frame(scrolled.id)
     assert frame.content is kept
     assert frame.view_scroll is not None
     assert frame.view_scroll.verticalScrollBar().value() == scrolled_to

@@ -98,8 +98,8 @@ is safe alone.
 While a case runs, the window shows the following.
 
 - The bookmarks View lists the instants and the MAC multiples you marked, and
-  opens the editor that adds and removes them. All three Workspaces include
-  this View.
+  opens the editor that adds and removes them. The Default and Induction
+  Workspaces include this View.
 - The branch View opens a second run from an earlier instant of the case. The
   second run is drawn beside the first, so you can change a setting and
   compare the two. All three Workspaces include this View.

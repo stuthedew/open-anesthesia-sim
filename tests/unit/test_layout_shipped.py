@@ -129,7 +129,7 @@ def test_induction_shows_the_wash_in_chart() -> None:
         area.view for area in shipped_workspace(ShippedWorkspaceId("induction")).layout.areas()
     ]
 
-    assert kinds == [CHART, WASH_IN, PARAMETERS, BOOKMARKS, BRANCH]
+    assert kinds == [CHART, PARAMETERS, WASH_IN, BOOKMARKS, BRANCH]
 
 
 def test_maintenance_shows_the_compartment_schematic_beside_the_concentration_chart() -> None:
@@ -139,7 +139,10 @@ def test_maintenance_shows_the_compartment_schematic_beside_the_concentration_ch
     over time. During maintenance, the agent moves into muscle and fat while the
     tensions in those tissues stay low, and the schematic's share bar is where
     that shows. So the schematic takes the place that the wash-in chart had. The
-    wash-in chart, whose lesson is the first minutes, stays in Induction.
+    wash-in chart, whose lesson is the first minutes, stays in Induction. The
+    schematic shares its column with the branch control alone, so that its share
+    bar is on screen in a 768 px tall window (`PL-D5J4`). The parameter controls
+    sit under the chart.
     """
 
     tree = shipped_workspace(ShippedWorkspaceId("maintenance")).layout.windows[0].tree
@@ -147,18 +150,18 @@ def test_maintenance_shows_the_compartment_schematic_beside_the_concentration_ch
     assert isinstance(tree, Split)
     assert tree.orientation is Orientation.ROW
     first, second = tree.children
-    assert isinstance(first, Area)
-    assert first.view == CHART
+    assert isinstance(first, Split)
+    assert first.orientation is Orientation.COLUMN
+    assert [child.view for child in first.children if isinstance(child, Area)] == [
+        CHART,
+        PARAMETERS,
+    ]
     assert isinstance(second, Split)
     assert second.orientation is Orientation.COLUMN
-    schematic, parameters, case = second.children
-    assert isinstance(schematic, Area)
-    assert schematic.view == SCHEMATIC
-    assert isinstance(parameters, Area)
-    assert parameters.view == PARAMETERS
-    assert isinstance(case, Split)
-    assert case.orientation is Orientation.ROW
-    assert [child.view for child in case.children if isinstance(child, Area)] == [BOOKMARKS, BRANCH]
+    assert [child.view for child in second.children if isinstance(child, Area)] == [
+        SCHEMATIC,
+        BRANCH,
+    ]
 
 
 def test_induction_opens_its_concentration_chart_on_the_15_minute_window() -> None:

@@ -185,7 +185,7 @@ class RunSettings(RunStatus):
     read for a run whose `snapshot()` raises. `dashboard_frame.setting_readouts`
     accepts it, and that lets `run_presentation.halted_run` build every dial from
     the values the run holds. Without it, a dial dragged into a halt kept
-    the value from before the drag printed beside it, because no frame
+    the value from before the drag printed above it, because no frame
     followed to rewrite it (`PL-85LJ`). `RunRecord` extends this class, and
     `SimulationSnapshot` extends `RunRecord`, so a frame that drew reads the
     settings from the snapshot it drew from.

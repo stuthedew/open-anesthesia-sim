@@ -1351,7 +1351,7 @@ class ParameterControl:
             curve shows (`PL-71CF`).
         decimals: The display resolution at which the slider steps, taken from
             `formatting.py`. So the value applied to the model is exactly the
-            value printed beside the slider (`PL-25KS`, decision D4).
+            value printed above the slider (`PL-25KS`, decision D4).
 
     The range is not stored here. For two of the four controls, the range is
     instance state rather than a constant. The delivered dial's ceiling is the
@@ -1399,7 +1399,7 @@ def _setting_words(
 
     `setting_readouts` writes the slider from these words, and
     `preview_label` names a previewed value with them. So the label in the
-    plot and the readout beside the slider cannot word one setting two ways.
+    plot and the readout above the slider cannot word one setting two ways.
 
     Args:
         control: The control.
@@ -1474,9 +1474,8 @@ class SettingReadout:
         control: The setting that the control forwards.
         name: The name line.
         qualifier: The gloss line, or the empty string where there is none.
-            No spacer is drawn for a setting. These four panels have unequal
-            heights by design, because the delivered dial carries a MAC line
-            and the flow settings have no such conversion.
+            No spacer is drawn for a setting with no gloss, so the four
+            panels have unequal heights by design.
         unit: The unit of `value`.
         decimals: The display resolution at which the slider steps.
         minimum: The slider's lowest position, in `unit`: the lowest setting
@@ -1484,7 +1483,7 @@ class SettingReadout:
         maximum: The slider's highest position, in `unit`: the highest such
             setting.
         value: The setting in force, in `unit`.
-        value_text: The setting as the readout beside the slider prints it.
+        value_text: The setting as the readout above the slider prints it.
         secondary: The same setting in the second display unit, or the empty
             string for a setting with one unit. For the delivered dial it is
             the setting as a multiple of the agent's 1 MAC. That lets a reader

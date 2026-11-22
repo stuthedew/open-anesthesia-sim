@@ -142,6 +142,22 @@ def test_an_entry_refuses_a_minimum_that_is_not_a_pixel_size() -> None:
         RegisteredView(OLD, "Old", _factory, minimum=(100, 100))  # type: ignore[arg-type]
 
 
+def test_an_entry_refuses_a_whole_flag_that_is_not_a_bool() -> None:
+    """`PL-D5J4`: a truthy stand-in such as 1 is refused, so each entry states the flag one way."""
+
+    with pytest.raises(TypeError, match="holds its whole content is a bool, not int"):
+        RegisteredView(OLD, "Old", _factory, whole=1)  # type: ignore[arg-type]
+
+
+def test_only_the_parameters_and_branch_views_hold_their_whole_content() -> None:
+    """`PL-D5J4`: the two Views whose rows must never scroll out of sight grow their Areas."""
+
+    assert {kind for kind, entry in REGISTERED.items() if entry.whole} == {
+        PARAMETER_CONTROLS,
+        BRANCH,
+    }
+
+
 # --- Building a registry and a retirement table ------------------------------------
 
 
