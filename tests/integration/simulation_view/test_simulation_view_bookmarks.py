@@ -560,6 +560,36 @@ def _show_bookmarks_in_two_areas(application: QApplication, view: SimulationView
     view.present(False)
 
 
+def test_a_remove_leaves_no_mark_selected_so_a_second_press_removes_nothing(
+    application: QApplication,
+) -> None:
+    """After a Remove, no row is selected in any copy, so pressing Remove again takes nothing.
+
+    Three instants are marked and the middle one is removed. The mark below
+    it moves up into its row. Before the fix, that row stayed selected in
+    every copy of the editor, and a second press of Remove took the 900 s
+    mark from every run although the reader never chose it.
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    _show_bookmarks_in_two_areas(application, view)
+    first, second = _editors(view)
+
+    for instant_s in (300, 600, 900):
+        first.instant_spin.setValue(instant_s)
+        first.add_time_button.click()
+
+    first.time_list.setCurrentRow(1)
+    first.remove_time_button.click()
+    rows_after_remove = [first.time_list.currentRow(), second.time_list.currentRow()]
+    second.remove_time_button.click()
+
+    assert rows_after_remove == [-1, -1]
+    assert [mark.instant_s for mark in controller.snapshot().bookmarks.time_bookmarks] == [300, 900]
+    assert second.remove_time_notice.notice() == REMOVE_NOTHING_SELECTED_TEXT
+
+
 def test_every_copy_of_the_marks_editor_shows_one_entry_and_acts_on_it(
     application: QApplication,
 ) -> None:

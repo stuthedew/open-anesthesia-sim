@@ -538,6 +538,51 @@ def test_a_press_on_the_handle_off_its_centre_released_unmoved_applies_nothing(
     assert signals == [("preview", 4.0), "preview ended"]
 
 
+def _drag_from_off_centre(
+    application: QApplication, platform: _Platform, moved_px: int
+) -> tuple[float, float]:
+    """Press the flow handle 5 px right of its centre, move it, release it.
+
+    Returns the flow that the chart previews just before the release, and
+    the flow in force after it, in L/min.
+    """
+
+    controller, view, _, control, signals = _flow_slider_at_four(application, platform)
+    slider = control.slider
+    _, handle_centre, handle_right = _handle_rect(slider)
+    pressed = QPoint(handle_centre + 5, slider.height() // 2)
+    assert pressed.x() < handle_right, "the press must land on the handle"
+    moved = QPoint(pressed.x() + moved_px, pressed.y())
+
+    QTest.mousePress(slider, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, pressed)
+    QTest.mouseMove(slider, moved)
+    previews = [
+        signal[1] for signal in signals if isinstance(signal, tuple) and signal[0] == "preview"
+    ]
+    QTest.mouseRelease(slider, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, moved)
+
+    return previews[-1], controller.settings().fresh_gas_flow_l_min
+
+
+@pytest.mark.parametrize("moved_px", [1, 12], ids=["1 px", "12 px"])
+def test_a_drag_from_off_the_handle_s_centre_moves_the_setting_only_as_far_as_the_pointer_moves(
+    application: QApplication, moved_px: int
+) -> None:
+    """With the macOS hints, a drag from off the handle's centre moves the setting as Fusion's does.
+
+    Fusion grabs the handle with Qt's own code, which measures the drag from
+    where the pointer pressed it, so Fusion's result for the same gesture is
+    the expected value. Before the fix, the macOS hints measured the drag
+    from the handle's centre: a press 5 px right of it and a movement of
+    1 px previewed and applied 4.2 L/min, two counts, where Fusion stays
+    within one count of 4.0 L/min (`PL-57LD`).
+    """
+
+    expected = _drag_from_off_centre(application, _Platform.FUSION, moved_px)
+
+    assert _drag_from_off_centre(application, _Platform.MACOS, moved_px) == expected
+
+
 def test_a_drag_that_follows_a_jump_to_the_pointer_previews_and_applies_at_release(
     application: QApplication,
 ) -> None:

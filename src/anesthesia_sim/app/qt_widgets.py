@@ -899,10 +899,15 @@ class _SettingSlider(QSlider):
     value at the pointer, as one input, and `jumping` is true while it does
     so, so that no preview starts. A press on the handle applies nothing. The
     handle stays where it was, and the press then reports `sliderPressed` as
-    a grab of the handle does under any style. Qt measures a drag from where
-    the handle would have jumped to, so the first movement of such a drag
-    brings the handle's centre under the pointer. That movement is at most
-    half the handle's width, and it is a preview until the release.
+    a grab of the handle does under any style.
+
+    Qt measures the drag that follows from where the handle would have jumped
+    to, and keeps that distance where this class cannot reach it. Left to
+    Qt, the first movement of the drag, even one pixel, would bring the
+    handle's centre under the pointer and change the setting by up to half
+    the handle's width. So this class measures that drag itself, from where
+    the pointer pressed the handle, and the handle moves only as far as the
+    pointer does.
 
     Attributes:
         jumping: True only while a press on the track moves the handle to
@@ -912,6 +917,7 @@ class _SettingSlider(QSlider):
     def __init__(self) -> None:
         super().__init__(Qt.Orientation.Horizontal)
         self.jumping = False
+        self._grab_offset: int | None = None
 
     def mousePressEvent(self, event: QMouseEvent) -> None:  # Qt spells this in camelCase.
         button = event.button().value
@@ -940,13 +946,49 @@ class _SettingSlider(QSlider):
             return
 
         held = self.value()
+        handle = self._handle_rect()
 
         with QSignalBlocker(self):
             super().mousePressEvent(event)
             self.setValue(held)
 
         if self.isSliderDown():
+            self._grab_offset = event.position().toPoint().x() - handle.x()
             self.sliderPressed.emit()
+
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:  # Qt spells this in camelCase.
+        if self._grab_offset is None or not self.isSliderDown():
+            super().mouseMoveEvent(event)
+            return
+
+        options = QStyleOptionSlider()
+        self.initStyleOption(options)
+        groove = self.style().subControlRect(
+            QStyle.ComplexControl.CC_Slider, options, QStyle.SubControl.SC_SliderGroove, self
+        )
+        handle_width = self._handle_rect().width()
+        span = groove.width() - handle_width
+        handle_left = event.position().toPoint().x() - self._grab_offset - groove.x()
+        self.setSliderPosition(
+            QStyle.sliderValueFromPosition(
+                self.minimum(), self.maximum(), handle_left, span, options.upsideDown
+            )
+        )
+        event.accept()
+
+    def mouseReleaseEvent(self, event: QMouseEvent) -> None:  # Qt spells this in camelCase.
+        self._grab_offset = None
+        super().mouseReleaseEvent(event)
+
+    def _handle_rect(self) -> QRect:
+        """Return the handle's rectangle, in this slider's pixels, as the style draws it."""
+
+        options = QStyleOptionSlider()
+        self.initStyleOption(options)
+
+        return self.style().subControlRect(
+            QStyle.ComplexControl.CC_Slider, options, QStyle.SubControl.SC_SliderHandle, self
+        )
 
 
 class ParameterSlider(QWidget):
@@ -983,8 +1025,10 @@ class ParameterSlider(QWidget):
 
     A click on the groove steps one count under Fusion and moves the handle
     to the pointer on macOS, as each platform's style says. Either way it
-    applies at once and draws no preview. If the button is then held and
-    moved, the movement is a drag and previews as one (`_SettingSlider`,
+    applies at once and draws no preview. Under Fusion, holding the button
+    there repeats the step, and each step applies. On macOS, where the
+    handle has moved to the pointer, moving the pointer with the button
+    still down is a drag, and it previews as one (`_SettingSlider`,
     `PL-57LD`).
 
     Attributes:

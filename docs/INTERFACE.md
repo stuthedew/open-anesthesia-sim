@@ -57,7 +57,9 @@ the run stops.
 
 **The marks are added and removed in the Bookmarks View**, below the lists of
 marks and each run's standing on them. No window opens to edit a mark
-(§ "What this list requires once the layout is the reader's").
+(§ "What this list requires once the layout is the reader's"). After a mark is
+removed, no mark in that list is selected, so a second press of its Remove
+button removes nothing.
 
 **The run halts on the simulation step that crossed a mark, at every playback
 rate.** Every step is tested for a crossing. At the faster rates, a halt is
@@ -5494,13 +5496,11 @@ click moves the handle to the pointer. Under Qt's Fusion style a left click
 moves the handle one step towards the pointer, and a middle click moves it to
 the pointer. Holding the left button down there repeats the step while it stays
 down. Each step and each jump is one input, so it is applied at once and
-draws no preview. If the button then stays down and the pointer moves, the
-movement is a drag, which previews until the release. A press on the handle
-itself applies nothing until the handle is dragged, on every platform, even
-where the press is off the handle's centre. On macOS and under the Windows 11
-style, the first movement after such a press brings the handle's centre under
-the pointer. A movement of one pixel can then change the value by more than one
-step. The preview shows that value, and the release applies it.
+draws no preview. Where the click moved the handle to the pointer, moving the
+pointer with the button still down is a drag, which previews until the release.
+A press on the handle itself applies nothing until the handle is dragged, on
+every platform, even where the press is off the handle's centre. The drag then
+moves the handle only as far as the pointer moves.
 
 **A stopped run accepts no new setting and draws no preview.** A run stops when
 it fails or reaches the end of the longest run the simulator supports.
@@ -5542,11 +5542,15 @@ middle button in `qcommonstyle.cpp`, which Fusion inherits. For such a press,
 `QSlider.mousePressEvent` applies the value at the pointer and then marks the
 handle as held, which is the signal that starts a preview. `_SettingSlider` in
 `app/qt_widgets.py` therefore starts no preview for a press on the track, and
-puts the handle back where it was for a press on the handle. The tests in
+puts the handle back where it was for a press on the handle. Qt then
+measures the drag from where the handle would have jumped to, so
+`_SettingSlider` measures that drag itself, from where the pointer pressed the
+handle. The tests in
 `tests/integration/simulation_view/test_simulation_view_controls.py` run both
 presses under Fusion and under a style that returns the macOS hints
 (`test_a_click_on_a_slider_s_track_applies_at_once_and_draws_no_preview`,
-`test_a_press_on_the_handle_off_its_centre_released_unmoved_applies_nothing`).
+`test_a_press_on_the_handle_off_its_centre_released_unmoved_applies_nothing`,
+`test_a_drag_from_off_the_handle_s_centre_moves_the_setting_only_as_far_as_the_pointer_moves`).
 
 The 2 px minimum width for a preview curve is there because an antialiased line
 thinner than 2 px has less than 3:1 contrast against the panel

@@ -2026,6 +2026,26 @@ class SimulationView(QWidget):
 
         self.present(False)
 
+    def _forget_removed_row(self, button: MarkButton) -> None:
+        """Select no row in the list that a Remove just took a mark from, in every copy.
+
+        The mark below the removed one moves up into its row. Kept selected,
+        it would become the mark that a second press of Remove takes from
+        every run, though the reader never chose it. A refused Remove changed
+        no list, so it keeps the selection.
+        """
+
+        if self._mark_refusal is not None or self._mark_entry is None:
+            return
+
+        if button is MarkButton.REMOVE_TIME:
+            self._mark_entry = replace(self._mark_entry, time_row=-1)
+        else:
+            self._mark_entry = replace(self._mark_entry, target_row=-1)
+
+        for marks in self._bookmarks_panels:
+            marks.editor.select_rows(self._mark_entry)
+
     def _show_mark_refusal(self, refusal: MarkRefusal | None) -> None:
         """Show why an edit was refused under its button, in every copy of the editor."""
 
@@ -2071,6 +2091,7 @@ class SimulationView(QWidget):
         self._apply_to_every_run(
             lambda run: run.remove_time_bookmark(selected), MarkButton.REMOVE_TIME
         )
+        self._forget_removed_row(MarkButton.REMOVE_TIME)
 
     @halt_gate
     def _add_mac_target(self, editor: MarkEditor) -> None:
@@ -2109,6 +2130,7 @@ class SimulationView(QWidget):
         self._apply_to_every_run(
             lambda run: run.remove_mac_target(selected), MarkButton.REMOVE_TARGET
         )
+        self._forget_removed_row(MarkButton.REMOVE_TARGET)
 
     def halt_for_slot(self, error: Exception) -> None:
         """Halt every run for an exception that one of this view's slots raised.
