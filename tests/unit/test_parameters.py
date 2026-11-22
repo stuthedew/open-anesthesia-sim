@@ -296,7 +296,7 @@ def test_mac_matches_its_cited_source_and_its_recorded_mapleson_deviation(
     sevoflurane, 1.80%; desflurane 6.6%". Nickalls and Mapleson 2003, Table 1
     on printed page 171, read in the references corpus, prints the same three
     values. The third literal is how far the stored MAC lies from that value,
-    in percent, as each agent file's Mapleson note records it. `docs/MODEL.md`
+    in percent, as each agent file's Mapleson note records it. `docs/PARAMETERS.md`
     § "Delivery-limit and MAC parameters" turns that distance into the error
     a displayed MAC multiple carries. So if a stored MAC changes, retyping
     the first literal is not enough. The deviation then fails too, by more
@@ -1135,7 +1135,7 @@ def test_rejects_a_nonboolean_adopted_flag(adopted: object) -> None:
 
     The field is a provenance claim about a safety-critical value, and the
     two wrong readings are not equally harmful. Treating an unadopted primary
-    source as adopted is the failure that `docs/MODEL.md` § "Source hierarchy"
+    source as adopted is the failure that `docs/PARAMETERS.md` § "Source hierarchy"
     exists to prevent. It is also the failure that a loose truthiness test
     produces.
     """

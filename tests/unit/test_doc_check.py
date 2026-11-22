@@ -259,6 +259,8 @@ DATA = {
 #: The bound families as `tools/doc_check.py` defines them, for the test that
 #: reads this repository's own documents.
 REPOSITORY_BOUND_FAMILIES = doc_check.BOUND_FAMILIES
+#: The document that holds the provenance table, for the same test.
+REPOSITORY_PARAMETERS = doc_check.PARAMETERS
 
 
 @pytest.fixture(autouse=True)
@@ -278,6 +280,9 @@ def _bound_families_in_one_fixture_document(monkeypatch: pytest.MonkeyPatch) -> 
         for family in doc_check.BOUND_FAMILIES
     )
     monkeypatch.setattr(doc_check, "BOUND_FAMILIES", families)
+    # The provenance table moved to `docs/PARAMETERS.md` with `PL-FWR6`, and
+    # the fixture's one document holds it too.
+    monkeypatch.setattr(doc_check, "PARAMETERS", doc_check.MODEL)
 
 
 def _repo(
@@ -373,16 +378,20 @@ def _this_repository() -> doc_check.Report:
     Three tests read the real tree, and one analysis of it took 46 to 51 s in
     an eight-worker run on four cores, so analysing it for each was about 150
     test-seconds of CI's pytest step (`PL-H9KW`). Each reads the report and
-    none changes it. It reads the families as `tools/doc_check.py` defines
-    them, not as `_bound_families_in_one_fixture_document` re-points them.
+    none changes it. It reads the families and the provenance table's document
+    as `tools/doc_check.py` defines them, not as
+    `_bound_families_in_one_fixture_document` re-points them.
     """
 
     fixture_families = doc_check.BOUND_FAMILIES
+    fixture_parameters = doc_check.PARAMETERS
     doc_check.BOUND_FAMILIES = REPOSITORY_BOUND_FAMILIES
+    doc_check.PARAMETERS = REPOSITORY_PARAMETERS
     try:
         return doc_check.analyze(Path(doc_check.__file__).resolve().parent.parent)
     finally:
         doc_check.BOUND_FAMILIES = fixture_families
+        doc_check.PARAMETERS = fixture_parameters
 
 
 @pytest.mark.reads_item_store
@@ -587,7 +596,7 @@ def test_an_unadopted_primary_does_not_source_the_file(tmp_path: Path) -> None:
     Every agent file in this repository cites primary measurements it has
     explicitly not adopted. A rule reading the tier alone would call all four
     data files primary-sourced while every stored coefficient in them came
-    from Gas Man - `docs/MODEL.md` § "Source hierarchy", second rule.
+    from Gas Man - `docs/PARAMETERS.md` § "Source hierarchy", second rule.
     """
     root = _repo(tmp_path, data=_sourced(dict(SOURCE) | {"adopted": False, "authority_for": []}))
     assert any("no `sources` entry is both tier 'primary' and adopted" in e for e in _errors(root))

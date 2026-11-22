@@ -198,7 +198,7 @@ def _collected_by_pydantic() -> Iterator[None]:
 
 
 #: The closed set of values that a `sources` entry's `tier` may take. They are
-#: listed in the order that `docs/MODEL.md` § "Source hierarchy" defines them:
+#: listed in the order that `docs/PARAMETERS.md` § "Source hierarchy" defines them:
 #: a study that measured the quantity, a review that collected such
 #: measurements without making one, and another simulator's parameter set.
 #:
@@ -230,7 +230,7 @@ class SourceReference:
     """Provenance for one scientific or physiologic parameter set.
 
     Three fields answer three questions. `tier` classifies the *document*
-    against `docs/MODEL.md` § "Source hierarchy". `adopted` says whether the
+    against `docs/PARAMETERS.md` § "Source hierarchy". `adopted` says whether the
     citing file takes the document as an authority. `authority_for` names the
     stored values that the document is the authority for, as dotted key paths
     into the file that cites it, such as `"tissue_groups.fat.volume_l"`. That

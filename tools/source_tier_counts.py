@@ -3,7 +3,7 @@
 For each parameter file under `src/anesthesia_sim/data/`, the stored values are
 listed by the tier of the `sources` entry adopted as their authority - tier 1
 (primary), 2 (secondary) or 3 (reference implementation), numbered as
-`docs/MODEL.md` § "Source hierarchy" numbers them - with each entry's citation
+`docs/PARAMETERS.md` § "Source hierarchy" numbers them - with each entry's citation
 beside the values it covers, or under "no adopted source". Then the totals over
 all files, which are the counts that section states in prose, and how many
 `sources` entries are adopted, by tier, and how many are cited without being
@@ -40,7 +40,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import doc_check
 from check_support import repository_root
 
-#: The tiers in the order `docs/MODEL.md` § "Source hierarchy" numbers them.
+#: The tiers in the order `docs/PARAMETERS.md` § "Source hierarchy" numbers them.
 TIERS = tuple(enumerate(doc_check.SOURCE_TIERS, start=1))
 LABELS = {tier: f"tier {number} ({tier.replace('-', ' ')})" for number, tier in TIERS}
 

@@ -5,6 +5,7 @@ paths:
   - "/docs/MODEL.md"
   - "/docs/INTERFACE.md"
   - "/docs/VERIFICATION.md"
+  - "/docs/PARAMETERS.md"
   - "/docs/references/**"
 ---
 
@@ -24,7 +25,7 @@ the authority for a constant, on a recorded decision, and this project has done
 so for most of what it stores, so a reply ruling the practice out in general is
 wrong about the shipped set.
 
-`docs/MODEL.md` § "Source hierarchy: what may be cited as the authority for a
+`docs/PARAMETERS.md` § "Source hierarchy: what may be cited as the authority for a
 value" is the full statement — the three tiers, why republication does not
 promote a value between them, and what a `sources` note owes a reader. Read it
 before writing or reviewing a provenance note; this is only what a session
@@ -53,7 +54,7 @@ Both declare it in the file — `"tier": "reference-implementation"`,
 `"adopted": true` — so what a provenance note has to answer is not whether the
 adoption was allowed but whether the entry says what it owes: the tier, why no
 primary was adopted, and, where one was available, whose decision it was and
-when. Those three obligations are stated in `docs/MODEL.md` § "Source
+when. Those three obligations are stated in `docs/PARAMETERS.md` § "Source
 hierarchy: what may be cited as the authority for a value", with the rest of
 the rule.
 

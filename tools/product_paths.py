@@ -31,6 +31,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "subprojects" / 
 
 from docket.arming import INTERFACE_DOC as INTERFACE_DOC
 from docket.arming import MODEL_DOC as MODEL_DOC
+from docket.arming import PARAMETER_DOC as PARAMETER_DOC
 from docket.arming import PRODUCT_PACKAGE, SOURCE
 from docket.arming import SPECIFICATION_DOCS as SPECIFICATION_DOCS
 from docket.arming import TESTS as TESTS

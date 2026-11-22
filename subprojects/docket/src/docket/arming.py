@@ -703,11 +703,16 @@ INTERFACE_DOC = "docs/INTERFACE.md"
 #: split (`PL-P3GZ`, `PL-6PPZ`).
 VERIFICATION_DOC = "docs/VERIFICATION.md"
 
+#: Each stored value's source: the provenance table with each value's file and
+#: key, how each source was read, and why each value was chosen. It was part
+#: of `MODEL_DOC` until the same split (`PL-P3GZ`, `PL-FWR6`).
+PARAMETER_DOC = "docs/PARAMETERS.md"
+
 #: The documents that together specify the simulator. The safety-critical
 #: standard in `CLAUDE.md` applies to each. The gate's path lists below and
 #: every tool that checks the specification read this tuple, so a document
 #: that joins the specification is added here and nowhere else (`PL-CTXZ`).
-SPECIFICATION_DOCS = (MODEL_DOC, INTERFACE_DOC, VERIFICATION_DOC)
+SPECIFICATION_DOCS = (MODEL_DOC, INTERFACE_DOC, VERIFICATION_DOC, PARAMETER_DOC)
 
 #: The specification documents as a sentence names them, such as "docs/MODEL.md,
 #: docs/INTERFACE.md or docs/VERIFICATION.md".
@@ -808,6 +813,7 @@ SECOND_PASS_PATHS = (
     "docs/MODEL.md",
     "docs/INTERFACE.md",
     "docs/VERIFICATION.md",
+    "docs/PARAMETERS.md",
 )
 
 

@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: docs, science
 feature: model-claims-held-by-tests
-touches: docs/MODEL.md, docs/INTERFACE.md, tools/doc_check.py, tests, docs/items
+touches: docs/MODEL.md, docs/INTERFACE.md, docs/PARAMETERS.md, tools/doc_check.py, tests, docs/items
 blocked-by: PL-19W8
 deferred-from: v0.7.0 - not live: checked 2026-11-07 (PL-8C8W): the paragraphs it would hold are docs/MODEL.md prose that no displayed string carries, so no learner can see a wrong value now
 added: 2026-11-02
@@ -52,4 +52,4 @@ found wrong or missing a condition.
 
 **Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present in part when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. It stays deferred to the next gate: its `deferred-from:` records the check that no learner can see a wrong value now (`PL-8C8W`). 15 of the 16 unheld paragraphs were in `docs/MODEL.md` at `817a4d88`. The 16th, "What is not bounded this way", gained its figure with `879623a3` (2026-10-26).
 
-**Checked 2026-11-22** against `d4e8200`: still applies, and more is unheld than the brief counts. A recount on 2026-11-22 with `_numeric_paragraph_members` finds: "Supported input ranges" 13 of 25, "Delivery-limit and MAC parameters" 6 of 7, "Source hierarchy: what may be cited as the authority for a value" 28 of 39, and "v0.2.0: isoflurane and desflurane" 4 of 5. None is in `BOUND_FAMILIES`. Two section homes have changed. "Supported input ranges" is now in `docs/INTERFACE.md` (moved by #2109, `PL-CTXZ`). The other three sit under `docs/MODEL.md` § "Parameter provenance", which `PL-FWR6` will move to a new parameter document. So build this pass after `PL-FWR6`, and point its families at that document.
+**Checked 2026-11-22** against `d4e8200`: still applies, and more is unheld than the brief counts. A recount on 2026-11-22 with `_numeric_paragraph_members` finds: "Supported input ranges" 13 of 25, "Delivery-limit and MAC parameters" 6 of 7, "Source hierarchy: what may be cited as the authority for a value" 28 of 39, and "v0.2.0: isoflurane and desflurane" 4 of 5. None is in `BOUND_FAMILIES`. Two section homes have changed. "Supported input ranges" is now in `docs/INTERFACE.md` (moved by #2109, `PL-CTXZ`). The other three sit under § "Parameter provenance", which `PL-FWR6` moved to `docs/PARAMETERS.md`. So point this pass's families at that document.
