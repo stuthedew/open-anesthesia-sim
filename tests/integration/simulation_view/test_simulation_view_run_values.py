@@ -15,23 +15,32 @@ import re
 from dataclasses import replace
 
 import pytest
+from PySide6.QtCore import Qt
+from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QAbstractButton, QApplication, QLabel, QWidget
 
+from anesthesia_sim.app import run_presentation as run_presentation_module
 from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app import views as views_module
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import CONTROL_TIMELINE_HEADING, run_label
+from anesthesia_sim.app.formatting import format_elapsed
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.view_registry import REGISTERED
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
+from anesthesia_sim.layout.run_identity import RunId, SessionToken
 from anesthesia_sim.layout.tree import AreaId
+from anesthesia_sim.layout.workspace import WorkspaceName
 from tests.integration.simulation_view.simulation_view_support import (
+    _CLOCK_INDEX,
+    _EVERY_VIEW,
     _advance_to,
     _case_view,
     _concentration,
     _failing_assembly,
     _fork_panel,
+    _no_setting,
     _select_agent,
     _settle,
     _shown_view,
@@ -205,6 +214,230 @@ def test_a_run_s_panel_names_the_run_from_the_presentation_it_shows(
 
     assert trunk._run_name_text.isHidden(), "the panel kept a name its presentation did not hold"
     assert trunk._control_timeline_heading_text.text() == CONTROL_TIMELINE_HEADING
+
+
+# ------------------------- blind review of the third pull request (PL-RF2S)
+
+#: The part of the banner that says the charts are withheld while the readouts
+#: are kept, written out by hand from the approved wording.
+_CHARTS_WITHHELD_BANNER = (
+    "No frame of the stopped run could be drawn: the readouts show the last frame "
+    "drawn before it stopped, the charts are withheld, and the run itself stands at "
+    "its last completed step."
+)
+
+
+def _clock_text(view: SimulationView, run: int) -> str:
+    """The elapsed time that one run's own readout row shows."""
+
+    return view.runs[run]._readout_row.panels[_CLOCK_INDEX].value_label.text()
+
+
+def test_a_panel_that_refuses_a_drawn_frame_leaves_each_chart_on_that_frame(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A run's panel that refuses a frame after the Views drew it leaves the charts on that frame.
+
+    The run's own panel writes the readouts and the clock before it raises
+    the refusal of its dials. So after the halt the readouts show the refused
+    frame's instant. The charts kept frames were recorded only after every
+    panel had been written, so the halt handed the charts the frame before,
+    and the plots stepped back by one render tick behind the clock beside
+    them (blind review of `PL-RF2S`'s third pull request, pass 1 F2 and
+    pass 2 F2). The expected instant is the one the test advanced the run
+    to.
+    """
+
+    controller = _run_at(_FORK_S)
+    view = _shown_view(application, controller)
+    assert _concentration(view).chart.frame.runs[0].elapsed_s == _FORK_S  # type: ignore[union-attr]
+    controller.start()
+    _advance_to(controller, _COMPARED_AT_S)
+    controller.pause()
+    monkeypatch.setattr(run_presentation_module, "setting_readouts", _no_setting)
+
+    with pytest.raises(ValueError, match="this control can offer no setting"):
+        view.present(False)
+
+    _settle(application)
+
+    assert controller.has_failed is True
+    assert _clock_text(view, 0) == format_elapsed(_COMPARED_AT_S)
+
+    for chart in (_concentration(view).chart, _wash_in(view).chart):
+        frame = chart.frame
+        assert frame is not None
+        assert frame.runs[0].elapsed_s == _COMPARED_AT_S, (
+            "the chart stepped back to the frame before the one the readouts show"
+        )
+
+
+def test_every_run_s_panel_shows_a_frame_that_one_run_s_panel_refused(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """When the first run's panel refuses a frame, the second run's panel still shows that frame.
+
+    The charts keep the frame that the Views drew. So each run's own panel
+    must show it too, or the second run's readouts stand one render tick
+    behind its own traces. The refusal comes from the first run's dials, and
+    it used to stop the second run's panel from being written at all. The
+    expected instant is the one the test advanced both runs to.
+    """
+
+    view = _case_view(application, BranchedCase(_run_at(_FORK_S)))
+    _fork_panel(view).here_button.click()
+    _settle(application)
+    assert len(view.runs) == 2
+
+    for run in view.runs:
+        run.controller.start()
+        _advance_to(run.controller, _COMPARED_AT_S)
+        run.controller.pause()
+
+    monkeypatch.setattr(run_presentation_module, "setting_readouts", _no_setting)
+
+    with pytest.raises(ValueError, match="this control can offer no setting"):
+        view.present(False)
+
+    _settle(application)
+
+    assert _clock_text(view, 1) == format_elapsed(_COMPARED_AT_S), (
+        "the second run's panel was not written from the frame that the charts show"
+    )
+    frame = _concentration(view).chart.frame
+    assert frame is not None
+    assert [run.elapsed_s for run in frame.runs] == [_COMPARED_AT_S, _COMPARED_AT_S]
+
+
+def test_a_panel_that_refuses_the_first_frame_after_an_agent_change_keeps_that_frame(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A frame drawn for a new agent and then refused by the run's panel stays on each chart.
+
+    The Views drew the new agent's first frame, and the run's panel wrote its
+    readouts from it before it refused the dials. The kept frames were still
+    the old agent's, so the halt withheld every chart: the plot emptied and
+    said that no frame could be drawn, although one had been drawn. The chart
+    then owed a frame, so every render tick drew it again, was refused by the
+    panel again and halted every run again (pass 2 F1).
+    """
+
+    view = _shown_view(application, SimulationController())
+    monkeypatch.setattr(run_presentation_module, "setting_readouts", _no_setting)
+
+    _select_agent(view.runs[0], "desflurane")
+    _settle(application)
+
+    assert view.runs[0].controller.has_failed is True
+    frame = _concentration(view).chart.frame
+    assert frame is not None, "the chart withheld a frame that it had drawn"
+    assert frame.runs[0].agent_id == "desflurane"
+    assert _concentration(view).withheld_text.isHidden()
+
+    halts: list[BaseException] = []
+    monkeypatch.setattr(view, "_halt_every_run", halts.append)
+
+    view.render_tick()
+    view.render_tick()
+
+    assert halts == [], "each render tick drew the refused frame again and halted every run"
+
+
+def test_a_frame_from_before_a_workspace_pinned_to_a_closed_run_is_not_kept(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A chart shown after a pinned Workspace never draws a frame from before the pin.
+
+    While the current Workspace is pinned to a run that is not open, no View
+    is drawn, but the runs go on. The frames drawn before the pin used to
+    stay recorded as kept. So when frames then failed and the reader went
+    back to a Workspace that shows the run, its charts drew a frame from
+    before the pin, minutes behind the readouts (pass 1 F3).
+    """
+
+    every_view = _EVERY_VIEW.current
+    earlier = RunId(SessionToken("f" * 32), 1)
+    workspaces = _EVERY_VIEW.add(
+        every_view.renamed(WorkspaceName("Pinned")).pinned_to(earlier)
+    ).activate(0)
+    controller = _run_at(_FORK_S)
+    view = _shown_view(application, controller, workspaces=workspaces)
+    assert _concentration(view).chart.frame.runs[0].elapsed_s == _FORK_S  # type: ignore[union-attr]
+
+    QTest.mouseClick(view.tab_strip.tab_at(1), Qt.MouseButton.LeftButton)
+    _settle(application)
+    controller.start()
+    _advance_to(controller, _COMPARED_AT_S)
+    controller.pause()
+    view.present(False)
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+    view.present(False)
+    assert controller.has_failed is True
+
+    QTest.mouseClick(view.tab_strip.tab_at(0), Qt.MouseButton.LeftButton)
+    _settle(application)
+
+    for chart in (_concentration(view).chart, _wash_in(view).chart):
+        assert chart.frame is None, "the chart drew a frame from before the pinned Workspace"
+
+    assert not _concentration(view).withheld_text.isHidden()
+
+
+def test_a_branch_taken_while_frames_fail_says_the_charts_are_withheld(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The trunk's banner says the charts are withheld when a new branch withholds them.
+
+    The last frame drew the trunk alone, so it is withheld once the branch is
+    open. The trunk has not started over, and its banner said that "the
+    chart and the readouts show the last frame drawn", above empty plots
+    (pass 1 F1).
+    """
+
+    view = _case_view(application, BranchedCase(_run_at(_COMPARED_AT_S)))
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+
+    _fork_panel(view).here_button.click()
+    _settle(application)
+
+    assert len(view.runs) == 2
+    assert view.runs[0].controller.has_failed is True
+    assert _concentration(view).chart.frame is None
+    banner = view.runs[0]._notice_text.notice()
+    assert banner is not None
+    assert "the chart and the readouts show the last frame" not in banner, (
+        "the banner says the chart shows the last frame, but the charts are withheld"
+    )
+    assert _CHARTS_WITHHELD_BANNER in banner
+
+
+def test_a_withheld_chart_shows_no_axis_label_of_the_discarded_frame(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """After an agent change that no frame draws, no axis is labelled from the old agent's frame.
+
+    The left axis is labelled in percent at multiples of the agent's 1 MAC.
+    A withheld chart kept sevoflurane's percent labels and the discarded
+    run's window in the time axis's title, under a panel that named
+    desflurane (pass 2 F3).
+    """
+
+    view = _shown_view(application, SimulationController())
+    chart = _concentration(view).chart
+    assert chart.axis_ticks("left") != ()
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+
+    _select_agent(view.runs[0], "desflurane")
+    _settle(application)
+
+    assert chart.frame is None
+    assert chart.axis_ticks("left") == (), "the percent axis kept the old agent's labels"
+    assert chart.axis_ticks("right") == ()
+    assert chart.axis_ticks("bottom") == ()
+    assert chart.time_axis_title == "simulated time"
+    wash_in = _wash_in(view).chart
+    assert wash_in.axis_ticks("bottom") == ()
+    assert wash_in.time_axis_title == "simulated time"
 
 
 # ------------------------------------------------- PL-G2WC: values under their run

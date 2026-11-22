@@ -167,6 +167,7 @@ from anesthesia_sim.app.qt_widgets import (
 from anesthesia_sim.app.run_presentation import (
     KeptFrames,
     kept_frames,
+    kept_frames_match,
     shown_drawn,
     shown_without_a_frame,
 )
@@ -1001,6 +1002,7 @@ class SimulationView(QWidget):
             run_id=run_id,
             branch_control=self._branch_control_shown,
             name=self._run_name,
+            charts_withheld=self._charts_withheld,
         )
 
         if not self._runs:
@@ -1800,6 +1802,18 @@ class SimulationView(QWidget):
         it. So where the frame fails, the legend goes on naming the curves
         still on the plot (`PL-G3K7`).
 
+        The frames are kept as soon as every View has drawn them, before any
+        run's own panel is written. A panel that refuses the frame, because
+        its dials or its 1 MAC line cannot be built, has already written its
+        readouts from it. So the halt that follows keeps the frame that the
+        charts and the readouts both show. Every run's panel is written
+        before the first refusal is raised, so no run's readouts are left on
+        an earlier frame than its traces (blind review of `PL-RF2S`). On a
+        tick that draws no View, because the Workspace is pinned to a run
+        that is not open, no frame is kept. A frame kept from before the pin
+        would otherwise be handed to a chart shown later, beside readouts
+        that the runs have since moved past.
+
         **A pinned Workspace draws its run alone** (`PL-WV9K` Q6). Its Views
         are handed frames assembled from the pinned run only, and the run's
         name is on every Area. Where the pinned run is not open, no View is
@@ -1810,8 +1824,9 @@ class SimulationView(QWidget):
         Raises:
             ValueError: If the runs have come to use different agents since
                 construction (`assemble_chart_frame`).
-            Exception: Whatever building a run's presentation, drawing a
-                View or writing a run's panel raises.
+            Exception: Whatever building a run's presentation or drawing a
+                View raises. Also the first exception that writing a run's
+                panel raises, once every run's panel has been written.
         """
 
         # These are stored before anything can raise. A frame that fails over
@@ -1847,9 +1862,10 @@ class SimulationView(QWidget):
             for time_base, width_px in requests.items()
         }
         drawn = self._runs_the_views_show()
-        kept: KeptFrames | None = None
 
-        if drawn is not None:
+        if drawn is None:
+            self._kept_frames = None
+        else:
             view_frames = frames
             shown = tuple(presentations[i] for i in drawn)
 
@@ -1874,22 +1890,20 @@ class SimulationView(QWidget):
                 PreferencesInForce(self._preferences, self._preferences_notice),
                 self,
             )
-            kept = kept_frames(view_frames, shown, selection)
+            self._kept_frames = kept_frames(view_frames, shown, selection)
 
         self._frame_failed = False
         self.compartment_selection_changed.emit(selection)
+        refusal: Exception | None = None
 
         for run, presentation in zip(self._runs, presentations, strict=True):
-            run.show_presentation(presentation)
+            try:
+                run.show_presentation(presentation)
+            except Exception as raised:
+                refusal = refusal or raised
 
-        # The frames are kept once every run's own panel shows the same
-        # snapshot. A tick that draws no frame then hands each chart the frame
-        # its plot shows, or withholds it once a run has started over
-        # (`run_presentation.shown_without_a_frame`). Where a run's panel
-        # refused this frame, the charts are handed the earlier frame, which
-        # matches the readouts that the panel still shows.
-        if kept is not None:
-            self._kept_frames = kept
+        if refusal is not None:
+            raise refusal
 
         self._refresh_bookmarks(
             tuple(snapshot.bookmarks for snapshot in snapshots),
@@ -1904,6 +1918,24 @@ class SimulationView(QWidget):
         # The Views and the runs' panels have now built every widget they show.
         self._order_focus_if_owed()
         self.presented_frames += 1
+
+    def _charts_withheld(self) -> bool:
+        """Whether the charts withhold their frame on a tick that draws none.
+
+        Each run reads this when it builds a presentation, so that a halt's
+        banner says that the charts are withheld exactly when they are
+        (`RunPanelState.charts_withheld`). Where the Workspace is pinned to a
+        run that is not open, no chart shows a frame, so this returns True.
+        """
+
+        shown = self._workspaces.current.shown_runs(self._open_runs())
+
+        if isinstance(shown, PinnedRunAbsent):
+            return True
+
+        cases = tuple((run.run_id, run.case) for run in self._runs if run.run_id in shown)
+
+        return not kept_frames_match(self._kept_frames, cases)
 
     def _runs_the_views_show(self) -> tuple[int, ...] | None:
         """Name the pinned run on every Area, and say which runs the Views show.
@@ -2508,11 +2540,13 @@ class SimulationView(QWidget):
         (`AreaLayout.refresh`).
 
         The frame is then tried again. When it fails again, some Views may already have
-        drawn it: the Views placed before a View that raised, or every View when a run's
-        own panel then refused the frame. Those Views would show that frame beside a
-        run's own panel that shows the one before it. So whenever the second attempt
-        fails, the Views are handed the runs once more, and every panel of a run shows
-        the frame that the run's own panel shows.
+        drawn it: the Views placed before a View that raised. Those Views would show that
+        frame beside a run's own panel that shows the one before it. So whenever the
+        second attempt fails, the Views are handed the runs once more, and every panel of
+        a run shows the frame that the run's own panel shows. When every View drew the
+        frame and a run's own panel then refused it, the panels have written their
+        readouts from that frame and the frame is kept, so each chart keeps it
+        (`_refresh_view`).
 
         One run's `show_halt` can raise after it has shown the halt, when its dials
         cannot be built. That exception does not stop the halt path. Every other run

@@ -35,7 +35,9 @@ only while every run is the one it was drawn from: the same runs, in the same
 order, none of them started over since. `KeptFrames` records which runs and
 cases the last drawn frames belong to, and `shown_without_a_frame` compares
 that with the runs as they stand now. Otherwise the frame is withheld, and the
-chart shows an empty plot with the reason.
+chart shows an empty plot with the reason. A run's banner on a halt says
+whether the charts are withheld (`RunPanelState.charts_withheld`), so it
+never says that a chart shows the last frame while the chart is empty.
 """
 
 from collections.abc import Mapping, Sequence
@@ -178,6 +180,10 @@ class RunPanelState:
             proposes, or None while no such question is open.
         reset_question: The open Reset question, restated from the runs as
             they stand now, or None while no Reset question is open.
+        charts_withheld: Whether the charts withhold their frame on a tick
+            that draws none, because the runs they show are not the runs
+            their last frame was drawn from (`kept_frames_match`). A halt's
+            banner then says that the charts are withheld.
     """
 
     run_id: RunId
@@ -191,6 +197,7 @@ class RunPanelState:
     refused_reset_notice: str | None
     pending_agent_name: str | None
     reset_question: NewCaseQuestion | None
+    charts_withheld: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -395,6 +402,7 @@ def halted_run(
             refused_reset=state.refused_reset_notice,
             branch_offered=state.branch_offered,
             started_over=started_over,
+            charts_withheld=state.charts_withheld,
         ),
         # Every halt shown from this value has failed the run or stopped it at
         # the supported run length, and both of those status words outrank a
@@ -556,6 +564,24 @@ def kept_frames(
     return KeptFrames(run_cases(runs), selection, MappingProxyType(dict(frames)))
 
 
+def kept_frames_match(kept: KeptFrames | None, cases: tuple[tuple[RunId, int], ...]) -> bool:
+    """Whether the kept frames were drawn from these runs, in this order, with none started over.
+
+    `shown_without_a_frame` keeps a chart's last frame only when this
+    returns True, and a halt's banner says that the charts are withheld
+    when it returns False (`RunPanelState.charts_withheld`). So the banner
+    and the charts are decided by one rule.
+
+    Args:
+        kept: The frames of the last tick that drew, or None when no frame
+            has been drawn for the runs the Views show.
+        cases: Each run the charts show now, in drawing order, as its
+            `run_id` and how often it has started over (`run_cases`).
+    """
+
+    return kept is not None and kept.cases == cases
+
+
 def shown_drawn(frame: ChartFrame, selection: CompartmentSelection) -> ShownFrame:
     """Return a frame drawn this tick, from `selection`, as a chart shows it."""
 
@@ -579,7 +605,8 @@ def shown_without_a_frame(
     in the legend. So in both cases no part of it may stay on the plot.
 
     Args:
-        kept: The frames of the last tick that drew, or None before the first.
+        kept: The frames of the last tick that drew, or None when no frame
+            has been drawn for the runs the Views show.
         time_base: The window the chart asks for.
         runs: The presentations of the runs the chart shows now, in drawing
             order.
@@ -589,7 +616,7 @@ def shown_without_a_frame(
         The kept frame for `time_base`, or a withheld one.
     """
 
-    if kept is None or kept.cases != run_cases(runs):
+    if kept is None or not kept_frames_match(kept, run_cases(runs)):
         return ShownFrame(ValuesStanding.WITHHELD, None, selection)
 
     return ShownFrame(ValuesStanding.KEPT, kept.frames.get(time_base), kept.selection)

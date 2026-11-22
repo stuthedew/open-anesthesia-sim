@@ -243,7 +243,8 @@ REJECTED_ACCOUNTING_NOTICE_TEMPLATE: Final = (
 # misreading that the hazard table in `docs/VERIFICATION.md` names. The first frame that
 # draws replaces this banner with `FAILURE_NOTICE_TEMPLATE`. Which
 # of the two banners is shown is therefore decided by whether a frame drew, not
-# guessed from the reason (`PL-7DJK`).
+# guessed from the reason (`PL-7DJK`). This banner is given only while each
+# chart keeps its last frame (`CHARTS_WITHHELD_UNDRAWN_FAILURE_NOTICE_TEMPLATE`).
 UNDRAWN_FAILURE_NOTICE_TEMPLATE: Final = (
     "Simulation stopped — {failure_reason}. No frame of the stopped run could be drawn: "
     "the chart and the readouts show the last frame drawn before it stopped, and the "
@@ -261,6 +262,19 @@ STARTED_OVER_UNDRAWN_FAILURE_NOTICE_TEMPLATE: Final = (
     "Simulation stopped — {failure_reason}. No frame has been drawn since the run "
     "started over: the readouts and the charts are withheld, and the run itself stands "
     "at its last completed step. {exit}"
+)
+# The failure banner for a halt when no frame has been drawn for the runs the
+# charts show now, although the run itself has not started over. A branch was
+# taken, the reader chose a Workspace that shows other runs, or no frame has
+# been drawn at all. The readouts are still the run's last frame, but
+# each chart withholds its frame, because that frame drew another set of runs
+# (`run_presentation.kept_frames_match`, blind review of `PL-RF2S`). So the
+# banner says that the charts are withheld rather than that they show the last
+# frame. The wording is a placeholder.
+CHARTS_WITHHELD_UNDRAWN_FAILURE_NOTICE_TEMPLATE: Final = (
+    "Simulation stopped — {failure_reason}. No frame of the stopped run could be drawn: "
+    "the readouts show the last frame drawn before it stopped, the charts are withheld, "
+    "and the run itself stands at its last completed step. {exit}"
 )
 SUPPORTED_LIMIT_NOTICE_TEMPLATE: Final = (
     "Simulation stopped — this run reached the supported run length of {run_length}. "
@@ -2006,6 +2020,7 @@ def halt_notice(
     refused_reset: str | None = None,
     branch_offered: bool = False,
     started_over: bool = False,
+    charts_withheld: bool = False,
 ) -> str | None:
     """Return the banner for a halt with no frame drawn yet: a stopped run, or nothing.
 
@@ -2040,17 +2055,24 @@ def halt_notice(
             readouts are withheld rather than showing the last frame. A run
             that has started over has not reached the supported run length,
             so that wording does not change.
+        charts_withheld: Whether each chart withholds its frame, because the
+            runs it shows are not the runs its last frame was drawn from. A
+            failure of a run that has not started over then uses
+            `CHARTS_WITHHELD_UNDRAWN_FAILURE_NOTICE_TEMPLATE`, so that the
+            banner does not say that the charts show the last frame.
 
     Returns:
         The banner text, or None when the run is not halted.
     """
 
     if status.failure_reason is not None:
-        template = (
-            STARTED_OVER_UNDRAWN_FAILURE_NOTICE_TEMPLATE
-            if started_over
-            else UNDRAWN_FAILURE_NOTICE_TEMPLATE
-        )
+        if started_over:
+            template = STARTED_OVER_UNDRAWN_FAILURE_NOTICE_TEMPLATE
+        elif charts_withheld:
+            template = CHARTS_WITHHELD_UNDRAWN_FAILURE_NOTICE_TEMPLATE
+        else:
+            template = UNDRAWN_FAILURE_NOTICE_TEMPLATE
+
         return template.format(
             failure_reason=status.failure_reason,
             exit=_stopped_run_exit(

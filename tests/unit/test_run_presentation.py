@@ -50,6 +50,7 @@ from anesthesia_sim.app.run_presentation import (
     drawn_values,
     halted_run,
     kept_frames,
+    kept_frames_match,
     shown_drawn,
     shown_without_a_frame,
     withheld_values,
@@ -65,7 +66,7 @@ from anesthesia_sim.core.exceptions import (
 from anesthesia_sim.core.parameters import parse_breathing_circuit_parameters
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CaseInstant
-from anesthesia_sim.layout.run_identity import RunIdentities
+from anesthesia_sim.layout.run_identity import RunId, RunIdentities
 
 _IDENTITIES = RunIdentities()
 _RUN_ID = _IDENTITIES.mint()
@@ -93,6 +94,7 @@ def _state(**changes: object) -> RunPanelState:
         refused_reset_notice=None,
         pending_agent_name=None,
         reset_question=None,
+        charts_withheld=False,
     )
 
     return replace(state, **changes)  # type: ignore[arg-type]
@@ -487,6 +489,67 @@ def test_a_halt_s_banner_says_the_run_started_over_only_when_it_did() -> None:
     assert same_run.notice != started_over.notice
     assert "started over" in started_over.notice
     assert "started over" not in same_run.notice
+
+
+def test_a_halt_s_banner_says_the_charts_are_withheld_only_when_they_are() -> None:
+    """A run that has not started over names the withheld charts, and keeps its readouts.
+
+    The expected sentences are written out by hand. A run that has started
+    over says that the readouts and the charts are withheld whether or not
+    the flag is set, because its readouts describe the discarded run (blind
+    review of `PL-RF2S`'s third pull request, pass 1 F1).
+    """
+
+    controller = _run_at(90)
+    state = _state()
+    frame = _drawn(controller, state)
+    controller.fail("the frame could not be drawn")
+    kept = KeptValues(state.case, frame.values)
+
+    charts_kept = _halted(controller, state, kept)
+    charts_withheld = _halted(controller, replace(state, charts_withheld=True), kept)
+    started_over = _halted(
+        controller, replace(state, case=state.case + 1, charts_withheld=True), kept
+    )
+
+    assert charts_kept.notice is not None
+    assert charts_withheld.notice is not None
+    assert started_over.notice is not None
+    assert "the chart and the readouts show the last frame drawn" in charts_kept.notice
+    assert (
+        "the readouts show the last frame drawn before it stopped, the charts are withheld"
+        in charts_withheld.notice
+    )
+    assert "the readouts and the charts are withheld" in started_over.notice
+    assert charts_withheld.standing is ValuesStanding.KEPT
+    assert charts_withheld.values == charts_kept.values
+
+
+@pytest.mark.parametrize(
+    ("cases", "match"),
+    [
+        pytest.param(((_RUN_ID, 0), (_SECOND_RUN_ID, 0)), True, id="the same runs"),
+        pytest.param(((_RUN_ID, 1), (_SECOND_RUN_ID, 0)), False, id="a run started over"),
+        pytest.param(((_SECOND_RUN_ID, 0), (_RUN_ID, 0)), False, id="another order"),
+        pytest.param(((_RUN_ID, 0),), False, id="a run removed"),
+        pytest.param(
+            ((_RUN_ID, 0), (_SECOND_RUN_ID, 0), (_THIRD_RUN_ID, 0)), False, id="a run added"
+        ),
+    ],
+)
+def test_kept_frames_match_only_the_runs_they_were_drawn_from(
+    cases: tuple[tuple[RunId, int], ...], match: bool
+) -> None:
+    """The one rule that keeps a chart's frame and words the banner compares runs and cases."""
+
+    trunk = _run_at(90)
+    branch = _run_at(60)
+    selection = CompartmentSelection(COMPARTMENT_QUANTITIES[:2], 2)
+    drawn = (_drawn(trunk, _state()), _drawn(branch, _state(run_id=_SECOND_RUN_ID)))
+    kept = kept_frames({None: _frame_of(trunk, "Run 1")}, drawn, selection)
+
+    assert kept_frames_match(kept, cases) is match
+    assert kept_frames_match(None, cases) is False
 
 
 def test_a_halt_restates_the_playback_rate_the_reader_chose_on_the_halted_run() -> None:

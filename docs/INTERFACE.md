@@ -2429,10 +2429,17 @@ new run's heading and 1 MAC line. The clock reads "—", and the accounting pane
 shows no verdict or amounts. Each chart shows an empty plot, with no trace, no
 1 MAC line and no MAC-awake band, and a line above the plot says that nothing
 is plotted because no frame could be drawn for the runs as they stand now. The
-legend's 1 MAC and MAC-awake entries read "—". The same happens when a branch
-was dropped and no frame has been drawn since. The banner says that the
-readouts and the charts are withheld. After any other halt, each chart keeps
-the last frame it drew, which belongs to the same run as the readouts.
+legend's 1 MAC and MAC-awake entries read "—", and the axes lose their labels.
+The banner says that the readouts and the charts are withheld.
+
+**If the runs the charts show change, and the runs stop before the screen is
+redrawn**, the charts withhold their frame in the same way, because it was
+drawn for other runs. A branch taken while frames fail does this, and so does
+a Workspace that shows other runs, or a halt before any frame was drawn. A run
+that has not started over keeps its readouts, and its banner says that the
+readouts show the last frame drawn and that the charts are withheld. After any
+other halt, each chart keeps the last frame it drew, which is the frame that
+the readouts show.
 
 **After a step fails its accounting check**, the accounting panel shows
 "Validation failed" with that step's totals. If the screen is not redrawn after

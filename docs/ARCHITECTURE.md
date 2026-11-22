@@ -951,7 +951,13 @@ the same runs in the same order and none started over since
 (`shown_without_a_frame`). A chart that already shows the kept frame draws
 nothing, so a dragged dial still leaves the charts to the render tick
 (`PL-018`, `PL-R2YM`). Otherwise the frame is withheld: the chart shows an
-empty plot with no trace, no 1 MAC line and no MAC-awake band, and says why.
+empty plot with no trace, no 1 MAC line, no MAC-awake band and no axis labels,
+and says why. A run's banner on a halt says whether the charts are withheld,
+from the same rule (`kept_frames_match`). The frames are kept as soon as every
+View has drawn them, before any run's own panel is written, because a panel
+that refuses the frame has already written its readouts from it. So the charts
+and the readouts keep the same frame. A tick in a Workspace pinned to a run
+that is not open keeps no frame.
 The tick carries no run's snapshot. A value every displayed run shares, such
 as the MAC-awake band's published fraction, is read from the frame, which
 refuses runs on two agents. A tick with no frame still carries

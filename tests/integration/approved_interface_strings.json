@@ -796,6 +796,7 @@
   "Start a new desflurane case?",
   "Stopped — simulation error",
   "The current sevoflurane case — ##m of simulated time, # recorded control change — will be discarded along with its chart history. This cannot be undone.",
+  "simulated time",
   "—",
   "— ×MAC",
   "—%",
@@ -808,6 +809,7 @@
   "No frame has been drawn since the run started over.",
   "Simulation stopped — RuntimeError: this frame could not be assembled. No frame has been drawn since the run started over: the readouts and the charts are withheld, and the run itself stands at its last completed step. Reset to start a new run.",
   "Stopped — simulation error",
+  "simulated time",
   "—",
   "— ×MAC",
   "—%",
@@ -817,9 +819,7 @@
  "dial write refused after the cards": [
   "Delivered —% (— ×MAC)",
   "Simulation stopped — ValueError: this control can offer no setting. The values shown are the last completed step. Reset to start a new run.",
-  "Stopped — simulation error",
-  "—, reference adult (alveolar, wide dash)",
-  "—; population, read against vessel-rich trace"
+  "Stopped — simulation error"
  ],
  "dial moved on a failed run": [
   "Simulation stopped — SimulationNumericalError: the simulation step of # s could not be completed and was rolled back, leaving the state the last completed step produced: fraction of -#.# is outside # to #, the range a fraction of one atmosphere takes (docs/MODEL.md, \"Concentrations\"). The values shown are the last completed step. Setting refused — the cardiac output setting cannot be changed on a stopped run, because no step will run under a new one. Reset to start a new run, which keeps every setting.",
@@ -848,6 +848,7 @@
   "No frame has been drawn since the run started over.",
   "Simulation stopped — RuntimeError: this frame could not be assembled. No frame has been drawn since the run started over: the readouts and the charts are withheld, and the run itself stands at its last completed step. Reset to start a new run.",
   "Stopped — simulation error",
+  "simulated time",
   "—",
   "— ×MAC",
   "—%",
@@ -876,5 +877,22 @@
  "halt after frames drawn later than the first": [
   "Simulation stopped — RuntimeError: this frame could not be assembled. No frame of the stopped run could be drawn: the chart and the readouts show the last frame drawn before it stopped, and the run itself stands at its last completed step. Reset to start a new run.",
   "Stopped — simulation error"
+ ],
+ "halt after a branch is taken, no frame drawn": [
+  "Agent accounting validation — Run #",
+  "Alveolar (long dash), Run #",
+  "Circuit (solid), Run #",
+  "Control changes — Run #",
+  "F<sub>A</sub>/F<sub>I</sub> (solid), Run #",
+  "Locked to the case",
+  "Locked while comparing",
+  "No unaccounted agent detected.",
+  "One comparison at a time. Run #'s Reset ends it and starts the case over; Run #'s Reset only returns Run # to where it branched.",
+  "Run #",
+  "Run #: Simulation stopped — RuntimeError: this frame could not be assembled. No frame of the stopped run could be drawn: the readouts show the last frame drawn before it stopped, the charts are withheld, and the run itself stands at its last completed step. Reset to start a new run.",
+  "Stopped — simulation error",
+  "simulated time",
+  "—, reference adult (alveolar, wide dash)",
+  "—; population, read against vessel-rich trace"
  ]
 }

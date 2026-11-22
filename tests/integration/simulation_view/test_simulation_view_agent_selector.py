@@ -236,6 +236,7 @@ def test_building_a_run_view_opens_no_window_of_its_own(application: QApplicatio
         run_id=FIRST_RUN,
         branch_control=False,
         name=lambda _run_id: None,
+        charts_withheld=lambda: False,
     )
     application.processEvents()
 

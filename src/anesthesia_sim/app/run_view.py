@@ -321,6 +321,7 @@ class RunView(QWidget):
         run_id: RunId,
         branch_control: Callable[[], bool],
         name: Callable[[RunId], str | None],
+        charts_withheld: Callable[[], bool],
     ) -> None:
         """Build one run's controls and readouts from its first snapshot.
 
@@ -340,6 +341,10 @@ class RunView(QWidget):
                 in the presentation with the run's values (`PL-RF2S`). A run
                 is named exactly when another run is displayed, so the name
                 also says whether runs are being compared.
+            charts_withheld: Returns whether the dashboard's charts withhold
+                their frame on a tick that draws none. A halt's banner then
+                says so, rather than saying that the charts show the last
+                frame (`run_presentation.RunPanelState.charts_withheld`).
 
         Raises:
             TypeError: If `run_id` is not a `RunId`.
@@ -352,6 +357,7 @@ class RunView(QWidget):
         self.controller = controller
         self.run_id = run_id
         self._branch_control = branch_control
+        self._charts_withheld = charts_withheld
         snapshot = controller.snapshot()
 
         # The reason the last setting change did not take effect, or None if
@@ -763,6 +769,7 @@ class RunView(QWidget):
                 if self._reset_dialog is None or self._reset_question is None
                 else self._reset_question()
             ),
+            charts_withheld=self._charts_withheld(),
         )
 
         if drawn is None:
@@ -771,6 +778,16 @@ class RunView(QWidget):
             return halted_run(record, self.adjustments(record), state, self._kept)
 
         return drawn_run(drawn, self.adjustments(drawn), state)
+
+    @property
+    def case(self) -> int:
+        """How many times the run has started over, by a Reset or an agent change.
+
+        The dashboard compares it with the cases its kept frames were drawn
+        from (`run_presentation.kept_frames_match`).
+        """
+
+        return self._case
 
     def show_presentation(self, presentation: RunPresentation) -> None:
         """Write every widget of this run from one presentation, as their only writer.

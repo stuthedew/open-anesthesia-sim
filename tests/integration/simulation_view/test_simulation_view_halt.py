@@ -159,6 +159,10 @@ _HANDED_OUT_WITHOUT_THE_HALT_GATE: Final[dict[tuple[str, str], str]] = {
         "it returns what a run is called, from the run count and the run's identity, and it "
         "reads no snapshot"
     ),
+    ("SimulationView", "self._charts_withheld"): (
+        "it returns whether the charts withhold their frame, for the banner of a stopped run, "
+        "from the kept frames and each run's identity and case, and it reads no snapshot"
+    ),
     ("SimulationView", "self._open_runs"): (
         "it returns the open runs' identities to the tab strip, and it reads no snapshot"
     ),
