@@ -1267,8 +1267,10 @@ specialist standard in `CLAUDE.md` that applies to this document (`PL-KRGY`).
     `approved_interface_strings.json` beside it). Digits are masked, so the
     test holds wording and not the model's values. A change to that wording
     fails until the list is rewritten and committed, and the test module says
-    how. A string that appears only after a setting change, or in a halt or
-    failure notice, is not on the list (`PL-86VL`).
+    how. The test also brings about the states that only an event shows, such
+    as a setting change, a mark, a price, a refused setting and each halt or
+    failure notice, and records the strings that no default point shows
+    (`PL-86VL`, `PL-4G79`).
 - **`tests/reference/`** — analytic or independent reference cases that the
   implementation must reproduce. Examples are the closed-form circuit wash-in
   solution, the sevoflurane patient reference scenario, and the from-scratch

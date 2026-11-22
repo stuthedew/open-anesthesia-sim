@@ -3,13 +3,16 @@ id: PL-4G79
 title: The approved interface wording list records only default runs, so a string shown only after a setting change, with a bookmark or price, or in a halt or failure notice is held by no approved list
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect, safety, test
 feature: presentation-safety
 touches: tests/integration/test_interface_wording.py, tests/integration/approved_interface_strings.json
 deferred-from: v0.7.0 - not live: checked 2026-11-22, the gap is in the approval test and no wrong or misleading notice wording is known on screen; the forbidden-phrase checks in tests/integration/simulation_view/ still hold these notices
 added: 2026-11-11
+closed: 2026-11-22
+pr: 2227
 payoff: A change to the wording of a halt, refusal or failure notice cannot reach a learner until a person has read and approved it.
+tests: tests/integration/test_interface_wording.py::test_every_string_the_view_shows_is_on_the_approved_list
 ---
 
 **Problem.** The approved interface wording list records only default runs, so a string shown only after a setting change, with a bookmark or price, or in a halt or failure notice is held by no approved list
@@ -30,3 +33,7 @@ them. Recording them needs a way to bring each state about in the test, as
 **Done when.** The approved wording list also holds the strings shown after a setting change, with a bookmark set, with a price entered, after a refused setting, and in each halt or failure notice, each brought about by the test itself. A change to any of those strings fails the test until a person approves it.
 
 **Generator check.** A follow-on of `PL-86VL` (the approval test of the interface's wording, closed 2026-11-11), which drew this limit on purpose and stated it in the test's docstring. So it is not a fix that failed to hold, and it is not a re-entry. The misread fact is which strings a learner can be shown, and no head's `misread:` line states it.
+
+**Built 2026-11-22.** `EVENT_POINTS` in `tests/integration/test_interface_wording.py` brings about a fresh gas flow change, a time mark and a MAC mark, a run stopped on a mark, a price set by the reader, a refused setting, a run stopped at the supported length and every halt or failure scenario in `_ONE_STATE_SCENARIOS` except the drawn frame. Each point records only the strings that no default point shows, 139 lines in `approved_interface_strings.json`. With the refused-setting banner's "still running" changed to "still runs", the new test fails with "setting refused, new: 'Setting refused — ... still runs its previous setting.'", and the test before this change passes it (both run 2026-11-22). One finding is filed as `PL-8QFW`: the refused-setting banner shows the core's Python parameter name.
+
+**Documentation checked on 2026-11-22**: `docs/ARCHITECTURE.md`, whose passage on the wording test said event-only strings are not on the list, now says the test records them. No other document names the test or its list.
