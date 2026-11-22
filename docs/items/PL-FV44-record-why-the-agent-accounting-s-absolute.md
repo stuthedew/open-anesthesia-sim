@@ -46,3 +46,12 @@ passes on either limit, so the fixed limit can only admit an error, and that
 sentence is corrected. Files checked: `docs/VERIFICATION.md`, `docs/MODEL.md`,
 `docs/INTERFACE.md`, `docs/PARAMETERS.md`, `docs/ARCHITECTURE.md` and
 `README.md`, searched for "picolitre", "absolute limit" and "fixed limit".
+
+**Blind review, 2026-11-22.** Both passes named one finding: the first draft
+said the limit lets a run pass while too little agent has been handled for the
+relative limit to admit its rounding. A run of each shipped agent's default
+system for 300 s (`AgentUptakeSystem.for_agent`, reading `relative_error` at
+each step) gave a largest relative residual of 3.8e-14 for sevoflurane, 4.0e-14
+for isoflurane and 2.4e-14 for desflurane, and each had handled 1 mL by step 1
+or 2. So no recorded run needs the absolute limit, and the docstring now says
+that instead.
