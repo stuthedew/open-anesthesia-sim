@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-04
 closed: 2026-10-11
 pr: 1423
+filed-pr: 1349
 payoff: every session starts with the whole dead-ends record, and an entry the tool cannot read fails make check instead of vanishing from the digest
 verify: grep -q 'def test_an_entry_the_pattern_cannot_read_is_refused' tests/unit/test_dead_ends.py
 reenters: PL-F5B9

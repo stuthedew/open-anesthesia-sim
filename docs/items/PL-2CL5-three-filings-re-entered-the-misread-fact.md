@@ -12,6 +12,7 @@ deferred-from: v0.7.0 - found 2026-11-11 after the freeze; apparatus, and it cha
 added: 2026-11-11
 closed: 2026-11-11
 pr: 2091
+filed-pr: 2091
 payoff: whether main took a branch's deletions gets the same single answer as its edits, so the next reader of that answer cannot leave deletions out
 verify: grep -q '^class _LandingSplit' subprojects/docket/src/docket/vcs.py
 root-cause-of: PL-TFF9, PL-N80K, PL-80SM, PL-HXYJ

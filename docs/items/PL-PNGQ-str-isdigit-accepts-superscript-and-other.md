@@ -11,6 +11,7 @@ touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/,
 added: 2026-10-24
 closed: 2026-10-25
 pr: 1763
+filed-pr: 1738
 payoff: a count read from git or GitHub is parsed by one function that refuses a non-ASCII digit, instead of fifteen hand copies that crash on one
 verify: grep -rqE 'def test_[a-z_]*superscript' subprojects/docket/tests tests/unit
 reenters: PL-N4FP

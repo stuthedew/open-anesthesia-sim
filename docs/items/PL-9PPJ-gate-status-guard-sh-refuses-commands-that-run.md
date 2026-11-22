@@ -12,6 +12,7 @@ deferred-from: v0.7.0 - captured after the freeze; a guard-hook defect in the wo
 added: 2026-11-03
 closed: 2026-11-03
 pr: 1989
+filed-pr: 1980
 payoff: a session checking a tool's version or listing tests through a pipe is no longer refused and sent to retry
 verify: grep -q 'def test_a_version_run_piped_to_head_is_admitted' tests/unit/test_gate_status_guard.py
 reenters: PL-61FT

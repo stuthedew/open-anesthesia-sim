@@ -11,6 +11,7 @@ deferred-from: v0.7.0 - a new problem, not present at the freeze (817a4d88, 2026
 added: 2026-11-10
 closed: 2026-11-22
 pr: 2231
+filed-pr: 2090
 payoff: an amount the schematic paints is read by the same tests as a label's text, so a painted amount left from an earlier run fails a test
 tests: tests/integration/simulation_view/test_simulation_view_run_values.py::test_the_schematic_paints_no_amount_left_from_before_a_start_over
 reenters: PL-J5GC

@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-04
 closed: 2026-10-10
 pr: 1390
+filed-pr: 1353
 payoff: The guard that stops a prune deleting the only copy of an unmerged item sees one inside an unquoted here-document substitution, which bash runs
 verify: grep -q 'def test_a_prune_in_an_unquoted_heredoc_substitution_is_refused' tests/unit/test_no_prune_guard.py
 reenters: PL-61FT

@@ -1509,7 +1509,9 @@ entries of the gate's milestone that hold an item that can start now.
 - A build line names its entry by number and bold lead, the items it can
   start, and how many of the scope's other open items wait on them through
   `blocked-by`, at any depth and directly. While the beat is clearing the gate
-  it says the roadmap clears the gate first.
+  the build lines are held back rather than offered: they carry no number,
+  sit under a heading that says the roadmap clears the gate first, and name
+  the item that would come first once it clears (`PL-JF22`).
 - At most eight lines. Heads, lane lines and build entries are placed first;
   features fill what is left, largest first, and one that does not fit folds
   into its items' lane lines, which the foot names. Build entries past the cap
@@ -1769,7 +1771,8 @@ not reported: nearly every filing names a path something closed within the
 month before it, so the column would read the same every week (`PL-WXKD`).
 Re-entry is read from its record instead: `re-entry` counts the filings whose
 `reenters:` names a `done` item, closed by the filing's `added:` date, whose fix
-should have covered them, as triage's generator check judged it, and any closed
+should have covered them, as triage's generator check judged it, less any
+named item that the filing's own pull request closed (its `filed-pr:`), and any closed
 item three filings re-enter is named under the table as a generator whose fix
 did not hold. The three are counted per fact. A filing that re-enters a head
 counts against the first head that stated the same `misread:` fact, so the
@@ -1864,6 +1867,13 @@ structure is read by its own grammar instead:
 Out-of-scope work is marked, never hidden. Whether an item is *really* out of
 scope is a judgment about the prose around its id, and the command reads
 structure rather than sentences.
+
+**One exception: the gated milestone's own `Required scope` while its gate is
+the beat.** `ROADMAP.md` § "The cadence" clears the gate before the milestone
+is built, so `next` does not offer that work then, below `P0` and off the
+generator tier. It names how many items it held back and which, on a line of
+their own, and offers them once the gate clears (`PL-JF22`). This is a rule
+the roadmap states, not a judgment about prose.
 
 Four things follow, and they are limitations in the same way the concurrency
 answer below is:
@@ -2723,10 +2733,22 @@ Recording does not rank. An open generator carrying no verdict ranks on its
 band and `docket check` says the field is missing — the fail-safe direction,
 because `check` runs separately from `next`, so a store is routinely ranked
 before it is validated and the unqualified state has to be the one that cannot
-buy a promotion. A **closed** head is asked for nothing: it is startable by
-nothing, so its verdict would move no ranking, and demanding one would mean
-backfilling every head already closed with a retrospective judgment about a
-mechanism that session did not diagnose.
+buy a promotion. A head closed before 2026-11-23 is asked for nothing: it is
+startable by nothing, so its verdict would move no ranking, and demanding one
+would mean backfilling every head already closed with a retrospective judgment
+about a mechanism that session did not diagnose.
+
+**A head closed `done` from 2026-11-23 names what stops the next member**
+(`PL-D8L0`). Its value reads `spent - ` and then one of `check:`, `type:`,
+`single writer:` or `none:`, followed by the mechanism or by why there is none:
+`spent - check: tools/literal_home_check.py refuses a second copy`. `docket
+check` and `docket set` refuse a close without one. The audit of 2026-11-10
+found that the fixes which held each had a check or a checked type, and the
+ones that did not hold were sweeps or prose, while a verdict in free prose read
+the same either way. `docket generators` marks a closed head `[no mechanism
+named]` where its reason opens with none of the four, and `[closed with members
+open]` where some of its members are still open. Older heads are marked and not
+rewritten.
 
 The verdict is a session's judgment written into the store, never inferred.
 Reading "still generating" out of an item's prose would be guessing at exactly
@@ -2759,7 +2781,7 @@ same words, since that is what puts the two next to each other:
   the tree fact it restates, for instance.
 
 `docket check` requires it on **every sound head, open or closed** — unlike
-`generator`, which a closed head is not asked for. A verdict on a closed head
+`generator`, which a head closed before 2026-11-23 is not asked for. A verdict on a closed head
 moves no ranking; a closed head's stated fact is exactly what a later capture
 is compared against, and "an instance of a closed head's mechanism, filed after
 the head closed" is triage's first landing — `PL-7TVT` closed spent with four
@@ -2945,6 +2967,14 @@ was open, two in the whole store after it closed. `docket inflow` counts it
 per period and names any closed item three filings re-enter (`PL-WXKD`). Where
 the item named is a head, the filing counts against the fact that head states,
 together with the filings that name the fact's other heads (`PL-YSV3`).
+
+`filed-pr` names the pull request that added the item, as a bare number.
+`docket new` writes it from the pull request the forge names as open on the
+branch, and writes nothing under `--no-remote` or where none is open. `docket
+inflow` does not count a `reenters:` id whose item's `pr:` is the same number,
+because that filing was found while the fix was being built and the fix had
+not shipped (`PL-C47M`). The field was written onto the 206 items carrying
+`reenters:` on 2026-11-22, from the squash commit that added each one.
 
 `no-successor` records the answer to such a line when no successor head is
 owed. It goes on the item that gives the answer, through `docket set

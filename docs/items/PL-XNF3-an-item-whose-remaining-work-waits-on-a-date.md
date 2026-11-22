@@ -11,6 +11,7 @@ deferred-from: v0.7.0 - captured after the freeze; a queue-state defect in the w
 added: 2026-10-27
 closed: 2026-11-01
 pr: 1904
+filed-pr: 1886
 payoff: an item whose remaining work waits on a date is not offered as work before that date, and the queue says when it becomes due
 verify: grep -q 'def test_an_item_waiting_on_a_date_is_not_startable' subprojects/docket/tests/test_model.py
 reenters: PL-RJLQ

@@ -11,6 +11,7 @@ touches: .claude/hooks/shell_split.py, .claude/hooks/floor-interpreter-guard.sh,
 added: 2026-10-03
 closed: 2026-10-10
 pr: 1390
+filed-pr: 1304
 payoff: the hooks and docket cannot drift apart on how a command splits without a test failing
 verify: grep -q 'def test_the_hooks_read_the_one_operators_table' tests/unit/test_shell_reader.py
 reenters: PL-KGYT

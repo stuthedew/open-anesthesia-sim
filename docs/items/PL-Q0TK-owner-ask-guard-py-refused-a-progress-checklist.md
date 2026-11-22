@@ -12,6 +12,7 @@ deferred-from: v0.7.0 - workflow tooling outside the schematic release
 added: 2026-11-02
 closed: 2026-11-03
 pr: 1973
+filed-pr: 1942
 payoff: a thread can tell the owner that work waits on their decision card without the guard refusing it
 verify: grep -q 'def test_a_go_ahead_on_a_decision_card_passes' tests/unit/test_owner_ask_guard.py
 reenters: PL-GPJ7

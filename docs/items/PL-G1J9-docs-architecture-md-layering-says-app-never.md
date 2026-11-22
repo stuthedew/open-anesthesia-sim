@@ -11,6 +11,7 @@ touches: docs/ARCHITECTURE.md
 added: 2026-11-05
 closed: 2026-11-09
 pr: 2072
+filed-pr: 2044
 payoff: a reviewer tracing a displayed value from the model to the screen is told which app/ modules convert units, and finds every step of the path
 verify: ! grep -qF 'or unit calculation itself' docs/ARCHITECTURE.md
 reenters: PL-4FBP

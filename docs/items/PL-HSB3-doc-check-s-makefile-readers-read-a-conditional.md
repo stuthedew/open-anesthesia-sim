@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-06
 closed: 2026-10-18
 pr: 1580
+filed-pr: 1384
 payoff: gate parity and the make-target check count a recipe line only where every configuration runs it, so neither passes a script make check may skip
 verify: grep -q 'def test_a_recipe_line_inside_a_conditional_runs_only_in_its_branch' tests/unit/test_doc_check.py
 reenters: PL-0HPV

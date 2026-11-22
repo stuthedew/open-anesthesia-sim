@@ -11,6 +11,7 @@ touches: docs/interface-provenance.md
 added: 2026-11-07
 closed: 2026-11-09
 pr: 2072
+filed-pr: 2053
 payoff: a contributor reads the View contract and its pruning as built, and does not start work that has already shipped
 verify: ! grep -qF 'should plan to prune' docs/interface-provenance.md
 reenters: PL-4FBP

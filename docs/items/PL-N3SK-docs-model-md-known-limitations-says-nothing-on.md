@@ -12,6 +12,7 @@ deferred-from: v0.7.0 - not present at the freeze (817a4d88): the sentence becam
 added: 2026-11-05
 closed: 2026-11-11
 pr: 2136
+filed-pr: 2041
 payoff: the reference-condition limitation says which liquid figures are on screen and why none carries its 5.8% error, so a change that would show a converted store meets the reason it is refused
 verify: ! grep -qF 'invisible in everything the simulator shows today' docs/MODEL.md
 reenters: PL-4FBP

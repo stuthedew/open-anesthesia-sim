@@ -11,6 +11,7 @@ deferred-from: v0.7.0 - a new problem, not present at the freeze: the drift job 
 added: 2026-11-10
 closed: 2026-11-14
 pr: 2153
+filed-pr: 2090
 payoff: the drift report on main is green or names only failures an item records, so a new failure is noticed
 verify: ! grep -qF 'field are loaded unconditionally' docs/resident-instructions.md
 reenters: PL-4FBP

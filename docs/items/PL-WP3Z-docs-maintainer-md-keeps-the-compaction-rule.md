@@ -12,6 +12,7 @@ deferred-from: v0.7.0 - a new problem, not present at the freeze: the sentence t
 added: 2026-11-07
 closed: 2026-11-11
 pr: 2097
+filed-pr: 2047
 payoff: the compaction rule has one home, and a thread and its coordinator follow the same version of it
 not-delegable: the compaction rule's current text is in the Project's instructions, which only the owner or the Project's coordinator can read
 reenters: PL-PDVF

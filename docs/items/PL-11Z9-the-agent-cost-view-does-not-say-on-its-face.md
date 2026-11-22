@@ -10,6 +10,7 @@ touches: src/anesthesia_sim/app/agent_cost.py, tests/integration/test_agent_cost
 added: 2026-11-07
 closed: 2026-11-11
 pr: 2136
+filed-pr: 2065
 payoff: a learner reading the agent cost View is told on its face that the amount and the cost are modelled, so a prediction is not read as what a real vaporizer used
 verify: grep -q 'def test_the_cost_view_says_its_amount_and_cost_are_modelled' tests/integration/test_agent_cost_view.py
 reenters: PL-B396

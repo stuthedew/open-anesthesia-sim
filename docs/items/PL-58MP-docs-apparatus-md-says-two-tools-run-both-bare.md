@@ -11,6 +11,7 @@ touches: README.md, CONTRIBUTING.md, docs/apparatus.md
 added: 2026-10-19
 closed: 2026-10-25
 pr: 1760
+filed-pr: 1712
 payoff: a contributor no longer reads a green make check as a promise that CI will pass
 verify: ! grep -qF 'everything CI runs' README.md CONTRIBUTING.md && ! grep -qF 'and two' docs/apparatus.md
 reenters: PL-ZQ3R

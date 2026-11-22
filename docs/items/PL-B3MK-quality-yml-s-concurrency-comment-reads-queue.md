@@ -10,6 +10,7 @@ touches: .github/workflows/quality.yml, tests/unit/test_ci_concurrency.py
 added: 2026-10-05
 closed: 2026-10-06
 pr: 1387
+filed-pr: 1366
 payoff: the reason CI does not queue main's runs rests on GitHub's own documentation rather than a schema read around a block that has lifted, so the next session weighing the concurrency block can check the claim instead of repeating it
 verify: ! grep -qF 'are both blocked by this container' .github/workflows/quality.yml
 reenters: PL-M701

@@ -12,6 +12,7 @@ deferred-from: v0.7.0 - a new problem: at the freeze (817a4d88) the compartments
 added: 2026-11-05
 closed: 2026-11-09
 pr: 2072
+filed-pr: 2044
 payoff: a contributor adding a compartment meets one rule for data-file values, the one the code and the single-source principle follow, and does not write a second copy of a value into core/
 verify: ! grep -qF 'so that a unit can be constructed bare' docs/ARCHITECTURE.md
 reenters: PL-4FBP

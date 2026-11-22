@@ -12,6 +12,7 @@ deferred-from: v0.7.0 - captured after the freeze, and not safety or science
 added: 2026-11-01
 closed: 2026-11-02
 pr: 1930
+filed-pr: 1916
 payoff: moving a supported-range limit fails only the tests that check it on purpose, so a session can trust the suite during a safety-critical change
 verify: ! grep -rqF 'nextafter(86_400.0, inf)' tests/unit
 not-delegable: only a run of tools/restated_constants.py proves the whole item, and it takes about 31 minutes in the drift workflow, which no admitted verify shape runs; the grep covers only the three step tests in test_circuit.py, test_tissue.py and test_blood.py

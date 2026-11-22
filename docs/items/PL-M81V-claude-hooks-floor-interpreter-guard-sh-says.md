@@ -11,6 +11,7 @@ touches: .claude/hooks/floor-interpreter-guard.sh
 added: 2026-10-19
 closed: 2026-10-25
 pr: 1760
+filed-pr: 1712
 payoff: the hook's reason for existing is stated against the Python range the project actually allows
 verify: ! grep -qF '">=3.14,<3.15"' .claude/hooks/floor-interpreter-guard.sh
 reenters: PL-J0P8

@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-27
 closed: 2026-09-27
 pr: 1155
+filed-pr: 1146
 payoff: a session that runs a gate and then an && chain with a pipe on a later step - make doc-check > log 2>&1 && git push | grep -v remote - is let through, as bash exits with the gate's status when it fails, so the && the refusal itself recommends is no longer refused once a later step is piped
 verify: grep -q 'def test_a_gate_before_and_skips_the_whole_pipeline_after_it' tests/unit/test_gate_status_guard.py
 reenters: PL-61FT

@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-19
 closed: 2026-10-19
 pr: 1688
+filed-pr: 1688
 payoff: a pull request reaches the owner only with arm's recorded ask in the message, because the reply tool refuses a read or merge ask that carries none
 verify: grep -q 'NO_ASK = 3' subprojects/docket/src/docket/arming.py && grep -q 'mcp__hearthbot__(reply|update_message|ask_decision)' .claude/settings.json && grep -q 'def test_a_reply_asking_for_a_read_without_a_recorded_ask_is_refused' tests/unit/test_owner_ask_guard.py && grep -q 'bin/docket arm 2>&1 | head -2' tests/unit/test_gate_status_guard.py
 root-cause-of: PL-9KHK, PL-DKBG, PL-9JHM

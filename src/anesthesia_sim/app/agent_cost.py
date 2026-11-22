@@ -16,9 +16,9 @@ partition coefficient enters the calculation.
 **Why the liquid figure is exact.** The delivered agent is gas at room
 temperature, which is the model's reference condition of 20 °C. So
 `core/liquid_agent.py` converts it to liquid exactly. The agent held in the
-body is at body temperature, and the same conversion would give a figure 5.8 %
-too high for it. This module therefore converts only the delivered agent, and
-nothing else.
+body is at body temperature, and the same conversion would give a figure too
+high for it (`docs/MODEL.md` § "Units and symbols"). This module therefore
+converts only the delivered agent, and nothing else.
 
 **Why the conversion takes a snapshot.** `liquid_volume_ml` takes a bare
 volume of vapour and a bare ratio. Given those, a caller could convert one
@@ -62,6 +62,7 @@ from anesthesia_sim.app.display_units import (
 from anesthesia_sim.app.formatting import (
     AGENT_AMOUNT_UNIT_DISPLAY,
     AgentAmountUnit,
+    cost_is_exact_to_its_minor_unit,
     format_agent_cost,
     format_delivered_agent,
     format_elapsed,
@@ -408,7 +409,11 @@ def cost_shown(delivered: DeliveredShown, preferences: Preferences) -> CostShown
     # A product of two positive finite floats can overflow to infinity, or
     # underflow to zero, which would show a run that has delivered agent as
     # costing nothing.
-    if not isfinite(cost) or (cost == 0.0 and delivered.liquid_ml > 0.0):
+    if (
+        not isfinite(cost)
+        or not cost_is_exact_to_its_minor_unit(cost, price.currency)
+        or (cost == 0.0 and delivered.liquid_ml > 0.0)
+    ):
         return _no_cost(delivered, COST_NOT_COMPUTED_TEXT)
 
     return CostShown(

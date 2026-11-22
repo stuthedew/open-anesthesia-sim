@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-27
 closed: 2026-09-27
 pr: 1165
+filed-pr: 1163
 payoff: bin/docket wave's Gate 2 count stops listing four entries the roadmap defers to Gate 3, so the gate reads clear when the work it can clear is done, with no hand subtraction from prose
 verify: grep -qF 'blocked-by: PL-YRLM' docs/items/PL-B396-*.md
 reenters: PL-0H5D

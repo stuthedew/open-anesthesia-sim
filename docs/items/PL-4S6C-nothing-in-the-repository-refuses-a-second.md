@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-12
 closed: 2026-10-12
 pr: 1445
+filed-pr: 1445
 payoff: a second reader of git, the tree, the GitHub API, the default branch or a shell command outside that fact's home, or a constant defined in two apparatus files, fails make check, so one-answer stops re-entering one tool at a time and a head's spent verdict holds
 verify: grep -q 'A shared fact has one source of truth' CLAUDE.md && grep -q 'fact_home_check' .claude/rules/apparatus-standard.md && grep -q 'python3 tools/fact_home_check.py' Makefile && grep -q 'python3 tools/fact_home_check.py' .github/workflows/quality.yml && grep -q 'tests/unit/test_fact_home_check.py' docket.toml
 root-cause-of: PL-PVW2, PL-KGYT, PL-5DZ8, PL-D23H

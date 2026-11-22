@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-26
 closed: 2026-09-26
 pr: 1109
+filed-pr: 1107
 payoff: a gate, a floor parse or a prune is refused however a redirection is placed around it - 2>/dev/null ahead of it, >x among a wrapper's words, 2>/dev/null among its own - so a red make check written that way no longer reaches a session as exit 0
 verify: grep -q 'def test_a_redirection_is_not_a_word_of_the_command' tests/unit/test_gate_status_guard.py && grep -q 'def test_a_redirection_is_not_a_word_of_the_command' tests/unit/test_floor_interpreter_guard.py && grep -q 'def test_a_redirection_is_not_a_word_of_the_command' tests/unit/test_no_prune_guard.py
 reenters: PL-0X0G

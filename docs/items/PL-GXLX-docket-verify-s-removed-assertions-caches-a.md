@@ -4,6 +4,7 @@ title: docket verify's removed_assertions caches a parse by blob id and marks a 
 status: dropped
 added: 2026-10-04
 closed: 2026-10-05
+filed-pr: 1362
 reason: premise false on 2026-10-05: #1374 (a341dcd0, PL-TC2D) replaced the per-blob cache that kept a failed parse with _read_versions, which keeps only successful reads, so two identical unparseable files are now both named and both counted; reproduced at b67dace8
 reenters: PL-4W2L
 ---

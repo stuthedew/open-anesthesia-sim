@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-26
 closed: 2026-09-27
 pr: 1150
+filed-pr: 1140
 payoff: a session's git config --remove-section or --rename-section on the fetch section or a remote's is refused before it drops a local prune override or writes a prune or mirror setting, so no later plain fetch or push deletes the refs the guard keeps
 verify: grep -q 'def test_a_config_section_write_is_refused' tests/unit/test_no_prune_guard.py
 reenters: PL-61FT

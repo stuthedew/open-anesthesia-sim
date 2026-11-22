@@ -11,6 +11,7 @@ touches: subprojects/docket/src/docket/arming.py, tools/product_paths.py, tools/
 added: 2026-10-25
 closed: 2026-10-25
 pr: 1802
+filed-pr: 1781
 payoff: a second spelling of where a file or tree lives fails make check, so moving docs/MODEL.md, src/ or tests/ cannot leave one tool reading the old place
 verify: uv run pytest -q tests/unit/test_fact_home_check.py -k 'repository_path or names_no_path' && python3 tools/fact_home_check.py
 reenters: PL-MM3Q

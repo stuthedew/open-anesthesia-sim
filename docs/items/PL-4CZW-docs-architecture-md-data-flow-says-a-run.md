@@ -12,6 +12,7 @@ deferred-from: v0.7.0 - a new problem: at the freeze (817a4d88) a branch could s
 added: 2026-11-05
 closed: 2026-11-09
 pr: 2072
+filed-pr: 2044
 payoff: a contributor reads one answer to whether a branch can open on the supported run length, and it is the one the controller enforces
 verify: ! grep -qF 'forked or reset onto that step' docs/ARCHITECTURE.md
 reenters: PL-4FBP
