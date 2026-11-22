@@ -15,7 +15,7 @@ from pathlib import Path
 import new_prose
 import pytest
 from docket.config import load
-from new_prose import ROOT, RULE, document_units, main, prose_units, reader_table, readers_of
+from new_prose import ROOT, document_units, main, prose_units, reader_table, readers_of
 
 #: The number of words in `LONG`, which only has to be longer than `SHORT`. The
 #: comparison reads units of any length, so it treats the two alike.
