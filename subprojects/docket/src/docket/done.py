@@ -7,7 +7,9 @@ command in `verify:`, written at triage and re-run for as long as the item
 was open.
 
 An item that changes code records the tests that show its work in `tests:`,
-as pytest node ids, when it closes (`PL-FN11`). A test named at triage is a
+as pytest node ids, when it closes (`PL-FN11`). A test counts as changed
+where its own code changed, or a table, fixture or helper in its file that it
+uses (`PL-YKQP`). A test named at triage is a
 guess at a name: `PL-0M32` and `PL-6TN8` each closed late because the work
 shipped a test under another name. A named test also decays after the close.
 Of 1,060 closed items whose command named a test, 109 named one that a later
@@ -35,6 +37,7 @@ file held where the branch left the default base.
 
 from __future__ import annotations
 
+import keyword
 import re
 from collections.abc import Callable, Collection, Sequence
 from dataclasses import dataclass, field
@@ -43,7 +46,7 @@ from pathlib import Path
 from .fences import without_fences
 from .lines import ENCODING
 from .model import RELEASE_TRAIN, Item
-from .python import UNTOKENIZABLE, places, read_logical_lines, refusal
+from .python import UNTOKENIZABLE, LogicalLine, places, read_logical_lines, refusal
 from .shell import argv
 from .vcs import ForkTexts, Runner, texts_at_fork
 
@@ -76,7 +79,10 @@ def node_refusal(entry: str) -> str:
     if read_node(entry) is not None:
         return ""
     if "[" in entry:
-        return f"`{entry}` names one parameter set; name the test function, which covers every set"
+        return (
+            f"`{entry}` names one parameter set; name the test function, which covers every "
+            "set and counts as changed where a table it reads changed"
+        )
     return (
         f"`{entry}` is not a pytest node id; write the test file, then `::` and the test's "
         "name, with its class between them where it has one"
@@ -87,16 +93,171 @@ def test_code(source: str, name: str) -> str | None:
     """The code of the test `name` in `source`, or `None` where `source` defines no such test.
 
     Its statements as the tokenizer reads them, decorators included, so that a
-    changed comment or a re-wrapped line is the same test. Raises one of
-    `UNTOKENIZABLE` where the tokenizer refuses `source`.
+    changed comment or a re-wrapped line is the same test. The code also holds
+    the statements of each class around the test that belong to no method, such
+    as a decorator on the class, and every module-level statement and
+    definition the test uses (`PL-YKQP`). A test can gain a case without a
+    change to its own lines. A case added to a table that `parametrize` reads,
+    or a changed fixture or helper in the same file, is such a change, so a
+    test that uses one counts as changed. Uses are followed from definition to
+    definition within the file, so a table built from a changed constant counts
+    too. Code in another file, such as a fixture in `conftest.py`, is not read.
+
+    Raises one of `UNTOKENIZABLE` where the tokenizer refuses `source`.
     """
     lines = read_logical_lines(source)
-    held = [
-        line.tokens
-        for line, place in zip(lines, places(lines), strict=True)
-        if place == name or place.startswith(f"{name}::")
+    found = places(lines)
+    enclosing = name.split("::")
+    scopes = {"::".join(enclosing[:depth]) for depth in range(1, len(enclosing))}
+    own = [
+        line
+        for line, place in zip(lines, found, strict=True)
+        if place == name or place.startswith(f"{name}::") or place in scopes
     ]
-    return "\n".join(held) if held else None
+    if not any(place == name for place in found):
+        return None
+    units = _module_units(lines, found, enclosing)
+    used: list[_Unit] = []
+    wanted = set().union(*(_mentions(line) for line in own))
+    seen: set[str] = set()
+    while wanted - seen:
+        word = (wanted - seen).pop()
+        seen.add(word)
+        for unit in units:
+            if word in unit.binds and unit not in used:
+                used.append(unit)
+                wanted |= unit.mentions
+    used.sort(key=lambda unit: unit.at)
+    return "\n".join([*(line.tokens for line in own), *(unit.code for unit in used)])
+
+
+@dataclass(frozen=True)
+class _Unit:
+    """One module-level statement or definition of a test file, as `test_code` follows it."""
+
+    #: Where it opens, which orders the units as the file does.
+    at: int
+    #: The names it defines or assigns at module level.
+    binds: frozenset[str]
+    #: The names its code mentions, which it may use.
+    mentions: frozenset[str]
+    #: Its code as the tokenizer reads it, which is what is compared.
+    code: str
+
+
+#: The operators that assign to the names before them.
+_ASSIGNS = frozenset(
+    {"=", "+=", "-=", "*=", "/=", "//=", "%=", "@=", "&=", "|=", "^=", ">>=", "<<=", "**="}
+)
+
+
+def _mentions(line: LogicalLine) -> set[str]:
+    """Every name `line` mentions, keywords left out."""
+    return {
+        piece.code
+        for piece in line.pieces
+        if piece.code.isidentifier() and not keyword.iskeyword(piece.code)
+    }
+
+
+def _module_units(
+    lines: Sequence[LogicalLine], found: Sequence[str], test: Sequence[str]
+) -> list[_Unit]:
+    """The definitions and module-level statements a test at `test` may use, itself left out.
+
+    `test` is the test's name and the classes that hold it, outermost first. A
+    definition is one unit with its decorators and its body: a top-level one,
+    or a method of a class that holds the test. A statement that no definition
+    holds is a unit of its own, and binds the names it assigns or imports. Each
+    name of an import is a unit of its own, so that adding a name to an import
+    line changes nothing for a test that uses another name on it.
+    """
+    units: list[_Unit] = []
+    held: dict[str, list[int]] = {}
+    for at, place in enumerate(found):
+        if place:
+            key = _unit_place(place.split("::"), test)
+            if key:
+                held.setdefault(key, []).append(at)
+            continue
+        line = lines[at]
+        imports = _imported(line)
+        if imports:
+            units += [_Unit(at, frozenset({bound}), frozenset(), code) for bound, code in imports]
+        else:
+            units.append(_Unit(at, _assigned(line), frozenset(_mentions(line)), line.tokens))
+    for key, ats in held.items():
+        code = [lines[at] for at in ats]
+        mentions = set().union(*(_mentions(line) for line in code))
+        bound = frozenset({key.rsplit("::", 1)[-1]})
+        units.append(_Unit(ats[0], bound, frozenset(mentions), "\n".join(c.tokens for c in code)))
+    return units
+
+
+def _unit_place(place: Sequence[str], test: Sequence[str]) -> str:
+    """The definition a line at `place` belongs to as a unit, or `""` where it is the test's own.
+
+    That is the top-level definition holding it, or the method holding it of a
+    class that holds the test. The test itself, and the lines of its classes
+    that belong to no method, are the test's own code.
+    """
+    depth = 0
+    while depth < len(test) - 1 and depth < len(place) - 1 and place[depth] == test[depth]:
+        depth += 1
+    key = list(place[: depth + 1])
+    return "" if key == list(test[: len(key)]) else "::".join(key)
+
+
+def _imported(line: LogicalLine) -> list[tuple[str, str]]:
+    """Each name an `import` statement binds, with what it binds it to; none for another line."""
+    words = [piece.code for piece in line.pieces]
+    if words[0] not in ("import", "from") or "import" not in words:
+        return []
+    cut = words.index("import")
+    source = " ".join(words[:cut])
+    names = [word for word in words[cut + 1 :] if word not in ("(", ")")]
+    found: list[tuple[str, str]] = []
+    while names:
+        comma = names.index(",") if "," in names else len(names)
+        part, names = names[:comma], names[comma + 1 :]
+        if not part:
+            continue
+        bound = part[-1] if "as" in part else part[0]
+        found.append((bound, f"{source} import {' '.join(part)}"))
+    return found
+
+
+def _assigned(line: LogicalLine) -> frozenset[str]:
+    """The names a module-level statement assigns, as the targets before its last `=` name them.
+
+    A name counts where it stands outside brackets and after no dot, so that
+    `TABLE[key] = value` assigns `TABLE`, and `TABLE: dict[str, int] = {}`
+    assigns `TABLE` and not `dict`. Any other statement assigns nothing here.
+    """
+    words = [piece.code for piece in line.pieces]
+    depth, last = 0, -1
+    for at, word in enumerate(words):
+        if word in ("(", "[", "{"):
+            depth += 1
+        elif word in (")", "]", "}"):
+            depth -= 1
+        elif depth == 0 and word in _ASSIGNS:
+            last = at
+    if last < 0:
+        return frozenset()
+    bound: set[str] = set()
+    depth = 0
+    for at, word in enumerate(words[:last]):
+        if word in ("(", "[", "{"):
+            depth += 1
+        elif word in (")", "]", "}"):
+            depth -= 1
+        elif depth == 0 and word == ":":
+            break
+        elif depth == 0 and word.isidentifier() and not keyword.iskeyword(word):
+            if at == 0 or words[at - 1] != ".":
+                bound.add(word)
+    return frozenset(bound)
 
 
 def test_faults(
@@ -137,8 +298,9 @@ def test_faults(
             continue
         if there == here:
             faults.append(
-                f"`{entry}` names a test this branch neither added nor changed, so it "
-                "passed before the work and shows nothing about it"
+                f"`{entry}` names a test this branch neither added nor changed, nor any "
+                "table, fixture or helper in its file that it uses, so it passed before "
+                "the work and shows nothing about it"
             )
     return faults, unread
 

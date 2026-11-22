@@ -755,10 +755,13 @@ class LayoutModel:
         already lies returns an equal layout.
 
         **With `alone`, only `handle` moves**, and the other handles on its
-        line stay where they are. This is a drag with Shift held. The Blender
-        Manual describes that drag as moving only the border under the pointer
-        (`interface/window_system/areas.html` § "Resizing", read 2026-10-11),
-        and `PL-RQT1` Q3 kept it.
+        line stay where they are. This is a drag with Shift held. `PL-RQT1` Q3
+        chose it to keep Blender's behaviour, on a reading of the Blender
+        Manual as saying that Shift moves only the border under the pointer.
+        The Manual and Blender's source say that Shift moves more borders
+        (read 2026-11-14), so this is the reverse of Blender's Shift.
+        `docs/interface-provenance.md` records the divergence, and `PL-GJFL`
+        holds the open decision on whether to change it.
 
         Raises:
             TypeError: `handle` is not a `Handle`, `position` not a `float`,

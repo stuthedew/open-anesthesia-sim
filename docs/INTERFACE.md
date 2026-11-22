@@ -4164,18 +4164,20 @@ requirement measures a tooltip's colors.
 
 The dark-appearance test (`tests/integration/test_dark_appearance.py`) renders
 the dashboard, the bookmark editor and the new-case confirmation under the
-palette a dark host supplies. It
+palette a dark host supplies. The dashboard it renders draws every registered
+kind of View. It
 fails on any content widget that resolves to that palette, and it checks the
 chrome and the untouched `Disabled` group against the same host. Under that
 host palette, 94.3% of the page scroll bar's pixels are darker than mid-grey
 without the interface's own palette, and none are with it.
 
 A second test (`tests/integration/simulation_view/test_simulation_view_foreground.py`) catches any control
-that declares no color, including one added later. It builds the whole
-dashboard under a foreground color that this interface never uses, and fails
+that declares no color, including one added later. It builds the dashboard
+with every registered kind of View drawn, under a foreground color that this
+interface never uses, and fails
 on any control that paints its own content and resolves to that color. It
-exempts kinds of control that draw no text, and the plots, whose axis text
-takes its color from a pen that the test cannot read. It names each kind with
+exempts kinds of control that draw no text, and the plots and the compartment
+schematic, whose text takes its color from a pen that the test cannot read. It names each kind with
 its reason. A requirement exists only where somebody wrote a color down, so the
 contrast check counts those kinds into its report line. Without that count, a
 control that declares no color would appear on neither side of the report
@@ -5859,6 +5861,15 @@ that price's date. The
 reader should change it to the day the price was quoted, because a price goes
 stale from that day, not from the day it was typed in.
 
+When the reader types another bottle price, bottle volume or currency over a
+stored price, the form moves the date to the day of entry and says that it did,
+because a new price saved under the stored date would be shown as older than it
+is. Typing the stored price again moves the date back. A date that the reader
+edits is kept, whatever they type afterwards. The date field therefore always
+shows the date that the form saves
+(`test_a_price_typed_over_a_stored_one_is_dated_at_the_day_of_entry`,
+`test_a_date_the_reader_edits_is_kept_for_a_price_typed_over_a_stored_one`).
+
 **The form takes the price per bottle, and the simulator derives the price per
 millilitre** (decided by `PL-VJZK` on 2026-10-26, over asking for a price per
 millilitre). An institution buys agent by the bottle, and its pharmacy quotes a
@@ -5903,7 +5914,10 @@ these four cases:
 - no price is set for the agent;
 - the stored price was refused when the simulator read its preferences file.
   No default replaces it, and the readout says that no valid price is set for
-  the agent;
+  the agent. The View names each refused entry, and under that notice it offers
+  to discard them all. The reader confirms the discard first, because it cannot
+  be undone
+  (`test_the_reader_can_discard_refused_entries_and_the_next_launch_names_none`);
 - the price per millilitre is not a positive finite number, or the cost is not
   finite, which extreme entries can cause, such as a bottle price of 10 to the
   power 308 for a 0.5 mL bottle; or
@@ -6099,7 +6113,9 @@ total of stored agent (`stored_agent_l`).
 Each spelling of an amount's unit is defined once, in `app/display_units.py`
 (`DisplayUnit`). Whoever writes the first View to print a spelling adds it
 there. Every View reads its spellings from that file and defines none of
-its own.
+its own (`test_no_agent_amount_unit_is_spelled_outside_the_units_module`). The
+agent-accounting panel's caption and the "L" beside each of its amounts are
+one member of that file.
 
 The empty bar at a run's start is there because computing a share would then
 divide by zero, and six zeros would look like real shares.
