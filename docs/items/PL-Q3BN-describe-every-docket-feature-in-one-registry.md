@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: feature, infra
 feature: feature-registry
+milestone: v0.6.19
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/README.md, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_config.py, docs/features.toml, docket.toml, tools/rules_paths_check.py, .claude/skills/docket/modes/capture.md, .claude/skills/docket/modes/ideas.md, docs/items
 added: 2026-11-22
 closed: 2026-11-22

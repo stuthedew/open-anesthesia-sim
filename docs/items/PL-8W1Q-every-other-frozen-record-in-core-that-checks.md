@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: replay-findings
+milestone: v0.6.19
 touches: src/anesthesia_sim/core, tests/unit/test_record_restores.py, docs/ARCHITECTURE.md, docs/INTERFACE.md
 added: 2026-10-27
 closed: 2026-11-14

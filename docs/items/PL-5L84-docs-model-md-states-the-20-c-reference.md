@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, safety
 feature: model-claims-held-by-tests
+milestone: v0.6.19
 touches: docs/MODEL.md, tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.7.0 - not live: checked 2026-11-07 (PL-8C8W): REFERENCE_TEMPERATURE_CELSIUS, the three agent files' 20.0 and the caption "at 20 degrees C" all agree with docs/MODEL.md's 20 °C, so no learner can see a wrong value now
 added: 2026-11-03

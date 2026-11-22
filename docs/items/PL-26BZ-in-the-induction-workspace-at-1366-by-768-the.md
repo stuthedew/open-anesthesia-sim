@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: safety, ux
 feature: window-is-the-frame
+milestone: v0.6.19
 touches: src/anesthesia_sim/app/views.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/area_layout.py, tests/integration/simulation_view, docs/INTERFACE.md
 deferred-from: v0.7.0 - the gate's frozen list does not name it; it is a defect of #2134's unmerged branch, and is built on its own branch from that head
 added: 2026-11-14

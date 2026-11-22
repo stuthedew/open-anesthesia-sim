@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: model-md-structure
+milestone: v0.6.19
 touches: README.md
 added: 2026-11-16
 closed: 2026-11-22

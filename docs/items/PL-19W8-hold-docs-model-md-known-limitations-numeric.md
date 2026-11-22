@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs, science
 feature: model-claims-held-by-tests
+milestone: v0.6.19
 touches: docs/MODEL.md, docs/INTERFACE.md, tools/doc_check.py, tests/reference, docs/items
 deferred-from: v0.7.0 - not live: checked 2026-11-07 (PL-8C8W): the figures it would hold are docs/MODEL.md prose, no displayed string carries them, and holding them to tests changes no display step; whether the two-decimal step holds against the stored SDs is PL-TDX0's question, which is on this gate's list undeferred, so no learner can see a wrong value through this item
 added: 2026-11-02

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: doc-consistency-checks
+milestone: v0.6.19
 touches: .claude/hooks/guard.py, .claude/hooks/hook_input.py, .claude/hooks/owner_ask_guard.py, .claude/hooks/thread_hooks.py, .claude/rules/ui-areas.md, .claude/thread-probe-plugin/hooks/probe.py, docs/apparatus.md, src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/display_units.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/preferences.py, src/anesthesia_sim/app/view_contract.py, src/anesthesia_sim/app/view_registry.py, src/anesthesia_sim/core/supported_ranges.py, subprojects/docket/README.md, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/python.py, tests/integration/controller/controller_support.py, tests/integration/controller/test_controller_bookmarks.py, tests/integration/controller/test_controller_stored_states.py, tests/unit/test_agent_cost.py, tests/unit/test_dashboard_frame.py, tests/unit/test_doc_check.py, tests/unit/test_thread_probe.py, tools/doc_check.py, tools/github_refusals_check.py, tools/import_boundary_check.py, tools/model_rewrite.py, tools/required_checks_check.py, tools/skill_start_eval.py, docs/items/PL-WZVZ-make-an-inter-machine-difference-attributable.md
 deferred-from: v0.7.0 - a workflow check with no link to what v0.7.0 ships: it decides no value a learner sees, and the citations it strands are filed as found
 added: 2026-11-22

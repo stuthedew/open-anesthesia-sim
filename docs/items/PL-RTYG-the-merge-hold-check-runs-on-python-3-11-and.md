@@ -5,6 +5,7 @@ priority: P1
 effort: S
 status: done
 classes: defect
+milestone: v0.6.19
 touches: .github/workflows/merge-hold.yml, tests/unit/test_tools_portability.py
 deferred-from: v0.7.0 - a workflow defect found 2026-11-14, after the freeze; not safety or science
 added: 2026-11-14

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: standing-weight
+milestone: v0.6.19
 touches: subprojects/docket/src/docket, subprojects/docket/tests, subprojects/docket/README.md, docket.toml, Makefile, .github/workflows/quality.yml, .claude/skills/docket/modes/triage.md, .claude/skills/docket/modes/close-out.md, .claude/skills/docket/modes/capture.md, .claude/skills/docket/modes/design.md, .claude/skills/docket/modes/release.md, .claude/hooks, docs/apparatus.md, docs/worker.md, tools, tests/unit
 added: 2026-11-21
 closed: 2026-11-21

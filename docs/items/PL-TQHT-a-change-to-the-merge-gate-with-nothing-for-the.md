@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: ux
+milestone: v0.6.19
 touches: subprojects/docket/src/docket/arming.py, docs/maintainer.md
 deferred-from: v0.7.0 - workflow tooling outside the schematic release, and it changes no displayed value
 added: 2026-11-14

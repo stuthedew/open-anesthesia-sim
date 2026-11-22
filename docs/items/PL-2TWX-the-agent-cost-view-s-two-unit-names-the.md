@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: one-source-of-truth
+milestone: v0.6.19
 touches: src/anesthesia_sim/app/display_units.py, src/anesthesia_sim/app/agent_cost.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/preferences.py, docs/INTERFACE.md, tests/unit/test_display_units.py
 added: 2026-11-21
 closed: 2026-11-21

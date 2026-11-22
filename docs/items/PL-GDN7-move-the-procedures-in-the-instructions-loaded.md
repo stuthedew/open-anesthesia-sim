@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: session-cost
 feature: standing-weight
+milestone: v0.6.19
 touches: CLAUDE.md, .claude/rules/expert-review.md, .claude/rules/plain-writing.md, .claude/rules/citation-drift.md, .claude/rules/apparatus-standard.md, .claude/rules/sources-and-docstrings.md, .claude/rules/rule-routing.md, docs/resident-instructions.md
 deferred-from: v0.7.0 - the move changes how sessions are instructed, not the schematic, so the release does not wait on it
 added: 2026-11-21

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: standing-weight
+milestone: v0.6.19
 touches: Makefile, .github/workflows/quality.yml, tools/worker_runs.py, tests/unit/test_worker_runs.py, docs/worker-runs, tools/headless_worker.py, tests/unit/test_headless_worker.py, tools/branch_sweep.py, tests/unit/test_branch_sweep.py, docket.toml, docs/apparatus.md, docs/maintainer.md, .claude/skills/pull-request/SKILL.md, subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/config.py, subprojects/docket/README.md, subprojects/docket/tests/test_verify.py, tools/model_home_check.py, tests/unit/test_model_home_check.py, tools/model_rewrite.py, tools/rules_paths_check.py, tools/fact_home_check.py, tests/unit/test_fact_home_check.py, docs/items/PL-6FX6-make-the-first-month-of-api-credit-runs-the.md
 added: 2026-11-21
 closed: 2026-11-21

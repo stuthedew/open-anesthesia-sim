@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: feature, planning
 feature: feature-registry
+milestone: v0.6.19
 touches: subprojects/docket/src/docket/feature_match.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/config.py, subprojects/docket/README.md, subprojects/docket/tests/test_feature_match.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_config.py, subprojects/docket/tests/test_portability.py, docs/features.toml, .claude/skills/docket/modes/capture.md, .claude/skills/docket/modes/triage.md, .claude/skills/docket/modes/release.md
 added: 2026-11-22
 closed: 2026-11-22

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: planning
 feature: standing-weight
+milestone: v0.6.19
 touches: docs/items/PL-KGPR-decide-which-of-the-13-checks-on-the-workflow-s.md, docs/items/PL-HS2T-retire-tools-branch-id-check-py-from-make-check.md, docs/items/PL-F7XT-retire-tools-pr-body-check-py-anchors-from-make.md, docs/items/PL-8F5B-retire-the-check-half-of-tools-dead-ends-py.md, docs/items/PL-3HNP-retire-tools-worker-runs-py-and-docs-worker.md
 deferred-from: v0.7.0 - the checks guard the workflow's records, not the schematic, so the release does not wait on this answer
 added: 2026-11-21

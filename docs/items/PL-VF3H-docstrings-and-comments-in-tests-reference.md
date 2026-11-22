@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: model-spec-accuracy
+milestone: v0.6.19
 touches: src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/app/dashboard_frame.py, tools/doc_check.py
 deferred-from: v0.7.0 - captured after the freeze by the check of docs/MODEL.md against the code; it changes no displayed value, and it is not safety or science
 added: 2026-11-21

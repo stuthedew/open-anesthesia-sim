@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: test
+milestone: v0.6.19
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-11-10
 closed: 2026-11-14

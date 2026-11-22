@@ -6,6 +6,7 @@ effort: L
 status: done
 classes: defect, refactor
 feature: regex-review
+milestone: v0.6.19
 touches: tools/, .claude/hooks/, subprojects/docket/, tests/unit/, tests/integration/, tests/reference/, docs/apparatus.md
 added: 2026-11-03
 closed: 2026-11-16

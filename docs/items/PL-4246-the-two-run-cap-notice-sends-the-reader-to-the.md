@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: interface-matches-its-spec
+milestone: v0.6.19
 touches: src/anesthesia_sim/app/dashboard_frame.py, tests/integration/simulation_view/test_simulation_view_two_runs.py, tests/integration/simulation_view/test_simulation_view_readouts.py
 added: 2026-11-21
 closed: 2026-11-21

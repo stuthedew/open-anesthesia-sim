@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs
 feature: roadmap-structure
+milestone: v0.6.19
 touches: ROADMAP.md
 added: 2026-11-07
 closed: 2026-11-14

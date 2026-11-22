@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: regex-review
+milestone: v0.6.19
 touches: src/anesthesia_sim/app/agent_cost.py, src/anesthesia_sim/app/currency_code.py, src/anesthesia_sim/app/preferences.py, src/anesthesia_sim/app/view_registry.py, src/anesthesia_sim/layout/run_identity.py, src/anesthesia_sim/layout/tree.py, tests/unit/test_view_registry.py, tools/regex_baseline.py
 added: 2026-11-03
 closed: 2026-11-16

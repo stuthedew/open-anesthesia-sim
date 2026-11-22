@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: copy-editor
+milestone: v0.6.19
 touches: src/anesthesia_sim/app/view_contract.py, src/anesthesia_sim/app/area_layout.py
 deferred-from: v0.7.0 - a new problem: the cited heading was renamed after the freeze, by #2058 (7081a909, PL-W0TS), work done while clearing this gate
 added: 2026-11-11

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: feature, safety
 feature: run-computed-one-way
+milestone: v0.6.19
 touches: src/anesthesia_sim/core, src/anesthesia_sim/app, tests, docs/INTERFACE.md
 blocked-by: PL-MH9J
 deferred-from: v0.7.0 - filed 2026-11-21, after the gate froze, as the build of the design the owner chose in PL-7CY5; each of the four pull requests leaves main releasable, so the release does not wait for the feature to finish

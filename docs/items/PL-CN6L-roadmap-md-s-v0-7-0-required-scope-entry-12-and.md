@@ -4,6 +4,7 @@ title: ROADMAP.md's v0.7.0 required scope entry 12 and its definition of done st
 priority: P3
 effort: S
 status: done
+milestone: v0.6.19
 touches: docs/items/
 added: 2026-11-14
 closed: 2026-11-14

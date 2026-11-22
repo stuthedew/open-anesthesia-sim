@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: standing-weight
+milestone: v0.6.19
 touches: subprojects/docket/src/docket, subprojects/docket/tests, subprojects/docket/README.md, .claude/skills/docket/modes/triage.md, .claude/skills/docket/modes/close-out.md
 added: 2026-11-21
 closed: 2026-11-21

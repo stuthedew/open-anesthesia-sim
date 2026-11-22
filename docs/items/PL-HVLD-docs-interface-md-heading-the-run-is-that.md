@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: model-md-structure
+milestone: v0.6.19
 touches: docs/MODEL.md, .claude/rules/run-is-its-definition.md, docs/INTERFACE.md, docs/ARCHITECTURE.md, src/anesthesia_sim/core/run_definition.py
 added: 2026-11-05
 closed: 2026-11-16
