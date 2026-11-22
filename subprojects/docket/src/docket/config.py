@@ -528,7 +528,9 @@ def load_feature_descriptions(root: Path, features_file: str) -> tuple[tuple[str
         return ()
     path = root / features_file
     if not path.is_file():
-        raise ValueError(f"{CONFIG_NAME}: features_file names {features_file}, which does not exist")
+        raise ValueError(
+            f"{CONFIG_NAME}: features_file names {features_file}, which does not exist"
+        )
     with path.open("rb") as handle:
         data = tomllib.load(handle)
     rows: list[tuple[str, str]] = []

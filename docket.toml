@@ -327,6 +327,7 @@ workflow_paths = [
   "docs/blind-review-findings.tsv",
   "docs/ci-runs.tsv",
   "docs/dead-ends.md",
+  "docs/features.toml",
   "docs/items",
   "docs/maintainer.md",
   "docs/model-review.md",
