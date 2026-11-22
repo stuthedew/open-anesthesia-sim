@@ -1321,45 +1321,80 @@ The simulator must always meet the conditions below.
 
 Every quantity stays in its range:
 
-- all volumes are finite and positive;
-- fresh gas flow, alveolar ventilation, cardiac output, and tissue flows are finite and nonnegative;
-- partition coefficients are finite and positive;
-- tissue flow fractions sum to one within tolerance (`docs/MODEL.md` § "Blood flow to the tissue groups");
-- stored agent amounts remain finite and nonnegative; and
-- derived partial-pressure-equivalent fractions remain finite and within 0 through 1.
+- all volumes are finite and positive
+  (`test_every_volume_and_partition_coefficient_is_refused_outside_its_numerical_envelope`,
+  and for a volume that is not a number, `test_rejects_invalid_gas_volume`,
+  `test_rejects_invalid_venous_volume` and `test_rejects_invalid_tissue_volume`);
+- fresh gas flow, alveolar ventilation, cardiac output, and tissue flows are
+  finite and nonnegative (`test_rejects_a_value_that_is_negative_or_not_finite`
+  for the three controls, and
+  `test_a_perfusion_fraction_outside_its_range_is_refused_by_name_and_value`
+  for the share of cardiac output that sets each tissue flow);
+- partition coefficients are finite and positive
+  (`test_every_volume_and_partition_coefficient_is_refused_outside_its_numerical_envelope`
+  and `test_rejects_nonfinite_partition_coefficient`);
+- tissue flow fractions sum to one within tolerance (`docs/MODEL.md` § "Blood
+  flow to the tissue groups", `test_rejects_perfusion_fractions_that_do_not_sum_to_one`);
+- stored agent amounts remain finite and nonnegative
+  (`test_a_generated_run_keeps_what_must_hold_after_every_action` after every
+  action of generated runs, and
+  `test_randomised_control_trajectories_keep_every_invariant` after every step
+  of runs whose controls move at random moments. Both check each compartment's
+  fraction, and a compartment's amount is its capacity times that fraction);
+  and
+- derived partial-pressure-equivalent fractions remain finite and within 0
+  through 1 (`test_a_generated_run_keeps_what_must_hold_after_every_action` and
+  `test_randomised_control_trajectories_keep_every_invariant`).
 
 Agent is neither created nor lost inside the model:
 
-- no compartment creates agent spontaneously;
-- internal transfers remove and add equal amounts; and
-- equilibrium produces no net internal transfer (§ "Equilibrium test").
+- no compartment creates agent spontaneously
+  (`test_no_delivered_agent_keeps_every_store_zero`);
+- internal transfers remove and add equal amounts
+  (`test_the_compartments_neither_create_nor_lose_agent`); and
+- equilibrium produces no net internal transfer (§ "Equilibrium test",
+  `test_equilibrium_produces_no_net_internal_transfer`).
 
 The controls do only what they say:
 
-- changing a setting does not reset dynamic state;
-- Pause stops simulated time from advancing;
-- Reset clears dynamic state while preserving settings; and
-- a delivered concentration above the agent's vaporizer maximum is refused, not capped.
+- changing a setting does not reset dynamic state
+  (`test_parameter_changes_do_not_reset_dynamic_state`);
+- Pause stops simulated time from advancing
+  (`test_pause_stops_simulated_time_and_the_stored_state`);
+- Reset clears dynamic state while preserving settings
+  (`test_reset_preserves_settings_and_clears_dynamic_state` for the simulation
+  state, and `test_reset_preserves_all_user_settings` for the Reset a learner
+  presses); and
+- a delivered concentration above the agent's vaporizer maximum is refused, not
+  capped (`test_a_run_cannot_open_or_change_under_a_dial_above_the_vaporizer_maximum`).
 
 A zero flow stops the transfer that it carries:
 
-- zero fresh gas flow prevents new external delivery;
+- zero fresh gas flow prevents new external delivery
+  (`test_a_zero_flow_is_a_zero_rate_and_needs_no_branch`);
 - zero ventilation prevents circuit-to-patient ventilatory exchange
-  (§ "Zero-ventilation test");
+  (§ "Zero-ventilation test", `test_zero_ventilation_prevents_patient_delivery`);
 - zero cardiac output prevents pulmonary and tissue perfusion
-  (§ "Zero-cardiac-output test"); and
-- zero tissue flow prevents uptake by that tissue (§ "Zero-tissue-flow test").
+  (§ "Zero-cardiac-output test", `test_zero_cardiac_output_prevents_patient_uptake`); and
+- zero tissue flow prevents uptake by that tissue (§ "Zero-tissue-flow test",
+  `test_a_zero_tissue_flow_leaves_that_group_alone`).
 
 The time steps keep these conditions:
 
 - identical runs produce identical state and run definition, element for
-  element, however the steps were grouped in real time;
+  element, however the steps were grouped in real time
+  (`test_identical_runs_produce_identical_snapshots` and
+  `test_a_run_reaches_the_same_definition_however_the_ticks_fell`);
 - simulated time in seconds is the number of completed steps, because every step is
-  one second long (`SIMULATION_STEP_S`);
+  one second long (`SIMULATION_STEP_S`,
+  `test_elapsed_time_is_the_count_of_steps_in_whole_seconds`);
 - a caller cannot ask for a step of another length, and a step that would take
-  a run past the supported run length is refused; and
+  a run past the supported run length is refused
+  (`test_a_run_cannot_be_asked_for_a_step_of_another_length` and
+  `test_the_step_past_the_supported_run_length_is_refused`); and
 - a step that cannot be completed leaves simulated time and dynamic state
-  exactly as the last completed step left them.
+  exactly as the last completed step left them
+  (`test_a_failed_step_leaves_every_dynamic_value_bit_identical`).
 
 ## Required tests
 
@@ -3741,8 +3776,8 @@ output, the document cannot drift from the model without the test failing.
 
 In some parts of this document, an automatic check makes sure that each claim
 names in fixed-width type what it describes. It checks every row of the hazard
-table and every subsection of the required tests, and every output in the
-displayed-outputs list of `docs/INTERFACE.md`. It does not yet check the entries of the required invariants.
+table, every entry of the required invariants, every subsection of the required
+tests, and every output in the displayed-outputs list of `docs/INTERFACE.md`.
 
 In the sections that the check reads paragraph by paragraph, every number with a
 unit has something behind it. Its paragraph gives a test, the fixed form, a date

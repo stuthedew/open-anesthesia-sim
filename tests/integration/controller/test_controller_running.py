@@ -39,6 +39,30 @@ def test_pause_blocks_advancement() -> None:
     assert controller.snapshot().elapsed_s == 0.0
 
 
+def test_pause_stops_simulated_time_and_the_stored_state() -> None:
+    """A run paused after it has moved stays where the pause left it.
+
+    `test_pause_blocks_advancement` covers a run that never started. This one
+    starts the run, takes ten steps and pauses it, then asks for ten more. The
+    expected time is the count of steps the test took while the run was
+    running, which is 10 s, and the expected state is the snapshot taken at the
+    pause. Ten steps are enough for every compartment to hold agent, so a pause
+    that still stepped the state would change the stored amounts.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, duration_s=10)
+    controller.pause()
+    at_the_pause = controller.snapshot()
+
+    _advance_for(controller, duration_s=10)
+
+    assert at_the_pause.stored_agent_l > 0.0
+    assert controller.snapshot().elapsed_s == 10
+    assert controller.snapshot() == at_the_pause
+
+
 def test_start_advance_pause_sequence_is_deterministic() -> None:
     first = SimulationController()
     second = SimulationController()
