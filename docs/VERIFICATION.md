@@ -847,20 +847,24 @@ test steps the whole model once, steps each compartment alone
 at its own limits, and predicts every second of a 60 s run in one-second steps. At the three
 corners where rounding went furthest,
 `test_a_state_at_the_fraction_ceiling_stays_within_one_atmosphere` also predicts every second of
-24 hours. Each run washes in
+24 hours, at one setting of the flows: no fresh gas, 12 L/min of ventilation and 10 L/min of
+cardiac output. Each run washes in
 to the 0.99 limit, washes out from it, or sits at it. Stepped alone, a tissue group and the venous pool run at zero flow, at the
 smallest positive flow and at the largest supported cardiac output, and each result stays
 finite and between its start and its equilibrium.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10 -->
 
 Each result of the first test must be finite. Each fraction must lie from 0 through 1, with no
 allowance. What else a result must meet depends on how it was computed.
 
 1. **A predicted run.** Each fraction must also lie at or below 0.99, and the agent balance must
    close, both to within the error bound of the propagators that produced the state
-   (`propagator_rounding` in `core/rounding.py`). That bound uses the squarings that a step at
-   that corner and those flows actually needs, with a margin of 8, so the bound at a corner
-   that needs few squarings is a few rounding errors. The worst result, from runs on
+   (`propagator_rounding` in `core/rounding.py`). That bound is 10 times $`2^{s} \cdot 2^{-52}`$
+   for the $`s`$ squarings that a step at that corner and those flows actually needs. The 10 is
+   `PROPAGATOR_ROUNDING_UNITS`, derived from the arithmetic, so at a corner that needs no
+   squarings the bound is ten rounding errors. The worst result, from runs on
    2026-10-26, reached 2.5 times the bound's leading term, $`2^{s} \cdot 2^{-52}`$ for $`s`$
    squarings. The separate 24-hour test holds its predictions to the 0.99 limit in the same
    way, with `run_rounding`, and does not check their agent balance.
@@ -872,6 +876,7 @@ allowance. What else a result must meet depends on how it was computed.
    propagator, so no propagator bound applies. Each amount must lie between its starting value
    and its equilibrium, and the circuit's agent balance must close to within four rounding
    errors.
+<!-- provenance: core/rounding.py PROPAGATOR_ROUNDING_UNITS = 10 -->
 
 One step of the whole model must pass the simulator's own mass-balance check, which allows
 one part in 10⁹. A step that needs 22 squarings may be refused by that check instead. The test
