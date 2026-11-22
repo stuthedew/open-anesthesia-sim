@@ -12,7 +12,7 @@ added: 2026-11-04
 closed: 2026-11-22
 pr: 2241
 payoff: a learner reads a cost as an ordinary money figure, to the cent, and the document gives a reason that agrees with the display
-tests: tests/unit/test_formatting.py::test_a_cost_is_shown_to_its_currency_s_minor_unit, tests/unit/test_formatting.py::test_a_cost_too_large_to_show_to_its_minor_unit_is_refused, tests/unit/test_formatting.py::test_four_figures_keep_the_price_per_millilitre_within_a_twentieth_of_a_percent, tests/unit/test_agent_cost.py::test_each_run_is_priced_at_its_own_agent_s_price
+tests: tests/unit/test_formatting.py::test_a_cost_is_shown_to_its_currency_s_minor_unit, tests/unit/test_formatting.py::test_a_cost_too_large_to_show_to_its_minor_unit_is_refused, tests/unit/test_formatting.py::test_four_figures_keep_the_price_per_millilitre_within_a_twentieth_of_a_percent, tests/unit/test_agent_cost.py::test_each_run_is_priced_at_its_own_agent_s_price, tests/unit/test_agent_cost.py::test_the_largest_cost_shown_depends_on_its_own_currency
 verify: ! grep -qF 'At four it would be 0.010 %' docs/INTERFACE.md
 ---
 

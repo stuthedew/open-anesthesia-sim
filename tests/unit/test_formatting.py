@@ -2184,6 +2184,7 @@ def test_a_share_that_is_not_a_number_is_refused(share: object) -> None:
         pytest.param(1099.98, "JPY", "JPY 1100", id="yen has no minor unit"),
         pytest.param(0.4, "JPY", "JPY <1", id="below one yen"),
         pytest.param(0.0, "JPY", "JPY 0", id="nothing delivered in yen"),
+        pytest.param(2.0**51, "JPY", "JPY 2251799813685248", id="floats exactly half a yen apart"),
         pytest.param(1.2346, "KWD", "KWD 1.235", id="dinar has three decimals"),
         pytest.param(12.345678, "QQQ", "QQQ 12.35", id="a code CLDR does not list"),
     ],
@@ -2317,6 +2318,7 @@ def test_a_cost_that_is_not_a_number_is_refused() -> None:
         pytest.param(2.0**45, "USD", id="neighbouring floats a cent apart"),
         pytest.param(1e26, "USD", id="past the decimal context's 28 digits"),
         pytest.param(2.0**42, "KWD", id="three decimals refuse sooner"),
+        pytest.param(2.0**52, "JPY", id="floats a whole yen apart"),
     ],
 )
 def test_a_cost_too_large_to_show_to_its_minor_unit_is_refused(cost: float, currency: str) -> None:

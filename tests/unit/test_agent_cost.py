@@ -472,6 +472,23 @@ def test_no_cost_is_shown_where_one_cannot_be_trusted(
     assert (cost.working, cost.price, cost.rounded) == ("", "", "")
 
 
+def test_the_largest_cost_shown_depends_on_its_own_currency() -> None:
+    """A yen cost is shown where the same figure in dollars could not be held to the cent.
+
+    2^50 yen lies where neighbouring floats are 2^-2 apart: within half a yen,
+    but not within half a cent. So the readout shows it in JPY and refuses it in
+    USD. Branch audit of `PL-7R8S` found no test that told the two currencies
+    apart here.
+    """
+
+    def shown(currency: str) -> str:
+        price = AgentPrice("isoflurane", 2.0**50, 1.0, currency, date(2026, 1, 2))
+        return cost_shown(_shown_with_liquid(1.0), _priced(price)).cost
+
+    assert shown("JPY") == "JPY 1125899906842624"
+    assert shown("USD") == COST_NOT_COMPUTED_TEXT.format(agent="isoflurane")
+
+
 def test_the_withheld_cost_names_no_agent_and_no_figure() -> None:
     cost = cost_shown(WITHHELD_DELIVERED, _priced(_GAS_MAN_ISOFLURANE))
 
