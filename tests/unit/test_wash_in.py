@@ -7,7 +7,7 @@ it, without building the Qt interface. The end-to-end path is tested in
 the trace, and the sentence beside the trace.
 
 These tests compare against the published values that
-`docs/MODEL.md` § "Published wash-in and elimination validation test" cites.
+`docs/VERIFICATION.md` § "Published wash-in and elimination validation test" cites.
 They show only that the displayed ratio is the same quantity that the
 published test validates.
 """

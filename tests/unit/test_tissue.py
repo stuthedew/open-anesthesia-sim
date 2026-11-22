@@ -425,7 +425,7 @@ def test_one_time_constant_reaches_expected_fraction() -> None:
 
 
 def test_a_larger_or_more_soluble_tissue_has_a_longer_time_constant() -> None:
-    """`docs/MODEL.md` § "Directional tissue-capacity test".
+    """`docs/VERIFICATION.md` § "Directional tissue-capacity test".
 
     Increasing either $V_i$ or $\\lambda_{i:b}$, with flow held constant, must
     lengthen the tissue time constant.
@@ -672,7 +672,7 @@ def test_a_step_below_the_floor_is_refused_when_a_tissue_is_stepped_alone(
         match=(
             rf"^test simulation_step_s of {re.escape(str(simulation_step_s))} s is shorter "
             r"than the smallest supported step of 0\.001 s, below which rounding is a "
-            r'growing share of what each step changes \(docs/MODEL.md, "Supported '
+            r'growing share of what each step changes \(docs/VERIFICATION.md, "Supported '
             r'simulation step"\)$'
         ),
     ):
@@ -713,7 +713,7 @@ def test_a_step_past_the_run_length_is_refused_when_a_tissue_is_stepped_alone(
             rf"^test simulation_step_s of {re.escape(str(simulation_step_s))} s is longer "
             r"than the supported run length of 86400 s \(24 h\), the most simulated time "
             r"this model is claimed to represent a patient over, so no single step may be "
-            r'longer \(docs/MODEL.md, "Supported simulation step"\)$'
+            r'longer \(docs/VERIFICATION.md, "Supported simulation step"\)$'
         ),
     ):
         tissue.advance(Fraction(0.02), simulation_step_s, BLOOD_FLOW_L_MIN, BLOOD_GAS)

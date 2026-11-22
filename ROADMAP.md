@@ -75,7 +75,7 @@ names the scripts that measured this.
 step was 0.1 s, which a binary number cannot hold exactly, and six closed
 items came from that rounding. A run now counts whole seconds, and the playback
 takes one exact one-second step for each second that real time allows.
-`docs/MODEL.md` § "Supported simulation step" gives how far a control change
+`docs/VERIFICATION.md` § "Supported simulation step" gives how far a control change
 made one second late can move the alveolar reading: at most 1.3 percentage
 points, from a desflurane ventilator start at the edge of the supported
 settings, fading to 0.5 points after eight seconds.
@@ -1257,7 +1257,7 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-KYGF (M) Answer the questions the structure read of ROADMAP.md's v0.6.0 section left for its author: what 'the gate decision' was, which entry decides an Area refused a size, and the definition of done's baseline
 - PL-0YR1 (S) docs/MODEL.md § MAC-awake as a chart reference says the three fractions 'sit in a narrow range, so each agent carries its own value', but a narrow range argues for one shared fraction; the stated reason does not support the choice
 - PL-32QH (S) docs/MODEL.md § 'Status' calls the simulator not a medical device, while § 'Intended use' says the safety class settles no device status and the section claims no regulatory status; decide which claim stands (copy editor structure read, 2026-11-05)
-- PL-3807 (S) docs/MODEL.md § 'What the published-data gate can and cannot resolve' counts the sign of the elimination disagreement as part of the published-data gate, but § 'Release gate' says the elimination comparison is not part of the release check; decide which elimination checks a release must pass (copy editor structure read, 2026-11-05)
+- PL-3807 (S) docs/VERIFICATION.md § 'What the published-data gate can and cannot resolve' counts the sign of the elimination disagreement as part of the published-data gate, but § 'Release gate' says the elimination comparison is not part of the release check; decide which elimination checks a release must pass (copy editor structure read, 2026-11-05)
 - PL-4BGX (S) docs/MODEL.md's paragraph on the two classes of vaporizer is unclear and uses its own terms: it never says the maxima are dial maxima or how the classes differ, and states the altitude difference more firmly than a source the project can cite
 - PL-52KB (S) docs/MODEL.md has five broken section pointers: Desflurane's residual sends the reader to a sensitivity run 'under Parameter provenance' (it is in 'What the published-data gate can and cannot resolve'); Known limitations says the Yasuda citation is in 'Parameter provenance'; two pointers name headings that do not exist ('The chart's vertical range is denominated in MAC, and fixed', 'Why the axis is fixed rather than fitted'); 'Mass-balance test' cites 'the release tolerances documented above' with no section (copy editor structure read, 2026-11-05)
 - PL-8RFG (S) docs/MODEL.md uses 'gate' for four different checks (step-refinement, independent-solution, published-data and release), so a clinician cannot tell them apart; give each its own name (copy editor structure read, 2026-11-05)
@@ -3309,7 +3309,7 @@ test compared the 0.1 s step with 0.05 s only.
 The reference scenarios were the two directional tests: ventilation of 2
 against 8 L/min, and cardiac output of 2.5 against 7.5 L/min.
 
-`docs/MODEL.md` § "Release gate" has the matching checklist for the scientific
+`docs/VERIFICATION.md` § "Release gate" has the matching checklist for the scientific
 documentation.
 
 ### Explicitly out of scope for v0.1.0
@@ -5578,7 +5578,7 @@ the agent.
   (`SUPPORTED_LIMIT_NOTICE_TEMPLATE`), and "The simulation is unchanged and still
   running its previous setting" (`REFUSED_SETTING_NOTICE_TEMPLATE`). It is `safety`
   for two reasons. The last notice is not merely unattributed but *false* of the run
-  it is not about. And the hazard table in `docs/MODEL.md` has a row for "reading a
+  it is not about. And the hazard table in `docs/VERIFICATION.md` has a row for "reading a
   run halted by a failure as one the user paused", but the distinction that row
   secures is lost the moment two runs are drawn.
 

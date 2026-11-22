@@ -4,6 +4,7 @@ paths:
   - "/tests/**"
   - "/docs/MODEL.md"
   - "/docs/INTERFACE.md"
+  - "/docs/VERIFICATION.md"
   - "/docs/references/**"
 ---
 
@@ -102,9 +103,10 @@ the parts of it that apply only with one of these files open (`PL-GDN7`).
 
 **Where the rest goes.** Decision history goes in the item. In `docs/MODEL.md`,
 detail of the numerical method goes in a note for developers at the end of its
-section, a paragraph that opens with "**For developers.**", because the
-document must specify the numerical method (`PL-TZ7R`). That note may name the
-tests for the paragraphs directly above it (`PL-W8FL`). State a model
+section, a paragraph that opens with "**For developers.**" (`PL-TZ7R`). The
+numerical method itself is specified in `docs/VERIFICATION.md` (`PL-6PPZ`).
+That note may name the tests for the paragraphs directly above it
+(`PL-W8FL`). State a model
 limitation only where it could change what a clinician concludes from a
 displayed value (`PL-BS6N`). `docs/INTERFACE.md` ends a section with the same
 note for developers, for the tests and code behind its requirements.

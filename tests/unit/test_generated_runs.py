@@ -3,7 +3,7 @@
 Every other test steps the model from listed settings, and most step it once.
 This test draws a run instead (`PL-GJ1W`). It draws either a shipped agent or a
 set of volumes and partition coefficients from anywhere in the numerical
-envelope (`docs/MODEL.md` § "The numerical envelope"). A drawn set has one
+envelope (`docs/VERIFICATION.md` § "The numerical envelope"). A drawn set has one
 volume and one tissue:blood coefficient for all three tissue groups. The test
 draws the flows and the dial across their supported ranges and at their edges.
 It then takes a series of actions. Each action changes at most one setting and
@@ -34,7 +34,7 @@ ordinary run draws the same runs, and a weekly run draws new ones
 (`tests/hypothesis_profiles.py`).
 
 The test accepts a halt on the agent balance only when the rounding of the
-run's steps so far has reached the balance tolerance, as `docs/MODEL.md`
+run's steps so far has reached the balance tolerance, as `docs/VERIFICATION.md`
 § "The numerical envelope" documents (`PL-D88N`). It accepts no other refusal
 from a step.
 """
@@ -112,7 +112,7 @@ this test's reach.
 ACCOUNTING_RELATIVE_TOLERANCE = 1e-9
 """The agent balance must close to one part in 10**9 of the agent the run has to account for.
 
-This is a published limit and not a rounding limit. `docs/MODEL.md`
+This is a published limit and not a rounding limit. `docs/VERIFICATION.md`
 § "Mass-balance identity" states it as the tolerance at which the model halts a
 run. It is written here as a literal so that a change to the model's constant
 fails this test.
@@ -121,7 +121,7 @@ fails this test.
 ACCOUNTING_ABSOLUTE_TOLERANCE_L = 1e-12
 """The agent balance also passes when it closes to within 1e-12 L of agent gas.
 
-This is the model's second published limit. `docs/MODEL.md` § "Mass-balance
+This is the model's second published limit. `docs/VERIFICATION.md` § "Mass-balance
 identity" says that a step passes if it meets either bound, so a run that holds
 little agent is judged by this one.
 """

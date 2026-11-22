@@ -116,7 +116,7 @@ def _compensated_sum(total: float, compensation: float, addend: float) -> tuple[
     negligible, so the error does not grow with the run's length (Higham,
     *Accuracy and Stability of Numerical Algorithms*, 2nd ed., SIAM, 2002,
     section 4.3, equation 4.8). The error of plain addition does grow with the
-    run's length, by up to u per addition. `docs/MODEL.md` § "Mass-balance
+    run's length, by up to u per addition. `docs/VERIFICATION.md` § "Mass-balance
     identity" gives how far each method's totals drifted from the exact sum
     over a 24 h run at the one-second step, and each method's worst
     mass-balance residual in that run. It also gives how close plain addition
@@ -194,7 +194,7 @@ class AgentSimulationValidator:
     floor, that error brought the residual of a correct run close to
     `AGENT_ACCOUNTING_RELATIVE_TOLERANCE`. The residual is the gap between the
     two sides of the identity, and at that tolerance the run would have been
-    halted. `docs/MODEL.md` § "Mass-balance identity" records the measurement.
+    halted. `docs/VERIFICATION.md` § "Mass-balance identity" records the measurement.
 
     The compensation terms are not constructor arguments, so
     `dataclasses.replace()` starts its copy with both terms at zero. That copy

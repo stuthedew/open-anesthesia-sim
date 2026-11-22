@@ -414,8 +414,8 @@ carries the count and the decisions). All four hold, or the finding is filed:
    more; one that wants a second commit, reaches a second mechanism, or
    leaves anything to come back to is an item.
 3. **It stays off the clinical floor and adds no read hold.** A defect in
-   `src/anesthesia_sim/core/`, `src/anesthesia_sim/data/`, `docs/MODEL.md` or
-   `docs/INTERFACE.md`,
+   `src/anesthesia_sim/core/`, `src/anesthesia_sim/data/`, `docs/MODEL.md`,
+   `docs/INTERFACE.md` or `docs/VERIFICATION.md`,
    or any finding the safety-critical standard reaches, is filed: the item is
    what ranks it `P1`, offers it to the strongest model and stands as its
    provenance. A fix that needs the owner's read (the `pull-request` skill

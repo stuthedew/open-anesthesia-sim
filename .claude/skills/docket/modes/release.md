@@ -151,19 +151,25 @@ read, and v0.6.0 is the instance). A patch on the preceding milestone's track
 owes no such pass: its number marks no capability boundary (`ROADMAP.md`
 § "Versioning decision").
 
-Where the digest says `No release to offer` instead, the version a bump would
-arrive at is one `ROADMAP.md` has already given to a milestone ahead of the
-current one and not yet finished — placed on the release train, scoped in a
-section, or both — and the line names what holds it. That number is not one to
-raise: the beat printed under it is the work, and cutting the version anyway
-would ship a milestone under its own name with most of it missing. The line's
-second sentence is the way out, and it is raised as an offer is: a patch cut
-under a number the roadmap leaves free, named for the owner to confirm, which
-`bin/docket release` refuses if the plan has spent it (`PL-SYG4`). `bin/docket status` prints that
-refusal in the same words off the same verdict, and `docket wave`'s `Reserved`
-line is the whole set of numbers the plan has spent rather than the one that
-collided — which is the evidence behind either refusal, and the thing to read
-before arguing that some other number is free.
+**A reserved number means a patch, not "no cut due"** (project owner,
+2026-11-22, `PL-49J8`). A feature-classed item makes the bump the next minor
+number, and between milestones that number is nearly always one `ROADMAP.md`
+has given to an unfinished milestone. The digest and `bin/docket status` then
+offer the next patch instead, and say why: "Offer 0.6.19 before taking new work.
+It is a patch, because the roadmap gives 0.7.0 to "the schematic", which is
+unfinished." Raise it as any offer is raised; a feature finishing is still the
+occasion for a cut. This follows the common reading of a version below 1.0, in
+which the middle number marks a breaking or boundary release and the last
+number takes additive work (the Cargo Book, "SemVer Compatibility"; npm's
+semver documentation, "Caret Ranges").
+
+Only where the next patch is spent too, or lies past a milestone the roadmap
+places ahead, do both surfaces say `No release to offer`. Nothing can then be
+cut until that milestone ships or `ROADMAP.md` moves it: skipping the spent
+number would leave its milestone below the current version, where `bin/docket
+release` refuses to cut it (`PL-SYG4`). `docket wave`'s `Reserved` line is the
+whole set of numbers the plan has spent, which is the evidence behind either
+answer.
 
 But the digest says it in *every* session, including the ones where it is
 beside the point. Offer it when the owner is choosing what to work on or has
@@ -255,14 +261,12 @@ verify` counts each as a `record` rather than as work outside `touches`. A body
 the API could not serve is named and left, and the next release picks it up.
 
 This project names its version rather than incrementing it, so `VERSION=` is
-required; `bin/docket release --dry-run` prints the mechanical guess for
-reference.
-
-`docket.toml` sets `version_policy = "manual"` here, so the version is named
-rather than inferred — `ROADMAP.md` § "Versioning decision" is why: the number
-marks the capability boundary a release crosses, which no class label carries.
-The dry run still prints the mechanical guess, as a reference point and not an
-answer.
+required. `docket.toml` sets `version_policy = "manual"` here, and `ROADMAP.md`
+§ "Versioning decision" is why: the number marks the capability boundary a
+release crosses, which no class label carries. `bin/docket release --dry-run`
+with no version prints the same suggestion as the digest, from the same offer.
+It is a suggestion for the owner to confirm, not a verdict on whether a cut is
+due.
 
 `release` stops before committing on purpose: review the bump and the
 generated notes, then commit them. The tag is the workflow's, as described

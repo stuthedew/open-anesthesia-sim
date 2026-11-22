@@ -34,6 +34,7 @@ from docket.arming import MODEL_DOC as MODEL_DOC
 from docket.arming import PRODUCT_PACKAGE, SOURCE
 from docket.arming import SPECIFICATION_DOCS as SPECIFICATION_DOCS
 from docket.arming import TESTS as TESTS
+from docket.arming import VERIFICATION_DOC as VERIFICATION_DOC
 
 #: The simulator package's import name.
 PACKAGE = PRODUCT_PACKAGE

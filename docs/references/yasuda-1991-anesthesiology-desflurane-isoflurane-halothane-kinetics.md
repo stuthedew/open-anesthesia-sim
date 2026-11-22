@@ -101,7 +101,7 @@ Page 490 states each of these.
   tested against them.
 - **The recovery values.** `docs/MODEL.md` cites them, and cites halothane's
   64 ± 9% as evidence that the same method detects an agent that is metabolized.
-- **Halothane's 0.25, and the apparatus facts.** `docs/MODEL.md`
+- **Halothane's 0.25, and the apparatus facts.** `docs/VERIFICATION.md`
   § "Desflurane's residual, and why the parameter file was not changed" uses
   both. Desflurane's residual is the gap that remains when the breathing circuit
   is removed from the comparison. The simulator's desflurane then washes out

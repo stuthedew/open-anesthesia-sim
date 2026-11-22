@@ -43,7 +43,17 @@ from docket.release import (
     version_in,
     version_key,
 )
-from docket.roadmap import CLEAR, IMPLEMENT, LAZY_ENTRY, RELEASE, SCOPE, UnreadEntry, Wave, wave
+from docket.roadmap import (
+    CLEAR,
+    IMPLEMENT,
+    LAZY_ENTRY,
+    RELEASE,
+    SCOPE,
+    ReservedVersion,
+    UnreadEntry,
+    Wave,
+    wave,
+)
 from docket.vcs import SILENT, Cut, find_cut, notes_added
 
 TODAY = date(2026, 8, 24)
@@ -1217,12 +1227,13 @@ def test_the_reservation_holds_where_the_gate_is_recorded_under_another_version(
     so a test reading only the gate's own version would pass here and the
     digest would still offer to ship a half-cleared Gate 0 as "the foundation".
     """
-    from docket.release import RESERVED, release_offer
+    from docket.release import PATCH, release_offer
 
     plan = _plan("0.2.8", frozenset({"PL-DDDD", "PL-BBBB"}))
     offer = release_offer(_ready("0.2.8", "0.3.0"), plan)
 
-    assert (offer.kind, offer.version, offer.milestone) == (RESERVED, "0.3.0", "the foundation")
+    assert (offer.kind, offer.passed_over, offer.milestone) == (PATCH, "0.3.0", "the foundation")
+    assert offer.version == "0.2.9"
 
 
 def test_a_version_the_plan_has_not_claimed_is_offered_as_before() -> None:
@@ -1722,9 +1733,10 @@ def test_the_digest_stops_declining_a_release_for_a_finished_milestone() -> None
     assert "Offer 0.4.0 before taking new work." in digest
 
 
-def test_the_digest_still_declines_while_the_scope_is_unfinished() -> None:
-    """The decline was always the right answer; only its grounds were missing.
-    With the scope open it stands, and now rests on a counted fact."""
+def test_the_digest_offers_a_patch_while_the_scope_is_unfinished() -> None:
+    """Declining 0.4.0 was always right; only its grounds were missing. With
+    the scope open the decline stands, rests on a counted fact, and offers the
+    next patch in its place (`PL-49J8`)."""
     from docket.checks import Report
     from docket.render import format_digest
 
@@ -1732,7 +1744,11 @@ def test_the_digest_still_declines_while_the_scope_is_unfinished() -> None:
     digest = format_digest(Report(items=[_item("PL-4444")]), None, _ready("0.3.9", "0.4.0"), plan)
 
     assert plan.beat == IMPLEMENT
-    assert 'No release to offer: the roadmap gives 0.4.0 to "the teachable case"' in digest
+    assert "Offer 0.4.0 " not in digest
+    assert (
+        "Offer 0.3.10 before taking new work. It is a patch, because the roadmap gives "
+        '0.4.0 to "the teachable case", which is unfinished.'
+    ) in digest
 
 
 def test_the_reservation_reads_the_milestone_the_beat_names_not_only_the_step() -> None:
@@ -1744,26 +1760,32 @@ def test_the_reservation_reads_the_milestone_the_beat_names_not_only_the_step() 
     very version the roadmap has given to the milestone the beat is asking to
     implement.
     """
-    from docket.release import RESERVED, release_offer
+    from docket.release import PATCH, release_offer
 
     plan = _gated("0.3.0", frozenset({"PL-GT01"}))
     offer = release_offer(_ready("0.3.9", "0.4.0"), plan)
 
     assert plan.beat == IMPLEMENT
     assert plan.step is not None and plan.step.version == (0, 3, -1)
-    assert (offer.kind, offer.version, offer.milestone) == (RESERVED, "0.4.0", "the teachable case")
+    assert (offer.kind, offer.passed_over, offer.milestone) == (
+        PATCH,
+        "0.4.0",
+        "the teachable case",
+    )
+    assert offer.version == "0.3.10"
 
 
 def test_the_reservation_holds_while_the_gate_under_that_milestone_is_open() -> None:
     """The same carrier one beat earlier, where the number is spoken for twice
     over: the gate that guards v0.4.0 is open *and* its scope is untouched."""
-    from docket.release import RESERVED, release_offer
+    from docket.release import PATCH, release_offer
 
     plan = _gated("0.3.0", frozenset())
     offer = release_offer(_ready("0.3.9", "0.4.0"), plan)
 
     assert plan.beat == CLEAR
-    assert (offer.kind, offer.version, offer.milestone) == (RESERVED, "0.4.0", "the teachable case")
+    assert (offer.kind, offer.version, offer.passed_over) == (PATCH, "0.3.10", "0.4.0")
+    assert offer.milestone == "the teachable case"
 
 
 def test_the_digest_stops_offering_the_version_of_the_milestone_it_says_to_implement() -> None:
@@ -1780,7 +1802,7 @@ def test_the_digest_stops_offering_the_version_of_the_milestone_it_says_to_imple
     digest = format_digest(Report(items=[_item("PL-4444")]), None, _ready("0.3.9", "0.4.0"), plan)
 
     assert "Offer 0.4.0 before taking new work" not in digest
-    assert 'No release to offer: the roadmap gives 0.4.0 to "the teachable case"' in digest
+    assert "Offer 0.3.10 before taking new work." in digest
     assert "implement v0.4.0 — the teachable case" in digest
 
 
@@ -1843,14 +1865,15 @@ def test_the_reservation_reads_the_row_the_beat_anchors_on_before_the_gated_mile
     milestone alone offered it as free. The guard is unchanged - it reads
     `plan.milestone`, and `wave` now binds that to the row the timeline puts
     first."""
-    from docket.release import RESERVED, release_offer
+    from docket.release import PATCH, release_offer
 
     plan = wave(PORTED_ROADMAP, "0.3.0", frozenset({"PL-GT01"}), GATED_SCOPE_IDS | {"PL-PT03"}, {})
     offer = release_offer(_ready("0.3.0", "0.3.5"), plan)
 
     assert plan.beat == IMPLEMENT
     assert plan.milestone is not None and plan.milestone.version == (0, 3, 5)
-    assert (offer.kind, offer.version, offer.milestone) == (RESERVED, "0.3.5", "the interface port")
+    assert (offer.kind, offer.version, offer.passed_over) == (PATCH, "0.3.1", "0.3.5")
+    assert offer.milestone == "the interface port"
 
 
 def test_a_version_named_ahead_of_the_current_one_is_reserved() -> None:
@@ -1868,7 +1891,7 @@ def test_a_version_named_ahead_of_the_current_one_is_reserved() -> None:
     that binding is on something else entirely and the reservation rests on the
     roadmap naming the number rather than on anything `wave` bound.
     """
-    from docket.release import RESERVED, release_offer
+    from docket.release import PATCH, release_offer
 
     plan = wave(PORTED_ROADMAP, "0.3.0", frozenset(), GATED_SCOPE_IDS | {"PL-PT03"}, {})
     offer = release_offer(_ready("0.3.0", "0.3.5"), plan)
@@ -1876,7 +1899,8 @@ def test_a_version_named_ahead_of_the_current_one_is_reserved() -> None:
     assert plan.beat == CLEAR
     assert plan.step is not None and plan.step.version == (0, 3, -1)
     assert plan.milestone is not None and plan.milestone.version == (0, 4, 0)
-    assert (offer.kind, offer.version, offer.milestone) == (RESERVED, "0.3.5", "the interface port")
+    assert (offer.kind, offer.version, offer.passed_over) == (PATCH, "0.3.1", "0.3.5")
+    assert offer.milestone == "the interface port"
 
 
 #: `GATED_SCOPE_ROADMAP` with its gated milestone shipped and a further one
@@ -1905,7 +1929,7 @@ def test_a_timeline_row_with_no_section_reserves_its_version() -> None:
     without it the project would stand on the v0.5.0 row and the old `step`
     carrier would have caught the collision.
     """
-    from docket.release import RESERVED, release_offer
+    from docket.release import PATCH, release_offer
 
     plan = wave(UNSCOPED_AHEAD_ROADMAP, "0.4.0", GATED_SCOPE_IDS, GATED_SCOPE_IDS, {})
     offer = release_offer(_ready("0.4.0", "0.5.0"), plan)
@@ -1913,7 +1937,8 @@ def test_a_timeline_row_with_no_section_reserves_its_version() -> None:
     assert plan.beat == SCOPE
     assert plan.milestone is None
     assert plan.step is not None and plan.step.version is None
-    assert (offer.kind, offer.version, offer.milestone) == (RESERVED, "0.5.0", "the schematic")
+    assert (offer.kind, offer.version, offer.passed_over) == (PATCH, "0.4.1", "0.5.0")
+    assert offer.milestone == "the schematic"
 
 
 def test_the_digest_declines_the_number_of_a_milestone_it_says_to_scope() -> None:
@@ -1927,19 +1952,19 @@ def test_the_digest_declines_the_number_of_a_milestone_it_says_to_scope() -> Non
     digest = format_digest(Report(items=[_item("PL-4444")]), None, _ready("0.4.0", "0.5.0"), plan)
 
     assert "Offer 0.5.0 before taking new work" not in digest
-    assert 'No release to offer: the roadmap gives 0.5.0 to "the schematic"' in digest
+    assert "Offer 0.4.1 before taking new work." in digest
 
 
-def test_the_reserved_refusal_names_the_way_out() -> None:
-    """`PL-SYG4`: the refusal named its evidence and no way out.
+def test_the_survey_and_the_digest_offer_one_patch_for_one_reserved_number() -> None:
+    """`PL-49J8`: the refusal named a way out and no number, and sessions read
+    "No release to offer" as "no cut is due", so 134 items waited behind
+    v0.7.0's open gate.
 
     The live arrangement: a patch track between numbered steps, the next
     milestone placed ahead of it, and a bump arriving at that milestone's
-    number. The number is spoken for and the track is not, so both surfaces
-    say a patch cut is still available and name the command that takes one.
-    The number stays the reader's - the owner chose on 2026-09-17 that the
-    sentence names none - so the only version either refusal carries is the
-    one it refuses.
+    number. Both surfaces offer the next patch, and give the same reason in
+    the same words, naming the reserved number and the milestone that holds
+    it.
     """
     from docket.checks import Report
     from docket.render import format_digest, format_status
@@ -1948,20 +1973,89 @@ def test_the_reserved_refusal_names_the_way_out() -> None:
     ready, report = _ready("0.4.0", "0.5.0"), Report(items=[_item("PL-4444")])
     digest = format_digest(report, None, ready, plan)
     status = format_status(report, ready, None, plan)
-    refusals = [
-        line[line.index("No release to offer") :]
-        for line in (digest + "\n" + status).splitlines()
-        if "No release to offer" in line
-    ]
+    reason = (
+        'It is a patch, because the roadmap gives 0.5.0 to "the schematic", which is unfinished.'
+    )
 
-    assert len(refusals) == 2
-    for refusal in refusals:
-        assert refusal.endswith(
-            "A patch cut under a number the roadmap leaves free is still available: "
-            "`make release VERSION=` that number."
-        )
-        # regex: every version the sentence names, wherever it sits in the prose.
-        assert re.findall(r"\d+\.\d+\.\d+", refusal) == ["0.5.0"]
+    assert f"Offer 0.4.1 before taking new work. {reason}" in digest
+    assert f"Next version would be 0.4.1. {reason}" in status
+    assert "No release to offer" not in digest + status
+
+
+#: Two milestones placed ahead of a patch track that has already shipped
+#: several patches, standing for v0.8.0 and v0.9.0 after v0.7.0 ships. The
+#: numbers are made up: nothing in the guard may name a particular milestone.
+LATER_RESERVED = (
+    ReservedVersion((0, 8, 0), "a made-up later milestone"),
+    ReservedVersion((0, 9, 0), "the one after it"),
+)
+
+
+def test_the_next_patch_is_offered_for_any_later_milestone() -> None:
+    """`PL-49J8`'s rule holds for whichever milestone is next, not only v0.7.0.
+
+    The plan is a real one with its reserved numbers replaced, so `wave`'s
+    other answers stay as they were and only the spent numbers change.
+    """
+    from docket.cli import _suggestion
+    from docket.release import PATCH, free_patch, release_offer
+
+    plan = replace(
+        wave(UNSCOPED_AHEAD_ROADMAP, "0.4.0", GATED_SCOPE_IDS, GATED_SCOPE_IDS, {}),
+        reserved=LATER_RESERVED,
+    )
+    offer = release_offer(_ready("0.7.3", "0.8.0"), plan)
+
+    assert free_patch("0.7.3", plan) == "0.7.4"
+    assert (offer.kind, offer.version, offer.passed_over) == (PATCH, "0.7.4", "0.8.0")
+    assert offer.milestone == "a made-up later milestone"
+    assert _suggestion(_ready("0.7.3", "0.8.0"), plan) == (
+        "Suggested: 0.7.4. It is a patch, because the roadmap gives 0.8.0 to "
+        '"a made-up later milestone", which is unfinished.'
+    )
+
+
+def test_no_patch_is_offered_where_the_plan_has_spent_the_next_one() -> None:
+    """Skipping a spent patch number would leave its milestone below the
+    current version, where `bin/docket release` refuses to cut it. So where
+    the next patch is itself reserved, nothing is offered (`PL-SYG4`'s
+    objection to skipping, which `PL-49J8` keeps).
+    """
+    from docket.release import RESERVED, free_patch, release_offer
+
+    plan = replace(
+        wave(UNSCOPED_AHEAD_ROADMAP, "0.4.0", GATED_SCOPE_IDS, GATED_SCOPE_IDS, {}),
+        reserved=(ReservedVersion((0, 7, 4), "a patch-numbered port"), *LATER_RESERVED),
+    )
+    offer = release_offer(_ready("0.7.3", "0.8.0"), plan)
+
+    assert free_patch("0.7.3", plan) is None
+    assert (offer.kind, offer.version, offer.milestone) == (
+        RESERVED,
+        "0.8.0",
+        "a made-up later milestone",
+    )
+    assert free_patch("not a version", plan) is None
+
+
+def test_the_dry_run_suggestion_reads_the_plan_on_every_answer() -> None:
+    """The dry run printed the bump's arithmetic as a "mechanical guess", and
+    with a feature-classed item that was the next milestone's number. It now
+    reads the same offer the survey and the digest read (`PL-49J8`)."""
+    from docket.cli import _suggestion
+
+    plan = wave(UNSCOPED_AHEAD_ROADMAP, "0.4.0", GATED_SCOPE_IDS, GATED_SCOPE_IDS, {})
+    spent = _plan("0.2.7")
+    released = _gated("0.3.0", frozenset({"PL-GT01"}), roadmap=GATE_ONLY_ROADMAP)
+
+    assert _suggestion(_ready("0.4.0", "0.4.1"), plan) == "Suggested: 0.4.1."
+    assert _suggestion(_ready("0.4.0", "0.5.0"), None) == "Suggested: 0.5.0."
+    assert _suggestion(_ready("0.2.7", "0.2.8"), spent).startswith(
+        'No release to offer: the roadmap gives 0.2.8 to "the workflow works"'
+    )
+    assert _suggestion(_ready("0.3.9", "0.3.10"), released) == (
+        "Suggested: 0.4.0, the version the roadmap names for this release."
+    )
 
 
 def test_the_reserved_set_carries_every_version_the_plan_names_ahead() -> None:
