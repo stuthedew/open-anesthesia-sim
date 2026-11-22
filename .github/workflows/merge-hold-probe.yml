@@ -14,4 +14,5 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - run: echo "a pull request's own job named merge-hold, exiting 0"
+      # Experiment B: finish after merge-hold.yml's job, so the passing run is the newest.
+      - run: sleep 120 && echo "a pull request's own job named merge-hold, exiting 0"
