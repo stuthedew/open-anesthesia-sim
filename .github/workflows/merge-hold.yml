@@ -14,7 +14,10 @@ name: merge-hold
 # **The trigger is `pull_request_target` on purpose.** A workflow on that
 # event is read from the default branch, and `actions/checkout` checks out the
 # default branch, so the job and the rule it runs are `main`'s. A pull request
-# cannot edit either to let itself through. GitHub documents the event as
+# cannot edit either to let itself through. Nor can it add a job of its own
+# named `merge-hold`: measured on #2240, a failed run of that name kept the
+# pull request blocked even when a passed one finished after it (`PL-BJR6`).
+# GitHub documents the event as
 # running "in the context of the base of the pull request, rather than in the
 # context of the merge commit"
 # (https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#pull_request_target).

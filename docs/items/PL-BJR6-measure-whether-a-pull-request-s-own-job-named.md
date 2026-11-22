@@ -3,12 +3,14 @@ id: PL-BJR6
 title: Measure whether a pull request's own job named merge-hold can satisfy main's required merge-hold check, which GitHub's documentation leaves undecided
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: irreversible-actions-refused-at-github
 touches: .github/workflows/merge-hold.yml, tools/github_refusals_check.py
 deferred-from: v0.7.0 - workflow tooling outside the schematic release, and it changes no displayed value
 added: 2026-11-11
+closed: 2026-11-22
+pr: 2240
 payoff: the owner knows whether a held pull request can be merged past the merge hold, and the hold is fixed if it can
 verify: grep -qE '^\*\*Result, measured' docs/items/PL-BJR6*.md
 not-delegable: the measurement opens and closes a pull request that adds a workflow file, which docket verify refuses as an edit to the checks
@@ -33,3 +35,10 @@ Each page was read in full through the web-fetch subagent, which returned the qu
 **Generator check.** A member of the family that `PL-39Y1` heads: a refusal at GitHub whose reach was read from documentation and not measured.
 
 **Checked 2026-11-22** against `d4e8200`: still applies. No paragraph headed "Result, measured" is in this brief, so the question has not been measured. `.github/workflows/merge-hold.yml` still runs on `pull_request_target`, and nothing refuses a pull request that adds a job of its own named `merge-hold`. The commits since 2026-11-11 that touched the workflow (#2147, #2119) did not change that.
+
+**Result, measured 2026-11-22**, on pull request #2240. Its branch held two open claims, so `merge-hold.yml`'s job failed on every push. A commit added `.github/workflows/merge-hold-probe.yml`, a workflow on `pull_request` with one job named `merge-hold` that exits 0. Every other required check (`checks`, `pr-title`) passed, and the branch was level with `main` at `d2f987d`. The passing job does not satisfy the requirement, whichever run finishes last.
+
+- At `498a8a1e` the passing job finished at 19:04:19 UTC and the failing one at 19:04:34. `GET /repos/stuthedew/open-anesthesia-sim/pulls/2240` returned `"mergeable_state": "blocked"`.
+- At `d0c8c4be` the passing job slept 120 s so that it finished last: the failing run at 19:15:17 and the passing one at 19:17:10. The same request, made at 19:24 after every check had finished, again returned `"mergeable_state": "blocked"`.
+
+So with two check runs named `merge-hold` on one head commit, a failed one blocks the merge even when a passed one is newer. This agrees with *About protected branches*, which says the same name "can cause ambiguous status check results and block pull requests from being merged". The hold has no hole here, so no fix is needed, and the probe was removed in the commit that closes this item.
