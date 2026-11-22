@@ -3,12 +3,15 @@ id: PL-PZD9
 title: The agent cost View draws its no-cost reason at the size of a value, larger than any figure on screen, and its price form's fields stretch across the whole Area, 1086 px wide at 1920 by 1080
 priority: P3
 effort: S
-status: ready
+status: done
 classes: ux
 feature: interface-design-review
 touches: src/anesthesia_sim/app/qt_agent_cost.py, src/anesthesia_sim/app/qt_agent_price.py, src/anesthesia_sim/app/agent_cost.py, src/anesthesia_sim/app/theme.py, tests/integration/test_agent_cost_view.py
 added: 2026-11-22
+closed: 2026-11-22
+pr: 2206
 payoff: with no price set, the largest text on screen is no longer an instruction, and the price form fits its content
+tests: tests/integration/test_agent_cost_view.py::test_a_reason_for_no_cost_is_drawn_smaller_than_a_cost, tests/integration/test_agent_cost_view.py::test_no_price_field_stretches_across_a_wide_area
 ---
 
 **Problem.** The agent cost View draws its no-cost reason at the size of a value, larger than any figure on screen, and its price form's fields stretch across the whole Area, 1086 px wide at 1920 by 1080
@@ -40,3 +43,9 @@ the agent cost View in a wide Area and finds no price field wider than the cap.
 **Reproduced 2026-11-22** on `a7eb53f`, offscreen: the no-cost reason renders at the value size, and the price fields measure 532 px wide at 1366 by 768 and 1086 px at 1920 by 1080.
 
 **Generator check.** A one-off: the cost line has one label for two kinds of text, a value and a reason, and only this View has a reason in a value's place.
+
+**Built 2026-11-22.** `CostShown` gains `is_reason`, and the panel draws a reason at the line-above's size, unbolded. The price fields stop at `PRICE_FIELD_MAX_WIDTH`, 320 px, a placeholder.
+
+**Regression run.** The two new tests were run against the code before the fix, with the cap written as the literal 320: the reason test failed with `assert 22 < 22` (the reason's font against the amount's), and the width test with every field wider than the cap.
+
+**Docs swept 2026-11-22.** `docs/INTERFACE.md`, `docs/ARCHITECTURE.md` and `README.md`, searched for the changed wording and for the element's look; none states it, so none changed.
