@@ -1074,7 +1074,7 @@ class ConcentrationChart(QWidget):
         layout.addWidget(self._plot)
         item = self._plot.getPlotItem()
         item.setLabel("left", DisplayUnit.CONCENTRATION.axis_title, color=MUTED)
-        self._time_title = _TimeAxisTitle(item)
+        self._time_title = _TimeAxisTitle(item, self._plot)
         item.showAxis("right")
         item.getAxis("right").setLabel(DisplayUnit.MAC_MULTIPLE.axis_title, color=MUTED)
 
@@ -1570,7 +1570,7 @@ class WashInChart(QWidget):
         layout.addWidget(self._plot)
         item = self._plot.getPlotItem()
         item.setLabel("left", WASH_IN_RATIO_NAME, color=MUTED)
-        self._time_title = _TimeAxisTitle(item)
+        self._time_title = _TimeAxisTitle(item, self._plot)
         # The axis is fixed rather than fitted to the data. It is labelled at
         # its own gridlines, at its own resolution, as `docs/INTERFACE.md`
         # § "F_A/F_I as a displayed ratio" specifies.
@@ -1942,17 +1942,26 @@ class _TimeAxisTitle:
     MAC-awake legend entry does, so a span never loses its unit. The title is
     broken again whenever the axis changes width.
 
+    The title stops listening to the axis when the plot widget that holds the
+    axis is destroyed (`PL-9RZJ`). Qt can report a geometry change on the axis
+    while the axis itself is being deleted, after its Python side is gone. A
+    title still listening then raised "Internal C++ object (AxisItem) already
+    deleted", once for each such report. The plot widget's `destroyed` signal
+    comes before its scene, and so the axis, is deleted.
+
     Args:
         item: The plot whose bottom axis is the time axis.
+        plot: The widget that draws `item`, whose deletion deletes the axis.
     """
 
-    def __init__(self, item: Any) -> None:
+    def __init__(self, item: Any, plot: QWidget) -> None:
         self._item = item
         self._axis = item.getAxis("bottom")
         self._words = TIME_AXIS_TITLE
         self._lines: tuple[str, ...] = ()
         self._width = -1.0
         self._axis.geometryChanged.connect(self._refit)
+        plot.destroyed.connect(self._stop_refitting)
         self._write()
 
     @property
@@ -1991,6 +2000,9 @@ class _TimeAxisTitle:
         if words != self._words:
             self._words = words
             self._write()
+
+    def _stop_refitting(self) -> None:
+        self._axis.geometryChanged.disconnect(self._refit)
 
     def _refit(self) -> None:
         # Writing the title changes the axis's height and never its width, so

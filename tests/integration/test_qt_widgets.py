@@ -62,6 +62,7 @@ from anesthesia_sim.app.formatting import format_flow, format_percent
 from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES
 from anesthesia_sim.app.qt_widgets import (
     WINDOW_SCREEN_FRACTION,
+    DialInput,
     FlowLayout,
     MarkButton,
     MarkEditor,
@@ -567,7 +568,7 @@ def test_the_value_applied_to_the_model_is_exactly_the_value_printed_above_the_s
     for setting in _settings():
         control = ParameterSlider(setting)
         emitted: list[float] = []
-        control.value_changed.connect(emitted.append)
+        control.value_changed.connect(lambda value, _input, emitted=emitted: emitted.append(value))
         minimum, maximum = control.slider.minimum(), control.slider.maximum()
         positions = sorted(
             {minimum, maximum, *range(minimum, maximum + 1, max(1, (maximum - minimum) // 40))}
@@ -623,7 +624,7 @@ def test_driving_a_slider_from_the_snapshot_emits_no_change(application: QApplic
     fresh_gas_flow, delivered, *_ = _settings()
     control = ParameterSlider(delivered)
     emitted: list[float] = []
-    control.value_changed.connect(emitted.append)
+    control.value_changed.connect(lambda value, _input: emitted.append(value))
     started: list[None] = []
     control.adjustment_started.connect(lambda: started.append(None))
     moved = SettingReadout(
@@ -744,7 +745,9 @@ def test_a_dragged_thumb_previews_until_release_and_then_applies_once(
     events: list[tuple[str, float | None]] = []
     control.preview_moved.connect(lambda value: events.append(("preview", value)))
     control.preview_ended.connect(lambda: events.append(("ended", control.value())))
-    control.value_changed.connect(lambda value: events.append(("applied", value)))
+    control.value_changed.connect(
+        lambda value, dial_input: events.append((f"applied on {dial_input.value}", value))
+    )
     start = slider_position(setting.value, setting.decimals)
 
     control.slider.setSliderDown(True)
@@ -762,7 +765,7 @@ def test_a_dragged_thumb_previews_until_release_and_then_applies_once(
 
     assert events == [
         *held,
-        ("applied", slider_value(start + 10, setting.decimals)),
+        ("applied on a released thumb", slider_value(start + 10, setting.decimals)),
         ("ended", slider_value(start + 10, setting.decimals)),
     ]
 
@@ -772,7 +775,7 @@ def test_a_released_thumb_back_where_it_started_applies_nothing(application: QAp
     control = ParameterSlider(setting)
     applied: list[float] = []
     ended: list[None] = []
-    control.value_changed.connect(applied.append)
+    control.value_changed.connect(lambda value, _input: applied.append(value))
     control.preview_ended.connect(lambda: ended.append(None))
     start = slider_position(setting.value, setting.decimals)
 
@@ -789,14 +792,14 @@ def test_a_key_step_applies_at_once_and_previews_nothing(application: QApplicati
     setting = _settings()[0]
     control = ParameterSlider(setting)
     previewed: list[float] = []
-    applied: list[float] = []
+    applied: list[tuple[float, DialInput]] = []
     control.preview_moved.connect(previewed.append)
-    control.value_changed.connect(applied.append)
+    control.value_changed.connect(lambda value, dial_input: applied.append((value, dial_input)))
     start = slider_position(setting.value, setting.decimals)
 
     QTest.keyClick(control.slider, Qt.Key.Key_Right)
 
-    assert applied == [slider_value(start + 1, setting.decimals)]
+    assert applied == [(slider_value(start + 1, setting.decimals), DialInput.STEP)]
     assert previewed == []
 
 

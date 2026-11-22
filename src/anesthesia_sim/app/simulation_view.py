@@ -159,6 +159,7 @@ from anesthesia_sim.app.preferences import (
 )
 from anesthesia_sim.app.qt_widgets import (
     ClauseWrappingLabel,
+    DialInput,
     FocusRing,
     MarkButton,
     MarkEntry,
@@ -511,6 +512,10 @@ class SimulationView(QWidget):
         # (`PL-VN6M`).
         self._compartment_selection = INITIAL_COMPARTMENT_SELECTION
         self._render_pending = False
+        # Whether a frame has been drawn at once for a dial input since the
+        # last render tick. Further inputs before the tick leave their frame
+        # to it (`present_input`, `PL-2WVC`).
+        self._drew_for_an_input = False
         # How many runs the last attempted frame was drawn over. `render_tick`
         # draws when the run set has changed since then (`PL-0LG6`).
         self._drawn_run_count = 0
@@ -990,6 +995,7 @@ class SimulationView(QWidget):
             run.ask_before_reset(self._trunk_reset_question)
 
         run.presentation_requested.connect(self.present)
+        run.input_presentation_requested.connect(self.present_input)
         run.hold_while(self._a_question_is_open)
         readout_section = _holder(self._readout_column, (run.build_readout_section(),))
         notice = run.build_notice()
@@ -1245,6 +1251,7 @@ class SimulationView(QWidget):
 
         run.stop_timers()
         run.presentation_requested.disconnect(self.present)
+        run.input_presentation_requested.disconnect(self.present_input)
 
         for widget in slots.placed:
             widget.setParent(None)
@@ -1703,12 +1710,15 @@ class SimulationView(QWidget):
         a coalesced frame has already rewritten its own readouts
         (`RunView._apply_setting`). So the dials, the accounting panel, the
         schematic and the agent cost panel in the Areas move with those
-        readouts, and do not wait for the tick (`PL-RF2S`).
+        readouts, and do not wait for the tick (`PL-RF2S`). Until the tick,
+        those panels show a later step than the charts. So a dial input asks
+        through `present_input`, which coalesces only an input that follows
+        another within one render interval (`PL-2WVC`).
 
         Args:
             coalesce: True to mark a frame as owed and let the render tick
-                draw it, as a dragged slider does. False to draw at once, as
-                every discrete action does (`PL-R2YM`).
+                draw it, as a held thumb's movement does. False to draw at
+                once, as every discrete action does (`PL-R2YM`).
         """
 
         if coalesce:
@@ -1718,6 +1728,28 @@ class SimulationView(QWidget):
 
         self._render_pending = False
         self._refresh_view()
+
+    @halt_gate
+    def present_input(self) -> None:
+        """Draw a frame for a dial input at once, or leave it to the render tick after another.
+
+        A key press, a wheel event or a click on the track draws its frame at
+        once, so the readouts, the schematic and the charts show the same
+        step after it (`PL-2WVC`). An input that follows another before the
+        next render tick leaves its frame to that tick instead, which draws
+        the latest state. So a burst of inputs, such as a held key, a
+        spinning wheel or a trackpad swipe, draws at most one frame of its
+        own in each render interval, besides the tick's (`PL-R2YM`). The
+        rule counts render ticks rather than reading a clock, and does not
+        depend on what the platform reports about a wheel event's phase.
+        """
+
+        if self._drew_for_an_input:
+            self.present(True)
+            return
+
+        self._drew_for_an_input = True
+        self.present(False)
 
     @halt_gate
     def render_tick(self) -> None:
@@ -1748,7 +1780,12 @@ class SimulationView(QWidget):
         The run count and each run's record are stored where they are written,
         including in the halt, so neither of them can leave a frame owed
         forever either.
+
+        Each tick also lets the next dial input draw its frame at once again
+        (`present_input`).
         """
+
+        self._drew_for_an_input = False
 
         if (
             not any(run.is_running for run in self._runs)
@@ -2474,15 +2511,20 @@ class SimulationView(QWidget):
         self._run_with(run_id).start_adjustment()
 
     @halt_gate
-    def _handle_setting_request(self, run_id: RunId, control: ControlInput, value: float) -> None:
+    def _handle_setting_request(
+        self, run_id: RunId, control: ControlInput, value: float, dial_input: DialInput
+    ) -> None:
         """Ask the run that a View named to take `value` as its setting on `control`.
+
+        `dial_input` says which kind of input applied the value, and so when
+        its frame is drawn (`RunView.request_setting`).
 
         Raises:
             ValueError: If the dashboard holds no such run (`_run_with`). The
                 halt gate then halts every run.
         """
 
-        self._run_with(run_id).request_setting(control, value)
+        self._run_with(run_id).request_setting(control, value, dial_input)
 
     @halt_gate
     def _handle_preview_request(self, run_id: RunId, control: ControlInput, value: float) -> None:

@@ -26,6 +26,7 @@ from anesthesia_sim.app.chart_time_base import time_base_for_span
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import CONTROL_TIMELINE_HEADING, run_label, slider_position
 from anesthesia_sim.app.formatting import FLOW_DISPLAY_DECIMALS, format_elapsed
+from anesthesia_sim.app.qt_widgets import DialInput
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.view_registry import CONCENTRATION_CHART, PARAMETER_CONTROLS, REGISTERED
 from anesthesia_sim.app.views import CompartmentSchematicView
@@ -179,9 +180,11 @@ def test_a_dragged_dial_leaves_each_chart_s_frame_until_the_render_tick(
 ) -> None:
     """A coalesced setting change hands every View the runs with no frame, and the plots wait.
 
-    The run's own readouts move at once and the chart waits for the render
-    tick (`PL-018`, `PL-R2YM`). The kept frame that the tick carries is the
-    one each chart already shows, so the chart draws nothing.
+    The change is the value at which a previewed thumb is released, whose
+    frame waits for the end of the preview (`DialInput.RELEASE`). The run's
+    own readouts move at once and the chart waits (`PL-018`, `PL-R2YM`). The
+    kept frame that the tick carries is the one each chart already shows, so
+    the chart draws nothing.
     """
 
     view = _shown_view(application, _run_at(_COMPARED_AT_S))
@@ -189,7 +192,8 @@ def test_a_dragged_dial_leaves_each_chart_s_frame_until_the_render_tick(
     presented = view.presented_frames
 
     view.runs[0]._apply_setting(
-        lambda: view.runs[0].controller.set_fresh_gas_flow(FreshGasFlow(4.0)), coalesce=True
+        lambda: view.runs[0].controller.set_fresh_gas_flow(FreshGasFlow(4.0)),
+        dial_input=DialInput.RELEASE,
     )
 
     assert view.presented_frames == presented
