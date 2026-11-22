@@ -34,8 +34,9 @@ p. 321 through the text layer of the private corpus, and *Anesthesiology*
 1991;74:489-98 pp. 494-95 as page images. `PublishedWashoutFit.ratio_at()`
 builds the curve from the mean coefficients. The curve is compared as
 published, without normalising it. At discontinuation the amplitudes sum to
-0.912-0.937 rather than 1, because they are means of per-subject fits.
-Normalising would raise every fitted value, and lower every ratio here, by 7
+less than 1, because they are means of per-subject fits. `docs/VERIFICATION.md`
+§ "The first 24 hours of elimination against the published mean curves" gives
+each cohort's sum. Normalising would raise every fitted value, and lower every ratio here, by 7
 to 10%.
 
 The model runs the same protocol as the gate. It runs the shipped 30-minute
@@ -114,8 +115,10 @@ curve, by 12 to 24% at 23.5 hours and by a factor of 2.1 for desflurane.
 
 With the apparatus taken away, the tail runs below the fitted curve from the
 third minute on. It stays below for the whole run in two cohorts, and for most
-of the run in the other two. Between 8 and 13 hours it is a third to a half of
-the fitted value (0.34 to 0.46).
+of the run in the other two. After the first hour it falls as low as a third
+to a half of the fitted value in every cohort. `docs/VERIFICATION.md`
+§ "The first 24 hours of elimination against the published mean curves" gives
+each cohort's lowest point and the hour at which it falls.
 
 The middle stretch answers the question the note asked. In every fitted
 curve, the fourth compartment's term is the largest from 1.8 to 3.1 hours
@@ -1349,15 +1352,19 @@ def test_the_published_coefficients_sum_below_one_at_discontinuation(
 ) -> None:
     """Record that the curves are compared un-normalised, and by how much.
 
-    The amplitudes are means of per-subject fits and sum to 0.912 to 0.937,
-    not 1. The module compares the curve as published. The module docstring
-    says that normalising would move every ratio by 7 to 10%. This test pins
-    the sum, so that this figure cannot drift from the coefficients.
+    The amplitudes are means of per-subject fits and sum to less than 1. The
+    module compares the curve as published. The module docstring says that
+    normalising would move every ratio by 7 to 10%. This test holds each sum
+    between 0.91 and 0.94, so that the sums that `docs/VERIFICATION.md`
+    § "The first 24 hours of elimination against the published mean curves"
+    gives cannot drift far from the coefficients.
     """
 
     assert 0.91 <= fit.value_at_discontinuation <= 0.94, (
         f"{fit.label}: the published amplitudes sum to {fit.value_at_discontinuation:.4f} at "
-        "discontinuation, outside the 0.912 to 0.937 the module docstring records"
+        "discontinuation, outside 0.91 to 0.94. Check the coefficients against the source, "
+        "and the sums that docs/VERIFICATION.md's section on the first 24 hours of "
+        "elimination gives"
     )
 
 

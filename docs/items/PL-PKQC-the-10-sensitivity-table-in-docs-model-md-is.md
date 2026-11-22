@@ -3,14 +3,17 @@ id: PL-PKQC
 title: The 10% sensitivity table in docs/MODEL.md is dated the day before the venous pool changed, and two of its rows no longer reproduce to the last digit
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: model-spec-accuracy
 touches: docs/MODEL.md, tests/reference/test_published_wash_in_and_elimination.py
 blocked-by: PL-SZ6G
 deferred-from: v0.7.0 - captured after the freeze by the check of docs/MODEL.md against the code; it changes no displayed value, and it is not safety or science
 added: 2026-11-21
+closed: 2026-11-22
+pr: 2243
 payoff: the table that says how large a coefficient error the published-data comparison can detect gives the figures the shipped model produces
+verify: ! grep -qF '+0.45 to +0.55' tests/reference/test_published_wash_in_and_elimination.py
 ---
 
 **Problem.** The 10% sensitivity table in docs/MODEL.md is dated the day before the venous pool changed, and two of its rows no longer reproduce to the last digit
@@ -58,3 +61,7 @@ It printed, per coefficient, wash-in then elimination: blood:gas −0.6429 to �
 **What is left: the copy in the test module.** The module docstring of `tests/reference/test_published_wash_in_and_elimination.py` still prints the 2026-09-06 table, and a later docstring in the same file still says "+0.45 to +0.55 published SD per +10%". An edit to an existing line of a test under `tests/reference/` holds its pull request for the project owner's read, so it goes in the later pull request that carries the other `tests/reference/` edits, not in #2237. Recommendation for that pull request: replace the module's copy of the table with a pointer to `docs/VERIFICATION.md` § "Which stored values each ratio responds to", so that one record holds the figures, and change "+0.45 to +0.55" to "+0.44 to +0.54".
 
 Files checked: `docs/VERIFICATION.md`, `docs/MODEL.md`, `docs/PARAMETERS.md`, `docs/INTERFACE.md` and `README.md`, by `grep -n "0\.45 to\|0\.09 to\|+0.17"`. No other document printed the table.
+
+**Done 2026-11-22**, on `claude/project-thread-v9awbd`, with the copy left by #2237. The module docstring of `tests/reference/test_published_wash_in_and_elimination.py` no longer prints the 2026-09-06 table. It points at `docs/VERIFICATION.md` § "Which stored values each ratio responds to", which holds the figures of the shipped tree. The docstring of `test_no_measured_tissue_solubility_reaches_desflurane_s_published_elimination` no longer says "+0.45 to +0.55 published SD per +10%". It points at the same section for the sensitivity table, rather than taking the recommended "+0.44 to +0.54", so one record holds the figures. No assertion, tolerance or expected value changed.
+
+Files checked: `docs/VERIFICATION.md`, `docs/MODEL.md`, `docs/PARAMETERS.md`, `docs/INTERFACE.md`, `README.md` and `tests/`, by `grep -rn "0\.45 to\|0\.09 to\|+0.17"`. None printed the old figures. The one match is the muscle row's elimination "−0.09 to −0.12", which reproduces.

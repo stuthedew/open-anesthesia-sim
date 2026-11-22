@@ -1584,18 +1584,31 @@ difference between two compartments' concentrations is as accurate as each
 concentration.
 
 **The $`4\times10^{-13}`$ limit leaves room for rounding that differs between
-computers, but not for the error of an approximate method.** It is sized on how much
-the model's own rounding can vary. It was set when a run could take a step of 0.1,
-0.05 or 0.025 s. Solving the five runs below at those three steps moved the model's
-result by more than its difference from the
-independent solution, and the limit was set above that spread. A run now takes one
-length of step, so the spread cannot be measured again, and the limit was kept. It is
-28 times the largest difference at the one-second step. Even the largest
+computers, but not for the error of an approximate method.** It is a chosen limit,
+not the bound on a run's rounding that `core/rounding.py` derives. That bound, for the
+runs at the corner of the supported settings, is larger than the loss of exactness
+that the test must catch, so a limit set at it would pass that loss. Two
+conditions set the chosen limit instead:
+
+1. It must fail the model's result with every concentration made 1e-11 too large, in
+   proportion. At the highest desflurane dial setting that moves a concentration by
+   $`1.8\times10^{-12}`$, four and a half times the limit.
+2. It must pass the rounding that differs between computers. The limit was set
+   when a run could take a step of 0.1, 0.05 or 0.025 s. Solving the five runs below
+   at those three steps moved the model's result by more than its difference from
+   the independent solution, and the limit was set above that spread. A run now
+   takes one length of step, so the spread cannot be measured again. It still covers
+   a one-second run. The derived bound grows with the number of steps and doubles
+   with each squaring that a step's calculation needs. A one-second step of these
+   runs needs two or three squarings and a 0.1 s step needed none, so each run's
+   bound in one-second steps is at most 0.8 times its bound in 0.1 s steps.
+<!-- not-restated: 0.05 -->
+
+Even the largest
 difference found is nine orders of magnitude smaller than the worst error of the
 earlier method, which solved the equations only approximately. The limit is still
 nearly nine orders of magnitude below the error of any method that does not solve
 the equations exactly, so the test fails as soon as such an error returns.
-<!-- not-restated: 0.05 -->
 
 **The earlier method was an operator split, which the exact step replaced in v0.4.4,
 released on 2026-09-06** (`PL-GS5X`). Within each step it solved the model's
@@ -1675,6 +1688,24 @@ absolute difference in fraction, taken as the largest over the whole run.
   error proportional to the step, $`C\,\Delta t`$, so a bound on the
   coefficient $`C`$ bounded the error at every step size. The
   present method's error has no such coefficient.
+- **What the earlier method's limits measured, and why they were retired**
+  (`PL-X9KD`, 2026-09-06). The bound on $`C`$ was 2.8e-3 s⁻¹, 1.22 times the
+  worst coefficient measured, 2.29e-3 s⁻¹. Expressed as a coefficient, the exact
+  step's worst difference was 7.747e-12 s⁻¹, so the bound was 3.61e8 times
+  larger, and the three tests that used it passed with 8.6 to 9.7 orders of
+  magnitude to spare. The fourth test checked that the error halved with the
+  step: each ratio of the error at one step to the error at half that step had to
+  lie between 1.9 and 2.1. It returned early, asserting nothing, wherever the
+  error was below a floor of 1e-12, and it did so on all nine of its cases.
+  Without the early return all nine would have failed, because the ratios ran
+  from 0.147 to 18.6. On desflurane's ventilator start the floor was only 1.29
+  times the measured error, so a computer that rounded slightly differently
+  would have failed correct code. That test took about 25 s of the file's 56 s.
+  The test that replaced the first three had a limit of 5e-12 at the time,
+  6.45 times the worst difference. The retired comparison over 3600 s found
+  the difference at that horizon two to sixteen times its 600 s value, largest
+  at the end of the run and in muscle.
+<!-- not-restated: 2.1 -->
 - **Why the difference is rounding.** The independent solution takes 80 steps of
   0.0125 s in each of the model's steps, short enough that error from its own
   method no longer adds to the difference. A test checks that the 80 steps cover
@@ -1686,6 +1717,34 @@ absolute difference in fraction, taken as the largest over the whole run.
   down. A difference that still held error from the independent solution's own
   method would fall about four-thousandfold and never rise, so a difference that
   moves a few percent either way comes from rounding in the two solutions.
+- **Why the independent solution steps at 0.0125 s** (`PL-B1WW`, 2026-09-07,
+  when the model's step was 0.1 s). At its earlier step of 0.05 s the
+  independent solution had converged only at the reference point held. The
+  worst difference reported then was 7.7470e-13, for desflurane on the
+  ventilator start, alveolar, at 307.4 s. Against an independent solution at
+  0.0015625 s, the independent solution's own error made up 7.7562e-13 of it,
+  99.88%, and the model's own error 9.1593e-16. Across the runs that set the
+  limit, the independent solution's share ran from 86% to 99.8%. At steps of
+  0.05, 0.025, 0.0125 and 0.00625 s, that run's largest difference was
+  7.7377e-13, 4.7351e-14, 1.3906e-14 and 1.2490e-14. It stops falling at
+  0.0125 s. At 0.025 s the independent solution still contributed about two
+  thirds of the figure.
+<!-- not-restated: 0.05 -->
+  - The finer step took this test file from 39.5 s to 79.2 s run serially, and
+    the whole suite as CI runs it from 43.0 s to 55.5 s. The suite figures are
+    the means of two paired runs on a 4-CPU container at `-n 8`, with the cold
+    first runs discarded.
+  - Richardson extrapolation, which combines steps of $`h/2`$ and $`h/4`$ as
+    $`(16y_{\text{fine}} - y_{\text{coarse}})/15`$, costs three times the 0.05 s
+    solution against four times for this step. It reached the same lowest
+    difference, 1.6029e-14 against 1.5786e-14. It was rejected because it adds
+    a mechanism to the one part of the test that a reviewer must be able to
+    check line by line against a textbook.
+- **Rounding builds up with the number of steps.** Before the step was fixed at
+  one second (`PL-SZ6G`, 2026-11-21), sevoflurane held at the reference point
+  for 600 s differed from the independent solution by 2.8935e-15 at a step of
+  0.1 s, 1.3385e-14 at 0.05 s and 3.8337e-14 at 0.025 s: more steps, more
+  rounding.
 - **The limit's margin for rounding on other computers.** The earlier method's
   limit carried a margin of 1.22. Its error coefficient came out the same on
   every computer, but rounding does not. A different `exp` implementation or a
@@ -1693,7 +1752,18 @@ absolute difference in fraction, taken as the largest over the whole run.
   spread between steps of 0.1 s, 0.05 s and 0.025 s, found without the independent
   solution, reached 1.07e-13. The limit is 3.7 times that spread and 6.8 times
   the largest difference at those steps, 5.89e-14. It is 28 times the largest
-  difference at the one-second step, 1.43e-14.
+  difference at the one-second step, 1.43e-14. That wider margin is not a reason
+  to tighten the limit, because the limit is set by the spread and not by the
+  difference. The spread still covers a one-second run by `run_rounding` in
+  `core/rounding.py`, which counts steps times $`2^{s}`$ for $`s`$ squarings. At the
+  envelope corner a one-second run takes 600 steps of three squarings, 4 800 by that
+  count, against 6 000 steps of none at 0.1 s (squarings counted 2026-11-22).
+- **The loss of exactness the limit must catch.** Making every concentration
+  of the model's result 1e-11 too large, in proportion, raises the largest difference
+  on the five runs to 1.81e-12 at the one-second step, and the limit fails it
+  (simulated 2026-11-22). The derived bound from `run_rounding` is $`1.1\times10^{-11}`$
+  to $`1.6\times10^{-11}`$ of a concentration's size on the three runs at the envelope
+  corner, so a limit set at that bound would pass this loss.
 - **Results for the five runs.** At the one-second step, the largest differences
   are 1.43e-14 for the *envelope corner*, 1.16e-14 for the *ventilator start*,
   6.13e-15 for the *unperfused load, then dial off*, 2.49e-15 for the *reference
@@ -1726,7 +1796,14 @@ absolute difference in fraction, taken as the largest over the whole run.
   set at the earlier step of 0.1 s, when the one-hour run reached 7.16e-14 and
   dividing the hour into steps of 0.1 s, 0.05 s and 0.025 s moved the
   model's result by up to 2.17e-13. The limit is 4.6 times that spread. The
-  test file records both tables.
+  spread still covers the hour in one-second steps, which takes two squarings a
+  step: 3 600 steps count 14 400 by `run_rounding`'s count, against 36 000 steps
+  of none at 0.1 s (squarings counted 2026-11-22). This limit catches a coarser
+  loss of exactness than the five runs' limit. These runs hold the dial at 5%, so
+  making every concentration 1e-11 too large, in proportion, moves the largest
+  difference to only 4.67e-13, which passes. At 2.2e-11 it reaches 1.02e-12, which
+  fails (simulated 2026-11-22). The five runs' limit catches the smaller loss.
+<!-- not-restated: 5 % -->
 - **When the largest difference falls.** With the earlier method it fell soon
   after a change: about 85 s into a wash-in at fixed settings, and about 13 s
   after a setting change. With the present method it falls wherever rounding
@@ -1740,6 +1817,8 @@ absolute difference in fraction, taken as the largest over the whole run.
   - On the unperfused load, isoflurane and desflurane peak during the loading
     phase, long after the circuit and alveoli have saturated. Sevoflurane peaks
     19 s after that phase.
+  - On none of the five runs is muscle the compartment with the largest
+    difference. Muscle has it only at the end of the one-hour runs.
 
   When a run could take other steps, the peak moved with the step. In runs on
   2026-10-25:
@@ -1797,7 +1876,12 @@ absolute difference in fraction, taken as the largest over the whole run.
   (`test_randomised_control_trajectories_keep_every_invariant`) runs the full
   simulation (`SimulationState`). Its upper limit on each concentration replaces
   a limit of 1. A looser upper limit would let a model change drive a compartment
-  to several times the dial setting.
+  to several times the dial setting. The limit allows each concentration to
+  exceed the highest delivered so far by 1e-14 of it, for rounding. That is a
+  chosen allowance, about a thousand times tighter than the bound on rounding
+  that `core/rounding.py` derives for these runs. It holds because no compartment
+  comes near the limit: the highest reached 68% of the highest concentration
+  delivered (simulated 2026-11-22).
 - The test file restates the supported ranges above and checks them against the
   ranges the model declares (`core/supported_ranges.py`), so widening the declared
   ranges cannot silently leave this test covering only part of them.

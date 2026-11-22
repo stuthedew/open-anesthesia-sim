@@ -3,14 +3,17 @@ id: PL-MYK0
 title: Docstrings and comments in three tests under tests/reference/ repeat five statements that docs/MODEL.md corrected on 2026-11-21
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: model-spec-accuracy
 touches: tests/reference/test_late_washout_against_published_fits.py, tests/reference/test_published_wash_in_and_elimination.py
 blocked-by: PL-SZ6G
 deferred-from: v0.7.0 - captured after the freeze by the check of docs/MODEL.md against the code; it changes no displayed value, and it is not safety or science
 added: 2026-11-21
+closed: 2026-11-22
+pr: 2243
 payoff: the docstrings of three published-data tests give the figures and reasons that the code and docs/MODEL.md give
+verify: ! grep -qF 'tracks reading the value out of the methods text' tests/reference/test_published_wash_in_and_elimination.py
 ---
 
 **Problem.** Docstrings and comments in three tests under tests/reference/ repeat five statements that docs/MODEL.md corrected on 2026-11-21
@@ -36,3 +39,14 @@ payoff: the docstrings of three published-data tests give the figures and reason
 <!-- absent: tests/reference/test_canonical_evaluation.py -->
 
 **Checked 2026-11-22** against `d4e8200`: partly done. The blocker `PL-SZ6G` closed with #2180. Point 3 is fixed: the docstring of `test_early_wash_in_matches_published_human_measurement` now reads "0.032 to 0.042". Point 5 went with the deleted file. Points 1, 2 and 4 are left. `tests/reference/test_late_washout_against_published_fits.py` still gives "0.912-0.937" in its module docstring and "0.912 to 0.937" in the docstring and failure message of `test_the_published_coefficients_sum_below_one_at_discontinuation`, and its module docstring still says "Between 8 and 13 hours it is a third to a half". `tests/reference/test_published_wash_in_and_elimination.py` still has both comments of point 4. The tail ratios of point 2 are model output, so measure them again on the whole-second tree before writing them.
+
+**Done 2026-11-22**, on `claude/project-thread-v9awbd`. Each figure that `docs/VERIFICATION.md` already holds is now a pointer to it, not a fresher copy.
+
+1. Point 1: the module docstring of `tests/reference/test_late_washout_against_published_fits.py` now says the amplitudes sum to less than 1 and points at `docs/VERIFICATION.md` § "The first 24 hours of elimination against the published mean curves" for each sum. The docstring of `test_the_published_coefficients_sum_below_one_at_discontinuation` says the same and names the 0.91 to 0.94 its assertion holds. Its failure message names that range and the section, in place of "0.912 to 0.937". The sums, recomputed from `PUBLISHED_FITS` on 2026-11-22: 0.93645, 0.91158, 0.92566 and 0.92735, so the section's "0.912 to 0.936" is right. The assertion is unchanged.
+2. Point 2: the module docstring now says the open-circuit tail falls as low as a third to a half of the fitted value in every cohort after the first hour, and points at the same section for each cohort's lowest point. Re-measured on 2026-11-22 with the module's `_washout_curve(agent, "open circuit")` against each fit's `ratio_at`: lowest after the first hour 0.425 at 12.7 h (sevoflurane), 0.422 at 13.2 h (isoflurane, first study), 0.336 at 7.95 h (desflurane), 0.457 at 13.4 h (isoflurane, second study); over hours 8 to 13 the ratio runs from 0.336 to 0.655; sevoflurane's lowest in the first hour is 0.36 at minute 19. That matches the section as #2237 left it.
+3. Point 4: in `tests/reference/test_published_wash_in_and_elimination.py`, the comment above `ApparatusDeadSpaceCase` now says neither paper reports the ventilation, pointing at `docs/VERIFICATION.md` § "Desflurane's residual, and why the parameter file was not changed". The docstring of `test_the_apparatus_dead_space_moves_every_cohort_together` made the same claim ("`PL-ZDWL` tracks reading the value out of the methods text") and is corrected the same way. The comment above `DETECTED_CHANGES` now says x1.10 is not used because it is too close to desflurane's edge at x1.097.
+4. Points 3 and 5 were already settled, as the checks above record.
+
+No assertion, tolerance or expected value changed in either file: each module's AST is identical to `origin/main`'s once every string is blanked.
+
+Files checked: `docs/VERIFICATION.md`, `docs/MODEL.md`, `docs/PARAMETERS.md`, `docs/INTERFACE.md` and `README.md`, by `grep -rn "0\.937\|not held here\|tracks reading the value\|passes it: desflurane"`. None printed the old statements. `docs/PARAMETERS.md` printed one unrelated "is not held here", about a different source.
