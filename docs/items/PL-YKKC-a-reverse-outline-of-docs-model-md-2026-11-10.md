@@ -106,3 +106,5 @@ already `PL-DQD8`, and the misdirected "rules below" pointer is `PL-XLDN`.
 **Blocked on the replacement of `docs/MODEL.md`.** The owner decided on 2026-11-11 to split `docs/MODEL.md` by reader (`PL-P3GZ`). `PL-48MX` replaces what is left of it, so most of the text these points describe will move or go.
 
 **Generator check.** `PL-P3GZ` found the cause: an instance of the fact that `PL-J1ZM` states, that no rule says what a reader can do without.
+
+**Checked 2026-11-22** against `d4e8200`: still applies, and still blocked on `PL-48MX`, which is open behind two earlier stages of the split of `docs/MODEL.md`. Part of the outline is out of date. #2109 (`PL-CTXZ`) moved Runtime controls, Interface boundary and Minimum displayed outputs to `docs/INTERFACE.md`, so the points about those sections now concern that document. By `##` headings, the sections from Model boundary to Conservation of agent mass are now about 20% of the 7,044-line `docs/MODEL.md`, not 11%. Required tests is about 24%, Parameter provenance 18% and Known limitations 15%. The committed outline that the done-when names exists at `docs/prose-review/model-reverse-outline.tsv` (`PL-9RLM` is done).

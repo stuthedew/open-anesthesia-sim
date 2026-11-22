@@ -1,9 +1,16 @@
 ---
 id: PL-6LJS
 title: The pull-request title check and the pull-request number check refuse a branch for an item another pull request closed, when the branch was built on that pull request's branch before it merged
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect
 feature: standing-weight
+touches: tools/pr_title_check.py, tools/pr_record_check.py, tests/unit
+deferred-from: v0.7.0 - present at the freeze, deferred on a stated reason: it is paid only by a branch stacked on another open pull request, and the entries this gate still holds are independent items that need no stacking, so the compounding-friction count is near zero
 added: 2026-11-21
+payoff: A branch stacked on another open pull request goes green for the work it carries, so no session has to work around a required check that blames it for another branch.
+reenters: PL-HMZZ
 ---
 
 **Problem.** The pull-request title check and the pull-request number check refuse a branch for an item another pull request closed, when the branch was built on that pull request's branch before it merged
@@ -13,3 +20,7 @@ added: 2026-11-21
 **What to do.** Make both checks leave out a closure that already records another pull request's number, or that another open pull request carries, and test it with a stacked branch.
 
 **Done when.** A branch built on another open pull request's branch passes both checks for the items that pull request closed.
+
+**Checked 2026-11-22**, at `d4e8200c`. The fault is still there. `tools/pr_record_check.py` still holds every item closed at the head and not at the base to this branch's own number (`owed = {... if pr != str(number)}`), so an item that records another pull request's `pr:` is still counted as owed. Neither check reads the branch the work was stacked on. Both checks were present at the freeze (`git show 0947408:tools/pr_record_check.py`). `PL-LY24` (the count of what the workflow-record checks refused) recommends keeping both checks and fixing this item.
+
+**Generator check.** An instance of the fact that `PL-XYQW` and `PL-HMZZ` state, "Which pull request carried an item's work", filed after both heads closed. Here the two checks read a closure on the branch below as this branch's own. So it is recorded as re-entering `PL-HMZZ`, whose `closures_on_base` reading these checks rely on.

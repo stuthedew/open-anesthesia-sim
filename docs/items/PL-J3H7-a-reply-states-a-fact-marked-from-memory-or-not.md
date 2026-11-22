@@ -1,8 +1,10 @@
 ---
 id: PL-J3H7
 title: A reply states a fact marked from memory or not checked, where the owner wants it looked up first and stated with its source
-status: untriaged
+status: dropped
 added: 2026-11-11
+closed: 2026-11-22
+reason: Already done by #2094 (08a09440): CLAUDE.md says 'Never state a fact with a note that it is from memory or was not checked: look it up, then state it with the source (project owner, 2026-11-11, PL-J3H7)', and docs/resident-instructions.md records the move; the owner added the same sentence to their account-wide instructions
 ---
 
 **Problem.** A reply states a fact marked from memory or not checked, where the owner wants it looked up first and stated with its source
@@ -39,3 +41,5 @@ read 2026-11-11). Triage decides whether this item closes on the edit above.
 the owner wrote to the same session: "added sentance". The session cannot read
 the owner's account settings, so the wording that was added is not confirmed
 from here. Nothing is left for a session to do on this item.
+
+**Generator check.** Not owed an answer beyond this: the work landed elsewhere before triage, so it is closed rather than worked.

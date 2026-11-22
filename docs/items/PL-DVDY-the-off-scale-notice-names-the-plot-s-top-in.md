@@ -28,3 +28,5 @@ it.
 **Done when.** The off-scale notice names the plot's top in both of the axis's
 units, percent and MAC, and a test pins both. It may ride `PL-K1VH`'s pull
 request.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. The off-scale notice in `app/dashboard_frame.py` still builds `top` with `format_mac_multiple` alone. `PL-K1VH` (the reader-chosen axis ceiling), which this item may ride, is still `ready` and unbuilt.

@@ -40,3 +40,5 @@ is no more than its View's least height plus the header, and the room it gives
 up goes to the chart beside it. A test opens each shipped Workspace at that
 size and checks the Area's height. The shares stay placeholders that the
 building session decides.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. No commit since #2134, the branch the 2026-11-14 measurement was taken on, has changed `data/workspaces/`, so the Parameters Area should still be about 180 px taller than its controls at 1920 by 1080. No test named `test_the_parameters_area_is_not_far_taller_than_its_controls` exists.

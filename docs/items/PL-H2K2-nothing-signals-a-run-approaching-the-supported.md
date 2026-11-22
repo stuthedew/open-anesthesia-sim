@@ -63,3 +63,5 @@ banner are `status_word` and `notice` there) and drawn by `app/run_view.py`,
 so the warning this item asks for is a claim the frame module states and a
 label the run view places. `touches` and `verify:` name those modules and
 their tests; the old command ran a Flet test file the port deleted.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. The interface says nothing about the supported run length until the run reaches it. `STATUS_SUPPORTED_LIMIT_TEXT` and the halt notice in `app/dashboard_frame.py` appear only once the run has stopped. The "Where" paragraph's line numbers in `app/simulation_view.py` are from before the Qt port. The clock and the halt notice are now built in `app/dashboard_frame.py`.

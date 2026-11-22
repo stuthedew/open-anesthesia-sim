@@ -54,3 +54,5 @@ no new workflow mechanism is built (`CLAUDE.md` § "What this project is").
 The simulation and its findings can run. Any new check, command or
 contributor path it recommends is captured, and built only once that pause
 lifts or the owner lifts it for this request.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. The findings report and the design round have not been done, and the brief is still the owner's skeleton. Two of the hurdles it would have met are gone: #2185 removed the branch-id check and the pull request body anchor check. The pull request title check and body check (`tools/pr_title_check.py`, `tools/pr_body_check.py`) remain, and `CONTRIBUTING.md` exists.

@@ -41,9 +41,15 @@ the readout without it would leave the application drawing the decomposition it
 has (delivered, exhausted, stored - where the agent is) instead of the comparison
 the lesson needs, which is a different and less teachable question.
 
-**Done when** `ROADMAP.md` planned-milestone item 28 names uptake beside
+[superseded 2026-11-22: the owner's answer below replaced this done-when] **Done when** `ROADMAP.md` planned-milestone item 28 names uptake beside
 delivered as the pair the readout draws, and records that
 `UptakeStepResult.patient_agent_change_l` already carries it; and the readout
 built under that milestone displays both. Only the first half is actionable
 now - the readout is item 28's work and out of the current milestone - and it is
 what this item's `verify:` command pins.
+
+**Checked 2026-11-22** against `d4e8200`: needs the project owner. The model still computes `patient_agent_change_l` in `src/anesthesia_sim/core/uptake_system.py`, and nothing in `src/anesthesia_sim/app/` shows it. But the done-when now contradicts the scoped milestone. `ROADMAP.md` § "Explicitly out of scope for v0.7.0", written when v0.7.0 was scoped in #1761, lists "Uptake as a headline figure" and says showing it is a display of its own, not part of the cost. The agent cost View that item 28 built (`src/anesthesia_sim/app/agent_cost.py`) shows delivered agent only. So the change this item asks for in item 28's text, and the readout under item 28 showing both, now turn on whether the owner wants uptake beside delivered as its own display.
+
+**Answered 2026-11-22.** Uptake is shown beside delivered as a display of its own, after v0.7.0, and the agent cost View keeps showing what was delivered (project owner, 2026-11-22, ratified, "whatever is best practice", over adding uptake to item 28's cost readout). Two reasons favour a display of its own. The cost View answers what the agent cost, and uptake is not a cost. The low-flow lesson is the gap between the two amounts over time, which needs both drawn on one scale rather than a second number beside a price. This agrees with `ROADMAP.md` § "Explicitly out of scope for v0.7.0", which already says "Showing it is a display of its own, not part of the cost."
+
+**Done when.** `ROADMAP.md`'s planned milestones carry one line for a display that shows uptake beside delivered as its own display rather than part of the agent cost. That line records that `UptakeStepResult.patient_agent_change_l` already carries uptake. Item 28's text is left as it is.

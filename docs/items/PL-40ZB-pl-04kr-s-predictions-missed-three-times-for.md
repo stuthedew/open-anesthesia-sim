@@ -21,3 +21,5 @@ sweep: what generated each of the three PL-04KR misses in the week of 2026-11-02
 **Done when.** This brief names, for each of the three misses, what generated it: a new head recorded with `root-cause-of:`, `generator:` and `misread:`; an existing head whose fix did not hold, recorded on the members with `--reenters`; or the reason it is not a generator. The verdicts sit under a heading "**What generated each miss.**"
 
 **Generator check.** This item is the search for generators, so it is not itself a member of one.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. The brief has no "**What generated each miss.**" heading, and no other item names a generator for the three misses of the week of 2026-11-02. `bin/docket release` still prints a broken `PL-04KR` prediction at each cut (`subprojects/docket/src/docket/cli.py`), so later weeks may have added misses of their own.

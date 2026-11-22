@@ -3,11 +3,13 @@ id: PL-RS3Z
 title: The order of a branch's splitter sections is unasserted; the test counts them without checking where they land
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: test
 feature: branch-display-tests
 touches: tests/integration/simulation_view
 added: 2026-09-20
+closed: 2026-11-22
+reason: Obsolete since #1592 (bfe3f3c4, PL-W9P6): the dashboard draws Areas from the layout model, so the splitter and its section-reordering method are gone and no grep of src/ or tests/ finds restack or _stacked_sections; there is no order left to test
 payoff: catches a branch whose readouts land below both charts instead of beside the trunk's, which a count-only assertion cannot see
 verify: grep -rq 'def test_the_branchs_sections_land_beside_the_trunks_in_order' tests/integration/simulation_view/
 ---

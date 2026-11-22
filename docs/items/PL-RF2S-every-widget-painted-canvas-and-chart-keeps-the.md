@@ -282,3 +282,5 @@ The builder's report gives each regression test's name and its failure message b
 
 **Generator check.** This item is the head for the three open members of `every-view-in-run-state-tests`, and states the cause beneath the four closed heads it names.
 
+
+**Checked 2026-11-22** against `d4e8200`: partly done. The first two of the four pull requests merged: #2094 (each run's panel written from one value) and #2125 (every View told when no frame can be drawn). The third and fourth are left. Readers still take the first run: `snapshots[0]` at `src/anesthesia_sim/app/simulation_view.py` lines 1724 and 1726 and at `src/anesthesia_sim/app/views.py` line 612. The hand-kept table `halt_restatements` is still in `simulation_view.py`. The test `test_every_registered_view_draws_a_state_alike_whatever_it_drew_before` does not exist. The three members `PL-B8DL`, `PL-0G2P` and `PL-G2WC` are still open.

@@ -1,9 +1,15 @@
 ---
 id: PL-8G4V
 title: Move the trial's custom Qt style into the app with the first control built in it, and delete the trial's two files
-status: untriaged
+priority: P3
+effort: M
+status: blocked
+classes: feature
 feature: interface-pass-design-round
+touches: src/anesthesia_sim/app/main.py, tests/benchmarks/style_trial.py, tests/benchmarks/style_trial_checks.py, tests/integration
+blocked-by: PL-MF90
 added: 2026-11-11
+payoff: the interface pass can move its controls into the chosen style one at a time, each checked against the shipped dashboard
 ---
 
 **Problem.** `PL-BVC5` (the trial of a custom Qt style against style sheets)
@@ -57,3 +63,9 @@ measurements).
 **Order.** The design of the first control comes from `PL-MF90` (choose one
 token set and one component set). The trial's five-state button is a
 placeholder.
+
+**Checked 2026-11-22.** `tests/benchmarks/style_trial.py` and `tests/benchmarks/style_trial_checks.py` still exist. A search of `src/` finds no `TrialStyle`, no proxy style and no `setStyle` call. `PL-MF90` (one token set and one component set) is `blocked` on `PL-2V6V`.
+
+**Why it matters.** The interface pass builds its controls in a custom style because the trial chose it. Until the style is in the application, no control can move to it.
+
+**Done when.** The application installs the custom style in `main()`. The first control that `PL-MF90` designs is drawn by the style, and its style sheet is gone. A test compares the dashboard under the style with the dashboard without it, pixel by pixel, outside the moved control. The trial's two files are deleted.

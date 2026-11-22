@@ -34,3 +34,5 @@ every reading record and page number.
 **Generator check.** One-off: a finding from the `docs/MODEL.md` restructure (`PL-BSMF`, finding 49), declined there because shortening a citation is rewording. No head's `misread:` states that fact.
 
 **Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** Present. At 817a4d88, `docs/MODEL.md` already gave both Yasuda 1991 papers in full twice (PMIDs 1994760 and 2001028) and Hendrickx and De Wolf in full twice. The item is classed `docs` only, which is not debt, so v0.7.0's gate does not take it: it stays off the frozen list and needs no deferral.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `grep -n "PMID 1994760\|PMID 2001028\|Special aspects\|218–25" docs/MODEL.md` still finds both Yasuda 1991 papers in full twice, under § "Published wash-in and elimination validation test" and in § "Known limitations". It finds Hendrickx and De Wolf in full twice, in § "Symbols" and § "Known limitations", and Targ 1989 as a journal locator three times. Lerou and Booij is still a locator in one section and a full citation in another.

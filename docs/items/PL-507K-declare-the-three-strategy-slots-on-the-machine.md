@@ -116,3 +116,5 @@ machines `docs/machine-survey.md` surveyed; a ninth machine outside them
 falsifies it. It is also falsified if planned-milestone item 4 leaves the
 roadmap, since the likely-second-member argument goes with it and three inert
 fields become speculation.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `_BreathingCircuitPayload` in `src/anesthesia_sim/core/parameters.py` (line 1241) declares no `delivery`, `removal` or `dial_mapping` field. `src/anesthesia_sim/data/machines/reference_circle_system.json` still names no strategy, and it is still the only profile, so the edit is still one file. The second delivery member that the brief relies on is still on the roadmap, as item 4 in `ROADMAP.md` ("Direct agent injection into the circuit").

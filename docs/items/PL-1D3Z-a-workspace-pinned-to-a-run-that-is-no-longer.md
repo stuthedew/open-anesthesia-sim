@@ -30,3 +30,5 @@ the case, which is a change to the View contract.
 **Generator check.** A one-off. `PL-9YPR` moved two case panels into Views,
 and the pin was written when every View showed one run. No reader misread a
 fact.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. When the current Workspace is pinned to a run that is not open, `SimulationView` calls `self._areas.show_pin(..., absent=True)` and hands no View anything. `show_pin` in `app/area_layout.py` then puts the notice on every Area, the Bookmarks and Branch Views included. While the pinned run is open, every Area header is given that run's name. The View contract (`app/view_contract.py`) still has no way for a View to say that it shows the case rather than one run.

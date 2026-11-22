@@ -36,3 +36,5 @@ same line rather than in two panels.
 **Done when.** `docs/MODEL.md`'s hazard table carries a row for reading a
 requested value as a modelled one, naming the channels that separate them, and
 a test holds it in the shape the table's other rows are held.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `docs/MODEL.md` § "Reasonably foreseeable misuse, and the hazards the presentation carries" has no row for reading a requested MAC target as a modelled reading, and no test named in `verify:` exists. The case the brief says would sharpen it has arrived: `PL-CTD7` (a run that halts at a target) is done. That table moves to a new verification document with `PL-6PPZ` (claimed elsewhere), so the row goes wherever the table then lives.

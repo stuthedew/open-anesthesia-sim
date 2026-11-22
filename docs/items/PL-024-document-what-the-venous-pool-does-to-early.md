@@ -52,3 +52,5 @@ open question, and it can be answered after.
 **Done when.** `docs/MODEL.md` states the pool's time constant and its
 effect on the first minute, and any interface cue is a deliberate decision
 rather than an omission.
+
+**Checked 2026-11-22** against `d4e8200`: still applies, but its figures are out of date. Neither `docs/MODEL.md` § "Known limitations" nor `docs/INTERFACE.md` says that the first minute of the mixed-venous trace is shaped by the venous pool's mixing. The stored pool is now 1.222 L (`venous_pool_volume_l` in `src/anesthesia_sim/data/patients/reference_adult.json`), not 1.0 L. At 5 L/min that gives the 14.7 s time constant that `docs/MODEL.md` states under "Parameter provenance", not 12 s. So the 55%, 34% and 17% shortfalls at 30, 60 and 120 s must be measured again before they are written down. The brief's "Where" names `app/simulation_view.py`, but its `touches:` names `app/dashboard_frame.py`.

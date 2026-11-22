@@ -43,3 +43,5 @@ parameter values with provenance, held to `docs/MODEL.md` § "Source hierarchy".
 `src/anesthesia_sim/data/machines/`, every value in it traceable to a source
 `docs/machine-survey.md` records at its stated tier, unknowns stored as unknown
 rather than invented, and a run can be driven on it.
+
+**Checked 2026-11-22** against `d4e8200`: still applies, and still blocked. `PL-QW19` is done, but `PL-2FZ9` (load a machine profile by id) is ready and not done. `src/anesthesia_sim/data/machines/` still holds only `reference_circle_system.json`.
