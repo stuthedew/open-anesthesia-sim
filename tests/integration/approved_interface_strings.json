@@ -74,6 +74,7 @@
   "Fill height is tension, on the concentration chart's scale: # to #% of # atm (# ×MAC).\nMarks stand at the chart's gridlines, every #% of # atm (#.# ×MAC).\nA container's height is its tension, not its amount of agent.\nAmounts are millilitres of vapour at ## °C and # atm.\nAmounts in the body read high,\nas they are gas at body temperature.",
   "Fit run",
   "Fresh gas flow",
+  "From",
   "Height",
   "Instant",
   "Isoflurane",
@@ -175,6 +176,7 @@
   "Bottle price",
   "Bottle volume (mL of liquid)",
   "Branch",
+  "Branch here: #m",
   "Branch point (vertical, solid)",
   "Cardiac output",
   "Circuit",
@@ -217,6 +219,7 @@
   "Fill height is tension, on the concentration chart's scale: # to #% of # atm (# ×MAC).\nMarks stand at the chart's gridlines, every #% of # atm (#.# ×MAC).\nA container's height is its tension, not its amount of agent.\nAmounts are millilitres of vapour at ## °C and # atm.\nAmounts in the body read high,\nas they are gas at body temperature.",
   "Fit run",
   "Fresh gas flow",
+  "From",
   "Height",
   "Instant",
   "Isoflurane",
@@ -317,6 +320,7 @@
   "Bottle price",
   "Bottle volume (mL of liquid)",
   "Branch",
+  "Branch here: ##m",
   "Branch point (vertical, solid)",
   "Cardiac output",
   "Circuit",
@@ -359,6 +363,7 @@
   "Fill height is tension, on the concentration chart's scale: # to #% of # atm (# ×MAC).\nMarks stand at the chart's gridlines, every #% of # atm (#.# ×MAC).\nA container's height is its tension, not its amount of agent.\nAmounts are millilitres of vapour at ## °C and # atm.\nAmounts in the body read high,\nas they are gas at body temperature.",
   "Fit run",
   "Fresh gas flow",
+  "From",
   "Height",
   "Instant",
   "Isoflurane",
@@ -460,6 +465,7 @@
   "Bottle price",
   "Bottle volume (mL of liquid)",
   "Branch",
+  "Branch here: #m",
   "Branch point (vertical, solid)",
   "Cardiac output",
   "Circuit",
@@ -503,6 +509,7 @@
   "Fill height is tension, on the concentration chart's scale: # to ##% of # atm (# ×MAC).\nMarks stand at the chart's gridlines, every #% of # atm (#.# ×MAC).\nA container's height is its tension, not its amount of agent.\nAmounts are millilitres of vapour at ## °C and # atm.\nAmounts in the body read high,\nas they are gas at body temperature.",
   "Fit run",
   "Fresh gas flow",
+  "From",
   "Height",
   "Instant",
   "Isoflurane",
@@ -603,6 +610,7 @@
   "Bottle price",
   "Bottle volume (mL of liquid)",
   "Branch",
+  "Branch here: #m",
   "Branch point (vertical, solid)",
   "Cardiac output",
   "Circuit",
@@ -645,6 +653,7 @@
   "Fill height is tension, on the concentration chart's scale: # to #.#% of # atm (# ×MAC).\nMarks stand at the chart's gridlines, every #.#% of # atm (#.# ×MAC).\nA container's height is its tension, not its amount of agent.\nAmounts are millilitres of vapour at ## °C and # atm.\nAmounts in the body read high,\nas they are gas at body temperature.",
   "Fit run",
   "Fresh gas flow",
+  "From",
   "Height",
   "Instant",
   "Isoflurane",
@@ -709,7 +718,8 @@
   "×MAC"
  ],
  "setting changed": [
-  "#m · Fresh gas flow #.# L/min -> #.# L/min"
+  "#m##s",
+  "#m##s–#m##s · Delivered agent #.##% -> #.##% (# settings)\n#m · Fresh gas flow #.# L/min -> #.# L/min"
  ],
  "marks set": [
   "##m – the decision point",
@@ -718,8 +728,41 @@
  ],
  "stopped on a mark": [
   "#m – induction · passed",
+  "#m, on your mark",
+  "Branch here: #m, stopped on your mark",
   "Paused — stopped on your mark",
   "Share of the agent the run holds:\nCircuit ##%, Alveolar ##%, Mixed venous <#%,\nVessel-rich group #%, Muscle #%, Fat <#%.",
+  "•"
+ ],
+ "mark reached": [
+  "Alveolar #.## ×MAC · reached",
+  "•"
+ ],
+ "marks on compared runs": [
+  "##s – check · Run # passed · Run # before this branch opened",
+  "##s, on your mark",
+  "#m##s",
+  "#m##s · Run # not reached before the simulation error · Run # passed",
+  "#m · Delivered agent #.##% -> #.##%\n#m · Fresh gas flow #.# L/min -> #.# L/min",
+  "#m · Fresh gas flow #.# L/min -> #.# L/min",
+  "Agent accounting validation — Run #",
+  "Alveolar #.## ×MAC · Run # not reached before the simulation error · Run # reached",
+  "Alveolar (long dash), Run #",
+  "Circuit (solid), Run #",
+  "Control changes — Run #",
+  "F<sub>A</sub>/F<sub>I</sub> (solid), Run #",
+  "Fat #.## ×MAC · Run # not reached before the simulation error · Run # not yet",
+  "It needs at least ### by ### px; this Area is #### by ###. Drag a border to enlarge it, or choose a smaller View from the menu above.",
+  "Locked to the case",
+  "Locked while comparing",
+  "One comparison at a time. Run #'s Reset ends it and starts the case over; Run #'s Reset only returns Run # to where it branched.",
+  "Paused — stopped on your mark",
+  "Run #",
+  "Run # — Now: F<sub>A</sub>/F<sub>I</sub> = #.##",
+  "Run #: Simulation stopped — SimulationNumericalError: the simulation step of # s could not be completed and was rolled back, leaving the state the last completed step produced: fraction of -#.# is outside # to #, the range a fraction of one atmosphere takes (docs/MODEL.md, \"Concentrations\"). The values shown are the last completed step. Reset to start a new run.",
+  "Stopped — simulation error",
+  "Too small for Parameters.",
+  "Two runs are shown, so the chart draws at most # compartments at once. Every compartment's value is in the readouts above, for both runs.",
   "•"
  ],
  "price set": [
@@ -732,8 +775,11 @@
   "Setting refused — delivered_concentration_percent exceeds the vaporizer maximum (##% requested, #% maximum). The simulation is unchanged and still running its previous setting."
  ],
  "supported run length reached": [
+  "##m – late · not reached within the supported run length",
+  "Fat #.## ×MAC · not reached within the supported run length",
   "Simulation stopped — this run reached the supported run length of ## hours. This model leaves out metabolism, and its fat flow is uncertain. How far the slow part of the trace can stray from a patient grows as a run goes on, so the model is not claimed to represent a patient past this span. The values shown are the last completed step, inside the supported span. Reset to start a new run.",
-  "Stopped — supported run length reached"
+  "Stopped — supported run length reached",
+  "•"
  ],
  "halt after an agent change": [
   "Above the top of the plot: Circuit. The axis stops at #.## ×MAC and these traces are cut off there — their values are in the readouts above, which are not clipped.",
@@ -780,7 +826,6 @@
   "Too small for Parameters."
  ],
  "dial moved at the supported run length": [
-  "From",
   "It needs at least ### by ### px; this Area is #### by ###. Drag a border to enlarge it, or choose a smaller View from the menu above.",
   "Simulation stopped — this run reached the supported run length of ## hours. This model leaves out metabolism, and its fat flow is uncertain. How far the slow part of the trace can stray from a patient grows as a run goes on, so the model is not claimed to represent a patient past this span. The values shown are the last completed step, inside the supported span. Setting refused — the cardiac output setting cannot be changed on a stopped run, because no step will run under a new one. To try a different setting, branch at an earlier instant, where each dial starts at what it was set to then, or Reset to start a new run, which keeps every setting.",
   "Stopped — supported run length reached",

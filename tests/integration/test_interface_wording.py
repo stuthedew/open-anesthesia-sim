@@ -56,20 +56,25 @@ from PySide6.QtCore import QEvent
 from PySide6.QtWidgets import QApplication
 
 from anesthesia_sim.app.bookmarks import MacTarget, TimeBookmark
-from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.preferences import AgentPrice, LoadedPreferences, Preferences
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.view_registry import REGISTERED
 from anesthesia_sim.app_metadata import APP_BUILD_VERSION
 from anesthesia_sim.core import supported_ranges as supported_ranges_module
-from anesthesia_sim.core.concentration import MacMultiple
+from anesthesia_sim.core.concentration import MacMultiple, Percent
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow
 from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, ViewKind, Window
 from anesthesia_sim.layout.workspace import Origin, Workspace, WorkspaceName, WorkspaceSet
-from tests.integration.simulation_view.simulation_view_support import _delete_shown_views
+from tests.integration.simulation_view.simulation_view_support import (
+    _delete_shown_views,
+    _halted_branch_view,
+    _mark_editor,
+    _real_step_failure,
+)
 from tests.integration.simulation_view.test_simulation_view_run_stops_itself import (
     _ONE_STATE_SCENARIOS,
 )
@@ -100,6 +105,10 @@ RECORDED_POINTS: dict[str, tuple[str, float | None]] = {
 _WINDOW_WIDTH_PX = 1400
 _WINDOW_HEIGHT_PX = 4000
 _SECONDS_PER_MINUTE = 60
+# More steps than any point here takes: the longest, the supported run length
+# shortened to 5 min, takes 300. A loop that stops at the budget reports where
+# the run stood, where an unbounded loop would hang the suite with no message.
+_STEP_BUDGET = 2000
 
 
 def _every_view_in_one_column() -> WorkspaceSet:
@@ -136,15 +145,48 @@ def _masked(text: str) -> str:
 
 
 def _run_to(controller: SimulationController, elapsed_s: float) -> None:
-    """Start `controller` if it is not running, step it to `elapsed_s` and pause it."""
+    """Start `controller` if it is not running, step it to `elapsed_s` and pause it.
+
+    Raises:
+        AssertionError: The run stopped itself before `elapsed_s`, as on a mark
+            or a failure, or did not reach it within `_STEP_BUDGET` steps.
+    """
 
     if not controller.is_running:
         controller.start()
 
-    while controller.snapshot().elapsed_s < elapsed_s:
+    for _ in range(_STEP_BUDGET):
+        if controller.snapshot().elapsed_s >= elapsed_s:
+            break
+
+        if not controller.is_running:
+            raise AssertionError(
+                f"the run stopped itself at {controller.snapshot().elapsed_s} s, "
+                f"before {elapsed_s} s"
+            )
+
         controller.advance()
+    else:
+        raise AssertionError(f"the run did not reach {elapsed_s} s in {_STEP_BUDGET} steps")
 
     controller.pause()
+
+
+def _run_until_it_stops(controller: SimulationController) -> None:
+    """Start `controller` and step it until it stops itself, within `_STEP_BUDGET` steps."""
+
+    controller.start()
+
+    for _ in range(_STEP_BUDGET):
+        if not controller.is_running:
+            return
+
+        controller.advance()
+
+    raise AssertionError(
+        f"the run was still running at {controller.snapshot().elapsed_s} s "
+        f"after {_STEP_BUDGET} steps"
+    )
 
 
 def _strings_of(application: QApplication, view: SimulationView) -> list[str]:
@@ -160,10 +202,18 @@ def _strings_shown(
     controller: SimulationController,
     preferences: LoadedPreferences | None = None,
 ) -> list[str]:
-    """Every string a dashboard over `controller` holds once it has drawn, masked and sorted."""
+    """Every string a dashboard over `controller` holds once it has drawn, masked and sorted.
+
+    The dashboard holds the run in a case, as the application's always does,
+    so the Branch View shows its control and not the words for runs that
+    belong to no case.
+    """
 
     view = SimulationView(
-        (controller,), workspaces=_every_view_in_one_column(), preferences=preferences
+        (controller,),
+        case=BranchedCase(controller),
+        workspaces=_every_view_in_one_column(),
+        preferences=preferences,
     )
 
     try:
@@ -192,11 +242,21 @@ def _strings_at(application: QApplication, agent_id: str, elapsed_s: float | Non
 
 
 def _after_a_setting_change(application: QApplication, _patch: pytest.MonkeyPatch) -> list[str]:
-    """Sevoflurane at 2 min, with the fresh gas flow changed at 1 min, so the record lists it."""
+    """Sevoflurane at 2 min, with three kinds of line in the change record.
+
+    The fresh gas flow changes once at 1 min, which the record words as a flow.
+    The delivered concentration changes at 90 s and again at 100 s, with no
+    new adjustment begun between them. The record words that as one change in
+    percent, over an interval, of two settings.
+    """
 
     controller = SimulationController()
     _run_to(controller, _SECONDS_PER_MINUTE)
     controller.set_fresh_gas_flow(FreshGasFlow(8.0))
+    _run_to(controller, 90)
+    controller.set_delivered_concentration_percent(Percent(3.0))
+    _run_to(controller, 100)
+    controller.set_delivered_concentration_percent(Percent(4.0))
     _run_to(controller, 2 * _SECONDS_PER_MINUTE)
 
     return _strings_shown(application, controller)
@@ -220,13 +280,53 @@ def _stopped_on_a_mark(application: QApplication, _patch: pytest.MonkeyPatch) ->
 
     controller = SimulationController()
     controller.add_time_bookmark(TimeBookmark(CaseInstant(_SECONDS_PER_MINUTE), "induction"))
-    controller.start()
-
-    while controller.is_running:
-        controller.advance()
+    _run_until_it_stops(controller)
 
     assert controller.snapshot().elapsed_s == _SECONDS_PER_MINUTE
     return _strings_shown(application, controller)
+
+
+def _a_mark_reached(application: QApplication, _patch: pytest.MonkeyPatch) -> list[str]:
+    """Sevoflurane stopped on a MAC target it reached, then run on to 6 min.
+
+    The default run's alveolar concentration crosses 0.5 xMAC at about 5 min
+    and stops there. Run on past the mark, the run states it as reached.
+    """
+
+    controller = SimulationController()
+    controller.add_mac_target(MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.5)))
+    _run_until_it_stops(controller)
+    _run_to(controller, 6 * _SECONDS_PER_MINUTE)
+
+    return _strings_shown(application, controller)
+
+
+def _marks_on_compared_runs(application: QApplication, _patch: pytest.MonkeyPatch) -> list[str]:
+    """A trunk and a branch whose marks stand differently, and the trunk then failed.
+
+    The branch opens at 60 s and stops on a 0.5 xMAC target that the trunk,
+    paused at 60 s, has not reached (`_halted_branch_view`). A time mark at
+    30 s comes before the branch opened. Two marks added after the fork, at
+    90 s and at 0.8 xMAC in fat, are outstanding on the trunk, which a step
+    failure then stops. Each row names the run each answer belongs to.
+    """
+
+    view = _halted_branch_view(application)
+
+    try:
+        editor = _mark_editor(view)
+        editor.instant_spin.setValue(90)
+        editor.add_time_button.click()
+        editor.compartment_combo.setCurrentIndex(
+            editor.compartment_combo.findData(RecordedQuantity.FAT.value)
+        )
+        editor.height_spin.setValue(0.8)
+        editor.add_target_button.click()
+        view.runs[0].halt(_real_step_failure())
+        view.present(False)
+        return _strings_of(application, view)
+    finally:
+        _delete_shown_views(application)
 
 
 def _with_a_price_set(application: QApplication, _patch: pytest.MonkeyPatch) -> list[str]:
@@ -273,10 +373,11 @@ def _at_the_supported_run_length(application: QApplication, patch: pytest.Monkey
 
     patch.setattr(supported_ranges_module, "MAXIMUM_STEP_COUNT", 300 // SIMULATION_STEP_S)
     controller = SimulationController()
-    controller.start()
-
-    while controller.is_running:
-        controller.advance()
+    # Both marks lie beyond what the shortened run reaches, so each is stated
+    # as not reached within the supported run length.
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(10 * _SECONDS_PER_MINUTE), "late"))
+    controller.add_mac_target(MacTarget(RecordedQuantity.FAT, MacMultiple(0.8)))
+    _run_until_it_stops(controller)
 
     return _strings_shown(application, controller)
 
@@ -306,6 +407,8 @@ EVENT_POINTS: Final[Mapping[str, Callable[[QApplication, pytest.MonkeyPatch], li
     "setting changed": _after_a_setting_change,
     "marks set": _with_marks_set,
     "stopped on a mark": _stopped_on_a_mark,
+    "mark reached": _a_mark_reached,
+    "marks on compared runs": _marks_on_compared_runs,
     "price set": _with_a_price_set,
     "setting refused": _a_refused_setting,
     "supported run length reached": _at_the_supported_run_length,
