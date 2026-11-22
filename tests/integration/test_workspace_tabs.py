@@ -16,8 +16,8 @@ from collections.abc import Iterator
 from typing import NoReturn
 
 import pytest
-from PySide6.QtCore import QEvent, QPoint, Qt
-from PySide6.QtGui import QContextMenuEvent, QKeyEvent
+from PySide6.QtCore import QPoint, Qt
+from PySide6.QtGui import QContextMenuEvent
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QAbstractButton, QApplication, QComboBox, QLabel, QListWidget, QWidget
 
@@ -652,15 +652,16 @@ def test_a_dial_moved_in_a_workspace_pinned_to_the_second_run_sets_that_run_alon
 
     The Workspace is pinned to Run 2, so the setting controls View shows one
     row of dials. Both runs hold a fresh gas flow of 4.0 L/min. The learner
-    moves the dial to 4.1 L/min with a held arrow key's repeat, which holds no
-    thumb and leaves its frame to the render tick (`PL-2WVC`). Run 2 takes
-    the setting and Run 1 keeps its own. A View that found a run's dials by
-    their place in the list would hand Run 2 the dials built for Run 1, and
-    the move would set Run 1 (`PL-RF2S`).
+    moves the dial to 4.2 L/min with two presses of an arrow key, which hold
+    no thumb. The second press comes before any render tick, so it leaves
+    its frame to the tick (`PL-2WVC`). Run 2 takes the setting and Run 1
+    keeps its own. A View that found a run's dials by their place in the
+    list would hand Run 2 the dials built for Run 1, and the move would set
+    Run 1 (`PL-RF2S`).
 
     The dashboard hands the Views the runs at once after the move, with no
     frame. That tick follows the pin too, so the View still shows one row,
-    and the row shows 7.0 L/min.
+    and the row shows 4.2 L/min.
     """
 
     first, second = SimulationController(), SimulationController()
@@ -675,19 +676,19 @@ def test_a_dial_moved_in_a_workspace_pinned_to_the_second_run_sets_that_run_alon
     dial = dials._fresh_gas_flow_slider
     frames = view.presented_frames
 
-    QApplication.sendEvent(
-        dial.slider,
-        QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Right, Qt.KeyboardModifier.NoModifier, "", True),
-    )
+    QTest.keyClick(dial.slider, Qt.Key.Key_Right)
+    QTest.keyClick(dial.slider, Qt.Key.Key_Right)
 
-    assert float(second.settings().fresh_gas_flow_l_min) == pytest.approx(4.1)
+    assert float(second.settings().fresh_gas_flow_l_min) == pytest.approx(4.2)
     assert float(first.settings().fresh_gas_flow_l_min) == 4.0
     assert second.has_failed is False
     assert first.has_failed is False
-    assert view.presented_frames == frames, "a frame drew, so the tick with no frame was not seen"
+    assert view.presented_frames == frames + 1, (
+        "the second press drew a frame, so the tick with no frame was not seen"
+    )
     assert len(controls.rows) == 1, "the tick with no frame showed a run the pin leaves out"
     assert controls.rows[0].controls is dials
-    assert dial.value_label.text() == "4.1 L/min"
+    assert dial.value_label.text() == "4.2 L/min"
 
 
 def test_a_pinned_run_dropped_while_every_frame_fails_is_stated_as_not_open(

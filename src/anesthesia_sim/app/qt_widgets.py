@@ -43,25 +43,13 @@ can reach is declared on the palette instead, by
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Sequence
-from contextlib import contextmanager
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from enum import Enum
 from math import ceil
 from typing import Final
 
-from PySide6.QtCore import (
-    QEvent,
-    QObject,
-    QPoint,
-    QRect,
-    QRectF,
-    QSignalBlocker,
-    QSize,
-    Qt,
-    QTimerEvent,
-    Signal,
-)
+from PySide6.QtCore import QEvent, QObject, QPoint, QRect, QRectF, QSignalBlocker, QSize, Qt, Signal
 from PySide6.QtGui import (
     QColor,
     QFont,
@@ -1043,25 +1031,22 @@ class ReadoutRow(QWidget):
 
 
 class DialInput(Enum):
-    """How the reader applied a dial's value, which decides when the frame for it is drawn.
+    """Whether a dial's value is followed at once by a frame of its own, or needs one.
 
-    One discrete input draws its frame at once, so every part of the screen
-    shows the step after the change together (`PL-2WVC`). A held input's
-    repeats leave their frames to the render tick, so a held key or a press
-    held on the track does not draw a frame for every step it makes
-    (`PL-R2YM`). The release of a held thumb leaves its frame to the end of
-    the preview, which follows it at once (`PL-5B1N`).
+    A value set by a key, the wheel or a click on the track needs a frame.
+    The dashboard draws it at once unless it has already drawn a frame for
+    an input since the last render tick, and leaves it to that tick
+    otherwise (`SimulationView.present_input`, `PL-2WVC`). The value at which
+    a previewed thumb is released needs none, because the end of the preview
+    draws a frame at once right after it (`PL-5B1N`).
 
     Members:
-        DISCRETE: A key press, a wheel notch or a click on the track.
-        REPEAT: A step that a held input makes after its first: a held key's
-            repeat, a press held on the track under Fusion, or a trackpad
-            swipe after the event that began it.
-        RELEASE: The value at which a dragged thumb was released.
+        STEP: A value set by a key press, a wheel event or a click on the
+            track, alone or as one of a burst.
+        RELEASE: The value at which a previewed thumb was released.
     """
 
-    DISCRETE = "one input"
-    REPEAT = "a held input's repeat"
+    STEP = "a key, the wheel or a click on the track"
     RELEASE = "a released thumb"
 
 
@@ -1107,16 +1092,9 @@ class _SettingSlider(QSlider):
     by one held key. A trackpad swipe is announced only where it begins, for
     the same reason.
 
-    **A repeat is told apart from the input that began it** (`PL-2WVC`).
-    `repeating` is true while the slider handles a held key's repeat, a
-    trackpad swipe's later events, or the timer by which Qt repeats a press
-    held on the track. `ParameterSlider` reads it to say which kind of input
-    applied each value (`DialInput`).
-
     Attributes:
         jumping: True only while a press on the track moves the handle to
             the pointer.
-        repeating: True only while a held input's repeat moves the value.
         input_started: Emitted at the start of each input, before the value
             it applies arrives.
     """
@@ -1126,45 +1104,23 @@ class _SettingSlider(QSlider):
     def __init__(self) -> None:
         super().__init__(Qt.Orientation.Horizontal)
         self.jumping = False
-        self.repeating = False
         self._grab_offset: int | None = None
 
     def keyPressEvent(self, event: QKeyEvent) -> None:  # Qt spells this in camelCase.
         if not event.isAutoRepeat():
             self.input_started.emit()
 
-        with self._repeating(event.isAutoRepeat()):
-            super().keyPressEvent(event)
+        super().keyPressEvent(event)
 
     def wheelEvent(self, event: QWheelEvent) -> None:  # Qt spells this in camelCase.
         # A mouse wheel sends each notch as an event with no scroll phase. A
         # trackpad swipe sends one event that begins the gesture and then many
         # small ones, its momentum included, so it is announced only where it
         # begins and is one adjustment however far it moves the value.
-        begins = event.phase() in (Qt.ScrollPhase.NoScrollPhase, Qt.ScrollPhase.ScrollBegin)
-
-        if begins:
+        if event.phase() in (Qt.ScrollPhase.NoScrollPhase, Qt.ScrollPhase.ScrollBegin):
             self.input_started.emit()
 
-        with self._repeating(not begins):
-            super().wheelEvent(event)
-
-    def timerEvent(self, event: QTimerEvent) -> None:  # Qt spells this in camelCase.
-        # Qt repeats a press held on the track from a timer, so every value
-        # that a timer moves is a repeat.
-        with self._repeating(True):
-            super().timerEvent(event)
-
-    @contextmanager
-    def _repeating(self, repeat: bool) -> Iterator[None]:
-        """Set `repeating` to `repeat` while Qt's own handling of one event runs."""
-
-        self.repeating = repeat
-
-        try:
-            yield
-        finally:
-            self.repeating = False
+        super().wheelEvent(event)
 
     def mousePressEvent(self, event: QMouseEvent) -> None:  # Qt spells this in camelCase.
         self.input_started.emit()
@@ -1268,11 +1224,13 @@ class ParameterSlider(QWidget):
     `value_changed`, and then ends the preview through `preview_ended`. In
     that order, the frame drawn at the release shows the run under its new
     setting and no preview. So the value applied at the release is marked
-    `DialInput.RELEASE`, and its frame is the one that ends the preview. Qt
-    itself would apply the value only after `sliderReleased`, so
-    `_on_thumb_released` applies it first. A key press, a wheel step or a
-    click on the groove is one discrete input, so it applies at once and
-    previews nothing. Qt's slider tracking is switched
+    `DialInput.RELEASE`, and its frame is the one that ends the preview. A
+    release ends a preview only where one started. A left click on the track
+    under macOS moves the handle to the pointer and marks it held, but starts
+    no preview, so its release draws no second frame. Qt itself would apply the value only after
+    `sliderReleased`, so `_on_thumb_released` applies it first. A key press,
+    a wheel step or a click on the groove is one discrete input, so it
+    applies at once and previews nothing. Qt's slider tracking is switched
     off to give exactly that split. With tracking off, `valueChanged` fires
     on release for a drag and at once for every other input.
 
@@ -1299,15 +1257,14 @@ class ParameterSlider(QWidget):
             arrive: a press, a key press that is not a held key's repeat, or
             a wheel notch.
         value_changed: Emitted with the decoded value when the reader
-            applies one, and with the kind of input that applied it
-            (`DialInput`): on releasing a dragged thumb, or at once for a
-            key, a wheel step or a click on the groove, and for each repeat
-            of a held one. `set_setting` never emits it.
+            applies one, and whether a frame follows it (`DialInput`): on
+            releasing a dragged thumb, or at once for a key, a wheel step or
+            a click on the groove. `set_setting` never emits it.
         preview_moved: Emitted with the decoded value at the held thumb's
             position, when the thumb is pressed and each time it moves. A
             press on the groove emits it only once the held thumb moves.
-        preview_ended: Emitted when the held thumb is released, after
-            `value_changed` has applied the value.
+        preview_ended: Emitted when a held thumb that started a preview is
+            released, after `value_changed` has applied the value.
     """
 
     adjustment_started = Signal()
@@ -1328,6 +1285,9 @@ class ParameterSlider(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setStyleSheet(panel_stylesheet(self.objectName()))
         self._decimals = setting.decimals
+        # Whether a preview is shown for this slider's held thumb, which
+        # `preview_ended` ends.
+        self._previewing = False
         # True only while `_on_thumb_released` applies the released value.
         self._releasing = False
         self.name_label = styled_label(setting.name, color=INK, bold=True, wrap=True)
@@ -1403,13 +1363,7 @@ class ParameterSlider(QWidget):
         return slider_value(self.slider.value(), self._decimals)
 
     def _on_slider_moved(self, position: int) -> None:
-        if self._releasing:
-            dial_input = DialInput.RELEASE
-        elif self.slider.repeating:
-            dial_input = DialInput.REPEAT
-        else:
-            dial_input = DialInput.DISCRETE
-
+        dial_input = DialInput.RELEASE if self._releasing else DialInput.STEP
         self.value_changed.emit(slider_value(position, self._decimals), dial_input)
 
     def _on_thumb_pressed(self) -> None:
@@ -1422,9 +1376,11 @@ class ParameterSlider(QWidget):
         if self.slider.jumping:
             return
 
+        self._previewing = True
         self.preview_moved.emit(slider_value(self.slider.sliderPosition(), self._decimals))
 
     def _on_thumb_moved(self, position: int) -> None:
+        self._previewing = True
         self.preview_moved.emit(slider_value(position, self._decimals))
 
     def _on_thumb_released(self) -> None:
@@ -1436,16 +1392,18 @@ class ParameterSlider(QWidget):
         """
 
         position = self.slider.sliderPosition()
+        previewing, self._previewing = self._previewing, False
 
         if position != self.slider.value():
-            self._releasing = True
+            self._releasing = previewing
 
             try:
                 self.slider.setValue(position)
             finally:
                 self._releasing = False
 
-        self.preview_ended.emit()
+        if previewing:
+            self.preview_ended.emit()
 
 
 class NoticeLabel(QLabel):

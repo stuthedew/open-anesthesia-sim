@@ -10,8 +10,8 @@ from dataclasses import replace
 from typing import NoReturn
 
 import pytest
-from PySide6.QtCore import QEvent, Qt
-from PySide6.QtGui import QKeyEvent
+from PySide6.QtCore import Qt
+from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
 from anesthesia_sim.app import run_presentation as run_presentation_module
@@ -209,13 +209,10 @@ def test_the_render_tick_draws_a_pending_change_while_the_run_is_stopped(
     view = _shown_view(application, controller)
     slider = _dials(view.runs[0])._fresh_gas_flow_slider.slider
 
-    # A held key's repeat applies with no press, and leaves its frame owed.
-    # One key press, wheel notch or click on the track draws its own frame at
-    # once (`PL-2WVC`), and so does a released drag (`PL-5B1N`).
-    held_key = QKeyEvent(
-        QEvent.Type.KeyPress, Qt.Key.Key_Right, Qt.KeyboardModifier.NoModifier, "", True
-    )
-    QApplication.sendEvent(slider, held_key)
+    # The first key press draws its own frame at once (`PL-2WVC`). The second
+    # follows it before any render tick, so it leaves its frame owed.
+    QTest.keyClick(slider, Qt.Key.Key_Right)
+    QTest.keyClick(slider, Qt.Key.Key_Right)
     assert view._render_pending is True
     presented = view.presented_frames
 

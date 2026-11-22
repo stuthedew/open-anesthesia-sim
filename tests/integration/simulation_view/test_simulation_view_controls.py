@@ -453,6 +453,76 @@ def test_one_input_on_a_dial_of_a_running_run_draws_every_part_of_the_screen_at_
     }
 
 
+def test_a_burst_of_wheel_events_draws_one_frame_at_once_and_leaves_the_rest_to_the_tick(
+    application: QApplication,
+) -> None:
+    """Five wheel events before a render tick draw one frame of their own, not five (`PL-2WVC`).
+
+    On Windows and on Linux under X11, Qt reports every event of a spinning
+    wheel or a trackpad swipe with no scroll phase, so the phase cannot tell
+    a burst from one notch. The first event draws its frame at once. The
+    other four come before the next render tick, so they leave their frame
+    to it, and the tick draws the latest state. After the tick, a lone notch
+    draws its frame at once again. Before the fix, each of the five events
+    drew a frame of its own.
+
+    Each notch steps the flow by one count, 0.1 L/min, from 4.0 L/min.
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    controller.start()
+    slider = _dials(run)._fresh_gas_flow_slider.slider
+    _style_slider(slider, _Platform.FUSION)
+    presented = view.presented_frames
+
+    for _ in range(5):
+        _scroll_up(slider, Qt.ScrollPhase.NoScrollPhase)
+
+    assert controller.settings().fresh_gas_flow_l_min == pytest.approx(4.5)
+    assert view.presented_frames == presented + 1
+    assert view._render_pending is True
+
+    view.render_tick()
+
+    assert view.presented_frames == presented + 2
+    assert view._render_pending is False
+
+    _scroll_up(slider, Qt.ScrollPhase.NoScrollPhase)
+
+    assert controller.settings().fresh_gas_flow_l_min == pytest.approx(4.6)
+    assert view.presented_frames == presented + 3
+    assert view._render_pending is False
+
+
+def test_a_click_that_moves_the_handle_to_the_pointer_draws_one_frame(
+    application: QApplication,
+) -> None:
+    """A left click on the track under macOS draws one frame, not a second at its release.
+
+    On macOS a left click on the track moves the handle to the pointer and
+    marks the handle held, but starts no preview (`PL-57LD`). The press
+    applies 10.0 L/min, the slider's maximum, and draws its frame at once
+    (`PL-2WVC`). Before the fix, the release then ended a preview that had
+    never started, and that drew a second frame.
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    controller.start()
+    slider = _dials(run)._fresh_gas_flow_slider.slider
+    _style_slider(slider, _Platform.MACOS)
+    track_end = QPoint(slider.width() - 1, slider.height() // 2)
+    presented = view.presented_frames
+
+    QTest.mouseClick(slider, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, track_end)
+
+    assert controller.settings().fresh_gas_flow_l_min == 10.0
+    assert view.presented_frames == presented + 1
+
+
 @pytest.mark.parametrize("step", list(_Input), ids=[step.value for step in _Input])
 def test_each_step_of_a_dial_at_a_new_instant_is_marked_and_listed(
     application: QApplication, step: _Input

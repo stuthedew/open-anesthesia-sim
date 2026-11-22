@@ -799,81 +799,8 @@ def test_a_key_step_applies_at_once_and_previews_nothing(application: QApplicati
 
     QTest.keyClick(control.slider, Qt.Key.Key_Right)
 
-    assert applied == [(slider_value(start + 1, setting.decimals), DialInput.DISCRETE)]
+    assert applied == [(slider_value(start + 1, setting.decimals), DialInput.STEP)]
     assert previewed == []
-
-
-def test_each_applied_value_says_whether_one_input_or_a_repeat_applied_it(
-    application: QApplication,
-) -> None:
-    """A key press, a wheel notch and a click on the track are one input, and their repeats are not.
-
-    One input draws its frame at once, and a held input's repeats leave theirs
-    to the render tick (`DialInput`, `PL-2WVC`). Under Fusion, which the
-    tests run under, a press held on the track repeats its step from a timer
-    after 500 ms and then every 50 ms (`QAbstractSlider.setRepeatAction`).
-    So the press is held for 700 ms, which gives at least one repeat.
-    """
-
-    control = ParameterSlider(_settings()[0])
-    control.resize(400, control.sizeHint().height())
-    slider = control.slider
-    applied: list[tuple[str, DialInput]] = []
-    inputs = (
-        ("key", lambda: QApplication.sendEvent(slider, _key_event(repeat=False))),
-        ("repeat", lambda: QApplication.sendEvent(slider, _key_event(repeat=True))),
-        (
-            "notch",
-            lambda: QApplication.sendEvent(
-                slider, _wheel_event(slider, Qt.ScrollPhase.NoScrollPhase)
-            ),
-        ),
-        (
-            "swipe begins",
-            lambda: QApplication.sendEvent(
-                slider, _wheel_event(slider, Qt.ScrollPhase.ScrollBegin)
-            ),
-        ),
-        (
-            "swipe moves",
-            lambda: QApplication.sendEvent(
-                slider, _wheel_event(slider, Qt.ScrollPhase.ScrollUpdate)
-            ),
-        ),
-        (
-            "swipe coasts",
-            lambda: QApplication.sendEvent(
-                slider, _wheel_event(slider, Qt.ScrollPhase.ScrollMomentum)
-            ),
-        ),
-    )
-
-    for name, send in inputs:
-        control.value_changed.connect(
-            lambda _value, dial_input, name=name: applied.append((name, dial_input))
-        )
-        send()
-        control.value_changed.disconnect()
-
-    assert applied == [
-        ("key", DialInput.DISCRETE),
-        ("repeat", DialInput.REPEAT),
-        ("notch", DialInput.DISCRETE),
-        ("swipe begins", DialInput.DISCRETE),
-        ("swipe moves", DialInput.REPEAT),
-        ("swipe coasts", DialInput.REPEAT),
-    ]
-
-    held: list[DialInput] = []
-    control.value_changed.connect(lambda _value, dial_input: held.append(dial_input))
-    track_end = QPoint(slider.width() - 1, slider.height() // 2)
-    QTest.mousePress(slider, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, track_end)
-    QTest.qWait(700)
-    QTest.mouseRelease(slider, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, track_end)
-
-    assert held[0] is DialInput.DISCRETE
-    assert len(held) >= 2
-    assert set(held[1:]) == {DialInput.REPEAT}
 
 
 def test_a_frame_written_during_a_drag_leaves_the_thumb_under_the_pointer(

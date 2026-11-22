@@ -476,7 +476,7 @@ def test_a_view_that_raises_on_a_halt_leaves_no_dial_on_a_setting_the_run_refuse
 _REQUESTS_THAT_NAME_A_RUN: Final[Mapping[str, Callable[[SimulationView, RunId], None]]] = {
     "a dial pressed": lambda view, run_id: view._handle_adjustment_start_request(run_id),
     "a setting": lambda view, run_id: view._handle_setting_request(
-        run_id, ControlInput.FRESH_GAS_FLOW, 7.0, DialInput.DISCRETE
+        run_id, ControlInput.FRESH_GAS_FLOW, 7.0, DialInput.STEP
     ),
     "a preview": lambda view, run_id: view._handle_preview_request(
         run_id, ControlInput.FRESH_GAS_FLOW, 7.0
@@ -545,7 +545,7 @@ def _a_setting_for_a_control_the_run_does_not_have(
         view.runs[1].run_id,
         "tidal volume",  # type: ignore[arg-type]
         7.0,
-        DialInput.DISCRETE,
+        DialInput.STEP,
     )
 
 
