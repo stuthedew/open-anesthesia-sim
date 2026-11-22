@@ -1207,7 +1207,8 @@ open-circuit system with `numpy.linalg.eig`
 `Qt/plugins/platforms/libqoffscreen.so` link to the shared objects below, which
 resolve outside the wheels that `pyproject.toml` installs. `readelf -d` on
 `libQt6Gui.so.6` of `pyside6-essentials` 6.11.2 added the glib row on
-2026-11-21, and the same day `import PySide6.QtGui` failed in a container with
+2026-11-21, and the same command on 6.12.0 listed the same objects on
+2026-11-22, and the same day `import PySide6.QtGui` failed in a container with
 `libglib-2.0.so.0` hidden. The table's first five packages bring in
 `libX11.so.6`, `libfreetype.so.6` and `libz.so.1`, which the wheels also link,
 as their own dependencies.
@@ -1229,9 +1230,10 @@ five (`PL-VHLZ`). A minimal container is neither an ordinary desktop nor that
 image, so check it for all six packages. macOS and Windows need nothing extra.
 
 **A bundled build will bring licence obligations, and nothing is violated today
-(`PL-3SQT`).** `pyside6_essentials` 6.11.2 and `shiboken6` 6.11.2 both declare
-`LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only`. Neither wheel ships the licence
-text: when checked on 2026-09-16, their `dist-info` metadata held no `licenses`
+(`PL-3SQT`).** `pyside6_essentials` and `shiboken6` both declare
+`LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only`, at 6.11.2 when checked on
+2026-09-16 and at 6.12.0 when checked on 2026-11-22. Neither wheel ships the
+licence text: on both dates, their `dist-info` metadata held no `licenses`
 directory and no `License-File:` entry. This repository is Apache-2.0 and has no
 `NOTICE` file. The LGPL obligations are dynamic linking, a recipient's ability
 to relink, and conveying the licence text. They attach when a binary is

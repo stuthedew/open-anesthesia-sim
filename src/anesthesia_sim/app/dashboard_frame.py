@@ -606,6 +606,26 @@ COMPARING_FORK_LOCK_TEMPLATE: Final = (
     "One comparison at a time. {trunk}'s {reset} ends it and starts the case over; "
     "{branch}'s {reset} only returns {branch} to where it branched."
 )
+# A Workspace pinned to one run draws no comparison: its Views show the pinned
+# run alone, or nothing while that run is not open (`PL-WV9K` Q6). A branch
+# taken there opens in no Area of it, so the lock caption, which is the text
+# the Branch View shows at once in place of the control that was pressed,
+# also says why the comparison is not drawn and how to draw it (`PL-YQ5J`).
+# It reports the result of the press without moving the learner, which WCAG
+# 2.2 Success Criterion 4.1.3 calls a status message. Nothing announces it to
+# a screen reader yet: screen-reader support is planned and not yet built
+# (`docs/INTERFACE.md`), so the caption meets the criterion's intent for a
+# sighted reader only. The dashboard does not switch to another Workspace
+# instead. Pressing "Branch" asks for a branch, not for a different
+# Workspace, and the WCAG Understanding document for Success Criterion 3.2.2
+# holds a change of context appropriate "only when it is clear that such a
+# change will happen in response to the user's action". The sentence is
+# worked out from the pin on every tick, so it goes as soon as the learner
+# unpins the Workspace or switches to another one.
+COMPARISON_PINNED_AWAY_TEMPLATE: Final = (
+    "This Workspace is pinned to {pinned}, so it does not draw this comparison. "
+    "Unpin it from the Workspace's tab to compare {trunk} and {branch}."
+)
 FORK_NOTHING_SELECTED_TEXT: Final = "Select an instant to branch at"
 
 # The fork where the paused trunk stands. It is a second control rather than
@@ -2850,10 +2870,21 @@ class ForkOffer:
 
 @dataclass(frozen=True, slots=True)
 class ComparedRuns:
-    """What the two runs of a comparison are called, the trunk's first, from `run_label`."""
+    """What the two runs of a comparison are called, and whether this Workspace draws them.
+
+    Attributes:
+        trunk: The trunk's name, from `run_label`.
+        branch: The branch's name, from `run_label`.
+        pinned_away: The name of the run that the current Workspace is pinned
+            to, where that pin keeps the comparison off its Views, or None
+            where the Workspace draws both runs. The name comes from
+            `run_label` for an open run, and from `pinned_run_label` for one
+            that is not open.
+    """
 
     trunk: str
     branch: str
+    pinned_away: str | None = None
 
 
 def comparing_fork_lock_text(runs: ComparedRuns) -> str:
@@ -2874,16 +2905,31 @@ def comparing_fork_lock_text(runs: ComparedRuns) -> str:
     not their positions, because a branch taken after an earlier branch was
     dropped is not "Run 2" (`PL-7Z84`).
 
+    Where the current Workspace is pinned to one run, its Views draw no
+    comparison, so the caption goes on to say so and how to draw it
+    (`COMPARISON_PINNED_AWAY_TEMPLATE`, `PL-YQ5J`).
+
     Args:
-        runs: What the trunk and the branch are called on screen.
+        runs: What the trunk and the branch are called on screen, and the
+            run the current Workspace is pinned to where that keeps the
+            comparison off its Views.
 
     Returns:
-        The sentence, naming both Resets as the screen names them.
+        The caption, naming both Resets as the screen names them.
     """
 
-    return COMPARING_FORK_LOCK_TEMPLATE.format(
+    lock = COMPARING_FORK_LOCK_TEMPLATE.format(
         trunk=runs.trunk, branch=runs.branch, reset=RESET_LABEL
     )
+
+    if runs.pinned_away is None:
+        return lock
+
+    pinned_away = COMPARISON_PINNED_AWAY_TEMPLATE.format(
+        pinned=runs.pinned_away, trunk=runs.trunk, branch=runs.branch
+    )
+
+    return f"{lock} {pinned_away}"
 
 
 def fork_offer(

@@ -942,6 +942,96 @@ def test_a_case_view_s_header_never_names_the_open_run_a_workspace_is_pinned_to(
             assert frame.pin_label.text() == "Run 1"
 
 
+def _branch_here(view: SimulationView) -> BranchView:
+    """Press "Branch here" in the dashboard's Branch View, and return that View."""
+
+    branch_view = next(
+        drawn for drawn in view.layout_container.views() if isinstance(drawn, BranchView)
+    )
+    panel = branch_view.panel
+    assert panel is not None and panel.here_button.isVisible()
+    panel.here_button.click()
+
+    return branch_view
+
+
+def _lock_caption(branch_view: BranchView) -> str:
+    panel = branch_view.panel
+    assert panel is not None and panel.lock_text.isVisible()
+
+    return panel.lock_text.text()
+
+
+def test_a_branch_taken_in_a_workspace_pinned_to_a_run_that_is_not_open_says_where_it_went(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """The Branch View says why the new comparison is not drawn, and how to draw it (`PL-YQ5J`).
+
+    The Workspace is pinned to a run of an earlier session, so its chart's
+    Area says that run is not open. Before `PL-YQ5J`, a branch taken there
+    opened in no Area of the Workspace and nothing on screen said where it
+    went. The branch opens as Run 2 beside Run 1. The chart's Area still
+    shows the pinned run's notice and no other run. The Branch View's
+    caption names the pin and the way to compare the two runs, and the page
+    keeps the Branch View, not the hidden chart, in view.
+    """
+
+    layout = _case_views_layout()
+    earlier = RunId(SessionToken("f" * 32), 1)
+    view = _case_dashboard(application, shown, layout.replace(0, layout.current.pinned_to(earlier)))
+    branch_view = _branch_here(view)
+    application.processEvents()
+
+    assert [run.run_id for run in view.runs] == [_RUN_1, _RUN_2]
+    assert _lock_caption(branch_view).endswith(
+        "This Workspace is pinned to a run from an earlier session, so it does not draw this "
+        "comparison. Unpin it from the Workspace's tab to compare Run 1 and Run 2."
+    )
+    assert view._kept_in_view() is branch_view.panel
+
+    for area in view.layout_container.model.areas():
+        frame = view.layout_container.frame(area.id)
+
+        if area.view == CONCENTRATION_CHART:
+            assert not frame.content.isVisible()
+            assert frame.absent_notice is not None and frame.absent_notice.isVisible()
+
+
+def test_a_branch_taken_in_a_workspace_pinned_to_the_trunk_says_so_until_it_is_unpinned(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """A Workspace pinned to the trunk draws the trunk alone, so a branch taken there is named.
+
+    The chart keeps showing Run 1 alone after the branch, as the pin asks.
+    The Branch View's caption names the pin and the way to compare the
+    runs. Unpinning the Workspace draws both runs on the chart, and the
+    caption is the comparison's lock alone again.
+    """
+
+    view = _case_dashboard(application, shown, _case_views_layout())
+    view.tab_strip.choose(_named(view.tab_strip.operations(0), "Pin Run 1"))
+    branch_view = _branch_here(view)
+    application.processEvents()
+    pinned_away = (
+        "This Workspace is pinned to Run 1, so it does not draw this comparison. "
+        "Unpin it from the Workspace's tab to compare Run 1 and Run 2."
+    )
+
+    assert [run.run_id for run in view.runs] == [_RUN_1, _RUN_2]
+    assert _lock_caption(branch_view).endswith(pinned_away)
+    assert _concentration(view).isVisible()
+
+    view.tab_strip.choose(_named(view.tab_strip.operations(0), "Unpin Run 1"))
+    application.processEvents()
+    branch_view = next(
+        drawn for drawn in view.layout_container.views() if isinstance(drawn, BranchView)
+    )
+
+    assert pinned_away not in _lock_caption(branch_view)
+    assert "One comparison at a time." in _lock_caption(branch_view)
+    assert view._kept_in_view() is _concentration(view).chart
+
+
 def _case_views_layout() -> WorkspaceSet:
     """One Workspace of three Areas: the concentration chart, the bookmarks and the branch."""
 

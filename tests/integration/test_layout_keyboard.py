@@ -42,6 +42,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from anesthesia_sim.app import run_presentation as run_presentation_module
+from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app.area_layout import (
     CLOSE_AREA_LABEL,
     JOIN_WITH_LABEL,
@@ -53,6 +55,7 @@ from anesthesia_sim.app.area_layout import (
     AreaLayout,
     AreaMenu,
     ViewChooser,
+    ViewScroll,
     _AreaHandle,
 )
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
@@ -95,7 +98,11 @@ from anesthesia_sim.layout.store import (
 )
 from anesthesia_sim.layout.tree import Area, AreaId, Node, Orientation, Split, ViewKind, Window
 from anesthesia_sim.layout.workspace import ShippedWorkspaceId, WorkspaceName, WorkspaceSet
-from tests.integration.simulation_view.simulation_view_support import _branched_case, _take_fork
+from tests.integration.simulation_view.simulation_view_support import (
+    _branched_case,
+    _no_setting,
+    _take_fork,
+)
 
 #: The session the tab strips under test run in. No test here pins a run.
 _SESSION = SessionToken("0" * 32)
@@ -455,6 +462,38 @@ def test_every_layout_operation_is_reachable_from_the_keyboard(
     QTest.keyClick(dialog.proceed_button, Qt.Key.Key_Space)
     application.processEvents()
     assert len(view.workspaces.workspaces) == count
+
+
+def test_layout_operations_survive_a_walk_of_the_focus_chain_on_every_draw(
+    application: QApplication, shown: list[QWidget], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Every layout operation runs while each draw walks Qt's focus chain (`PL-2D9Z`).
+
+    The dashboard lists the widgets Tab can reach with `findChildren`. A walk
+    of the focus chain with `nextInFocusChain` lists them too. Under PySide6
+    6.11.2 and 6.11.3 that walk, done at the end of every draw, made this
+    test's operations end in a segmentation fault: the bindings freed a Python
+    object and read it later. PySide6 6.12.0 does not, and `pyproject.toml`
+    requires it. This test fails, by crashing, on a version with that fault.
+    """
+
+    def walked(window: QWidget) -> list[QWidget]:
+        widgets = []
+        widget = window.nextInFocusChain()
+
+        while widget is not window:
+            if (
+                widget.focusPolicy() & Qt.FocusPolicy.TabFocus
+                and widget.window() is window.window()
+            ):
+                widgets.append(widget)
+
+            widget = widget.nextInFocusChain()
+
+        return widgets
+
+    monkeypatch.setattr(simulation_view_module, "_focusable_widgets", walked)
+    test_every_layout_operation_is_reachable_from_the_keyboard(application, shown)
 
 
 def test_moving_a_tab_and_stacking_a_split_are_reachable_from_the_keyboard(
@@ -1097,6 +1136,57 @@ def test_tab_keeps_reading_order_after_a_branch_and_after_a_pinned_run_is_unpinn
     assert len(dial_heights) == 8
     assert max(dial_heights[:4]) < min(dial_heights[4:]), dial_heights
     _assert_areas_follow_their_choosers(stops, first_tab)
+
+
+def test_dials_built_again_after_a_halt_follow_the_parameters_chooser(
+    application: QApplication, shown: list[QWidget], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Dials that a later draw builds again take their place in Tab's reading order (`PL-81YL`).
+
+    A draw that cannot build the run's setting readouts halts the run, and
+    the Parameters View deletes its four dials. The first later draw that can
+    build them builds them again. Qt puts a newly built widget at the end of
+    the window's focus chain. Before the fix, nothing set Tab's order again
+    after that draw, so Tab reached the dials after every Area and border.
+    The halt also took the old dials out of the dashboard, which made them a
+    window of their own, and Qt showed that window until it was deleted. While
+    it was shown, it held the keyboard focus, and the focus was lost when it
+    was deleted.
+    The expected order is the screen's: the Area's scroll box and then the
+    four dials come directly after the Parameters Area's chooser.
+    """
+
+    view = _dashboard(application, shown)
+    monkeypatch.setattr(run_presentation_module, "setting_readouts", _no_setting)
+
+    with pytest.raises(ValueError, match="this control can offer no setting"):
+        view.present(False)
+
+    application.processEvents()
+    # The deleted dials never show as a window of their own.
+    assert [widget for widget in QApplication.topLevelWidgets() if widget.isVisible()] == [
+        view.window()
+    ]
+    application.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+    assert not [slider for slider in view.findChildren(QSlider) if _area_frame(slider)]
+
+    monkeypatch.undo()
+    view.present(False)
+    application.processEvents()
+    chooser = next(
+        view.layout_container.frame(area.id).chooser
+        for area in view.layout_container.model.areas()
+        if area.view == PARAMETER_CONTROLS
+    )
+    # The halted run's agent selector takes no focus, so Tab starts from the chooser.
+    stops = _tab_stops(application, chooser)
+    dials = [slider for slider in view.findChildren(QSlider) if _area_frame(slider)]
+
+    assert len(dials) == 4
+    # A fresh dashboard's order after the chooser: the Area's scroll box, then
+    # the four dials from top to bottom.
+    assert isinstance(stops[1], ViewScroll)
+    assert stops[2:6] == sorted(dials, key=lambda dial: dial.mapTo(view, QPoint(0, 0)).y())
 
 
 def test_the_resize_submenu_names_each_border_and_its_entry_gives_that_border_the_focus(

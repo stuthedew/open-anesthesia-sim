@@ -2604,6 +2604,26 @@ because a run that is open now can carry the same number
 The reader sets and removes a pin from the menu of the Workspace's tab
 (`PL-2KXB`).
 
+**A branch taken in a pinned Workspace says where the comparison is**
+(`PL-YQ5J`). A pinned Workspace draws one run at most, so a branch taken from
+its Branch View opens in none of its areas. The caption that replaces the
+branch control while two runs are open then adds a sentence naming the pin and
+the way to compare the runs ("This Workspace is pinned to Run 1, so it does not
+draw this comparison. Unpin it from the Workspace's tab to compare Run 1 and
+Run 2."). The learner stays in the Workspace they chose. The sentence goes as
+soon as the Workspace is unpinned or the reader switches to another Workspace.
+The interface does not switch the Workspace itself, because the press asked
+for a branch and not for another Workspace. WCAG 2.2 Success Criterion 4.1.3
+treats a result shown without moving the reader as a status message. Nothing
+announces this one to a screen reader yet, because screen-reader support is
+planned and not yet a commitment (§ "Color contrast, and the standard this
+interface is held to"). The Understanding document for Success Criterion 3.2.2 holds a change of context
+appropriate "only when it is clear that such a change will happen in response
+to the user's action"
+(`test_a_branch_taken_in_a_workspace_pinned_to_a_run_that_is_not_open_says_where_it_went`
+and `test_a_branch_taken_in_a_workspace_pinned_to_the_trunk_says_so_until_it_is_unpinned`
+in `tests/integration/test_workspace_tabs.py`).
+
 A view shows its run's name whenever a reader could mistake its values for
 another run's: while another run is drawn anywhere in the application, while the
 view is pinned to a run, and always in a window broken out of the main one.
