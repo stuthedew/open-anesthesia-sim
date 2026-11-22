@@ -117,7 +117,7 @@ def test_reset_preserves_all_user_settings() -> None:
 def test_identical_runs_produce_identical_snapshots() -> None:
     """Two runs with identical settings, events, and steps must match.
 
-    Required test from docs/MODEL.md: deterministic replay across the full
+    Required test from docs/VERIFICATION.md: deterministic replay across the full
     patient system, not just the v0.0.2 circuit-only path.
     """
 
@@ -192,7 +192,7 @@ def _ragged_bursts(total_steps: int) -> list[int]:
 def test_a_run_reaches_the_same_definition_however_the_ticks_fell() -> None:
     """Identical inputs must produce the same run, however the host timed its ticks.
 
-    This is a required test from docs/MODEL.md. The test above drives both runs
+    This is a required test from docs/VERIFICATION.md. The test above drives both runs
     identically, so it checks only that the model gives the same trajectory twice. It says
     nothing about the machine, and this test covers that part. Simulated time is the number
     of steps taken times the step length. Each tick owes the run a fixed amount of simulated

@@ -42,9 +42,10 @@ readers:
   extend a model whose every equation, constant and assumption is written down.
 
 What distinguishes it from a demonstration is that the whole chain is
-inspectable and reproducible. The governing equations, units, numerical method
-and known limitations are specified in
-[`docs/MODEL.md`](docs/MODEL.md); every parameter names its source *and the
+inspectable and reproducible. The governing equations, units and known
+limitations are specified in [`docs/MODEL.md`](docs/MODEL.md), and the
+numerical method in [`docs/VERIFICATION.md`](docs/VERIFICATION.md); every
+parameter names its source *and the
 strength of that source*; and a run is deterministic — the same inputs give the
 same run, sample for sample — so a curve can be reproduced, cited, and argued
 with.
@@ -209,7 +210,7 @@ through a fresh non-rebreathing circuit. When a test removes the circuit's
 effect, three of the four cohorts agree, but desflurane then washes out faster
 than the volunteers did, a disagreement about how agent returns from the
 tissues. The model's documentation gives the numbers and the reasons
-(`docs/MODEL.md` § "Published wash-in and elimination validation test").
+(`docs/VERIFICATION.md` § "Published wash-in and elimination validation test").
 
 The model's documentation (`docs/MODEL.md`) therefore grades the cited source of
 every value as a primary measurement, a secondary synthesis, or the parameter set
@@ -220,7 +221,7 @@ A further test compares simulated elimination with the mean washout curves that
 Yasuda et al. published (`tests/reference/test_late_washout_against_published_fits.py`).
 It covers 24 hours, the most the simulator allows. It records where the model's
 tail lies above and below those curves. It passes whether or not the two agree.
-The model's documentation gives the result (`docs/MODEL.md` §
+The model's documentation gives the result (`docs/VERIFICATION.md` §
 "The first 24 hours of elimination against the published mean curves").
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
@@ -256,8 +257,12 @@ make run          # or: uv run anesthesia-sim
 ## Documentation
 
 - [`docs/MODEL.md`](docs/MODEL.md) — the scientific specification: equations,
-  units, conventions, parameter provenance, numerical method, properties the
-  model must always keep, required tests, assumptions and known limitations.
+  units, conventions, parameter provenance, assumptions and known limitations.
+- [`docs/VERIFICATION.md`](docs/VERIFICATION.md) — how the code is shown to
+  solve those equations correctly: the numerical method, the properties the
+  model must always keep, the required tests, and what a release must pass.
+  Its tests include the comparison with measurements in volunteers, and it
+  lists the ways the display could be misread.
 - [`docs/INTERFACE.md`](docs/INTERFACE.md) — the interface requirements: what
   the display must show, and what each control does.
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — how the folders `core/`,

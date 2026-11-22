@@ -61,7 +61,7 @@ from typing import Final
 #
 # The project owner chose this step on 2026-11-21 (`PL-7CY5`). It replaces a
 # step of 0.1 s, chosen on 2026-09-06 (`PL-NBCJ`), whose figures were a tenth
-# of these. docs/MODEL.md "Supported simulation step" carries the measurements
+# of these. docs/VERIFICATION.md "Supported simulation step" carries the measurements
 # and both decisions.
 #
 # The figures are per second of delay, and a caller decides how many seconds a
@@ -70,7 +70,7 @@ from typing import Final
 # several seconds between control opportunities, so its own resolution is that
 # many times coarser: 30 s, and up to about 10 pp, at 300x. That is a property
 # of the caller's loop and not of this constant. The whole per-rate table is in
-# docs/MODEL.md "Supported simulation step", and app/playback.py states which
+# docs/VERIFICATION.md "Supported simulation step", and app/playback.py states which
 # grid the interface offers.
 #
 # Every figure quoted above is measured again from the parameter files at each

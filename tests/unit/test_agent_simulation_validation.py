@@ -39,7 +39,7 @@ from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 # the model's supported input ranges and for the interface's displayed
 # resolution.
 #
-# `docs/MODEL.md` § "Mass-balance identity" lists all three as the run-time
+# `docs/VERIFICATION.md` § "Mass-balance identity" lists all three as the run-time
 # halt thresholds, and keeps them apart from its release gate, which bounds the
 # relative residual alone. The third is a minimum scale: the relative error
 # divides by the starting plus delivered amount, or by 1e-15 L if that is
@@ -397,7 +397,7 @@ def test_the_running_agent_totals_stay_within_a_tenth_of_the_accounting_toleranc
     place, always in the same direction for a nearly constant transfer. Over a
     24 h run at the 1 ms step floor, that drift brought the residual of a
     correct run within a few percent of the relative tolerance at which the
-    run is halted (`docs/MODEL.md` § "Mass-balance identity"). The residual is
+    run is halted (`docs/VERIFICATION.md` § "Mass-balance identity"). The residual is
     the gap between the two sides of the accounting identity. The expected
     sums are computed exactly, with `Fraction`, rather than by the code under
     test. The test also computes the plain sum of the same transfers, which
@@ -583,7 +583,7 @@ def test_the_accounting_tolerances_are_the_documented_release_tolerances() -> No
         DOCUMENTED_MINIMUM_RELATIVE_SCALE_L,
     ), (
         "the conservation guard's sensitivity has changed; a deliberate change "
-        'revises docs/MODEL.md § "Mass-balance identity" — which states both '
+        'revises docs/VERIFICATION.md § "Mass-balance identity" — which states both '
         "run-time halt thresholds and the scale floor that keeps the relative error "
         "finite — and updates these restated values with it"
     )
@@ -659,7 +659,7 @@ def test_a_residual_outside_the_absolute_tolerance_halts_the_run() -> None:
 def test_the_absolute_tolerance_admits_a_residual_exactly_at_the_threshold() -> None:
     """A residual of exactly 1e-12 L passes, because the specification is inclusive.
 
-    `docs/MODEL.md` § "Mass-balance test" writes the condition as
+    `docs/VERIFICATION.md` § "Mass-balance test" writes the condition as
     |epsilon_M| <= epsilon_absolute,max, so a residual exactly equal to the
     tolerance passes. Tightening the comparison to `<` would change the
     documented condition rather than a value. The cases above sit 10% on either

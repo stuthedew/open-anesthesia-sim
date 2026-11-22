@@ -113,7 +113,7 @@ class SimulationNumericalError(SimulationExecutionError):
 
     It is also raised for a model extension whose matrix is not a pure
     transfer system, that is, a matrix with an off-diagonal entry that is not
-    a transfer rate. `docs/MODEL.md` § "Supported simulation step" states that
+    a transfer rate. `docs/VERIFICATION.md` § "Supported simulation step" states that
     limit (`PL-PM67`).
 
     `AgentUptakeSystem.advance` also raises this error when a step cannot

@@ -263,16 +263,17 @@ REPOSITORY_BOUND_FAMILIES = doc_check.BOUND_FAMILIES
 
 @pytest.fixture(autouse=True)
 def _bound_families_in_one_fixture_document(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Point every family of the interface document at the fixture's one model document.
+    """Point every family of the interface and verification documents at the fixture's MODEL.md.
 
     `_repo` writes a single `docs/MODEL.md` that holds every bound section, as
     the real document did until `PL-CTXZ` moved the interface sections to
-    `docs/INTERFACE.md`. The tests here are about how a family is read, not
+    `docs/INTERFACE.md` and `PL-6PPZ` moved the verification sections to
+    `docs/VERIFICATION.md`. The tests here are about how a family is read, not
     about which document holds it, so they keep that one fixture document.
     """
     families = tuple(
         dataclasses.replace(family, document=doc_check.MODEL)
-        if family.document == doc_check.INTERFACE
+        if family.document in (doc_check.INTERFACE, doc_check.VERIFICATION)
         else family
         for family in doc_check.BOUND_FAMILIES
     )

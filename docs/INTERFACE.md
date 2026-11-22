@@ -38,7 +38,7 @@ watched faster.
 **The playback rate does decide when an input acts.** A control changed *during*
 a run first acts on the next step that the run takes. The faster rates take
 several steps at a time, so the same slider moves made at two playback rates can
-produce different runs. `docs/MODEL.md` § "Supported simulation step" quantifies this.
+produce different runs. `docs/VERIFICATION.md` § "Supported simulation step" quantifies this.
 
 **For developers.** § "Interface boundary" sets the constraints on the
 interface's own settings. `docs/MODEL.md` § "The reproducibility guarantee" rules out treating
@@ -61,7 +61,7 @@ finer than anything a learner can do while the run plays. A setting changed
 during play first acts on the next step that the run takes. At 1x and 5x that
 step begins at the next whole second. At 20x, 60x and 300x the run takes 2, 6
 and 30 steps at a time, so a change can act only at instants 2, 6 and 30
-simulated seconds apart (`docs/MODEL.md` § "Supported simulation step"). A halt
+simulated seconds apart (`docs/VERIFICATION.md` § "Supported simulation step"). A halt
 is not on that grid. It lands on the crossing step
 itself, at every playback rate. If the crossing were tested once per screen
 update instead, the same bookmark would stop at a different concentration
@@ -374,7 +374,7 @@ timeline would then be smaller than 9 MB.
 that the step wrote.** A state is the six fractions (inspired, alveolar, mixed
 venous and the three tissue groups), the agent delivered and the agent
 exhausted since induction, and the constant one that the equations read their
-inputs against. The method in `docs/MODEL.md` § "Selected method (as
+inputs against. The method in `docs/VERIFICATION.md` § "Selected method (as
 implemented)" computes each step. The run's record of stored states holds one
 state for every second from the run's opening to the second it has reached.
 
@@ -747,7 +747,7 @@ type's constructor runs the range check, and nothing else produces a value of th
 is therefore checked once, when its value is made, not where it is stored or used. A flow
 outside its range raises a `SimulationConfigurationError`, so a script, a notebook and a test
 meet the same error as the interface. The error marks a refused argument, which
-`docs/MODEL.md` § "Supported simulation step" distinguishes from a step that broke down.
+`docs/VERIFICATION.md` § "Supported simulation step" distinguishes from a step that broke down.
 
 A flow is kept from one step to the next, and it can enter the simulation five ways: through a
 setter of the agent uptake system (`AgentUptakeSystem`), through the setter of the compartment
@@ -897,7 +897,7 @@ alike, in the constructor's own words, and the field keeps its previous value.
 
 The one write that bypasses this check is a rollback, which puts back what the compartment held
 when the step began (`restore_state`). A rollback that could raise would replace the step's own
-error. It would also leave later compartments still holding the failed step (`docs/MODEL.md` § "Step
+error. It would also leave later compartments still holding the failed step (`docs/VERIFICATION.md` § "Step
 atomicity"). Only a write that bypasses the capacity's own check can shrink a capacity below a
 held amount, because each value is checked first by its own write. The rollback leaves that case
 to the snapshot, whose amount-over-capacity fraction refuses it visibly. No supported setting
@@ -920,7 +920,7 @@ circuit's volume setter (`set_circuit_volume`) refuses a circuit volume too smal
 The circuit stores its agent as a fraction of its volume. So a circuit volume assigned directly,
 bypassing the volume setter, cannot overfill the circuit, and is not refused. Instead the agent
 amount changes with the volume, and the circuit gains or loses agent that no flow carried. The
-next step then halts on the mismatch that the mass-balance check finds (`docs/MODEL.md` § "Mass-balance
+next step then halts on the mismatch that the mass-balance check finds (`docs/VERIFICATION.md` § "Mass-balance
 identity"), and the step is rolled back.
 
 The venous pool's rollback bypasses its check, for the same reason as the alveolar and tissue
@@ -937,14 +937,14 @@ fresh gas flow control described below:
 `test_a_declared_range_off_the_display_grid_offers_only_settings_inside_it` and
 `test_an_opening_fresh_gas_flow_off_the_slider_grid_is_refused`.
 
-The zero-ventilation, zero-cardiac-output and zero-tissue-flow tests in `docs/MODEL.md` § "Required tests"
+The zero-ventilation, zero-cardiac-output and zero-tissue-flow tests in `docs/VERIFICATION.md` § "Required tests"
 specify how the equations behave at zero flow.
 
 The flow maxima began as the interface sliders' maxima, before the model declared any range.
 Nothing in the equations breaks at 10.01 L/min, because the calculation is exact at any flow.
 
 **The supported ranges are the verification domain: the settings over which the model is checked
-against an independent solution.** The test in `docs/MODEL.md` § "Independent-solution test" runs its
+against an independent solution.** The test in `docs/VERIFICATION.md` § "Independent-solution test" runs its
 trajectories across everything these ranges allow. Two of its trajectories hold a flow at zero.
 One holds alveolar ventilation at zero, and the other holds cardiac output at zero. Narrowing a
 range would take a trajectory that the test runs out of reach, and widening one would admit
@@ -960,8 +960,8 @@ fails on purpose (`test_envelope_limits_match_the_supported_input_ranges` in
 `tests/reference/test_coupled_dynamics.py`). Re-run that file's envelope and trajectory sweeps at
 the new limits. Update its limit constants, and the most that the exact step may differ from the
 independent solution (`EXACT_STEP_ORACLE_TOLERANCE`). Then re-derive every figure computed at the
-flow maxima: the fastest time constant in `docs/MODEL.md` § "Alveolar gas" and `docs/MODEL.md` § "Supported simulation step",
-the corner sweeps in `docs/MODEL.md` § "The numerical envelope" and `tests/unit/test_numerical_envelope.py`, and
+flow maxima: the fastest time constant in `docs/MODEL.md` § "Alveolar gas" and `docs/VERIFICATION.md` § "Supported simulation step",
+the corner sweeps in `docs/VERIFICATION.md` § "The numerical envelope" and `tests/unit/test_numerical_envelope.py`, and
 the figures below.
 
 Three tests stop a range from changing unnoticed. The first is the test above, which restates
@@ -976,7 +976,7 @@ two claims").
 
 **The simulation step is fixed, and is separate from the supported input ranges.** Neither a
 user nor a caller sets the step. Every call that advances a run (`advance()`) takes one step of
-1 s (`SIMULATION_STEP_S` in `core/simulation_step.py`), and `docs/MODEL.md` § "Supported
+1 s (`SIMULATION_STEP_S` in `core/simulation_step.py`), and `docs/VERIFICATION.md` § "Supported
 simulation step" gives the reasons for that length. The step is a
 declared limit, in seconds, on how long a change to a control may go unseen by the model. The
 input ranges are a claim about where the compartment structure represents a patient. Neither is
@@ -991,8 +991,8 @@ length (`require_compartment_step` in `core/supported_ranges.py`).
 
 **The simulator refuses a setting outside the ranges, because neither its code nor its model has
 been checked there.** The ranges are the model's **verification domain**. Across them, its results
-have been compared with an independent calculation (`docs/MODEL.md` § "Independent-solution test") and with
-measured human data (`docs/MODEL.md` § "Published wash-in and elimination validation test"). Every model result in
+have been compared with an independent calculation (`docs/VERIFICATION.md` § "Independent-solution test") and with
+measured human data (`docs/VERIFICATION.md` § "Published wash-in and elimination validation test"). Every model result in
 this document comes from settings within the ranges.
 
 Outside the ranges, the simulator must refuse rather than show a plausible-looking number. Solved
@@ -1133,7 +1133,7 @@ stored flow errs, but either way the flow acts directly on the slow tail of wash
 published wash-in and elimination test compares the model with five minutes of elimination.
 It explicitly refuses the two Yasuda papers' own multi-day curves, because *over days the
 missing metabolism is no longer negligible, and neither is the fat group's flow*
-(`docs/MODEL.md` § "Published wash-in and elimination validation test"). A run beyond the limit therefore
+(`docs/VERIFICATION.md` § "Published wash-in and elimination validation test"). A run beyond the limit therefore
 displays a trace whose slow component is increasingly the two omissions rather than the
 model.
 
@@ -1146,7 +1146,7 @@ carries the largest term in the measured curve over most of the supported span: 
 intertissue-diffusion note under `docs/MODEL.md` § "Known limitations" has the coefficients and the
 arithmetic. All else equal, a tail without that store falls faster than the measured one
 from about the third hour of elimination. Measured against the published mean curves over
-the whole supported run, the shipped tail does so (`docs/MODEL.md` § "The first 24 hours of elimination
+the whole supported run, the shipped tail does so (`docs/VERIFICATION.md` § "The first 24 hours of elimination
 against the published mean curves"). It runs about a third below the curves from about the
 seventh hour until about the twenty-first. For desflurane it runs below them by half, from
 3.4 to 15.3 hours. In the hours before that, it runs a fifth to a half above them, while
@@ -1161,7 +1161,7 @@ desflurane and near hour 13 for the others.
 
 **The tail's departures from the published curves do not move the 24 hours.** The limit
 rests on the two omissions above growing past negligible over the span, and the departures
-come from neither of them. In `docs/MODEL.md` § "The first 24 hours of elimination against the published mean
+come from neither of them. In `docs/VERIFICATION.md` § "The first 24 hours of elimination against the published mean
 curves", the metabolism bound accounts for about an eighth of the excess where the tail runs
 above the curves, and widens the gap where it runs below. The shortfall comes from the missing
 fourth compartment, which is as present in the first hour as in the last, so shortening the
@@ -1328,7 +1328,7 @@ both from the files, and the controller then writes the circuit volume it was bu
 if it was given one.
 The interface has no control for either, and `SimulationController` has no setter for
 either. Both have a numerical envelope, 0.01 to 10 000 L, which is a separate claim,
-stated in `docs/MODEL.md` § "The numerical envelope". It says only where the arithmetic has been checked
+stated in `docs/VERIFICATION.md` § "The numerical envelope". It says only where the arithmetic has been checked
 against a high-precision calculation. It says nothing about which volumes describe a
 patient, so it does not contradict the physiological argument below.
 <!-- provenance: core/numerical_envelope.py MAXIMUM_VOLUME_L = 10000 -->
@@ -1380,7 +1380,7 @@ the four controls, not about numerical error. On 2026-09-06, with sevoflurane at
 ran without incident. The agent balance held. So each gave an
 arithmetically correct answer to a question that physiology does not ask. The model has
 since been given a numerical envelope, and it now refuses the 0.005 L volume
-(`docs/MODEL.md` § "The numerical envelope"). A 5 mL alveolus
+(`docs/VERIFICATION.md` § "The numerical envelope"). A 5 mL alveolus
 is not a lung. This model's few compartments, its fixed tissue volumes and its constant
 partition coefficients are claimed to represent a patient only near the shipped values.
 <!-- not-restated: 10000 L -->
@@ -1690,7 +1690,7 @@ patients managed those two ways would differ, how far a real patient would
 depart from either curve, or how likely either management is to reach a given
 state by a given time. It says what these equations do under these two
 managements, within the limits that § "Supported input ranges" and
-§ "Supported run length" declare, and with the fidelity that `docs/MODEL.md` § "Published
+§ "Supported run length" declare, and with the fidelity that `docs/VERIFICATION.md` § "Published
 wash-in and elimination validation test" establishes.
 
 **A branch that differs in cardiac output is still not a second patient.** This
@@ -1727,7 +1727,7 @@ first is about variability.
 
 The interface may mark the fork, where the two runs split. It may name the run
 that each displayed value and each record of setting changes belongs to
-(`docs/MODEL.md` § "Reasonably foreseeable misuse, and the hazards the presentation carries",
+(`docs/VERIFICATION.md` § "Reasonably foreseeable misuse, and the hazards the presentation carries",
 the row on reading one run's value as the other's). And it may show the two
 standing disclaimers: the one on interpretation beside the readouts, and the one
 on use across the foot of the window.
@@ -2054,7 +2054,7 @@ control. The same slider moves made at two rates land at two different
 simulated instants and produce two different runs. The runs differ because the
 inputs differed, not because the arithmetic did. A change made during play can
 act only at instants 1, 1, 2, 6 and 30 simulated seconds apart at 1×, 5×, 20×,
-60× and 300×. `docs/MODEL.md` § "Supported simulation step" gives that grid
+60× and 300×. `docs/VERIFICATION.md` § "Supported simulation step" gives that grid
 and how far a delay of one grid step can shift a displayed compartment. It also
 gives the route that places a change on a chosen whole second at every rate:
 pause, change the setting, then resume. No route places a change between two
@@ -2337,7 +2337,7 @@ entries, only the span of
 simulated time is the reader's choice, and no particular span is required.
 
 Telling a halted run from a paused one is a required output. Both stop the
-numbers advancing, and under `docs/MODEL.md` § "Step atomicity" both leave the simulation in a
+numbers advancing, and under `docs/VERIFICATION.md` § "Step atomicity" both leave the simulation in a
 state that the reader can trust. A paused run continues when the reader asks,
 but a halted run cannot. A halted run shown as "Paused" would offer a Start
 control that fails at the first simulation step, and would present a stopped
@@ -3387,7 +3387,7 @@ uptake literature is taught from this curve, and the wash-in figures a reader
 has seen show it. The plot can therefore be laid beside a published figure. The
 six compartment concentrations on the chart above cannot. A validation test
 compares the plotted ratio with human measurements at 30 minutes, for all three
-agents in the simulator (`docs/MODEL.md` § "Published wash-in and elimination validation test").
+agents in the simulator (`docs/VERIFICATION.md` § "Published wash-in and elimination validation test").
 The ratio is computed only for display, and no equation of the model uses it.
 
 **The ratio is a modelled value, not a measurement.** It has the alveolar
@@ -3482,7 +3482,7 @@ supported input ranges do not bound.
 **The ratio is shown to two decimals, to match the spread of its published
 values.** Yasuda et al. report 0.850, 0.733 and 0.90, with standard deviations
 of 0.018, 0.027 and 0.01, so a third decimal would be finer than that spread.
-See `docs/MODEL.md` § "Published wash-in and elimination validation test".
+See `docs/VERIFICATION.md` § "Published wash-in and elimination validation test".
 
 **For developers.** The ratio and its two boundaries are computed only in
 `app/wash_in.py`, a module that contains nothing else. Unit tests cover both
@@ -4254,7 +4254,7 @@ something upstream is wrong, and the display refuses it.
 model, and nothing in the `core/` directory reads it. The simulation
 step (`SIMULATION_STEP_S`) is a tolerance in seconds, and the supported
 input ranges are intervals in L/min. Both are derived without reference to the
-readout, in `docs/MODEL.md` § "Supported simulation step" and `docs/INTERFACE.md` § "Supported input ranges". A
+readout, in `docs/VERIFICATION.md` § "Supported simulation step" and `docs/INTERFACE.md` § "Supported input ranges". A
 future change to one decimal has to answer the objection to it given under the
 lower limit above. The negative concentrations that the model cannot hold
 include minus zero (`docs/MODEL.md` § "Concentrations"). No value of the `Fraction` type can be
@@ -4322,7 +4322,7 @@ fit.
 When a reader compares two readouts, the simulator's calculation error could mislead them
 only by reversing which of the two is shown as higher. A test compared every pair of the
 six readouts at every time step, for all three agents, in every run that
-`docs/MODEL.md` § "Independent-solution test" describes: 148 500 pairs of readings in all. The
+`docs/VERIFICATION.md` § "Independent-solution test" describes: 148 500 pairs of readings in all. The
 simulator's readings **never** disagreed with those of the independent solution about
 which compartment is higher, even where the gap was tiny (checked 2026-11-21).
 
@@ -5690,7 +5690,7 @@ millilitre, plus the volume times half a unit of the price's last shown digit.
 The cost's precision is not a fixed count of decimals, because how many decimals
 a cost can justify depends on the price (§ "Displayed precision", `PL-0S0V`).
 
-The two rows in the hazard table (`docs/MODEL.md` § "Reasonably foreseeable misuse, and the
+The two rows in the hazard table (`docs/VERIFICATION.md` § "Reasonably foreseeable misuse, and the
 hazards the presentation carries") name the tests for this section. The cost is
 checked against the four costs printed in Gas Man's two isoflurane exercises, in
 `tests/integration/test_agent_cost_view.py`

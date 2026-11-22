@@ -156,7 +156,8 @@ Breaking one silently is worse than not doing the item.
   import, not a formatting fix. If the item cannot be done inside `touches`,
   stop and treat it as an unclear brief.
 - **Never edit `src/anesthesia_sim/core/`, `src/anesthesia_sim/data/`,
-  `docs/MODEL.md` or `docs/INTERFACE.md`.** These produce clinical values. You may write tests
+  `docs/MODEL.md`, `docs/INTERFACE.md` or `docs/VERIFICATION.md`.** These
+  produce clinical values. You may write tests
   *about* them; you may not change them. This holds even if you are certain
   one contains a bug — record it with `docket new` instead.
 - **Never edit the checks themselves.** The list is `gate_paths` in
@@ -232,8 +233,8 @@ ScienceDirect refused an unattended client on 2026-09-26 (`PL-M701`).
 what it cannot reach, and the obligation to record which route a citation came
 from and how deeply you read. Read it before you write a citation into
 anything. It loads on its own for a session that opens `docs/MODEL.md`,
-`docs/INTERFACE.md` or a file under `src/anesthesia_sim/data/`, none of which
-you may edit.
+`docs/INTERFACE.md`, `docs/VERIFICATION.md` or a file under
+`src/anesthesia_sim/data/`, none of which you may edit.
 
 ## Ref operations a session cannot perform
 

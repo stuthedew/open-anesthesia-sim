@@ -239,7 +239,7 @@ REJECTED_ACCOUNTING_NOTICE_TEMPLATE: Final = (
 # stopped run has been drawn. At that point the chart and the readouts still show
 # the frame drawn before the stop, which is not the step the run stopped at. So
 # "the values shown are the last completed step" would be the stale-state
-# misreading that the hazard table in `docs/MODEL.md` names. The first frame that
+# misreading that the hazard table in `docs/VERIFICATION.md` names. The first frame that
 # draws replaces this banner with `FAILURE_NOTICE_TEMPLATE`. Which
 # of the two banners is shown is therefore decided by whether a frame drew, not
 # guessed from the reason (`PL-7DJK`).

@@ -1,10 +1,11 @@
 """`tools/new_prose.py --compare` must set each changed passage beside its old text.
 
 Close-out step 8 runs the comparison to find a fact that an edit dropped and a
-passage that grew. These tests pin which files the reader table in
-`.claude/rules/plain-writing.md` names, which paragraphs, table rows,
-docstrings, comments and string literals count as prose, how changed rows are
-grouped into passages, and which facts are reported as gone.
+passage that grew. These tests pin which files the reader tables in
+`.claude/rules/plain-writing.md` and `.claude/rules/document-readers.md` name,
+which paragraphs, table rows, docstrings, comments and string literals count as
+prose, how changed rows are grouped into passages, and which facts are reported
+as gone.
 """
 
 from __future__ import annotations
@@ -15,7 +16,7 @@ from pathlib import Path
 import new_prose
 import pytest
 from docket.config import load
-from new_prose import ROOT, RULE, document_units, main, prose_units, reader_table, readers_of
+from new_prose import ROOT, document_units, main, prose_units, reader_table, readers_of
 
 #: The number of words in `LONG`, which only has to be longer than `SHORT`. The
 #: comparison reads units of any length, so it treats the two alike.
@@ -160,6 +161,17 @@ def test_a_rule_without_the_reader_table_is_refused() -> None:
         reader_table("| Kind | Reader |\n| --- | --- |\n| `a` | b |\n")
 
 
+def test_a_document_rule_without_the_reader_table_is_refused_by_name(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The document readers moved to a rule of their own, so losing that table must fail."""
+    rule = tmp_path / "document-readers.md"
+    rule.write_text("# Who reads each document\n", encoding="utf-8")
+    monkeypatch.setattr(new_prose, "DOCUMENT_RULE", rule)
+    with pytest.raises(ValueError, match="^document-readers.md: no table headed"):
+        new_prose.whole_rule_table()
+
+
 @pytest.mark.parametrize(
     "path",
     [
@@ -208,7 +220,7 @@ UNREVIEWED_PRODUCT_DOCUMENTS = ("docs/releases",)
 
 def test_every_product_document_has_a_reader_except_the_release_notes() -> None:
     """A product document added without a row would be left out of the comparison."""
-    table = reader_table(RULE.read_text(encoding="utf-8"))
+    table = new_prose.whole_rule_table()
     unread = []
     for entry in load(ROOT).product_paths:
         if entry in UNREVIEWED_PRODUCT_DOCUMENTS:
@@ -224,7 +236,7 @@ def test_every_product_document_has_a_reader_except_the_release_notes() -> None:
 
 def test_no_row_names_the_release_notes() -> None:
     """A release note is written from item titles, so no reader row names it."""
-    table = reader_table(RULE.read_text(encoding="utf-8"))
+    table = new_prose.whole_rule_table()
     assert not readers_of(table, "docs/releases/v0.6.14.md")
 
 
