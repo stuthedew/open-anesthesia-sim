@@ -9,6 +9,7 @@ import pytest
 from PySide6.QtCore import QEvent, QObject, QPoint
 from PySide6.QtWidgets import QApplication, QLabel, QScrollArea, QSlider, QWidget
 
+from anesthesia_sim.app import formatting
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.simulation_view import SimulationView
@@ -26,6 +27,7 @@ from anesthesia_sim.app.views import (
     ParameterControlsView,
     WashInView,
 )
+from anesthesia_sim.core.supported_ranges import AlveolarVentilation
 from anesthesia_sim.layout.tree import AreaId
 from anesthesia_sim.layout.workspace import WorkspaceName
 from tests.integration.simulation_view.simulation_view_support import (
@@ -47,6 +49,9 @@ from tests.integration.simulation_view.simulation_view_support import (
     _take_fork,
     _wash_in,
 )
+
+#: U+00A0, the no-break space that keeps a record line's parts whole.
+_NBSP = "\u00a0"
 
 # ---------------------------------------------------------------- the page
 
@@ -88,6 +93,40 @@ def test_the_dashboard_fits_its_window_without_a_horizontal_scrollbar(
     for panel in _record_panels(view.runs[0]):
         assert page.isAncestorOf(panel), "a record panel measured is not on the page"
         assert panel.mapTo(page, panel.rect().bottomRight()).x() <= page.width()
+
+
+@pytest.mark.parametrize("version_is_known", [True, False])
+def test_the_control_change_record_is_readable_at_the_minimum_window_width(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch, version_is_known: bool
+) -> None:
+    """At the narrowest window, the record's widest line part fits without a scroll bar.
+
+    The run rows used to hold their width at the transport row's minimum,
+    which grew with the version badge's text. So a narrow window took its
+    whole shortfall from the record, and "Alveolar ventilation 12.0 L/min ->"
+    lost its arrow behind a horizontal scroll bar (`PL-6XPZ`, `PL-92XM`).
+    The badge carries its longest text when the version cannot be read.
+    """
+
+    monkeypatch.setattr(formatting, "APP_VERSION_IS_KNOWN", version_is_known)
+    controller = SimulationController()
+    _advance(controller, 10)
+    controller.set_alveolar_ventilation(AlveolarVentilation(10.0))
+    _advance(controller, 10)
+    view = _shown_view(application, controller, width_px=1)
+    _settle(application)
+    run = view.runs[0]
+    label = run._control_timeline_text
+    metrics = label.fontMetrics()
+    widest_part = metrics.horizontalAdvance(
+        f"Alveolar{_NBSP}ventilation{_NBSP}12.0{_NBSP}L/min{_NBSP}->"
+    )
+
+    assert view.width() == view.minimumSizeHint().width()
+    assert ("unavailable" in run._subtitle_text.text()) is not version_is_known
+    assert "->" in label.text()
+    assert label.width() >= widest_part
+    assert view._record_scroll.horizontalScrollBar().maximum() == 0
 
 
 def test_the_sidebar_panels_measured_are_the_ones_the_page_holds(application: QApplication) -> None:

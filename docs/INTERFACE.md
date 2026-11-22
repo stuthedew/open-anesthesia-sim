@@ -4814,9 +4814,17 @@ across with others, with one run or two** (measured 2026-11-14). At that width
 the row is within a few pixels of what seven across needs, so the font decides.
 With four across, the readouts take two lines. A window frame or a dock at the
 side of the screen narrows the row further. The record wraps its lines at this
-width too. It narrows further when the row of run controls above the readouts
-needs more room, for example for a long version label, and it can then cut off
-the end of its longest lines (`PL-6XPZ`).
+width too.
+
+**At every window width, the record is at least as wide as the widest part of
+any line it can show.** A line breaks only after the time or after the arrow,
+so its middle part, such as "Alveolar ventilation 12.0 L/min ->", cannot be
+narrower than its text. The record keeps that width however narrow the window
+is, and the readout row gives way instead by stepping down to four across. The
+version-and-model label beside the run controls wraps between words where the
+row is short of room, so a long version label does not take width from the
+record (`PL-6XPZ`, `PL-92XM`).
+<!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
 
 **For developers.** A function sets the row's column count from its width
 (`readout_columns` in `src/anesthesia_sim/app/dashboard_frame.py`). A constant
@@ -4854,9 +4862,10 @@ With the tests' font, a 1366 px window gives the region 1334 px (measured
 1366 px window opens the row seven across, with one run and in compare mode
 (`test_a_1366_px_window_opens_one_run_s_readout_row_on_seven_columns` and
 `test_two_runs_share_one_readout_block_whose_values_name_their_runs` in `tests/integration/simulation_view/test_simulation_view_readouts.py`). A 1280 px
-window gives the region 1248 px. The left column takes at least its share,
-1014 px. With the font in the container where the tests were written, that is
-29 px more than seven across needs (measured 2026-11-22). With the font on the
+window gives the region 1248 px. The left column takes 1008 px, less than its
+share, because the record's least width is more than the record's share. With
+the font in the container where the tests were written, that is 23 px more than
+seven across needs (measured 2026-11-22). With the font on the
 CI runner, seven across needed 1068 px on 2026-11-14 and the row got 1060 px, so
 it opened on four. The clock's widest reading was then `23h59m59.9s`. It is now
 `23h59m59s`, which narrows the clock's column by 20 px with the tests' font, so
@@ -4865,11 +4874,22 @@ where seven fit and four across otherwise, with one run and with two
 (`test_a_1280_px_window_opens_one_run_s_readout_row_on_seven_or_four_columns`
 and
 `test_a_1280_px_window_opens_two_compared_runs_readout_row_on_seven_or_four_columns` in `tests/integration/simulation_view/test_simulation_view_readouts.py`).
-The left
-column cannot narrow below the transport row's minimum width, which includes
-the version label. So below about 1366 px a longer version string widens the
-left column and narrows the record (`PL-6XPZ`). A function wraps the
-control-change record (`wrapping_between_parts`).
+The right
+column never narrows below the widest unbroken part of a record line. A
+function lists those parts at each control's largest recordable value, the end
+of the longest supported run and the most settings a run can step under
+(`longest_unbroken_parts` in `src/anesthesia_sim/app/control_timeline.py`). The
+record's text label measures them with each digit drawn as the font's widest
+digit, because digits differ in width in some fonts. With the tests' font that
+least width is 228 px for the column, which is more than its share in a window
+narrower than about 1300 px, and the row then opens four across below a 1260 px
+window (measured 2026-11-22). The version-and-model label wraps, so the
+transport row's least width no longer grows with the version string. A test
+checks the record at the narrowest window the dashboard allows, with the
+longest version text the label can carry
+(`test_the_control_change_record_is_readable_at_the_minimum_window_width` in
+`tests/integration/simulation_view/test_simulation_view_page.py`). A function
+wraps the control-change record (`wrapping_between_parts`).
 
 #### Time, flows and the chart
 
