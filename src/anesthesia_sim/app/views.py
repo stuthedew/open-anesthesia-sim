@@ -77,7 +77,6 @@ from anesthesia_sim.app.dashboard_frame import (
     TIME_BASE_LABEL,
     WASH_IN_DENOMINATOR_TEXT,
     WASH_IN_HEADING,
-    WASH_IN_MODELLED_TEXT,
     SettingReadout,
     compared_panel_heading,
     compartment_cap_notice,
@@ -165,6 +164,7 @@ _TIME_BASE_KEY: Final = "time_base_s"
 
 _CONCENTRATION_VIEW_NAME: Final = "concentrationView"
 _WASH_IN_VIEW_NAME: Final = "washInView"
+_WASH_IN_PINNED_ROW_NAME: Final = "washInPinnedRow"
 _SCHEMATIC_VIEW_NAME: Final = "compartmentSchematicView"
 _AGENT_COST_VIEW_NAME: Final = "agentCostView"
 _BOOKMARKS_VIEW_NAME: Final = "bookmarksView"
@@ -420,6 +420,25 @@ def _panel_column(view: QWidget, object_name: str) -> QVBoxLayout:
     return column
 
 
+def _panel_row(label: QLabel, object_name: str) -> QWidget:
+    """Return a row that holds `label` on the panel surface, inset by the panel's padding.
+
+    A View's pinned row sits outside the View's own panel, between the Area's
+    header and the box that scrolls the View. This gives the row the same
+    surface and the same left edge as the panel's text below it.
+    """
+
+    row = QWidget()
+    row.setObjectName(object_name)
+    row.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+    row.setStyleSheet(panel_stylesheet(object_name))
+    line = QHBoxLayout(row)
+    line.setContentsMargins(PANEL_PADDING, PANEL_PADDING, PANEL_PADDING, 0)
+    line.addWidget(label)
+
+    return row
+
+
 def _bare_column(view: QWidget) -> QVBoxLayout:
     """Return a column with no margins, for a View whose rows are panels of their own."""
 
@@ -637,8 +656,8 @@ class WashInView(QWidget):
     In an Area too short for all of it, the plot shrinks to
     `theme.WASH_IN_CHART_LEAST_HEIGHT`, and the rows from the statement of the
     window to the legend scroll in a box above the plot, as the concentration
-    chart's do (`_KeyScroll`). "Modelled, not measured" is the View's
-    `pinned_row`: its Area shows it above the box that scrolls the View, so
+    chart's do (`_KeyScroll`). The line that says its values are model
+    outputs is the View's `pinned_row`: its Area shows it above the box that scrolls the View, so
     the words are on screen wherever any part of the plot is (`PL-26BZ`).
 
     Its time window is its own, as the concentration chart's is (`PL-L59K`).
@@ -651,8 +670,10 @@ class WashInView(QWidget):
     Attributes:
         chart: The plot.
         legend: The plot's legend.
-        pinned_row: "Modelled, not measured", which the View's Area keeps on
-            screen above the View's scroll box.
+        modelled_label: The line that says the plot's values are model
+            outputs, not measurements.
+        pinned_row: The row that holds `modelled_label`, which the View's
+            Area keeps on screen above the View's scroll box.
         time_base_selector: The control that sets the window's width.
     """
 
@@ -676,11 +697,14 @@ class WashInView(QWidget):
         heading.addWidget(self.time_base_selector)
         column.addLayout(heading)
         column.addWidget(self.state_notice)
-        # The safety standard requires these three words beside the plot
+        # The safety standard requires the plot to say it is modelled
         # (`PL-F9TQ`). The View's Area keeps the row above the box that
         # scrolls the View, so the words are on screen wherever any part of
-        # the plot is (`PL-26BZ`).
-        self.pinned_row = styled_label(WASH_IN_MODELLED_TEXT, color=MUTED)
+        # the plot is (`PL-26BZ`). The words are the ones every other View
+        # uses for the same fact, and the row is drawn on the panel surface so
+        # it reads as part of this View (`PL-T8DF`).
+        self.modelled_label = styled_label(INTERPRETATION_DISCLAIMER_TEXT, color=MUTED)
+        self.pinned_row = _panel_row(self.modelled_label, _WASH_IN_PINNED_ROW_NAME)
         column.addWidget(
             _KeyScroll(
                 (

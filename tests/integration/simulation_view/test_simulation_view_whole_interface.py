@@ -8,11 +8,13 @@ These tests cover the whole interface walked at once.
 import re
 
 import pytest
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QApplication
 
 from anesthesia_sim.app.controller import SimulationController
-from anesthesia_sim.app.dashboard_frame import WASH_IN_MODELLED_TEXT
+from anesthesia_sim.app.dashboard_frame import INTERPRETATION_DISCLAIMER_TEXT
 from anesthesia_sim.app.formatting import format_mac_awake_reference, format_mac_reference
+from anesthesia_sim.app.theme import PANEL
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
 from tests.integration.simulation_view.simulation_view_support import (
@@ -161,9 +163,28 @@ def test_nothing_between_the_wash_in_heading_and_its_plot_is_a_sentence(
     assert "dimensionless ratio" not in joined
     # Since `PL-26BZ` the line is the row that the View's Area keeps above the
     # View's scroll box, so it is on screen wherever any of the plot is.
-    line = _wash_in(view).pinned_row
-    assert line.text() == WASH_IN_MODELLED_TEXT
+    line = _wash_in(view).modelled_label
+    assert line.text() == INTERPRETATION_DISCLAIMER_TEXT
     assert line.isVisible()
+    assert _wash_in(view).pinned_row.isAncestorOf(line)
+
+
+def test_the_wash_in_view_says_it_is_modelled_on_its_own_panel(application: QApplication) -> None:
+    """`PL-T8DF`: the line uses every View's words, on the panel surface rather than the page.
+
+    Before the fix the line read "Modelled, not measured", where the readouts,
+    the schematic and the agent cost View say "Model outputs — not
+    measurements.", and it was painted on the page's background colour
+    between the Area's header and the View's panel.
+    """
+
+    view = _shown_view(application, SimulationController())
+    wash_in = _wash_in(view)
+    row = wash_in.pinned_row
+    image = row.grab().toImage()
+
+    assert wash_in.modelled_label.text() == INTERPRETATION_DISCLAIMER_TEXT
+    assert image.pixelColor(row.width() // 2, 1) == QColor(PANEL)
 
 
 def test_the_wash_in_plot_says_what_its_denominator_is(application: QApplication) -> None:
