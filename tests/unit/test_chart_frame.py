@@ -1649,7 +1649,11 @@ def test_the_frame_refuses_two_runs_whose_mac_is_stated_for_different_ages() -> 
     older = _input(_run(10), run_index=1)
     older = replace(older, snapshot=replace(older.snapshot, agent_mac_age_years=70))
 
-    with pytest.raises(ValueError, match=r"same MAC for the same age.*at age 40.*at age 70"):
+    with pytest.raises(
+        ValueError,
+        match=r"^every run on the chart must divide by the same MAC for the same age, because "
+        r"they share one MAC axis and one 1 MAC line; given 1\.8% at age 40, 1\.8% at age 70$",
+    ):
         assemble_chart_frame(
             [first, older], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
         )

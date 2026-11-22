@@ -55,16 +55,22 @@ def test_a_wrong_agent_or_patient_is_refused() -> None:
     agent = load_agent_parameters("sevoflurane")
     patient = load_reference_adult_parameters()
 
-    with pytest.raises(TypeError, match="agent must be an AgentParameters"):
+    with pytest.raises(
+        TypeError,
+        match=r"^agent must be an AgentParameters, and it has type ReferenceAdultParameters$",
+    ):
         mac_for_patient(patient, patient)  # type: ignore[arg-type]
-    with pytest.raises(TypeError, match="patient must be a ReferenceAdultParameters"):
+    with pytest.raises(
+        TypeError,
+        match=r"^patient must be a ReferenceAdultParameters, .* it has type AgentParameters$",
+    ):
         mac_for_patient(agent, agent)  # type: ignore[arg-type]
 
 
 def test_a_mac_that_is_not_a_mac_percent_is_refused() -> None:
     """A plain percent could be zero, so the record takes only a `MacPercent`."""
 
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match=r"^percent of 1\.8 was not built as MacPercent"):
         PatientMac(percent=Percent(1.8), age_years=40)  # type: ignore[arg-type]
 
 
@@ -76,10 +82,26 @@ def test_an_age_that_is_not_a_whole_number_of_years_is_refused(age_years: object
         PatientMac(percent=MacPercent(1.8), age_years=age_years)  # type: ignore[arg-type]
 
 
+def test_an_age_refusal_names_the_age_and_its_type() -> None:
+    with pytest.raises(
+        TypeError, match=r"^age_years of '40' must be a whole number of years, and it has type str$"
+    ):
+        PatientMac(percent=MacPercent(1.8), age_years="40")  # type: ignore[arg-type]
+
+
 @pytest.mark.parametrize("age_years", [0, -40])
 def test_an_age_of_zero_or_less_is_refused(age_years: int) -> None:
-    with pytest.raises(SimulationConfigurationError, match=f"age_years of {age_years}"):
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=rf"^age_years of {age_years} is not an age: .* older than zero years$",
+    ):
         PatientMac(percent=MacPercent(1.8), age_years=age_years)
+
+
+def test_an_age_of_one_year_is_accepted() -> None:
+    """Mapleson's age equation is stated from 1 year, the youngest whole age it covers."""
+
+    assert PatientMac(percent=MacPercent(1.8), age_years=1).age_years == 1
 
 
 def test_a_copied_or_pickled_mac_is_the_same_mac() -> None:

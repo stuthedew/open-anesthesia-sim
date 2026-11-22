@@ -6,7 +6,7 @@ effort: M
 status: blocked
 classes: feature, safety
 touches: src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/app/formatting.py, docs/MODEL.md, docs/INTERFACE.md
-blocked-by: PL-LBVN, v0.8.0
+blocked-by: v0.8.0
 deferred-from: v0.7.0 - not live: checked 2026-11-22, the tree has no patient age input, so no learner can set an age and see a MAC that ignores it; the work waits on PL-LBVN and on planned-milestone item 30
 added: 2026-11-14
 payoff: once a learner can set the patient age, every MAC figure on screen is the MAC for that age rather than for a 40-year-old
@@ -48,7 +48,7 @@ for.
 
 **Why it matters.** MAC falls by about 6% per decade of age (Mapleson 1996, above). Once a learner can set the patient's age, every MAC multiple, the 1 MAC line and the dial's 1 MAC start must use the MAC for that age. Otherwise each MAC figure on screen is wrong for the patient shown. The owner asked for age-adjusted MAC as a core feature (project owner, 2026-11-14, recorded in `PL-LBVN`).
 
-**What it waits on.** It waits on `PL-LBVN`, which stores the age-40 values and adds the one function that builds a run's MAC. It also waits on an age input, which is planned-milestone item 30 in the roadmap's Beyond row. No release schedules item 30, and what v0.8.0 holds is the owner's pick when it is scoped, so the item is blocked on v0.8.0 as well. A session that scopes v0.8.0 without item 30 moves that blocker on.
+**What it waits on.** `PL-LBVN` stored the age-40 values and added the one function that builds a run's MAC, and it closed on 2026-11-22. The item now waits on an age input, which is planned-milestone item 30 in the roadmap's Beyond row. No release schedules item 30, and what v0.8.0 holds is the owner's pick when it is scoped, so the item is blocked on v0.8.0 as well. A session that scopes v0.8.0 without item 30 moves that blocker on.
 
 **Done when.** With an age input, the one function that builds a run's MAC applies Mapleson's equation. A test checks it at 1, 40 and 80 years for each agent against values worked out from the equation, which agree with Nickalls and Mapleson 2003's Table 1. The MAC-awake band, the 1 MAC line, the dial's start and every MAC multiple follow the patient's age. The interface shows the age each 1 MAC is for, and `docs/MODEL.md` and `docs/INTERFACE.md` describe the divisor as the MAC for the patient's age. `PatientMac` (`core/mac.py`) refuses an age outside the range the age input accepts. Today it refuses only an age of zero or less, which was enough while every run's age is 40, and Mapleson's equation is stated for ages of 1 year and more.
 
