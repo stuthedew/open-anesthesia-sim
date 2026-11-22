@@ -106,7 +106,7 @@ def _refusal(envelope: Envelope, value: float) -> str:
         f"envelope of "
         f"{envelope.minimum:g} to {envelope.maximum:g}{envelope.unit}, the range over which "
         "core's arithmetic has been checked against a high-precision evaluation "
-        r'\(docs/MODEL\.md, "The numerical envelope"\)$'
+        r'\(docs/VERIFICATION\.md, "The numerical envelope"\)$'
     )
 
 
