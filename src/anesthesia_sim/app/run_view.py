@@ -206,6 +206,7 @@ from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import (
     AgentSimulationValidationError,
     SimulationConfigurationError,
+    SimulationExecutionError,
 )
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
@@ -1187,7 +1188,8 @@ class RunView(QWidget):
         of this run stands. During the drag, the run keeps its current setting (`ParameterSlider`).
         The value is checked by building the settings it would give
         (`SimulationController.preview_settings`). The run refuses a value when
-        the run has stopped or the value is outside the core's range. A value
+        the run has stopped, when the value is outside the core's range, or
+        when the core holds a setting the controller did not record. A value
         the run would refuse draws no preview, so the chart never predicts a
         future the run cannot have. The release then reports the refusal
         through `_apply_setting`, as it reports any refused setting. The chart
@@ -1199,7 +1201,7 @@ class RunView(QWidget):
 
         try:
             self.controller.preview_settings(setting)
-        except SimulationConfigurationError:
+        except SimulationConfigurationError, SimulationExecutionError:
             self._preview = None
         else:
             self._preview_name = self._name(self.run_id)

@@ -18,6 +18,7 @@ from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationExecutionError
 from anesthesia_sim.core.governing_equations import ALVEOLAR_FRACTION
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.stored_states import StoredStates
 from anesthesia_sim.core.supported_ranges import (
@@ -288,6 +289,59 @@ def test_a_setting_written_onto_the_core_past_the_controller_refuses_the_next_st
     assert system.state_vector() == state_before
     assert controller.snapshot().elapsed_s == elapsed_before == 10.0
     assert controller.run_segments == recorded
+
+
+_VOLUMES_WRITTEN_PAST_THE_CONTROLLER: tuple[
+    tuple[str, Callable[[uptake_system.AgentUptakeSystem], None]], ...
+] = (
+    ("circuit-volume", lambda system: system.circuit.set_circuit_volume(CompartmentVolume(9.0))),
+    (
+        "alveolar-gas-volume",
+        lambda system: setattr(system.alveoli, "gas_volume_l", CompartmentVolume(4.0)),
+    ),
+)
+
+
+@pytest.mark.parametrize("stepped_s", [0, 10], ids=["before-start", "after-10-s"])
+@pytest.mark.parametrize(
+    "write",
+    [write for _, write in _WRITES_PAST_THE_CONTROLLER + _VOLUMES_WRITTEN_PAST_THE_CONTROLLER],
+    ids=[name for name, _ in _WRITES_PAST_THE_CONTROLLER + _VOLUMES_WRITTEN_PAST_THE_CONTROLLER],
+)
+def test_a_control_change_after_a_setting_written_past_the_controller_is_refused(
+    write: Callable[[uptake_system.AgentUptakeSystem], None], stepped_s: int
+) -> None:
+    """A control change does not adopt a setting the controller never recorded (`PL-S8FM`).
+
+    The controller records the whole settings record when a control changes.
+    Before the fix, a circuit volume written onto the core was recorded with
+    the next dial change as if the learner had made it, and the run went on
+    under it. Before Start, the circuit holds no agent, so the run's own
+    check on its state cannot see the change either. Nothing is applied:
+    the dial, the run definition and the timeline stay as they were.
+    """
+
+    controller = SimulationController()
+
+    if stepped_s:
+        controller.start()
+        _advance_for(controller, duration_s=stepped_s)
+
+    system = controller._state.uptake_system
+    recorded = controller.run_segments
+    before = controller.snapshot()
+
+    write(system)
+    dial_written = system.circuit.delivered_concentration_percent
+
+    with pytest.raises(SimulationExecutionError, match="without SimulationController recording it"):
+        controller.set_delivered_concentration_percent(Percent(1.0))
+
+    after = controller.snapshot()
+
+    assert system.circuit.delivered_concentration_percent == dial_written != 1.0
+    assert controller.run_segments == recorded
+    assert after.control_timeline == before.control_timeline
 
 
 def test_reset_after_a_setting_written_past_the_controller_runs_at_that_setting() -> None:

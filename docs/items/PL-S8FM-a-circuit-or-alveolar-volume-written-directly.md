@@ -1,9 +1,13 @@
 ---
 id: PL-S8FM
 title: A circuit or alveolar volume written directly on the core and followed by a control change through SimulationController is adopted into the run's settings record without a refusal, so a run can go on under a volume that the docs call fixed for a run (found at blind review of PL-DQWL)
-status: untriaged
+status: done
 feature: replay-findings
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_view.py, tests/integration/controller/test_controller_run_definition.py, tests/integration/simulation_view/test_simulation_view_views.py, docs/INTERFACE.md
 added: 2026-11-22
+closed: 2026-11-22
+pr: 2245
+tests: tests/integration/controller/test_controller_run_definition.py::test_a_control_change_after_a_setting_written_past_the_controller_is_refused, tests/integration/simulation_view/test_simulation_view_views.py::test_a_run_holding_an_unrecorded_setting_draws_no_preview_while_its_thumb_is_held
 ---
 
 **Problem.** A circuit or alveolar volume written directly on the core and followed by a control change through SimulationController is adopted into the run's settings record without a refusal, so a run can go on under a volume that the docs call fixed for a run (found at blind review of PL-DQWL)
@@ -19,10 +23,62 @@ change is adopted. `SimulationState.advance` refuses the step only where the
 change moved a fraction, which an empty compartment's change does not.
 
 **Why it matters.** No interface control writes a volume, so a learner cannot
-reach it. `docs/MODEL.md` § "The four controls" calls both volumes fixed for a
-run, and a script against the controller could run under a volume that the
+reach it. `docs/INTERFACE.md` § "What is not bounded this way" says that
+neither volume can be changed during a run, and a script against the controller could run under a volume that the
 control timeline never shows.
 
 **What a fix has to decide.** Whether `_record_control_change` refuses a
 record whose fixed parameters differ from the recorded ones, and how that
 keeps `PL-VCP4`'s write-back of a guarded field.
+
+**What was built.** `SimulationController._change_setting` now calls
+`_refuse_a_setting_after_an_unrecorded_one` before it applies anything. When
+the settings on the core differ from the ones the controller last recorded,
+and the core's settings record is itself consistent, the control change is
+refused with the same `SimulationExecutionError` the controller's next step
+gives (`_unrecorded_setting_error`). Nothing is written to the core, the run
+definition or the control timeline. Where the core's settings record is
+itself refused, such as a perfusion fraction written past its guard, the
+check steps aside, so `PL-VCP4`'s write-back still repairs it. The refusal
+covers every setting the existing step check covers, not only the two
+volumes, because a dial written past the controller is adopted the same way.
+A reset still starts a new run from the settings the core holds.
+
+`SimulationController.preview_settings` makes the same check, and
+`RunView.request_preview` draws no preview when it fails. Without that, a
+held dial drew a predicted curve that its release would then refuse. The
+second blind review pass found this gap, and
+`tests/integration/simulation_view/test_simulation_view_views.py::test_a_run_holding_an_unrecorded_setting_draws_no_preview_while_its_thumb_is_held`
+holds it. Against the first commit of this branch, 0bcd1cdb, it fails with
+`assert (60.0, 90.0) is None` on the concentration chart's preview region.
+
+**Why this design.** The choice was between refusing at the control change
+and keeping the adoption. Meyer, Arkadova and Kogtenkov, "The concept of
+class invariant in object-oriented programming", arXiv:2109.06557v12, read in
+full through `pdftotext` on 2026-11-22, name the "reference leak": an
+operation on another object breaks an object's invariant without any of its
+own routines running. Their weaker rule in § 8 accepts that inconsistency and
+detects it at the object's next use. The controller's invariant is that its
+recorded settings are the core's. A write on the core is the reference leak,
+and the control change is the controller's next use, so it refuses there,
+before the record can absorb the change. Adopting the change would make the
+run's record show a volume that `docs/INTERFACE.md` § "What is not bounded
+this way" says cannot be changed during a run.
+
+**Regression test.** `tests/integration/controller/test_controller_run_definition.py::test_a_control_change_after_a_setting_written_past_the_controller_is_refused`,
+over the four dials and both volumes, before the run starts and after 10 s.
+Against `src/anesthesia_sim/app/controller.py` from `origin/main` 0a65c401
+all twelve cases fail with `Failed: DID NOT RAISE SimulationExecutionError`.
+Command: `uv run pytest -q -p no:randomly
+tests/integration/controller/test_controller_run_definition.py -k
+written_past_the_controller_is_refused`.
+
+**Generator check.** The fact is which settings the run's record holds, and
+its home is the controller's recorded settings key (`PL-XRN8`). The step
+already read it, and the control change did not, so this is a second reader
+that the first fix left out, found by review of `PL-DQWL`. No `reenters:` is
+recorded.
+
+**Docs checked.** `docs/INTERFACE.md` § "What is not bounded this way" now
+says a control change is refused too. `docs/MODEL.md`, `docs/VERIFICATION.md` and `docs/PARAMETERS.md` make no claim about how a
+written volume is handled, so none changed.

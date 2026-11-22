@@ -1345,7 +1345,9 @@ values are outside the verified domain, and only the numerical envelope limits t
 cannot be changed during a run, and the interface cannot reach them at all. A run refuses
 its next step when a change to either volume has moved the fractions it stopped at
 (`SimulationState.advance`). The controller refuses its next step when the settings on the
-core differ from the ones it last recorded (`PL-XRN8`).
+core differ from the ones it last recorded (`PL-XRN8`). It also refuses its next control
+change, before the change is applied, so a written volume is never recorded as one of the
+run's settings (`PL-S8FM`).
 They are chosen once, by someone who has gone to the trouble of building the model directly.
 `BreathingCircuit.set_circuit_volume` remains for the same reason. It is how the value
 reaches the circuit, and it holds the checks for agent conservation and capacity.
