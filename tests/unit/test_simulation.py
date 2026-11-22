@@ -7,7 +7,11 @@ import pytest
 
 from anesthesia_sim.core.agent_simulation_validation import UNCOMPENSATED, TotalsCompensation
 from anesthesia_sim.core.concentration import Percent
-from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
+from anesthesia_sim.core.exceptions import (
+    SimulationConfigurationError,
+    SimulationDomainLimitError,
+    SimulationExecutionError,
+)
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
@@ -686,16 +690,17 @@ def test_the_stored_states_cannot_be_replaced_or_copied_out_of_step() -> None:
     assert state.stored_states.reached_s == 3
 
 
-_CHANGED_BETWEEN_STEPS = "has changed since the run stored its state for 20 s"
+_CHANGED_BETWEEN_STEPS = "has changed since it stored its state for 20 s"
 
 
 def _refuses_the_next_step_and_stays_put(state: SimulationState) -> None:
-    """Check that the next step is refused and leaves the clock, record and system as they were."""
+    """Check that the next step is refused, again at the one after, and that nothing moves."""
 
     held = state.uptake_system.capture_state()
 
-    with pytest.raises(SimulationConfigurationError, match=_CHANGED_BETWEEN_STEPS):
-        state.advance()
+    for _ in range(2):
+        with pytest.raises(SimulationExecutionError, match=_CHANGED_BETWEEN_STEPS):
+            state.advance()
 
     assert state.elapsed_s == 20
     assert state.stored_states.reached_s == 20
@@ -799,3 +804,43 @@ def test_a_run_whose_circuit_volume_changed_after_its_last_step_cannot_be_copied
         SimulationConfigurationError, match="circuit volume, its alveolar gas volume"
     ):
         rebuild(state)
+
+
+def test_a_volume_changed_while_its_compartment_holds_no_agent_leaves_the_record_true() -> None:
+    """An empty compartment's fraction is 0 at any volume, so the record still holds the state.
+
+    The step is accepted, and it runs under the new volume. The controller,
+    not the run, refuses a step after a setting it did not record (`PL-XRN8`).
+    """
+
+    state = SimulationState(uptake_system=AgentUptakeSystem.for_agent("sevoflurane"))
+    state.uptake_system.circuit.set_circuit_volume(CompartmentVolume(9.0))
+
+    state.advance()
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    system.circuit.set_circuit_volume(CompartmentVolume(9.0))
+    fresh = SimulationState(uptake_system=system)
+    fresh.advance()
+
+    assert state.stored_states.state_at(CaseInstant(1)) == fresh.stored_states.state_at(
+        CaseInstant(1)
+    )
+
+
+def test_a_run_opened_from_a_system_already_holding_agent_steps_and_copies() -> None:
+    """The run's first step starts from the state it read at its opening, so nothing is refused."""
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+
+    for _ in range(30):
+        system.advance()
+
+    state = SimulationState(uptake_system=system)
+    duplicate = copy.deepcopy(state)
+    state.advance()
+    duplicate.advance()
+
+    assert state.stored_states.state_at(CaseInstant(1)) == duplicate.stored_states.state_at(
+        CaseInstant(1)
+    )

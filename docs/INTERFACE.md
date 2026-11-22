@@ -1343,7 +1343,9 @@ either volume anywhere in the numerical envelope, 0.01 to 10 000 L, by passing a
 `SimulationController` still takes a `circuit_volume_l` argument when it is built. Such
 values are outside the verified domain, and only the numerical envelope limits them. They
 cannot be changed during a run, and the interface cannot reach them at all. A run refuses
-its next step when either volume has changed since its last one (`SimulationState.advance`).
+its next step when a change to either volume has moved the fractions it stopped at
+(`SimulationState.advance`). The controller refuses its next step after any change to the
+settings that it did not record itself (`PL-XRN8`).
 They are chosen once, by someone who has gone to the trouble of building the model directly.
 `BreathingCircuit.set_circuit_volume` remains for the same reason. It is how the value
 reaches the circuit, and it holds the checks for agent conservation and capacity.
