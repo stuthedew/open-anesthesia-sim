@@ -76,6 +76,7 @@ from tests.integration.simulation_view.simulation_view_support import (
     _marks_panel,
     _no_setting,
     _paused_run_with_history,
+    _select_agent,
     _setting_controls,
     _settle,
     _shown_view,
@@ -747,6 +748,113 @@ def test_only_the_compared_run_whose_thumb_is_held_previews_and_its_label_names_
     assert chart.preview_label(BRANCH_RUN_INDEX) == (
         f"{run_label(branch.run_id)} preview: Fresh gas flow 6.0 L/min, not applied"
     )
+
+
+def test_a_preview_held_across_an_agent_change_ends_rather_than_name_the_earlier_agent(
+    application: QApplication,
+) -> None:
+    """An agent change while a thumb is held ends the preview, so no label names the old agent.
+
+    The preview's label was built once, at the press. A desflurane run then
+    showed "Delivered sevoflurane 3.00%" beside the dotted trajectory
+    (`PL-1WFW`). The agent change starts the run over, and the preview
+    described the run that was discarded, so it ends there. The expected
+    labels are written out by hand.
+    """
+
+    controller = _paused_run_with_history(300)
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    control = _dials(run)._delivered_concentration_slider
+    plots = (_concentration(view).chart, _wash_in(view).chart)
+    _hold_thumb(control, 3.0, CONCENTRATION_DISPLAY_DECIMALS)
+    view.render_tick()
+    assert [plot.preview_label(0) for plot in plots] == [
+        "Preview: Delivered sevoflurane 3.00%, not applied"
+    ] * 2
+
+    _select_agent(run, "desflurane")
+    dialog = run._new_case_dialog
+    assert dialog is not None
+    dialog.discard_button.click()
+    _settle(application)
+    view.render_tick()
+
+    assert run.snapshot().agent_id == "desflurane"
+    assert control.slider.isSliderDown(), "the thumb is still held"
+    assert [plot.preview_label(0) for plot in plots] == [None, None]
+    assert [plot.preview_region(0) for plot in plots] == [None, None]
+
+
+def test_a_preview_held_across_a_reset_that_drops_the_branch_ends_rather_than_name_run_1(
+    application: QApplication,
+) -> None:
+    """A Reset that drops the branch while the trunk's thumb is held ends the trunk's preview.
+
+    The label was built once, at the press, and went on reading "Run 1
+    preview" on a dashboard that held one run and named none (`PL-1WFW`).
+    The Reset starts the run over and changes the run set, so the preview
+    ends there. The expected labels are written out by hand.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    view.add_run(case.fork_at(CaseInstant(60)))
+    view.present(False)
+    trunk = view.runs[TRUNK_RUN_INDEX]
+    control = _dials(trunk)._fresh_gas_flow_slider
+    plots = (_concentration(view).chart, _wash_in(view).chart)
+    _hold_thumb(control, 6.0, FLOW_DISPLAY_DECIMALS)
+    view.render_tick()
+    assert [plot.preview_label(TRUNK_RUN_INDEX) for plot in plots] == [
+        "Run 1 preview: Fresh gas flow 6.0 L/min, not applied"
+    ] * 2
+
+    trunk._reset_button.click()
+    dialog = trunk._reset_dialog
+
+    if dialog is not None:
+        dialog.discard_button.click()
+
+    _settle(application)
+    view.render_tick()
+
+    assert len(view.runs) == 1
+    assert control.slider.isSliderDown(), "the thumb is still held"
+    assert [plot.preview_label(0) for plot in plots] == [None, None]
+    assert [plot.preview_region(0) for plot in plots] == [None, None]
+
+
+def test_a_preview_held_while_a_branch_is_opened_ends_rather_than_go_unnamed(
+    application: QApplication,
+) -> None:
+    """A branch opened while the trunk's thumb is held ends the trunk's preview.
+
+    The label was built at the press, while the trunk was alone and unnamed.
+    Once the branch is drawn, a label that names no run could be read as the
+    branch's (`PL-1WFW`). The trunk does not start over here, so only the
+    change of the run's name ends the preview.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    trunk = view.runs[TRUNK_RUN_INDEX]
+    control = _dials(trunk)._fresh_gas_flow_slider
+    chart = _concentration(view).chart
+    _hold_thumb(control, 6.0, FLOW_DISPLAY_DECIMALS)
+    view.render_tick()
+    assert chart.preview_label(TRUNK_RUN_INDEX) == (
+        "Preview: Fresh gas flow 6.0 L/min, not applied"
+    )
+
+    view.add_run(case.fork_at(CaseInstant(60)))
+    view.render_tick()
+    _settle(application)
+
+    assert len(view.runs) == 2
+    assert control.slider.isSliderDown(), "the thumb is still held"
+    assert chart.preview_label(TRUNK_RUN_INDEX) is None
+    assert chart.preview_region(TRUNK_RUN_INDEX) is None
 
 
 # ------------------------------------- the case's panels, in more than one Area

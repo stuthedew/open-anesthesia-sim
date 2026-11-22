@@ -1519,8 +1519,14 @@ class RunView(QWidget):
         method emits `case_restarted` for the dashboard. The simulated time
         that playback owed the discarded run is cleared, so the new run's
         first step comes one whole step of owed time after it starts.
+
+        A preview held across the start-over ends here. It previewed a setting
+        of the discarded run, and its label names that run's agent, so it
+        would describe a run that is no longer shown (`PL-1WFW`). A thumb
+        still held previews again from the new run when it next moves.
         """
 
+        self._preview = None
         self._owed_time.clear()
         self._case += 1
         self.case_restarted.emit()
@@ -1786,11 +1792,19 @@ class RunView(QWidget):
         `show_presentation` and the Views write them from the presentation
         that the change to the run set brings.
 
+        A preview held while the name changes ends here, because its label
+        names the run by the name it had at the press (`PL-1WFW`). Ending it
+        draws nothing. The frame that the change to the run set requires
+        draws the run without it.
+
         Args:
             name: What to call the view, or `None` for no name. A lone run
                 gets `None`, because there is no other run to tell it apart
                 from.
         """
+
+        if name != self._run_name:
+            self._preview = None
 
         self._run_name = name
         self._run_name_text.setText(name or "")

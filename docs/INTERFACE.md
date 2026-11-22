@@ -5441,7 +5441,11 @@ pattern, because those tell the six compartments apart.
    curves keep the width they have when the run is shown alone. The preview is
    then no wider than the other run's curve of the same compartment.
 4. **Timing.** The preview exists only while the handle is held. It appears at
-   the press and is gone from the frame drawn at release.
+   the press and is gone from the frame drawn at release. It also ends while the
+   handle is still held when the run starts over, on a Reset or an agent change,
+   and when a branch is opened or dropped, because its label would otherwise
+   name an agent or a run that is no longer shown (`PL-1WFW`). If the held
+   handle then moves, a new preview is drawn from the run on screen.
 
 **The preview comes from the same model and version as the run.** It starts from
 the run's state at its current time, as § "Each second has one stored state"
