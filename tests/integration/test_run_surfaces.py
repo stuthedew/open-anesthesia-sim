@@ -19,12 +19,13 @@ from __future__ import annotations
 from collections.abc import Iterator
 
 import pytest
-from PySide6.QtCore import QEvent
+from PySide6.QtCore import QEvent, Qt
+from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
 from anesthesia_sim.app.controller import SimulationController
-from anesthesia_sim.app.dashboard_frame import ACCOUNTING_HEADING, accounting, slider_position
-from anesthesia_sim.app.formatting import FLOW_DISPLAY_DECIMALS, format_flow
+from anesthesia_sim.app.dashboard_frame import ACCOUNTING_HEADING, accounting
+from anesthesia_sim.app.formatting import format_flow
 from anesthesia_sim.app.run_surfaces import AccountingPanel, ParameterControls
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.view_registry import (
@@ -175,6 +176,11 @@ def test_a_dial_moved_in_one_view_sets_the_run_and_moves_the_dial_in_the_other(
     hands every View the runs at once too, with no frame. So the first View's
     dial shows the new value before the render tick draws the frame
     (`PL-RF2S`). The frame that follows leaves both dials on that value.
+
+    The change is two presses of an arrow key, each of which steps the flow
+    by one count, 0.1 L/min. The first press draws its frame at once
+    (`PL-2WVC`). The second comes before any render tick, so it leaves its
+    frame to the tick, and that is the change this test reads.
     """
 
     controller = SimulationController()
@@ -186,17 +192,18 @@ def test_a_dial_moved_in_one_view_sets_the_run_and_moves_the_dial_in_the_other(
 
     assert second is not first
 
-    second._fresh_gas_flow_slider.slider.setValue(slider_position(7.0, FLOW_DISPLAY_DECIMALS))
+    QTest.keyClick(second._fresh_gas_flow_slider.slider, Qt.Key.Key_Right)
+    QTest.keyClick(second._fresh_gas_flow_slider.slider, Qt.Key.Key_Right)
 
-    assert view.presented_frames == frames, "the change drew a frame at once"
-    assert float(controller.snapshot().fresh_gas_flow_l_min) == pytest.approx(7.0)
-    assert first._fresh_gas_flow_slider.value_label.text() == format_flow(7.0)
-    assert second._fresh_gas_flow_slider.value_label.text() == format_flow(7.0)
+    assert view.presented_frames == frames + 1, "the second change drew a frame at once"
+    assert float(controller.snapshot().fresh_gas_flow_l_min) == pytest.approx(4.2)
+    assert first._fresh_gas_flow_slider.value_label.text() == format_flow(4.2)
+    assert second._fresh_gas_flow_slider.value_label.text() == format_flow(4.2)
 
     view.present(False)
 
-    assert first._fresh_gas_flow_slider.value_label.text() == format_flow(7.0)
-    assert second._fresh_gas_flow_slider.value_label.text() == format_flow(7.0)
+    assert first._fresh_gas_flow_slider.value_label.text() == format_flow(4.2)
+    assert second._fresh_gas_flow_slider.value_label.text() == format_flow(4.2)
 
 
 def test_replacing_one_of_two_views_leaves_the_other_drawing(application: QApplication) -> None:
