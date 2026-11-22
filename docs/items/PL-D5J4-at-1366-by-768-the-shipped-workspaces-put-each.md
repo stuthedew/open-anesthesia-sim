@@ -138,3 +138,16 @@ View's content is then about 660 px tall, so it scrolls inside its Area at
 1366 by 768 in Default and Induction (504 and 517 px), as an editor taller
 than its Area does. The lesson test no longer names the button, and Default
 has no entry in it. `PL-G1JM` now records the editor's position.
+
+**CI's wider font, 2026-11-22.** CI draws the interface in DejaVu Sans, which
+is wider than the container's font. There the Parameters View needed 665 px
+and the schematic 750 px, so Maintenance's page scrolled sideways by 89 px at
+1366 by 768 and `test_no_shipped_workspace_scrolls_the_page` failed. Each
+setting's name and gloss now break between words on a narrow card, which
+brings the Parameters View's least width to 550 px in DejaVu Sans and 544 px
+in the container's font. The value and its unit still never break. The
+Parameters Area's height is now taken at that least width, so at 1920 by 1080
+it is 121 px below its header, about one line more than the controls need on
+a wide card. The Parameters-height test bounds the Area by the controls'
+height at their least width. Both fonts were run on the layout tests before
+the push.

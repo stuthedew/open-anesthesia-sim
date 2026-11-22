@@ -1158,7 +1158,9 @@ class ParameterSlider(QWidget):
     card's whole width, and a printed value that gains or loses a digit
     never moves the slider under the pointer. The slider is never shorter than
     `PARAMETER_SLIDER_LEAST_LENGTH`, so the card's least width holds it
-    (`PL-V4Q8`).
+    (`PL-V4Q8`). The name and its gloss break between words when the card is
+    narrow, so a long name such as "Delivered sevoflurane" does not set the
+    card's least width. The value and its unit never break (`PL-D5J4`).
 
     **A pointer drag applies on release, and previews until then**
     (`PL-5B1N`, project owner, 2026-09-27, ratified). While the thumb is held,
@@ -1223,9 +1225,9 @@ class ParameterSlider(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setStyleSheet(panel_stylesheet(self.objectName()))
         self._decimals = setting.decimals
-        self.name_label = styled_label(setting.name, color=INK, bold=True)
+        self.name_label = styled_label(setting.name, color=INK, bold=True, wrap=True)
         self.qualifier_label = styled_label(
-            setting.qualifier, color=MUTED, size_px=PARAMETER_QUALIFIER_SIZE, italic=True
+            setting.qualifier, color=MUTED, size_px=PARAMETER_QUALIFIER_SIZE, italic=True, wrap=True
         )
         self.slider = _SettingSlider()
         self.slider.setSingleStep(1)

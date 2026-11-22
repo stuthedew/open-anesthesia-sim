@@ -466,9 +466,10 @@ def test_the_parameters_area_is_not_far_taller_than_its_controls(
     Before the fix, at 1920 by 1080, the Area below its header was 239 px tall
     in Default and Induction for about 90 px of controls, and that height was
     lost to the Views beside it. Below its header the Area is now no taller
-    than the View's declared least height. The whole row of controls is inside
-    it, with no scroll bar, because a row cut at the Area's edge reads as a
-    row with no values.
+    than the View's declared least height, or than the row of controls at its
+    narrowest, where each setting's name breaks onto a second line. The whole
+    row of controls is inside it, with no scroll bar, because a row cut at the
+    Area's edge reads as a row with no values.
     """
 
     view = _shipped_view_at(application, workspace, width_px, height_px)
@@ -477,7 +478,11 @@ def test_the_parameters_area_is_not_far_taller_than_its_controls(
     scroll = areas.frame(parameters.id).view_scroll
 
     assert scroll is not None
-    assert scroll.height() <= REGISTERED[PARAMETER_CONTROLS].minimum.height_px
+    controls = scroll.widget()
+    layout = controls.layout()
+    assert layout is not None
+    narrowest_px = layout.totalMinimumHeightForWidth(controls.minimumSizeHint().width())
+    assert scroll.height() <= max(REGISTERED[PARAMETER_CONTROLS].minimum.height_px, narrowest_px)
     assert scroll.verticalScrollBar().maximum() == 0
 
 
