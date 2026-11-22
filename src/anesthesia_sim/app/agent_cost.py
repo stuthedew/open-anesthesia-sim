@@ -332,6 +332,9 @@ class CostShown:
         price: The bottle price, bottle volume, currency and date that the
             price per millilitre came from, or "" when no cost is shown.
         rounded: `COST_ROUNDED_TEXT` when a cost is shown, or "" when none is.
+        is_reason: True when `cost` holds the reason that no cost is shown.
+            The panel then draws it as a sentence rather than as a value, so
+            that the reason is not the largest text on screen (`PL-PZD9`).
     """
 
     label: str
@@ -339,12 +342,13 @@ class CostShown:
     working: str
     price: str
     rounded: str
+    is_reason: bool
 
 
 #: What the cost readout shows while the run's values are withheld. It names no
 #: agent and no figure, because each could belong to the run that was discarded.
 WITHHELD_COST: Final = CostShown(
-    COST_LABEL_TEMPLATE.format(agent=WITHHELD_AGENT_NAME.lower()), "\u2014", "", "", ""
+    COST_LABEL_TEMPLATE.format(agent=WITHHELD_AGENT_NAME.lower()), "\u2014", "", "", "", False
 )
 
 
@@ -357,6 +361,7 @@ def _no_cost(delivered: DeliveredShown, reason: str) -> CostShown:
         "",
         "",
         "",
+        True,
     )
 
 
@@ -421,6 +426,7 @@ def cost_shown(delivered: DeliveredShown, preferences: Preferences) -> CostShown
             applies_on=price.applies_on.isoformat(),
         ),
         COST_ROUNDED_TEXT,
+        False,
     )
 
 

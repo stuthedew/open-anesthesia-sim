@@ -544,6 +544,12 @@ PREVIEW_REGION_COLOR = MUTED
 PREVIEW_REGION_FILL_OPACITY = 0.10
 PREVIEW_REGION_EDGE_STROKE_WIDTH = 1.5
 
+# The widest a field of the agent cost View's price form is drawn. The fields
+# hold a bottle price, a volume, a three-letter currency code and a date, so a
+# field stretched across a wide Area only moves its button row away from it
+# (`PL-PZD9`). The width is a placeholder until the visual pass.
+PRICE_FIELD_MAX_WIDTH = 320
+
 # The bookmark editor. Wider than the new-case dialog because it carries two
 # forms and two lists rather than three sentences, and each target row states
 # a compartment, a height, a direction and a name.

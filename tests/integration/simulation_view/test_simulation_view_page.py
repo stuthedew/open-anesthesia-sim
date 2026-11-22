@@ -10,7 +10,6 @@ from PySide6.QtCore import QPoint
 from PySide6.QtWidgets import QApplication, QLabel, QScrollArea, QWidget
 
 from anesthesia_sim.app.controller import SimulationController
-from anesthesia_sim.app.dashboard_frame import WASH_IN_MODELLED_TEXT
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING, BOOKMARKS, WASH_IN
 from anesthesia_sim.app.views import AccountingView, ConcentrationView, WashInView
@@ -406,7 +405,7 @@ def test_a_chart_views_least_width_holds_every_row_above_its_plot(
 def test_the_wash_in_view_never_scrolls_modelled_away_from_a_whole_plot(
     application: QApplication,
 ) -> None:
-    """`PL-CBYS`: "Modelled, not measured" is never in the box that scrolls above the plot.
+    """`PL-CBYS`: the line saying the plot is modelled never scrolls in the box above the plot.
 
     The safety standard requires those three words beside the plot
     (`PL-F9TQ`). The box above a chart's plot is squeezed before the plot is,
@@ -439,7 +438,7 @@ def test_the_wash_in_view_never_scrolls_modelled_away_from_a_whole_plot(
 def test_the_wash_in_curve_is_never_on_screen_without_modelled(
     application: QApplication, workspace: str, width_px: int, height_px: int
 ) -> None:
-    """`PL-26BZ`: wherever the wash-in plot is in view, "Modelled, not measured" is too.
+    """`PL-26BZ`: wherever the wash-in plot is in view, the line saying it is modelled is too.
 
     The safety standard requires a predicted value to be told apart from a
     measurement on screen, and the F_A/F_I curve is a prediction
@@ -478,13 +477,11 @@ def test_the_wash_in_curve_is_never_on_screen_without_modelled(
 
 
 def _modelled_line(view: SimulationView) -> QLabel:
-    """The one "Modelled, not measured" line on the dashboard, which a wash-in View's Area shows."""
+    """The line that says the one shown wash-in View's values are modelled."""
 
-    (line,) = (
-        label for label in view.findChildren(QLabel) if label.text() == WASH_IN_MODELLED_TEXT
-    )
+    (wash_in,) = (wash_in for wash_in in view.findChildren(WashInView) if wash_in.isVisible())
 
-    return line
+    return wash_in.modelled_label
 
 
 def _partly_in_view(view: SimulationView, widget: QWidget) -> bool:

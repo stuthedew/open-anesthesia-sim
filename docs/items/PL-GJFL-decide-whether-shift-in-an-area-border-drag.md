@@ -3,13 +3,13 @@ id: PL-GJFL
 title: Decide whether Shift in an Area border drag should extend the drag to every aligned border as Blender's does, or keep moving the dragged border alone as it does now (found closing PL-ZD8Y)
 priority: P3
 effort: M
-status: needs-decision
+status: ready
 classes: ux
 feature: interface-provenance-structure
 touches: src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/layout/model.py, docs/INTERFACE.md, docs/interface-provenance.md, tests/unit
 deferred-from: v0.7.0 - present at the freeze, deferred on a stated reason: it is a choice about what a border drag does, which shows no clinical value; PL-ZD8Y, the frozen entry it follows, only had to record the divergence and is complete without this answer; and no Required-scope work of v0.7.0 touches the layout
 added: 2026-11-14
-payoff: A reader who knows Blender gets the Shift-drag they expect, or the difference is one the owner chose and the provenance note says why.
+payoff: a reader's Shift-drag habit from Blender carries over to the simulator's layout
 ---
 
 **Problem.** Decide whether Shift in an Area border drag should extend the drag to every aligned border as Blender's does, or keep moving the dragged border alone as it does now (found closing PL-ZD8Y)
@@ -46,3 +46,5 @@ either that it matches Blender or the owner's reason for the difference. A
 test shows the chosen drag.
 
 **Generator check.** One-off: it follows from one misreading of the Manual in one decision.
+
+**Answered 2026-11-22.** Match Blender: Shift during a border drag also moves the aligned borders that are not connected to the dragged one, as `screen_ops.cc` does through `area_move_init`'s `extend`, for the pointer and for Shift+arrow from the keyboard (project owner, 2026-11-22, "match blender behavior"). `docs/interface-provenance.md` then records it as matching Blender.

@@ -29,7 +29,11 @@ from PySide6.QtWidgets import QApplication, QLabel, QLineEdit
 from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app.agent_cost import DISCARD_REFUSED_WARNING, NO_PRICE_TEXT
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
-from anesthesia_sim.app.dashboard_frame import INTERPRETATION_DISCLAIMER_TEXT, TRUNK_RUN_INDEX
+from anesthesia_sim.app.dashboard_frame import (
+    FORK_HEADING,
+    INTERPRETATION_DISCLAIMER_TEXT,
+    TRUNK_RUN_INDEX,
+)
 from anesthesia_sim.app.formatting import AgentAmountUnit
 from anesthesia_sim.app.main import open_dashboard, open_preferences
 from anesthesia_sim.app.preferences import (
@@ -42,6 +46,7 @@ from anesthesia_sim.app.preferences import (
 from anesthesia_sim.app.qt_agent_price import PriceEntry
 from anesthesia_sim.app.qt_widgets import ForkPanel
 from anesthesia_sim.app.simulation_view import SimulationView
+from anesthesia_sim.app.theme import PRICE_FIELD_MAX_WIDTH
 from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING, AGENT_COST, BRANCH, REGISTERED
 from anesthesia_sim.app.views import AgentCostView, BranchView
 from anesthesia_sim.core.concentration import Percent
@@ -711,6 +716,81 @@ def test_no_cost_is_shown_before_the_reader_sets_a_price(
     assert cost_view.price_entry.agent_id == "isoflurane"
     assert cost_view.price_entry.bottle_price_edit.text() == ""
     assert not cost_view.price_entry.remove_button.isEnabled()
+
+
+def test_a_reason_for_no_cost_is_drawn_smaller_than_a_cost(
+    application: QApplication, shown: list[SimulationView], tmp_path: Path
+) -> None:
+    """`PL-PZD9`: with no price set, the reason is a sentence, not the largest text on screen.
+
+    Before the fix the reason "No cost: set your price for isoflurane below."
+    was drawn in the bold value font of the delivered amount above it. Once
+    a price is set, the cost itself is a value again and takes that font.
+    """
+
+    controller = SimulationController(agent_id="isoflurane")
+    controller.start()
+    _advance(controller, 5 * _SECONDS_PER_MINUTE)
+    controller.pause()
+    view = _dashboard(application, shown, controller, directory=tmp_path)
+    (cost_view,) = _cost_views(view)
+    (panel,) = cost_view.panels
+
+    assert panel.cost_text.text() == NO_PRICE_TEXT.format(agent="isoflurane")
+    assert panel.cost_text.font().pixelSize() < panel.amount_text.font().pixelSize()
+    assert not panel.cost_text.font().bold()
+
+    _enter_price(cost_view, "isoflurane", "20.47", "100", "USD", date(2026, 11, 22))
+    view.present(False)
+
+    assert panel.cost_text.text().startswith("USD ")
+    assert panel.cost_text.font().pixelSize() == panel.amount_text.font().pixelSize()
+    assert panel.cost_text.font().bold()
+
+
+def test_no_price_field_stretches_across_a_wide_area(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """`PL-PZD9`: each field stops at a set width, however wide the Area is.
+
+    Before the fix the fields filled the Area: 1086 px wide in the Default
+    Workspace's chart Area at 1920 by 1080, for a three-letter currency code.
+    """
+
+    view = _dashboard(application, shown, SimulationController())
+    view.resize(1920, 1080)
+    application.processEvents()
+    (cost_view,) = _cost_views(view)
+    entry = cost_view.price_entry
+    fields = (
+        entry.agent_selector,
+        entry.bottle_price_edit,
+        entry.bottle_volume_edit,
+        entry.currency_edit,
+        entry.applies_on_edit,
+    )
+
+    assert cost_view.width() > 2 * PRICE_FIELD_MAX_WIDTH
+    assert [field.width() <= PRICE_FIELD_MAX_WIDTH for field in fields] == [True] * len(fields)
+
+
+def test_the_branch_view_has_no_heading_of_its_own(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """`PL-8LMY`: the Area header names the View, so the panel does not name it again.
+
+    Before the fix the Branch Area read "Branch" three times: the header, a
+    bold heading in the panel, and the button.
+    """
+
+    trunk = SimulationController()
+    view = _dashboard(
+        application, shown, trunk, case=BranchedCase(trunk), workspaces=_COST_AND_BRANCH
+    )
+    panel = _branch_control(view)
+
+    assert FORK_HEADING not in [label.text() for label in panel.findChildren(QLabel)]
+    assert panel.take_button.text() == FORK_HEADING
 
 
 @pytest.mark.parametrize(
