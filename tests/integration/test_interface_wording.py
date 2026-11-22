@@ -17,10 +17,19 @@ of changed numbers, and a real change of wording would be lost among them. The
 number of digits and the place of the decimal point are kept, so a change in
 how many decimals a value shows still fails here.
 
-The recorded points use the default settings with no change by the learner.
-A string that appears only after a setting changes, with a bookmark or a
-price, or in a halt or failure notice, is not recorded, and this test does
-not hold it.
+Most strings appear in a default run, which the points in `RECORDED_POINTS`
+record. Others appear only after an event: a setting change, a mark or a
+price set by the reader, a refused setting, or a halt or failure notice.
+`EVENT_POINTS` brings each of those states about and records it too
+(`PL-4G79`). The halt and failure states are the run-state tests' own
+scenarios, `_ONE_STATE_SCENARIOS` in
+`tests/integration/simulation_view/test_simulation_view_run_stops_itself.py`,
+so a state added there is recorded here as well. Those scenarios build the
+run-state tests' dashboard, which shows fewer Views than this test's own. Where
+a scenario injects a failure, the reason it names is the test's, and only the
+wording around it is the interface's. An event point records only the strings
+that no default point shows, so its list holds what the event brings up and
+the reviewer of a change reads each string once.
 
 A change to any text on screen therefore fails here until a person approves
 it. To approve, check the new wording, run
@@ -37,21 +46,33 @@ commit. It is replaced by `{version}` before its digits are masked.
 
 import json
 import os
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator, Mapping
+from datetime import date
 from pathlib import Path
+from typing import Final
 
 import pytest
 from PySide6.QtCore import QEvent
 from PySide6.QtWidgets import QApplication
 
+from anesthesia_sim.app.bookmarks import MacTarget, TimeBookmark
 from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.preferences import AgentPrice, LoadedPreferences, Preferences
+from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.view_registry import REGISTERED
 from anesthesia_sim.app_metadata import APP_BUILD_VERSION
+from anesthesia_sim.core import supported_ranges as supported_ranges_module
+from anesthesia_sim.core.concentration import MacMultiple
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
+from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow
 from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, ViewKind, Window
 from anesthesia_sim.layout.workspace import Origin, Workspace, WorkspaceName, WorkspaceSet
+from tests.integration.simulation_view.simulation_view_support import _delete_shown_views
+from tests.integration.simulation_view.test_simulation_view_run_stops_itself import (
+    _ONE_STATE_SCENARIOS,
+)
 
 APPROVED_FILE = Path(__file__).with_name("approved_interface_strings.json")
 APPROVE_VARIABLE = "APPROVE_INTERFACE_WORDING"
@@ -78,6 +99,7 @@ RECORDED_POINTS: dict[str, tuple[str, float | None]] = {
 #: from depending on that.
 _WINDOW_WIDTH_PX = 1400
 _WINDOW_HEIGHT_PX = 4000
+_SECONDS_PER_MINUTE = 60
 
 
 def _every_view_in_one_column() -> WorkspaceSet:
@@ -113,28 +135,43 @@ def _masked(text: str) -> str:
     return text.replace(APP_BUILD_VERSION, VERSION_PLACEHOLDER).translate(_DIGITS_TO_HASH)
 
 
-def _strings_at(application: QApplication, agent_id: str, elapsed_s: float | None) -> list[str]:
-    """Every string the dashboard holds in a run of `agent_id` at `elapsed_s`, masked, sorted."""
+def _run_to(controller: SimulationController, elapsed_s: float) -> None:
+    """Start `controller` if it is not running, step it to `elapsed_s` and pause it."""
 
-    controller = SimulationController(agent_id=agent_id)
-
-    if elapsed_s is not None:
+    if not controller.is_running:
         controller.start()
 
-        for _ in range(round(elapsed_s / SIMULATION_STEP_S)):
-            controller.advance()
+    while controller.snapshot().elapsed_s < elapsed_s:
+        controller.advance()
 
-        controller.pause()
+    controller.pause()
 
-    view = SimulationView((controller,), workspaces=_every_view_in_one_column())
+
+def _strings_of(application: QApplication, view: SimulationView) -> list[str]:
+    """Every string `view` holds now, masked and sorted."""
+
+    application.processEvents()
+
+    return sorted({_masked(text) for text in view.interface_strings()})
+
+
+def _strings_shown(
+    application: QApplication,
+    controller: SimulationController,
+    preferences: LoadedPreferences | None = None,
+) -> list[str]:
+    """Every string a dashboard over `controller` holds once it has drawn, masked and sorted."""
+
+    view = SimulationView(
+        (controller,), workspaces=_every_view_in_one_column(), preferences=preferences
+    )
 
     try:
         view.resize(_WINDOW_WIDTH_PX, _WINDOW_HEIGHT_PX)
         view.show()
         application.processEvents()
         view.present(False)
-        application.processEvents()
-        strings = {_masked(text) for text in view.interface_strings()}
+        return _strings_of(application, view)
     finally:
         view.stop_timers()
         view.close()
@@ -142,7 +179,142 @@ def _strings_at(application: QApplication, agent_id: str, elapsed_s: float | Non
         application.sendPostedEvents(None, QEvent.Type.DeferredDelete)
         application.processEvents()
 
-    return sorted(strings)
+
+def _strings_at(application: QApplication, agent_id: str, elapsed_s: float | None) -> list[str]:
+    """Every string the dashboard holds in a run of `agent_id` at `elapsed_s`, masked, sorted."""
+
+    controller = SimulationController(agent_id=agent_id)
+
+    if elapsed_s is not None:
+        _run_to(controller, elapsed_s)
+
+    return _strings_shown(application, controller)
+
+
+def _after_a_setting_change(application: QApplication, _patch: pytest.MonkeyPatch) -> list[str]:
+    """Sevoflurane at 2 min, with the fresh gas flow changed at 1 min, so the record lists it."""
+
+    controller = SimulationController()
+    _run_to(controller, _SECONDS_PER_MINUTE)
+    controller.set_fresh_gas_flow(FreshGasFlow(8.0))
+    _run_to(controller, 2 * _SECONDS_PER_MINUTE)
+
+    return _strings_shown(application, controller)
+
+
+def _with_marks_set(application: QApplication, _patch: pytest.MonkeyPatch) -> list[str]:
+    """Sevoflurane at 2 min, with a time mark ahead of the run and a MAC target on the alveoli."""
+
+    controller = SimulationController()
+    controller.add_time_bookmark(
+        TimeBookmark(CaseInstant(10 * _SECONDS_PER_MINUTE), "the decision point")
+    )
+    controller.add_mac_target(MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.5)))
+    _run_to(controller, 2 * _SECONDS_PER_MINUTE)
+
+    return _strings_shown(application, controller)
+
+
+def _stopped_on_a_mark(application: QApplication, _patch: pytest.MonkeyPatch) -> list[str]:
+    """Sevoflurane stopped by the time mark at 1 min, which the run reached by itself."""
+
+    controller = SimulationController()
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(_SECONDS_PER_MINUTE), "induction"))
+    controller.start()
+
+    while controller.is_running:
+        controller.advance()
+
+    assert controller.snapshot().elapsed_s == _SECONDS_PER_MINUTE
+    return _strings_shown(application, controller)
+
+
+def _with_a_price_set(application: QApplication, _patch: pytest.MonkeyPatch) -> list[str]:
+    """Sevoflurane at 2 min, with the reader's price for sevoflurane, so a cost is shown."""
+
+    price = AgentPrice("sevoflurane", 150.0, 250.0, "USD", date(2026, 1, 1))
+    preferences = LoadedPreferences(Preferences().with_price(price), writable=True, notice=None)
+    controller = SimulationController()
+    _run_to(controller, 2 * _SECONDS_PER_MINUTE)
+
+    return _strings_shown(application, controller, preferences)
+
+
+def _a_refused_setting(application: QApplication, _patch: pytest.MonkeyPatch) -> list[str]:
+    """Isoflurane at 2 min, with 50% dialled past the vaporizer's maximum, which is refused."""
+
+    controller = SimulationController(agent_id="isoflurane")
+    _run_to(controller, 2 * _SECONDS_PER_MINUTE)
+    view = SimulationView((controller,), workspaces=_every_view_in_one_column())
+
+    try:
+        view.resize(_WINDOW_WIDTH_PX, _WINDOW_HEIGHT_PX)
+        view.show()
+        application.processEvents()
+        view.present(False)
+        view.runs[0]._handle_delivered_concentration_change(50.0)
+        view.present(False)
+        return _strings_of(application, view)
+    finally:
+        view.stop_timers()
+        view.close()
+        view.deleteLater()
+        application.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+        application.processEvents()
+
+
+def _at_the_supported_run_length(application: QApplication, patch: pytest.MonkeyPatch) -> list[str]:
+    """Sevoflurane stopped at the supported run length, shortened here to 5 min.
+
+    The shortened length is the run-state tests' own way to reach it in a few
+    seconds of testing (`_a_dial_moved_at_the_supported_run_length`). The
+    notice names the length, and its digits are masked.
+    """
+
+    patch.setattr(supported_ranges_module, "MAXIMUM_STEP_COUNT", 300 // SIMULATION_STEP_S)
+    controller = SimulationController()
+    controller.start()
+
+    while controller.is_running:
+        controller.advance()
+
+    return _strings_shown(application, controller)
+
+
+def _in_the_run_state_scenario(
+    name: str,
+) -> Callable[[QApplication, pytest.MonkeyPatch], list[str]]:
+    """Record the dashboard that one of the run-state tests' scenarios leaves."""
+
+    def strings(application: QApplication, patch: pytest.MonkeyPatch) -> list[str]:
+        run, _ = _ONE_STATE_SCENARIOS[name](application, patch)
+        view = run.window()
+        assert isinstance(view, SimulationView), type(view)
+
+        try:
+            return _strings_of(application, view)
+        finally:
+            _delete_shown_views(application)
+
+    return strings
+
+
+#: Each state that only an event brings up, and how the test brings it about.
+#: The run-state tests' "drawn frame" is a default run, which `RECORDED_POINTS`
+#: already covers.
+EVENT_POINTS: Final[Mapping[str, Callable[[QApplication, pytest.MonkeyPatch], list[str]]]] = {
+    "setting changed": _after_a_setting_change,
+    "marks set": _with_marks_set,
+    "stopped on a mark": _stopped_on_a_mark,
+    "price set": _with_a_price_set,
+    "setting refused": _a_refused_setting,
+    "supported run length reached": _at_the_supported_run_length,
+    **{
+        name: _in_the_run_state_scenario(name)
+        for name in _ONE_STATE_SCENARIOS
+        if name != "drawn frame"
+    },
+}
 
 
 def _differences(approved: dict[str, list[str]], shown: dict[str, list[str]]) -> list[str]:
@@ -150,22 +322,30 @@ def _differences(approved: dict[str, list[str]], shown: dict[str, list[str]]) ->
 
     lines: list[str] = []
 
-    for point in RECORDED_POINTS:
+    for point in dict.fromkeys([*shown, *approved]):
         before = set(approved.get(point, []))
-        now = set(shown[point])
+        now = set(shown.get(point, []))
         lines.extend(f"  {point}, new: {text!r}" for text in sorted(now - before))
         lines.extend(f"  {point}, gone: {text!r}" for text in sorted(before - now))
 
     return lines
 
 
-def test_every_string_the_view_shows_is_on_the_approved_list(application: QApplication) -> None:
+def test_every_string_the_view_shows_is_on_the_approved_list(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """A string added, changed or removed fails until the approved list is updated."""
 
     shown = {
         point: _strings_at(application, agent_id, seconds)
         for point, (agent_id, seconds) in RECORDED_POINTS.items()
     }
+
+    in_a_default_run = set().union(*shown.values())
+
+    for point, strings in EVENT_POINTS.items():
+        with monkeypatch.context() as patch:
+            shown[point] = sorted(set(strings(application, patch)) - in_a_default_run)
 
     if os.environ.get(APPROVE_VARIABLE) == "1":
         APPROVED_FILE.write_text(
