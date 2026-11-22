@@ -23,8 +23,9 @@ build is the port's definition of done. Three of the strings are safety
 requirements rather than wording choices: the "Alveolar" readout with the
 gloss "end-tidal-equivalent" (`PL-NV9W`), the "Circuit" readout with the gloss
 "inspired" (`PL-8M05`), and the "Fresh gas flow" control with the gloss
-"common gas outlet" (`PL-71CF`). Each is stated in `docs/MODEL.md` and
-enforced by an exact-string test.
+"common gas outlet" (`PL-71CF`). `docs/INTERFACE.md` § "Minimum displayed
+outputs" states the first and the third, and an exact-string test enforces
+each of the three.
 """
 
 from collections.abc import Callable, Mapping, Sequence
@@ -93,11 +94,12 @@ from anesthesia_sim.app.formatting import (
     format_supported_run_length,
     format_time_base,
     format_wash_in_ratio,
+    mac_multiple,
     render_mac_multiple,
 )
 from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES, PlaybackRate
 from anesthesia_sim.app.run_series import RecordedQuantity
-from anesthesia_sim.app.wash_in import WashInDomain, read_wash_in
+from anesthesia_sim.app.wash_in import WashInDomain, WashInReading
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidationResult
 from anesthesia_sim.core.concentration import Fraction, Percent, fraction_from_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
@@ -242,23 +244,44 @@ REJECTED_ACCOUNTING_NOTICE_TEMPLATE: Final = (
 # misreading that the hazard table in `docs/VERIFICATION.md` names. The first frame that
 # draws replaces this banner with `FAILURE_NOTICE_TEMPLATE`. Which
 # of the two banners is shown is therefore decided by whether a frame drew, not
-# guessed from the reason (`PL-7DJK`).
+# guessed from the reason (`PL-7DJK`). A chart can still be withheld while the
+# readouts are kept, for example a chart chosen during the halt at a window that
+# no frame was kept for (`views._withholds`). So the banner speaks only of each
+# chart that still has a plot, and the withheld chart says why it is empty. When
+# every chart is withheld, `CHARTS_WITHHELD_UNDRAWN_FAILURE_NOTICE_TEMPLATE` is
+# given instead (blind review of `PL-RF2S`, pass 3). The wording is a
+# placeholder.
 UNDRAWN_FAILURE_NOTICE_TEMPLATE: Final = (
     "Simulation stopped — {failure_reason}. No frame of the stopped run could be drawn: "
-    "the chart and the readouts show the last frame drawn before it stopped, and the "
-    "run itself stands at its last completed step. {exit}"
+    "the readouts and every chart that still has a plot show the last frame drawn "
+    "before it stopped. The run itself stands at its last completed step. {exit}"
 )
 # The failure banner for a halt when no frame has been drawn since the run started
 # over after a Reset or an agent change. The last frame then belongs to the run
 # before the restart. So `run_presentation.halted_run` withholds the readouts and their
-# clock, and the banner says so rather than calling them the last frame drawn.
-# Only a frame writes the chart, so the chart is not withheld, and the banner says
-# whose frame it still shows (adversarial review of `PL-J5GC`). The wording is a
+# clock, and the banner says so rather than calling them the last frame drawn
+# (adversarial review of `PL-J5GC`). The charts' frame belongs to the run before
+# the restart too, so each chart withholds it and shows an empty plot
+# (`run_presentation.shown_without_a_frame`, `PL-RF2S`). The wording is a
 # placeholder.
 STARTED_OVER_UNDRAWN_FAILURE_NOTICE_TEMPLATE: Final = (
     "Simulation stopped — {failure_reason}. No frame has been drawn since the run "
-    "started over: the readouts are withheld, the chart still shows the run before it "
-    "started over, and the run itself stands at its last completed step. {exit}"
+    "started over: the readouts and the charts are withheld, and the run itself stands "
+    "at its last completed step. {exit}"
+)
+# The failure banner for a halt when no frame has been drawn for the runs the
+# charts show now, although the run itself has not started over. A branch was
+# taken, the reader chose a Workspace that shows other runs, no frame has been
+# drawn at all, or the last frame showed the preview of a dial held at the
+# halt. The readouts are still the run's last frame, but
+# each chart withholds its frame, because that frame drew another set of runs
+# (`run_presentation.kept_frames_match`, blind review of `PL-RF2S`). So the
+# banner says that the charts are withheld rather than that they show the last
+# frame. The wording is a placeholder.
+CHARTS_WITHHELD_UNDRAWN_FAILURE_NOTICE_TEMPLATE: Final = (
+    "Simulation stopped — {failure_reason}. No frame of the stopped run could be drawn: "
+    "the readouts show the last frame drawn before it stopped, the charts are withheld, "
+    "and the run itself stands at its last completed step. {exit}"
 )
 SUPPORTED_LIMIT_NOTICE_TEMPLATE: Final = (
     "Simulation stopped — this run reached the supported run length of {run_length}. "
@@ -846,7 +869,7 @@ ACCOUNTING_WITHHELD_DETAIL_TEXT: Final = "No frame has been drawn since the run 
 # The unit of every amount on the accounting panel, with the temperature and
 # pressure the amounts are stated at (`PL-HQPF`). The amounts held in the body
 # are at body temperature, and are stated at this condition so that the panel's
-# amounts add up (`docs/MODEL.md` § "Known limitations"). So the last two lines
+# amounts add up (`docs/MODEL.md` § "Units and symbols"). So the last two lines
 # say that the stored amount reads high. The caption is four short lines rather
 # than wrapped text, because Qt leaves a wrapped label's extra lines out of the
 # panel's minimum size. Each line fits in the width the panel had before the
@@ -1344,6 +1367,17 @@ WITHHELD_DELIVERED_LINE_TEXT: Final = DELIVERED_LINE_TEMPLATE.format(
 #: be built, in place of that run's four dials (`PL-SV2Q`). The wording is a
 #: placeholder.
 SETTING_CONTROLS_NOT_SHOWN_TEXT: Final = "This run's setting controls cannot be shown."
+#: What a chart shows in place of its plot when its frame is withheld: the runs
+#: it shows changed or started over, no frame was kept for its window or its
+#: width, or the kept frame held a preview, and no frame can be drawn now
+#: (`run_presentation.shown_without_a_frame`, `views._withholds`, `PL-RF2S`). The plot is empty, so
+#: no trace of the discarded run and no line of another agent stays on it. The
+#: wording is a placeholder.
+WITHHELD_FRAME_TEXT: Final = "Nothing is plotted, because no frame could be drawn for this chart."
+#: What the legend's 1 MAC and MAC-awake entries show while the chart's frame is
+#: withheld. Both values are the agent's, and after an agent change the last
+#: frame's are the old agent's.
+WITHHELD_REFERENCE_TEXT: Final = WITHHELD_ELAPSED_TIME_TEXT
 #: The strings whose width each readout column reserves, in `READOUT_PANELS`
 #: order. The clock column reserves its widest elapsed form and its playback
 #: line. Every compartment column reserves the two strings above. Each column
@@ -1498,7 +1532,7 @@ def preview_label(
         value: The value tried, in the control's own unit.
         agent_display_name: The running agent, which names the dial.
         run_name: The run's name while runs are compared, or `None` for a lone
-            run (`RunView.set_run_name`).
+            run (`RunPresentation.name`).
 
     Returns:
         The label, on one line.
@@ -1992,6 +2026,7 @@ def halt_notice(
     refused_reset: str | None = None,
     branch_offered: bool = False,
     started_over: bool = False,
+    charts_withheld: bool = False,
 ) -> str | None:
     """Return the banner for a halt with no frame drawn yet: a stopped run, or nothing.
 
@@ -2026,17 +2061,24 @@ def halt_notice(
             readouts are withheld rather than showing the last frame. A run
             that has started over has not reached the supported run length,
             so that wording does not change.
+        charts_withheld: Whether each chart withholds its frame, because the
+            runs it shows are not the runs its last frame was drawn from. A
+            failure of a run that has not started over then uses
+            `CHARTS_WITHHELD_UNDRAWN_FAILURE_NOTICE_TEMPLATE`, so that the
+            banner does not say that the charts show the last frame.
 
     Returns:
         The banner text, or None when the run is not halted.
     """
 
     if status.failure_reason is not None:
-        template = (
-            STARTED_OVER_UNDRAWN_FAILURE_NOTICE_TEMPLATE
-            if started_over
-            else UNDRAWN_FAILURE_NOTICE_TEMPLATE
-        )
+        if started_over:
+            template = STARTED_OVER_UNDRAWN_FAILURE_NOTICE_TEMPLATE
+        elif charts_withheld:
+            template = CHARTS_WITHHELD_UNDRAWN_FAILURE_NOTICE_TEMPLATE
+        else:
+            template = UNDRAWN_FAILURE_NOTICE_TEMPLATE
+
         return template.format(
             failure_reason=status.failure_reason,
             exit=_stopped_run_exit(
@@ -2579,6 +2621,102 @@ def bookmark_panel(bookmarks: BookmarkSet, runs: Sequence[RunMarks]) -> Bookmark
 
 
 @dataclass(frozen=True, slots=True)
+class CaseMarks:
+    """The case's marks as the bookmarks panel lists them, and the highest mark it accepts.
+
+    Attributes:
+        panel: Both listings, with every displayed run's standing on each mark.
+        reachable_height_mac: The highest marked height the editor accepts,
+            in multiples of the agent's 1 MAC: the agent's highest delivered
+            concentration divided by its 1 MAC.
+    """
+
+    panel: BookmarkPanel
+    reachable_height_mac: float
+
+
+def reachable_mark_height_mac(settings: RunSettings) -> float:
+    """Return the highest height a run can be asked to reach, in multiples of its agent's 1 MAC.
+
+    The bound is the agent's published highest delivered concentration divided
+    by the agent's MAC. A run's own delivered setting changes what the run
+    will reach, not what it may be asked to reach (`PL-GHMB`).
+    """
+
+    return mac_multiple(
+        fraction_from_percent(settings.max_delivered_concentration_percent),
+        settings.agent_mac_percent,
+    )
+
+
+def case_marks(
+    labels: Sequence[str],
+    bookmarks: Sequence[BookmarkSet],
+    standings: Sequence[BookmarkStandings],
+    settings: Sequence[RunSettings],
+) -> CaseMarks:
+    """Return the case's marks from every displayed run, refusing runs that disagree on them.
+
+    The set of marks and the editor's bound belong to the case, so each is
+    stated once. Each is read from every run and exists only when every run
+    agrees on it (`PL-RF2S`). Before, both were read from the first run alone.
+    The dashboard writes a mark to every run at once and a branch copies its
+    trunk's marks, and two compared runs are on one agent, so the runs agree
+    by construction. Where they do not, the panel would list one run's marks
+    beside another run's standings, so this function refuses instead. A
+    run's standing on each mark is its own, and `bookmark_panel` names each
+    run where the standings differ.
+
+    Args:
+        labels: What each displayed run is called, from `run_label`, in
+            drawing order.
+        bookmarks: Each run's marks, in the same order.
+        standings: Each run's standings on its marks, in the same order.
+        settings: Each run's agent and settings, in the same order.
+
+    Raises:
+        ValueError: If the four sequences differ in length, if no run is
+            given, if two runs hold different marks, or if two runs' agents
+            give different bounds. The message names the runs.
+        SimulationConfigurationError: As `bookmark_panel` raises it.
+    """
+
+    counts = {len(labels), len(bookmarks), len(standings), len(settings)}
+
+    if len(counts) != 1:
+        raise ValueError(
+            f"the case's marks need one entry per run in each of four lists, given {sorted(counts)}"
+        )
+
+    if not labels:
+        raise ValueError("the case's marks are read from at least one run; none was given")
+
+    marks = bookmarks[0]
+    heights = tuple(reachable_mark_height_mac(run) for run in settings)
+
+    # The lengths were checked above, so `strict` can change nothing here.
+    each_run = zip(labels, bookmarks, heights, strict=True)  # pragma: no mutate
+
+    for label, run_marks, height in each_run:
+        if run_marks != marks:
+            raise ValueError(
+                f"{label} holds different marks from {labels[0]}, and the marks belong to the case"
+            )
+
+        if height != heights[0]:
+            raise ValueError(
+                f"{label} accepts marks up to {height} x MAC and {labels[0]} up to "
+                f"{heights[0]} x MAC, and the bound belongs to the case's one agent"
+            )
+
+    runs = zip(labels, standings, strict=True)  # pragma: no mutate
+
+    return CaseMarks(
+        bookmark_panel(marks, tuple(RunMarks(label, run) for label, run in runs)), heights[0]
+    )
+
+
+@dataclass(frozen=True, slots=True)
 class ForkPoint:
     """One entry in the branch selector.
 
@@ -3026,7 +3164,7 @@ def mac_reference_caption(frame: ChartFrame) -> str:
     return format_mac_reference(frame.runs[0].agent_display_name, frame.mac_percent)
 
 
-def mac_awake_caption(snapshot: SimulationSnapshot) -> str:
+def mac_awake_caption(frame: ChartFrame) -> str:
     """Return what the MAC-awake band was drawn from: its published fraction and the divisor.
 
     This text names the published fraction, and the band's legend entry
@@ -3035,35 +3173,40 @@ def mac_awake_caption(snapshot: SimulationSnapshot) -> str:
     So both free parameters are on screen, and a reader who disagrees with
     either one can see which one it is (`PL-F52R`).
 
+    The values are read from the frame that drew the band, as the 1 MAC line's
+    are. Every run of a frame is on one agent, so the caption is true of every
+    run on the plot (`PL-RF2S`).
+
     Args:
-        snapshot: The reference run's state this tick.
+        frame: The frame drawn this tick.
 
     Returns:
         The reference line.
     """
 
-    mac_awake = snapshot.agent_mac_awake
+    mac_awake = frame.mac_awake
 
     return format_mac_awake_reference(
-        snapshot.agent_display_name,
+        frame.runs[0].agent_display_name,
         fraction_of_mac=mac_awake.fraction_of_mac,
         standard_deviation_fraction_of_mac=mac_awake.standard_deviation_fraction_of_mac,
-        mac_percent=snapshot.agent_mac_percent,
+        mac_percent=frame.mac_percent,
     )
 
 
-def wash_in_state(snapshot: SimulationSnapshot, undrawn_wash_in_stretches: int) -> str:
+def wash_in_state(reading: WashInReading, undrawn_wash_in_stretches: int) -> str:
     """Return what the wash-in plot is showing at this instant, and why.
 
-    The number here comes from `read_wash_in` on the snapshot's own alveolar
-    and inspired fractions. The trace's right-hand end comes from the states
-    that the chart evaluates (`DrawnWindow.wash_in_quotients`). Both apply the
-    same two boundaries from `app/wash_in.py`, and the two values agree to
+    The reading comes from `read_wash_in` on the snapshot's own alveolar and
+    inspired fractions (`chart_frame.RunFrame.wash_in_now`). The trace's
+    right-hand end comes from the states that the chart evaluates
+    (`DrawnWindow.wash_in_quotients`). Both apply the same two boundaries
+    from `app/wash_in.py`, and the two values agree to
     within rounding. `PL-MH9J` (one stored state for each second, read by the
     chart and the readouts alike) would make them one value.
 
     Args:
-        snapshot: The run's state this tick.
+        reading: The run's F_A/F_I reading this tick.
         undrawn_wash_in_stretches: How many stretches inside the window the
             plot's limited pool of lines could not draw, from
             `RunFrame.undrawn_wash_in_stretches` of the same tick. The count
@@ -3072,10 +3215,6 @@ def wash_in_state(snapshot: SimulationSnapshot, undrawn_wash_in_stretches: int) 
     Returns:
         One line for the row above the plot.
     """
-
-    reading = read_wash_in(
-        snapshot.alveolar_partial_pressure_fraction, snapshot.inspired_partial_pressure_fraction
-    )
 
     if reading.plotted_ratio is not None:
         state = WASH_IN_STATE_TEMPLATE.format(ratio=format_wash_in_ratio(reading.plotted_ratio))
@@ -3199,33 +3338,25 @@ def off_scale_lines(frame: ChartFrame) -> tuple[str | None, ...]:
     return tuple(lines)
 
 
-def wash_in_state_lines(
-    frame: ChartFrame, snapshots: Sequence[SimulationSnapshot]
-) -> tuple[str, ...]:
+def wash_in_state_lines(frame: ChartFrame) -> tuple[str, ...]:
     """Each drawn run's wash-in state line, for the F_A/F_I plot that drew `frame`.
 
     The result has one entry for each run, in order. Each entry is the run's
-    `wash_in_state`, with the count of stretches that this plot's window left
-    undrawn. While more than one run is drawn, `compared_run_line` labels each
-    entry with its run.
+    `wash_in_state`, from the reading the frame holds for that run, with the
+    count of stretches that this plot's window left undrawn. While more than
+    one run is drawn, `compared_run_line` labels each entry with its run. The
+    reading, the count and the name all come from one `RunFrame`, so no line
+    can pair one run's name with another run's reading (`PL-RF2S`).
 
     Args:
         frame: The frame the plot drew.
-        snapshots: The snapshot each of the frame's runs was read from, in
-            the same order.
-
-    Raises:
-        ValueError: If there is not one snapshot for each of the frame's runs.
     """
 
-    if len(snapshots) != len(frame.runs):
-        raise ValueError(
-            f"{len(snapshots)} snapshot(s) were given for a frame of {len(frame.runs)} run(s)"
-        )
-
     return tuple(
-        compared_run_line(wash_in_state(snapshot, run.undrawn_wash_in_stretches), frame, index)
-        for index, (run, snapshot) in enumerate(zip(frame.runs, snapshots, strict=True))
+        compared_run_line(
+            wash_in_state(run.wash_in_now, run.undrawn_wash_in_stretches), frame, index
+        )
+        for index, run in enumerate(frame.runs)
     )
 
 
@@ -3352,7 +3483,7 @@ def compared_run_line(line: str, frame: ChartFrame, run_index: int) -> str:
     place that knows both.
 
     A lone run is given no name, because there is nothing to tell it apart
-    from. `SimulationView._rename_runs` applies the same rule to the run
+    from. `SimulationView._run_name` applies the same rule to the run
     panels, and both legends apply it to the frame they are given, so a
     single-run display is unchanged. The frame's run is looked up before the
     run count is checked. So an index that matches no run raises on a one-run
@@ -3417,8 +3548,8 @@ def compared_run_notice(notice_text: str | None, run_name: str | None) -> str | 
     also words the banner, and it states a halt from the run's record alone, because
     the frame is what may have failed (`PL-25KS`). Reading the run count from
     the frame there would drop the attribution in exactly the case it exists
-    for. The name that the dashboard has already given the run through
-    `set_run_name` is the same word that `run_label` put on the run's own
+    for. The name that the dashboard gives the run (`SimulationView._run_name`)
+    is the same word that `run_label` put on the run's own
     panel and in both legends.
 
     Args:
@@ -3479,7 +3610,7 @@ def compared_panel_heading(heading: str, run: str | None) -> str:
     Args:
         heading: The panel's own heading words.
         run: The run's name, from `run_label`, or `None` while one run is
-            drawn. `SimulationView._rename_runs` already applies that rule to
+            drawn. `SimulationView._run_name` already applies that rule to
             the run panels, and both legends apply it to the frame they are
             given. So a single-run display gains no standing text.
 

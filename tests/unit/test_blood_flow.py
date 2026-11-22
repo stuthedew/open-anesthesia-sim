@@ -1,7 +1,7 @@
 """A blood flow reaches a tissue group, the venous pool and the equations only as a checked type.
 
 A tissue group's blood flow is its perfusion fraction of the cardiac output,
-$`Q_i = f_iQ`$ (`docs/MODEL.md` § "Tissue groups"). Three places in `core/`
+$`Q_i = f_iQ`$ (`docs/MODEL.md` § "Blood flow to the tissue groups"). Three places in `core/`
 took that flow as a bare `float` and checked by hand only that it was finite
 and not negative (`PL-GKG4`). The first tests here replay that report. They
 pass each place a bare number and expect a refusal. The largest of the numbers
@@ -93,7 +93,7 @@ def _muscle() -> TissueGroup:
 def test_a_perfusion_fraction_above_zero_and_at_most_one_is_built_as_its_number(
     accepted: float,
 ) -> None:
-    """The range is above 0 and at most 1 (`docs/MODEL.md` § "Tissue groups").
+    """The range is above 0 and at most 1 (`docs/MODEL.md` § "Blood flow to the tissue groups").
 
     Both ends are written out here. The smallest positive `float` is the
     first value above 0, and 1 is the fraction of a group that receives the
@@ -127,7 +127,7 @@ def test_a_perfusion_fraction_outside_its_range_is_refused_by_name_and_value(
     assert str(raised.value) == (
         f"muscle perfusion_fraction of {refused!r} is not above 0 and at most 1, the range of "
         "the fraction of the cardiac output that reaches a tissue group "
-        '(docs/MODEL.md, "Tissue groups")'
+        '(docs/MODEL.md, "Blood flow to the tissue groups")'
     )
 
 
@@ -269,7 +269,7 @@ def test_a_bare_number_given_as_a_perfusion_fraction_is_refused_with_how_to_buil
     assert str(raised.value) == (
         "perfusion_fraction of 0.2 was not built as PerfusionFraction, it is float: build it as "
         "PerfusionFraction(...), which checks it against its range once "
-        '(docs/MODEL.md, "Tissue groups")'
+        '(docs/MODEL.md, "Blood flow to the tissue groups")'
     )
 
 
@@ -291,7 +291,8 @@ def test_a_cardiac_output_is_not_a_tissue_group_s_blood_flow() -> None:
     assert str(raised.value) == (
         "muscle blood_flow_l_min of 5.0 was built as CardiacOutput, which is not BloodFlow: "
         "build it as BloodFlow(cardiac_output_l_min, perfusion_fraction), the tissue group's "
-        'perfusion fraction of the cardiac output (docs/MODEL.md, "Tissue groups")'
+        "perfusion fraction of the cardiac output (docs/MODEL.md, "
+        '"Blood flow to the tissue groups")'
     )
 
 

@@ -53,13 +53,14 @@ from anesthesia_sim.app.area_layout import (
     ViewChooser,
     _AreaHandle,
 )
-from anesthesia_sim.app.chart_frame import ChartFrame, RunInput, assemble_chart_frame
+from anesthesia_sim.app.chart_frame import RunInput, assemble_chart_frame
 from anesthesia_sim.app.chart_time_base import ChartTimeBase, time_base_for_span
 from anesthesia_sim.app.compartment_selection import CompartmentSelection
-from anesthesia_sim.app.controller import SimulationController, SimulationSnapshot
+from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import run_label
 from anesthesia_sim.app.preferences import Preferences
 from anesthesia_sim.app.qt_widgets import BookmarksPanel, ForkPanel
+from anesthesia_sim.app.run_presentation import ShownFrame, ValuesStanding, shown_drawn
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES
 from anesthesia_sim.app.theme import (
     AREA_HANDLE_LINE_WIDTH,
@@ -1046,19 +1047,21 @@ def test_a_view_that_cannot_be_built_is_a_notice_in_its_area_alone(
 
 def _frames(
     windows: tuple[ChartTimeBase | None, ...],
-) -> tuple[dict[ChartTimeBase | None, ChartFrame], SimulationSnapshot, CompartmentSelection]:
-    """Return a frame for each of `windows` from one unstarted run, as the dashboard does."""
+) -> tuple[dict[ChartTimeBase | None, ShownFrame], CompartmentSelection]:
+    """Return a frame drawn for each of `windows` from one unstarted run, as the dashboard does."""
 
     controller = SimulationController()
     snapshot = controller.snapshot()
     selection = CompartmentSelection(COMPARTMENT_QUANTITIES, 1)
     inputs = [RunInput(run_label(RunId(SessionToken("0" * 32), 1)), controller, snapshot, ())]
     frames = {
-        window: assemble_chart_frame(inputs, window, selection.shown, plot_width_px=400.0)
+        window: shown_drawn(
+            assemble_chart_frame(inputs, window, selection.shown, plot_width_px=400.0), selection
+        )
         for window in windows
     }
 
-    return frames, snapshot, selection
+    return frames, selection
 
 
 def test_every_view_is_drawn_in_reading_order_with_the_frame_for_its_window(
@@ -1069,7 +1072,7 @@ def test_every_view_is_drawn_in_reading_order_with_the_frame_for_its_window(
     model = _layout(_row((0.25, 0.5, 0.25), _area(1), Area(AreaId(2), _OTHER), _area(3)), 4)
     container = _show_with(application, shown, model)
     zoomed = time_base_for_span(900.0)
-    frames, snapshot, selection = _frames((None, zoomed))
+    frames, selection = _frames((None, zoomed))
 
     for setting, view in enumerate(_BUILT):
         view.setting = setting
@@ -1079,11 +1082,10 @@ def test_every_view_is_drawn_in_reading_order_with_the_frame_for_its_window(
 
     assert container.owes_a_frame
 
-    container.refresh(frames, (snapshot,), (), selection, _PREFERENCES, _NoCase())
+    container.refresh(frames, (), selection, _PREFERENCES, _NoCase())
 
     assert [len(view.ticks) for view in _BUILT] == [1, 1, 1]
     assert [view.ticks[0].frame for view in _BUILT] == [frames[None], None, frames[zoomed]]
-    assert all(view.ticks[0].snapshots == (snapshot,) for view in _BUILT)
     assert all(view.ticks[0].selection is selection for view in _BUILT)
     assert all(view.ticks[0].preferences is _PREFERENCES for view in _BUILT)
     assert _REFRESHED == _BUILT
@@ -1105,35 +1107,36 @@ def test_a_view_asking_for_a_window_with_no_frame_is_refused(
 
     model = _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)
     container = _show_with(application, shown, model)
-    frames, snapshot, selection = _frames((None,))
+    frames, selection = _frames((None,))
     _BUILT[1].request = FrameRequest(time_base_for_span(900.0), 300.0)
 
     with pytest.raises(KeyError):
-        container.refresh(frames, (snapshot,), (), selection, _PREFERENCES, _NoCase())
+        container.refresh(frames, (), selection, _PREFERENCES, _NoCase())
 
 
-def test_a_tick_with_no_frame_reaches_every_view_and_carries_no_frame_and_no_snapshots(
+def test_a_tick_with_no_frame_reaches_every_view_and_carries_each_window_s_frame_as_shown(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    """Every View is handed a tick when no frame was drawn, even a View that asks for a frame.
+    """Every View is handed a tick when no frame was drawn, a chart with its window's frame.
 
     The dashboard hands such a tick on a halt, when no frame can be
-    assembled (`PL-RF2S`). A View that asks for a window still gets this
-    tick, although a tick with frames refuses a View whose frame it lacks.
+    assembled (`PL-RF2S`). Each window's frame in it is kept or withheld, and
+    a View that asks for a window gets that window's.
     """
 
     model = _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)
     container = _show_with(application, shown, model)
-    _, _, selection = _frames((None,))
-    _BUILT[1].request = FrameRequest(time_base_for_span(900.0), 300.0)
+    _, selection = _frames((None,))
+    zoomed = time_base_for_span(900.0)
+    _BUILT[1].request = FrameRequest(zoomed, 300.0)
+    withheld = ShownFrame(ValuesStanding.WITHHELD, None, selection)
 
     case = _NoCase()
 
-    container.refresh(None, (), (), selection, _PREFERENCES, case)
+    container.refresh({zoomed: withheld}, (), selection, _PREFERENCES, case)
 
     assert [len(view.ticks) for view in _BUILT] == [1, 1]
-    assert [view.ticks[0].frame for view in _BUILT] == [None, None]
-    assert [view.ticks[0].snapshots for view in _BUILT] == [(), ()]
+    assert [view.ticks[0].frame for view in _BUILT] == [None, withheld]
     assert all(view.ticks[0].selection is selection for view in _BUILT)
     assert all(view.ticks[0].preferences is _PREFERENCES for view in _BUILT)
     assert all(view.ticks[0].case is case for view in _BUILT)
@@ -1153,12 +1156,12 @@ def test_a_tick_with_no_frame_reaches_every_view_though_one_raises(
 
     model = _layout(_row((0.25, 0.5, 0.25), _area(1), _area(2), _area(3)), 4)
     container = _show_with(application, shown, model)
-    _, _, selection = _frames((None,))
+    _, selection = _frames((None,))
     _BUILT[0].failure = RuntimeError("the first View could not show the tick")
     _BUILT[1].failure = RuntimeError("the second View could not show the tick")
 
     with pytest.raises(RuntimeError, match="the first View could not show the tick"):
-        container.refresh(None, (), (), selection, _PREFERENCES, _NoCase())
+        container.refresh({}, (), selection, _PREFERENCES, _NoCase())
 
     assert [len(view.ticks) for view in _BUILT] == [1, 1, 1]
     assert _REFRESHED == _BUILT
@@ -1175,28 +1178,13 @@ def test_a_tick_with_a_frame_stops_at_the_first_view_that_raises(
 
     model = _layout(_row((0.25, 0.5, 0.25), _area(1), _area(2), _area(3)), 4)
     container = _show_with(application, shown, model)
-    frames, snapshot, selection = _frames((None,))
+    frames, selection = _frames((None,))
     _BUILT[1].failure = RuntimeError("the second View could not draw the frame")
 
     with pytest.raises(RuntimeError, match="the second View could not draw the frame"):
-        container.refresh(frames, (snapshot,), (), selection, _PREFERENCES, _NoCase())
+        container.refresh(frames, (), selection, _PREFERENCES, _NoCase())
 
     assert [len(view.ticks) for view in _BUILT] == [1, 1, 0]
-
-
-def test_a_tick_with_no_frame_is_refused_snapshots(
-    application: QApplication, shown: list[AreaLayout]
-) -> None:
-    """A tick with no frame that is given snapshots is refused, and no View is handed anything."""
-
-    model = _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)
-    container = _show_with(application, shown, model)
-    _, snapshot, selection = _frames((None,))
-
-    with pytest.raises(ValueError, match="carries no snapshots, and 1 were given"):
-        container.refresh(None, (snapshot,), (), selection, _PREFERENCES, _NoCase())
-
-    assert [len(view.ticks) for view in _BUILT] == [0, 0]
 
 
 def test_each_window_is_sampled_for_the_widest_view_that_asks_for_it(

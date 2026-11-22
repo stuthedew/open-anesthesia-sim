@@ -16,7 +16,7 @@ verify: grep -q 'PL-80X7' docs/MODEL.md
 
  — found while closing `PL-WJNS`.
 
-`docs/MODEL.md` § "Alveolar gas" justifies holding $`V_A`$ constant by
+`docs/MODEL.md` § "Nitrous oxide and the fixed alveolar volume" justifies holding $`V_A`$ constant by
 comparing the pulmonary uptake rate against alveolar ventilation: sevoflurane
 at 2% removes 1.6% of each inspired alveolar volume, "which a fixed volume can
 ignore and does", against nitrous oxide's 29%. The conclusion is almost
@@ -36,7 +36,7 @@ because the section is the one a milestone scoping nitrous oxide is told to
 read, and it is where the two standard formulations that lift the constraint
 are written.
 
-**Where.** `docs/MODEL.md` § "Alveolar gas", the paragraph beginning "The
+**Where.** `docs/MODEL.md` § "Nitrous oxide and the fixed alveolar volume", the paragraph beginning "The
 alveolar volume is held constant" and the two-row comparison table under it.
 Note the circuit-side statement in § "Breathing circuit" is *not* affected and
 should not be changed to match: carbon dioxide nets to nothing at the circuit

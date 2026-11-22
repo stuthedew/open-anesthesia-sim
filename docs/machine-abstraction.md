@@ -51,7 +51,7 @@ none (`PL-QW19`). `docs/INTERFACE.md` § "Runtime controls" and
 `docs/PARAMETERS.md` § "Parameter provenance" specify both.
 
 **Not held to the tree.** `docs/MODEL.md` specifies the model *as implemented*
-and its § "How this document is held to the tree" binds every live assertion in
+and `docs/VERIFICATION.md` § "How this document is held to the tree" binds every live assertion in
 it to something a script can resolve. The unbuilt parts of this design would be
 unresolvable assertions inside that bound document, so the design sits beside
 `docs/machine-survey.md` instead, and `docs/MODEL.md` gains each statement when
@@ -81,7 +81,7 @@ circuit ($`M_{\mathrm{delivered}}`$) and exhausted from it
 ($`M_{\mathrm{exhausted}}`$); their rows are the accounting rows. The ninth is
 the constant one, written $`\mathbf 1`$, through whose column a term that does
 not depend on any state enters. The alveolar, venous and tissue rows are the
-patient rows. The exact propagator is $`\exp(A\,\Delta t)`$. The symbols are those of `docs/MODEL.md`
+patient rows. The exact propagator is $`\exp(A\,\Delta t)`$. The symbols are those of `docs/VERIFICATION.md`
 § "Symbols": $`\dot V_F`$ is the fresh gas flow, $`\dot V_A`$ the alveolar
 ventilation, $`F_D`$ the delivered fraction set at the vaporizer, $`F_I`$ the
 inspired fraction and $`F_A`$ the alveolar fraction. Five entries of the matrix
@@ -278,7 +278,7 @@ dial. Paired with `fresh_gas_bypass` at a dialled flow, the vaporizer keeps
 adding agent at that flow, and the run gives a plausible curve and a wrong
 number. Computing the total uptake needs a patient who consumes oxygen and a
 variable alveolar volume, which this model does not have (`docs/MODEL.md`
-§ "Breathing circuit").
+§ "Low flow and the closed circuit").
 
 The sample draw $`\dot V_S`$ is *data* rather than a third strategy, because
 one expression covers all three of the survey's sampling configurations: a
@@ -640,7 +640,7 @@ three options and refused one. Besides the decline above, they are:
   actual circle-absorber breathing system rather than an idealized one (Lerou
   2001, in § "Sources"), and under a model of that kind the two become
   distinct states, so this model's single $`F_I`$ stops describing both.
-  `docs/MODEL.md` § "Model boundary" already names that consequence, and the
+  `docs/MODEL.md` § "What the model represents" already names that consequence, and the
   departure has to be recorded there before the model is extended that way.
   Representing inlet position changes the model boundary, so it belongs to
   planned-milestone item 39, not to item 1.

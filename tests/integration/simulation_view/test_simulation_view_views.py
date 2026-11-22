@@ -30,6 +30,7 @@ from anesthesia_sim.app.formatting import (
     format_flow,
 )
 from anesthesia_sim.app.qt_widgets import BookmarksPanel, ForkPanel, ParameterSlider
+from anesthesia_sim.app.run_presentation import ValuesStanding
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.run_surfaces import AccountingPanel, ParameterControls
 from anesthesia_sim.app.simulation_view import SimulationView
@@ -284,8 +285,14 @@ def test_a_branch_dropped_while_frames_fail_leaves_no_widget_in_any_view(
     assert len(view.runs) == 1
     assert view.runs[0].controller.has_failed is True
 
+    # The charts' frame is withheld, because the trunk started over and the
+    # branch is gone since the last frame that drew. So a chart shows no
+    # run's line, and each panel View shows the trunk's widget alone.
+    charts = {"off-scale", "unmarked changes", "wash-in state", "wash-in unmarked changes"}
+
     for name, (_, widgets) in _run_widgets_by_view(view).items():
-        assert len(widgets) == 1, f"{name}: the dropped branch's widget is still shown"
+        expected = 0 if name in charts else 1
+        assert len(widgets) == expected, f"{name}: the dropped branch's widget is still shown"
 
     assert len(view.findChildren(ParameterControls)) == 1
     assert len(view.findChildren(AccountingPanel)) == 1
@@ -298,7 +305,9 @@ def _no_tick_without_a_frame(tick: ViewTick) -> NoReturn:
     reaches a View is the one a halt hands it, which has no frame.
     """
 
-    assert tick.frame is None, "a frame was drawn in a test where every frame must fail"
+    assert tick.frame is None or tick.frame.standing is not ValuesStanding.DRAWN, (
+        "a frame was drawn in a test where every frame must fail"
+    )
 
     raise RuntimeError("this View could not show the tick")
 

@@ -38,7 +38,8 @@ def test_rejects_agent_amount_above_venous_blood_capacity() -> None:
         SimulationConfigurationError,
         match=(
             r"^venous agent_amount_l of 0.66 L is more than the 0.65 L the venous blood holds "
-            r'at a partial pressure of one atmosphere \(docs/MODEL.md, "Blood compartments"\)$'
+            r"at a partial pressure of one atmosphere \(docs/MODEL.md, "
+            r'"How much agent each compartment holds"\)$'
         ),
     ):
         VenousBloodCompartment(
@@ -51,7 +52,7 @@ def test_rejects_agent_amount_above_venous_blood_capacity() -> None:
 TOO_SMALL_FOR_THE_AGENT_HELD = (
     r"^venous {field} of {value} is too small for the 0.325 L of agent the venous blood holds: it "
     r"would leave room for {room} L at a partial pressure of one atmosphere "
-    r'\(docs/MODEL.md, "Blood compartments"\)$'
+    r'\(docs/MODEL.md, "How much agent each compartment holds"\)$'
 )
 
 
@@ -115,7 +116,7 @@ TOO_SMALL_FOR_THE_AGENT_HELD = (
             SimulationConfigurationError,
             rf"^venous agent_amount_l of {re.escape(repr(0.65 * 1.0000001))} L is more than the "
             r"0.65 L the venous blood holds at a partial pressure of one atmosphere "
-            r'\(docs/MODEL.md, "Blood compartments"\)$',
+            r'\(docs/MODEL.md, "How much agent each compartment holds"\)$',
             id="amount-past-capacity",
         ),
         pytest.param(
@@ -183,7 +184,7 @@ def test_an_amount_at_capacity_is_written_and_a_copy_is_held_to_it_too() -> None
     refused = (
         rf"^venous agent_amount_l of {re.escape(repr(past_capacity))} L is more than the "
         r"0.65 L the venous blood holds at a partial pressure of one atmosphere "
-        r'\(docs/MODEL.md, "Blood compartments"\)$'
+        r'\(docs/MODEL.md, "How much agent each compartment holds"\)$'
     )
 
     with pytest.raises(SimulationConfigurationError, match=refused):

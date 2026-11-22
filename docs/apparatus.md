@@ -310,7 +310,7 @@ so the tool refuses and never approves.
 `tools/import_boundary_check.py` measures four claims that the source makes
 about itself. First, `_StrictPayload`'s docstring says that the
 `_...Payload`/public-dataclass pairs exist so that the rest of `core/` never
-imports Pydantic. Second, `docs/MODEL.md` "The reproducibility guarantee" says
+imports Pydantic. Second, `docs/VERIFICATION.md` "The reproducibility guarantee" says
 that a run is a function of its inputs and of the number of steps taken, and of
 nothing else. So the run loop reads no clock. Third, `docs/ARCHITECTURE.md`
 § "Layering" keeps simulation code independent of the UI toolkit. That rule was

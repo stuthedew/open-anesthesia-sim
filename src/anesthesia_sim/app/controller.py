@@ -1630,7 +1630,7 @@ class SimulationController:
         Third, elapsed time stays one multiplication: `(k + n)` steps times the
         step length. Here `k` is the number of steps up to the fork, and `n` is
         the number of steps the branch has taken since. Elapsed time is not the
-        fork instant plus the branch's own elapsed time. `docs/MODEL.md`
+        fork instant plus the branch's own elapsed time. `docs/VERIFICATION.md`
         § "Simulated time is a count of steps, not a running total" states the
         rule against that sum.
 

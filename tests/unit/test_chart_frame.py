@@ -79,6 +79,7 @@ from anesthesia_sim.app.theme import (
     MINIMUM_TRACE_STROKE_WIDTH,
     ONE_MAC_LINE_DASH_PATTERN,
 )
+from anesthesia_sim.app.wash_in import read_wash_in
 from anesthesia_sim.core.concentration import Fraction, MacPercent, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.governing_equations import (
@@ -88,6 +89,7 @@ from anesthesia_sim.core.governing_equations import (
     VENOUS_FRACTION,
     build_system_matrix,
 )
+from anesthesia_sim.core.parameters import load_agent_parameters
 from anesthesia_sim.core.rounding import propagator_rounding, run_rounding
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow, StepCount
@@ -609,6 +611,7 @@ def _run_frame(times_s: tuple[float, ...], **fractions_by_name: tuple[float, ...
         times_s=times_s,
         fractions=MappingProxyType(fractions),
         wash_in=(WashInStretch(times_s, tuple(0.71 for _ in times_s), False),),
+        wash_in_now=read_wash_in(0.71, 1.0),
         undrawn_wash_in_stretches=0,
         control_marks_s=(),
         undrawn_control_marks=0,
@@ -633,6 +636,7 @@ def _frame(
         mac_ticks=(),
         one_mac_percent=2.0,
         mac_awake_band_percent=(0.58, 0.78),
+        mac_awake=load_agent_parameters("sevoflurane").mac_awake,
         visible=visible,
         undrawn_compartments=0,
         runs=(run,),

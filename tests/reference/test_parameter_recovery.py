@@ -146,8 +146,8 @@ def test_an_alveolar_volume_recovered_by_closed_circuit_dilution_matches_the_sto
 
     The circuit is closed by setting the fresh gas flow to zero. Nothing then
     enters the circuit and nothing leaves it through the exhaust. This is not
-    closed-circuit anaesthesia, the technique that `docs/MODEL.md` § "Breathing
-    circuit" says this model does not represent. That technique needs fresh gas
+    closed-circuit anaesthesia, the technique that `docs/MODEL.md` § "Low flow and
+    the closed circuit" says this model does not represent. That technique needs fresh gas
     matched to the patient's uptake. Here there is no fresh gas, and at zero
     cardiac output there is no uptake.
 

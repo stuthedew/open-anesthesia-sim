@@ -23,9 +23,9 @@ from pathlib import Path
 import pytest
 from core_vocabulary_check import (
     CORE_TREE,
-    MODEL_DOC,
     PHASES,
     RETIRED_NAMES,
+    SYMBOLS_DOC,
     analyze,
     format_report,
     main,
@@ -76,7 +76,7 @@ def _root(tmp_path: Path, *, rows: list[str] | None = None, **modules: str) -> P
     )
     table = "\n".join(
         [
-            "## Symbols",
+            "### Symbols",
             "",
             "| Symbol | Meaning | Unit | Code |",
             "| --- | --- | --- | --- |",
@@ -85,7 +85,7 @@ def _root(tmp_path: Path, *, rows: list[str] | None = None, **modules: str) -> P
             "## Compartment capacities",
         ]
     )
-    document = tmp_path / MODEL_DOC
+    document = tmp_path / SYMBOLS_DOC
     document.parent.mkdir(parents=True, exist_ok=True)
     document.write_text(table, encoding="utf-8")
     return tmp_path
@@ -347,7 +347,7 @@ class TestPassingOverNothing:
     @pytest.mark.parametrize(
         ("find", "replace"),
         [
-            ("## Symbols", "## Notation"),
+            ("### Symbols", "### Notation"),
             ("| Symbol | Meaning | Unit | Code |", "| Sym | M | U | Impl |"),
         ],
     )
@@ -355,7 +355,7 @@ class TestPassingOverNothing:
         self, tmp_path: Path, find: str, replace: str
     ) -> None:
         root = _root(tmp_path)
-        document = root / MODEL_DOC
+        document = root / SYMBOLS_DOC
         document.write_text(document.read_text(encoding="utf-8").replace(find, replace), "utf-8")
         report = analyze(root)
         assert report.empty_table

@@ -1,7 +1,7 @@
 """The dimensionless forms in which one concentration is written, and the
 conversions between them.
 
-This module implements `docs/MODEL.md` § "Concentrations". Its scope comes from
+This module implements `docs/VERIFICATION.md` § "Concentrations". Its scope comes from
 that section rather than from the word in the module's name. The section
 defines three forms of one quantity: the model's fraction, the percent of an
 atmosphere in which the same quantity is quoted, and the multiple of 1 MAC to
@@ -148,7 +148,7 @@ class Fraction(float, CheckedQuantity):
     checked against that range when built.
 
     This is the model's own convention, and the only form that the governing
-    equations in `core/` use. `docs/MODEL.md` § "Concentrations" defines it. It
+    equations in `core/` use. `docs/VERIFICATION.md` § "Concentrations" defines it. It
     compares and computes as the `float` it was built from, and arithmetic on
     it returns a plain `float`, as the module docstring says.
 
@@ -194,7 +194,7 @@ class Fraction(float, CheckedQuantity):
         if not 0.0 <= fraction <= 1.0:
             raise SimulationConfigurationError(
                 f"{name} of {shown(fraction)} is outside 0 to 1, the range a fraction of one "
-                'atmosphere takes (docs/MODEL.md, "Concentrations")'
+                'atmosphere takes (docs/VERIFICATION.md, "Concentrations")'
             )
 
         return super().__new__(cls, negative_zero_as_zero(fraction))
@@ -248,7 +248,7 @@ class Percent(float, CheckedQuantity):
         if not 0.0 <= percent <= PERCENT_PER_UNIT_FRACTION:
             raise SimulationConfigurationError(
                 f"{name} of {shown(percent)} is outside 0 to 100, the range a percent of one "
-                'atmosphere takes (docs/MODEL.md, "Concentrations")'
+                'atmosphere takes (docs/VERIFICATION.md, "Concentrations")'
             )
 
         return super().__new__(cls, negative_zero_as_zero(percent))
@@ -300,7 +300,7 @@ class MacPercent(Percent):
 MacMultiple = NewType("MacMultiple", float)
 """The same quantity measured against the running agent's 1 MAC instead of an atmosphere.
 
-`docs/MODEL.md` § "Concentrations" defines it as $`100F/\\mathrm{MAC}_\\%`$, and
+`docs/MODEL.md` § "MAC multiples" defines it as $`100F/\\mathrm{MAC}_\\%`$, and
 `docs/INTERFACE.md` § "MAC multiples as a display unit" states what the quotient
 does and does not
 assert. It is dimensionless like `Fraction`, but it is **not** a `Fraction`. A
@@ -411,7 +411,7 @@ def require_fraction(name: str, fraction: object) -> None:
     raise TypeError(
         f"{name} of {shown(fraction)} was not built as Fraction, it is "
         f"{type(fraction).__name__}: build it as Fraction(...) where it is computed, which "
-        'checks it against 0 to 1 once (docs/MODEL.md, "Concentrations")'
+        'checks it against 0 to 1 once (docs/VERIFICATION.md, "Concentrations")'
     )
 
 
@@ -457,7 +457,7 @@ def require_percent(name: str, percent: object) -> None:
     raise TypeError(
         f"{name} of {shown(percent)} was not built as Percent, it is "
         f"{type(percent).__name__}: build it as Percent(...) where it is set, which checks "
-        'it against 0 to 100 once (docs/MODEL.md, "Concentrations")'
+        'it against 0 to 100 once (docs/VERIFICATION.md, "Concentrations")'
     )
 
 
