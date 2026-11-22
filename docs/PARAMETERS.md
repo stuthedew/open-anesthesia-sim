@@ -892,8 +892,10 @@ flows. It puts the circuit time constant at 90 s: long enough for the machine
 lag to show as a distinct phase of the early rise, and short enough to resolve
 within the first minutes of a teaching run. The data file labels this a design
 rationale, not a measurement. **The default is also the flow a run starts at
-when a machine profile states none**, because no surveyed machine publishes a
-startup flow. The authority for that fallback is this rationale, not a source.
+when a machine profile states none**, because no source the survey reached
+gives a startup flow for any machine. The survey read no manufacturer's manual,
+so a profile for a real machine should look for its startup flow there. The
+authority for that fallback is this rationale, not a source.
 The rationale applies to the stored 6.0 L circuit. A smaller circuit gives a
 shorter lag at the same flow, as § "What real workstations hold" below
 computes.
@@ -978,9 +980,9 @@ sets out the consequence for modelling several machines.
 
 **A search for a published source of the default fresh gas flow found a
 recommendation, not a convention.** The survey looked for a startup fresh gas
-flow published by any machine in current clinical use, and found none
-(`docs/machine-survey.md` § "(a2)"). So the flow row still adopts no source,
-and no published startup convention appears to exist. Kalmar et al. conclude
+flow published by any machine in current clinical use, and no source it
+reached gives one (`docs/machine-survey.md` § "(a2)"). It read no
+manufacturer's manual. So the flow row still adopts no source. Kalmar et al. conclude
 that *"routine clinical practice using what historically is called 'low flow
 anaesthesia' (e.g. 2 L/min FGF) should be abandoned"* in favour of automated
 minimal-flow delivery (*J Clin Monit Comput* 2022;36(6):1601–1610,
