@@ -1689,6 +1689,7 @@ computes the molar volumes at 37 °C and 20 °C from the constants in
 **For developers.** `test_the_humidification_dilution_follows_from_the_water_vapour_pressure`
 computes the 713 mmHg, the 6.2 % and the 6.6 % from 47 mmHg and one
 atmosphere.
+<!-- not-restated: 6.6 % -->
 
 **The 47 mmHg is computed.** The saturation pressure of water at 37.0 °C is
 47.12 mmHg on the IAPWS-95 formulation (Wagner W, Pruß A. *The IAPWS
@@ -1932,7 +1933,7 @@ where a reader trusts most. So the writer says which kind it is, and the check
 enforces only that somebody did. A marker covers only the values it names, in
 their units, so a marker for the 6 L circuit does not clear desflurane's 6%
 MAC in the same paragraph. The check reads:
-<!-- not-restated: 6 L, 6 % -->
+<!-- not-restated: 6 L -->
 
 - a unit written as a word, such as "seconds", and a time in milliseconds,
   minutes or hours, which it converts to seconds;

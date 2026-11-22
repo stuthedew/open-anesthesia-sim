@@ -3309,7 +3309,6 @@ compiler may change the order in which their terms are summed.
 Every concentration that the model computes is a dimensionless
 partial-pressure-equivalent fraction. For example, $`F = 0.02`$ represents a 2%
 gas-phase concentration.
-<!-- not-restated: 2 % -->
 
 The vaporizer dial and MAC are given in percent of an atmosphere. The
 conversion between a fraction and a percent is:
@@ -3370,9 +3369,9 @@ The agent's MAC is stored as a `MacPercent`, a `Percent` that rejects zero when
 it is built. Every formatter that computes a MAC multiple accepts only that
 kind of percent as its divisor. No other lower limit is set on the MAC, so a MAC
 far below any real agent's would still give multiples too large to read. The
-shipped MACs are 1.2% to 6.0%.
-<!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
-<!-- provenance: data/agents/desflurane.json mac_percent = 6 -->
+shipped MACs at age 40 are 1.17% to 6.6%.
+<!-- provenance: data/agents/isoflurane.json mac_at_age_40_percent = 1.17 -->
+<!-- provenance: data/agents/desflurane.json mac_at_age_40_percent = 6.6 -->
 
 The rules that the fraction and percent types share with the flows are written
 once, in `core/checked_number.py` (`docs/INTERFACE.md` § "Supported input ranges"): what counts as a
@@ -3419,7 +3418,7 @@ symbol.
 | $`Q`$ | Cardiac output | L blood/min | `PatientCompartments.cardiac_output_l_min` |
 | $`Q_i`$ | Blood flow to tissue group $`i`$, formed as $`f_iQ`$ and never stored | L blood/min | `TissueGroup.blood_flow_l_min_at` |
 | $`f_i`$ | Fraction of cardiac output reaching tissue group $`i`$ | dimensionless | `TissueGroup.perfusion_fraction` |
-| $`\mathrm{MAC}_\%`$ | The agent's alveolar concentration at 1 MAC, a single adult value whose source states no age. It sets the dial's starting position and is the divisor for the display in MAC multiples. No governing equation reads it | percent | `AgentParameters.mac_percent` |
+| $`\mathrm{MAC}_\%`$ | The agent's alveolar concentration at 1 MAC for a 40-year-old, from Mapleson's 1996 meta-analysis. It sets the dial's starting position and is the divisor for the display in MAC multiples. No governing equation reads it | percent | `AgentParameters.mac_at_age_40_percent` |
 | $`\lambda_{b:g}`$ | Agent blood:gas partition coefficient, read from the agent data files and stored once per patient in the venous pool | dimensionless | `PatientCompartments.blood_gas_partition_coefficient` |
 | $`\lambda_{i:g}`$ | Tissue:gas partition coefficient for group $`i`$, read from the agent data files | dimensionless | `TissueGroup.tissue_gas_partition_coefficient` |
 | $`\lambda_{i:b}`$ | Tissue:blood partition coefficient for group $`i`$, derived as $`\lambda_{i:g}/\lambda_{b:g}`$ and never stored | dimensionless | `TissueGroup.tissue_blood_partition_coefficient_for` |
@@ -3530,7 +3529,6 @@ At 4.0 L/min and the same dial, the vaporizer adds agent about thirteen times
 faster than at the 0.3 L/min that this patient's uptake would set.
 <!-- provenance: data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4 -->
 <!-- provenance: data/patients/reference_adult.json default_alveolar_ventilation_l_min = 4 -->
-<!-- not-restated: 2 % -->
 
 Closed-circuit operation is a property of the machine, and one coefficient
 switched by a condition is the wrong way to model it. The machine design in

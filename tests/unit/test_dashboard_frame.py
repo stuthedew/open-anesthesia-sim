@@ -4497,7 +4497,7 @@ def _reachable_height(agent_id: str) -> float:
 
     agent = load_agent_parameters(agent_id)
 
-    return float(agent.max_delivered_concentration_percent) / float(agent.mac_percent)
+    return float(agent.max_delivered_concentration_percent) / float(agent.mac_at_age_40_percent)
 
 
 def test_the_case_s_marks_are_stated_once_when_every_run_agrees() -> None:

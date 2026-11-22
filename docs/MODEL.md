@@ -165,7 +165,6 @@ atmosphere. $`F = 0.02`$ is a 2% gas-phase concentration, and
 $`\text{percent} = 100F`$. Ambient pressure is fixed at 760 mmHg, so a
 fraction and a partial pressure differ only by that factor: $`F_A = 0.02`$ is
 15.2 mmHg. The vaporizer dial and MAC are given in percent of one atmosphere.
-<!-- not-restated: 2 % -->
 
 **Agent amount.** Every compartment stores its agent as an equivalent gas
 volume: litres of pure agent gas at 20 °C and 760 mmHg, dry. The ideal-gas
@@ -336,7 +335,6 @@ real machine's flowmeter bank.
 <!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 <!-- derived: 22 percent from data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 <!-- derived: 2.44 L/min from data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
-<!-- not-restated: 2 % -->
 
 **The circuit volume is that of the assembled breathing system.** The model
 has one well-mixed gas compartment in front of the patient, so $`V_C`$ is the
@@ -641,6 +639,9 @@ age, because the reference adult has no age. No equation uses it. It sets the di
 run opens at 1 MAC, and it is the divisor for every value shown in MAC
 multiples. The simulator refuses any agent whose own vaporizer cannot deliver
 its 1 MAC. § "MAC multiples" gives what a MAC at age 40 means for the display.
+<!-- provenance: data/agents/sevoflurane.json mac_at_age_40_percent = 1.8 -->
+<!-- provenance: data/agents/isoflurane.json mac_at_age_40_percent = 1.17 -->
+<!-- provenance: data/agents/desflurane.json mac_at_age_40_percent = 6.6 -->
 
 **MAC-awake.** Katoh et al. (1993) determined sevoflurane and isoflurane
 MAC-awake by a slow, equilibrated washout and by a fast one. Slow washout gave
@@ -924,7 +925,7 @@ days:
   is still moving.
 - **The fat group's flow** (§ "The fat group's blood flow"), which acts directly on the slow tail of
   washout.
-<!-- not-restated: 2 %, 5 % -->
+<!-- not-restated: 5 % -->
 
 The 24 hours are not inside the exposure range over which sevoflurane's
 metabolism was measured. Kharasch's review covers 0.35 to 9.5 MAC-hours. A run
@@ -1007,7 +1008,6 @@ Three limits apply to every compartment:
    agent at a time.
 3. Opioids, temperature and patient factors modify MAC, and the model
    represents none of them.
-<!-- not-restated: 6 % -->
 
 **The MAC that the MAC-multiple display divides by is a 40-year-old's.** Each
 agent's stored MAC is Mapleson's meta-analytic MAC at age 40 (Br J Anaesth
@@ -1213,7 +1213,6 @@ The figures are mean ± SD, read from the two abstracts.
 | Isoflurane | 0.733 ± 0.027 | n=7 | 0.6% | *Anesth Analg* 1991 |
 | Desflurane | 0.90 ± 0.01 | n=8 | 2.0% | *Anesthesiology* 1991 |
 | Isoflurane | 0.73 ± 0.03 | n=8 | 0.4% | *Anesthesiology* 1991 |
-<!-- not-restated: 2.0 % -->
 
 The model lands inside the published standard deviation for every row, and
 reproduces the ordering by solubility (desflurane above sevoflurane above
@@ -1351,7 +1350,6 @@ on screen as a prediction of how fast a patient recovers.**
    Halothane gave 64 ± 9%, so the method does detect a metabolized agent. At
    five minutes the fourth compartment's term is about one part in twenty of
    what remains.
-<!-- not-restated: 6 % -->
 
 ### What these comparisons can and cannot detect
 
@@ -1415,7 +1413,6 @@ below the measured mean. A higher dial keeps the trace readable for longer. A
 6% desflurane dial keeps it there until about the fifth hour, which is inside
 desflurane's stretch. So a learner who runs a case long can reach the
 shortfall.
-<!-- not-restated: 6 % -->
 
 ### Gas Man in patients
 
@@ -1437,7 +1434,7 @@ FLOW-i and −0.57%/h [−0.85, −0.16] on the Zeus. By phase:
 | FLOW-i (n = 14) | maintenance, 15-60 min | 0% [−7, 5] | 6% [2, 10] |
 | Zeus (n = 14) | wash-in, 0-15 min | 7% [−6, 28] | 13% [6, 32] |
 | Zeus (n = 14) | maintenance, 15-60 min | −1% [−5, 5] | 5% [2, 9] |
-<!-- not-restated: 15 min, 18 %, 6 %, 5 % -->
+<!-- not-restated: 15 min, 18 %, 5 % -->
 
 The brackets are interquartile ranges. A quarter of FLOW-i patients were
 tracked worse than 51% through the first fifteen minutes, against worse than
@@ -1504,7 +1501,6 @@ $`F_v \approx 0`$, for the reference adult.
 | --- | --- | --- | --- | --- |
 | Sevoflurane at 2% | 0.65 | 0.02 | 0.065 L/min | 1.6% |
 | Nitrous oxide at 70% | 0.47 | 0.50 | 1.18 L/min | 29% |
-<!-- not-restated: 2 % -->
 <!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
 <!-- derived: 1.6 percent from data/patients/reference_adult.json default_cardiac_output_l_min = 5, default_alveolar_ventilation_l_min = 4 -->
 <!-- derived: 1.6 percent from data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
@@ -1769,6 +1765,7 @@ The measurements the model is compared with are end-tidal, and MAC is defined
 on the end-tidal concentration, so the comparison is like with like. But there
 is no water anywhere in the model, so no question about airway humidification
 has an answer in it, whether it concerns an HME or a heated humidifier.
+<!-- not-restated: 6.6 % -->
 
 ### Altitude
 
@@ -1777,7 +1774,6 @@ deliver the same partial pressure at a given dial position, so no displayed
 number is wrong there. A user in Denver (about 630 mmHg) or Mexico City (about
 585 mmHg) who sets 6% desflurane in the simulator and 6% on the real device is
 not delivering the same anesthetic, and nothing else in the simulator says so.
-<!-- not-restated: 6 % -->
 
 **Sevoflurane and isoflurane come from variable-bypass vaporizers** (Dräger
 Vapor 2000, Sevotec 5, Isotec 5, Penlon Sigma Delta). The gas leaving the
@@ -1791,7 +1787,7 @@ $`\%_1 = \%_\mathrm{cal} \times P_\mathrm{cal} / P_1`$: isoflurane dialled to
 pressure is small against ambient pressure. Isoflurane's is about 240 mmHg at
 20 °C, and with it carried through, the delivered partial pressure overshoots
 rather than holds steady, by about 16% at 585 mmHg.
-<!-- not-restated: 2 %, 20 °C -->
+<!-- not-restated: 20 °C -->
 
 **Desflurane comes from a gas-vapor blender** (Tec 6, Tec 6 Plus). Desflurane
 boils at 22.8 °C, so the sump is kept at about 39 °C and about 1460 mmHg, and
