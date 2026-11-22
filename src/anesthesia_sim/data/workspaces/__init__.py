@@ -33,8 +33,9 @@ it take the rest (`PL-4JCC`). The shares are placeholders.
   Workspace holds the schematic is a placeholder.
 
 None of the three contains the agent accounting View (project owner,
-2026-09-16). `docs/MODEL.md` puts the accounting in the tier of displays that a
-layout may leave out. A reader brings it back with the View chooser (`PL-50PZ`).
+2026-09-16). `docs/INTERFACE.md` § "Values that must stay reachable" puts the
+accounting in the tier of displays that a layout may leave out. A reader brings
+it back with the View chooser (`PL-50PZ`).
 
 **Provenance.** Shipping a set of named, task-oriented Workspaces beside the
 reader's own is Blender's practice: Blender ships eleven default Workspaces,

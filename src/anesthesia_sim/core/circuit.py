@@ -8,8 +8,8 @@ leaves with the exhaust, and no plastic or rubber component holds any of it.
 In a real circuit the components do hold agent. The amount is measurable, and
 it follows the order of the agents' solubility. So this simplification is
 closest to true for desflurane and furthest from true for halothane.
-`docs/MODEL.md` "Known limitations" gives the measurement and the reason the
-simplification is kept (`PL-LS3H`).
+`docs/MODEL.md` § "Absorption by the circuit" gives the measurement and the
+reason the simplification is kept (`PL-LS3H`).
 
 The circuit also owns the vaporizer delivery limit
 (`max_delivered_concentration_percent`), because it owns the delivered
@@ -87,9 +87,10 @@ No source is this value's authority. Its authority is a recorded reason: the
 value was chosen so that a learner sees the machine lag as a distinct phase of
 the early rise. The shipped machine file,
 `data/machines/reference_circle_system.json`, stores the same value and records
-that reason in its `provenance_gap`. This value's provenance row is in
-`docs/MODEL.md`. A unit test fails if this value and the file's value ever
-differ (`test_the_flow_default_matches_the_shipped_machine_file` in
+that reason in its `provenance_gap`. This value's provenance row is in the
+table of `docs/PARAMETERS.md` § "The stored values, by data file and key". A
+unit test fails if this value and the file's value ever differ
+(`test_the_flow_default_matches_the_shipped_machine_file` in
 `tests/unit/test_circuit.py`).
 """
 
@@ -363,7 +364,7 @@ class BreathingCircuit:
     `advance_fresh_gas()` uses this one field both as the rate at which agent
     arrives and as the rate at which mixed circuit gas leaves. Only the
     post-vaporizer total balances those two rates, so the field must hold that
-    total. See `docs/MODEL.md`, "Breathing circuit".
+    total. See `docs/MODEL.md` § "Breathing circuit".
 
     **The dial is stored as the percent it was set to, and the fraction is
     derived from it** (`PL-NJPB`). `delivered_concentration_percent` is the

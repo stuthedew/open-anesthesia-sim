@@ -23,7 +23,7 @@ container to the alveoli, and stands for the blood's return to the lungs. So
 the three tissue groups are drawn in parallel, as the model perfuses them. They
 are never drawn as a chain through which agent passes from one tissue to the
 next. No container stands for arterial blood, for the reason `docs/MODEL.md`
-gives.
+§ "What the model represents" gives.
 
 **The share bar** (`PL-S79P`). Under the containers, `ShareBar` draws one bar.
 The bar is divided into each compartment's share of all the agent the run
@@ -430,8 +430,9 @@ class RunSchematic(QWidget):
     show another, and it is withheld whenever the readouts are (`PL-RNYV`,
     `PL-RF2S`). A lone run is not named. While runs are compared, each
     schematic is named, because the order in which the schematics are
-    stacked cannot say which run a tension belongs to (`docs/MODEL.md`, the
-    hazard table's row on reading one run's value as the other's).
+    stacked cannot say which run a tension belongs to. The hazard table in
+    `docs/VERIFICATION.md` § "Reasonably foreseeable misuse, and the hazards the
+    presentation carries" has a row on reading one run's value as the other's.
 
     Args:
         shown: The schematic to draw first.

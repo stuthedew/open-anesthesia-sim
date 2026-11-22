@@ -375,8 +375,9 @@ class TraceStyle:
 # rhythm at once. The one genuinely confusable pair of styles in the set is the
 # 2 px dots against the 4 px short dash. That pair is assigned to mixed venous
 # against muscle, the second widest colour separation of any pair of these six
-# (1.45, after circuit against alveolar at 1.62). `docs/MODEL.md` carries the
-# matrix these choices were taken from.
+# (1.45, after circuit against alveolar at 1.62). `docs/INTERFACE.md`
+# § "The six compartment traces: what separates them" carries the matrix these
+# choices were taken from.
 #
 # The vessel-rich trace's equal mark and gap is a rhythm that no other trace
 # here has, because the other four dashed traces all draw more ink than gap.
@@ -1846,8 +1847,9 @@ def _hover_contended_value(
     readings shared one compartment. A value line that did not name it would leave the
     reader to infer which trace it came from, and `PL-0RZ0` found that a 2 px
     hand movement made that inference wrong. The line keeps the gloss that
-    `_hover_subject` gives the compartment. `docs/MODEL.md` requires that
-    hedge wherever the compartment is named, and a form that dropped it to
+    `_hover_subject` gives the compartment. `docs/INTERFACE.md` § "When more
+    than one trace is within reach" requires that hedge wherever the compartment
+    is named, and a form that dropped it to
     stay narrow would be trading a required qualifier for a column of
     whitespace.
 

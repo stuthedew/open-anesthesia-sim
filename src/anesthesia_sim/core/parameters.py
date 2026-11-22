@@ -1259,8 +1259,9 @@ class _BreathingCircuitPayload(_StrictPayload):
     circuit whose own volume is stated. Stored bare, a Perseus A500's 2.1 L gives a circuit time
     constant of 31.5 s at 4.0 L/min, where its assembled 3.3 L gives 49.5 s.
     Nothing here can tell the two apart. Both are positive finite volumes, and
-    `check_provenance` asks only that a stored number has a row in
-    `docs/MODEL.md`. That document states the rule under "Breathing circuit".
+    `check_provenance` asks only that a stored number has a row in the table of
+    `docs/PARAMETERS.md` § "The stored values, by data file and key".
+    `docs/MODEL.md` § "Breathing circuit" states the rule.
 
     `default_fresh_gas_flow_l_min` is checked here only as positive and
     finite, not against `core/supported_ranges.py`. The reference patient's

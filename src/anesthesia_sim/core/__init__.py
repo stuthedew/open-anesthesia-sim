@@ -7,9 +7,10 @@ reads from one.
 ## A compartment's `advance()` is not how a run advances
 
 A run advances one state vector. One module assembles every balance that
-`docs/MODEL.md` states into a single system matrix (`governing_equations.py`),
-and another propagates that matrix exactly (`matrix_exponential.py`). The only
-entry point to that propagation is `AgentUptakeSystem.advance()`.
+`docs/MODEL.md` § "Equations" states into a single system matrix
+(`governing_equations.py`), and another propagates that matrix exactly
+(`matrix_exponential.py`). The only entry point to that propagation is
+`AgentUptakeSystem.advance()`.
 
 The compartments also have `advance()` methods of their own. Each one is that
 compartment's closed-form solution against a stated, constant input: a held
@@ -52,8 +53,8 @@ returns, bit for bit, at every flow that the test suite walks through (checked
 
 - **The three `time_constant_s` guards are required.** Python raises
   `ZeroDivisionError` on `V/0.0` rather than returning `inf`, so the guard is
-  the only route to the `inf` that `docs/MODEL.md` states for an unperfused
-  compartment.
+  the only route to the `inf` that `docs/VERIFICATION.md` § "Tissue uptake in
+  the code" states for an unperfused compartment.
 - **No closed form needs a guard, and none has one.** Each closed form is
   `i + (e - i) * (1 - exp(-dt/tau))`. It is anchored at `i`, what the
   compartment holds, and its last factor is computed with `expm1`. At zero
@@ -87,9 +88,9 @@ returns, bit for bit, at every flow that the test suite walks through (checked
   0.7943 L (computed 2026-10-12). Four such amounts are checked in
   `tests/unit/test_compartment_primitives.py`. The guard made an unperfused
   tissue report a change of exactly zero rather than one unit in the last
-  place, and zero meets `docs/MODEL.md`'s `dM_i/dt = 0` exactly. A form
-  anchored at the amount held makes no round trip, so the closed form gives the
-  exact no-op by itself.
+  place, and zero meets the `dM_i/dt = 0` of `docs/VERIFICATION.md`
+  § "Zero-tissue-flow test" exactly. A form anchored at the amount held makes
+  no round trip, so the closed form gives the exact no-op by itself.
 
 **Zero flow is compared exactly because there is no band of nearly-zero flows
 to catch.** The test suite walks upward from zero through the smallest

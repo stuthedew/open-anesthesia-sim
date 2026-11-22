@@ -125,7 +125,7 @@ def test_either_form_closes_the_textbook_share_of_the_gap(
     """The arrangement changes the rounding and not the equation.
 
     The result is checked against `M_eq + (M - M_eq) exp(-dt/tau)`, the form
-    that `docs/MODEL.md`'s balance integrates to. It is checked at three
+    that the balances of `docs/MODEL.md` § "Equations" integrate to. It is checked at three
     steps: a step at which the result is formed from the amount held, a step
     at the switch, and a step of one time constant, at which the result is
     formed from the equilibrium.

@@ -148,9 +148,10 @@ class RunStatus:
 
     This field is separate from `failure_reason` because the interface must
     not present the two states alike. If the simulator stopped exactly where
-    `docs/MODEL.md` says it should, telling a reader that it broke would
-    misrepresent a correct model as a defective one. The reverse mistake
-    would be worse. Both fields are `None` for a run that is merely paused.
+    `docs/INTERFACE.md` § "What happens when a run reaches the limit" says it should,
+    telling a reader that it broke would misrepresent a correct model as a
+    defective one. The reverse mistake would be worse. Both fields are `None`
+    for a run that is merely paused.
     """
     failure_reason: str | None
     """Why the run stopped abnormally, or `None` if it did not.
@@ -2806,8 +2807,8 @@ class SimulationController:
     # when this controller builds the system, and no interface control changes
     # it after that. The setter that used to be here was public and unbounded.
     # So it gave every caller of the app layer a way to set a circuit volume
-    # outside anything `docs/MODEL.md` verifies, for a control that no teaching
-    # case has asked for. `BreathingCircuit.set_circuit_volume` stays, because
+    # outside the verified domain, for a control that no teaching case has
+    # asked for. `BreathingCircuit.set_circuit_volume` stays, because
     # it is the only way `_build_state()` can pass the parameter to the circuit.
     # What was removed is the app-level passthrough, not the core primitive.
     # `docs/INTERFACE.md` § "What is not bounded this way" gives the argument.

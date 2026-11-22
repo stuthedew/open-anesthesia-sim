@@ -1215,9 +1215,10 @@ def test_no_two_trace_contrasts_reach_the_non_text_minimum() -> None:
 
 
 def test_the_worst_trace_contrast_pair_is_the_one_docs_model_records() -> None:
-    """`docs/MODEL.md` prints this matrix, and a stale table there misleads.
+    """`docs/INTERFACE.md` prints this matrix, and a stale table there misleads.
 
-    The whole section argues from the closest pair. Pinning it here means a
+    The whole of `docs/INTERFACE.md` § "The six compartment traces: what separates them"
+    argues from the closest pair. Pinning it here means a
     colour edit that changes which pair is closest fails the suite instead of
     leaving the document asserting a pair that is no longer the worst.
     """
@@ -1240,7 +1241,9 @@ def test_the_worst_trace_contrast_pair_is_the_one_docs_model_records() -> None:
 
 
 def test_the_separation_ceiling_falls_once_every_trace_must_clear_the_panel() -> None:
-    """The bound `docs/MODEL.md` and `.claude/rules/ui-color.md` both quote.
+    """The bound that `docs/INTERFACE.md` and `.claude/rules/ui-color.md` both quote.
+
+    `docs/INTERFACE.md` quotes it in § "The six compartment traces: what separates them".
 
     Holding a trace to 3:1 against a white panel caps its luminance at 0.30,
     which shortens the axis six traces spread along: 1.84 unconstrained, 1.48
@@ -1265,8 +1268,9 @@ def test_a_constrained_ceiling_refuses_arguments_it_cannot_answer(count: int, fl
 
 
 def test_the_two_agent_fills_iso_5360_makes_inseparable_stay_measured() -> None:
-    """`docs/MODEL.md` prints these four numbers, and once printed them wrongly.
+    """These four numbers are printed in the interface document, and were once printed wrongly.
 
+    `docs/INTERFACE.md` § "Color as a cue: agent colors and the alert color" prints them.
     ISO 5360 fixes isoflurane's purple and desflurane's blue, so the pair is
     not this project's to re-pick and the mitigation is that the agent name is
     always drawn alongside. What is this project's to keep honest is the claim

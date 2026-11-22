@@ -71,7 +71,8 @@ def _two_compartment_exchange(rate_left: float, rate_right: float) -> Matrix:
 
     The equations are `d x0/dt = rate_left (x1 - x0)` and
     `d x1/dt = rate_right (x0 - x1)`. They are the circuit and alveolar pair
-    of `docs/MODEL.md`, with ventilation as the only transfer between them.
+    of `docs/MODEL.md` § "Equations", with ventilation as the only transfer
+    between them.
     A test below writes out their closed form.
     """
 

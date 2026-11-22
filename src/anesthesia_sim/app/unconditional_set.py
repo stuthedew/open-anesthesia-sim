@@ -1,10 +1,11 @@
-"""The values no Workspace may remove: `docs/MODEL.md`'s unconditional set, as data.
+"""The values no Workspace may remove: the unconditional set, as data.
 
 `docs/INTERFACE.md` § "Minimum displayed outputs" -> "What this list requires
-once the layout is the reader's" divides the required display in three. The
-unconditional part is the set of values without which a reader could misread
-the run's other displayed numbers. It sits outside the area system, so no
-split, join, close or Workspace switch can take it off the screen. This module
+once the layout is the reader's" divides the required display in three.
+`docs/INTERFACE.md` § "The unconditional values" defines the unconditional
+part as the set of values without which a reader could misread the run's
+other displayed numbers. It sits outside the area system, so no split, join,
+close or Workspace switch can take it off the screen. This module
 states that set in code, so the region that holds it and the tests that
 check the region are built from one declaration rather than from a list
 written out twice (`PL-NWTM`).
@@ -129,7 +130,8 @@ _TIERS: Final[Mapping[UnconditionalValue, Tier]] = MappingProxyType(
 #: The unconditional value that each compartment concentration's readout
 #: carries, keyed by the recorded quantity that the readout draws.
 #: `RecordedQuantity.WASH_IN_RATIO` is absent, because F_A/F_I is shown on a
-#: chart, and `docs/MODEL.md` makes it conditional.
+#: chart, and `docs/INTERFACE.md` § "Values required only with their chart"
+#: makes it conditional.
 _COMPARTMENT_VALUES: Final[Mapping[RecordedQuantity, UnconditionalValue]] = MappingProxyType(
     {
         RecordedQuantity.CIRCUIT: UnconditionalValue.CIRCUIT_CONCENTRATION,
@@ -171,8 +173,9 @@ def compartment_value(quantity: RecordedQuantity) -> UnconditionalValue:
 class SubstanceInstance:
     """The per-substance tier for one kind of modelled substance.
 
-    `docs/MODEL.md` states the tier as a test, not as a list: a value belongs
-    to it when a reader could misread the run's other numbers without it.
+    `docs/INTERFACE.md` § "The unconditional values" states the tier as a
+    test, not as a list: a value belongs to it when a reader could misread the
+    run's other numbers without it.
     Each substance model applies that test once, where its own model is
     specified, and this value is the result.
 
@@ -211,10 +214,11 @@ class SubstanceInstance:
             )
 
 
-#: The tier for the inhaled-agent model `docs/MODEL.md` specifies: the
-#: delivered concentration and the six compartment concentrations, each in
-#: percent and as a multiple of 1 MAC, and the agent's 1 MAC in percent, so
-#: that the multiples show what they were divided by. Every agent this build
+#: The tier that `docs/INTERFACE.md` § "The unconditional values" specifies
+#: for the inhaled-agent model: the delivered concentration and the six
+#: compartment concentrations, each in percent and as a multiple of 1 MAC, and
+#: the agent's 1 MAC in percent, so that the multiples show what they were
+#: divided by. Every agent this build
 #: loads is an inhaled agent, so every run selects this tier.
 INHALED_AGENT: Final = SubstanceInstance(
     "an inhaled agent from a vaporizer",

@@ -64,7 +64,8 @@ def test_every_door_at_a_paused_instant_agrees_after_an_edit_made_there() -> Non
     trunk has run on past 30 s, branches are taken at the mark and at the
     keyframe again. Each branch is then reset.
 
-    Each branch is checked against the rule that `docs/MODEL.md` states. All
+    Each branch is checked against the rule that `docs/INTERFACE.md`
+    § "The settings a branch runs under" states. All
     of them share one provenance, the stretch that the halting step ran
     under. Each runs under what the dial showed when it was taken. So a
     branch taken before the edits runs under 2%. Every branch taken after

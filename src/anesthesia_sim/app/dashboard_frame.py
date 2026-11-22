@@ -2167,8 +2167,9 @@ def halt_disposition(error: BaseException) -> tuple[HaltDisposition, str]:
     the end of the supported domain. The core refused the next step before
     taking it, and nothing was miscalculated. Reporting it as a failure would
     put "simulation error" over a correct model that stopped where
-    `docs/MODEL.md` says it must (`PL-Y5WR`, `PL-V6M0`). Every other
-    exception, known or not, is a failure. Only the narrow case is named, so
+    `docs/INTERFACE.md` § "What happens when a run reaches the limit" says it must
+    (`PL-Y5WR`, `PL-V6M0`). Every other exception, known or not, is a failure.
+    Only the narrow case is named, so
     an unrecognised exception falls through to the more cautious branch.
 
     Args:
