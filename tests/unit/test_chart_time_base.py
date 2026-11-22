@@ -421,3 +421,26 @@ def test_a_stretch_whose_ends_have_no_value_returns_its_highest_and_lowest_insid
 def test_a_stretch_with_no_value_inside_returns_nothing() -> None:
     assert extreme_seconds_with_gaps(0, (1.0, None, None, None, 2.0), (0, 4)) == set()
     assert extreme_seconds_with_gaps(0, (None, None, None, None, None), (0, 4)) == set()
+
+
+def test_a_one_second_stretch_after_two_adjacent_drawn_seconds_is_still_searched() -> None:
+    """Two adjacent drawn seconds hold nothing between them, and the next stretch is searched.
+
+    The drawn seconds are 0, 1 and 3, so the stretch from 1 s to 3 s holds
+    one second. Its value of 0.2 at 2 s is below both ends, so 2 s is
+    returned. A search that stopped at the first pair with nothing inside,
+    or that skipped a stretch holding only one second, would return nothing.
+    """
+
+    assert extreme_seconds_with_gaps(0, (0.9, 0.8, 0.2, 0.7), (0, 1, 3)) == {2}
+
+
+def test_a_value_inside_equal_to_an_end_is_not_returned() -> None:
+    """A value inside a stretch is returned only where it lies outside each end, not level with one.
+
+    The lowest value inside, 0.4 at 2 s, equals the right end, so it is not a
+    trough below both ends and 2 s is not returned. The highest, 0.9 at 1 s,
+    is above both ends, so 1 s is returned.
+    """
+
+    assert extreme_seconds_with_gaps(0, (0.6, 0.9, 0.4, 0.4), (0, 3)) == {1}

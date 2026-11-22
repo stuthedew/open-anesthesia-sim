@@ -537,9 +537,6 @@ def extreme_seconds_with_gaps(
     found: set[int] = set()
 
     for left_s, right_s in itertools.pairwise(drawn_s):
-        if right_s - left_s < 2:
-            continue
-
         ends = [
             end for end in (values[left_s - first_s], values[right_s - first_s]) if end is not None
         ]
