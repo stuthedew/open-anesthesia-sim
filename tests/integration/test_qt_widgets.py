@@ -20,7 +20,7 @@ from collections.abc import Iterator
 
 import pytest
 from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, QSize, Qt
-from PySide6.QtGui import QColor, QFontMetrics, QPalette
+from PySide6.QtGui import QColor, QFontMetrics, QKeyEvent, QPalette, QWheelEvent
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
     QApplication,
@@ -652,15 +652,81 @@ def test_driving_a_slider_from_the_snapshot_emits_no_change(application: QApplic
     assert control.value_label.text() == fresh_gas_flow.value_text
 
 
-def test_a_slider_press_declares_an_adjustment(application: QApplication) -> None:
+def _wheel_event(slider: QWidget, phase: Qt.ScrollPhase) -> QWheelEvent:
+    """One wheel event of one notch, 120 units, upward, at the slider's centre."""
+
+    centre = QPointF(slider.width() / 2, slider.height() / 2)
+
+    return QWheelEvent(
+        centre,
+        slider.mapToGlobal(centre),
+        QPoint(),
+        QPoint(0, 120),
+        Qt.MouseButton.NoButton,
+        Qt.KeyboardModifier.NoModifier,
+        phase,
+        False,
+    )
+
+
+def _key_event(*, repeat: bool) -> QKeyEvent:
+    """A Right-arrow press, marked as a held key's repeat or not."""
+
+    return QKeyEvent(
+        QEvent.Type.KeyPress, Qt.Key.Key_Right, Qt.KeyboardModifier.NoModifier, "", repeat
+    )
+
+
+def test_each_input_on_a_slider_declares_one_adjustment(application: QApplication) -> None:
+    """A press, a key press, a wheel notch and the start of a swipe each declare an adjustment.
+
+    A held key's repeats and a swipe's later events declare none.
+
+    `docs/INTERFACE.md` § "The control-input timeline" makes each input an
+    adjustment of its own, and a held key or a swipe one input (`PL-0T2H`,
+    `PL-PXTT`).
+    """
+
     control = ParameterSlider(_settings()[0])
-    started: list[None] = []
-    control.adjustment_started.connect(lambda: started.append(None))
+    control.resize(400, control.sizeHint().height())
+    slider = control.slider
+    started: list[str] = []
+    inputs = (
+        ("press", lambda: QTest.mouseClick(slider, Qt.MouseButton.LeftButton)),
+        ("key", lambda: QApplication.sendEvent(slider, _key_event(repeat=False))),
+        ("repeat", lambda: QApplication.sendEvent(slider, _key_event(repeat=True))),
+        (
+            "notch",
+            lambda: QApplication.sendEvent(
+                slider, _wheel_event(slider, Qt.ScrollPhase.NoScrollPhase)
+            ),
+        ),
+        (
+            "swipe begins",
+            lambda: QApplication.sendEvent(
+                slider, _wheel_event(slider, Qt.ScrollPhase.ScrollBegin)
+            ),
+        ),
+        (
+            "swipe moves",
+            lambda: QApplication.sendEvent(
+                slider, _wheel_event(slider, Qt.ScrollPhase.ScrollUpdate)
+            ),
+        ),
+        (
+            "swipe coasts",
+            lambda: QApplication.sendEvent(
+                slider, _wheel_event(slider, Qt.ScrollPhase.ScrollMomentum)
+            ),
+        ),
+    )
 
-    control.slider.setSliderDown(True)
-    control.slider.setSliderDown(False)
+    for name, send in inputs:
+        control.adjustment_started.connect(lambda name=name: started.append(name))
+        send()
+        control.adjustment_started.disconnect()
 
-    assert started == [None]
+    assert started == ["press", "key", "notch", "swipe begins"]
 
 
 def test_a_dragged_thumb_previews_until_release_and_then_applies_once(
