@@ -3,6 +3,7 @@ id: PL-906T
 title: tests/reference/test_coupled_dynamics.py still copies dated measurements that docs/VERIFICATION.md § 'Independent-solution test' also records (the oracle-step tables, the peak instants, the retired constants' figures); keep one record and point the other at it
 status: done
 feature: prose-quality
+milestone: v0.6.21
 touches: tests/reference/test_coupled_dynamics.py, docs/VERIFICATION.md
 added: 2026-11-22
 closed: 2026-11-22

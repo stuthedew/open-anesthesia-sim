@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, safety
 feature: every-view-in-run-state-tests
+milestone: v0.6.21
 touches: tests/integration/simulation_view, tests/integration/test_qt_rendering.py, tests/integration/test_run_surfaces.py, tests/integration/test_view_contract.py
 deferred-from: v0.7.0 - a new problem, not present at the freeze (817a4d88, 2026-10-25): the compartment schematic and the agent cost View merged on 2026-11-01 and 2026-11-02; not live: checked 2026-11-10, the audit's read of both Views found no value left from an earlier run, and the gap is in the tests
 added: 2026-11-10

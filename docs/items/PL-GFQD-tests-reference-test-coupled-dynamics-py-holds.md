@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, test
 feature: floating-point-domain
+milestone: v0.6.21
 touches: tests/reference/test_coupled_dynamics.py, docs/MODEL.md, docs/VERIFICATION.md
 deferred-from: v0.7.0 - a new problem: #2180 (d4e8200c, PL-SZ6G) moved every run to one step length and deleted the subdivision measurement that set the two margins
 added: 2026-11-21

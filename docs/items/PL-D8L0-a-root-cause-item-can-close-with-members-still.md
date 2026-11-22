@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: generator-heads
+milestone: v0.6.21
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests, subprojects/docket/README.md, .claude/skills/docket/modes/triage.md
 deferred-from: v0.7.0 - found by the 2026-11-10 audit after the freeze; apparatus, and it changes no displayed value, so the release does not wait on it
 added: 2026-11-10

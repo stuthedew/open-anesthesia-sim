@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: model-claims-held-by-tests
+milestone: v0.6.21
 touches: src/anesthesia_sim/core/liquid_agent.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/agent_cost.py
 added: 2026-11-22
 closed: 2026-11-22

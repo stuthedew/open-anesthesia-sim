@@ -2445,6 +2445,15 @@ five exceptions.
 `test_the_wash_in_axis_is_ruled_at_quarters_and_the_window_is_the_chart_s` is in
 `tests/integration/test_qt_chart.py`.
 
+Most of those tests read the formatted value from the toolkit-free frame, not
+from a drawn widget. `test_every_minimum_displayed_output_reads_its_value_from_its_widget`,
+in `tests/integration/simulation_view/test_simulation_view_readouts.py`, closes
+that gap for the unconditional part of the list. It walks the set that
+`app/unconditional_set.py` declares, finds each value's widget through
+`RunView.unconditional_widgets`, and checks that the widget is shown and reads
+the run's value. For a compartment it reads the multiple of 1 MAC beside the
+percent.
+
 ### Every value and what qualifies it come from one step
 
 Where the screen shows a value with what qualifies it, both come from a single

@@ -4035,7 +4035,7 @@ def check_named_tests(root: Path, documents: Mapping[Path, str], report: Report)
     leaves the sentence reading exactly as it did when it was true, which is the
     silent-wrong-answer shape `CLAUDE.md` asks to be caught in code. The hazard
     table's right-hand column is the reason this was built (`PL-FDBK`), and it
-    is the cheap half of `PL-8LDF`, which keeps the annotation pass over the
+    is the cheap half of `PL-8LDF`, whose annotation pass bound the
     required invariants.
 
     **Every documentation file, and not the queue, and the exclusion is the
@@ -4660,8 +4660,8 @@ INTERFACE_PROVENANCE = Path("docs/interface-provenance.md")
 # never in anticipation of one**, so the check never holds `make check` red for
 # work nobody has done yet. The check was introduced over the hazard table,
 # which conformed already, so it landed green; `PL-036` added the minimum
-# displayed outputs, `PL-2M9N` added the required tests, and `PL-8LDF` (required
-# invariants) is the pass still due.
+# displayed outputs, `PL-2M9N` added the required tests, and `PL-8LDF` added the
+# required invariants.
 #
 # `PL-B6YV` added the first section held by its numeric paragraphs, "Displayed
 # precision", whose numbers a learner reads directly. The other sections join
@@ -4699,6 +4699,14 @@ BOUND_FAMILIES = (
     BoundFamily(
         document=INTERFACE,
         heading="Minimum displayed outputs",
+        level=2,
+        kind=TEST_ENTITY,
+        members=_list_members,
+        promise="every entry names the test that holds it",
+    ),
+    BoundFamily(
+        document=VERIFICATION,
+        heading="Required invariants",
         level=2,
         kind=TEST_ENTITY,
         members=_list_members,

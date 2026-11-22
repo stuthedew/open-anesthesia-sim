@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, safety
 feature: model-claims-held-by-tests
+milestone: v0.6.21
 touches: docs/MODEL.md, docs/INTERFACE.md
 deferred-from: v0.7.0 - not live: checked 2026-11-22 at d4e8200c: REFERENCE_TEMPERATURE_CELSIUS is 20.0, and test_the_reference_condition_gap_is_the_ratio_of_molar_volumes computes the 5.8 % and 5.5 % from it, so every figure agrees with the constant and no learner can see a wrong value now
 added: 2026-11-11
