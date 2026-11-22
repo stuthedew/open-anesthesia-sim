@@ -14,15 +14,16 @@ import difflib
 import itertools
 import json
 from collections.abc import Callable, Iterator, Sequence
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, fields, replace
 from pathlib import Path
-from typing import Final, get_protocol_members
+from typing import Final, NamedTuple, get_protocol_members
 
 import numpy as np
 import pyqtgraph as pg
 import pytest
-from PySide6.QtCore import QEvent
-from PySide6.QtWidgets import QApplication, QGraphicsView, QScrollBar, QWidget
+from PySide6.QtCore import QEvent, Qt
+from PySide6.QtGui import QBrush, QColor, QPen
+from PySide6.QtWidgets import QApplication, QGraphicsView, QLabel, QScrollBar, QVBoxLayout, QWidget
 
 from anesthesia_sim.app import area_layout
 from anesthesia_sim.app import simulation_view as simulation_view_module
@@ -30,6 +31,7 @@ from anesthesia_sim.app.bookmarks import TimeBookmark
 from anesthesia_sim.app.chart_time_base import FIT_RUN_KEY, time_base_for_span
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.formatting import AgentAmountUnit
+from anesthesia_sim.app.qt_chart import _LineSwatch
 from anesthesia_sim.app.run_presentation import RunPresentation, ShownFrame
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.app.simulation_view import SimulationView
@@ -421,12 +423,39 @@ def test_a_window_picked_in_one_chart_changes_only_that_chart(
 # ------------------------------------------- a state drawn alike whatever came before
 
 
+def _pen_reading(pen: QPen | None) -> tuple[object, ...] | None:
+    """A pen as a reader sees it: its colour, width, line style and dash pattern."""
+
+    if pen is None:
+        return None
+
+    return (
+        pen.color().name(QColor.NameFormat.HexArgb),
+        pen.widthF(),
+        pen.style().name,
+        tuple(pen.dashPattern()),
+    )
+
+
+def _brush_reading(brush: QBrush | None) -> tuple[object, ...] | None:
+    """A fill as a reader sees it: its colour and its pattern."""
+
+    if brush is None:
+        return None
+
+    return (brush.color().name(QColor.NameFormat.HexArgb), brush.style().name)
+
+
 def _drawn_by(item: object) -> tuple[object, ...] | None:
     """What one visible item of a plot draws, or None for an item that draws nothing.
 
     A curve with fewer than two points and a scatter with no point draw
-    nothing, so they are left out. For an axis, the reading is its title and
-    the labels it was given (`qt_chart._axis_ticks` reads the same field).
+    nothing, so they are left out. A curve, a scatter's points, a line and
+    a band are read with their pens and fills, because a trace's colour,
+    width and dash say which compartment and which run it is
+    (`chart_frame.run_trace_style`). For an axis, the reading is its title
+    and the labels it was given (`qt_chart._axis_ticks` reads the same
+    field).
     """
 
     reading: list[object] = [type(item).__name__]
@@ -439,10 +468,38 @@ def _drawn_by(item: object) -> tuple[object, ...] | None:
             return None
 
         reading.extend((tuple(np.asarray(x).tolist()), tuple(np.asarray(y).tolist())))
+
+        if isinstance(item, pg.PlotCurveItem):
+            brush = item.opts["brush"]
+            reading.extend(
+                (
+                    _pen_reading(item.opts["pen"]),
+                    None if brush is None else _brush_reading(pg.mkBrush(brush)),
+                    item.opts["fillLevel"],
+                )
+            )
+        else:
+            reading.append(
+                tuple(
+                    (
+                        _pen_reading(spot.pen()),
+                        _brush_reading(spot.brush()),
+                        spot.symbol(),
+                        spot.size(),
+                    )
+                    for spot in item.points()
+                )
+            )
     elif isinstance(item, pg.InfiniteLine):
-        reading.extend((item.value(), item.angle % 180))
+        reading.extend((item.value(), item.angle % 180, _pen_reading(item.pen)))
     elif isinstance(item, pg.LinearRegionItem):
-        reading.append(tuple(item.getRegion()))
+        reading.extend(
+            (
+                tuple(item.getRegion()),
+                _brush_reading(item.brush),
+                tuple(_pen_reading(line.pen) for line in item.lines),
+            )
+        )
     elif isinstance(item, pg.TextItem):
         reading.append(item.textItem.toPlainText())
     elif isinstance(item, pg.AxisItem):
@@ -493,15 +550,39 @@ def _plotted(view: QGraphicsView) -> list[tuple[object, ...]]:
     return drawn
 
 
-def _seen(widget: QWidget) -> tuple[object, ...]:
+class _Seen(NamedTuple):
+    """What a reader sees of one widget itself."""
+
+    kind: str
+    hidden: bool
+    enabled: bool
+    style_sheet: str
+    #: Everything else the widget shows: its text, value or painted strings,
+    #: and for a legend swatch its pen and whether it is drawn.
+    shown: tuple[object, ...]
+
+    def paints(self) -> bool:
+        """Whether the widget itself shows anything: a style sheet, or some text, value or mark.
+
+        A plain container shows nothing itself, and its children are read on
+        their own.
+        """
+
+        return bool(self.style_sheet or self.shown)
+
+
+def _seen(widget: QWidget) -> _Seen:
     """What a reader sees of one widget itself, with a painted string's View named by its type.
 
     `AreaLayout.painted_strings` pairs each string with the View that paints
     it, so the View is named by its type here. Its address differs between
-    two dashboards that show the same thing.
+    two dashboards that show the same thing. A legend swatch draws a line
+    and no text, so its pen and whether it is drawn are read from it
+    (`qt_chart._LineSwatch`). The pen's dash is the second cue beside the
+    colour for a reader who cannot tell the colours apart (`PL-88MK`).
     """
 
-    return tuple(
+    kind, hidden, enabled, style_sheet, *rest = (
         tuple(
             (type(pair[0]).__name__, *pair[1:])
             if isinstance(pair, tuple) and pair and isinstance(pair[0], QWidget)
@@ -512,6 +593,11 @@ def _seen(widget: QWidget) -> tuple[object, ...]:
         else part
         for part in _widget_state(widget)
     )
+
+    if isinstance(widget, _LineSwatch):
+        rest.extend((_pen_reading(widget._pen), widget._filled, widget._vertical))
+
+    return _Seen(str(kind), bool(hidden), bool(enabled), str(style_sheet), tuple(rest))
 
 
 #: The names that Qt gives the private widgets holding a `QScrollArea`'s two scroll bars.
@@ -534,14 +620,14 @@ def _chain(widget: QWidget, root: QWidget) -> str:
 def _screen(root: QWidget) -> list[tuple[str, str]]:
     """Everything a reader can see under `root`, found by a walk rather than a list.
 
-    Each widget that `root` would show is read with `_widget_state`: its
-    text, value, enabled state, style sheet and painted strings. A plot's
-    scene is read item by item (`_drawn_by`), so a curve, a line, a band or
-    an axis label left from an earlier state is a difference, as a label's
-    text is. A plain container with no style sheet paints nothing itself,
-    and its children are read on their own, so it is left out. The entries
-    are sorted, so two screens that list the same widgets in another order
-    compare equal.
+    Each widget that `root` would show is read with `_seen`: its text,
+    value, enabled state, style sheet and painted strings, and a legend
+    swatch's pen. A plot's scene is read item by item (`_drawn_by`), so a
+    curve, a line, a band, a pen or an axis label left from an earlier
+    state is a difference, as a label's text is. A plain container with no
+    style sheet paints nothing itself, and its children are read on their
+    own, so it is left out. The entries are sorted, so two screens that
+    list the same widgets in another order compare equal.
 
     A scroll bar is left out. Its range and whether it shows follow the
     height the page was last laid out at, which states nothing about a run,
@@ -560,9 +646,7 @@ def _screen(root: QWidget) -> list[tuple[str, str]]:
         chain = _chain(widget, root)
         seen = _seen(widget)
 
-        # The first four parts of a reading are the type, whether the widget is
-        # hidden, whether it is enabled and its style sheet.
-        if seen[3] or seen[4:]:
+        if seen.paints():
             screen.append((chain, repr(seen)))
 
         if isinstance(widget, QGraphicsView) and widget.scene() is not None:
@@ -641,14 +725,59 @@ def _press_the_trunk_s_reset(view: SimulationView, frames: _Frames) -> None:
     view.runs[0]._reset_button.click()
 
 
-def _discard_the_branch_while_frames_fail(view: SimulationView, frames: _Frames) -> None:
-    """Add a mark, then answer the open Reset question by discarding the branch, as frames fail."""
+def _branch_at_induction(view: SimulationView) -> None:
+    """Run the restarted trunk to 2 minutes, draw it, and branch it at induction."""
 
-    frames.fail(True)
-    view.runs[0].controller.add_time_bookmark(TimeBookmark(CaseInstant(30), "check"))
+    trunk = view.runs[0]
+    assert len(view.runs) == 1, "the trunk's Reset kept the branch"
+    trunk.controller.start()
+    _advance(trunk.controller, 120)
+    trunk.controller.pause()
+    # The branch control offers the instants of the frame last drawn.
+    view.present(False)
+    _settle(QApplication.instance())
+    _take_fork(view, 0.0)
+
+
+def _discard_the_branch_and_branch_again(view: SimulationView, frames: _Frames) -> None:
+    """Answer the open Reset question by discarding the branch, then branch the trunk again.
+
+    The new branch sits where the discarded one sat, so a View that kept the
+    discarded run's widgets or values for that place shows them beside the
+    new run's name.
+    """
+
+    frames.fail(False)
     dialog = view.runs[0]._reset_dialog
     assert dialog is not None, "the trunk's Reset asked nothing"
     dialog.discard_button.click()
+    _branch_at_induction(view)
+
+
+def _drop_the_branch_and_branch_again(view: SimulationView, frames: _Frames) -> None:
+    """Drop a branch that has no work with the trunk's Reset, then branch the trunk again.
+
+    A dashboard numbers the runs it opens and never reuses a number. So the
+    fresh dashboard drops a branch too, and names the new branch as the
+    first dashboard does.
+    """
+
+    frames.fail(False)
+    view.runs[0]._reset_button.click()
+    _branch_at_induction(view)
+
+
+def _mark_and_reset_while_frames_fail(view: SimulationView, frames: _Frames) -> None:
+    """Add a mark, then press the trunk's Reset as frames fail, which drops the branch unasked.
+
+    The branch was taken at induction and has no work of its own, so the
+    Reset has nothing to ask.
+    """
+
+    frames.fail(True)
+    view.runs[0].controller.add_time_bookmark(TimeBookmark(CaseInstant(30), "check"))
+    view.runs[0]._reset_button.click()
+    assert len(view.runs) == 1, "the trunk's Reset kept the branch"
 
 
 def _reset_while_frames_fail(view: SimulationView, frames: _Frames) -> None:
@@ -705,7 +834,8 @@ _CIRCUIT, _ALVEOLAR = RecordedQuantity.CIRCUIT, RecordedQuantity.ALVEOLAR
 
 #: The states the walk shows, in order. It includes a halt after a Reset and a
 #: halt after an agent change, each with no frame drawn since, a halt that
-#: keeps the last frame, two compared runs, and the two open questions. Every
+#: keeps the last frame, two compared runs, a new branch in the place of a
+#: dropped one, and the two open questions. Every
 #: field of the tick a View is handed changes between some state and the one
 #: after it, as `test_each_field_of_a_view_tick_changes_between_two_states_of_the_walk`
 #: checks.
@@ -732,8 +862,15 @@ _STATES: Final = (
         AgentAmountUnit.MILLILITRES_OF_LIQUID,
     ),
     _State(
+        "a new branch compared in place of the one the trunk's Reset discarded",
+        _discard_the_branch_and_branch_again,
+        _drop_the_branch_and_branch_again,
+        (RecordedQuantity.VESSEL_RICH, _ALVEOLAR),
+        AgentAmountUnit.LITRES_OF_VAPOUR,
+    ),
+    _State(
         "halt after a Reset that no frame draws, with a mark added",
-        _discard_the_branch_while_frames_fail,
+        _mark_and_reset_while_frames_fail,
         _reset_while_frames_fail,
         (RecordedQuantity.MUSCLE,),
         AgentAmountUnit.LITRES_OF_VAPOUR,
@@ -998,11 +1135,14 @@ def _changed_fields(before: ViewTick, after: ViewTick) -> set[str]:
         for field in fields(ViewTick)
         if getattr(before, field.name) != getattr(after, field.name)
     }
+    # Runs are compared one by one, at the same place in each tick, as a View
+    # draws them. A run that only one tick holds changes no field, so a
+    # change in the number of runs alone does not count as a change.
     changed.update(
         f"RunPresentation.{field.name}"
         for field in fields(RunPresentation)
-        if tuple(getattr(run, field.name) for run in before.runs)
-        != tuple(getattr(run, field.name) for run in after.runs)
+        for earlier, later in zip(before.runs, after.runs, strict=False)
+        if getattr(earlier, field.name) != getattr(later, field.name)
     )
     changed.update(
         f"CasePresentation.{field.name}"
@@ -1045,3 +1185,107 @@ def test_each_field_of_a_view_tick_changes_between_two_states_of_the_walk(walk: 
         "no two states of the walk shown one after the other differ in these fields: add a "
         "state to _STATES that changes each one"
     )
+
+
+def test_a_run_added_or_dropped_changes_no_field_of_the_runs_both_ticks_hold(walk: _Walk) -> None:
+    """A field of a run counts as changed only where one run's value of it changed.
+
+    Two ticks that differ only in how many runs they hold show the same
+    values for the runs they share. So a change in the run count must not
+    count every field of a run as changed. If it did, the test above could
+    never fail for a field of `RunPresentation`, because the walk adds and
+    drops a branch.
+    """
+
+    compared = next(tick for ticks in walk.ticks for tick in ticks.values() if len(tick.runs) > 1)
+    trunk_only = replace(compared, runs=compared.runs[:1])
+
+    assert (
+        sorted(
+            name
+            for name in _changed_fields(compared, trunk_only)
+            if name.startswith("RunPresentation.")
+        )
+        == []
+    )
+
+
+@dataclass
+class _Stage:
+    """A small window holding one label, one plotted curve and one legend swatch."""
+
+    window: QWidget
+    label: QLabel
+    curve: pg.PlotCurveItem
+    swatch: _LineSwatch
+
+
+def _staged(application: QApplication) -> _Stage:
+    window = QWidget()
+    layout = QVBoxLayout(window)
+    label = QLabel("1.2%")
+    plot = pg.PlotWidget()
+    curve = pg.PlotCurveItem(
+        x=[0.0, 60.0, 120.0], y=[0.0, 1.0, 1.5], pen=pg.mkPen("#1f77b4", width=2)
+    )
+    plot.addItem(curve)
+    # A fixed range, so that a change to a pen cannot move the range and be
+    # found that way instead.
+    plot.setRange(xRange=(0.0, 120.0), yRange=(0.0, 2.0), padding=0.0)
+    plot.disableAutoRange()
+    swatch = _LineSwatch(QPen(QColor("#1f77b4"), 2.0), 24, 12)
+
+    for widget in (label, plot, swatch):
+        layout.addWidget(widget)
+
+    window.resize(400, 400)
+    window.show()
+    _settle(application)
+
+    return _Stage(window, label, curve, swatch)
+
+
+def _dashed(stage: _Stage) -> None:
+    pen = QPen(QColor("#1f77b4"), 2.0)
+    pen.setStyle(Qt.PenStyle.DashLine)
+    stage.swatch.set_pen(pen)
+
+
+#: One stale value of each kind that the walk must find, each written by changing one thing.
+_STALE_VALUES: Final[dict[str, Callable[[_Stage], None]]] = {
+    "a label's text": lambda stage: stage.label.setText("1.3%"),
+    "a curve's point": lambda stage: stage.curve.setData(x=[0.0, 60.0, 120.0], y=[0.0, 1.0, 1.6]),
+    "a curve's colour": lambda stage: stage.curve.setPen(pg.mkPen("#d62728", width=2)),
+    "a curve's width": lambda stage: stage.curve.setPen(pg.mkPen("#1f77b4", width=1)),
+    "a curve's dash": lambda stage: stage.curve.setPen(
+        pg.mkPen("#1f77b4", width=2, style=Qt.PenStyle.DashLine)
+    ),
+    "a swatch's dash": _dashed,
+    "a swatch left empty": lambda stage: stage.swatch.set_filled(False),
+}
+
+
+@pytest.mark.parametrize("change", sorted(_STALE_VALUES))
+def test_the_walk_reads_a_stale_value_of_each_kind_as_a_difference(
+    application: QApplication, change: str
+) -> None:
+    """The reading that the walk compares changes when one label, point or pen changes.
+
+    The walk test passes whenever its two readings are equal, so it would
+    also pass if the reading stopped seeing a kind of value. This test
+    changes one value of each kind on a small window and requires the
+    reading to change with it.
+    """
+
+    stage = _staged(application)
+
+    try:
+        before = _screen(stage.window)
+        _STALE_VALUES[change](stage)
+        _settle(application)
+        after = _screen(stage.window)
+    finally:
+        stage.window.deleteLater()
+        _settle(application)
+
+    assert before != after, f"the walk's reading does not change when {change} changes"

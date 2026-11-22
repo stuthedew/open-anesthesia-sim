@@ -1005,12 +1005,15 @@ step (`test_every_value_and_its_qualifiers_on_screen_come_from_one_state`,
 `PL-J5GC`). Another checks that nothing on screen keeps a value from an earlier
 state (`test_every_registered_view_draws_a_state_alike_whatever_it_drew_before`
 in `tests/integration/test_view_contract.py`, `PL-RF2S`). It shows a table of
-states in turn to one dashboard: two compared runs, both open questions, a halt
-after a Reset and a halt after an agent change with no frame drawn since, and
-a halt that keeps the last frame. It shows each state again to a new
-dashboard built over the same runs, and the two must read alike. The reading
-covers every widget's text, value, enabled state and style sheet, every
-painted string, and every item each plot draws. The test also hands every
+states in turn to one dashboard: two compared runs, both open questions, a new
+branch in the place of a discarded one, a halt after a Reset and a halt after
+an agent change with no frame drawn since, and a halt that keeps the last
+frame. It shows each state again to a new dashboard built over the same runs,
+and the two must read alike. The reading covers every widget's text, value,
+enabled state and style sheet, every painted string, every item each plot
+draws with its pen and fill, and the pen of each legend swatch. A pen is read
+because a trace's width and dash say which run and which compartment it is.
+The test also hands every
 tick of the walk to a new View of each registered kind, once after each other
 tick and once alone, and requires the same. It finds the widgets and plot
 items by a walk, so a widget or View added later is checked without anyone
