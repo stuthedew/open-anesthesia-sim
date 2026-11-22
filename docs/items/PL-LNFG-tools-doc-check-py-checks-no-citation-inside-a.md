@@ -25,7 +25,7 @@ is split out here rather than built there (`PL-DBGT` carries why).
 marks in the documents `read_docs` hands it. A data file's `note` strings do
 not use those forms: they cite a path bare
 (`tests/reference/test_published_wash_in_and_elimination.py`) and a section as
-the document, a comma and the title in single quotes (`docs/MODEL.md,
+the document, a comma and the title in single quotes (`docs/PARAMETERS.md,
 'Source hierarchy'`). Handing the notes to `check_citations` as they stand
 would therefore check nothing.
 

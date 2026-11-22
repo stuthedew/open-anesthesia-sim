@@ -13,7 +13,7 @@ payoff: Every MAC multiple a learner reads is divided by a published MAC for a s
 
 **Problem.** Gas Man's released settings file holds MAC 2.1% sevoflurane and 1.1% isoflurane; we store De Wolf's 2.0% and 1.2%. Decide which MAC values to store
 
-**The disagreement.** `docs/MODEL.md` § "Source hierarchy" records that two
+**The disagreement.** `docs/PARAMETERS.md` § "Source hierarchy" records that two
 Gas Man simulation studies print different MAC values for Gas Man's set.
 Weber et al. 2021 print 2.1% sevoflurane and 1.1% isoflurane. De Wolf et al.
 2012 print 2.0% and 1.2%, and the simulator stores De Wolf's values.
@@ -29,7 +29,7 @@ coefficients for all three agents, the four tissue and alveolar volumes, and
 the 76/18/6 flow fractions.
 
 **Why it matters.** MAC divides every value shown in MAC multiples
-(`docs/MODEL.md` § "Where each stored value comes from"), so the choice changes
+(`docs/PARAMETERS.md` § "Where each stored value comes from"), so the choice changes
 a displayed clinical value by about 5% for sevoflurane and 9% for isoflurane.
 That makes it a safety-critical decision and the project owner's.
 
@@ -65,7 +65,7 @@ with the divisor. It reopens the decision of 2026-09-04 (ratified, over
 adopting Mapleson's age-40 values), whose second reason was that every other
 parameter comes from the Gas Man set. That reason still holds, and the owner's
 age requirement is the new constraint that outweighs it. Mapleson is tier 2
-under `docs/MODEL.md` § "Source hierarchy", so adopting it needs this recorded
+under `docs/PARAMETERS.md` § "Source hierarchy", so adopting it needs this recorded
 decision.
 
 **Alternative.** Keep De Wolf's values and label them "a single adult MAC

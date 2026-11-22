@@ -5097,7 +5097,7 @@ explicitly.
 It corrected the `PL-YLKR` paragraph above, and `PL-YLKR`'s brief, on
 2026-09-13. `PL-DZFJ` records the correction.
 
-- PL-7KDC (S) docs/MODEL.md's 'Where this project stands' paragraph still says all eleven reference-patient parameters are the Gas Man default patient and 26 of 29 rows are tier 3, though PL-8ZJQ moved venous_pool_volume_l to a tier-2 source
+- PL-7KDC (S) docs/PARAMETERS.md's 'Where this project stands' paragraph still says all eleven reference-patient parameters are the Gas Man default patient and 26 of 29 rows are tier 3, though PL-8ZJQ moved venous_pool_volume_l to a tier-2 source
 - PL-DZFJ (S) ROADMAP.md's gate text and PL-YLKR's brief say every drawn chart point is an M4 representative of a bucket of recorded samples, which PL-2FM6 deleted in v0.4.12 - the chart evaluates the score at the plotted instants
 - PL-MMWX (S) ROADMAP.md's planned-milestone item 30 does not say that cardiac-output scaling is one of its obligations, or that weight scaling is only safe as a coupled package
 - PL-Q5NS (S) docs/MODEL.md's Known limitations does not list lung tissue and pulmonary blood as an omitted store, which is worth about 20 percent of every agent's fast pool
@@ -5395,7 +5395,7 @@ cleared before implementation begins.
   mid-range clinical fresh gas flow". Its note on missing provenance (`provenance_gap`)
   adds that no clinical convention for a default flow "HAS NOT BEEN SOUGHT".
   `PL-4DCG`'s survey has since sought one and found the justification superseded.
-  `docs/MODEL.md` § "Parameter provenance" and `docs/machine-survey.md` § "(a2)" both
+  `docs/PARAMETERS.md` § "Parameter provenance" and `docs/machine-survey.md` § "(a2)" both
   restate that justification. The item is classed `science` because the project's own
   survey contradicts a clinical-practice claim that a reader finds in the document this
   project calls authoritative for provenance. **The 4 L/min default is not what is

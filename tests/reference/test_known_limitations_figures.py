@@ -34,6 +34,8 @@ from anesthesia_sim.core.parameters import (
 from anesthesia_sim.core.units import LITRES_PER_CUBIC_METRE
 
 MODEL_PATH = Path(__file__).resolve().parents[2] / "docs" / "MODEL.md"
+#: The document that holds the table of Yasuda, Targ and Eger's Table 1.
+PARAMETERS_PATH = MODEL_PATH.with_name("PARAMETERS.md")
 SECTION_HEADING = "## Known limitations"
 
 #: One standard atmosphere in mmHg, the pressure that `STANDARD_ATMOSPHERE_PA`
@@ -288,21 +290,22 @@ def test_yasudas_muscle_spreads_are_the_percents_printed() -> None:
         )
 
 
-#: The agent rows of § "Parameter provenance"'s table of Yasuda, Targ and
-#: Eger's Table 1, and its columns in order, each named for the stored field.
+#: The agent rows of the table of Yasuda, Targ and Eger's Table 1 in
+#: `docs/PARAMETERS.md` § "Parameter provenance", and its columns in order,
+#: each named for the stored field.
 YASUDA_TABLE_AGENTS = ("sevoflurane", "isoflurane", "desflurane")
 YASUDA_TABLE_TISSUES = ("vessel_rich", "muscle", "fat")
 
 
 def _yasuda_table() -> dict[tuple[str, str], tuple[float, float, float]]:
-    """Each cell of § "Parameter provenance"'s Yasuda table, as (stored, mean, SD).
+    """Each cell of `docs/PARAMETERS.md`'s Yasuda table, as (stored, mean, SD).
 
     The table restates the paper's Table 1 beside its citation, so it is the
     published input this module reads, as it reads Baker and Farmery's figures.
     """
 
     cells: dict[tuple[str, str], tuple[float, float, float]] = {}
-    for line in MODEL_PATH.read_text(encoding="utf-8").splitlines():
+    for line in PARAMETERS_PATH.read_text(encoding="utf-8").splitlines():
         agent = line.split("|")[1].strip() if line.startswith("| ") else ""
         # regex: each "stored vs mean ± SD" cell of one markdown table row.
         found = re.findall(r"(\d+\.\d+) vs (\d+\.\d+) ± (\d+\.\d+)", line)
@@ -312,7 +315,7 @@ def _yasuda_table() -> dict[tuple[str, str], tuple[float, float, float]]:
         for tissue, (stored, mean, sd) in zip(YASUDA_TABLE_TISSUES, found, strict=True):
             cells[agent, tissue] = (float(stored), float(mean), float(sd))
     assert len(cells) == len(YASUDA_TABLE_AGENTS) * len(YASUDA_TABLE_TISSUES), (
-        f"expected one row per agent in § 'Parameter provenance''s Yasuda table, found {cells}"
+        f"expected one row per agent in docs/PARAMETERS.md's Yasuda table, found {cells}"
     )
 
     return cells

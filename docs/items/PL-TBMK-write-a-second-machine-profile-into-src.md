@@ -36,7 +36,7 @@ Then `PL-2FZ9`, without which a second profile is not reachable by a run: the
 runtime ignores an extra file in that directory entirely.
 
 **`feature`-classed, with `anticipated`.** The deliverable is a set of sourced
-parameter values with provenance, held to `docs/MODEL.md` § "Source hierarchy".
+parameter values with provenance, held to `docs/PARAMETERS.md` § "Source hierarchy".
 `anticipated` because nothing displays a machine today, so nothing is wrong yet.
 
 **Done when.** A second profile exists under

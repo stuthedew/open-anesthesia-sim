@@ -4,14 +4,16 @@ title: Move docs/MODEL.md § Parameter provenance, word for word, to a new param
 priority: P1
 owner-priority: P1, 2026-11-11, ratified
 effort: M
-status: ready
+status: done
 classes: docs
 feature: model-md-structure
 touches: docs/MODEL.md, tools/doc_check.py, CLAUDE.md, .claude/rules/expert-review.md, src/anesthesia_sim/, tests/
 blocked-by: PL-6PPZ
 added: 2026-11-11
+closed: 2026-11-22
+pr: 2220
 payoff: a reader checking a stored value finds its file, its source and why it was chosen in one document
-verify: ! grep -q '^## Parameter provenance$' docs/MODEL.md
+verify: ! grep -qF '## Parameter provenance' docs/MODEL.md
 recurrences: 2026-11-21 PL-RMNP
 ---
 
@@ -67,3 +69,28 @@ an interface requirement or a value's source history, so each change added
 them there. No new head.
 
 **Checked 2026-11-22** against `d4e8200`: still applies. `docs/MODEL.md` still has `## Parameter provenance` at line 2577, and no parameter document exists under `docs/`. The blocker `PL-6PPZ` (the move of the six verification sections) is still open and was claimed by another session at 00:45 UTC on 2026-11-22. `PL-CTXZ` (the interface move) merged as #2109 on 2026-11-13, so this item waits only on `PL-6PPZ`.
+
+**Done 2026-11-22.** `docs/MODEL.md` § "Parameter provenance" moved word for
+word to `docs/PARAMETERS.md`, under a short opening that says what the
+document holds. Its subsections keep their headings: "Source hierarchy: what
+may be cited as the authority for a value", "Where each stored value comes
+from", "v0.2.0: isoflurane and desflurane" and "Delivery-limit and MAC
+parameters".
+
+1. Every citation of the section or a subsection now names the new document:
+   in the code, the `sources` notes of the data files, the tests, the other
+   documents, the rules and the open item briefs.
+2. `docs/PARAMETERS.md` joined the specification documents in
+   `docket.arming.SPECIFICATION_DOCS`, `tools/product_paths.py`,
+   `docket.toml`'s path lists and the paths that owe a second blind review
+   pass. `CLAUDE.md`, `.claude/rules/expert-review.md` and
+   `.claude/rules/apparatus-standard.md` name it with the simulator, and
+   `.claude/rules/document-readers.md` gives its readers.
+3. `check_provenance` in `tools/doc_check.py` reads the provenance table from
+   `docs/PARAMETERS.md`. Its tests still fail on a stored value with no row
+   and on a row with no stored value.
+4. `PL-4G3N` (#2212) changed a paragraph inside the moved section after this
+   work began. That change is in `docs/PARAMETERS.md`.
+5. `python3 tools/model_rewrite.py lost` against `origin/main` shows nothing
+   held fewer times across the four specification documents.
+6. `PL-N83Z` (sort the parameter document) now declares `docs/PARAMETERS.md`.

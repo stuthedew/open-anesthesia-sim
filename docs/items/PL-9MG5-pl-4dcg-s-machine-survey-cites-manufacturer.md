@@ -65,7 +65,7 @@ extraction note under `PL-Z3V5`'s convention, so the values `PL-4DCG` recorded
 become checkable against a held page rather than against a memory.
 
 **Why it matters, stated for the gate rather than the reader.** A machine value
-that no one can check is a provenance failure under `docs/MODEL.md` § "Source
+that no one can check is a provenance failure under `docs/PARAMETERS.md` § "Source
 hierarchy", and machine values reach displayed clinical numbers through the
 abstraction `PL-FG9D` just landed.
 

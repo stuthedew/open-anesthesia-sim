@@ -679,7 +679,7 @@ def format_mac_reference(agent_display_name: str, mac_percent: MacPercent) -> st
     see that they disagree, and can convert back.
 
     The value is deliberately shown to one decimal, which is the
-    precision the three stored values actually carry. `docs/MODEL.md`
+    precision the three stored values actually carry. `docs/PARAMETERS.md`
     § "Delivery-limit and MAC parameters" gives their provenance and the
     limitation that follows from it.
 

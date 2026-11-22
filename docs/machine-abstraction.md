@@ -47,8 +47,8 @@ two rates from it, and splitting the circuit volume between machine and run.
 implies work, the work is named and left to them. Two parts are already in the
 code, and § "What is built so far" records them: a machine's deliverable fresh
 gas flow range (`PL-8PS6`) and the flow a run opens at when a profile states
-none (`PL-QW19`). `docs/MODEL.md` specifies both, in § "Runtime controls" and
-§ "Parameter provenance".
+none (`PL-QW19`). `docs/INTERFACE.md` § "Runtime controls" and
+`docs/PARAMETERS.md` § "Parameter provenance" specify both.
 
 **Not held to the tree.** `docs/MODEL.md` specifies the model *as implemented*
 and its § "How this document is held to the tree" binds every live assertion in
@@ -579,7 +579,7 @@ plausible-looking number. The profile loader that item 40 builds in
 4. **declares an empty `not_modelled` list**; or
 5. **declares a `schema_version` the loader does not know.**
 
-Nothing in this adds vocabulary. `tier` and `adopted` are `docs/MODEL.md`
+Nothing in this adds vocabulary. `tier` and `adopted` are `docs/PARAMETERS.md`
 § "Source hierarchy"'s, checked by `make check` against the existing closed
 vocabulary, and a machine constant is held to the same three tiers as a
 partition coefficient: a measurement outranks a specification sheet, and a

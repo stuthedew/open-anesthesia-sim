@@ -360,7 +360,7 @@ enforces the cap in `src/anesthesia_sim/core/circuit.py`.
 
 **The maximum is set by the delivery device, not by the agent alone.** The
 model stores this maximum per agent (`max_delivered_concentration_percent`):
-desflurane 18.0%, sevoflurane 8.0% and isoflurane 5.0%. `docs/MODEL.md`
+desflurane 18.0%, sevoflurane 8.0% and isoflurane 5.0%. `docs/PARAMETERS.md`
 § "Delivery-limit and MAC parameters" names the vaporizers behind each maximum,
 and each agent's data file cites its source. The 18% is the calibrated maximum of one
 device, the Tec 6 desflurane vaporizer. Johnston et al. characterised the Tec 6

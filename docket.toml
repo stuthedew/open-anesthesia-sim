@@ -455,9 +455,9 @@ workflow_paths = [
 # declaring the path that pair it only with apparatus paths, against only with
 # product paths.
 #
-# - `src`, `docs/MODEL.md`, `docs/INTERFACE.md`, `docs/VERIFICATION.md` and
-#   `README.md` are CLAUDE.md's own enumeration of the simulator, recorded as
-#   data.
+# - `src`, `docs/MODEL.md`, `docs/INTERFACE.md`, `docs/VERIFICATION.md`,
+#   `docs/PARAMETERS.md` and `README.md` are CLAUDE.md's own enumeration of
+#   the simulator, recorded as data.
 # - `ROADMAP.md` and `docs/releases` are product direction. They name
 #   simulator milestones and what shipped in them, so a session scoping the
 #   next release is doing product work even though no `src/` file moves.
@@ -500,6 +500,7 @@ product_paths = [
   "docs/ARCHITECTURE.md",
   "docs/INTERFACE.md",
   "docs/MODEL.md",
+  "docs/PARAMETERS.md",
   "docs/VERIFICATION.md",
   "docs/consultant-brief.md",
   "docs/interface-provenance.md",
@@ -660,6 +661,7 @@ protected_paths = [
   "docs/MODEL.md",
   "docs/INTERFACE.md",
   "docs/VERIFICATION.md",
+  "docs/PARAMETERS.md",
 ]
 
 # Paths holding the machinery that identifies and ranks *generators*. An item
@@ -792,6 +794,7 @@ simulator = [
   "docs/MODEL.md",
   "docs/INTERFACE.md",
   "docs/VERIFICATION.md",
+  "docs/PARAMETERS.md",
 ]
 interface = ["src/anesthesia_sim/app/"]
 
