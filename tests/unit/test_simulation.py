@@ -369,8 +369,7 @@ def test_a_count_written_onto_a_built_state_is_refused_at_the_write() -> None:
     therefore the one that the constructor gives for the same count. A
     checked count inside the run length is accepted whoever writes it.
     `dataclasses.replace`, a copy and a pickle all write through the same
-    path. The copy and the pickle do so because the state is a `slots=True`
-    dataclass, whose state is restored one field at a time.
+    path, because each of them runs the constructor (`SimulationState.__setstate__`).
     """
 
     state = SimulationState()

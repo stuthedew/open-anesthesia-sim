@@ -27,13 +27,15 @@ from __future__ import annotations
 from bisect import bisect_left, bisect_right
 from dataclasses import dataclass
 from math import isfinite
+from typing import cast
 
-from anesthesia_sim.core.checked_record import restore_through_checks
+from anesthesia_sim.core.checked_record import require_state_by_name, restored_through_checks
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.governing_equations import UptakeEquationSettings
 from anesthesia_sim.core.supported_ranges import CaseInstant, require_case_instant
 
 
+@restored_through_checks
 @dataclass(frozen=True, slots=True)
 class RunSegment:
     """One stretch of a run during which every setting the equations read is constant.
@@ -65,11 +67,6 @@ class RunSegment:
 
     def __post_init__(self) -> None:
         require_case_instant("opened_at_s", self.opened_at_s)
-
-    def __setstate__(self, state: object) -> None:
-        """Restore an unpickled or copied record through the constructor's checks (`PL-8W1Q`)."""
-
-        restore_through_checks(self, state)
 
 
 class RunDefinition:
@@ -137,6 +134,62 @@ class RunDefinition:
         self._segments: tuple[RunSegment, ...] = (RunSegment(settings, opened_at_s),)
         self._reached_s = opened_at_s
 
+    def __getstate__(self) -> dict[str, object]:
+        """Return the record's stretches and the second it has reached, by name (`PL-HXNL`)."""
+
+        return {"segments": self._segments, "reached_s": self._reached_s}
+
+    def __setstate__(self, state: object) -> None:
+        """Rebuild an unpickled or copied record by replaying its stretches through its own methods.
+
+        The record opens under the first saved stretch, as the constructor
+        opens it. For each later stretch it moves to the second at which the
+        stretch opened and records the change, and it then moves to the saved
+        second reached. Each of these calls makes its usual checks, so an
+        instant that goes back, or one outside the supported run length, is
+        refused. The replay must rebuild exactly the saved stretches. A saved
+        list that `record_change` would have merged or dropped, such as two
+        stretches opening at one second or two in a row under the same
+        settings, is refused rather than quietly tidied.
+
+        Raises:
+            TypeError: `state` is not a dict holding exactly `segments` and
+                `reached_s` (`require_state_by_name`), `segments` is not a
+                nonempty tuple of `RunSegment`, or an instant is not a
+                `CaseInstant`.
+            SimulationConfigurationError: an instant goes back, or the replay
+                does not rebuild the saved stretches.
+        """
+
+        by_name = require_state_by_name(self, state, ("segments", "reached_s"))
+        segments = by_name["segments"]
+
+        if not (
+            isinstance(segments, tuple)
+            and segments
+            and all(isinstance(segment, RunSegment) for segment in segments)
+        ):
+            raise TypeError(
+                "a RunDefinition is restored from a nonempty tuple of RunSegment, "
+                f"not from a {type(segments).__name__}"
+            )
+
+        first, *later = segments
+        RunDefinition.__init__(self, first.settings, opened_at_s=first.opened_at_s)
+
+        for segment in later:
+            self.advance_to(segment.opened_at_s)
+            self.record_change(segment.settings)
+
+        self.advance_to(cast("CaseInstant", by_name["reached_s"]))
+
+        if self._segments != segments:
+            raise SimulationConfigurationError(
+                f"the saved run holds {len(segments)} stretches, and replaying them records "
+                f"{len(self._segments)}: a run records a new stretch only at a later second "
+                "and only under settings that differ from the stretch before it"
+            )
+
     @property
     def opened_at_s(self) -> CaseInstant:
         """The case instant at which this record's first stretch opens.
@@ -179,9 +232,10 @@ class RunDefinition:
         from `opened_at_s`, and this method is its only other writer and never
         lowers it. That invariant is what lets `_require_within_run` treat the
         span from the opening to the time reached as a closed interval. So a
-        second writer of `_reached_s`, such as a reset in place or a
-        deserializer restoring a saved run, would have to re-establish the
-        invariant rather than assume it.
+        second writer of `_reached_s`, such as a reset in place, would have to
+        re-establish the invariant rather than assume it. A pickle or a copy
+        is not one, because `__setstate__` moves the time reached only through
+        this method.
 
         Its upper bound is the same as the opening's: the end of the supported
         run length. The `CaseInstant` type enforces that bound. The

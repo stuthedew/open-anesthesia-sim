@@ -15,6 +15,7 @@ from anesthesia_sim.core.blood_flow import (
     require_perfusion_fraction,
 )
 from anesthesia_sim.core.checked_number import shown
+from anesthesia_sim.core.checked_record import restored_through_checks
 from anesthesia_sim.core.concentration import Fraction, require_fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.exponential_approach import exponential_approach
@@ -34,6 +35,7 @@ from anesthesia_sim.core.validation import (
 )
 
 
+@restored_through_checks
 @dataclass(frozen=True, slots=True)
 class TissueGroupState:
     """One tissue group's run state: what a step can change.
@@ -48,6 +50,7 @@ class TissueGroupState:
     agent_amount_l: float
 
 
+@restored_through_checks
 @dataclass(slots=True)
 class TissueGroup:
     """One ideal, perfusion-limited tissue group.

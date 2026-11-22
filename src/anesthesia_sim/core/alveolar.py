@@ -18,6 +18,7 @@ also evaluated its own result twice, and it accepted a `bool` where
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from anesthesia_sim.core.checked_record import restored_through_checks
 from anesthesia_sim.core.concentration import Fraction, require_fraction
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume, require_compartment_volume
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, require_alveolar_ventilation
@@ -28,6 +29,7 @@ from anesthesia_sim.core.validation import (
 )
 
 
+@restored_through_checks
 @dataclass(frozen=True, slots=True)
 class AlveolarCompartmentState:
     """The alveolar compartment's run state: what a step can change.
@@ -39,6 +41,7 @@ class AlveolarCompartmentState:
     agent_amount_l: float
 
 
+@restored_through_checks
 @dataclass(slots=True)
 class AlveolarCompartment:
     """One ideal, perfectly mixed alveolar gas compartment.

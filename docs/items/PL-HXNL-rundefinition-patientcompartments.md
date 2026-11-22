@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: defect
 feature: replay-findings
-touches: src/anesthesia_sim/core, tests/unit/test_record_restores.py, docs/ARCHITECTURE.md
+touches: src/anesthesia_sim/core, tests/unit, docs/ARCHITECTURE.md, docs/INTERFACE.md
 deferred-from: v0.7.0 - present at the freeze, deferred on a stated reason: no path in src/ restores these records from a pickle or a copy, so nothing a learner can reach goes through an unchecked restore, and PL-8W1Q, the frozen entry it follows, is complete for the restores that exist
 added: 2026-11-14
 payoff: A saved or copied run record cannot come back holding a value its constructor would refuse, or with two values swapped, once saved runs can be loaded.
@@ -64,3 +64,58 @@ its `misread:`. That head is still open, and `PL-8W1Q` is one of its members.
 This item was filed by the pull request that closed `PL-8W1Q`, as that item's
 stated remainder, so it is not a fix that failed to hold, and no `reenters:`
 is recorded.
+
+**What was built (2026-11-22).** Every class in `core/` other than an
+exception or a checked quantity now saves its state as a dict from each field
+name to its value, and refuses on load any other shape, a list in field order
+included, through `require_state_by_name` in `core/checked_record.py`.
+
+1. A dataclass whose constructor takes every field carries the decorator
+   `restored_through_checks`. Its `__setstate__` runs the record's own
+   `__init__` on the empty object with the values by name, so `__post_init__`
+   and any `__setattr__` guard run as they do at construction. That covers
+   the 13 checked frozen records, the unchecked frozen records, the mutable
+   compartments and `PatientCompartments`. The decorator refuses at import a
+   dataclass whose constructor does not take exactly its fields.
+2. `RunDefinition` replays its saved stretches through its own `advance_to`
+   and `record_change`, and refuses a saved list that the replay does not
+   rebuild exactly.
+3. `StoredStates` reopens from its first saved state and `append`s each later
+   one, so every state passes `require_canonical_state` again on a pickle.
+   Its `__copy__` still copies the arrays, which only its own checked methods
+   ever filled, because a branch opens with a copy and a replay of a long run
+   would slow that.
+4. `AgentUptakeSystem` does not run its constructor, which would anchor the
+   accounting again and hide agent the saved parts gained or lost. It writes
+   its four parts and then checks the dial against the input ceiling and the
+   accounting identity.
+5. `SimulationState` runs its constructor with the saved stored states as the
+   opening record, so it is checked as a branch is.
+6. `AgentSimulationValidator` writes each total and term through its
+   `__setattr__`, because the constructor does not take the two terms.
+7. `_StrictPayload` validates a pickled payload's fields again, and its
+   `__copy__` and `__deepcopy__` build the copy through `model_validate`,
+   because Pydantic's own copies skip both the validators and `__setstate__`.
+
+`tests/unit/test_record_restores.py` walks `core/` and holds every class to
+both halves.
+
+**New problem fixed on the way.** `SimulationState` accepted any object as its
+uptake system and failed later on a missing attribute. Its `__setattr__` now
+refuses one that is not an `AgentUptakeSystem`.
+
+**The regression tests fail against the code before the fix.** A scratch
+script run on `origin/main` at `d2f987d4` loaded, through `pickle`, each of the
+values the new tests refuse. It printed "patient with fractions 0.42 loaded",
+"system with unbalanced accounting loaded: False", "definition reached 60 with
+last stretch at 90 loaded" and "payload with muscle fraction 0.5 loaded". It
+also printed `LiquidDensity state: [1.5203, 0.0008, 20.0]`, the positional
+form. The new test file imports `restored_through_checks`, which does not exist
+there, so the script stands in for it.
+
+**Docs checked.** `docs/ARCHITECTURE.md` (the line for `checked_record.py`),
+`docs/INTERFACE.md` (the note for developers that said the run definition, the
+patient and the payloads did not check their values on load), and the
+docstrings in `core/` and `tests/unit/` that said a copy or a pickle restores a
+slotted dataclass one field at a time. `docs/MODEL.md`, `docs/VERIFICATION.md`,
+`docs/PARAMETERS.md` and `README.md` name no pickle or copy.
