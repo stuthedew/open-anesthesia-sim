@@ -106,7 +106,7 @@ slow-washout MAC-awake (page 1014 and Table 3, page 1016).
 - The slow-washout ratios, 0.34 ± 0.05 and 0.31 ± 0.05, are the stored
   `mac_awake.fraction_of_mac` and its standard deviation in
   `src/anesthesia_sim/data/agents/sevoflurane.json` and `isoflurane.json`.
-  They are adopted as tier 1, primary measurement, under `docs/MODEL.md`
+  They are adopted as tier 1, primary measurement, under `docs/PARAMETERS.md`
   § "Source hierarchy: what may be cited as the authority for a value".
 - Both agent files name the age-adjusted MAC equations as the denominator of
   the stored fraction (`mac_awake.mac_reference_basis`).

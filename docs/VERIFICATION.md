@@ -1820,7 +1820,7 @@ agents outside their published spread. A change of 1 L/min of cardiac output
 moves every agent by more than one published standard deviation. An operating
 point chosen to make the comparison pass would therefore make the result
 circular. The operating point is instead the shipped default. It is cited to
-the Gas Man workbook under `docs/MODEL.md` § "Parameter provenance", and it was fixed in
+the Gas Man workbook under `docs/PARAMETERS.md` § "Parameter provenance", and it was fixed in
 v0.1.0 before any comparison to Yasuda existed.
 <!-- provenance: data/patients/reference_adult.json default_cardiac_output_l_min = 5 -->
 
@@ -1936,7 +1936,7 @@ four belong beside any statement of this result, wherever it is restated.
    and the mismatch runs in a direction that is not obviously conservative.
 2. *These are Gas Man parameters, derived to reproduce Eger's data.* The
    partition coefficients being tested descend from the same lineage as the
-   measurements they are tested against (see `docs/MODEL.md` § "Parameter provenance"). A pass
+   measurements they are tested against (see `docs/PARAMETERS.md` § "Parameter provenance"). A pass
    shows that this implementation reproduces the intent of its parameter set.
    It does not show that the parameter set is independently right. That is
    weaker than "validated against a human measurement", and it must not be

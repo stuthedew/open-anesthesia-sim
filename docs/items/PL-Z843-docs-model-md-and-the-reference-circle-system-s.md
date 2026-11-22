@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: defect
 feature: machine-docs-structure
-touches: docs/MODEL.md, src/anesthesia_sim/data/machines/reference_circle_system.json
+touches: docs/MODEL.md, docs/PARAMETERS.md, src/anesthesia_sim/data/machines/reference_circle_system.json
 deferred-from: v0.7.0 - present at the freeze, with no real connection to v0.7.0's Required scope: it matters when a second machine profile is written, which the deferred PL-WZVZ and PL-B4P7 wait on and no release schedules
 added: 2026-11-11
 payoff: A contributor writing a machine profile is told to look for the machine's own startup flow rather than assuming none is published.
@@ -15,7 +15,7 @@ reenters: PL-4FBP
 
 **Problem.** Two files give a stronger reason for the 4.0 L/min fallback flow than the survey supports.
 
-- `docs/MODEL.md` § "Where each stored value comes from": "**The default is also the flow a run starts at when a machine profile states none**, because no surveyed machine publishes a startup flow."
+- `docs/PARAMETERS.md` § "Where each stored value comes from": "**The default is also the flow a run starts at when a machine profile states none**, because no surveyed machine publishes a startup flow."
 - The `provenance_gap` of `src/anesthesia_sim/data/machines/reference_circle_system.json`: "No surveyed machine publishes a startup fresh gas flow; docs/machine-survey.md section (a2) records the search and what it returned."
 
 The survey's search reached no manufacturer's manual (`docs/machine-survey.md` § "How a value gets into this document"). On 2026-11-11 `PL-8ZD7` narrowed the survey's own wording to "no source found gives one". A contributor who writes a machine profile from either copy is told that the manual holds no startup flow to look for. The profile may then state none, and a run for that machine opens at 4.0 L/min instead of the machine's own startup flow.

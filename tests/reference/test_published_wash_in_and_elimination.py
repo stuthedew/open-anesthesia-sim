@@ -180,7 +180,7 @@ fourth apply to the elimination alone.
    measurement made under N2O.
 2. *These are Gas Man parameters, derived to reproduce Eger's data.* The
    partition coefficients under test come from the same lineage as the
-   measurements they are tested against (docs/MODEL.md, "Parameter
+   measurements they are tested against (docs/PARAMETERS.md, "Parameter
    provenance"). A pass shows that this implementation reproduces what its
    parameter set intends, not that the parameter set is independently right.
    The test could still have failed, which is what makes it worth running.

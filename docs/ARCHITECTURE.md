@@ -208,7 +208,7 @@ Each file holds a `schema_version`, an `id`, the parameter values, and a
 `sources` array of citations. Each entry in `sources` has the fields `citation`,
 `url`, `note` and the three below (`core.parameters.SourceReference`):
 
-- `tier` is one of the three tiers that `docs/MODEL.md` § "Source hierarchy"
+- `tier` is one of the three tiers that `docs/PARAMETERS.md` § "Source hierarchy"
   defines (`core.parameters.SOURCE_TIERS`).
 - `adopted` says whether the file names the source as the authority for a value
   it stores, whatever the source's tier.
@@ -244,7 +244,7 @@ another.
 
 A script reads every `authority_for` and prints the source and tier behind each
 stored value, file by file and in total (`python3 tools/source_tier_counts.py`).
-Its output gives the counts that `docs/MODEL.md` states, but the script does not
+Its output gives the counts that `docs/PARAMETERS.md` states, but the script does not
 check them. It never blocks a change, by the project owner's decision
 recorded on `PL-9LXK`.
 

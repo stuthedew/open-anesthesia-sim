@@ -275,7 +275,7 @@ def test_each_tissue_coefficient_s_sd_is_the_sd_of_the_coefficient_the_model_sto
     """The SD of each tissue coefficient comes from the row whose mean the stored value matches.
 
     The stored tissue:gas coefficients descend from Yasuda's Table 1, and each
-    lies within 0.71 SD of its row's mean (`docs/MODEL.md` § "Parameter
+    lies within 0.71 SD of its row's mean (`docs/PARAMETERS.md` § "Parameter
     provenance"). Table 2's brain:blood means, 1.29, 1.70 and 1.57, lie many
     SDs from the stored vessel-rich coefficients, so taking an SD from that
     table, as the section did until `PL-TDX0`, fails here.

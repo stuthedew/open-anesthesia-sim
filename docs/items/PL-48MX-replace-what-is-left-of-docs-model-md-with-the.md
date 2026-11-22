@@ -4,13 +4,13 @@ title: Replace what is left of docs/MODEL.md with the clinician's model descript
 priority: P1
 owner-priority: P1, 2026-11-11, ratified
 effort: L
-status: blocked
+status: ready
 classes: docs
 feature: model-md-structure
 touches: docs/MODEL.md, docs/prose-review/model-description-draft.md, docs/prose-review/README.md, tools/doc_check.py, .claude/rules/plain-writing.md, CLAUDE.md
 blocked-by: PL-FWR6
 added: 2026-11-11
-payoff: a clinician who opens docs/MODEL.md reads the 15,500-word description of the model, its values and its limits, and nothing written for a developer
+payoff: a clinician who opens docs/MODEL.md reads the description of the model, its values and its limits, and nothing written for a developer
 verify: ! grep -q 'model-description-draft' docs/prose-review/README.md && ! grep -q '^## How this document is held to the tree$' docs/MODEL.md
 ---
 

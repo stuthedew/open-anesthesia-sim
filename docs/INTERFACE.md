@@ -1192,7 +1192,7 @@ this model gives no sink.
   doi:10.1097/00000539-199512001-00005.
 
 **No stored value comes from Kharasch's review.** As a review, it is tier 2 under
-`docs/MODEL.md` § "Source hierarchy", and a tier-2 source is the authority for a stored value only on a
+`docs/PARAMETERS.md` § "Source hierarchy", and a tier-2 source is the authority for a stored value only on a
 recorded decision. No such decision has been taken for this review, and there would be
 nothing for one to authorize. The 24 hours is not computed from 2% to 5%, and no parameter in
 this model descends from that paper. What the review supplies is the magnitude and the
@@ -1340,7 +1340,7 @@ patient, so it does not contradict the physiological argument below.
 <!-- provenance: core/numerical_envelope.py MAXIMUM_VOLUME_L = 10000 -->
 
 The two volumes have different sources. The alveolar gas volume is a patient parameter of
-2.5 L, read from `data/patients/reference_adult.json`. The provenance table in `docs/MODEL.md` lists it,
+2.5 L, read from `data/patients/reference_adult.json`. The provenance table in `docs/PARAMETERS.md` lists it,
 and the paragraphs before that table give the FRC measurement it is compared with. The circuit volume is a *machine*
 parameter of 6.0 L, read from `data/machines/reference_circle_system.json`. That is a third
 kind of parameter file, beside the agent and patient files, because the breathing system
@@ -1354,12 +1354,12 @@ them.** `AlveolarCompartment` has no default for its gas volume or its ventilati
 `BreathingCircuit` has none for its volume or its vaporizer maximum. Every shipped run is
 built by `AgentUptakeSystem.for_agent()`, which reads the values from the agent, patient
 and machine files and passes them on. The fresh gas flow keeps a default for a machine
-profile that states no startup flow (`docs/MODEL.md` § "Source hierarchy: what may be cited as the
+profile that states no startup flow (`docs/PARAMETERS.md` § "Source hierarchy: what may be cited as the
 authority for a value" gives its reason, its constant and its tests).
 `test_for_agent_builds_the_circuit_at_the_machine_file_s_values` and
 `test_for_agent_builds_the_alveoli_at_the_patient_file_s_values` check that a shipped run
 gets the file's values. The serious failure would be a change that stopped `for_agent()`
-reading a file. Every row of the provenance table in `docs/MODEL.md` for those values would
+reading a file. Every row of the provenance table in `docs/PARAMETERS.md` for those values would
 then silently describe a file that the model no longer uses. So each of the four values is also checked with a file that
 states a different value, and that run fails if `for_agent()` stops passing the value on.
 For the machine file the tests are
@@ -2950,7 +2950,7 @@ sevoflurane = 2.0%". A reader can compare this 1 MAC with the value they use,
 and can convert a MAC multiple back to the percent that the model computes. The
 1 MAC is also the vaporizer's starting position. In each agent's data file, the
 authority for the stored 1 MAC is De Wolf et al. 2012, which reports the flat
-adult MAC that Gas Man uses. `docs/MODEL.md` § "Delivery-limit and MAC parameters" gives the
+adult MAC that Gas Man uses. `docs/PARAMETERS.md` § "Delivery-limit and MAC parameters" gives the
 source of each agent's 1 MAC, how far it is from the primary literature, and
 what that gap means for comparing agents.
 <!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
@@ -3005,7 +3005,7 @@ and a dozen lines of text between the reader and the plot cost more than they
 gave (`PL-6580`).
 
 The stored 1 MAC (`mac_percent`) is a tier-3 value under
-`docs/MODEL.md` § "Source hierarchy: what may be cited as the authority for a value".
+`docs/PARAMETERS.md` § "Source hierarchy: what may be cited as the authority for a value".
 Mapleson 1996 is in the `sources` list of each agent's data file as the source
 for the fall in MAC with age.
 
@@ -3306,8 +3306,8 @@ Rampil's 31-65 year MAC describes.
 limitation of the stored MAC.** The MAC-awake fractions come from primary
 measurements in humans (tier 1). The stored MAC is Gas Man's parameter, not a
 measurement, so the source hierarchy grades it tier 3
-(`docs/MODEL.md` § "Source hierarchy: what may be cited as the authority for a value").
-`docs/MODEL.md` § "Delivery-limit and MAC parameters" records its limitations. The interface
+(`docs/PARAMETERS.md` § "Source hierarchy: what may be cited as the authority for a value").
+`docs/PARAMETERS.md` § "Delivery-limit and MAC parameters" records its limitations. The interface
 shows that MAC, so a reader can compare it with the value they would use.
 
 **Three misreadings of the band all make emergence look faster than this model
@@ -3328,7 +3328,7 @@ that a patient is more awake than they are.
 error's direction differs by agent** (`PL-GCGX`). That MAC is a flat adult
 value. The traces are absolute partial pressures and do not depend on MAC, so
 wherever the stored MAC departs from the literature, the band moves against the
-traces by the same proportion. `docs/MODEL.md` § "Delivery-limit and MAC parameters" compares
+traces by the same proportion. `docs/PARAMETERS.md` § "Delivery-limit and MAC parameters" compares
 the stored MAC with Mapleson's age-40 values. Against them, the stored MAC is
 11.1% high for sevoflurane, 2.6% high for isoflurane and 9.1% low for
 desflurane. All three are gaps from Mapleson's MAC, not from the MAC that each
@@ -4821,7 +4821,7 @@ Each agent's file in `data/agents/` stores the density, with its SD and
 measurement temperature, as `liquid_density`, and the molar mass as
 `molar_mass_g_mol`. The density's source entry (`sources`) is a tier-1
 measurement. The molar mass's entry says why no tier-1 source
-(`docs/MODEL.md` § "Source hierarchy") exists. The vapour-to-liquid ratio is derived in
+(`docs/PARAMETERS.md` § "Source hierarchy") exists. The vapour-to-liquid ratio is derived in
 `core/liquid_agent.py` and checked against Biro's and Gas Man's constants in
 `tests/reference/test_published_vapour_to_liquid.py`
 (`test_the_derived_ratio_is_within_one_percent_of_biros_published_constant` and

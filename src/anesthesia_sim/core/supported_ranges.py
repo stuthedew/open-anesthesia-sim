@@ -302,7 +302,7 @@ refusing it would bring back the halt that this ceiling exists to remove.
 #   Kharasch ED. Biotransformation of sevoflurane. Anesth Analg
 #   1995;81(6 Suppl):S27-38. PMID 7486145,
 #   doi:10.1097/00000539-199512001-00005.
-# It is a review, so it is tier 2 under `docs/MODEL.md` § "Source hierarchy".
+# It is a review, so it is tier 2 under `docs/PARAMETERS.md` § "Source hierarchy".
 # It is cited for the magnitude and timing of the omission, never as the
 # authority for a value. Nothing here is computed from it. The 24 hours is a
 # declared envelope argued against that omission, not a number derived from a
