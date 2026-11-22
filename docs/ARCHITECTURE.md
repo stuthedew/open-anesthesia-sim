@@ -290,7 +290,7 @@ integrator:
 
 1. `core/governing_equations.py` assembles the system matrix `A`. Each entry
    is one term of one balance equation in `docs/MODEL.md`,
-   "Governing equations".
+   "Equations".
 2. `core/matrix_exponential.py` computes `exp(A dt)`. This is the system's
    exact propagator, because every setting is held constant across a step.
    The result is cached against the settings it was built for, and it is
@@ -1188,7 +1188,7 @@ the list of declared dependencies, is what keeps them out of `src/`
 (`app/qt_chart.py`) hands pyqtgraph every curve's points as `numpy.ndarray`s,
 the form that pyqtgraph's performance guidance asks for (`PL-TCNT`). The import
 check keeps numpy out of `core/` (§ "Layering"), so the model's propagator
-stays in pure Python, as `docs/MODEL.md` § "The reproducibility guarantee"
+stays in pure Python, as `docs/VERIFICATION.md` § "The reproducibility guarantee"
 describes. The chart-frame module (`app/chart_frame.py`) does not import numpy
 either, because a frame holds plain values and only the toolkit layer converts
 them to arrays. The tests also use numpy: one decomposes the model's

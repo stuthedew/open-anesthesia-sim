@@ -87,7 +87,8 @@ def test_rejects_agent_amount_above_tissue_capacity() -> None:
         SimulationConfigurationError,
         match=(
             r"^test agent_amount_l of 4.1 L is more than the 4.0 L the test tissue holds at a "
-            r'partial pressure of one atmosphere \(docs/MODEL.md, "Tissue compartments"\)$'
+            r"partial pressure of one atmosphere \(docs/MODEL.md, "
+            r'"How much agent each compartment holds"\)$'
         ),
     ):
         TissueGroup(
@@ -117,7 +118,7 @@ def test_an_agent_amount_past_capacity_is_refused_at_the_write() -> None:
     refused = (
         rf"^test agent_amount_l of {re.escape(repr(past_capacity))} L is more than the 4.0 L "
         r"the test tissue holds at a partial pressure of one atmosphere \(docs/MODEL.md, "
-        r'"Tissue compartments"\)$'
+        r'"How much agent each compartment holds"\)$'
     )
 
     with pytest.raises(SimulationConfigurationError, match=refused):
@@ -148,7 +149,7 @@ def test_an_agent_amount_past_capacity_is_refused_at_the_write() -> None:
 TOO_SMALL_FOR_THE_AGENT_HELD = (
     r"^test {field} of 0.5 is too small for the 2.0 L of agent the test tissue holds: it would "
     r"leave room for 1.0 L at a partial pressure of one atmosphere \(docs/MODEL.md, "
-    r'"Tissue compartments"\)$'
+    r'"How much agent each compartment holds"\)$'
 )
 
 

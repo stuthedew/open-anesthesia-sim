@@ -7,7 +7,7 @@ status: blocked
 classes: docs
 feature: model-md-structure
 touches: docs/MODEL.md
-blocked-by: PL-48MX
+blocked-by: PL-N83Z, PL-4H8Q, PL-SY7G
 added: 2026-11-10
 payoff: the replaced model document is checked for the structural problems the old one had, so they are not carried over
 ---
@@ -107,4 +107,4 @@ already `PL-DQD8`, and the misdirected "rules below" pointer is `PL-XLDN`.
 
 **Generator check.** `PL-P3GZ` found the cause: an instance of the fact that `PL-J1ZM` states, that no rule says what a reader can do without.
 
-**Checked 2026-11-22** against `d4e8200`: still applies, and still blocked on `PL-48MX`, which is open behind two earlier stages of the split of `docs/MODEL.md`. Part of the outline is out of date. #2109 (`PL-CTXZ`) moved Runtime controls, Interface boundary and Minimum displayed outputs to `docs/INTERFACE.md`, so the points about those sections now concern that document. By `##` headings, the sections from Model boundary to Conservation of agent mass are now about 20% of the 7,044-line `docs/MODEL.md`, not 11%. Required tests is about 24%, Parameter provenance 18% and Known limitations 15%. The committed outline that the done-when names exists at `docs/prose-review/model-reverse-outline.tsv` (`PL-9RLM` is done).
+**Checked 2026-11-22** against `d4e8200`: still applied, and was still blocked on `PL-48MX`, which was then open behind two earlier stages of the split of `docs/MODEL.md`. Part of the outline is out of date. #2109 (`PL-CTXZ`) moved Runtime controls, Interface boundary and Minimum displayed outputs to `docs/INTERFACE.md`, so the points about those sections now concern that document. By `##` headings, the sections from Model boundary to Conservation of agent mass are now about 20% of the 7,044-line `docs/MODEL.md`, not 11%. Required tests is about 24%, Parameter provenance 18% and Known limitations 15%. The committed outline that the done-when names exists at `docs/prose-review/model-reverse-outline.tsv` (`PL-9RLM` is done).

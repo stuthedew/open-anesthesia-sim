@@ -1,6 +1,6 @@
 """A run gives bit-identical results in another process with another hash seed.
 
-`docs/MODEL.md` § "The reproducibility guarantee" promises that two runs of
+`docs/VERIFICATION.md` § "The reproducibility guarantee" promises that two runs of
 one case produce element-wise identical run definitions and snapshots. Every
 other determinism test compares two runs inside one interpreter, where every
 `set` and `dict` of strings iterates in the same order both times. A sum taken

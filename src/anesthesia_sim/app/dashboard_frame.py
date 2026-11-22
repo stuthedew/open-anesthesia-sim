@@ -23,8 +23,9 @@ build is the port's definition of done. Three of the strings are safety
 requirements rather than wording choices: the "Alveolar" readout with the
 gloss "end-tidal-equivalent" (`PL-NV9W`), the "Circuit" readout with the gloss
 "inspired" (`PL-8M05`), and the "Fresh gas flow" control with the gloss
-"common gas outlet" (`PL-71CF`). Each is stated in `docs/MODEL.md` and
-enforced by an exact-string test.
+"common gas outlet" (`PL-71CF`). `docs/INTERFACE.md` § "Minimum displayed
+outputs" states the first and the third, and an exact-string test enforces
+each of the three.
 """
 
 from collections.abc import Callable, Mapping, Sequence
@@ -868,7 +869,7 @@ ACCOUNTING_WITHHELD_DETAIL_TEXT: Final = "No frame has been drawn since the run 
 # The unit of every amount on the accounting panel, with the temperature and
 # pressure the amounts are stated at (`PL-HQPF`). The amounts held in the body
 # are at body temperature, and are stated at this condition so that the panel's
-# amounts add up (`docs/MODEL.md` § "Known limitations"). So the last two lines
+# amounts add up (`docs/MODEL.md` § "Units and symbols"). So the last two lines
 # say that the stored amount reads high. The caption is four short lines rather
 # than wrapped text, because Qt leaves a wrapped label's extra lines out of the
 # panel's minimum size. Each line fits in the width the panel had before the

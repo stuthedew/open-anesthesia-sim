@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Hold `src/anesthesia_sim/core/` to the vocabulary `docs/MODEL.md` establishes.
+"""Hold `src/anesthesia_sim/core/` to the vocabulary of `docs/VERIFICATION.md` § "Symbols".
 
 `.claude/rules/core-domain.md` asks that a clinician who knows uptake and
 distribution recognise the physiology in `core/` without a translation step.
 That bar is a judgment and stays one. Three consequences of it are not, and
 this decides those three:
 
-1. **Every Code cell in `docs/MODEL.md` § "Symbols" resolves.** The column
+1. **Every Code cell in `docs/VERIFICATION.md` § "Symbols" resolves.** The column
    claims to name "the one expression in `core/` that denotes each symbol". A
    cell naming an attribute that no longer exists is a map to a tree that has
    moved, and the reader it misleads is the one who reached for the map because
@@ -20,7 +20,7 @@ this decides those three:
    2011 review calls one quantity the tissue-gas, the tissue-blood and the
    blood tissue partition coefficient in a single chapter - so a reader cannot
    supply a missing phase from recall, and cannot tell a coefficient from its
-   own reciprocal by looking. `docs/MODEL.md` § "Symbols" carries the citation.
+   own reciprocal by looking. `docs/VERIFICATION.md` § "Symbols" carries the citation.
 
 **What this must never decide: whether a name is the one a reader who knows the
 domain would guess.** That is the whole point of the convention and a tool that
@@ -97,19 +97,23 @@ from docket.python import assignment_targets
 from docket.roadmap import section_table
 
 from check_support import run_report
-from product_paths import CORE_DIR, MODEL_DOC
+from product_paths import CORE_DIR, VERIFICATION_DOC
 from workflow_paths_check import tracked_under
 
 #: The tree whose vocabulary is governed, relative to the repository root.
 CORE_TREE = CORE_DIR
 
 
-#: The section holding it, and the column naming the implementation.
+#: The document and section holding it, and the column naming the
+#: implementation. The table is a subsection of the notes for developers in
+#: the verification document.
+SYMBOLS_DOC = VERIFICATION_DOC
 SYMBOLS_HEADING = "Symbols"
+SYMBOLS_LEVEL = 3
 CODE_COLUMN = "Code"
 SYMBOL_COLUMN = "Symbol"
 
-#: What `docs/MODEL.md` writes where the model defines a symbol the
+#: What the Symbols table writes where the model defines a symbol the
 #: implementation does not materialize. The cell must then say what the code
 #: reads in its place, which is the sentence this requires be present.
 EM_DASH = "—"
@@ -132,7 +136,7 @@ class RetiredName:
 
 #: The specification for rule 2, transcribed from `PL-9SH6`'s own table. Every
 #: entry is an accessor `core/` used to carry for the dimensionless
-#: partial-pressure-equivalent fraction that `docs/MODEL.md` § "Concentrations"
+#: partial-pressure-equivalent fraction that `docs/VERIFICATION.md` § "Concentrations"
 #: defines. Three of them - `concentration_fraction`,
 #: `partial_pressure_fraction` as it was, and `delivered_concentration_fraction`
 #: - each denoted more than one symbol at once, which is the defect the rename
@@ -190,7 +194,7 @@ class Identifier:
 
 @dataclass(frozen=True)
 class SymbolCell:
-    """One row of `docs/MODEL.md` § "Symbols", as far as this rule reads it."""
+    """One row of `docs/VERIFICATION.md` § "Symbols", as far as this rule reads it."""
 
     line: int
     symbol: str
@@ -306,7 +310,7 @@ def symbol_cells(text: str) -> tuple[SymbolCell, ...]:
     under a setext heading was not read, and a row without its leading pipe was
     skipped.
     """
-    table = section_table(text, SYMBOLS_HEADING)
+    table = section_table(text, SYMBOLS_HEADING, SYMBOLS_LEVEL)
     if table is None or not table.rows:
         return ()
     header = list(table.header)
@@ -479,7 +483,7 @@ def analyze(
                 if reason is not None:
                     malformed.append(Malformed(identifier, reason))
 
-    cells = symbol_cells((root / MODEL_DOC).read_text(encoding="utf-8"))
+    cells = symbol_cells((root / SYMBOLS_DOC).read_text(encoding="utf-8"))
     unresolved = [problem for cell in cells for problem in _resolve(cell, defined)]
 
     return Report(
@@ -511,7 +515,7 @@ def format_report(report: Report) -> str:
 
     if report.empty_table:
         lines.append("")
-        lines.append(f'No readable table under {MODEL_DOC} "## {SYMBOLS_HEADING}":')
+        lines.append(f'No readable table under {SYMBOLS_DOC} "### {SYMBOLS_HEADING}":')
         lines.append(
             f"  The section, its table, or its {SYMBOL_COLUMN}/{CODE_COLUMN} columns were "
             f"renamed, so the symbol map is unchecked."
@@ -519,9 +523,9 @@ def format_report(report: Report) -> str:
 
     if report.unresolved:
         lines.append("")
-        lines.append(f'{MODEL_DOC} "## {SYMBOLS_HEADING}" names code that does not resolve:')
+        lines.append(f'{SYMBOLS_DOC} "### {SYMBOLS_HEADING}" names code that does not resolve:')
         for problem in report.unresolved:
-            lines.append(f"  {MODEL_DOC}:{problem.cell.line}: {problem.cell.symbol}")
+            lines.append(f"  {SYMBOLS_DOC}:{problem.cell.line}: {problem.cell.symbol}")
             lines.append(f"    {problem.reference}: {problem.reason}")
         lines.append(
             f"  The {CODE_COLUMN} column maps the specification onto the implementation; a cell "
@@ -535,7 +539,7 @@ def format_report(report: Report) -> str:
             lines.append(f"  {use.identifier.path}:{use.identifier.line}: {use.identifier.name}")
             lines.append(f"    retired by PL-9SH6 in favour of {use.retired.replacement}")
         lines.append(
-            '  One quantity, one name: `docs/MODEL.md` § "Concentrations" defines every '
+            '  One quantity, one name: `docs/VERIFICATION.md` § "Concentrations" defines every '
             "model concentration as the same kind of thing, so a second name for it sends the "
             "reader to the class body to find out which."
         )

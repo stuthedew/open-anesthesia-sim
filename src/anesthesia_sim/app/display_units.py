@@ -64,9 +64,8 @@ REFERENCE_CONDITION_LABEL: Final = (
 #: What the reference condition means for the agent held in the body. The
 #: alveolar, venous and tissue amounts are body-temperature gas carried under
 #: the 20 °C label, so read at that label they overstate the agent held
-#: (`docs/MODEL.md` § "One reference condition, where the model physically has
-#: two", under § "Known limitations"). The line says which way the amounts are off. The
-#: size of the error is in that section. The wording is a placeholder, but what
+#: (`docs/MODEL.md` § "Units and symbols"). The line says which way the
+#: amounts are off. The size of the error is in that section. The wording is a placeholder, but what
 #: it must say is not. It is two short lines because the captions it ends are
 #: never set to wrap. A line wider than about 214 px widens the accounting
 #: panel's column, which takes that width from the concentration plot beside it.

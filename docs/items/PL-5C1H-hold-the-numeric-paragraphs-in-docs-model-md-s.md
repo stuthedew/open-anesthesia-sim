@@ -27,7 +27,7 @@ with `_numeric_paragraph_members`, as unheld of numeric paragraphs:
 computes can be wrong, or lose its condition, and nothing notices.
 `PL-B6YV`'s members were seven such sentences.
 
-**The rule.** `docs/MODEL.md` § "How this document is held to the tree"
+**The rule.** `docs/VERIFICATION.md` § "How this document is held to the tree"
 says a computed claim names the test that computes it (`PL-B6YV`, project
 owner, 2026-11-02, ratified). In a section listed in `BOUND_FAMILIES` with
 `_numeric_paragraph_members`, `make check` fails each paragraph that states a

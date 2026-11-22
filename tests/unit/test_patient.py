@@ -122,7 +122,7 @@ def test_each_tissue_group_takes_its_own_agents_coefficients(
     one agent's values for every agent fails too.
 
     The tissue:blood coefficient is the tissue:gas coefficient divided by the
-    blood:gas one, since `docs/MODEL.md` § "Tissue compartments" writes a
+    blood:gas one, since `docs/MODEL.md` § "How much agent each compartment holds" writes a
     tissue's capacity both as V x tissue:blood x blood:gas and as
     V x tissue:gas. The test does that division itself. The perfusion
     fractions are the reference adult's, typed from
