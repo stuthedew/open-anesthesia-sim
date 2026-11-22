@@ -174,7 +174,7 @@ from anesthesia_sim.app.run_presentation import (
     shown_without_a_frame,
 )
 from anesthesia_sim.app.run_series import RecordedQuantity
-from anesthesia_sim.app.run_view import RunView
+from anesthesia_sim.app.run_view import RunView, log_failure
 from anesthesia_sim.app.stylesheets import page_stylesheet, scroll_area_stylesheet
 from anesthesia_sim.app.theme import PAGE_PADDING, PAGE_SPACING, WARNING
 from anesthesia_sim.app.unconditional_set import INHALED_AGENT, unconditional_set, window_region
@@ -2570,6 +2570,7 @@ class SimulationView(QWidget):
         """
 
         self._halting_every_run = True
+        log_failure("Every run on the dashboard", error)
         # A kept frame that shows a held dial's preview is dropped before any
         # run shows its halt, so that each banner says the charts are withheld
         # (`run_presentation.kept_on_a_halt`).

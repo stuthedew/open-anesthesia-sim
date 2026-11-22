@@ -1726,13 +1726,13 @@ def test_an_accounting_halt_tells_the_learner_in_words_and_logs_the_totals(
     as `absolute_error=1.000000e+00 L`. The expected opening is written out here
     rather than read from the interface's constant. The core's message, with its
     totals, still reaches the log for a developer, once for the run. In the case
-    with no frame drawn, the frame's own failure halts the run again, and the
-    run keeps and logs only the first. The injected check has 40.0 L
+    with no frame drawn, the frame then fails too. That is a second fault, so the
+    dashboard logs it once as well, after the run's own record. The injected check has 40.0 L
     delivered, 20.0 L exhausted and 14.0 L stored, which leaves 6.0 L unaccounted
     (`_a_failing_check`).
     """
 
-    caplog.set_level(logging.ERROR, logger="anesthesia_sim.app.run_view")
+    caplog.set_level(logging.ERROR, logger="anesthesia_sim.app")
 
     run, _ = _ONE_STATE_SCENARIOS[scenario](application, monkeypatch)
 
@@ -1750,9 +1750,15 @@ def test_an_accounting_halt_tells_the_learner_in_words_and_logs_the_totals(
     assert "_" not in banner
 
     logged = [record.getMessage() for record in caplog.records]
-    assert len(logged) == 1, "a run logs its first failure only"
     assert logged[0].startswith("Run 1 stopped on a failure: AgentSimulationValidationError: ")
     assert "unaccounted=6.000000e+00 L" in logged[0]
+    assert all(record.exc_info is not None for record in caplog.records)
+
+    if scenario == "accounting halt":
+        assert len(logged) == 1, logged
+    else:
+        assert len(logged) == 2, logged
+        assert logged[1].startswith("Every run on the dashboard stopped on a failure: "), logged
 
 
 def test_an_accounting_error_with_a_check_of_the_wrong_type_still_halts_the_run(

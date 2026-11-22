@@ -11,7 +11,7 @@ added: 2026-11-22
 closed: 2026-11-22
 pr: 2259
 payoff: a learner whose run halts on a failed accounting check reads why in plain words
-tests: tests/integration/simulation_view/test_simulation_view_run_stops_itself.py::test_an_accounting_halt_tells_the_learner_in_words_and_logs_the_totals, tests/integration/test_failure_log.py::test_a_failure_logged_by_a_run_reaches_the_file_in_the_data_directory
+tests: tests/integration/simulation_view/test_simulation_view_run_stops_itself.py::test_an_accounting_halt_tells_the_learner_in_words_and_logs_the_totals, tests/integration/test_failure_log.py::test_a_failure_logged_by_a_run_reaches_the_file_in_the_data_directory, tests/integration/test_failure_log.py::test_a_data_directory_that_cannot_be_made_keeps_no_file_and_lets_the_launch_go_on
 ---
 
 **Problem.** When the accounting check fails, the halted-run notice shows core's developer message to the learner, with e-notation and code names such as absolute_error=
@@ -97,6 +97,20 @@ the log reached standard error only, so a launch from an icon lost it; the
 failure log file was added. F2 optional, fixed: a run halted twice logged
 twice, the second time with a cause the run had not recorded; a run now logs
 its first failure only, under its name.
+
+**Blind review, second round, 2026-11-22.** Both passes found the same
+should-fix, fixed: `open_failure_log` let an `OSError` from making the
+directory or opening the file stop the launch, where the Workspace and
+preference stores carry on with a notice. It now returns None, and
+`test_a_data_directory_that_cannot_be_made_keeps_no_file_and_lets_the_launch_go_on`
+failed before the fix with `FileExistsError: [Errno 17] File exists`. Pass 2
+also found, as should-fix, and pass 1 as optional, that the first round's
+guard was wrong: it dropped the dashboard's own exception when the frame
+failed on a run that had already failed, and a dashboard exception was logged
+once for each run. Fixed: a run logs only its own failure, and
+`SimulationView._halt_every_run` logs a dashboard exception once, as "Every
+run on the dashboard stopped on a failure". The accounting test now expects
+that second record in the case with no frame drawn.
 
 **Regression test run before the fix.** With `src/` stashed,
 `uv run pytest -q "tests/integration/simulation_view/test_simulation_view_run_stops_itself.py::test_an_accounting_halt_tells_the_learner_in_words_and_logs_the_totals"`

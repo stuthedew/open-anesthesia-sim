@@ -225,6 +225,28 @@ if set(AGENT_COLOR_SCHEMES) != set(AGENT_DATA_FILENAMES):
 #: for the learner, and a developer reads the exception's own message here.
 _LOG: Final = logging.getLogger(__name__)
 
+
+def log_failure(stopped: str, error: BaseException) -> None:
+    """Log a failure that stopped `stopped`, with its message and traceback, for a developer.
+
+    The banner may word a failure for the learner and leave out the
+    exception's own message (`dashboard_frame.shown_failure_reason`), so the
+    full message is logged here (`PL-TWZY`). A run that reached its supported
+    run length did not fail, so nothing is logged for it. `main.open_failure_log`
+    keeps the log in a file.
+
+    Args:
+        stopped: What the failure stopped, such as a run's name, as the log
+            line names it.
+        error: The exception that stopped it.
+    """
+
+    disposition, reason = halt_disposition(error)
+
+    if disposition is HaltDisposition.FAILURE:
+        _LOG.error("%s stopped on a failure: %s", stopped, reason, exc_info=error)
+
+
 #: The (agent_id, display_name) pair for every built-in agent, in
 #: `AGENT_DATA_FILENAMES` order. The pairs are read once from the data files,
 #: so no display name is restated here.
@@ -1658,16 +1680,10 @@ class RunView(QWidget):
 
         disposition, reason = halt_disposition(error)
 
-        if disposition is HaltDisposition.FAILURE and not self.controller.has_failed:
-            # The banner may word a failure for the learner and leave out the
-            # exception's own message (`shown_failure_reason`), so the full
-            # message and its traceback are logged for a developer (`PL-TWZY`).
-            # A run keeps its first failure (`SimulationController.fail`), so
-            # only that one is logged. A later one would name a cause that the
-            # run's record does not.
-            _LOG.error(
-                "%s stopped on a failure: %s", run_label(self.run_id), reason, exc_info=error
-            )
+        if not in_frame:
+            # An exception from the dashboard is logged once, by the dashboard,
+            # rather than once for each run it halts (`SimulationView._halt_every_run`).
+            log_failure(run_label(self.run_id), error)
 
         if in_frame:
             self.controller.record_failed_frame(reason)

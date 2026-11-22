@@ -2520,6 +2520,8 @@ rejected step created or lost agent, and that this is a fault in the simulator
 and not a change in the patient. It does not print the totals. The panel shows
 the rejected step's amounts, and the exact totals go to the failure log, the
 file `failures.log` in the reader's data directory, beside `workspaces.json`.
+Where that directory cannot be written, the log goes to standard error only,
+and the application still opens.
 
 **A dial moved on a stopped run is refused** before anything is applied, and
 springs back to the run's setting. The model computes no step after a stop, so
@@ -2558,7 +2560,10 @@ the totals
 (`test_an_accounting_halt_tells_the_learner_in_words_and_logs_the_totals`, in
 the same file as the first test). The failure log is written to the data
 directory (`test_a_failure_logged_by_a_run_reaches_the_file_in_the_data_directory`
-in `tests/integration/test_failure_log.py`).
+in `tests/integration/test_failure_log.py`), and a directory that cannot be made
+does not stop the launch
+(`test_a_data_directory_that_cannot_be_made_keeps_no_file_and_lets_the_launch_go_on`,
+in the same file).
 
 ### Naming the run in a comparison
 

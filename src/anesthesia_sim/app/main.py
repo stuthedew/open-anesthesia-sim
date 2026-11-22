@@ -222,19 +222,23 @@ def open_failure_log(standard_location: str, environment: Mapping[str, str]) -> 
 
     Returns:
         The file's path, or None where neither the override nor the platform
-        names a directory. The records then reach standard error only.
+        names a directory, or where the file cannot be opened there. The
+        records then reach standard error only. The log exists to help find a
+        fault, so a directory it cannot use never stops the application from
+        opening. The Workspace and preference stores treat such a directory in
+        the same way.
     """
 
     try:
         directory = user_data_directory(standard_location, environment)
-    except LayoutRefused:
+        directory.mkdir(parents=True, exist_ok=True)
+        path = directory / FAILURE_LOG_NAME
+        handler = RotatingFileHandler(
+            path, maxBytes=FAILURE_LOG_MAX_BYTES, backupCount=1, encoding="utf-8"
+        )
+    except LayoutRefused, OSError:
         return None
 
-    directory.mkdir(parents=True, exist_ok=True)
-    path = directory / FAILURE_LOG_NAME
-    handler = RotatingFileHandler(
-        path, maxBytes=FAILURE_LOG_MAX_BYTES, backupCount=1, encoding="utf-8"
-    )
     handler.setLevel(logging.ERROR)
     handler.setFormatter(logging.Formatter("%(asctime)s %(name)s %(levelname)s %(message)s"))
     package = logging.getLogger("anesthesia_sim")

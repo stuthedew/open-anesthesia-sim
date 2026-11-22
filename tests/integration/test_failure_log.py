@@ -56,3 +56,23 @@ def test_no_data_directory_keeps_no_file_and_adds_no_handler() -> None:
 
     assert open_failure_log("", {}) is None
     assert package.handlers == before
+
+
+@pytest.mark.usefixtures("package_handlers")
+def test_a_data_directory_that_cannot_be_made_keeps_no_file_and_lets_the_launch_go_on(
+    tmp_path: Path,
+) -> None:
+    """A data directory named by an existing file adds no handler and raises nothing.
+
+    The log helps a developer find a fault, so a directory it cannot use never
+    stops the application from opening. Before the fix, `mkdir` raised
+    `FileExistsError` out of `main()`.
+    """
+
+    occupied = tmp_path / "data"
+    occupied.write_text("not a directory", "utf-8")
+    package = logging.getLogger("anesthesia_sim")
+    before = list(package.handlers)
+
+    assert open_failure_log("", {USER_DIRECTORY_VARIABLE: str(occupied)}) is None
+    assert package.handlers == before
