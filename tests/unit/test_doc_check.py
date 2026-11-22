@@ -13749,3 +13749,23 @@ def test_an_item_id_or_a_date_the_model_document_does_not_show_is_not_refused(
     )
 
     assert errors == []
+
+
+@pytest.mark.parametrize(
+    "wrapped",
+    [
+        "(project\nowner, 2026-09-04, ratified, over 8 L).\n",
+        "(project owner,\n2026-09-04, ratified, over 8 L).\n",
+    ],
+    ids=["after-project", "after-owner"],
+)
+def test_a_decision_record_split_by_a_line_wrap_is_refused(tmp_path: Path, wrapped: str) -> None:
+    """A hard wrap inside the record renders as one space, so the record is still shown.
+
+    Read a line at a time, the check passed both wraps (blind review of #2237).
+    The error gives the line on which the record starts.
+    """
+    errors = _model_reader_errors(tmp_path, f"# Model\n\nThe circuit holds 6 L\n{wrapped}")
+
+    assert len(errors) == 1
+    assert errors[0].startswith("docs/MODEL.md:4 records a decision, `(project")

@@ -9642,7 +9642,8 @@ def check_math_delimiters(root: Path, report: Report) -> None:
 
 # regex: a decision record opens with a fixed phrase and an ISO date, the form
 # `.claude/rules/citation-drift.md` prescribes for recording one.
-DECISION_RECORD_RE = re.compile(rf"\(project owner, {ISO_DATE_RE.pattern}")
+# A hard wrap may fall at either space, and renders as one space, so each is a `GAP`.
+DECISION_RECORD_RE = re.compile(rf"\(project{GAP}owner,{GAP}{ISO_DATE_RE.pattern}")
 # regex: an item id is the store's own grammar, `ID_PATTERN`, not part of a longer word.
 ITEM_ID_RE = re.compile(rf"(?<![\w-]){ID_PATTERN}")
 
@@ -9658,31 +9659,36 @@ def check_model_reader_text(root: Path, report: Report) -> None:
     landed. Nothing kept them out, so this check does (`PL-RLRG`).
 
     A decision record is "(project owner, " and a date, the form
-    `.claude/rules/citation-drift.md` prescribes. Only the text a reader sees
-    is read: paragraphs, list items, headings and tables, code spans included,
-    because a code span is shown too. An HTML comment, such as a provenance
-    marker, is not shown, so it is not read.
+    `.claude/rules/citation-drift.md` prescribes. A hard wrap inside it renders
+    as a space, so the record is matched across a line break, and the error
+    gives the line on which it starts. Only the text a reader sees is read:
+    paragraphs, list items, headings and tables, code spans included, because
+    a code span is shown too. Every other line is blanked before the match, so
+    an HTML comment, such as a provenance marker, is not read, and a blank line
+    still ends a paragraph.
     """
     path = root / MODEL
     try:
         text = path.read_text(encoding="utf-8")
     except UNREADABLE:
         return
-    shown = block_lines(_body_lines(split_lines(text)), PROSE)
-    for index, line in enumerate(split_lines(text)):
-        if index not in shown:
-            continue
-        for match in DECISION_RECORD_RE.finditer(line):
-            report.errors.append(
-                f"{MODEL}:{index + 1} records a decision, `{match.group(0)}`, in text written "
-                "for a clinician; move the record to the item and keep only the fact here"
-            )
-        for match in ITEM_ID_RE.finditer(line):
-            report.errors.append(
-                f"{MODEL}:{index + 1} names the item `{match.group(0)}`, which a clinician "
-                "cannot look up; state the reason in words, and put the item id in "
-                "docs/VERIFICATION.md or docs/PARAMETERS.md if a developer needs it"
-            )
+    lines = split_lines(text)
+    shown = block_lines(_body_lines(lines), PROSE)
+    joined = "\n".join(line if index in shown else "" for index, line in enumerate(lines))
+    for match in DECISION_RECORD_RE.finditer(joined):
+        record = " ".join(match.group(0).split())
+        report.errors.append(
+            f"{MODEL}:{joined.count(chr(10), 0, match.start()) + 1} records a decision, "
+            f"`{record}`, in text written for a clinician; move the record to the item and "
+            "keep only the fact here"
+        )
+    for match in ITEM_ID_RE.finditer(joined):
+        report.errors.append(
+            f"{MODEL}:{joined.count(chr(10), 0, match.start()) + 1} names the item "
+            f"`{match.group(0)}`, which a clinician cannot look up; state the reason in words, "
+            "and put the item id in docs/VERIFICATION.md or docs/PARAMETERS.md if a developer "
+            "needs it"
+        )
 
 
 #: What may close a line after its last word: emphasis, a code span, a
