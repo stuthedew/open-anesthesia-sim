@@ -11071,6 +11071,8 @@ def test_the_owners_read_list_is_spelt_as_the_owner_spelt_it() -> None:
     `docs/INTERFACE.md` joined on 2026-11-11, when `PL-CTXZ` moved the interface
     sections out of `docs/MODEL.md` (project owner, 2026-11-11, ratified,
     `PL-P3GZ`). The text was on the list before the move, as part of that file.
+    `docs/VERIFICATION.md` joined on 2026-11-22 the same way, when `PL-6PPZ`
+    moved the verification sections out.
 
     `tests/` outside `subprojects/` was the owner's wording: the docket
     package's own tests arm with the tooling. The workflows, the hooks and
@@ -11083,6 +11085,7 @@ def test_the_owners_read_list_is_spelt_as_the_owner_spelt_it() -> None:
         "tests/",
         "docs/MODEL.md",
         "docs/INTERFACE.md",
+        "docs/VERIFICATION.md",
         "src/anesthesia_sim/data/",
         "README.md",
     )
@@ -11093,6 +11096,7 @@ def test_the_owners_read_list_is_spelt_as_the_owner_spelt_it() -> None:
         "tests/conftest.py",
         "docs/MODEL.md",
         "docs/INTERFACE.md",
+        "docs/VERIFICATION.md",
         "README.md",
     ):
         assert arming.waits_on_read(path), path

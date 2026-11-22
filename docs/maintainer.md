@@ -487,15 +487,15 @@ and housekeeping merges on green** (project owner, 2026-10-17, `PL-DKBG`). A
 real decision is one that `.claude/skills/docket/modes/design.md` step 4
 already makes yours. A high-risk change is any of three kinds. It changes a
 clinical value that the simulator computes or displays, or what
-`docs/MODEL.md` or `docs/INTERFACE.md` says such a value means. It is a rule that sessions run under
+`docs/MODEL.md`, `docs/INTERFACE.md` or `docs/VERIFICATION.md` says such a value means. It is a rule that sessions run under
 and that you did not ask for in your own words. Or CI would not show its
 breakage, or a revert would not undo it. For a high-risk change, the ask gives
 the case for the change, its risks, and what was checked. `#1516` set this
 rule. The path list held that pull request for you, although nothing in it
 needed a decision.
 
-**A rewrite of `docs/MODEL.md` or `docs/INTERFACE.md` that changes no value,
-equation, code span or citation merges on green** (project owner, 2026-11-02, ratified, over holding
+**A rewrite of `docs/MODEL.md`, `docs/INTERFACE.md` or `docs/VERIFICATION.md`
+that changes no value, equation, code span or citation merges on green** (project owner, 2026-11-02, ratified, over holding
 each section rewrite of `PL-ZT47` for your read, `PL-ZTZF`). The session runs
 `python3 tools/model_rewrite.py lost`. It lists every equation, code span,
 citation, number and "no test yet" declaration that the rewrite dropped or

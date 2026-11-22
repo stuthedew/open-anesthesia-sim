@@ -357,7 +357,13 @@ except ImportError as error:  # pragma: no cover - a checkout missing the subpro
 import required_checks_check
 
 # The simulator package's location is `product_paths`'s (`PL-H5T9`).
-from product_paths import INTERFACE_DOC, MODEL_DOC, PACKAGE_DIR, SPECIFICATION_DOCS
+from product_paths import (
+    INTERFACE_DOC,
+    MODEL_DOC,
+    PACKAGE_DIR,
+    SPECIFICATION_DOCS,
+    VERIFICATION_DOC,
+)
 
 # Which files the repository holds is `tracked_files`'s answer, and which of
 # them are rule files is `rules_paths_check`'s, so a checkout under
@@ -476,6 +482,9 @@ MODEL = Path(MODEL_DOC)
 # What the interface must show and do, which was part of `docs/MODEL.md` until
 # `PL-CTXZ` moved it out.
 INTERFACE = Path(INTERFACE_DOC)
+# How the implementation is shown to solve the model's equations, which was
+# part of `docs/MODEL.md` until `PL-6PPZ` moved it out.
+VERIFICATION = Path(VERIFICATION_DOC)
 # The documents whose restated numbers are held to their homes (`PL-JS6P`):
 # each document of the specification, and `README.md`, the page a new reader
 # trusts first.
@@ -3044,9 +3053,9 @@ def check_untied_restatements(root: Path, report: Report) -> None:
 
     `check_prose_provenance` holds a marked number to its home. This check
     finds the numbers nobody marked (`PL-JS6P`). It reads each figure in
-    `docs/MODEL.md`, `docs/INTERFACE.md` and `README.md`, the three
-    `PROVENANCE_DOCUMENTS`, that equals a stored value in that value's
-    unit (`stored_values`). The figure must sit under a marker that says what
+    `docs/MODEL.md`, `docs/INTERFACE.md`, `docs/VERIFICATION.md` and
+    `README.md`, the four `PROVENANCE_DOCUMENTS`, that equals a stored value
+    in that value's unit (`stored_values`). The figure must sit under a marker that says what
     it is. A `provenance:` or `derived:` marker naming the value says it is
     the stored value, or was computed from it. A `not-restated:` marker
     listing the figure says it only coincides with one.
@@ -4637,7 +4646,7 @@ INTERFACE_PROVENANCE = Path("docs/interface-provenance.md")
 # that section's own subsection calls silent.
 BOUND_FAMILIES = (
     BoundFamily(
-        document=MODEL,
+        document=VERIFICATION,
         heading="Reasonably foreseeable misuse, and the hazards the presentation carries",
         level=2,
         kind=TEST_ENTITY,
@@ -4653,7 +4662,7 @@ BOUND_FAMILIES = (
         promise="every entry names the test that holds it",
     ),
     BoundFamily(
-        document=MODEL,
+        document=VERIFICATION,
         heading="Required tests",
         level=2,
         kind=TEST_ENTITY,

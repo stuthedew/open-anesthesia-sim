@@ -33,7 +33,7 @@ held at equilibrium in a 10 000 L tissue drifted by 1.6e-12 over 4 308 steps,
 which is 38 times the square-root rule's figure. The five worst single steps
 found on 2026-11-11 were each repeated 2 000 times, and the error after n steps
 stayed at n times the error of one (`PROPAGATOR_ROUNDING_UNITS` records the runs).
-`docs/MODEL.md` § "How far a computed value can be from the exact one" gives the
+`docs/VERIFICATION.md` § "How far a computed value can be from the exact one" gives the
 sources.
 
 **The agent balance does not use the summed bound.** It keeps its fixed limit
@@ -240,7 +240,7 @@ AGENT_ACCOUNTING_RELATIVE_TOLERANCE: Final = 1e-9
 
 The agent handled is the amount at the start of the accounting period plus the
 amount delivered since. In exact arithmetic the balance closes, so everything
-this limit admits is rounding (`docs/MODEL.md` § "Mass-balance identity").
+this limit admits is rounding (`docs/VERIFICATION.md` § "Mass-balance identity").
 
 The limit is fixed, and it is not the summed bound. A shipped agent's
 one-second step needs at most three squarings, so `run_rounding` for its
@@ -270,7 +270,7 @@ AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L: Final = 1e-12
 A step passes on either limit. While a run has handled less than a millilitre
 of agent gas, this limit is the wider of the two. In the 3600 s runs of
 2026-11-21, the largest unaccounted amount was 1.1e-12 L, for isoflurane, and
-that step passed on the relative limit (`docs/MODEL.md` § "Selected method
+that step passed on the relative limit (`docs/VERIFICATION.md` § "Selected method
 (as implemented)").
 """
 

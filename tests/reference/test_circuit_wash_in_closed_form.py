@@ -1,7 +1,7 @@
 """Check the circuit's wash-in against a closed form written from literals.
 
 `test_circuit_wash_in.py` holds the v0.0.2 analytic wash-in test, and
-`docs/MODEL.md` § "Preserved circuit reference tests" requires it to stay
+`docs/VERIFICATION.md` § "Preserved circuit reference tests" requires it to stay
 unchanged. Its expected value reads the time constant from
 `BreathingCircuit.time_constant_s` and the delivered fraction from
 `fraction_from_percent`, and both are shipped code. A unit error shared by

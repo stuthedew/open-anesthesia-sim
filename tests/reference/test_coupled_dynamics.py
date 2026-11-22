@@ -193,7 +193,7 @@ def _envelope_corner(agent_id: str) -> OperatingPoint:
     disagreement has an interior *minimum* near 5 L/min. It rises toward both
     ends, and more toward the upper end. The equations are linear in the
     delivered fraction, so the agent's own vaporizer maximum is its worst dial
-    setting. The measurements are recorded in `docs/MODEL.md`
+    setting. The measurements are recorded in `docs/VERIFICATION.md`
     § "Independent-solution test".
 
     The sweep was run while the operator split was the shipped method. This
@@ -1327,7 +1327,7 @@ def _worst_error_over_phases(agent_id: str, phases: Sequence[Phase]) -> tuple[fl
     unperfused load it falls in the loading phase for isoflurane and desflurane,
     and 19 s after that phase for sevoflurane (measured 2026-11-21, `PL-SZ6G`).
     Under the operator split it fell inside a transient, either the wash-in
-    transient or one that a setting change starts. `docs/MODEL.md`
+    transient or one that a setting change starts. `docs/VERIFICATION.md`
     § "Independent-solution test" gives the instants measured at the 0.1 s step
     that shipped until `PL-SZ6G`. Stepping the two solutions in lockstep
     and taking the maximum costs nothing extra, because the RK4 integration is
@@ -1527,7 +1527,7 @@ def test_randomised_control_trajectories_keep_every_invariant(agent_id: str, see
 
     With the exact step, the propagator of a transfer system like this one is entrywise
     nonnegative. So a step cannot produce a fraction that the compartments' guards reject
-    (`docs/MODEL.md` § "Supported simulation step"). This test does not assume that
+    (`docs/VERIFICATION.md` § "Supported simulation step"). This test does not assume that
     property. It checks the property on trajectories that the hand-written gate tests never
     cover. So a later change that breaks the property is found here rather than by a
     learner whose run stops. One such change is a model extension whose matrix is no longer

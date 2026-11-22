@@ -3,6 +3,7 @@ paths:
   - "/src/anesthesia_sim/data/**"
   - "/docs/MODEL.md"
   - "/docs/INTERFACE.md"
+  - "/docs/VERIFICATION.md"
   - "/docs/references/**"
 ---
 

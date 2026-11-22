@@ -1,8 +1,9 @@
 # Domains to review against, and the design principles they carry
 
 **Scope.** This is the standard for the **simulator** — `src/`, `tests/`,
-`docs/MODEL.md`, `docs/INTERFACE.md`, `README.md` — and for any decision about
-them. `.claude/rules/apparatus-standard.md` is the apparatus's standard.
+`docs/MODEL.md`, `docs/INTERFACE.md`, `docs/VERIFICATION.md`, `README.md` — and for
+any decision about them. `.claude/rules/apparatus-standard.md` is the
+apparatus's standard.
 
 This file lists the fields that review reaches, and the principles they carry.
 

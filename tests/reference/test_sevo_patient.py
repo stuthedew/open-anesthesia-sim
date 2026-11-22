@@ -23,7 +23,7 @@ EQUILIBRIUM_FRACTION_TOLERANCE = 1e-12
 # here rather than imported, for the reason that
 # `tests/unit/test_agent_simulation_validation.py` gives: a bound that followed
 # the constant it tests would move wherever that constant moved.
-# `docs/MODEL.md` § "Mass-balance identity" is the documented basis and gives
+# `docs/VERIFICATION.md` § "Mass-balance identity" is the documented basis and gives
 # the derivation.
 #
 # The bound is relative, not absolute. The mass-balance residual is rounding
@@ -237,7 +237,7 @@ def _plotted_wash_in_ratio(system: AgentUptakeSystem) -> float:
 def test_higher_ventilation_closes_the_alveolar_to_inspired_gap_faster() -> None:
     """Higher alveolar ventilation must bring F_A toward F_I faster.
 
-    Required test from docs/MODEL.md § "Directional ventilation test". Two
+    Required test from docs/VERIFICATION.md § "Directional ventilation test". Two
     default sevoflurane wash-ins run side by side, at 2 and 8 L/min of
     alveolar ventilation. At every whole second of the first minute, F_A / F_I
     must be higher in the 8 L/min run.
@@ -295,7 +295,7 @@ def test_long_wash_in_and_washout_validate_agent_simulation() -> None:
 
 
 def test_washout_never_increases_total_system_mass() -> None:
-    """`docs/MODEL.md` § "Washout test".
+    """`docs/VERIFICATION.md` § "Washout test".
 
     After loading the compartments, setting $F_D=0$ must produce finite,
     nonnegative washout without spontaneous increases in total system mass.
@@ -389,7 +389,7 @@ def test_reset_clears_system_and_validation_accounting() -> None:
 def test_equilibrium_produces_no_net_internal_transfer() -> None:
     """All connected compartments at one fraction must not exchange agent.
 
-    Required test from docs/MODEL.md: if F_C = F_A = F_a = F_v = F_i, every
+    Required test from docs/VERIFICATION.md: if F_C = F_A = F_a = F_v = F_i, every
     internal transfer rate must be zero. Fresh gas flow is held at zero so
     the only transfers under test are the internal circuit-alveolar,
     tissue, and venous exchanges.
@@ -434,7 +434,7 @@ def test_equilibrium_produces_no_net_internal_transfer() -> None:
 def test_higher_blood_gas_solubility_slows_alveolar_to_circuit_rise() -> None:
     """Higher blood:gas solubility must slow the rise of F_A / F_C.
 
-    Required test from docs/MODEL.md: increasing the blood:gas partition
+    Required test from docs/VERIFICATION.md: increasing the blood:gas partition
     coefficient must increase blood capacity and slow this ratio's approach
     to one, in an otherwise identical synthetic system.
     """

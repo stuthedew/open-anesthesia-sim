@@ -314,7 +314,7 @@ if a claim ever needs re-running.
 
 That mass balance cannot detect a wrong *rate* is not a defect and will not
 be re-found: it is a standing property of equal-and-opposite accounting,
-recorded in `docs/MODEL.md` § "Selected method (as implemented)" and gated by
+recorded in `docs/VERIFICATION.md` § "Selected method (as implemented)" and gated by
 the independent-solution test beside it.
 
 The one finding still open is `PL-024` (document what the venous pool does to
@@ -339,7 +339,7 @@ lookup table, which the five composed sub-steps prevented. `PL-GS5X` made the
 change in the `v0.4.x` track - the track promises no particular patch number,
 so it took whichever one it landed on - `PL-P0BB` settled the state vector as
 fractions, and `PL-X9KD` re-derives every published statement the splitting
-error justified. `docs/MODEL.md` § "Selected method (as implemented)" is
+error justified. `docs/VERIFICATION.md` § "Selected method (as implemented)" is
 rewritten around what ships; this thread is closed.
 
 **What was actually built, 2026-09-06 (`PL-GS5X`).** Two modules, not one:
@@ -812,7 +812,7 @@ propagations per simulated second and forcing the tick structure to be revisited
 
 The 0.1 s step lasted until 2026-11-21, when `PL-SZ6G` made the step one second so
 that a run's time is a whole number of seconds (`PL-7CY5` records the decision).
-Every figure in this thread is the 0.1 s step's. `docs/MODEL.md` § "Supported
+Every figure in this thread is the 0.1 s step's. `docs/VERIFICATION.md` § "Supported
 simulation step" gives the one-second figures.
 
 **Why this thread is kept rather than deleted.** The three items ran together and
@@ -836,7 +836,7 @@ corrected relation is now asserted rather than stated.
 
 ## Open thread: what makes desflurane wash out too fast - PL-W21J, PL-73G7, PL-RFLN
 
-`docs/MODEL.md` is the authority for this and carries the whole account, in
+`docs/VERIFICATION.md` is the authority for this and carries the whole account, in
 "Desflurane's residual, and why the parameter file was not changed" under the
 published wash-in validation test. This entry exists so that a session reading
 the notes rather than the model spec finds the thread, and it deliberately does

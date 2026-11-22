@@ -6,15 +6,15 @@ effort: S
 status: ready
 classes: docs
 feature: chart-readout
-touches: docs/MODEL.md
+touches: docs/MODEL.md, docs/VERIFICATION.md
 added: 2026-09-26
 payoff: the authoritative specification states the fat-trace pixel figure with the dial it holds at, so no later session copies a 1 MAC measurement onward as true at every dial
-verify: grep -qF "fat's whole first hour spans under 4 px at a 1 MAC dial and under 12 px at the agent's vaporizer maximum" docs/MODEL.md
+verify: grep -qF "fat's whole first hour spans under 4 px at a 1 MAC dial and under 12 px at the agent's vaporizer maximum" docs/VERIFICATION.md
 ---
 
 **Problem.** docs/MODEL.md's hazard row for two traces drawn on top of each other says fat's whole first hour spans under 4 px on the chart, which holds only at a 1 MAC dial: at the interface's maximum dial it spans 6.1-11.0 px
 
-The row is in `docs/MODEL.md` § "Reasonably foreseeable misuse, and the hazards
+The row is in `docs/VERIFICATION.md` § "Reasonably foreseeable misuse, and the hazards
 the presentation carries", the one reading "reading one compartment's
 concentration as another's where two traces are drawn on top of each other".
 `#959` (`PL-QYBW`) wrote its clause "on which fat's whole first hour spans under
@@ -75,4 +75,4 @@ since 2026-09-06, five of them by one blind review on 2026-10-25. The repair
 here is unchanged. If `PL-B6YV`'s rule is adopted, the corrected row should
 also name a test that computes the pixel figure at the dial it states.
 
-**Checked 2026-11-22** against `d4e8200`: still applies, but the sentence it would fix has been reworded. In the hazard row "reading one compartment's concentration as another's where two traces are drawn on top of each other", `docs/MODEL.md` now says "the fat trace moves less than 4 px over its whole first hour", still with no dial. #1944 (`20e39f39`) wrote that wording. The verbatim clause that the done-when and `verify:` require was written against the old wording, so the fix should condition the sentence as it now reads, and `verify:` should be rewritten to match. The figures were measured at the old 0.1 s step, and #2180 now steps a run in whole seconds; re-measure them before quoting them. The row moves with `PL-6PPZ` (claimed elsewhere) to a new verification document.
+**Checked 2026-11-22** against `d4e8200`: still applies, but the sentence it would fix has been reworded. In the hazard row "reading one compartment's concentration as another's where two traces are drawn on top of each other", `docs/VERIFICATION.md` now says "the fat trace moves less than 4 px over its whole first hour", still with no dial. #1944 (`20e39f39`) wrote that wording. The verbatim clause that the done-when and `verify:` require was written against the old wording, so the fix should condition the sentence as it now reads, and `verify:` should be rewritten to match. The figures were measured at the old 0.1 s step, and #2180 now steps a run in whole seconds; re-measure them before quoting them. The row moves with `PL-6PPZ` (claimed elsewhere) to a new verification document.

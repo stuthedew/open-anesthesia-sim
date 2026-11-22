@@ -158,7 +158,7 @@ residual is a disagreement about tissue return, and the apparatus can no
 longer explain it. It is also not a coefficient that this repository could
 correct.
 `test_no_measured_tissue_solubility_reaches_desflurane_s_published_elimination`
-below records what was ruled out. `docs/MODEL.md` "Desflurane's residual, and
+below records what was ruled out. `docs/VERIFICATION.md` "Desflurane's residual, and
 why the parameter file was not changed" gives the rest of the account and
 what is left open. Neither column validates the shipped simulator's
 elimination, and no test here claims that it does.
@@ -223,7 +223,7 @@ fourth apply to the elimination alone.
    what remains. So the gap over those hours is measured beside this gate
    rather than enforced by it. test_late_washout_against_published_fits.py,
    in this directory, records the gap's size and direction over the first 24
-   hours (docs/MODEL.md, "The first 24 hours of elimination against the
+   hours (docs/VERIFICATION.md, "The first 24 hours of elimination against the
    published mean curves"). It asserts no agreement.
 
 What the wash-in comparison does establish is this. Six coupled compartments,
@@ -258,7 +258,7 @@ regression pins are left out. A pin fails on any change at all, so it shows
 that something moved and never that a published value would have caught the
 change.
 
-`docs/MODEL.md` § "What the published-data gate can and cannot resolve" holds
+`docs/VERIFICATION.md` § "What the published-data gate can and cannot resolve" holds
 the measured table, and these are its main points:
 
 - **Blood:gas and the vessel-rich group are resolved on both sides.** A
@@ -554,7 +554,7 @@ APPARATUS_DEAD_SPACE_L = 0.050
 # ventilation by 50 ml * f and does nothing else. Treating the dead space
 # instead as a non-zero inspired fraction would describe a mixing volume that
 # returns a *fraction* of every breath. That is this model's circuit, not the
-# published apparatus. The sixth candidate row in `docs/MODEL.md` SS
+# published apparatus. The sixth candidate row in `docs/VERIFICATION.md` SS
 # "Desflurane's residual" has that non-zero inspired fraction shape.
 #
 # The model has no respiratory rate, so the decrement cannot be computed from
@@ -1848,7 +1848,7 @@ def test_early_wash_in_matches_published_human_measurement(point: PublishedTimeP
     grow unseen.
 
     **What this comparison can detect.** It is part of the published-data
-    gate. `docs/MODEL.md` § "What the published-data gate can and cannot
+    gate. `docs/VERIFICATION.md` § "What the published-data gate can and cannot
     resolve" gives, for each stored parameter, the factor at which a change
     makes the gate fail. A doubled alveolar gas volume moves sevoflurane's
     1-minute F_A/F_I from 0.538 to 0.429, -2.85 SD, so the early points catch
@@ -2127,7 +2127,7 @@ class ResolvingPowerCase:
     """One agent run with one stored parameter changed, and what the gate should say.
 
     The factors were chosen with margin from the edges measured on
-    2026-10-18, which `docs/MODEL.md` § "What the published-data gate can and
+    2026-10-18, which `docs/VERIFICATION.md` § "What the published-data gate can and
     cannot resolve" tabulates. A case sits well past an edge or well inside
     one, so an unrelated change of a few hundredths of an SD does not flip
     it. A test placed at an edge itself would sit 0.01 to 0.03 SD from
@@ -2248,7 +2248,7 @@ def test_the_published_data_gate_passes_at_a_stated_perturbation(case: Resolving
 
     assert not failures, (
         f"{case.agent_id} with {case.change.parameter} x{case.change.factor} now fails the "
-        f"published-data gate: {failures}; docs/MODEL.md says the gate cannot resolve this "
+        f"published-data gate: {failures}; docs/VERIFICATION.md says the gate cannot resolve this "
         f"change, so its resolving-power table must be re-measured"
     )
 
@@ -2654,7 +2654,7 @@ def test_five_minute_elimination_ratio_without_rebreathing_regression_pin(
     out faster than the volunteers did rather than more slowly. That residual
     is a real disagreement about tissue return, and the circuit can no longer
     explain it. The next test shows what the residual is not, and
-    `docs/MODEL.md` "Desflurane's residual, and why the parameter file was
+    `docs/VERIFICATION.md` "Desflurane's residual, and why the parameter file was
     not changed" gives the whole account.
 
     **What is asserted here is a regression pin, not the agreement above.**
@@ -2850,7 +2850,7 @@ def test_no_apparatus_dead_space_reaches_desflurane_s_published_elimination(
 ) -> None:
     """Desflurane's residual is not the published apparatus's dead space either.
 
-    `docs/MODEL.md` SS "Desflurane's residual" rejected rebreathing in the
+    `docs/VERIFICATION.md` SS "Desflurane's residual" rejected rebreathing in the
     published apparatus at an *assumed* F_I/F_A of 0.30. The methods section
     later supplied the apparatus's real volume: about 50 ml of corrugated
     Teflon between the tracheal sampling port and the nonrebreathing valve.
