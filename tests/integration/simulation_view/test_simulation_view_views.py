@@ -53,6 +53,7 @@ from anesthesia_sim.app.views import (
     ParameterControlsView,
 )
 from anesthesia_sim.core import supported_ranges as supported_ranges_module
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CaseInstant
 from anesthesia_sim.layout.run_identity import RunId
@@ -729,6 +730,31 @@ def test_a_stopped_run_draws_no_preview_while_its_thumb_is_held(application: QAp
     _advance(controller, 60)
     controller.fail("a failure the test injects")
     view = _shown_view(application, controller)
+    control = _dials(view.runs[0])._fresh_gas_flow_slider
+
+    _hold_thumb(control, 6.0, FLOW_DISPLAY_DECIMALS)
+    view.render_tick()
+
+    assert _concentration(view).chart.preview_region(0) is None
+    assert _wash_in(view).chart.preview_region(0) is None
+
+
+def test_a_run_holding_an_unrecorded_setting_draws_no_preview_while_its_thumb_is_held(
+    application: QApplication,
+) -> None:
+    """A preview of a change the run would refuse is not drawn (`PL-S8FM`).
+
+    A circuit volume written on the core without the controller makes the
+    controller refuse the next control change, so the chart must not predict
+    a future under it.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 60)
+    controller.pause()
+    view = _shown_view(application, controller)
+    controller._state.uptake_system.circuit.set_circuit_volume(CompartmentVolume(9.0))
     control = _dials(view.runs[0])._fresh_gas_flow_slider
 
     _hold_thumb(control, 6.0, FLOW_DISPLAY_DECIMALS)

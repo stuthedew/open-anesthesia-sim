@@ -3016,9 +3016,13 @@ class SimulationController:
             SimulationConfigurationError: If this run has stopped, if the
                 core refuses the value, or if the trial run was rebuilt with a
                 value this run does not have.
+            SimulationExecutionError: If the core holds a setting this
+                controller did not record, so applying the value would be
+                refused too (`_refuse_a_setting_after_an_unrecorded_one`).
         """
 
         self._refuse_a_setting_on_a_stopped_run(preview.control)
+        self._refuse_a_setting_after_an_unrecorded_one()
         in_force = self._run_definition.segments[-1].settings
         key = (self._agent_id, in_force, preview)
 
@@ -3253,8 +3257,9 @@ class SimulationController:
         going through this controller, such as a circuit volume, would be
         recorded with the next control change as if the learner had made it,
         and the run would go on under it (`PL-S8FM`). The circuit and
-        alveolar gas volumes are fixed for a run (`docs/MODEL.md` § "The four
-        controls"), and no control records a change to either. So the change
+        alveolar gas volumes cannot be changed during a run (`docs/INTERFACE.md`
+        § "What is not bounded this way"), and no control records a change to
+        either. So the change
         is refused before anything is applied, with the error that a step
         gives in the same case.
 
