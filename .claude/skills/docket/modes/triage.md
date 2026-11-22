@@ -232,8 +232,10 @@ summary line naming two options and marking neither. A decision of record
 about the release train was settled by reconstructing another model's
 compressed prose.
 
-Write it into the brief as you write the question, in your own words, and
-**mark it** - `**Recommended.**`, `**Recommendation:**`, or the word under
+Research current best practice on the question first, as rule 10 of
+`.claude/rules/instruction-writing.md` says, and put the sources beside the
+recommendation (`PL-W7HW`). Write it into the brief as you write the
+question, in your own words, and **mark it** - `**Recommended.**`, `**Recommendation:**`, or the word under
 emphasis somewhere a reader skimming will land on it. Marking is the half
 that is easy to skip and the half that failed here: a recommendation in the
 ninth paragraph of a long brief is present and unfindable, which buys the
