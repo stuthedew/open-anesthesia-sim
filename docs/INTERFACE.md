@@ -5568,6 +5568,7 @@ every platform. Until that tick, the readouts can show a later step than the
 charts. A click that moves the handle to the pointer draws one frame, and
 its release draws no second one. A handle released at the setting already in
 force applies nothing, and the run records no setting change.
+<!-- provenance: app/dashboard_frame.py RENDER_INTERVAL_S = 0.2 -->
 
 **A click on the slider away from its handle follows the platform's own
 convention** (`PL-57LD`). The simulator sets no style of its own, so Qt's style
