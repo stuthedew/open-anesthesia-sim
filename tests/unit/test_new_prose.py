@@ -1,10 +1,11 @@
 """`tools/new_prose.py --compare` must set each changed passage beside its old text.
 
 Close-out step 8 runs the comparison to find a fact that an edit dropped and a
-passage that grew. These tests pin which files the reader table in
-`.claude/rules/plain-writing.md` names, which paragraphs, table rows,
-docstrings, comments and string literals count as prose, how changed rows are
-grouped into passages, and which facts are reported as gone.
+passage that grew. These tests pin which files the reader tables in
+`.claude/rules/plain-writing.md` and `.claude/rules/document-readers.md` name,
+which paragraphs, table rows, docstrings, comments and string literals count as
+prose, how changed rows are grouped into passages, and which facts are reported
+as gone.
 """
 
 from __future__ import annotations

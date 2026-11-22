@@ -4,14 +4,16 @@ title: Move the six verification sections of docs/MODEL.md, word for word, to a 
 priority: P1
 owner-priority: P1, 2026-11-11, ratified
 effort: M
-status: ready
+status: done
 classes: docs
 feature: model-md-structure
 touches: docs/, tools/, subprojects/docket/, .claude/, CLAUDE.md, docket.toml, README.md, ROADMAP.md, src/anesthesia_sim/, tests/
 blocked-by: PL-CTXZ
 added: 2026-11-11
+closed: 2026-11-22
+pr: 2204
 payoff: a developer finds the numerical method, each required test and its limit in one document, apart from the model description a clinician reads
-verify: ! grep -qE '^## (Numerical method|Required tests)$' docs/MODEL.md
+verify: ! grep -qF '## Numerical method' docs/MODEL.md
 ---
 
 **Problem.** Move the six verification sections of docs/MODEL.md, word for word, to a new verification document for developers, with the code's citations of them and the checks that read them (stage 1 of the split PL-P3GZ decided)
@@ -107,3 +109,50 @@ took, in order, and what went wrong the first time:
    `.claude/rules/plain-writing.md`, which
    `test_every_product_document_has_a_reader_except_the_release_notes`
    requires, and its entry to `README.md`'s list of documents.
+
+**Done 2026-11-22**, in pull request #2204. The six sections moved word for
+word to `docs/VERIFICATION.md`. `python3 tools/model_rewrite.py lost` showed
+only the moved citations: `docs/MODEL.md` named three fewer times and
+`docs/VERIFICATION.md` added. After the move, five sentences that said "this
+document" for the equations were changed to name `docs/MODEL.md`, and 23
+section marks gained the `docs/MODEL.md` path they had meant. The resident
+instructions went 485 characters over their cap with the new document in
+`CLAUDE.md`'s lists, so `PL-7YHK` moved the document reader rows to a rule
+that loads with the documents.
+
+The two blind review passes raised five points. Four are fixed, and one is
+declined:
+
+1. A test of the numerical envelope's refusal still expected `docs/MODEL.md`.
+   The search missed it because the path is written with an escaped dot.
+2. The document also holds the comparison with measurements in volunteers
+   and the hazard list, which its title and the pointers to it did not say.
+   The title, the opening, the pointer in `docs/MODEL.md`, `README.md`'s list
+   and `CLAUDE.md` now say so.
+3. `docs/MODEL.md`'s rule on what a dated statement means did not cover the
+   new document. It does now.
+4. The text that decides whether the owner must read a change named only
+   `docs/MODEL.md` and `docs/INTERFACE.md`, so an edit weakening a hazard
+   row in the new document would have counted as housekeeping. `JUDGE_ASK`
+   now names the documents from `SPECIFICATION_DOCS`, and the pull-request,
+   coordinator, close-out and model-review instructions, `docs/maintainer.md`
+   and `tools/blind_review.py` name them too.
+5. Both passes asked for the clinician to be named as a reader of the new
+   document. Declined: `PL-P3GZ` names a developer as its reader, and the
+   comparisons with measurements in people go to `docs/MODEL.md` in
+   `PL-48MX`. Until then, the pointer in `docs/MODEL.md` § "Status" sends a
+   clinician to them.
+
+**Files checked** for a citation of a moved section, and for a sentence that
+names `docs/MODEL.md` as the home of the numerical method, the tests or the
+hazards: `CLAUDE.md`, `README.md`, `docs/MODEL.md`, `docs/INTERFACE.md`,
+`docs/ARCHITECTURE.md`, `docs/apparatus.md`, `docs/maintainer.md`,
+`docs/worker.md`, `docs/WORKING_NOTES.md`, `docs/resident-instructions.md`,
+every rule, skill and agent under `.claude/`, `docket.toml`,
+`subprojects/docket/src/docket/arming.py`, `tools/doc_check.py`,
+`tools/product_paths.py`, `tools/blind_review.py`, the messages and
+docstrings under `src/anesthesia_sim/`, and the tests that name a moved
+section. `ROADMAP.md`, the release notes and the closed briefs record what
+was true when they were written and were left as they are. A test message
+that names `docs/MODEL.md` with no section, such as the coupled-dynamics
+test's, is left for `PL-10BC`.

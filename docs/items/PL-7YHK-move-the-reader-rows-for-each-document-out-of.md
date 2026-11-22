@@ -3,12 +3,15 @@ id: PL-7YHK
 title: Move the reader rows for each document out of the resident plain-writing rule into a rule that loads with those documents, so that adding a specification document does not push the instructions loaded at launch over their cap
 priority: P1
 effort: S
-status: ready
+status: done
 classes: housekeeping
 feature: model-md-structure
 touches: .claude/rules/plain-writing.md, .claude/rules/document-readers.md, tools/new_prose.py, tests/unit/test_new_prose.py, docs/resident-instructions.md
 added: 2026-11-22
+closed: 2026-11-22
+pr: 2204
 payoff: a new specification document can join the checks without the instructions every session loads at launch passing their cap, and each document's reader loads with the document
+tests: tests/unit/test_new_prose.py::test_a_document_rule_without_the_reader_table_is_refused_by_name
 ---
 
 **Problem.** Move the reader rows for each document out of the resident plain-writing rule into a rule that loads with those documents, so that adding a specification document does not push the instructions loaded at launch over their cap
@@ -37,3 +40,16 @@ reads the readers from both files. Record the move in
 turned the growth that each new specification document brings into a routing
 decision. Each document's rows are needed only once the document is open, so
 the path-scoped rule delivers them at that moment, and no reader changes.
+
+**Done 2026-11-22**, in pull request #2204. Ten rows moved to
+`.claude/rules/document-readers.md`, with the new row for
+`docs/VERIFICATION.md`, and `.claude/rules/plain-writing.md` points at it.
+That cut about 2,450 characters from the instructions loaded at launch.
+`tools/new_prose.py` reads both tables and names the file whose table it
+cannot read. The move is recorded in `docs/resident-instructions.md`
+§ "What was routed out".
+
+**Files checked** for a sentence that says the reader table is in
+`.claude/rules/plain-writing.md` alone: `CLAUDE.md`, `docs/apparatus.md`,
+`docs/resident-instructions.md`, every rule and skill under `.claude/`,
+`tools/new_prose.py` and its test.
