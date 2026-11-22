@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect, docs
+milestone: v0.6.19
 touches: src/anesthesia_sim/user_files.py
 deferred-from: v0.7.0 - a new problem, not present at the freeze: user_files.py and its docstring arrived in 2076f542 (PL-93B3)
 added: 2026-11-07

@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: defect, docs
+milestone: v0.6.19
 touches: docs/maintainer.md, .claude/skills/docket/modes/triage.md
 deferred-from: v0.7.0 - workflow tooling outside the schematic release, and it changes no displayed value
 added: 2026-11-11

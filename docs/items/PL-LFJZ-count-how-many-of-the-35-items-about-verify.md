@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: planning
 feature: standing-weight
+milestone: v0.6.19
 touches: docs/items
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science; a count the owner asked for on 2026-11-20 about the workflow, which no v0.7.0 feature needs
 added: 2026-11-20

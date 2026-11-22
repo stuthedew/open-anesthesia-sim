@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: session-cost
 feature: standing-weight
+milestone: v0.6.19
 touches: CLAUDE.md, .claude/rules/rule-routing.md, docs/resident-instructions.md, docs/items/PL-G3KZ-fail-make-check-when-the-lines-loaded-at-launch.md
 deferred-from: v0.7.0 - the move changes how sessions are instructed, not the schematic, so the release does not wait on it
 added: 2026-11-21

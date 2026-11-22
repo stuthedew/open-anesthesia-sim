@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: planning
 feature: standing-weight
+milestone: v0.6.19
 touches: src/anesthesia_sim/core, src/anesthesia_sim/app, docs/MODEL.md, docs/INTERFACE.md, docs/items
 deferred-from: v0.7.0 - a design round filed on 2026-11-20, after the gate froze, on how a run is computed; it holds further work on PL-GJ1W, which v0.7.0 already defers, and changes nothing a learner sees until the owner answers
 added: 2026-11-20

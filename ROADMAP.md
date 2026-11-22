@@ -27,92 +27,67 @@ explicit out-of-scope list.
   the cause produced point back to it. A head is live while the cause still
   produces items, and spent once it no longer does.
 
-## Current baseline: v0.6.18
+## Current baseline: v0.6.19
 
-In v0.6.18 GitHub's own settings refuse a forced push, the deletion of `main`
-and the merge of a pull request that the project holds, and CI fails when one
-of those settings is missing. The release also records the agreed order of
-work, learner and tasks for the interface pass. The release has 6 items. It is
-a patch on both halves of the patch test in § "Versioning decision": it
-crosses no capability boundary, and v0.7.0 is given to a milestone section, so
-no patch release may take that number. v0.6.18 finishes one feature,
-`model-review`.
+In v0.6.19 a run steps in whole seconds. A control change takes effect at the
+next whole second, a branch can open at any second the run has reached, and
+every value on screen is read from the state the run stored for that second.
+The accounting panel and the schematic name the 20 °C and 1 atm at which an
+agent amount is stated, and the agent cost View says on its face that its
+figures are modelled. Every shipped Workspace fits the window without a page
+scroll, and the bookmarks and the branch control are Views. The release has
+134 items. It is a patch on both halves of the patch test in § "Versioning
+decision": the schematic milestone is not finished, and v0.7.0 is given to a
+milestone section, so no patch release may take that number. v0.6.19 finishes
+six features: `copy-editor`, `effort-trial`, `interface-provenance-adoptions`,
+`owner-ask-by-state`, `prose-quality` and `roadmap-structure`.
 
 v0.7.0 is cut only after its Required scope has closed, Gate 3's frozen list
-has cleared and the project owner has test-driven `main`. Two ids in the
-Required scope are open. The project owner added both as entry 13 on
-2026-11-10: `PL-HQPF`, which makes the accounting panel and the schematic name
-the 20 °C and 1 atm at which an agent amount is stated, and `PL-RJN9`, which
-makes the agent cost View read that temperature from the model instead of
-writing it as text. When v0.6.18 was cut, 119 of the gate's 168 entries had
-cleared, 36 were open for this gate to clear, those 2 were open for the
-milestone to clear, and 11 were deferred to the next gate.
+has cleared and the project owner has test-driven `main`. The Required scope
+has closed: its last two ids, `PL-HQPF` and `PL-RJN9`, close in this release.
+When v0.6.19 was cut, 171 of the gate's 200 entries had cleared, 8 were open
+for this gate to clear, and 21 were deferred to the next gate.
 
-**No model code, equation or parameter changed, and no run can differ. The
-tag also ships two interface changes that these notes do not name, because
-they merged after the cut:**
+**The model's step changed, so a run can differ from v0.6.18. No equation or
+model parameter changed:**
 
-| Tree | v0.6.17 tag | This cut | What moved |
+| Tree | v0.6.18 tag | This cut | What moved |
 | --- | --- | --- | --- |
-| `src/` | `a110105` | `6da93f5` | modules under `app/`: each run's panel is written from one value (`#2094`), and the bookmarks and branch control are Views (`#2103`) |
-| `src/anesthesia_sim/core/` | `a72bd99` | `a72bd99` | nothing |
-| `src/anesthesia_sim/data/` | `c3fbdbc` | `9f4943e` | the three shipped Workspace layouts, which now place the Bookmarks and Branch Views (`#2103`); no model parameter |
-| `tests/reference/` | `545a009` | `545a009` | nothing |
-| `docs/MODEL.md` | `93505d9` | `aa0b791` | two paragraphs on the banner and the Area header line (`#2103`) |
-| `README.md` | `a8f2abf` | `c2632c1` | the layout description (`#2103`) |
-| `.github/` | `fefd203` | `b7b61e1` | the `merge-hold` workflow, and a step in `quality.yml` that reads GitHub's rules |
+| `src/` | `6da93f5` | `417ed3a` | `core/` as below; `app/`'s playback, branching and chart in whole seconds (`#2180`), the 20 °C and 1 atm labels (`#2136`), and the Workspaces fitting the window (`#2134`) |
+| `src/anesthesia_sim/core/` | `a72bd99` | `6934bc7` | the one-second step and the stored states (`#2180`), every rounding bound in one module (`#2121`), blood flow as a checked type (`#2114`), and checked records that re-run their checks when rebuilt (`#2166`) |
+| `src/anesthesia_sim/data/` | `9f4943e` | `21784c0` | the Maintenance Workspace's Area sizes (`#2134`) and source notes; no model parameter |
+| `tests/reference/` | `545a009` | `b5db82d` | moved to the one-second step (`#2180`), and new tests of the figures `docs/MODEL.md` quotes (`#2154`, `#2165`) |
 
-Because `core/` and the model's parameter files are unchanged, the
-trajectories were not re-measured.
+**How far a run moved.** Both tags ran the same 81 cases: three agents, three
+fresh gas flows, three cardiac outputs and three ventilations, for 90 minutes,
+with four control changes, a time mark, a vessel-rich target of 0.5 MAC and a
+branch, and three runs of 24 hours. Over 10,935 readings taken each minute, the
+compartment fractions differ by at most 1.4 × 10⁻¹³ atm. Of 174,960 formatted
+readouts, 543 differ. Every one is the delivered agent volume, which is shown
+to 0.1 L, and each moves by that one step. A run that stops on a marked
+crossing or a MAC target now stops on a whole second: 168 of 271 stops land 0.1
+to 0.9 s later than on v0.6.18, and the other 103 at the same instant. The
+24-hour runs differ by at most 2.3 × 10⁻¹² atm and in no readout. `PL-572Q`
+names the scripts that measured this.
 
-**The bookmarks and the branch control as Views** (`#2103`). The two fixed
-sections under the Areas are now Views named "Bookmarks" and "Branch", which a
-learner places, moves or removes like any other View. The three shipped
-Workspaces show both. A layout saved before this change shows neither until
-the learner chooses one in an Area or resets the Workspace. The banner of a run
-stopped at the supported run length names a branch only while an Area shows the
-Branch View. `PL-9YPR`, `PL-QKDV` and `PL-5XVQ` closed with it, and v0.6.19's
-notes will name them.
+**Whole seconds** (`PL-SZ6G`, `PL-MH9J`, `PL-FST0`, `PL-Z6C8`, `#2180`). The
+step was 0.1 s, which a binary number cannot hold exactly, and six closed
+items came from that rounding. A run now counts whole seconds, and the playback
+takes one exact one-second step for each second that real time allows.
+`docs/MODEL.md` § "Supported simulation step" gives how far a control change
+made one second late can move the alveolar reading: at most 1.3 percentage
+points, from a desflurane ventilator start at the edge of the supported
+settings, fading to 0.5 points after eight seconds.
 
-**The run panel written from one value** (`#2094`). This is the first of four
-pull requests for `PL-RF2S`, which is still open, so the notes of the release
-that closes it will name the work. A run's panel had two writers, one for a
-drawn frame and one for a halt, and a value that the halt's writer missed
-stayed on screen from the run before. One writer now draws the whole panel on
-both paths. A learner sees no change in normal use. On a run that has already
-stopped on an internal fault, a frame that cannot be built in full leaves every
-value on the earlier frame, and a 1 MAC line that cannot be built is blank.
+**Agent amounts and their conditions** (`PL-HQPF`, `PL-RJN9`, `PL-11Z9`,
+`#2136`). Every agent amount names the 20 °C and 1 atm it is stated at, the
+agent cost View reads that temperature from the model rather than writing it
+as text, and the agent cost View says its figures are modelled, not measured.
 
-**A test of randomly drawn runs** (`#2100`). This is the first pull request
-for `PL-GJ1W`, which is also still open. It adds a unit test that steps the
-model over generated settings.
-
-**Irreversible actions refused at GitHub** (`PL-39Y1`, `#2096`; `PL-KH7Y`,
-`#2123`). Four earlier fixes tried to stop a session forcing a push, deleting
-a branch or merging by reading the command the session typed, and each time
-another spelling passed. CI now reads GitHub's rules and fails, naming the
-setting, where one is missing: forced pushes blocked on every branch, deletion
-of `main` restricted, a pull request required, `main`'s required checks
-binding admins, and release tags protected. `main` also requires a new check,
-`merge-hold`, which fails while a pull request's branch carries an open claim,
-changes the simulator with no record of whether the project owner must read
-it, or waits on that read.
-
-**The interface pass** (`PL-HS9M`, `#2116`). The project owner agreed the
-order of work on 2026-11-10: tasks, a heuristic evaluation, grey-box layouts,
-one style with one set of controls, then testing with residents. The
-first-pass learner is a resident early in training who works through a case
-alone. The next four steps are filed in the `interface-pass-design-round`
-feature.
-
-**Sources are read before they are cited** (`PL-6VZF`, `#2111`). The session
-environment's network access is open to any host, and a session reads a source
-before citing it and says what it read.
-
-**The mutation run and the model review** (`PL-GP8G`, `#2124`; `PL-PW83`,
-`#2127`). The mutation run completes its first step again, which two new unit
-tests had stopped. The model review no longer counts a finding that a blind
-review pass filed on the reviewed branch as a fault the pass missed.
+**The window holds the layout** (`PL-CBYS`, `#2134`; `PL-9YPR`, `#2103`). The
+page no longer scrolls at the common screen sizes: each View scrolls inside its
+own Area. The bookmarks and the branch control, which sat under the Areas as
+fixed sections, are Views a learner places like any other.
 
 § "What a tag ships that its notes may not name" says how work ships that
 merges on `main` after a release is cut and before its pull request lands.
@@ -282,7 +257,8 @@ so no release's notes name it (`PL-KRS6`).
 | v0.6.15 | Completed | **The release where the agent cost View shows what the delivered agent cost in money, at a bottle price the reader sets for each agent, with the price's currency and date beside the cost; where most sections of `docs/MODEL.md` are rewritten in plain English for a clinician reader, with the history behind each value moved to the items; where every guard hook runs through one module that records a crash instead of passing silently, and judges the action a command performs rather than how it is spelled; where the owner-ask guard flags a pull request waiting on the owner by its state rather than by its wording; and where the step-size test's 0.5% limit, which never decided a result, is removed.** | 98 items | `PL-8B6Z` |
 | v0.6.16 | Completed | **The release where the copy editor cuts a repeated fact, words a fact does not need and a fact meant for another reader, and is back in use; where the rest of `docs/MODEL.md`'s interface sections, and its section on how the document is held to the tree, are rewritten for a clinician reader; where `README.md` is copy edited with the fixed copy editor; and where the writing rule says a model limitation earns a sentence only where it could change what a clinician concludes from a displayed value.** | 11 items | `PL-80PZ` |
 | v0.6.17 | Completed | **The release where the agent cost View shows the delivered agent in whole millilitres of liquid, because a tenth implied more precision than the measured density supports, and where `docs/MODEL.md` gives each fact one home and is line edited with every dropped statement restored.** | 96 items | `PL-FNJ3` |
-| v0.6.18 | Completed / current baseline | **The release where GitHub's own settings refuse a forced push, the deletion of `main` and the merge of a pull request that the project holds, and where the order of work, the learner and the tasks for the interface pass are agreed.** | 6 items | `PL-MH1H` |
+| v0.6.18 | Completed | **The release where GitHub's own settings refuse a forced push, the deletion of `main` and the merge of a pull request that the project holds, and where the order of work, the learner and the tasks for the interface pass are agreed.** | 6 items | `PL-MH1H` |
+| v0.6.19 | Completed / current baseline | **The release where a run steps in whole seconds, so a control change takes effect at the next whole second and a branch can open at any second the run has reached; where every agent amount names the 20 °C and 1 atm it is stated at; and where every shipped Workspace fits the window, with the bookmarks and the branch control as Views.** | 134 items | `PL-572Q` |
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.

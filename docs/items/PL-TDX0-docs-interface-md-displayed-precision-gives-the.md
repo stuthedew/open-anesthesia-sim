@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs, science
 feature: model-claims-held-by-tests
+milestone: v0.6.19
 touches: docs/INTERFACE.md, docs/MODEL.md, tests/integration/test_parameter_uncertainty.py, tests/unit/test_formatting.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/core/simulation_step.py, docs/items
 added: 2026-11-02
 closed: 2026-11-14

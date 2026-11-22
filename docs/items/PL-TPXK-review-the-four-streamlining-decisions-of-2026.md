@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: housekeeping
 feature: standing-weight
+milestone: v0.6.19
 touches: docs/items
 deferred-from: v0.7.0 - captured after the freeze, and not safety or science; it reviews how four workflow and design decisions were recorded, so the release does not wait on it
 added: 2026-11-21

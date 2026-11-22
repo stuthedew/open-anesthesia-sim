@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: feature, safety
 feature: run-computed-one-way
+milestone: v0.6.19
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/chart_time_base.py, src/anesthesia_sim/app/chart_frame.py, docs/INTERFACE.md
 added: 2026-11-21
 closed: 2026-11-21
