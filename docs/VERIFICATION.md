@@ -2592,17 +2592,18 @@ spread, not the band.
 The wash-in ratio at 30 minutes and the elimination ratio at 5 minutes respond
 to almost separate sets of parameters, which is why the edges fall where they
 do. The table below shows how far each ratio moves when one coefficient is
-raised by 10%, in units of that ratio's own published SD (from model runs on
-2026-09-06):
+raised by 10%, in units of that ratio's own published SD. The figures come
+from model runs on 2026-11-22, against each agent's first cohort. For
+isoflurane that is the Anesth Analg 1991;72:316-24 cohort, not the
+Anesthesiology 1991;74:489-98 one:
 
 | Perturbed coefficient | Wash-in | Elimination |
 | --- | --- | --- |
-| Blood:gas | −0.57 to −0.64 | +0.09 to +0.17 |
-| Vessel-rich tissue:gas | −0.02 to −0.06 | +0.45 to +0.55 |
+| Blood:gas | −0.57 to −0.64 | +0.11 to +0.18 |
+| Vessel-rich tissue:gas | −0.02 to −0.07 | +0.44 to +0.54 |
 | Muscle tissue:gas | −0.08 to −0.15 | −0.09 to −0.12 |
 | Fat tissue:gas | −0.00 | −0.00 |
-
-<!-- not-restated: 0.06 -->
+<!-- not-restated: 0.18, 0.54 -->
 
 Wash-in at 30 minutes depends mostly on blood:gas and barely on the vessel-rich
 group. Elimination at five minutes depends mostly on the vessel-rich group and
