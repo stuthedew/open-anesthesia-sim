@@ -272,23 +272,24 @@ def test_a_glob_yaml_refuses_or_one_holding_nothing_is_unreadable(item: str, why
 def _apparatus(
     tmp_path: Path,
     *,
-    claude: str = "`tools/`, `docs/worker.md`",
-    globs: tuple[str, ...] = ("/tools/**", "/docs/worker.md"),
-    workflow: tuple[str, ...] = ("tools", "docs/worker.md", "Makefile"),
+    globs: tuple[str, ...] = ("/docs/worker.md", "/tools/**"),
+    workflow: tuple[str, ...] = ("tools", "docs/worker.md", "Makefile", "tests/unit/test_x.py"),
+    rest: str = "\n# The bar\n\nBody text.\n",
 ) -> Path:
-    """A root holding the apparatus set's two copies and a `docket.toml`."""
-    (tmp_path / "CLAUDE.md").write_text(
-        "The workflow apparatus that exists so agent sessions can be productive — "
-        f"{claude} — is held to a lower bar.\n",
-        encoding="utf-8",
-    )
+    """A root holding the apparatus rule, a `docket.toml` and the paths it names."""
     rules = tmp_path / ".claude" / "rules"
     rules.mkdir(parents=True)
-    (rules / "apparatus-standard.md").write_text(_frontmatter(*globs), encoding="utf-8")
+    items = "".join(f'  - "{glob}"\n' for glob in globs)
+    (rules / "apparatus-standard.md").write_text(
+        f"---\npaths:\n{items}---\n{rest}", encoding="utf-8"
+    )
     listed = "".join(f'  "{entry}",\n' for entry in workflow)
     (tmp_path / "docket.toml").write_text(
         f"[docket]\nworkflow_paths = [\n{listed}]\n", encoding="utf-8"
     )
+    (tmp_path / "tools").mkdir()
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "worker.md").write_text("", encoding="utf-8")
     return tmp_path
 
 
@@ -298,56 +299,64 @@ def lane_only(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.mark.usefixtures("lane_only")
-def test_two_copies_that_agree_with_workflow_paths_pass(tmp_path: Path) -> None:
+def test_a_paths_list_that_workflow_paths_gives_passes(tmp_path: Path) -> None:
+    """Tests and `LANE_ONLY` entries are left out, directories take `/**`."""
     assert rules_paths_check.apparatus_set_problems(_apparatus(tmp_path)) == []
 
 
 @pytest.mark.usefixtures("lane_only")
-def test_a_path_missing_from_one_copy_is_named(tmp_path: Path) -> None:
-    """The incident shape: `docs/maintainer.md` was in none of them, `.github/` once in two."""
-    root = _apparatus(tmp_path, claude="`tools/`")
-
-    found = rules_paths_check.apparatus_set_problems(root)
-
-    assert found == [
-        "apparatus set: CLAUDE.md does not name docs/worker.md, which another copy of the set names"
-    ]
-
-
-@pytest.mark.usefixtures("lane_only")
-def test_a_workflow_path_in_neither_list_is_named(tmp_path: Path) -> None:
-    """A file added to the apparatus lane has to be placed, not left to a sweep."""
+def test_a_path_added_to_workflow_paths_alone_is_refused_until_written(tmp_path: Path) -> None:
+    """The refusal `PL-LY24` counted six times now names the command that ends it."""
     root = _apparatus(tmp_path, workflow=("tools", "docs/worker.md", "Makefile", "bin"))
+    (root / "bin").mkdir()
 
     found = rules_paths_check.apparatus_set_problems(root)
 
     assert len(found) == 1
-    assert "workflow_paths' bin is in neither the apparatus set nor LANE_ONLY" in found[0]
+    assert "it lacks /bin/**" in found[0]
+    assert "python3 tools/rules_paths_check.py --write" in found[0]
 
 
 @pytest.mark.usefixtures("lane_only")
-def test_a_directory_listed_by_a_path_beneath_it_is_placed(tmp_path: Path) -> None:
-    """`subprojects` is in the lane, and the set names `subprojects/docket/` beneath it."""
+def test_write_adds_the_new_path_and_keeps_the_rest_of_the_rule(tmp_path: Path) -> None:
+    """One edit to `workflow_paths` is the whole change: `--write` does the second."""
     root = _apparatus(
         tmp_path,
-        claude="`subprojects/docket/`",
-        globs=("/subprojects/docket/**",),
-        workflow=("subprojects", "Makefile"),
+        workflow=("tools", "docs/worker.md", "Makefile", "bin"),
+        rest="\n# The bar\n\npaths: in prose is not a key.\n",
     )
+    (root / "bin").mkdir()
 
+    added, removed = rules_paths_check.write_apparatus_paths(root)
+
+    assert (added, removed) == (["/bin/**"], [])
+    text = (root / rules_paths_check.APPARATUS_RULE).read_text(encoding="utf-8")
+    assert text == (
+        '---\npaths:\n  - "/bin/**"\n  - "/docs/worker.md"\n  - "/tools/**"\n---\n'
+        "\n# The bar\n\npaths: in prose is not a key.\n"
+    )
+    assert rules_paths_check.apparatus_set_problems(root) == []
+    assert rules_paths_check.write_apparatus_paths(root) == ([], [])
+
+
+@pytest.mark.usefixtures("lane_only")
+def test_a_glob_written_by_hand_is_refused_and_write_removes_it(tmp_path: Path) -> None:
+    """A path added to the rule alone loads the standard on files no lane assigns it."""
+    root = _apparatus(tmp_path, globs=("/docs/worker.md", "/src/**", "/tools/**"))
+
+    found = rules_paths_check.apparatus_set_problems(root)
+    assert len(found) == 1
+    assert "it also names /src/**" in found[0]
+
+    assert rules_paths_check.write_apparatus_paths(root) == ([], ["/src/**"])
     assert rules_paths_check.apparatus_set_problems(root) == []
 
 
 @pytest.mark.usefixtures("lane_only")
-def test_an_apparatus_path_outside_workflow_paths_is_named(tmp_path: Path) -> None:
-    root = _apparatus(tmp_path, workflow=("tools", "Makefile"))
-
-    found = rules_paths_check.apparatus_set_problems(root)
-
-    assert found == [
-        "apparatus set: docs/worker.md is not in docket.toml's workflow_paths, so its "
-        "items take the simulator's lane while the apparatus standard governs it"
-    ]
+def test_a_lane_only_path_is_not_written(tmp_path: Path) -> None:
+    """`Makefile` is in the lane, and `LANE_ONLY` keeps the standard off it."""
+    root = _apparatus(tmp_path)
+    assert "/Makefile" not in rules_paths_check.apparatus_globs(root)
 
 
 def test_a_stale_lane_only_entry_is_named(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -359,26 +368,31 @@ def test_a_stale_lane_only_entry_is_named(tmp_path: Path, monkeypatch: pytest.Mo
 
 
 @pytest.mark.usefixtures("lane_only")
-def test_a_copy_whose_opening_words_moved_says_it_was_not_compared(tmp_path: Path) -> None:
+def test_a_rule_with_no_paths_key_says_it_was_not_read(tmp_path: Path) -> None:
     """A list the check cannot find is reported, never read as empty or skipped."""
     root = _apparatus(tmp_path)
-    (root / "CLAUDE.md").write_text("The apparatus is `tools/`.\n", encoding="utf-8")
+    (root / rules_paths_check.APPARATUS_RULE).write_text("# no frontmatter\n", encoding="utf-8")
 
     found = rules_paths_check.apparatus_set_problems(root)
 
     assert len(found) == 1
-    assert "CLAUDE.md no longer holds the words" in found[0]
-    assert "so it was not compared with the others" in found[0]
+    assert "`paths:` was not read" in found[0]
+    with pytest.raises(rules_paths_check.Unreadable):
+        rules_paths_check.write_apparatus_paths(root)
 
 
 @pytest.mark.usefixtures("lane_only")
-def test_a_glob_naming_no_one_path_is_refused(tmp_path: Path) -> None:
-    root = _apparatus(tmp_path, globs=("/tools/**", "/docs/worker.md", "/docs/*.md"))
+def test_main_with_write_names_what_it_added(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = _apparatus(tmp_path, workflow=("tools", "docs/worker.md", "Makefile", "bin"))
+    (root / "bin").mkdir()
 
-    found = rules_paths_check.apparatus_set_problems(root)
-
-    assert len(found) == 1
-    assert '"/docs/*.md" names no one path' in found[0]
+    assert rules_paths_check.main(["--root", str(root)]) == 1
+    assert rules_paths_check.main(["--root", str(root), "--write"]) == 0
+    out = capsys.readouterr().out
+    assert 'now loads on "/bin/**"' in out
+    assert "add it to LANE_ONLY" in out
 
 
 def test_this_repository_s_apparatus_set_agrees() -> None:

@@ -53,22 +53,23 @@ other ([memory](https://code.claude.com/docs/en/memory), read 2026-10-12).
 `tools/doc_check.py` measures the resident set through it, so a nested rule is
 never measured as resident here and left unread there (`PL-9NZ3`).
 
-**A third rule holds the apparatus set's two copies to each other**
-(`PL-21RC`). `CLAUDE.md` names the paths the apparatus standard governs, and
-`.claude/rules/apparatus-standard.md`'s `paths:` is the copy that loads the
-rule. `.claude/rules/expert-review.md` held a third copy until `PL-2PJ6` cut
-its scope paragraph to the simulator's paths. `PL-1KTV` corrected all three by
-hand when `.github/` was missing from them, and `docs/maintainer.md` then went
-missing from all three the same way. Whether the lists name the same paths
-needs no judgment, so it is a hard rule. So is whether each apparatus path is in `docket.toml`'s
-`workflow_paths`, the lane the path's items take.
+**The apparatus set is written, not copied** (`PL-C3K1`). It is the set of
+paths `.claude/rules/apparatus-standard.md` governs, and that rule's `paths:`
+is the only place the harness reads it from. Its one source is `docket.toml`'s
+`workflow_paths`, the lane each path's items take, less the entries under
+`tests/` and the entries `LANE_ONLY` lists. `make check` runs this tool with
+`--write`, which rewrites the rule's `paths:` from that source, so a path added
+to `workflow_paths` needs no second edit. CI runs it without `--write` and
+refuses a `paths:` that differs from what the source gives. Until `PL-C3K1`
+the set was held in two or three hand-written copies, and all six of this
+check's refusals that `PL-LY24` counted asked for a new path to be added to
+each copy by hand.
 
-Whether a `workflow_paths` entry belongs in the apparatus set is the judgment,
-and `LANE_ONLY` records it for each entry that does not. So an entry added to
-`workflow_paths` fails here until somebody puts it in one list or the other,
-which is the moment that decision is taken. Entries under `tests/` are left
-out: a test's imports decide its bar, by the rule
-`.claude/rules/where-new-code-goes.md` points to.
+Whether a `workflow_paths` entry belongs in the apparatus set is the judgment.
+An entry is in the set unless `LANE_ONLY` names it, and `--write` names each
+path it adds, so the session that added it sees the decision in its own run.
+Entries under `tests/` are left out: a test's imports decide its bar, by the
+rule `.claude/rules/where-new-code-goes.md` points to.
 
 Standard library only, like every tool here, so it runs in a bare checkout.
 """
@@ -94,7 +95,6 @@ from docket.frontmatter import (  # noqa: E402
     unquote,
 )
 from docket.lines import split_lines  # noqa: E402
-from docket.release import code_spans  # noqa: E402
 
 from workflow_paths_check import declared_workflow_paths, tracked_under  # noqa: E402
 
@@ -107,18 +107,6 @@ DEAD_PREFIX = "./"
 
 #: The rule whose `paths:` is the apparatus set's loading copy.
 APPARATUS_RULE = ".claude/rules/apparatus-standard.md"
-
-#: The prose copies of the apparatus set, of which there is now one. Each is a
-#: file, the words just before the list, and the words that end it. Whitespace
-#: is collapsed before matching, so a line break inside either phrase does not
-#: matter.
-APPARATUS_LISTS = (
-    (
-        "CLAUDE.md",
-        "The workflow apparatus that exists so agent sessions can be productive — ",
-        " —",
-    ),
-)
 
 #: The `workflow_paths` entries outside the apparatus set, so that a session
 #: opening one does not load the apparatus standard. Each is a record or a
@@ -413,87 +401,96 @@ def problems(root: Path) -> list[str]:
     return found
 
 
-def _prose_list(root: Path, name: str, opener: str, closer: str) -> list[str] | str:
-    """The backticked paths one prose copy of the apparatus set names, or why none were read."""
-    try:
-        text = " ".join((root / name).read_text(encoding="utf-8").split())
-    except OSError as error:
-        return f"{name} cannot be read ({error})"
-    start = text.find(opener)
-    if start < 0:
-        return f"{name} no longer holds the words `{opener.strip()}` that open its apparatus list"
-    start += len(opener)
-    end = text.find(closer, start)
-    if end < 0:
-        return f"{name}'s apparatus list is never closed by `{closer.strip()}`"
-    return [span["content"] for span in code_spans(text[start:end])]
+def apparatus_paths(root: Path) -> list[str]:
+    """The paths the apparatus standard governs, read from `docket.toml`'s `workflow_paths`.
 
-
-def _glob_path(entry: str) -> str | None:
-    """A `paths:` glob as the prose spells the same path, or None for any other shape.
-
-    `/tools/**` is `tools/` and `/docs/worker.md` is `docs/worker.md`. Any other
-    glob does not name one path, so the prose cannot list it.
+    Every entry except those under `tests/` and those `LANE_ONLY` names, in
+    path order.
     """
-    if not entry.startswith("/"):
-        return None
-    path = entry[1:]
-    if path.endswith("/**"):
-        path = path[:-2]
-    return None if any(char in GLOB_CHARS for char in path) else path
+    return sorted(
+        entry
+        for entry in declared_workflow_paths(root)
+        if not entry.startswith("tests/") and entry not in LANE_ONLY
+    )
+
+
+def apparatus_globs(root: Path) -> list[str]:
+    """`apparatus_paths` as `paths:` globs: `/<directory>/**` or `/<file>`.
+
+    A path the tree does not hold is written as a file. `problems` then
+    refuses it as pointing at nothing, which is the right report for a
+    `workflow_paths` entry with nothing behind it.
+    """
+    return [
+        f"/{path}/**" if (root / path).is_dir() else f"/{path}" for path in apparatus_paths(root)
+    ]
+
+
+def _paths_key(root: Path) -> tuple[list[str], int, int]:
+    """The apparatus rule's lines, and the first and end line of its `paths:` key.
+
+    Raises `Unreadable` where the rule has no closed frontmatter or no
+    `paths:` key, since there is then no list to compare or rewrite.
+    """
+    lines = split_lines((root / APPARATUS_RULE).read_text(encoding="utf-8"))
+    close = closing(lines)
+    if close is None:
+        raise Unreadable("its frontmatter is missing or never closed")
+    try:
+        declared = [key for key in keys(lines[1:close]) if key.name == "paths"]
+    except Unread as unread:
+        raise Unreadable(str(unread)) from None
+    if len(declared) != 1:
+        raise Unreadable("it does not hold exactly one `paths:` key")
+    return lines, declared[0].line + 1, declared[0].end + 1
+
+
+def write_apparatus_paths(root: Path) -> tuple[list[str], list[str]]:
+    """Rewrite the apparatus rule's `paths:` from `apparatus_globs`.
+
+    Returns the globs added and the globs removed, both empty where the file
+    already agreed and was left untouched. Raises `Unreadable` or `OSError`
+    where the rule cannot be read.
+    """
+    lines, first, end = _paths_key(root)
+    old = entries(lines[1 : closing(lines)])
+    new = apparatus_globs(root)
+    if old == new:
+        return [], []
+    block = ["paths:", *(f'  - "{glob}"' for glob in new)]
+    text = "\n".join([*lines[:first], *block, *lines[end:]]) + "\n"
+    (root / APPARATUS_RULE).write_text(text, encoding="utf-8")
+    return sorted(set(new) - set(old)), sorted(set(old) - set(new))
 
 
 def apparatus_set_problems(root: Path) -> list[str]:
-    """Every disagreement between the apparatus set's two copies and `workflow_paths`."""
+    """Where the apparatus rule's `paths:` differs from `workflow_paths`, and stale `LANE_ONLY`."""
     found: list[str] = []
-    copies: dict[str, set[str]] = {}
-    for name, opener, closer in APPARATUS_LISTS:
-        listed = _prose_list(root, name, opener, closer)
-        if isinstance(listed, str):
-            found.append(f"apparatus set: {listed}, so it was not compared with the others")
-        else:
-            copies[name] = set(listed)
     try:
-        block = frontmatter((root / APPARATUS_RULE).read_text(encoding="utf-8"))
-        globs = entries(block or [])
+        lines, _, _ = _paths_key(root)
+        declared = entries(lines[1 : closing(lines)])
     except (OSError, Unreadable) as error:
         found.append(f"apparatus set: {APPARATUS_RULE}'s `paths:` was not read ({error})")
     else:
-        paths = [_glob_path(glob) for glob in globs]
-        for glob, path in zip(globs, paths, strict=True):
-            if path is None:
-                found.append(
-                    f'apparatus set: {APPARATUS_RULE}\'s "{glob}" names no one path, so the '
-                    "prose lists cannot name it; write `/<file>` or `/<directory>/**`"
+        expected = apparatus_globs(root)
+        if declared != expected:
+            missing = sorted(set(expected) - set(declared))
+            extra = sorted(set(declared) - set(expected))
+            detail = "; ".join(
+                part
+                for part in (
+                    f"it lacks {', '.join(missing)}" if missing else "",
+                    f"it also names {', '.join(extra)}" if extra else "",
+                    "" if missing or extra else "its globs are out of order",
                 )
-        copies[f"{APPARATUS_RULE}'s `paths:`"] = {path for path in paths if path}
-    union: set[str] = set().union(*copies.values())
-    for name, named in copies.items():
-        missing = sorted(union - named)
-        if missing:
+                if part
+            )
             found.append(
-                f"apparatus set: {name} does not name {', '.join(missing)}, which "
-                "another copy of the set names"
+                f"apparatus set: {APPARATUS_RULE}'s `paths:` is not the one docket.toml's "
+                f"workflow_paths gives ({detail}). Run `python3 tools/rules_paths_check.py "
+                "--write`, which `make check` runs, and commit the result"
             )
     workflow = declared_workflow_paths(root)
-    for path in sorted(union):
-        bare = path.rstrip("/")
-        if not any(bare == entry or bare.startswith(entry + "/") for entry in workflow):
-            found.append(
-                f"apparatus set: {path} is not in docket.toml's workflow_paths, so its "
-                "items take the simulator's lane while the apparatus standard governs it"
-            )
-    for entry in workflow:
-        if entry.startswith("tests/"):
-            continue
-        placed = entry in LANE_ONLY or any(
-            path.rstrip("/") == entry or path.startswith(entry + "/") for path in union
-        )
-        if not placed:
-            found.append(
-                f"apparatus set: workflow_paths' {entry} is in neither the apparatus set nor "
-                "LANE_ONLY; add it to both copies of the set, or to LANE_ONLY with its reason"
-            )
     for entry in LANE_ONLY:
         if entry not in workflow:
             found.append(
@@ -502,10 +499,30 @@ def apparatus_set_problems(root: Path) -> list[str]:
     return found
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=ROOT, help="repository to check")
-    args = parser.parse_args()
+    parser.add_argument(
+        "--write",
+        action="store_true",
+        help=f"first rewrite {APPARATUS_RULE}'s `paths:` from docket.toml's workflow_paths",
+    )
+    args = parser.parse_args(argv)
+
+    if args.write:
+        try:
+            added, removed = write_apparatus_paths(args.root)
+        except (OSError, Unreadable) as error:
+            print(f"rules-paths: {APPARATUS_RULE}'s `paths:` was not rewritten ({error})")
+        else:
+            for glob in added:
+                print(
+                    f'rules-paths: {APPARATUS_RULE} now loads on "{glob}". If that path is a '
+                    "record or a configuration file rather than apparatus, add it to LANE_ONLY "
+                    "in tools/rules_paths_check.py with its reason"
+                )
+            for glob in removed:
+                print(f'rules-paths: {APPARATUS_RULE} no longer loads on "{glob}"')
 
     found = problems(args.root) + apparatus_set_problems(args.root)
     if not found:
@@ -516,9 +533,8 @@ def main() -> int:
         ]
         print(
             f"rules-paths: {len(declared)} declared path glob(s) across "
-            f"{RULES_DIR}, all anchored to the repository root and resolving; the "
-            f"apparatus set's {len(APPARATUS_LISTS) + 1} copies agree with each other "
-            "and with workflow_paths"
+            f"{RULES_DIR}, all anchored to the repository root and resolving; "
+            f"{APPARATUS_RULE}'s `paths:` is the one workflow_paths gives"
         )
         return 0
 
@@ -528,9 +544,7 @@ def main() -> int:
         + "  A `paths:` entry decides which files load a rule, and it fails silently "
         "in both directions: without a leading `/` it also matches the same name at "
         "any depth, and pointing at a path that is not there it is never delivered at "
-        "all. Measured, not assumed (`PL-ZQ35`, `PL-LLWN`, `PL-DNYL`). The apparatus "
-        "set is copied in three places, and a path missing from one of them went "
-        "unnoticed twice (`PL-1KTV`, `PL-21RC`).",
+        "all. Measured, not assumed (`PL-ZQ35`, `PL-LLWN`, `PL-DNYL`).",
         file=sys.stderr,
     )
     return 1
