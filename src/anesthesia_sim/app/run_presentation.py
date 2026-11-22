@@ -62,7 +62,9 @@ from anesthesia_sim.app.dashboard_frame import (
     WITHHELD_ACCOUNTING,
     WITHHELD_DELIVERED_LINE_TEXT,
     Accounting,
+    Emphasis,
     NewCaseQuestion,
+    Notice,
     Readout,
     RunStatement,
     SettingReadout,
@@ -70,11 +72,11 @@ from anesthesia_sim.app.dashboard_frame import (
     clock_playback_line,
     compared_run_notice,
     delivered_line,
-    halt_notice,
+    halt_run_notice,
     new_case_question,
-    notice,
     readouts,
     rejected_step_accounting,
+    run_notice,
     run_statement,
     setting_readouts,
     withheld_readouts,
@@ -215,6 +217,8 @@ class RunPresentation:
             transport and the control-change panel.
         notice: The banner's text, naming the run while a second run is
             drawn, or None for no banner.
+        notice_emphasis: The emphasis the banner is drawn with. It is
+            `Emphasis.WARNING` when there is no banner.
         one_mac: The line stating 1 MAC of the running agent, or why it
             could not be built. 1 MAC is the divisor of every ×MAC number in
             `values` and `dials`.
@@ -241,6 +245,7 @@ class RunPresentation:
     record: RunRecord
     statement: RunStatement
     notice: str | None
+    notice_emphasis: Emphasis
     one_mac: str | NotBuilt
     standing: ValuesStanding
     values: RunValues
@@ -323,9 +328,10 @@ def drawn_run(
         snapshot,
         adjustments,
         state,
-        banner=notice(
+        banner=run_notice(
             snapshot,
             state.rejected_setting_notice,
+            elapsed_s=snapshot.elapsed_s,
             refused_reset=state.refused_reset_notice,
             branch_offered=state.branch_offered,
         ),
@@ -396,7 +402,7 @@ def halted_run(
         record,
         adjustments,
         state,
-        banner=halt_notice(
+        banner=halt_run_notice(
             record,
             state.rejected_setting_notice,
             refused_reset=state.refused_reset_notice,
@@ -436,7 +442,7 @@ def _presentation(
     adjustments: Sequence[ControlAdjustment],
     state: RunPanelState,
     *,
-    banner: str | None,
+    banner: Notice | None,
     stopped_on_mark: bool,
     standing: ValuesStanding,
     values: RunValues,
@@ -485,7 +491,10 @@ def _presentation(
         case=state.case,
         record=record.run_record(),
         statement=statement,
-        notice=compared_run_notice(statement.banner, state.name),
+        notice=compared_run_notice(
+            None if statement.banner is None else statement.banner.text, state.name
+        ),
+        notice_emphasis=Emphasis.WARNING if statement.banner is None else statement.banner.emphasis,
         one_mac=one_mac,
         standing=standing,
         values=values,

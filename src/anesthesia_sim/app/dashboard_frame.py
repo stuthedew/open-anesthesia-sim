@@ -298,6 +298,26 @@ SUPPORTED_LIMIT_NOTICE_TEMPLATE: Final = (
     "model is not claimed to represent a patient past this span. The values shown "
     "are the last completed step, inside the supported span. {exit}"
 )
+#: The banner a run shows in the last stretch before the supported run length. It is
+#: drawn in the muted colour, as the stop it announces is, because nothing is wrong
+#: with the run (`PL-H2K2`, `PL-0889`).
+APPROACHING_LIMIT_NOTICE_TEMPLATE: Final = (
+    "This run stops in {remaining} of simulated time, at the supported run length of {run_length}."
+)
+#: The least real time, in seconds, for which the approaching-limit banner is on
+#: screen before the stop, at the fastest playback rate. WCAG 2.2 SC 2.2.1 (Timing
+#: Adjustable) asks that a user be warned before a time limit expires and given at
+#: least 20 seconds to act. Read from W3C's Understanding document for that criterion
+#: on 2026-11-22. The run's limit is in simulated time, so the banner opens this many
+#: real seconds before the stop at the fastest rate, and earlier in real time at every
+#: slower rate.
+APPROACHING_LIMIT_WARNING_REAL_S: Final = 20
+#: How much simulated time before the supported run length the banner opens: the
+#: real-time warning above, at the fastest playback rate offered. At 300x that is
+#: 6,000 s, 1 h 40 min of simulated time.
+APPROACHING_LIMIT_NOTICE_S: Final = APPROACHING_LIMIT_WARNING_REAL_S * max(
+    rate.multiplier for rate in SUPPORTED_PLAYBACK_RATES
+)
 REFUSED_SETTING_TEMPLATE: Final = "Setting refused — {error}"
 REFUSED_SETTING_NOTICE_TEMPLATE: Final = (
     "{refused}. The simulation is unchanged and still running its previous setting."
@@ -2160,6 +2180,118 @@ def halt_notice(
     return None
 
 
+@dataclass(frozen=True, slots=True)
+class Notice:
+    """The banner above a run's values, and the emphasis it is drawn with.
+
+    A run failing, or a setting being refused, is drawn as a warning. A stop
+    at the supported run length, and the banner that announces it, are drawn
+    muted, as the status word for that stop is. Nothing is wrong with a run
+    that reaches its declared span, and drawing it in the warning colour
+    would spend the interface's one signal for a real fault (`PL-0889`).
+    """
+
+    text: str
+    emphasis: Emphasis
+
+
+def run_notice(
+    status: RunStatus,
+    rejected_setting_notice: str | None,
+    *,
+    elapsed_s: int,
+    refused_reset: str | None = None,
+    branch_offered: bool = False,
+) -> Notice | None:
+    """Return the banner for a frame that drew, with its emphasis.
+
+    The text is `notice`'s, and it outranks everything else. Below it, a run
+    within `APPROACHING_LIMIT_NOTICE_S` of the supported run length says how
+    much simulated time it has left before it stops (`PL-H2K2`). So a reader
+    learns of the stop before it arrives, and the stop does not read as a
+    fault when it comes.
+
+    Args:
+        status: As `notice` takes it.
+        rejected_setting_notice: As `notice` takes it.
+        elapsed_s: The run's elapsed simulated time at this frame, in whole
+            seconds.
+        refused_reset: As `notice` takes it.
+        branch_offered: As `notice` takes it.
+
+    Returns:
+        The banner, or None when there is nothing to say.
+    """
+
+    text = notice(
+        status, rejected_setting_notice, refused_reset=refused_reset, branch_offered=branch_offered
+    )
+
+    if text is not None:
+        return Notice(text, _stopped_emphasis(status))
+
+    remaining_s = MAXIMUM_ELAPSED_SIMULATION_TIME_S - elapsed_s
+
+    if remaining_s <= APPROACHING_LIMIT_NOTICE_S:
+        return Notice(
+            APPROACHING_LIMIT_NOTICE_TEMPLATE.format(
+                remaining=format_elapsed(remaining_s), run_length=format_supported_run_length()
+            ),
+            Emphasis.MUTED,
+        )
+
+    return None
+
+
+def halt_run_notice(
+    status: RunStatus,
+    rejected_setting_notice: str | None = None,
+    *,
+    refused_reset: str | None = None,
+    branch_offered: bool = False,
+    started_over: bool = False,
+    charts_withheld: bool = False,
+) -> Notice | None:
+    """Return `halt_notice`'s banner with its emphasis, for a halt with no frame drawn yet.
+
+    Args:
+        status: As `halt_notice` takes it.
+        rejected_setting_notice: As `halt_notice` takes it.
+        refused_reset: As `halt_notice` takes it.
+        branch_offered: As `halt_notice` takes it.
+        started_over: As `halt_notice` takes it.
+        charts_withheld: As `halt_notice` takes it.
+
+    Returns:
+        The banner, or None when the run is not halted.
+    """
+
+    text = halt_notice(
+        status,
+        rejected_setting_notice,
+        refused_reset=refused_reset,
+        branch_offered=branch_offered,
+        started_over=started_over,
+        charts_withheld=charts_withheld,
+    )
+
+    return None if text is None else Notice(text, _stopped_emphasis(status))
+
+
+def _stopped_emphasis(status: RunStatus) -> Emphasis:
+    """Return the emphasis of `notice`'s and `halt_notice`'s banners, by the same precedence.
+
+    A failure outranks the supported run length, as in `status_word`. A
+    refused setting on a run that has not stopped is drawn as a warning,
+    because the setting the reader asked for was not applied.
+    """
+
+    if status.failure_reason is None and status.supported_limit_reason is not None:
+        return Emphasis.MUTED
+
+    return Emphasis.WARNING
+
+
 def _supported_limit_setting_way_out(branch_offered: bool) -> str:
     """Return the sentence that names the way out to a new setting from a stopped run.
 
@@ -3148,8 +3280,8 @@ class RunStatement:
         transport: Which transport controls are usable, and why the
             selector is locked.
         timeline: The control-change panel.
-        banner: The notice banner's text before it is attributed to a run,
-            or None for no banner.
+        banner: The notice banner before it is attributed to a run, or None
+            for no banner.
     """
 
     agent_id: str
@@ -3159,7 +3291,7 @@ class RunStatement:
     status: StatusWord
     transport: Transport
     timeline: TimelinePanel
-    banner: str | None
+    banner: Notice | None
 
 
 def run_statement(
@@ -3168,7 +3300,7 @@ def run_statement(
     *,
     is_branch: bool,
     comparing: bool,
-    banner: str | None,
+    banner: Notice | None,
     stopped_on_mark: bool,
 ) -> RunStatement:
     """Return what a run's screen shows from its record alone, for `RunView.show_presentation`.
@@ -3184,8 +3316,8 @@ def run_statement(
             `RunView.adjustments` groups it.
         is_branch: As `transport` takes it.
         comparing: As `transport` takes it.
-        banner: The text from `notice` when a frame drew, or from
-            `halt_notice` when none has. The caller chooses, because only the
+        banner: The banner from `run_notice` when a frame drew, or from
+            `halt_run_notice` when none has. The caller chooses, because only the
             caller knows whether a frame drew.
         stopped_on_mark: As `status_word` takes it.
 

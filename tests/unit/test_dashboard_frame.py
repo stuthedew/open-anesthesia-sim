@@ -125,6 +125,7 @@ from anesthesia_sim.app.dashboard_frame import (
     ForkOffer,
     ForkPoint,
     HaltDisposition,
+    Notice,
     RunMarks,
     above_the_axis_top,
     accounting,
@@ -139,6 +140,7 @@ from anesthesia_sim.app.dashboard_frame import (
     fork_offer,
     halt_disposition,
     halt_notice,
+    halt_run_notice,
     height_entry_maximum_mac,
     kept_fork_selection,
     mac_awake_caption,
@@ -146,6 +148,7 @@ from anesthesia_sim.app.dashboard_frame import (
     new_case_question,
     no_traces_shown,
     notice,
+    run_notice,
     off_scale_lines,
     off_scale_notice,
     offered_range,
@@ -1152,6 +1155,73 @@ def test_refresh_view_reports_the_supported_run_length_as_stopped_not_failed() -
 
     assert banner is not None
     assert f"supported run length of {format_supported_run_length()}" in banner
+
+
+#: 24 hours less 1 h 40 min, in seconds, worked out by hand: 86,400 - 6,000. The banner
+#: opens 20 s of real time before the stop at 300x, which is 6,000 s of simulated time
+#: (WCAG 2.2 SC 2.2.1's 20 s at the fastest playback rate).
+_FIRST_SECOND_OF_THE_APPROACH_S = 80_400
+
+
+def test_the_interface_says_the_run_is_approaching_its_supported_length() -> None:
+    """A run 1 h 40 min from the 24-hour stop says so, before it gets there (`PL-H2K2`).
+
+    Before this change the run advanced with no word until the step at 24
+    hours was refused. The halt then arrived with no warning and could read
+    as a fault. The banner is drawn muted, because nothing is wrong with the
+    run. Each expected string was worked out by hand from the times above.
+    """
+
+    def banner_at(elapsed_s: int) -> Notice | None:
+        snapshot = replace(_snapshot(is_running=True), elapsed_s=CaseInstant(elapsed_s))
+        return run_notice(snapshot, None, elapsed_s=snapshot.elapsed_s)
+
+    assert banner_at(_FIRST_SECOND_OF_THE_APPROACH_S - 1) is None
+    assert banner_at(_FIRST_SECOND_OF_THE_APPROACH_S) == Notice(
+        "This run stops in 1h40m of simulated time, at the supported run length of 24 hours.",
+        Emphasis.MUTED,
+    )
+    assert banner_at(86_399) == Notice(
+        "This run stops in 1s of simulated time, at the supported run length of 24 hours.",
+        Emphasis.MUTED,
+    )
+
+
+def test_a_stop_or_a_refusal_outranks_the_approaching_limit_banner() -> None:
+    """A stopped run or a refused setting describes the run now, so it takes the banner.
+
+    The refused setting is drawn as a warning, because the reader's setting was
+    not applied. The stop at the limit is drawn muted, as its status word is.
+    """
+
+    approaching = replace(_snapshot(is_running=True), elapsed_s=CaseInstant(86_000))
+    refused = run_notice(approaching, "Setting refused — too high", elapsed_s=approaching.elapsed_s)
+    at_limit = replace(
+        _snapshot(supported_limit_reason="reached 86400 s"), elapsed_s=CaseInstant(86_400)
+    )
+    stopped = run_notice(at_limit, None, elapsed_s=at_limit.elapsed_s)
+    failed = replace(approaching, failure_reason="RuntimeError: boom", is_running=False)
+
+    assert refused is not None
+    assert refused.text.startswith("Setting refused — too high.")
+    assert refused.emphasis is Emphasis.WARNING
+    assert stopped is not None
+    assert stopped.text.startswith("Simulation stopped — this run reached the supported run")
+    assert stopped.emphasis is Emphasis.MUTED
+    assert run_notice(failed, None, elapsed_s=failed.elapsed_s) == Notice(
+        notice(failed, None), Emphasis.WARNING
+    )
+
+
+def test_a_halt_banner_takes_the_emphasis_of_what_stopped_the_run() -> None:
+    """With no frame drawn, a failure is a warning and the supported run length is not (`PL-0889`)."""
+
+    at_limit = _snapshot(supported_limit_reason="reached 86400 s")
+    failed = _snapshot(failure_reason="RuntimeError: boom")
+
+    assert halt_run_notice(at_limit) == Notice(halt_notice(at_limit), Emphasis.MUTED)
+    assert halt_run_notice(failed) == Notice(halt_notice(failed), Emphasis.WARNING)
+    assert halt_run_notice(_snapshot()) is None
 
 
 def test_the_supported_run_length_notice_does_not_describe_a_failure() -> None:
