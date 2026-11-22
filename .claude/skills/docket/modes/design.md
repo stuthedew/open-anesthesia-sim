@@ -37,16 +37,18 @@ The procedure, in the order it runs:
    `docs/interface-provenance.md`, whose § "What a later design thread owes
    this study" binds the round (project owner, 2026-09-27, in the v0.6.0
    Projects trial's instructions).
-3. **Write a marked recommendation beside each open question, in the item
-   file.** `.claude/skills/docket/modes/triage.md` § "Mode: triage" carries the
+3. **Research each open question, then write a marked recommendation beside
+   it, in the item file.** The research and its sources come first, as rule 10
+   of `.claude/rules/instruction-writing.md` says (`PL-W7HW`). `.claude/skills/docket/modes/triage.md` § "Mode: triage" carries the
    form - `**Recommendation:**` or the word under emphasis where a
    skimming reader lands, or a marked statement that none is owed and why -
    and `bin/docket check` advises where a `needs-decision` brief marks
    neither. The reply dies with its session; the item is the carrier the
    owner's answer will land beside (`PL-KQHN`).
 4. **Decide the obvious calls in the round, and put to the owner only what is
-   theirs.** Where one option is clearly correct - a measurement, a check or a
-   rule this repository already states settles it - take it, record why in the
+   theirs.** Where one option is clearly correct - a measurement, a check, a
+   rule this repository already states, or the research of step 3 settles it -
+   take it, record why in the
    item, move the status in the same commit, and tell the owner in one line
    what you did; closing an item whose own measurements show the work is not
    worth doing is one of these (project owner, 2026-09-27). Offer a choice

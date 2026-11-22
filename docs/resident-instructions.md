@@ -2974,3 +2974,27 @@ on `main` to 9,032. The new rule holds the nine rows it moved, unchanged, the
 row that `PL-6PPZ` adds for `docs/VERIFICATION.md`, and a short opening
 (`PL-7YHK`).
 
+
+## Rule 10's research step, added 2026-11-22
+
+The project owner asked that every question put to them first be researched
+against current best practice. Research that settles the question removes it,
+and research that does not settle it goes with the question and shapes the
+recommendation (`PL-W7HW`). It is the owner's own request, so the pause on new
+workflow mechanisms does not hold it back.
+
+**The carrier test.** It is the same as for § "Rule 10's sentence on what the
+reader is judging, added 2026-10-19". A question can be written in any reply,
+card or pull request, and no read precedes those, so no `paths:` scope and no
+skill's trigger would load the rule in time. Rule 10 already decides what a
+question to the owner must carry, so the step joins it there. The design
+round, triage's paragraph on recording a recommendation, the coordinator's
+reporting rules, `bin/docket arm`'s instructions for an `Owner-ask:` record
+and `docs/maintainer.md`'s description of that record each point at rule 10
+rather than restating it.
+
+**Why nothing is superseded.** `CLAUDE.md` § "Proactive expert review and
+domain best practices" says to consult the source before forming a
+recommendation. It does not say that a question waits for the research, or
+that research which settles a question means it is not asked. Rule 10 points
+at that section for the standard of the research rather than repeating it.

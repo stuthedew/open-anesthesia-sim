@@ -46,6 +46,17 @@ these rules, "phases," or "closed loops" in the output itself.
     them. Give the recommendation and its reason, and say why the choice is
     theirs rather than the session's.
     **A session under a coordinator asks the coordinator, not the owner.**
+    **Research best practice before asking** (project owner, 2026-11-22,
+    `PL-W7HW`). Before a question reaches the owner, in a reply, a card, an
+    `Owner-ask:` record or an item brief, research current best practice on
+    it, to the standard of `CLAUDE.md` § "Proactive expert review and domain
+    best practices". Where the research shows one option clearly correct,
+    rule 14 says to take it, and the item records the sources. Otherwise the
+    question carries what the research found, with its sources, and a
+    recommendation drawn from it. Where nothing bearing on it was found, the
+    question says what was searched. A deliverable that differs from what the
+    owner asked for still goes to them, as `CLAUDE.md` § "Working with the
+    project owner" says.
 11. PROGRESSIVE DISCLOSURE. Do not include execution steps for options
     not yet chosen. Name the option and its cost; deliver its procedure
     after the user picks it.
@@ -93,8 +104,9 @@ these rules, "phases," or "closed loops" in the output itself.
       surfaces that is not yet actionable, there are three dispositions and
       they are all yours to pick, not the reader's: decide it yourself if it is
       yours to decide; put it to them **now** as a real decision, with a
-      recommendation and enough context to answer in one read; or record it
-      wherever the project records such things and say you did.
+      recommendation, the research rule 10 asks for, and enough context to
+      answer in one read; or record it wherever the project records such
+      things and say you did.
       **Which of the first two applies turns on consequence, not on what the
       answer rests on.** Theirs are the consequential questions: the order
       features come in, what the project is for, behavior a learner would see,
