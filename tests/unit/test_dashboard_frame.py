@@ -9,8 +9,9 @@ that module exists.
 These tests are the Flet suite's tests rewritten against the functions in
 `app/dashboard_frame.py`. That suite's Qt port is now
 `tests/integration/simulation_view/`. Where a claim survived the port,
-its test keeps the same name. The verify lines and `docs/MODEL.md` citations
-that name those tests therefore still point at a test that checks the same
+its test keeps the same name. The verify lines, and the citations in
+`docs/INTERFACE.md` and `docs/VERIFICATION.md`, that name those tests therefore
+still point at a test that checks the same
 thing (`PL-25KS`).
 
 Snapshots come from one of two places. One is a real `SimulationController`
@@ -1334,8 +1335,8 @@ def test_halt_run_routes_the_supported_run_length_away_from_failure() -> None:
 
     A regression in the routing would not break the halt, because the run
     would still stop. It would only put "simulation error" over a model that
-    stopped exactly where `docs/MODEL.md` says it must. Only a test would
-    notice.
+    stopped exactly where `docs/INTERFACE.md` § "What happens when a run reaches the limit"
+    says it must. Only a test would notice.
     """
 
     error = SimulationDomainLimitError("this run has reached 86400 s of simulated time")

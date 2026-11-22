@@ -317,10 +317,11 @@ def test_the_circuit_volume_is_a_build_time_parameter_with_no_live_setter() -> N
     The volume is set once, from the value this controller is built with, and
     no interface control can change it after that. The setter that used to be
     on `SimulationController` was public and had no bounds. Any caller of the
-    app layer could use it to put the circuit outside the domain that
-    `docs/MODEL.md` verifies, through a control the interface has never
-    offered. The test asserts on the class rather than on an instance, so
-    re-adding the method fails here whatever a run has done.
+    app layer could use it to put the circuit outside the verified domain
+    that `docs/INTERFACE.md` § "What is not bounded this way" describes,
+    through a control the interface has never offered. The test asserts on
+    the class rather than on an instance, so re-adding the method fails here
+    whatever a run has done.
 
     `BreathingCircuit.set_circuit_volume` is deliberately left in place. It is
     how the parameter reaches the circuit at all, and it is where the

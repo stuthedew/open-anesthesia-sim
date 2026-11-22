@@ -1,4 +1,4 @@
-"""The governing equations of `docs/MODEL.md`, assembled as one system matrix.
+"""The governing equations of `docs/MODEL.md` § "Equations", assembled as one system matrix.
 
 This file is a transcription and nothing else. Every entry that
 `build_system_matrix` writes is one term of one balance equation in
@@ -35,8 +35,8 @@ Here that balance is one row, and its two terms are two entries in that row.
 ## The state vector
 
 Six of the nine states are the modelled fractions, in the order in which
-`docs/MODEL.md` introduces them: inspired gas, alveolar gas, mixed venous
-blood, then the three tissue groups. Two more states accumulate the agent that
+`docs/MODEL.md` § "Units and symbols" introduces them: inspired gas, alveolar
+gas, mixed venous blood, then the three tissue groups. Two more states accumulate the agent that
 crosses the system boundary, and the last state is the constant.
 
 $`F_I`$ is the fraction in the breathing circuit. The literature's gas-phase
@@ -533,7 +533,7 @@ class UptakeEquationSettings:
                 )
 
         # Blood leaving the tissue groups is all of the blood that returns to the
-        # venous pool. `docs/MODEL.md`'s venous balance is
+        # venous pool. The venous balance of `docs/MODEL.md` § "Venous blood" is
         # dF_v/dt = (sum_i Q_i F_i - Q F_v)/V_v. If the tissue flows did not sum to
         # cardiac output, the model would put agent into that pool at one rate and
         # take it out at another. It would then create or destroy agent at a steady
@@ -607,8 +607,8 @@ def build_system_matrix(settings: UptakeEquationSettings) -> Matrix:
 
     Each block below is one equation of `docs/MODEL.md` § "Equations" or
     `docs/VERIFICATION.md` § "Conservation of agent mass", written in the
-    symbols of `docs/MODEL.md`. The blocks follow the order of
-    the state vector, so the venous balance comes before the tissue balances,
+    symbols of `docs/MODEL.md` § "Units and symbols". The blocks follow the
+    order of the state vector, so the venous balance comes before the tissue balances,
     and the two totals come last. The comment above each block is the
     equation, and each line under the comment writes one of its terms as one
     matrix entry. `docs/VERIFICATION.md` § "Selected method (as implemented)"
@@ -628,9 +628,10 @@ def build_system_matrix(settings: UptakeEquationSettings) -> Matrix:
 
     Zero flow needs no special case anywhere here. A rate of zero is an entry
     of zero, and the exact propagator of a system with a zero rate transfers
-    nothing along that path. That is what `docs/MODEL.md` requires at zero
-    ventilation, zero cardiac output and zero tissue flow. The previous
-    implementation needed three early returns to express it.
+    nothing along that path. That is what `docs/VERIFICATION.md` § "Required
+    tests" requires at zero ventilation, zero cardiac output and zero tissue
+    flow. The previous implementation needed three early returns to express
+    it.
     """
 
     matrix = [[0.0] * STATE_SIZE for _ in range(STATE_SIZE)]
@@ -664,7 +665,7 @@ def build_system_matrix(settings: UptakeEquationSettings) -> Matrix:
     # Alveolar gas:
     #     dF_A/dt = [ V_A(F_I - F_A) - Q*lambda_bg(F_A - F_v) ] / V_A
     #
-    # The pulmonary uptake rate that docs/MODEL.md specifies,
+    # The pulmonary uptake rate that docs/MODEL.md § "Alveolar gas" specifies,
     # Q*lambda_bg(F_A - F_v), is the second and third entries of this row. The
     # operator split never formed it at all (PL-Y5BV).
     alveolar_volume_l = settings.alveolar_volume_l

@@ -16,9 +16,9 @@ depends on the order of the terms. An accumulation written as a loop or with
 row products by the hash of their `repr` fails this test when done with
 `functools.reduce` and passes it when done with `sum()` (2026-10-18).
 
-The digest is not compared with a stored value. `docs/MODEL.md` makes no
-promise across platforms, and another maths library may round a
-transcendental function differently.
+The digest is not compared with a stored value. `docs/VERIFICATION.md`
+§ "The reproducibility guarantee" makes no promise across platforms, and
+another maths library may round a transcendental function differently.
 """
 
 from __future__ import annotations

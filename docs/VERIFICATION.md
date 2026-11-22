@@ -390,7 +390,7 @@ The test of a stepped run against the exact solution is
 `tests/unit/test_generated_runs.py` (§ "Step-refinement test").
 
 **A test against an independent solution checks that the result is right.** It compares all six
-modelled fractions with that solution of the governing equations (§ "Independent-solution test").
+modeled fractions with that solution of the governing equations (§ "Independent-solution test").
 The comparison of the two calculations cannot show that the result is right, because a wrong
 transfer rate would give the same error in both. Nor can a check that no agent goes unaccounted for, because
 every transfer between compartments adds exactly what it removes.
@@ -1578,6 +1578,15 @@ nearly nine orders of magnitude below the error of any method that does not solv
 the equations exactly, so the test fails as soon as such an error returns.
 <!-- not-restated: 0.05 -->
 
+**The earlier method was an operator split, which the exact step replaced in v0.4.4,
+released on 2026-09-06** (`PL-GS5X`). Within each step it solved the model's
+exchanges one at a time and in a fixed order, each exactly, while it held every other
+flow still. Because the exchanges were solved one after another rather than together,
+the step as a whole was not exact, even though each exchange was solved exactly. The
+error it added over a fixed span of simulated time was proportional to the step's length. § "Selected method (as implemented)" describes the exact step.
+
+#### The runs the test covers
+
 The comparison covers *trajectories*, runs whose settings change over time, as well as
 runs at fixed settings. A run of the application is a sequence of settings, each held
 until someone moves a slider. A slider move puts an approximate method under the most
@@ -1623,6 +1632,8 @@ to the very end of a slider's range, so zero ventilation, zero perfusion and zer
 fresh gas flow are all reached. These runs must meet the same $`4\times10^{-13}`$
 limit as the five above, and they stay below the worst of them.
 
+#### Checks at every step of the random runs
+
 A second test drives the same random runs through the full simulation. It checks
 that every step runs without error and is counted, and that the agent accounting
 adds up after each one. It also checks that each of the six concentrations stays
@@ -1630,18 +1641,20 @@ finite, at or above zero, and at or below the highest concentration delivered so
 far. No compartment can hold agent at a higher concentration than was ever
 delivered, because each is fed only from the others and from the vaporizer.
 
+#### The tests and the figures behind the comparison
+
 The comparison is in `tests/reference/test_coupled_dynamics.py`,
 where the independent solution is called the oracle. The five runs are compared by
 `test_exact_step_matches_the_independent_solution_everywhere`, and the random runs by
 `test_exact_step_matches_the_independent_solution_on_randomised_trajectories`. The two tests that enforce the
 restriction check what the oracle imports and what its functions call
 (`test_oracle_imports_no_solver_from_core`,
-`test_oracle_bodies_call_no_solver_from_core`). Each figure in this note is an
+`test_oracle_bodies_call_no_solver_from_core`). Each figure in this subsection is an
 absolute difference in fraction, taken as the largest over the whole run.
 
-- **Why the limit is not a multiple of the step.** The earlier method, an
-  operator split, had an error proportional to the step, $`C\,\Delta t`$, so a
-  bound on the coefficient $`C`$ bounded the error at every step size. The
+- **Why the limit is not a multiple of the step.** The earlier method had an
+  error proportional to the step, $`C\,\Delta t`$, so a bound on the
+  coefficient $`C`$ bounded the error at every step size. The
   present method's error has no such coefficient.
 - **Why the difference is rounding.** The independent solution takes 80 steps of
   0.0125 s in each of the model's steps, short enough that error from its own
@@ -1796,14 +1809,9 @@ two volunteer studies:
 | Isoflurane | 0.73 ± 0.03 | n=8 | 0.4% | Anesthesiology 1991;74:489-98 |
 
 
-- Yasuda N, Lockhart SH, Eger EI 2nd, Weiskopf RB, Liu J, Laster M, Taheri S,
-  Peterson NA. *Comparison of kinetics of sevoflurane and isoflurane in
-  humans.* Anesth Analg 1991;72(3):316-24. PMID 1994760,
-  doi:10.1213/00000539-199103000-00007.
-- Yasuda N, Lockhart SH, Eger EI 2nd, Weiskopf RB, Johnson BH, Freire BA,
-  Fassoulaki A. *Kinetics of desflurane, isoflurane, and halothane in humans.*
-  Anesthesiology 1991;74(3):489-98. PMID 2001028,
-  doi:10.1097/00000542-199103000-00017.
+The full citations of both papers, with a record of what was read in each, are
+in the reference list, `docs/references/README.md`
+§ "Yasuda et al. 1991 — the two human kinetics papers".
 
 Both papers report a second measured quantity on the same subjects, in the
 opposite direction. That quantity is $`F_A/F_{A0}`$ after five minutes of
@@ -2453,9 +2461,8 @@ records the agent it adds or removes, so the model's check that the amount of
 agent is conserved still passes.
 
 The five desflurane points from 1 to 10 minutes and the isoflurane point at 12.5
-minutes are checked against a regression band, from −1 to +2.5 SD, instead of within one SD. A regression band guards the model's own result against change and claims no agreement with the data. The band's upper edge is above the largest distance simulated, +2.10 SD,
-so the gap cannot grow past +2.5 SD without a test failing.
-<!-- not-restated: 2.10 -->
+minutes are checked against a regression band, from −1 to +2.5 SD, instead of within one SD. A regression band guards the model's own result against change and claims no agreement with the data. The band's upper edge is above desflurane's largest distance in the table
+above, so the gap cannot grow past +2.5 SD without a test failing.
 
 #### What the published-data gate can and cannot resolve
 
@@ -2472,10 +2479,14 @@ each cohort, and both solubility orderings.
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 
 The regression pins are not part of the published-data gate, because they compare the model
-with its own output. They include the 5-minute elimination pin above and the
-late-washout tables. A pin fails on any change at all, so it catches an
-accidental edit. It cannot show whether a comparison with published data would
-have caught a wrong stored value.
+with its own output. They include the 5-minute elimination pin above, the
+late-washout tables, and the reference states recorded
+in `tests/reference/test_coupled_dynamics.py` (`PINNED_REFERENCE_STATES`). A pin
+fails on any change at all, so it catches an accidental edit. It cannot show
+whether a comparison with published data would have caught a wrong stored value,
+so no pin may be cited as validation of a stored value.
+
+##### How far one stored value can change before the gate fails
 
 Each cell of the table below covers one stored parameter for one agent. It gives
 the lower and upper edges of the range of change over which the published-data gate still
@@ -2509,10 +2520,6 @@ were wrong.
 
 A tissue's volume and its tissue:gas coefficient give the same edges, because a
 run depends only on their product, the tissue's capacity.
-
-**Two tests keep the table in step with the code.** One fails if the published-data gate stops
-detecting a change that it detects today. The other fails if the published-data gate starts to
-detect a change that this section says it cannot.
 
 **The table supports these conclusions about a pass of the published-data gate:**
 
@@ -2555,30 +2562,9 @@ detect a change that this section says it cannot.
 
 <!-- not-restated: 2.1, 8 % -->
 
-The wash-in ratio at 30 minutes and the elimination ratio at 5 minutes respond
-to almost separate sets of parameters, which is why the edges fall where they
-do. The table below shows how far each ratio moves when one coefficient is
-raised by 10%, in units of that ratio's own published SD (from model runs on
-2026-09-06):
-
-| Perturbed coefficient | Wash-in | Elimination |
-| --- | --- | --- |
-| Blood:gas | −0.57 to −0.64 | +0.09 to +0.17 |
-| Vessel-rich tissue:gas | −0.02 to −0.06 | +0.45 to +0.55 |
-| Muscle tissue:gas | −0.08 to −0.15 | −0.09 to −0.12 |
-| Fat tissue:gas | −0.00 | −0.00 |
-
-<!-- not-restated: 0.06 -->
-
-Wash-in at 30 minutes depends mostly on blood:gas and barely on the vessel-rich
-group. Elimination at five minutes depends mostly on the vessel-rich group and
-barely on blood:gas. This fits the rebreathing explanation above. The circuit
-sets *where* the elimination ratio sits against the published mean, as an
-offset fixed by the reference settings.
-
-The regression pins include the reference states recorded
-in `tests/reference/test_coupled_dynamics.py` (`PINNED_REFERENCE_STATES`). No
-pin may be cited as validation of a stored value.
+**Two tests keep the table in step with the code.** One fails if the published-data gate stops
+detecting a change that it detects today. The other fails if the published-data gate starts to
+detect a change that this section says it cannot.
 
 The test that expects the published-data gate to fail checks every agent at blood:gas ×0.90
 and ×1.15, vessel-rich tissue:gas ×0.80 and ×1.75, and alveolar gas volume
@@ -2600,6 +2586,29 @@ Each factor in the two tests sits well clear of its edge, because a test placed
 at an edge would be 0.01 to 0.03 SD from flipping. Both tests run the published-data gate at
 its shipped limit (`AGREEMENT_TOLERANCE_SD`). The limit is the published
 spread, not the band.
+
+##### Which stored values each ratio responds to
+
+The wash-in ratio at 30 minutes and the elimination ratio at 5 minutes respond
+to almost separate sets of parameters, which is why the edges fall where they
+do. The table below shows how far each ratio moves when one coefficient is
+raised by 10%, in units of that ratio's own published SD (from model runs on
+2026-09-06):
+
+| Perturbed coefficient | Wash-in | Elimination |
+| --- | --- | --- |
+| Blood:gas | −0.57 to −0.64 | +0.09 to +0.17 |
+| Vessel-rich tissue:gas | −0.02 to −0.06 | +0.45 to +0.55 |
+| Muscle tissue:gas | −0.08 to −0.15 | −0.09 to −0.12 |
+| Fat tissue:gas | −0.00 | −0.00 |
+
+<!-- not-restated: 0.06 -->
+
+Wash-in at 30 minutes depends mostly on blood:gas and barely on the vessel-rich
+group. Elimination at five minutes depends mostly on the vessel-rich group and
+barely on blood:gas. This fits the rebreathing explanation above. The circuit
+sets *where* the elimination ratio sits against the published mean, as an
+offset fixed by the reference settings.
 
 #### The first 24 hours of elimination against the published mean curves
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
@@ -2745,7 +2754,7 @@ and 0.51 to 0.73 times as large. Its fat term is 1.14 to 1.36 times as slow
 and 1.5 to 2.1 times as large. The fitted fat amplitudes in that comparison
 have SDs that are 53 to 94% of their means. A group's isolated time constant is its tissue
 volume times the tissue:gas coefficient, divided by its blood flow times the blood:gas
-coefficient. The reference adult has 33 L of muscle perfused at 0.9 L/min and 14.5 L of fat
+coefficient (`docs/MODEL.md` § "Tissue groups"). The reference adult has 33 L of muscle perfused at 0.9 L/min and 14.5 L of fat
 perfused at 0.3 L/min. On these values, the isolated constants for sevoflurane, isoflurane and
 desflurane are 135, 127 and 84.7 minutes for muscle, and about 2500, 2600 and 1500 minutes for
 fat. Each is shorter than the group's apparent constant. The arterial blood that reaches a
@@ -2961,8 +2970,9 @@ The test runs two procedures for each of the three agents. The first recovers
 the alveolar volume by closed-circuit dilution. Lerou and Booij checked their
 own system model by simulating this measurement with helium (Lerou JG, Booij LH.
 Model-based administration of inhalation anaesthesia. 1. Developing a system
-model. *Br J Anaesth* 2001;86:12–28, doi:10.1093/bja/86.1.12; PMID 11575385,
-retrieved from PubMed and read at the abstract 2026-10-25). The circuit fills
+model. *Br J Anaesth* 2001;86:12–28, doi:10.1093/bja/86.1.12; PMID 11575385;
+read at full text on 2026-09-06, and checked at the abstract through PubMed on
+2026-10-25). The circuit fills
 while ventilation is stopped. Setting the fresh gas flow to zero then closes the
 circuit, and the lungs are ventilated from it with the cardiac output at zero.
 With no blood flow, the agent behaves as an insoluble tracer, like helium in the
@@ -3437,13 +3447,12 @@ their symbols do.
 
 The gas-phase symbols follow the inhaled-anesthetic literature:
 $`F_D \rightarrow F_I \rightarrow F_A`$. Symbols and the gas-phase cascade
-($`F_D`$, $`F_I`$, $`F_A`$) follow Hendrickx and De Wolf (pp. 161-162). They
-attribute the $`F_D - F_I`$ gradient to rebreathing (p. 169) and the
+($`F_D`$, $`F_I`$, $`F_A`$) follow Hendrickx and De Wolf (2008, pp. 161-162).
+They attribute the $`F_D - F_I`$ gradient to rebreathing (p. 169) and the
 $`F_I - F_A`$ gradient to uptake (p. 171), and describe the teaching role of
-the $`F_A/F_I`$ curve (p. 167) (Hendrickx JFA, De Wolf A. Special aspects of
-pharmacokinetics of inhalation anesthesia. In: Schüttler J, Schwilden H, eds.
-Modern Anesthetics. Handbook of Experimental Pharmacology 182. Springer,
-2008:159-186).
+the $`F_A/F_I`$ curve (p. 167). The chapter's full citation is in the reference
+list, `docs/references/README.md`
+§ "Schüttler & Schwilden 2008 — *Modern Anesthetics*".
 
 **The symbols for inspired and tissue fractions differ only in case.** $`F_I`$
 is the inspired fraction, and $`F_i`$ is tissue group $`i`$'s fraction. Where

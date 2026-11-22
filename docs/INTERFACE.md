@@ -1125,15 +1125,18 @@ and desflurane are metabolized far less, the same span omits less for them.
 <!-- derived: 107 MAC-hours from data/agents/sevoflurane.json max_delivered_concentration_percent = 8, mac_at_age_40_percent = 1.8 -->
 
 **Why 24 hours, and not a multiple of the slowest time constant.** At the shipped reference
-settings, sevoflurane's fat group has a time constant of about 42 h. A limit set at several
-multiples of it would favour exactly the long tail described above, the part of the trace
-that is most nearly all omission. The fat time constant sets a minimum for the limit
-instead, and that minimum is a fraction of one time constant. The run must last long
-enough that the fat compartment is still visibly filling when it stops. 24 hours is about
-0.6 of the time constant. By then a single compartment filling exponentially has gone a
-little over two fifths of the way to equilibrium, so the fat trace still shows what it
-exists to show. A run of a few hours would stop that trace near its start. The minimum
-says nothing about how far above it a run may go. The span is also far longer than any
+settings, sevoflurane's fat group has an isolated time constant of about 42 h, which
+`docs/MODEL.md` § "Tissue groups" defines. A limit set at several multiples of it would
+favour exactly the long tail described above, the part of the trace that is most nearly all
+omission. The fat time constant sets a minimum for the limit instead, and that minimum is a
+fraction of one time constant. The run must last long enough that the fat compartment is
+still visibly filling when it stops. 24 hours is about 0.6 of the isolated time constant.
+By then a single compartment filling exponentially has gone a little over two fifths of the
+way to equilibrium, so the fat trace still shows what it exists to show. The model's
+slowest term is somewhat longer than the isolated time constant, so 24 hours is a smaller
+fraction of it. `docs/MODEL.md` § "Time constants" gives that term and says why it is
+longer. A run of a few hours would stop that trace near its start. The minimum says
+nothing about how far above it a run may go. The span is also far longer than any
 anesthetic this simulator is built to teach.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
@@ -1291,10 +1294,7 @@ is refused as a case instant whatever it holds
 
 The two gas volumes, of the breathing circuit and of the alveolar compartment, are **fixed
 model parameters rather than controls**, and have no supported range. Each is set when the
-run is built, and nothing changes it during the run. `AgentUptakeSystem.for_agent()` reads
-both from the files, and the controller then writes the circuit volume it was built with,
-if it was given one.
-The interface has no control for either, and `SimulationController` has no setter for
+run is built, and nothing changes it during the run. The interface has no control for
 either. Both have a numerical envelope, 0.01 to 10 000 L, which is a separate claim,
 stated in `docs/VERIFICATION.md` § "The numerical envelope". It says only where the arithmetic has been checked
 against a high-precision calculation. It says nothing about which volumes describe a
@@ -1310,27 +1310,6 @@ belongs to neither. The same table lists the circuit volume, and the note after 
 gives what is known of its origin, which is that no source has been adopted for it.
 <!-- provenance: data/patients/reference_adult.json alveolar_gas_volume_l = 2.5 -->
 <!-- provenance: data/machines/reference_circle_system.json circuit_volume_l = 6 -->
-
-**Each parameter file is the only source of its own values, and `core/` keeps no copy of
-them.** `AlveolarCompartment` has no default for its gas volume or its ventilation, and
-`BreathingCircuit` has none for its volume or its vaporizer maximum. Every shipped run is
-built by `AgentUptakeSystem.for_agent()`, which reads the values from the agent, patient
-and machine files and passes them on. The fresh gas flow keeps a default for a machine
-profile that states no startup flow (`docs/PARAMETERS.md` § "The circuit volume and the default fresh gas flow" gives its
-reason, its constant and its tests).
-`test_for_agent_builds_the_circuit_at_the_machine_file_s_values` in `tests/unit/test_circuit.py`
-and `test_for_agent_builds_the_alveoli_at_the_patient_file_s_values` in
-`tests/unit/test_alveolar.py` check that a shipped run gets the file's values. The serious failure would be a change that stopped `for_agent()`
-reading a file. Every row of the provenance table in `docs/PARAMETERS.md` for those values would
-then silently describe a file that the model no longer uses. So each of the four values is also checked with a file that
-states a different value, and that run fails if `for_agent()` stops passing the value on.
-For the machine file the tests are
-`test_for_agent_builds_the_circuit_at_a_changed_machine_file_volume` (3.3 L) and
-`test_a_profile_stating_its_startup_flow_opens_the_run_at_that_flow` (2.0 L/min), both in
-`tests/unit/test_circuit.py`. For the patient file the test is
-`test_for_agent_builds_the_alveoli_at_changed_patient_file_values`, in the same file as the
-other alveolar test (3.0 L and 5.0 L/min).
-<!-- not-restated: 5.0 L/min -->
 
 **Why neither gets a supported range.** A supported range describes an
 envelope that a run can be steered *within*. The four controls in § "Supported input ranges"
@@ -1354,6 +1333,10 @@ is not a lung. This model's few compartments, its fixed tissue volumes and its c
 partition coefficients are claimed to represent a patient only near the shipped values.
 <!-- not-restated: 10000 L -->
 
+**For developers.** `AgentUptakeSystem.for_agent()` reads both volumes from the
+files, and the controller then writes the circuit volume it was built with, if it was
+given one. `SimulationController` has no setter for either.
+
 **What is left open, stated plainly.** Python code written against `core/` can still build
 either volume anywhere in the numerical envelope, 0.01 to 10 000 L, by passing a
 `CompartmentVolume`. So a 10 000 L circuit or a 0.01 L alveolar compartment is accepted.
@@ -1365,6 +1348,27 @@ chosen once, by someone who has gone to the trouble of building the model direct
 reaches the circuit, and it holds the checks for agent conservation and capacity.
 <!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
 <!-- provenance: core/numerical_envelope.py MAXIMUM_VOLUME_L = 10000 -->
+
+**Each parameter file is the only source of its own values, and `core/` keeps no copy of
+them.** `AlveolarCompartment` has no default for its gas volume or its ventilation, and
+`BreathingCircuit` has none for its volume or its vaporizer maximum. Every shipped run is
+built by `AgentUptakeSystem.for_agent()`, which reads the values from the agent, patient
+and machine files and passes them on. The fresh gas flow keeps a default for a machine
+profile that states no startup flow (`docs/PARAMETERS.md` § "The circuit volume and the default fresh gas flow" gives its
+reason, its constant and its tests).
+`test_for_agent_builds_the_circuit_at_the_machine_file_s_values` in `tests/unit/test_circuit.py`
+and `test_for_agent_builds_the_alveoli_at_the_patient_file_s_values` in
+`tests/unit/test_alveolar.py` check that a shipped run gets the file's values. The serious failure would be a change that stopped `for_agent()`
+reading a file. Every row of the provenance table in `docs/PARAMETERS.md` for those values would
+then silently describe a file that the model no longer uses. So each of the four values is also checked with a file that
+states a different value, and that run fails if `for_agent()` stops passing the value on.
+For the machine file the tests are
+`test_for_agent_builds_the_circuit_at_a_changed_machine_file_volume` (3.3 L) and
+`test_a_profile_stating_its_startup_flow_opens_the_run_at_that_flow` (2.0 L/min), both in
+`tests/unit/test_circuit.py`. For the patient file the test is
+`test_for_agent_builds_the_alveoli_at_changed_patient_file_values`, in the same file as the
+other alveolar test (3.0 L and 5.0 L/min).
+<!-- not-restated: 5.0 L/min -->
 
 ## Reset behavior
 
@@ -1824,8 +1828,8 @@ It must not:
 - present a run halted by a failure as though it were paused;
 - discard a run that holds recorded state without stating what will be lost
   and asking the user to confirm, unless the user pressed that run's own
-  Reset, as "Discarding a run, and the questions that guard it" requires;
-- display a concentration at a finer resolution than "Displayed precision"
+  Reset, as § "Discarding a run, and the questions that guard it" requires;
+- display a concentration at a finer resolution than § "Displayed precision"
   justifies, or show a value that the model does not resolve as though the
   model asserted it; or
 - predict when the simulated patient would wake, or display a
@@ -2053,7 +2057,8 @@ the model computes.
 **A playback rate is a number of steps, never a step size, and it must be on
 screen.** Real time is too slow to watch the two compartments that make uptake
 and distribution worth teaching. At the reference settings, sevoflurane's
-muscle group has a time constant of about 135 min, and fat one of about 42 h.
+isolated time constant is about 135 min for the muscle group and about 42 h for
+fat (`docs/MODEL.md` § "Tissue groups").
 The interface advances the run in ticks, one every 100 ms of real time. Each
 tick adds the playback rate times 100 ms to the simulated time that the run is
 owed, and the run takes one step for each whole second owed. At real time the
@@ -3182,10 +3187,11 @@ enlarged.
 
 **No one width suits a whole case.** The compartments this model exists to teach
 are slow, but the moment a learner is most likely to be watching is not. At the
-reference settings, muscle's time constant for sevoflurane is about 135 min and
-fat's is about 42 h, while induction lasts minutes. A five-minute window hides
-everything slower than the vessel-rich group. A twelve-hour window puts a
-five-minute induction in the leftmost 0.7% of the plot.
+reference settings, sevoflurane's isolated time constant is about 135 min for
+muscle and about 42 h for fat (`docs/MODEL.md` § "Tissue groups"), while
+induction lasts minutes. A five-minute window hides everything slower than the
+vessel-rich group. A twelve-hour window puts a five-minute induction in the
+leftmost 0.7% of the plot.
 
 **A chosen width keeps slopes comparable within a run and between runs.** It
 stays the same at every moment of every run. Seconds per pixel then depend on
@@ -3591,7 +3597,7 @@ shipped agent
 (`test_a_zero_cardiac_output_steady_state_is_not_read_as_elimination`).
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 
-The allowance is sized from the 1% limit in condition 2 under "A point is
+The allowance is sized from the 1% limit in condition 2 under § "A point is
 drawn only inside two boundaries", a clinical requirement, rather
 than from the rounding (project owner, 2026-10-26, ratified, over 1e-9 sized
 from the rounding and over deriving the value in code). At a ratio of
@@ -4621,6 +4627,14 @@ simulation step (`SIMULATION_STEP_S`) at which it was taken. The span's wording 
 fit in a tick's width, because neither the selector nor the caption is a tick
 label.
 
+**Fresh gas flow, alveolar ventilation and cardiac output are displayed to
+0.1 L/min**, the resolution of the controls that set them. A slider and the
+readout above it show one quantity, so each slider moves in steps of its
+display resolution: 0.1 L/min for the three flows and 0.01 percentage points
+for the delivered dial. The value applied to the model is exactly the value
+printed above the control. If a control could apply a value that its own label
+rounds away, a reader could not tell which value is the setting in force.
+
 **The chart is read for shape, so its resolution is coarser than the
 readouts'.** It plots the same percentages on a shared linear axis that runs
 from 0 to 3 ×MAC of the agent in use, and a second axis on the right shows the
@@ -4635,14 +4649,6 @@ the next. § "The chart's vertical range is set in MAC, and fixed" above
 explains the range. The reader selects the time span that the chart's width
 covers, and so chooses the seconds per pixel (§ "The chart's time base").
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
-
-**Fresh gas flow, alveolar ventilation and cardiac output are displayed to
-0.1 L/min**, the resolution of the controls that set them. A slider and the
-readout above it show one quantity, so each slider moves in steps of its
-display resolution: 0.1 L/min for the three flows and 0.01 percentage points
-for the delivered dial. The value applied to the model is exactly the value
-printed above the control. If a control could apply a value that its own label
-rounds away, a reader could not tell which value is the setting in force.
 
 **For developers.** The sliders are integer-valued. Three tests read each flow's resolution from
 its control's label (`test_fresh_gas_flow_slider_forwards_value_to_controller`,
@@ -4761,22 +4767,6 @@ than quietly reduced to the derived precision.
 | One compartment's amount | Millilitres of vapour | Two significant figures, none finer than 0.01 mL | 1% to 10% of the amount | The amounts' range, below |
 | One compartment's share of the agent held | Percent of the stored total | 0 | 1 percentage point | Kept as shipped, `PL-W51N`, below |
 
-**The exhausted total in millilitres of liquid has a precision of whole
-millilitres, and no View shows it in that unit yet.**
-It carries the partition coefficients' uncertainty, so it must not claim a finer
-resolution in liquid than in litres of vapour. Otherwise a reader who could switch
-the unit would see the model resolve a difference in one unit that it does not
-resolve in the other. One step of the litre display, 0.1 L of vapour, is
-0.55 mL of sevoflurane liquid, 0.51 mL of isoflurane and 0.48 mL of desflurane
-at the 20 °C reference of `docs/MODEL.md` § "Agent amount". The smallest power of ten at or
-above all three is 1 mL. For scale, at 1 MAC with the reference adult's flows, the one-SD shifts
-at 24 h given in § "The agent-accounting panel", 0.55 L of sevoflurane vapour, 0.61 L of
-isoflurane and 0.74 L of
-desflurane, are 3.0, 3.1 and 3.5 mL of liquid. So at those settings one step of
-1 mL is about a third of an SD, and a step of 0.1 mL would be about a thirtieth.
-<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
-<!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
-
 **The delivered total in millilitres of liquid is shown in whole millilitres.**
 The delivered agent is the dial times the flow times the time, and its
 conversion to liquid at the 20 °C reference is exact. Its only uncertainty in
@@ -4820,6 +4810,22 @@ liquid volume, in whole millilitres, is then the only figure in the reader's
 multiplication rounded coarsely enough to matter. Its rounding can make the
 product miss the cost by up to about half a millilitre's price, and the readout
 says that the figures are rounded (§ "A cost at the reader's price").
+
+**The exhausted total in millilitres of liquid has a precision of whole
+millilitres, and no View shows it in that unit yet.**
+It carries the partition coefficients' uncertainty, so it must not claim a finer
+resolution in liquid than in litres of vapour. Otherwise a reader who could switch
+the unit would see the model resolve a difference in one unit that it does not
+resolve in the other. One step of the litre display, 0.1 L of vapour, is
+0.55 mL of sevoflurane liquid, 0.51 mL of isoflurane and 0.48 mL of desflurane
+at the 20 °C reference of `docs/MODEL.md` § "Agent amount". The smallest power of ten at or
+above all three is 1 mL. For scale, at 1 MAC with the reference adult's flows, the one-SD shifts
+at 24 h given in § "The agent-accounting panel", 0.55 L of sevoflurane vapour, 0.61 L of
+isoflurane and 0.74 L of
+desflurane, are 3.0, 3.1 and 3.5 mL of liquid. So at those settings one step of
+1 mL is about a third of an SD, and a step of 0.1 mL would be about a thirtieth.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 **The stored total has no precision in millilitres of liquid, and is refused in
 that unit.** A store converted to liquid reads 5.8% high (`docs/MODEL.md` § "Units and symbols").
@@ -4867,7 +4873,7 @@ Each agent's file in `data/agents/` stores the density, with its SD and
 measurement temperature, as `liquid_density`, and the molar mass as
 `molar_mass_g_mol`. The density's source entry (`sources`) is a tier-1
 measurement. The molar mass's entry says why no tier-1 source
-(`docs/PARAMETERS.md` § "Source hierarchy") exists. The vapour-to-liquid ratio is derived in
+(`docs/PARAMETERS.md` § "Source hierarchy") exists. The vapor-to-liquid ratio is derived in
 `core/liquid_agent.py` and checked against Biro's and Gas Man's constants in
 `tests/reference/test_published_vapour_to_liquid.py`
 (`test_the_derived_ratio_is_within_one_percent_of_biros_published_constant` and
@@ -5773,6 +5779,12 @@ tension is. It also shows where the agent is, which neither the readouts nor
 the concentration chart does. It prints the amount of agent each container
 holds, and its share bar gives each compartment's part of all the agent.
 
+**Every height, amount and share on the schematic is a model output.** The
+schematic therefore prints "Model outputs — not measurements." once, in its
+own heading, as the readout section does. No amount is a prediction about a
+patient to its last digit, for the reason § "Displayed precision" gives for
+the readouts.
+
 **A container's fill height is the compartment's modelled tension, not an
 amount.** All containers of one run fill against one scale: the concentration
 chart's percent axis, from zero at the bottom to 3 MAC of the running agent at
@@ -5869,12 +5881,6 @@ whenever the readouts withhold theirs: after a Reset or an agent change, until
 the screen is next redrawn. A run's schematic also shows no values until a
 frame of that run has been drawn. If the run's first frame fails, the readouts
 show the state in which the run was opened, and the schematic shows no values.
-
-**Every height, amount and share on the schematic is a model output.** The
-schematic therefore prints "Model outputs — not measurements." once, in its
-own heading, as the readout section does. No amount is a prediction about a
-patient to its last digit, for the reason § "Displayed precision" gives for
-the readouts.
 
 **For developers.** The schematic takes the top of its scale from the function
 that sets the concentration chart's top (`chart_axis_top_percent`) and sets no

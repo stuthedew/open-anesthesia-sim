@@ -1430,9 +1430,9 @@ factor of 1.058.
 
 1. **The published vapour-to-liquid constants are 20 °C constants.** The
    consumption literature quotes one number per agent, the vapour volume
-   obtained from 1 mL of liquid. Biro gives isoflurane 195 mL, sevoflurane
-   184 mL and desflurane 210 mL. The same number can be derived from the
-   liquid's measured density, its molar mass and the molar volume. At 20 °C the
+   obtained from 1 mL of liquid. The table below gives Biro's. The same number
+   can be derived from the liquid's measured density, its molar mass and the
+   molar volume. At 20 °C the
    derivation reproduces all three within 0.7 %. At 37 °C it runs 5.1–6.3 %
    high:
 
@@ -1882,7 +1882,8 @@ of its own. None is stored today.
 <!-- not-restated: 20 °C -->
 
 **Sources for the altitude notes above.** None of them is the authority for a stored
-value:
+value. Two of the six are **owner-attested**: they were read from the project
+owner's copies, and no other reader can check them. The six are these:
 
 - Weiskopf RB, Sampson D, Moore MA. The desflurane (Tec 6) vaporizer: design,
   design considerations and performance evaluation. *Br J Anaesth*
@@ -1906,13 +1907,13 @@ value:
   statement, quoted in `docs/MODEL.md` § "Altitude". It also gives a 1–18% concentration range, whose upper
   end is the 18% that this model stores as desflurane's maximum delivered
   concentration. Read in full.
-  **Owner-attested**: see the note below.
+  **Owner-attested.**
 - Boumphrey S, Marshall N. Understanding vaporizers. *Contin Educ Anaesth
   Crit Care Pain* 2011;11:199–203. **Tier 2** under `docs/PARAMETERS.md` § "Source hierarchy". It
   is a secondary synthesis, taken here for the shape of the explanation and
   the worked example, and never as the authority for a number. Its "Altitude"
   section describes both classes side by side. Read in full.
-  **Owner-attested**: see the note below.
+  **Owner-attested.**
 - Dosch MP, Tharp D. *The Anesthesia Gas Machine*, chapter 5, "Processing:
   Vaporizers". University of Detroit Mercy, revised February 2026.
   https://healthprofessions.udmercy.edu/academics/na/agm/05. **Tier 2** under
@@ -1924,14 +1925,11 @@ value:
 
 <!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 
-**Two of those six are owner-attested: they were read from the project
-owner's copies, and no other reader can check them.** They are the
-Datex-Ohmeda specification sheet and the Boumphrey and Marshall article. Any
-reader can reach the three journal articles above through their DOI or PMID,
-and Dosch and Tharp's chapter at its address.
-`docs/references/` cannot hold copies of these two, because the repository is
+Any reader can reach the three journal articles above through their DOI or
+PMID, and Dosch and Tharp's chapter at its address. `docs/references/` cannot
+hold copies of the two owner-attested sources, because the repository is
 public (`docs/references/README.md` § "Redistribution"). So three things rest
-on that reading alone: the passage quoted from Datex-Ohmeda, the 1–18% range
+on the owner's copies alone: the passage quoted from Datex-Ohmeda, the 1–18% range
 beside it, and the worked example attributed to Boumphrey and Marshall.
 Nothing stored depends on any of them. A reader who wants to verify one has to
 reach the document itself.

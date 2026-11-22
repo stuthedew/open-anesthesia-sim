@@ -1,8 +1,8 @@
 """The first-order approach toward a constant input, used by every compartment's closed form.
 
 `TissueGroup.advance()` and `VenousBloodCompartment.advance()` each solve one
-balance that `docs/MODEL.md` states, against an input held constant over the
-step: a constant arterial fraction for a tissue group, and a constant
+balance that `docs/MODEL.md` § "Equations" states, against an input held
+constant over the step: a constant arterial fraction for a tissue group, and a constant
 tissue-return fraction for the venous pool. The two balances have the same
 solution. The amount in the compartment approaches the amount it would hold at
 equilibrium with its input, and it closes a fixed share of the remaining gap
@@ -96,9 +96,9 @@ at every one of those lengths, and within 2e-16 at any length whose residual is
 a normal double, up to about 708 time constants (measured 2026-10-12 against a
 40-digit reference). `tests/unit/test_exponential_approach.py` also holds the result to
 within three ulps of that reference between those special points.
-`docs/MODEL.md`'s balances have no step at which a perfused compartment is
-exactly empty, and the closed form reports none. The circuit's washout keeps
-its residual the same way. A bare 6 L circuit at 4 L/min, washed out from a
+The balances of `docs/MODEL.md` § "Equations" have no step at which a perfused
+compartment is exactly empty, and the closed form reports none. The circuit's
+washout keeps its residual the same way. A bare 6 L circuit at 4 L/min, washed out from a
 fraction of 1.0 under a dial of zero, holds 4.2e-18 after forty time
 constants, where its own earlier sum reported exactly 0.0 (measured
 2026-10-17, `PL-CQ1M`).
@@ -116,7 +116,8 @@ compartment is `inf` (`TissueGroup.time_constant_s`). Then `dt/inf` is `0.0`
 and `expm1(-0.0)` is `-0.0`, so `g` is `0.0` and the step is formed from the
 amount held. The result is `M(t) + (M_eq - M(t)) * 0.0`, which is `M(t)`
 exactly, whatever the two amounts are. The change that the compartment reports
-is then exactly zero, so `docs/MODEL.md`'s `dM_i/dt = 0` is met exactly.
+is then exactly zero, so the `dM_i/dt = 0` of `docs/VERIFICATION.md`
+§ "Zero-tissue-flow test" is met exactly.
 `core/__init__.py` § "Zero flow is tested with `== 0.0`, never against a tolerance"
 describes the two guards that this arrangement retired, and why the guard in
 `time_constant_s` stays.

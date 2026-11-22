@@ -628,8 +628,9 @@ def test_the_sidebar_panels_name_the_run_they_record(application: QApplication) 
 
 
 def test_no_unconditional_value_sits_inside_the_layout_container(application: QApplication) -> None:
-    """Every value `docs/MODEL.md` requires in every layout is in the region, outside the Areas.
+    """Every value required in every layout is in the region, outside the Areas.
 
+    `docs/INTERFACE.md` § "The unconditional values" requires these values in every layout.
     The layout container holds the Areas that a reader resizes (`PL-W9P6`).
     So a reader could close away a value inside it once Areas can be closed
     (`PL-NWTM`). The test checks both runs of a compared case, because the
