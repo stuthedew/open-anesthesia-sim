@@ -20,4 +20,6 @@ verify: ! grep -qF 'one two-billionth' docs/INTERFACE.md
 
 Files checked: `docs/INTERFACE.md`, `docs/VERIFICATION.md`, `docs/MODEL.md`, `docs/PARAMETERS.md` and `README.md`, by `grep -n "two-billionth\|1\.6\\\\times10^{-12}\|5\.2\\\\times10^{-12}"`. None printed.
 
+**Review fix 2026-11-22**, after two blind review passes on #2243. The sentence on the hour now names what the test checks: one reference point (5% delivered, 4 L/min of fresh gas, the reference adult's default ventilation and cardiac output) at 60 s, 600 s and 3600 s (`test_the_shipped_step_reaches_the_pinned_reference_horizons`). The 4e-11 sentence now says it applies to the runs the test covers.
+
 **Generator check.** An instance of the fact that `PL-GJ1W` (no one place states how far a computed value can be from the exact one) names: a measured rounding figure standing in for, or copied beside, the bound it should be checked against. That head is still open, so this is not a re-entry; it was found by `PL-TV7Q`, which is under the same head.

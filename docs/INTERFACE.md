@@ -4232,14 +4232,17 @@ enforces the `<0.01%` form
 **The equation solver does not limit how many decimals a readout can show.** The
 test that `docs/VERIFICATION.md` § "Independent-solution test" describes holds the
 simulator's results to within $`4\times10^{-11}`$ percentage points of an
-independently computed solution, and to within $`10^{-10}`$ over an hour with the
-settings held constant. Those limits are $`4\times10^{-13}`$ and $`10^{-12}`$ as a
+independently computed solution, in the runs that it covers. It holds them to within $`10^{-10}`$ percentage
+points at one reference point held for an hour: 5% delivered, 4 L/min of fresh gas, and
+the reference adult's default ventilation and cardiac output, checked at 60 s, 600 s and
+3600 s. Those limits are $`4\times10^{-13}`$ and $`10^{-12}`$ as a
 fraction. The larger is one hundred-millionth of the last displayed digit, so **a
 third decimal would not be numerical noise.** Legibility sets the
 number of decimals instead: the readouts show the coarsest resolution that keeps
 every compartment's wash-in visible (below). How far the model's parameters vary
 between patients does not set it (project owner, 2026-11-14, `PL-W51N`). That
 spread is stated below as a limitation on reading a value as a patient's.
+<!-- not-restated: 5 %, 4 L/min -->
 
 **Two questions about resolution must be kept apart: how finely two moments
 within one run can be told apart, and how finely this model resolves a
@@ -4427,7 +4430,7 @@ display.
 #### Comparing two readouts
 
 **A reader can rely on which of two compartments the readout row shows as higher,
-except possibly while the two cross.** The interface therefore adds no warning or
+except possibly while the two are almost equal, as when they cross.** The interface therefore adds no warning or
 marker when readouts are compared. Where seven panels fit, the six compartment readouts
 and the clock sit in one row, so that the readouts can be read *in order*: the circuit
 leads the alveoli, and the alveoli lead the tissues.
@@ -4437,19 +4440,36 @@ fit.
 When a reader compares two readouts, the simulator's calculation error could mislead them
 only by reversing which of the two is shown as higher. Rounding to a fixed number of
 decimals never reverses the order of two values, so the display can show two compartments
-in the wrong order only where the simulator and the independent solution put them in
+in the wrong order only where the simulator and the exact solution put them in
 opposite order. Such a reversal needs a true gap smaller than the two compartments'
-calculation errors added together. `docs/VERIFICATION.md` § "Independent-solution test"
-holds each compartment's calculation error to at most $`4\times10^{-13}`$ as a fraction,
-not a percent, so a reversal needs a true gap below $`8\times10^{-13}`$. A true gap is
-that small only in the moment when two compartments cross, so a reversal is
-arithmetically possible there and nowhere else. The bound holds on any computer on which
-that section's test passes.
+calculation errors added together. How large each error can be depends on the run:
+
+1. In the runs that the test in `docs/VERIFICATION.md` § "Independent-solution test"
+   covers, each compartment's calculation error is at most $`4\times10^{-13}`$ as a
+   fraction, not a percent. Those runs are five scripted runs of 600 s to 900 s and nine
+   random runs of 600 s. A reversal in them needs a true gap below $`8\times10^{-13}`$.
+2. In the reference run held for an hour, the same section allows $`10^{-12}`$.
+3. **No test bounds the calculation error in a learner's own session.** The derived
+   bound for the longest session the simulator allows, 24 h of one-second steps, is
+   $`1.5\times10^{-9}`$ of the largest fraction in the run (`run_rounding` in
+   `src/anesthesia_sim/core/rounding.py`). At desflurane's vaporizer maximum of 18%,
+   that is less than $`3\times10^{-8}`$ percentage points.
+<!-- not-restated: 900 s -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
+
+All three are more than five orders of magnitude below the readout's resolution of 0.01
+percentage points. A true gap that small occurs only where two compartments are almost
+equal. That happens in the moment when two compartments cross. It also happens where two
+compartments converge on the same value, such as the circuit and the alveoli approaching
+the delivered fraction when cardiac output is zero. A reversal is arithmetically possible
+there and nowhere else. The first two limits hold on any computer on which that
+section's test passes.
 
 **A gap that a reader works out from two readings can differ from the true gap by
 up to one count of the last displayed digit.** Each reading is rounded to that
 digit. The gap carries the rounding of both readings and the simulator's calculation
-error, up to the limit in the paragraph above. That calculation error does not make the
+error, up to the limits listed above. That calculation error does not make the
 gap less accurate than either reading. The interface shows no gap between two readouts.
 
 **For developers.** Two tests enforce the claim about which compartment is shown
@@ -4461,13 +4481,14 @@ that the interface's formatter, `format_percent`, never shows a higher fraction 
 a lower percent (`test_format_percent_preserves_order` in
 `tests/unit/test_formatting.py`). It covers the "<0.01%" reading below the display
 resolution and both sides of every value at which the last displayed digit changes.
-Together the two tests mean that no reversal can occur at a true gap above twice the
-first test's tolerance: $`8.0\times10^{-9}`$ counts of the last displayed digit. A
+Together the two tests mean that, in the runs that the first test covers, no reversal
+can occur at a true gap above twice the first test's tolerance: $`8.0\times10^{-9}`$ counts of the last displayed digit. A
 third test compares every pair of the six readouts at every time step, for all three
 agents, in every run of the first test, reading each value through the
 interface's formatter (`test_displayed_ordering_reverses_only_at_a_crossing` in `tests/reference/test_coupled_dynamics.py`). It
 allows a reversal where the true gap is below the first two tests' threshold of
-$`8.0\times10^{-9}`$ counts, because one is possible at a crossing. It fails only when
+$`8.0\times10^{-9}`$ counts, because one is possible where two compartments are almost
+equal. It fails only when
 one of those tests fails, so it adds no evidence of its own.
 
 The claim about a gap's calculation error rests on one property of the model: within one

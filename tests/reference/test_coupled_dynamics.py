@@ -454,8 +454,9 @@ RANDOMISED_LIMIT_PROBABILITY = 0.2
 # fraction delivered so far. It is a numerical limit on rounding. It is a fixed allowance, in
 # the sense that `core/rounding.py` gives the term, and not a derived bound. One unit in the
 # last place of a value is between 2**-53 and 2**-52 of the value, so 1e-14 of the highest
-# delivered fraction is 45 to 90 units in the last place of that fraction. For the highest
-# fractions that these runs deliver, it is 49 to 78 units.
+# delivered fraction is 45 to 90 units in the last place of that fraction. At the highest
+# fraction that each of these runs delivers, it is 56 to 72 units. Earlier in a run, while the
+# highest fraction delivered so far is lower, it is 49 to 78 units.
 #
 # The derived bound is not used because it is about a thousand times looser. `run_rounding`
 # for 600 one-second steps of three squarings is 1.07e-11 of the state's scale. A limit set
