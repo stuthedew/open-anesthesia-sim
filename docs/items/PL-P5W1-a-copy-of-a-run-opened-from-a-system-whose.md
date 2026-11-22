@@ -3,6 +3,7 @@ id: PL-P5W1
 title: A copy of a run opened from a system whose amounts were written directly can be refused before its first step, because about one amount in eight does not survive the fraction round trip that the copy's check makes (found at blind review of PL-DQWL)
 status: done
 feature: replay-findings
+milestone: v0.6.21
 touches: src/anesthesia_sim/core/simulation.py, tests/unit/test_simulation.py
 added: 2026-11-22
 closed: 2026-11-22

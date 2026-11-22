@@ -3,6 +3,7 @@ id: PL-S8FM
 title: A circuit or alveolar volume written directly on the core and followed by a control change through SimulationController is adopted into the run's settings record without a refusal, so a run can go on under a volume that the docs call fixed for a run (found at blind review of PL-DQWL)
 status: done
 feature: replay-findings
+milestone: v0.6.21
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_view.py, tests/integration/controller/test_controller_run_definition.py, tests/integration/simulation_view/test_simulation_view_views.py, docs/INTERFACE.md
 added: 2026-11-22
 closed: 2026-11-22

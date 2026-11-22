@@ -3,6 +3,7 @@ id: PL-DQWL
 title: A circuit volume changed between two steps leaves the run's uptake system off the state its record stores for the second it has reached, so a deep copy or a pickle of that run is refused with a message that names resume_at, and a branch opened at that second would start from a different circuit fraction than the parent now holds; the app offers no mid-run volume control yet (found at blind review of PL-HXNL)
 status: done
 feature: replay-findings
+milestone: v0.6.21
 touches: src/anesthesia_sim/core/simulation.py, tests/unit/test_simulation.py, docs/INTERFACE.md, src/anesthesia_sim/app/chart_frame.py, tests/unit/test_record_writes.py
 added: 2026-11-22
 closed: 2026-11-22

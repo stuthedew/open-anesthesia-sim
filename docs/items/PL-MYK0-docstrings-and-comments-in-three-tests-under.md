@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: model-spec-accuracy
+milestone: v0.6.21
 touches: tests/reference/test_late_washout_against_published_fits.py, tests/reference/test_published_wash_in_and_elimination.py
 blocked-by: PL-SZ6G
 deferred-from: v0.7.0 - captured after the freeze by the check of docs/MODEL.md against the code; it changes no displayed value, and it is not safety or science

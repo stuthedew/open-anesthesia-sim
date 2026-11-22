@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: planning-cadence
+milestone: v0.6.21
 touches: subprojects/docket/src/docket/picks.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests, subprojects/docket/README.md
 deferred-from: v0.7.0 - present at the freeze, deferred on a stated reason: the fault shows only while a gate is being cleared, and v0.7.0 is past that beat (bin/docket wave, 2026-11-22: no entry this gate can clear, all 19 Required-scope ids closed), so a fix protects nothing on this gate and first applies at Gate 4
 added: 2026-11-11
