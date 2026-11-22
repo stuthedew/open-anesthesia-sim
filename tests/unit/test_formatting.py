@@ -2191,7 +2191,7 @@ def test_a_cost_is_shown_to_its_currency_s_minor_unit(
     The count of decimals per currency is the minor unit that ISO 4217 lists
     and CLDR copies: 2 for USD, 0 for JPY and 3 for KWD. A code CLDR does not
     list gets CLDR's default of 2 (Unicode Technical Standard #35, Part 3,
-    § "Currency Fraction Digits and Rounding").
+    section "Currency Fraction Digits and Rounding").
     """
 
     assert format_agent_cost(cost, currency) == expected

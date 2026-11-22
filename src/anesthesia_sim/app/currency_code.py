@@ -43,7 +43,7 @@ def minor_unit_decimals(currency: str) -> int:
     CLDR bases it on the minor unit that ISO 4217 lists, and departs from
     ISO 4217 only where customary use differs. A code that CLDR does not list,
     such as a mistyped `UDS`, gets CLDR's default of 2 (Unicode Technical
-    Standard #35, Part 3, Numbers, § "Currency Fraction Digits and Rounding",
+    Standard #35, Part 3, Numbers, section "Currency Fraction Digits and Rounding",
     https://www.unicode.org/reports/tr35/tr35-numbers.html). Babel's
     `get_currency_precision` applies that default for an unlisted code. CLDR's
     separate figures for cash, such as rounding Swiss francs to 0.05, are not

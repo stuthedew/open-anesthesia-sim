@@ -4795,8 +4795,8 @@ thirtieth.
 one that the Unicode CLDR's currency data gives each currency, which it bases
 on the minor unit that ISO 4217 lists: two for USD and EUR, none for JPY and
 three for KWD. A code that CLDR does not list gets CLDR's default of two
-(Unicode Technical Standard #35, Part 3, Numbers, § "Currency Fraction Digits
-and Rounding", https://www.unicode.org/reports/tr35/tr35-numbers.html). A cost
+(Unicode Technical Standard #35, Part 3, Numbers, section "Currency Fraction
+Digits and Rounding", https://www.unicode.org/reports/tr35/tr35-numbers.html). A cost
 is not a value that patient care depends on, and a price is read to the cent,
 so the liquid density's uncertainty does not set its precision. A positive
 cost that would round to zero reads `USD <0.01` or `JPY <1`, and a run that has
@@ -4864,8 +4864,11 @@ shipped agent from the stored molar mass and density
 Another computes each agent's largest supported total and its SD from the stored
 densities
 (`test_the_delivered_total_in_millilitres_of_liquid_is_shown_in_whole_millilitres`).
-A third computes the cost's and the price's precisions from the stored densities
-(`test_the_cost_s_and_the_price_s_precisions_follow_from_the_density_and_the_cost`).
+A third holds the price per millilitre's four figures to the 0.05 % bound
+above
+(`test_four_figures_keep_the_price_per_millilitre_within_a_twentieth_of_a_percent`),
+and `test_a_cost_is_shown_to_its_currency_s_minor_unit` checks a cost's decimals
+in USD, JPY, KWD and a code CLDR does not list.
 A fourth checks that the stored total is refused in liquid
 (`test_a_unit_with_no_derived_precision_is_refused`). Whole millilitres replaced a tenth on
 2026-11-04 (project owner, ratified, over keeping the tenth and over four
