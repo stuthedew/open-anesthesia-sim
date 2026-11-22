@@ -9,6 +9,7 @@ touches: docs/MODEL.md
 added: 2026-09-20
 payoff: a reader checking where a Known-limitations note comes from is not sent to a source list that never held it
 verify: grep -q 'Sources for the vaporizer' docs/MODEL.md
+recurrences: 2026-11-21 PL-M3J9 withdrawn 2026-11-21 PL-S64T
 ---
 
 **Problem.** docs/MODEL.md's 'Sources for the notes above' block in Known limitations lists only the five vaporizer and altitude sources, but its heading claims every note in the section
