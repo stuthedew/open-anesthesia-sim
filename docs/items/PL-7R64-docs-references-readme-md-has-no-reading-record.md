@@ -2,7 +2,7 @@
 id: PL-7R64
 title: docs/references/README.md has no reading record for Hendrickx and De Wolf pp. 161-162, 167, 169 and 171, which docs/VERIFICATION.md cites for the model's symbols
 status: untriaged
-feature: model-md-structure
+feature: references-structure
 touches: docs/references/README.md
 added: 2026-11-22
 ---

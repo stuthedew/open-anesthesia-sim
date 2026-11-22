@@ -2,7 +2,7 @@
 id: PL-FYQS
 title: docs/PARAMETERS.md § 'Intertissue diffusion: the missing fourth compartment' gives Yasuda 1991 and Hendrickx and De Wolf in full with reading records, while docs/VERIFICATION.md now points to their entries in docs/references/README.md; give each source one full citation
 status: untriaged
-feature: model-md-structure
+feature: documentation-standard
 touches: docs/PARAMETERS.md
 added: 2026-11-22
 ---
