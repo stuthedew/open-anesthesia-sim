@@ -350,16 +350,23 @@ class _NarrowPaints(QObject):
         areas = self.view.layout_container
 
         for area in areas.model.areas():
-            content = areas.frame(area.id).content
+            frame = areas.frame(area.id)
+            content = frame.content
 
             if isinstance(watched, QWidget) and (
                 watched is content or content.isAncestorOf(watched)
             ):
                 self.paints += 1
                 least = content.minimumSizeHint().width()
+                # The reader sees the narrower of the View and the Area's window
+                # onto it: a View wider than its window is cut off at the edge.
+                seen = content.width()
 
-                if content.width() < least:
-                    self.narrow.append((area.view, content.width(), least))
+                if frame.view_scroll is not None:
+                    seen = min(seen, frame.view_scroll.viewport().width())
+
+                if seen < least:
+                    self.narrow.append((area.view, seen, least))
 
         return False
 
@@ -399,9 +406,11 @@ def test_no_shipped_workspace_scrolls_the_page(
         assert frame.view_scroll.horizontalScrollBar().maximum() == 0, (
             f"the {area.view} View scrolls sideways in its Area"
         )
-        assert frame.content.width() >= frame.content.minimumSizeHint().width(), (
-            f"the {area.view} View is {frame.content.width()} px wide, narrower than "
-            f"its least width of {frame.content.minimumSizeHint().width()} px"
+        least = frame.content.minimumSizeHint().width()
+        seen = min(frame.content.width(), frame.view_scroll.viewport().width())
+        assert seen >= least, (
+            f"the {area.view} View is shown {seen} px wide, narrower than "
+            f"its least width of {least} px"
         )
 
 
@@ -417,9 +426,12 @@ def test_no_view_paints_narrower_than_its_least_width_after_a_workspace_switch(
     have, the View is narrower than its least width. At 1366 by 768 the
     schematic in Maintenance is 663 px wide against a least width of 706 px
     for one pass of the event loop after the switch. A View drawn at such a
-    width cuts off or overlaps what it shows, so the test records every paint
-    of every View from the switch until the dashboard has settled after its
-    next frame. The scroll bar that the test above reads cannot see a squeeze.
+    width cuts off or overlaps what it shows, and so does an Area whose window
+    onto the View is narrower than the View. The test records every paint of
+    every View from the switch until the dashboard has settled after its next
+    frame, and compares the narrower of the two widths with the least width.
+    The scroll bar that the test above reads is checked only once the
+    dashboard has settled.
     """
 
     view = _shipped_view_at(application, "Default", width_px, height_px)

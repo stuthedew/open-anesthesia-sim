@@ -12,7 +12,7 @@ added: 2026-11-11
 closed: 2026-11-22
 pr: 2226
 payoff: after an agent change, the open price form shows the agent the learner is now running, unless they picked one by hand
-tests: tests/integration/test_agent_cost_view.py::test_an_open_price_form_follows_the_run_s_agent_until_the_reader_picks_one, tests/integration/test_agent_cost_view.py::test_an_agent_the_reader_picked_in_the_price_form_stays_through_an_agent_change
+tests: tests/integration/test_agent_cost_view.py::test_an_open_price_form_follows_the_run_s_agent_until_the_reader_picks_one, tests/integration/test_agent_cost_view.py::test_an_agent_the_reader_picked_in_the_price_form_stays_through_an_agent_change, tests/integration/test_agent_cost_view.py::test_a_price_the_reader_is_typing_stays_with_its_agent_through_an_agent_change, tests/integration/test_agent_cost_view.py::test_a_refused_price_stays_beside_the_agent_it_was_refused_for_through_an_agent_change
 ---
 
 **Problem.** After an agent change, a price form that was already open in the agent cost View still has the earlier agent selected
@@ -43,3 +43,5 @@ that the run no longer holds.
 **Generator check.** The fact misread is which widgets state a run's current state, and that each is restated on every path that changes it. The open head `PL-RF2S` states that fact. The selector takes the run's agent at the form's first fill and is not restated on an agent change. The head is open, so this is not a re-entry.
 
 **Documentation checked on 2026-11-22**, each passage that names a changed module, for a statement the change made untrue: `docs/ARCHITECTURE.md`, `docs/INTERFACE.md`, `docs/interface-provenance.md`, `ROADMAP.md` and `.claude/rules/ui-areas.md`. None needed a change.
+
+**Blind review, 2026-11-22, and what changed.** The review found two faults in the first build, where only a hand pick stopped the selector following. A refusal shown for sevoflurane stayed on screen after the follow moved the form to desflurane, so it read as desflurane's refusal. A bottle price the reader had typed, without pressing Set price, was replaced by the new agent's stored price without a word. The selector now follows the run's agent until the reader uses the form at all: picks an agent, types in a field, edits the date or presses Set price. This keeps triage's rule for an untouched form and extends "picked by hand" to every use, because each of these is the reader working on the agent the form names. No price or cost changes, so it is not put to the owner. Two tests fail before the change with `assert 'desflurane' == 'sevoflurane'`: `test_a_price_the_reader_is_typing_stays_with_its_agent_through_an_agent_change` and `test_a_refused_price_stays_beside_the_agent_it_was_refused_for_through_an_agent_change`.

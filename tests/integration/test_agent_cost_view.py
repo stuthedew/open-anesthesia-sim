@@ -663,6 +663,71 @@ def test_an_agent_the_reader_picked_in_the_price_form_stays_through_an_agent_cha
     assert cost_view.price_entry.agent_id == "isoflurane"
 
 
+def test_a_price_the_reader_is_typing_stays_with_its_agent_through_an_agent_change(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """Typing in the form keeps its agent, so a change of the run's agent discards nothing typed.
+
+    The reader types a bottle price for sevoflurane, the agent the run holds,
+    and has not pressed Set price when the run's agent changes to desflurane.
+    A form that still followed the run would refill its fields with
+    desflurane's price, which is none, and the typed figure would be lost
+    without a word (`PL-FBKK`).
+    """
+
+    view = _dashboard(
+        application,
+        shown,
+        SimulationController(),
+        workspaces=_workspaces(Area(AreaId(1), AGENT_COST)),
+    )
+    (cost_view,) = _cost_views(view)
+    entry = cost_view.price_entry
+    assert entry.agent_id == "sevoflurane"
+    _type_over(entry.bottle_price_edit, "150")
+    combo = view.runs[0]._agent_dropdown
+
+    combo.setCurrentIndex(combo.findData("desflurane"))
+    _settle(application)
+
+    assert view.runs[0].controller.agent_id == "desflurane"
+    assert entry.agent_id == "sevoflurane"
+    assert entry.bottle_price_edit.text() == "150"
+
+
+def test_a_refused_price_stays_beside_the_agent_it_was_refused_for_through_an_agent_change(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """A refusal is shown only beside the agent whose entry was refused.
+
+    The reader presses Set price for sevoflurane with a bottle price typed
+    with a decimal comma, which is refused. The run's agent then changes to
+    desflurane. A form that moved to desflurane and kept the refusal under it
+    would tell the reader that desflurane's price was refused (`PL-FBKK`).
+    """
+
+    view = _dashboard(
+        application,
+        shown,
+        SimulationController(),
+        workspaces=_workspaces(Area(AreaId(1), AGENT_COST)),
+    )
+    (cost_view,) = _cost_views(view)
+    entry = cost_view.price_entry
+    entry.bottle_price_edit.setText("20,47")
+    entry.bottle_volume_edit.setText("100")
+    entry.currency_edit.setText("USD")
+    entry.set_button.click()
+    assert entry.refusal.text().startswith("Price not set: ")
+    combo = view.runs[0]._agent_dropdown
+
+    combo.setCurrentIndex(combo.findData("desflurane"))
+    _settle(application)
+
+    assert entry.agent_id == "sevoflurane"
+    assert entry.refusal.text().startswith("Price not set: ")
+
+
 def test_the_panel_follows_its_run_through_an_agent_change_and_a_comparison(
     application: QApplication, shown: list[SimulationView]
 ) -> None:
