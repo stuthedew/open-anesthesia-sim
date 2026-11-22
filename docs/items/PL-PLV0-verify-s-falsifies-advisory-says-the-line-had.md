@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: defect
-feature: verify-close-out
+feature: verify-false-reject
 milestone: v0.5.29
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, .claude/skills/docket/modes/triage.md
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science

@@ -5,7 +5,7 @@ priority: P2
 effort: M
 status: dropped
 classes: defect
-feature: stranded-ahead-or-behind
+feature: stranded-report-fidelity
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests
 added: 2026-09-16
 closed: 2026-09-20

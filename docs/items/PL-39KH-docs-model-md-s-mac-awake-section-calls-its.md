@@ -5,7 +5,7 @@ priority: P1
 effort: S
 status: done
 classes: docs, science
-feature: mac-awake-reference-text
+feature: model-spec-accuracy
 milestone: v0.6.9
 touches: docs/MODEL.md
 added: 2026-10-25

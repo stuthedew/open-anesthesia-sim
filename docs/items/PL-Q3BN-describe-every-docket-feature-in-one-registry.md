@@ -54,8 +54,10 @@ one that already describes the same completing goal, and retags every item
 carrying the folded name, closed items included, so `bin/docket feature` keeps
 one history per group. Retired names, and names the project's Order cites,
 stay as they are. Release notes that name a folded feature stay as written,
-because they record what a past release finished. The retagging waits for the triage
-thread's pull request, which holds most open items. 58 names fold, and 211
+because they record what a past release finished. Each target's description
+is widened to cover what it took in, and each folded name stays in the
+registry as a redirect to its target. The retagging waited for the triage pull
+requests #2203 and #2208, which held most open items. 58 names fold, and 211
 names become 153.
 
 | Folded name | Into |

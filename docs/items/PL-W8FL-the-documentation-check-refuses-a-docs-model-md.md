@@ -5,7 +5,7 @@ priority: P1
 effort: S
 status: done
 classes: defect
-feature: reader-first-prose
+feature: prose-quality
 milestone: v0.6.15
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/MODEL.md
 deferred-from: v0.7.0 - captured after the freeze; it changes which paragraphs a documentation check accepts, not a displayed value

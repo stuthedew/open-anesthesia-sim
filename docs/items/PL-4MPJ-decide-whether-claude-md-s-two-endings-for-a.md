@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: planning
-feature: generator-machinery-rank
+feature: generator-identification
 milestone: v0.4.28
 touches: CLAUDE.md
 added: 2026-09-19

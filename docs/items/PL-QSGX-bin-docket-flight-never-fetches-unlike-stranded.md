@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect, infra
-feature: refresh-before-reporting
+feature: one-snapshot
 milestone: v0.5.12
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-19

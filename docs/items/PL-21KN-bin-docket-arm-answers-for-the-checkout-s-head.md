@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect
-feature: remote-copy
+feature: one-snapshot
 milestone: v0.5.13
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_cli.py
 blocked-by: PL-MT3R

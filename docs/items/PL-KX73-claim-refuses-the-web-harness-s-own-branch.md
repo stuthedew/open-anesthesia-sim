@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect
-feature: claim-integrity
+feature: claim-record
 milestone: v0.5.12
 touches: subprojects/docket/src/docket/claiming.py, subprojects/docket/tests/test_claiming.py, .claude/skills/docket/modes/start.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21) by PL-P0FP's stress test (2026-09-25), and not safety or science; a defect in PL-0TD9's claim writer, which merged after the freeze

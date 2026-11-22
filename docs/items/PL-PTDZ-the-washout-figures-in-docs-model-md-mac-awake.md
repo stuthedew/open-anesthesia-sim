@@ -5,7 +5,7 @@ priority: P1
 effort: S
 status: done
 classes: defect, science
-feature: mac-awake-reference-text
+feature: model-spec-accuracy
 milestone: v0.6.10
 touches: docs/MODEL.md, tests/reference/test_mac_awake_washout_figures.py
 added: 2026-10-26

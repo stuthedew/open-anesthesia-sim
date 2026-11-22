@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect, infra
-feature: gate-remaining-cost
+feature: gate-prerequisites
 milestone: v0.4.34
 touches: subprojects/docket/src/docket, subprojects/docket/tests
 added: 2026-09-20

@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect
-feature: stale-blocked-routing
+feature: blocked-means-blocked
 milestone: v0.5.0
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md, docs/items
 added: 2026-09-20

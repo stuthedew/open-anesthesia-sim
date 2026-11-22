@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: dropped
 classes: infra
-feature: generator-machinery-rank
+feature: generator-identification
 touches: docs/items
 added: 2026-09-19
 closed: 2026-09-19

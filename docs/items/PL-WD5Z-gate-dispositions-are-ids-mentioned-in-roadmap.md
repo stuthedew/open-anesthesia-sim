@@ -5,7 +5,7 @@ priority: P2
 effort: M
 status: done
 classes: refactor, infra
-feature: gate-disposition-store
+feature: gate-list-integrity
 milestone: v0.5.9
 touches: ROADMAP.md, subprojects/docket/src/docket, subprojects/docket/tests, subprojects/docket/README.md, tools/doc_check.py, tests/unit/test_doc_check.py, tests/unit/test_docket_gate.py, docket.toml, .claude/skills/docket/modes/triage.md, docs/items
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; filed as a generator head

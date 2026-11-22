@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: dropped
 classes: infra
-feature: open-item-overlap-detection
+feature: recurrence-signal
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-07
 closed: 2026-10-18

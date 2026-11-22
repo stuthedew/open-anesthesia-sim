@@ -5,7 +5,7 @@ priority: P2
 effort: M
 status: done
 classes: defect, infra
-feature: platform-palette
+feature: chrome-colour-audit
 milestone: v0.5.4
 touches: tests/integration/test_simulation_view.py, tools/contrast_check.py, tests/unit/test_contrast_check.py, docs/MODEL.md, docs/ARCHITECTURE.md, .claude/rules/ui-color.md
 added: 2026-09-17

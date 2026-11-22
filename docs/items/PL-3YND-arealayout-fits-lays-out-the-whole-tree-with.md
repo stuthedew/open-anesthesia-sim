@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: ready
 classes: perf
-feature: area-layout-sizing
+feature: interface-areas
 touches: src/anesthesia_sim/app/area_layout.py
 deferred-from: v0.7.0 - a new problem: the repeated start layout came in with #2169 (718862f7, 2026-11-16, PL-501T), which cleared a frozen entry after the freeze
 added: 2026-11-16

@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: test
-feature: two-change-run-has-two-changes
+feature: unit-test-review
 milestone: v0.6.9
 touches: tests/unit/test_run_definition.py
 added: 2026-10-01

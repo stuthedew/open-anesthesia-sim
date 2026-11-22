@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: docs
-feature: circuit-boundary-docs
+feature: model-spec-accuracy
 milestone: v0.6.17
 touches: docs/machine-abstraction.md
 added: 2026-09-20

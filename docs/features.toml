@@ -7,6 +7,10 @@
 # Name it for what completes, so `bin/docket feature NAME` can say when it is
 # finished, and describe what work belongs in it in one plain sentence.
 # Closed features stay listed, because their items keep the name (PL-Q3BN).
+#
+# A name merged into another feature stays as `old = { use = "new" }`. Then
+# `bin/docket new` turns a capture that still uses the old name to the new
+# one, and `bin/docket check` refuses an item that carries it (PL-LRWK).
 
 agent-worktrees = "Tools that walk the checkout and mistake an agent's worktree under .claude/worktrees/ for repository source."
 anesthesia-machine = "Surveying real anesthesia machines and making a difference between two simulated machines traceable to its parameter."
@@ -14,120 +18,120 @@ api-credit-runs = "The headless worker that runs items through the paid API, and
 apparatus-capture-criteria = "Whether the rules for what the workflow lane captures, and how it is tagged, should change."
 apparatus-test-bar = "Which bar the tests of the workflow tooling are held to, and which rule file reaches them."
 architecture-md-structure = "Making docs/ARCHITECTURE.md consistent with itself and with the code it describes."
-area-layout-sizing = "How an interface Area measures the least size it needs, and how border drags respect it."
+area-layout-sizing = { use = "interface-areas" }
 arm-follows-owner = "Making bin/docket arm and the maintainer guide respect the owner switching auto-merge off."
-bash-guard-bound = "Bounding what the Bash guard hooks can misread in a command, so they stop refusing correct work."
-blocked-means-blocked = "Keeping an item's blocked status true once everything it waited on has closed."
+bash-guard-bound = "The Bash guard hooks, what they can misread in a command, and the one that refuses a command hiding a gate's exit status."
+blocked-means-blocked = "Keeping an item's blocked status true, and offering the item again, once everything it waited on has closed."
 branch-display-tests = "Tests that a branched run's widgets appear, leave and are ordered correctly on the dashboard."
-branch-run-set-integrity = "Keeping the set of runs on the dashboard to the ones the case sanctioned, through forks and Resets."
+branch-run-set-integrity = { use = "scenario-branching" }
 brief-state-agreement = "Keeping an item brief's prose about its own status in step with its front matter."
 cardiac-output-write-consistency = "Refusing a cardiac output or tissue blood flow that disagrees with the patient's, wherever it is written."
-carrier-collapse = "Stopping the in-flight read from collapsing several refs that carry one item into one."
-carrier-detection = "Naming correctly which branches carry an item, and whether a session on one is still live."
-chart-readout = "The concentration chart's axes, notices, panning and drawing cost."
-chrome-colour-audit = "Contrast and colour of the window chrome: scroll bars, splitter handles and dialog controls."
+carrier-collapse = { use = "carrier-detection" }
+carrier-detection = "Naming correctly every branch that carries an item, in bin/docket show and the in-flight read, and whether a session on one is still live."
+chart-readout = "The concentration chart's axes, notices, traces, panning and drawing cost, including telling overlapping traces apart."
+chrome-colour-audit = "Contrast and colour of the window chrome, and of controls that draw from the host's palette under a dark appearance."
 ci-cost = "How long CI takes and what it costs, and which runs a pull request needs."
-circuit-boundary-docs = "Documents that state where the breathing circuit model's assumptions stop holding."
+circuit-boundary-docs = { use = "model-spec-accuracy" }
 citation-drift-drain = "A plan for draining the open items left by the two citation-drift root causes."
-claim-integrity = "Making bin/docket claim report truthfully whether a claim was published and still holds."
-claim-record = "Recording who holds an item as a claim on the holder's own branch, and reading it from one place."
+claim-integrity = { use = "claim-record" }
+claim-record = "Recording who holds an item as a claim on the holder's own branch, reading it from one place, and reporting truthfully whether the claim was published and still holds."
 closed-item-claims = "Statements in the working notes about closed items that are no longer true."
-commit-provenance = "Recording which pull request and model carried each item's work, before release notes read it."
+commit-provenance = "Recording which pull request and model carried each item's work, before a release cut writes its notes."
 compaction-reset = "What survives an automatic compaction, and how path-scoped rules reload after one."
-compartment-trace-legibility = "Telling apart compartment traces drawn on top of each other, at hover and in the documents."
+compartment-trace-legibility = { use = "chart-readout" }
 context-budget-reading = "Reading a session's context use correctly and resetting at the spend budget."
 contrast-base-entry-reading = "How the contrast check compares its list of known shortfalls with the base branch's."
 convergence-visibility = "Measuring whether workflow-lane inflow is falling, against predictions recorded in advance."
-copy-editor = "The copy editor tool that reviewed changed prose, which has since been removed."
+copy-editor = "The copy editor tool that reviewed changed prose and copy-edited the main documents, which has since been removed."
 core-boundaries = "Which class in core/ owns which state and default, and making that obvious."
 core-domain-language = "Naming quantities in core/ and docs/MODEL.md with the anesthesia domain's own terms and symbols."
 core-guard-coverage = "Tests that reach every refusal in core/, and refusals that name what they refused."
 count-input-addressing = "Making the git reads behind a printed count obey --no-git and the store actually read."
-cut-backfills-pr-numbers = "Recording each item's pull request number before a release cut writes its notes."
+cut-backfills-pr-numbers = { use = "commit-provenance" }
 dead-ends-budget = "The size budget of docs/dead-ends.md and when an entry leaves it."
-dead-test-limits = "Test limits that can never decide a result, such as a tolerance below floating-point spacing."
+dead-test-limits = { use = "tests-detect-wrong-values" }
 debt-aging = "Handing out owed work oldest first, and re-checking an old item before it is worked."
 debt-gate = "Dispositions and counts in a release's debt gate, the list of debt that must clear before it ships."
 decision-ownership = "Where the line falls between the owner's decisions and a session's."
 defect-review-2026-10 = "Findings from the October 2026 review of what kinds of defects the project produces."
 delegation = "Handing items to a cheaper model or worker, and bin/docket verify's audit of the result."
-delivery-semantics = "Stating whether the delivered concentration is a volume fraction or a partial pressure fraction."
+delivery-semantics = { use = "model-spec-accuracy" }
 dev-tooling = "General development tooling, an area name retired because it never completes."
-doc-consistency-checks = "The documentation check's reading of citations, counts and named tests in the documents."
+doc-consistency-checks = "The documentation check's reading of citations, counts, tags and named tests in the documents, and the cause each failure names."
 docket-store = "How the item store records statuses, fields and stranded items."
 documentation-standard = "Standards for docstrings, citations and pointers to the architecture guide."
 drift-2026-11-01 = "Failures the weekly dependency-drift run of 2026-11-01 found under upgraded tools."
 effort-trial = "The trial that compared high and extra-high effort sessions, and how it assigned arms."
 every-control-restates-the-halt = "Making every control and panel agree with the run's state after it halts."
 every-view-in-run-state-tests = "Run-state tests that cover every registered View and what each draws, not only its text."
-evidence-declines = "Tools that turn a failed git call into a confident empty answer instead of saying they could not read."
+evidence-declines = "Tools that turn a failed or silent git call into a confident empty answer instead of saying they could not read."
 exact-gates = "Hard checks that recognise what they check by exact syntax rather than by wording."
 feature-registry = "This registry of feature names and descriptions, and the commands and check that read it."
 fewer-red-runs = "Reducing failed CI runs, sorted by the mechanism that made each one fail."
-floating-point-domain = "Rounding error and range limits of the numerical methods at the edges of the supported inputs."
+floating-point-domain = "The valid range and rounding error of the simulator's numbers, recorded and enforced at the edges of the supported inputs."
 frame-cost-harness = "The headless harness that measures how long drawing one interface frame takes."
 friction-batch = "A batch of guard refusals and advisories that got in the way of correct work."
 front-matter-round-trip = "Reading and writing item front matter without losing or corrupting a value."
 gas-man-open-source = "Comparing the simulator's output and stored values with Gas Man's published engine."
-gate-disposition-store = "Recording a gate entry's disposition as an item field rather than in ROADMAP.md prose."
-gate-list-integrity = "Keeping ROADMAP.md's debt-gate lists consistent with the items they name."
+gate-disposition-store = { use = "gate-list-integrity" }
+gate-list-integrity = "Keeping ROADMAP.md's debt-gate lists consistent with the items they name, and where each entry's disposition is recorded."
 gate-parity-conditions = "The documentation check's test that CI runs the same gate commands as the local check."
-gate-prerequisites = "How bin/docket wave reads what a gate entry waits on."
-gate-remaining-cost = "Making bin/docket wave name and count what a gate still waits on."
+gate-prerequisites = "How bin/docket wave reads, names and counts what a gate entry still waits on."
+gate-remaining-cost = { use = "gate-prerequisites" }
 gate-staleness-sweep = "Checking a frozen gate's entries against the tree before they are worked."
-gate-status-guard = "The guard hook that refuses a command which hides a gate's exit status."
-generator-heads = "Recording and reporting generators, the root causes behind three or more items, and their successors."
-generator-identification = "How triage finds the generator behind an item, and how generators are clustered."
-generator-machinery-rank = "How bin/docket next ranks generator work, and defects in the machinery that finds it."
-generator-measurement = "Measuring whether a closed generator is still producing items."
-git-silence-channel = "Telling a git read that returned nothing apart from one that never ran."
+gate-status-guard = { use = "bash-guard-bound" }
+generator-heads = "Recording and reporting generators, the root causes behind three or more items, their successors, and whether a closed one still produces items."
+generator-identification = "How triage finds the generator behind an item, how generators are clustered, and how bin/docket next ranks generator work."
+generator-machinery-rank = { use = "generator-identification" }
+generator-measurement = { use = "generator-heads" }
+git-silence-channel = { use = "evidence-declines" }
 guard-code-structure = "The code structure of the guard hooks and the arming module."
 guard-refusal-log = "The copied log of guard refusals, and keeping it out of a branch's counted work."
 guard-review-2026-11 = "Findings from the November 2026 review of the guard hooks' cost and correctness."
-guard-tool-names = "Guard hooks wired on exact tool names that the harness can rename."
-guards-keyed-on-the-action = "Guards that judge a request by its spelling or client instead of the action it takes."
+guard-tool-names = { use = "guards-keyed-on-the-action" }
+guards-keyed-on-the-action = "Guards that judge a request by its spelling, its client or a tool name instead of the action it takes."
 guards-say-when-they-cannot-check = "Making a guard hook say so when it crashed or could not check."
 host-reachability = "Stating which outside hosts this container can reach as a dated probe, not a standing fact."
-inflight-verdict = "Naming every branch that carries an item in bin/docket show."
-instruction-staleness-audit = "Measuring resident instructions and reporting dated statements past a staleness threshold."
-interface-areas = "The Workspace, Area and View layout model and its docking interactions, after Blender."
+inflight-verdict = { use = "carrier-detection" }
+instruction-staleness-audit = "Measuring the instructions loaded at launch on one basis, and reporting dated statements past a staleness threshold."
+interface-areas = "The Workspace, Area and View layout model adapted from Blender, including how Areas size, dock and behave when very narrow."
 interface-matches-its-spec = "Making the interface do what docs/INTERFACE.md requires."
-interface-pass-design-round = "The interface pass: learner tasks, heuristic evaluation, wireframes, style and resident testing."
-interface-pass-narrative = "The working notes' account of the interface placement decisions."
-interface-provenance-adoptions = "What the project adopts from Blender's Area design, such as a stack of past Views."
+interface-pass-design-round = "The interface pass: learner tasks, heuristic evaluation, wireframes, style, resident testing, and the record of its placement decisions."
+interface-pass-narrative = { use = "interface-pass-design-round" }
+interface-provenance-adoptions = { use = "interface-areas" }
 interface-provenance-structure = "Structure, citations and claims of docs/interface-provenance.md."
 invariant-test-gaps = "Required invariants in docs/MODEL.md that no test fully holds."
 irreversible-actions-refused-at-github = "Making GitHub itself refuse branch deletion, force pushes and merges, not only the guards."
-landed-elsewhere = "Recognising a commit whose change already reached main through another pull request."
-landing-deletions = "Reading correctly whether a branch's deleted file has landed on main."
-late-washout-evidence = "Comparing the model's late washout with published human data, such as Yasuda 1991."
-layout-sliver-areas = "Layout operations near an Area of zero or near-zero width."
+landed-elsewhere = "Recognising a commit or a deleted file whose change already reached main through another pull request."
+landing-deletions = { use = "landed-elsewhere" }
+late-washout-evidence = { use = "validation-resolving-power" }
+layout-sliver-areas = { use = "interface-areas" }
 line-ends = "Splitting text into lines the way git and Markdown do, not at every character Python treats as a break."
 liquid-agent-consumption = "Showing agent use in millilitres of liquid and its cost, from each agent's molar mass and density."
-mac-awake-reference-text = "The MAC-awake reference band on the chart and the documents that describe it."
+mac-awake-reference-text = { use = "model-spec-accuracy" }
 machine-docs-structure = "Structure and claims of docs/machine-survey.md and docs/machine-abstraction.md."
 machine-profile-framework = "Machine profiles: loading one by id, a second profile, and choosing between them."
 maintainer-guide-structure = "Making docs/maintainer.md address the owner and agree with what sessions do."
 merge-skew = "Main going red when two pull requests that pass alone merge in sequence."
-model-boundary-statements = "Documents stating where the model stops matching reality, such as during wash-in."
-model-capability-routing = "Naming which model and effort each kind of work should run on."
-model-claims-held-by-tests = "Tying each number docs/MODEL.md states to a test that fails when the number changes."
-model-evidence = "The evidence table of past results by model and effort, and the recommendation printed from it."
+model-boundary-statements = { use = "model-spec-accuracy" }
+model-capability-routing = { use = "model-evidence" }
+model-claims-held-by-tests = "Tying each number, required output and invariant that docs/MODEL.md states to a test that fails when it changes."
+model-evidence = "The evidence table of past results by model and effort, and the model and effort recommended from it for each kind of work."
 model-md-structure = "Splitting docs/MODEL.md by reader and restructuring its sections."
-model-requirements-tested = "Tying docs/MODEL.md's required outputs and invariants to named tests."
+model-requirements-tested = { use = "model-claims-held-by-tests" }
 model-review = "The periodic model review, which scores closed items and recommends model and effort settings."
-model-spec-accuracy = "Making what docs/MODEL.md says match what the model computes."
-mutation-run-first-step = "The first step of the mutation run, which copies the tree and checks the tests run there."
-numbers-outside-their-valid-range = "Recording and enforcing the valid range and error bound of numbers in core/ and app/."
+model-spec-accuracy = "Making what docs/MODEL.md and the other documents say match what the model computes, including where its assumptions stop holding."
+mutation-run-first-step = { use = "tests-detect-wrong-values" }
+numbers-outside-their-valid-range = { use = "floating-point-domain" }
 numerical-domain = "The simulation step, supported ranges and the propagator that advances the model."
 one-answer = "Making each question the tools ask have one reader, such as one Markdown or shell grammar."
-one-home-for-constants = "Giving each simulator constant one home that tests and documents read."
-one-id-grammar = "One definition of the item id grammar, read by every tool and fixture."
-one-snapshot = "Making every read command answer from one fetched snapshot of the refs."
-one-source-of-truth = "Removing second copies of a fact the code already holds, in the simulator and its tests."
-open-item-overlap-detection = "Finding two open items filed for the same defect."
-owner-ask-by-state = "Recording what a pull request asks of the owner as state, rather than recognising it by wording."
-owner-ask-refusals = "Wrong refusals by the guard that checks messages to the owner for a read or merge ask."
+one-home-for-constants = { use = "one-source-of-truth" }
+one-id-grammar = { use = "read-facts-through-docket" }
+one-snapshot = "Making every read command fetch first and answer from one snapshot of the remote's refs."
+one-source-of-truth = "Removing second copies of a fact the code already holds, such as a constant, in the simulator and its tests."
+open-item-overlap-detection = { use = "recurrence-signal" }
+owner-ask-by-state = "Recording what a pull request asks of the owner as state, and the wrong refusals of the guard that recognised it by wording."
+owner-ask-refusals = { use = "owner-ask-by-state" }
 owner-attention = "Making each question to the owner obvious on first reading, and deciding look and wording ourselves."
 owner-decisions-2026-09-19 = "Recording decisions the owner made on 2026-09-19 about delegation and effort."
 owner-rules-in-repo = "Moving rules the owner set in Project settings into the repository."
@@ -135,15 +139,15 @@ parallel-builders = "Several builder subagents in one session sharing a scratchp
 parallel-sessions = "Several sessions working at once, an area name retired because it never completes."
 parse-dont-validate = "Checked types for simulator quantities, so a value is checked once when it is built."
 planning-cadence = "How the roadmap, the gate and bin/docket next decide what to work on next."
-platform-palette = "Controls that draw from the host's palette and become illegible under a dark appearance."
+platform-palette = { use = "chrome-colour-audit" }
 pr-body-integrity = "Keeping each pull request's body as the squash commit's message on main."
 pr-title-enforcement = "Making the pull request title check actually stop a merge."
 pre-fork-content = "Reading what a branch changed since it forked, in shallow and truncated clones."
-preferences-store = "A reader's preferences, kept apart from Workspaces, with restorable factory defaults."
-presentation-safety = "Displayed values that could mislead a clinician: rates, labels, run length and accessibility."
+preferences-store = "A reader's preferences, kept apart from Workspaces, with restorable factory defaults and the panel planned to edit them."
+presentation-safety = "Displayed values and notices that could mislead a clinician, such as rates, labels, the 24-hour run limit and accessibility."
 project-introduction = "The README and other documents that introduce the project to a newcomer."
 projects-trial = "Running this repository under Claude Code Projects threads, and what they load."
-prose-quality = "Plain, readable wording in docstrings, comments and documents."
+prose-quality = "Plain, readable wording in docstrings, comments and documents, ordered for its reader."
 prose-renders-as-written = "Markdown that renders as it reads, such as a wrapped hyphen that becomes a list item."
 provenance = "Where each stored value and citation came from, and the record of each source read."
 public-history = "Describing how the project is developed, in the public history and attribution lines."
@@ -152,67 +156,67 @@ qbytearray-pointer-trap = "A PySide6 binding defect where Qt expects a QByteArra
 qt-port = "Porting the interface from Flet to PySide6."
 qt-teardown-crashes = "Crashes when Qt objects are torn down at the end of a test or interpreter run."
 queue-hygiene = "Upkeep of the item queue, an area name retired because it never completes."
-read-facts-through-docket = "Tools that respell a fact docket already exports, such as the default branch or the id grammar."
-reader-checks = "Testing the hand-written readers of YAML, Makefiles and shell against reference parsers."
-reader-first-prose = "Ordering prose for its reader, and when a model limitation earns a sentence."
+read-facts-through-docket = "Tools that respell a fact docket already exports, such as the default branch or the item id grammar."
+reader-checks = "The hand-written readers of YAML, Makefiles, workflow triggers and shell commands, tested against reference parsers and bash."
+reader-first-prose = { use = "prose-quality" }
 recommendation-rationale = "Carrying a recommendation and its payoff in the item, not only in a reply."
 recorded-not-inferred = "Reading facts from their record instead of inferring them from names, ages or shapes."
-recurrence-signal = "Counting when a closed item's problem comes back."
+recurrence-signal = "Counting when a closed item's problem comes back, and finding two open items filed for the same defect."
 references-structure = "The reference notes in docs/references/ and what each records of its source."
-refresh-before-reporting = "Fetching before a session reports what has merged or is in flight."
+refresh-before-reporting = { use = "one-snapshot" }
 regex-review = "Reviewing the regular expressions in the code, and prompting a session when it writes one."
 release-process = "Cutting and tagging releases."
 release-roadmap-seam = "Keeping release notes and ROADMAP.md consistent across a cut."
-remote-copy = "Reading the remote's current heads rather than the clone's stale copies."
+remote-copy = { use = "one-snapshot" }
 remote-ref-deletion = "Deleting superseded remote branches, and knowing when one is already gone."
 rendered-claim-accuracy = "Making counts and statements that bin/docket prints true."
 replay-findings = "Defects found by replaying the app: refusal wording, colours, clipping and test construction."
-replay-hermeticity = "A verify command that reads the remote and so changes result with no commit."
-repo-copy-edit = "Copy editing the main documents section by section with the copy editor tool."
-required-check-trigger-reading = "How the required-checks check reads a workflow's triggers."
-reset-aftermath = "What a trunk Reset does to a branch on screen, and saying so."
-resident-gauge-basis = "Measuring the size of the instructions loaded at launch on one basis."
+replay-hermeticity = { use = "verify-command-health" }
+repo-copy-edit = { use = "copy-editor" }
+required-check-trigger-reading = { use = "reader-checks" }
+reset-aftermath = { use = "scenario-branching" }
+resident-gauge-basis = { use = "instruction-staleness-audit" }
 review-hold = "Holding a pull request for the owner's read only when there is a question for them."
 review-panel = "Blind review passes on simulator pull requests, and recording what each found."
 roadmap-structure = "Structure and internal consistency of ROADMAP.md."
 run-computed-one-way = "Whole-second stepping, with every view reading one stored record of the run."
-scenario-branching = "Branching a run at a moment and showing the branch beside its trunk."
+scenario-branching = "Branching a run at a moment, showing the branch beside its trunk, and keeping the dashboard's set of runs right through forks and Resets."
 schematic = "The compartment schematic, the v0.7.0 release."
-sentinel-verify-commands = "Verify commands that start passing on main with none of their work done."
+sentinel-verify-commands = { use = "verify-command-health" }
 session-start-cost = "How long the session-start digest takes, and the git calls behind it."
 set-parity = "Making bin/docket set validate a change the way bin/docket check does."
-settings-panel-prerequisite = "What the planned preferences panel must not expose, and what it waits on."
-shell-reads-as-bash = "Making docket's shell reader parse commands the way bash does."
+settings-panel-prerequisite = { use = "preferences-store" }
+shell-reads-as-bash = { use = "reader-checks" }
 sidebar-panel-rebuild = "How RunView builds and rebuilds its sidebar panels."
 skill-routing = "Moving procedures into skills, and testing that each skill starts on the right requests."
 slug-rename-on-write = "Renaming an item file whose name no longer matches its title, without side effects."
-stale-blocked-routing = "Offering a blocked item once everything it waited on has closed."
+stale-blocked-routing = { use = "blocked-means-blocked" }
 stale-source-claims = "Comments and docstrings in src/ that state facts the code no longer bears out."
 standing-weight = "Checks and instructions whose cost on every run outweighs what they catch."
-stranded-ahead-or-behind = "Reporting stranded work on a branch that is ahead of or behind main."
-stranded-recovery = "Recovering items whose only copy is on an abandoned branch."
-stranded-report-fidelity = "Making bin/docket stranded and flight see all the work a branch left behind."
-stranded-triage-sweep = "One-off recoveries and triage of stranded or untriaged captures in September 2026."
-supported-run-length-text = "The banner and refusal shown when a run reaches the 24-hour supported run length."
-tag-error-names-its-cause = "Making a tag-related documentation check failure name its cause."
+stranded-ahead-or-behind = { use = "stranded-report-fidelity" }
+stranded-recovery = "Recovering items whose only copy is on an abandoned branch, including the September 2026 sweep."
+stranded-report-fidelity = "Making bin/docket stranded and flight see all the work a branch left behind, whether it is ahead of or behind main."
+stranded-triage-sweep = { use = "stranded-recovery" }
+supported-run-length-text = { use = "presentation-safety" }
+tag-error-names-its-cause = { use = "doc-consistency-checks" }
 teachable-case = "A teaching case the learner can run end to end, and the cost of keeping its history."
-test-effectiveness-measurement = "Measuring whether the tests catch wrong values, by mutation and by replaying bug fixes."
-tests-detect-wrong-values = "Tests that fail when a value is wrong, measured by mutation testing."
+test-effectiveness-measurement = { use = "tests-detect-wrong-values" }
+tests-detect-wrong-values = "Tests that fail when a value is wrong, measured by mutation testing and replayed bug fixes, and test limits that can never decide a result."
 timeline-arrangement = "Reading the release train's order from ROADMAP.md's timeline rather than from version numbers."
-two-change-run-has-two-changes = "A test helper whose two-change run does not carry two changes."
+two-change-run-has-two-changes = { use = "unit-test-review" }
 two-run-attribution = "Saying which run each panel and notice belongs to when two runs are shown."
-unit-test-review = "Review of the unit and integration tests: unused helpers, file size and fixed random seeds."
-unmerged-item-edits = "Recovering item-brief sections that exist only on a branch."
+unit-test-review = "Review of the unit and integration tests and their helpers: unused or wrong helpers, file size and fixed random seeds."
+unmerged-item-edits = { use = "stranded-report-fidelity" }
 "v0.6.0-done-check" = "Gaps found when checking v0.6.0 against its definition of done."
-validation-resolving-power = "Whether the comparisons with published data can detect a wrong stored parameter."
+validation-resolving-power = "Whether the comparisons with published data, such as late washout, can detect a wrong stored parameter."
 vaporizer-controls = "The vaporizer dial and the startup window."
-verify-assertion-check = "bin/docket verify's check that a branch removed no existing test assertion."
-verify-assertion-evidence = "The evidence bin/docket verify prints for a removed assertion."
-verify-close-out = "bin/docket verify --self, which audits an item's close-out."
-verify-command-health = "Item verify commands that fail or pass for a reason other than the work."
-verify-command-meaning = "Making an item's verify command mean that the work is done."
-verify-false-reject = "bin/docket verify rejecting a correct close-out."
-verify-invalidation = "Replaying the verify commands that a branch can invalidate, not only those of items it edits."
+verify-assertion-check = { use = "verify-false-reject" }
+verify-assertion-evidence = { use = "verify-false-reject" }
+verify-close-out = { use = "verify-false-reject" }
+verify-command-health = "Item verify commands that fail, pass or change result for a reason other than the work, and which of them a branch must replay."
+verify-command-meaning = { use = "verify-command-health" }
+verify-false-reject = "bin/docket verify and its close-out audit, including its check for removed test assertions, and the cases where it rejects a correct close-out."
+verify-invalidation = { use = "verify-command-health" }
 verify-replay-cost = "How long the replay of every item's verify command takes in the check."
 window-is-the-frame = "The app window as the frame the Areas share: Maximize Area, least sizes and pinned Workspaces."
 worker-instructions = "docs/worker.md and the instructions a session works from."
