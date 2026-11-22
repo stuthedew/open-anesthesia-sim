@@ -382,6 +382,11 @@ $$
 \tau_i = \frac{V_i\lambda_{i:b}}{Q_i}
 $$
 
+This is the group's isolated time constant: the one it would have if the
+arterial concentration stayed fixed. In the whole model the arterial
+concentration moves with what the groups take up and return, so the muscle and
+fat groups change more slowly than this (§ "Time constants").
+
 ### Venous blood
 
 Blood from the tissue groups enters the venous pool and leaves for the lungs
@@ -451,6 +456,14 @@ flows, with the 6 L circuit.
   9.32 L/min of cardiac output. Nothing in the model changes faster.
 - The slowest is the fat group's, at 47 000 s (13 hours) to 187 000 s
   (52 hours).
+- The muscle and fat groups' terms are longer than those groups' isolated time
+  constants (§ "Tissue groups"). For sevoflurane at the default flows, the two
+  slowest terms are about 172 minutes and 46 hours, against isolated time
+  constants of 135 minutes for muscle and 42 hours for fat. The arterial blood
+  that reaches a group is never free of agent. During washout the lungs do not
+  exhale all of the agent that a group returns, the circuit sends part of what
+  they exhale back to the lungs, and the rest goes round again. So a group
+  empties more slowly than its own blood flow alone would empty it.
 - In five of the six rows, the two fastest terms form one oscillation, because
   agent circulates from circuit to alveoli to tissues and back. It cannot be
   seen. Its period is 384 to 1 540 s, and over half a period it shrinks by a
@@ -459,6 +472,10 @@ flows, with the 6 L circuit.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
 <!-- derived: 13.7 s from data/agents/isoflurane.json blood_gas_partition_coefficient = 1.3, tissue_gas_partition_coefficients.vessel_rich = 2.1, tissue_gas_partition_coefficients.muscle = 4.5, tissue_gas_partition_coefficients.fat = 70 -->
 <!-- derived: 16.6 s from data/agents/desflurane.json blood_gas_partition_coefficient = 0.42, tissue_gas_partition_coefficients.vessel_rich = 0.54, tissue_gas_partition_coefficients.muscle = 0.97, tissue_gas_partition_coefficients.fat = 13 -->
+<!-- derived: 135 minutes from data/patients/reference_adult.json tissue_groups.muscle.volume_l = 33, tissue_groups.muscle.perfusion_fraction = 0.18, default_cardiac_output_l_min = 5 -->
+<!-- derived: 135 minutes from data/agents/sevoflurane.json tissue_gas_partition_coefficients.muscle = 2.4, blood_gas_partition_coefficient = 0.65 -->
+<!-- derived: 42 hours from data/patients/reference_adult.json tissue_groups.fat.volume_l = 14.5, tissue_groups.fat.perfusion_fraction = 0.06, default_cardiac_output_l_min = 5 -->
+<!-- derived: 42 hours from data/agents/sevoflurane.json tissue_gas_partition_coefficients.fat = 34, blood_gas_partition_coefficient = 0.65 -->
 
 ### How the equations are solved
 

@@ -2749,7 +2749,7 @@ and 0.51 to 0.73 times as large. Its fat term is 1.14 to 1.36 times as slow
 and 1.5 to 2.1 times as large. The fitted fat amplitudes in that comparison
 have SDs that are 53 to 94% of their means. A group's isolated time constant is its tissue
 volume times the tissue:gas coefficient, divided by its blood flow times the blood:gas
-coefficient. The reference adult has 33 L of muscle perfused at 0.9 L/min and 14.5 L of fat
+coefficient (`docs/MODEL.md` § "Tissue groups"). The reference adult has 33 L of muscle perfused at 0.9 L/min and 14.5 L of fat
 perfused at 0.3 L/min. On these values, the isolated constants for sevoflurane, isoflurane and
 desflurane are 135, 127 and 84.7 minutes for muscle, and about 2500, 2600 and 1500 minutes for
 fat. Each is shorter than the group's apparent constant. The arterial blood that reaches a

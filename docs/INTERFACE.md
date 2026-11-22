@@ -1126,15 +1126,18 @@ and desflurane are metabolized far less, the same span omits less for them.
 <!-- derived: 96 MAC-hours from data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
 
 **Why 24 hours, and not a multiple of the slowest time constant.** At the shipped reference
-settings, sevoflurane's fat group has a time constant of about 42 h. A limit set at several
-multiples of it would favour exactly the long tail described above, the part of the trace
-that is most nearly all omission. The fat time constant sets a minimum for the limit
-instead, and that minimum is a fraction of one time constant. The run must last long
-enough that the fat compartment is still visibly filling when it stops. 24 hours is about
-0.6 of the time constant. By then a single compartment filling exponentially has gone a
-little over two fifths of the way to equilibrium, so the fat trace still shows what it
-exists to show. A run of a few hours would stop that trace near its start. The minimum
-says nothing about how far above it a run may go. The span is also far longer than any
+settings, sevoflurane's fat group has an isolated time constant of about 42 h, which
+`docs/MODEL.md` § "Tissue groups" defines. A limit set at several multiples of it would
+favour exactly the long tail described above, the part of the trace that is most nearly all
+omission. The fat time constant sets a minimum for the limit instead, and that minimum is a
+fraction of one time constant. The run must last long enough that the fat compartment is
+still visibly filling when it stops. 24 hours is about 0.6 of the isolated time constant.
+By then a single compartment filling exponentially has gone a little over two fifths of the
+way to equilibrium, so the fat trace still shows what it exists to show. The model's
+slowest term is somewhat longer than the isolated time constant, so 24 hours is a smaller
+fraction of it. `docs/MODEL.md` § "Time constants" gives that term and says why it is
+longer. A run of a few hours would stop that trace near its start. The minimum says
+nothing about how far above it a run may go. The span is also far longer than any
 anesthetic this simulator is built to teach.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
@@ -2056,7 +2059,8 @@ the model computes.
 **A playback rate is a number of steps, never a step size, and it must be on
 screen.** Real time is too slow to watch the two compartments that make uptake
 and distribution worth teaching. At the reference settings, sevoflurane's
-muscle group has a time constant of about 135 min, and fat one of about 42 h.
+isolated time constant is about 135 min for the muscle group and about 42 h for
+fat (`docs/MODEL.md` § "Tissue groups").
 The interface advances the run in ticks, one every 100 ms of real time. Each
 tick adds the playback rate times 100 ms to the simulated time that the run is
 owed, and the run takes one step for each whole second owed. At real time the
@@ -3169,10 +3173,11 @@ enlarged.
 
 **No one width suits a whole case.** The compartments this model exists to teach
 are slow, but the moment a learner is most likely to be watching is not. At the
-reference settings, muscle's time constant for sevoflurane is about 135 min and
-fat's is about 42 h, while induction lasts minutes. A five-minute window hides
-everything slower than the vessel-rich group. A twelve-hour window puts a
-five-minute induction in the leftmost 0.7% of the plot.
+reference settings, sevoflurane's isolated time constant is about 135 min for
+muscle and about 42 h for fat (`docs/MODEL.md` § "Tissue groups"), while
+induction lasts minutes. A five-minute window hides everything slower than the
+vessel-rich group. A twelve-hour window puts a five-minute induction in the
+leftmost 0.7% of the plot.
 
 **A chosen width keeps slopes comparable within a run and between runs.** It
 stays the same at every moment of every run. Seconds per pixel then depend on
