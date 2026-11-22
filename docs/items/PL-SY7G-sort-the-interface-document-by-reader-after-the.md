@@ -292,3 +292,234 @@ advisory, on `docs/resident-instructions.md`, which this branch does not
 touch. `bin/docket check` reports 0 errors and 2 advisories. The 37 test files
 that name `docs/INTERFACE.md`, with `tests/unit/test_doc_check.py`, pass:
 2,692 tests. `make check` was not run.
+
+*Second pass 2026-11-22*, on `wip-sy7g` from `fe8d775a`. It does items 1 to
+4 of "What is left" above, applies the chapter reads' heading proposals, and
+reads every "above" and "below". Item 5, the three statements that contradict
+the code, is untouched and is being filed separately.
+
+*Moved.*
+
+1. The reading of Katoh et al. (about 1,100 words) left § "MAC-awake as a
+   chart reference" for a new `docs/PARAMETERS.md` § "The MAC-awake
+   fractions", under § "Delivery-limit and MAC parameters". Every marker went
+   with its paragraph. The interface section keeps the requirement and three
+   short paragraphs that point there: the vessel-rich trace, why the band is
+   drawn at a fraction of the stored MAC, and the comparison with Katoh's MAC
+   at age 40. Citations of the moved text now name the new section in
+   `core/parameters.py` (the `MacAwakeReference` docstring), the source notes
+   of `data/agents/sevoflurane.json` and `data/agents/isoflurane.json`,
+   `tests/unit/test_formatting.py` and
+   `docs/references/katoh-1993-anesth-analg-mac-awake-washout.md`.
+2. Four passages moved within their sections, to make room for subheadings:
+   the branch section's "So no divergence is left over to bound" now follows
+   the paragraph on exact reproduction; the run length's two washout-tail
+   paragraphs now follow the paragraph on intensive-care sedation; the
+   comparison's paragraph on what each run records after the fork now
+   follows the note on what the runs share; and in the cost section, "The
+   project ships no price" now opens the part on setting a price, after "When
+   no cost is shown". The order is the one chapter 81 gives.
+3. The hover note in the old § "Where more than one trace answers" was split
+   in two, one for each new subsection. No fact was dropped.
+
+*Cut*, one block: the note for developers in § "Supported input ranges",
+about 2,300 words from "Each flow is its own subclass of `float`" to "against
+can have changed since". A pointer paragraph that names the modules replaces
+it. Each paragraph was checked against its home before the cut:
+
+1. the flow types, their ranges and where each flow is stored and checked:
+   the module docstring of `core/supported_ranges.py`;
+2. what a checked type may be built from, and the refusal of `bool`,
+   `Decimal` and strings: `core/checked_number.py` and the `require_*`
+   functions in `core/validation.py`;
+3. the perfusion fraction and the blood flow, the single computation of a
+   tissue group's flow and the refused second write: `core/blood_flow.py` and
+   `TissueGroup`;
+4. a record restored from a pickle or a copy, including the field-order gap
+   that `PL-HXNL` records: `restore_through_checks` in `core/checked_record.py`;
+5. a value assigned straight onto a flow field, and the `mypy` example: the
+   `__setattr__` of each compartment and its comment in `core/circuit.py`;
+6. the dial against the vaporizer maximum and the 0.99 input ceiling:
+   `require_within_vaporizer_maximum` in `core/validation.py`,
+   `require_within_input_ceiling` in `core/supported_ranges.py` and
+   `AgentUptakeSystem.equation_settings`;
+7. tissue flows that must sum to the cardiac output: `UptakeEquationSettings`;
+8. the controller's settings key, its refusal at Reset and the halt gate: the
+   docstrings of `SimulationController.reset`, `_record_control_change`,
+   `advance`, `AgentUptakeSystem.settings_key` and `app/halt_gate.py`;
+9. agent amounts against capacity, and the rollback that bypasses that check:
+   `require_room_for_the_agent_held` in `core/validation.py` and each
+   compartment's `restore_state`;
+10. the circuit's agent stored as a fraction of its volume:
+    `set_circuit_volume` in `core/circuit.py`.
+
+Three facts had no home and stay, in one paragraph after the pointer: the
+control timeline's fields are unchecked `float`s; nothing loads a pickle yet,
+and several records do not check their values on load; and a halt hides
+every withheld value before the dials are written.
+
+*Tests named.* Each requirement in a section that named no test now names
+the test that checks it, by function and file, after the requirement or in
+the section's note for developers. Seven sections gained a note: "Each
+second has one stored state", "What a setting outside the range costs" (now
+"Why a setting outside the ranges is refused"), "Agent-change behavior",
+"Neither run is a prediction for a patient", "Interface boundary", "One
+resolution for all six readouts" and "Resolution: the readouts' derivation
+applies unchanged". Sixteen notes gained a paragraph. Test names already
+cited without their file now carry it, and the note in § "Minimum displayed
+outputs" says which file holds each test that its list names. Sections that
+already named tests were not audited requirement by requirement.
+
+*Requirements that no test checks.* No test was written for any of them:
+
+1. changing the delivered concentration leaves the circuit's concentration
+   unchanged (§ "Runtime controls");
+2. the control-input timeline has no limit (§ "The control-input timeline");
+3. a run of the supported length fits in memory, about 6.2 MB (§ "A run
+   stores the state of every second it reaches");
+4. the 9.7e-11 difference between the preview and the run over 24 hours;
+5. the chart's minimum of 150 drawn instants, one for each pixel boundary;
+6. each chart has its own time base, and a chart saves its width in its
+   Workspace;
+7. a comparison draws no conclusion and shows no difference trace (§ "What
+   the interface may assert about a comparison");
+8. neither run is a prediction for a patient: only the disclaimer's tests
+   cover it.
+
+The run length's reasons (metabolism, Kharasch's review, the measured
+exposure range, why 24 hours, intensive-care sedation out of scope) are
+reasons, not behavior, so no test can check them.
+
+*Headings.* Two of the chapter reads' proposals for this document were
+applied in the first pass (chapters 46 and 61). This pass checked the rest,
+49 to 81, against today's text.
+
+Added, 27 headings:
+
+1. § "What this requires of a branch" (chapter 49): "The settings a branch
+   runs under", "Returning to a mark, and branching where a run is paused",
+   "How a branch is drawn" and "The code and tests behind branching".
+2. § "Supported run length" (chapter 53): "What happens when a run reaches
+   the limit", "Why the limit is set where it is", "The washout tail inside
+   the limit" and "The code and tests behind the run length". A heading that
+   stated "24 hours" would restate a stored value, so the headings say "the
+   limit".
+3. § "What is compared, and what the two runs share" (chapter 57): "What
+   differs between the two runs".
+4. § "What this list requires once the layout is the reader's" (chapter 60):
+   "The unconditional values", "Where the unconditional values sit on
+   screen", "Values that must stay reachable", "Values required only with
+   their chart", "No required value may be covered", "What a separate window
+   shows", "When two runs are shown" and "The code and tests behind the
+   layout requirements".
+5. § "Color contrast, and the standard this interface is held to" (chapters
+   66 and 60): "Minimum contrast for text and graphics", "Where the chart
+   goes beyond AA", "The exempt gridline grey", "How the ratios are
+   measured, and why the window is always light", "Color as a cue: agent
+   colors and the alert color" and "The code and tests behind the color
+   requirements".
+6. § "The chart's hover readout" (chapter 79): "The instant each value is
+   reported at".
+7. § "A cost at the reader's price" (chapter 81): "What the cost readout
+   shows", "Setting a price" and "The code and tests behind the cost
+   readout".
+
+Where one note for developers covers every subsection, it has a subheading
+of its own, as § "The code and tests behind the interface boundary" already
+did.
+
+Renamed, 5 headings, each because its words did not say what the section
+holds:
+
+1. "What a setting outside the range costs" became "Why a setting outside
+   the ranges is refused" (chapter 51). Re-pointed in `docs/INTERFACE.md`
+   (two citations) and `core/supported_ranges.py`.
+2. "The readout row's width condition" became "How the readout row fits the
+   window's width" (chapter 74). Re-pointed in `docs/INTERFACE.md` and
+   `tests/integration/simulation_view/test_simulation_view_readouts.py`.
+3. "Where more than one trace answers" became "When more than one trace is
+   within reach" (chapter 79). Re-pointed in `docs/INTERFACE.md` (two),
+   `docs/VERIFICATION.md` (two hazard rows; the row on mixed instants now
+   names "The instant each value is reported at") and `app/chart_frame.py`
+   (two). One `chart_frame.py` docstring said the interface section "has the
+   measurement", which the first pass moved to `PL-1K9G`; it now says so.
+4. "Which series answer a hover, and which do not" became "Which lines on
+   the chart show a hover readout" (chapter 79). Re-pointed in
+   `tests/integration/simulation_view/test_simulation_view_whole_interface.py`.
+5. "When it answers" became "When the hover readout appears" (chapter 79).
+   Re-pointed in `docs/VERIFICATION.md` and `app/qt_chart.py`.
+
+Each old heading was searched for without regard to line breaks across
+`docs/`, `src/`, `tests/`, `tools/`, `.claude/`, `ROADMAP.md`, `README.md`
+and `subprojects/`. Item records, pull request bodies, release notes and the
+reverse outline in `docs/prose-review/` record history and were left as
+they are.
+
+Not applied, and why:
+
+1. Chapter 49's "How a mark halts a run", "A branch keeps the case's clock"
+   and "How a branch reproduces its parent exactly": halting has its own
+   section now, and the section's opening already states the clock and the
+   exact reproduction.
+2. Chapter 57's rename of "The shared history is identical by construction,
+   not by measurement": "by construction" was a problem for a clinician, but
+   it is the right term for this document's reader, a contributor.
+3. Chapter 60's rename of "What this list requires once the layout is the
+   reader's": the subheadings answer the same finding, and the heading has
+   five citations, among them `ROADMAP.md` and `docs/VERIFICATION.md`.
+4. Chapter 64 proposes no heading. Chapter 66's "Deferred criteria" heading
+   no longer fits, because the deferred criteria now sit in the section's
+   opening.
+5. Chapter 77's rename of "Agent amounts in millilitres, and the cost": the
+   chapter keeps the heading if the parent heading says that the section sets
+   precision, and the parent is § "Displayed precision".
+6. Chapter 79's removal of "What a chart library prints instead, measured",
+   and its move of the lines-that-respond section ahead of the rules for
+   several traces: a removal and a move, not a heading.
+7. Chapter 81's relabelling of "**Displayed precision.**": the label no
+   longer exists.
+
+*Above and below.* All 159 uses were read. Most describe a position on
+screen or a value. Seventeen were changed. Thirteen pointed at another
+section, or at text moved in this pass, and now name it, such as "the four
+ranges in § "Supported input ranges"". Two now say what they mean without a
+pointer: "the washout run described earlier in this section" and "the
+concentration chart". Two pointed at nothing: "the figures below", in § "Supported input
+ranges", now says which figures it means (those that a `provenance:` marker
+ties to a flow maximum); "the cases measured below", in § "The hover and the
+run it belongs to", now names `PL-JVHL`, which holds them. Pointers within a
+few paragraphs of their target are unchanged.
+
+*Statements that may contradict the code, not changed.* In
+`tests/integration/controller/test_controller_bookmarks.py`, the docstring
+of `test_a_bookmark_fork_opens_its_definition_at_the_keyframe_before_it`
+says: "Every instant after the fork is then one propagation from the same
+keyframe that the trunk propagates from." Under whole-second stepping, a
+branch steps on from the stored state at the fork.
+
+*Fact comparison.* `tools/model_rewrite.py lost --base fe8d775a` lists 74
+tokens held fewer times. A search that ignores whitespace finds 48 of them
+still in the four specification documents. The other 26 came from the cut
+note, and each is in the home named above: 22 by their exact text, and four
+as the method or comment they name (`AgentUptakeSystem.equation_settings`,
+`SimulationController.advance`, `AgentUptakeSystem.settings_key`, and the
+`mypy` example in the `__setattr__` comment of `core/circuit.py`). `PL-HXNL`
+is no longer cited in the documents; `restore_through_checks` cites it.
+
+Files checked in the docs sweep: `docs/INTERFACE.md`, `docs/PARAMETERS.md`,
+`docs/VERIFICATION.md`, `docs/references/katoh-1993-anesth-analg-mac-awake-washout.md`,
+`ROADMAP.md`, `src/anesthesia_sim/app/controller.py`,
+`src/anesthesia_sim/app/chart_frame.py`, `src/anesthesia_sim/app/qt_chart.py`,
+`src/anesthesia_sim/core/parameters.py`,
+`src/anesthesia_sim/core/supported_ranges.py`, the two agent data files above,
+`tests/unit/test_formatting.py`,
+`tests/integration/controller/test_controller_bookmarks.py`,
+`tests/integration/simulation_view/test_simulation_view_readouts.py` and
+`tests/integration/simulation_view/test_simulation_view_whole_interface.py`.
+
+*Checks.* `uv run python tools/doc_check.py check` reports 0 errors and one
+advisory, on `docs/resident-instructions.md`, which this branch does not
+touch. The 45 test files that name `docs/INTERFACE.md` or
+`docs/PARAMETERS.md`, with `tests/unit/test_doc_check.py`, pass: 3,134
+tests. `uv run pytest -q tests/unit -k controller` passes. `make check` was
+not run.
