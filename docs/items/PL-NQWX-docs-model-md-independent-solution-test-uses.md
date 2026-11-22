@@ -24,3 +24,5 @@ verify: ! grep -qF 'operator split, had an error proportional to the step' docs/
 **Generator check.** One-off: a finding from the `docs/MODEL.md` structure-read sweep. One unexplained term outlived the method it named. No head's `misread:` states that fact.
 
 **Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** Not present. At 817a4d88, § "Selected method (as implemented)" still said what the operator split was: each exchange solved exactly in sequence, a first-order (Lie/Godunov) split. `7ca66f0b` (#1947, `PL-TZ47`) removed that explanation and left the term in use. The deferral stays with that reason.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. The note for developers in § "Independent-solution test" still says "The earlier method, an operator split, had an error proportional to the step", and no chapter of `docs/MODEL.md` or `docs/INTERFACE.md` says what the operator split was or when the exact step replaced it.

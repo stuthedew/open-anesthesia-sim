@@ -3,12 +3,14 @@ id: PL-3L8G
 title: docs/INTERFACE.md § 'Interface boundary' says every drawn instant is a whole number of hundredths so the hover prints the exact instant, but the hover note says instants are given at the run's step (copy editor structure read, 2026-11-05)
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: defect, docs
 feature: model-md-structure
 touches: docs/MODEL.md, docs/INTERFACE.md
 deferred-from: v0.7.0 - a new problem: the whole-hundredths claim was written by PL-T5NJ's work clearing Gate 3 (#1840, 2026-10-25), after the freeze, and not safety or science
 added: 2026-11-05
+closed: 2026-11-22
+reason: Already done by #2180 (d4e8200c, PL-SZ6G): docs/INTERFACE.md now says each drawn instant falls on a whole second, the run steps by a fixed one second (core/simulation_step.py SIMULATION_STEP_S = 1, held by tests/unit/test_simulation_step.py), and the whole-hundredths claim and the hover-resolution constant are gone, so no step change can make the sentence false
 payoff: the hover's claim to print the exact instant names the step length it depends on, so a change to the step cannot make it silently false
 verify: ! grep -qF 'instant falls on a whole hundredth of a second, so the hover readout can give' docs/INTERFACE.md
 ---

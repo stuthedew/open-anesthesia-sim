@@ -1,9 +1,14 @@
 ---
 id: PL-LBVN
 title: Gas Man's released settings file holds MAC 2.1% sevoflurane and 1.1% isoflurane; we store De Wolf's 2.0% and 1.2%. Decide which MAC values to store
-status: untriaged
+priority: P1
+effort: L
+status: ready
+classes: safety, science
 feature: gas-man-open-source
+touches: src/anesthesia_sim/data/agents, src/anesthesia_sim/core, src/anesthesia_sim/app, docs/MODEL.md, docs/INTERFACE.md, tests
 added: 2026-11-14
+payoff: Every MAC multiple a learner reads is divided by a published MAC for a stated age, the same age for all three agents, so comparing agents at 1 MAC is no longer off by about 22% and age-adjusted MAC can follow without changing any reader.
 ---
 
 **Problem.** Gas Man's released settings file holds MAC 2.1% sevoflurane and 1.1% isoflurane; we store De Wolf's 2.0% and 1.2%. Decide which MAC values to store
@@ -116,3 +121,27 @@ run starts at a recognizable clinical anchor.
 **Checked 2026-11-21:** `PL-RMNP` (the check of `docs/MODEL.md` against the code) found three places that the move to Mapleson's age-40 values must change with the stored numbers. `format_mac_reference` in `app/formatting.py` prints the MAC with one decimal (`{mac_percent:.1f}`), so isoflurane's 1.17% would be shown as "1.2%" and sevoflurane's 1.80% as "1.8%". The docstring of `MacPercent` in `core/concentration.py` and `docs/MODEL.md` § "Conventions" both say "The shipped MACs are 1.2% to 6.0%". `docs/MODEL.md` and the three agent files still hold De Wolf's 2.0, 1.2 and 6.0 today, which is this item's work and not a finding against the document.
 
 **Checked 2026-11-21**, by `PL-5FMC` (the check of `docs/INTERFACE.md` against the code). `docs/INTERFACE.md` § "MAC-awake as a chart reference" says that the sevoflurane band "probably sits too high, by about 11% if Mapleson is right", and gives the washout crossing as 6.55 min at the drawn band centre of 0.68% against 7.30 min at 0.612%. Both figures are right for the run they describe, with the dial held at 2.0%. The paragraph's reason, "The traces are absolute partial pressures and do not depend on MAC", does not hold for a run left at its opening dial, because `AgentUptakeSystem.for_agent` opens the dial at the stored MAC. The model is linear in the dial setting. With the dial at 1.8%, the vessel-rich trace crosses 0.612% at 6.55 min, the same time as today's run crosses today's band. When this item stores Mapleson's values and rewrites that paragraph, the paragraph should say that the error it describes applied to a dial set in percent, and not to a run at its opening 1 MAC dial.
+
+**Checked 2026-11-22**, at `d4e8200c`. `grep -n '"mac_percent":' src/anesthesia_sim/data/agents/*.json`
+printed 6.0 for desflurane, 1.2 for isoflurane and 2.0 for sevoflurane. So
+the simulator still stores De Wolf et al.'s values, and every MAC multiple a
+learner reads today is divided by them. The three places that `PL-RMNP` named
+on 2026-11-21 are unchanged: `format_mac_reference` in `app/formatting.py`
+(line 701) still prints the MAC to one decimal, and both
+`core/concentration.py` (line 266) and `docs/MODEL.md` (line 524) still say
+"The shipped MACs are 1.2% to 6.0%".
+
+**Done when.** Each agent file stores Mapleson's MAC at age 40 (1.80%
+sevoflurane, 1.17% isoflurane, 6.6% desflurane) under a key that names the age,
+with a Mapleson 1996 source entry adopted on the owner's decision of
+2026-11-14. The MAC a run divides by is built in one function from the agent
+and the patient. Every 1 MAC that the interface states shows its age and
+prints the stored value in full, so 1.17% is not shown as 1.2%. The dial opens
+at the age-40 value. `docs/MODEL.md` and `docs/INTERFACE.md` describe the
+divisor as the MAC for the patient's age, 40 for the reference adult, and the
+limitation about the 22% cross-agent distortion is removed. Tests derive each
+expected MAC value from Mapleson's figures rather than from the code.
+
+**Generator check.** The fact is which MAC the divisor holds, and for which
+age. One-off: it is a choice between published sources that the owner made on
+2026-11-14, not a misreading that other items share.

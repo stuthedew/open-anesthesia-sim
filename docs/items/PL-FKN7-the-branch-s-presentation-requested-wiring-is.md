@@ -41,3 +41,5 @@ gives eight occurrences across `run_view.py` and `simulation_view.py`;
 **Done when.** A test drives a run's `presentation_requested` and shows it
 reaching `SimulationView.present`, and the disconnect in `_remove_run` is held
 too - so a removed run's signal cannot write on widgets that have been deleted.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `SimulationView._place_run` still connects `presentation_requested` (`src/anesthesia_sim/app/simulation_view.py` line 860), and the run's removal still disconnects it (line 1115). `run_view.py` emits the signal from eight places. `grep -rn presentation_requested tests/` still finds nothing.

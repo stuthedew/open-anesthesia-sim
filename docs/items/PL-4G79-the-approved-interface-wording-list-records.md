@@ -1,8 +1,15 @@
 ---
 id: PL-4G79
 title: The approved interface wording list records only default runs, so a string shown only after a setting change, with a bookmark or price, or in a halt or failure notice is held by no approved list
-status: untriaged
+priority: P1
+effort: M
+status: ready
+classes: defect, safety, test
+feature: presentation-safety
+touches: tests/integration/test_interface_wording.py, tests/integration/approved_interface_strings.json
+deferred-from: v0.7.0 - not live: checked 2026-11-22, the gap is in the approval test and no wrong or misleading notice wording is known on screen; the forbidden-phrase checks in tests/integration/simulation_view/ still hold these notices
 added: 2026-11-11
+payoff: A change to the wording of a halt, refusal or failure notice cannot reach a learner until a person has read and approved it.
 ---
 
 **Problem.** The approved interface wording list records only default runs, so a string shown only after a setting change, with a bookmark or price, or in a halt or failure notice is held by no approved list
@@ -15,3 +22,11 @@ only after an event, so no approved list holds their wording. The forbidden-
 phrase checks in `tests/integration/simulation_view/` still apply to
 them. Recording them needs a way to bring each state about in the test, as
 `tests/integration/test_failed_start_over.py` does for the halt.
+
+**Checked 2026-11-22**, at `d4e8200c`. The gap is still there. The module docstring of `tests/integration/test_interface_wording.py` says it outright: "A string that appears only after a setting changes, with a bookmark or a price, or in a halt or failure notice, is not recorded, and this test does not hold it." Its `RECORDED_POINTS` are fixed times of each agent's default run.
+
+**Why it matters.** The notices that only an event brings up are the ones a learner is most likely to act on: a halt that withholds values, a refused setting, a failed Reset. Their wording can change without any person approving it, because the approval test never sees them. The forbidden-phrase checks still catch the phrases someone listed, but not a new misleading sentence that nobody thought to forbid. No wrong wording is known to be on screen now.
+
+**Done when.** The approved wording list also holds the strings shown after a setting change, with a bookmark set, with a price entered, after a refused setting, and in each halt or failure notice, each brought about by the test itself. A change to any of those strings fails the test until a person approves it.
+
+**Generator check.** A follow-on of `PL-86VL` (the approval test of the interface's wording, closed 2026-11-11), which drew this limit on purpose and stated it in the test's docstring. So it is not a fix that failed to hold, and it is not a re-entry. The misread fact is which strings a learner can be shown, and no head's `misread:` line states it.

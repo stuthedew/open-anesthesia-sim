@@ -33,3 +33,5 @@ against the Flet `_notice_text`; the Qt port carries the same behaviour).
 Checked against main on 2026-10-25 by reading the code.
 
 **Generator check.** A one-off. The banner's colour is fixed once in `NoticeLabel`'s constructor, and the item touches `tools/contrast_check.py` only to declare any colour pairing the fix adds.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `NoticeLabel.__init__` in `app/qt_widgets.py` still sets `foreground_stylesheet(WARNING)` once, and `set_notice` changes only the text. `status_word` in `app/dashboard_frame.py` still gives the supported-limit state `Emphasis.MUTED`. No test named `test_the_supported_limit_banner_is_not_drawn_in_the_failure_colour` exists.

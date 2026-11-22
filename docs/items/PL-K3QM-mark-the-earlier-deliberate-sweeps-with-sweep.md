@@ -53,3 +53,5 @@ for the remaining 143. The three marks stand.
 The `verify:` command now looks for a paragraph opening "**Every candidate
 read, DATE.**", which the session that reads the remaining briefs writes. The
 old command passed as soon as `PL-BNYF` was marked.
+
+**Checked 2026-11-22** against `d4e8200`: partly done. The 2026-11-14 screen marked `PL-BNYF`, `PL-ZKT8` and `PL-R4Y2` with `sweep:`, and those marks are still in their front matter. What is left is to read the remaining 143 of the 163 candidate briefs in full. `bin/docket inflow` and the `sweep:` field both still exist.

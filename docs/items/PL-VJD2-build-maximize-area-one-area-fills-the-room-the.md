@@ -28,3 +28,5 @@ reachable from the keyboard. The adopted entry in
 
 **Generator check.** A one-off. It builds a feature the owner adopted, and
 no reader misread a fact.
+
+**Checked 2026-11-22** against `d4e8200`: still applies, and the wait in its title is over. `PL-CBYS` (the Areas fill the window) is done (#2134). `grep -rni maximi` over `app/`, `layout/` and `tests/integration/simulation_view/` finds only the window opening maximized in `app/main.py`, so no Maximize Area command exists.

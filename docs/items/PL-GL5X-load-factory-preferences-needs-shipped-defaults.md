@@ -75,3 +75,5 @@ artifact under `src/anesthesia_sim/data/` carrying its own `schema_version` and
 loading through the reader's own path; reset replaces rather than merges, under
 test; a `tools/` check run by `make check` fails when a settable key has no
 factory value; and a scope-limited reset names what it left standing.
+
+**Checked 2026-11-22** against `d4e8200`: the premise has changed. `app/preferences.py` now holds only the reader's agent prices and the cost View's unit, the project ships no price, and the display precisions are derived constants rather than preferences, so the factory state is simply having no preferences file and needs no shipped artifact under `data/`. The item stays open as the record for the rest of a preferences workflow (Save, Revert, Load Factory Preferences), which `ROADMAP.md` § "Explicitly out of scope for v0.7.0" names; its done-when should be rewritten to that smaller task when it is scheduled.

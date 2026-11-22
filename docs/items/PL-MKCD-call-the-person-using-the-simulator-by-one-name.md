@@ -27,3 +27,5 @@ verify: ! grep -qiE 'the (user|learner)|a learner' docs/ARCHITECTURE.md
 **Generator check.** One-off: a finding from the `docs/ARCHITECTURE.md` structure read (`PL-SVGH`).
 
 **Checked 2026-11-09 against the tree at the freeze (`PL-GW0P`).** `git show 817a4d88:docs/ARCHITECTURE.md` already says "the user" (row 279), "the learner" (row 489) and "the reader" (row 128, among others). So the problem was present at the freeze, commit `817a4d88` (2026-10-24), but the item is classed `docs` only, which is not debt, so v0.7.0's gate does not take it and it stays off the frozen list.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `grep -oiw` over `docs/ARCHITECTURE.md` counts 1 "the user", 3 "a user", 6 "the learner", 9 "a learner" and 43 "the reader" or "a reader", so the document still uses three names.

@@ -31,3 +31,5 @@ Each page was read in full through the web-fetch subagent, which returned the qu
 **Found while building `PL-KH7Y`**, which asked the related question of whether the `checks` job should move to `pull_request_target`.
 
 **Generator check.** A member of the family that `PL-39Y1` heads: a refusal at GitHub whose reach was read from documentation and not measured.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. No paragraph headed "Result, measured" is in this brief, so the question has not been measured. `.github/workflows/merge-hold.yml` still runs on `pull_request_target`, and nothing refuses a pull request that adds a job of its own named `merge-hold`. The commits since 2026-11-11 that touched the workflow (#2147, #2119) did not change that.

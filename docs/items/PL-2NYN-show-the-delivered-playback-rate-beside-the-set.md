@@ -60,3 +60,5 @@ owner's own machine, with the script kept in `PL-SQJ1`'s brief, is under 99%.
 one, in the terms above, and a host that does not shows the plain label, both
 held by tests with a fake clock; `docs/INTERFACE.md` § "Interface boundary" says
 what the disclosure means.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `RunView.step_tick` in `src/anesthesia_sim/app/run_view.py` reads no clock, and the module docstring of `src/anesthesia_sim/app/playback.py` still names this item as the guard that has not been built. One sentence of the design is out of date. Since #2180 (`PL-SZ6G`), each tick adds a fixed amount of owed simulated time and takes one one-second step for each whole second owed, so at 1x and 5x most ticks take no step. The time a tick adds is what never changes, not the steps per tick. The guard counts ticks, so the design still works. The paragraph it adds belongs in `docs/INTERFACE.md`, where #2109 moved the interface sections, and the done-when already names that file.

@@ -45,3 +45,5 @@ displayed and nothing is being misattributed.
 carries; the choice names the parameters that differ rather than only the
 machines; and the surface states once that these are the parameters the model
 uses, not the whole difference between the machines.
+
+**Checked 2026-11-22** against `d4e8200`: still applies, and still blocked. `PL-TH35` and `PL-R1WQ` are done, but `PL-TBMK` (a second machine profile) is open and blocked. `src/anesthesia_sim/data/machines/` still holds only `reference_circle_system.json`, and nothing under `src/` selects between machine profiles.

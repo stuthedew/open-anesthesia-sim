@@ -66,3 +66,5 @@ only place in the tree the third token is needed, which is why it is recorded
 here and not in `CLAUDE.md`. The `swept for ratified-versus-specified` line
 this item's `verify:` already requires is what tells a later session that
 `ROADMAP.md`'s plain markers have been read and mean what they say.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `ROADMAP.md` has no line saying it was swept for ratified-versus-specified. A search for `(project owner ...)` attributions dated before 2026-09-16 and marked neither ratified nor specified finds 44 in `ROADMAP.md` and 3 in `docs/MODEL.md`, down from 47 and 5. Since #2109, `docs/INTERFACE.md` holds 3 more. The rule for reading the unmarked form now lives in `.claude/rules/citation-drift.md`, not in `CLAUDE.md`.

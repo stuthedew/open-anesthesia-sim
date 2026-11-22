@@ -59,3 +59,5 @@ the statement that survives the port and constrains it.
 and § "Color contrast, and the standard this interface is held to" lists the
 never-disabled bar among the ones this interface holds above AA, with the
 reasoning for declining the exemption.
+
+**Checked 2026-11-22** against `d4e8200`: still applies, and both statements are now in `docs/INTERFACE.md`, not `docs/MODEL.md`, since `PL-CTXZ` (#2109). The paragraph that opens "The agent selector and the header back the written name" still names two carriers, and `_running_agent_display` (in `app/run_view.py`) is not named anywhere in `docs/INTERFACE.md`. § "Color contrast, and the standard this interface is held to" still does not state that no control carrying agent identity is ever rendered disabled. That rule is enforced by `tools/agent_identity_check.py` and stated in `.claude/rules/ui-color.md`, but not in the interface document.

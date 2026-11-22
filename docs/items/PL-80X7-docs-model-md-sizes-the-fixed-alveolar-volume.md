@@ -44,3 +44,5 @@ boundary, because the absorbent removes what the blood returned.
 
 **Done when.** The comparison names the respiratory-gas term, sizes it, and
 says why the verdict is unchanged.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. The paragraph "The alveolar volume is held constant, and that is what excludes nitrous oxide" in `docs/MODEL.md` § "Alveolar gas" and the table under it still compare agent uptake alone with alveolar ventilation. Neither names the volume change from oxygen consumed minus carbon dioxide produced. No `PL-80X7` marker is in `docs/MODEL.md`. The paragraph was reworded in plain English by #1945 (`85c1ad63`), but its comparison did not change.

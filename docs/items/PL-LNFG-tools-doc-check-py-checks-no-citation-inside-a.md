@@ -87,3 +87,5 @@ paragraph of `docs/ARCHITECTURE.md` and of the last chapter of
 prose of `docs/MODEL.md` outside that binding, for the reason its brief gives.
 This item needs a check of the citations inside a data file's sources note,
 which the paragraph binding does not read. It stays its own item.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `tools/doc_check.py` reads data files only for the provenance table, and no `note` string is read for citations. Today all 34 citations of the form `docs/MODEL.md, 'Section'` under `src/anesthesia_sim/data/` resolve, and so do the bare test paths. The check will matter more soon. The planned split of `docs/MODEL.md` moves sections that the notes cite, such as 'Parameter provenance', 'Source hierarchy' and 'The early wash-in curve against the published figures', to new documents.

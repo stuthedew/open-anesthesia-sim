@@ -30,3 +30,5 @@ as the channel that separates the traces, and no dark mode in this pass.
 **Why it matters.** One token set and one component set make every control and readout follow the same rules, so the interface pass changes the look in one place instead of in each widget.
 
 **Done when.** One type scale, one spacing scale, one set of surfaces and one accent are recorded, and one set of controls with every state and the four domain components are built on them, keeping planned-milestone item 33's contrast minimums and agent colours.
+
+**Checked 2026-11-22** against `d4e8200`: still applies, and still blocked. Its blocker `PL-2V6V` (the grey-box layouts) is open and blocked. The other condition named here has been met: `PL-BVC5` closed on 2026-11-11 with the result that the controls are built in a custom Qt style.

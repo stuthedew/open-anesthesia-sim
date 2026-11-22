@@ -26,3 +26,5 @@ verify: grep -q 'def test_the_clock_panel_is_found_in_one_place' tests/unit/test
 **Reproduced 2026-11-11.** `grep -rn 'quantity is None' src/anesthesia_sim/app/` finds 7 lines, and `format_playback_rate(` is called on 5 lines outside its definition.
 
 **Generator check.** A one-off, filed under the `one-source-of-truth` feature. No head's `misread:` states which readout panel is the clock. `PL-RF2S`, in flight on another branch, changes the same files, so this lands after it.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `grep -rn 'quantity is None' src/anesthesia_sim/app/` still finds 7 lines: four in `dashboard_frame.py` and one each in `compartment_schematic.py`, `run_view.py` and `run_presentation.py`. `format_playback_rate` is still called in `dashboard_frame.py` (`readouts`, the width of the clock's second line, and `withheld_readouts`) and in `run_presentation.py`. `run_view.py` also calls it for the rate selector's entries, which is not the clock's line. The test the done condition names does not exist yet.

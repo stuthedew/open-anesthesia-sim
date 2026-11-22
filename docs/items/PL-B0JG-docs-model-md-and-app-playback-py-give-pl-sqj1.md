@@ -33,3 +33,5 @@ states 99.0 as its floor: `! grep -rnE '99\.0 to 99\.9' docs/MODEL.md src/`.
 
 **Reproduced 2026-09-28.** Both passages read "99.0 to 99.9%", and
 `PL-SQJ1`'s table row for 20x reads 98.9%.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `docs/INTERFACE.md` and the module docstring of `app/playback.py` both still say every rung "delivered 99.0 to 99.9%" of its setting, against `PL-SQJ1`'s measured 98.9% at 20x.

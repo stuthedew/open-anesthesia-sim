@@ -49,3 +49,5 @@ accepted form, and this brief records how many computed claims the pass
 found wrong or missing a condition.
 
 **Checked 2026-11-07 against the tree at the freeze (`PL-GW0P`).** The problem was present in part when Gate 3 froze at `817a4d88`, so the item joins v0.7.0's frozen list. It stays deferred to the next gate: its `deferred-from:` records the check that no learner can see a wrong value now (`PL-8C8W`). The unheld wash-in paragraphs and "The residual is rounding, not truncation" were in `docs/MODEL.md` at `817a4d88`. The nine-of-fifteen sentence came with `4d0def88` (2026-10-25 21:47), replacing a paragraph that was also unheld.
+
+**Checked 2026-11-22** against `d4e8200`: still applies, and more is unheld than the brief counts. A recount on 2026-11-22 with `_numeric_paragraph_members` finds "Published wash-in and elimination validation test" 37 of 55 and "Independent-solution test" 9 of 20. Neither is a numeric family in `BOUND_FAMILIES`. Both sit under `docs/MODEL.md` § "Required tests", which `PL-6PPZ` (claimed elsewhere) moves to a new verification document. So build this pass after that move.

@@ -19,3 +19,5 @@ verify: grep -q 'def test_a_rollback_across_a_setting_change_rebuilds_the_propag
 **Done when.** `tests/unit/test_state_capture.py` has `test_a_rollback_across_a_setting_change_rebuilds_the_propagator`, which changes a setting after the capture, restores, steps, and compares with a freshly built system stepped the same way, so a cache that is never rebuilt fails it. The old test is removed or folded into it.
 
 **Found by.** `PL-TBQS` reviewer replay on #376, finding r03 F2. Checked against main on 2026-10-25 by reading the test.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. `test_the_propagator_cache_is_not_restored_by_a_rollback` in `tests/unit/test_state_capture.py` still changes no setting between the capture, the restore and the second step. No test named `test_a_rollback_across_a_setting_change_rebuilds_the_propagator` exists.

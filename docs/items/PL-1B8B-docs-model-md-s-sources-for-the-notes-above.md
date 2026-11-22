@@ -32,3 +32,5 @@ the five vaporizer and altitude sources only.
 **Done when.** The block's heading names the notes it actually sources - the
 vaporizer and altitude ones - rather than every note in the section, so a
 reader checking any other note is not sent to a list that does not hold it.
+
+**Checked 2026-11-22** against `d4e8200`: still applies. § "Known limitations" still has the heading "**Sources for the notes above.**" with no subsection above it narrower than the whole section, and the list under it still holds only the vaporizer and altitude sources.
