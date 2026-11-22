@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: infra, docs
+milestone: v0.6.20
 touches: tests/integration/test_interface_wording.py, docs/ARCHITECTURE.md, .claude/skills/pull-request/SKILL.md, docs/maintainer.md
 added: 2026-11-22
 closed: 2026-11-22

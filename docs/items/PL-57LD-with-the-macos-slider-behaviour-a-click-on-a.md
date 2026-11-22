@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, safety
 feature: interface-matches-its-spec
+milestone: v0.6.20
 touches: src/anesthesia_sim/app/qt_widgets.py, tests/integration/simulation_view/test_simulation_view_controls.py, docs/INTERFACE.md
 added: 2026-11-21
 closed: 2026-11-22

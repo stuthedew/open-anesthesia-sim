@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: projects-trial
+milestone: v0.6.20
 touches: .claude/skills/docket/modes/coordinator.md
 deferred-from: v0.7.0 - a new problem: the two sentences were written after the freeze (PL-CR81, filed 2026-10-25; moved into the coordinator mode by #2192, f4c5ef27), and the platform behaviour they describe changed after that
 added: 2026-11-21

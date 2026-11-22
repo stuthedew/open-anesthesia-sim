@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: defect
+milestone: v0.6.20
 touches: tests/integration/test_layout_adapter.py
 deferred-from: v0.7.0 - present at the freeze, but a test that fails only by chance on a shared CI worker, with no connection to anything on the frozen list or in v0.7.0 Required scope; no learner sees it
 added: 2026-11-14

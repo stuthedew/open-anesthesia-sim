@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, test
 feature: presentation-safety
+milestone: v0.6.20
 touches: tests/integration/test_interface_wording.py, tests/integration/approved_interface_strings.json
 added: 2026-11-22
 closed: 2026-11-22

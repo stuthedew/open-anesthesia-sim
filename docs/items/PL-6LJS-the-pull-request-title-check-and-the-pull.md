@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: standing-weight
+milestone: v0.6.20
 touches: tools/pr_record_check.py, tests/unit
 deferred-from: v0.7.0 - present at the freeze, deferred on a stated reason: it is paid only by a branch stacked on another open pull request, and the entries this gate still holds are independent items that need no stacking, so the compounding-friction count is near zero
 added: 2026-11-21

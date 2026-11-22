@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, ux
 feature: interface-design-review
+milestone: v0.6.20
 touches: src/anesthesia_sim/app, tests/integration/test_keyboard_focus.py, docs/INTERFACE.md, tools/contrast_check.py, docs/items/PL-B45W-tab-does-not-follow-reading-order-it-reaches.md
 added: 2026-11-22
 closed: 2026-11-22

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs
 feature: model-md-structure
+milestone: v0.6.20
 touches: docs/MODEL.md
 blocked-by: PL-1VXY
 added: 2026-11-10

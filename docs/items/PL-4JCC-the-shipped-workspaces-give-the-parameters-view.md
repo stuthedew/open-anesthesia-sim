@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: ux
 feature: window-is-the-frame
+milestone: v0.6.20
 touches: src/anesthesia_sim/data/workspaces/default.json, src/anesthesia_sim/data/workspaces/induction.json, tests/integration/simulation_view/test_simulation_view_page.py
 added: 2026-11-11
 closed: 2026-11-22

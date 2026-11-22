@@ -6,6 +6,7 @@ effort: L
 status: done
 classes: docs
 feature: model-md-structure
+milestone: v0.6.20
 touches: docs/INTERFACE.md, docs/PARAMETERS.md, docs/VERIFICATION.md
 blocked-by: PL-N83Z, PL-4H8Q, PL-SY7G
 added: 2026-11-07

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs
 feature: model-md-structure
+milestone: v0.6.20
 touches: docs/PARAMETERS.md, docs/apparatus.md, tools/source_tier_counts.py
 blocked-by: PL-48MX
 added: 2026-11-11

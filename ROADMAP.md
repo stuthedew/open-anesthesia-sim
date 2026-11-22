@@ -27,68 +27,74 @@ explicit out-of-scope list.
   the cause produced point back to it. A head is live while the cause still
   produces items, and spent once it no longer does.
 
-## Current baseline: v0.6.19
+## Current baseline: v0.6.20
 
-In v0.6.19 a run steps in whole seconds. A control change takes effect at the
-next whole second, a branch can open at any second the run has reached, and
-every value on screen is read from the state the run stored for that second.
-The accounting panel and the schematic name the 20 °C and 1 atm at which an
-agent amount is stated, and the agent cost View says on its face that its
-figures are modelled. Every shipped Workspace fits the window without a page
-scroll, and the bookmarks and the branch control are Views. The release has
-146 items. It is a patch on both halves of the patch test in § "Versioning
-decision": the schematic milestone is not finished, and v0.7.0 is given to a
-milestone section, so no patch release may take that number. v0.6.19 finishes
-seven features: `copy-editor`, `doc-consistency-checks`, `effort-trial`,
-`feature-registry`, `owner-ask-by-state`, `prose-quality` and
-`roadmap-structure`.
+In v0.6.20 every MAC multiple divides by Mapleson's MAC at age 40: 1.8%
+sevoflurane, 1.17% isoflurane and 6.6% desflurane, in place of De Wolf et
+al.'s flat adult 2.0%, 1.2% and 6.0%. The 1 MAC line beside the chart names
+the age, and the dial opens at the new 1 MAC. The model document is split by
+reader: `docs/MODEL.md` now describes the model for a clinician, how the model
+is tested is in `docs/VERIFICATION.md`, and where each stored value comes from
+is in `docs/PARAMETERS.md`. The shipped Workspaces fit a 1366 by 768 screen,
+Tab follows reading order, and every control with the keyboard focus shows a
+ring. The chart marks each step of a dial, counting a held key or a swipe as
+one step, and marks are edited in the Bookmarks View rather than in a window
+over the readouts. The release has 57 items. It is a patch on both halves of
+the patch test in § "Versioning decision": the schematic milestone is not
+finished until the project owner has test-driven it, and v0.7.0 is given to a
+milestone section, so no patch release may take that number. v0.6.20 finishes
+four features: `one-source-of-truth`, `regex-review`, `release-roadmap-seam`
+and `verify-false-reject`.
 
 v0.7.0 is cut only after its Required scope has closed, Gate 3's frozen list
 has cleared and the project owner has test-driven `main`. The Required scope
-has closed: its last two ids, `PL-HQPF` and `PL-RJN9`, close in this release.
-When v0.6.19 was cut, 173 of the gate's 200 entries had cleared, 6 were open
-for this gate to clear, and 21 were deferred to the next gate.
+closed in v0.6.19, and Gate 3's list clears in this release: its last entry,
+`PL-LBVN`, the choice of stored MAC values, closes here. When v0.6.20 was
+cut, 182 of the gate's 200 entries had cleared and the other 18 were deferred
+to the next gate. What is left before v0.7.0 is the owner's test drive.
 
-**The model's step changed, so a run can differ from v0.6.18. No equation or
-model parameter changed:**
+**The stored MAC values changed, so a run's percentages can differ from
+v0.6.19. No equation or step changed:**
 
-| Tree | v0.6.18 tag | This cut | What moved |
+| Tree | v0.6.19 tag | This cut | What moved |
 | --- | --- | --- | --- |
-| `src/` | `6da93f5` | `77c9596` | `core/` as below; `app/`'s playback, branching and chart in whole seconds (`#2180`), the 20 °C and 1 atm labels (`#2136`), the Workspaces fitting the window (`#2134`), three look and wording fixes (`#2206`), and section citations in comments (`#2211`) |
-| `src/anesthesia_sim/core/` | `a72bd99` | `8c64b67` | the one-second step and the stored states (`#2180`), every rounding bound in one module (`#2121`), blood flow as a checked type (`#2114`), checked records that re-run their checks when rebuilt (`#2166`), and one section citation in a comment (`#2211`) |
-| `src/anesthesia_sim/data/` | `9f4943e` | `21784c0` | the Maintenance Workspace's Area sizes (`#2134`) and source notes; no model parameter |
-| `tests/reference/` | `545a009` | `b5db82d` | moved to the one-second step (`#2180`), and new tests of the figures `docs/MODEL.md` quotes (`#2154`, `#2165`) |
+| `src/` | `77c9596` | `22e01ef` | `core/` as below; `app/`'s 1 MAC line with its age (`#2223`), Workspaces at 1366 by 768 (`#2217`), keyboard focus and Tab order (`#2216`, `#2219`), dial steps on the chart (`#2228`), the Bookmarks View's mark editor (`#2214`), Views drawn from one tick's values (`#2229`), chart and notation fixes (`#2213`, `#2218`, `#2225`, `#2226`), and section citations after the split |
+| `src/anesthesia_sim/core/` | `8c64b67` | `d5c7ec9` | one function that builds a run's MAC from the agent and the patient, and a compared chart that refuses two runs whose MAC or age differ (`#2223`); refusal messages and docstrings that name the section now holding their rule (`#2204`, `#2220`, `#2222`, `#2233`, `#2234`, `#2235`) |
+| `src/anesthesia_sim/data/` | `21784c0` | `e048373` | each agent's MAC at age 40 and its source (`#2223`), the Default, Induction and Maintenance Workspaces' Area sizes (`#2217`), and source notes |
+| `tests/reference/` | `b5db82d` | `cf2ff33` | five tests that compare the model with published figures read the new MAC (`#2223`), and the tests that read `docs/MODEL.md`'s figures follow its new wording and sections (`#2204`, `#2220`, `#2222`) |
 
-**How far a run moved.** Both tags ran the same 81 cases: three agents, three
-fresh gas flows, three cardiac outputs and three ventilations, for 90 minutes,
-with four control changes, a time mark, a vessel-rich target of 0.5 MAC and a
-branch, and three runs of 24 hours. Over 10,935 readings taken each minute, the
-compartment fractions differ by at most 1.4 × 10⁻¹³ atm. Of 174,960 formatted
-readouts, 543 differ. Every one is the delivered agent volume, which is shown
-to 0.1 L, and each moves by that one step. A run that stops on a marked
-crossing or a MAC target now stops on a whole second: 168 of 271 stops land 0.1
-to 0.9 s later than on v0.6.18, and the other 103 at the same instant. The
-24-hour runs differ by at most 2.3 × 10⁻¹² atm and in no readout. `PL-572Q`
-names the scripts that measured this.
+**How far a run moved.** Both tags ran the same 81 cases as at v0.6.19, and
+three runs of 24 hours. Each case opens its dial at the agent's 1 MAC, so the
+new MAC moves every case's delivered concentration. Every compartment fraction
+on v0.6.20 is the v0.6.19 fraction times the ratio of the two MACs (0.9 for
+sevoflurane, 0.975 for isoflurane and 1.1 for desflurane), to within 3 × 10⁻¹⁴
+of the ratio. So every MAC multiple, every FA/FI ratio and all 271 stops on a
+marked crossing or a MAC target are identical. The percentages and the agent
+volumes move by the same ratio. `PL-245L` names the scripts that measured this.
 
-**Whole seconds** (`PL-SZ6G`, `PL-MH9J`, `PL-FST0`, `PL-Z6C8`, `#2180`). The
-step was 0.1 s, which a binary number cannot hold exactly, and six closed
-items came from that rounding. A run now counts whole seconds, and the playback
-takes one exact one-second step for each second that real time allows.
-`docs/VERIFICATION.md` § "Supported simulation step" gives how far a control change
-made one second late can move the alveolar reading: at most 1.3 percentage
-points, from a desflurane ventilator start at the edge of the supported
-settings, fading to 0.5 points after eight seconds.
+**MAC at age 40** (`PL-LBVN`, `#2223`). Mapleson's 1996 meta-analysis gives
+MAC at age 40 as 1.8% sevoflurane, 1.17% isoflurane and 6.6% desflurane. The
+1 MAC line prints at most two decimals with no trailing zero, so it reads
+"1 MAC sevoflurane (age 40) = 1.8%". `PL-8F9D` plans MAC adjusted for the
+patient's own age.
 
-**Agent amounts and their conditions** (`PL-HQPF`, `PL-RJN9`, `PL-11Z9`,
-`#2136`). Every agent amount names the 20 °C and 1 atm it is stated at, the
-agent cost View reads that temperature from the model rather than writing it
-as text, and the agent cost View says its figures are modelled, not measured.
+**The model document by reader** (`PL-6PPZ`, `PL-FWR6`, `PL-48MX`,
+`PL-4H8Q`, `PL-N83Z`, `PL-SY7G`, `PL-1VXY`). `docs/MODEL.md` is the
+clinician's description of the model, brought up to date with the tree. Its
+verification sections moved word for word to `docs/VERIFICATION.md`, and its
+parameter sources to `docs/PARAMETERS.md`. Each of the three was then sorted for
+its own reader.
 
-**The window holds the layout** (`PL-CBYS`, `#2134`; `PL-9YPR`, `#2103`). The
-page no longer scrolls at the common screen sizes: each View scrolls inside its
-own Area. The bookmarks and the branch control, which sat under the Areas as
-fixed sections, are Views a learner places like any other.
+**The window at 1366 by 768** (`PL-D5J4`, `PL-4JCC`, `PL-V4Q8`, `PL-K4CZ`,
+`#2217`, `#2218`). Each shipped Workspace shows its View's lesson above the
+Area's fold at 1366 by 768: Induction's wash-in curve, and Maintenance's share
+bar and schematic. The concentration plot takes half of its chart's Area.
+
+**Keyboard use** (`PL-63FQ`, `PL-CXYV`, `PL-B45W`, `PL-24SN`, `#2216`,
+`#2219`, `#2226`). A new window starts with the focus on the agent selector,
+Tab follows reading order, every focused control shows a ring, the run
+buttons look pressed when pressed, and a rename or a split leaves the focus
+where the reader was.
 
 § "What a tag ships that its notes may not name" says how work ships that
 merges on `main` after a release is cut and before its pull request lands.
@@ -259,7 +265,8 @@ so no release's notes name it (`PL-KRS6`).
 | v0.6.16 | Completed | **The release where the copy editor cuts a repeated fact, words a fact does not need and a fact meant for another reader, and is back in use; where the rest of `docs/MODEL.md`'s interface sections, and its section on how the document is held to the tree, are rewritten for a clinician reader; where `README.md` is copy edited with the fixed copy editor; and where the writing rule says a model limitation earns a sentence only where it could change what a clinician concludes from a displayed value.** | 11 items | `PL-80PZ` |
 | v0.6.17 | Completed | **The release where the agent cost View shows the delivered agent in whole millilitres of liquid, because a tenth implied more precision than the measured density supports, and where `docs/MODEL.md` gives each fact one home and is line edited with every dropped statement restored.** | 96 items | `PL-FNJ3` |
 | v0.6.18 | Completed | **The release where GitHub's own settings refuse a forced push, the deletion of `main` and the merge of a pull request that the project holds, and where the order of work, the learner and the tasks for the interface pass are agreed.** | 6 items | `PL-MH1H` |
-| v0.6.19 | Completed / current baseline | **The release where a run steps in whole seconds, so a control change takes effect at the next whole second and a branch can open at any second the run has reached; where every agent amount names the 20 °C and 1 atm it is stated at; and where every shipped Workspace fits the window, with the bookmarks and the branch control as Views.** | 146 items | `PL-572Q` |
+| v0.6.19 | Completed | **The release where a run steps in whole seconds, so a control change takes effect at the next whole second and a branch can open at any second the run has reached; where every agent amount names the 20 °C and 1 atm it is stated at; and where every shipped Workspace fits the window, with the bookmarks and the branch control as Views.** | 146 items | `PL-572Q` |
+| v0.6.20 | Completed / current baseline | **The release where every MAC multiple divides by Mapleson's MAC at age 40 and the 1 MAC line names that age; where the model document is split by reader, so `docs/MODEL.md` describes the model for a clinician; where the shipped Workspaces fit a 1366 by 768 screen; and where Tab follows reading order and every control with the keyboard focus shows a ring.** | 57 items | `PL-245L` |
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
@@ -451,7 +458,7 @@ to clear the ground that the feature releases are built on:
 | 6 | **Gate 2** | **Frozen 2026-09-21, the day v0.5.0 shipped, not when the milestone below was scoped** (project owner, 2026-09-16, ratified - chosen over freezing it on the scoping day as beat 1 says, and over deferring the whole scoping round until v0.5.0 ships). Row 7 was scoped two releases early, so the cadence's own trigger would have frozen this list before v0.5.0 had been implemented — leaving it holding none of v0.5.0's findings, which is the one thing a gate is defined to hold. § "The cadence" now states that as the trigger, the later of a milestone's scoping and its predecessor's ship (`PL-KKRP`); v0.6.0's own section says where the frozen list goes when the moment comes. Its work ships in `v0.5.x` patches as it clears, and it takes no release of its own (§ "The cadence", `PL-LPH9`). | — |
 | 7 | **v0.6.0 — the layout is the reader's** | **Shipped 2026-10-20**, all 40 Required-scope ids closed (`PL-9CS6`). Planned-milestone item 34's tiled half: the layout model, the View contract, the view registry, workspaces, persistence, the unconditional display region, and every layout operation. **Scoped 2026-09-16** (project owner, ratified on `PL-NMTF` - chosen over inserting item 34 ahead of v0.5.0, and over one undivided milestone with break-out inside it). The serialized layout format carries a multi-window root from v1; nothing in this release creates a second window. Break-out, item 34's second half, is on no row: it is wanted eventually and not soon (project owner, 2026-09-26), and came off the timeline that day, having been the next release, "the second screen", since 2026-09-16 (`PL-V1Y7`) — see that section's "Explicitly out of scope" for why the split costs nothing structural, and why v0.6.0 keeps what break-out needs. **The placement was reopened and re-affirmed on 2026-09-17** (project owner, ratified - chosen over moving item 34 ahead of v0.5.0, on the argument that every interface question settled before the area model is settled against a layout that is going away). Planned-milestone item 34's entry carries the count, and the rule that round produced, which ended when this release shipped item 34's View contract and view registry. | 4 L, 16 M, 3 S |
 | — | **v0.6.x — one source of truth** | Planned-milestone item 43: every second copy of a shared fact replaced by a read of its one home, with a check per shape whose baseline can only shrink and is burned down to zero. **Placed 2026-10-19** (project owner, 2026-10-19, ratified on `PL-2LB5`, over folding the fixes into v0.6.0 and over leaving them unplaced): it is built after v0.6.0 ships, and its inventory (`PL-K88Z`) runs before then, because the inventory decides how large the row is. Patch-track work like item 40: it crosses no capability boundary, so it takes no version of its own and freezes no gate. **Inventoried 2026-10-19** by `PL-K88Z`, whose brief records the count. | — |
-| 8 | **Gate 3** | **Frozen 2026-10-25**, the day v0.7.0 was scoped, five days after v0.6.0 shipped, and recorded in that milestone's own section below. Its work ships in `v0.6.x` patches as it clears, before v0.7.0's implementation begins. That rule was not followed for v0.7.0: its Required scope was worked and closed in v0.6.16 while the second group was still open, with no decision recorded to set the rule aside. The rule in § "The cadence" still applies, and binds again from Gate 4 (project owner, 2026-11-11, ratified, `PL-6590`). The current baseline above says how many of its entries had cleared when v0.6.16 was cut, and where its current size is given. | — |
+| 8 | **Gate 3** | **Frozen 2026-10-25**, the day v0.7.0 was scoped, five days after v0.6.0 shipped, and recorded in that milestone's own section below. Its work ships in `v0.6.x` patches as it clears, before v0.7.0's implementation begins. That rule was not followed for v0.7.0: its Required scope was worked and closed in v0.6.16 while the second group was still open, with no decision recorded to set the rule aside. The rule in § "The cadence" still applies, and binds again from Gate 4 (project owner, 2026-11-11, ratified, `PL-6590`). The current baseline above says how many of its entries had cleared when that release was cut, and where its current size is given. | — |
 | 9 | **v0.7.0 — the schematic** | Planned-milestone items 27 and 28: a compartment schematic whose containers fill to tension, as Gas Man's Picture does, labelled with their amounts and with a bar showing where the agent *is*, and the agent cost View. **Scoped 2026-10-25** by `PL-LF0P` (project owner, 2026-10-25, ratified, over containers drawn to scale, over Gas Man's Picture as it is, and over leaving item 28 unscheduled), and it has its own section below. (Written `v0.6.0` until 2026-09-16, when item 34 took that number and this moved down two, and `v0.8.0` from then until 2026-09-26, when break-out came off the timeline and this moved up one.) **Its Required scope closed in v0.6.16, except entry 13, which the project owner added on 2026-11-10** (`PL-HQPF`, `PL-RJN9`). That entry requires every agent amount on screen to name the condition it is stated at. The cut waits on entry 13, on Gate 3 and on the project owner's test drive. | 1 L, 9 M, 3 S |
 | — | **v0.7.x — the interface pass** | Planned-milestone item 33: one deliberate visual design pass over the whole interface - palette, type scale, spacing rhythm, density and the visual composition of each surface - rather than the per-defect corrections the queue has been making one at a time. **Arrangement is item 34's and not this row's** (`PL-BNYF`, 2026-09-16); the entry for item 33 carries why. A patch track rather than a numbered milestone, because it crosses no capability boundary. **Restored here 2026-09-16**, having been absorbed into v0.4.26 on 2026-09-10 and un-absorbed when that port turned out not to have redecided the visuals; the row that release's own entry reversed is this one. **Moved here from between MVP and Gate 2 on 2026-09-16** (project owner, 2026-09-16, ratified - chosen over leaving it ahead of item 34, on the argument that item 34 and break-out introduce an area header, a workspace tab strip, a live splitter handle and a drag affordance, none of which exists to be styled today; what the other side bought was a styled interface two releases sooner, and `PL-BNYF`'s separation of arrangement from appearance means the composition of each surface would mostly have survived the move). It renumbers from `v0.5.x` to `v0.7.x` as a consequence: a patch track takes the number of the release it follows, which is mechanical rather than a second decision. `PL-PHKP` carries it. **Renumbered `v0.6.x` on 2026-09-26** by the same rule, when break-out came off the timeline and this row came to follow v0.6.0 (`PL-V1Y7`); the entry for item 33 records why the argument that placed it still holds. It is a design round with the project owner before it is items: the owner framed it as "a decent size overhaul (theme, style, overall polish)" and as not urgent, wanted after the simulator works. **Moved after v0.7.0 and renamed `v0.7.x` on 2026-11-10** (project owner, 2026-11-10, ratified, over keeping it before v0.7.0). The pass styles each surface once, after the surface exists, and v0.7.0 adds the schematic and the agent cost View. A learner sees the current look through v0.7.0. | — |
 | 10 | **Gate 4** | Frozen when v0.7.0 ships. Its work ships in `v0.7.x` patches as it clears, before v0.8.0's implementation begins. | — |

@@ -4,7 +4,7 @@ requires-python = "==3.15.*"
 
 [[package]]
 name = "anesthesia-sim"
-version = "0.6.19"
+version = "0.6.20"
 source = { editable = "." }
 dependencies = [
     { name = "numpy" },

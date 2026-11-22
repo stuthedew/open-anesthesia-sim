@@ -6,6 +6,7 @@ effort: L
 status: done
 classes: safety, science
 feature: gas-man-open-source
+milestone: v0.6.20
 touches: src/anesthesia_sim/data/agents, src/anesthesia_sim/core, src/anesthesia_sim/app, docs/MODEL.md, docs/INTERFACE.md, tests, docs/items/PL-8F9D-when-patient-age-becomes-an-input-roadmap.md
 added: 2026-11-14
 closed: 2026-11-22

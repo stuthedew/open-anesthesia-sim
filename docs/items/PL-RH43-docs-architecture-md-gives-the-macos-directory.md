@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: interface-matches-its-spec
+milestone: v0.6.20
 touches: docs/ARCHITECTURE.md, src/anesthesia_sim/app_metadata.py, src/anesthesia_sim/layout/store.py
 deferred-from: v0.7.0 - present at the freeze, with no real connection to the frozen list or to v0.7.0's Required scope: the sentence states where Qt files user data on macOS, which no v0.7.0 entry wrote or depends on, and the preferences section that v0.7.0 added names no platform path
 added: 2026-11-21
