@@ -462,11 +462,14 @@ def test_a_burst_of_wheel_events_draws_one_frame_at_once_and_leaves_the_rest_to_
     wheel or a trackpad swipe with no scroll phase, so the phase cannot tell
     a burst from one notch. The first event draws its frame at once. The
     other four come before the next render tick, so they leave their frame
-    to it, and the tick draws the latest state. After the tick, a lone notch
-    draws its frame at once again. Before the fix, each of the five events
-    drew a frame of its own.
+    to it, and the tick draws the latest state, so the last value is never
+    left undrawn. After the tick, a lone notch draws its frame at once
+    again. Before the fix, each of the five events drew a frame of its own.
 
-    Each notch steps the flow by one count, 0.1 L/min, from 4.0 L/min.
+    Each notch steps the flow by one count, 0.1 L/min, from 4.0 L/min. The
+    run takes one step of one second before each notch, so the notches are
+    at 1 s to 5 s, and each is an adjustment of its own with its own mark on
+    the charts. The marks show which notches a drawn frame includes.
     """
 
     controller = SimulationController()
@@ -476,18 +479,22 @@ def test_a_burst_of_wheel_events_draws_one_frame_at_once_and_leaves_the_rest_to_
     slider = _dials(run)._fresh_gas_flow_slider.slider
     _style_slider(slider, _Platform.FUSION)
     presented = view.presented_frames
+    plots = (_concentration(view).chart, _wash_in(view).chart)
 
     for _ in range(5):
+        _advance(controller, 1)
         _scroll_up(slider, Qt.ScrollPhase.NoScrollPhase)
 
     assert controller.settings().fresh_gas_flow_l_min == pytest.approx(4.5)
     assert view.presented_frames == presented + 1
     assert view._render_pending is True
+    assert [plot.control_mark_times(0) for plot in plots] == [(1.0,), (1.0,)]
 
     view.render_tick()
 
     assert view.presented_frames == presented + 2
     assert view._render_pending is False
+    assert [plot.control_mark_times(0) for plot in plots] == [(1.0, 2.0, 3.0, 4.0, 5.0)] * 2
 
     _scroll_up(slider, Qt.ScrollPhase.NoScrollPhase)
 
