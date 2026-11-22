@@ -9,7 +9,7 @@ paths:
 `docs/ARCHITECTURE.md` answers both questions and nothing loaded at launch points
 at it. Its § "Where new code belongs" routes each pattern — a compartment, an
 agent or patient profile, a panel or control, a rendering of an interpreted
-value, a chart series — and its § "Tests (`tests/`)" says which of the three test
+value, a chart series — and its § "Tests (`tests/`)" says which of the four test
 trees a new test belongs in, including why a case under `tests/reference/` may
 import the parameter loaders but must not reach a solver in `core/`. `README.md`
 and `CONTRIBUTING.md` carry the same pointer for a human contributor, and neither

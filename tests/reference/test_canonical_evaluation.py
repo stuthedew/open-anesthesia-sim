@@ -84,14 +84,14 @@ chained propagation covers more time. A span of 24 h is the supported run
 length under "Supported run length", so the second row is the worst that a
 supported run can reach at this column count.
 
-**The two quantities have separate bounds because their headroom differs by
-four orders of magnitude.** A fraction is displayed as a percent with two
-decimals, so "Displayed precision" resolves 1e-4, and the measurement is eight
-orders below that. `app/simulation_view.py` displays the accumulators to six
-decimals of a litre, which resolves 1e-6 L, and the measurement is less than
-three orders below *that*. Three orders is ample, but it is not fourteen, which
-is why the separation is enforced in code rather than left to a reader to
-observe.
+**The two quantities have separate bounds because they are in different
+units.** A fraction is displayed as a percent with two decimals, so "Displayed
+precision" resolves 1e-4, and `WORST_FRACTION_SEPARATION` is seven orders below
+that. The accounting View displays the run totals in litres of vapour to 0.1 L
+(`_RUN_TOTAL_LITRE_DECIMALS` in `app/formatting.py`), and
+`WORST_ACCUMULATOR_SEPARATION` is more than six orders below that. The tests
+assert each separation against its own bound, because no reader could see a
+breach of either on screen.
 """
 
 from random import Random
@@ -473,10 +473,12 @@ def test_a_fork_opening_at_the_instant_it_was_taken_does_not_reproduce_its_paren
     Both halves are asserted, because each alone permits a failure that the
     other catches. That the difference is *real* is what makes the condition
     worth enforcing. That it is *this small* is what makes enforcement in code
-    the only way to catch it. It is nine orders below the 1e-4 that a
-    compartment readout resolves, and six below the 1e-6 L resolution at which
-    the mass balance is shown. A branch built this way would look exactly like one
-    built correctly.
+    the only way to catch it. The test asserts it below
+    `WORST_RESTART_FRACTION_DIVERGENCE`, nine orders below the 1e-4 that a
+    compartment readout resolves, and below
+    `WORST_RESTART_ACCUMULATOR_DIVERGENCE`, more than nine orders below the
+    0.1 L to which the accounting View shows the run totals. A branch built
+    this way would look exactly like one built correctly.
 
     The test fails honestly if a future change makes the restart exact. That
     would mean the condition had stopped costing anything, and that this file

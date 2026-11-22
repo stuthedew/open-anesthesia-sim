@@ -20,8 +20,8 @@ the run is called on screen: `dashboard_frame.run_label` renders it.
 trunk keeps it from the dashboard's construction onward. A branch keeps it from
 the fork that opened it until the branch is dropped. A Reset of the run, or a
 change of agent, begins a new run definition in the same place, after the
-confirmation that `docs/INTERFACE.md` § "Agent-change behavior" requires. The run
-keeps its identity through both.
+confirmation that `docs/INTERFACE.md` § "Discarding a run, and the questions that
+guard it" requires. The run keeps its identity through both.
 
 `RunIdentities` is the one object in this package whose state changes, because
 it is the session's counter. Everything else here is an immutable value.

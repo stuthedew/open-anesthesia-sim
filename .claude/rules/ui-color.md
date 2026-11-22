@@ -43,8 +43,8 @@ by a later property write such as `self.X.color = ...`, or by a later
 `setStyleSheet` or `setItemData` — must also be written by that method, which is
 what keeps the checked set complete.
 
-**A disabled colour is the platform's here, with exactly one declared
-exception, and adding a second is a decision rather than a style choice.** The
+**A disabled colour is the platform's here, with two declared exceptions,
+and adding a third is a decision rather than a style choice.** The
 scope decision is `PL-NGF7` and the reasoning is in `tools/contrast_check.py`'s
 module docstring. What `PL-DHBX` added: the exemption WCAG 2.2 SC 1.4.3 gives
 text in an inactive component is an exemption from a *minimum*, not a licence
@@ -55,6 +55,8 @@ his own screen after the enabled half had already been fixed. So
 2026-09-17, ratified - chosen over leaving the disabled label to the platform on
 SC 1.4.3's exemption, which is what `PL-NGF7` had decided), at 5.00:1 on
 `PANEL`, which meets the full normal-text minimum and claims no exemption at all.
+The second is an unavailable entry of a header menu, which `menu_stylesheet`
+declares in `MUTED` too (`PL-2KXB`).
 `check_authored_disabled_colours_are_measured` admits a `:disabled` rule only
 from a function some requirement cites, so a new one fails `make check` until
 its pair is written down. Do not soften a disabled control's *border* to

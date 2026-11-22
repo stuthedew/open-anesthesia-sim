@@ -91,12 +91,13 @@ from anesthesia_sim.core.supported_ranges import (
 def test_format_percent_uses_the_documented_display_resolution() -> None:
     """Pin the PL-040 decision to show every concentration to 0.01 percentage points.
 
-    `docs/INTERFACE.md` § "Displayed precision" derives the resolution from the
-    measured spread of the partition coefficients. This test exists so that a
-    change to the resolution is made deliberately.
+    `docs/INTERFACE.md` § "Displayed precision" gives the reason for the
+    resolution: it is the coarsest that keeps every compartment's wash-in
+    legible. This test exists so that a change to the resolution is made
+    deliberately.
     `test_concentration_decimals_are_a_choice_within_a_recorded_band` is the
-    other half. It says which direction of change requires re-deriving
-    something.
+    other half. It says why one decimal and three decimals are each ruled
+    out.
     """
 
     assert CONCENTRATION_DISPLAY_DECIMALS == 2
@@ -109,24 +110,22 @@ def test_format_percent_uses_the_documented_display_resolution() -> None:
 
 
 def test_concentration_decimals_are_a_choice_within_a_recorded_band() -> None:
-    """Two decimals is the owner's pick inside a one-to-two decimal band.
+    """Two decimals is the coarsest count that keeps every compartment legible.
 
-    `docs/INTERFACE.md` § "Displayed precision" derives the band. The count of
-    decimals inside the band is a presentation decision (`PL-88GQ`). The two
-    halves fail differently on purpose, and that is the reason to pin the band
-    separately from the value:
+    `docs/INTERFACE.md` § "Displayed precision" gives both limits, and each
+    has its own reason:
 
-    - Moving to **one** decimal stays inside the band. That change is the
-      project owner's to make, and it re-derives nothing in `core/`. What rules
-      it out today is a teaching judgment, not a numerical limit: fat and
-      muscle would show a flat `0.0%` for minutes to an hour.
-    - Moving to **three** decimals leaves the band. It would claim a
-      resolution finer than the measured spread of the partition coefficients
-      that produced the number. That is false precision under `CLAUDE.md`'s
-      safety standard.
+    - **One** decimal is ruled out by the project owner's teaching judgment
+      (`PL-88GQ`), not by a numerical limit: fat and muscle would show a flat
+      `0.0%` for minutes to an hour. Moving to it re-derives nothing in
+      `core/`.
+    - **Three** decimals would show a finer resolution than legibility needs,
+      and the document states that the readouts show no finer resolution than
+      that. The spread of the partition coefficients between patients no
+      longer sets this limit (project owner, 2026-11-14, `PL-W51N`).
 
-    A session that reads only the constant cannot tell these two cases apart.
-    That is why the band is asserted here rather than left in prose.
+    A session that reads only the constant cannot tell these two limits apart.
+    That is why both are asserted here rather than left in prose.
     """
 
     minimum_supported_decimals = 1
@@ -1867,8 +1866,8 @@ def test_format_agent_residual_drops_the_sign_the_rounding_chose() -> None:
     """A passing residual's sign is only the direction of its rounding, so both signs look alike.
 
     The signed value is still on screen where it means something. A check
-    that fails halts the run, and the failure notice prints the value to six
-    figures.
+    that fails halts the run, and the failure notice prints the value with six
+    decimal places.
     """
 
     assert format_agent_residual(-3.289e-15) == "<1e-14 L"

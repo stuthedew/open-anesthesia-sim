@@ -30,9 +30,9 @@ This design has two consequences, and `PL-T691` exists for both of them:
 
 - **Memory stops growing with the length of the run.** A recorded run costs
   one sample per solver step. A run definition costs one segment per setting
-  change. As measured on 2026-09-05, a 30-day case with 50 changes a day needs
-  about 70 KiB for its definition and keyframes. The same run recorded as
-  samples today needs 3.16 GB.
+  change. As measured on 2026-09-07, a 30-day case with 50 changes a day needs
+  about 1.6 MiB for its definition and keyframes. The same run recorded as
+  samples would need 3.16 GiB (`PL-T691`).
 - **The cost of computing a window stops depending on the run's length.** A
   window is computed from the keyframes that bracket it, not by scanning
   everything that came before it. So 600 columns cost the same over 30 days as
@@ -373,9 +373,11 @@ class RunDefinition:
             opened_at_s: The case instant at which this run opens, in seconds.
                 It is zero for a run beginning at induction. For a branch, it
                 is the instant of the parent keyframe that the branch carries
-                as its `initial_state`. That keyframe is the fork itself for a
-                branch taken at a control event, and the keyframe before the
-                fork for a branch taken at a bookmark (`app/controller.py`,
+                as its `initial_state`. For a fork at the case's opening, that
+                keyframe is the fork itself. For every other fork, it is the
+                keyframe that opens the stretch the step reaching the fork ran
+                under, which lies before the fork (`reaching_segment_at`,
+                `PL-ZR49`; `app/controller.py`,
                 `SimulationController._open_at`). It is a `CaseInstant`, so it
                 is at or after induction and inside the supported run length.
                 That length belongs to the case, not to this run. A branch

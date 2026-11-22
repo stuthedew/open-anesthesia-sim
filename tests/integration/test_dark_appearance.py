@@ -79,6 +79,12 @@ from anesthesia_sim.app.qt_widgets import (
 )
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import AGENT_COLOR_SCHEMES, BACKGROUND, INK, MUTED, PANEL, PRIMARY
+from anesthesia_sim.app.view_registry import REGISTERED
+from tests.integration.simulation_view.simulation_view_support import (
+    EVERY_REGISTERED_VIEW_SIZE_PX,
+    built_view_kinds,
+    every_registered_view,
+)
 
 #: The palette Qt reports on a host set to a dark appearance: a dark window, a
 #: near-black entry `Base` under a near-white `Text`, and a mid-grey
@@ -657,15 +663,19 @@ def test_no_content_widget_in_the_interface_paints_from_the_host_palette(
 
     # The dashboard holds a case, as `main` builds it, so that the walk
     # reaches the branch control.
+    # It draws every registered kind of View, so that a control added to any
+    # of them is in the walk (`PL-R51H`).
     case = BranchedCase(SimulationController(agent_id=_AGENT_ID))
     controller = case.trunk
-    view = SimulationView((controller,), case=case)
-    view.resize(1600, 1000)
+    view = SimulationView((controller,), case=case, workspaces=every_registered_view())
+    view.resize(*EVERY_REGISTERED_VIEW_SIZE_PX)
     view.show()
     dark_host.processEvents()
     view.present(False)
     dark_host.processEvents()
     assert view.findChildren(ForkPanel), "the walk does not reach a branch control"
+    assert len(built_view_kinds(view)) == len(REGISTERED), built_view_kinds(view)
+    assert view.layout_container.too_small() == ()
 
     editor = BookmarkDialog(view)
     editor.show()

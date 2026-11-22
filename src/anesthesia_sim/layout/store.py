@@ -9,7 +9,10 @@ resolve one itself. The application's entry point asks Qt for
 `QStandardPaths.AppDataLocation` once it has set the organization and
 application names. Qt's own table in `src/corelib/io/qstandardpaths.cpp`
 (qt/qtbase, read 2026-09-27) gives macOS `~/Library/Application Support/<App>`,
-Windows `%APPDATA%\\<Org>\\<App>` and Linux `~/.local/share/<App>`. The entry
+Windows `%APPDATA%\\<Org>\\<App>` and Linux `~/.local/share/<App>`. On Linux
+PySide6 returns `~/.local/share/<Org>/<App>` (measured 2026-10-19 under
+`PL-DWHG`, and again 2026-11-21), so the table omits the organization there.
+Whether macOS adds it too is `PL-RH43`. The entry
 point hands that location to `user_data_directory`, which applies the one
 override, `USER_DIRECTORY_VARIABLE`, for a headless or portable run. A test
 passes `tmp_path`. On Windows the file goes in Roaming rather than Local,
@@ -78,8 +81,10 @@ written until the first "Save as default", which creates the directory.
   saving is off instead, since a save would overwrite it. A previous
   generation that itself cannot be read, or is invalid, is left where it is
   and named in the notice. A previous generation that a newer build wrote turns saving off,
-  whatever the current file contains, just as a newer current file does,
-  because the second save would overwrite it.
+  whatever the current file contains, just as a newer current file does. A
+  save copies the current file over the previous generation: the first save
+  does so when a current file exists, and the second save does so when none
+  does.
 - *No current file, but a previous generation that this build reads.* The
   previous generation is shown, with a notice. Without this case, a launch
   after a current file was set aside, with nothing saved since, would load the
@@ -435,7 +440,7 @@ class WorkspaceStore:
                 Source.FILE,
                 False,
                 f"{self._directory / PREVIOUS_FILE_NAME} was written at schema version "
-                f"{previous.found} by a newer build, which the second save from this build would "
+                f"{previous.found} by a newer build, which the first save from this build would "
                 "overwrite, so nothing will be saved this session; the saved Workspaces are shown"
                 + _lossy_suffix(read),
                 None,
@@ -472,8 +477,9 @@ class WorkspaceStore:
                 Source.SHIPPED,
                 False,
                 f"there is no {self.path}, and {previous} was written at schema version "
-                f"{rescued.found} by a newer build, which this build would overwrite at the next "
-                "save; the shipped Workspaces are shown and nothing will be saved this session",
+                f"{rescued.found} by a newer build, which the second save from this build "
+                "would overwrite; the shipped Workspaces are shown and nothing will be saved "
+                "this session",
                 None,
                 None,
             )

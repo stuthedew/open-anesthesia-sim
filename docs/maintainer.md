@@ -982,32 +982,24 @@ runner refuses to start while the bash or make on its `PATH` is older than bash
    to start the runner under `caffeinate` yourself. Keep the lid open, because
    caffeinate's manual does not say that it keeps the Mac awake with the lid
    closed (`PL-BT70`). Each run prints one line: the item, its effort, the
-   cost, and the branch it pushed. A run that pushed adds a second line that
-   names its record.
+   cost, and the branch it pushed.
    A run that pushed everything it made removes its clone. It keeps its log
    in `~/.local/state/open-anesthesia-sim/workers/`. A failed run, or a
    `--no-push` one, keeps both the clone and the log. Its line names the
    clone to read (`PL-TX7K`).
 
 Each branch belongs to a worker, so ask a session to review it as delegated
-work. A pushed run also commits its record to the branch, as
-`docs/worker-runs/<branch>-<started>.json`, and the run's line names that file.
-The reviewing session runs `bin/docket verify <id>` on the branch and records
-its review in that file before it opens the pull request. `make check` fails
-until it does (`PL-87BR`). The records are how headless work is compared with
-chat-session work. So the record of a sent-back branch still belongs on
-`main`, and the session carries its two record commits to a branch of their
-own. Once that lands, the daily branch sweep deletes the sent-back worker
-branch, so its item returns to `bin/docket next` (`PL-W5JR`). Sessions read
-these steps in `.claude/skills/pull-request/SKILL.md` § "Open the pull request
-with the work".
+work. The session runs `bin/docket verify <id>` on the branch and opens its
+pull request when the work holds up. When it sends a branch back, it names
+the branch for you to delete on GitHub, because a session cannot delete one.
+Until then `bin/docket next` treats the item as in flight. Sessions read these
+steps in `.claude/skills/pull-request/SKILL.md` § "Open the pull request with
+the work".
 `--item <id>` runs one named item. `--per-run-usd` caps the cost of one run
 (default $15). `--model <id>` overrides the `[models]` table's model for one
-batch. An ordinary run leaves it off and takes the table's model. `PL-6FX6`'s
-trial uses it to run the same five items once with `--model claude-sonnet-5-5`
-and once with `--model claude-haiku-5-5`, before the table's own run on Opus
-5.5. Those two batches also pass `--no-push`, so their clones cannot push and
-the work stays on your machine. The cost that each run reports is Claude Code's
+batch. An ordinary run leaves it off and takes the table's model.
+`--no-push` stops a batch's clones from pushing, so the work stays on your
+machine. The cost that each run reports is Claude Code's
 own estimate, which can differ from the bill. So read the Console's figure
 again at each launch, rather than carrying forward the runner's last figure.
 Runners before `PL-NQ0M` kept a ledger at

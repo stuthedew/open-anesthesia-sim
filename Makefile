@@ -216,10 +216,6 @@ check: sync
 # Whether a rule's declared scope is the one it will actually get. Reads only
 # the frontmatter of `.claude/rules/*.md`, so it costs nothing. `PL-LLWN`.
 	python3 tools/rules_paths_check.py
-# Each headless worker run's record on its branch needs the review's outcome
-# before the branch merges, so headless and chat work can be compared. Reads
-# only `docs/worker-runs/`, so it costs nothing (`PL-87BR`).
-	python3 tools/worker_runs.py check
 # Beside the guards above and, like them, bare: it reads the apparatus trees -
 # `tools/`, `subprojects/docket/src/docket/` and `.claude/hooks/` - which are
 # held to the floor themselves, so the floor interpreter parses all of it. It

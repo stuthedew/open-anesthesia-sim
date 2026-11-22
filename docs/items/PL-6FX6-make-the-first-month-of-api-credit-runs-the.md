@@ -3,12 +3,14 @@ id: PL-6FX6
 title: Make the first month of API-credit runs the model-evidence trial: run the same five delegable S items on Haiku 5.5 and Sonnet 5.5, and score each by whether bin/docket verify accepts it, review findings, and total_cost_usd, so the delegable tier is chosen on a measurement instead of the 2026-09-19 asymmetry alone
 priority: P3
 effort: M
-status: ready
+status: dropped
 classes: session-cost, infra
 feature: api-credit-runs
 touches: tools/headless_worker.py, docs/maintainer.md, docs/items/PL-6FX6-make-the-first-month-of-api-credit-runs-the.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-19 triage pass
 added: 2026-10-19
+closed: 2026-11-21
+reason: The owner dropped the trial on 2026-11-21 (ratified, Agree with recs): it had not started in the month since it was kept, and no headless worker has run since 2026-10-20
 payoff: whether a cheaper model is as correct as Opus at delegable work is settled by a recorded measurement instead of being re-argued each time it comes up
 verify: grep -qE '^\*\*Trial result\.\*\*' docs/items/PL-6FX6-*.md
 not-delegable: The runs spend the owner's API credit from the owner's machine, which no session can reach
@@ -63,6 +65,8 @@ worse. The sessions behind this answer are the "API credits allocation
 strategy" session (the redesign, ratified 2026-10-19 at 11:01 CDT) and the
 session-ledger session (the cost statement at 12:16 CDT and the drop note),
 as read by this triage session.
+
+**Reopened 2026-11-21 and answered: drop it** (project owner, 2026-11-21, ratified, "Agree with recs", over keeping the trial as a measurement of correctness). No headless worker has run since 2026-10-20, and the trial has not started in the month since it was kept. `PL-3HNP` (remove the worker-run record) waited on this answer, because the owner kept `tools/worker_runs.py` only if this trial ran (`PL-KGPR`). The workers stay on Opus 5.5, and `docs/dead-ends.md` (`PL-2D28`) still says what would reopen a cheaper model.
 
 **Why it matters.** The workers run on Opus 5.5 because no measurement says a
 cheaper model is as correct at this work. Without one, the question is

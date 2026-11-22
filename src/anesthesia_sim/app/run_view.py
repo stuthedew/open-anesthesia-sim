@@ -1249,7 +1249,8 @@ class RunView(QWidget):
         It asks only when the dashboard says that this Reset would discard
         work in another run (`ask_before_reset`). Starting this run over needs
         no question, because pressing its own Reset is the request to discard
-        it (`docs/INTERFACE.md` § "Agent-change behavior").
+        it (`docs/INTERFACE.md` § "Discarding a run, and the questions that
+        guard it").
         """
 
         question = None if self._reset_question is None else self._reset_question()

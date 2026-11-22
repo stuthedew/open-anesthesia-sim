@@ -142,7 +142,6 @@ LANE_ONLY = (
     "docs/blind-review-findings.md",
     "docs/model-review.md",
     "model-evidence.toml",
-    "docs/worker-runs",
     "docs/hook-blocks",
     # Prose-review records: prose, no code.
     "docs/prose-review",

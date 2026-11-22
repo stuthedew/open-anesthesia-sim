@@ -52,6 +52,7 @@ from PySide6.QtGui import QColor, QFont, QFontMetrics, QPalette, QResizeEvent, Q
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
+    QDateEdit,
     QDialog,
     QDoubleSpinBox,
     QFrame,
@@ -331,11 +332,12 @@ def declare_application_colours(application: QApplication) -> None:
     dark around a light interface. Declaring the light palette here is the
     project owner's decision (`PL-KRZW`, 2026-09-20, ratified). It was chosen
     over leaving the host appearance alone, and over adding a second palette
-    for dark support. A second palette would mean re-measuring all 24
+    for dark support. A second palette would mean re-measuring all 27
     contrast requirements and re-picking the six trace colours against dark
     surfaces. The light theme is the one declared because of the contrast
-    checks. Every requirement in `tools/contrast_check.py` is measured on
-    PANEL and BACKGROUND. An interface that drew any other surface would be
+    checks. Every requirement in `tools/contrast_check.py` is measured on the
+    light theme's own surfaces: PANEL, BACKGROUND, the three agent fills and
+    the one filled button. An interface that drew any other surface would be
     measured against surfaces that are not on screen.
 
     **A palette rather than `styleHints().setColorScheme`.** Qt 6.8 documents
@@ -1962,6 +1964,29 @@ class FocusedComboBox(QComboBox):
     its unit, or the agent whose price is shown, without meaning to
     (`PL-B396`). A click or the keyboard gives the
     selector focus, and the wheel then works as usual.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+
+    def wheelEvent(self, event: QWheelEvent) -> None:
+        if not self.hasFocus():
+            event.ignore()
+            return
+
+        super().wheelEvent(event)
+
+
+class FocusedDateEdit(QDateEdit):
+    """A date field that a mouse wheel changes only once it has focus.
+
+    Qt's date field steps its date on a wheel event even without focus, as its
+    combo box does (`FocusedComboBox`). The price form sits in a View that
+    scrolls. So a reader scrolling past the form would change the date of a
+    price without meaning to, and the form would then keep that date as one the
+    reader chose (`PL-8FSN`). A click or the keyboard gives the field focus,
+    and the wheel then works as usual.
     """
 
     def __init__(self) -> None:

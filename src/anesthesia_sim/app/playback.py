@@ -54,7 +54,8 @@ the hundredths in which the 1× tolerance is stated.
 
 **A control change timed to the step is available at every rate: pause,
 change, resume.** `RunView.step_tick` takes no steps while the run is
-paused, and this application's setters apply unconditionally. So a setting
+paused, and this application's setters accept a change while a run is
+paused. So a setting
 changed while paused acts from the step on which the run resumes. That is
 the route to use when *when* a change happened is the point of the
 exercise. The ladder of rates below is for watching a trajectory, not for

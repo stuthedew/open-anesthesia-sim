@@ -611,8 +611,9 @@ class SimulationView(QWidget):
         layout. It builds each Area's View through the View registry, from the
         state that the Workspace keeps for that Area (`PL-TH35`). This is how a
         reader can drag the borders between the Areas and choose any View for any
-        Area. Under the Areas come the case's controls, the marks and the branch
-        control. The use disclaimer follows them, outside the scrolling part.
+        Area. The case's controls, the marks and the branch control are Views in
+        those Areas (`PL-9YPR`). The use disclaimer follows the Areas, outside the
+        scrolling part.
 
         This method places no run. Instead, it keeps every layout that a run adds
         widgets to. `_place_run` then fills those layouts in the same order, both
@@ -654,6 +655,7 @@ class SimulationView(QWidget):
             compartment=self._handle_compartment_request,
             agent_cost_unit=self._handle_agent_cost_unit_request,
             agent_price=self._handle_agent_price_request,
+            refused_entries_discard=self._handle_refused_entries_discard_request,
             adjustment_start=self._handle_adjustment_start_request,
             setting=self._handle_setting_request,
             preview=self._handle_preview_request,
@@ -760,10 +762,9 @@ class SimulationView(QWidget):
     def layout_container(self) -> AreaLayout:
         """The Areas, which are the widget tree that the adapter draws from the layout model.
 
-        No unconditional value may sit inside this widget. A reader can resize
-        what is in it, and once the area system is built out, a reader will be
-        able to close it (`PL-W9P6`). Its `model` is the layout drawn now,
-        after every drag the reader has made.
+        No unconditional value may sit inside this widget. A reader can resize,
+        replace and close what is in it (`PL-W9P6`, `PL-2KXB`). Its `model` is
+        the layout drawn now, after every drag the reader has made.
         """
 
         return self._areas
@@ -2174,6 +2175,16 @@ class SimulationView(QWidget):
             )
 
         self._change_preferences(self._preferences.with_price(price))
+
+    @halt_gate
+    def _handle_refused_entries_discard_request(self) -> None:
+        """Discard every refused entry of the preferences file, save, and draw at once.
+
+        The save then writes the file without them, so the next launch names
+        none of them. Every price and the unit in force are kept (`PL-7KXN`).
+        """
+
+        self._change_preferences(self._preferences.without_refused_entries())
 
     def _change_preferences(self, preferences: Preferences) -> None:
         """Put `preferences` in force, save them, and draw at once.
