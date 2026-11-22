@@ -79,7 +79,15 @@ from functools import partial
 from typing import Final
 
 from PySide6.QtCore import QEvent, QObject, QPoint, Qt
-from PySide6.QtGui import QAction, QContextMenuEvent, QFont, QKeyEvent, QKeySequence, QMouseEvent
+from PySide6.QtGui import (
+    QAction,
+    QContextMenuEvent,
+    QFocusEvent,
+    QFont,
+    QKeyEvent,
+    QKeySequence,
+    QMouseEvent,
+)
 from PySide6.QtWidgets import (
     QDialog,
     QFrame,
@@ -174,6 +182,9 @@ DISMISS_LABEL: Final = "Dismiss"
 PREVIOUS_WORKSPACE_KEYS: Final = "Ctrl+PgUp"
 NEXT_WORKSPACE_KEYS: Final = "Ctrl+PgDown"
 _LAYOUT_DESCRIPTION: Final = "Switch, rename, duplicate or delete Workspaces"
+
+#: The reasons a widget loses the focus to a key press that moves it along the chain.
+_KEYBOARD_FOCUS_REASONS: Final = (Qt.FocusReason.TabFocusReason, Qt.FocusReason.BacktabFocusReason)
 _PIN_TEMPLATE: Final = "Pin {run}"
 _UNPIN_TEMPLATE: Final = "Unpin {run}"
 _ADD_DESCRIPTION: Final = "Duplicate the current Workspace"
@@ -685,18 +696,22 @@ class _NameEditor(QLineEdit):
         font.setPixelSize(METRIC_NAME_SIZE)
         self.setFont(font)
         self.selectAll()
-        self.returnPressed.connect(partial(strip.finish_rename, keep_open=True))
+        self.returnPressed.connect(partial(strip.finish_rename, keep_open=True, refocus=True))
         self.installEventFilter(self)
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.key() == Qt.Key.Key_Escape:
-            self._strip.cancel_rename()
+            self._strip.cancel_rename(refocus=True)
         else:
             super().keyPressEvent(event)
 
     def eventFilter(self, watched: QObject, event: QEvent) -> bool:
-        if watched is self and event.type() == QEvent.Type.FocusOut:
-            self._strip.finish_rename(keep_open=False)
+        if watched is self and isinstance(event, QFocusEvent) and event.lostFocus():
+            # Tab leaves the editor for the next widget in a chain that the
+            # editor is not part of, so the focus goes back to the named tab.
+            # A click elsewhere puts the focus where the reader clicked.
+            by_key = event.reason() in _KEYBOARD_FOCUS_REASONS
+            self._strip.finish_rename(keep_open=False, refocus=by_key)
 
         return False
 
@@ -1109,13 +1124,16 @@ class WorkspaceTabs(QWidget):
         editor.show()
         editor.setFocus(Qt.FocusReason.OtherFocusReason)
 
-    def finish_rename(self, *, keep_open: bool) -> None:
+    def finish_rename(self, *, keep_open: bool, refocus: bool = False) -> None:
         """Take the edited name, or show why it was not taken.
 
         Args:
             keep_open: If the name is refused, whether the editor stays open
                 for another try (after Return) or closes (after the focus moves
                 away).
+            refocus: Whether the keyboard focus goes to the tab once the
+                editor closes. The rename was ended from the keyboard, and
+                the editor that held the focus is gone (`PL-24SN`).
         """
 
         editor = self._editor
@@ -1132,7 +1150,7 @@ class WorkspaceTabs(QWidget):
             self.refusal_label.show()
 
             if not keep_open:
-                self.cancel_rename(keep_refusal=True)
+                self.cancel_rename(keep_refusal=True, refocus=refocus)
 
             return
 
@@ -1142,13 +1160,26 @@ class WorkspaceTabs(QWidget):
         if renamed.workspaces[editor.index].name != now.workspaces[editor.index].name:
             self._change(renamed)
 
-    def cancel_rename(self, *, keep_refusal: bool = False) -> None:
-        """Close the editor and leave the name as it was."""
+        if refocus:
+            self.tab_at(editor.index).setFocus(Qt.FocusReason.OtherFocusReason)
+
+    def cancel_rename(self, *, keep_refusal: bool = False, refocus: bool = False) -> None:
+        """Close the editor and leave the name as it was.
+
+        Args:
+            keep_refusal: Whether the message that explains a refused name stays shown.
+            refocus: Whether the keyboard focus goes to the tab, as for `finish_rename`.
+        """
+
+        editor = self._editor
 
         if not keep_refusal:
             self.refusal_label.hide()
 
         self._close_editor()
+
+        if refocus and editor is not None:
+            self.tab_at(editor.index).setFocus(Qt.FocusReason.OtherFocusReason)
 
     def _close_editor(self) -> None:
         editor = self._editor

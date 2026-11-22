@@ -1276,3 +1276,54 @@ def test_save_restore_and_reset_all_are_reachable_from_the_keyboard(
     _proceed_by_keys(application, dialog)
     assert strip.workspaces == shipped_workspaces()
     assert (tmp_path / WORKSPACES_FILE_NAME).read_bytes() == written
+
+
+@pytest.mark.parametrize(
+    "key", [Qt.Key.Key_Return, Qt.Key.Key_Tab, Qt.Key.Key_Escape], ids=["Return", "Tab", "Escape"]
+)
+def test_a_workspace_named_from_the_keyboard_keeps_the_focus_on_its_tab(
+    application: QApplication, shown: list[QWidget], key: Qt.Key
+) -> None:
+    """The reader's place after naming a Workspace is the tab they named (`PL-24SN`).
+
+    "+" duplicates the current Workspace and opens its name for editing. The
+    reader types a name and ends the edit with Return or Tab, or cancels it
+    with Escape. The editor is then gone, and a focus left for Qt to pick
+    went to the page's scroll area.
+    """
+
+    view = _dashboard(application, shown)
+    strip = view.tab_strip
+    strip.add_button.setFocus(Qt.FocusReason.TabFocusReason)
+    QTest.keyClick(strip.add_button, Qt.Key.Key_Space)
+    editor = strip.editor
+    assert editor is not None
+    QTest.keyClicks(editor, "Mine")
+    QTest.keyClick(editor, key)
+    application.processEvents()
+
+    assert strip.editor is None
+    assert (view.workspaces.current.name == "Mine") is (key is not Qt.Key.Key_Escape)
+    assert QApplication.focusWidget() is strip.tab_at(view.workspaces.active)
+
+
+@pytest.mark.parametrize("label", [SPLIT_SIDE_BY_SIDE_LABEL, SPLIT_STACKED_LABEL])
+def test_a_split_chosen_from_the_keyboard_gives_the_focus_to_the_new_area_s_chooser(
+    application: QApplication, shown: list[QWidget], label: str
+) -> None:
+    """After a split, the keyboard is in the Area the split made (`PL-24SN`).
+
+    The split rebuilds the Area whose chooser held the focus, and a focus left
+    for Qt to pick went to the page's scroll area.
+    """
+
+    view = _dashboard(application, shown)
+    areas = view.layout_container
+    first = areas.model.areas()[0].id
+    held = {area.id for area in areas.model.areas()}
+
+    _choose_in_area_menu(application, view, first, (label,))
+    application.processEvents()
+
+    (made,) = (area.id for area in areas.model.areas() if area.id not in held)
+    assert QApplication.focusWidget() is areas.frame(made).chooser
