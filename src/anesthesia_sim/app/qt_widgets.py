@@ -50,7 +50,15 @@ from math import ceil
 from typing import Final
 
 from PySide6.QtCore import QPoint, QRect, QSignalBlocker, QSize, Qt, Signal
-from PySide6.QtGui import QColor, QFont, QFontMetrics, QPalette, QResizeEvent, QWheelEvent
+from PySide6.QtGui import (
+    QColor,
+    QFont,
+    QFontMetrics,
+    QMouseEvent,
+    QPalette,
+    QResizeEvent,
+    QWheelEvent,
+)
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -70,6 +78,7 @@ from PySide6.QtWidgets import (
     QSpinBox,
     QStyle,
     QStyleOptionComboBox,
+    QStyleOptionSlider,
     QVBoxLayout,
     QWidget,
 )
@@ -865,6 +874,78 @@ class ReadoutRow(QWidget):
         self._columns = columns
 
 
+class _SettingSlider(QSlider):
+    """A horizontal slider on which a press on the track is one input, and one on the handle a grab.
+
+    Each platform's style says which mouse buttons move the handle straight
+    to the pointer when pressed on the track (`SH_Slider_AbsoluteSetButtons`).
+    On macOS that is the left button. Under Qt's Fusion style it is the middle
+    button, and a left click on the track steps one page instead. The slider
+    keeps each platform's own convention (project owner, 2026-11-22,
+    ratified, `PL-57LD`).
+
+    Qt's `QSlider.mousePressEvent` handles such a press in two parts. It
+    applies the value at the pointer, and then it marks the handle as held,
+    which emits `sliderPressed`. `ParameterSlider` starts a preview of an
+    unapplied value on `sliderPressed`. So without this class, a click on the
+    track applied a value and then drew it labelled "not applied". A press on
+    the handle off its centre also moved the handle to the pointer, and so
+    applied a value before any drag.
+
+    This class handles the two cases apart. A press on the track applies the
+    value at the pointer, as one input, and `jumping` is true while it does
+    so, so that no preview starts. A press on the handle applies nothing. The
+    handle stays where it was, and the press then reports `sliderPressed` as
+    a grab of the handle does under any style. Qt measures a drag from where
+    the handle would have jumped to, so the first movement of such a drag
+    brings the handle's centre under the pointer. That movement is at most
+    half the handle's width, and it is a preview until the release.
+
+    Attributes:
+        jumping: True only while a press on the track moves the handle to
+            the pointer.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(Qt.Orientation.Horizontal)
+        self.jumping = False
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:  # Qt spells this in camelCase.
+        button = event.button().value
+        moves_to_pointer = self.style().styleHint(
+            QStyle.StyleHint.SH_Slider_AbsoluteSetButtons, None, self
+        )
+
+        if button & moves_to_pointer != button:
+            super().mousePressEvent(event)
+            return
+
+        options = QStyleOptionSlider()
+        self.initStyleOption(options)
+        pressed = self.style().hitTestComplexControl(
+            QStyle.ComplexControl.CC_Slider, options, event.position().toPoint(), self
+        )
+
+        if pressed != QStyle.SubControl.SC_SliderHandle:
+            self.jumping = True
+
+            try:
+                super().mousePressEvent(event)
+            finally:
+                self.jumping = False
+
+            return
+
+        held = self.value()
+
+        with QSignalBlocker(self):
+            super().mousePressEvent(event)
+            self.setValue(held)
+
+        if self.isSliderDown():
+            self.sliderPressed.emit()
+
+
 class ParameterSlider(QWidget):
     """One setting: its name, its gloss, an integer slider and the value beside it.
 
@@ -897,6 +978,12 @@ class ParameterSlider(QWidget):
     off to give exactly that split. With tracking off, `valueChanged` fires
     on release for a drag and at once for every other input.
 
+    A click on the groove steps one count under Fusion and moves the handle
+    to the pointer on macOS, as each platform's style says. Either way it
+    applies at once and draws no preview. If the button is then held and
+    moved, the movement is a drag and previews as one (`_SettingSlider`,
+    `PL-57LD`).
+
     Attributes:
         slider: The integer slider.
         name_label: The setting's name.
@@ -915,7 +1002,8 @@ class ParameterSlider(QWidget):
             a wheel step or a click on the groove. `set_setting` never emits
             it.
         preview_moved: Emitted with the decoded value at the held thumb's
-            position, when the thumb is pressed and each time it moves.
+            position, when the thumb is pressed and each time it moves. A
+            press on the groove emits it only once the held thumb moves.
         preview_ended: Emitted when the held thumb is released, after
             `value_changed` has applied the value.
     """
@@ -942,7 +1030,7 @@ class ParameterSlider(QWidget):
         self.qualifier_label = styled_label(
             setting.qualifier, color=MUTED, size_px=PARAMETER_QUALIFIER_SIZE, italic=True
         )
-        self.slider = QSlider(Qt.Orientation.Horizontal)
+        self.slider = _SettingSlider()
         self.slider.setSingleStep(1)
         self.slider.setPageStep(1)
         self.slider.setTracking(False)
@@ -1014,6 +1102,15 @@ class ParameterSlider(QWidget):
         self.value_changed.emit(slider_value(position, self._decimals))
 
     def _on_thumb_pressed(self) -> None:
+        """Start a preview where the handle stands, unless the press was on the groove.
+
+        A press on the groove has already applied its value, so a preview
+        would label an applied value "not applied" (`PL-57LD`).
+        """
+
+        if self.slider.jumping:
+            return
+
         self.preview_moved.emit(slider_value(self.slider.sliderPosition(), self._decimals))
 
     def _on_thumb_moved(self, position: int) -> None:

@@ -5466,6 +5466,17 @@ the slider away from its handle is a single input, so it applies at once and
 draws no preview. A handle released at the setting already in force applies
 nothing, and the run records no setting change.
 
+**A click on the slider away from its handle follows the platform's own
+convention** (`PL-57LD`). The simulator sets no style of its own, so Qt's style
+for the platform decides it. On macOS, and under Qt's Windows 11 style, a left
+click moves the handle to the pointer. Under Qt's Fusion style a left click
+moves the handle one step towards the pointer, and a middle click moves it to
+the pointer. Each of these is one input, so it is applied at once and draws no
+preview. If the button then stays down and the pointer moves, the movement is a
+drag, which previews until the release. A press on the handle itself applies
+nothing until the handle is dragged, on every platform, even where the press is
+off the handle's centre.
+
 **A stopped run accepts no new setting and draws no preview.** A run stops when
 it fails or reaches the end of the longest run the simulator supports.
 
@@ -5498,6 +5509,19 @@ value. The trial run then takes the new value through the same setter that
 applies a value to the run. The centred time window comes from
 `chart_time_base.preview_window`, and the wording of the off-scale notice from
 `dashboard_frame.PREVIEW_OFF_SCALE_NOTICE_TEMPLATE`.
+
+The platform's convention is the style hint `SH_Slider_AbsoluteSetButtons`.
+Qt's source at tag v6.11.2 sets it to the left and middle buttons in
+`qmacstyle_mac.mm`, to the left button in `qwindows11style.cpp`, and to the
+middle button in `qcommonstyle.cpp`, which Fusion inherits. For such a press,
+`QSlider.mousePressEvent` applies the value at the pointer and then marks the
+handle as held, which is the signal that starts a preview. `_SettingSlider` in
+`app/qt_widgets.py` therefore starts no preview for a press on the track, and
+puts the handle back where it was for a press on the handle. The tests in
+`tests/integration/simulation_view/test_simulation_view_controls.py` run both
+presses under Fusion and under a style that returns the macOS hints
+(`test_a_click_on_a_slider_s_track_applies_at_once_and_draws_no_preview`,
+`test_a_press_on_the_handle_off_its_centre_released_unmoved_applies_nothing`).
 
 The 2 px minimum width for a preview curve is there because an antialiased line
 thinner than 2 px has less than 3:1 contrast against the panel
