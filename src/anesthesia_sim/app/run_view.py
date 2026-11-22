@@ -1666,10 +1666,7 @@ class RunView(QWidget):
             # only that one is logged. A later one would name a cause that the
             # run's record does not.
             _LOG.error(
-                "%s stopped on a failure: %s",
-                run_label(self.run_id),
-                reason,
-                exc_info=error,
+                "%s stopped on a failure: %s", run_label(self.run_id), reason, exc_info=error
             )
 
         if in_frame:

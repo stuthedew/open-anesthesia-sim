@@ -291,9 +291,7 @@ def main() -> None:
     app.setOrganizationName(APP_ORGANIZATION_NAME)
     app.setApplicationName(APP_DISPLAY_NAME)
     declare_application_colours(app)
-    data_location = QStandardPaths.writableLocation(
-        QStandardPaths.StandardLocation.AppDataLocation
-    )
+    data_location = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation)
     open_failure_log(data_location, os.environ)
     view = open_dashboard(BranchedCase(SimulationController()), data_location, os.environ)
     window = QMainWindow()
