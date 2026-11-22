@@ -1961,14 +1961,6 @@ was read as its PubMed abstract on 2026-11-22.
   doi:10.1016/0034-5687(76)90060-8. Its measurements were made "in Denver at
   a PB of 635 mm Hg". The subjects were dogs, but the figure is the
   laboratory's ambient pressure.
-- Julian CG, Subudhi AW, Hill RC, Wilson MJ, Dimmen AC, Hansen KC, Roach RC.
-  Exploratory proteomic analysis of hypobaric hypoxia and acute mountain
-  sickness in humans. *J Appl Physiol* 2014;116(7):937-44.
-  doi:10.1152/japplphysiol.00362.2013. Its baseline samples were taken at
-  "1,609 m; barometric pressure = 625 mmHg". The abstract does not name the
-  city, and the first author's affiliation is the University of Colorado
-  Denver. The "about 630 mmHg" given for Denver lies between this figure and
-  Banchero et al.'s.
 
 ### The tests and code behind this section
 

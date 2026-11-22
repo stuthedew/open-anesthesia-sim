@@ -48,7 +48,7 @@ from anesthesia_sim.core.parameters import (
     load_reference_adult_parameters,
 )
 from anesthesia_sim.core.prediction import predicted_states_at
-from anesthesia_sim.core.supported_ranges import CaseInstant
+from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow
 from anesthesia_sim.core.units import LITRES_PER_CUBIC_METRE
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
@@ -472,15 +472,20 @@ def test_the_omitted_lung_store_is_the_share_of_the_fast_pool_printed() -> None:
         )
 
 
-def _alveolar_over_inspired(agent_id: str, *, with_lung_store: bool) -> tuple[float, float]:
+def _alveolar_over_inspired(
+    agent_id: str, *, with_lung_store: bool, fresh_gas_flow_l_min: float | None = None
+) -> tuple[float, float]:
     """$F_A/F_I$ at one minute and at 30 minutes of wash-in from zero agent.
 
     With the store, its capacity is added to the alveolar gas volume, so it
-    stays at the alveolar partial pressure. Every other setting is the
-    agent's default.
+    stays at the alveolar partial pressure. A fresh gas flow left as `None` is
+    the agent's default, and every other setting is the agent's default.
     """
 
-    settings = AgentUptakeSystem.for_agent(agent_id).equation_settings()
+    system = AgentUptakeSystem.for_agent(agent_id)
+    if fresh_gas_flow_l_min is not None:
+        system.set_fresh_gas_flow(FreshGasFlow(fresh_gas_flow_l_min))
+    settings = system.equation_settings()
     if with_lung_store:
         settings = replace(
             settings,
@@ -502,42 +507,71 @@ def _alveolar_over_inspired(agent_id: str, *, with_lung_store: bool) -> tuple[fl
     )
 
 
-def test_the_omitted_lung_store_lowers_the_wash_in_by_the_amounts_printed() -> None:
-    """The store lowers $F_A/F_I$ by 0.08 to 0.10 at one minute and 0.001 to 0.005 at 30.
+def _lung_store_drops(
+    agent_id: str, fresh_gas_flow_l_min: float | None = None
+) -> tuple[float, float]:
+    """How much the store lowers $F_A/F_I$ at one minute and at 30 minutes."""
 
+    without = _alveolar_over_inspired(
+        agent_id, with_lung_store=False, fresh_gas_flow_l_min=fresh_gas_flow_l_min
+    )
+    with_store = _alveolar_over_inspired(
+        agent_id, with_lung_store=True, fresh_gas_flow_l_min=fresh_gas_flow_l_min
+    )
+
+    return without[0] - with_store[0], without[1] - with_store[1]
+
+
+def _printed_range(values: list[float], low: str, high: str) -> tuple[str, str]:
+    """The lowest and highest of `values`, each to the decimals printed for it."""
+
+    return _as_printed(min(values), low), _as_printed(max(values), high)
+
+
+def test_the_omitted_lung_store_lowers_the_wash_in_by_the_amounts_printed() -> None:
+    """The store lowers $F_A/F_I$ by the amounts printed, at the defaults and at low flow.
+
+    At each agent's default settings the text gives 0.08 to 0.10 at one minute
+    and 0.001 to 0.005 at 30 minutes. With 0.5 L/min of fresh gas and the
+    other settings at their defaults, it gives 0.005 to 0.010 at 30 minutes.
     The test compares each agent's model with and without the store, from the
     same settings, and checks the lowest and highest drop across the three
     agents at the printed decimals. A store that kept filling past the first
-    minutes would leave a larger drop at 30 minutes than the text allows.
+    minutes would leave a larger drop at 30 minutes than the text allows. The
+    test also checks that each agent's 30-minute drop is larger at the low
+    flow, which is the direction the text states.
     """
 
     first_low, first_high, late_low, late_high = _one(
         r"lowers \$`F_A/F_I`\$ by (\d\.\d+) to (\d\.\d+) at one minute of wash-in, but by "
         r"only (\d\.\d+) to (\d\.\d+) at 30 minutes"
     )
-    drops = {
-        agent_id: tuple(
-            without - with_store
-            for without, with_store in zip(
-                _alveolar_over_inspired(agent_id, with_lung_store=False),
-                _alveolar_over_inspired(agent_id, with_lung_store=True),
-                strict=True,
-            )
-        )
-        for agent_id in LUNG_STORE_AGENTS
-    }
+    low_flow, low_flow_low, low_flow_high = _one(
+        r"with (\d\.\d) L/min of fresh gas and the other settings at their defaults, the "
+        r"drop at 30 minutes is (\d\.\d+) to (\d\.\d+)"
+    )
+    drops = {agent_id: _lung_store_drops(agent_id) for agent_id in LUNG_STORE_AGENTS}
     at_one_minute = [first for first, _late in drops.values()]
     at_thirty_minutes = [late for _first, late in drops.values()]
+    late_at_low_flow = {
+        agent_id: _lung_store_drops(agent_id, float(low_flow))[1] for agent_id in LUNG_STORE_AGENTS
+    }
 
     assert all(drop > 0.0 for drop in at_one_minute + at_thirty_minutes), drops
-    assert (
-        _as_printed(min(at_one_minute), first_low),
-        _as_printed(max(at_one_minute), first_high),
-    ) == (first_low, first_high), f"the drops at one minute are {drops}"
-    assert (
-        _as_printed(min(at_thirty_minutes), late_low),
-        _as_printed(max(at_thirty_minutes), late_high),
-    ) == (late_low, late_high), f"the drops at 30 minutes are {drops}"
+    assert _printed_range(at_one_minute, first_low, first_high) == (first_low, first_high), (
+        f"the drops at one minute are {drops}"
+    )
+    assert _printed_range(at_thirty_minutes, late_low, late_high) == (late_low, late_high), (
+        f"the drops at 30 minutes are {drops}"
+    )
+    assert _printed_range(list(late_at_low_flow.values()), low_flow_low, low_flow_high) == (
+        low_flow_low,
+        low_flow_high,
+    ), f"the drops at 30 minutes with {low_flow} L/min of fresh gas are {late_at_low_flow}"
+    assert all(late_at_low_flow[agent_id] > drops[agent_id][1] for agent_id in LUNG_STORE_AGENTS), (
+        late_at_low_flow,
+        drops,
+    )
 
 
 #: The case lengths, in minutes, over which `docs/MODEL.md` § "Intertissue

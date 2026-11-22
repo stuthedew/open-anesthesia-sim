@@ -1602,10 +1602,13 @@ sizes used here are round figures, not measurements from a source: 1 kg of
 lung tissue with a tissue:blood ratio of 1.2, and 1.8 L of pulmonary and
 arterial blood. On them the store is 20.1% of desflurane's fast pool, 19.7% of
 sevoflurane's and 23.4% of isoflurane's. The store stays at the alveolar
-partial pressure, so it takes up agent only while $`F_A`$ is rising. Added to
-the alveolar gas as extra capacity, it lowers $`F_A/F_I`$ by 0.08 to 0.10 at
-one minute of wash-in, but by only 0.001 to 0.005 at 30 minutes. It acts
-mainly early in an elimination.
+partial pressure, so it takes up agent only while $`F_A`$ is rising. At the
+default settings, adding it to the alveolar gas as extra capacity lowers
+$`F_A/F_I`$ by 0.08 to 0.10 at one minute of wash-in, but by only 0.001 to 0.005
+at 30 minutes. Other settings change these sizes. A low fresh gas flow keeps
+$`F_A`$ rising for longer, so the late effect is larger: with 0.5 L/min of fresh
+gas and the other settings at their defaults, the drop at 30 minutes is 0.005 to
+0.010. It acts mainly early in an elimination.
 
 ### Dead space
 
@@ -1704,7 +1707,8 @@ out biases four things:
   steady arterial partial pressure. Then over any case from half an hour to
   four hours it takes up 0.9 to 2.2 times as much agent as the model's whole fat
   group, or 2.6 to 5.6 times as much as the studies' fitted fat group. The
-  missing store is as large as the modeled fat group's uptake, or larger.
+  missing store is about as large as the modeled fat group's uptake, or
+  larger.
 - **The fat trace shows only the slowly filling fat.** On the same
   assumptions, fat lying against well-perfused tissue runs at four to six and a half times the trace's
   partial pressure throughout such a case. After an hour it is at 13 to 20% of
@@ -1801,8 +1805,8 @@ has an answer in it, whether it concerns an HME or a heated humidifier.
 
 Ambient pressure is fixed at 760 mmHg. At sea level, both classes of vaporizer
 deliver the same partial pressure at a given dial position, so no displayed
-number is wrong there. A user in Denver (about 630 mmHg; Banchero et al. 1976,
-Julian et al. 2014) or Mexico City (about 585 mmHg; Hernández-Zenteno et al.
+number is wrong there. A user in Denver (about 635 mmHg; Banchero et al. 1976)
+or Mexico City (about 585 mmHg; Hernández-Zenteno et al.
 2002) who sets 6% desflurane in the simulator and 6% on the real device is
 not delivering the same anesthetic, and nothing else in the simulator says so.
 
@@ -1948,10 +1952,6 @@ and Lowe's tissue coefficients (in Yasuda, Targ and Eger 1989, p. 373).
 - Jones HM, Rowland-Yeo K. Basic concepts in physiologically based
   pharmacokinetic modeling in drug discovery and development.
   *CPT Pharmacometrics Syst Pharmacol* 2013;2:e63. doi:10.1038/psp.2013.41.
-- Julian CG, Subudhi AW, Hill RC, Wilson MJ, Dimmen AC, Hansen KC, Roach RC.
-  Exploratory proteomic analysis of hypobaric hypoxia and acute mountain
-  sickness in humans. *J Appl Physiol* 2014;116(7):937-44. PMID 24265281,
-  doi:10.1152/japplphysiol.00362.2013.
 - Katoh T, Suguro Y, Kimura T, Ikeda K. Cerebral awakening concentration of
   sevoflurane and isoflurane predicted during slow and fast alveolar washout.
   *Anesth Analg* 1993;77(5):1012-1017.
