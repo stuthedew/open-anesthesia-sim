@@ -3659,8 +3659,13 @@ def _pick_name(line: PickLine) -> str:
     return line.name
 
 
-def _pick_block(number: int, line: PickLine) -> list[str]:
-    """One numbered line of `format_picks`, with its next pick and its members beneath."""
+def _pick_block(number: int | None, line: PickLine) -> list[str]:
+    """One line of `format_picks`, with its next pick and its members beneath.
+
+    `number` is `None` for a build line the roadmap holds back until the gate
+    clears. It is not offered, so it carries no number to name it back by,
+    and its pick is what would come first then (`PL-JF22`).
+    """
     lanes = (
         ", ".join(f"{lane} {count}" for lane, count in line.lanes)
         if len(line.lanes) > 1
@@ -3675,7 +3680,8 @@ def _pick_block(number: int, line: PickLine) -> list[str]:
         [effort_total(list(line.items)), *(f"{count} {said}" for count, said in held if count)]
     )
     what = "startable" if line.kind in (BUILD, BUILD_REST) else "open"
-    head = f"  {number}. {_pick_name(line)} - {len(line.items)} {what} ({lanes}): {counts}"
+    mark = "-" if number is None else f"{number}."
+    head = f"  {mark} {_pick_name(line)} - {len(line.items)} {what} ({lanes}): {counts}"
     if line.kind == BUILD:
         others = _plural(line.scope_others, "other open item", "other open items")
         head += (
@@ -3689,7 +3695,8 @@ def _pick_block(number: int, line: PickLine) -> list[str]:
         lines.append("       next: nothing here can start now")
     else:
         item = line.pick.item
-        lines.append(f"       next: {item.identifier} ({item.effort}) {_gloss(item.title, 100)}")
+        said = "first once the gate clears" if number is None else "next"
+        lines.append(f"       {said}: {item.identifier} ({item.effort}) {_gloss(item.title, 100)}")
         if item.payoff:
             lines.append(f"       payoff: {item.payoff}")
     if line.kind != HEAD:
@@ -3706,21 +3713,32 @@ def format_picks(picks: Picks) -> str:
     """
     entries = _plural(picks.clearable, "entry", "entries")
     lines = [
-        f"{picks.milestone}: the {entries} its gate can clear, by feature, and the"
-        " Required-scope work that can start now.",
+        f"{picks.milestone}: the {entries} its gate can clear, by feature"
+        + (
+            ", and the Required-scope work held back until it clears."
+            if picks.build_waits
+            else ", and the Required-scope work that can start now."
+        ),
         "",
     ]
     number = 0
     built = False
     for line in picks.lines:
-        if line.kind in (BUILD, BUILD_REST) and not built:
+        build = line.kind in (BUILD, BUILD_REST)
+        if build and not built:
             built = True
-            waits = (
-                f" - the roadmap clears the gate first, with {entries} still open"
-                if picks.build_waits
-                else ""
-            )
-            lines += ["", f"  Build, from the milestone's Required scope{waits}:"]
+            if picks.build_waits:
+                lines += [
+                    "",
+                    f"  Held back until the gate clears, with {entries} still open: the",
+                    '  Required-scope work that could start then. ROADMAP.md § "The cadence"',
+                    "  clears the gate before the milestone is built, so none of it is offered.",
+                ]
+            else:
+                lines += ["", "  Build, from the milestone's Required scope:"]
+        if build and picks.build_waits:
+            lines += _pick_block(None, line)
+            continue
         number += 1
         lines += _pick_block(number, line)
     if not picks.lines:

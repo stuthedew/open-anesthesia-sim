@@ -107,6 +107,7 @@ from .plan import (
     features,
     gate,
     generator_defects,
+    held_back_by_gate,
     is_new_work,
     longest_waiting,
     offerable,
@@ -3020,10 +3021,19 @@ def cmd_next(args: argparse.Namespace) -> int:
     pending = awaiting_decision(
         items, flight.ids, effort=args.effort, lane=lane, workflow_paths=config.workflow_paths
     )
+    held = held_back_by_gate(
+        items,
+        flight.ids,
+        scope=plan.scope if plan is not None else None,
+        effort=args.effort,
+        lane=lane,
+        workflow_paths=config.workflow_paths,
+    )
     today = args.today or date.today()
     where = f" in the {lane} lane" if lane else ""
     if not picks:
         print(f"Nothing is ready to start{where}.")
+        _say_held_back(held, plan, args.limit)
         _say_decisions(pending, today, args.limit, NAMED_NOT_OFFERED)
         if report.untriaged:
             print(f"{len(report.untriaged)} untriaged item(s) are waiting: `docket list`.")
@@ -3038,6 +3048,7 @@ def cmd_next(args: argparse.Namespace) -> int:
     print(f"{render.open_count(report)} open. Suggested next{where}:\n")
     for index, pick in enumerate(picks, start=1):
         print(f"  {index}. {pick.describe()}\n")
+    _say_held_back(held, plan, args.limit)
     _say_decisions(pending, today, args.limit, NAMED_NOT_OFFERED)
     if flight.ids:
         print(render.format_excluded(flight.ids, _holdings(args)))
@@ -3136,6 +3147,25 @@ NAMED_NOT_AGED = (
 #: `next`'s default `--limit`, and the cut on the decisions line a bare
 #: `concurrent` prints, so the two name the same decisions.
 NEXT_LIMIT = 3
+
+
+def _say_held_back(held: list[Item], plan: Wave | None, limit: int) -> None:
+    """Name the milestone work `next` did not offer because the gate is not yet clear.
+
+    Named rather than hidden, for the reason `_say_decisions` names a decision:
+    the work exists and is startable, and the roadmap is what holds it
+    (`plan.held_back`, `PL-JF22`).
+    """
+    if not held or plan is None or plan.scope is None:
+        return
+    shown = ", ".join(item.identifier for item in held[:limit])
+    rest = len(held) - limit
+    more = f", and {rest} more" if rest > 0 else ""
+    print(
+        f"Held back until the gate clears ({len(held)}): {shown}{more}. Each is in "
+        f'{plan.scope.anchor}\'s Required scope, and ROADMAP.md § "The cadence" clears the '
+        "gate before the milestone is built; `docket picks` says what waits on each."
+    )
 
 
 def _say_decisions(decisions: list[Item], today: date, limit: int, because: str) -> None:

@@ -1509,7 +1509,9 @@ entries of the gate's milestone that hold an item that can start now.
 - A build line names its entry by number and bold lead, the items it can
   start, and how many of the scope's other open items wait on them through
   `blocked-by`, at any depth and directly. While the beat is clearing the gate
-  it says the roadmap clears the gate first.
+  the build lines are held back rather than offered: they carry no number,
+  sit under a heading that says the roadmap clears the gate first, and name
+  the item that would come first once it clears (`PL-JF22`).
 - At most eight lines. Heads, lane lines and build entries are placed first;
   features fill what is left, largest first, and one that does not fit folds
   into its items' lane lines, which the foot names. Build entries past the cap
@@ -1865,6 +1867,13 @@ structure is read by its own grammar instead:
 Out-of-scope work is marked, never hidden. Whether an item is *really* out of
 scope is a judgment about the prose around its id, and the command reads
 structure rather than sentences.
+
+**One exception: the gated milestone's own `Required scope` while its gate is
+the beat.** `ROADMAP.md` § "The cadence" clears the gate before the milestone
+is built, so `next` does not offer that work then, below `P0` and off the
+generator tier. It names how many items it held back and which, on a line of
+their own, and offers them once the gate clears (`PL-JF22`). This is a rule
+the roadmap states, not a judgment about prose.
 
 Four things follow, and they are limitations in the same way the concurrency
 answer below is:

@@ -41,7 +41,7 @@ from . import markdown
 from .model import NO_DELEGATION, DelegationPaths, Item, ranks_as_generator
 from .plan import GATE_LANES, Recommendation, awaits_decision, offerable, recommend
 from .release import code_spans
-from .roadmap import CLEAR, ScopeEntry, Wave
+from .roadmap import CLEAR, Scope, ScopeEntry, Wave
 
 #: The cap on pick lines: the Report paragraph's "at most eight lines" in the
 #: Projects trial's instructions, which the list was built to answer.
@@ -99,7 +99,8 @@ class Picks:
     self_cleared: int
     blocked_outside: int
     #: Whether the beat is still clearing the gate, which the roadmap does
-    #: before any build work.
+    #: before any build work. The build lines are then held back rather than
+    #: offered, and carry no number (`PL-JF22`).
     build_waits: bool
     #: Clearable gate ids led on a generator line rather than grouped.
     led: tuple[str, ...] = ()
@@ -220,17 +221,26 @@ def picks(
     if gate is None:
         raise ValueError("the plan records no gate")
 
-    def rank(members: list[Item]) -> Recommendation | None:
+    build_waits = plan.beat == CLEAR
+
+    def rank(members: list[Item], *, scope: Scope | None = plan.scope) -> Recommendation | None:
         found = recommend(
             members,
             in_flight,
             limit=1,
-            scope=plan.scope,
+            scope=scope,
             workflow_paths=workflow_paths,
             generator_paths=generator_paths,
             delegation=delegation,
         )
         return found[0] if found else None
+
+    def rank_build(members: list[Item]) -> Recommendation | None:
+        """The build entry's first pick. While the gate is being cleared `recommend`
+        offers no Required-scope item (`plan.held_back`), so the held line is
+        ranked without the plan, to name what would come first once it clears.
+        """
+        return rank(members, scope=None if build_waits else plan.scope)
 
     by_id = {item.identifier: item for item in items}
     open_items = {item.identifier: item for item in items if item.is_open}
@@ -275,7 +285,7 @@ def picks(
                 startable,
                 in_flight,
                 workflow_paths,
-                rank,
+                rank_build,
                 entry=number,
                 waiting=(waiting, directly, others),
             )
@@ -292,7 +302,7 @@ def picks(
                 (item for line in rest for item in line.items),
                 in_flight,
                 workflow_paths,
-                rank,
+                rank_build,
                 entries=tuple(line.entry for line in rest),
             ),
         ]
@@ -323,7 +333,7 @@ def picks(
         self_cleared=len(gate.self_cleared),
         deferred=len(gate.deferred),
         blocked_outside=len(gate.blocked_outside),
-        build_waits=plan.beat == CLEAR,
+        build_waits=build_waits,
         led=led,
         unread=plan.unread,
     )
