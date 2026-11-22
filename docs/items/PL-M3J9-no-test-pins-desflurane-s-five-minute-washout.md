@@ -3,6 +3,7 @@ id: PL-M3J9
 title: No test pins desflurane's five-minute washout ratio at the default fresh gas flow of 4 L/min (0.285), which docs/MODEL.md Known limitations quotes; only the 10 L/min figure is pinned, in MODELLED_ELIMINATION_RATIOS
 status: done
 feature: model-spec-accuracy
+milestone: v0.6.19
 touches: tests/reference/test_published_wash_in_and_elimination.py, docs/MODEL.md
 added: 2026-11-21
 closed: 2026-11-22

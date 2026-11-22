@@ -7,6 +7,7 @@ effort: L
 status: done
 classes: docs
 feature: model-md-structure
+milestone: v0.6.19
 touches: docs/, tools/, subprojects/docket/, .claude/, CLAUDE.md, docket.toml, README.md, ROADMAP.md, src/anesthesia_sim/, tests/
 added: 2026-11-11
 closed: 2026-11-11

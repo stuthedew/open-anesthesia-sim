@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: unit-test-review
+milestone: v0.6.19
 touches: tools/diff_mutation.py, tests/unit/test_diff_mutation.py, .github/workflows/quality.yml, tests/unit/test_required_checks_check.py, docs/mutation-testing.md, ROADMAP.md
 added: 2026-11-11
 closed: 2026-11-11

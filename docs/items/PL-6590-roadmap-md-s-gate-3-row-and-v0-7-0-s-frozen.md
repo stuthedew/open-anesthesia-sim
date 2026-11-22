@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect, docs
+milestone: v0.6.19
 touches: ROADMAP.md
 deferred-from: v0.7.0 - the answer decides how a gate orders its work from Gate 4 on, and no displayed value depends on it
 added: 2026-11-10

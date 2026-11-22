@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: anesthesia-machine
+milestone: v0.6.19
 touches: docs/MODEL.md, docs/machine-abstraction.md, docs/prose-review/model-description-draft.md, docs/machine-survey.md, docs/items/PL-CR81-projects-threads-in-the-v0-7-0-project-run.md
 added: 2026-11-11
 closed: 2026-11-22

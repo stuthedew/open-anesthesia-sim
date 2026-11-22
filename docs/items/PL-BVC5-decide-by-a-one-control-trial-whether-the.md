@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: planning
 feature: interface-pass-design-round
+milestone: v0.6.19
 touches: tests/benchmarks/style_trial.py, tests/benchmarks/style_trial_checks.py
 deferred-from: v0.7.0 - captured after the freeze; the interface pass's own work (planned-milestone item 33), not safety or science
 added: 2026-11-11

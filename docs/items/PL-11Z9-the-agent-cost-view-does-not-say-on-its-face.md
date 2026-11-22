@@ -5,6 +5,7 @@ priority: P1
 effort: S
 status: done
 classes: safety, defect
+milestone: v0.6.19
 touches: src/anesthesia_sim/app/agent_cost.py, tests/integration/test_agent_cost_view.py, ROADMAP.md
 added: 2026-11-07
 closed: 2026-11-11

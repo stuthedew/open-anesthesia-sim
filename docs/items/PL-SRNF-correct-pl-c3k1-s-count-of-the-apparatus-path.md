@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: housekeeping
+milestone: v0.6.19
 touches: docs/items/PL-C3K1-tools-rules-paths-check-py-keeps-the-apparatus.md, docs/items/PL-LZ54-after-whole-second-stepping-lands-correct-each.md
 added: 2026-11-21
 closed: 2026-11-21

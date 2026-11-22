@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: infra
+milestone: v0.6.19
 touches: .python-version, pyproject.toml, uv.lock, README.md, .github/workflows/drift.yml, tests/unit/test_config_home_check.py, tools/blind_review.py, tools/blind_review_report.py, tools/ci_runs.py, tools/generator_check.py, tools/model_rewrite.py, tools/new_prose.py, tools/required_checks_check.py, tools/tag_release.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-18 triage pass
 added: 2026-10-18

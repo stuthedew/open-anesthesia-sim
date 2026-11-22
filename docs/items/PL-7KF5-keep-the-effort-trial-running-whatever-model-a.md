@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: effort-trial
+milestone: v0.6.19
 touches: docs/model-review.md, .claude/skills/model-review/SKILL.md, docs/maintainer.md
 deferred-from: v0.7.0 - workflow tooling outside the schematic release
 added: 2026-11-11

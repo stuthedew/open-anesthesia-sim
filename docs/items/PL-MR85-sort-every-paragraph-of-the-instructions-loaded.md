@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: session-cost, planning
 feature: standing-weight
+milestone: v0.6.19
 touches: docs/items/PL-MR85-sort-every-paragraph-of-the-instructions-loaded.md
 deferred-from: v0.7.0 - the sort changes how sessions are instructed, not the schematic, so the release does not wait on this answer
 added: 2026-11-20

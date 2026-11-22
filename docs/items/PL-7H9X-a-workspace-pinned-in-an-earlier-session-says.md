@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: interface-matches-its-spec
+milestone: v0.6.19
 touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/view_registry.py, src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/workspace_tabs.py, docs/INTERFACE.md, tests/unit/test_dashboard_frame.py, tests/unit/test_view_registry.py, tests/integration/test_workspace_tabs.py, tests/integration/test_workspace_saving.py, tests/integration/test_layout_keyboard.py
 added: 2026-11-21
 closed: 2026-11-21

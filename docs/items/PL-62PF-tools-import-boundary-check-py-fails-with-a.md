@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: defect
+milestone: v0.6.19
 touches: tools/import_boundary_check.py, tests/unit/test_import_boundary_check.py, tools/check_support.py, tools/fixture_id_check.py, tools/literal_home_check.py, tools/regex_check.py, tools/core_vocabulary_check.py
 deferred-from: v0.7.0 - the gate runs the check with the project's Python and is unaffected; only a bare run crashes
 added: 2026-11-11

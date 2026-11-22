@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: copy-editor
+milestone: v0.6.19
 touches: src/anesthesia_sim/app/display_units.py
 deferred-from: v0.7.0 - a new problem: the comment was written on 2026-11-13 by #2136 (44449552), which built Required-scope work (PL-RJN9, PL-HQPF), after the freeze
 added: 2026-11-16

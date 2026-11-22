@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: test, safety
 feature: tests-detect-wrong-values
+milestone: v0.6.19
 touches: tests/integration/test_control_timeline_replay.py
 deferred-from: v0.7.0 - not live: checked 2026-11-09: all four control setters in app/controller.py go through _change_setting, which records each accepted change, so no learner sees a setting the timeline left out now; the test guards the next path that might not
 added: 2026-11-05

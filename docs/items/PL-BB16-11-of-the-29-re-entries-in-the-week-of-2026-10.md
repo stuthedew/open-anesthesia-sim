@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: convergence-visibility
+milestone: v0.6.19
 touches: docs/items/PL-BB16-11-of-the-29-re-entries-in-the-week-of-2026-10.md
 added: 2026-11-03
 closed: 2026-11-14

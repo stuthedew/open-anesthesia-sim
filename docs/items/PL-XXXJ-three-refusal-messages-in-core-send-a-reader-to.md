@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: model-spec-accuracy
+milestone: v0.6.19
 touches: src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/patient.py, tests/unit/test_patient.py, tests/unit/test_supported_ranges.py, docs/items/PL-PH3N-docstrings-code-comments-and-one-data-note-that.md
 deferred-from: v0.7.0 - captured after the freeze by the check of docs/MODEL.md against the code; it changes no displayed value, and it is not safety or science
 added: 2026-11-21

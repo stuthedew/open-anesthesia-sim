@@ -5,6 +5,7 @@ priority: P2
 effort: M
 status: done
 classes: docs
+milestone: v0.6.19
 touches: docs/INTERFACE.md, docs/interface-provenance.md, docs/ARCHITECTURE.md, docs/items, docs/prose-review/model-description-draft.md
 added: 2026-11-21
 closed: 2026-11-21

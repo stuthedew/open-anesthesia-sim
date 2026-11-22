@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: housekeeping
+milestone: v0.6.19
 touches: ROADMAP.md, docs/items/PL-2FZ9-load-a-machine-profile-by-id-and-carry-a.md
 added: 2026-11-14
 closed: 2026-11-14

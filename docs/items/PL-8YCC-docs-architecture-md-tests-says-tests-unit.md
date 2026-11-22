@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: unit-test-review
+milestone: v0.6.19
 touches: docs/ARCHITECTURE.md
 added: 2026-11-11
 closed: 2026-11-11
