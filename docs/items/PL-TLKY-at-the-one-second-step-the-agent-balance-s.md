@@ -3,7 +3,7 @@ id: PL-TLKY
 title: At the one-second step the agent balance's fixed limit of one part in 10**9 is below one propagator's derived rounding bound at the stiffest envelope corners (9.3e-9 at 22 squarings), so the check refuses the first step at 8 of the 96 corners, and it is two thirds of the derived bound for a shipped agent's longest run (1.5e-9); decide whether the limit should widen by what squarings add, which PL-D88N recorded as the shape for the day a shipped step first needed a squaring
 priority: P1
 effort: S
-status: needs-decision
+status: ready
 classes: safety
 feature: floating-point-domain
 touches: src/anesthesia_sim/core/rounding.py, src/anesthesia_sim/core/agent_simulation_validation.py, docs/MODEL.md, tests/unit/test_numerical_envelope_sweep.py
@@ -31,3 +31,7 @@ payoff: The check that halts a run whose agent does not add up neither halts a c
 **Done when.** The agent balance's limit is the one the owner chose, `docs/MODEL.md` and `core/rounding.py` state it and its reason, and a test shows that a correct one-second step at the stiffest envelope corners passes or halts as that choice says.
 
 **Generator check.** An instance of the fact that `PL-GJ1W` (no one place states how far a computed value can be from the exact one) names: how far a computed value can be from the exact one, and so what a comparison on it proves. That head is still open, so this is not a re-entry. `PL-D88N` recorded this case in advance as the moment to choose, so its fix did not miss it.
+
+**Answered 2026-11-22 (project owner, 2026-11-22, ratified, over keeping the fixed 1e-9 for every run).** The owner asked that each item needing him be settled by standard practice. The limit widens by what the run's own squarings add, `PL-D88N`'s option C, and 1e-9 stays the least it can be. Standard practice in floating-point work is that a tolerance for a computed quantity comes from a rounding error analysis of the computation, not from a fixed number chosen once. `core/rounding.py` already derives the propagator's bound that way, from the model in Higham and Mary, "A new approach to probabilistic rounding error analysis", MIMS EPrint 2018.33, eq. 1.2 and Lemma 2.2 (cited in that module and read there on 2026-11-22). The owner's rule of 2026-11-14 is that published error bounds are derived and measured values serve only as checks. A fixed limit below the derived bound breaks that rule. For a shipped agent's longest run the limit becomes at most 2.3e-9, as worked out above. A real accounting error larger than the derived bound still halts the run.
+
+**Done when, as answered.** The agent balance's limit is the larger of 1e-9 and the derived rounding bound for the run's own squarings and step count, read from `core/rounding.py`. `docs/MODEL.md` states the limit and its reason. A test shows that a correct one-second step at the stiffest envelope corners passes, and that an imbalance just above the derived bound still halts.
