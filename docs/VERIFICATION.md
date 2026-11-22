@@ -859,10 +859,11 @@ allowance. What else a result must meet depends on how it was computed.
 1. **A predicted run.** Each fraction must also lie at or below 0.99, and the agent balance must
    close, both to within the error bound of the propagators that produced the state
    (`propagator_rounding` in `core/rounding.py`). That bound uses the squarings that a step at
-   that corner and those flows actually needs, with a margin of 8, so the bound at a corner that needs few squarings is
-   a few rounding errors. The worst result, from runs on 2026-10-26, reached 2.5 times the
-   bound's leading term, $`2^{s} \cdot 2^{-52}`$ for $`s`$ squarings. The 24-hour predictions
-   are held to the 0.99 limit in the same way, by `run_rounding`, and not to the agent balance.
+   that corner and those flows actually needs, with a margin of 8, so the bound at a corner
+   that needs few squarings is a few rounding errors. The worst result, from runs on
+   2026-10-26, reached 2.5 times the bound's leading term, $`2^{s} \cdot 2^{-52}`$ for $`s`$
+   squarings. The separate 24-hour test holds its predictions to the 0.99 limit in the same
+   way, with `run_rounding`, and does not check their agent balance.
 2. **One step of the whole model.** Each fraction must lie at or below 0.99 to within the bound
    for 22 squarings, the most that any corner's step needs (`MOST_SQUARINGS` in
    `tests/unit/test_numerical_envelope.py`), whatever the corner needs itself. The agent balance
