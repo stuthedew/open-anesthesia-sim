@@ -742,48 +742,46 @@ def test_the_hover_answers_the_point_under_the_pointer(application: QApplication
             *chart.plot_pixel(run.times_s[index], run.percents(RecordedQuantity.CIRCUIT)[index])
         )
 
-    def own_column(index: int) -> int:
-        """Return the nearest index whose point is more than a pixel from each neighbour.
-
-        Columns are rounded down to whole seconds, so two neighbouring points
-        can be a pixel or less apart. A pointer cannot tell them apart, and
-        which of them the hover names then depends on the platform's fonts,
-        which move the plot's left edge.
-        """
-
-        for offset in range(count):
-            for candidate in (index - offset, index + offset):
-                if (
-                    0 < candidate < count - 1
-                    and pixel(candidate - 1).x() + 1 < pixel(candidate).x()
-                    and pixel(candidate).x() + 1 < pixel(candidate + 1).x()
-                ):
-                    return candidate
-
-        raise AssertionError("no point is more than a pixel from each neighbour")
-
-    earlier, third, later = (
-        own_column(count // 4),
-        own_column(3 * count // 5),
-        own_column(3 * count // 4),
-    )
+    earlier, third, later = count // 4, 3 * count // 5, 3 * count // 4
 
     def answer(index: int) -> str:
         return format_trace_hover(run, RecordedQuantity.CIRCUIT, index, 1)
 
+    def answers_under(index: int) -> set[str]:
+        """Return the readout of each point within a pixel of `index`'s column.
+
+        Columns are rounded down to whole seconds, so neighbouring points can
+        be a pixel or less apart, and a pointer cannot tell them apart. Which
+        of them the hover names then depends on where the platform's fonts put
+        the plot's left edge.
+        """
+
+        column = pixel(index).x()
+
+        return {answer(j) for j in range(count) if abs(pixel(j).x() - column) <= 1}
+
+    def wait_for_any(texts: set[str]) -> None:
+        deadline = QDeadlineTimer(_HOVER_WAIT_MS)
+
+        while chart.hover_text() not in texts and not deadline.hasExpired():
+            QTest.qWait(10)
+
+    assert not answers_under(earlier) & answers_under(later)
+    assert not answers_under(earlier) & answers_under(third)
+
     for index in (earlier, later):
         _move_pointer(chart, pixel(index))
-        _wait_for_hover(chart, answer(index))
+        wait_for_any(answers_under(index))
 
-        assert chart.hover_text() == answer(index)
+        assert chart.hover_text() in answers_under(index)
 
     # Send two moves with nothing between them, as a fast pointer's last two
     # moves often are. The hover shows the point where the pointer stopped.
     _move_pointer(chart, pixel(earlier))
     _move_pointer(chart, pixel(third))
-    _wait_for_hover(chart, answer(third))
+    wait_for_any(answers_under(third))
 
-    assert chart.hover_text() == answer(third)
+    assert chart.hover_text() in answers_under(third)
 
     # Off the plot, over the axis, the box disappears rather than keeping the
     # last point's readout.
