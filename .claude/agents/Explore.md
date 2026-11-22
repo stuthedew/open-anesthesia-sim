@@ -33,7 +33,8 @@ have no tool that writes and no tool that runs a command.
   model, `data/` the parameter files, `app/` the interface), its tests under
   `tests/`, the model specification in `docs/MODEL.md`, the interface
   requirements in `docs/INTERFACE.md`, the tests the model must pass in
-  `docs/VERIFICATION.md`, the queue under
+  `docs/VERIFICATION.md`, each stored value's source in `docs/PARAMETERS.md`,
+  the queue under
   `docs/items/` as one Markdown file per item, the workflow tooling under
   `tools/` and `subprojects/docket/`, and the session rules under `.claude/`.
 - A question that needs git history, a shell command or a `bin/docket` command

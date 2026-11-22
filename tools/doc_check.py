@@ -15,7 +15,7 @@ checked here, and never left to a session to remember:
   the one in `docs/apparatus.md`, and every path those trees name still
   exists.
 - **Provenance table.** Every scientific constant in a `data/**/*.json` file
-  has exactly one row in `docs/MODEL.md`'s provenance table, and every row
+  has exactly one row in `docs/PARAMETERS.md`'s provenance table, and every row
   names a key that file actually holds, carrying the value the table states.
 - **Citations.** Every repository path and every section heading cited from
   a documentation file resolves to something that exists - or, for a path a
@@ -361,6 +361,7 @@ from product_paths import (
     INTERFACE_DOC,
     MODEL_DOC,
     PACKAGE_DIR,
+    PARAMETER_DOC,
     SPECIFICATION_DOCS,
     VERIFICATION_DOC,
 )
@@ -485,6 +486,9 @@ INTERFACE = Path(INTERFACE_DOC)
 # How the implementation is shown to solve the model's equations, which was
 # part of `docs/MODEL.md` until `PL-6PPZ` moved it out.
 VERIFICATION = Path(VERIFICATION_DOC)
+# Each stored value's source, with the provenance table, which was part of
+# `docs/MODEL.md` until `PL-FWR6` moved it out.
+PARAMETERS = Path(PARAMETER_DOC)
 # The documents whose restated numbers are held to their homes (`PL-JS6P`):
 # each document of the specification, and `README.md`, the page a new reader
 # trusts first.
@@ -1915,7 +1919,7 @@ def _provenance_rows(text: str) -> tuple[list[tuple[int, list[str]]], str]:
 
 
 def check_provenance(root: Path, report: Report) -> None:
-    """Hold `docs/MODEL.md`'s provenance table to the data files, both ways.
+    """Hold `docs/PARAMETERS.md`'s provenance table to the data files, both ways.
 
     Each row names the data file and the key path it documents, so a row is
     checked against the value that key actually holds rather than against
@@ -1923,26 +1927,26 @@ def check_provenance(root: Path, report: Report) -> None:
     stored value alongside the derived one (`1.6923 (= 1.1 / 0.65)`), so the
     stored value is required to appear in the cell, not to be the whole of it.
     """
-    path = root / MODEL
+    path = root / PARAMETERS
     if not path.is_file():
-        report.errors.append(f"{MODEL}: missing; the provenance table cannot be checked")
+        report.errors.append(f"{PARAMETERS}: missing; the provenance table cannot be checked")
         return
 
     documented: dict[tuple[str, str], int] = {}
     rows, note = _provenance_rows(path.read_text(encoding="utf-8"))
     if not rows:
         report.errors.append(
-            f"{MODEL}: {note}"
+            f"{PARAMETERS}: {note}"
             if note
             else (
-                f"{MODEL}: no provenance table found under 'Parameter provenance'; either "
+                f"{PARAMETERS}: no provenance table found under 'Parameter provenance'; either "
                 "the table moved or its format changed and this check has gone blind"
             )
         )
         return
 
     for line, cells in rows:
-        where = f"{MODEL} (line {line})"
+        where = f"{PARAMETERS} (line {line})"
         if len(cells) < 4:
             report.errors.append(f"{where}: provenance row has {len(cells)} cells, expected 4")
             continue
@@ -1996,7 +2000,7 @@ def check_provenance(root: Path, report: Report) -> None:
         for key_path, value in _leaf_numbers(document):
             if (str(relative), key_path) not in documented:
                 report.errors.append(
-                    f"{MODEL}: no provenance row for {relative} {key_path} = {value:g}; "
+                    f"{PARAMETERS}: no provenance row for {relative} {key_path} = {value:g}; "
                     "every constant a clinician could read belongs in the table"
                 )
 
@@ -2012,7 +2016,7 @@ def _short_citation(entry: object) -> str:
 
 
 def check_source_tiers(root: Path, report: Report) -> None:
-    """Hold every data file's `sources` to `docs/MODEL.md` § "Source hierarchy".
+    """Hold every data file's `sources` to `docs/PARAMETERS.md` § "Source hierarchy".
 
     Six rules, all exact, and all about what a file *declares* rather than
     about whether the declaration is true:
@@ -2087,7 +2091,7 @@ def check_source_tiers(root: Path, report: Report) -> None:
             if tier not in SOURCE_TIERS:
                 report.errors.append(
                     f"{where}: declares tier {tier!r}; expected one of {list(SOURCE_TIERS)} "
-                    "(docs/MODEL.md, 'Source hierarchy')"
+                    "(docs/PARAMETERS.md, 'Source hierarchy')"
                 )
 
             adopted = entry.get("adopted")
@@ -2106,20 +2110,21 @@ def check_source_tiers(root: Path, report: Report) -> None:
                 report.errors.append(
                     f"{where}: declares authority_for {paths!r}; expected a list of the dotted "
                     "key paths of the stored values this file takes the source as the authority "
-                    "for, empty where it adopts it for none (docs/MODEL.md, 'Source hierarchy')"
+                    "for, empty where it adopts it for none "
+                    "(docs/PARAMETERS.md, 'Source hierarchy')"
                 )
                 continue
             if adopted is True and not paths:
                 report.errors.append(
                     f"{where}: is adopted but its authority_for is empty; name the stored values "
-                    "it is the authority for, or declare it not adopted (docs/MODEL.md, "
+                    "it is the authority for, or declare it not adopted (docs/PARAMETERS.md, "
                     "'Source hierarchy')"
                 )
             elif adopted is False and paths:
                 report.errors.append(
                     f"{where}: is not adopted but its authority_for is not empty; a source is "
                     "the authority for a stored value only where the file adopts it "
-                    "(docs/MODEL.md, 'Source hierarchy')"
+                    "(docs/PARAMETERS.md, 'Source hierarchy')"
                 )
             named: set[str] = set()
             for path in paths:
@@ -2157,7 +2162,7 @@ def check_source_tiers(root: Path, report: Report) -> None:
         elif not adopted_primary and gap is None:
             report.errors.append(
                 f"{relative}: no `sources` entry is both tier 'primary' and adopted, and the "
-                "file records no `provenance_gap`. docs/MODEL.md, 'Source hierarchy', third "
+                "file records no `provenance_gap`. docs/PARAMETERS.md, 'Source hierarchy', third "
                 "rule: where no primary source has been adopted, record that as an open gap "
                 "rather than leaving the silence to be read as a settled citation"
             )
@@ -2454,7 +2459,8 @@ def check_prose_provenance(root: Path, report: Report) -> None:
             markers += _check_prose_markers(
                 root, document, path.read_text(encoding="utf-8"), report
             )
-    # A missing `docs/MODEL.md` has already been reported by `check_provenance`.
+    # Only `docs/MODEL.md` must hold a marker, so nothing is reported here where
+    # it is missing.
     if not markers and (root / MODEL).is_file():
         report.errors.append(
             f"{MODEL}: no `<!-- provenance: ... -->` or `<!-- derived: ... -->` markers found; "

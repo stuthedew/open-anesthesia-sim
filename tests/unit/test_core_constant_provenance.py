@@ -3,7 +3,7 @@
 The one exception is a value that stands for an empty state or the whole
 (`PL-65HT`).
 
-`tools/doc_check.py`'s `check_provenance` checks `docs/MODEL.md`'s provenance
+`tools/doc_check.py`'s `check_provenance` checks `docs/PARAMETERS.md`'s provenance
 table against the data files in both directions. So it cannot see a scientific
 constant that never entered a data file. `PL-4YY1` found two such constants,
 both `BreathingCircuit` field defaults, and moved them into the machine file.
@@ -101,7 +101,7 @@ def _empty_or_whole(value: float) -> bool:
 
 
 def _selected_values() -> frozenset[float]:
-    """Return every number in the Selected-value column of `docs/MODEL.md`'s provenance table.
+    """Return every number in the Selected-value column of `docs/PARAMETERS.md`'s provenance table.
 
     The table is read through the parser that `check_provenance` uses. So the
     table compared here is the same one that the check compares with the data
@@ -109,9 +109,9 @@ def _selected_values() -> frozenset[float]:
     """
 
     rows, note = doc_check._provenance_rows(
-        (REPO_ROOT / doc_check.MODEL).read_text(encoding="utf-8")
+        (REPO_ROOT / doc_check.PARAMETERS).read_text(encoding="utf-8")
     )
-    assert rows, note or "docs/MODEL.md has no provenance table under 'Parameter provenance'"
+    assert rows, note or "docs/PARAMETERS.md has no provenance table under 'Parameter provenance'"
     column = doc_check.PROVENANCE_HEADER.index("Selected value")
 
     return frozenset(
@@ -153,7 +153,7 @@ def test_every_constant_a_core_dataclass_defaults_to_is_a_value_the_provenance_t
 
     assert not unsourced, (
         "; ".join(f"{default.owner}.{default.field} = {default.value!r}" for default in unsourced)
-        + ": a numeric field default in core/ that docs/MODEL.md's provenance table selects "
+        + ": a numeric field default in core/ that docs/PARAMETERS.md's provenance table selects "
         "nowhere is a scientific constant no data file holds, and tools/doc_check.py's "
         "check_provenance cannot see it. Store it in the data file it belongs to, with a row "
         "in that table, as PL-4YY1 did for the circuit's volume and fresh gas flow, or build "
