@@ -181,20 +181,24 @@ def closes(base: str, head: str) -> list[str]:
     return sorted(set(closed_items_at(head)) - set(closed_items_at(base)))
 
 
-def carried_by_other_pulls(closing: dict[str, Item], number: int) -> dict[str, int]:
+def carried_by_other_pulls(closing: dict[str, Item], number: int, head: str) -> dict[str, int]:
     """The closures that another open pull request carries, as id to that pull request's number.
 
     A branch built on another pull request's branch before it merged holds that
     pull request's closures, and comparing the branch with the base reads them
-    as this branch's own (`PL-6LJS`). Such a closure already records the lower
-    pull request's number, and that pull request is still open. Both checks
-    leave it out.
+    as this branch's own (`PL-6LJS`). Both checks leave such a closure out when
+    three things hold. It records another pull request's number, the forge lists
+    that pull request as open, and the item is already closed where this branch
+    and that pull request's branch last met. The third test is what shows the
+    closure came from the branch below. Without it, a closure copied here from
+    an abandoned draft that is still open would pass.
 
-    A closure recording the number of a pull request that is no longer open is
-    not left out: a pull request closed unmerged and reopened under a new
-    number leaves its old number behind, and that is a wrong record. The forge
-    is asked only when some closure records another number. Where it cannot be
-    asked, nothing is left out, so the check stays as strict as it was.
+    Nothing else is left out. A pull request closed unmerged and reopened under
+    a new number leaves its old number behind, and that is a wrong record.
+    Where the forge or git cannot be asked, nothing is left out, so the check
+    stays as strict as it was. The answer holds only when it is read: if this
+    pull request merges and the one below then closes unmerged, `main` keeps a
+    closure recording a pull request that never merged.
     """
     others = {
         identifier: recorded
@@ -207,10 +211,23 @@ def carried_by_other_pulls(closing: dict[str, Item], number: int) -> dict[str, i
     found = open_pull_requests(slug) if slug else None
     if found is None:
         return {}
-    still_open = {pull.number for pull in found}
-    return {
-        identifier: recorded for identifier, recorded in others.items() if recorded in still_open
-    }
+    branches = {pull.number: pull.head for pull in found}
+    tip = "HEAD" if head == WORKING_TREE else head
+    shared: dict[str, dict[str, Item]] = {}
+    carried: dict[str, int] = {}
+    for identifier, recorded in others.items():
+        branch = branches.get(recorded)
+        if branch is None:
+            continue
+        if branch not in shared:
+            try:
+                meeting = _git(["merge-base", tip, f"origin/{branch}"]).strip()
+                shared[branch] = closed_items_at(meeting)
+            except GitUnanswered:
+                shared[branch] = {}
+        if identifier in shared[branch]:
+            carried[identifier] = recorded
+    return carried
 
 
 def report_left_out(check: str, carried: dict[str, int]) -> None:
@@ -313,7 +330,7 @@ def main() -> int:
     discovered = title is None and args.discover
     # CI passes the number beside the title, so a closure that another open
     # pull request carries can be told from this one's own (`PL-6LJS`).
-    number = pr_number(os.environ.get("PR_NUMBER", "").strip())
+    number: int | None = pr_number(os.environ.get("PR_NUMBER", "").strip())
     if discovered:
         # Before `closes()`, which costs a `git show` per item file at both
         # ends of the range. A branch with nothing open pays one request.
@@ -341,7 +358,7 @@ def main() -> int:
     if missing and number is not None:
         at_head = closed_items_at(head)
         carried = carried_by_other_pulls(
-            {identifier: at_head[identifier] for identifier in missing}, number
+            {identifier: at_head[identifier] for identifier in missing}, number, head
         )
         report_left_out("pr-title", carried)
         missing = [identifier for identifier in missing if identifier not in carried]

@@ -50,6 +50,9 @@ def _tree(**refs: dict[str, str]):
         if args[0] == "show":
             ref, _, path = args[1].partition(":")
             return refs.get(ref, {}).get(path.split("/")[-1], "")
+        if args[0] == "merge-base":
+            # Where this branch and another met: the tree a test names `meet`.
+            return "meet\n"
         return ""
 
     return fake
@@ -72,6 +75,7 @@ def test_a_stacked_branch_need_not_name_the_lower_pull_request_s_closure(
         monkeypatch,
         base={"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX", status="ready")},
         head={"PL-K7QX-a.md": lower, "PL-B2C3-b.md": own},
+        meet={"PL-K7QX-a.md": lower},
     )
     monkeypatch.setattr(pr_title_check, "repo_slug", lambda: "owner/repo")
     pulls = tuple(

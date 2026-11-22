@@ -2772,37 +2772,34 @@ def _untied_figures(prose: str, raw: str) -> Iterator[tuple[str, str | None]]:
             yield found.group("number"), unit
 
 
-#: A number that ends a line, whose unit may open the next one.
-# regex: a plain decimal number at the end of a line, with no digit or point before it.
-LINE_END_NUMBER_RE = re.compile(r"(?<![\d.])(?P<number>\d+(?:\.\d+)?)\s*$")
-
-
 def _wrapped_figure(
-    prose: list[str], index: int, skipped: set[int]
+    prose: list[str], index: int, skipped: frozenset[int] | set[int]
 ) -> list[tuple[str, str | None]]:
     """The figure whose number ends line `index` and whose unit opens the next line, if any.
 
     A paragraph may break its line between a number and its unit, as "2.5" and
     then "L". Read one line at a time, that figure has no unit on the first
     line and no number on the second, so it was never asked about (`PL-LPV0`).
-    The two parts are joined and read as `_untied_figures` reads a line. A
-    blank next line ends the paragraph, so it joins nothing.
+    The line and the next one are joined by a space and read with
+    `PROSE_FIGURE_RE`, after the line's grouped thousands are joined as
+    `_untied_figures` joins them. So a number after a letter or a comma, or in
+    e-notation, is still read as no figure. Only a figure whose number ends the
+    first line and whose unit is on the second is returned. A blank next line
+    ends the paragraph, so it joins nothing.
     """
-    found = LINE_END_NUMBER_RE.search(prose[index])
     following = index + 1
-    if found is None or following >= len(prose) or following in skipped:
+    if following >= len(prose) or following in skipped:
         return []
     head = prose[following].lstrip()
     if not head:
         return []
-    number = found.group("number")
-    joined = f"{number} {head}"
+    line = GROUPED_NUMBER_RE.sub(lambda found: found.group().replace(" ", ""), prose[index])
+    line = line.rstrip()
+    joined = f"{line} {head}"
     return [
-        (written, unit)
+        (match.group("number"), unit)
         for match in PROSE_FIGURE_RE.finditer(joined)
-        if match.start() == 0
-        and (written := match.group("number")) == number
-        and (unit := match.group("unit")) is not None
+        if match.end("number") == len(line) and (unit := match.group("unit")) is not None
     ]
 
 

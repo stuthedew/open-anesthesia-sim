@@ -142,7 +142,7 @@ def main() -> int:
     if owed:
         at_head = closed_items_at(head)
         carried = carried_by_other_pulls(
-            {identifier: at_head[identifier] for identifier in owed}, number
+            {identifier: at_head[identifier] for identifier in owed}, number, head
         )
         report_left_out("pr-record", carried)
         owed = {identifier: pr for identifier, pr in owed.items() if identifier not in carried}

@@ -1048,6 +1048,22 @@ def test_a_number_ending_a_paragraph_joins_no_unit_from_the_next(tmp_path: Path)
     assert _untied(root) == []
 
 
+@pytest.mark.parametrize(
+    ("line", "following", "expected"),
+    [
+        ("lasts 86 400", "s in all", [("86400", "s")]),
+        ("a limit of 9.6e-12", "s", []),
+        ("version v2", "L", []),
+        ("listed 1,5", "L", []),
+    ],
+)
+def test_a_figure_split_across_lines_is_read_as_one_line_reads_it(
+    line: str, following: str, expected: list[tuple[str, str]]
+) -> None:
+    """Grouped thousands join. E-notation, or a number after a letter or comma, is no figure."""
+    assert doc_check._wrapped_figure([line, following], 0, set()) == expected
+
+
 def test_a_not_restated_marker_clears_a_figure_that_only_coincides(tmp_path: Path) -> None:
     root = _with_step(
         _repo(
@@ -11504,7 +11520,7 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
             tmp_path,
             (Path(__file__).resolve().parents[2] / "pyproject.toml").read_text(encoding="utf-8"),
         ),
-        ">=3.14",
+        ">=3.15",
     ),
     # Markdown's paragraph, read by the soft break every `GAP` reader takes:
     # neither a placeholder nor a code span opens a block that ends it.

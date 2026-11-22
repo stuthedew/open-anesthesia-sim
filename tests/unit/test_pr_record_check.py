@@ -43,6 +43,9 @@ def _tree(**refs: dict[str, str]):
         if args[0] == "show":
             ref, _, path = args[1].partition(":")
             return refs.get(ref, {}).get(path.split("/")[-1], "")
+        if args[0] == "merge-base":
+            # Where this branch and another met: the tree a test names `meet`.
+            return "meet\n"
         return ""
 
     return fake
@@ -144,6 +147,7 @@ def test_a_stacked_branch_owes_no_number_for_the_lower_pull_request_s_closure(
             "PL-K7QX-a.md": ITEM.format(id="PL-K7QX", status="done", extra="pr: 1049\n"),
             "PL-B2C3-b.md": ITEM.format(id="PL-B2C3", status="done", extra="pr: 1050\n"),
         },
+        meet={"PL-K7QX-a.md": ITEM.format(id="PL-K7QX", status="done", extra="pr: 1049\n")},
     )
     _open_pulls(monkeypatch, (1049, 1050))
 
@@ -151,6 +155,27 @@ def test_a_stacked_branch_owes_no_number_for_the_lower_pull_request_s_closure(
     out = capsys.readouterr().out
     assert "PL-K7QX records #1049, which is still open" in out
     assert "PL-B2C3 records #1050" in out
+
+
+def test_a_closure_naming_an_open_pull_request_it_did_not_come_from_is_refused(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """#1049 is open, but this branch did not take the closure from #1049's branch.
+
+    Where the two branches met, the item was still open, so the closure was
+    copied here, from an abandoned draft for example, and records the wrong
+    pull request (`PL-6LJS`).
+    """
+    _install(
+        monkeypatch,
+        base={"PL-K7QX-a.md": ITEM.format(id="PL-K7QX", status="ready", extra="")},
+        head={"PL-K7QX-a.md": ITEM.format(id="PL-K7QX", status="done", extra="pr: 1049\n")},
+        meet={"PL-K7QX-a.md": ITEM.format(id="PL-K7QX", status="ready", extra="")},
+    )
+    _open_pulls(monkeypatch, (1049, 1050))
+
+    assert _run(monkeypatch, "1050") == 1
+    assert "records `pr: 1049`" in capsys.readouterr().err
 
 
 def test_a_closure_of_another_pull_request_is_held_where_the_forge_cannot_be_asked(
