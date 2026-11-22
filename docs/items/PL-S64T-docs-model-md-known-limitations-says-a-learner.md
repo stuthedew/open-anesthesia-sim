@@ -7,7 +7,7 @@ touches: docs/MODEL.md, docs/items/PL-1B8B-docs-model-md-s-sources-for-the-notes
 added: 2026-11-21
 closed: 2026-11-21
 pr: 2199
-verify: grep -qF 'rebreathing through the circuit slows the fall on screen enough to' docs/MODEL.md
+verify: grep -qF 'washout on screen cannot be compared with theirs directly' docs/MODEL.md
 ---
 
 **Problem.** docs/MODEL.md § Known limitations says a learner would expect desflurane to wash out faster than Yasuda's volunteers did, and at the default settings the simulator draws it washing out slower
@@ -67,3 +67,4 @@ The reason is that a learner acts on what the screen shows, and the present text
 
 **Blind review, 2026-11-21.** Two passes read the branch. Both found that the first rewrite placed the faster fall only at 10 L/min of fresh gas, when it also appears at 8 L/min with a raised ventilation and at 10 L/min with a low cardiac output. The grid above was run and the paragraph now names that region. Both noted that no test pins the 0.285 at the default fresh gas flow, and that the paragraph did not say the figures follow a 30-minute administration with the flow unchanged. The paragraph now says so, and `PL-M3J9` added the test on 2026-11-22, after the project owner answered the question on the pull request with "Whatever best practice is. Look it up." `PL-M3J9` records the guidance that answer rests on. Pass 2 found that the `verify:` phrase wrapped over two lines, so a plain `grep` could not find it, and the phrase is now one that sits on one line.
 
+**Second blind review, 2026-11-22.** Pass 2 found that the paragraph judged the washout on screen, which always includes the circle system, against Yasuda's volunteers, who breathed through a non-rebreathing circuit. The model's own error is the circuit-removed residual, 2.33 SD too fast, and it is present at every setting. Pass 1 found the faster-fall region still misdescribed. Both findings remove the comparison by setting rather than correct it. The paragraph now says the two conditions differ, gives the on-screen figures at 4 and 10 L/min beside the circuit-removed 0.0935, and says that if the published measurement is right, a real patient on the same circuit would wash desflurane out more slowly than the screen shows. The grid above and option 1's "by setting" shape are superseded. Option 1's purpose, telling a learner the direction of the error and not to read the screen as a recovery prediction, still applies. `PL-M3J9` records the applicability guidance this rests on.
