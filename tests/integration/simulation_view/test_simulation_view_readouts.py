@@ -455,8 +455,8 @@ def test_a_1280_px_window_opens_one_run_s_readout_row_on_seven_or_four_columns(
 ) -> None:
     """A 1280 px window shows one run's seven readouts on one line or two, never more.
 
-    `docs/INTERFACE.md` § "The readout row's width condition" states this
-    outcome. As in the 1366 px test, the check reads the width that the row
+    `docs/INTERFACE.md` § "How the readout row fits the window's width" states
+    this outcome. As in the 1366 px test, the check reads the width that the row
     itself reserves, so it holds for whatever font draws the panels.
     """
 

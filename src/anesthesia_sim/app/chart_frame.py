@@ -1654,8 +1654,9 @@ def format_compared_trace_hover(
 ) -> str:
     """Return what a hover shows where more than one drawn point is within the pointer's reach.
 
-    `docs/INTERFACE.md` § "The chart's hover readout" -> "Where more than one
-    trace answers" is the specification, and `PL-JVHL` is why there is one.
+    `docs/INTERFACE.md` § "The chart's hover readout" -> "When more than one
+    trace is within reach" is the specification, and `PL-JVHL` is why there is
+    one.
     With the three-line form, the run a reader was shown depended on which
     drawn point was marginally nearer, so a 2 px hand movement could swap it
     silently. Instead, every run inside the radius is reported, and the box
@@ -2007,8 +2008,8 @@ def nearest_trace_point(
     not to the nearest of the trace's points. So every value reported is at
     that instant *and* within reach of the pointer. The cost is that a reader
     must aim more carefully beside a steep segment, but no drawn instant
-    becomes unreachable. `docs/INTERFACE.md` § "Where more than one trace
-    answers" has the measurement.
+    becomes unreachable. `docs/INTERFACE.md` § "The instant each value is
+    reported at" states the rule, and `PL-1K9G` has the measurement.
 
     **Distance does not decide between traces either.** Every run and every
     compartment whose point is inside the radius is reported. So no hand

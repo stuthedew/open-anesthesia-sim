@@ -770,7 +770,7 @@ def test_the_mac_awake_band_uses_the_fraction_rather_than_a_published_percent() 
     at 2.60%, where the fraction places it at 2.38%. That is 9.4% too high.
     A falling trace crosses a reference drawn too high too soon, so the
     chart would teach an earlier wake-up than the literature supports.
-    `docs/INTERFACE.md` § "MAC-awake as a chart reference" gives the reasoning.
+    `docs/PARAMETERS.md` § "The MAC-awake fractions" gives the reasoning.
 
     This trap is why the fraction is the stored form, rather than a schema
     preference. The test therefore treats the wrong band as a value that the

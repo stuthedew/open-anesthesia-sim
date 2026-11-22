@@ -204,7 +204,7 @@ def _trunk_paused_past_a_change(past_s: int = 180) -> SimulationController:
 # setting that differs between the two as a change at the fork. The halt record
 # lists the marks that the step ending at that instant crossed, tested against
 # the marks as they are now. These tests check each way of branching against
-# the rule in `docs/INTERFACE.md` § "Each second has one stored state".
+# the rule in `docs/INTERFACE.md` § "What this requires of a branch".
 
 
 def _described(changes: tuple[ControlChange, ...]) -> list[tuple[object, ...]]:

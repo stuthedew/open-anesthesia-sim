@@ -5783,7 +5783,7 @@ lists each id's release.
   bullets down assume that a branch resumes this way. The work is internal. It
   adds no user-facing replay control, which stays in planned item 10, behind
   item 9's save/load.
-  `docs/INTERFACE.md` § "Each second has one stored state" states how a
+  `docs/INTERFACE.md` § "What this requires of a branch" states how a
   branch reproduces its parent now that each second's state is stored.
 - **Time bookmarks and MAC targets, as two separately listed collections**
   (queue item PL-LPLD). This follows the shape of the Gas Man reference
