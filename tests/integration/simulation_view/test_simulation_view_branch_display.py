@@ -749,6 +749,11 @@ def test_a_region_placed_inside_the_layout_container_is_refused(
     view = _case_view(application, case)
     view.unconditional_region.setParent(view.layout_container)
 
+    # The first check passes for every value of the run already shown, so a
+    # refusal below can only come from the second.
+    for widget in view.runs[0].unconditional_widgets().values():
+        assert view.unconditional_region.isAncestorOf(widget)
+
     with pytest.raises(RuntimeError, match="does not hold simulated_time"):
         view.add_run(case.fork_at(CaseInstant(60)))
 

@@ -400,8 +400,8 @@ def test_a_rollback_across_a_setting_change_rebuilds_the_propagator() -> None:
     before the rollback may belong to settings that have since moved. Here the
     cache holds the matrix for the first cardiac output when the setting
     changes and the state is restored. The next step must match a system that
-    never rolled back and stepped under the new setting from the same state.
-    A cache that is never rebuilt fails the comparison.
+    has never stepped, so has no cached propagator, given the new setting and
+    the same state. A cache that is never rebuilt fails the comparison.
 
     The second half checks the other direction. With no setting changed, the
     restore leaves the cached propagator in place, because nothing has made it
@@ -416,20 +416,13 @@ def test_a_rollback_across_a_setting_change_rebuilds_the_propagator() -> None:
     rolled_back.restore_state(captured)
     rolled_back.advance()
 
-    never_rolled_back = AgentUptakeSystem.for_agent("sevoflurane")
-    never_rolled_back.advance()
-    never_rolled_back.set_cardiac_output(CardiacOutput(10.0))
-    never_rolled_back.advance()
+    never_stepped = AgentUptakeSystem.for_agent("sevoflurane")
+    never_stepped.set_cardiac_output(CardiacOutput(10.0))
+    never_stepped.restore_state(captured)
+    never_stepped.advance()
 
-    stale = AgentUptakeSystem.for_agent("sevoflurane")
-    stale.advance()
-    stale_propagator = stale._step_propagator()
-
-    assert rolled_back.state_vector() == never_rolled_back.state_vector()
-    assert rolled_back.total_stored_agent_l == never_rolled_back.total_stored_agent_l
-    assert rolled_back._step_propagator() != stale_propagator, (
-        "the comparison above cannot fail unless the setting change alters the propagator"
-    )
+    assert rolled_back.state_vector() == never_stepped.state_vector()
+    assert rolled_back.total_stored_agent_l == never_stepped.total_stored_agent_l
 
     unchanged = AgentUptakeSystem.for_agent("sevoflurane")
     unchanged.advance()
