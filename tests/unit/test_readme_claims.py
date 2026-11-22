@@ -21,10 +21,10 @@ from pathlib import Path
 
 from anesthesia_sim.app.chart_time_base import SELECTABLE_TIME_BASES
 from anesthesia_sim.app.controller import SimulationController
-from anesthesia_sim.app.dashboard_frame import SIMULATION_STEP_S
 from anesthesia_sim.app.formatting import format_percent, format_playback_rate
 from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 
 # `tests/benchmarks/` is not a package, so the screenshot script is imported by its path.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "benchmarks"))
@@ -97,7 +97,7 @@ def test_the_readme_image_shows_the_readouts_the_default_case_reaches() -> None:
     controller = SimulationController()
     controller.start()
     for _ in range(round(readme_screenshot.SIMULATED_S / SIMULATION_STEP_S)):
-        controller.advance(SIMULATION_STEP_S)
+        controller.advance()
     snapshot = controller.snapshot()
     readouts = {
         "circuit": snapshot.inspired_partial_pressure_fraction,

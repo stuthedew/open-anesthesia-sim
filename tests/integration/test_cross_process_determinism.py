@@ -32,21 +32,18 @@ from pathlib import Path
 
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.core.concentration import Percent
-from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
 
-#: The step of the scripted case, in seconds.
-STEP_S = 0.1
-#: The number of steps in the scripted case: ten minutes of 0.1 s steps.
-STEPS = 6000
+#: The number of steps in the scripted case: ten minutes of one-second steps.
+STEPS = 600
 #: Each setting change in the scripted case, keyed by the step count at which
 #: it happens. Every setting changes at least once.
 CHANGES: dict[int, Callable[[SimulationController], None]] = {
-    600: lambda c: c.set_fresh_gas_flow(FreshGasFlow(2.0)),
-    1500: lambda c: c.set_alveolar_ventilation(AlveolarVentilation(6.0)),
-    2400: lambda c: c.set_cardiac_output(CardiacOutput(4.5)),
-    3300: lambda c: c.set_delivered_concentration_percent(Percent(5.0)),
-    4800: lambda c: c.set_delivered_concentration_percent(Percent(0.0)),
+    60: lambda c: c.set_fresh_gas_flow(FreshGasFlow(2.0)),
+    150: lambda c: c.set_alveolar_ventilation(AlveolarVentilation(6.0)),
+    240: lambda c: c.set_cardiac_output(CardiacOutput(4.5)),
+    330: lambda c: c.set_delivered_concentration_percent(Percent(5.0)),
+    480: lambda c: c.set_delivered_concentration_percent(Percent(0.0)),
 }
 #: Two hash seeds, so that the two child processes iterate sets of strings in
 #: different orders.
@@ -60,7 +57,7 @@ def digest() -> str:
     for step in range(STEPS):
         if step in CHANGES:
             CHANGES[step](controller)
-        controller.advance(SimulationStep(STEP_S))
+        controller.advance()
     text = repr(controller.snapshot()) + repr(controller.run_segments)
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 

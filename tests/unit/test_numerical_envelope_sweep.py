@@ -34,13 +34,16 @@ from typing import NamedTuple
 import pytest
 from test_numerical_envelope import MOST_SQUARINGS, _squarings
 
-from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidator
+from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidator, rejected_check
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.blood import VenousBloodCompartment
 from anesthesia_sim.core.blood_flow import BloodFlow, PerfusionFraction
 from anesthesia_sim.core.circuit import BreathingCircuit
 from anesthesia_sim.core.concentration import Fraction, Percent, percent_from_fraction
-from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationNumericalError
+from anesthesia_sim.core.exceptions import (
+    AgentSimulationValidationError,
+    SimulationConfigurationError,
+)
 from anesthesia_sim.core.governing_equations import (
     DELIVERED_AGENT_L,
     EXHAUSTED_AGENT_L,
@@ -62,23 +65,17 @@ from anesthesia_sim.core.numerical_envelope import (
 )
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES
 from anesthesia_sim.core.patient import PatientCompartments
-from anesthesia_sim.core.rounding import (
-    MACHINE_EPSILON,
-    PROPAGATOR_ROUNDING_UNITS,
-    propagator_rounding,
-)
-from anesthesia_sim.core.run_definition import RunDefinition
-from anesthesia_sim.core.simulation_step import (
-    MAXIMUM_SIMULATION_STEP_S,
-    MINIMUM_SIMULATION_STEP_S,
-    SimulationStep,
-)
+from anesthesia_sim.core.prediction import predicted_states
+from anesthesia_sim.core.rounding import MACHINE_EPSILON, propagator_rounding, run_rounding
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
     MAXIMUM_ELAPSED_SIMULATION_TIME_S,
     MAXIMUM_FRESH_GAS_FLOW_L_MIN,
     MAXIMUM_INPUT_FRACTION,
+    MAXIMUM_STEP_COUNT,
+    MINIMUM_COMPARTMENT_STEP_S,
     AlveolarVentilation,
     CardiacOutput,
     CaseInstant,
@@ -88,7 +85,7 @@ from anesthesia_sim.core.supported_ranges import (
     require_supported_step_count,
 )
 from anesthesia_sim.core.tissue import TissueGroup
-from anesthesia_sim.core.uptake_system import AgentUptakeSystem
+from anesthesia_sim.core.uptake_system import AgentUptakeSystem, UptakeStepResult
 
 
 def _propagator_error(matrix: Matrix, interval_s: float) -> float:
@@ -315,55 +312,35 @@ def _require_what_the_equations_require(
     assert abs(unaccounted_l) <= tolerance * max(owed_l, 1e-300), state
 
 
-COLUMNS = 60
-"""How many columns the display path samples across the run, about 1464 s apart."""
-
-COLUMN_SPACING_S = MAXIMUM_ELAPSED_SIMULATION_TIME_S / (COLUMNS - 1)
-"""The interval between two columns, which the display path's chained propagator spans."""
+PREDICTED_SECONDS = 60
+"""How many seconds each run is predicted for, one step for each second."""
 
 
 def _require_the_run(corner: Corner) -> None:
-    """Evaluate a run across the supported run length at every flow corner.
+    """Predict a run for `PREDICTED_SECONDS` seconds at every flow corner.
 
     Each run is a wash-in, a washout or an equilibrium, from
-    `OPENINGS_AND_DIALS`, with the input ceiling as the highest fraction. Each
-    run is sampled
-    on the display path at `COLUMNS` columns. The display path composes one
-    propagator per column, so the `n`th column carries the error of `n`
-    propagators. Each run is also sampled on the canonical path at five
-    instants, from the smallest supported step to the end of the run. The
-    canonical path forms one propagator from the opening to each instant. At the
-    stiffest corners, the whole 86 400 s interval needs more than
-    `MAXIMUM_SQUARINGS` squarings. So the instant at the end of the run may be
-    refused there, with the simulator's own error naming the squarings. No
-    other refusal is accepted.
+    `OPENINGS_AND_DIALS`, with the input ceiling as the highest fraction.
+    `predicted_states` applies the propagator of one step once for each
+    second, as a preview does, so the state at second `n` carries the error
+    of `n` propagators. A run of the supported run length is predicted in
+    `test_a_state_at_the_fraction_ceiling_stays_within_one_atmosphere`, at
+    the three corners where rounding went furthest.
     """
 
     for flows in FLOW_CORNERS:
         for opening_fraction, dial_percent in OPENINGS_AND_DIALS:
             opening = _opening_state(opening_fraction)
             settings = _settings(corner, flows, dial_percent)
-            matrix = build_system_matrix(settings)
-            run = RunDefinition(settings, opening, opened_at_s=CaseInstant(0.0))
-            run.advance_to(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S))
-            window = run.evaluate(0.0, MAXIMUM_ELAPSED_SIMULATION_TIME_S, COLUMNS)
-            column_error = _propagator_error(matrix, COLUMN_SPACING_S)
+            step_error = _propagator_error(build_system_matrix(settings), SIMULATION_STEP_S)
+            predicted = predicted_states(
+                settings, opening, CaseInstant(0), CaseInstant(PREDICTED_SECONDS)
+            )
 
-            for column, drawn in enumerate(window.states, start=1):
-                _require_what_the_equations_require(
-                    corner, opening, drawn.values, column * column_error
-                )
+            assert len(predicted) == PREDICTED_SECONDS + 1
 
-            for instant_s in (MINIMUM_SIMULATION_STEP_S, 0.1, 60.0, 1440.0, 86_400.0):
-                try:
-                    state = run.state_at(instant_s)
-                except SimulationConfigurationError as refusal:
-                    assert instant_s == 86_400.0, refusal
-                    assert "squarings" in str(refusal), refusal
-                else:
-                    _require_what_the_equations_require(
-                        corner, opening, state, _propagator_error(matrix, instant_s)
-                    )
+            for second, state in enumerate(predicted[1:], start=1):
+                _require_what_the_equations_require(corner, opening, state, second * step_error)
 
 
 def _system(
@@ -453,19 +430,52 @@ def _held_amounts_l(system: AgentUptakeSystem) -> tuple[float, ...]:
     )
 
 
-def _require_the_system(corner: Corner) -> None:
-    """Step the coupled system once per flow corner, at the smallest and largest supported step.
+def _step_unless_the_balance_check_refuses(system: AgentUptakeSystem) -> UptakeStepResult | None:
+    """Take one step, and return None where the agent balance check refused it for rounding.
 
     `AgentUptakeSystem.advance` checks the agent balance after every step, to
-    one part in 10**9. It refuses a step that fails that check. One step passes
-    the check at every corner. Over many steps, the stiffest corners fail it, as
-    `PL-D88N` measures.
+    one part in 10**9, and refuses a step that fails that check. A step that
+    needs fewer than 22 squarings passes the check at every corner. A step
+    that needs 22 can fail it, because one propagator's rounding is then
+    bounded by 9.3e-9 of the state (`propagator_rounding(22)`), which is above
+    the check's limit. On 2026-11-21 the check refused 76 of the 864 first
+    steps that need 22 squarings, at 8 of the 96 corners, and the largest
+    imbalance was 1.7e-9 of the agent handled (`PL-SZ6G`). At the earlier step
+    of 0.1 s every first step passed, and the stiffest corners failed within
+    seconds (`PL-D88N`).
 
-    Every step must complete, from each opening and dial in
+    A refusal is accepted only where the step needs `MOST_SQUARINGS`, only for
+    an imbalance within that propagator bound, and only when the step was
+    rolled back.
+    """
+
+    squarings = _squarings(build_system_matrix(system.equation_settings()), SIMULATION_STEP_S)
+    before = system.state_vector()
+
+    try:
+        return system.advance()
+    except AgentSimulationValidationError as refusal:
+        check = rejected_check(refusal)
+
+        assert squarings == MOST_SQUARINGS, (squarings, str(refusal))
+        assert check is not None
+        assert check.relative_error <= propagator_rounding(squarings)
+        assert system.state_vector() == before
+
+        return None
+
+
+def _require_the_system(corner: Corner) -> None:
+    """Step the coupled system once at every flow corner.
+
+    Each step must either complete or be refused by the agent balance check
+    for rounding, as `_step_unless_the_balance_check_refuses` accepts.
+
+    A step that completes must do so from each opening and dial in
     `OPENINGS_AND_DIALS`. Before the input ceiling, a step from a state with every
     compartment at 1 could round a fraction past 1. The fraction check refused
     it, the step was rolled back, and this test accepted that refusal by name.
-    The coupled model's inputs now stop at `CEILING`, so the refusal must not
+    The coupled model's inputs now stop at `CEILING`, so that refusal must not
     happen. Every fraction after the step must lie from 0 through 1. It must
     also exceed the ceiling by no more than one step's propagator bound, taken
     at the largest number of squarings that any corner's step needs.
@@ -473,14 +483,14 @@ def _require_the_system(corner: Corner) -> None:
 
     largest_fraction = CEILING * (1.0 + propagator_rounding(MOST_SQUARINGS))
 
-    for flows, (fraction, dial_percent), step_s, perfusion_fractions in itertools.product(
-        FLOW_CORNERS,
-        OPENINGS_AND_DIALS,
-        (MINIMUM_SIMULATION_STEP_S, MAXIMUM_SIMULATION_STEP_S),
-        (PERFUSION_FRACTIONS, LOPSIDED_PERFUSION_FRACTIONS),
+    for flows, (fraction, dial_percent), perfusion_fractions in itertools.product(
+        FLOW_CORNERS, OPENINGS_AND_DIALS, (PERFUSION_FRACTIONS, LOPSIDED_PERFUSION_FRACTIONS)
     ):
         system = _system(corner, flows, fraction, dial_percent, perfusion_fractions)
-        result = system.advance(SimulationStep(step_s))
+        result = _step_unless_the_balance_check_refuses(system)
+
+        if result is None:
+            continue
 
         for computed in system.state_vector()[:DELIVERED_AGENT_L]:
             assert 0.0 <= computed <= 1.0
@@ -500,7 +510,7 @@ def _require_the_system(corner: Corner) -> None:
 def _require_the_compartments_alone(corner: Corner) -> None:
     """Step each compartment on its own at the shortest and the longest step it accepts.
 
-    A compartment stepped alone accepts a step from `MINIMUM_SIMULATION_STEP_S`
+    A compartment stepped alone accepts a step from `MINIMUM_COMPARTMENT_STEP_S`
     up to the supported run length, as `require_compartment_step` checks. The
     venous pool's blood flow is the cardiac output, and a tissue's is a
     perfusion fraction of it. So each runs at zero, at the smallest positive
@@ -510,7 +520,7 @@ def _require_the_compartments_alone(corner: Corner) -> None:
     equilibrium.
     """
 
-    for step_s in (MINIMUM_SIMULATION_STEP_S, MAXIMUM_ELAPSED_SIMULATION_TIME_S):
+    for step_s in (MINIMUM_COMPARTMENT_STEP_S, MAXIMUM_ELAPSED_SIMULATION_TIME_S):
         for fraction in (0.0, 1.0):
             target = Fraction(1.0 - fraction)
 
@@ -591,11 +601,9 @@ def test_every_core_operation_holds_its_equations_at_every_envelope_corner(corne
 
     The corner fixes every volume and coefficient. At each corner, the flows run
     at zero, at the smallest float and at their supported maximums. The run opens
-    empty or at the input ceiling. One refusal is accepted, with the
-    simulator's own error: the canonical path's refusal of its single 86 400 s
-    interval at the stiffest corners. Before the input ceiling, a second refusal
-    was accepted: a step from a state at 1 that rounded a fraction past 1. A
-    state at the ceiling must never be refused that way.
+    empty or at the input ceiling. No refusal is accepted. Before the input
+    ceiling, one was: a step from a state at 1 that rounded a fraction past
+    1. A state at the ceiling must never be refused that way.
     """
 
     _require_the_run(corner)
@@ -618,22 +626,15 @@ def _build_compartment_step(value: float) -> float:
     return value
 
 
-def _build_step_count_at_the_run_step(value: float) -> int:
+def _build_step_count_of_a_supported_run(value: float) -> int:
     count = StepCount(int(value))
-    require_supported_step_count(count, SimulationStep(0.1))
+    require_supported_step_count(count)
 
     return count
 
 
-def _build_window_columns(value: float) -> int:
-    run = RunDefinition(
-        _settings(CORNERS[0], (0.0, 0.0, 0.0), 0.0),
-        _opening_state(0.0),
-        opened_at_s=CaseInstant(0.0),
-    )
-    run.evaluate(0.0, 0.0, int(value))
-
-    return int(value)
+def _build_case_instant(value: float) -> CaseInstant:
+    return CaseInstant(int(value))
 
 
 def _build_dial_in_a_settings_record(value: float) -> UptakeEquationSettings:
@@ -657,9 +658,7 @@ EDGES = (
     Edge("FreshGasFlow", FreshGasFlow, 0.0, 10.0),
     Edge("AlveolarVentilation", AlveolarVentilation, 0.0, 12.0),
     Edge("CardiacOutput", CardiacOutput, 0.0, 10.0),
-    Edge("SimulationStep", SimulationStep, 1e-3, 0.1),
     Edge("a compartment's own step", _build_compartment_step, 1e-3, 86_400.0),
-    Edge("CaseInstant", CaseInstant, 0.0, 86_400.0),
     Edge("Fraction", Fraction, 0.0, 1.0),
     Edge("Percent", Percent, 0.0, 100.0),
     Edge(
@@ -675,13 +674,13 @@ EDGES = (
 """Every input with an interval of its own, and the interval that `docs/MODEL.md` records for it.
 
 The bounds are written out here rather than read from the modules that define
-them. So a bound that moves fails this test and is noticed. A step count and a
-window's column count are whole numbers, so they are in `WHOLE_EDGES`.
+them. So a bound that moves fails this test and is noticed. A case instant and
+a step count are whole numbers, so they are in `WHOLE_EDGES`.
 """
 
 WHOLE_EDGES = (
-    Edge("StepCount at the 0.1 s step", _build_step_count_at_the_run_step, 0, 864_000),
-    Edge("RunDefinition.evaluate columns", _build_window_columns, 1, 100_000),
+    Edge("CaseInstant", _build_case_instant, 0, 86_400),
+    Edge("StepCount of a supported run", _build_step_count_of_a_supported_run, 0, 86_400),
 )
 
 
@@ -718,45 +717,10 @@ STIFFEST_DRAWN_CORNER = Corner(
 """Every volume at its floor, blood:gas at its ceiling and tissue:blood at its floor.
 
 From a state at 1 with the dial off, ventilation and cardiac output at their
-maximums and no fresh gas, the display path drew 1.000033 here, the largest
-drawn fraction in the sweep (measured 2026-10-31).
+maximums and no fresh gas, a state computed by formula across 24 hours reached
+1.000033 here, before the input ceiling. It was the largest fraction in the
+sweep (measured 2026-10-31).
 """
-
-
-def test_the_display_path_refuses_a_drawn_fraction_past_one_atmosphere() -> None:
-    """A window that would draw a fraction above 1 (the ambient pressure) is refused, not returned.
-
-    No supported opening reaches such a window. The stepped system refuses an
-    opening above `CEILING`, and so does a settings record's dial. A
-    `RunDefinition` opens from a state that a run passed through, which may lie
-    a rounding error above the ceiling, so it checks its opening only from 0
-    through 1. A caller can therefore still hand it a state at 1. Before
-    the input ceiling, both display paths then returned fractions above 1 at this
-    corner: 1.000033 across the whole run, and 1.0000000056 in the inspired
-    fraction over the first 1000 s sampled every 100 s (measured 2026-10-31).
-    Each now refuses the window with the simulator's own error, naming the
-    state position that left the range. The window is short because the
-    anchored path forms one propagator to its stop. At this corner, a propagator
-    longer than about 1610 s needs more squarings than the module allows.
-    """
-
-    flows = (0.0, MAXIMUM_ALVEOLAR_VENTILATION_L_MIN, MAXIMUM_CARDIAC_OUTPUT_L_MIN)
-    run = RunDefinition(
-        _settings(STIFFEST_DRAWN_CORNER, flows, 0.0),
-        _opening_state(1.0),
-        opened_at_s=CaseInstant(0.0),
-    )
-    run.advance_to(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S))
-    refusal = (
-        r"^the display path computed a value it cannot draw: state\[\d\] \([^)]*\) "
-        r"of 1\.0000\d+ is outside 0 to 1"
-    )
-
-    with pytest.raises(SimulationNumericalError, match=refusal):
-        run.evaluate(0.0, 1000.0, 11)
-
-    with pytest.raises(SimulationNumericalError, match=refusal):
-        run.evaluate_anchored(0.0, 1000.0, 100.0)
 
 
 OPENING_PARTS = (
@@ -856,30 +820,48 @@ ROUNDING_CORNERS = (
         MAXIMUM_PARTITION_COEFFICIENT,
         MINIMUM_PARTITION_COEFFICIENT,
     ),
+    Corner(
+        MAXIMUM_VOLUME_L,
+        MINIMUM_VOLUME_L,
+        MINIMUM_VOLUME_L,
+        MINIMUM_VOLUME_L,
+        MAXIMUM_PARTITION_COEFFICIENT,
+        MINIMUM_PARTITION_COEFFICIENT,
+    ),
 )
-"""The corners where a computed fraction went furthest past its inputs, measured 2026-10-31.
+"""The corners where a computed fraction went furthest past its inputs.
 
-The first drew the largest excess on the display path. The second, with the
-circuit and lung at their floors and the venous pool and tissues at their
-ceilings, took the largest excess in one step of the coupled system.
+The first reached the largest excess in a state computed by formula across 24
+hours, a path that `PL-Z6C8` removed (measured 2026-10-31). The second, with
+the circuit and lung at their floors and the venous pool and tissues at their
+ceilings, took the largest excess in one step of the coupled system (measured
+2026-10-31). The third, with the circuit at its ceiling and every other volume
+at its floor, took the largest excess over 86 400 one-second steps, 1.0e-4
+from a washout at the ceiling with no fresh gas (measured 2026-11-21, over all
+96 corners).
 """
 
 
 def test_a_state_at_the_fraction_ceiling_stays_within_one_atmosphere() -> None:
-    """From the input ceiling, a step and a drawn window both stay from 0 through 1.
+    """From the input ceiling, a step and a 24-hour prediction both stay from 0 through 1.
 
     A fraction is a partial pressure as a fraction of the ambient pressure, which
     the model fixes at one atmosphere. No gas's partial pressure can exceed the
     ambient pressure, so no fraction can exceed 1. Before the input ceiling, a state with every
     compartment at 1 could not be stepped reliably: one step rounded a fraction
     to 1.0000000000349965, the check refused it, and the run halted. The
-    display path drew 1.000033 from the same state. The coupled model now
-    starts from no more than `CEILING`, and the system refuses to be built
-    above it. This test steps the system and draws a 24-hour window at the two
-    corners where rounding went furthest, from each opening and dial in
-    `OPENINGS_AND_DIALS`. Every fraction must lie from 0 through 1, and none
-    may pass the ceiling by more than 1e-4 of it, about three times the largest
-    excess measured.
+    coupled model now starts from no more than `CEILING`, and the system
+    refuses to be built above it. This test steps the system, and predicts
+    every second of 24 hours, at the three corners where rounding went
+    furthest, from each opening and dial in `OPENINGS_AND_DIALS`. Where the
+    agent balance check refuses the step for rounding, the step is rolled
+    back and the state checked is the opening one. Every fraction must lie
+    from 0 through 1. None may pass the ceiling by more than the rounding
+    bound for 86 400 steps at that corner, `run_rounding`, which is a
+    numerical limit derived from the arithmetic: each step's propagator
+    rounding, summed over the steps. Each corner takes 22 squarings, so the
+    bound is 8.0e-4 of the ceiling at each. The largest excess measured on
+    2026-11-21, at the third corner, was 1.03e-4 of it.
     """
 
     flows = (0.0, MAXIMUM_ALVEOLAR_VENTILATION_L_MIN, MAXIMUM_CARDIAC_OUTPUT_L_MIN)
@@ -892,20 +874,25 @@ def test_a_state_at_the_fraction_ceiling_stays_within_one_atmosphere() -> None:
 
         for fraction, dial_percent in OPENINGS_AND_DIALS:
             system = _system(corner, flows, fraction, dial_percent)
-            system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
-            run = RunDefinition(
-                _settings(corner, flows, dial_percent),
+            _step_unless_the_balance_check_refuses(system)
+            settings = _settings(corner, flows, dial_percent)
+            predicted = predicted_states(
+                settings,
                 _opening_state(fraction),
-                opened_at_s=CaseInstant(0.0),
+                CaseInstant(0),
+                CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S),
             )
-            run.advance_to(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S))
-            window = run.evaluate(0.0, MAXIMUM_ELAPSED_SIMULATION_TIME_S, COLUMNS)
-            drawn = [state.values for state in window.states]
+            # A numerical limit: the bound on the rounding of every step of
+            # the prediction, as a share of the largest fraction it holds.
+            rounding = run_rounding(
+                _squarings(build_system_matrix(settings), SIMULATION_STEP_S),
+                StepCount(MAXIMUM_ELAPSED_SIMULATION_TIME_S),
+            )
 
-            for state in (system.state_vector(), *drawn):
+            for state in (system.state_vector(), *predicted):
                 for computed in state[:DELIVERED_AGENT_L]:
                     assert 0.0 <= computed <= 1.0, state
-                    assert computed <= CEILING * (1.0 + 1e-4), state
+                    assert computed <= CEILING * (1.0 + rounding), state
 
 
 SUPPORTED_SETTING_CORNERS = tuple(
@@ -913,55 +900,79 @@ SUPPORTED_SETTING_CORNERS = tuple(
         (0.0, MAXIMUM_FRESH_GAS_FLOW_L_MIN),
         (0.0, MAXIMUM_ALVEOLAR_VENTILATION_L_MIN),
         (0.0, MAXIMUM_CARDIAC_OUTPUT_L_MIN),
-        (MINIMUM_SIMULATION_STEP_S, MAXIMUM_SIMULATION_STEP_S),
     )
 )
-"""Each supported flow at either end of its range, at the step's floor and its ceiling."""
+"""Each supported flow at either end of its range."""
+
+MOST_SQUARINGS_IN_A_SHIPPED_STEP = 3
+"""The most squarings that a shipped agent's one-second step needs, measured on 2026-11-21.
+
+Each shipped agent needs 2 at its default flows and 3 with every flow at the
+top of its supported range.
+"""
+
+STEPS_OF_A_DAY_AT_THE_EARLIER_STEP = StepCount(864_000)
+"""The steps in a 24-hour run at 0.1 s, the step that the interface took until `PL-SZ6G`.
+
+No shipped agent's step of 0.1 s needed a squaring. The project owner kept the
+mass-balance tolerance fixed on 2026-10-31 with that run in reach (`PL-D88N`).
+"""
 
 
 @pytest.mark.parametrize("agent_id", tuple(AGENT_DATA_FILENAMES))
-def test_every_shipped_agent_steps_without_squarings_at_any_supported_setting(
+def test_every_shipped_agent_steps_with_at_most_three_squarings_at_any_supported_setting(
     agent_id: str,
 ) -> None:
-    """The mass-balance tolerance stays at 1e-9 only while no reachable step needs a squaring.
+    """A shipped agent's step needs at most three squarings, which the fixed tolerance was kept for.
 
     `AgentUptakeSystem.advance` refuses a step whose agent balance is off by
     more than one part in 10**9 (`AGENT_ACCOUNTING_RELATIVE_TOLERANCE`). Each
     squaring in a step's propagator can double its rounding error. At the
-    stiffest envelope corners a step needs 19, and the check then halts a
+    stiffest envelope corners a step needs 22, and the check then halts a
     correct run within seconds (`docs/MODEL.md` § "The numerical envelope").
-    `PL-D88N` kept the tolerance fixed, because every setting a learner can
-    reach needs none (project owner, 2026-10-31, ratified, over a tolerance
-    summed from the propagator's bound, which would loosen the check up to 58
-    times on a long run at the 1 ms step).
 
-    So this test steps each shipped agent with the patient and the machine
+    The tolerance is fixed, and it is below the derived bound on a long run's
+    rounding. `run_rounding` gives that bound as a share of the largest
+    fraction in the run. For 24 h at the earlier step of 0.1 s, with no
+    squaring, it was 864 000 steps times 10 units, which is 1.9e-9. For 24 h
+    at the one-second step, with three squarings, it is 86 400 steps times 80
+    units, which is 1.5e-9. So the one-second step did not move the derived
+    bound further above the tolerance, and this test asserts that. A fourth
+    squaring would double the bound to 3.1e-9.
+
+    A measurement checks the bound. Over 24 h a correct run's balance stayed
+    within 9.8e-12 of closing. The worst run was sevoflurane at its highest
+    dial, with fresh gas at 0.5 L/min, alveolar ventilation at 12 L/min and
+    cardiac output at 10 L/min (2026-11-21, `PL-SZ6G`).
+
+    So this test takes each shipped agent with the patient and the machine
     that `AgentUptakeSystem.for_agent` builds, which are the ones the
-    application runs. Each flow is at either end of its supported range, at the
-    smallest and the largest supported step. A stiffer profile, such as a
-    small patient, fails here on the day it ships. That is the moment to choose
-    a tolerance that widens only by what the squarings add.
+    application runs, and counts the squarings of its step with each flow at
+    either end of its supported range. A stiffer profile, such as a small
+    patient, fails here on the day it ships. That is the moment to set the
+    tolerance again.
     """
 
     system = AgentUptakeSystem.for_agent(agent_id)
+    most = 0
 
-    for (
-        fresh_gas_l_min,
-        ventilation_l_min,
-        cardiac_output_l_min,
-        step_s,
-    ) in SUPPORTED_SETTING_CORNERS:
+    for fresh_gas_l_min, ventilation_l_min, cardiac_output_l_min in SUPPORTED_SETTING_CORNERS:
         system.set_fresh_gas_flow(FreshGasFlow(fresh_gas_l_min))
         system.set_alveolar_ventilation(AlveolarVentilation(ventilation_l_min))
         system.set_cardiac_output(CardiacOutput(cardiac_output_l_min))
-        squarings = _squarings(build_system_matrix(system.equation_settings()), step_s)
+        squarings = _squarings(build_system_matrix(system.equation_settings()), SIMULATION_STEP_S)
+        most = max(most, squarings)
 
-        assert squarings == 0, (
+        assert squarings <= MOST_SQUARINGS_IN_A_SHIPPED_STEP, (
             f"{agent_id} at {fresh_gas_l_min} L/min fresh gas, {ventilation_l_min} L/min "
-            f"alveolar ventilation, {cardiac_output_l_min} L/min cardiac output and a "
-            f"{step_s} s step needs {squarings} squarings. The mass-balance check's fixed "
-            "tolerance of 1e-9 assumes none, so it would halt a correct long run. Choose a "
-            "tolerance that widens only by what the squarings add, about "
-            f"{PROPAGATOR_ROUNDING_UNITS:g} * (2**s - 1) * 2**-52 per step summed over the "
-            "accounting period, as PL-D88N records."
+            f"alveolar ventilation and {cardiac_output_l_min} L/min cardiac output needs "
+            f"{squarings} squarings in a step. The mass-balance check's fixed tolerance of "
+            f"1e-9 was kept for at most {MOST_SQUARINGS_IN_A_SHIPPED_STEP}, so it could "
+            "halt a correct long run. Set the tolerance again from "
+            "`run_rounding` for the longest run, as PL-D88N and PL-SZ6G record."
         )
+
+    assert most == MOST_SQUARINGS_IN_A_SHIPPED_STEP
+    assert run_rounding(
+        MOST_SQUARINGS_IN_A_SHIPPED_STEP, StepCount(MAXIMUM_STEP_COUNT)
+    ) <= run_rounding(0, STEPS_OF_A_DAY_AT_THE_EARLIER_STEP)

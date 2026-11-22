@@ -9,7 +9,7 @@ from anesthesia_sim.core.parameters import (
     load_reference_circle_system_parameters,
 )
 from anesthesia_sim.core.patient import PatientCompartments
-from anesthesia_sim.core.simulation_step import SimulationStep
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, FreshGasFlow
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
@@ -29,7 +29,7 @@ EQUILIBRIUM_FRACTION_TOLERANCE = 1e-12
 # conservation. That assertion was also false after about an hour of simulated
 # time. At these settings the absolute error first exceeds 1e-12 L at
 # t = 3452 s, and these runs stop at 1200 s (`PL-4GN8`, measured 2026-09-06 on
-# the shipped exact step).
+# the exact step, which was then 0.1 s long).
 MASS_BALANCE_RELATIVE_GATE = 1e-10
 
 # The dial setting at which every system below runs. Both agents run at the
@@ -47,13 +47,11 @@ MASS_BALANCE_RELATIVE_GATE = 1e-10
 DELIVERED_CONCENTRATION_PERCENT = Percent(4.0)
 
 
-def _run_for(system: AgentUptakeSystem, duration_s: float, simulation_step_s: float) -> None:
-    """Advance a system for an exact number of fixed steps."""
+def _run_for(system: AgentUptakeSystem, duration_s: int) -> None:
+    """Advance a system by `duration_s`, a whole number of seconds, one step at a time."""
 
-    step_count = round(duration_s / simulation_step_s)
-
-    for _ in range(step_count):
-        system.advance(SimulationStep(simulation_step_s))
+    for _ in range(duration_s // SIMULATION_STEP_S):
+        system.advance()
 
 
 def _build_system_for_agent(agent_id: str) -> AgentUptakeSystem:
@@ -92,11 +90,11 @@ def _build_system_for_agent(agent_id: str) -> AgentUptakeSystem:
 def test_wash_in_and_washout_validates_agent_simulation(agent_id: str) -> None:
     system = _build_system_for_agent(agent_id)
 
-    _run_for(system, duration_s=600.0, simulation_step_s=0.1)
+    _run_for(system, duration_s=600)
 
     system.set_delivered_concentration_percent(Percent(0.0))
 
-    _run_for(system, duration_s=600.0, simulation_step_s=0.1)
+    _run_for(system, duration_s=600)
 
     validation = system.agent_simulation_validation
 
@@ -132,7 +130,7 @@ def test_equilibrium_produces_no_net_internal_transfer(agent_id: str) -> None:
 
     system.agent_simulation_validator.reset(initial_agent_l=system.total_stored_agent_l)
 
-    result = system.advance(SimulationStep(0.1))
+    result = system.advance()
 
     assert result.circuit_to_alveolar_agent_l == pytest.approx(
         0.0, abs=EQUILIBRIUM_FRACTION_TOLERANCE
@@ -155,8 +153,8 @@ def test_desflurane_alveolar_circuit_ratio_rises_faster_than_isoflurane() -> Non
     desflurane = _build_system_for_agent("desflurane")
     isoflurane = _build_system_for_agent("isoflurane")
 
-    _run_for(desflurane, duration_s=60.0, simulation_step_s=0.1)
-    _run_for(isoflurane, duration_s=60.0, simulation_step_s=0.1)
+    _run_for(desflurane, duration_s=60)
+    _run_for(isoflurane, duration_s=60)
 
     desflurane_ratio = (
         desflurane.alveoli.partial_pressure_fraction

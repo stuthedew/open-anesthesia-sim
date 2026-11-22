@@ -21,7 +21,6 @@ from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import (
     ACCOUNTING_HEADING,
     CONTROL_TIMELINE_HEADING,
-    SIMULATION_STEP_S,
     run_label,
 )
 from anesthesia_sim.app.formatting import format_elapsed
@@ -224,7 +223,7 @@ def test_the_branch_is_drawn_beside_the_trunk_on_one_time_axis(application: QApp
 
     assert min(trunk_times) == pytest.approx(0.0)
     assert min(branch_times) == pytest.approx(60.0)
-    assert max(branch_times) <= max(trunk_times) + SIMULATION_STEP_S
+    assert max(branch_times) <= max(trunk_times)
 
 
 @pytest.mark.parametrize("door", ["keyframe", "here", "mark"])
@@ -341,7 +340,7 @@ def test_the_wash_in_state_and_off_scale_lines_name_their_run(application: QAppl
     trunk = SimulationController()
     trunk.start()
     trunk.set_delivered_concentration_percent(Percent(8.0))
-    _advance_to(trunk, 600.0)
+    _advance_to(trunk, 600)
     trunk.set_fresh_gas_flow(FreshGasFlow(2.0))
     trunk.pause()
     view = _case_view(application, BranchedCase(trunk))
@@ -374,7 +373,7 @@ def test_a_lone_run_leaves_the_shared_chart_lines_unnamed(application: QApplicat
     controller = SimulationController()
     controller.start()
     controller.set_delivered_concentration_percent(Percent(8.0))
-    _advance(controller, 600.0)
+    _advance(controller, 600)
     view = _shown_view(application, controller)
     off_scale = _concentration(view).off_scale.lines[0]
     state = _wash_in(view).states.lines[0]
@@ -587,9 +586,9 @@ def test_the_sidebar_panels_name_the_run_they_record(application: QApplication) 
 
     trunk = SimulationController()
     trunk.start()
-    _advance_to(trunk, 120.0)
+    _advance_to(trunk, 120)
     trunk.set_fresh_gas_flow(FreshGasFlow(2.0))
-    _advance_to(trunk, 600.0)
+    _advance_to(trunk, 600)
     trunk.pause()
     view = _case_view(application, BranchedCase(trunk))
     selector = _fork_panel(view).point_selector
@@ -740,7 +739,7 @@ def test_a_run_refused_for_a_missing_unconditional_value_leaves_no_widgets(
 
     case = _branched_case()
     view = _case_view(application, case)
-    branch = case.fork_at(CaseInstant(60.0))
+    branch = case.fork_at(CaseInstant(60))
     before = set(view.findChildren(QWidget))
     readings_before = [
         len(panel.findChildren(QWidget)) for panel in view.runs[0]._readout_row.panels
@@ -779,7 +778,7 @@ def test_a_lone_run_leaves_the_sidebar_panel_headings_unnamed(application: QAppl
 
     controller = SimulationController()
     controller.start()
-    _advance(controller, 120.0)
+    _advance(controller, 120)
     view = _shown_view(application, controller)
     run = view.runs[0]
 
@@ -904,7 +903,7 @@ def test_resizing_one_chart_redraws_it_at_its_own_width(application: QApplicatio
     columns, not the run, set the chord.
     """
 
-    controller = _paused_run_with_history(1800.0)
+    controller = _paused_run_with_history(1800)
     view = _shown_view(application, controller)
     window_px = view.width()
     _drag_area_border(application, view, -400)
@@ -936,7 +935,7 @@ def test_narrowing_a_chart_owes_no_frame(application: QApplication) -> None:
     is wider than a pixel.
     """
 
-    controller = _paused_run_with_history(1800.0)
+    controller = _paused_run_with_history(1800)
     view = _shown_view(application, controller)
     view.render_tick()
     presented = view.presented_frames

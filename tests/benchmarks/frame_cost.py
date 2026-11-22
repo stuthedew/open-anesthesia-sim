@@ -14,19 +14,21 @@ kept (`PL-ZG5J`).
 
 **What a frame is here.** The running application has a step timer for each
 run it draws (`app/run_view.py`) and one render timer
-(`app/simulation_view.py`). Every run ticks every `SIMULATION_TICK_INTERVAL_S`
-real seconds, and on each tick it takes `PlaybackRate.steps_per_tick` steps of
-`SIMULATION_STEP_S`. The display redraws every `RENDER_INTERVAL_S` real
-seconds. So a *frame* is one render interval's worth of both:
-`RENDER_INTERVAL_S / SIMULATION_TICK_INTERVAL_S` ticks of every run's
-simulation, then one presentation. At 300x that is 600 steps per run against a
+(`app/simulation_view.py`). Every run ticks every `SIMULATION_TICK_INTERVAL_MS`
+real milliseconds. Each tick adds the simulated time that the playback rate
+owes the run, and the run takes one step of `SIMULATION_STEP_S` for each whole
+second owed (`OwedSimulatedTime` in `app/playback.py`). The display redraws
+every `RENDER_INTERVAL_S` real seconds. So a *frame* is one render interval's
+worth of both: the ticks of every run's simulation that fall in one render
+interval, then one presentation. At 300x that is 60 steps per run against a
 200 ms budget. A second run doubles the steps without widening the budget.
 Both numbers are derived here from the shipped constants, never written in, so
-a change of cadence moves this measurement with it.
+a change of cadence moves this measurement with it. At 1x a frame owes a run a
+fifth of a step, so the run takes one step on every fifth frame.
 
 **The three stages, and why a harness gets the third one wrong.**
 
-1. The simulation: `controller.advance(SIMULATION_STEP_S)`, once per step of
+1. The simulation: `controller.advance()`, once per step of
    every run.
 2. The assembly: `SimulationView.present(False)`, which assembles the frame and
    hands it to the widgets.
@@ -58,6 +60,10 @@ the branch control is drawn and refreshed, moved the one-run frame by less than
 the spread between invocations. The harness on `main` read 44.2 ms in the same
 container. So what moved the frame from 2026-09-19's 40.4 ms is the container
 or the tree since then, not the case.
+
+Both sets of figures were measured while a run stepped by 0.1 s, when a frame
+at 300x took 600 steps for each run. Since `PL-SZ6G` a frame at 300x takes 60
+steps of one second, and the figures have not been measured again.
 
 Under Flet, the same third position was taken by `page.update()`, against a
 session whose connection serialized each outbound message. That was the subtle
@@ -92,7 +98,6 @@ nothing about the numbers.
 """
 
 import argparse
-import math
 import os
 import statistics
 import sys
@@ -106,12 +111,12 @@ from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import (
     MAX_DISPLAYED_RUNS,
     RENDER_INTERVAL_S,
-    SIMULATION_STEP_S,
-    SIMULATION_TICK_INTERVAL_S,
+    SIMULATION_TICK_INTERVAL_MS,
 )
-from anesthesia_sim.app.playback import playback_rate_for
+from anesthesia_sim.app.playback import OwedSimulatedTime, playback_rate_for
 from anesthesia_sim.app.qt_chart import ConcentrationChart
 from anesthesia_sim.app.simulation_view import SimulationView
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.units import MILLISECONDS_PER_SECOND, SECONDS_PER_MINUTE
 
 #: The window size at which the dashboard is measured, matching the size in
@@ -189,7 +194,7 @@ class Measurement:
             dashboard rather than taken from the request, so that the figure
             names what was measured.
         steps_per_frame: The simulation steps that one frame advances each run
-            at that rate.
+            at that rate, on average.
         budget_s: The real seconds a frame has, which is `RENDER_INTERVAL_S`.
         warm_up_s: Simulated seconds every run ran before the first
             measured frame.
@@ -198,7 +203,7 @@ class Measurement:
 
     multiplier: int
     runs: int
-    steps_per_frame: int
+    steps_per_frame: float
     budget_s: float
     warm_up_s: float
     samples: tuple[FrameSample, ...]
@@ -223,8 +228,22 @@ class Measurement:
         return max(float(getattr(sample, stage)) for sample in self.samples)
 
 
-def steps_per_frame(multiplier: int) -> int:
-    """How many simulation steps one rendered frame advances at this playback rate.
+def _ticks_per_frame() -> int:
+    """Return how many ticks of a run's step timer fall in one rendered frame."""
+
+    return round(RENDER_INTERVAL_S * MILLISECONDS_PER_SECOND / SIMULATION_TICK_INTERVAL_MS)
+
+
+def steps_per_frame(multiplier: int) -> float:
+    """How many simulation steps one rendered frame advances at this playback rate, on average.
+
+    Each tick owes a run `multiplier` times the tick's own length in simulated
+    time, and the run takes one step for each whole second owed
+    (`OwedSimulatedTime` in `app/playback.py`). So the ticks of one frame owe a
+    run a fixed amount of simulated time, and this function returns that
+    amount in steps. At 5x and faster the amount is a whole number, and every
+    frame takes that many steps. At 1x it is a fifth of a step, and the run
+    takes one step on every fifth frame.
 
     The count is derived from the three shipped cadence constants rather than
     written down. So a change to the tick interval, the render interval or the
@@ -235,24 +254,19 @@ def steps_per_frame(multiplier: int) -> int:
             `app/playback.py`'s `SUPPORTED_PLAYBACK_RATES`.
 
     Returns:
-        Steps per frame, at least one.
+        Steps per frame, more than zero.
 
     Raises:
         SimulationConfigurationError: If the multiplier is not one the
-            interface offers, or does not give a whole number of steps at the
-            shipped intervals. Such a multiplier is refused rather than
-            rounded, for the reason that `app/playback.py` gives: a fractional
-            rate measured as a whole one measures a cadence that the
-            application never runs.
+            interface offers.
     """
 
     rate = playback_rate_for(multiplier)
-    per_tick = rate.steps_per_tick(
-        tick_interval_s=SIMULATION_TICK_INTERVAL_S, simulation_step_s=SIMULATION_STEP_S
+    owed_ms = _ticks_per_frame() * rate.simulated_ms_per_tick(
+        tick_interval_ms=SIMULATION_TICK_INTERVAL_MS
     )
-    ticks = round(RENDER_INTERVAL_S / SIMULATION_TICK_INTERVAL_S)
 
-    return per_tick * ticks
+    return owed_ms / (SIMULATION_STEP_S * MILLISECONDS_PER_SECOND)
 
 
 def _application() -> QApplication:
@@ -365,7 +379,8 @@ def measure(
             real second.
         frames: How many frames to time. At least one.
         warm_up_s: Simulated seconds every run runs before the first
-            measured frame. Not negative.
+            measured frame. Not negative. It is rounded to a whole number of
+            steps.
         runs: How many runs the dashboard draws, from one to
             `MAX_DISPLAYED_RUNS`.
 
@@ -395,7 +410,9 @@ def measure(
     if not 1 <= runs <= MAX_DISPLAYED_RUNS:
         raise ValueError(f"a dashboard draws between 1 and {MAX_DISPLAYED_RUNS} runs, not {runs}")
 
-    per_frame = steps_per_frame(multiplier)
+    rate = playback_rate_for(multiplier)
+    ticks = _ticks_per_frame()
+    warm_up_steps = round(warm_up_s / SIMULATION_STEP_S)
     application = _application()
     case = BranchedCase(SimulationController())
     # The trunk's first fork point is its opening, at induction.
@@ -407,8 +424,8 @@ def measure(
     for controller in case.runs:
         controller.start()
 
-        for _ in range(round(warm_up_s / SIMULATION_STEP_S)):
-            controller.advance(SIMULATION_STEP_S)
+        for _ in range(warm_up_steps):
+            controller.advance()
 
     view = SimulationView((case.trunk,), case=case)
     view.resize(WINDOW_WIDTH_PX, WINDOW_HEIGHT_PX)
@@ -428,15 +445,20 @@ def measure(
     # The runs that the dashboard draws are the runs that each frame advances.
     # In the application, every displayed run is advanced by its own step timer.
     drawn = tuple(run.controller for run in view.runs)
+    # Each run is owed its own simulated time, as each `RunView` holds its own.
+    owed = tuple(OwedSimulatedTime() for _ in drawn)
     samples = []
 
     try:
         for _ in range(frames):
             started = perf_counter()
 
-            for controller in drawn:
-                for _ in range(per_frame):
-                    controller.advance(SIMULATION_STEP_S)
+            for controller, owed_time in zip(drawn, owed, strict=True):
+                for _ in range(ticks):
+                    steps = owed_time.steps_due(rate, tick_interval_ms=SIMULATION_TICK_INTERVAL_MS)
+
+                    for _ in range(steps):
+                        controller.advance()
 
             advanced = perf_counter()
             view.present(False)
@@ -457,12 +479,20 @@ def measure(
     finally:
         view.close()
 
-    expected_s = warm_up_s + frames * per_frame * SIMULATION_STEP_S
+    # The steps that the measured frames owe a run are worked out here from
+    # what the rate means, not counted in the loop above. The rate is
+    # `multiplier` simulated seconds for each real second, and a run takes one
+    # step for each whole second owed.
+    render_interval_ms = round(RENDER_INTERVAL_S * MILLISECONDS_PER_SECOND)
+    measured_steps = (
+        frames * multiplier * render_interval_ms // (SIMULATION_STEP_S * MILLISECONDS_PER_SECOND)
+    )
+    expected_s = (warm_up_steps + measured_steps) * SIMULATION_STEP_S
 
     for index, controller in enumerate(drawn):
         elapsed_s = controller.snapshot().elapsed_s
 
-        if not math.isclose(elapsed_s, expected_s, rel_tol=0.0, abs_tol=SIMULATION_STEP_S / 2):
+        if elapsed_s != expected_s:
             raise RuntimeError(
                 f"run {index + 1} of {len(drawn)} advanced {elapsed_s} simulated seconds where "
                 f"this measurement asked for {expected_s}; a run that is halted or past its "
@@ -473,9 +503,9 @@ def measure(
     return Measurement(
         multiplier=multiplier,
         runs=len(drawn),
-        steps_per_frame=per_frame,
+        steps_per_frame=steps_per_frame(multiplier),
         budget_s=RENDER_INTERVAL_S,
-        warm_up_s=warm_up_s,
+        warm_up_s=warm_up_steps * SIMULATION_STEP_S,
         samples=tuple(samples),
     )
 
@@ -507,7 +537,7 @@ def report(measurement: Measurement) -> str:
         f"Frame cost at {measurement.multiplier}x real time, {runs} on the dashboard, "
         f"{len(measurement.samples)} frames, warmed to "
         f"{measurement.warm_up_s / SECONDS_PER_MINUTE:g} min of simulated run.",
-        f"{measurement.steps_per_frame} steps advanced per frame in each run, against a "
+        f"{measurement.steps_per_frame:g} steps advanced per frame in each run, against a "
         f"{_milliseconds(budget)} budget.",
         "",
         f"  {'stage':<22}{'median':>12}{'worst':>12}",

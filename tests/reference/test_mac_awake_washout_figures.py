@@ -21,10 +21,12 @@ model against patients. `PL-39KH` and the section itself say what the figures
 do and do not show.
 
 A crossing time is the moment at which the trace passes the threshold. The
-test finds it by linear interpolation between the two 0.1 s steps on either
-side of the crossing. Taking the first step below the threshold instead would
-add up to 0.1 s. That error can move a figure printed to 0.01 min across a
-rounding boundary.
+test finds it by linear interpolation between the two one-second steps on
+either side of the crossing. Taking the first step below the threshold instead
+would add up to 1 s, which is more than the 0.01 min that the document prints
+a crossing to. On 2026-11-21 each of the three interpolated crossings was
+within 1.3e-5 min of the crossing found by bisection on the model's exact
+solution (`RunDefinition.state_at`).
 """
 
 import re
@@ -38,7 +40,7 @@ import pytest
 from anesthesia_sim.app.formatting import mac_awake_band_percent
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.parameters import load_agent_parameters
-from anesthesia_sim.core.simulation_step import SimulationStep
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
@@ -46,7 +48,6 @@ INTERFACE_PATH = Path(__file__).resolve().parents[2] / "docs" / "INTERFACE.md"
 SECTION_HEADING = "### MAC-awake as a chart reference"
 
 AGENT_ID = "sevoflurane"
-STEP = SimulationStep(0.1)
 SECONDS_PER_HOUR = 3600
 #: A bound on the washout's length, so that a model that never crosses a
 #: threshold fails here instead of looping. The latest figure is near 7.3 min.
@@ -175,12 +176,12 @@ def _crossing_min(
 
     previous = {name: trace(system) for name, trace in traces.items()}
     crossings: dict[str, float] = {}
-    elapsed_s = 0.0
+    elapsed_s = 0
 
     while len(crossings) < len(thresholds):
         assert elapsed_s < WASHOUT_LIMIT_S, f"no crossing within an hour for {thresholds}"
-        system.advance(STEP)
-        elapsed_s += STEP
+        system.advance()
+        elapsed_s += SIMULATION_STEP_S
 
         for name, threshold in thresholds.items():
             now = traces[name.split(":")[0]](system)
@@ -188,7 +189,7 @@ def _crossing_min(
 
             if name not in crossings and before > threshold >= now:
                 fraction_of_step = (before - threshold) / (before - now)
-                crossed_s = elapsed_s - STEP + fraction_of_step * STEP
+                crossed_s = elapsed_s - SIMULATION_STEP_S + fraction_of_step * SIMULATION_STEP_S
                 crossings[name] = crossed_s / SECONDS_PER_MINUTE
 
         previous = {name: trace(system) for name, trace in traces.items()}
@@ -231,8 +232,8 @@ def washout() -> Washout:
         float(printed.opening_fresh_gas_flow_l_min),
     ), f"the run opens at (dial %, stored MAC %, flow L/min) = {opening}, not as the section says"
 
-    for _ in range(round(int(printed.maintenance_hours) * SECONDS_PER_HOUR / STEP)):
-        system.advance(STEP)
+    for _ in range(int(printed.maintenance_hours) * SECONDS_PER_HOUR // SIMULATION_STEP_S):
+        system.advance()
 
     alveolar_fraction = system.alveoli.partial_pressure_fraction
     vessel_rich_fraction = system.patient.vessel_rich.partial_pressure_fraction

@@ -45,7 +45,6 @@ from anesthesia_sim.app.area_layout import (
     AreaOperation,
 )
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
-from anesthesia_sim.app.dashboard_frame import SIMULATION_STEP_S
 from anesthesia_sim.app.main import open_workspaces
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.simulation_view import SimulationView
@@ -55,6 +54,7 @@ from anesthesia_sim.app.unconditional_set import (
     unconditional_set,
 )
 from anesthesia_sim.app.views import BookmarksView, BranchView, ConcentrationView
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
 from anesthesia_sim.layout.store import USER_DIRECTORY_VARIABLE, WORKSPACES_FILE_NAME
 from anesthesia_sim.layout.tree import AreaId
@@ -93,7 +93,7 @@ def _paused_run() -> SimulationController:
     controller.start()
 
     while controller.snapshot().elapsed_s < _HISTORY_S - SIMULATION_STEP_S / 2.0:
-        controller.advance(SIMULATION_STEP_S)
+        controller.advance()
 
     controller.set_fresh_gas_flow(FreshGasFlow(2.0))
     controller.pause()

@@ -1,7 +1,7 @@
 """Unit tests for `app/run_presentation.py`: the one value a run's panel is written from.
 
 No test here builds a widget. Each builds a real `SimulationController`,
-advances it at the shipped step size, and checks the `RunPresentation` that
+advances it by the one-second step, and checks the `RunPresentation` that
 `drawn_run` or `halted_run` returns. `RunView.show_presentation` writes that
 value and decides nothing, so what a reader sees on a frame and on a halt is
 decided here.
@@ -28,7 +28,6 @@ from anesthesia_sim.app.control_timeline import group_adjustments
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import (
     READOUT_PANELS,
-    SIMULATION_STEP_S,
     WITHHELD_ACCOUNTING,
     WITHHELD_CONCENTRATION_TEXT,
     WITHHELD_ELAPSED_TIME_TEXT,
@@ -55,6 +54,7 @@ from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
 )
 from anesthesia_sim.core.parameters import parse_breathing_circuit_parameters
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CaseInstant
 from anesthesia_sim.layout.run_identity import RunIdentities
 
@@ -85,7 +85,7 @@ def _state(**changes: object) -> RunPanelState:
     return replace(state, **changes)  # type: ignore[arg-type]
 
 
-def _run_at(elapsed_s: float, *, agent_id: str = "sevoflurane") -> SimulationController:
+def _run_at(elapsed_s: int, *, agent_id: str = "sevoflurane") -> SimulationController:
     """A real run of `agent_id`, delivering 2%, advanced to `elapsed_s` and paused."""
 
     controller = SimulationController()
@@ -96,8 +96,8 @@ def _run_at(elapsed_s: float, *, agent_id: str = "sevoflurane") -> SimulationCon
     controller.set_delivered_concentration_percent(Percent(2.0))
     controller.start()
 
-    while controller.snapshot().elapsed_s < elapsed_s - SIMULATION_STEP_S / 2.0:
-        controller.advance(SIMULATION_STEP_S)
+    for _ in range(elapsed_s // SIMULATION_STEP_S):
+        controller.advance()
 
     controller.pause()
 
@@ -107,7 +107,7 @@ def _run_at(elapsed_s: float, *, agent_id: str = "sevoflurane") -> SimulationCon
 def _run_with_a_control_change() -> SimulationController:
     """Return a run paused at 90 s, whose delivered concentration was then moved from 2% to 3%."""
 
-    controller = _run_at(90.0)
+    controller = _run_at(90)
     controller.set_delivered_concentration_percent(Percent(3.0))
 
     return controller
@@ -151,7 +151,7 @@ def test_a_drawn_run_states_the_snapshot_it_was_given_on_every_part() -> None:
     (`docs/INTERFACE.md` § "MAC multiples as a display unit").
     """
 
-    controller = _run_at(90.0)
+    controller = _run_at(90)
 
     shown = _drawn(controller, _state(case=3))
 
@@ -173,7 +173,7 @@ def test_a_drawn_run_states_the_snapshot_it_was_given_on_every_part() -> None:
 def test_a_drawn_run_restates_an_open_new_case_question_from_its_snapshot() -> None:
     """The open question names the time the frame's own snapshot has run to (`PL-WM5P`)."""
 
-    controller = _run_at(90.0)
+    controller = _run_at(90)
 
     shown = _drawn(controller, _state(pending_agent_name="Desflurane"))
 
@@ -197,14 +197,14 @@ def test_a_drawn_run_that_a_mark_stopped_says_so() -> None:
     """A run stopped by the learner's bookmark at 30 s is not described as a plain pause."""
 
     controller = SimulationController()
-    controller.add_time_bookmark(TimeBookmark(CaseInstant(30.0)))
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(30)))
     controller.start()
 
-    for _ in range(round(60.0 / SIMULATION_STEP_S)):
+    for _ in range(60 // SIMULATION_STEP_S):
         if not controller.snapshot().is_running:
             break
 
-        controller.advance(SIMULATION_STEP_S)
+        controller.advance()
 
     shown = _drawn(controller, _state())
 
@@ -221,7 +221,7 @@ def test_a_branch_and_a_compared_run_lock_the_agent_selector_on_a_frame_and_on_a
 ) -> None:
     """The agent chip gives the same lock reason whether a frame was drawn or the run halted."""
 
-    controller = _run_at(30.0)
+    controller = _run_at(30)
     state = _state(**changes)
     lone = _drawn(controller, _state())
     frame = _drawn(controller, state)
@@ -242,7 +242,7 @@ def test_a_stopped_run_s_banner_states_what_the_panel_refused_on_a_frame_and_on_
     real run takes 24 hours of simulated time to reach that length.
     """
 
-    controller = _run_at(30.0)
+    controller = _run_at(30)
     reason = "this run has reached 86400 s of simulated time"
     snapshot = replace(controller.snapshot(), supported_limit_reason=reason)
     record = replace(controller.record(), supported_limit_reason=reason)
@@ -276,7 +276,7 @@ def test_a_stopped_run_s_banner_states_what_the_panel_refused_on_a_frame_and_on_
 def test_a_compared_run_s_banner_names_the_run() -> None:
     """While a second run is drawn, a run's banner says which run it speaks for (`PL-TSZM`)."""
 
-    controller = _run_at(30.0)
+    controller = _run_at(30)
 
     lone = _drawn(controller, _state(rejected_setting_notice="Setting refused: too high."))
     compared = _drawn(
@@ -298,7 +298,7 @@ def test_a_compared_run_s_banner_names_the_run() -> None:
 def test_a_compared_run_s_halt_banner_names_the_run() -> None:
     """A halt stated with no frame says which of two compared runs stopped (`PL-TSZM`)."""
 
-    controller = _run_at(30.0)
+    controller = _run_at(30)
     state = _state()
     kept = KeptValues(state.case, _drawn(controller, state).values)
     controller.fail("the frame could not be drawn")
@@ -327,7 +327,7 @@ def test_a_halt_lists_the_control_changes_of_the_run_it_stopped() -> None:
 def test_a_halt_keeps_every_value_of_the_last_frame_while_the_run_is_the_one_it_drew() -> None:
     """A halt with no start-over since the last frame shows that frame's values, all of them."""
 
-    controller = _run_at(90.0)
+    controller = _run_at(90)
     state = _state()
     frame = _drawn(controller, state)
     controller.fail("the frame could not be drawn")
@@ -348,7 +348,7 @@ def test_a_halt_after_a_start_over_withholds_every_value_of_the_discarded_run() 
     a value added to the frame later is checked here without being named.
     """
 
-    controller = _run_at(90.0)
+    controller = _run_at(90)
     state = _state()
     frame = _drawn(controller, state)
     controller.set_agent("desflurane")
@@ -393,10 +393,10 @@ def test_withheld_values_state_no_number_and_no_agent_of_any_run() -> None:
 
     rate = PlaybackRate(20)
     standing = {
-        _naming_no_agent(text) for text in _strings(drawn_values(_run_at(90.0).snapshot(), rate))
+        _naming_no_agent(text) for text in _strings(drawn_values(_run_at(90).snapshot(), rate))
     } & {
         _naming_no_agent(text)
-        for text in _strings(drawn_values(_run_at(30.0, agent_id="desflurane").snapshot(), rate))
+        for text in _strings(drawn_values(_run_at(30, agent_id="desflurane").snapshot(), rate))
     }
 
     texts = list(_strings(withheld_values(rate)))
@@ -438,7 +438,7 @@ def test_withheld_readouts_keep_each_panel_s_gloss_and_the_playback_rate() -> No
     The expected panel descriptions are those of a frame drawn from a real run.
     """
 
-    drawn = drawn_values(_run_at(90.0).snapshot(), PlaybackRate(4)).readouts
+    drawn = drawn_values(_run_at(90).snapshot(), PlaybackRate(4)).readouts
 
     withheld = withheld_values(PlaybackRate(4)).readouts
 
@@ -450,7 +450,7 @@ def test_withheld_readouts_keep_each_panel_s_gloss_and_the_playback_rate() -> No
 def test_every_value_a_frame_draws_differs_from_its_withheld_form() -> None:
     """A drawn value never equals its withheld form, so the two tests above can tell them apart."""
 
-    drawn = drawn_values(_run_at(90.0).snapshot(), PlaybackRate(1))
+    drawn = drawn_values(_run_at(90).snapshot(), PlaybackRate(1))
     withheld = withheld_values(PlaybackRate(1))
 
     for field in fields(RunValues):
@@ -460,7 +460,7 @@ def test_every_value_a_frame_draws_differs_from_its_withheld_form() -> None:
 def test_a_halt_s_banner_says_the_run_started_over_only_when_it_did() -> None:
     """The banner and the values agree on whether the last frame belongs to this run."""
 
-    controller = _run_at(90.0)
+    controller = _run_at(90)
     state = _state()
     frame = _drawn(controller, state)
     controller.fail("the frame could not be drawn")
@@ -479,7 +479,7 @@ def test_a_halt_s_banner_says_the_run_started_over_only_when_it_did() -> None:
 def test_a_halt_restates_the_playback_rate_the_reader_chose_on_the_halted_run() -> None:
     """A rate chosen after the last frame reaches the clock's playback line (`PL-P58M`)."""
 
-    controller = _run_at(90.0)
+    controller = _run_at(90)
     state = _state()
     frame = _drawn(controller, state)
     controller.fail("the frame could not be drawn")
@@ -514,7 +514,7 @@ def test_a_halt_after_a_rejected_accounting_step_shows_that_step_s_check(
     with pytest.raises(AgentSimulationValidationError) as raised:
         validator.require_valid_agent_accounting(currently_stored_agent_l=14.0)
 
-    controller = _run_at(90.0)
+    controller = _run_at(90)
     state = _state()
     frame = _drawn(controller, state)
     controller.fail("the accounting check failed")

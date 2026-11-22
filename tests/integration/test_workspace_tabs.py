@@ -24,7 +24,7 @@ from PySide6.QtWidgets import QApplication
 from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app.chart_time_base import time_base_for_span
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
-from anesthesia_sim.app.dashboard_frame import SIMULATION_STEP_S, slider_position
+from anesthesia_sim.app.dashboard_frame import slider_position
 from anesthesia_sim.app.formatting import FLOW_DISPLAY_DECIMALS
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.view_registry import WASH_IN
@@ -46,6 +46,7 @@ from anesthesia_sim.app.workspace_tabs import (
     display_order,
     tab_operations,
 )
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.layout.exceptions import ShippedWorkspaceError
 from anesthesia_sim.layout.run_identity import RunId, RunIdentities, SessionToken
 from anesthesia_sim.layout.shipped import shipped_workspace, shipped_workspaces
@@ -474,7 +475,7 @@ def _ran(seconds: float) -> SimulationController:
     controller = SimulationController()
 
     for _ in range(round(seconds / SIMULATION_STEP_S)):
-        controller.advance(SIMULATION_STEP_S)
+        controller.advance()
 
     return controller
 
@@ -679,7 +680,7 @@ def test_a_pinned_run_dropped_while_every_frame_fails_is_stated_as_not_open(
     trunk.start()
 
     for _ in range(round(60.0 / SIMULATION_STEP_S)):
-        trunk.advance(SIMULATION_STEP_S)
+        trunk.advance()
 
     trunk.pause()
     case = BranchedCase(trunk)

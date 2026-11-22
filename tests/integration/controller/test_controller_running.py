@@ -26,7 +26,6 @@ from anesthesia_sim.core.exceptions import (
 )
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.run_definition import RunSegment
-from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
 from anesthesia_sim.core.tissue import TissueGroup
 from tests.integration.controller.controller_support import _advance_for
@@ -35,7 +34,7 @@ from tests.integration.controller.controller_support import _advance_for
 def test_pause_blocks_advancement() -> None:
     controller = SimulationController()
 
-    controller.advance(SimulationStep(0.1))
+    controller.advance()
 
     assert controller.snapshot().elapsed_s == 0.0
 
@@ -46,8 +45,8 @@ def test_start_advance_pause_sequence_is_deterministic() -> None:
 
     for controller in (first, second):
         controller.start()
-        controller.advance(SimulationStep(0.1))
-        controller.advance(SimulationStep(0.1))
+        controller.advance()
+        controller.advance()
         controller.pause()
 
     assert first.snapshot() == second.snapshot()
@@ -93,10 +92,10 @@ def test_a_frame_reads_only_the_window_it_draws() -> None:
     the same number of states.
     """
 
-    window_s = 30.0
+    window_s = 30
     drawn: list[int] = []
 
-    for run_s in (60.0, 600.0):
+    for run_s in (60, 600):
         controller = SimulationController()
         controller.start()
         _advance_for(controller, run_s)
@@ -135,7 +134,7 @@ def test_the_window_ends_on_the_sample_the_readouts_were_built_from() -> None:
 
     controller = SimulationController()
     controller.start()
-    _advance_for(controller, 12.0)
+    _advance_for(controller, 12)
 
     snapshot = controller.snapshot()
     window = controller.drawn_window(snapshot.elapsed_s - 5.0, snapshot.elapsed_s, 150)
@@ -173,7 +172,7 @@ def test_each_drawn_quantity_reads_the_state_of_the_compartment_it_names() -> No
 
     controller = SimulationController()
     controller.start()
-    _advance_for(controller, duration_s=60.0)
+    _advance_for(controller, duration_s=60)
 
     system = controller._state.uptake_system
     state = system.state_vector()
@@ -212,7 +211,7 @@ def test_a_run_records_the_agent_it_is_a_run_of() -> None:
 
     controller = SimulationController(agent_id="isoflurane")
     controller.start()
-    _advance_for(controller, duration_s=1.0)
+    _advance_for(controller, duration_s=1)
 
     assert controller.drawn_window(0.0, 1.0, 150).substance_id == "isoflurane"
 
@@ -234,24 +233,49 @@ def test_the_window_starts_at_the_time_asked_for_and_never_after_it() -> None:
 
     controller = SimulationController()
     controller.start()
-    _advance_for(controller, 20.0)
+    _advance_for(controller, 20)
 
     elapsed_s = controller.snapshot().elapsed_s
 
-    for start_s in (0.0, 0.05, 7.3, 19.9, 20.0):
+    for start_s in (0, 7, 19, 20):
         window = controller.drawn_window(start_s, elapsed_s, 150)
 
-        # The window starts exactly at the requested edge, not at the first
-        # sample at or after it. A column is evaluated wherever it is needed,
-        # so no cut can land inside the drawn window any more.
-        assert window.times_s[0] == pytest.approx(start_s)
-        assert window.times_s[-1] == pytest.approx(elapsed_s)
+        # The window starts exactly at the requested edge. A column is
+        # evaluated wherever it is needed, so no cut can land inside the drawn
+        # window any more.
+        assert window.times_s[0] == start_s
+        assert window.times_s[-1] == elapsed_s
+
+
+def test_a_window_edge_inside_a_second_is_moved_inward_to_a_whole_second() -> None:
+    """The drawn window holds only instants that the run holds, which are whole seconds.
+
+    A run moves by one second, so it holds no state at 7.3 s. An axis edge
+    that lies inside a second is therefore moved inward: the left edge up to
+    the next whole second, and the right edge down to the one before
+    (`PL-SZ6G`). The expected edges are typed by hand.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, 20)
+
+    for start_s, stop_s, first_s, last_s in (
+        (0.05, 20.0, 1, 20),
+        (7.3, 12.6, 8, 12),
+        (19.9, 20.0, 20, 20),
+    ):
+        window = controller.drawn_window(start_s, stop_s, 150)
+
+        assert window.times_s[0] == first_s
+        assert window.times_s[-1] == last_s
+        assert all(isinstance(time_s, int) for time_s in window.times_s)
 
 
 def test_reset_pauses_and_clears_concentration_history() -> None:
     controller = SimulationController()
     controller.start()
-    controller.advance(SimulationStep(0.1))
+    controller.advance()
 
     controller.reset()
 
@@ -270,7 +294,7 @@ def test_reset_pauses_and_clears_concentration_history() -> None:
 def test_parameter_changes_do_not_reset_dynamic_state() -> None:
     controller = SimulationController()
     controller.start()
-    _advance_for(controller, duration_s=10.0)
+    _advance_for(controller, duration_s=10)
     before = controller.snapshot()
 
     controller.set_fresh_gas_flow(FreshGasFlow(3.0))
@@ -307,7 +331,7 @@ def test_the_circuit_volume_is_a_build_time_parameter_with_no_live_setter() -> N
 
     controller = SimulationController(circuit_volume_l=CompartmentVolume(5.0))
     controller.start()
-    _advance_for(controller, duration_s=10.0)
+    _advance_for(controller, duration_s=10)
     controller.set_fresh_gas_flow(FreshGasFlow(3.0))
 
     assert controller.snapshot().circuit_volume_l == 5.0
@@ -322,11 +346,11 @@ def test_a_failed_session_is_not_the_same_state_as_a_pause() -> None:
 
     controller = SimulationController()
     controller.start()
-    controller.advance(SimulationStep(0.1))
+    controller.advance()
 
     paused = SimulationController()
     paused.start()
-    paused.advance(SimulationStep(0.1))
+    paused.advance()
     paused.pause()
 
     controller.fail("SimulationNumericalError: the step could not be completed")
@@ -358,11 +382,11 @@ def test_a_failed_session_cannot_be_resumed() -> None:
 def test_a_failed_session_does_not_advance() -> None:
     controller = SimulationController()
     controller.start()
-    controller.advance(SimulationStep(0.1))
+    controller.advance()
     controller.fail("SimulationNumericalError: boom")
     elapsed_at_failure = controller.snapshot().elapsed_s
 
-    controller.advance(SimulationStep(0.1))
+    controller.advance()
 
     assert controller.snapshot().elapsed_s == elapsed_at_failure
 
@@ -416,11 +440,11 @@ def test_a_stopped_run_refuses_every_setting_and_records_nothing(
 
     controller = SimulationController()
     controller.start()
-    controller.advance(SimulationStep(0.1))
+    controller.advance()
     _STOPS[stop](controller)
     never_stopped = SimulationController()
     never_stopped.start()
-    never_stopped.advance(SimulationStep(0.1))
+    never_stopped.advance()
 
     with pytest.raises(
         SimulationConfigurationError,
@@ -452,7 +476,7 @@ def test_the_first_failure_reason_is_the_one_kept() -> None:
 def test_reset_clears_a_failure_and_restores_a_startable_session() -> None:
     controller = SimulationController()
     controller.start()
-    controller.advance(SimulationStep(0.1))
+    controller.advance()
     controller.fail("SimulationNumericalError: boom")
 
     controller.reset()
@@ -462,10 +486,10 @@ def test_reset_clears_a_failure_and_restores_a_startable_session() -> None:
     assert controller.snapshot().elapsed_s == 0.0
 
     controller.start()
-    controller.advance(SimulationStep(0.1))
+    controller.advance()
 
     assert controller.snapshot().is_running is True
-    assert controller.snapshot().elapsed_s == pytest.approx(0.1)
+    assert controller.snapshot().elapsed_s == 1
 
 
 def test_switching_agent_clears_a_failure() -> None:
@@ -473,7 +497,7 @@ def test_switching_agent_clears_a_failure() -> None:
 
     controller = SimulationController()
     controller.start()
-    controller.advance(SimulationStep(0.1))
+    controller.advance()
     controller.fail("SimulationNumericalError: boom")
 
     controller.set_agent("desflurane")
@@ -492,7 +516,7 @@ def test_a_refused_setting_does_not_fail_the_session() -> None:
 
     controller = SimulationController(agent_id="isoflurane")
     controller.start()
-    controller.advance(SimulationStep(0.1))
+    controller.advance()
     before = controller.snapshot()
 
     with pytest.raises(SimulationConfigurationError, match="vaporizer maximum"):
@@ -536,7 +560,7 @@ def _controller_one_setting_from_a_failed_step() -> SimulationController:
 
     controller = SimulationController(agent_id="isoflurane")
     controller.start()
-    _advance_for(controller, duration_s=60.0)
+    _advance_for(controller, duration_s=60)
 
     patient = controller._state.uptake_system.patient
     original = patient.fat
@@ -567,7 +591,7 @@ def test_a_failed_step_adds_nothing_to_the_chart_history() -> None:
     before = controller.drawn_window(0.0, before_s, 150)
 
     with pytest.raises(SimulationNumericalError):
-        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        controller.advance()
 
     after = controller.drawn_window(0.0, controller.snapshot().elapsed_s, 150)
 
@@ -590,7 +614,7 @@ def test_a_failed_step_leaves_every_displayed_value_bit_identical() -> None:
     before = controller.snapshot()
 
     with pytest.raises(SimulationNumericalError):
-        controller.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+        controller.advance()
 
     after = controller.snapshot()
 

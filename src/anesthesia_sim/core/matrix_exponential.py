@@ -210,10 +210,11 @@ at 18 and $`6.3\\times10^{-7}`$ at 31. At 51 squarings it was 174%
 (`PL-2MD9`).
 
 A cap of thirty-two puts the bound at $`2^{32}\\cdot2^{-52} = 2^{-20}`$, about
-one part in a million. The most squarings any supported input needs is 19. That
-is at the 24-hour horizon that `RunDefinition.state_at` can be asked for, at the
-widest supported flows. The cap therefore leaves a factor of $`2^{13}`$ in rate
-or interval before it refuses anything a run can reach. What it does refuse is
+one part in a million. A shipped agent's one-second step needs at most 3, at the
+widest supported flows, and the hardest corner of the numerical envelope needs
+22 (`docs/MODEL.md` § "The numerical envelope"). The cap therefore leaves a
+factor of $`2^{10}`$ in rate or interval before it refuses anything a run can
+reach. What it does refuse is
 the regime that the alveolar sweep found. At 1e-18 L the propagator was wrong by
 about 100% in every entry, yet the run advanced three steps with its accounting
 check passing. The check passed because the same failure had affected every
@@ -469,8 +470,8 @@ def _squarings_for(shifted: Matrix, interval_s: float) -> int:
         SimulationConfigurationError: more than `MAXIMUM_SQUARINGS` squarings
             are needed. Past that number, the error the squarings can amplify
             exceeds one part in a million, so the result could not be
-            established. At the 0.1 s step, this happens for an alveolar
-            volume from 1e-11 L to 1e-308 L (`PL-2MD9`).
+            established. `PL-2MD9` measured this at a 0.1 s step, for an
+            alveolar volume from 1e-11 L to 1e-308 L.
         SimulationConfigurationError: dividing the norm by the series bound
             overflows. The norm itself is finite in this case: at an alveolar
             volume of 1e-309 L it is 1.2e+307. The division by $`2^{-4}`$ is

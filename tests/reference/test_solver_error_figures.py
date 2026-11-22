@@ -7,13 +7,13 @@ agent may lie from the same equations solved with far more digits, over the
 first ten seconds of a run. Before `PL-19W8`, no test computed it.
 
 The reference uses no solver from `core/`. It is the run's own system
-matrix, built from the same settings and raised to the 0.1 s step at 50
+matrix, built from the same settings and raised to the one-second step at 50
 significant digits by `_decimal_exponential` in
 `tests/unit/test_numerical_envelope.py`. It is then
 applied to the run's opening state once per step, also at 50 digits. So the
 reference and the simulator solve the same linear equations from the same
 start, and the difference between them is the simulator's own arithmetic
-error: the rounding in its 0.1 s propagator and in each step's product.
+error: the rounding in its one-second propagator and in each step's product.
 
 The bound is read from the section as printed, as
 `test_mac_awake_washout_figures.py` reads its figures. So a change to the
@@ -42,7 +42,7 @@ from anesthesia_sim.core.governing_equations import (
     VENOUS_FRACTION,
     build_system_matrix,
 )
-from anesthesia_sim.core.simulation_step import SimulationStep
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 # The 50-digit matrix exponential lives with the unit test that first needed
@@ -56,12 +56,12 @@ INTERFACE_PATH = Path(__file__).resolve().parents[2] / "docs" / "INTERFACE.md"
 SECTION_HEADING = "### Displayed precision"
 
 AGENT_ID = "sevoflurane"
-STEP = SimulationStep(0.1)
-STEP_TEXT = "0.1"
+#: The one-second step, as the text that `_decimal_exponential` takes.
+STEP_TEXT = str(SIMULATION_STEP_S)
 RUN_S = 10
 #: The run length as the section writes it. A new `RUN_S` needs its words here.
 RUN_WORDS = {10: "ten"}
-STEPS = round(RUN_S / STEP)
+STEPS = RUN_S // SIMULATION_STEP_S
 REFERENCE_DIGITS = 50
 BELOW_RESOLUTION = "<0.01%"
 
@@ -140,7 +140,7 @@ def solver_error() -> float:
         reference = [Decimal(value) for value in system.state_vector()]
 
         for _ in range(STEPS):
-            system.advance(STEP)
+            system.advance()
             reference = [
                 sum(
                     (propagator[row][column] * reference[column] for column in range(STATE_SIZE)),
@@ -185,16 +185,16 @@ def test_the_solver_error_in_the_first_ten_seconds_is_below_the_printed_bound(
 
     The bound is a numerical limit from the rounding of double-precision
     arithmetic, whose spacing relative to a value is about 2.2e-16. On
-    2026-11-14 the largest difference was 9.5e-15, about 43 times that spacing,
-    in fat at 9.9 s. A printed bound of 1e-13 is about 450 times the spacing,
-    or about 4.5 times it for each of the 100 steps. That leaves room for a
-    change in the order of the arithmetic, while staying far below any
-    displayed digit.
+    2026-11-21, at the one-second step, the largest difference was 1.5e-15,
+    about 7 times that spacing, in the mixed venous blood at 9 s. A printed
+    bound of 1e-13 is about 450 times the spacing, or about 45 times it for
+    each of the 10 steps. That leaves room for a change in the order of the
+    arithmetic, while staying far below any displayed digit.
 
-    The bound must also stay within 100 times the measurement. A bound that is
-    true but far too loose, such as the 2e-4 this section printed before
-    2026-11-14, would tell a reader the solver is ten orders of magnitude less
-    accurate than it is.
+    The bound must also stay within 100 times the measurement, and the printed
+    1e-13 is about 66 times it. A bound that is true but far too loose, such
+    as the 2e-4 this section printed before 2026-11-14, would tell a reader
+    the solver is ten orders of magnitude less accurate than it is.
     """
 
     bound = _printed_bound()

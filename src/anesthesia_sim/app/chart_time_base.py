@@ -41,21 +41,23 @@ display would be asserting something false about what the reader is looking at.
 
 from __future__ import annotations
 
+import itertools
 import math
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Final
 
-from anesthesia_sim.core.rounding import WHOLE_COUNT_TOLERANCE
-from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CaseInstant, require_case_instant
 
 __all__ = [
-    "CHART_GRID_RESOLUTIONS_S",
     "CHART_LIVE_HEADROOM_FRACTION",
     "FIT_RUN_KEY",
     "SELECTABLE_TIME_BASES",
     "TIME_BASE_LADDER",
     "ChartTimeBase",
+    "drawn_seconds",
+    "extreme_seconds",
     "fit_to_run",
     "fitted_window",
     "following_window",
@@ -74,25 +76,6 @@ __all__ = [
 # and invisible on a twelve-hour one. The fraction is small enough that the width
 # a reader selected is still very nearly the width they are reading.
 CHART_LIVE_HEADROOM_FRACTION: Final = 0.02
-
-# The grids onto which the spacing of chart columns is rounded down, coarsest first.
-# They are the step by which the run advances, and a tenth of that step. The chart's
-# hover prints the instant of the column it reports, and the value it prints is the
-# state at exactly that column (`PL-T5NJ`). A spacing derived from the plot's width
-# alone puts columns at instants such as 410.7383 s. Printed to the clock's tenth of
-# a second, that instant can be up to 0.05 s away from the state it labels. Early in
-# a fast induction, the circuit concentration moves by 0.02 percentage points in
-# 0.04 s. On these grids every column is a whole number of hundredths of a second,
-# so the hover can print the instant it reports exactly. `grid_spacing_s` decides
-# which grid applies.
-CHART_GRID_RESOLUTIONS_S: Final = (MAXIMUM_SIMULATION_STEP_S, MAXIMUM_SIMULATION_STEP_S / 10)
-
-# How many units of a grid a spacing must span before it is rounded onto that grid
-# rather than a finer one. Rounding down then removes less than one unit, which is
-# less than one part in this many of the spacing. So rounding adds at most that
-# fraction more columns.
-_GRID_UNITS_FOR_A_COARSER_GRID: Final = 10
-
 
 # The key of the selector's "Fit run" entry. It is a sentinel rather than a
 # width, because fitting is a *rule* for choosing the width each frame, not one
@@ -411,32 +394,137 @@ def tick_times(start_s: float, stop_s: float, interval_s: float) -> tuple[float,
     return tuple(index * interval_s for index in range(first, last + 1))
 
 
-def grid_spacing_s(raw_spacing_s: float) -> float:
-    """Round a column spacing down onto the coarsest grid that adds few columns.
+def drawn_seconds(
+    first_s: int, last_s: int, spacing_s: int, events_s: Iterable[int]
+) -> tuple[CaseInstant, ...]:
+    """Return the seconds of a run at which one window of the chart draws a point.
 
-    A grid is used where the spacing is at least ten of its units. Rounding down then
-    adds at most a tenth more columns. So a spacing of 1 s or more lands on the clock's
-    tenth of a second, and each column's printed instant is one that the clock also
-    shows. A spacing of less than 1 s lands on hundredths of a second. A spacing of
-    less than a tenth of a second spans fewer than ten hundredths, but there is no
-    finer grid, so it still lands on hundredths. There, rounding can add more columns,
-    up to twice as many just below 0.02 s. Only the one- and two-minute axes reach such
-    spacings, on plots wider than 600 px and 1200 px respectively.
+    Each is a whole second, so each point is a state that the run stored
+    (`core/stored_states.py`). No point is drawn between two seconds, because
+    its value would have to be made up from its neighbours (`PL-MH9J`).
 
-    The spacing is rounded down, never up, so each column is still no more than one
-    pixel's width of time from the next. That is the chart's guarantee in
-    `docs/INTERFACE.md` § "What the chart draws". The one exception is a spacing of less
-    than a hundredth of a second, which needs a one-minute axis more than 6000 px wide.
-    That spacing is raised to a hundredth, so there the line segment between two
-    columns spans more than a pixel.
+    **The grid is anchored to the case's zero, not to the window.** Columns
+    fall on multiples of `spacing_s` on the case's own axis. So a window that
+    follows the run keeps every second it drew in the last frame and gains at
+    most one. A trunk and its branches draw at the same seconds, so two
+    traces on one axis can be read against each other (`PL-2R2C`).
+    `docs/INTERFACE.md` § "What the chart draws" states the rule.
+
+    **Every control change inside the window is drawn.** The model's
+    response has its sharp corners where a setting changed, and a grid that
+    stepped over a change would draw a straight line through the corner.
+
+    **Both bounds are drawn.** The readouts show the state at the run's last
+    second, so the right-hand end of a trace is the value the readout beside
+    it shows.
+
+    Args:
+        first_s: The window's first second.
+        last_s: The window's last second, which is not before `first_s`.
+        spacing_s: The distance between grid columns, in whole seconds, at
+            least one (`grid_spacing_s`).
+        events_s: The seconds at which a setting changed. Those outside the
+            window are ignored.
+
+    Returns:
+        The seconds to draw, ascending, each once.
+
+    Raises:
+        ValueError: `spacing_s` is less than one, or `last_s` is before
+            `first_s`.
+    """
+
+    if spacing_s < 1:
+        raise ValueError(f"column spacing must be at least one second, got {spacing_s!r}")
+
+    if last_s < first_s:
+        raise ValueError(f"a window from {first_s} s to {last_s} s ends before it begins")
+
+    seconds = {int(first_s), int(last_s)}
+    seconds.update(range((first_s // spacing_s + 1) * spacing_s, last_s, spacing_s))
+    seconds.update(int(event_s) for event_s in events_s if first_s < event_s < last_s)
+
+    return tuple(CaseInstant(second) for second in sorted(seconds))
+
+
+def extreme_seconds(first_s: int, values: Sequence[float], drawn_s: Sequence[int]) -> set[int]:
+    """Return the seconds between drawn seconds at which a trace is highest or lowest.
+
+    A trace can turn between two drawn seconds. After the vaporizer is turned
+    down, the alveolar concentration keeps rising for a few seconds and then
+    falls. A line drawn through the two columns on either side of that peak
+    passes below it. So the chart also draws the second of the peak. Each
+    stretch between two neighbouring drawn seconds is searched for the
+    second with the highest value and the second with the lowest. Either one
+    is returned where its value lies outside both of the stretch's ends.
+    Where a trace only rises or only falls across a stretch, nothing is
+    returned for it.
+
+    With these seconds drawn as well, no stored value of the trace lies above
+    or below the drawn line's range in its own stretch, and each peak and
+    trough is drawn at its stored value (`PL-BLZJ`). This is the lowest and
+    the highest of the four points per column that M4 keeps: Jugel U, Jerzak
+    Z, Hackenbroich G, Markl V. M4: A Visualization-Oriented Time Series Data
+    Aggregation. Proc VLDB Endow. 2014;7(10):797-808. The first and the last
+    are the stretch's own ends.
+
+    Args:
+        first_s: The second of `values[0]`.
+        values: The trace's value at each second from `first_s`, one entry
+            per second (`StoredStates.fraction_series`).
+        drawn_s: The seconds already drawn, ascending, each within `values`
+            (`drawn_seconds`).
+
+    Returns:
+        The seconds to draw as well. Where a value is reached at several
+        seconds of one stretch, the first of them is returned. At most two
+        seconds are returned for each stretch.
+    """
+
+    found: set[int] = set()
+
+    for left_s, right_s in itertools.pairwise(drawn_s):
+        if right_s - left_s < 2:
+            continue
+
+        left = values[left_s - first_s]
+        right = values[right_s - first_s]
+        inside = values[left_s - first_s + 1 : right_s - first_s]
+
+        highest = max(inside)
+
+        if highest > left and highest > right:
+            found.add(left_s + 1 + inside.index(highest))
+
+        lowest = min(inside)
+
+        if lowest < left and lowest < right:
+            found.add(left_s + 1 + inside.index(lowest))
+
+    return found
+
+
+def grid_spacing_s(raw_spacing_s: float) -> int:
+    """Round a column spacing down onto whole steps of the run, and never below one step.
+
+    A run stands only on whole seconds (`core/simulation_step.py`), so a chart
+    column is drawn only at one. A spacing of one second or more is rounded
+    down, never up, so each column is still no more than one pixel's width of
+    time from the next. That is the chart's guarantee in `docs/INTERFACE.md`
+    § "What the chart draws". A spacing of less than one second is raised to
+    one second, because the run holds nothing between two seconds to draw.
+    There the line segment between two columns spans more than a pixel. That
+    happens where an axis shows fewer seconds than the plot has pixels across
+    it: a one-minute axis on a plot wider than 60 px, and a fifteen-minute
+    axis on one wider than 900 px.
 
     Args:
         raw_spacing_s: The axis span divided by its intervals, in simulated
             seconds. It must be positive and finite.
 
     Returns:
-        The spacing to evaluate the grid at, in simulated seconds: a whole
-        number of units of one of `CHART_GRID_RESOLUTIONS_S`.
+        The spacing to evaluate the grid at, as a whole number of simulated
+        seconds that is a multiple of `SIMULATION_STEP_S`.
 
     Raises:
         ValueError: If `raw_spacing_s` is not a positive finite number.
@@ -445,18 +533,4 @@ def grid_spacing_s(raw_spacing_s: float) -> float:
     if not math.isfinite(raw_spacing_s) or raw_spacing_s <= 0.0:
         raise ValueError(f"column spacing must be positive and finite, got {raw_spacing_s!r}")
 
-    finest = CHART_GRID_RESOLUTIONS_S[-1]
-    resolution = next(
-        (
-            unit
-            for unit in CHART_GRID_RESOLUTIONS_S
-            if raw_spacing_s >= _GRID_UNITS_FOR_A_COARSER_GRID * unit
-        ),
-        finest,
-    )
-    # Rounding can leave the quotient just below the whole number it equals, as
-    # 0.7 / 0.1 is 6.999999999999999, and the floor would then lose a whole unit.
-    # The allowance is far smaller than any spacing the chart could be asked for.
-    units = math.floor(raw_spacing_s / resolution + WHOLE_COUNT_TOLERANCE)
-
-    return max(units, 1) * resolution
+    return max(math.floor(raw_spacing_s / SIMULATION_STEP_S), 1) * SIMULATION_STEP_S

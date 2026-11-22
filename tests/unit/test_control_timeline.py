@@ -22,11 +22,7 @@ _NBSP = "\u00a0"
 
 
 def _change(
-    elapsed_s: float,
-    control: ControlInput,
-    previous_value: float,
-    new_value: float,
-    adjustment: int,
+    elapsed_s: int, control: ControlInput, previous_value: float, new_value: float, adjustment: int
 ) -> ControlChange:
     return ControlChange(
         elapsed_s=CaseInstant(elapsed_s),
@@ -62,7 +58,7 @@ def test_a_recorded_change_and_an_adjustment_refuse_an_instant_not_built_as_one(
         ControlAdjustment(
             ControlInput.FRESH_GAS_FLOW,
             float("nan"),  # type: ignore[arg-type]
-            CaseInstant(60.0),
+            CaseInstant(60),
             6.0,
             2.0,
             "L/min",
@@ -72,7 +68,7 @@ def test_a_recorded_change_and_an_adjustment_refuse_an_instant_not_built_as_one(
     with pytest.raises(TypeError, match="ended_at_s of -60.0 was not built as CaseInstant"):
         ControlAdjustment(
             ControlInput.FRESH_GAS_FLOW,
-            CaseInstant(60.0),
+            CaseInstant(60),
             -60.0,  # type: ignore[arg-type]
             6.0,
             2.0,
@@ -83,8 +79,8 @@ def test_a_recorded_change_and_an_adjustment_refuse_an_instant_not_built_as_one(
 
 def test_grouping_hands_the_recorded_instants_through_as_case_instants() -> None:
     timeline = (
-        _change(12.0, ControlInput.FRESH_GAS_FLOW, 4.0, 3.0, adjustment=1),
-        _change(12.1, ControlInput.FRESH_GAS_FLOW, 3.0, 2.0, adjustment=1),
+        _change(12, ControlInput.FRESH_GAS_FLOW, 4.0, 3.0, adjustment=1),
+        _change(13, ControlInput.FRESH_GAS_FLOW, 3.0, 2.0, adjustment=1),
     )
 
     (adjustment,) = group_adjustments(timeline)
@@ -98,13 +94,13 @@ def test_an_empty_timeline_groups_into_nothing() -> None:
 
 
 def test_one_change_is_one_adjustment_at_a_single_instant() -> None:
-    timeline = (_change(12.0, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),)
+    timeline = (_change(12, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),)
 
     (adjustment,) = group_adjustments(timeline)
 
     assert adjustment.control is ControlInput.FRESH_GAS_FLOW
-    assert adjustment.started_at_s == 12.0
-    assert adjustment.ended_at_s == 12.0
+    assert adjustment.started_at_s == 12
+    assert adjustment.ended_at_s == 12
     assert adjustment.from_value == 4.0
     assert adjustment.to_value == 2.0
     assert adjustment.change_count == 1
@@ -118,15 +114,15 @@ def test_a_drag_reads_as_one_act_spanning_the_settings_the_model_saw() -> None:
     """
 
     timeline = (
-        _change(10.0, ControlInput.DELIVERED, 2.0, 2.5, adjustment=1),
-        _change(10.1, ControlInput.DELIVERED, 2.5, 3.1, adjustment=1),
-        _change(10.2, ControlInput.DELIVERED, 3.1, 4.0, adjustment=1),
+        _change(10, ControlInput.DELIVERED, 2.0, 2.5, adjustment=1),
+        _change(11, ControlInput.DELIVERED, 2.5, 3.1, adjustment=1),
+        _change(12, ControlInput.DELIVERED, 3.1, 4.0, adjustment=1),
     )
 
     (adjustment,) = group_adjustments(timeline)
 
-    assert adjustment.started_at_s == 10.0
-    assert adjustment.ended_at_s == 10.2
+    assert adjustment.started_at_s == 10
+    assert adjustment.ended_at_s == 12
     assert adjustment.from_value == 2.0
     assert adjustment.to_value == 4.0
     assert adjustment.change_count == 3
@@ -141,8 +137,8 @@ def test_two_adjustments_of_one_control_stay_two() -> None:
     """
 
     timeline = (
-        _change(10.0, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),
-        _change(10.1, ControlInput.FRESH_GAS_FLOW, 2.0, 1.0, adjustment=2),
+        _change(10, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),
+        _change(11, ControlInput.FRESH_GAS_FLOW, 2.0, 1.0, adjustment=2),
     )
 
     first, second = group_adjustments(timeline)
@@ -153,16 +149,12 @@ def test_two_adjustments_of_one_control_stay_two() -> None:
 
 def test_adjustments_are_oldest_first_like_the_time_axis() -> None:
     timeline = (
-        _change(10.0, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),
-        _change(20.0, ControlInput.CARDIAC_OUTPUT, 5.0, 3.0, adjustment=2),
-        _change(30.0, ControlInput.ALVEOLAR_VENTILATION, 4.0, 6.0, adjustment=3),
+        _change(10, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),
+        _change(20, ControlInput.CARDIAC_OUTPUT, 5.0, 3.0, adjustment=2),
+        _change(30, ControlInput.ALVEOLAR_VENTILATION, 4.0, 6.0, adjustment=3),
     )
 
-    assert [adjustment.started_at_s for adjustment in group_adjustments(timeline)] == [
-        10.0,
-        20.0,
-        30.0,
-    ]
+    assert [adjustment.started_at_s for adjustment in group_adjustments(timeline)] == [10, 20, 30]
 
 
 def test_every_control_has_a_display_label() -> None:
@@ -206,7 +198,7 @@ def test_every_control_has_a_label_and_a_unit() -> None:
 
 
 def test_a_single_change_reads_as_the_instant_it_was() -> None:
-    timeline = (_change(12.0, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),)
+    timeline = (_change(12, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),)
 
     (adjustment,) = group_adjustments(timeline)
 
@@ -215,14 +207,14 @@ def test_a_single_change_reads_as_the_instant_it_was() -> None:
 
 def test_a_multi_setting_adjustment_states_its_span_and_its_count() -> None:
     timeline = (
-        _change(10.0, ControlInput.DELIVERED, 2.0, 3.0, adjustment=1),
-        _change(10.2, ControlInput.DELIVERED, 3.0, 4.0, adjustment=1),
+        _change(10, ControlInput.DELIVERED, 2.0, 3.0, adjustment=1),
+        _change(12, ControlInput.DELIVERED, 3.0, 4.0, adjustment=1),
     )
 
     (adjustment,) = group_adjustments(timeline)
 
     assert format_adjustment(adjustment) == (
-        "10s–10.2s · Delivered agent 2.00% -> 4.00% (2 settings)"
+        "10s–12s · Delivered agent 2.00% -> 4.00% (2 settings)"
     )
 
 
@@ -230,8 +222,8 @@ def test_a_rendered_adjustment_carries_a_unit_on_both_of_its_values() -> None:
     """A comparison with a unit on only one side invites a wrong-unit reading."""
 
     timeline = (
-        _change(10.0, ControlInput.CARDIAC_OUTPUT, 5.0, 2.5, adjustment=1),
-        _change(20.0, ControlInput.DELIVERED, 2.0, 4.0, adjustment=2),
+        _change(10, ControlInput.CARDIAC_OUTPUT, 5.0, 2.5, adjustment=1),
+        _change(20, ControlInput.DELIVERED, 2.0, 4.0, adjustment=2),
     )
 
     for adjustment in group_adjustments(timeline):
@@ -253,8 +245,8 @@ def test_a_rendered_line_uses_only_glyphs_the_interface_can_draw() -> None:
     """
 
     timeline = (
-        _change(10.0, ControlInput.DELIVERED, 2.0, 3.0, adjustment=1),
-        _change(10.2, ControlInput.DELIVERED, 3.0, 4.0, adjustment=1),
+        _change(10, ControlInput.DELIVERED, 2.0, 3.0, adjustment=1),
+        _change(12, ControlInput.DELIVERED, 3.0, 4.0, adjustment=1),
     )
     confirmed = set(" ·–->()sL/min%0123456789.abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
@@ -273,8 +265,8 @@ def test_an_unchanged_record_is_grouped_once_rather_than_once_per_frame() -> Non
 
     grouping = AdjustmentGrouping()
     timeline = (
-        _change(10.0, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),
-        _change(20.0, ControlInput.CARDIAC_OUTPUT, 5.0, 3.0, adjustment=2),
+        _change(10, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),
+        _change(20, ControlInput.CARDIAC_OUTPUT, 5.0, 3.0, adjustment=2),
     )
 
     first = grouping.of(timeline)
@@ -297,8 +289,8 @@ def test_a_superseded_change_is_regrouped_though_the_record_did_not_grow() -> No
     """
 
     grouping = AdjustmentGrouping()
-    superseded = (_change(10.0, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),)
-    standing = (_change(10.0, ControlInput.FRESH_GAS_FLOW, 4.0, 3.0, adjustment=1),)
+    superseded = (_change(10, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),)
+    standing = (_change(10, ControlInput.FRESH_GAS_FLOW, 4.0, 3.0, adjustment=1),)
 
     assert len(superseded) == len(standing)
     assert grouping.of(superseded)[0].to_value == 2.0
@@ -322,7 +314,7 @@ def test_a_grouping_does_not_answer_for_another_run() -> None:
     """
 
     grouping = AdjustmentGrouping()
-    timeline = (_change(10.0, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),)
+    timeline = (_change(10, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),)
 
     assert len(grouping.of(timeline)) == 1
     assert grouping.of(()) == ()
@@ -345,10 +337,10 @@ def test_a_flow_line_breaks_only_after_its_time_and_after_its_arrow() -> None:
 
 
 def test_a_multi_setting_line_keeps_its_count_with_the_new_value() -> None:
-    line = "10s–10.2s · Delivered agent 2.00% -> 4.00% (2 settings)"
+    line = "10s–12s · Delivered agent 2.00% -> 4.00% (2 settings)"
 
     assert wrapping_between_parts(line).split(" ") == [
-        f"10s–10.2s{_NBSP}·",
+        f"10s–12s{_NBSP}·",
         f"Delivered{_NBSP}agent{_NBSP}2.00%{_NBSP}->",
         f"4.00%{_NBSP}(2{_NBSP}settings)",
     ]
@@ -358,9 +350,9 @@ def test_wrapping_changes_no_character_a_reader_sees() -> None:
     """Three lines are used, so a change to only the first or the last line would show."""
 
     timeline = (
-        _change(10.0, ControlInput.CARDIAC_OUTPUT, 5.0, 2.5, adjustment=1),
-        _change(20.0, ControlInput.DELIVERED, 2.0, 4.0, adjustment=2),
-        _change(30.0, ControlInput.ALVEOLAR_VENTILATION, 4.0, 6.0, adjustment=3),
+        _change(10, ControlInput.CARDIAC_OUTPUT, 5.0, 2.5, adjustment=1),
+        _change(20, ControlInput.DELIVERED, 2.0, 4.0, adjustment=2),
+        _change(30, ControlInput.ALVEOLAR_VENTILATION, 4.0, 6.0, adjustment=3),
     )
     lines = "\n".join(format_adjustment(a) for a in group_adjustments(timeline))
 

@@ -5,12 +5,12 @@ from math import isfinite
 import pytest
 
 from anesthesia_sim.app.controller import SimulationController
-from anesthesia_sim.app.dashboard_frame import SIMULATION_STEP_S
-from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES
+from anesthesia_sim.app.dashboard_frame import SIMULATION_TICK_INTERVAL_MS
+from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES, OwedSimulatedTime
 from anesthesia_sim.app.run_series import RecordedQuantity, RecordedSeries
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume
-from anesthesia_sim.core.simulation_step import SimulationStep
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
@@ -21,13 +21,9 @@ from anesthesia_sim.core.supported_ranges import (
 )
 
 
-def _advance_for(
-    controller: SimulationController, duration_s: float, simulation_step_s: float = 0.1
-) -> None:
-    step_count = round(duration_s / simulation_step_s)
-
-    for _ in range(step_count):
-        controller.advance(SimulationStep(simulation_step_s))
+def _advance_for(controller: SimulationController, duration_s: int) -> None:
+    for _ in range(duration_s // SIMULATION_STEP_S):
+        controller.advance()
 
 
 def test_snapshot_exposes_patient_and_agent_accounting_state() -> None:
@@ -49,7 +45,7 @@ def test_running_controller_advances_the_patient_and_draws_its_trace() -> None:
     controller = SimulationController()
     controller.start()
 
-    _advance_for(controller, duration_s=60.0)
+    _advance_for(controller, duration_s=60)
 
     snapshot = controller.snapshot()
     drawn = controller.drawn_window(0.0, controller.snapshot().elapsed_s, 150)
@@ -73,7 +69,7 @@ def test_running_controller_advances_the_patient_and_draws_its_trace() -> None:
 def test_ventilation_and_cardiac_output_changes_preserve_state() -> None:
     controller = SimulationController()
     controller.start()
-    _advance_for(controller, duration_s=30.0)
+    _advance_for(controller, duration_s=30)
     before = controller.snapshot()
 
     controller.set_alveolar_ventilation(AlveolarVentilation(7.0))
@@ -100,7 +96,7 @@ def test_reset_preserves_all_user_settings() -> None:
         cardiac_output_l_min=CardiacOutput(6.0),
     )
     controller.start()
-    _advance_for(controller, duration_s=30.0)
+    _advance_for(controller, duration_s=30)
 
     controller.reset()
 
@@ -128,12 +124,12 @@ def test_identical_runs_produce_identical_snapshots() -> None:
     def _run() -> SimulationController:
         controller = SimulationController()
         controller.start()
-        _advance_for(controller, duration_s=20.0)
+        _advance_for(controller, duration_s=20)
         controller.set_alveolar_ventilation(AlveolarVentilation(6.0))
         controller.set_cardiac_output(CardiacOutput(4.5))
-        _advance_for(controller, duration_s=20.0)
+        _advance_for(controller, duration_s=20)
         controller.set_delivered_concentration_percent(Percent(5.0))
-        _advance_for(controller, duration_s=20.0)
+        _advance_for(controller, duration_s=20)
         return controller
 
     first = _run()
@@ -142,9 +138,7 @@ def test_identical_runs_produce_identical_snapshots() -> None:
     assert first.snapshot() == second.snapshot()
 
 
-def _scripted_run(
-    bursts: Iterable[int], simulation_step_s: float = SIMULATION_STEP_S
-) -> SimulationController:
+def _scripted_run(bursts: Iterable[int]) -> SimulationController:
     """Return one scripted run, with its steps grouped into ticks of the given sizes.
 
     The script changes a setting at fixed *step counts*, never at a burst
@@ -159,14 +153,14 @@ def _scripted_run(
 
     for burst in bursts:
         for _ in range(burst):
-            controller.advance(SimulationStep(simulation_step_s))
+            controller.advance()
             steps_taken += 1
 
-            if steps_taken == 100:
+            if steps_taken == 10:
                 controller.set_alveolar_ventilation(AlveolarVentilation(6.0))
-            elif steps_taken == 250:
+            elif steps_taken == 25:
                 controller.set_cardiac_output(CardiacOutput(4.5))
-            elif steps_taken == 400:
+            elif steps_taken == 40:
                 controller.set_delivered_concentration_percent(Percent(5.0))
 
         # This is what a frame does between ticks: it reads the run and never
@@ -201,12 +195,12 @@ def test_a_run_reaches_the_same_definition_however_the_ticks_fell() -> None:
     This is a required test from docs/MODEL.md. The test above drives both runs
     identically, so it checks only that the model gives the same trajectory twice. It says
     nothing about the machine, and this test covers that part. Simulated time is the number
-    of steps taken times the step length. The run loop takes a fixed number of steps per
-    tick. It never takes extra steps to make up lost wall-clock time. So a host that wakes
+    of steps taken times the step length. Each tick owes the run a fixed amount of simulated
+    time. The run loop never takes extra steps to make up lost wall-clock time. So a host that wakes
     the loop late or drops a frame runs *slower* than one that does not, but it does not
     run *differently*.
 
-    Both runs take the same 600 steps, with the same settings at the same step counts. One
+    Both runs take the same 60 steps, with the same settings at the same step counts. One
     run takes one step per tick, and the other takes ragged bursts. The run keeps no
     recorded samples (`PL-2FM6`). Instead, the chart draws every value from the run's
     definition, which is its list of segments: each segment's settings and the keyframe
@@ -215,7 +209,7 @@ def test_a_run_reaches_the_same_definition_however_the_ticks_fell() -> None:
     on a chart drawn from it.
     """
 
-    steps = 600
+    steps = 60
 
     one_step_per_tick = _scripted_run([1] * steps)
     ragged = _scripted_run(_ragged_bursts(steps))
@@ -232,12 +226,14 @@ def test_a_run_reaches_the_same_definition_however_the_ticks_fell() -> None:
 def test_a_run_reaches_the_same_definition_at_every_playback_rate() -> None:
     """Playing a run faster must not change the run (`PL-SN2C`).
 
-    The playback multiplier sets only how many steps a tick takes. The step stays 0.1 s at
-    every rate. So a case played at 300x takes the same steps in the same order as one
-    played at real time. Only the grouping of steps into ticks differs. Each rate is
+    The playback multiplier sets only how many steps a tick takes. The step stays one
+    second at every rate. So a case played at 300x takes the same steps in the same order
+    as one played at real time. Only the grouping of steps into ticks differs. Each rate is
     therefore one of the burst patterns that the test above covers in general. Here the
-    patterns come from the *shipped* rates rather than invented burst sizes. So a rate
-    added to the list of shipped rates is covered by this test on the day it is added.
+    patterns come from the *shipped* rates and the shipped tick interval rather than
+    invented burst sizes. At 1x and 5x most ticks take no step, and the frame still reads
+    the run on those ticks. So a rate added to the list of shipped rates is covered by this
+    test on the day it is added.
 
     The test compares the runs' definitions segment by segment, element for element, and
     then compares their snapshots. Two learners comparing the same case at different speeds
@@ -245,16 +241,16 @@ def test_a_run_reaches_the_same_definition_at_every_playback_rate() -> None:
     chart drawn from it.
     """
 
-    steps = 600
+    steps = 60
     real_time = _scripted_run([1] * steps)
     reference = real_time.run_segments
 
     for rate in SUPPORTED_PLAYBACK_RATES:
-        steps_per_tick = rate.steps_per_tick(
-            tick_interval_s=SIMULATION_STEP_S, simulation_step_s=SIMULATION_STEP_S
-        )
-        whole_ticks, remainder = divmod(steps, steps_per_tick)
-        bursts = [steps_per_tick] * whole_ticks + ([remainder] if remainder else [])
+        owed = OwedSimulatedTime()
+        bursts: list[int] = []
+
+        while sum(bursts) < steps:
+            bursts.append(owed.steps_due(rate, tick_interval_ms=SIMULATION_TICK_INTERVAL_MS))
 
         played = _scripted_run(bursts)
 
@@ -281,7 +277,7 @@ def test_extreme_ui_slider_range_stays_valid_through_wash_in_and_washout() -> No
     controller.set_alveolar_ventilation(AlveolarVentilation(MAXIMUM_ALVEOLAR_VENTILATION_L_MIN))
     controller.set_cardiac_output(CardiacOutput(MAXIMUM_CARDIAC_OUTPUT_L_MIN))
 
-    _advance_for(controller, duration_s=300.0)
+    _advance_for(controller, duration_s=300)
 
     wash_in_snapshot = controller.snapshot()
 
@@ -298,7 +294,7 @@ def test_extreme_ui_slider_range_stays_valid_through_wash_in_and_washout() -> No
         assert 0.0 <= fraction <= 1.0
 
     controller.set_delivered_concentration_percent(Percent(0.0))
-    _advance_for(controller, duration_s=300.0)
+    _advance_for(controller, duration_s=300)
 
     washout_snapshot = controller.snapshot()
 

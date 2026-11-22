@@ -74,9 +74,9 @@ the inputs short of 1 rather than to widen the check (project owner,
 The model conserves agent, so with every input at or below the 0.99 ceiling, no
 computed fraction exceeds it by more than the propagator's error. That error
 grows with the number of times the propagator is squared
-(`core/matrix_exponential.py`). The largest excess in simulated runs across the
-envelope's corners was 3.3e-5, and `docs/MODEL.md` § "The numerical envelope"
-reports those runs.
+(`core/matrix_exponential.py`) and with the number of steps. The largest
+excess over 86 400 one-second steps across the envelope's corners was 1.0e-4,
+and `docs/MODEL.md` § "The numerical envelope" reports those runs.
 
 **Fresh gas flow has a second bound, set by the machine and held outside this
 module** (`PL-8PS6`). What a *machine* can deliver differs between machines: its
@@ -106,10 +106,9 @@ gives both bounds and what separates them.
 `PL-51B7`). The three flow types are `float` subclasses whose constructors call
 the guards below. Once a flow is built, every signature and record field that
 holds it takes the type, so no other code makes the check and no entry point
-has to remember it. The reasons for a subclass are the ones given for the
-simulation step's type (`SimulationStep`, `core/simulation_step.py`): a
-`NewType` is erased at run time and proves nothing about a range, and a frozen
-record would put a field access into every equation. In the arithmetic, each
+has to remember it. A subclass is used for two reasons: a `NewType` is erased
+at run time and proves nothing about a range, and a frozen record would put a
+field access into every equation. In the arithmetic, each
 flow is the number itself. Arithmetic on a flow returns a plain `float`, so a
 quantity derived from a flow does not claim a range check that it never
 passed. The litres per second that the equations use is an example. A tissue
@@ -139,27 +138,29 @@ check nothing: `AgentUptakeSystem` and `app/controller.py`.
 
 **The case instant and the step count are types too** (`PL-CN5S`, slice 2 of
 `PL-51B7`). A case instant is a point in a run's elapsed simulated time. Its
-type, `CaseInstant`, is a `float` subclass built only through its guard
-(`require_supported_case_instant`), for the same reasons as the flows. Like
-them, it accepts an `int` or a `float` and nothing else, and stores minus zero
-as zero (`core/checked_number.py`, `PL-7N8P`). Every operation takes a
-`CaseInstant` if it opens, moves, marks or branches a run, or if it stores one
-of the run's keyframes. That covers `RunDefinition`'s opening, reach and
-keyframes, the marks in `app/bookmarks.py`, and the instant at which a branch
-is taken. The simulation state returns its elapsed time as one
-(`SimulationState.elapsed_s`). The control record's instants are `CaseInstant`
-too: the instant of each change (`app/control_record.py`) and the start and end
-of each adjustment (`app/control_timeline.py`, `PL-RCYZ`).
+type, `CaseInstant`, is an `int` subclass built only through its guard
+(`require_supported_case_instant`), for the same reasons as the flows. It is a
+whole number of seconds, because a run moves forward only by the one-second
+step (`core/simulation_step.py`, `PL-SZ6G`). So it accepts an `int` and nothing
+else, as the step count does. Every operation takes a
+`CaseInstant` if it opens, moves, marks or branches a run, or if it reads or
+stores the state of one of the run's seconds. That covers `RunDefinition`'s
+opening, reach and stretches, `StoredStates`, a `Keyframe`, the marks in
+`app/bookmarks.py`, and the second at which a branch is taken. The simulation
+state returns its elapsed time as one (`SimulationState.elapsed_s`). The
+control record's instants are `CaseInstant` too: the instant of each change
+(`app/control_record.py`) and the start and end of each adjustment
+(`app/control_timeline.py`, `PL-RCYZ`).
 
-The instants at which a run is only *read* stay a `float`: `RunDefinition`'s
+The instants at which a run is only *read* are a plain number: `RunDefinition`'s
 `state_at` and a drawn window's bounds. The run refuses such an instant when it
 falls outside the run's own opening and reach, which are both checked instants.
 That check relates the instant to the run, so it belongs to the run.
 
 The step count's type, `StepCount`, is an `int` subclass. It checks what can be
 known from the count alone: that the count is whole and nonnegative. How many
-steps a run may complete depends on how long each step is, so the simulation
-state (`SimulationState`) still checks the count and the step length together.
+steps a run may complete is `MAXIMUM_STEP_COUNT`, and the simulation state
+(`SimulationState`) checks the count against it at every write.
 
 A bare number in place of a case instant or a step count is refused at run
 time in two places. One check (`require_case_instant`) refuses it where
@@ -185,11 +186,11 @@ built where its parent stood. So the two guards refuse a branch taken past the
 span before anything uses it (`PL-BMY5`, `PL-73ZN`).
 
 The guard for a state built part-way through a run uses the same maximum step
-count (`maximum_step_count`) as the guard on each step. So, whatever the length
-of the step, the count on which a run stops at the bound is exactly the last
-count at which a state may be built. That count is decided by the simulated
-time it lands at, so the guard on case instants accepts the instant at which a
-run stops, and refuses the instant one step later (`PL-8H2R`).
+count (`MAXIMUM_STEP_COUNT`) as the guard on each step. So the count on which a
+run stops at the bound is exactly the last count at which a state may be built.
+Each step is one second, so that count is the run length in seconds. The guard
+on case instants therefore accepts the instant at which a run stops, and
+refuses the instant one step later.
 
 Widening any interval is a safety-critical change, not a convenience. Argue
 that the compartment structure still represents a patient over the wider range.
@@ -204,7 +205,7 @@ over it.
 
 from __future__ import annotations
 
-from math import floor
+from typing import Final
 
 from anesthesia_sim.core.checked_number import (
     CheckedQuantity,
@@ -220,8 +221,9 @@ from anesthesia_sim.core.concentration import (
     percent_from_fraction,
 )
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
-from anesthesia_sim.core.simulation_step import SimulationStep, require_at_least_the_smallest_step
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.units import SECONDS_PER_HOUR
+from anesthesia_sim.core.validation import require_positive_finite
 
 # Fresh gas flow into the breathing circuit.
 MINIMUM_FRESH_GAS_FLOW_L_MIN = 0.0
@@ -242,10 +244,10 @@ MAXIMUM_INPUT_FRACTION = 0.99
 It bounds two inputs: the delivered concentration, and each fraction of the
 state that the stepped system holds when it is built. The module docstring
 gives the reason (`PL-9B1M`). The ceiling sits 0.01 below 1. That margin is
-about 300 times the largest excess over the ceiling in runs that started at it.
+about 100 times the largest excess over the ceiling in runs that started at it.
 The excess was measured at every corner of the numerical envelope, and the
-largest was 3.3e-5, on the display path after 60 chained propagators
-(`docs/MODEL.md` § "The numerical envelope", 2026-10-31). The ceiling is above
+largest was 1.0e-4, after 86 400 one-second steps (`docs/MODEL.md` § "The
+numerical envelope", 2026-11-21). The ceiling is above
 every shipped vaporizer maximum, the highest of which is desflurane's 18%. It
 is tied to the envelope rather than to one agent, so a later gas delivered at a
 high fraction does not need a new ceiling.
@@ -351,7 +353,34 @@ refusing it would bring back the halt that this ceiling exists to remove.
 # target, but it is exactly the regime in which this model is wrong. Reaching
 # it needs a model extension, starting with metabolism, not a larger value
 # here.
-MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86_400.0
+MAXIMUM_ELAPSED_SIMULATION_TIME_S: Final = 86_400
+
+# How many steps a run may complete: the supported run length in whole steps.
+# A step is one second, so this is the run length in seconds, and the last
+# step lands on `MAXIMUM_ELAPSED_SIMULATION_TIME_S` exactly. Both guards on a
+# step count below read this one constant. So a run reached by stepping and a
+# state built at the same count cannot disagree about whether they are inside
+# the span.
+MAXIMUM_STEP_COUNT: Final = MAXIMUM_ELAPSED_SIMULATION_TIME_S // SIMULATION_STEP_S
+
+# The smallest step that a compartment stepped on its own accepts, in seconds
+# (`PL-WP52`). A run never takes such a step: it moves only by
+# `SIMULATION_STEP_S`. The bound is for a compartment's own `advance`, which
+# takes a plain `float`.
+#
+# The bound is numerical. A compartment's own step is exact at any length, so
+# what a finer step costs is rounding. Each step adds its change to the value
+# already stored. The finer the step, the smaller that change is beside the
+# stored value, so the same rounding error is a larger share of the change.
+# This was measured on 2026-10-19 over 10 000 steps of each of three
+# compartments: a tissue group (time constant 480 s), the venous pool (7.8 s)
+# and the breathing circuit (60 s). The change in each compartment was wrong by
+# at most 3e-13 of its own size at 1 ms, 3e-11 at 1 us and 3e-5 at 1e-10 s. At
+# 1e-14 s it was 4% wrong for the pool and the circuit. The tissue did not move
+# at all, so its whole change was lost. The growth has no knee, so this
+# constant is declared rather than derived, at the finest step at which those
+# figures were taken.
+MINIMUM_COMPARTMENT_STEP_S: Final = 1e-3
 
 # Every minimum is zero. Each is named separately because each is a separate
 # decision that could change on its own: raising the cardiac output minimum
@@ -731,11 +760,9 @@ class StepCount(int, CheckedQuantity):
     """How many steps a run has completed, checked whole and nonnegative when built.
 
     Whole and nonnegative is what a count can be checked for on its own. How
-    many steps a run may complete depends on the step at which it takes them.
-    So the supported range belongs to the pair, and `SimulationState` checks
-    the two together through `require_supported_step_count`. As
-    `.claude/rules/core-domain.md` says, a relation between two fields is for
-    the record that holds them to check.
+    many steps a run may complete is the run's limit rather than the count's,
+    so `SimulationState`, which holds the run's clock, checks the count
+    against it through `require_supported_step_count`.
 
     It compares and computes as the `int` it was built from. Arithmetic on it
     returns a plain `int`, so the count after one more step is built as a
@@ -752,10 +779,9 @@ class StepCount(int, CheckedQuantity):
 
     Raises:
         TypeError: `step_count` is not an `int`, or is a `bool`. A value built
-            as another checked quantity, every one of which is a `float`, is
-            named as a swapped argument rather than as a value that is not an
-            `int`. Every checked type names such a value that way
-            (`core/checked_number.py`, `PL-979Z`).
+            as another checked quantity is named as a swapped argument, even
+            where it is an `int`, as a `CaseInstant` is. Every checked type
+            names such a value that way (`core/checked_number.py`, `PL-979Z`).
         SimulationConfigurationError: `step_count` is negative.
     """
 
@@ -788,7 +814,7 @@ def require_step_count(step_count: object) -> None:
     itself. `require_not_another_quantity` (`core/checked_number.py`) runs
     before this refusal, as it runs first in the constructor. It names a value built as another
     checked quantity as that quantity, and does not tell the caller to
-    rebuild it. A step or an instant arriving where a count belongs is a
+    rebuild it. A flow or an instant arriving where a count belongs is a
     swapped argument, and no `StepCount` built from it would correct that.
 
     Raises:
@@ -810,72 +836,7 @@ def require_step_count(step_count: object) -> None:
     )
 
 
-def maximum_step_count(simulation_step_s: SimulationStep) -> int:
-    """How many steps of this size fit inside the supported run length.
-
-    The count is of whole steps only, and the boundary is included. A run may
-    complete exactly this many steps. The last of them lands on
-    `MAXIMUM_ELAPSED_SIMULATION_TIME_S`, or on the largest simulated time
-    below it that a whole number of steps can reach. This matches the closed
-    intervals that the three flows above declare: an endpoint is supported,
-    and is not the first refused value.
-
-    **The count is decided on the product, not the quotient** (`PL-8H2R`). It
-    is the largest count whose simulated time is no later than the limit.
-    That simulated time is `SimulationState.elapsed_s`: the count times the
-    step, rounded once. So the step's guard and the case-instant guard use
-    the same span. For some computed steps, the quotient alone would put the
-    count one step too high or too low. At a step of
-    `768 / 1_000_000 * 100` s it rounds up to a count whose last step lands
-    at 86400.00000000001 s. At 0.02304 s it rounds down to one short of the
-    step that lands on 86400.0 s. So the floored quotient is only the first
-    guess. It is kept when its product is inside the span and the next
-    count's product is not. Otherwise the function brackets the answer and
-    then halves the bracket. The lower end of the bracket starts at no steps
-    at all, which always lands inside. Counts past the guess are tried at
-    doubling distances until one lands past the limit, which gives the upper
-    end. This search is well defined because the product never falls as the
-    count rises. It also ends however small the step is, which a count walked
-    one at a time need not do: below about 1e-11 s, a whole run of
-    consecutive counts rounds to one product.
-
-    **The count is derived once from the step, not compared against a running
-    total**, and that is what makes the boundary reproducible. It rests on
-    the guarantee in `docs/MODEL.md`
-    § "Simulated time is a count of steps, not a running total": elapsed time
-    is one multiplication, so a run given identical inputs reaches this count
-    at the same step on every machine. A halt decided by adding up tenths of
-    a second would land a step earlier or later, depending on the order of
-    the additions. The boundary that a regression test pins would then fall
-    in a different place on each platform. That would also break
-    deterministic replay at exactly the point the test exists to protect.
-    """
-
-    def lands_inside(step_count: int) -> bool:
-        return step_count * simulation_step_s <= MAXIMUM_ELAPSED_SIMULATION_TIME_S
-
-    estimate = floor(MAXIMUM_ELAPSED_SIMULATION_TIME_S / simulation_step_s)
-
-    if lands_inside(estimate) and not lands_inside(estimate + 1):
-        return estimate
-
-    inside, past, stride = 0, estimate, 1
-
-    while lands_inside(past):
-        inside, past, stride = past, past + stride, 2 * stride
-
-    while past - inside > 1:
-        middle = (inside + past) // 2
-
-        if lands_inside(middle):
-            inside = middle
-        else:
-            past = middle
-
-    return inside
-
-
-def require_supported_run_length(step_count: StepCount, simulation_step_s: SimulationStep) -> None:
+def require_supported_run_length(step_count: StepCount) -> None:
     """Require room for one more step inside the supported run length.
 
     It refuses the step that would carry the run past
@@ -893,18 +854,16 @@ def require_supported_run_length(step_count: StepCount, simulation_step_s: Simul
     § "Supported run length" requires that the two cases not be presented
     alike: nothing was miscalculated here, and every displayed value comes
     from a completed step.
+
+    Raises:
+        SimulationDomainLimitError: `step_count` is `MAXIMUM_STEP_COUNT` or
+            more, so the run has no supported step left to take.
     """
 
-    if step_count >= maximum_step_count(simulation_step_s):
-        # A count beyond the largest float has no time to print, because
-        # multiplying it by the step raises `OverflowError` (`PL-5F76`).
-        try:
-            reached = f"{step_count * simulation_step_s:g} s of simulated time"
-        except OverflowError:
-            reached = f"{describe_count(step_count)} steps of {simulation_step_s} s"
-
+    if step_count >= MAXIMUM_STEP_COUNT:
         raise SimulationDomainLimitError(
-            f"this run has reached {reached}, "
+            f"this run has reached {describe_count(step_count * SIMULATION_STEP_S)} s of "
+            f"simulated time, "
             f"which is the supported run length of {MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s "
             f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_HOUR:g} h); this model "
             f"leaves out metabolism and its fat flow is uncertain, so how far the slow "
@@ -914,21 +873,20 @@ def require_supported_run_length(step_count: StepCount, simulation_step_s: Simul
         )
 
 
-def require_supported_step_count(step_count: StepCount, simulation_step_s: SimulationStep) -> None:
+def require_supported_step_count(step_count: StepCount) -> None:
     """Require `step_count` to be no more steps than the supported run length allows.
 
     This guard checks a run that is *handed* a position, and
     `require_supported_run_length` checks a run that is *taking* a step. The
-    two differ at exactly one count, `maximum_step_count`: a run may stand
-    there but may not step from there. Both guards use that one derivation.
-    So at every step size, a state built at the count on which a run stops at
-    the limit is accepted, and the next count is not. A run reached by
-    stepping and a run built at the same count therefore cannot disagree
-    about whether they are inside the span. Because this guard agrees with
-    the step's guard, a branch taken where its parent stopped is not refused.
-    And because that count is decided by the time it lands at, this guard
-    accepts a count exactly when `require_supported_case_instant` accepts the
-    count times the step (`PL-8H2R`).
+    two differ at exactly one count, `MAXIMUM_STEP_COUNT`: a run may stand
+    there but may not step from there. Both guards read that one constant. So
+    a state built at the count on which a run stops at the limit is accepted,
+    and the next count is not. A run reached by stepping and a run built at
+    the same count therefore cannot disagree about whether they are inside
+    the span. Because this guard agrees with the step's guard, a branch taken
+    where its parent stopped is not refused. A step is one second, so this
+    guard accepts a count exactly when `require_supported_case_instant`
+    accepts that many seconds.
 
     It raises `SimulationConfigurationError` rather than
     `SimulationDomainLimitError`. That is the reverse of the step's guard, and
@@ -937,41 +895,36 @@ def require_supported_step_count(step_count: StepCount, simulation_step_s: Simul
     before a snapshot, a readout or a chart axis can present it as a
     supported run (`PL-BMY5`).
 
-    Like `maximum_step_count`, it takes the step as a `SimulationStep`, which
-    was checked against the supported range when it was built. It takes the
-    count as a `StepCount`, which was checked as whole and nonnegative when it
-    was built. So only the pair is left to check here.
+    It takes the count as a `StepCount`, which was checked as whole and
+    nonnegative when it was built. So only the run length is left to check
+    here.
 
     Raises:
         SimulationConfigurationError: `step_count` is more than
-            `maximum_step_count(simulation_step_s)`.
+            `MAXIMUM_STEP_COUNT`.
     """
 
-    limit = maximum_step_count(simulation_step_s)
-
-    if step_count > limit:
+    if step_count > MAXIMUM_STEP_COUNT:
         raise SimulationConfigurationError(
-            f"a run of {describe_count(step_count)} steps of {simulation_step_s} s is past the "
+            f"a run of {describe_count(step_count)} steps of {SIMULATION_STEP_S} s is past the "
             f"supported run length of {MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s "
             f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_HOUR:g} h), which allows "
-            f"at most {limit} steps of that size; past it this model is not claimed to "
-            f'represent a patient (docs/INTERFACE.md, "Supported run length")'
+            f"at most {MAXIMUM_STEP_COUNT} steps of that size; past it this model is not "
+            f'claimed to represent a patient (docs/INTERFACE.md, "Supported run length")'
         )
 
 
 def require_compartment_step(name: str, simulation_step_s: float) -> None:
     """Require a step that a compartment stepped on its own may take.
 
-    A compartment's own `advance` takes a plain `float`, not a `SimulationStep`. The run's
-    ceiling, `MAXIMUM_SIMULATION_STEP_S`, limits how long the run holds its settings constant.
-    That ceiling does not apply to a compartment stepped alone, which gives a correct result at a
-    step of 1 s (`PL-WP52`). Instead, each compartment's `advance` calls this function before it
-    changes anything. This function is the one place that states which steps a compartment
-    accepts.
+    A compartment's own `advance` takes a plain `float`, and it gives a correct result at any
+    step in the range below. A run does not use it: a run moves only by `SIMULATION_STEP_S`,
+    through `AgentUptakeSystem.advance()`. Each compartment's `advance` calls this function
+    before it changes anything. This function is the one place that states which steps a
+    compartment accepts.
 
-    The floor is `MINIMUM_SIMULATION_STEP_S`. `require_at_least_the_smallest_step` checks it,
-    with the same message that it gives for the run. Below the floor, rounding error is a growing
-    share of the change in each step.
+    The floor is `MINIMUM_COMPARTMENT_STEP_S`. Below the floor, rounding error is a growing
+    share of the change in each step (`PL-WP52`).
 
     The ceiling is `MAXIMUM_ELAPSED_SIMULATION_TIME_S`, the supported run length. One step cannot
     stand for more simulated time than the longest span over which the model is claimed to
@@ -983,15 +936,27 @@ def require_compartment_step(name: str, simulation_step_s: float) -> None:
     spans about 1.4e6 of its time constants. That count is about 300 orders of magnitude below
     the largest `float`.
 
+    `name` is the step's name. Where several objects can raise the error, `name` starts with the
+    name of the object that owns the step, as `core/validation.py` explains for `name`.
+
     Raises:
         TypeError: the step is not an `int` or a `float`, or is a `bool`, as
             `require_a_number` says.
         SimulationConfigurationError: the step is not positive and finite, is
-            shorter than `MINIMUM_SIMULATION_STEP_S`, or is longer than
+            an `int` outside the range a `float` holds, is shorter than
+            `MINIMUM_COMPARTMENT_STEP_S`, or is longer than
             `MAXIMUM_ELAPSED_SIMULATION_TIME_S`.
     """
 
-    require_at_least_the_smallest_step(name, simulation_step_s)
+    require_positive_finite(name, simulation_step_s)
+
+    if simulation_step_s < MINIMUM_COMPARTMENT_STEP_S:
+        raise SimulationConfigurationError(
+            f"{name} of {simulation_step_s} s is shorter than the "
+            f"smallest supported step of {MINIMUM_COMPARTMENT_STEP_S} s, below which "
+            "rounding is a growing share of what each step changes "
+            '(docs/MODEL.md, "Supported simulation step")'
+        )
 
     if simulation_step_s > MAXIMUM_ELAPSED_SIMULATION_TIME_S:
         raise SimulationConfigurationError(
@@ -1003,8 +968,8 @@ def require_compartment_step(name: str, simulation_step_s: float) -> None:
         )
 
 
-def require_supported_case_instant(instant_s: float) -> None:
-    """Require an instant on the case's axis inside the supported run length.
+def require_supported_case_instant(instant_s: int) -> None:
+    """Require a whole second on the case's axis inside the supported run length.
 
     The case's axis is simulated time since induction, and a branch shares it
     with its parent. So this guard bounds where an instant falls, not how
@@ -1013,10 +978,7 @@ def require_supported_case_instant(instant_s: float) -> None:
     parent's span rather than a span of its own. Like every interval here,
     this one is closed at both ends. So an instant of exactly
     `MAXIMUM_ELAPSED_SIMULATION_TIME_S` is accepted, and that is where a run
-    at the shipped 0.1 s step stops. At any step, the instant at which a run
-    stops is accepted and the instant one step later is refused, because
-    `maximum_step_count` decides the last step by the time it lands at
-    (`PL-8H2R`).
+    stops. The instant one step later is refused.
 
     Every `CaseInstant` is built through this function. So it guards each
     instant that a run is handed rather than reaches, once, where the instant
@@ -1026,28 +988,30 @@ def require_supported_case_instant(instant_s: float) -> None:
     `SimulationConfigurationError` for the reason
     `require_supported_step_count` gives (`PL-73ZN`).
 
-    First, `require_a_number` (`core/checked_number.py`) requires the instant
-    to be a number, as `_require_supported` does for a flow. Until `PL-7N8P`,
-    a `bool` was accepted as an instant of 1 s on the case's axis, a
-    `Decimal` was converted and stored, and a string or a signalling NaN was
-    refused in `math.isfinite`'s words. Then comes the single closed-interval
-    comparison, with no finiteness guard before it. So a NaN, an infinity and
-    an `int` beyond the float range are each refused against the run length
-    in this function's words. Before, `math.isfinite` raised `OverflowError`
-    while converting such an `int`. An `int` too long to print is named by
-    its length, through `shown`.
+    **An instant is an `int`, and a `float` is refused whatever its value**
+    (`PL-SZ6G`). A run moves only by the one-second step, so every instant it
+    reaches is a whole number of seconds. `2.0` is whole but is refused with
+    every other `float`, because a `float` handed in is a sign that something
+    computed the instant by arithmetic that can round. `StepCount` refuses a
+    `float` for the same reason. A `bool` is an `int` to Python, and it is
+    refused all the same, because `True` is not an instant. An `int` too long
+    to print is named by its length, through `shown`.
 
     Raises:
-        TypeError: `instant_s` is not an `int` or a `float`, or is a `bool`.
-            This is a programming error in the caller rather than a refused
-            instant, as `require_a_number` says.
-        SimulationConfigurationError: `instant_s` is not finite, or is
-            outside 0 to `MAXIMUM_ELAPSED_SIMULATION_TIME_S`.
+        TypeError: `instant_s` is not an `int`, or is a `bool`. This is a
+            programming error in the caller rather than a refused instant.
+        SimulationConfigurationError: `instant_s` is outside 0 to
+            `MAXIMUM_ELAPSED_SIMULATION_TIME_S`.
     """
 
-    require_a_number("instant_s", instant_s)
+    if isinstance(instant_s, bool) or not isinstance(instant_s, int):
+        raise TypeError(
+            f"instant_s of {shown(instant_s)} has type {type(instant_s).__name__}, not int: "
+            "an instant of the case is a whole number of seconds, because a run moves only "
+            f"by the {SIMULATION_STEP_S} s step (core/simulation_step.py)"
+        )
 
-    if not 0.0 <= instant_s <= MAXIMUM_ELAPSED_SIMULATION_TIME_S:
+    if not 0 <= instant_s <= MAXIMUM_ELAPSED_SIMULATION_TIME_S:
         raise SimulationConfigurationError(
             f"a case instant of {shown(instant_s)} s is outside the supported run length of "
             f"0 to {MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s "
@@ -1057,40 +1021,38 @@ def require_supported_case_instant(instant_s: float) -> None:
         )
 
 
-class CaseInstant(float, CheckedQuantity):
-    """An instant of the case in seconds, checked against the supported run length when built.
+class CaseInstant(int, CheckedQuantity):
+    """An instant of the case in whole seconds, checked against the supported run length when built.
 
     The instant is simulated time since induction. A branch shares that axis
     with its parent, so one number means the same instant on every run of a
-    case. It compares and computes as the `float` it was built from. A sum or
-    a difference of it is a plain `float`. So the instant one step later, or
+    case. It compares and computes as the `int` it was built from. A sum or
+    a difference of it is a plain `int`. So the instant one step later, or
     the width of a window, does not claim a range check that it never passed.
     It is built as a `CaseInstant` again where something stores it as an instant
     (`SimulationState.elapsed_s`).
 
-    Like each flow, it is built from an `int` or a `float` and nothing else,
-    never from a value built as another checked quantity, and it stores minus
-    zero as zero (`core/checked_number.py`, `PL-7N8P`, `PL-979Z`).
+    It is built from an `int` and nothing else, never from a value built as
+    another checked quantity (`core/checked_number.py`, `PL-979Z`).
 
     Raises:
         TypeError: the instant was built as another checked quantity, such as
-            a count of steps, a flow or a step. That is a swapped argument,
+            a count of steps or a flow. That is a swapped argument,
             and it is refused before the run length is checked
-            (`core/checked_number.py`). Or the instant is not an `int` or a
-            `float`, or is a `bool`, as `require_supported_case_instant`
-            states.
-        SimulationConfigurationError: the instant is not finite, or is
-            outside 0 to `MAXIMUM_ELAPSED_SIMULATION_TIME_S`, as
+            (`core/checked_number.py`). Or the instant is not an `int`, or is
+            a `bool`, as `require_supported_case_instant` states.
+        SimulationConfigurationError: the instant is outside 0 to
+            `MAXIMUM_ELAPSED_SIMULATION_TIME_S`, as
             `require_supported_case_instant` states.
     """
 
     __slots__ = ()
 
-    def __new__(cls, instant_s: float) -> CaseInstant:
+    def __new__(cls, instant_s: int) -> CaseInstant:
         require_not_another_quantity("instant_s", instant_s, cls)
         require_supported_case_instant(instant_s)
 
-        return super().__new__(cls, negative_zero_as_zero(instant_s))
+        return super().__new__(cls, instant_s)
 
 
 def require_case_instant(name: str, instant_s: object) -> None:
@@ -1119,7 +1081,7 @@ def require_case_instant(name: str, instant_s: object) -> None:
         instant_s: The value that was handed in.
 
     Raises:
-        TypeError: `instant_s` is not a `CaseInstant` - a bare `float`
+        TypeError: `instant_s` is not a `CaseInstant` - a bare `int`
             included, whatever its value. This is a programming error in the
             caller rather than a rejected setting, so it is not an
             `AnesthesiaSimulationError` (`core/exceptions.py`).

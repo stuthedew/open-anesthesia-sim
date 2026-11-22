@@ -107,9 +107,9 @@ class SimulationNumericalError(SimulationExecutionError):
     fraction just above 1 from a state already at 1. Since `PL-9B1M`, no
     supported setting or opening state reaches a fraction of 1, because the
     coupled model's inputs stop at 0.99. But a state handed to `resume_at` or
-    to a `RunDefinition` is checked only against the range 0 through 1, so it
+    to `predicted_states` is checked only against the range 0 through 1, so it
     can still hold a fraction of 1. This error is raised for such a state,
-    whether the fraction is computed by a step or by the display path.
+    whether the fraction is computed by a step or by a prediction.
 
     It is also raised for a model extension whose matrix is not a pure
     transfer system, that is, a matrix with an off-diagonal entry that is not

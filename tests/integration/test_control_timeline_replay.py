@@ -27,12 +27,11 @@ from anesthesia_sim.app.control_record import ControlChange, ControlInput
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
-from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 _AGENT_ID = "sevoflurane"
-_STEP = SimulationStep(MAXIMUM_SIMULATION_STEP_S)
 
 #: How each control is applied to the core, from the value the timeline holds.
 _CORE_SETTERS: dict[ControlInput, Callable[[AgentUptakeSystem, float], None]] = {
@@ -80,7 +79,7 @@ def _advance(controller: SimulationController, steps: int, states: list[tuple[fl
     """Take `steps` steps, and record the state after each one."""
 
     for _ in range(steps):
-        controller.advance(_STEP)
+        controller.advance()
         states.append(_state(controller))
 
 
@@ -107,7 +106,7 @@ def _a_case_that_changes_every_control() -> _RecordedCase:
     controller.set_fresh_gas_flow(FreshGasFlow(6.0))
     controller.set_cardiac_output(CardiacOutput(4.0))
     controller.start()
-    _advance(controller, 100, [])
+    _advance(controller, 10, [])
     controller.reset()
     opened = controller.settings()
     opening_settings = {
@@ -119,7 +118,7 @@ def _a_case_that_changes_every_control() -> _RecordedCase:
 
     controller.set_delivered_concentration_percent(Percent(6.0))
     controller.start()
-    _advance(controller, 300, states)
+    _advance(controller, 30, states)
 
     controller.begin_control_adjustment()
 
@@ -127,21 +126,21 @@ def _a_case_that_changes_every_control() -> _RecordedCase:
         controller.set_fresh_gas_flow(FreshGasFlow(fresh_gas_flow_l_min))
         _advance(controller, 1, states)
 
-    _advance(controller, 300, states)
+    _advance(controller, 30, states)
     controller.set_delivered_concentration_percent(Percent(3.0))
     controller.set_delivered_concentration_percent(Percent(2.0))
     controller.set_cardiac_output(CardiacOutput(2.5))
     controller.set_cardiac_output(CardiacOutput(5.0))
-    _advance(controller, 300, states)
+    _advance(controller, 30, states)
 
     # The sevoflurane vaporizer's maximum is 8%, so the core refuses 9%.
     with pytest.raises(SimulationConfigurationError):
         controller.set_delivered_concentration_percent(Percent(9.0))
 
     controller.set_alveolar_ventilation(AlveolarVentilation(8.0))
-    _advance(controller, 300, states)
+    _advance(controller, 30, states)
     controller.set_cardiac_output(CardiacOutput(3.0))
-    _advance(controller, 300, states)
+    _advance(controller, 30, states)
 
     return _RecordedCase(opening_settings, controller.record().control_timeline, states)
 
@@ -172,14 +171,14 @@ def _replayed(
     states: list[tuple[float, ...]] = []
 
     for steps_taken in range(steps):
-        while pending and pending[0].elapsed_s == steps_taken * MAXIMUM_SIMULATION_STEP_S:
+        while pending and pending[0].elapsed_s == steps_taken * SIMULATION_STEP_S:
             change = pending.pop(0)
             if check_previous_values:
                 assert _CORE_READERS[change.control](system) == change.previous_value, change
 
             _CORE_SETTERS[change.control](system, change.new_value)
 
-        system.advance(_STEP)
+        system.advance()
         states.append(system.state_vector())
 
     assert pending == [], "every recorded change falls inside the run"

@@ -56,7 +56,7 @@ def test_an_instant_entered_in_the_dialog_is_listed_beside_the_chart(
 ) -> None:
     view = _shown_view(application, SimulationController())
     dialog = _opened_bookmark_dialog(view)
-    dialog.instant_spin.setValue(600.0)
+    dialog.instant_spin.setValue(600)
     dialog.time_label_edit.setText("intubation")
     dialog.add_time_button.click()
 
@@ -71,9 +71,9 @@ def test_the_entered_instant_is_restated_in_the_form_the_clock_uses(
     # carries the conversion rather than leaving it to the reader.
     view = _shown_view(application, SimulationController())
     dialog = _opened_bookmark_dialog(view)
-    dialog.instant_spin.setValue(600.0)
+    dialog.instant_spin.setValue(600)
 
-    assert dialog.instant_preview.text() == format_elapsed(600.0)
+    assert dialog.instant_preview.text() == format_elapsed(600)
 
 
 def test_a_target_entered_in_the_dialog_names_its_compartment_and_height(
@@ -139,7 +139,7 @@ def test_a_mark_added_from_the_dashboard_reaches_every_displayed_run(
     second = SimulationController()
     view = _shown_view(application, first, second)
     dialog = _opened_bookmark_dialog(view)
-    dialog.instant_spin.setValue(600.0)
+    dialog.instant_spin.setValue(600)
     dialog.add_time_button.click()
 
     assert first.snapshot().bookmarks == second.snapshot().bookmarks
@@ -154,7 +154,7 @@ def test_every_displayed_run_carries_the_same_marks_after_an_add_and_a_removal(
     view = _shown_view(application, first, second)
     dialog = _opened_bookmark_dialog(view)
 
-    for instant_s in (120.0, 600.0):
+    for instant_s in (120, 600):
         dialog.instant_spin.setValue(instant_s)
         dialog.add_time_button.click()
 
@@ -171,7 +171,7 @@ def test_removing_with_nothing_selected_says_so_and_removes_nothing(
     controller = SimulationController()
     view = _shown_view(application, controller)
     dialog = _opened_bookmark_dialog(view)
-    dialog.instant_spin.setValue(600.0)
+    dialog.instant_spin.setValue(600)
     dialog.add_time_button.click()
     dialog.time_list.setCurrentRow(-1)
     dialog.remove_time_button.click()
@@ -184,7 +184,7 @@ def test_marking_one_instant_twice_is_refused_and_says_why(application: QApplica
     controller = SimulationController()
     view = _shown_view(application, controller)
     dialog = _opened_bookmark_dialog(view)
-    dialog.instant_spin.setValue(600.0)
+    dialog.instant_spin.setValue(600)
     dialog.add_time_button.click()
     dialog.add_time_button.click()
 
@@ -220,7 +220,7 @@ def test_a_mark_edited_after_a_fork_reaches_the_branch_too(application: QApplica
     trunk, branch = (run.controller for run in view.runs)
 
     dialog = _opened_bookmark_dialog(view)
-    dialog.instant_spin.setValue(600.0)
+    dialog.instant_spin.setValue(600)
     dialog.add_time_button.click()
 
     assert trunk.snapshot().bookmarks == branch.snapshot().bookmarks
@@ -254,7 +254,7 @@ def test_a_refusal_leaves_every_run_carrying_the_same_marks(application: QApplic
     second = SimulationController()
     view = _shown_view(application, first, second)
     dialog = _opened_bookmark_dialog(view)
-    dialog.instant_spin.setValue(600.0)
+    dialog.instant_spin.setValue(600)
     dialog.add_time_button.click()
     dialog.add_time_button.click()
 
@@ -269,12 +269,12 @@ def test_a_name_field_is_cleared_after_a_mark_is_added_and_the_value_is_not(
     # cleared.
     view = _shown_view(application, SimulationController())
     dialog = _opened_bookmark_dialog(view)
-    dialog.instant_spin.setValue(600.0)
+    dialog.instant_spin.setValue(600)
     dialog.time_label_edit.setText("intubation")
     dialog.add_time_button.click()
 
     assert dialog.time_label_edit.text() == ""
-    assert dialog.instant_spin.value() == 600.0
+    assert dialog.instant_spin.value() == 600
 
 
 def test_the_dialog_and_the_panel_list_one_set_of_rows(application: QApplication) -> None:
@@ -282,7 +282,7 @@ def test_the_dialog_and_the_panel_list_one_set_of_rows(application: QApplication
     # them is reading one listing in two places.
     view = _shown_view(application, SimulationController())
     dialog = _opened_bookmark_dialog(view)
-    dialog.instant_spin.setValue(600.0)
+    dialog.instant_spin.setValue(600)
     dialog.time_label_edit.setText("intubation")
     dialog.add_time_button.click()
 
@@ -348,7 +348,9 @@ def test_a_branch_halted_on_a_mark_says_so(application: QApplication) -> None:
 
     view = _halted_branch_view(application)
 
-    assert view.runs[1].snapshot().elapsed_s == pytest.approx(114.7)
+    # The crossing lies between 114.6 s and 114.7 s (`_halted_branch_view`), and
+    # the run stops on the first whole second after it.
+    assert view.runs[1].snapshot().elapsed_s == 115
     assert view.runs[1].is_running is False
 
     listed = _marks_panel(view).targets.text()
@@ -413,7 +415,7 @@ def test_a_failed_run_s_marks_do_not_stand_as_reachable(application: QApplicatio
     # each mark is left outstanding on the trunk, while the branch has an
     # answer for it.
     dialog = _opened_bookmark_dialog(view)
-    dialog.instant_spin.setValue(90.0)
+    dialog.instant_spin.setValue(90)
     dialog.add_time_button.click()
     dialog.compartment_combo.setCurrentIndex(
         dialog.compartment_combo.findData(RecordedQuantity.FAT.value)
@@ -454,10 +456,10 @@ def test_a_lone_run_states_a_mark_s_standing_without_naming_a_run(
     controller = SimulationController()
     view = _shown_view(application, controller)
     controller.start()
-    _advance_to(controller, 60.0)
+    _advance_to(controller, 60)
     # Marked behind the clock, so the run passes it without halting on it:
     # this test is about how the standing is attributed, not about the halt.
-    controller.add_time_bookmark(TimeBookmark(CaseInstant(30.0), "check"))
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(30), "check"))
     view.present(False)
 
     listed = _marks_panel(view).times.text()

@@ -27,11 +27,7 @@ from anesthesia_sim.app.bookmarks import TimeBookmark
 from anesthesia_sim.app.chart_frame import trace_style
 from anesthesia_sim.app.compartment_schematic import NO_AGENT_SHARE_LINE, WITHHELD_AMOUNT_TEXT
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
-from anesthesia_sim.app.dashboard_frame import (
-    SIMULATION_STEP_S,
-    TRUNK_RUN_INDEX,
-    WITHHELD_CONCENTRATION_TEXT,
-)
+from anesthesia_sim.app.dashboard_frame import TRUNK_RUN_INDEX, WITHHELD_CONCENTRATION_TEXT
 from anesthesia_sim.app.formatting import format_elapsed
 from anesthesia_sim.app.qt_schematic import RunSchematic, SchematicCanvas
 from anesthesia_sim.app.qt_widgets import ForkPanel
@@ -43,6 +39,7 @@ from anesthesia_sim.app.view_registry import BRANCH, COMPARTMENT_SCHEMATIC, REGI
 from anesthesia_sim.app.views import BranchView, CompartmentSchematicView, ConcentrationView
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.parameters import load_agent_parameters
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CaseInstant, FreshGasFlow
 from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.shipped import shipped_workspaces
@@ -92,7 +89,7 @@ _WINDOW_HEIGHT_PX = 1000
 # so an edit there cannot move both sides of an assertion at once.
 _NAMES = ("Circuit", "Alveolar", "Mixed venous", "Vessel-rich group", "Muscle", "Fat")
 
-SECONDS_PER_MINUTE = 60.0
+SECONDS_PER_MINUTE = 60
 
 
 @pytest.fixture(scope="module")
@@ -221,14 +218,14 @@ def _two_figures(millilitres: float) -> str:
     return f"{rounded:.{max(decimals, 0)}f} mL vapour"
 
 
-def _advance(controller: SimulationController, seconds: float) -> None:
-    for _ in range(round(seconds / SIMULATION_STEP_S)):
-        controller.advance(SIMULATION_STEP_S)
+def _advance(controller: SimulationController, seconds: int) -> None:
+    for _ in range(seconds // SIMULATION_STEP_S):
+        controller.advance()
 
 
-def _advance_to(controller: SimulationController, elapsed_s: float) -> None:
-    while controller.snapshot().elapsed_s < elapsed_s - SIMULATION_STEP_S / 2.0:
-        controller.advance(SIMULATION_STEP_S)
+def _advance_to(controller: SimulationController, elapsed_s: int) -> None:
+    while controller.snapshot().elapsed_s < elapsed_s:
+        controller.advance()
 
 
 def test_the_two_figure_helper_writes_what_the_specification_writes() -> None:
@@ -272,7 +269,7 @@ def test_patient_inputs_reach_the_drawn_circuit_label_through_the_model(
     check itself.
     """
 
-    dial_percent, flow_l_min, seconds = 4.0, 8.0, 30.0
+    dial_percent, flow_l_min, seconds = 4.0, 8.0, 30
     controller = SimulationController(agent_id="sevoflurane")
     controller.set_alveolar_ventilation(AlveolarVentilation(0.0))
     controller.set_fresh_gas_flow(FreshGasFlow(flow_l_min))
@@ -300,7 +297,7 @@ def test_the_schematic_follows_its_run_through_a_reset_an_agent_change_and_a_com
 ) -> None:
     trunk = SimulationController()
     trunk.start()
-    _advance_to(trunk, 60.0)
+    _advance_to(trunk, 60)
     trunk.set_fresh_gas_flow(FreshGasFlow(2.0))
     trunk.pause()
     case = BranchedCase(trunk)
@@ -311,7 +308,7 @@ def test_the_schematic_follows_its_run_through_a_reset_an_agent_change_and_a_com
 
     # Every frame redraws the instant the run stands at.
     trunk.start()
-    _advance(trunk, 30.0)
+    _advance(trunk, 30)
     trunk.pause()
     view.present(False)
     _assert_every_label_matches_its_run(view)
@@ -331,7 +328,7 @@ def test_the_schematic_follows_its_run_through_a_reset_an_agent_change_and_a_com
     # The branch moves on its own; each schematic shows its own run.
     branch = view.runs[1].controller
     branch.start()
-    _advance(branch, 45.0)
+    _advance(branch, 45)
     branch.pause()
     view.present(False)
     _assert_every_label_matches_its_run(view)
@@ -361,7 +358,7 @@ def test_the_schematic_follows_its_run_through_a_reset_an_agent_change_and_a_com
     combo.setCurrentIndex(combo.findData("isoflurane"))
     _settle(application)
     run.controller.start()
-    _advance(run.controller, 120.0)
+    _advance(run.controller, 120)
     run.controller.pause()
     view.present(False)
 
@@ -394,22 +391,22 @@ def test_a_branch_taken_at_a_mark_behind_the_clock_draws_that_instant(
 
     trunk = SimulationController()
     trunk.start()
-    _advance_to(trunk, 30.0)
+    _advance_to(trunk, 30)
     trunk.set_fresh_gas_flow(FreshGasFlow(2.0))
-    _advance_to(trunk, 120.0)
+    _advance_to(trunk, 120)
     trunk.pause()
     case = BranchedCase(trunk)
     view = _dashboard(application, shown, trunk, case, _SCHEMATIC_AND_BRANCH)
-    trunk.add_time_bookmark(TimeBookmark(CaseInstant(75.05), "what if"))
+    trunk.add_time_bookmark(TimeBookmark(CaseInstant(75), "what if"))
     view.present(False)
     selector = _branch_control(view).point_selector
-    selector.setCurrentIndex(selector.findText(f"{format_elapsed(751 * 0.1)}, on your mark"))
+    selector.setCurrentIndex(selector.findText(f"{format_elapsed(75)}, on your mark"))
     _branch_control(view).take_button.click()
     _settle(application)
     view.present(False)
 
     assert len(view.runs) == 2
-    assert view.runs[1].controller.snapshot().elapsed_s == pytest.approx(75.1)
+    assert view.runs[1].controller.snapshot().elapsed_s == 75
     _assert_every_label_matches_its_run(view)
     trunk_readings, branch_readings = (
         schematic.canvas.readings for schematic in _schematic(view).schematics
@@ -461,7 +458,7 @@ def test_a_reset_that_no_frame_draws_withholds_the_schematic_with_the_readouts(
 
     controller = SimulationController()
     controller.start()
-    _advance_to(controller, 90.0)
+    _advance_to(controller, 90)
     controller.pause()
     view = _dashboard(application, shown, controller, workspaces=shipped_workspaces())
     view.layout_container.choose_view(AreaId(2), COMPARTMENT_SCHEMATIC)
@@ -531,7 +528,7 @@ def test_a_schematic_reset_with_no_frame_is_drawn_like_one_that_never_showed_a_r
 
     controller = SimulationController()
     controller.start()
-    _advance_to(controller, 90.0)
+    _advance_to(controller, 90)
     controller.pause()
     used = _dashboard(application, shown, controller, workspaces=shipped_workspaces())
     used.layout_container.choose_view(AreaId(2), COMPARTMENT_SCHEMATIC)
@@ -607,7 +604,7 @@ def test_a_container_cannot_be_read_against_the_chart(
     )
     controller = SimulationController()
     controller.start()
-    _advance(controller, 600.0)
+    _advance(controller, 600)
     view = _dashboard(
         application, shown, controller, workspaces=WorkspaceSet(workspaces.workspaces, maintenance)
     )
@@ -739,12 +736,12 @@ def test_the_share_bar_is_painted_to_each_share_and_named_in_text(
     another. So the test checks the bar at that instant as well as at one hour.
     """
 
-    for seconds in (10.0, 60 * SECONDS_PER_MINUTE):
+    for seconds in (10, 60 * SECONDS_PER_MINUTE):
         _check_the_share_bar(application, shown, seconds)
 
 
 def _check_the_share_bar(
-    application: QApplication, shown: list[SimulationView], seconds: float
+    application: QApplication, shown: list[SimulationView], seconds: int
 ) -> None:
     controller = SimulationController()
     controller.start()
