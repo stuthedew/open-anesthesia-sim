@@ -157,6 +157,7 @@ from anesthesia_sim.app.preferences import (
 from anesthesia_sim.app.qt_widgets import (
     BookmarkDialog,
     BookmarksPanel,
+    ClauseWrappingLabel,
     FocusRing,
     ForkPanel,
     styled_label,
@@ -244,7 +245,9 @@ def _widget_text(widget: QWidget) -> Iterator[InterfaceText]:
     if isinstance(widget, QDialog):
         yield InterfaceText(widget.windowTitle(), seen)
 
-    if isinstance(widget, QLabel | QAbstractButton):
+    if isinstance(widget, ClauseWrappingLabel):
+        yield InterfaceText(widget.words(), seen)
+    elif isinstance(widget, QLabel | QAbstractButton):
         yield InterfaceText(widget.text(), seen)
 
     if isinstance(widget, QAbstractButton) and widget.accessibleName():

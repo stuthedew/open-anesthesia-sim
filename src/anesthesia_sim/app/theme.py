@@ -247,11 +247,11 @@ CHART_HEIGHT = 360
 CHART_LEAST_HEIGHT = 160
 
 # The least height of the box that holds the rows above a chart View's plot:
-# the statement of the window shown, the reference values and the legend. In
-# a View too short for those rows and the plot, the box is squeezed to this
-# height and the reader scrolls the rows inside it. 36 px shows the first two
-# rows. It is a placeholder that `PL-CBYS` chose. A smaller value leaves the
-# plot more of a short Area, and shows fewer rows without scrolling.
+# the lines that qualify the plot and the legend. In a View too short for
+# those rows and the plot, the box is squeezed to this height and the reader
+# scrolls the rows inside it. 36 px shows the first two rows. It is a
+# placeholder that `PL-CBYS` chose. A smaller value leaves the plot more of a
+# short Area, and shows fewer rows without scrolling.
 CHART_KEY_LEAST_HEIGHT = 36
 
 PAGE_PADDING = 16
@@ -398,8 +398,10 @@ LEGEND_ENTRY_SPACING = 16
 # This gap separates two lines of a legend. It is the same whether the second
 # line starts a new row or continues a row that wrapped, so a wrapped row is
 # spaced like the rows around it. The three legend gaps are placeholders until
-# planned-milestone item 33's visual pass.
-LEGEND_LINE_SPACING = 6
+# planned-milestone item 33's visual pass. This one was 6 px until `PL-K4CZ`
+# narrowed it, which gave the concentration plot back 10 px of a laptop
+# screen's height under a wide font.
+LEGEND_LINE_SPACING = 4
 
 # The two chart references are furniture, meaning chart marks that are not
 # data. They are drawn in the interface's own ink and label colours rather
