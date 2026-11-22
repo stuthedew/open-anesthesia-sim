@@ -39,7 +39,7 @@ def _boundary(*allowed: str, package: str = "pydantic") -> Boundary:
 
 
 def _allowed_modules(package: Path) -> Path:
-    """The three modules the real allowances name, each making its import, plus `layout/`.
+    """The four modules the real allowances name, each making its import, plus `layout/`.
 
     Every test that runs `main` against the real `BOUNDARIES` needs them,
     because an allowance naming a module that is absent, or one that no longer
@@ -60,6 +60,9 @@ def _allowed_modules(package: Path) -> Path:
     app.mkdir(parents=True, exist_ok=True)
     (app / "area_layout.py").write_text(
         "from PySide6.QtWidgets import QSplitter, QSplitterHandle\n", encoding="utf-8"
+    )
+    (app / "currency_code.py").write_text(
+        "from babel.numbers import get_currency_precision\n", encoding="utf-8"
     )
     return app
 
@@ -197,6 +200,7 @@ class TestAnalyze:
             "PySide6",
             "pyqtgraph",
             "numpy",
+            "babel",
             "anesthesia_sim.app",
             "PySide6",
             "pyqtgraph",
@@ -207,6 +211,7 @@ class TestAnalyze:
         by_package = {boundary.package: boundary for boundary in BOUNDARIES}
         assert by_package["pydantic"].allowed == ("src/anesthesia_sim/core/parameters.py",)
         assert by_package["subprocess"].allowed == ("src/anesthesia_sim/app_metadata.py",)
+        assert by_package["babel"].allowed == ("src/anesthesia_sim/app/currency_code.py",)
         assert by_package["flet"].allowed == ()
         assert by_package["flet_charts"].allowed == ()
         assert by_package["PySide6.QtWidgets.QSplitter"].allowed == (

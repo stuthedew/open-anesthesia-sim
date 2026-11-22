@@ -1709,6 +1709,10 @@ def format_compartment_share(share: float) -> str:
 # `minor_unit_decimals`, so no constant here states them (`PL-7R8S`).
 PRICE_PER_LIQUID_ML_SIGNIFICANT_FIGURES: Final = 4
 
+# A value rounded to a step is off by at most half the step. A cost is shown to
+# its minor unit only while the float that holds it is no coarser than that.
+_HALF_A_STEP: Final = 0.5
+
 
 def _require_currency_amount(amount: float, what: str) -> None:
     """Refuse an amount of money unless it is a finite number that is not negative.
@@ -1751,7 +1755,9 @@ def cost_is_exact_to_its_minor_unit(cost: float, currency: str) -> bool:
     The caller checks that `cost` is finite first.
     """
 
-    return ulp(cost) <= 0.5 * 10.0 ** -minor_unit_decimals(currency)
+    minor_unit = DECIMAL_BASE ** -minor_unit_decimals(currency)
+
+    return ulp(cost) <= minor_unit * _HALF_A_STEP
 
 
 def format_agent_cost(cost: float, currency: str) -> str:
