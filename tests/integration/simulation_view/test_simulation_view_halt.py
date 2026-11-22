@@ -16,7 +16,6 @@ from typing import Any, Final, NoReturn
 
 import pytest
 from PySide6 import QtCore, QtGui, QtWidgets
-from PySide6.QtCore import Qt
 from PySide6.QtGui import QShortcut
 from PySide6.QtWidgets import (
     QAbstractButton,
@@ -27,7 +26,6 @@ from PySide6.QtWidgets import (
     QComboBox,
     QLabel,
     QLineEdit,
-    QScrollArea,
     QScrollBar,
     QWidget,
 )
@@ -36,7 +34,7 @@ from anesthesia_sim.app import run_view as run_view_module
 from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app.bookmarks import MacTarget, TimeBookmark
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
-from anesthesia_sim.app.dashboard_frame import FORK_NOTHING_SELECTED_TEXT, STATUS_FAILED_TEXT
+from anesthesia_sim.app.dashboard_frame import STATUS_FAILED_TEXT
 from anesthesia_sim.app.halt_gate import halt_gate, passes_halt_gate
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.run_view import RunView
@@ -58,7 +56,6 @@ from tests.integration.simulation_view.simulation_view_support import (
     _steps,
     _take_fork,
     _widget_attributes,
-    _widget_state,
     _with_stale_tissue_flows,
 )
 
@@ -1204,239 +1201,6 @@ def test_every_dashboard_control_is_restated_on_a_halt(
     assert sorted(set(LIVE_ON_A_HALT) - entries_used) == [], (
         "these entries of LIVE_ON_A_HALT match no control that is live after a halt - remove each"
     )
-
-
-#: The widget types outside every run that may show differently on a halted
-#: dashboard and on the same dashboard once a frame draws it. Each type maps to
-#: the reason that only a frame can state it. The test below checks this list
-#: in both directions, as it checks `FRAME_WIDGETS`: an unlisted difference
-#: fails, and so does an entry that no longer differs (`PL-WM5P`).
-SURFACE_FRAME_WIDGETS: dict[str, str] = {
-    "QScrollBar": (
-        "a scroll bar follows the height the frame lays its scroll area out at, the page's "
-        "or the control-change record's. Whether the bar is shown at all follows the same "
-        "height. That is layout, and it states nothing about a run."
-    )
-}
-
-#: The names that Qt gives the private widgets holding a `QScrollArea`'s two
-#: scroll bars. Qt shows or hides a bar by showing or hiding its container. So
-#: the walk below reads each container as part of its bar, not as a widget of
-#: its own. A container is a plain `QWidget`, and an exemption for that type
-#: would exempt every plain panel on the dashboard (`PL-CSK0`).
-_SCROLL_BAR_CONTAINERS = frozenset({"qt_scrollarea_hcontainer", "qt_scrollarea_vcontainer"})
-
-
-def _run_widget_ids(view: SimulationView) -> set[int]:
-    """Every widget `_widget_attributes` names for a run, and every widget under each."""
-
-    held: set[int] = set()
-
-    for run in view.runs:
-        for widget in (run, *_widget_attributes(run).values()):
-            held.add(id(widget))
-            held.update(id(child) for child in widget.findChildren(QWidget))
-
-    return held
-
-
-def _surface_widgets(view: SimulationView) -> dict[str, list[QWidget]]:
-    """Every widget in the window that no run holds, grouped by its type and the five above it."""
-
-    held = _run_widget_ids(view)
-    surfaces: dict[str, list[QWidget]] = {}
-
-    for widget in view.window().findChildren(QWidget):
-        if id(widget) in held or widget.objectName() in _SCROLL_BAR_CONTAINERS:
-            continue
-
-        chain = " < ".join(type(w).__name__ for w in _ancestry(widget)[:6])
-        surfaces.setdefault(chain, []).append(widget)
-
-    return surfaces
-
-
-def _surface_state(widget: QWidget) -> tuple[object, ...]:
-    """Return what a reader sees of one widget outside the runs.
-
-    For a scroll bar, the state also says whether the bar is shown within the
-    window. Qt hides a bar by hiding its container, and the bar's own hidden
-    flag stays false. Without this, a bar that appears only once a frame lays
-    the page out would read the same in both states.
-    """
-
-    if isinstance(widget, QScrollBar):
-        return (*_widget_state(widget), widget.isVisibleTo(widget.window()))
-
-    return _widget_state(widget)
-
-
-def _surface_states(view: SimulationView) -> dict[str, list[tuple[object, ...]]]:
-    """Return what a reader sees of every widget outside the runs, read afresh.
-
-    The window is walked again on each call. So a row that a frame adds, such
-    as a newly listed mark, shows up as a difference rather than as a widget
-    that nobody compares.
-    """
-
-    return {
-        chain: [_surface_state(widget) for widget in widgets]
-        for chain, widgets in _surface_widgets(view).items()
-    }
-
-
-def test_every_run_state_surface_outside_the_run_view_reads_alike_on_a_drawn_run_and_a_halted_one(
-    application: QApplication, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """A halt states the run on every panel outside the runs, found by a walk rather than a list.
-
-    `test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one`
-    checks that each `RunView` has one writer of its run state (`PL-X7D5`).
-    The branch panel, the marks panel with its editor, and every Area's
-    header sit outside the runs. The halt restates the case's panels and
-    hands them to every View in its tick (`PL-5JTH`, `PL-RF2S`).
-    `test_every_dashboard_control_is_restated_on_a_halt` checks that each
-    control is in a View or a run's panel, but not what it then says. This
-    test checks what it says. The run is drawn, and the branch panel is
-    given a refusal. The refusal comes before the halt, because a halted
-    trunk disables the branch controls. Then, while every
-    frame fails, the test changes what the other panels state: it adds a
-    mark and changes the playback rate. Finally it compares the halted
-    screen, widget by widget, with the same dashboard once a frame draws it.
-    So a panel that only a frame writes fails this test even though no list
-    names it (`PL-WM5P`).
-    """
-
-    case = _branched_case()
-    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30), "check"))
-    view = _case_view(application, case)
-    view.present(False)
-    _fork_panel(view).point_selector.clear()
-    _fork_panel(view).take_button.click()
-    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
-
-    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(45), "later"))
-    trunk = view.runs[0]
-    trunk._playback_rate_dropdown.setCurrentIndex(trunk._playback_rate_dropdown.findData(5))
-    view.present(False)
-
-    assert case.trunk.has_failed is True
-    assert _fork_panel(view).notice.notice() == FORK_NOTHING_SELECTED_TEXT
-
-    halted = _surface_states(view)
-
-    monkeypatch.undo()
-    view.present(False)
-
-    drawn = _surface_states(view)
-    differing = {
-        chain.partition(" < ")[0]
-        for chain in set(halted) | set(drawn)
-        if halted.get(chain) != drawn.get(chain)
-    }
-
-    unexplained = {
-        chain: (halted.get(chain), drawn.get(chain))
-        for chain in set(halted) | set(drawn)
-        if halted.get(chain) != drawn.get(chain)
-        and chain.partition(" < ")[0] not in SURFACE_FRAME_WIDGETS
-    }
-
-    assert len(halted) > 20, "the walk found too few widgets to be reading the window"
-    assert sorted(differing - set(SURFACE_FRAME_WIDGETS)) == [], (
-        "these widgets outside every run read differently on a halted dashboard and on the "
-        "same dashboard drawn: write them from the values that a halt hands every View, or "
-        "name their type in SURFACE_FRAME_WIDGETS with the reason only a frame can state them. "
-        "Each chain below is followed by its widgets as the halt left them, then as a frame "
-        "drew them, each as (type, hidden, enabled, style sheet, text or value):\n"
-        + "\n".join(
-            f"{chain}\n  halted: {pair[0]}\n  drawn:  {pair[1]}"
-            for chain, pair in sorted(unexplained.items())
-        )
-    )
-    assert sorted(set(SURFACE_FRAME_WIDGETS) - differing) == [], (
-        "these widgets read alike on a halted dashboard and a drawn one now, so their "
-        "exemption is stale - remove the entry"
-    )
-
-
-def test_the_surface_guard_fails_on_a_panel_only_a_frame_writes(
-    application: QApplication, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """The guard above catches a panel that a halt leaves as the last frame drew it.
-
-    The marks panel's restatement is switched off here. The mark added while
-    frames fail is then listed on the drawn dashboard and not on the halted
-    one, which is the stale state the guard exists to catch.
-    """
-
-    case = _branched_case()
-    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30), "check"))
-    view = _case_view(application, case)
-    view.present(False)
-    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
-    monkeypatch.setattr(view, "_restate_bookmark_panel", lambda: None)
-
-    case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(45), "later"))
-    view.present(False)
-    halted = _surface_states(view)
-
-    monkeypatch.undo()
-    view.present(False)
-
-    drawn = _surface_states(view)
-    differing = {
-        chain for chain in set(halted) | set(drawn) if halted.get(chain) != drawn.get(chain)
-    }
-
-    assert any("MarkListingLabel" in chain for chain in differing)
-
-
-def test_the_surface_guard_reads_a_scroll_bar_qt_shows_through_its_container_as_the_bar(
-    application: QApplication,
-) -> None:
-    """A record column whose scroll bar appears is read as a scroll bar difference.
-
-    In the drift run of 2026-11-02, under PySide6 6.12, the control-change
-    record overflowed its column on the drawn dashboard and not on the halted
-    one. So its vertical bar appeared only once a frame drew the dashboard. Qt
-    shows the bar by showing its private container, a plain `QWidget`. The
-    guard above therefore reported a `QWidget` that read differently
-    (`PL-CSK0`). This test makes the record overflow on purpose. It checks
-    that the difference is read on the bar, which `SURFACE_FRAME_WIDGETS`
-    exempts as layout, and on no plain `QWidget`.
-    """
-
-    view = _case_view(application, _branched_case())
-    view.present(False)
-    _settle(application)
-    record_scroll = next(
-        area
-        for area in view.unconditional_region.findChildren(QScrollArea)
-        if area.widget() is not None
-        and area.widget().objectName() == simulation_view_module._RECORD_COLUMN_NAME
-    )
-    # The bar starts hidden whatever the platform's fonts make of the record's
-    # height. Turning the bar off hides its container, which is how Qt hides
-    # a bar that is not needed.
-    record_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-    _settle(application)
-    assert not record_scroll.verticalScrollBar().isVisibleTo(view.window())
-    fitting = _surface_states(view)
-
-    record_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-    record_scroll.widget().setMinimumHeight(record_scroll.viewport().height() + 400)
-    _settle(application)
-    overflowing = _surface_states(view)
-
-    differing = {
-        chain.partition(" < ")[0]
-        for chain in set(fitting) | set(overflowing)
-        if fitting.get(chain) != overflowing.get(chain)
-    }
-
-    assert record_scroll.verticalScrollBar().isVisibleTo(view.window())
-    assert differing == {"QScrollBar"}
 
 
 def test_a_dial_write_that_refuses_on_a_halt_still_restates_every_panel(

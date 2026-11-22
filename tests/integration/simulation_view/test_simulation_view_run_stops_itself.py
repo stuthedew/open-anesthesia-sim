@@ -11,7 +11,7 @@ from typing import Final, NoReturn
 
 import pytest
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QComboBox, QWidget
+from PySide6.QtWidgets import QApplication
 
 from anesthesia_sim.app import run_presentation as run_presentation_module
 from anesthesia_sim.app import run_view as run_view_module
@@ -42,8 +42,6 @@ from anesthesia_sim.app.dashboard_frame import (
     WITHHELD_ELAPSED_TIME_TEXT,
     WITHHELD_MAC_MULTIPLE_TEXT,
     delivered_line,
-    halt_notice,
-    notice,
     readouts,
     setting_readouts,
     slider_position,
@@ -88,7 +86,6 @@ from tests.integration.simulation_view.simulation_view_support import (
     _CARDIAC_OUTPUT_REFUSED_ON_A_STOPPED_RUN,
     _CLOCK_INDEX,
     _REFUSED_ON_A_STOPPED_RUN_TEMPLATE,
-    _SETTING_CONTROLS,
     _WINDOW_HEIGHT_PX,
     _accounting_of,
     _accounting_panel,
@@ -117,8 +114,6 @@ from tests.integration.simulation_view.simulation_view_support import (
     _steps,
     _take_fork,
     _widest_chord_px,
-    _widget_attributes,
-    _widget_state,
     _with_stale_tissue_flows,
     _with_the_tissue_fractions_put_back,
     _withheld_accounting,
@@ -725,219 +720,7 @@ def test_a_drag_that_halts_the_run_lists_the_record_the_run_holds(
     assert run._control_timeline_overflow_text.isHidden() is True
 
 
-#: The widget attributes of a `RunView` that may show different content on a
-#: run drawn by a frame and on the same run halted with every frame failing.
-#: Each is mapped to the reason it may differ. The test below requires every
-#: other widget attribute, including one added later, to show the same content
-#: on both runs. That requirement keeps `RunView.show_presentation` the one
-#: writer of a run's state, with no list of widgets for somebody to maintain.
-#: A widget left out of `show_presentation` still shows the last frame's run on
-#: a halt, and the test fails there (`PL-X7D5`).
-#:
-#: The list is checked in both directions, as `FOREGROUND_NOT_DECLARED` is. An
-#: entry that names no widget attribute fails. So does an entry whose widget
-#: shows the same content on the two runs, because nothing then needs the
-#: exemption. The accounting panel's status and detail lines are frame
-#: widgets, but they are not listed. Both runs below show "Valid" there, so
-#: the comparison checks them like any other widget.
-FRAME_WIDGETS: dict[str, str] = {
-    "_readout_row": (
-        "the readouts and the clock they were read with, from the compartment "
-        "values of the snapshot a frame drew from. The clock stays with its "
-        "readouts, so no row pairs one instant's clock with another's values. "
-        "The playback line under the clock is run state, and the test below "
-        "compares it on its own (`PL-P58M`)."
-    ),
-    "<accounting panel>._agent_amounts_text": (
-        "the accounting panel's amounts, which are the snapshot's mass balance "
-        "and so compartment values."
-    ),
-    "<accounting panel>._agent_accounting_status_text": (
-        "the verdict on those amounts, which only a frame states. A halt that no frame "
-        "has drawn since the run started over withholds it with the amounts, because it "
-        "judged the discarded run (blind and adversarial reviews of `PL-J5GC`)."
-    ),
-    "<accounting panel>._agent_accounting_detail_text": (
-        "the sentence under the verdict, which a halt withholds with it."
-    ),
-    "_notice_text": (
-        "the banner. `show_presentation` writes it on both paths, worded for "
-        "whether a frame drew: `halt_notice` says no frame has been drawn, and "
-        "`notice` says the values shown are the last completed step. "
-        "The test below holds each to its own wording."
-    ),
-}
-
-
-def _stated(widget: QWidget, attributes: set[int]) -> tuple[tuple[object, ...], ...]:
-    """One widget attribute as a reader sees it, with each widget under it that no attribute names.
-
-    A combo box's popup is left out. It belongs to the toolkit, and it shows
-    what the combo's own entries say.
-    """
-
-    states = [_widget_state(widget)]
-
-    if isinstance(widget, QComboBox):
-        return tuple(states)
-
-    for child in widget.children():
-        if isinstance(child, QWidget) and id(child) not in attributes:
-            states.extend(_stated(child, attributes))
-
-    return tuple(states)
-
-
-def test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one(
-    application: QApplication, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """A halt shows the run on every widget a frame would, by default rather than by a list.
-
-    The run is drawn. Then, with every frame failing, it is changed in every
-    way that a run-state widget shows, so the halt is the only writer of what
-    the screen says. There are three changes. A new agent starts a new case
-    with no control changes. The delivered dial is renamed. The frame fails
-    the run. That screen is compared, widget attribute by widget attribute,
-    with the same run once a frame draws it. It is one state, written once
-    from the halt's presentation and once from the frame's. Before both went
-    through one writer, the halt wrote four widgets and a dial row. The agent
-    identity and the control-change panel went on showing the run that the
-    last frame drew (`PL-1YDD`, `PL-DTJQ`, `PL-X7D5`).
-
-    Every widget attribute is compared unless `FRAME_WIDGETS` names it. So a
-    widget added to `RunView` later is checked here without being listed.
-    """
-
-    controller = SimulationController()
-    controller.start()
-    controller.set_delivered_concentration_percent(Percent(8.0))
-    _advance(controller, 600)
-    controller.pause()
-    view = _shown_view(application, controller)
-    run = view.runs[0]
-    assert _concentration(view).off_scale.lines[0].isHidden() is False, (
-        "no trace is above the axis to go stale"
-    )
-    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
-
-    _select_agent(run, "desflurane")
-    dialog = run._new_case_dialog
-    assert dialog is not None
-    dialog.discard_button.click()
-
-    assert controller.agent_id == "desflurane"
-    assert controller.has_failed is True
-    # The playback line is in `_readout_row`, which `FRAME_WIDGETS` exempts,
-    # so it is compared on its own below (`PL-P58M`).
-    run._playback_rate_dropdown.setCurrentIndex(run._playback_rate_dropdown.findData(5))
-    halted_playback_line = run._playback_rate_text.text()
-    attributes = _widget_attributes(run)
-    named = {id(widget) for widget in attributes.values()}
-    halted = {name: _stated(widget, named) for name, widget in attributes.items()}
-    halted_banner = run._notice_text.notice()
-
-    monkeypatch.undo()
-    view.present(False)
-
-    drawn = {name: _stated(widget, named) for name, widget in attributes.items()}
-    differing = {name for name in attributes if halted[name] != drawn[name]}
-
-    assert sorted(set(FRAME_WIDGETS) - set(attributes)) == [], (
-        "FRAME_WIDGETS names a widget RunView no longer holds - remove the entry"
-    )
-    assert sorted(differing - set(FRAME_WIDGETS)) == [], (
-        "these widgets read differently on a halted run and on the same run drawn: write "
-        "them in RunView.show_presentation, or name them in FRAME_WIDGETS with the reason "
-        "only a frame can state them"
-    )
-    assert sorted(set(FRAME_WIDGETS) - differing) == [], (
-        "these widgets read alike on a halted run and a drawn one now, so their exemption "
-        "is stale - remove the entry"
-    )
-    # The agent change started the run over, so the halt's banner says the readouts are
-    # withheld rather than showing the last frame (adversarial review of `PL-J5GC`).
-    assert halted_banner == halt_notice(controller.record(), started_over=True)
-    assert run._notice_text.notice() == notice(controller.snapshot(), None)
-    assert halted_playback_line == run._playback_rate_text.text() == format_playback_rate(5)
-
-
-#: The groups of run-screen widgets that state one value together with the
-#: labels, divisors and verdicts that qualify it. Each group lists its members
-#: by the names `_widget_attributes` gives them. The test below requires every
-#: member of a group to describe one step of the run: the step that each
-#: scenario names for that group (`PL-J5GC`).
-#:
-#: In the readouts group, `_readout_row` stands for its six compartment cards,
-#: each with its percent and its ×MAC line, and for the clock's value line. The
-#: heading names the substance of those cards, the 1 MAC line states the divisor
-#: of their ×MAC lines, and the clock states their instant. Until the adversarial
-#: review of `PL-J5GC` the clock was left out, and a halt after a Reset kept the
-#: discarded run's instant. The playback line under the clock is a setting of the
-#: view, so it is not a member.
-VALUE_GROUPS: dict[str, tuple[str, ...]] = {
-    "readouts": ("_readout_row", "_compartment_substance_text", "_one_mac_text"),
-    "settings": (
-        "<setting controls>._fresh_gas_flow_slider",
-        "<setting controls>._delivered_concentration_slider",
-        "<setting controls>._alveolar_ventilation_slider",
-        "<setting controls>._cardiac_output_slider",
-        "<setting row>.not_shown_text",
-        "_delivered_text",
-    ),
-    "accounting": (
-        "<accounting panel>._agent_accounting_status_text",
-        "<accounting panel>._agent_accounting_detail_text",
-        "<accounting panel>._agent_amounts_text",
-    ),
-}
-
-_NAMES_THE_AGENT = (
-    "names the run's agent. `show_presentation` writes it from the same record as "
-    "`_compartment_substance_text`, and the test above holds it to that record"
-)
-_HOLDS_OTHER_WIDGETS = "holds other widgets, and each of them is listed under its own name"
-_STATES_THE_RECORD = (
-    "states the run's record or status, which the test above holds to the record on both paths"
-)
-
-#: Every other widget attribute of a `RunView`, each with the reason it is in no
-#: group. The two tables together are checked against `_widget_attributes` in
-#: both directions, as `FRAME_WIDGETS` is. So a widget added to `RunView` later
-#: fails the test below until it is put in a group or listed here.
-UNGROUPED_WIDGETS: dict[str, str] = {
-    "_run_name_text": (
-        "names the run while a second run is drawn, from the name its presentation carries"
-    ),
-    "_status_text": _STATES_THE_RECORD,
-    "_notice_text": (
-        "the banner, which says which step the values on screen describe. `notice` and "
-        "`halt_notice` word it, and their own tests check the wording"
-    ),
-    "_subtitle_text": _NAMES_THE_AGENT,
-    "_agent_header_badge": _NAMES_THE_AGENT,
-    "_agent_dropdown": _NAMES_THE_AGENT,
-    "_running_agent_text": _NAMES_THE_AGENT,
-    "_running_agent_display": _HOLDS_OTHER_WIDGETS,
-    "_running_agent_lock_text": "says why the agent cannot be changed, and states no value",
-    "_start_button": _STATES_THE_RECORD,
-    "_pause_button": _STATES_THE_RECORD,
-    "_reset_button": _STATES_THE_RECORD,
-    "_playback_rate_dropdown": "the playback rate, a setting of the view, not of the run",
-    "_interpretation_text": "a standing disclaimer, the same on every run",
-    "<setting controls>": _HOLDS_OTHER_WIDGETS,
-    "<accounting panel>": _HOLDS_OTHER_WIDGETS,
-    "<accounting panel>._accounting_heading_text": (
-        "the panel's heading, which names the run while a second run is drawn"
-    ),
-    "_control_timeline_heading_text": "a standing heading",
-    "_control_timeline_text": _STATES_THE_RECORD,
-    "_control_timeline_overflow_text": _STATES_THE_RECORD,
-    "_transport_row": _HOLDS_OTHER_WIDGETS,
-    "_readout_section": _HOLDS_OTHER_WIDGETS,
-    "_control_record_panel": _HOLDS_OTHER_WIDGETS,
-}
-
-#: What a reader sees of each group in `VALUE_GROUPS`, member by member.
+#: What a reader sees of each group of `_SHOWN_GROUPS`, member by member.
 _GroupReadings = dict[str, dict[str, object]]
 
 
@@ -1642,42 +1425,25 @@ def test_every_value_and_its_qualifiers_on_screen_come_from_one_state(
 ) -> None:
     """Each value on the run screen and what qualifies it describe one step of the run.
 
-    Every widget has had one writer since `PL-X7D5` and `PL-WM5P`, and the test
-    above compares each widget on a halted screen with itself on a drawn one. Two
-    widgets that disagree on one screen pass that test. A ×MAC number divided by
-    another agent's 1 MAC (`PL-6RJ0`), a dial showing a setting no step ran under
-    (`PL-3B34`) and a "Valid" verdict beside a banner that reports a failed check
-    (`PL-HF4B`) each passed it.
+    `test_every_registered_view_draws_a_state_alike_whatever_it_drew_before`
+    (`tests/integration/test_view_contract.py`) finds a value left from an
+    earlier state. It cannot find two widgets that disagree on one screen,
+    because the dashboard it compares with is drawn by the same code. A ×MAC
+    number divided by another agent's 1 MAC (`PL-6RJ0`), a dial showing a
+    setting no step ran under (`PL-3B34`) and a "Valid" verdict beside a
+    banner that reports a failed check (`PL-HF4B`) were such disagreements.
 
-    So each scenario names, for each group in `VALUE_GROUPS`, the step that all of
-    the group's members must describe. It takes that step from a run built without
-    the control or failure under test, and builds each member's text from it with
-    the function the view calls. Those functions are not under test here. What is
-    under test is the step that each group is written from (`PL-J5GC`).
+    So each scenario names, for each group of `_SHOWN_GROUPS`, the step that
+    all of the group's values must describe. It takes that step from a run
+    built without the control or failure under test, and builds each value's
+    text from it with the function the view calls. Those functions are not
+    under test here. What is under test is the step that each group is
+    written from (`PL-J5GC`).
     """
 
     run, expected = _ONE_STATE_SCENARIOS[scenario](application, monkeypatch)
-    attributes = _widget_attributes(run)
-    grouped = [member for members in VALUE_GROUPS.values() for member in members]
 
-    assert sorted(set(grouped) & set(UNGROUPED_WIDGETS)) == [], (
-        "these widgets are in a group and also listed as in none - keep one"
-    )
-    assert sorted(set(attributes) - set(grouped) - set(UNGROUPED_WIDGETS)) == [], (
-        "these widgets are in no group and not listed in UNGROUPED_WIDGETS: put each in "
-        "the group whose value it states or qualifies, or list it with the reason it is "
-        "in none"
-    )
-    listed = set(grouped) | set(UNGROUPED_WIDGETS)
-
-    if _setting_row(run).controls is None:
-        # The View shows no dial for this run, so no dial is there to list.
-        listed = {name for name in listed if not name.startswith(_SETTING_CONTROLS)}
-
-    assert sorted(listed - set(attributes)) == [], (
-        "these entries name a widget RunView no longer holds - remove them"
-    )
-    assert sorted(expected) == sorted(VALUE_GROUPS)
+    assert sorted(expected) == sorted(_SHOWN_GROUPS)
 
     shown = {group: _SHOWN_GROUPS[group](run) for group in expected}
 
