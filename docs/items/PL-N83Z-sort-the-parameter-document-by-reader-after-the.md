@@ -3,13 +3,16 @@ id: PL-N83Z
 title: Sort the parameter document by reader after the split: move or cut each paragraph the reverse outline gives another home, and apply the structure findings for its section (stage 3 of the split PL-P3GZ decided)
 priority: P2
 effort: M
-status: ready
+status: done
 classes: docs
 feature: model-md-structure
 touches: docs/PARAMETERS.md, docs/apparatus.md, tools/source_tier_counts.py
 blocked-by: PL-48MX
 added: 2026-11-11
+closed: 2026-11-22
+pr: 2232
 payoff: each paragraph of the document is for its reader, and none restates what a docstring, a test or an item already says
+verify: grep -qF '#### The stored values, by data file and key' docs/PARAMETERS.md
 ---
 
 **Problem.** Sort the parameter document by reader after the split: move or cut each paragraph the reverse outline gives another home, and apply the structure findings for its section (stage 3 of the split PL-P3GZ decided)
