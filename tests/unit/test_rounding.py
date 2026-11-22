@@ -454,7 +454,7 @@ def test_the_agent_balance_limit_is_two_thirds_of_the_summed_bound_of_the_longes
     """The fixed limit of one part in 10**9 is below the summed bound for 86 400 shipped steps.
 
     The limit is written here as a literal, so that a change to it fails this
-    test. `docs/MODEL.md` § "Mass-balance identity" publishes it. A shipped
+    test. `docs/VERIFICATION.md` § "Mass-balance identity" publishes it. A shipped
     agent's step needs at most three squarings, so the bound for the longest
     run is 10 times 2**3 times 86 400 times 2**-52, which is 1.53e-9 and 1.53
     times the limit. A longer run limit or a fourth squaring moves the ratio,

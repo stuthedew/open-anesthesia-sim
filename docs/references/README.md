@@ -557,7 +557,7 @@ Their elimination sampling schedule (*Anesth Analg* p. 317), the mammillary
 model's hepatic site - elimination from the vessel-rich group, k20 (p. 318) -
 and the fitted k20 for each agent (Table 3 of each, pp. 321 and 495) are in
 `tests/reference/test_late_washout_against_published_fits.py` and
-`docs/MODEL.md` § "The first 24 hours of elimination against the published mean
+`docs/VERIFICATION.md` § "The first 24 hours of elimination against the published mean
 curves", taken 2026-09-27 for `PL-KK1Q`; the hybrid coefficients and their SDs
 (Tables 1 and 2) were read again at the source the same day and match the
 2026-09-26 record. Figures 3 and 4 of each, the multi-day washout curves on

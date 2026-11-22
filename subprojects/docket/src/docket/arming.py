@@ -729,11 +729,17 @@ MODEL_DOC = "docs/MODEL.md"
 #: (`PL-P3GZ`, `PL-CTXZ`).
 INTERFACE_DOC = "docs/INTERFACE.md"
 
+#: How the implementation is shown to solve the model's equations correctly:
+#: the numerical method, the required invariants and tests, the hazards and
+#: the release gate. Its sections were part of `MODEL_DOC` until the same
+#: split (`PL-P3GZ`, `PL-6PPZ`).
+VERIFICATION_DOC = "docs/VERIFICATION.md"
+
 #: The documents that together specify the simulator. The safety-critical
 #: standard in `CLAUDE.md` applies to each. The gate's path lists below and
 #: every tool that checks the specification read this tuple, so a document
 #: that joins the specification is added here and nowhere else (`PL-CTXZ`).
-SPECIFICATION_DOCS = (MODEL_DOC, INTERFACE_DOC)
+SPECIFICATION_DOCS = (MODEL_DOC, INTERFACE_DOC, VERIFICATION_DOC)
 
 #: The tests that compare the model with published data. An edit or a
 #: deletion of an existing line of one waits on the owner's read whatever the
@@ -795,6 +801,7 @@ SECOND_PASS_PATHS = (
     "src/anesthesia_sim/data/",
     "docs/MODEL.md",
     "docs/INTERFACE.md",
+    "docs/VERIFICATION.md",
 )
 
 

@@ -72,7 +72,7 @@ MOST_SQUARINGS = 22
 """The most squarings that the one-second step needs at any envelope corner, measured on 2026-11-21.
 
 The 0.1 s step that a run took until `PL-SZ6G` needed 19 there.
-`docs/MODEL.md` § "The numerical envelope" states the count.
+`docs/VERIFICATION.md` § "The numerical envelope" states the count.
 """
 
 SHIPPED_DAY_SQUARINGS = 19

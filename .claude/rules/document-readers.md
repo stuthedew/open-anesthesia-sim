@@ -2,6 +2,7 @@
 paths:
   - "/docs/MODEL.md"
   - "/docs/INTERFACE.md"
+  - "/docs/VERIFICATION.md"
   - "/README.md"
   - "/docs/ARCHITECTURE.md"
   - "/docs/interface-provenance.md"
@@ -25,6 +26,7 @@ them, which is before the session writes in it (`PL-7YHK`).
 | `docs/MODEL.md` | A clinician or educator | Anesthesia pharmacology and physiology. | Numerical-methods terms such as "operator split", software terms, e-notation such as "4e-4", and this repository's own names. | Decide whether to trust a displayed value, or learn how the simulation works. |
 | `docs/MODEL.md` | A developer, or someone who forked the project | Python, and the basics of anesthesia. | Numerical-methods terms such as "first-order method", and this repository's own names. | Change a value or an equation for a goal of their own. |
 | `docs/INTERFACE.md` | A contributor who changes the interface | Anesthesia, Python and software development. | This repository's own names and history, and decisions taken in sessions they did not see. | Find what the interface must show and do before changing it, and the test that checks each requirement. |
+| `docs/VERIFICATION.md` | A developer who changes the model's code or its tests | Python, numerical methods, and the basics of anesthesia. | This repository's own names and history, and decisions taken in sessions they did not see. | Find how a change must be tested, and the limit each required test holds the model to. |
 | `README.md` | An educator or trainee in anesthesiology or critical care | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Decide whether to use the simulator, then install it and run a case. |
 | `README.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history. | Decide whether to work on the simulator, then set it up. |
 | `docs/ARCHITECTURE.md`, `docs/interface-provenance.md`, `docs/machine-abstraction.md` and `docs/machine-survey.md` | A contributor who knows both anesthesia and code | Anesthesia, Python and software development. | This repository's own names and history, and the outside designs and machines it studied. | Find where a change belongs, and what it must keep. |

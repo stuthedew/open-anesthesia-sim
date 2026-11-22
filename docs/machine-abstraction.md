@@ -320,7 +320,7 @@ the dial for isoflurane at 0.3–10 L/min, within 10% for sevoflurane at
 0.5–5 L/min and within 13% for desflurane at 0.5–1 L/min, and deviated more
 outside those ranges. It is a declared limitation of both strategies, and no
 item or roadmap entry plans to model it. A flow-dependent correction fitted
-here would move every wash-in ratio that `docs/MODEL.md` § "Published wash-in
+here would move every wash-in ratio that `docs/VERIFICATION.md` § "Published wash-in
 and elimination validation test" checks against published data, without any
 measurement of *this* model saying it should.
 

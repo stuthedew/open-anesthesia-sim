@@ -92,4 +92,4 @@ together, and step 1's `git log` picks both up. Neither is a restructure.
    "measured" for patients, tissue and equipment. The draft's own uses of
    "measured" were read on 2026-11-14 and all describe real measurements. One
    use of the verb does not: "This comparison measures an omission and claims
-   no agreement", which `docs/MODEL.md` now words as "shows an omission".
+   no agreement", which `docs/VERIFICATION.md` now words as "shows an omission".

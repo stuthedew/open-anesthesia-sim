@@ -1,19 +1,19 @@
 ---
 id: PL-NQWX
-title: docs/MODEL.md § 'Independent-solution test' uses 'the operator split', the earlier approximate method, and no chapter says what it was or when the exact step replaced it (copy editor structure read, 2026-11-05)
+title: docs/VERIFICATION.md § 'Independent-solution test' uses 'the operator split', the earlier approximate method, and no chapter says what it was or when the exact step replaced it (copy editor structure read, 2026-11-05)
 priority: P3
 effort: S
 status: ready
 classes: docs
 feature: model-md-structure
-touches: docs/MODEL.md
+touches: docs/VERIFICATION.md
 deferred-from: v0.7.0 - not present at the freeze (817a4d88): 7ca66f0b (#1947) removed the operator split's explanation and left the term
 added: 2026-11-05
 payoff: a developer reading why the independent-solution limit does not shrink with the step learns what the earlier method was and that the code no longer uses it
-verify: ! grep -qF 'operator split, had an error proportional to the step' docs/MODEL.md
+verify: ! grep -qF 'operator split, had an error proportional to the step' docs/VERIFICATION.md
 ---
 
-**Problem.** docs/MODEL.md § 'Independent-solution test' uses 'the operator split', the earlier approximate method, and no chapter says what it was or when the exact step replaced it (copy editor structure read, 2026-11-05)
+**Problem.** docs/VERIFICATION.md § 'Independent-solution test' uses 'the operator split', the earlier approximate method, and no chapter says what it was or when the exact step replaced it (copy editor structure read, 2026-11-05)
 
 **Checked 2026-11-09:** On cfd4a4b6, `grep -n -i 'operator split' docs/MODEL.md` finds one use, in the note for developers of § "Independent-solution test": "The earlier method, an operator split, had an error proportional to the step". The restructure (`PL-BSMF`, #2054) fixed the clinician's text, which now calls it "the earlier method, which solved the equations only approximately". No chapter says what the operator split was, or that `PL-GS5X` replaced it with the exact matrix exponential on 2026-09-06, in the v0.4.x track.
 

@@ -6,10 +6,10 @@ effort: S
 status: ready
 classes: docs
 feature: model-md-structure
-touches: docs/MODEL.md
+touches: docs/MODEL.md, docs/VERIFICATION.md
 added: 2026-11-07
 payoff: each source has one full citation carrying its reading record, so a reader checking a value never has to compare two copies to find the complete one
-verify: ! grep -qE '^  doi:10\.1213/00000539-199103000-00007\.$' docs/MODEL.md && ! grep -qE '^  doi:10\.1097/00000542-199103000-00017\.$' docs/MODEL.md
+verify: ! grep -qE '^  doi:10\.1213/00000539-199103000-00007\.$' docs/MODEL.md docs/VERIFICATION.md && ! grep -qE '^  doi:10\.1097/00000542-199103000-00017\.$' docs/MODEL.md docs/VERIFICATION.md
 ---
 
 **Problem.** docs/MODEL.md gives the full citation for Yasuda 1991, Hendrickx and De Wolf, Targ 1989 and Lerou and Booij in several sections. Give each source one full citation and a short form elsewhere, in the line edit that follows PL-F0Q2.

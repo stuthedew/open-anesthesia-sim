@@ -6,15 +6,15 @@ effort: S
 status: ready
 classes: docs
 feature: compartment-trace-legibility
-touches: docs/MODEL.md
+touches: docs/MODEL.md, docs/VERIFICATION.md
 added: 2026-09-26
 payoff: the authoritative specification states the fat-trace pixel figure with the dial it holds at, so no later session copies a 1 MAC measurement onward as true at every dial
-verify: grep -qF "fat's whole first hour spans under 4 px at a 1 MAC dial and under 12 px at the agent's vaporizer maximum" docs/MODEL.md
+verify: grep -qF "fat's whole first hour spans under 4 px at a 1 MAC dial and under 12 px at the agent's vaporizer maximum" docs/VERIFICATION.md
 ---
 
 **Problem.** docs/MODEL.md's hazard row for two traces drawn on top of each other says fat's whole first hour spans under 4 px on the chart, which holds only at a 1 MAC dial: at the interface's maximum dial it spans 6.1-11.0 px
 
-The row is in `docs/MODEL.md` § "Reasonably foreseeable misuse, and the hazards
+The row is in `docs/VERIFICATION.md` § "Reasonably foreseeable misuse, and the hazards
 the presentation carries", the one reading "reading one compartment's
 concentration as another's where two traces are drawn on top of each other".
 `#959` (`PL-QYBW`) wrote its clause "on which fat's whole first hour spans under

@@ -1097,7 +1097,7 @@ def test_a_step_below_the_floor_is_refused_when_the_circuit_is_stepped_alone(
     refusal = (
         rf"^circuit simulation_step_s of {re.escape(str(simulation_step_s))} s is shorter "
         r"than the smallest supported step of 0\.001 s, below which rounding is a "
-        r'growing share of what each step changes \(docs/MODEL.md, "Supported '
+        r'growing share of what each step changes \(docs/VERIFICATION.md, "Supported '
         r'simulation step"\)$'
     )
 
@@ -1143,7 +1143,7 @@ def test_a_step_past_the_run_length_is_refused_when_the_circuit_is_stepped_alone
         rf"^circuit simulation_step_s of {re.escape(str(simulation_step_s))} s is longer "
         r"than the supported run length of 86400 s \(24 h\), the most simulated time "
         r"this model is claimed to represent a patient over, so no single step may be "
-        r'longer \(docs/MODEL.md, "Supported simulation step"\)$'
+        r'longer \(docs/VERIFICATION.md, "Supported simulation step"\)$'
     )
 
     with pytest.raises(SimulationConfigurationError, match=refusal):

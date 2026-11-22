@@ -26,7 +26,7 @@ and sets up the script, the list of specification documents and the
 comparison.
 
 1. Create the verification document under `docs/`. Move these `##` sections
-   of `docs/MODEL.md` into it unchanged: "Conservation of agent mass";
+   of `docs/VERIFICATION.md` into it unchanged: "Conservation of agent mass";
    "Numerical method"; "Reasonably foreseeable misuse, and the hazards the
    presentation carries"; "Required invariants"; "Required tests"; "Release
    gate".

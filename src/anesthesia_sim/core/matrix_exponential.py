@@ -12,7 +12,7 @@ computes that matrix exponential and nothing else. It contains no physiology,
 no units and no compartment names. The file that assembles $`A`$ can then be
 read as the governing equations, and this one can be read as arithmetic.
 
-This module serves the step that `docs/MODEL.md` § "Selected method (as
+This module serves the step that `docs/VERIFICATION.md` § "Selected method (as
 implemented)" describes. That section says the same thing from the other side:
 this module "computes $`\\exp(A\\Delta t)`$ and carries no physiology".
 **Nothing here implements a governing equation.** Every formula below is
@@ -212,7 +212,7 @@ at 18 and $`6.3\\times10^{-7}`$ at 31. At 51 squarings it was 174%
 A cap of thirty-two puts the bound at $`2^{32}\\cdot2^{-52} = 2^{-20}`$, about
 one part in a million. A shipped agent's one-second step needs at most 3, at the
 widest supported flows, and the hardest corner of the numerical envelope needs
-22 (`docs/MODEL.md` § "The numerical envelope"). The cap therefore leaves a
+22 (`docs/VERIFICATION.md` § "The numerical envelope"). The cap therefore leaves a
 factor of $`2^{10}`$ in rate or interval before it refuses anything a run can
 reach. What it does refuse is
 the regime that the alveolar sweep found. At 1e-18 L the propagator was wrong by
