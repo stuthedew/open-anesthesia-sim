@@ -3,7 +3,7 @@ id: PL-LRWK
 title: Decide how a new item picks its feature, and how features that belong together are found later
 status: untriaged
 feature: feature-registry
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/duplicates.py, subprojects/docket/src/docket/config.py, docs/features.toml, .claude/skills/docket/modes/capture.md, .claude/skills/docket/modes/triage.md
+touches: subprojects/docket/src/docket/feature_match.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/config.py, subprojects/docket/README.md, subprojects/docket/tests/test_feature_match.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_config.py, subprojects/docket/tests/test_portability.py, docs/features.toml, .claude/skills/docket/modes/capture.md, .claude/skills/docket/modes/triage.md, .claude/skills/docket/modes/release.md
 added: 2026-11-22
 ---
 
@@ -78,6 +78,9 @@ three, 51 in the top five.
    feature or each other, and the open features with one item. It decides
    nothing. The triage skill's grooming pass runs it and records each merge
    it takes, and the release cut runs it once.
+
+**Generator check.** None: this is new work the project owner asked for, not a
+repair of a defect that recurs.
 
 **Decided.** The project owner asked that every question needing him be
 settled by researched best practice (project owner, 2026-11-22, "For items

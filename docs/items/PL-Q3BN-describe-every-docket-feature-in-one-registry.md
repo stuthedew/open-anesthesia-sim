@@ -3,7 +3,7 @@ id: PL-Q3BN
 title: Describe every docket feature in one registry, show each description in status and feature, and refuse an item whose feature is not listed
 status: untriaged
 feature: feature-registry
-touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/README.md, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_config.py, docs/features.toml, docket.toml, .claude/skills/docket/modes/capture.md
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/README.md, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_config.py, docs/features.toml, docket.toml, tools/rules_paths_check.py, .claude/skills/docket/modes/capture.md, .claude/skills/docket/modes/ideas.md, docs/items
 added: 2026-11-22
 ---
 
