@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: machine-docs-structure
+milestone: v0.6.21
 touches: docs/MODEL.md, docs/PARAMETERS.md, src/anesthesia_sim/data/machines/reference_circle_system.json, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/core/uptake_system.py
 deferred-from: v0.7.0 - present at the freeze, with no real connection to v0.7.0's Required scope: it matters when a second machine profile is written, which the deferred PL-WZVZ and PL-B4P7 wait on and no release schedules
 added: 2026-11-11

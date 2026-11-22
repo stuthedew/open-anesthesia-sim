@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: convergence-visibility
+milestone: v0.6.21
 touches: subprojects/docket/src/docket/inflow.py, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_inflow.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/skills/docket/modes/triage.md, docs/items
 deferred-from: v0.7.0 - present at the freeze, but a queue-count defect in the workflow lane with no connection to anything on the frozen list or in v0.7.0 Required scope; no learner sees it
 added: 2026-11-14

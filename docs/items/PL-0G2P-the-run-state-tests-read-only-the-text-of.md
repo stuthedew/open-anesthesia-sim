@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, safety
 feature: every-view-in-run-state-tests
+milestone: v0.6.21
 touches: tests/integration/simulation_view, src/anesthesia_sim/app/qt_schematic.py
 deferred-from: v0.7.0 - a new problem, not present at the freeze (817a4d88, 2026-10-25): the compartment schematic, the first View that paints its values, merged on 2026-11-01; not live: checked 2026-11-10, the audit's read of the schematic found no painted amount left from an earlier run, and the gap is in the tests
 added: 2026-11-10

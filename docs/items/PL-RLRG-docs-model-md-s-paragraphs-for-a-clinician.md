@@ -5,6 +5,7 @@ priority: P2
 effort: M
 status: done
 classes: defect, docs
+milestone: v0.6.21
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/MODEL.md, .claude/skills/docket/modes/close-out.md
 deferred-from: v0.7.0 - present at the freeze and not on the frozen list; found by the 2026-11-10 audit; it changes how the specification reads and no value in it
 added: 2026-11-10

@@ -27,74 +27,52 @@ explicit out-of-scope list.
   the cause produced point back to it. A head is live while the cause still
   produces items, and spent once it no longer does.
 
-## Current baseline: v0.6.20
+## Current baseline: v0.6.21
 
-In v0.6.20 every MAC multiple divides by Mapleson's MAC at age 40: 1.8%
-sevoflurane, 1.17% isoflurane and 6.6% desflurane, in place of De Wolf et
-al.'s flat adult 2.0%, 1.2% and 6.0%. The 1 MAC line beside the chart names
-the age, and the dial opens at the new 1 MAC. The model document is split by
-reader: `docs/MODEL.md` now describes the model for a clinician, how the model
-is tested is in `docs/VERIFICATION.md`, and where each stored value comes from
-is in `docs/PARAMETERS.md`. The shipped Workspaces fit a 1366 by 768 screen,
-Tab follows reading order, and every control with the keyboard focus shows a
-ring. The chart marks each step of a dial, counting a held key or a swipe as
-one step, and marks are edited in the Bookmarks View rather than in a window
-over the readouts. The release has 57 items. It is a patch on both halves of
-the patch test in § "Versioning decision": the schematic milestone is not
-finished until the project owner has test-driven it, and v0.7.0 is given to a
-milestone section, so no patch release may take that number. v0.6.20 finishes
-four features: `one-source-of-truth`, `regex-review`, `release-roadmap-seam`
-and `verify-false-reject`.
+In v0.6.21 the agent cost View shows a cost as money, in whole units and
+cents, such as USD 12.34. A branch taken in a Workspace pinned to a run that
+is not open says that the Workspace does not draw the comparison, and how to
+see it. Dials that a View builds again after a halt keep their place in Tab's
+order. A run's records are rebuilt through their checks, by field name, when
+the run is copied, and a run refuses its next step when its state was changed
+outside a step, such as by a circuit volume written directly. No control in
+the interface can make either change yet. The model documents correct five
+statements and hold each to its source, and the tests that compare the model
+with published data give a reason for each of their limits. The release has
+32 items. It is a patch on both halves of the patch test in § "Versioning
+decision": the schematic milestone is not finished until the project owner has
+test-driven it, and v0.7.0 is given to a milestone section, so no patch release
+may take that number. v0.6.21 finishes five features: `generator-heads`,
+`irreversible-actions-refused-at-github`, `model-md-structure`,
+`planning-cadence` and `standing-weight`.
+
+Three of the items, `PL-0G2P`, `PL-1D3Z` and `PL-B8DL`, merged in `#2231`
+before v0.6.20's pull request landed, so their code is inside the v0.6.20 tag.
+They are described here, and v0.6.20's notes point to this release. Since
+`PL-1D3Z`, a Workspace pinned to a run that is no longer open still shows its
+Bookmarks and Branch Views.
 
 v0.7.0 is cut only after its Required scope has closed, Gate 3's frozen list
-has cleared and the project owner has test-driven `main`. The Required scope
-closed in v0.6.19, and Gate 3's list clears in this release: its last entry,
-`PL-LBVN`, the choice of stored MAC values, closes here. When v0.6.20 was
-cut, 182 of the gate's 200 entries had cleared and the other 18 were deferred
-to the next gate. What is left before v0.7.0 is the owner's test drive.
+has cleared and the project owner has test-driven `main`. All 19 Required
+scope ids have closed, and Gate 3's list has cleared: when v0.6.21 was cut,
+185 of its 200 entries had cleared and the other 15 were deferred to the next
+gate. What is left before v0.7.0 is the owner's test drive.
 
-**The stored MAC values changed, so a run's percentages can differ from
-v0.6.19. No equation or step changed:**
+**No equation, step or stored value changed. The code in `core/` changed in
+how a run is copied and in what it refuses:**
 
-| Tree | v0.6.19 tag | This cut | What moved |
+| Tree | v0.6.20 tag | This cut | What moved |
 | --- | --- | --- | --- |
-| `src/` | `77c9596` | `22e01ef` | `core/` as below; `app/`'s 1 MAC line with its age (`#2223`), Workspaces at 1366 by 768 (`#2217`), keyboard focus and Tab order (`#2216`, `#2219`), dial steps on the chart (`#2228`), the Bookmarks View's mark editor (`#2214`), Views drawn from one tick's values (`#2229`), chart and notation fixes (`#2213`, `#2218`, `#2225`, `#2226`), and section citations after the split |
-| `src/anesthesia_sim/core/` | `8c64b67` | `d5c7ec9` | one function that builds a run's MAC from the agent and the patient, and a compared chart that refuses two runs whose MAC or age differ (`#2223`); refusal messages and docstrings that name the section now holding their rule (`#2204`, `#2220`, `#2222`, `#2233`, `#2234`, `#2235`) |
-| `src/anesthesia_sim/data/` | `21784c0` | `e048373` | each agent's MAC at age 40 and its source (`#2223`), the Default, Induction and Maintenance Workspaces' Area sizes (`#2217`), and source notes |
-| `tests/reference/` | `b5db82d` | `cf2ff33` | five tests that compare the model with published figures read the new MAC (`#2223`), and the tests that read `docs/MODEL.md`'s figures follow its new wording and sections (`#2204`, `#2220`, `#2222`) |
+| `src/` | `9127005` | `0dd1759` | `core/` as below; `app/`'s cost shown to the cent (`#2241`), the notice for a branch that a pinned Workspace does not draw and Tab's order after a View builds a control again (`#2239`), and the controller's refusal of a control change after a volume it did not record (`#2245`) |
+| `src/anesthesia_sim/core/` | `d5c7ec9` | `0c045e7` | every record rebuilt through its checks, by field name, on a copy or a pickle (`#2242`); a step refused when the run's state changed since its last step (`#2244`); a copy that opens when its state reads back exactly (`#2245`); docstrings corrected with the model documents (`#2237`, `#2241`) |
+| `src/anesthesia_sim/data/` | `e048373` | `23468b5` | the reference circle system's note on a startup fresh gas flow, which now says the survey read no manufacturer's manual (`#2237`) |
+| `tests/reference/` | `cf2ff33` | `bc9e5f8` | a reason that holds for each limit of the published-data tests, with each measured figure kept in one place (`#2243`), and pointers to the sections that now hold the figures (`#2250`) |
 
-**How far a run moved.** Both tags ran the same 81 cases as at v0.6.19, and
-three runs of 24 hours. Each case opens its dial at the agent's 1 MAC, so the
-new MAC moves every case's delivered concentration. Every compartment fraction
-on v0.6.20 is the v0.6.19 fraction times the ratio of the two MACs (0.9 for
-sevoflurane, 0.975 for isoflurane and 1.1 for desflurane), to within 3 × 10⁻¹⁴
-of the ratio. So every MAC multiple, every FA/FI ratio and all 271 stops on a
-marked crossing or a MAC target are identical. The percentages and the agent
-volumes move by the same ratio. `PL-245L` names the scripts that measured this.
-
-**MAC at age 40** (`PL-LBVN`, `#2223`). Mapleson's 1996 meta-analysis gives
-MAC at age 40 as 1.8% sevoflurane, 1.17% isoflurane and 6.6% desflurane. The
-1 MAC line prints at most two decimals with no trailing zero, so it reads
-"1 MAC sevoflurane (age 40) = 1.8%". `PL-8F9D` plans MAC adjusted for the
-patient's own age.
-
-**The model document by reader** (`PL-6PPZ`, `PL-FWR6`, `PL-48MX`,
-`PL-4H8Q`, `PL-N83Z`, `PL-SY7G`, `PL-1VXY`). `docs/MODEL.md` is the
-clinician's description of the model, brought up to date with the tree. Its
-verification sections moved word for word to `docs/VERIFICATION.md`, and its
-parameter sources to `docs/PARAMETERS.md`. Each of the three was then sorted for
-its own reader.
-
-**The window at 1366 by 768** (`PL-D5J4`, `PL-4JCC`, `PL-V4Q8`, `PL-K4CZ`,
-`#2217`, `#2218`). Each shipped Workspace shows its View's lesson above the
-Area's fold at 1366 by 768: Induction's wash-in curve, and Maintenance's share
-bar and schematic. The concentration plot takes half of its chart's Area.
-
-**Keyboard use** (`PL-63FQ`, `PL-CXYV`, `PL-B45W`, `PL-24SN`, `#2216`,
-`#2219`, `#2226`). A new window starts with the focus on the agent selector,
-Tab follows reading order, every focused control shows a ring, the run
-buttons look pressed when pressed, and a rename or a split leaves the focus
-where the reader was.
+**How far a run moved.** Both tags ran the same 81 cases and three runs of
+24 hours. Every compartment fraction, every agent total and all 174,960
+formatted readouts are identical, and all 271 stops on a marked crossing or a
+MAC target are at the same instant. `PL-4N9Z` names the scripts that measured
+this.
 
 § "What a tag ships that its notes may not name" says how work ships that
 merges on `main` after a release is cut and before its pull request lands.
@@ -266,7 +244,8 @@ so no release's notes name it (`PL-KRS6`).
 | v0.6.17 | Completed | **The release where the agent cost View shows the delivered agent in whole millilitres of liquid, because a tenth implied more precision than the measured density supports, and where `docs/MODEL.md` gives each fact one home and is line edited with every dropped statement restored.** | 96 items | `PL-FNJ3` |
 | v0.6.18 | Completed | **The release where GitHub's own settings refuse a forced push, the deletion of `main` and the merge of a pull request that the project holds, and where the order of work, the learner and the tasks for the interface pass are agreed.** | 6 items | `PL-MH1H` |
 | v0.6.19 | Completed | **The release where a run steps in whole seconds, so a control change takes effect at the next whole second and a branch can open at any second the run has reached; where every agent amount names the 20 °C and 1 atm it is stated at; and where every shipped Workspace fits the window, with the bookmarks and the branch control as Views.** | 146 items | `PL-572Q` |
-| v0.6.20 | Completed / current baseline | **The release where every MAC multiple divides by Mapleson's MAC at age 40 and the 1 MAC line names that age; where the model document is split by reader, so `docs/MODEL.md` describes the model for a clinician; where the shipped Workspaces fit a 1366 by 768 screen; and where Tab follows reading order and every control with the keyboard focus shows a ring.** | 57 items | `PL-245L` |
+| v0.6.20 | Completed | **The release where every MAC multiple divides by Mapleson's MAC at age 40 and the 1 MAC line names that age; where the model document is split by reader, so `docs/MODEL.md` describes the model for a clinician; where the shipped Workspaces fit a 1366 by 768 screen; and where Tab follows reading order and every control with the keyboard focus shows a ring.** | 57 items | `PL-245L` |
+| v0.6.21 | Completed / current baseline | **The release where the agent cost View shows a cost as money to the cent; where a branch taken in a Workspace pinned to a closed run says where its comparison went; where a copied run is rebuilt through its checks; and where the published-data tests give a reason for each of their limits.** | 32 items | `PL-4N9Z` |
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.

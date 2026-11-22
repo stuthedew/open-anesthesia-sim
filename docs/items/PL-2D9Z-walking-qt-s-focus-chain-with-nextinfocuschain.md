@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: interface-design-review
+milestone: v0.6.21
 touches: pyproject.toml, README.md, uv.lock, src/anesthesia_sim/app/simulation_view.py, tests/integration/test_layout_keyboard.py, docs/ARCHITECTURE.md
 deferred-from: v0.7.0 - captured after the freeze; the shipped code does not walk the focus chain, so no reader can reach the crash
 added: 2026-11-22

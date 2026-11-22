@@ -3,6 +3,7 @@ id: PL-KNHK
 title: Re-point the 34 mentions of docs/MODEL.md in five reference tests to the document and section that now state them; the edit is built and waits for a pull request that already needs the owner's read of tests/reference
 status: done
 feature: model-md-structure
+milestone: v0.6.21
 touches: tests/reference
 added: 2026-11-22
 closed: 2026-11-22
