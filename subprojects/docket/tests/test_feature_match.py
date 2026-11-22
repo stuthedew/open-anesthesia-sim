@@ -50,8 +50,8 @@ REGISTRY = Config(
 )
 
 STORE = [
-    _item("PL-A1A1", "The chart axis tick labels are cut at the plot edge", "chart-readout"),
-    _item("PL-A1A2", "The chart's off-scale notice names the axis in MAC only", "chart-readout"),
+    _item("PL-B1B1", "The chart axis tick labels are cut at the plot edge", "chart-readout"),
+    _item("PL-B1B2", "The chart's off-scale notice names the axis in MAC only", "chart-readout"),
     _item(
         "PL-B1B1", "The vaporizer dial moves in steps the device cannot set", "vaporizer-controls"
     ),
@@ -73,7 +73,7 @@ def test_a_title_is_offered_the_features_whose_words_it_shares_strongest_first()
 
 def test_retired_and_unlisted_names_are_never_offered() -> None:
     """A retired name is not one to join, and a misspelt one must not spread."""
-    store = [*STORE, _item("PL-E1E1", "Chart axis typo group", "chart-axis")]
+    store = [*STORE, _item("PL-C1C1", "Chart axis typo group", "chart-axis")]
 
     groups = profiles(store, REGISTRY)
 
