@@ -3,13 +3,15 @@ id: PL-SGRS
 title: test_qt_rendering.py's dashboard fixture builds SimulationView without case=, so the Branch section main.py ships is hidden from every headless rendering assertion
 priority: P2
 effort: S
-status: ready
+status: done
 classes: test
 feature: presentation-safety
 touches: tests/integration/test_qt_rendering.py
 added: 2026-10-01
+closed: 2026-11-22
+pr: 2260
 payoff: the headless rendering checks assert over the page that ships, Branch section included
-verify: grep -qF 'case=' tests/integration/test_qt_rendering.py
+tests: tests/integration/test_qt_rendering.py::test_the_rendered_dashboard_is_the_one_that_ships
 ---
 
 **Problem.** test_qt_rendering.py's dashboard fixture builds SimulationView without case=, so the Branch section main.py ships is hidden from every headless rendering assertion
@@ -37,3 +39,5 @@ fixture follows `main()`.
 **Reproduced 2026-10-01.** `grep -c 'case=' tests/integration/test_qt_rendering.py` prints 0; the fixture at line 88 builds `SimulationView((controller,))`.
 
 **Checked 2026-11-22** against `d4e8200`: still applies. Both dashboards in `tests/integration/test_qt_rendering.py` are still built as `SimulationView((controller,), workspaces=_EVERY_VIEW)`, with no `case=` and no `declare_application_colours` call. `open_dashboard` in `app/main.py` builds `SimulationView((case.trunk,), case=case, ...)` after `main()` declares the colours. With no case, the dashboard draws no branch control. The module docstring still names `docs/worker.md` for the screenshot, and `.claude/skills/run-the-app/SKILL.md` already builds with `BranchedCase`.
+
+**Closed 2026-11-22.** Documentation checked for statements this change made false: `docs/INTERFACE.md` (§§ "Minimum displayed outputs", "Values that must stay reachable", "The code and tests behind the layout requirements", "Minimum contrast for text and graphics", "Color as a cue: agent colors and the alert color", "The code and tests behind the color requirements", "The agent-accounting panel", "What the reader chooses: traces, window and playback rate"), `docs/MODEL.md`, `docs/VERIFICATION.md`, `README.md`, `.claude/rules/ui-color.md`, `.claude/skills/run-the-app/SKILL.md`, and the docstrings of `app/dashboard_frame.py`, `app/formatting.py`, `app/playback.py` and `tests/integration/test_qt_rendering.py`.

@@ -3,11 +3,14 @@ id: PL-NMZS
 title: The Circuit readout's 'inspired' gloss is called a safety requirement in app/dashboard_frame.py, but no specification document states it or says why
 priority: P3
 effort: S
-status: ready
+status: done
 feature: presentation-safety
 touches: docs/INTERFACE.md, src/anesthesia_sim/app/dashboard_frame.py
 added: 2026-11-22
+closed: 2026-11-22
+pr: 2260
 payoff: a reader of the interface specification learns why the circuit readout says 'inspired', so a later rewrite does not drop it
+verify: grep -qF 'The circuit readout is labelled "Circuit"' docs/INTERFACE.md
 ---
 
 **Problem.** The Circuit readout's 'inspired' gloss is called a safety requirement in app/dashboard_frame.py, but no specification document states it or says why
@@ -37,3 +40,5 @@ requirement and its reason beside the other two in `docs/INTERFACE.md`, and
 update the docstring.
 
 **Found by** the documentation sweep of `PL-48MX`, 2026-11-22.
+
+**Closed 2026-11-22.** Documentation checked for statements this change made false: `docs/INTERFACE.md` (§§ "Minimum displayed outputs", "Values that must stay reachable", "The code and tests behind the layout requirements", "Minimum contrast for text and graphics", "Color as a cue: agent colors and the alert color", "The code and tests behind the color requirements", "The agent-accounting panel", "What the reader chooses: traces, window and playback rate"), `docs/MODEL.md`, `docs/VERIFICATION.md`, `README.md`, `.claude/rules/ui-color.md`, `.claude/skills/run-the-app/SKILL.md`, and the docstrings of `app/dashboard_frame.py`, `app/formatting.py`, `app/playback.py` and `tests/integration/test_qt_rendering.py`.

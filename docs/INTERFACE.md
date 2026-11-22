@@ -2420,8 +2420,8 @@ The model's circuit is one well-mixed volume with no separate inspiratory limb,
 so the gas the patient breathes in is the circuit gas (`docs/MODEL.md`
 § "What the model represents"). The gloss names the circuit concentration as
 the one a monitor's inspired reading estimates. Without it, "Circuit" can be
-read as the vaporizer dial or the fresh gas. While the patient takes up agent,
-rebreathing holds the inspired concentration below both.
+read as the vaporizer dial or the fresh gas. At a steady dial, while the patient
+takes up agent, rebreathing holds the inspired concentration below both.
 
 The fresh gas flow control is labelled "Fresh gas flow", with "common gas
 outlet" on the line below. The flow it sets is the whole stream leaving the
