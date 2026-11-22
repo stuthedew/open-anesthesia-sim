@@ -120,3 +120,19 @@ every `Class.member` they name exists except `SimulationController.origin_s`,
 which the text names as removed. The grep for passages about the retired
 step: `grep -nE '0\.1 s|tenth of a second|hundredth|evaluate_anchored|canonical|keyframe|every 4 s|cannot disagree' docs/INTERFACE.md docs/ARCHITECTURE.md`.
 The three `0.1 s` lines left are dated records of the old step.
+
+**Review fix 2026-11-22**, after two blind review passes on #2246. Pass 2
+found nothing. Pass 1 found two faults, both fixed:
+
+1. § "A compartment's share of the agent is shown in whole percent" said the
+   circuit holds more than 99.5% "only inside that first second, which no
+   display shows". That holds only at the opening settings. Measured
+   2026-11-22 with `SimulationController`, `set_alveolar_ventilation` before
+   `start` and `share_segments` at each stored second: the circuit's share
+   reads `>99%` for 1 s at 2 L/min and for 7 s at 0.5 L/min, with each agent.
+   The section now says so.
+2. § "The instant each value is reported at" bounded the difference between
+   two runs' printed instants by the 12 px hover radius beside a fork. The
+   farther run's point is bounded by the radius, and the other run's nearest
+   column can sit up to half a column away on the other side, so the bound is
+   now the radius plus half a column.

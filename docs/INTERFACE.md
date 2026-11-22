@@ -4998,12 +4998,15 @@ holding none. A share of 99.5% or more that is not the whole reads `>99%`, so no
 compartment reads as holding all of the agent while another holds some. A run
 holds no agent when it opens, and its next stored state is one second later.
 At the settings that a run opens with, the circuit then holds 99.45% of the agent with each agent
-the simulator offers, and its share reads `99%` (measured 2026-11-22). The
-circuit holds more than 99.5% only inside that first second, which no display
-shows. One SD of a coefficient moves a compartment's share by at most 13
+the simulator offers, and its share reads `99%` (measured 2026-11-22). At a
+lower alveolar ventilation, set before the run starts, the circuit holds more
+than 99.5% in the first stored seconds, and its share then reads `>99%`. With
+each agent, that lasts 1 s at 2 L/min and 7 s at 0.5 L/min (measured
+2026-11-22). One SD of a coefficient moves a compartment's share by at most 13
 percentage points, in isoflurane's muscle at 8 h 43 min
 (`test_one_sd_moves_a_compartment_s_share_by_at_most_thirteen_percentage_points` in `tests/integration/test_parameter_uncertainty.py`). So
 a share can differ between patients by up to 13 steps of 1 percentage point.
+<!-- not-restated: 1 s -->
 
 **For developers.** A compartment's amount needs a precision of its own. At the
 run totals' 0.1 L, venous blood reads below resolution for a whole hour at 1 MAC
@@ -5301,7 +5304,8 @@ Each value line prints its own instant, because two runs' nearest instants can
 differ, and the printed form shows the difference. They differ by up to one
 column where one run draws an instant that the other does not, such as a
 control change. Beside a branch's fork, or past the end of the shorter run, they
-can differ by up to the hover radius, 12 px along the time axis. One
+can differ by up to the hover radius of 12 px plus half a column along the time
+axis. One
 instant above several values would claim that they are simultaneous when they may
 not be.
 
