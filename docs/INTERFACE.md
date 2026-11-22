@@ -3780,6 +3780,8 @@ Two criteria carry most of the weight:
   the lines that the layout draws on an Area border, under the current
   Workspace tab and during a corner drag.
 
+<!-- not-restated: 4.5 -->
+
 **No control that carries the agent's identity is ever drawn disabled.** SC
 1.4.3 sets no contrast requirement for text in an inactive control, and W3C's
 Understanding document for that criterion gives a disabled button with grey
@@ -3790,8 +3792,6 @@ identification color. The interface does not use this exemption for those
 controls. While a run holds the agent fixed, the selector is hidden rather than
 disabled, and the running-agent label takes its place. The label has no
 disabled state.
-
-<!-- not-restated: 4.5 -->
 
 #### Where the chart goes beyond AA
 
