@@ -13694,3 +13694,78 @@ def test_a_bound_family_paragraph_whose_code_only_an_unparsable_file_defines_is_
     assert any(
         "names code only a file this Python cannot parse may define" in d for d in report.declined
     )
+
+
+def _model_reader_errors(tmp_path: Path, body: str) -> list[str]:
+    """Errors from the check of `docs/MODEL.md`'s shown text alone, for one document body."""
+    path = tmp_path / "repo" / "docs" / "MODEL.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(body, encoding="utf-8")
+    report = doc_check.Report()
+    doc_check.check_model_reader_text(tmp_path / "repo", report)
+    return report.errors
+
+
+def test_a_decision_record_in_a_paragraph_for_a_clinician_is_refused(tmp_path: Path) -> None:
+    """`PL-RLRG`: `docs/MODEL.md` held 20 decision records for a clinician to read past."""
+    errors = _model_reader_errors(
+        tmp_path,
+        "# Model\n\nThe circuit holds 6 L\n(project owner, 2026-09-04, ratified, over 8 L).\n",
+    )
+
+    assert errors == [
+        "docs/MODEL.md:4 records a decision, `(project owner, 2026-09-04`, in text written "
+        "for a clinician; move the record to the item and keep only the fact here"
+    ]
+
+
+def test_an_item_id_in_a_list_item_or_table_of_the_model_document_is_refused(
+    tmp_path: Path,
+) -> None:
+    """An id in a list item, a table cell or a code span is shown, so each is refused."""
+    errors = _model_reader_errors(
+        tmp_path,
+        "# Model\n\n- The step is one second (`PL-SZ6G`).\n\n"
+        "| Value | Why |\n| --- | --- |\n| 6 L | PL-036 |\n",
+    )
+
+    assert [error.split(" names the item ")[1].split(",")[0] for error in errors] == [
+        "`PL-SZ6G`",
+        "`PL-036`",
+    ]
+    assert errors[0].startswith("docs/MODEL.md:3 ")
+    assert errors[1].startswith("docs/MODEL.md:7 ")
+
+
+def test_an_item_id_or_a_date_the_model_document_does_not_show_is_not_refused(
+    tmp_path: Path,
+) -> None:
+    """A comment is not shown, and a date without the owner's name records no decision."""
+    errors = _model_reader_errors(
+        tmp_path,
+        "# Model\n\nThe tables were measured on 2026-11-22.\n"
+        "<!-- PL-RLRG (project owner, 2026-11-10) -->\n\n"
+        "The HPL-ABCD pump is not an item.\n",
+    )
+
+    assert errors == []
+
+
+@pytest.mark.parametrize(
+    "wrapped",
+    [
+        "(project\nowner, 2026-09-04, ratified, over 8 L).\n",
+        "(project owner,\n2026-09-04, ratified, over 8 L).\n",
+    ],
+    ids=["after-project", "after-owner"],
+)
+def test_a_decision_record_split_by_a_line_wrap_is_refused(tmp_path: Path, wrapped: str) -> None:
+    """A hard wrap inside the record renders as one space, so the record is still shown.
+
+    Read a line at a time, the check passed both wraps (blind review of #2237).
+    The error gives the line on which the record starts.
+    """
+    errors = _model_reader_errors(tmp_path, f"# Model\n\nThe circuit holds 6 L\n{wrapped}")
+
+    assert len(errors) == 1
+    assert errors[0].startswith("docs/MODEL.md:4 records a decision, `(project")
