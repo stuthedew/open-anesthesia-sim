@@ -12,7 +12,7 @@ added: 2026-11-22
 closed: 2026-11-22
 pr: 2243
 payoff: A reader of a tolerance or of the readout-order claim is given only figures that a test keeps true.
-verify: grep -qF "holds each compartment's calculation error to at most" docs/INTERFACE.md
+verify: grep -qF "No test bounds the calculation error in a learner" docs/INTERFACE.md
 ---
 
 **Problem.** Reference-test comments in tests/reference/test_coupled_dynamics.py and tests/reference/test_canonical_evaluation.py quote measured error margins that no test asserts, such as 'no inversions at all over 1 485 000 pair comparisons' and the 2026-09-07 separation table; best practice adopted on #2201 is to state the bound and keep a measurement only where a test asserts it
