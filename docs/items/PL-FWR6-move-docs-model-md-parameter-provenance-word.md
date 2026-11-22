@@ -94,3 +94,18 @@ parameters".
 5. `python3 tools/model_rewrite.py lost` against `origin/main` shows nothing
    held fewer times across the four specification documents.
 6. `PL-N83Z` (sort the parameter document) now declares `docs/PARAMETERS.md`.
+
+**Files checked** for a citation of the moved section, and for a sentence that
+puts the provenance table, the source hierarchy or the source counts in
+`docs/MODEL.md`: `CLAUDE.md`, `README.md`, `ROADMAP.md`, `docket.toml`,
+`docs/MODEL.md`, `docs/INTERFACE.md`, `docs/VERIFICATION.md`,
+`docs/ARCHITECTURE.md`, `docs/apparatus.md`, `docs/maintainer.md`,
+`docs/worker.md`, `docs/resident-instructions.md`, `docs/machine-abstraction.md`,
+`docs/machine-survey.md`, `docs/references/`, every rule, skill and agent under
+`.claude/`, `subprojects/docket/src/docket/arming.py`, `tools/doc_check.py`,
+`tools/product_paths.py`, `tools/source_tier_counts.py`, the `sources` notes of
+the data files, the messages and docstrings under `src/anesthesia_sim/`, the
+tests, and the open item briefs. The closed briefs, the release notes and the
+completed milestones in `ROADMAP.md` record what was true when they were
+written, and were left as they are. Mentions of `docs/MODEL.md` with no
+section that mean an interface requirement are `PL-10BC`'s.
