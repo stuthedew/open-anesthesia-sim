@@ -214,8 +214,8 @@ class ViewRequests:
             the given one, or to be removed when it is None.
         refused_entries_discard: Asks for every entry of the preferences file
             that was refused when the file was read to be discarded.
-        adjustment_start: Says that the reader pressed a dial of the given
-            run, so the changes that follow are one new adjustment.
+        adjustment_start: Says that the reader began an input on a dial of
+            the given run, so the changes that follow are one new adjustment.
         setting: Asks for the given run's setting on the given control to
             become the given value. The run applies it or refuses it, and
             the next tick shows the setting in force.
